@@ -1,168 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38521 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754554AbaEKUwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:52:55 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 02/43] nfsd4: tweak nfsd4_encode_getattr to take xdr_stream
-Date: Sun, 11 May 2014 16:52:07 -0400
-Message-Id: <1399841568-19716-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:59928 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753918AbaE1Oc1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:32:27 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v5 04/24] xprtrdma: Remove BOUNCEBUFFERS memory registration
+	mode
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 28 May 2014 10:32:26 -0400
+Message-ID: <20140528143225.23214.81898.stgit@manet.1015granger.net>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Clean up: This memory registration mode is slow and was never
+meant for use in production environments. Remove it to reduce
+implementation complexity.
 
-Just change the nfsd4_encode_getattr api.  Not changing any code or
-adding any new functionality yet.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- fs/nfsd/nfs4proc.c |    6 +++---
- fs/nfsd/nfs4xdr.c  |   44 ++++++++++++++++++++++++++++++++------------
- fs/nfsd/xdr4.h     |    7 ++++---
- 3 files changed, 39 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 46370f5..1499aa4 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1061,10 +1061,10 @@ _nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_jukebox;
- 
- 	p = buf;
--	status = nfsd4_encode_fattr(&cstate->current_fh,
-+	status = nfsd4_encode_fattr_to_buf(&p, count, &cstate->current_fh,
- 				    cstate->current_fh.fh_export,
--				    cstate->current_fh.fh_dentry, &p,
--				    count, verify->ve_bmval,
-+				    cstate->current_fh.fh_dentry,
-+				    verify->ve_bmval,
- 				    rqstp, 0);
- 	/*
- 	 * If nfsd4_encode_fattr() ran out of space, assume that's because
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index ef65ffc..6cdd660 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2045,12 +2045,10 @@ static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
- /*
-  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
-  * ourselves.
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   11 -----------
+ net/sunrpc/xprtrdma/transport.c |   13 -------------
+ net/sunrpc/xprtrdma/verbs.c     |    5 +----
+ 3 files changed, 1 insertions(+), 28 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index c296468..02b2941 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -77,9 +77,6 @@ static const char transfertypes[][12] = {
+  * Prepare the passed-in xdr_buf into representation as RPC/RDMA chunk
+  * elements. Segments are then coalesced when registered, if possible
+  * within the selected memreg mode.
 - *
-- * countp is the buffer size in _words_
+- * Note, this routine is never called if the connection's memory
+- * registration strategy is 0 (bounce buffers).
   */
- __be32
--nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
--		struct dentry *dentry, __be32 **buffer, int count, u32 *bmval,
-+nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export *exp,
-+		struct dentry *dentry, u32 *bmval,
- 		struct svc_rqst *rqstp, int ignore_crossmnt)
- {
- 	u32 bmval0 = bmval[0];
-@@ -2059,12 +2057,12 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 	struct kstat stat;
- 	struct svc_fh *tempfh = NULL;
- 	struct kstatfs statfs;
--	int buflen = count << 2;
-+	__be32 *p = xdr->p;
-+	int buflen = xdr->buf->buflen;
- 	__be32 *attrlenp;
- 	u32 dummy;
- 	u64 dummy64;
- 	u32 rdattr_err = 0;
--	__be32 *p = *buffer;
- 	__be32 status;
- 	int err;
- 	int aclsupport = 0;
-@@ -2491,7 +2489,7 @@ out_acl:
+ 
+ static int
+@@ -439,14 +436,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 		wtype = rpcrdma_noch;
+ 	BUG_ON(rtype != rpcrdma_noch && wtype != rpcrdma_noch);
+ 
+-	if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS &&
+-	    (rtype != rpcrdma_noch || wtype != rpcrdma_noch)) {
+-		/* forced to "pure inline"? */
+-		dprintk("RPC:       %s: too much data (%d/%d) for inline\n",
+-			__func__, rqst->rq_rcv_buf.len, rqst->rq_snd_buf.len);
+-		return -1;
+-	}
+-
+ 	hdrlen = 28; /*sizeof *headerp;*/
+ 	padlen = 0;
+ 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 1eb9c46..8c5035a 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -503,18 +503,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ 		 * If the allocation or registration fails, the RPC framework
+ 		 * will (doggedly) retry.
+ 		 */
+-		if (rpcx_to_rdmax(xprt)->rx_ia.ri_memreg_strategy ==
+-				RPCRDMA_BOUNCEBUFFERS) {
+-			/* forced to "pure inline" */
+-			dprintk("RPC:       %s: too much data (%zd) for inline "
+-					"(r/w max %d/%d)\n", __func__, size,
+-					rpcx_to_rdmad(xprt).inline_rsize,
+-					rpcx_to_rdmad(xprt).inline_wsize);
+-			size = req->rl_size;
+-			rpc_exit(task, -EIO);		/* fail the operation */
+-			rpcx_to_rdmax(xprt)->rx_stats.failed_marshal_count++;
+-			goto out;
+-		}
+ 		if (task->tk_flags & RPC_TASK_SWAPPER)
+ 			nreq = kmalloc(sizeof *req + size, GFP_ATOMIC);
+ 		else
+@@ -543,7 +531,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ 		req = nreq;
  	}
+ 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
+-out:
+ 	req->rl_connect_cookie = 0;	/* our reserved value */
+ 	return req->rl_xdr_buf;
  
- 	*attrlenp = htonl((char *)p - (char *)attrlenp - 4);
--	*buffer = p;
-+	xdr->p = p;
- 	status = nfs_ok;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9cb88f3..4a4e4ea 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -557,7 +557,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	 * adapter.
+ 	 */
+ 	switch (memreg) {
+-	case RPCRDMA_BOUNCEBUFFERS:
+ 	case RPCRDMA_REGISTER:
+ 	case RPCRDMA_FRMR:
+ 		break;
+@@ -778,9 +777,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
  
- out:
-@@ -2513,6 +2511,26 @@ out_resource:
- 	goto out;
- }
- 
-+__be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
-+			struct svc_fh *fhp, struct svc_export *exp,
-+			struct dentry *dentry, u32 *bmval,
-+	                struct svc_rqst *rqstp, int ignore_crossmnt)
-+{
-+	struct xdr_buf dummy = {
-+			.head[0] = {
-+				.iov_base = *p,
-+			},
-+			.buflen = words << 2,
-+		};
-+	struct xdr_stream xdr;
-+	__be32 ret;
-+
-+	xdr_init_encode(&xdr, &dummy, NULL);
-+	ret = nfsd4_encode_fattr(&xdr, fhp, exp, dentry, bmval, rqstp, ignore_crossmnt);
-+	*p = xdr.p;
-+	return ret;
-+}
-+
- static inline int attributes_need_mount(u32 *bmval)
- {
- 	if (bmval[0] & ~(FATTR4_WORD0_RDATTR_ERROR | FATTR4_WORD0_LEASE_TIME))
-@@ -2576,7 +2594,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
- 
- 	}
- out_encode:
--	nfserr = nfsd4_encode_fattr(NULL, exp, dentry, p, buflen, cd->rd_bmval,
-+	nfserr = nfsd4_encode_fattr_to_buf(p, buflen, NULL, exp, dentry, cd->rd_bmval,
- 					cd->rd_rqstp, ignore_crossmnt);
- out_put:
- 	dput(dentry);
-@@ -2746,14 +2764,16 @@ static __be32
- nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_getattr *getattr)
- {
- 	struct svc_fh *fhp = getattr->ga_fhp;
--	int buflen;
-+	struct xdr_stream *xdr = &resp->xdr;
-+	struct xdr_buf *buf = resp->xdr.buf;
- 
- 	if (nfserr)
- 		return nfserr;
- 
--	buflen = resp->xdr.end - resp->xdr.p - (COMPOUND_ERR_SLACK_SPACE >> 2);
--	nfserr = nfsd4_encode_fattr(fhp, fhp->fh_export, fhp->fh_dentry,
--				    &resp->xdr.p, buflen, getattr->ga_bmval,
-+	buf->buflen = (void *)resp->xdr.end - (void *)resp->xdr.p
-+			- COMPOUND_ERR_SLACK_SPACE;
-+	nfserr = nfsd4_encode_fattr(xdr, fhp, fhp->fh_export, fhp->fh_dentry,
-+				    getattr->ga_bmval,
- 				    resp->rqstp, 0);
- 	return nfserr;
- }
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 6884d70..f62a055 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -562,9 +562,10 @@ int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
- void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
- void nfsd4_encode_replay(struct nfsd4_compoundres *resp, struct nfsd4_op *op);
--__be32 nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
--		       struct dentry *dentry, __be32 **buffer, int countp,
--		       u32 *bmval, struct svc_rqst *, int ignore_crossmnt);
-+__be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
-+		struct svc_fh *fhp, struct svc_export *exp,
-+		struct dentry *dentry,
-+		u32 *bmval, struct svc_rqst *, int ignore_crossmnt);
- extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_setclientid *setclid);
--- 
-1.7.9.5
+ 	/* Client offers RDMA Read but does not initiate */
+ 	ep->rep_remote_cma.initiator_depth = 0;
+-	if (ia->ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS)
+-		ep->rep_remote_cma.responder_resources = 0;
+-	else if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
++	if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
+ 		ep->rep_remote_cma.responder_resources = 32;
+ 	else
+ 		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
 
