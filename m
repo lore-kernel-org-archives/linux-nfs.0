@@ -1,116 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16546 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58219 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751244AbaETSIc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2014 14:08:32 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [RFC 08/12] nfs: create a common pnfs_do_rw() function
-Date: Tue, 20 May 2014 14:08:15 -0400
-Message-ID: <1400609299-32558-9-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1751487AbaE1Srf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 May 2014 14:47:35 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH V2] Avoid buffer overruns by allocating buffer in svcauth_gss_validate()
+Date: Wed, 28 May 2014 14:47:25 -0400
+Message-Id: <1401302845-11496-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The read and write code looks almost identical, so use a simple function
-pointer to decide between read_pagelist() and write_pagelist().
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/pnfs.c | 45 +++++++++++++++++++++++----------------------
- 1 file changed, 23 insertions(+), 22 deletions(-)
+ src/svc_auth_gss.c |   14 +++++++-------
+ 1 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 293e970..69751d4 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1481,6 +1481,24 @@ pnfs_through_mds(struct nfs_pageio_descriptor *desc,
- 	nfs_generic_pgio_reset(hdr);
- }
+diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
+index 601a691..0766959 100644
+--- a/src/svc_auth_gss.c
++++ b/src/svc_auth_gss.c
+@@ -286,21 +286,21 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
+ 	struct opaque_auth	*oa;
+ 	gss_buffer_desc		 rpcbuf, checksum;
+ 	OM_uint32		 maj_stat, min_stat, qop_state;
+-	u_char			 rpchdr[128];
++	u_char			 *rpchdr;
+ 	int32_t			*buf;
++	u_int			bufsz;
  
-+static bool
-+pnfs_do_rw(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr,
-+	   enum pnfs_try_status (*try_rw)(struct nfs_pgio_header *, int))
-+{
-+	struct pnfs_layout_segment *lseg = desc->pg_lseg;
-+	bool ret = true;
+ 	gss_log_debug("in svcauth_gss_validate()");
+ 
+-	memset(rpchdr, 0, sizeof(rpchdr));
+-
+ 	/* XXX - Reconstruct RPC header for signing (from xdr_callmsg). */
+ 	oa = &msg->rm_call.cb_cred;
+-	if (oa->oa_length > MAX_AUTH_BYTES)
 +
-+	hdr->mds_ops = desc->pg_rpc_callops;
-+	desc->pg_lseg = NULL;
-+
-+	if (try_rw(hdr, desc->pg_ioflags) == PNFS_NOT_ATTEMPTED) {
-+		pnfs_through_mds(desc, hdr);
-+		ret = false;
-+	}
-+	pnfs_put_lseg(lseg);
-+	return ret;
-+}
-+
- void
- pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 			   struct nfs_page *req, u64 wb_size)
-@@ -1517,19 +1535,10 @@ pnfs_try_to_write_data(struct nfs_pgio_header *hdr, int how)
- }
++	bufsz = ((8 * BYTES_PER_XDR_UNIT) + RNDUP(oa->oa_length));
++	if (bufsz > MAX_AUTH_BYTES)
+ 		return (FALSE);
+ 	
+-	/* 8 XDR units from the IXDR macro calls. */
+-	if (sizeof(rpchdr) < (8 * BYTES_PER_XDR_UNIT +
+-			RNDUP(oa->oa_length)))
++	rpchdr = (u_char *)calloc(bufsz, 1);
++	if (rpchdr == NULL)
+ 		return (FALSE);
  
- static void
--pnfs_do_write(struct nfs_pageio_descriptor *desc,
--	      struct nfs_pgio_header *hdr, int how)
-+pnfs_do_write(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
- {
--	struct pnfs_layout_segment *lseg = desc->pg_lseg;
--
--	hdr->mds_ops = desc->pg_rpc_callops;
--	desc->pg_lseg = NULL;
--
--	if (pnfs_try_to_write_data(hdr, how) == PNFS_NOT_ATTEMPTED)
--		pnfs_through_mds(desc, hdr);
--	else
-+	if (pnfs_do_rw(desc, hdr, pnfs_try_to_write_data))
- 		nfs_inc_stats(hdr->inode, NFSIOS_PNFS_WRITE);
--	pnfs_put_lseg(lseg);
- }
- 
- static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
-@@ -1559,7 +1568,7 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 		pnfs_put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
- 	} else
--		pnfs_do_write(desc, hdr, desc->pg_ioflags);
-+		pnfs_do_write(desc, hdr);
- 	return ret;
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
-@@ -1602,7 +1611,7 @@ EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
-  * Call the appropriate parallel I/O subsystem read function.
-  */
- static enum pnfs_try_status
--pnfs_try_to_read_data(struct nfs_pgio_header *hdr)
-+pnfs_try_to_read_data(struct nfs_pgio_header *hdr, int how)
- {
- 	return NFS_SERVER(hdr->inode)->pnfs_curr_ld->read_pagelist(hdr);
- }
-@@ -1610,16 +1619,8 @@ pnfs_try_to_read_data(struct nfs_pgio_header *hdr)
- static void
- pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
- {
--	struct pnfs_layout_segment *lseg = desc->pg_lseg;
--
--	hdr->mds_ops = desc->pg_rpc_callops;
--	desc->pg_lseg = NULL;
--
--	if (pnfs_try_to_read_data(hdr) == PNFS_NOT_ATTEMPTED)
--		pnfs_through_mds(desc, hdr);
--	else
-+	if (pnfs_do_rw(desc, hdr, pnfs_try_to_read_data))
- 		nfs_inc_stats(hdr->inode, NFSIOS_PNFS_READ);
--	pnfs_put_lseg(lseg);
- }
- 
- static void pnfs_readhdr_free(struct nfs_pgio_header *hdr)
+ 	buf = (int32_t *)rpchdr;
 -- 
-1.9.2
+1.7.1
 
