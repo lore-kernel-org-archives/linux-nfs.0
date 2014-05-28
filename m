@@ -1,84 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:62568 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751710AbaEVAzR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:55:17 -0400
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:62632 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753801AbaE1OdB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:33:01 -0400
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 07/24] xprtrdma: Fall back to MTHCAFMR when FRMR is not
-	supported
+Subject: [PATCH v5 08/24] xprtrdma: mount reports "Invalid mount option" if
+	memreg mode not supported
 To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:55:15 -0400
-Message-ID: <20140522005515.27190.52882.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 28 May 2014 10:33:00 -0400
+Message-ID: <20140528143259.23214.36490.stgit@manet.1015granger.net>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An audit of in-kernel RDMA providers that do not support the FRMR
-memory registration shows that several of them support MTHCAFMR.
-Prefer MTHCAFMR when FRMR is not supported.
+If the selected memory registration mode is not supported by the
+underlying provider/HCA, the NFS mount command reports that there was
+an invalid mount option, and fails. This is misleading.
 
-If MTHCAFMR is not supported, only then choose ALLPHYSICAL.
+Reporting a problem allocating memory is a lot closer to the truth.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
 
- net/sunrpc/xprtrdma/verbs.c |   31 +++++++++++++++----------------
- 1 files changed, 15 insertions(+), 16 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 6bb9a07..a352798 100644
+index a352798..7c7e9b4 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -491,33 +491,32 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		ia->ri_dma_lkey = ia->ri_id->device->local_dma_lkey;
- 	}
- 
--	switch (memreg) {
--	case RPCRDMA_MTHCAFMR:
--		if (!ia->ri_id->device->alloc_fmr) {
--			dprintk("RPC:       %s: MTHCAFMR registration "
--				"specified but not supported by adapter, "
--				"using riskier RPCRDMA_ALLPHYSICAL\n",
--				__func__);
--			memreg = RPCRDMA_ALLPHYSICAL;
--		}
--		break;
--	case RPCRDMA_FRMR:
-+	if (memreg == RPCRDMA_FRMR) {
- 		/* Requires both frmr reg and local dma lkey */
- 		if ((devattr.device_cap_flags &
- 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
- 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
- 			dprintk("RPC:       %s: FRMR registration "
--				"specified but not supported by adapter, "
--				"using riskier RPCRDMA_ALLPHYSICAL\n",
--				__func__);
--			memreg = RPCRDMA_ALLPHYSICAL;
-+				"not supported by HCA\n", __func__);
-+			memreg = RPCRDMA_MTHCAFMR;
- 		} else {
- 			/* Mind the ia limit on FRMR page list depth */
- 			ia->ri_max_frmr_depth = min_t(unsigned int,
- 				RPCRDMA_MAX_DATA_SEGS,
- 				devattr.max_fast_reg_page_list_len);
+@@ -513,7 +513,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ #if RPCRDMA_PERSISTENT_REGISTRATION
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+ #else
+-			rc = -EINVAL;
++			rc = -ENOMEM;
+ 			goto out2;
+ #endif
  		}
--		break;
-+	}
-+	if (memreg == RPCRDMA_MTHCAFMR) {
-+		if (!ia->ri_id->device->alloc_fmr) {
-+			dprintk("RPC:       %s: MTHCAFMR registration "
-+				"not supported by HCA\n", __func__);
-+#if RPCRDMA_PERSISTENT_REGISTRATION
-+			memreg = RPCRDMA_ALLPHYSICAL;
-+#else
-+			rc = -EINVAL;
-+			goto out2;
-+#endif
-+		}
+@@ -554,9 +554,9 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		}
+ 		break;
+ 	default:
+-		printk(KERN_ERR "%s: invalid memory registration mode %d\n",
+-				__func__, memreg);
+-		rc = -EINVAL;
++		printk(KERN_ERR "RPC: Unsupported memory "
++				"registration mode: %d\n", memreg);
++		rc = -ENOMEM;
+ 		goto out2;
  	}
- 
- 	/*
+ 	dprintk("RPC:       %s: memory registration strategy is %d\n",
 
