@@ -1,184 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38529 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757101AbaEKUwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:52:55 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 05/43] nfsd4: move nfsd4_operation to xdr4.h
-Date: Sun, 11 May 2014 16:52:10 -0400
-Message-Id: <1399841568-19716-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:39474 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932066AbaE1OdT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:33:19 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v5 10/24] xprtrdma: Make rpcrdma_ep_destroy() return void
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 28 May 2014 10:33:16 -0400
+Message-ID: <20140528143316.23214.61390.stgit@manet.1015granger.net>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Clean up: rpcrdma_ep_destroy() returns a value that is used
+only to print a debugging message. rpcrdma_ep_destroy() already
+prints debugging messages in all error cases.
 
-We want to share some of these definitions.
+Make rpcrdma_ep_destroy() return void instead.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- fs/nfsd/nfs4proc.c |   58 ++++------------------------------------------------
- fs/nfsd/xdr4.h     |   53 +++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 57 insertions(+), 54 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 3d4b044..99aa348 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1123,58 +1123,8 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
- 		nfsdstats.nfs4_opcount[opnum]++;
+ net/sunrpc/xprtrdma/transport.c |    8 ++------
+ net/sunrpc/xprtrdma/verbs.c     |    7 +------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 3 files changed, 4 insertions(+), 13 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 430cabb..d18b2a3 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -229,7 +229,6 @@ static void
+ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ {
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+-	int rc;
+ 
+ 	dprintk("RPC:       %s: called\n", __func__);
+ 
+@@ -238,10 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ 	xprt_clear_connected(xprt);
+ 
+ 	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
+-	rc = rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
+-	if (rc)
+-		dprintk("RPC:       %s: rpcrdma_ep_destroy returned %i\n",
+-			__func__, rc);
++	rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
+ 	rpcrdma_ia_close(&r_xprt->rx_ia);
+ 
+ 	xprt_rdma_free_addresses(xprt);
+@@ -391,7 +387,7 @@ out4:
+ 	xprt_rdma_free_addresses(xprt);
+ 	rc = -EINVAL;
+ out3:
+-	(void) rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
++	rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
+ out2:
+ 	rpcrdma_ia_close(&new_xprt->rx_ia);
+ out1:
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 0cbc83c..edc951e 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -748,11 +748,8 @@ out1:
+  * Disconnect and destroy endpoint. After this, the only
+  * valid operations on the ep are to free it (if dynamically
+  * allocated) or re-create it.
+- *
+- * The caller's error handling must be sure to not leak the endpoint
+- * if this function fails.
+  */
+-int
++void
+ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ {
+ 	int rc;
+@@ -782,8 +779,6 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+ 			__func__, rc);
+-
+-	return rc;
  }
  
--typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
--			      void *);
--typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
--typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
--typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
--
--enum nfsd4_op_flags {
--	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
--	ALLOWED_ON_ABSENT_FS = 1 << 1,	/* ops processed on absent fs */
--	ALLOWED_AS_FIRST_OP = 1 << 2,	/* ops reqired first in compound */
--	/* For rfc 5661 section 2.6.3.1.1: */
--	OP_HANDLES_WRONGSEC = 1 << 3,
--	OP_IS_PUTFH_LIKE = 1 << 4,
--	/*
--	 * These are the ops whose result size we estimate before
--	 * encoding, to avoid performing an op then not being able to
--	 * respond or cache a response.  This includes writes and setattrs
--	 * as well as the operations usually called "nonidempotent":
--	 */
--	OP_MODIFIES_SOMETHING = 1 << 5,
--	/*
--	 * Cache compounds containing these ops in the xid-based drc:
--	 * We use the DRC for compounds containing non-idempotent
--	 * operations, *except* those that are 4.1-specific (since
--	 * sessions provide their own EOS), and except for stateful
--	 * operations other than setclientid and setclientid_confirm
--	 * (since sequence numbers provide EOS for open, lock, etc in
--	 * the v4.0 case).
--	 */
--	OP_CACHEME = 1 << 6,
--	/*
--	 * These are ops which clear current state id.
--	 */
--	OP_CLEAR_STATEID = 1 << 7,
--};
--
--struct nfsd4_operation {
--	nfsd4op_func op_func;
--	u32 op_flags;
--	char *op_name;
--	/* Try to get response size before operation */
--	nfsd4op_rsize op_rsize_bop;
--	stateid_getter op_get_currentstateid;
--	stateid_setter op_set_currentstateid;
--};
--
- static struct nfsd4_operation nfsd4_ops[];
- 
--#ifdef NFSD_DEBUG
--static const char *nfsd4_op_name(unsigned opnum);
--#endif
--
  /*
-  * Enforce NFSv4.1 COMPOUND ordering rules:
-  *
-@@ -1208,7 +1158,7 @@ static __be32 nfs41_check_op_ordering(struct nfsd4_compoundargs *args)
- 	return nfs_ok;
- }
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 3f44d6a..362a19d 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -301,7 +301,7 @@ void rpcrdma_ia_close(struct rpcrdma_ia *);
+  */
+ int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
+ 				struct rpcrdma_create_data_internal *);
+-int rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
++void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
  
--static inline struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
-+struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
- {
- 	return &nfsd4_ops[op->opnum];
- }
-@@ -1856,14 +1806,14 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- };
- 
--#ifdef NFSD_DEBUG
--static const char *nfsd4_op_name(unsigned opnum)
-+const char *nfsd4_op_name(unsigned opnum)
- {
-+#ifdef NFSD_DEBUG
- 	if (opnum < ARRAY_SIZE(nfsd4_ops))
- 		return nfsd4_ops[opnum].op_name;
-+#endif
- 	return "unknown_operation";
- }
--#endif
- 
- #define nfsd4_voidres			nfsd4_voidargs
- struct nfsd4_voidargs { int dummy; };
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index f62a055..fa3a589 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -536,6 +536,59 @@ static inline bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
- 	return argp->opcnt == resp->opcnt;
- }
- 
-+
-+
-+typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
-+			      void *);
-+typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
-+typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
-+typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
-+
-+enum nfsd4_op_flags {
-+	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
-+	ALLOWED_ON_ABSENT_FS = 1 << 1,	/* ops processed on absent fs */
-+	ALLOWED_AS_FIRST_OP = 1 << 2,	/* ops reqired first in compound */
-+	/* For rfc 5661 section 2.6.3.1.1: */
-+	OP_HANDLES_WRONGSEC = 1 << 3,
-+	OP_IS_PUTFH_LIKE = 1 << 4,
-+	/*
-+	 * These are the ops whose result size we estimate before
-+	 * encoding, to avoid performing an op then not being able to
-+	 * respond or cache a response.  This includes writes and setattrs
-+	 * as well as the operations usually called "nonidempotent":
-+	 */
-+	OP_MODIFIES_SOMETHING = 1 << 5,
-+	/*
-+	 * Cache compounds containing these ops in the xid-based drc:
-+	 * We use the DRC for compounds containing non-idempotent
-+	 * operations, *except* those that are 4.1-specific (since
-+	 * sessions provide their own EOS), and except for stateful
-+	 * operations other than setclientid and setclientid_confirm
-+	 * (since sequence numbers provide EOS for open, lock, etc in
-+	 * the v4.0 case).
-+	 */
-+	OP_CACHEME = 1 << 6,
-+	/*
-+	 * These are ops which clear current state id.
-+	 */
-+	OP_CLEAR_STATEID = 1 << 7,
-+};
-+
-+struct nfsd4_operation {
-+	nfsd4op_func op_func;
-+	u32 op_flags;
-+	char *op_name;
-+	/* Try to get response size before
-+	 * operation */
-+	nfsd4op_rsize op_rsize_bop;
-+	stateid_getter op_get_currentstateid;
-+	stateid_setter op_set_currentstateid;
-+};
-+
-+struct nfsd4_operation *OPDESC(struct nfsd4_op *op);
-+
-+const char *nfsd4_op_name(unsigned opnum);
-+
- #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
- 
- static inline void
--- 
-1.7.9.5
 
