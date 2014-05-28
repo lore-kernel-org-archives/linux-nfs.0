@@ -1,144 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43532 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752849AbaEVTcv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:51 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 51/52] nfsd4: kill write32, write64
-Date: Thu, 22 May 2014 15:32:26 -0400
-Message-Id: <1400787148-25941-52-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:33638 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753918AbaE1OcT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:32:19 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v5 03/24] xprtrdma: RPC/RDMA must invoke
+	xprt_wake_pending_tasks() in process context
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 28 May 2014 10:32:17 -0400
+Message-ID: <20140528143217.23214.66534.stgit@manet.1015granger.net>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+An IB provider can invoke rpcrdma_conn_func() in an IRQ context,
+thus rpcrdma_conn_func() cannot be allowed to directly invoke
+generic RPC functions like xprt_wake_pending_tasks().
 
-And switch a couple other functions from the encode(&p,...) convention
-to the p = encode(p,...) convention mostly used elsewhere.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- fs/nfsd/nfs4xdr.c | 51 +++++++++++++++++++++------------------------------
- 1 file changed, 21 insertions(+), 30 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 2a5bd29..6813870 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1683,39 +1683,30 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	DECODE_TAIL;
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   22 +++++++++++++++-------
+ net/sunrpc/xprtrdma/verbs.c     |    3 +++
+ net/sunrpc/xprtrdma/xprt_rdma.h |    3 +++
+ 3 files changed, 21 insertions(+), 7 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 400aa1b..c296468 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -676,15 +676,11 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	rqst->rq_private_buf = rqst->rq_rcv_buf;
  }
  
--static void write32(__be32 **p, u32 n)
--{
--	*(*p)++ = htonl(n);
--}
--
--static void write64(__be32 **p, u64 n)
--{
--	write32(p, (n >> 32));
--	write32(p, (u32)n);
--}
--
--static void write_change(__be32 **p, struct kstat *stat, struct inode *inode)
-+static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode)
+-/*
+- * This function is called when an async event is posted to
+- * the connection which changes the connection state. All it
+- * does at this point is mark the connection up/down, the rpc
+- * timers do the rest.
+- */
+ void
+-rpcrdma_conn_func(struct rpcrdma_ep *ep)
++rpcrdma_connect_worker(struct work_struct *work)
  {
- 	if (IS_I_VERSION(inode)) {
--		write64(p, inode->i_version);
-+		p = xdr_encode_hyper(p, inode->i_version);
- 	} else {
--		write32(p, stat->ctime.tv_sec);
--		write32(p, stat->ctime.tv_nsec);
-+		*p++ = cpu_to_be32(stat->ctime.tv_sec);
-+		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
- 	}
-+	return p;
++	struct rpcrdma_ep *ep =
++		container_of(work, struct rpcrdma_ep, rep_connect_worker.work);
+ 	struct rpc_xprt *xprt = ep->rep_xprt;
+ 
+ 	spin_lock_bh(&xprt->transport_lock);
+@@ -701,6 +697,18 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
  }
  
--static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
-+static __be32 *encode_cinfo(__be32 *p, struct nfsd4_change_info *c)
- {
--	write32(p, c->atomic);
-+	*p++ = cpu_to_be32(c->atomic);
- 	if (c->change_supported) {
--		write64(p, c->before_change);
--		write64(p, c->after_change);
-+		p = xdr_encode_hyper(p, c->before_change);
-+		p = xdr_encode_hyper(p, c->after_change);
- 	} else {
--		write32(p, c->before_ctime_sec);
--		write32(p, c->before_ctime_nsec);
--		write32(p, c->after_ctime_sec);
--		write32(p, c->after_ctime_nsec);
-+		*p++ = cpu_to_be32(c->before_ctime_sec);
-+		*p++ = cpu_to_be32(c->before_ctime_nsec);
-+		*p++ = cpu_to_be32(c->after_ctime_sec);
-+		*p++ = cpu_to_be32(c->after_ctime_nsec);
- 	}
-+	return p;
- }
+ /*
++ * This function is called when an async event is posted to
++ * the connection which changes the connection state. All it
++ * does at this point is mark the connection up/down, the rpc
++ * timers do the rest.
++ */
++void
++rpcrdma_conn_func(struct rpcrdma_ep *ep)
++{
++	schedule_delayed_work(&ep->rep_connect_worker, 0);
++}
++
++/*
+  * This function is called when memory window unbind which we are waiting
+  * for completes. Just use rr_func (zeroed by upcall) to signal completion.
+  */
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 8f9704e..9cb88f3 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -742,6 +742,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	INIT_CQCOUNT(ep);
+ 	ep->rep_ia = ia;
+ 	init_waitqueue_head(&ep->rep_connect_wait);
++	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
  
- /* Encode as an array of strings the string given with components
-@@ -2186,7 +2177,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		write_change(&p, &stat, dentry->d_inode);
-+		p = encode_change(p, &stat, dentry->d_inode);
- 	}
- 	if (bmval0 & FATTR4_WORD0_SIZE) {
- 		p = xdr_reserve_space(xdr, 8);
-@@ -2817,7 +2808,7 @@ nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		p = xdr_reserve_space(xdr, 32);
- 		if (!p)
- 			return nfserr_resource;
--		write_cinfo(&p, &create->cr_cinfo);
-+		p = encode_cinfo(p, &create->cr_cinfo);
- 		*p++ = cpu_to_be32(2);
- 		*p++ = cpu_to_be32(create->cr_bmval[0]);
- 		*p++ = cpu_to_be32(create->cr_bmval[1]);
-@@ -2940,7 +2931,7 @@ nfsd4_encode_link(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_li
- 		p = xdr_reserve_space(xdr, 20);
- 		if (!p)
- 			return nfserr_resource;
--		write_cinfo(&p, &link->li_cinfo);
-+		p = encode_cinfo(p, &link->li_cinfo);
- 	}
- 	return nfserr;
- }
-@@ -2961,7 +2952,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 	p = xdr_reserve_space(xdr, 40);
- 	if (!p)
- 		return nfserr_resource;
--	write_cinfo(&p, &open->op_cinfo);
-+	p = encode_cinfo(p, &open->op_cinfo);
- 	*p++ = cpu_to_be32(open->op_rflags);
- 	*p++ = cpu_to_be32(2);
- 	*p++ = cpu_to_be32(open->op_bmval[0]);
-@@ -3383,7 +3374,7 @@ nfsd4_encode_remove(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		p = xdr_reserve_space(xdr, 20);
- 		if (!p)
- 			return nfserr_resource;
--		write_cinfo(&p, &remove->rm_cinfo);
-+		p = encode_cinfo(p, &remove->rm_cinfo);
- 	}
- 	return nfserr;
- }
-@@ -3398,8 +3389,8 @@ nfsd4_encode_rename(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		p = xdr_reserve_space(xdr, 40);
- 		if (!p)
- 			return nfserr_resource;
--		write_cinfo(&p, &rename->rn_sinfo);
--		write_cinfo(&p, &rename->rn_tinfo);
-+		p = encode_cinfo(p, &rename->rn_sinfo);
-+		p = encode_cinfo(p, &rename->rn_tinfo);
- 	}
- 	return nfserr;
- }
--- 
-1.9.0
+ 	/*
+ 	 * Create a single cq for receive dto and mw_bind (only ever
+@@ -817,6 +818,8 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	dprintk("RPC:       %s: entering, connected is %d\n",
+ 		__func__, ep->rep_connected);
+ 
++	cancel_delayed_work_sync(&ep->rep_connect_worker);
++
+ 	if (ia->ri_id->qp) {
+ 		rc = rpcrdma_ep_disconnect(ep, ia);
+ 		if (rc)
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 98340a3..c620d13 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -43,6 +43,7 @@
+ #include <linux/wait.h> 		/* wait_queue_head_t, etc */
+ #include <linux/spinlock.h> 		/* spinlock_t, etc */
+ #include <linux/atomic.h>			/* atomic_t, etc */
++#include <linux/workqueue.h>		/* struct work_struct */
+ 
+ #include <rdma/rdma_cm.h>		/* RDMA connection api */
+ #include <rdma/ib_verbs.h>		/* RDMA verbs api */
+@@ -87,6 +88,7 @@ struct rpcrdma_ep {
+ 	struct rpc_xprt		*rep_xprt;	/* for rep_func */
+ 	struct rdma_conn_param	rep_remote_cma;
+ 	struct sockaddr_storage	rep_remote_addr;
++	struct delayed_work	rep_connect_worker;
+ };
+ 
+ #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+@@ -336,6 +338,7 @@ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
+ /*
+  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+  */
++void rpcrdma_connect_worker(struct work_struct *);
+ void rpcrdma_conn_func(struct rpcrdma_ep *);
+ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+ 
 
