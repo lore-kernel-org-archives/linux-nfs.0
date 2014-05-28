@@ -1,108 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f179.google.com ([209.85.220.179]:62995 "EHLO
-	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754328AbaE1X3g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 19:29:36 -0400
-Received: by mail-vc0-f179.google.com with SMTP id im17so13327840vcb.10
-        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 16:29:35 -0700 (PDT)
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:37485 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932168AbaE1O1P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:27:15 -0400
+Received: by mail-qg0-f52.google.com with SMTP id a108so18220072qge.11
+        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 07:27:14 -0700 (PDT)
+Message-ID: <5385F239.30007@gmail.com>
+Date: Wed, 28 May 2014 10:27:05 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <alpine.DEB.2.02.1405071257320.25707@chino.kir.corp.google.com>
-References: <2562595.ix17LO7uqe@fb07-iapwap2>
-	<alpine.DEB.2.02.1405050241180.11071@chino.kir.corp.google.com>
-	<20140505070812.470c66bd@tlielax.poochiereds.net>
-	<alpine.DEB.2.02.1405071257320.25707@chino.kir.corp.google.com>
-Date: Wed, 28 May 2014 19:29:35 -0400
-Message-ID: <CAHQdGtQiimjhdz2KJrCHDcDqcGja6c+9XndD37RMzQK5RfcX3A@mail.gmail.com>
-Subject: Re: [patch] net, sunrpc: suppress allocation warning in rpc_malloc()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: David Rientjes <rientjes@google.com>
-Cc: David Miller <davem@davemloft.net>, Jeff Layton <jlayton@poochiereds.net>,
-        Marc Dietrich <marvin24@gmx.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        Mel Gorman <mgorman@suse.de>
-Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 41/52] nfsd4: turn off zero-copy-read in exotic cases
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com> <1400787148-25941-42-git-send-email-bfields@redhat.com> <20140528080945.GA6797@infradead.org> <20140528140151.GB13012@pad.redhat.com> <5385EEF5.9050904@gmail.com> <20140528142320.GC13012@pad.redhat.com>
+In-Reply-To: <20140528142320.GC13012@pad.redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 7, 2014 at 4:03 PM, David Rientjes <rientjes@google.com> wrote:
-> rpc_malloc() allocates with GFP_NOWAIT without making any attempt at
-> reclaim so it easily fails when low on memory.  This ends up spamming the
-> kernel log:
+On 05/28/2014 10:23 AM, J. Bruce Fields wrote:
+> On Wed, May 28, 2014 at 10:13:09AM -0400, Anna Schumaker wrote:
+>> On 05/28/2014 10:01 AM, J. Bruce Fields wrote:
+>>> On Wed, May 28, 2014 at 01:09:45AM -0700, Christoph Hellwig wrote:
+>>>> On Thu, May 22, 2014 at 03:32:16PM -0400, J. Bruce Fields wrote:
+>>>>> Later patches handle those "exotic compounds", this one just makes
+>>>>> sure zero-copy is turned off in those cases.
+>>>> How did you test these exotic compounds?
+>>> I have is a pynfs test that sends a compound with multiple reads in
+>>> it.
+>>>
+>>> I don't think that's pushed out to my regular pynfs tree, I'll try
+>>> to do that today.
+>>>
+>>> I could really use more of those.  Maybe I'm wrong, but I'm worried
+>>> less about this case than the more finicky out-of-reply-space cases,
+>>> where I do have patches puporting to fix problems that I haven't
+>>> really verified.
+>> I'll eventually be using this case for READ_PLUS.  I'll be sure to
+>> send problems your way! :)
+> Great, thanks.
 >
-> SLAB: Unable to allocate memory on node 0 (gfp=0x4000)
->   cache: kmalloc-8192, object size: 8192, order: 1
->   node 0: slabs: 207/207, objs: 207/207, free: 0
-> rekonq: page allocation failure: order:1, mode:0x204000
-> CPU: 2 PID: 14321 Comm: rekonq Tainted: G           O  3.15.0-rc3-12.gfc9498b-desktop+ #6
-> Hardware name: System manufacturer System Product Name/M4A785TD-V EVO, BIOS 2105    07/23/2010
->  0000000000000000 ffff880010ff17d0 ffffffff815e693c 0000000000204000
->  ffff880010ff1858 ffffffff81137bd2 0000000000000000 0000001000000000
->  ffff88011ffebc38 0000000000000001 0000000000204000 ffff88011ffea000
-> Call Trace:
->  [<ffffffff815e693c>] dump_stack+0x4d/0x6f
->  [<ffffffff81137bd2>] warn_alloc_failed+0xd2/0x140
->  [<ffffffff8113be19>] __alloc_pages_nodemask+0x7e9/0xa30
->  [<ffffffff811824a8>] kmem_getpages+0x58/0x140
->  [<ffffffff81183de6>] fallback_alloc+0x1d6/0x210
->  [<ffffffff81183be3>] ____cache_alloc_node+0x123/0x150
->  [<ffffffff81185953>] __kmalloc+0x203/0x490
->  [<ffffffffa06b0ee2>] rpc_malloc+0x32/0xa0 [sunrpc]
->  [<ffffffffa06a6999>] call_allocate+0xb9/0x170 [sunrpc]
->  [<ffffffffa06b19d8>] __rpc_execute+0x88/0x460 [sunrpc]
->  [<ffffffffa06b2da9>] rpc_execute+0x59/0xc0 [sunrpc]
->  [<ffffffffa06a932b>] rpc_run_task+0x6b/0x90 [sunrpc]
->  [<ffffffffa077b5c1>] nfs4_call_sync_sequence+0x51/0x80 [nfsv4]
->  [<ffffffffa077d45d>] _nfs4_do_setattr+0x1ed/0x280 [nfsv4]
->  [<ffffffffa0782a72>] nfs4_do_setattr+0x72/0x180 [nfsv4]
->  [<ffffffffa078334c>] nfs4_proc_setattr+0xbc/0x140 [nfsv4]
->  [<ffffffffa074a7e8>] nfs_setattr+0xd8/0x240 [nfs]
->  [<ffffffff811baa71>] notify_change+0x231/0x380
->  [<ffffffff8119cf5c>] chmod_common+0xfc/0x120
->  [<ffffffff8119df80>] SyS_chmod+0x40/0x90
->  [<ffffffff815f4cfd>] system_call_fastpath+0x1a/0x1f
-> ...
+> Actually my main question there is how to handle 4.2 in pynfs.
 >
-> If the allocation fails, simply return NULL and avoid spamming the kernel
-> log.
+> 4.1 and 4.0 are entirely separate codebases.  We definitely don't want
+> to do that again.
+
+Can you make v4.2 a new file that uses the v4.1 functions?  That way all the v4.2 stuff is kept together.  I want to try doing something similar on the client for functions in nfs4proc.c and nfs4xdr.c.
+
+Anna
 >
-> Reported-by: Marc Dietrich <marvin24@gmx.de>
-> Signed-off-by: David Rientjes <rientjes@google.com>
-> ---
->  net/sunrpc/sched.c | 5 +++--
->  1 file changed, 3 insertions(+), 2 deletions(-)
+> There's not much point re-running all the 4.1 tests over 4.2.  Maybe all
+> we may need is to say "use minor version 2 on this compound" in tests of
+> the new features.
 >
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -832,7 +832,8 @@ static void rpc_async_schedule(struct work_struct *work)
->   * @size: requested byte size
->   *
->   * To prevent rpciod from hanging, this allocator never sleeps,
-> - * returning NULL if the request cannot be serviced immediately.
-> + * returning NULL and suppressing warning if the request cannot be serviced
-> + * immediately.
->   * The caller can arrange to sleep in a way that is safe for rpciod.
->   *
->   * Most requests are 'small' (under 2KiB) and can be serviced from a
-> @@ -845,7 +846,7 @@ static void rpc_async_schedule(struct work_struct *work)
->  void *rpc_malloc(struct rpc_task *task, size_t size)
->  {
->         struct rpc_buffer *buf;
-> -       gfp_t gfp = GFP_NOWAIT;
-> +       gfp_t gfp = GFP_NOWAIT | __GFP_NOWARN;
+> But I haven't even tried to figure out how to tell pynfs about the new
+> .x files.
 >
->         if (RPC_IS_SWAPPER(task))
->                 gfp |= __GFP_MEMALLOC;
+> --b.
 
-
-Thanks! Applied.
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
