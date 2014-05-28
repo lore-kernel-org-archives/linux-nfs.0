@@ -1,137 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:36153 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755202AbaEOP5g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:36 -0400
-Received: by mail-ig0-f180.google.com with SMTP id c1so1166666igq.13
-        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:35 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH v3 17/18] pnfs: filelayout: support non page aligned layouts
-Date: Thu, 15 May 2014 11:56:56 -0400
-Message-Id: <1400169417-28245-18-git-send-email-dros@primarydata.com>
-In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
-References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:34103 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932144AbaE1Oe0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:34:26 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v5 18/24] xprtrdma: Allocate missing pagelist
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 28 May 2014 10:34:24 -0400
+Message-ID: <20140528143424.23214.59578.stgit@manet.1015granger.net>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the new pg_test interface to adjust requests to fit in the current
-stripe / segment.
+From: Shirley Ma <shirley.ma@oracle.com>
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+GETACL relies on transport layer to alloc memory for reply buffer.
+However xprtrdma assumes that the reply buffer (pagelist) has been
+pre-allocated in upper layer. This problem was reported by IOL OFA lab
+test on PPC.
+
+Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Edward Mossman <emossman@iol.unh.edu>
 ---
- fs/nfs/nfs4filelayout.c | 50 ++++++++++++++++++-------------------------------
- 1 file changed, 18 insertions(+), 32 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 0ebc521..9419061 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -639,7 +639,6 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 	struct nfs4_deviceid_node *d;
- 	struct nfs4_file_layout_dsaddr *dsaddr;
- 	int status = -EINVAL;
--	struct nfs_server *nfss = NFS_SERVER(lo->plh_inode);
- 
- 	dprintk("--> %s\n", __func__);
- 
-@@ -657,7 +656,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 		goto out;
- 	}
- 
--	if (!fl->stripe_unit || fl->stripe_unit % PAGE_SIZE) {
-+	if (!fl->stripe_unit) {
- 		dprintk("%s Invalid stripe unit (%u)\n",
- 			__func__, fl->stripe_unit);
- 		goto out;
-@@ -694,12 +693,6 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 		goto out_put;
- 	}
- 
--	if (fl->stripe_unit % nfss->rsize || fl->stripe_unit % nfss->wsize) {
--		dprintk("%s Stripe unit (%u) not aligned with rsize %u "
--			"wsize %u\n", __func__, fl->stripe_unit, nfss->rsize,
--			nfss->wsize);
--	}
--
- 	status = 0;
- out:
- 	dprintk("--> %s returns %d\n", __func__, status);
-@@ -936,44 +929,40 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- {
- 	unsigned int size;
- 	u64 p_stripe, r_stripe;
--	u32 stripe_unit;
-+	u32 stripe_offset;
-+	u64 segment_offset = pgio->pg_lseg->pls_range.offset;
-+	u32 stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
- 
- 	/* calls nfs_generic_pg_test */
- 	size = pnfs_generic_pg_test(pgio, prev, req);
- 	if (!size)
- 		return 0;
- 
-+	/* see if req and prev are in the same stripe */
- 	if (prev) {
--		p_stripe = (u64)req_offset(prev);
--		r_stripe = (u64)req_offset(req);
--		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
--
-+		p_stripe = (u64)req_offset(prev) - segment_offset;
-+		r_stripe = (u64)req_offset(req) - segment_offset;
- 		do_div(p_stripe, stripe_unit);
- 		do_div(r_stripe, stripe_unit);
- 
- 		if (p_stripe != r_stripe)
- 			return 0;
- 	}
--	return min(size, req->wb_bytes);
-+
-+	/* calculate remaining bytes in the current stripe */
-+	stripe_offset = ((u64)req_offset(req) - segment_offset) % stripe_unit;
-+	WARN_ON_ONCE(stripe_offset > stripe_unit);
-+	if (stripe_offset >= stripe_unit)
-+		return 0;
-+	return min(stripe_unit - (unsigned int)stripe_offset, size);
- }
- 
- static void
- filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct nfs_page *req)
- {
--	WARN_ON_ONCE(pgio->pg_lseg != NULL);
--
--	if (req->wb_offset != req->wb_pgbase) {
--		/*
--		 * Handling unaligned pages is difficult, because have to
--		 * somehow split a req in two in certain cases in the
--		 * pg.test code.  Avoid this by just not using pnfs
--		 * in this case.
--		 */
--		nfs_pageio_reset_read_mds(pgio);
--		return;
--	}
--	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-+	if (!pgio->pg_lseg)
-+		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   0,
- 					   NFS4_MAX_UINT64,
-@@ -991,11 +980,8 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 	struct nfs_commit_info cinfo;
- 	int status;
- 
--	WARN_ON_ONCE(pgio->pg_lseg != NULL);
--
--	if (req->wb_offset != req->wb_pgbase)
--		goto out_mds;
--	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-+	if (!pgio->pg_lseg)
-+		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   0,
- 					   NFS4_MAX_UINT64,
--- 
-1.8.5.2 (Apple Git-48)
+ net/sunrpc/xprtrdma/rpc_rdma.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 436d229..dc4a826 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -99,6 +99,12 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+ 	page_base = xdrbuf->page_base & ~PAGE_MASK;
+ 	p = 0;
+ 	while (len && n < nsegs) {
++		if (!ppages[p]) {
++			/* alloc the pagelist for receiving buffer */
++			ppages[p] = alloc_page(GFP_ATOMIC);
++			if (!ppages[p])
++				return 0;
++		}
+ 		seg[n].mr_page = ppages[p];
+ 		seg[n].mr_offset = (void *)(unsigned long) page_base;
+ 		seg[n].mr_len = min_t(u32, PAGE_SIZE - page_base, len);
 
