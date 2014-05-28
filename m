@@ -1,40 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44433 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751830AbaE0UyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 May 2014 16:54:09 -0400
-Date: Tue, 27 May 2014 16:54:07 -0400
-To: Jaap <jwinius@umrk.nl>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv4 with Kerberos and no_root_squash
-Message-ID: <20140527205407.GB32160@fieldses.org>
-References: <llqgta$3d3$1@ger.gmane.org>
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:49949 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754271AbaE1OeJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:34:09 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v5 16/24] xprtrdma: Ensure ia->ri_id->qp is not NULL when
+	reconnecting
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 28 May 2014 10:34:07 -0400
+Message-ID: <20140528143407.23214.2601.stgit@manet.1015granger.net>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <llqgta$3d3$1@ger.gmane.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, May 24, 2014 at 04:20:58PM +0000, Jaap wrote:
-> Hi folks,
-> 
-> Not long ago I managed to get NFSv4 to work together with Kerberos (gss/
-> krb5i or gss/krb5p), but apparently there's a limitation. It has to do 
-> with exports that include the "no_root_squash" option and then attempting 
-> to allow root on the clients to write to them; this always results in a 
-> "Permission denied" error.
-> 
-> Is there a solution for this, or a workaround?
-> 
-> For me this is important, because one of the sites I maintain uses NFS 
-> for home directories and the workstations have an elaborate logout script 
-> in /etc/X11/Xreset.d/ that runs as root (the script contains many sudo 
-> commands to make changes to the user's home directories). Therefore, one 
-> solution would be to avoid running the logout script as root, but AFAIK 
-> that's not possible.
+Devesh Sharma <Devesh.Sharma@Emulex.Com> reports that after a
+disconnect, his HCA is failing to create a fresh QP, leaving
+ia_ri->ri_id->qp set to NULL. But xprtrdma still allows RPCs to
+wake up and post LOCAL_INV as they exit, causing an oops.
 
-You may want to look at "Credentials for UID 0" in the rpc.gssd man
-page?
+rpcrdma_ep_connect() is allowing the wake-up by leaking the QP
+creation error code (-EPERM in this case) to the RPC client's
+generic layer. xprt_connect_status() does not recognize -EPERM, so
+it kills pending RPC tasks immediately rather than retrying the
+connect.
 
---b.
+Re-arrange the QP creation logic so that when it fails on reconnect,
+it leaves ->qp with the old QP rather than NULL.  If pending RPC
+tasks wake and exit, LOCAL_INV work requests will flush rather than
+oops.
+
+On initial connect, leaving ->qp == NULL is OK, since there are no
+pending RPCs that might use ->qp. But be sure not to try to destroy
+a NULL QP when rpcrdma_ep_connect() is retried.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/xprtrdma/verbs.c |   29 ++++++++++++++++++++---------
+ 1 files changed, 20 insertions(+), 9 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index c80995a..54edf2a 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -867,6 +867,7 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	if (ep->rep_connected != 0) {
+ 		struct rpcrdma_xprt *xprt;
+ retry:
++		dprintk("RPC:       %s: reconnecting...\n", __func__);
+ 		rc = rpcrdma_ep_disconnect(ep, ia);
+ 		if (rc && rc != -ENOTCONN)
+ 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+@@ -879,7 +880,7 @@ retry:
+ 		id = rpcrdma_create_id(xprt, ia,
+ 				(struct sockaddr *)&xprt->rx_data.addr);
+ 		if (IS_ERR(id)) {
+-			rc = PTR_ERR(id);
++			rc = -EHOSTUNREACH;
+ 			goto out;
+ 		}
+ 		/* TEMP TEMP TEMP - fail if new device:
+@@ -893,20 +894,30 @@ retry:
+ 			printk("RPC:       %s: can't reconnect on "
+ 				"different device!\n", __func__);
+ 			rdma_destroy_id(id);
+-			rc = -ENETDOWN;
++			rc = -ENETUNREACH;
+ 			goto out;
+ 		}
+ 		/* END TEMP */
++		rc = rdma_create_qp(id, ia->ri_pd, &ep->rep_attr);
++		if (rc) {
++			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
++				__func__, rc);
++			rdma_destroy_id(id);
++			rc = -ENETUNREACH;
++			goto out;
++		}
+ 		rdma_destroy_qp(ia->ri_id);
+ 		rdma_destroy_id(ia->ri_id);
+ 		ia->ri_id = id;
+-	}
+-
+-	rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+-	if (rc) {
+-		dprintk("RPC:       %s: rdma_create_qp failed %i\n",
+-			__func__, rc);
+-		goto out;
++	} else {
++		dprintk("RPC:       %s: connecting...\n", __func__);
++		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
++		if (rc) {
++			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
++				__func__, rc);
++			/* do not update ep->rep_connected */
++			return -ENETUNREACH;
++		}
+ 	}
+ 
+ /* XXX Tavor device performs badly with 2K MTU! */
+
