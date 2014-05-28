@@ -1,50 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:41792 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753430AbaEUWP2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 18:15:28 -0400
-Message-ID: <537D2578.7090401@oracle.com>
-Date: Wed, 21 May 2014 15:15:20 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:37183 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751833AbaE1VZD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 May 2014 17:25:03 -0400
+Message-ID: <53865423.4060905@RedHat.com>
+Date: Wed, 28 May 2014 17:24:51 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/1] xprtrdma: Allocate missing pagelist
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3] Avoid buffer overruns by allocating buffer in svcauth_gss_validate()
+References: <1401304171-12231-1-git-send-email-steved@redhat.com> <B43A996B-5DB8-470B-926C-27FF30445D7D@oracle.com>
+In-Reply-To: <B43A996B-5DB8-470B-926C-27FF30445D7D@oracle.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch is for 3.15-rc5. Please review it.
 
-GETACL relies on transport layer to alloc memory for reply buffer.
-However xprtrdma assumes that the reply buffer (pagelist) has been
-pre-allocated in upper layer. This problem was reported by IOL OFA lab
-test on PPC.
 
-Signed-off-by: Shirley Ma <shirley.ma@oracle.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Edward Mossman <emossman@iol.unh.edu>
----
+On 05/28/2014 03:11 PM, Chuck Lever wrote:
+> 
+> On May 28, 2014, at 3:09 PM, Steve Dickson <steved@redhat.com> wrote:
+> 
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Thank you... For your time! 
 
- net/sunrpc/xprtrdma/rpc_rdma.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+steved.
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 96ead52..748b771 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -102,6 +102,12 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 	page_base = xdrbuf->page_base & ~PAGE_MASK;
- 	p = 0;
- 	while (len && n < nsegs) {
-+		if (!ppages[p]) {
-+			/* alloc the pagelist for receiving buffer */
-+			ppages[p] = alloc_page(GFP_ATOMIC);
-+			if (!ppages[p])
-+				return 0;
-+		}
- 		seg[n].mr_page = ppages[p];
- 		seg[n].mr_offset = (void *)(unsigned long) page_base;
- 		seg[n].mr_len = min_t(u32, PAGE_SIZE - page_base, len);
-
+> 
+>> ---
+>> src/svc_auth_gss.c |   14 +++++++-------
+>> 1 files changed, 7 insertions(+), 7 deletions(-)
+>>
+>> diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
+>> index 601a691..26c1065 100644
+>> --- a/src/svc_auth_gss.c
+>> +++ b/src/svc_auth_gss.c
+>> @@ -286,21 +286,19 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
+>> 	struct opaque_auth	*oa;
+>> 	gss_buffer_desc		 rpcbuf, checksum;
+>> 	OM_uint32		 maj_stat, min_stat, qop_state;
+>> -	u_char			 rpchdr[128];
+>> +	u_char			 *rpchdr;
+>> 	int32_t			*buf;
+>>
+>> 	gss_log_debug("in svcauth_gss_validate()");
+>>
+>> -	memset(rpchdr, 0, sizeof(rpchdr));
+>> -
+>> 	/* XXX - Reconstruct RPC header for signing (from xdr_callmsg). */
+>> 	oa = &msg->rm_call.cb_cred;
+>> 	if (oa->oa_length > MAX_AUTH_BYTES)
+>> 		return (FALSE);
+>> -	
+>> -	/* 8 XDR units from the IXDR macro calls. */
+>> -	if (sizeof(rpchdr) < (8 * BYTES_PER_XDR_UNIT +
+>> -			RNDUP(oa->oa_length)))
+>> +
+>> +	rpchdr = (u_char *)calloc(((8 * BYTES_PER_XDR_UNIT) + 
+>> +			RNDUP(oa->oa_length)), 1);
+>> +	if (rpchdr == NULL)
+>> 		return (FALSE);
+>>
+>> 	buf = (int32_t *)rpchdr;
+>> @@ -325,6 +323,8 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
+>> 	maj_stat = gss_verify_mic(&min_stat, gd->ctx, &rpcbuf, &checksum,
+>> 				  &qop_state);
+>>
+>> +	free(rpchdr);
+>> +
+>> 	if (maj_stat != GSS_S_COMPLETE) {
+>> 		gss_log_status("gss_verify_mic", maj_stat, min_stat);
+>> 		return (FALSE);
+>> -- 
+>> 1.7.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
