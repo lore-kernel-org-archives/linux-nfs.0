@@ -1,84 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:28886 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755168AbaE1TLy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 15:11:54 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH v3] Avoid buffer overruns by allocating buffer in svcauth_gss_validate()
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:39823 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752705AbaE1OcL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:32:11 -0400
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1401304171-12231-1-git-send-email-steved@redhat.com>
-Date: Wed, 28 May 2014 15:11:39 -0400
-Cc: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <B43A996B-5DB8-470B-926C-27FF30445D7D@oracle.com>
-References: <1401304171-12231-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+Subject: [PATCH v5 02/24] nfs-rdma: Fix for FMR leaks
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 28 May 2014 10:32:09 -0400
+Message-ID: <20140528143209.23214.13918.stgit@manet.1015granger.net>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Allen Andrews <allen.andrews@emulex.com>
 
-On May 28, 2014, at 3:09 PM, Steve Dickson <steved@redhat.com> wrote:
+Two memory region leaks were found during testing:
 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+1. rpcrdma_buffer_create: While allocating RPCRDMA_FRMR's
+ib_alloc_fast_reg_mr is called and then ib_alloc_fast_reg_page_list is
+called.  If ib_alloc_fast_reg_page_list returns an error it bails out of
+the routine dropping the last ib_alloc_fast_reg_mr frmr region creating a
+memory leak.  Added code to dereg the last frmr if
+ib_alloc_fast_reg_page_list fails.
 
+2. rpcrdma_buffer_destroy: While cleaning up, the routine will only free
+the MR's on the rb_mws list if there are rb_send_bufs present.  However, in
+rpcrdma_buffer_create while the rb_mws list is being built if one of the MR
+allocation requests fail after some MR's have been allocated on the rb_mws
+list the routine never gets to create any rb_send_bufs but instead jumps to
+the rpcrdma_buffer_destroy routine which will never free the MR's on rb_mws
+list because the rb_send_bufs were never created.   This leaks all the MR's
+on the rb_mws list that were created prior to one of the MR allocations
+failing.
+
+Issue(2) was seen during testing. Our adapter had a finite number of MR's
+available and we created enough connections to where we saw an MR
+allocation failure on our Nth NFS connection request. After the kernel
+cleaned up the resources it had allocated for the Nth connection we noticed
+that FMR's had been leaked due to the coding error described above.
+
+Issue(1) was seen during a code review while debugging issue(2).
+
+Signed-off-by: Allen Andrews <allen.andrews@emulex.com>
 Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> ---
-> src/svc_auth_gss.c |   14 +++++++-------
-> 1 files changed, 7 insertions(+), 7 deletions(-)
-> 
-> diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
-> index 601a691..26c1065 100644
-> --- a/src/svc_auth_gss.c
-> +++ b/src/svc_auth_gss.c
-> @@ -286,21 +286,19 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
-> 	struct opaque_auth	*oa;
-> 	gss_buffer_desc		 rpcbuf, checksum;
-> 	OM_uint32		 maj_stat, min_stat, qop_state;
-> -	u_char			 rpchdr[128];
-> +	u_char			 *rpchdr;
-> 	int32_t			*buf;
-> 
-> 	gss_log_debug("in svcauth_gss_validate()");
-> 
-> -	memset(rpchdr, 0, sizeof(rpchdr));
-> -
-> 	/* XXX - Reconstruct RPC header for signing (from xdr_callmsg). */
-> 	oa = &msg->rm_call.cb_cred;
-> 	if (oa->oa_length > MAX_AUTH_BYTES)
-> 		return (FALSE);
-> -	
-> -	/* 8 XDR units from the IXDR macro calls. */
-> -	if (sizeof(rpchdr) < (8 * BYTES_PER_XDR_UNIT +
-> -			RNDUP(oa->oa_length)))
-> +
-> +	rpchdr = (u_char *)calloc(((8 * BYTES_PER_XDR_UNIT) + 
-> +			RNDUP(oa->oa_length)), 1);
-> +	if (rpchdr == NULL)
-> 		return (FALSE);
-> 
-> 	buf = (int32_t *)rpchdr;
-> @@ -325,6 +323,8 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
-> 	maj_stat = gss_verify_mic(&min_stat, gd->ctx, &rpcbuf, &checksum,
-> 				  &qop_state);
-> 
-> +	free(rpchdr);
-> +
-> 	if (maj_stat != GSS_S_COMPLETE) {
-> 		gss_log_status("gss_verify_mic", maj_stat, min_stat);
-> 		return (FALSE);
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ net/sunrpc/xprtrdma/verbs.c |   73 ++++++++++++++++++++++---------------------
+ 1 files changed, 38 insertions(+), 35 deletions(-)
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 55fb09a..8f9704e 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1081,6 +1081,8 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 				dprintk("RPC:       %s: "
+ 					"ib_alloc_fast_reg_page_list "
+ 					"failed %i\n", __func__, rc);
++
++				ib_dereg_mr(r->r.frmr.fr_mr);
+ 				goto out;
+ 			}
+ 			list_add(&r->mw_list, &buf->rb_mws);
+@@ -1217,41 +1219,6 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 			kfree(buf->rb_recv_bufs[i]);
+ 		}
+ 		if (buf->rb_send_bufs && buf->rb_send_bufs[i]) {
+-			while (!list_empty(&buf->rb_mws)) {
+-				r = list_entry(buf->rb_mws.next,
+-					struct rpcrdma_mw, mw_list);
+-				list_del(&r->mw_list);
+-				switch (ia->ri_memreg_strategy) {
+-				case RPCRDMA_FRMR:
+-					rc = ib_dereg_mr(r->r.frmr.fr_mr);
+-					if (rc)
+-						dprintk("RPC:       %s:"
+-							" ib_dereg_mr"
+-							" failed %i\n",
+-							__func__, rc);
+-					ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
+-					break;
+-				case RPCRDMA_MTHCAFMR:
+-					rc = ib_dealloc_fmr(r->r.fmr);
+-					if (rc)
+-						dprintk("RPC:       %s:"
+-							" ib_dealloc_fmr"
+-							" failed %i\n",
+-							__func__, rc);
+-					break;
+-				case RPCRDMA_MEMWINDOWS_ASYNC:
+-				case RPCRDMA_MEMWINDOWS:
+-					rc = ib_dealloc_mw(r->r.mw);
+-					if (rc)
+-						dprintk("RPC:       %s:"
+-							" ib_dealloc_mw"
+-							" failed %i\n",
+-							__func__, rc);
+-					break;
+-				default:
+-					break;
+-				}
+-			}
+ 			rpcrdma_deregister_internal(ia,
+ 					buf->rb_send_bufs[i]->rl_handle,
+ 					&buf->rb_send_bufs[i]->rl_iov);
+@@ -1259,6 +1226,42 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 		}
+ 	}
+ 
++	while (!list_empty(&buf->rb_mws)) {
++		r = list_entry(buf->rb_mws.next,
++			struct rpcrdma_mw, mw_list);
++		list_del(&r->mw_list);
++		switch (ia->ri_memreg_strategy) {
++		case RPCRDMA_FRMR:
++			rc = ib_dereg_mr(r->r.frmr.fr_mr);
++			if (rc)
++				dprintk("RPC:       %s:"
++					" ib_dereg_mr"
++					" failed %i\n",
++					__func__, rc);
++			ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
++			break;
++		case RPCRDMA_MTHCAFMR:
++			rc = ib_dealloc_fmr(r->r.fmr);
++			if (rc)
++				dprintk("RPC:       %s:"
++					" ib_dealloc_fmr"
++					" failed %i\n",
++					__func__, rc);
++			break;
++		case RPCRDMA_MEMWINDOWS_ASYNC:
++		case RPCRDMA_MEMWINDOWS:
++			rc = ib_dealloc_mw(r->r.mw);
++			if (rc)
++				dprintk("RPC:       %s:"
++					" ib_dealloc_mw"
++					" failed %i\n",
++					__func__, rc);
++			break;
++		default:
++			break;
++		}
++	}
++
+ 	kfree(buf->rb_pool);
+ }
+ 
 
