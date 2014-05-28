@@ -1,70 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38566 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:54121 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757472AbaEKUxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:00 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 18/43] nfsd4: nfsd4_check_resp_size needn't recalculate length
-Date: Sun, 11 May 2014 16:52:23 -0400
-Message-Id: <1399841568-19716-19-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+	id S1754130AbaE1QQK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 May 2014 12:16:10 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Avoid buffer overruns by allocating buffer in svcauth_gss_validate()
+Date: Wed, 28 May 2014 12:15:58 -0400
+Message-Id: <1401293758-8506-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-We're keeping the length updated as we go now, so there's no need for
-the extra calculation here.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c |   18 +++---------------
- 1 file changed, 3 insertions(+), 15 deletions(-)
+ src/svc_auth_gss.c |   16 ++++++++++++----
+ 1 files changed, 12 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 846d241..4c036eb 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3735,32 +3735,20 @@ static nfsd4_enc nfsd4_enc_ops[] = {
-  */
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
+diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
+index 601a691..e31010f 100644
+--- a/src/svc_auth_gss.c
++++ b/src/svc_auth_gss.c
+@@ -280,29 +280,35 @@ svcauth_gss_accept_sec_context(struct svc_req *rqst,
+ 	return (TRUE);
+ }
+ 
++#ifndef RPCHDRSZ
++#define RPCHDRSZ 128
++#endif
++
+ static bool_t
+ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
  {
--	struct xdr_buf *xb = &resp->rqstp->rq_res;
-+	struct xdr_buf *buf = &resp->rqstp->rq_res;
- 	struct nfsd4_session *session = NULL;
- 	struct nfsd4_slot *slot = resp->cstate.slot;
--	u32 length, tlen = 0;
+ 	struct opaque_auth	*oa;
+ 	gss_buffer_desc		 rpcbuf, checksum;
+ 	OM_uint32		 maj_stat, min_stat, qop_state;
+-	u_char			 rpchdr[128];
++	u_char			 *rpchdr;
+ 	int32_t			*buf;
  
- 	if (!nfsd4_has_session(&resp->cstate))
- 		return 0;
+ 	gss_log_debug("in svcauth_gss_validate()");
  
- 	session = resp->cstate.session;
- 
--	if (xb->page_len == 0) {
--		length = (char *)resp->xdr.p - (char *)xb->head[0].iov_base + pad;
--	} else {
--		if (xb->tail[0].iov_base && xb->tail[0].iov_len > 0)
--			tlen = (char *)resp->xdr.p - (char *)xb->tail[0].iov_base;
+-	memset(rpchdr, 0, sizeof(rpchdr));
 -
--		length = xb->head[0].iov_len + xb->page_len + tlen + pad;
--	}
--	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
--		length, xb->page_len, tlen, pad);
--
--	if (length > session->se_fchannel.maxresp_sz)
-+	if (buf->len + pad > session->se_fchannel.maxresp_sz)
- 		return nfserr_rep_too_big;
+ 	/* XXX - Reconstruct RPC header for signing (from xdr_callmsg). */
+ 	oa = &msg->rm_call.cb_cred;
+ 	if (oa->oa_length > MAX_AUTH_BYTES)
+ 		return (FALSE);
+ 	
+ 	/* 8 XDR units from the IXDR macro calls. */
+-	if (sizeof(rpchdr) < (8 * BYTES_PER_XDR_UNIT +
++	if (RPCHDRSZ < (8 * BYTES_PER_XDR_UNIT +
+ 			RNDUP(oa->oa_length)))
+ 		return (FALSE);
  
- 	if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
--	    length > session->se_fchannel.maxresp_cached)
-+	    buf->len + pad > session->se_fchannel.maxresp_cached)
- 		return nfserr_rep_too_big_to_cache;
++	rpchdr = (u_char *)calloc(RPCHDRSZ+MAX_AUTH_BYTES, 1);
++	if (rpchdr == NULL)
++		return (FALSE);
++
+ 	buf = (int32_t *)rpchdr;
+ 	IXDR_PUT_LONG(buf, msg->rm_xid);
+ 	IXDR_PUT_ENUM(buf, msg->rm_direction);
+@@ -325,6 +331,8 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
+ 	maj_stat = gss_verify_mic(&min_stat, gd->ctx, &rpcbuf, &checksum,
+ 				  &qop_state);
  
- 	return 0;
++	free(rpchdr);
++
+ 	if (maj_stat != GSS_S_COMPLETE) {
+ 		gss_log_status("gss_verify_mic", maj_stat, min_stat);
+ 		return (FALSE);
 -- 
-1.7.9.5
+1.7.1
 
