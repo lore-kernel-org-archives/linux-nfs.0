@@ -1,54 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11524 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755875AbaENQmy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 14 May 2014 12:42:54 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s4EGgqxp008954
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 14 May 2014 12:42:53 -0400
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s4EGgqVQ014381
-	for <linux-nfs@vger.kernel.org>; Wed, 14 May 2014 12:42:52 -0400
-Message-ID: <53739D0C.1090100@RedHat.com>
-Date: Wed, 14 May 2014 12:42:52 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS Town Hall  meeting: Thur 04/15/14
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from aserp1040.oracle.com ([141.146.126.69]:39311 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751217AbaE1XPs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 19:15:48 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH v5 00/24] Series short description
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+Date: Wed, 28 May 2014 19:15:44 -0400
+Cc: Anna.Schumaker@netapp.com
+Message-Id: <B50B248D-901F-41FE-B6B1-A99A6F22E1CC@oracle.com>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Test results:
 
-We have not had one of these for a while and there
-has been some churn lately... 
- 
-The Linux NFS town hall meeting is tomorrow
-*Thur May 15 at 01:00 pm EST (10:00am PST)*
+On May 28, 2014, at 10:31 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-The usual agenda will apply. The maintainers will give
-a quick status of what is happening in their worlds.
+> Updates since v4:
+> 
+> - Rebased on v3.15-rc7
+> - Addressed Trond's review comment in "Reset connection timeout..."
+> - Wake up RPC tasks only when cwnd is growing in "Avoid deadlock when..."
+> - Fix patch description of "Remove MEMWINDOWS registration modes"
+> 
+> Pull from the "nfs-rdma-client" branch of my git repo:
+> 
+>  git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-Next we'll get updates from major contributors on what
-they have been doing and are planing on doing.
-  
-Finally, we'll open the floor to questions, comments, 
-concerns from the community.  
+Client:
+v3.15-rc7 with my 24 patches applied.
+ConnectX-2 adapter (mlx4)
 
-Generally the meeting lasts between 30 to 45 mins, with 
-a very hard stop at 60mins. 
+Server:
+Solaris 11.2 beta
+ConnectX-2 adapter
 
-Please feel to attend and participate!
+Server:
+stock Linux v3.15-rc7
+InfiniHost III adapter (mthca)
 
-Time: 10:00 am PST (01:00 pm EST)
 
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
 
-steved.
+Connectathon tests: “./server -a -N30” with NFSv3 and NFSv4 against
+Solaris and Linux servers. All passed. No hangs, stalls, or crashes.
+
+Client tested in FRMR, FMR, and PHYSICAL memory registration modes.
+
+With Linux server, added “rsize=32768” mount option for PHYSICAL.
+
+With Solaris server, added “rsize=131072,wsize=65536” mount options
+for PHYSICAL.
+
+
+
+xfstests: “sudo ./check -nfs” with NFSv3 and NFSv4 against Linux
+server. Test failure rate same as over TCP. No hangs, stalls, or
+crashes.
+
+Client ran in FRMR, FMR, and PHYSICAL memory registration modes.
+PHYSICAL registration added “rsize=32768” mount option
+
+
+
+> ---
+> 
+> Allen Andrews (1):
+>      nfs-rdma: Fix for FMR leaks
+> 
+> Chuck Lever (21):
+>      xprtrdma: Disconnect on registration failure
+>      xprtrdma: Remove BUG_ON() call sites
+>      xprtrdma: Avoid deadlock when credit window is reset
+>      SUNRPC: Move congestion window constants to header file
+>      xprtrdma: Reset connection timeout after successful reconnect
+>      xprtrdma: Use macros for reconnection timeout constants
+>      xprtrdma: Remove Tavor MTU setting
+>      xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting
+>      xprtrdma: Reduce the number of hardway buffer allocations
+>      xprtrdma: Limit work done by completion handler
+>      xprtrmda: Reduce calls to ib_poll_cq() in completion handlers
+>      xprtrmda: Reduce lock contention in completion handlers
+>      xprtrdma: Split the completion queue
+>      xprtrdma: Make rpcrdma_ep_destroy() return void
+>      xprtrdma: Simplify rpcrdma_deregister_external() synopsis
+>      xprtrdma: mount reports "Invalid mount option" if memreg mode not supported
+>      xprtrdma: Fall back to MTHCAFMR when FRMR is not supported
+>      xprtrdma: Remove REGISTER memory registration mode
+>      xprtrdma: Remove MEMWINDOWS registration modes
+>      xprtrdma: Remove BOUNCEBUFFERS memory registration mode
+>      xprtrdma: RPC/RDMA must invoke xprt_wake_pending_tasks() in process context
+> 
+> Shirley Ma (1):
+>      xprtrdma: Allocate missing pagelist
+> 
+> Steve Wise (1):
+>      xprtrdma: mind the device's max fast register page list depth
+> 
+> 
+> include/linux/sunrpc/xprt.h     |    6 
+> net/sunrpc/xprt.c               |   28 -
+> net/sunrpc/xprtrdma/rpc_rdma.c  |  119 +++---
+> net/sunrpc/xprtrdma/transport.c |   90 ++---
+> net/sunrpc/xprtrdma/verbs.c     |  753 ++++++++++++++++-----------------------
+> net/sunrpc/xprtrdma/xprt_rdma.h |   17 +
+> 6 files changed, 411 insertions(+), 602 deletions(-)
+> 
+> -- 
+> Chuck Lever
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
