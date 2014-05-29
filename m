@@ -1,52 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52366 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751747AbaEFQkK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2014 12:40:10 -0400
-Date: Tue, 6 May 2014 12:40:09 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 04/70] NFSd: Remove 'inline' designation for free_client()
-Message-ID: <20140506164009.GF18281@fieldses.org>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:57527 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751745AbaE2SbV convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 May 2014 14:31:21 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Devesh Sharma'" <Devesh.Sharma@Emulex.Com>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>,
+        <linux-rdma@vger.kernel.org>
+Cc: <Anna.Schumaker@netapp.com>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net> <005501cf7b5f$4e4359a0$eaca0ce0$@opengridcomputing.com> <EE7902D3F51F404C82415C4803930ACD3FE01148@CMEXMB1.ad.emulex.com>
+In-Reply-To: <EE7902D3F51F404C82415C4803930ACD3FE01148@CMEXMB1.ad.emulex.com>
+Subject: RE: [PATCH v5 00/24] Series short description
+Date: Thu, 29 May 2014 13:31:26 -0500
+Message-ID: <007001cf7b6c$3375b430$9a611c90$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain;
+	charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 18, 2014 at 02:43:58PM -0400, Trond Myklebust wrote:
-> It is large, it is used in more than one place, and it is not performance
-> critical. Let gcc figure out whether it should be inlined...
+Note I just today published a new single patch for the server refactor change.  This is V3 of the patch.  It has a critical bug fix from the V2 version you're using.  Please use the V3 patch going forward.  The bug only manifested when using NFSv4 and certain tests though...
 
-Thanks, applying for 3.16.
+See: https://patchwork.kernel.org/patch/4266551/
 
---b.
+Steve 
 
+> -----Original Message-----
+> From: Devesh Sharma [mailto:Devesh.Sharma@Emulex.Com]
+> Sent: Thursday, May 29, 2014 1:28 PM
+> To: Steve Wise; 'Chuck Lever'; linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
+> Cc: Anna.Schumaker@netapp.com
+> Subject: RE: [PATCH v5 00/24] Series short description
 > 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> With Emulex device this series is tested I run iozone and cthon04. No regressions, cable pull
+> test is pending.
+> I included Steve's (the 3 patches which he posted recently) server side changes as well.
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 32b699bebb9c..841495aa9170 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1093,7 +1093,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
->  	return clp;
->  }
->  
-> -static inline void
-> +static void
->  free_client(struct nfs4_client *clp)
->  {
->  	struct nfsd_net __maybe_unused *nn = net_generic(clp->net, nfsd_net_id);
-> -- 
-> 1.9.0
+> -Regrds
+>  Devesh
 > 
+> > -----Original Message-----
+> > From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+> > owner@vger.kernel.org] On Behalf Of Steve Wise
+> > Sent: Thursday, May 29, 2014 10:29 PM
+> > To: 'Chuck Lever'; linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
+> > Cc: Anna.Schumaker@netapp.com
+> > Subject: RE: [PATCH v5 00/24] Series short description
+> >
+> > I tested this series over cxgb4 and mlx4, running cthon04, fio read/rand-rw,
+> > and xfstests, and over mthca cthon04.  No regressions.
+> >
+> > Tested-by: Steve Wise <swise@opengridcomputing.com>
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the
+> > body of a message to majordomo@vger.kernel.org More majordomo info at
+> > http://vger.kernel.org/majordomo-info.html
+
