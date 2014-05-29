@@ -1,201 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:41260 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751710AbaEVAzJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:55:09 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 06/24] xprtrdma: Remove REGISTER memory registration mode
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:55:07 -0400
-Message-ID: <20140522005507.27190.96418.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:37556 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752336AbaE2UlY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 May 2014 16:41:24 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: Apply NFS_MOUNT_CMP_FLAGMASK to nfs_compare_remount_data()
+Date: Thu, 29 May 2014 16:41:22 -0400
+Message-Id: <1401396082-11862-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All kernel RDMA providers except amso1100 support either MTHCAFMR
-or FRMR, both of which are faster than REGISTER.  amso1100 can
-continue to use ALLPHYSICAL.
+Those flags are obsolete and checking them can incorrectly cause
+remount operations to fail.
 
-The only other ULP consumer in the kernel that uses the reg_phys_mr
-verb is Lustre.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
+ fs/nfs/super.c | 26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
 
- net/sunrpc/xprtrdma/rpc_rdma.c |    3 -
- net/sunrpc/xprtrdma/verbs.c    |   90 ++--------------------------------------
- 2 files changed, 5 insertions(+), 88 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 46b5172..aae1726 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -476,8 +476,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 			 * on receive. Therefore, we request a reply chunk
- 			 * for non-writes wherever feasible and efficient.
- 			 */
--			if (wtype == rpcrdma_noch &&
--			    r_xprt->rx_ia.ri_memreg_strategy > RPCRDMA_REGISTER)
-+			if (wtype == rpcrdma_noch)
- 				wtype = rpcrdma_replych;
- 		}
- 	}
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 304c7ad..6bb9a07 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -494,19 +494,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	switch (memreg) {
- 	case RPCRDMA_MTHCAFMR:
- 		if (!ia->ri_id->device->alloc_fmr) {
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 			dprintk("RPC:       %s: MTHCAFMR registration "
- 				"specified but not supported by adapter, "
- 				"using riskier RPCRDMA_ALLPHYSICAL\n",
- 				__func__);
- 			memreg = RPCRDMA_ALLPHYSICAL;
--#else
--			dprintk("RPC:       %s: MTHCAFMR registration "
--				"specified but not supported by adapter, "
--				"using slower RPCRDMA_REGISTER\n",
--				__func__);
--			memreg = RPCRDMA_REGISTER;
--#endif
- 		}
- 		break;
- 	case RPCRDMA_FRMR:
-@@ -514,19 +506,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		if ((devattr.device_cap_flags &
- 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
- 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 			dprintk("RPC:       %s: FRMR registration "
- 				"specified but not supported by adapter, "
- 				"using riskier RPCRDMA_ALLPHYSICAL\n",
- 				__func__);
- 			memreg = RPCRDMA_ALLPHYSICAL;
--#else
--			dprintk("RPC:       %s: FRMR registration "
--				"specified but not supported by adapter, "
--				"using slower RPCRDMA_REGISTER\n",
--				__func__);
--			memreg = RPCRDMA_REGISTER;
--#endif
- 		} else {
- 			/* Mind the ia limit on FRMR page list depth */
- 			ia->ri_max_frmr_depth = min_t(unsigned int,
-@@ -545,7 +529,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	 * adapter.
- 	 */
- 	switch (memreg) {
--	case RPCRDMA_REGISTER:
- 	case RPCRDMA_FRMR:
- 		break;
- #if RPCRDMA_PERSISTENT_REGISTRATION
-@@ -565,11 +548,10 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
- 		if (IS_ERR(ia->ri_bind_mem)) {
- 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
--				"phys register failed with %lX\n\t"
--				"Will continue with degraded performance\n",
-+				"phys register failed with %lX\n",
- 				__func__, PTR_ERR(ia->ri_bind_mem));
--			memreg = RPCRDMA_REGISTER;
--			ia->ri_bind_mem = NULL;
-+			rc = -ENOMEM;
-+			goto out2;
- 		}
- 		break;
- 	default:
-@@ -1611,67 +1593,6 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
- 	return rc;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2cb5694..1a6d7ac 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2180,11 +2180,23 @@ out_no_address:
+ 	return -EINVAL;
  }
  
--static int
--rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
--			int *nsegs, int writing, struct rpcrdma_ia *ia)
--{
--	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
--				  IB_ACCESS_REMOTE_READ);
--	struct rpcrdma_mr_seg *seg1 = seg;
--	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
--	int len, i, rc = 0;
--
--	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
--		*nsegs = RPCRDMA_MAX_DATA_SEGS;
--	for (len = 0, i = 0; i < *nsegs;) {
--		rpcrdma_map_one(ia, seg, writing);
--		ipb[i].addr = seg->mr_dma;
--		ipb[i].size = seg->mr_len;
--		len += seg->mr_len;
--		++seg;
--		++i;
--		/* Check for holes */
--		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
--		    offset_in_page((seg-1)->mr_offset+(seg-1)->mr_len))
--			break;
--	}
--	seg1->mr_base = seg1->mr_dma;
--	seg1->mr_chunk.rl_mr = ib_reg_phys_mr(ia->ri_pd,
--				ipb, i, mem_priv, &seg1->mr_base);
--	if (IS_ERR(seg1->mr_chunk.rl_mr)) {
--		rc = PTR_ERR(seg1->mr_chunk.rl_mr);
--		dprintk("RPC:       %s: failed ib_reg_phys_mr "
--			"%u@0x%llx (%d)... status %i\n",
--			__func__, len,
--			(unsigned long long)seg1->mr_dma, i, rc);
--		while (i--)
--			rpcrdma_unmap_one(ia, --seg);
--	} else {
--		seg1->mr_rkey = seg1->mr_chunk.rl_mr->rkey;
--		seg1->mr_nsegs = i;
--		seg1->mr_len = len;
--	}
--	*nsegs = i;
--	return rc;
--}
--
--static int
--rpcrdma_deregister_default_external(struct rpcrdma_mr_seg *seg,
--			struct rpcrdma_ia *ia)
--{
--	struct rpcrdma_mr_seg *seg1 = seg;
--	int rc;
--
--	rc = ib_dereg_mr(seg1->mr_chunk.rl_mr);
--	seg1->mr_chunk.rl_mr = NULL;
--	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
--	if (rc)
--		dprintk("RPC:       %s: failed ib_dereg_mr,"
--			" status %i\n", __func__, rc);
--	return rc;
--}
--
- int
- rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 			int nsegs, int writing, struct rpcrdma_xprt *r_xprt)
-@@ -1701,10 +1622,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
- 		break;
++#define NFS_MOUNT_CMP_FLAGMASK ~(NFS_MOUNT_INTR \
++		| NFS_MOUNT_SECURE \
++		| NFS_MOUNT_TCP \
++		| NFS_MOUNT_VER3 \
++		| NFS_MOUNT_KERBEROS \
++		| NFS_MOUNT_NONLM \
++		| NFS_MOUNT_BROKEN_SUID \
++		| NFS_MOUNT_STRICTLOCK \
++		| NFS_MOUNT_UNSHARED \
++		| NFS_MOUNT_NORESVPORT \
++		| NFS_MOUNT_LEGACY_INTERFACE)
++
+ static int
+ nfs_compare_remount_data(struct nfs_server *nfss,
+ 			 struct nfs_parsed_mount_data *data)
+ {
+-	if (data->flags != nfss->flags ||
++	if ((data->flags ^ nfss->flags) & NFS_MOUNT_CMP_FLAGMASK ||
+ 	    data->rsize != nfss->rsize ||
+ 	    data->wsize != nfss->wsize ||
+ 	    data->version != nfss->nfs_client->rpc_ops->version ||
+@@ -2347,18 +2359,6 @@ void nfs_clone_super(struct super_block *sb, struct nfs_mount_info *mount_info)
+  	nfs_initialise_sb(sb);
+ }
  
--	/* Default registration each time */
- 	default:
--		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
--		break;
-+		return -1;
- 	}
- 	if (rc)
- 		return -1;
-@@ -1738,7 +1657,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 		break;
- 
- 	default:
--		rc = rpcrdma_deregister_default_external(seg, ia);
- 		break;
- 	}
- 	if (r) {
+-#define NFS_MOUNT_CMP_FLAGMASK ~(NFS_MOUNT_INTR \
+-		| NFS_MOUNT_SECURE \
+-		| NFS_MOUNT_TCP \
+-		| NFS_MOUNT_VER3 \
+-		| NFS_MOUNT_KERBEROS \
+-		| NFS_MOUNT_NONLM \
+-		| NFS_MOUNT_BROKEN_SUID \
+-		| NFS_MOUNT_STRICTLOCK \
+-		| NFS_MOUNT_UNSHARED \
+-		| NFS_MOUNT_NORESVPORT \
+-		| NFS_MOUNT_LEGACY_INTERFACE)
+-
+ static int nfs_compare_mount_options(const struct super_block *s, const struct nfs_server *b, int flags)
+ {
+ 	const struct nfs_server *a = s->s_fs_info;
+-- 
+1.9.0
 
