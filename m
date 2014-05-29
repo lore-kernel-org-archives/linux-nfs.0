@@ -1,39 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:53308 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932164AbaESQU7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 12:20:59 -0400
-Received: by mail-ie0-f171.google.com with SMTP id rp18so2851825iec.16
-        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 09:20:59 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH v3 00/18] nfs: support multiple requests per page
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <20140519153739.GA1163@infradead.org>
-Date: Mon, 19 May 2014 12:20:56 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <5D146F7D-5086-4E86-A28C-1B22BC62C8E2@primarydata.com>
-References: <1400169417-28245-1-git-send-email-dros@primarydata.com> <20140519153739.GA1163@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from mail-yk0-f173.google.com ([209.85.160.173]:33434 "EHLO
+	mail-yk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755740AbaE2ETE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 00:19:04 -0400
+Received: by mail-yk0-f173.google.com with SMTP id 142so9156602ykq.32
+        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 21:19:03 -0700 (PDT)
+Message-ID: <5386B52C.6000505@gmail.com>
+Date: Thu, 29 May 2014 12:18:52 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH] SUNRPC/NFSD: Remove using of dprintk with KERN_WARNING
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When debugging, rpc prints messages from dprintk(KERN_WARNING ...)
+with "^A4" prefixed,
 
-On May 19, 2014, at 11:37 AM, Christoph Hellwig <hch@infradead.org> wrote:
+[ 2780.339988] ^A4nfsd: connect from unprivileged port: 127.0.0.1, port=35316
 
-> On Thu, May 15, 2014 at 11:56:39AM -0400, Weston Andros Adamson wrote:
->> This patchset changes the read and write paths to be more flexible in dealing
->> with requests that are not page aligned. Until now there was a 1:1 mapping
->> of struct nfs_page (referred to as "nfs requests") to struct page, which
-> 
-> Any chance you could throw in a rename nfs_page to nfs_request patch
-> at the end of the series?  The nfs_page name is highly confusing,
-> and gets even more so with the series.
-> 
+Trond tells,
+> dprintk != printk. We have NEVER supported dprintk(KERN_WARNING...)
 
-I was thinking the same thing! It will be a huge change, but now is the time - we’re
-changing everything else…
+This patch removes using of dprintk with KERN_WARNING.
 
-I’ll post in v2 of this patchset.
--dros
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfsfh.c      | 5 ++---
+ net/sunrpc/svcsock.c | 3 +--
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index a337106..ec83934 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -88,9 +88,8 @@ static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
+ 	/* Check if the request originated from a secure port. */
+ 	if (!rqstp->rq_secure && !(flags & NFSEXP_INSECURE_PORT)) {
+ 		RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
+-		dprintk(KERN_WARNING
+-		       "nfsd: request from insecure port %s!\n",
+-		       svc_print_addr(rqstp, buf, sizeof(buf)));
++		dprintk("nfsd: request from insecure port %s!\n",
++		        svc_print_addr(rqstp, buf, sizeof(buf)));
+ 		return nfserr_perm;
+ 	}
+ 
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index f3b8eb3..b507cd3 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -849,8 +849,7 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
+ 	 * tell us anything.  For now just warn about unpriv connections.
+ 	 */
+ 	if (!svc_port_is_privileged(sin)) {
+-		dprintk(KERN_WARNING
+-			"%s: connect from unprivileged port: %s\n",
++		dprintk("%s: connect from unprivileged port: %s\n",
+ 			serv->sv_name,
+ 			__svc_print_addr(sin, buf, sizeof(buf)));
+ 	}
+-- 
+1.9.3
+
