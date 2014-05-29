@@ -1,32 +1,23 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 81-196-105-115.rdsnet.ro ([81.196.105.115]:47032 "EHLO
-	axigen.elcen.ro" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751056AbaEWT1s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 15:27:48 -0400
-Message-ID: <EEEAFB73.08830623@elcen.ro>
-Date: Fri, 23 May 2014 20:40:27 +0200
-From: "Linux msdos" <achizitii@elcen.ro>
-To: <linux-msdos@vger.kernel.org>, <linux-net@vger.kernel.org>,
-        <linux-newbie-owner@vger.kernel.org>, <linux-newbie@vger.kernel.org>,
-        <linux-next@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <linux-numa@vger.kernel.org>, <linux-omap@vger.kernel.org>,
-        <linux-parisc@vger.kernel.org>, <linux-pci@vger.kernel.org>,
-        <linux-pm@vger.kernel.org>, <linux-ppp-owner@vger.kernel.org>,
-        <linux-ppp@vger.kernel.org>, <linux-raid-owner@vger.kernel.org>,
-        <linux-raid@vger.kernel.org>, <linux-rdma@vger.kernel.org>,
-        <linux-s390@vger.kernel.org>, <linux-scsi@vger.kernel.org>,
-        <linux-security-module@vger.kernel.org>,
-        <linux-serial@vger.kernel.org>, <linux-sh@vger.kernel.org>,
-        <linux-smp-owner@vger.kernel.org>, <linux-smp@vger.kernel.org>,
-        <linux-sound-owner@vger.kernel.org>, <linux-sound@vger.kernel.org>
-Subject: Get designer watches for less
-Content-Type: text/plain;	charset="us-ascii"
+From: "Kong Hui" <huik-fc07RV+akRs+M+u0nzDfMQ@public.gmane.org>
+Subject: Get back to me
+Date: Thu, 29 May 2014 16:36:50 -0700
+Message-ID: <20140529233555.6639FEF4675__20833.7959288203$1401410162$gmane$org@tintin.portobello.school.nz>
+Reply-To: <konghui2014-Mj/0Miq2reM@public.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset="Windows-1251"
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from 219-89-113-121.adsl.xtra.co.nz ([219.89.113.121]:64499 "EHLO
+	tintin.portobello.school.nz" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751538AbaE3AfQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 20:35:16 -0400
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-MIME-Version: 1.0
 
-I now know where to get my trusted branded goods 
-
-http://smilingsoulcoaching.com/llltdud.php
+I am a bank director from Hong Kong, I want you to be my partner in a
+business project of mutual benefit. Get back to me if interested.
 
 
+Thank you,
+Kong Hui.
