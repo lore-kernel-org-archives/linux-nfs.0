@@ -1,122 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx5.framestore.com ([193.203.83.15]:46854 "EHLO
-	mx5.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754369AbaETQe0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 May 2014 12:34:26 -0400
-Subject: Re: NFS (or RPC) batching of calls over TCP results in 'unmatched'
- replies?
-From: Jim Vanns <james.vanns@framestore.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <20140520152654.GB4513@fieldses.org>
-References: <1400588966.13140.22.camel@sys304.ldn.framestore.com>
-	 <20140520152654.GB4513@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"
-Date: Tue, 20 May 2014 17:34:12 +0100
-Message-ID: <1400603652.13140.32.camel@sys304.ldn.framestore.com>
-Mime-Version: 1.0
+Received: from mail-yk0-f175.google.com ([209.85.160.175]:39746 "EHLO
+	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750942AbaE2DlS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 23:41:18 -0400
+Received: by mail-yk0-f175.google.com with SMTP id 131so9129647ykp.34
+        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 20:41:18 -0700 (PDT)
+Message-ID: <5386AC52.6080403@gmail.com>
+Date: Thu, 29 May 2014 11:41:06 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Dr James Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: remove KERN_DEFAULT kernel loglevel from dfprintk
+References: <5386A183.5030405@gmail.com>	<CAHQdGtR4cwdnta0WmfEysfVQTEcsje0xzfM4wx=BWz-sr-JCXQ@mail.gmail.com>	<5386A803.4080703@gmail.com> <CAHQdGtRWuUBBQ5FATheda1Ocqi2_zvCZ0t_H3qGuqBK_PHa7iA@mail.gmail.com>
+In-Reply-To: <CAHQdGtRWuUBBQ5FATheda1Ocqi2_zvCZ0t_H3qGuqBK_PHa7iA@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi - thanks for your reply.
-
-<snip>
-
-> Either capture is missing packets, or the analysis is missing rpc
-> replies, or the server is slow to reply and the client is retrying
-> aggressively.
-
-That would seem the obvious thing and of course was my first port of
-call.
-It certainly is suspicious and generally not what I would have
-expected. 
-
-That said, to reiterate, libpcap (pcap_stats()) tells me neither the
-kernel
-nor the NIC dropped any packets. However, I need to be sure the NIC
-actually reports
-this info to libpcap as it isn't always supported.
-
-What I can say is that I have performed the capture both on the server
-(knfsd) and the
-client and they both agree that there are significantly less replied
-identified than calls!
-
-<snip>
-
-> Section 7.4.1 of rfc 1831?
+On 5/29/2014 11:32, Trond Myklebust wrote:
+> On Wed, May 28, 2014 at 11:22 PM, Kinglong Mee <kinglongmee@gmail.com <mailto:kinglongmee@gmail.com>> wrote:
+>> On 5/29/2014 11:15, Trond Myklebust wrote:
+>>> Nack. This is an api change...
+>>
+>> API change ? printk ? dprintk?
 > 
-> I'd never noticed that before....
+> dprintk != printk. We have NEVER supported dprintk(KERN_WARNING...)
 > 
-> In any case, I think that's just describing something that an RPC-based
-> protocol *could* do.  NFS doesn't do this--in particular, NFS read calls
-> require replies.
+> Please use one or the other, but don't try to mix APIs.
 
-Right. OK. This makes much more sense than not getting replies to calls!
+Thank you very much.
+I will send a new patch for change the using of dprintk(KERN_WARNING...).
 
-> My suspicion is that tshark is missing some replies.  Either the packet
-> loss counters are wrong, or tshark is failing to identify RPC replies
-> that start in the middle of a tcp segment?  I seem to recall seeing that
-> before.
+thanks,
+Kinglong Mee
 
-Yes - I had wondered about that and I will modify my own code to verify
-if this is the case.
-
-I *assumed* that tcpdump or wireshark already did this! I guess it just
-expects application
-protocols to be aligned to the TCP boundary.
-
-Thanks for your help so far.
-
-Jim
-
-> --b.
 > 
-> > The IBM and Oracle websites also have some
-> > info but not much. I have found nothing that enables
-> > me to identify batched requests (or rather the replies for a batch) in
-> > the protocol itself. Wireshark seems unable to do this also.
-> > 
-> > I realise this is a bit off-topic but I was hoping someone might be able
-> > to point me in the right direction? Am I barking up the wrong tree? Is
-> > this behaviour expected - am I unable to match calls to replies when
-> > batching is used? The IBM website suggests;
-> > 
-> > 'Batching assumes the following:
-> > 
-> > Each remote procedure call in the pipeline requires no response from the
-> > server, and the server does not send a response message.'
-> > 
-> > This sounds a bit awkward! It then goes on to suggest that;
-> > 
-> > 'The remote procedure call's time out must be 0'
-> > 
-> > For batched calls. But there is no call timeout in the RPC protocol
-> > right? Again, this must be up to the client implementation I suspect?
-> > 
-> > Any help appreciated.
-> > 
-> > Regards,
-> > 
-> > Jim
-> > 
-> > PS. I may well join the Linux RPC mailing list and direct this question
-> > at them instead.
-> > 
-> > -- 
-> > Senior Software Engineer
-> > Systems Development
-> > Framestore
-> > 
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Software Engineer
-Systems Development
-Framestore
-
-
+>>>
+>>> On May 28, 2014 10:55 PM, "Kinglong Mee" <kinglongmee@gmail.com <mailto:kinglongmee@gmail.com> <mailto:kinglongmee@gmail.com <mailto:kinglongmee@gmail.com>>> wrote:
+>>>
+>>>     When debugging, rpc prints messages for dprintk(KERN_WARNING ...) as,
+>>>
+>>>     [ 2780.339988] ^A4nfsd: connect from unprivileged port: 0000:0000:0000:0000:0000:0000:0000:0001, port=35316
+>>>
+>>>     Because, it expends as printk(KERN_DEFAULT KERN_WARNING ...).
+>>
+>> net/sunrpc/svcsock.c:852, and fs/nfsd/nfsfh.c:91 call dprintk as,
+>> dprintk(KERN_WARNING ...) ---> printk(KERN_DEFAULT KERN_WARNING ...)
+>>
+>> so that, "^A4" will be prefixed before the debugging message.
+>>
+>> thanks,
+>> Kinglong Mee
+>>
+>>>
+>>>     Signed-off-by: Kinglong Mee <kinglongmee@gmail.com <mailto:kinglongmee@gmail.com> <mailto:kinglongmee@gmail.com <mailto:kinglongmee@gmail.com>>>
+>>>     ---
+>>>      include/linux/sunrpc/debug.h | 4 ++--
+>>>      1 file changed, 2 insertions(+), 2 deletions(-)
+>>>
+>>>     diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+>>>     index 9385bd7..742e2ac 100644
+>>>     --- a/include/linux/sunrpc/debug.h
+>>>     +++ b/include/linux/sunrpc/debug.h
+>>>     @@ -42,14 +42,14 @@ extern unsigned int         nlm_debug;
+>>>      # define dfprintk(fac, args...)        \
+>>>             do { \
+>>>                     ifdebug(fac) \
+>>>     -                       printk(KERN_DEFAULT args); \
+>>>     +                       printk(args); \
+>>>             } while (0)
+>>>
+>>>      # define dfprintk_rcu(fac, args...)    \
+>>>             do { \
+>>>                     ifdebug(fac) { \
+>>>                             rcu_read_lock(); \
+>>>     -                       printk(KERN_DEFAULT args); \
+>>>     +                       printk(args); \
+>>>                             rcu_read_unlock(); \
+>>>                     } \
+>>>             } while (0)
+>>>     --
+>>>     1.9.3
+>>>
+> 
+> 
+> 
+> -- 
+> Trond Myklebust
+> 
+> Linux NFS client maintainer, PrimaryData
+> 
+> trond.myklebust@primarydata.com <mailto:trond.myklebust@primarydata.com>
