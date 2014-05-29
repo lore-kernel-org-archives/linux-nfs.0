@@ -1,46 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57699 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752711AbaEUQF2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 21 May 2014 12:05:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, stable@vger.kernel.org
-Subject: [PATCH 2/2] nfsd4: warn on finding lockowner without stateid's
-Date: Wed, 21 May 2014 12:05:25 -0400
-Message-Id: <1400688325-5345-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400688325-5345-1-git-send-email-bfields@redhat.com>
-References: <1400688325-5345-1-git-send-email-bfields@redhat.com>
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:54669 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965203AbaE2Rxi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 13:53:38 -0400
+Received: by mail-ig0-f171.google.com with SMTP id c1so4064791igq.16
+        for <linux-nfs@vger.kernel.org>; Thu, 29 May 2014 10:53:37 -0700 (PDT)
+MIME-Version: 1.0
+Date: Thu, 29 May 2014 13:53:37 -0400
+Message-ID: <CALRD3qKzmrvRqBabQQuvVH7jTb0mexZGw4rXVTBkYS3YRc6NtQ@mail.gmail.com>
+Subject: dev over nfs
+From: riya khanna <riyakhanna1983@gmail.com>
+To: undisclosed-recipients:;
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hi,
 
-The current code assumes a one-to-one lockowner<->lock stateid
-correspondance.
+I'm trying to access remote devices locally by mounting/exporting /dev
+nodes over NFS. However, looks like the access requests are treated local
+based on major minor numbers (e.g. "cat /mnt-dev-over-nfs/kmg" output is
+same as "cat /dev/kmsg")
 
-Cc: stable@vger.kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c | 4 ++++
- 1 file changed, 4 insertions(+)
+How can I change this behavior? and if it is at all feasible?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 89e4240..9a77a5a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4166,6 +4166,10 @@ static bool same_lockowner_ino(struct nfs4_lockowner *lo, struct inode *inode, c
- 
- 	if (!same_owner_str(&lo->lo_owner, owner, clid))
- 		return false;
-+	if (list_empty(&lo->lo_owner.so_stateids)) {
-+		WARN_ON_ONCE(1);
-+		return false;
-+	}
- 	lst = list_first_entry(&lo->lo_owner.so_stateids,
- 			       struct nfs4_ol_stateid, st_perstateowner);
- 	return lst->st_file->fi_inode == inode;
--- 
-1.9.0
-
+Thanks,
+Riya
