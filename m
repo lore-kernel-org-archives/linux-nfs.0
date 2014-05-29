@@ -1,94 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38589 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755717AbaEKUxC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:02 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 23/43] nfsd4: don't try to encode conflicting owner if low on space
-Date: Sun, 11 May 2014 16:52:28 -0400
-Message-Id: <1399841568-19716-24-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:45914 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932521AbaE2O5k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 10:57:40 -0400
+Received: by mail-ie0-f180.google.com with SMTP id tp5so401841ieb.11
+        for <linux-nfs@vger.kernel.org>; Thu, 29 May 2014 07:57:40 -0700 (PDT)
+Message-ID: <1401375457.6543.1.camel@leira.trondhjem.org>
+Subject: Re: [nfs:devel 41/48] nls_iso8859-1.c:undefined reference to
+ `__aeabi_uldivmod'
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Thu, 29 May 2014 10:57:37 -0400
+In-Reply-To: <538745be.7mlU/ffncT1nxA17%fengguang.wu@intel.com>
+References: <538745be.7mlU/ffncT1nxA17%fengguang.wu@intel.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, 2014-05-29 at 22:35 +0800, kbuild test robot wrote:
+> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+> head:   c75c3b0bfffdb21daecb7dadbd30eb2e353fe66d
+> commit: fa1165eda0eeaee57c292df3af1c98e10223f0f5 [41/48] pnfs: filelayout: support non page aligned layouts
+> config: make ARCH=arm kzm9g_defconfig
+> 
+> All error/warnings:
+> 
+>    fs/built-in.o: In function `filelayout_pg_test':
+> >> nls_iso8859-1.c:(.text+0x9cf3c): undefined reference to `__aeabi_uldivmod'
+> 
+> ---
+> 0-DAY kernel build testing backend              Open Source Technology Center
+> http://lists.01.org/mailman/listinfo/kbuild                 Intel Corporation
 
-I ran into this corner case in testing: in theory clients can provide
-state owners up to 1024 bytes long.  In the sessions case there might be
-a risk of this pushing us over the DRC slot size.
+Hi Dros,
 
-The conflicting owner isn't really that important, so let's humor a
-client that provides a small maxresponsize_cached by allowing ourselves
-to return without the conflicting owner instead of outright failing the
-operation.
+I'm applying the following patch to fix this up:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>From 64060d5dd6bf8d6d611c342f9a42a2ad7640ed4a Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Thu, 29 May 2014 10:49:12 -0400
+Subject: [PATCH] fixup! pnfs: filelayout: support non page aligned layouts
+
 ---
- fs/nfsd/nfs4proc.c |    3 ++-
- fs/nfsd/nfs4xdr.c  |   16 +++++++++++++---
- 2 files changed, 15 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4filelayout.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 787aa9f..be638c1 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1381,7 +1381,8 @@ out:
- #define op_encode_change_info_maxsz	(5)
- #define nfs4_fattr_bitmap_maxsz		(4)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 9419061b6d1b..63a16375660a 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -950,7 +950,9 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	}
  
--#define op_encode_lockowner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
-+/* We'll fall back on returning no lockowner if run out of space: */
-+#define op_encode_lockowner_maxsz	(0)
- #define op_encode_lock_denied_maxsz	(8 + op_encode_lockowner_maxsz)
- 
- #define nfs4_owner_maxsz		(1 + XDR_QUADLEN(IDMAP_NAMESZ))
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 6c3ac43..d418d7e 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2862,9 +2862,20 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
- 	struct xdr_netobj *conf = &ld->ld_owner;
- 	__be32 *p;
- 
-+again:
- 	p = xdr_reserve_space(xdr, 32 + XDR_LEN(conf->len));
--	if (!p)
-+	if (!p) {
-+		/*
-+		 * Don't fail to return the result just because we can't
-+		 * return the conflicting open:
-+		 */
-+		if (conf->len) {
-+			conf->len = 0;
-+			conf->data = NULL;
-+			goto again;
-+		}
- 		return nfserr_resource;
-+	}
- 	WRITE64(ld->ld_start);
- 	WRITE64(ld->ld_length);
- 	WRITE32(ld->ld_type);
-@@ -2872,7 +2883,6 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
- 		WRITEMEM(&ld->ld_clientid, 8);
- 		WRITE32(conf->len);
- 		WRITEMEM(conf->data, conf->len);
--		kfree(conf->data);
- 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
- 		WRITE64((u64)0); /* clientid */
- 		WRITE32(0); /* length of owner name */
-@@ -2889,7 +2899,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
- 		nfserr = nfsd4_encode_stateid(xdr, &lock->lk_resp_stateid);
- 	else if (nfserr == nfserr_denied)
- 		nfserr = nfsd4_encode_lock_denied(xdr, &lock->lk_denied);
--
-+	kfree(lock->lk_denied.ld_owner.data);
- 	return nfserr;
- }
- 
+ 	/* calculate remaining bytes in the current stripe */
+-	stripe_offset = ((u64)req_offset(req) - segment_offset) % stripe_unit;
++	div_u64_rem((u64)req_offset(req) - segment_offset,
++			stripe_unit,
++			&stripe_offset);
+ 	WARN_ON_ONCE(stripe_offset > stripe_unit);
+ 	if (stripe_offset >= stripe_unit)
+ 		return 0;
 -- 
-1.7.9.5
+1.9.3
+
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
 
