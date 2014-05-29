@@ -1,367 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43409 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752415AbaEVTck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:40 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 26/52] nfsd4: allow encoding across page boundaries
-Date: Thu, 22 May 2014 15:32:01 -0400
-Message-Id: <1400787148-25941-27-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:50706 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756246AbaE2PHF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 11:07:05 -0400
+Received: by mail-ie0-f173.google.com with SMTP id lx4so410803iec.32
+        for <linux-nfs@vger.kernel.org>; Thu, 29 May 2014 08:07:04 -0700 (PDT)
+Message-ID: <1401376022.6543.3.camel@leira.trondhjem.org>
+Subject: Re: [nfs:devel 21/48] fs/nfs/pagelist.c:453: warning: unused
+ variable 'inode'
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Thu, 29 May 2014 11:07:02 -0400
+In-Reply-To: <538676fe.74/Y9ZfdJIRe5CAC%fengguang.wu@intel.com>
+References: <538676fe.74/Y9ZfdJIRe5CAC%fengguang.wu@intel.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, 2014-05-29 at 07:53 +0800, kbuild test robot wrote:
+> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+> head:   c75c3b0bfffdb21daecb7dadbd30eb2e353fe66d
+> commit: 5aea6ba186d825973a1c3daf88dece597b8b54e3 [21/48] NFS: Create a common initiate_pgio() function
+> config: make ARCH=avr32 atngw100_defconfig
+> 
+> All warnings:
+> 
+>    fs/nfs/pagelist.c: In function 'nfs_initiate_pgio':
+> >> fs/nfs/pagelist.c:453: warning: unused variable 'inode'
+> 
+> vim +/inode +453 fs/nfs/pagelist.c
+> 
+>    437	 * nfs_pgio_prepare - Prepare pageio data to go over the wire
+>    438	 * @task: The current task
+>    439	 * @calldata: pageio data to prepare
+>    440	 */
+>    441	static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
+>    442	{
+>    443		struct nfs_pgio_data *data = calldata;
+>    444		int err;
+>    445		err = NFS_PROTO(data->header->inode)->pgio_rpc_prepare(task, data);
+>    446		if (err)
+>    447			rpc_exit(task, err);
+>    448	}
+>    449	
+>    450	int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
+>    451			      const struct rpc_call_ops *call_ops, int how, int flags)
+>    452	{
+>  > 453		struct inode *inode = data->header->inode;
+>    454		struct rpc_task *task;
+>    455		struct rpc_message msg = {
+>    456			.rpc_argp = &data->args,
+>    457			.rpc_resp = &data->res,
+>    458			.rpc_cred = data->header->cred,
+>    459		};
+>    460		struct rpc_task_setup task_setup_data = {
+>    461			.rpc_client = clnt,
+> 
+> ---
+> 0-DAY kernel build testing backend              Open Source Technology Center
+> http://lists.01.org/mailman/listinfo/kbuild                 Intel Corporation
 
-After this we can handle for example getattr of very large ACLs.
+Fixing this up using:
 
-Read, readdir, readlink are still special cases with their own limits.
+>From 86e52bd318d0fda06c6c9829ec54f693bd669b30 Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Thu, 29 May 2014 11:04:51 -0400
+Subject: [PATCH] fixup! NFS: Create a common initiate_pgio() function
 
-Also we can't handle a new operation starting close to the end of a
-page.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4proc.c         |  4 +++
- fs/nfsd/nfs4xdr.c          | 60 +++++++++++++++++++++++++----------
- include/linux/sunrpc/svc.h |  1 +
- include/linux/sunrpc/xdr.h |  1 +
- net/sunrpc/svc_xprt.c      |  1 +
- net/sunrpc/xdr.c           | 78 ++++++++++++++++++++++++++++++++++++++++++++--
- 6 files changed, 126 insertions(+), 19 deletions(-)
+ fs/nfs/pagelist.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index f8e7472..2517e0b 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1266,6 +1266,10 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
- 	xdr->end = head->iov_base + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
- 	/* Tail and page_len should be zero at this point: */
- 	buf->len = buf->head[0].iov_len;
-+	xdr->scratch.iov_len = 0;
-+	xdr->page_ptr = buf->pages;
-+	buf->buflen = PAGE_SIZE * (1 + rqstp->rq_page_end - buf->pages)
-+		- 2 * RPC_MAX_AUTH_SIZE;
- }
- 
- /*
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f1a9716..1bac000 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1624,6 +1624,7 @@ static int nfsd4_max_reply(u32 opnum)
- 		 * the head and tail in another page:
- 		 */
- 		return 2 * PAGE_SIZE;
-+	case OP_GETATTR:
- 	case OP_READ:
- 		return INT_MAX;
- 	default:
-@@ -2560,21 +2561,31 @@ out_resource:
- 	goto out;
- }
- 
-+static void svcxdr_init_encode_from_buffer(struct xdr_stream *xdr,
-+				struct xdr_buf *buf, __be32 *p, int bytes)
-+{
-+	xdr->scratch.iov_len = 0;
-+	memset(buf, 0, sizeof(struct xdr_buf));
-+	buf->head[0].iov_base = p;
-+	buf->head[0].iov_len = 0;
-+	buf->len = 0;
-+	xdr->buf = buf;
-+	xdr->iov = buf->head;
-+	xdr->p = p;
-+	xdr->end = (void *)p + bytes;
-+	buf->buflen = bytes;
-+}
-+
- __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
- 			struct svc_fh *fhp, struct svc_export *exp,
- 			struct dentry *dentry, u32 *bmval,
- 			struct svc_rqst *rqstp, int ignore_crossmnt)
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 0c4aac4c7ad9..fab78d13ee14 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -604,7 +604,6 @@ static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
+ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
+ 		      const struct rpc_call_ops *call_ops, int how, int flags)
  {
--	struct xdr_buf dummy = {
--			.head[0] = {
--				.iov_base = *p,
--			},
--			.buflen = words << 2,
--		};
-+	struct xdr_buf dummy;
- 	struct xdr_stream xdr;
- 	__be32 ret;
+-	struct inode *inode = data->header->inode;
+ 	struct rpc_task *task;
+ 	struct rpc_message msg = {
+ 		.rpc_argp = &data->args,
+@@ -627,8 +626,8 @@ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
+ 	dprintk("NFS: %5u initiated pgio call "
+ 		"(req %s/%llu, %u bytes @ offset %llu)\n",
+ 		data->task.tk_pid,
+-		inode->i_sb->s_id,
+-		(unsigned long long)NFS_FILEID(inode),
++		data->header->inode->i_sb->s_id,
++		(unsigned long long)NFS_FILEID(data->header->inode),
+ 		data->args.count,
+ 		(unsigned long long)data->args.offset);
  
--	xdr_init_encode(&xdr, &dummy, NULL);
-+	svcxdr_init_encode_from_buffer(&xdr, &dummy, *p, words << 2);
- 	ret = nfsd4_encode_fattr(&xdr, fhp, exp, dentry, bmval, rqstp,
- 							ignore_crossmnt);
- 	*p = xdr.p;
-@@ -3064,8 +3075,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 
- 	if (nfserr)
- 		return nfserr;
--	if (resp->xdr.buf->page_len)
--		return nfserr_resource;
- 
- 	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
- 	if (!p)
-@@ -3075,6 +3084,9 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	if (xdr->end - xdr->p < 1)
- 		return nfserr_resource;
- 
-+	if (resp->xdr.buf->page_len)
-+		return nfserr_resource;
-+
- 	maxcount = svc_max_payload(resp->rqstp);
- 	if (maxcount > read->rd_length)
- 		maxcount = read->rd_length;
-@@ -3119,6 +3131,8 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 				- (char *)resp->xdr.buf->head[0].iov_base);
- 	resp->xdr.buf->page_len = maxcount;
- 	xdr->buf->len += maxcount;
-+	xdr->page_ptr += v;
-+	xdr->buf->buflen = maxcount + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
- 	xdr->iov = xdr->buf->tail;
- 
- 	/* Use rest of head for padding and remaining ops: */
-@@ -3145,6 +3159,11 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 
- 	if (nfserr)
- 		return nfserr;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return nfserr_resource;
-+
- 	if (resp->xdr.buf->page_len)
- 		return nfserr_resource;
- 	if (!*resp->rqstp->rq_next_page)
-@@ -3154,10 +3173,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 
- 	maxcount = PAGE_SIZE;
- 
--	p = xdr_reserve_space(xdr, 4);
--	if (!p)
--		return nfserr_resource;
--
- 	if (xdr->end - xdr->p < 1)
- 		return nfserr_resource;
- 
-@@ -3180,6 +3195,8 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 				- (char *)resp->xdr.buf->head[0].iov_base;
- 	resp->xdr.buf->page_len = maxcount;
- 	xdr->buf->len += maxcount;
-+	xdr->page_ptr += 1;
-+	xdr->buf->buflen -= PAGE_SIZE;
- 	xdr->iov = xdr->buf->tail;
- 
- 	/* Use rest of head for padding and remaining ops: */
-@@ -3206,15 +3223,16 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 
- 	if (nfserr)
- 		return nfserr;
--	if (resp->xdr.buf->page_len)
--		return nfserr_resource;
--	if (!*resp->rqstp->rq_next_page)
--		return nfserr_resource;
- 
- 	p = xdr_reserve_space(xdr, NFS4_VERIFIER_SIZE);
- 	if (!p)
- 		return nfserr_resource;
- 
-+	if (resp->xdr.buf->page_len)
-+		return nfserr_resource;
-+	if (!*resp->rqstp->rq_next_page)
-+		return nfserr_resource;
-+
- 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
- 	WRITE32(0);
- 	WRITE32(0);
-@@ -3266,6 +3284,10 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 
- 	xdr->iov = xdr->buf->tail;
- 
-+	xdr->page_ptr++;
-+	xdr->buf->buflen -= PAGE_SIZE;
-+	xdr->iov = xdr->buf->tail;
-+
- 	/* Use rest of head for padding and remaining ops: */
- 	resp->xdr.buf->tail[0].iov_base = tailbase;
- 	resp->xdr.buf->tail[0].iov_len = 0;
-@@ -3800,6 +3822,8 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 	       !nfsd4_enc_ops[op->opnum]);
- 	encoder = nfsd4_enc_ops[op->opnum];
- 	op->status = encoder(resp, op->status, &op->u);
-+	xdr_commit_encode(xdr);
-+
- 	/* nfsd4_check_resp_size guarantees enough room for error status */
- 	if (!op->status) {
- 		int space_needed = 0;
-@@ -3919,6 +3943,8 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 	WARN_ON_ONCE(buf->len != buf->head[0].iov_len + buf->page_len +
- 				 buf->tail[0].iov_len);
- 
-+	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
-+
- 	p = resp->tagp;
- 	*p++ = htonl(resp->taglen);
- 	memcpy(p, resp->tag, resp->taglen);
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 04e7632..39c50e1 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -244,6 +244,7 @@ struct svc_rqst {
- 	struct page *		rq_pages[RPCSVC_MAXPAGES];
- 	struct page *		*rq_respages;	/* points into rq_pages */
- 	struct page *		*rq_next_page; /* next reply page to use */
-+	struct page *		*rq_page_end;  /* one past the last page */
- 
- 	struct kvec		rq_vec[RPCSVC_MAXPAGES]; /* generally useful.. */
- 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index e7bb2e3..b23d69f 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -215,6 +215,7 @@ typedef int	(*kxdrdproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
- 
- extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
- extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
-+extern void xdr_commit_encode(struct xdr_stream *xdr);
- extern void xdr_truncate_encode(struct xdr_stream *xdr, size_t len);
- extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
- 		unsigned int base, unsigned int len);
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 06c6ff0..baec792 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -597,6 +597,7 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
- 			}
- 			rqstp->rq_pages[i] = p;
- 		}
-+	rqstp->rq_page_end = &rqstp->rq_pages[i];
- 	rqstp->rq_pages[i++] = NULL; /* this might be seen in nfs_read_actor */
- 
- 	/* Make arg->head point to first page and arg->pages point to rest */
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 8ae8ee7..40198c5 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -462,6 +462,7 @@ void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
- 	struct kvec *iov = buf->head;
- 	int scratch_len = buf->buflen - buf->page_len - buf->tail[0].iov_len;
- 
-+	xdr_set_scratch_buffer(xdr, NULL, 0);
- 	BUG_ON(scratch_len < 0);
- 	xdr->buf = buf;
- 	xdr->iov = iov;
-@@ -482,6 +483,74 @@ void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
- EXPORT_SYMBOL_GPL(xdr_init_encode);
- 
- /**
-+ * xdr_commit_encode - Ensure all data is written to buffer
-+ * @xdr: pointer to xdr_stream
-+ *
-+ * We handle encoding across page boundaries by giving the caller a
-+ * temporary location to write to, then later copying the data into
-+ * place; xdr_commit_encode does that copying.
-+ *
-+ * Normally the caller doesn't need to call this directly, as the
-+ * following xdr_reserve_space will do it.  But an explicit call may be
-+ * required at the end of encoding, or any other time when the xdr_buf
-+ * data might be read.
-+ */
-+void xdr_commit_encode(struct xdr_stream *xdr)
-+{
-+	int shift = xdr->scratch.iov_len;
-+	void *page;
-+
-+	if (shift == 0)
-+		return;
-+	page = page_address(*xdr->page_ptr);
-+	memcpy(xdr->scratch.iov_base, page, shift);
-+	memmove(page, page + shift, (void *)xdr->p - page);
-+	xdr->scratch.iov_len = 0;
-+}
-+EXPORT_SYMBOL_GPL(xdr_commit_encode);
-+
-+__be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr, size_t nbytes)
-+{
-+	static __be32 *p;
-+	int space_left;
-+	int frag1bytes, frag2bytes;
-+
-+	if (nbytes > PAGE_SIZE)
-+		return NULL; /* Bigger buffers require special handling */
-+	if (xdr->buf->len + nbytes > xdr->buf->buflen)
-+		return NULL; /* Sorry, we're totally out of space */
-+	frag1bytes = (xdr->end - xdr->p) << 2;
-+	frag2bytes = nbytes - frag1bytes;
-+	if (xdr->iov)
-+		xdr->iov->iov_len += frag1bytes;
-+	else {
-+		xdr->buf->page_len += frag1bytes;
-+		xdr->page_ptr++;
-+	}
-+	xdr->iov = NULL;
-+	/*
-+	 * If the last encode didn't end exactly on a page boundary, the
-+	 * next one will straddle boundaries.  Encode into the next
-+	 * page, then copy it back later in xdr_commit_encode.  We use
-+	 * the "scratch" iov to track any temporarily unused fragment of
-+	 * space at the end of the previous buffer:
-+	 */
-+	xdr->scratch.iov_base = xdr->p;
-+	xdr->scratch.iov_len = frag1bytes;
-+	p = page_address(*xdr->page_ptr);
-+	/*
-+	 * Note this is where the next encode will start after we've
-+	 * shifted this one back:
-+	 */
-+	xdr->p = (void *)p + frag2bytes;
-+	space_left = xdr->buf->buflen - xdr->buf->len;
-+	xdr->end = (void *)p + min_t(int, space_left, PAGE_SIZE);
-+	xdr->buf->page_len += frag2bytes;
-+	xdr->buf->len += nbytes;
-+	return p;
-+}
-+
-+/**
-  * xdr_reserve_space - Reserve buffer space for sending
-  * @xdr: pointer to xdr_stream
-  * @nbytes: number of bytes to reserve
-@@ -495,14 +564,18 @@ __be32 * xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes)
- 	__be32 *p = xdr->p;
- 	__be32 *q;
- 
-+	xdr_commit_encode(xdr);
- 	/* align nbytes on the next 32-bit boundary */
- 	nbytes += 3;
- 	nbytes &= ~3;
- 	q = p + (nbytes >> 2);
- 	if (unlikely(q > xdr->end || q < p))
--		return NULL;
-+		return xdr_get_next_encode_buffer(xdr, nbytes);
- 	xdr->p = q;
--	xdr->iov->iov_len += nbytes;
-+	if (xdr->iov)
-+		xdr->iov->iov_len += nbytes;
-+	else
-+		xdr->buf->page_len += nbytes;
- 	xdr->buf->len += nbytes;
- 	return p;
- }
-@@ -539,6 +612,7 @@ void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
- 		WARN_ON_ONCE(1);
- 		return;
- 	}
-+	xdr_commit_encode(xdr);
- 
- 	fraglen = min_t(int, buf->len - len, tail->iov_len);
- 	tail->iov_len -= fraglen;
 -- 
-1.9.0
+1.9.3
+
+
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
 
