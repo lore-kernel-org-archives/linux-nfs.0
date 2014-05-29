@@ -1,44 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:4822 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:39282 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751822AbaELVqI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 May 2014 17:46:08 -0400
-Date: Mon, 12 May 2014 17:45:45 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 04/43] nfsd4: reserve head space for krb5 integ/priv info
-Message-ID: <20140512214545.GA11493@pad.redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
- <1399841568-19716-5-git-send-email-bfields@redhat.com>
- <20140512053727.GE29134@infradead.org>
+	id S932331AbaE2Q6V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 29 May 2014 12:58:21 -0400
+Message-ID: <5387672A.5050307@netapp.com>
+Date: Thu, 29 May 2014 12:58:18 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140512053727.GE29134@infradead.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs:devel 21/48] fs/nfs/pagelist.c:453: warning: unused variable
+ 'inode'
+References: <538676fe.74/Y9ZfdJIRe5CAC%fengguang.wu@intel.com> <1401376022.6543.3.camel@leira.trondhjem.org>
+In-Reply-To: <1401376022.6543.3.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, May 11, 2014 at 10:37:27PM -0700, Christoph Hellwig wrote:
-> On Sun, May 11, 2014 at 04:52:09PM -0400, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > Currently if the nfs-level part of a reply would be too large, we'll
-> > return an error to the client.  But if the nfs-level part fits and
-> > leaves no room for krb5p or krb5i stuff, then we just drop the request
-> > entirely.
-> > 
-> > That's no good.  Instead, reserve some slack space at the end of the
-> > buffer and make sure we fail outright if we'd come close.
-> > 
-> > The slack space here is a massive overstimate of what's required, we
-> > should probably try for a tighter limit at some point.
-> 
-> Don't we know the rpc auth scheme at this point and can at least
-> avoid it for non-krb setups?
+Looks good to me.  Thanks, Trond!
 
-Yes.  At the end of this series we have RPC_MAX_AUTH_SIZE scattered
-around in a few different places.  Rather than have each place have some
-flavor-specific logic I think I'd like the auth code to set an
-rq_auth_slack field in the struct svc_rqst for code like this to use.
+On 05/29/2014 11:07 AM, Trond Myklebust wrote:
+> On Thu, 2014-05-29 at 07:53 +0800, kbuild test robot wrote:
+>> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
+>> head:   c75c3b0bfffdb21daecb7dadbd30eb2e353fe66d
+>> commit: 5aea6ba186d825973a1c3daf88dece597b8b54e3 [21/48] NFS: Create a common initiate_pgio() function
+>> config: make ARCH=avr32 atngw100_defconfig
+>>
+>> All warnings:
+>>
+>>    fs/nfs/pagelist.c: In function 'nfs_initiate_pgio':
+>>>> fs/nfs/pagelist.c:453: warning: unused variable 'inode'
+>> vim +/inode +453 fs/nfs/pagelist.c
+>>
+>>    437	 * nfs_pgio_prepare - Prepare pageio data to go over the wire
+>>    438	 * @task: The current task
+>>    439	 * @calldata: pageio data to prepare
+>>    440	 */
+>>    441	static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
+>>    442	{
+>>    443		struct nfs_pgio_data *data = calldata;
+>>    444		int err;
+>>    445		err = NFS_PROTO(data->header->inode)->pgio_rpc_prepare(task, data);
+>>    446		if (err)
+>>    447			rpc_exit(task, err);
+>>    448	}
+>>    449	
+>>    450	int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
+>>    451			      const struct rpc_call_ops *call_ops, int how, int flags)
+>>    452	{
+>>  > 453		struct inode *inode = data->header->inode;
+>>    454		struct rpc_task *task;
+>>    455		struct rpc_message msg = {
+>>    456			.rpc_argp = &data->args,
+>>    457			.rpc_resp = &data->res,
+>>    458			.rpc_cred = data->header->cred,
+>>    459		};
+>>    460		struct rpc_task_setup task_setup_data = {
+>>    461			.rpc_client = clnt,
+>>
+>> ---
+>> 0-DAY kernel build testing backend              Open Source Technology Center
+>> http://lists.01.org/mailman/listinfo/kbuild                 Intel Corporation
+> Fixing this up using:
+>
+> From 86e52bd318d0fda06c6c9829ec54f693bd669b30 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date: Thu, 29 May 2014 11:04:51 -0400
+> Subject: [PATCH] fixup! NFS: Create a common initiate_pgio() function
+>
+> ---
+>  fs/nfs/pagelist.c | 5 ++---
+>  1 file changed, 2 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index 0c4aac4c7ad9..fab78d13ee14 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -604,7 +604,6 @@ static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
+>  int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
+>  		      const struct rpc_call_ops *call_ops, int how, int flags)
+>  {
+> -	struct inode *inode = data->header->inode;
+>  	struct rpc_task *task;
+>  	struct rpc_message msg = {
+>  		.rpc_argp = &data->args,
+> @@ -627,8 +626,8 @@ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
+>  	dprintk("NFS: %5u initiated pgio call "
+>  		"(req %s/%llu, %u bytes @ offset %llu)\n",
+>  		data->task.tk_pid,
+> -		inode->i_sb->s_id,
+> -		(unsigned long long)NFS_FILEID(inode),
+> +		data->header->inode->i_sb->s_id,
+> +		(unsigned long long)NFS_FILEID(data->header->inode),
+>  		data->args.count,
+>  		(unsigned long long)data->args.offset);
+>  
 
---b.
