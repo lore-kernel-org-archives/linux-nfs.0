@@ -1,67 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f172.google.com ([209.85.213.172]:40349 "EHLO
-	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750727AbaEATOh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 15:14:37 -0400
-Received: by mail-ig0-f172.google.com with SMTP id uy17so889075igb.5
-        for <linux-nfs@vger.kernel.org>; Thu, 01 May 2014 12:14:37 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 0/3] nfs: get rid of nfs_pgio_data, related cleanup
-Date: Thu,  1 May 2014 15:14:50 -0400
-Message-Id: <1398971693-82399-1-git-send-email-dros@primarydata.com>
+Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:30847 "EHLO
+	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751206AbaE2Sg2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 14:36:28 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Steve Wise <swise@opengridcomputing.com>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
+CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>
+Subject: RE: [PATCH v5 00/24] Series short description
+Date: Thu, 29 May 2014 18:36:25 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE0117D@CMEXMB1.ad.emulex.com>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+ <005501cf7b5f$4e4359a0$eaca0ce0$@opengridcomputing.com>
+ <EE7902D3F51F404C82415C4803930ACD3FE01148@CMEXMB1.ad.emulex.com>
+ <007001cf7b6c$3375b430$9a611c90$@opengridcomputing.com>
+In-Reply-To: <007001cf7b6c$3375b430$9a611c90$@opengridcomputing.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'd like to know what people think of this proposed cleanup - it is to be
-applied on top of the "pgio" branch at:
-
- git://git.linux-nfs.org/projects/dros/linux-nfs.git
-
-The basic idea is that we no longer need a separate nfs_pgio_data structure,
-because the nfs_pgio_header structure always has one - and only one.
-
-I know this changes a lot of files, but I think now is the time to do this,
-as we have to test everything anyways due to my subpage work and Anna's
-pgio cleanup.
-
-I should note that there is little chance we'll ever go back to having more
-than one nfs_pgio_data per nfs_pgio_header - since the nfs_page subpage
-splitting work allows us to describe arbitrary ranges at that level.
-
-I think I can go a bit further by getting rid of the pgio_header refcnt.
-I'll look closer at this soon...
-
- -dros
-
-Weston Andros Adamson (3):
-  nfs: move nfs_pgio_data and remove nfs_rw_header
-  nfs: rename members of nfs_pgio_data
-  nfs: merge nfs_pgio_data into _header
-
- fs/nfs/blocklayout/blocklayout.c |  99 +++++++++++----------
- fs/nfs/direct.c                  |   8 +-
- fs/nfs/internal.h                |  10 +--
- fs/nfs/nfs3proc.c                |  21 +++--
- fs/nfs/nfs4_fs.h                 |   6 +-
- fs/nfs/nfs4filelayout.c          | 169 +++++++++++++++++------------------
- fs/nfs/nfs4proc.c                | 105 +++++++++++-----------
- fs/nfs/nfs4trace.h               |  28 +++---
- fs/nfs/objlayout/objio_osd.c     |  24 +++--
- fs/nfs/objlayout/objlayout.c     |  81 ++++++++---------
- fs/nfs/objlayout/objlayout.h     |   8 +-
- fs/nfs/pageio.c                  | 186 ++++++++++++++++-----------------------
- fs/nfs/pnfs.c                    |  96 ++++++++------------
- fs/nfs/pnfs.h                    |  10 +--
- fs/nfs/proc.c                    |  27 +++---
- fs/nfs/read.c                    |  48 +++++-----
- fs/nfs/write.c                   |  65 +++++++-------
- include/linux/nfs_fs.h           |   2 +-
- include/linux/nfs_page.h         |  13 +--
- include/linux/nfs_xdr.h          |  31 +++----
- 20 files changed, 489 insertions(+), 548 deletions(-)
-
--- 
-1.8.5.2 (Apple Git-48)
-
+T2theSwgSSB3aWxsIHJldGVzdCB5b3VyIHYzIHNvbWV3aGVyZSBhZnRlciA0dGggSnVuZSAyMDE0
+Lg0KDQotVGhhbmtzDQogRGV2ZXNoDQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4g
+RnJvbTogU3RldmUgV2lzZSBbbWFpbHRvOnN3aXNlQG9wZW5ncmlkY29tcHV0aW5nLmNvbV0NCj4g
+U2VudDogRnJpZGF5LCBNYXkgMzAsIDIwMTQgMTI6MDEgQU0NCj4gVG86IERldmVzaCBTaGFybWE7
+ICdDaHVjayBMZXZlcic7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LQ0KPiByZG1h
+QHZnZXIua2VybmVsLm9yZw0KPiBDYzogQW5uYS5TY2h1bWFrZXJAbmV0YXBwLmNvbQ0KPiBTdWJq
+ZWN0OiBSRTogW1BBVENIIHY1IDAwLzI0XSBTZXJpZXMgc2hvcnQgZGVzY3JpcHRpb24NCj4gDQo+
+IE5vdGUgSSBqdXN0IHRvZGF5IHB1Ymxpc2hlZCBhIG5ldyBzaW5nbGUgcGF0Y2ggZm9yIHRoZSBz
+ZXJ2ZXIgcmVmYWN0b3IgY2hhbmdlLg0KPiBUaGlzIGlzIFYzIG9mIHRoZSBwYXRjaC4gIEl0IGhh
+cyBhIGNyaXRpY2FsIGJ1ZyBmaXggZnJvbSB0aGUgVjIgdmVyc2lvbiB5b3UncmUNCj4gdXNpbmcu
+ICBQbGVhc2UgdXNlIHRoZSBWMyBwYXRjaCBnb2luZyBmb3J3YXJkLiAgVGhlIGJ1ZyBvbmx5IG1h
+bmlmZXN0ZWQNCj4gd2hlbiB1c2luZyBORlN2NCBhbmQgY2VydGFpbiB0ZXN0cyB0aG91Z2guLi4N
+Cj4gDQo+IFNlZTogaHR0cHM6Ly9wYXRjaHdvcmsua2VybmVsLm9yZy9wYXRjaC80MjY2NTUxLw0K
+PiANCj4gU3RldmUNCj4gDQo+ID4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPiBGcm9t
+OiBEZXZlc2ggU2hhcm1hIFttYWlsdG86RGV2ZXNoLlNoYXJtYUBFbXVsZXguQ29tXQ0KPiA+IFNl
+bnQ6IFRodXJzZGF5LCBNYXkgMjksIDIwMTQgMToyOCBQTQ0KPiA+IFRvOiBTdGV2ZSBXaXNlOyAn
+Q2h1Y2sgTGV2ZXInOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnOw0KPiA+IGxpbnV4LXJkbWFA
+dmdlci5rZXJuZWwub3JnDQo+ID4gQ2M6IEFubmEuU2NodW1ha2VyQG5ldGFwcC5jb20NCj4gPiBT
+dWJqZWN0OiBSRTogW1BBVENIIHY1IDAwLzI0XSBTZXJpZXMgc2hvcnQgZGVzY3JpcHRpb24NCj4g
+Pg0KPiA+IFdpdGggRW11bGV4IGRldmljZSB0aGlzIHNlcmllcyBpcyB0ZXN0ZWQgSSBydW4gaW96
+b25lIGFuZCBjdGhvbjA0LiBObw0KPiA+IHJlZ3Jlc3Npb25zLCBjYWJsZSBwdWxsIHRlc3QgaXMg
+cGVuZGluZy4NCj4gPiBJIGluY2x1ZGVkIFN0ZXZlJ3MgKHRoZSAzIHBhdGNoZXMgd2hpY2ggaGUg
+cG9zdGVkIHJlY2VudGx5KSBzZXJ2ZXIgc2lkZQ0KPiBjaGFuZ2VzIGFzIHdlbGwuDQo+ID4NCj4g
+PiAtUmVncmRzDQo+ID4gIERldmVzaA0KPiA+DQo+ID4gPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2Ut
+LS0tLQ0KPiA+ID4gRnJvbTogbGludXgtcmRtYS1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0
+bzpsaW51eC1yZG1hLQ0KPiA+ID4gb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2Yg
+U3RldmUgV2lzZQ0KPiA+ID4gU2VudDogVGh1cnNkYXksIE1heSAyOSwgMjAxNCAxMDoyOSBQTQ0K
+PiA+ID4gVG86ICdDaHVjayBMZXZlcic7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc7DQo+ID4g
+PiBsaW51eC1yZG1hQHZnZXIua2VybmVsLm9yZw0KPiA+ID4gQ2M6IEFubmEuU2NodW1ha2VyQG5l
+dGFwcC5jb20NCj4gPiA+IFN1YmplY3Q6IFJFOiBbUEFUQ0ggdjUgMDAvMjRdIFNlcmllcyBzaG9y
+dCBkZXNjcmlwdGlvbg0KPiA+ID4NCj4gPiA+IEkgdGVzdGVkIHRoaXMgc2VyaWVzIG92ZXIgY3hn
+YjQgYW5kIG1seDQsIHJ1bm5pbmcgY3Rob24wNCwgZmlvDQo+ID4gPiByZWFkL3JhbmQtcncsIGFu
+ZCB4ZnN0ZXN0cywgYW5kIG92ZXIgbXRoY2EgY3Rob24wNC4gIE5vIHJlZ3Jlc3Npb25zLg0KPiA+
+ID4NCj4gPiA+IFRlc3RlZC1ieTogU3RldmUgV2lzZSA8c3dpc2VAb3BlbmdyaWRjb21wdXRpbmcu
+Y29tPg0KPiA+ID4NCj4gPiA+IC0tDQo+ID4gPiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlz
+dDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUNCj4gPiA+IGxpbnV4LXJkbWEiIGluIHRoZSBi
+b2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+ID4gPiBNb3Jl
+IG1ham9yZG9tbyBpbmZvIGF0IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8u
+aHRtbA0KDQo=
