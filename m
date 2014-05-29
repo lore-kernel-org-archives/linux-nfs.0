@@ -1,83 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38592 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757651AbaEKUxC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:02 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 24/43] nfsd4: more precise nfsd4_max_reply
-Date: Sun, 11 May 2014 16:52:29 -0400
-Message-Id: <1399841568-19716-25-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Received: from mail-ve0-f172.google.com ([209.85.128.172]:62155 "EHLO
+	mail-ve0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932372AbaE2Rd1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 13:33:27 -0400
+Received: by mail-ve0-f172.google.com with SMTP id oz11so776542veb.17
+        for <linux-nfs@vger.kernel.org>; Thu, 29 May 2014 10:33:26 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1401384351-21993-2-git-send-email-smayhew@redhat.com>
+References: <1401384351-21993-1-git-send-email-smayhew@redhat.com>
+	<1401384351-21993-2-git-send-email-smayhew@redhat.com>
+Date: Thu, 29 May 2014 13:33:26 -0400
+Message-ID: <CAHQdGtRzQVWHov8q6Ywzh2CGzcS5niEVLg7LuHmZFr6EjZbSUw@mail.gmail.com>
+Subject: Re: [PATCH 1/1] nfs: Ensure NFS_MOUNT_TCP is correctly set for v4 mounts
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, May 29, 2014 at 1:25 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+> The NFS_MOUNT_TCP flag needs to be correctly set in the nfs_server->flags
+> field, otherwise remount operations are likely to run afoul of the flags
+> check in nfs_compare_remount_data() on systems where /etc/mtab is
+> symlinked to /proc/mounts.
+>
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+>  fs/nfs/super.c | 3 +++
+>  1 file changed, 3 insertions(+)
+>
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index 2cb5694..0ae4e73 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -2726,6 +2726,9 @@ static void nfs4_validate_mount_flags(struct nfs_parsed_mount_data *args)
+>  {
+>         args->flags &= ~(NFS_MOUNT_NONLM|NFS_MOUNT_NOACL|NFS_MOUNT_VER3|
+>                          NFS_MOUNT_LOCAL_FLOCK|NFS_MOUNT_LOCAL_FCNTL);
+> +
+> +       if (args->nfs_server.protocol == XPRT_TRANSPORT_TCP)
+> +               args->flags |= NFS_MOUNT_TCP;
+>  }
+>
+>  /*
+> --
+> 1.9.0
+>
 
----
- fs/nfsd/nfs4xdr.c |   27 ++++++++-------------------
- 1 file changed, 8 insertions(+), 19 deletions(-)
+Hi Scott,
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d418d7e..19071d7 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1614,22 +1614,12 @@ nfsd4_opnum_in_range(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
-  * use pages beyond the first one, so the maximum possible length is the
-  * maximum over these values, not the sum.
-  */
--static int nfsd4_max_reply(u32 opnum)
-+static int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
- {
--	switch (opnum) {
--	case OP_READLINK:
--	case OP_READDIR:
--		/*
--		 * Both of these ops take a single page for data and put
--		 * the head and tail in another page:
--		 */
--		return 2 * PAGE_SIZE;
--	case OP_GETATTR:
--	case OP_READ:
--		return INT_MAX;
--	default:
--		return PAGE_SIZE;
--	}
-+	struct nfsd4_operation *opdesc = OPDESC(op);
-+	nfsd4op_rsize estimator = opdesc->op_rsize_bop;
-+
-+	return estimator ? estimator(rqstp, op) : PAGE_SIZE;
- }
- 
- static __be32
-@@ -1638,7 +1628,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	DECODE_HEAD;
- 	struct nfsd4_op *op;
- 	bool cachethis = false;
--	int max_reply = PAGE_SIZE;
-+	int max_reply = 2 * RPC_MAX_AUTH_SIZE; /* uh, kind of a guess */
- 	int i;
- 
- 	READ_BUF(4);
-@@ -1689,13 +1679,12 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 		 */
- 		cachethis |= nfsd4_cache_this_op(op);
- 
--		max_reply = max(max_reply, nfsd4_max_reply(op->opnum));
-+		max_reply += nfsd4_max_reply(argp->rqstp, op);
- 	}
- 	/* Sessions make the DRC unnecessary: */
- 	if (argp->minorversion)
- 		cachethis = false;
--	if (max_reply != INT_MAX)
--		svc_reserve(argp->rqstp, max_reply);
-+	svc_reserve(argp->rqstp, max_reply);
- 	argp->rqstp->rq_cachetype = cachethis ? RC_REPLBUFF : RC_NOCACHE;
- 
- 	DECODE_TAIL;
+Why can't we just apply the NFS_MOUNT_CMP_FLAGMASK to
+nfs_compare_remount_data? NFS_MOUNT_TCP really is just legacy crud
+from the bad old days of binary mount structures.
+
+Cheers
+  Trond
+
 -- 
-1.7.9.5
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
