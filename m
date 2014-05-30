@@ -1,64 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f44.google.com ([209.85.219.44]:49225 "EHLO
-	mail-oa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751151AbaEXD1J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 23:27:09 -0400
-Received: by mail-oa0-f44.google.com with SMTP id o6so6446533oag.3
-        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 20:27:09 -0700 (PDT)
-Message-ID: <53801179.8080502@gmail.com>
-Date: Sat, 24 May 2014 11:26:49 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH] NFSD: Using type of uint32_t for ex_nflavors instead of int
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:54687 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751158AbaE3A3b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 20:29:31 -0400
+Received: by mail-ig0-f175.google.com with SMTP id uq10so204032igb.2
+        for <linux-nfs@vger.kernel.org>; Thu, 29 May 2014 17:29:30 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Boaz Harrosh <bharrosh@panasas.com>
+Subject: [PATCH] pNFS: Handle allocation errors correctly in objlayout_alloc_layout_hdr()
+Date: Thu, 29 May 2014 20:29:18 -0400
+Message-Id: <1401409758-8035-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ex_nflavors can't be negative number, just defined by uint32_t.
+Return the NULL pointer when the allocation fails.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/export.c | 7 ++++---
- fs/nfsd/export.h | 2 +-
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ fs/nfs/objlayout/objlayout.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 8513c59..9343ae2 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -437,13 +437,14 @@ out_free_all:
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 2f955f671003..765d3f54e986 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -53,10 +53,10 @@ objlayout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
+ 	struct objlayout *objlay;
  
- static int secinfo_parse(char **mesg, char *buf, struct svc_export *exp)
- {
--	int listsize, err;
- 	struct exp_flavor_info *f;
-+	u32 listsize;
-+	int err;
- 
--	err = get_int(mesg, &listsize);
-+	err = get_uint(mesg, &listsize);
- 	if (err)
- 		return err;
--	if (listsize < 0 || listsize > MAX_SECINFO_LIST)
-+	if (listsize > MAX_SECINFO_LIST)
- 		return -EINVAL;
- 
- 	for (f = exp->ex_flavors; f < exp->ex_flavors + listsize; f++) {
-diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-index d7939a6..11d03b9 100644
---- a/fs/nfsd/export.h
-+++ b/fs/nfsd/export.h
-@@ -53,7 +53,7 @@ struct svc_export {
- 	int			ex_fsid;
- 	unsigned char *		ex_uuid; /* 16 byte fsid */
- 	struct nfsd4_fs_locations ex_fslocs;
--	int			ex_nflavors;
-+	uint32_t		ex_nflavors;
- 	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
- 	struct cache_detail	*cd;
- };
+ 	objlay = kzalloc(sizeof(struct objlayout), gfp_flags);
+-	if (objlay) {
+-		spin_lock_init(&objlay->lock);
+-		INIT_LIST_HEAD(&objlay->err_list);
+-	}
++	if (!objlay)
++		return NULL;
++	spin_lock_init(&objlay->lock);
++	INIT_LIST_HEAD(&objlay->err_list);
+ 	dprintk("%s: Return %p\n", __func__, objlay);
+ 	return &objlay->pnfs_layout;
+ }
 -- 
 1.9.3
 
