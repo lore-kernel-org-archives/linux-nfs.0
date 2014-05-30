@@ -1,68 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f42.google.com ([209.85.219.42]:43339 "EHLO
-	mail-oa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751151AbaEXDUS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 23:20:18 -0400
-Received: by mail-oa0-f42.google.com with SMTP id j17so6483914oag.29
-        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 20:20:17 -0700 (PDT)
-Message-ID: <53800FDD.7030001@gmail.com>
-Date: Sat, 24 May 2014 11:19:57 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH v2] NFSD: Error out when getting more than one fsloc/secinfo/uuid
-References: <537F38AB.10102@gmail.com> <20140523135435.GK25423@fieldses.org> <537F5A1A.9000005@gmail.com> <20140523144128.GO25423@fieldses.org>
-In-Reply-To: <20140523144128.GO25423@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:59534 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755624AbaE3NJr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2014 09:09:47 -0400
+Received: by mail-qg0-f52.google.com with SMTP id a108so5108254qge.25
+        for <linux-nfs@vger.kernel.org>; Fri, 30 May 2014 06:09:46 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: trond.myklebust@primarydata.com, bhalevy@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 2/9] nfsd: fix laundromat next-run-time calculation
+Date: Fri, 30 May 2014 09:09:26 -0400
+Message-Id: <1401455373-18207-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
+References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-remove WARN_ON_ONCE(1) and return -EINVAL instead of ignoring it. 
+The laundromat uses two variables to calculate when it should next run,
+but one is completely ignored at the end of the run. Merge the two and
+rename the variable to be more descriptive of what it does.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/export.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ fs/nfsd/nfs4state.c | 22 ++++++++--------------
+ 1 file changed, 8 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 7884051..13b85f9 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -389,6 +389,10 @@ fsloc_parse(char **mesg, char *buf, struct nfsd4_fs_locations *fsloc)
- 	int len;
- 	int migrated, i, err;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e85b8811aad3..be6199cc8711 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3385,8 +3385,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	struct nfs4_delegation *dp;
+ 	struct list_head *pos, *next, reaplist;
+ 	time_t cutoff = get_seconds() - nn->nfsd4_lease;
+-	time_t t, clientid_val = nn->nfsd4_lease;
+-	time_t u, test_val = nn->nfsd4_lease;
++	time_t t, new_timeo = nn->nfsd4_lease;
  
-+	/* more than one fsloc */
-+	if (fsloc->locations)
-+		return -EINVAL;
-+
- 	/* listsize */
- 	err = get_uint(mesg, &fsloc->locations_count);
- 	if (err)
-@@ -442,6 +446,10 @@ static int secinfo_parse(char **mesg, char *buf, struct svc_export *exp)
- 	u32 listsize;
- 	int err;
+ 	nfs4_lock_state();
  
-+	/* more than one secinfo */
-+	if (exp->ex_nflavors)
-+		return -EINVAL;
-+
- 	err = get_uint(mesg, &listsize);
- 	if (err)
- 		return err;
-@@ -481,6 +489,10 @@ uuid_parse(char **mesg, char *buf, unsigned char **puuid)
- {
- 	int len;
+@@ -3398,8 +3397,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		clp = list_entry(pos, struct nfs4_client, cl_lru);
+ 		if (time_after((unsigned long)clp->cl_time, (unsigned long)cutoff)) {
+ 			t = clp->cl_time - cutoff;
+-			if (clientid_val > t)
+-				clientid_val = t;
++			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+ 		if (mark_client_expired_locked(clp)) {
+@@ -3422,9 +3420,8 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		if (net_generic(dp->dl_stid.sc_client->net, nfsd_net_id) != nn)
+ 			continue;
+ 		if (time_after((unsigned long)dp->dl_time, (unsigned long)cutoff)) {
+-			u = dp->dl_time - cutoff;
+-			if (test_val > u)
+-				test_val = u;
++			t = dp->dl_time - cutoff;
++			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+ 		list_move(&dp->dl_recall_lru, &reaplist);
+@@ -3434,21 +3431,18 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+ 		revoke_delegation(dp);
+ 	}
+-	test_val = nn->nfsd4_lease;
+ 	list_for_each_safe(pos, next, &nn->close_lru) {
+ 		oo = container_of(pos, struct nfs4_openowner, oo_close_lru);
+ 		if (time_after((unsigned long)oo->oo_time, (unsigned long)cutoff)) {
+-			u = oo->oo_time - cutoff;
+-			if (test_val > u)
+-				test_val = u;
++			t = oo->oo_time - cutoff;
++			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+ 		release_openowner(oo);
+ 	}
+-	if (clientid_val < NFSD_LAUNDROMAT_MINTIMEOUT)
+-		clientid_val = NFSD_LAUNDROMAT_MINTIMEOUT;
++	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ 	nfs4_unlock_state();
+-	return clientid_val;
++	return new_timeo;
+ }
  
-+	/* more than one uuid */
-+	if (*puuid)
-+		return -EINVAL;
-+
- 	/* expect a 16 byte uuid encoded as \xXXXX... */
- 	len = qword_get(mesg, buf, PAGE_SIZE);
- 	if (len != EX_UUID_LEN)
+ static struct workqueue_struct *laundry_wq;
 -- 
 1.9.3
 
