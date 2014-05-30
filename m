@@ -1,55 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:58107 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932498AbaE3NJz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2014 09:09:55 -0400
-Received: by mail-qg0-f51.google.com with SMTP id q107so5102967qgd.38
-        for <linux-nfs@vger.kernel.org>; Fri, 30 May 2014 06:09:54 -0700 (PDT)
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:42665 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932498AbaE3NJu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2014 09:09:50 -0400
+Received: by mail-qg0-f47.google.com with SMTP id j107so5121789qga.20
+        for <linux-nfs@vger.kernel.org>; Fri, 30 May 2014 06:09:49 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: trond.myklebust@primarydata.com, bhalevy@primarydata.com,
         linux-nfs@vger.kernel.org
-Subject: [PATCH 7/9] nfsd4: hash deleg stateid only on successful nfs4_set_delegation
-Date: Fri, 30 May 2014 09:09:31 -0400
-Message-Id: <1401455373-18207-8-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH 4/9] nfsd: fix setting of NFS4_OO_CONFIRMED in nfsd4_open
+Date: Fri, 30 May 2014 09:09:28 -0400
+Message-Id: <1401455373-18207-5-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
 References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@primarydata.com>
+In the NFS4_OPEN_CLAIM_PREVIOUS case, we should only mark it confirmed
+if the nfs4_check_open_reclaim check succeeds.
 
-We don't want the stateid to be found in the hash table before the delegation
-is granted.
+In the NFS4_OPEN_CLAIM_DELEG_PREV_FH and NFS4_OPEN_CLAIM_DELEGATE_PREV
+cases, I see no point in declaring the openowner confirmed when the
+operation is going to fail anyway, and doing so might allow the client
+to game things such that it wouldn't need to confirm a subsequent open
+with the same owner.
 
-Currently this is protected by the client_mutex, but we want to break that
-up and this is a necessary step toward that goal.
-
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/nfs4proc.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 040000de3732..a500033a2f87 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -375,7 +375,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
- 	if (dp == NULL)
- 		return dp;
--	dp->dl_stid.sc_type = NFS4_DELEG_STID;
- 	/*
- 	 * delegation seqid's are never incremented.  The 4.1 special
- 	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
-@@ -438,6 +437,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
- 	lockdep_assert_held(&state_lock);
- 
-+	dp->dl_stid.sc_type = NFS4_DELEG_STID;
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- }
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 2517e0bf5751..a1e16103a0bf 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -430,12 +430,12 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 				goto out;
+ 			break;
+ 		case NFS4_OPEN_CLAIM_PREVIOUS:
+-			open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
+ 			status = nfs4_check_open_reclaim(&open->op_clientid,
+ 							 cstate->minorversion,
+ 							 nn);
+ 			if (status)
+ 				goto out;
++			open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
+ 		case NFS4_OPEN_CLAIM_FH:
+ 		case NFS4_OPEN_CLAIM_DELEG_CUR_FH:
+ 			status = do_open_fhandle(rqstp, cstate, open);
+@@ -445,7 +445,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			break;
+ 		case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
+              	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
+-			open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
+ 			dprintk("NFSD: unsupported OPEN claim type %d\n",
+ 				open->op_claim_type);
+ 			status = nfserr_notsupp;
 -- 
 1.9.3
 
