@@ -1,130 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:37074 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751912AbaEOP5V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:21 -0400
-Received: by mail-ig0-f182.google.com with SMTP id uy17so1164195igb.15
-        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:20 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH v3 09/18] nfs: page group support in nfs_mark_uptodate
-Date: Thu, 15 May 2014 11:56:48 -0400
-Message-Id: <1400169417-28245-10-git-send-email-dros@primarydata.com>
-In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
-References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:51906 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752186AbaE3NJs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2014 09:09:48 -0400
+Received: by mail-qg0-f49.google.com with SMTP id a108so5099728qge.36
+        for <linux-nfs@vger.kernel.org>; Fri, 30 May 2014 06:09:48 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: trond.myklebust@primarydata.com, bhalevy@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 3/9] nfsd4: use recall_lock for delegation hashing
+Date: Fri, 30 May 2014 09:09:27 -0400
+Message-Id: <1401455373-18207-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
+References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change how nfs_mark_uptodate checks to see if writes cover a whole page.
+From: Benny Halevy <bhalevy@primarydata.com>
 
-This patch should have no effect yet since all page groups currently
-have one request, but will come into play when pg_test functions are
-modified to split pages into sub-page regions.
+This fixes a bug in the handling of the fi_delegations list.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+nfs4_setlease does not hold the recall_lock when adding to it. The
+client_mutex is held, which prevents against concurrent list changes,
+but nfsd_break_deleg_cb does not hold while walking it. New delegations
+could theoretically creep onto the list while we're walking it there.
+
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/write.c | 74 ++++++++++++++++++++++++++++++++++++++++++++++++++++------
- 1 file changed, 67 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4state.c | 20 +++++++++++++++-----
+ 1 file changed, 15 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5d75276..17b9895 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -154,18 +154,78 @@ static void nfs_set_pageerror(struct page *page)
- 	nfs_zap_mapping(page_file_mapping(page)->host, page_file_mapping(page));
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index be6199cc8711..96bdd90b96b1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -433,12 +433,21 @@ static void unhash_stid(struct nfs4_stid *s)
+ 	s->sc_type = 0;
  }
  
-+/*
-+ * nfs_page_group_search_locked
-+ * @head - head request of page group
-+ * @page_offset - offset into page
-+ *
-+ * Search page group with head @head to find a request that contains the
-+ * page offset @page_offset.
-+ *
-+ * Returns a pointer to the first matching nfs request, or NULL if no
-+ * match is found.
-+ *
-+ * Must be called with the page group lock held
-+ */
-+static struct nfs_page *
-+nfs_page_group_search_locked(struct nfs_page *head, unsigned int page_offset)
++static void
++hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
 +{
-+	struct nfs_page *req;
++	lockdep_assert_held(&recall_lock);
 +
-+	WARN_ON_ONCE(head != head->wb_head);
-+	WARN_ON_ONCE(!test_bit(PG_HEADLOCK, &head->wb_head->wb_flags));
-+
-+	req = head;
-+	do {
-+		if (page_offset >= req->wb_pgbase &&
-+		    page_offset < (req->wb_pgbase + req->wb_bytes))
-+			return req;
-+
-+		req = req->wb_this_page;
-+	} while (req != head);
-+
-+	return NULL;
++	list_add(&dp->dl_perfile, &fp->fi_delegations);
++	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
 +}
 +
-+/*
-+ * nfs_page_group_covers_page
-+ * @head - head request of page group
-+ *
-+ * Return true if the page group with head @head covers the whole page,
-+ * returns false otherwise
-+ */
-+static bool nfs_page_group_covers_page(struct nfs_page *req)
-+{
-+	struct nfs_page *tmp;
-+	unsigned int pos = 0;
-+	unsigned int len = nfs_page_length(req->wb_page);
-+
-+	nfs_page_group_lock(req);
-+
-+	do {
-+		tmp = nfs_page_group_search_locked(req->wb_head, pos);
-+		if (tmp) {
-+			/* no way this should happen */
-+			WARN_ON_ONCE(tmp->wb_pgbase != pos);
-+			pos += tmp->wb_bytes - (pos - tmp->wb_pgbase);
-+		}
-+	} while (tmp && pos < len);
-+
-+	nfs_page_group_unlock(req);
-+	WARN_ON_ONCE(pos > len);
-+	return pos == len;
-+}
-+
- /* We can set the PG_uptodate flag if we see that a write request
-  * covers the full page.
-  */
--static void nfs_mark_uptodate(struct page *page, unsigned int base, unsigned int count)
-+static void nfs_mark_uptodate(struct nfs_page *req)
+ /* Called under the state lock. */
+ static void
+ unhash_delegation(struct nfs4_delegation *dp)
  {
--	if (PageUptodate(page))
--		return;
--	if (base != 0)
-+	if (PageUptodate(req->wb_page))
- 		return;
--	if (count != nfs_page_length(page))
-+	if (!nfs_page_group_covers_page(req))
- 		return;
--	SetPageUptodate(page);
-+	SetPageUptodate(req->wb_page);
+-	list_del_init(&dp->dl_perclnt);
+ 	spin_lock(&recall_lock);
++	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_perfile);
+ 	list_del_init(&dp->dl_recall_lru);
+ 	spin_unlock(&recall_lock);
+@@ -3053,11 +3062,12 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+ 	if (status)
+ 		goto out_free;
+-	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ 	fp->fi_lease = fl;
+ 	fp->fi_deleg_file = get_file(fl->fl_file);
+ 	atomic_set(&fp->fi_delegees, 1);
+-	list_add(&dp->dl_perfile, &fp->fi_delegations);
++	spin_lock(&recall_lock);
++	hash_delegation_locked(dp, fp);
++	spin_unlock(&recall_lock);
+ 	return 0;
+ out_free:
+ 	locks_free_lock(fl);
+@@ -3078,9 +3088,8 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 		spin_unlock(&recall_lock);
+ 		return -EAGAIN;
+ 	}
+-	list_add(&dp->dl_perfile, &fp->fi_delegations);
++	hash_delegation_locked(dp, fp);
+ 	spin_unlock(&recall_lock);
+-	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ 	return 0;
  }
  
- static int wb_priority(struct writeback_control *wbc)
-@@ -796,7 +856,7 @@ static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
- 		return PTR_ERR(req);
- 	/* Update file length */
- 	nfs_grow_file(page, offset, count);
--	nfs_mark_uptodate(page, req->wb_pgbase, req->wb_bytes);
-+	nfs_mark_uptodate(req);
- 	nfs_mark_request_dirty(req);
- 	nfs_unlock_and_release_request(req);
- 	return 0;
+@@ -4891,6 +4900,7 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+ 	struct nfs4_delegation *dp, *next;
+ 	u64 count = 0;
+ 
++	lockdep_assert_held(&recall_lock);
+ 	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
+ 		if (victims)
+ 			list_move(&dp->dl_recall_lru, victims);
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
