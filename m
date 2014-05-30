@@ -1,39 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6987 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932999AbaEMOst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 May 2014 10:48:49 -0400
-Date: Tue, 13 May 2014 10:48:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfsd4 xdr encoding fixes v2
-Message-ID: <20140513144826.GB17206@pad.redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
- <20140512082059.GC14194@infradead.org>
- <20140512160740.GE2633@pad.redhat.com>
- <20140512161128.GA1591@infradead.org>
- <20140513110945.GA9461@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140513110945.GA9461@infradead.org>
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:57949 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755562AbaE3LiM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2014 07:38:12 -0400
+Received: by mail-ig0-f177.google.com with SMTP id l13so678520iga.16
+        for <linux-nfs@vger.kernel.org>; Fri, 30 May 2014 04:38:11 -0700 (PDT)
+Message-ID: <1401449890.4645.1.camel@leira.trondhjem.org>
+Subject: Re: [PATCH] NFS: Use smp_mb__{before,after}_atomic()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Thierry Reding <thierry.reding@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Fri, 30 May 2014 06:38:10 -0500
+In-Reply-To: <1401440815-4227-1-git-send-email-thierry.reding@gmail.com>
+References: <1401440815-4227-1-git-send-email-thierry.reding@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 13, 2014 at 04:09:45AM -0700, Christoph Hellwig wrote:
-> On Mon, May 12, 2014 at 09:11:28AM -0700, Christoph Hellwig wrote:
-> > On Mon, May 12, 2014 at 12:07:41PM -0400, J. Bruce Fields wrote:
-> > > On Mon, May 12, 2014 at 01:20:59AM -0700, Christoph Hellwig wrote:
-> > > > This series seem to cause hangs during xfstests against a server on the
-> > > > same VM.  The trace is fairly similar every the hang happens, but the
-> > > > point at which it happens differs:
-> > > 
-> > > Ouch, OK, and you're sure it starts with this series?
-> > > 
-> > > I guess I should try to replicate it here.  Might take a copule days.
+On Fri, 2014-05-30 at 11:06 +0200, Thierry Reding wrote:
+> From: Thierry Reding <treding@nvidia.com>
 > 
-> Seems lile "nfsd4: allow exotic read compounds" is the culprit.
+> Commit febdbfe8a91c (arch: Prepare for smp_mb__{before,after}_atomic())
+> deprecated the smp_mb__{before,after}_{atomic,clear}_{dec,inc,bit}*()
+> functions in favour of the unified smp_mb__{before,after}_atomic().
 
-OK, it makes sense that the problem would be there.  Looking....
+Where is this commit? It doesn't seem to have hit upstream yet.
 
---b.
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
+
