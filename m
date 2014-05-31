@@ -1,103 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43405 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751039AbaEVTck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:40 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 24/52] nfsd4: remove redundant encode buffer size checking
-Date: Thu, 22 May 2014 15:31:59 -0400
-Message-Id: <1400787148-25941-25-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Received: from mail-we0-f173.google.com ([74.125.82.173]:33788 "EHLO
+	mail-we0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751329AbaEaSXO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 May 2014 14:23:14 -0400
+Date: Sat, 31 May 2014 20:22:37 +0200
+From: Richard Cochran <richardcochran@gmail.com>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: linux-kernel@vger.kernel.org, hch@infradead.org,
+        linux-mtd@lists.infradead.org, hpa@zytor.com, logfs@logfs.org,
+        linux-afs@lists.infradead.org, joseph@codesourcery.com,
+        linux-arch@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-scsi@vger.kernel.org, ceph-devel@vger.kernel.org,
+        codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
+        coda@cs.cmu.edu, geert@linux-m68k.org, linux-ext4@vger.kernel.org,
+        fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, john.stultz@linaro.org, tglx@linutronix.de,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        samba-technical@lists.samba.org,
+        linux-f2fs-devel@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        linux-fsdevel@vger.kernel.org, lftan@altera.com,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Message-ID: <20140531182237.GA5382@localhost.localdomain>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+ <20140531145114.GA3721@localhost.localdomain>
+ <6347520.8jMPlVsFjM@wuerfel>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <6347520.8jMPlVsFjM@wuerfel>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Sat, May 31, 2014 at 05:23:02PM +0200, Arnd Bergmann wrote:
+> 
+> It's an approximation:
 
-Now that all op encoders can handle running out of space, we no longer
-need to check the remaining size for every operation; only nonidempotent
-operations need that check, and that can be done by
-nfsd4_check_resp_size.
+(Approximately never ;)
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c | 14 --------------
- fs/nfsd/nfs4xdr.c  | 22 +++++++++++++---------
- 2 files changed, 13 insertions(+), 23 deletions(-)
+> with 64-bit timestamps, you can represent close to 300 billion
+> years, which is way past the time that our planet can sustain
+> life of any form[1].
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 694e1a5..9b57894 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1281,7 +1281,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	struct nfsd4_compound_state *cstate = &resp->cstate;
- 	struct svc_fh *current_fh = &cstate->current_fh;
- 	struct svc_fh *save_fh = &cstate->save_fh;
--	int		slack_bytes;
- 	u32		plen = 0;
- 	__be32		status;
- 
-@@ -1335,19 +1334,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 			goto encode_op;
- 		}
- 
--		/* We must be able to encode a successful response to
--		 * this operation, with enough room left over to encode a
--		 * failed response to the next operation.  If we don't
--		 * have enough room, fail with ERR_RESOURCE.
--		 */
--		slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
--		if (slack_bytes < COMPOUND_SLACK_SPACE
--				+ COMPOUND_ERR_SLACK_SPACE) {
--			BUG_ON(slack_bytes < COMPOUND_ERR_SLACK_SPACE);
--			op->status = nfserr_resource;
--			goto encode_op;
--		}
--
- 		opdesc = OPDESC(op);
- 
- 		if (!current_fh->fh_dentry) {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index be5793f..86caa98 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3753,20 +3753,24 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
- {
- 	struct xdr_buf *buf = &resp->rqstp->rq_res;
--	struct nfsd4_session *session = NULL;
-+	struct nfsd4_session *session = resp->cstate.session;
- 	struct nfsd4_slot *slot = resp->cstate.slot;
-+	int slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
- 
--	if (!nfsd4_has_session(&resp->cstate))
--		return 0;
-+	if (nfsd4_has_session(&resp->cstate)) {
- 
--	session = resp->cstate.session;
-+		if (buf->len + pad > session->se_fchannel.maxresp_sz)
-+			return nfserr_rep_too_big;
- 
--	if (buf->len + pad > session->se_fchannel.maxresp_sz)
--		return nfserr_rep_too_big;
-+		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
-+		    buf->len + pad > session->se_fchannel.maxresp_cached)
-+			return nfserr_rep_too_big_to_cache;
-+	}
- 
--	if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
--	    buf->len + pad > session->se_fchannel.maxresp_cached)
--		return nfserr_rep_too_big_to_cache;
-+	if (pad > slack_bytes) {
-+		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
-+		return nfserr_resource;
-+	}
- 
- 	return 0;
- }
--- 
-1.9.0
+Did you mean mean 64 bits worth of seconds?
 
+  2^64 / (3600*24*365) = 584,942,417,355
+
+That is more than 300 billion years, and still, it is not quite the
+same as "never".
+
+In any case, that term is not too helpful in the comparison table,
+IMHO. One could think that some sort of clever running count relative
+to the last mount time was implied.
+
+Thanks,
+Richard
+
+[1] You are forgetting the immortal robotic overlords.
