@@ -1,89 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:14096 "EHLO
-	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750858AbaETFm0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 May 2014 01:42:26 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Steve Wise <swise@opengridcomputing.com>,
-        "'J. Bruce Fields'" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "tom@opengridcomputing.com" <tom@opengridcomputing.com>
-Subject: RE: [PATCH V2 RFC 0/3] svcrdma: refactor marshalling logic
-Date: Tue, 20 May 2014 05:42:24 +0000
-Message-ID: <EE7902D3F51F404C82415C4803930ACD3FDFE525@CMEXMB1.ad.emulex.com>
-References: <20140506174621.18208.24242.stgit@build.ogc.int>
- <20140506192730.GK18281@fieldses.org>
- <53694F72.9010007@opengridcomputing.com>
- <EE7902D3F51F404C82415C4803930ACD3FDFE42E@CMEXMB1.ad.emulex.com>
- <00c301cf7396$878f0720$96ad1560$@opengridcomputing.com>
-In-Reply-To: <00c301cf7396$878f0720$96ad1560$@opengridcomputing.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from fieldses.org ([174.143.236.118]:56546 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932229AbaEaBMV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 30 May 2014 21:12:21 -0400
+Date: Fri, 30 May 2014 21:12:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC/NFSD: Remove using of dprintk with KERN_WARNING
+Message-ID: <20140531011218.GB27615@fieldses.org>
+References: <5386B52C.6000505@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5386B52C.6000505@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve,
+Thanks, applying.--b
 
-> -----Original Message-----
-> From: Steve Wise [mailto:swise@opengridcomputing.com]
-> Sent: Tuesday, May 20, 2014 12:44 AM
-> To: Devesh Sharma; 'J. Bruce Fields'
-> Cc: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org;
-> tom@opengridcomputing.com
-> Subject: RE: [PATCH V2 RFC 0/3] svcrdma: refactor marshalling logic
+On Thu, May 29, 2014 at 12:18:52PM +0800, Kinglong Mee wrote:
+> When debugging, rpc prints messages from dprintk(KERN_WARNING ...)
+> with "^A4" prefixed,
 > 
+> [ 2780.339988] ^A4nfsd: connect from unprivileged port: 127.0.0.1, port=35316
 > 
+> Trond tells,
+> > dprintk != printk. We have NEVER supported dprintk(KERN_WARNING...)
 > 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org
-> > [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Devesh Sharma
-> > Sent: Monday, May 19, 2014 2:07 PM
-> > To: Steve Wise; J. Bruce Fields
-> > Cc: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org;
-> > tom@opengridcomputing.com
-> > Subject: RE: [PATCH V2 RFC 0/3] svcrdma: refactor marshalling logic
-> >
-> > While testing with ocrdma driver I am finding server side SQ full.
-> > Following is the log,
-> yet to
-> > identify why it's happening. Once this is reported Client side crashes
-> > due to some
-> reason.
-> > My kdump is not working properly therefore I am not able to analyze
-> > the situation
-> properly.
-> >
-> > May 19 23:47:02 neo01-el64 kernel: svcrdma: RDMA_WRITE rmr=8008b12,
-> > to=45a2d790c, xdr_off=0, write_len=68, vec->sge=ffff88086cb4a0c8,
-> > vec->count=2 May 19 23:47:02 neo01-el64 kernel: svcrdma: send_reply
-> > returns 0 May 19 23:47:02 neo01-el64 kernel: svc: server
-> > ffff88086409a000 waiting for data (to =
-> > 3600000)
-> > May 19 23:47:02 neo01-el64 kernel: svc: transport ffff88087dfa2400
-> > served by daemon
-> > ffff88086409a000
-> > May 19 23:47:02 neo01-el64 kernel: svc: server ffff88086409a000, pool
-> > 0, transport ffff88087dfa2400, inuse=18 May 19 23:47:02 neo01-el64
-> > kernel: svcrdma: rqstp=ffff88086409a000 May 19 23:47:02 neo01-el64
-> > kernel: svcrdma: processing ctxt=ffff880866754540 on
-> > xprt=ffff88087dfa2400, rqstp=ffff88086409a000, status=0 May 19
-> > 23:47:02 neo01-el64 kernel: svcrdma: failed to post SQ WR rc=-22,
-> > sc_sq_count=0,
-> > sc_sq_depth=128
-> > May 19 23:47:02 neo01-el64 kernel: svcrdma: Error -22 posting
-> > RDMA_READ
+> This patch removes using of dprintk with KERN_WARNING.
 > 
-> Hey Deevesh,
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfsfh.c      | 5 ++---
+>  net/sunrpc/svcsock.c | 3 +--
+>  2 files changed, 3 insertions(+), 5 deletions(-)
 > 
-> Looking ocrdma_post_send(),-22 (-EINVAL) is returned when the QP is not in
-> RTS.  If the SQ is full, -ENOMEM is returned.  So I think the send error is a
-> downstream error because the connection got knocked down.  You should
-> try and figure out what kicked the QP out of RTS.
-
-Oh wow! I perfectly missed it, let me go through the logs once again and update you.
-
+> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+> index a337106..ec83934 100644
+> --- a/fs/nfsd/nfsfh.c
+> +++ b/fs/nfsd/nfsfh.c
+> @@ -88,9 +88,8 @@ static __be32 nfsd_setuser_and_check_port(struct svc_rqst *rqstp,
+>  	/* Check if the request originated from a secure port. */
+>  	if (!rqstp->rq_secure && !(flags & NFSEXP_INSECURE_PORT)) {
+>  		RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
+> -		dprintk(KERN_WARNING
+> -		       "nfsd: request from insecure port %s!\n",
+> -		       svc_print_addr(rqstp, buf, sizeof(buf)));
+> +		dprintk("nfsd: request from insecure port %s!\n",
+> +		        svc_print_addr(rqstp, buf, sizeof(buf)));
+>  		return nfserr_perm;
+>  	}
+>  
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index f3b8eb3..b507cd3 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -849,8 +849,7 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
+>  	 * tell us anything.  For now just warn about unpriv connections.
+>  	 */
+>  	if (!svc_port_is_privileged(sin)) {
+> -		dprintk(KERN_WARNING
+> -			"%s: connect from unprivileged port: %s\n",
+> +		dprintk("%s: connect from unprivileged port: %s\n",
+>  			serv->sv_name,
+>  			__svc_print_addr(sin, buf, sizeof(buf)));
+>  	}
+> -- 
+> 1.9.3
 > 
-> 
-> Steve.
-
