@@ -1,89 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:36700 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752126AbaEVA4T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:56:19 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 14/24] xprtrdma: Limit work done by completion handler
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:56:17 -0400
-Message-ID: <20140522005617.27190.95984.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from gproxy4-pub.mail.unifiedlayer.com ([69.89.23.142]:49060 "HELO
+	gproxy4-pub.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1756752AbaEaObO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 May 2014 10:31:14 -0400
+Message-ID: <1401546649.2413.6.camel@slavad-CELSIUS-H720>
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+From: Vyacheslav Dubeyko <slava@dubeyko.com>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
+        joseph@codesourcery.com, john.stultz@linaro.org, hch@infradead.org,
+        tglx@linutronix.de, geert@linux-m68k.org, lftan@altera.com,
+        hpa@zytor.com, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com, coda@cs.cmu.edu,
+        codalist@TELEMANN.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-scsi@vger.kernel.org, logfs@logfs.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        samba-technical@lists.samba.org, xfs@oss.sgi.com
+Date: Sat, 31 May 2014 18:30:49 +0400
+In-Reply-To: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sagi Grimberg <sagig@dev.mellanox.co.il> points out that a steady
-stream of CQ events could starve other work because of the boundless
-loop pooling in rpcrdma_{send,recv}_poll().
+Hi Arnd,
 
-Instead of a (potentially infinite) while loop, return after
-collecting a budgeted number of completions.
+On Fri, 2014-05-30 at 22:01 +0200, Arnd Bergmann wrote:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Acked-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
----
+[snip]
+> 
+> Arnd Bergmann (32):
+>   fs: introduce new 'struct inode_time'
+>   uapi: add struct __kernel_timespec{32,64}
+>   fs: introduce sys_utimens64at
+>   fs: introduce sys_newfstat64/sys_newfstatat64
+>   arch: hook up new stat and utimes syscalls
+>   isofs: fix timestamps beyond 2027
+>   fs/nfs: convert to struct inode_time
+>   fs/ceph: convert to 'struct inode_time'
+>   fs/pstore: convert to struct inode_time
+>   fs/coda: convert to struct inode_time
+>   xfs: convert to struct inode_time
+>   btrfs: convert to struct inode_time
+>   ext3: convert to struct inode_time
+>   ext4: convert to struct inode_time
+>   cifs: convert to struct inode_time
+>   ntfs: convert to struct inode_time
+>   ubifs: convert to struct inode_time
+>   ocfs2: convert to struct inode_time
+>   fs/fat: convert to struct inode_time
+>   afs: convert to struct inode_time
+>   udf: convert to struct inode_time
+>   fs: convert simple fs to inode_time
+>   logfs: convert to struct inode_time
+>   hfs, hfsplus: convert to struct inode_time
+>   gfs2: convert to struct inode_time
+>   reiserfs: convert to struct inode_time
+>   jffs2: convert to struct inode_time
+>   adfs: convert to struct inode_time
+>   f2fs: convert to struct inode_time
+>   fuse: convert to struct inode_time
+>   scsi: fnic: use current_kernel_time() for timestamp
+>   fs: use new inode_time definition unconditionally
+> 
 
- net/sunrpc/xprtrdma/verbs.c     |   10 ++++++----
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 2 files changed, 7 insertions(+), 4 deletions(-)
+By the way, what about NILFS2? Is NILFS2 ready for suggested approach
+without any changes?
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index b8caee9..1d08366 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -165,8 +165,9 @@ static int
- rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
- {
- 	struct ib_wc *wcs;
--	int count, rc;
-+	int budget, count, rc;
- 
-+	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
- 	do {
- 		wcs = ep->rep_send_wcs;
- 
-@@ -177,7 +178,7 @@ rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
- 		count = rc;
- 		while (count-- > 0)
- 			rpcrdma_sendcq_process_wc(wcs++);
--	} while (rc == RPCRDMA_POLLSIZE);
-+	} while (rc == RPCRDMA_POLLSIZE && --budget);
- 	return 0;
- }
- 
-@@ -254,8 +255,9 @@ static int
- rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
- {
- 	struct ib_wc *wcs;
--	int count, rc;
-+	int budget, count, rc;
- 
-+	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
- 	do {
- 		wcs = ep->rep_recv_wcs;
- 
-@@ -266,7 +268,7 @@ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
- 		count = rc;
- 		while (count-- > 0)
- 			rpcrdma_recvcq_process_wc(wcs++);
--	} while (rc == RPCRDMA_POLLSIZE);
-+	} while (rc == RPCRDMA_POLLSIZE && --budget);
- 	return 0;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index cb4c882..0c3b88e 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -74,6 +74,7 @@ struct rpcrdma_ia {
-  * RDMA Endpoint -- one per transport instance
-  */
- 
-+#define RPCRDMA_WC_BUDGET	(128)
- #define RPCRDMA_POLLSIZE	(16)
- 
- struct rpcrdma_ep {
+Thanks,
+Vyacheslav Dubeyko.
+
 
