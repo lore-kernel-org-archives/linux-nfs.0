@@ -1,53 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:33158 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751511AbaFZTPE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:04 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so3525644qgf.0
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:03 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 057/117] nfsd: Prepare nfsd4_close() for open stateid referencing
-Date: Thu, 26 Jun 2014 15:12:37 -0400
-Message-Id: <1403810017-16062-58-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:65017 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752084AbaFAJKT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Jun 2014 05:10:19 -0400
+Received: by mail-wi0-f179.google.com with SMTP id bs8so3141232wib.6
+        for <linux-nfs@vger.kernel.org>; Sun, 01 Jun 2014 02:10:17 -0700 (PDT)
+Message-ID: <538AEDF6.8040301@gmail.com>
+Date: Sun, 01 Jun 2014 12:10:14 +0300
+From: Boaz Harrosh <openosd@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+CC: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: [PATCH] pNFS: Handle allocation errors correctly in objlayout_alloc_layout_hdr()
+References: <1401409758-8035-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1401409758-8035-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On 05/30/2014 03:29 AM, Trond Myklebust wrote:
+> Return the NULL pointer when the allocation fails.
+> 
+> Cc: Boaz Harrosh <bharrosh@panasas.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/objlayout/objlayout.c | 8 ++++----
+>  1 file changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+> index 2f955f671003..765d3f54e986 100644
+> --- a/fs/nfs/objlayout/objlayout.c
+> +++ b/fs/nfs/objlayout/objlayout.c
+> @@ -53,10 +53,10 @@ objlayout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
+>  	struct objlayout *objlay;
+>  
+>  	objlay = kzalloc(sizeof(struct objlayout), gfp_flags);
+> -	if (objlay) {
+> -		spin_lock_init(&objlay->lock);
+> -		INIT_LIST_HEAD(&objlay->err_list);
+> -	}
+> +	if (!objlay)
+> +		return NULL;
+> +	spin_lock_init(&objlay->lock);
+> +	INIT_LIST_HEAD(&objlay->err_list);
+>  	dprintk("%s: Return %p\n", __func__, objlay);
+>  	return &objlay->pnfs_layout;
+>  }
+> 
 
-Prepare nfsd4_close for a future where nfs4_preprocess_seqid_op()
-hands it a fully referenced open stateid. Necessary step toward
-client_mutex removal.
+Thanks! ACK
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 5 +++++
- 1 file changed, 5 insertions(+)
+BTW it was not a bug. &NULL->pnfs_layout will return 0 because it is at offset 0.
+Which explains why it works.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index bb0676051b6b..828205fabd3e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4556,10 +4556,15 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_bump_seqid(cstate, status);
- 	if (status)
- 		goto out; 
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&stp->st_stid.sc_count);
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
- 	nfsd4_close_open_stateid(stp);
-+
-+	/* put reference from nfs4_preprocess_seqid_op */
-+	put_generic_stateid(stp);
- out:
- 	nfs4_unlock_state();
- 	return status;
--- 
-1.9.3
+Thanks again, good catch
+Boaz
 
