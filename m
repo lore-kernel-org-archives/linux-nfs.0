@@ -1,121 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:48189 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751723AbaFZTVu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:50 -0400
-Received: by mail-qg0-f53.google.com with SMTP id i50so3436255qgf.40
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:50 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 098/117] nfsd: add nfsd_inject_forget_clients
-Date: Thu, 26 Jun 2014 15:21:06 -0400
-Message-Id: <1403810485-16497-15-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f48.google.com ([209.85.216.48]:39821 "EHLO
+	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932334AbaFBORh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 10:17:37 -0400
+Received: by mail-qa0-f48.google.com with SMTP id i13so2740824qae.21
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Jun 2014 07:17:36 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 2 Jun 2014 10:17:33 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: bfields@fieldses.org, trond.myklebust@primarydata.com,
+        bhalevy@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 9/9] NFSd: protect delegation setup with the i_lock
+Message-ID: <20140602101733.651cd9c8@tlielax.poochiereds.net>
+In-Reply-To: <20140602084616.GA2910@infradead.org>
+References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
+	<1401455373-18207-10-git-send-email-jlayton@primarydata.com>
+	<20140602084616.GA2910@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...which uses the client_lock for protection instead of client_mutex.
-Also remove nfsd_forget_client as there are no more callers.
+On Mon, 2 Jun 2014 01:46:16 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/fault_inject.c |  3 +--
- fs/nfsd/nfs4state.c    | 42 ++++++++++++++++++++++++++++--------------
- fs/nfsd/state.h        |  2 +-
- 3 files changed, 30 insertions(+), 17 deletions(-)
+> On Fri, May 30, 2014 at 09:09:33AM -0400, Jeff Layton wrote:
+> > From: Trond Myklebust <trond.myklebust@primarydata.com>
+> > 
+> > state_lock is a heavily contended global lock. We don't want to grab
+> > that while simultaneously holding the inode->i_lock. Avoid doing that in
+> > the delegation break callback by ensuring that we add/remove the
+> > dl_perfile under the inode->i_lock.
+> 
+> The current code never takes the state lock (or recall lock) under
+> i_lock.  Non-trivial use of i_lock in nfsd is only added in this patch.
+> 
+> > 
+> > This however, can cause an ABBA deadlock between the state_lock and the
+> > i_lock. Work around that by doing the list manipulation in the delegation
+> > recall from the workqueue context prior to starting the rpc call.
+> 
+> I very much dislike the patch for multiple reasons.  For one thing
+> nfsd currently stays away from i_lock which is a VFS (and sometimes
+> abused by the fs) lock except for a single case in the file locking code
+> which really should be factored into common code.  I'd rather have
+> locks in nfsd than starting to use i_lock in nfsd and making auditing
+> it's use and it's lock hierchies more complex by introducing usage
+> outside of the VFS.
+> 
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 5f3ead0c72fb..76ecdff37ea2 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -135,9 +135,8 @@ static struct nfsd_fault_inject_op inject_ops[] = {
- 	{
- 		.file     = "forget_clients",
- 		.get	  = nfsd_inject_print_clients,
--		.set_val  = nfsd_inject_set,
-+		.set_val  = nfsd_inject_forget_clients,
- 		.set_clnt = nfsd_inject_forget_client,
--		.forget   = nfsd_forget_client,
- 	},
- 	{
- 		.file     = "forget_locks",
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b12a36e71fee..9feb219e8699 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5713,20 +5713,6 @@ nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
- 	return count;
- }
- 
--u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
--{
--	__be32 ret;
--	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
--
--	spin_lock(&nn->client_lock);
--	ret = mark_client_expired_locked(clp);
--	spin_unlock(&nn->client_lock);
--	if (ret != nfs_ok)
--		return 0;
--	expire_client(clp);
--	return 1;
--}
--
- u64
- nfsd_inject_forget_client(struct nfsd_fault_inject_op *op,
- 			  struct sockaddr_storage *addr, size_t addr_size)
-@@ -5755,6 +5741,34 @@ nfsd_inject_forget_client(struct nfsd_fault_inject_op *op,
- 	return count;
- }
- 
-+u64
-+nfsd_inject_forget_clients(struct nfsd_fault_inject_op *op, u64 max)
-+{
-+	u64 count = 0;
-+	struct nfs4_client *clp, *next;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+	LIST_HEAD(reaplist);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return count;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
-+		if (mark_client_expired_locked(clp) == nfs_ok) {
-+			list_add(&clp->cl_lru, &reaplist);
-+			if (max != 0 && ++count >= max)
-+				break;
-+		}
-+	}
-+	spin_unlock(&nn->client_lock);
-+
-+	list_for_each_entry_safe(clp, next, &reaplist, cl_lru)
-+		expire_client(clp);
-+
-+	return count;
-+}
-+
- static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
- 			     const char *type)
- {
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index a644a9f628d6..4fe973bbb68f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -474,9 +474,9 @@ u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
- struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
- 
- u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
--u64 nfsd_forget_client(struct nfs4_client *, u64);
- u64 nfsd_inject_forget_client(struct nfsd_fault_inject_op *,
- 			      struct sockaddr_storage *, size_t);
-+u64 nfsd_inject_forget_clients(struct nfsd_fault_inject_op *, u64);
- 
- u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
- u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+Ok, fair enough. A later patch in the series adds a per nfs4_file lock
+(the fi_lock) that we can use for this purpose in lieu of the i_lock.
+Nesting that within the i_lock shouldn't be too painful.
+
+> Second I really don't like pushing the delegation setup into the
+> callback workqueue.  I have a patchset refactoring the callback code
+> to allow adding more callbacks without lots of copy & paste, and except
+> for this new addition the code in the workqueue already is almost
+> perfectly generic for arbitrary callbacks.
+> 
+> Please add a lock in struct nfs4_file to protects it's own members
+> instead.
+> 
+
+This is a problem however. The del_recall_lru list is a per-namespace
+list, so we need a lock that is either global or per-namespace to add
+things onto it. The point of this patch is to get that extra locking
+out of the codepath where the i_lock is already held.
+
+We could do that within the rpc_call_prepare operation, but the main
+problem there is that the delegation could leak if the rpc task
+allocation fails. Would you be amenable to adding a "cb_prepare"
+operation or something that we could use to run things from the
+workqueue before the actual callback runs?
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
