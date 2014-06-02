@@ -1,85 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:54019 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751850AbaFZTPa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:30 -0400
-Received: by mail-qa0-f41.google.com with SMTP id cm18so3253507qab.0
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:30 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 077/117] nfsd: close potential race in nfsd4_free_stateid
-Date: Thu, 26 Jun 2014 15:12:57 -0400
-Message-Id: <1403810017-16062-78-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mout.kundenserver.de ([212.227.126.131]:64161 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752396AbaFBTLN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 15:11:13 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Roger Willcocks <roger@filmlight.ltd.uk>,
+        Nicolas Pitre <nicolas.pitre@linaro.org>, linux-arch@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        LKML Kernel <linux-kernel@vger.kernel.org>, lftan@altera.com,
+        Christoph Hellwig <hch@infradead.org>, john.stultz@linaro.org,
+        "H. Peter Anvin" <hpa@zytor.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, geert@linux-m68k.org,
+        tglx@linutronix.de, xfs@oss.sgi.com, joseph@codesourcery.com
+Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
+Date: Mon, 02 Jun 2014 21:10:47 +0200
+Message-ID: <5585593.Xe5bNQZW47@wuerfel>
+In-Reply-To: <C57EA6CA-236A-4C93-95F8-21F46A3622DA@oracle.com>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <1401735504.6065.227.camel@montana.filmlight.ltd.uk> <C57EA6CA-236A-4C93-95F8-21F46A3622DA@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, it'll be possible for the sc_type of a
-lock stateid to change after it's found and checked, but before we can
-go to destroy it. If that happens, we can end up putting the persistent
-reference to the stateid more than once, and unhash it more than once.
+On Monday 02 June 2014 15:04:27 Chuck Lever wrote:
+> On Jun 2, 2014, at 2:58 PM, Roger Willcocks <roger@filmlight.ltd.uk> wrote:
+> 
+> > 
+> > On Mon, 2014-06-02 at 11:04 -0400, Chuck Lever wrote:
+> > 
+> >> NFSv2/3 timestamps are a pair of unsigned 32-bit values: one value for
+> >> seconds since midnight GMT Jan 1, 1970, and one value for nanoseconds.
+> >> (See the definition of nfstime3 in RFC 1813).
+> >> 
+> > 
+> > nfstime3 could be extended by redefining the otherwise unused
+> > nanoseconds bits{31,30} as seconds{33,32}, to give a (signed) 34-bit
+> > seconds field and an unsigned 30-bit nanoseconds field.
+> > 
+> > This could represent 1970 +/- 272 years.
+> > 
+> > Servers could indicate they can understand the extended time format by
+> > adding a new FSINFO capability - FSF3_CANSETTIME_EX.
+> > 
+> > Clients would use a new SET_TO_CLIENT_TIME_EX time_how enum when sending
+> > timestamps so old servers would be protected from new clients.
+> 
+> You would have to get the IETF’s NFSv4 working group to sign off on
+> this change. Otherwise, Linux would be the only NFSv3 implementation
+> that supports the extension.
+> 
+> But I suspect the answer you’d get is “Use NFSv4.”
 
-Fix this by unhashing the lock stateid prior to dropping the cl_lock but
-after finding it.
+While I've never dealt with an NFS standardization, I'd assume this is
+a workable answer. The NFSv2 and NFSv3 definition clearly defines a valid
+range of times until 2106 using unsigned seconds, and that should really
+give enough time to migrate to something better (not necessarily NFSv4).
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 24 +++++++++---------------
- 1 file changed, 9 insertions(+), 15 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 790ff7dacbfb..207120f721e3 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4365,17 +4365,6 @@ unlock_state:
- 	return status;
- }
- 
--static __be32
--nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
--{
--	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
--
--	if (check_for_locks(stp->st_stid.sc_file, lo))
--		return nfserr_locks_held;
--	release_lock_stateid(stp);
--	return nfs_ok;
--}
--
- /*
-  * Test if the stateid is valid
-  */
-@@ -4402,6 +4391,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	stateid_t *stateid = &free_stateid->fr_stateid;
- 	struct nfs4_stid *s;
- 	struct nfs4_delegation *dp;
-+	struct nfs4_ol_stateid *stp;
- 	struct nfs4_client *cl = cstate->session->se_client;
- 	__be32 ret = nfserr_bad_stateid;
- 
-@@ -4419,12 +4409,16 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 		if (ret)
- 			break;
--		if (s->sc_type != NFS4_LOCK_STID) {
--			ret = nfserr_locks_held;
-+		stp = openlockstateid(s);
-+		ret = nfserr_locks_held;
-+		if (s->sc_type == NFS4_OPEN_STID ||
-+		    check_for_locks(s->sc_file,
-+				    lockowner(stp->st_stateowner)))
- 			break;
--		}
-+		unhash_lock_stateid(stp);
- 		spin_unlock(&cl->cl_lock);
--		ret = nfsd4_free_lock_stateid(openlockstateid(s));
-+		put_generic_stateid(stp);
-+		ret = nfs_ok;
- 		goto out;
- 	case NFS4_REVOKED_DELEG_STID:
- 		spin_unlock(&cl->cl_lock);
--- 
-1.9.3
-
+	Arnd
