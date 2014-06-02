@@ -1,58 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from terminus.zytor.com ([198.137.202.10]:53242 "EHLO mail.zytor.com"
+Received: from fieldses.org ([174.143.236.118]:33916 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754969AbaFBRP4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Jun 2014 13:15:56 -0400
-Message-ID: <538CB085.5000502@zytor.com>
-Date: Mon, 02 Jun 2014 10:12:37 -0700
-From: "H. Peter Anvin" <hpa@zytor.com>
+	id S1751848AbaFBQ5R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Jun 2014 12:57:17 -0400
+Date: Mon, 2 Jun 2014 12:57:16 -0400
+From: "'J. Bruce Fields'" <bfields@fieldses.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: "'Devesh Sharma'" <Devesh.Sharma@Emulex.Com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, tom@opengridcomputing.com
+Subject: Re: [PATCH V3] svcrdma: refactor marshalling logic
+Message-ID: <20140602165716.GB20031@fieldses.org>
+References: <20140529165532.16349.95248.stgit@build.ogc.int>
+ <EE7902D3F51F404C82415C4803930ACD3FE01265@CMEXMB1.ad.emulex.com>
+ <000001cf7c07$72e613d0$58b23b70$@opengridcomputing.com>
+ <EE7902D3F51F404C82415C4803930ACD3FE01355@CMEXMB1.ad.emulex.com>
+ <004101cf7e82$68b58ad0$3a20a070$@opengridcomputing.com>
+ <20140602165151.GA20031@fieldses.org>
+ <004901cf7e83$15107790$3f3166b0$@opengridcomputing.com>
 MIME-Version: 1.0
-To: "Theodore Ts'o" <tytso@mit.edu>, Chuck Lever <chuck.lever@oracle.com>,
-        Arnd Bergmann <arnd@arndb.de>,
-        Nicolas Pitre <nicolas.pitre@linaro.org>,
-        Dave Chinner <david@fromorbit.com>,
-        LKML Kernel <linux-kernel@vger.kernel.org>, linux-arch@vger.kernel.org,
-        joseph@codesourcery.com, john.stultz@linaro.org,
-        Christoph Hellwig <hch@infradead.org>, tglx@linutronix.de,
-        geert@linux-m68k.org, lftan@altera.com,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <8618458.1EVJCoVbkH@wuerfel> <alpine.LFD.2.11.1406012121430.17310@knanqh.ubzr> <4178301.j9kWdGCRLC@wuerfel> <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com> <20140602153124.GH30598@thunk.org>
-In-Reply-To: <20140602153124.GH30598@thunk.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <004901cf7e83$15107790$3f3166b0$@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/02/2014 08:31 AM, Theodore Ts'o wrote:
+On Mon, Jun 02, 2014 at 11:52:47AM -0500, Steve Wise wrote:
+> > > You're correct.  And this bug appears to be in the current upstream code as well.  If
+> an
+> > > IB_WR_LOCAL_INV wr is used, it must include IB_SEND_FENCE to fence it until the prior
+> > read
+> > > completes.
+> > >
+> > > Good catch!  I'll post V4 soon.
+> > 
+> > Any chance that can be handled as a separate patch rather than folded
+> > in?
+> > 
+> > (Disclaimer: I've been following the discussion only very
+> > superficially.)
+> > 
 > 
-> I wonder if it would make sense to try to promulgate via the Austin
-> group, and possibly the C standards committee the concept of a bit
-> pattern (that might commonly be INT_MAX or UINT_MAX) that means "time
-> unknown", or "time indefinite" or "we couldn't encode the time".
-> 
+> Sure.  I'll post the patch soon.
 
-(time_t)-1 already has this meaning for some calls (e.g. time(2)).
-However, this also means Wed Dec 31 23:59:59 UTC 1969, and unfortunately
-something similar applies to all possible bit patterns, certainly within
-the range of an int.
+Thanks, and, again, I'm not terribly happy about the monster
+patch--anything you can split off it is great, even if that thing's
+small.  As long as all the intermediate stages still build and run.
 
-> We would then teach gmtime(3) and asctime(3) to print some appropriate
-> message, and we could teach programs like find (with the -mtime)
-> option, make, tmpwatch, et. al., that they can't make any presumption
-> about the comparibility of any timestamp which has a value of
-> TIME_UNDEFINIED.
-> 
-> It would be problematic for time(2) or gettimeofday(2) to return
-> TIME_UNDEFINED, since there are programs that care about time ticking
-> forward, but I could imagine a new interface which would be permitted
-> to return a flag indicating that we don't know the current time
-> (because the CMOS battery had run down, etc.) so instead we're going
-> to be counting the number of seconds since the system was booted.
+(And any bugs you've identified in upstream code are good candidates for
+separate patches, hopefully preceding the rewrite.  That also allows us
+to apply those fixes to stable kernels if appropriate.)
 
-This assumes that we actually know that that is the case, which may be
-an aggressive assumption.
-
-	-hpa
-
-
+--b.
