@@ -1,70 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:64099 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754260AbaF3Pvz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:55 -0400
-Received: by mail-qa0-f41.google.com with SMTP id cm18so6706756qab.0
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:54 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 058/114] nfsd: Migrate the stateid reference into nfs4_find_stateid_by_type()
-Date: Mon, 30 Jun 2014 11:49:27 -0400
-Message-Id: <1404143423-24381-59-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:37210 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752661AbaFBQvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Jun 2014 12:51:53 -0400
+Date: Mon, 2 Jun 2014 12:51:52 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: "'Devesh Sharma'" <Devesh.Sharma@Emulex.Com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, tom@opengridcomputing.com
+Subject: Re: [PATCH V3] svcrdma: refactor marshalling logic
+Message-ID: <20140602165151.GA20031@fieldses.org>
+References: <20140529165532.16349.95248.stgit@build.ogc.int>
+ <EE7902D3F51F404C82415C4803930ACD3FE01265@CMEXMB1.ad.emulex.com>
+ <000001cf7c07$72e613d0$58b23b70$@opengridcomputing.com>
+ <EE7902D3F51F404C82415C4803930ACD3FE01355@CMEXMB1.ad.emulex.com>
+ <004101cf7e82$68b58ad0$3a20a070$@opengridcomputing.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <004101cf7e82$68b58ad0$3a20a070$@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Mon, Jun 02, 2014 at 11:47:58AM -0500, Steve Wise wrote:
+> 
+> 
+> > Steve
+> > 
+> > I have not checked the code because I am away from my laptop
+> > But I assume mlx and mthca is using fmr and cxgb4 is using rdma-read-with-invalidate
+> which
+> > has implicit fence.
+> > 
+> > If invalidate is issued before read is completed its a problem.
+> > 
+> 
+> You're correct.  And this bug appears to be in the current upstream code as well.  If an
+> IB_WR_LOCAL_INV wr is used, it must include IB_SEND_FENCE to fence it until the prior read
+> completes.
+> 
+> Good catch!  I'll post V4 soon.
 
-Allow nfs4_find_stateid_by_type to take the stateid reference, while
-still holding the &cl->cl_lock. Necessary step toward client_mutex
-removal.
+Any chance that can be handled as a separate patch rather than folded
+in?
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+(Disclaimer: I've been following the discussion only very
+superficially.)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9d9cb26c391c..0f30716c9093 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1678,8 +1678,12 @@ static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t
- 
- 	spin_lock(&cl->cl_lock);
- 	s = find_stateid_locked(cl, t);
--	if (s != NULL && !(typemask & s->sc_type))
--		s = NULL;
-+	if (s != NULL) {
-+		if (typemask & s->sc_type)
-+			atomic_inc(&s->sc_count);
-+		else
-+			s = NULL;
-+	}
- 	spin_unlock(&cl->cl_lock);
- 	return s;
- }
-@@ -3298,8 +3302,6 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
- 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
- 	if (!ret)
- 		return NULL;
--	/* FIXME: move into find_stateid_by_type */
--	atomic_inc(&ret->sc_count);
- 	return delegstateid(ret);
- }
- 
-@@ -4124,8 +4126,6 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
- 	if (!*s)
- 		return nfserr_bad_stateid;
--	/* FIXME: move into find_stateid_by_type */
--	atomic_inc(&(*s)->sc_count);
- 	return nfs_ok;
- }
- 
--- 
-1.9.3
-
+--b.
