@@ -1,73 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:49763 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755308AbaFZBez (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 21:34:55 -0400
-Received: by mail-qa0-f42.google.com with SMTP id dc16so2270778qab.15
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 18:34:54 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 25 Jun 2014 21:34:51 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 000/104] nfsd: eliminate the client_mutex
-Message-ID: <20140625213451.25f6f40b@f20.localdomain>
-In-Reply-To: <20140626012629.GA19952@fieldses.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-	<20140619113328.598cf759@tlielax.poochiereds.net>
-	<20140626012629.GA19952@fieldses.org>
+Received: from mout.kundenserver.de ([212.227.126.187]:56173 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752760AbaFBT4S (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 15:56:18 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: "H. Peter Anvin" <hpa@zytor.com>
+Cc: "Joseph S. Myers" <joseph@codesourcery.com>, linux-kernel@vger.kernel.org,
+        linux-arch@vger.kernel.org, john.stultz@linaro.org, hch@infradead.org,
+        tglx@linutronix.de, geert@linux-m68k.org, lftan@altera.com,
+        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, coda@cs.cmu.edu,
+        codalist@telemann.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-scsi@vger.kernel.org, logfs@logfs.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        samba-technical@lists.samba.org, xfs@oss.sgi.com
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Mon, 02 Jun 2014 21:55:52 +0200
+Message-ID: <7175692.dpgYFMbTaP@wuerfel>
+In-Reply-To: <538CCFDE.2010107@zytor.com>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <4233989.Saca0ocOUr@wuerfel> <538CCFDE.2010107@zytor.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 25 Jun 2014 21:26:29 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> I'm seeing this, by the way.--b.
+On Monday 02 June 2014 12:26:22 H. Peter Anvin wrote:
+> On 06/02/2014 12:19 PM, Arnd Bergmann wrote:
+> > On Monday 02 June 2014 13:52:19 Joseph S. Myers wrote:
+> >> On Fri, 30 May 2014, Arnd Bergmann wrote:
+> >>
+> >>> a) is this the right approach in general? The previous discussion
+> >>>    pointed this way, but there may be other opinions.
+> >>
+> >> The syscall changes seem like the sort of thing I'd expect, although 
+> >> patches adding new syscalls or otherwise affecting the kernel/userspace 
+> >> interface (as opposed to those relating to an individual filesystem) 
+> >> should go to linux-api as well as other relevant lists.
+> > 
+> > Ok. Sorry about missing linux-api, I confused it with linux-arch, which
+> > may not be as relevant here, except for the one question whether we
+> > actually want to have the new ABI on all 32-bit architectures or only
+> > as an opt-in for those that expect to stay around for another 24 years.
+> > 
+> > Two more questions for you:
+> > 
+> > - are you (and others) happy with adding this type of stat syscall
+> >   (fstatat64/fstat64) as opposed to the more generic xstat that has
+> >   been discussed in the past and that never made it through the bike-
+> >   shedding discussion?
+> > 
+> > - once we have enough buy-in from reviewers to merge this initial
+> >   series, should we proceed to define rest of the syscall ABI
+> >   (minus driver ioctls) so glibc and kernel can do the conversion
+> >   on top of that, or should we better try to do things one syscall
+> >   family at a time and actually get the kernel to handle them
+> >   correctly internally?
+> > 
 > 
-> [  512.960652] nfsd: non-standard errno: -7
-> [  650.442646] ------------[ cut here ]------------
-> [  650.442754] WARNING: CPU: 3 PID: 647 at fs/nfsd/nfs4state.c:761
-> revoke_delegation+0xa7/0xb0 [nfsd]()
-> [  650.442760] Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss
-> oid_registry nfs_acl lockd sunrpc
-> [  650.442792] CPU: 3 PID: 647 Comm: kworker/u8:2 Not tainted
-> 3.16.0-rc2-00479-gb675b9c #2982
-> [  650.442796] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> [  650.442814] Workqueue: nfsd4 laundromat_main [nfsd]
-> [  650.442821]  0000000000000009 ffff880036287c48 ffffffff81a439d6
-> 0000000000000001
-> [  650.442836]  0000000000000000 ffff880036287c88 ffffffff8106d65c
-> ffff880036287c68
-> [  650.442851]  ffff8800312aee60 ffff88001bcfe800 ffff8800312aeeb0
-> ffffffff822c7cc0
-> [  650.442865] Call Trace:
-> [  650.442878]  [<ffffffff81a439d6>] dump_stack+0x4f/0x7c
-> [  650.442889]  [<ffffffff8106d65c>] warn_slowpath_common+0x8c/0xc0
-> [  650.442897]  [<ffffffff8106d6aa>] warn_slowpath_null+0x1a/0x20
-> [  650.442917]  [<ffffffffa011a607>] revoke_delegation+0xa7/0xb0 [nfsd]
-> [  650.442936]  [<ffffffffa011aaec>] laundromat_main+0x2dc/0x480 [nfsd]
-> [  650.442956]  [<ffffffffa011a9f4>] ? laundromat_main+0x1e4/0x480
-> [nfsd]
-> [  650.442967]  [<ffffffff8108924e>] process_one_work+0x1ce/0x500
-> [  650.442976]  [<ffffffff810891db>] ? process_one_work+0x15b/0x500
-> [  650.442985]  [<ffffffff81089b9b>] worker_thread+0x11b/0x4f0
-> [  650.442995]  [<ffffffff810bba2d>] ? trace_hardirqs_on+0xd/0x10
-> [  650.443004]  [<ffffffff81a4c36b>] ?
-> _raw_spin_unlock_irqrestore+0x4b/0x80
-> [  650.443013]  [<ffffffff81089a80>] ? init_pwq+0x190/0x190
-> [  650.443022]  [<ffffffff81090ac4>] kthread+0xe4/0x100
-> [  650.443032]  [<ffffffff810909e0>] ? __init_kthread_worker+0x70/0x70
-> [  650.443041]  [<ffffffff81a4caac>] ret_from_fork+0x7c/0xb0
-> [  650.443050]  [<ffffffff810909e0>] ? __init_kthread_worker+0x70/0x70
-> [  650.443055] ---[ end trace e3faa7f0516143d3 ]---
+> The bit that is really going to hurt is every single ioctl that uses a
+> timespec.
+> 
+> Honestly, though, I really don't understand the point with "struct
+> inode_time".  It seems like the zeroeth-order thing is to change the
+> kernel internal version of struct timespec to have a 64-bit time... it
+> isn't just about inodes.  We then should be explicit about the external
+> uses of time, and use accessors.
 
-Thanks, I think I just whacked that bug a little while ago:
+I picked these because they are fairly isolated from all other uses,
+in particular since inode times are the only things where we really
+care about times in the distant past or future (decades away as opposed
+to things that happened between boot and shutdown).
 
-    http://git.samba.org/?p=jlayton/linux.git;a=commitdiff;h=81771b60b6fd17dae7975a2e3199fc37d181dacf
+For other kernel-internal uses, we may be better off migrating to
+a completely different representation, such as nanoseconds since
+boot or the architecture specific ktime_t, but this is really something
+to decide for each subsystem.
 
-...I've squashed quite a few others in the last few days as well. I'm
-hoping to post an updated set in the next day or so.
+I just tried building an arm32 kernel with a s64 time_t, and that
+failed horribly, I get linker errors for missing 64-bit divides
+and lots of warnings for code that expects time_t pointers to
+functions taking a 'long' or vice versa. I also think the only
+way to maintain ABI compatibility is to separate the internal uses
+from the interface, which means auditing all code in the end.
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+	Arnd
