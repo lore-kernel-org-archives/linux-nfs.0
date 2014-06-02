@@ -1,57 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:61494 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755861AbaFQLoW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 07:44:22 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so9605547qcx.41
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Jun 2014 04:44:21 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 0/4] nfsd: clean up sparse endianness warnings
-Date: Tue, 17 Jun 2014 07:44:10 -0400
-Message-Id: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
+Received: from terminus.zytor.com ([198.137.202.10]:55028 "EHLO mail.zytor.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751157AbaFBT2F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Jun 2014 15:28:05 -0400
+Message-ID: <538CCFDE.2010107@zytor.com>
+Date: Mon, 02 Jun 2014 12:26:22 -0700
+From: "H. Peter Anvin" <hpa@zytor.com>
+MIME-Version: 1.0
+To: Arnd Bergmann <arnd@arndb.de>, "Joseph S. Myers" <joseph@codesourcery.com>
+CC: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
+        john.stultz@linaro.org, hch@infradead.org, tglx@linutronix.de,
+        geert@linux-m68k.org, lftan@altera.com, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com, coda@cs.cmu.edu,
+        codalist@TELEMANN.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-scsi@vger.kernel.org, logfs@logfs.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        samba-technical@lists.samba.org, xfs@oss.sgi.com
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <Pine.LNX.4.64.1406021350030.19591@digraph.polyomino.org.uk> <4233989.Saca0ocOUr@wuerfel>
+In-Reply-To: <4233989.Saca0ocOUr@wuerfel>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset does a number of cleanups to remove sparse warnings that
-appear when -D__CHECK_ENDIAN__ is specified. Mostly, they just add
-__force in the appropriate places to make it clear that casting directly
-to a different endianness is intentional. I've also added comments to
-clarify why we're doing this in the same places.
+On 06/02/2014 12:19 PM, Arnd Bergmann wrote:
+> On Monday 02 June 2014 13:52:19 Joseph S. Myers wrote:
+>> On Fri, 30 May 2014, Arnd Bergmann wrote:
+>>
+>>> a) is this the right approach in general? The previous discussion
+>>>    pointed this way, but there may be other opinions.
+>>
+>> The syscall changes seem like the sort of thing I'd expect, although 
+>> patches adding new syscalls or otherwise affecting the kernel/userspace 
+>> interface (as opposed to those relating to an individual filesystem) 
+>> should go to linux-api as well as other relevant lists.
+> 
+> Ok. Sorry about missing linux-api, I confused it with linux-arch, which
+> may not be as relevant here, except for the one question whether we
+> actually want to have the new ABI on all 32-bit architectures or only
+> as an opt-in for those that expect to stay around for another 24 years.
+> 
+> Two more questions for you:
+> 
+> - are you (and others) happy with adding this type of stat syscall
+>   (fstatat64/fstat64) as opposed to the more generic xstat that has
+>   been discussed in the past and that never made it through the bike-
+>   shedding discussion?
+> 
+> - once we have enough buy-in from reviewers to merge this initial
+>   series, should we proceed to define rest of the syscall ABI
+>   (minus driver ioctls) so glibc and kernel can do the conversion
+>   on top of that, or should we better try to do things one syscall
+>   family at a time and actually get the kernel to handle them
+>   correctly internally?
+> 
 
-Note that there are still some sparse warnings that are not addressed.
-This one looks like a bug in sparse to me. We're initializing different
-slots in an array:
+The bit that is really going to hurt is every single ioctl that uses a
+timespec.
 
-    fs/nfsd/nfssvc.c:120:10: warning: Initializer entry defined twice
-    fs/nfsd/nfssvc.c:121:10:   also defined here
+Honestly, though, I really don't understand the point with "struct
+inode_time".  It seems like the zeroeth-order thing is to change the
+kernel internal version of struct timespec to have a 64-bit time... it
+isn't just about inodes.  We then should be explicit about the external
+uses of time, and use accessors.
 
-This warning is also not addressed in this set:
+	-hpa
 
-    fs/nfsd/auth.c:31:38: warning: incorrect type in argument 1 (different address spaces)
-    fs/nfsd/auth.c:31:38:    expected struct cred const *cred
-    fs/nfsd/auth.c:31:38:    got struct cred const [noderef] <asn:4>*real_cred
-
-I think sparse is complaining that we're casting away __rcu when handling
-creds. I'm not quite sure whether that's a real bug or not. I've left it alone
-for now until I (or someone else) has some time to look more closely.
-
-Jeff Layton (4):
-  nfsd: add __force to opaque verifier field casts
-  nfsd: clean up sparse endianness warnings in nfscache.c
-  nfsd: nfsd_splice_read and nfsd_readv should return __be32
-  nfsd: add appropriate __force directives to filehandle generation code
-
- fs/nfsd/nfs4proc.c  |  8 ++++++--
- fs/nfsd/nfs4state.c |  8 ++++++--
- fs/nfsd/nfscache.c  | 13 +++++++++++--
- fs/nfsd/nfsfh.c     |  9 ++++++++-
- fs/nfsd/nfsfh.h     | 15 +++++++++++----
- fs/nfsd/vfs.c       |  7 ++++---
- fs/nfsd/vfs.h       |  4 ++--
- 7 files changed, 48 insertions(+), 16 deletions(-)
-
--- 
-1.9.3
 
