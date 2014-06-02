@@ -1,47 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.kundenserver.de ([212.227.17.13]:55621 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753707AbaFCOtb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 10:49:31 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: "Joseph S. Myers" <joseph@codesourcery.com>
-Cc: "H. Peter Anvin" <hpa@zytor.com>, linux-kernel@vger.kernel.org,
-        linux-arch@vger.kernel.org, john.stultz@linaro.org, hch@infradead.org,
-        tglx@linutronix.de, geert@linux-m68k.org, lftan@altera.com,
-        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, coda@cs.cmu.edu,
-        codalist@telemann.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-scsi@vger.kernel.org, logfs@logfs.org,
-        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
-        samba-technical@lists.samba.org, xfs@oss.sgi.com
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Tue, 03 Jun 2014 16:37:46 +0200
-Message-ID: <18158267.ZX0ZMPkVDT@wuerfel>
-In-Reply-To: <Pine.LNX.4.64.1406031427130.12421@digraph.polyomino.org.uk>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <5011138.W0gbOc20Qp@wuerfel> <Pine.LNX.4.64.1406031427130.12421@digraph.polyomino.org.uk>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:33637 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755519AbaFBQwq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 12:52:46 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'J. Bruce Fields'" <bfields@fieldses.org>
+Cc: "'Devesh Sharma'" <Devesh.Sharma@Emulex.Com>, <linux-nfs@vger.kernel.org>,
+        <linux-rdma@vger.kernel.org>, <tom@opengridcomputing.com>
+References: <20140529165532.16349.95248.stgit@build.ogc.int> <EE7902D3F51F404C82415C4803930ACD3FE01265@CMEXMB1.ad.emulex.com> <000001cf7c07$72e613d0$58b23b70$@opengridcomputing.com> <EE7902D3F51F404C82415C4803930ACD3FE01355@CMEXMB1.ad.emulex.com> <004101cf7e82$68b58ad0$3a20a070$@opengridcomputing.com> <20140602165151.GA20031@fieldses.org>
+In-Reply-To: <20140602165151.GA20031@fieldses.org>
+Subject: RE: [PATCH V3] svcrdma: refactor marshalling logic
+Date: Mon, 2 Jun 2014 11:52:47 -0500
+Message-ID: <004901cf7e83$15107790$3f3166b0$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday 03 June 2014 14:33:10 Joseph S. Myers wrote:
-> On Tue, 3 Jun 2014, Arnd Bergmann wrote:
+> > You're correct.  And this bug appears to be in the current upstream code as well.  If
+an
+> > IB_WR_LOCAL_INV wr is used, it must include IB_SEND_FENCE to fence it until the prior
+> read
+> > completes.
+> >
+> > Good catch!  I'll post V4 soon.
 > 
-> > I think John Stultz and Thomas Gleixner have already started looking
-> > at how the timekeeping code can be updated. Once that is done, we should
-> > be able to add a functional 64-bit gettimeofday/settimeofday syscall
-> > pair. While I definitely agree this is one of the most basic things to
-> > have, it's also not an area of the kernel that is easy to change.
+> Any chance that can be handled as a separate patch rather than folded
+> in?
 > 
-> 64-bit clock_gettime / clock_settime instead of gettimeofday / 
-> settimeofday should avoid the need for the kernel to have a 64-bit version 
-> of struct timeval.  (Userspace 64-bit gettimeofday / settimeofday would 
-> need to use a combination of the syscalls if the tz pointer is non-NULL.)
+> (Disclaimer: I've been following the discussion only very
+> superficially.)
+> 
 
-Yes, that's what I meant.
+Sure.  I'll post the patch soon.
 
-	Arnd
