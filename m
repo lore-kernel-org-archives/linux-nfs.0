@@ -1,242 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:49719 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750897AbaF3Pv0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:26 -0400
-Received: by mail-qa0-f49.google.com with SMTP id w8so6447745qac.22
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:26 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 038/114] nfsd: Replace nfs4_ol_stateid->st_file with the st_stid.sc_file
-Date: Mon, 30 Jun 2014 11:49:07 -0400
-Message-Id: <1404143423-24381-39-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:52884 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755264AbaFBOtw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 10:49:52 -0400
+Received: by mail-qg0-f50.google.com with SMTP id z60so10718766qgd.37
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Jun 2014 07:49:51 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 2 Jun 2014 10:49:48 -0400
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: nfs4_do_reclaim lockdep pop in v3.15.0-rc1
+Message-ID: <20140602104948.4faf0bc2@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+I've been working on the patchset to break up the client_mutex in nfsd.
+While doing some debugging, I had mounted my kernel git tree with
+NFSv4.1, and was running crash on the vmlinux image in it.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 50 +++++++++++++++++++++++++-------------------------
- fs/nfsd/state.h     |  1 -
- 2 files changed, 25 insertions(+), 26 deletions(-)
+A little while later, I saw the following lockdep inversion pop.
+Unfortunately, I couldn't get the whole log, but I think it's enough to
+show that there's a potential problem?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 76066ca9219c..0d62692b525b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -815,7 +815,7 @@ reset_union_bmap_deny(u32 deny, struct nfs4_ol_stateid *stp)
- 
- 	/* Recalculate per-file deny mode if there was a change */
- 	if (change)
--		recalculate_deny_mode(stp->st_file);
-+		recalculate_deny_mode(stp->st_stid.sc_file);
- }
- 
- /* release all access and file references for a given stateid */
-@@ -823,21 +823,21 @@ static void
- release_all_access(struct nfs4_ol_stateid *stp)
- {
- 	int i;
--	struct nfs4_file *fp = stp->st_file;
-+	struct nfs4_file *fp = stp->st_stid.sc_file;
- 
- 	if (fp && stp->st_deny_bmap != 0)
- 		recalculate_deny_mode(fp);
- 
- 	for (i = 1; i < 4; i++) {
- 		if (test_access(i, stp))
--			nfs4_file_put_access(stp->st_file, i);
-+			nfs4_file_put_access(stp->st_stid.sc_file, i);
- 		clear_access(i, stp);
- 	}
- }
- 
- static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- {
--	struct nfs4_file *fp = stp->st_file;
-+	struct nfs4_file *fp = stp->st_stid.sc_file;
- 
- 	spin_lock(&fp->fi_lock);
- 	list_del(&stp->st_perfile);
-@@ -855,8 +855,6 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- 	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
- 		return;
- 	remove_stid(&stp->st_stid);
--	if (stp->st_file)
--		put_nfs4_file(stp->st_file);
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
- 
-@@ -867,7 +865,7 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
- 	list_del(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
--	file = find_any_file(stp->st_file);
-+	file = find_any_file(stp->st_stid.sc_file);
- 	if (file)
- 		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
- 	close_generic_stateid(stp);
-@@ -2941,7 +2939,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	stp->st_stateowner = &oo->oo_owner;
- 	get_nfs4_file(fp);
--	stp->st_file = fp;
-+	stp->st_stid.sc_file = fp;
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = 0;
- 	set_access(open->op_share_access, stp);
-@@ -3604,7 +3602,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
- 	dp = alloc_init_deleg(oo->oo_owner.so_client, stp, fh);
- 	if (dp == NULL)
- 		goto out_no_deleg;
--	status = nfs4_set_delegation(dp, stp->st_file);
-+	status = nfs4_set_delegation(dp, stp->st_stid.sc_file);
- 	if (status)
- 		goto out_free;
- 
-@@ -3895,7 +3893,7 @@ laundromat_main(struct work_struct *laundry)
- 
- static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
- {
--	if (fhp->fh_dentry->d_inode != stp->st_file->fi_inode)
-+	if (fhp->fh_dentry->d_inode != stp->st_stid.sc_file->fi_inode)
- 		return nfserr_bad_stateid;
- 	return nfs_ok;
- }
-@@ -4123,10 +4121,12 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 		if (status)
- 			goto out;
- 		if (filpp) {
-+			struct nfs4_file *fp = stp->st_stid.sc_file;
-+
- 			if (flags & RD_STATE)
--				file = find_readable_file(stp->st_file);
-+				file = find_readable_file(fp);
- 			else
--				file = find_writeable_file(stp->st_file);
-+				file = find_writeable_file(fp);
- 		}
- 		break;
- 	default:
-@@ -4146,7 +4146,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
- 
--	if (check_for_locks(stp->st_file, lo))
-+	if (check_for_locks(stp->st_stid.sc_file, lo))
- 		return nfserr_locks_held;
- 	release_lockowner_if_empty(lo);
- 	return nfs_ok;
-@@ -4332,7 +4332,7 @@ static inline void nfs4_stateid_downgrade_bit(struct nfs4_ol_stateid *stp, u32 a
- {
- 	if (!test_access(access, stp))
- 		return;
--	nfs4_file_put_access(stp->st_file, access);
-+	nfs4_file_put_access(stp->st_stid.sc_file, access);
- 	clear_access(access, stp);
- }
- 
-@@ -4413,9 +4413,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 			release_openowner(oo);
- 		put_generic_stateid(s);
- 	} else {
--		if (s->st_file) {
--			put_nfs4_file(s->st_file);
--			s->st_file = NULL;
-+		if (s->st_stid.sc_file) {
-+			put_nfs4_file(s->st_stid.sc_file);
-+			s->st_stid.sc_file = NULL;
- 		}
- 		oo->oo_last_closed_stid = s;
- 		/*
-@@ -4617,7 +4617,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
- 	stp->st_stateowner = &lo->lo_owner;
- 	get_nfs4_file(fp);
--	stp->st_file = fp;
-+	stp->st_stid.sc_file = fp;
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
-@@ -4634,7 +4634,7 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
- 	struct nfs4_ol_stateid *lst;
- 
- 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
--		if (lst->st_file == fp)
-+		if (lst->st_stid.sc_file == fp)
- 			return lst;
- 	}
- 	return NULL;
-@@ -4650,7 +4650,7 @@ check_lock_length(u64 offset, u64 length)
- 
- static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- {
--	struct nfs4_file *fp = lock_stp->st_file;
-+	struct nfs4_file *fp = lock_stp->st_stid.sc_file;
- 
- 	/*
- 	 * Lock stateids inherit the same access as the open stateid from which
-@@ -4666,7 +4666,7 @@ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- 
- static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, struct nfs4_ol_stateid *ost, struct nfsd4_lock *lock, struct nfs4_ol_stateid **lst, bool *new)
- {
--	struct nfs4_file *fi = ost->st_file;
-+	struct nfs4_file *fi = ost->st_stid.sc_file;
- 	struct nfs4_openowner *oo = openowner(ost->st_stateowner);
- 	struct nfs4_client *cl = oo->oo_owner.so_client;
- 	struct nfs4_lockowner *lo;
-@@ -4793,14 +4793,14 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	switch (lock->lk_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
--			filp = find_readable_file(lock_stp->st_file);
-+			filp = find_readable_file(lock_stp->st_stid.sc_file);
- 			if (filp)
- 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
- 			file_lock->fl_type = F_RDLCK;
- 			break;
- 		case NFS4_WRITE_LT:
- 		case NFS4_WRITEW_LT:
--			filp = find_writeable_file(lock_stp->st_file);
-+			filp = find_writeable_file(lock_stp->st_stid.sc_file);
- 			if (filp)
- 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
- 			file_lock->fl_type = F_WRLCK;
-@@ -4983,7 +4983,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
--	filp = find_any_file(stp->st_file);
-+	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
- 		goto out;
-@@ -5096,7 +5096,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	lo = lockowner(sop);
- 	/* see if there are still any locks associated with it */
- 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
--		if (check_for_locks(stp->st_file, lo))
-+		if (check_for_locks(stp->st_stid.sc_file, lo))
- 			goto out;
- 	}
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 339f430fd69f..722adb4e144b 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -407,7 +407,6 @@ struct nfs4_ol_stateid {
- 	struct list_head              st_perstateowner;
- 	struct list_head              st_locks;
- 	struct nfs4_stateowner      * st_stateowner;
--	struct nfs4_file            * st_file;
- 	unsigned char                 st_access_bmap;
- 	unsigned char                 st_deny_bmap;
- 	struct nfs4_ol_stateid         * st_openstp;
+I've not had time to give it a hard look yet, but thought I'd post it
+here in the hopes that it might look familiar to someone:
+
+[ 2581.104687] ======================================================
+[ 2581.104716] [ INFO: possible circular locking dependency detected ]
+[ 2581.104716] 3.15.0-rc1.jlayton.1+ #2 Tainted: G           OE
+[ 2581.104716] -------------------------------------------------------
+[ 2581.104716] 2001:470:8:d63:/5622 is trying to acquire lock:
+[ 2581.104716]  (&(&sp->so_lock)->rlock){+.+...}, at: [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+[ 2581.104716]
+[ 2581.104716] but task is already holding lock:
+[ 2581.104716]  (&sp->so_reclaim_seqcount){+.+...}, at: [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+[ 2581.104716] 
+[ 2581.104716] which lock already depends on the new lock.
+[ 2581.104716]
+[ 2581.104716]
+[ 2581.104716] the existing dependency chain (in reverse order) is:
+[ 2581.104716]
+-> #1 (&sp->so_reclaim_seqcount){+.+...}:
+[ 2581.104716]        [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
+[ 2581.104716]        [<ffffffffa036d8b0>] nfs4_do_reclaim+0x290/0x7f0 [nfsv4]
+[ 2581.104716]        [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+[ 2581.104716]        [<ffffffff810c260f>] kthread+0xff/0x120
+[ 2581.104716]        [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
+[ 2581.104716]
+-> #0 (&(&sp->so_lock)->rlock){+.+...}:
+[ 2581.104716]        [<ffffffff810f919f>] __lock_acquire+0x1b8f/0x1ca0
+[ 2581.104716]        [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
+[ 2581.104716]        [<ffffffff817dbdae>] _raw_spin_lock+0x3e/0x80
+[ 2581.104716]        [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+[ 2581.104716]        [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+[ 2581.104716]        [<ffffffff810c260f>] kthread+0xff/0x120
+[ 2581.104716]        [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
+[ 2581.104716]
+[ 2581.104716] other info that might help us debug this:
+[ 2581.104716]
+[ 2581.104716]  Possible unsafe locking scenario:
+[ 2581.104716]
+[ 2581.104716]        CPU0                    CPU1
+[ 2581.104716]        ----                    ----
+[ 2581.104716]   lock(&sp->so_reclaim_seqcount);
+[ 2581.104716]                                lock(&(&sp->so_lock)->rlock);
+[ 2581.104716]                                lock(&sp->so_reclaim_seqcount);
+[ 2581.104716]   lock(&(&sp->so_lock)->rlock);
+[ 2581.104716] 
+[ 2581.104716]  *** DEADLOCK ***
+[ 2581.104716] 
+[ 2581.104716] 1 lock held by 2001:470:8:d63:/5622:
+[ 2581.104716]  #0:  (&sp->so_reclaim_seqcount){+.+...}, at: [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+[ 2581.104716] 
+[ 2581.104716] stack backtrace:
+[ 2581.104716] CPU: 2 PID: 5622 Comm: 2001:470:8:d63: Tainted: G           OE 3.15.0-rc1.jlayton.1+ #2
+[ 2581.104716] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[ 2581.104716]  0000000000000000 00000000d29e16c4 ffff8800d8d8fba8 ffffffff817d318e
+[ 2581.104716]  ffffffff8262d5e0 ffff8800d8d8fbe8 ffffffff817ce525 ffff8800d8d8fc40
+[ 2581.104716]  ffff8800362a8b98 ffff8800362a8b98 0000000000000001 ffff8800362a8000
+[ 2581.104716] Call Trace:
+[ 2581.104716]  [<ffffffff817d318e>] dump_stack+0x4d/0x66
+[ 2581.104716]  [<ffffffff817ce525>] print_circular_bug+0x201/0x20f
+[ 2581.104716]  [<ffffffff810f919f>] __lock_acquire+0x1b8f/0x1ca0
+[ 2581.104716]  [<ffffffff813dbe9e>] ? debug_check_no_obj_freed+0x17e/0x270
+[ 2581.104716]  [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
+[ 2581.104716]  [<ffffffffa036dbdd>] ? nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+[ 2581.104716]  [<ffffffff817dbdae>] _raw_spin_lock+0x3e/0x80
+[ 2581.104716]  [<ffffffffa036dbdd>] ? nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+[ 2581.104716]  [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+[ 2581.104716]  [<ffffffffa036e5fe>] ? nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+[ 2581.104716]  [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+[ 2581.104716]  [<ffffffffa036de10>] ? nfs4_do_reclaim+0x7f0/0x7f0 [nfsv4]
+[ 2581.104716]  [<ffffffff810c260f>] kthread+0xff/0x120
+[ 2581.104716]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
+[ 2581.104716]  [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
+[ 2581.104716]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
+
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
