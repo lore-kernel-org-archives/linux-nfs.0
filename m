@@ -1,73 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from terminus.zytor.com ([198.137.202.10]:55028 "EHLO mail.zytor.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751157AbaFBT2F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Jun 2014 15:28:05 -0400
-Message-ID: <538CCFDE.2010107@zytor.com>
-Date: Mon, 02 Jun 2014 12:26:22 -0700
-From: "H. Peter Anvin" <hpa@zytor.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:35073 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752929AbaFBSU1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 14:20:27 -0400
+Date: Mon, 2 Jun 2014 11:20:26 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: bfields@fieldses.org, trond.myklebust@primarydata.com,
+        bhalevy@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 9/9] NFSd: protect delegation setup with the i_lock
+Message-ID: <20140602182026.GA27238@infradead.org>
+References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
+ <1401455373-18207-10-git-send-email-jlayton@primarydata.com>
+ <20140602084616.GA2910@infradead.org>
+ <20140602101733.651cd9c8@tlielax.poochiereds.net>
 MIME-Version: 1.0
-To: Arnd Bergmann <arnd@arndb.de>, "Joseph S. Myers" <joseph@codesourcery.com>
-CC: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
-        john.stultz@linaro.org, hch@infradead.org, tglx@linutronix.de,
-        geert@linux-m68k.org, lftan@altera.com, linux-fsdevel@vger.kernel.org,
-        ceph-devel@vger.kernel.org, cluster-devel@redhat.com, coda@cs.cmu.edu,
-        codalist@TELEMANN.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-scsi@vger.kernel.org, logfs@logfs.org,
-        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
-        samba-technical@lists.samba.org, xfs@oss.sgi.com
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <Pine.LNX.4.64.1406021350030.19591@digraph.polyomino.org.uk> <4233989.Saca0ocOUr@wuerfel>
-In-Reply-To: <4233989.Saca0ocOUr@wuerfel>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140602101733.651cd9c8@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/02/2014 12:19 PM, Arnd Bergmann wrote:
-> On Monday 02 June 2014 13:52:19 Joseph S. Myers wrote:
->> On Fri, 30 May 2014, Arnd Bergmann wrote:
->>
->>> a) is this the right approach in general? The previous discussion
->>>    pointed this way, but there may be other opinions.
->>
->> The syscall changes seem like the sort of thing I'd expect, although 
->> patches adding new syscalls or otherwise affecting the kernel/userspace 
->> interface (as opposed to those relating to an individual filesystem) 
->> should go to linux-api as well as other relevant lists.
-> 
-> Ok. Sorry about missing linux-api, I confused it with linux-arch, which
-> may not be as relevant here, except for the one question whether we
-> actually want to have the new ABI on all 32-bit architectures or only
-> as an opt-in for those that expect to stay around for another 24 years.
-> 
-> Two more questions for you:
-> 
-> - are you (and others) happy with adding this type of stat syscall
->   (fstatat64/fstat64) as opposed to the more generic xstat that has
->   been discussed in the past and that never made it through the bike-
->   shedding discussion?
-> 
-> - once we have enough buy-in from reviewers to merge this initial
->   series, should we proceed to define rest of the syscall ABI
->   (minus driver ioctls) so glibc and kernel can do the conversion
->   on top of that, or should we better try to do things one syscall
->   family at a time and actually get the kernel to handle them
->   correctly internally?
-> 
+On Mon, Jun 02, 2014 at 10:17:33AM -0400, Jeff Layton wrote:
+> Ok, fair enough. A later patch in the series adds a per nfs4_file lock
+> (the fi_lock) that we can use for this purpose in lieu of the i_lock.
+> Nesting that within the i_lock shouldn't be too painful.
 
-The bit that is really going to hurt is every single ioctl that uses a
-timespec.
+i_lock is part of some very complex locking hierachies in the inode
+and dentry caches.  Long term I'd prefer to get the file locking code
+detangled from that, but let's keep it simple for now and nest
+the nfs4_file lock inside for now.
 
-Honestly, though, I really don't understand the point with "struct
-inode_time".  It seems like the zeroeth-order thing is to change the
-kernel internal version of struct timespec to have a 64-bit time... it
-isn't just about inodes.  We then should be explicit about the external
-uses of time, and use accessors.
+> We could do that within the rpc_call_prepare operation, but the main
+> problem there is that the delegation could leak if the rpc task
+> allocation fails. Would you be amenable to adding a "cb_prepare"
+> operation or something that we could use to run things from the
+> workqueue before the actual callback runs?
 
-	-hpa
+I guess we'll have to do it then.  I'll see if it can be done nicely.
 
+I suspect the root problem of all this is that the file locking code
+calls the lock manager ops with i_lock held, which isn't very nice.
 
