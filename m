@@ -1,69 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:50274 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750931AbaFWWjL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:39:11 -0400
-Subject: [PATCH v1 01/13] xprtrdma: Fix panic in
- rpcrdma_register_frmr_external()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Jun 2014 18:39:09 -0400
-Message-ID: <20140623223909.1634.33362.stgit@manet.1015granger.net>
-In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+Received: from bombadil.infradead.org ([198.137.202.9]:52529 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752383AbaFBIqS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 04:46:18 -0400
+Date: Mon, 2 Jun 2014 01:46:16 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, trond.myklebust@primarydata.com,
+        bhalevy@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 9/9] NFSd: protect delegation setup with the i_lock
+Message-ID: <20140602084616.GA2910@infradead.org>
+References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
+ <1401455373-18207-10-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1401455373-18207-10-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-seg1->mr_nsegs is not yet initialized when it is used to unmap
-segments during an error exit. Use the same unmapping logic for
-all error exits.
+On Fri, May 30, 2014 at 09:09:33AM -0400, Jeff Layton wrote:
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> 
+> state_lock is a heavily contended global lock. We don't want to grab
+> that while simultaneously holding the inode->i_lock. Avoid doing that in
+> the delegation break callback by ensuring that we add/remove the
+> dl_perfile under the inode->i_lock.
 
-"if (frmr_wr.wr.fast_reg.length < len) {" used to be a BUG_ON check.
-The broken code should never be executed under normal operation.
+The current code never takes the state lock (or recall lock) under
+i_lock.  Non-trivial use of i_lock in nfsd is only added in this patch.
 
-Fixes: c977dea22708688eae31774f70126c97aa4dfe83
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/verbs.c |   12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+> 
+> This however, can cause an ABBA deadlock between the state_lock and the
+> i_lock. Work around that by doing the list manipulation in the delegation
+> recall from the workqueue context prior to starting the rpc call.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 13dbd1c..78bd7c6 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1545,9 +1545,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
- 	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
- 	if (frmr_wr.wr.fast_reg.length < len) {
--		while (seg1->mr_nsegs--)
--			rpcrdma_unmap_one(ia, seg++);
--		return -EIO;
-+		rc = -EIO;
-+		goto out_err;
- 	}
- 
- 	/* Bump the key */
-@@ -1565,8 +1564,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
- 			" status %i\n", __func__, rc);
--		while (i--)
--			rpcrdma_unmap_one(ia, --seg);
-+		goto out_err;
- 	} else {
- 		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 		seg1->mr_base = seg1->mr_dma + pageoff;
-@@ -1574,6 +1572,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 		seg1->mr_len = len;
- 	}
- 	*nsegs = i;
-+	return 0;
-+out_err:
-+	while (i--)
-+		rpcrdma_unmap_one(ia, --seg);
- 	return rc;
- }
- 
+I very much dislike the patch for multiple reasons.  For one thing
+nfsd currently stays away from i_lock which is a VFS (and sometimes
+abused by the fs) lock except for a single case in the file locking code
+which really should be factored into common code.  I'd rather have
+locks in nfsd than starting to use i_lock in nfsd and making auditing
+it's use and it's lock hierchies more complex by introducing usage
+outside of the VFS.
+
+Second I really don't like pushing the delegation setup into the
+callback workqueue.  I have a patchset refactoring the callback code
+to allow adding more callbacks without lots of copy & paste, and except
+for this new addition the code in the workqueue already is almost
+perfectly generic for arbitrary callbacks.
+
+Please add a lock in struct nfs4_file to protects it's own members
+instead.
 
