@@ -1,70 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:63520 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750907AbaFEQ1X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 12:27:23 -0400
-Received: by mail-qa0-f52.google.com with SMTP id cm18so1665910qab.39
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 09:27:22 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 5 Jun 2014 12:27:19 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Benny Halevy <bhalevy@primarydata.com>,
+Received: from mout.kundenserver.de ([212.227.17.24]:55760 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751189AbaFBSwv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 14:52:51 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Nicolas Pitre <nicolas.pitre@linaro.org>, "H. Peter Anvin" <hpa@zytor.com>,
+        Dave Chinner <david@fromorbit.com>,
+        LKML Kernel <linux-kernel@vger.kernel.org>, linux-arch@vger.kernel.org,
+        joseph@codesourcery.com, john.stultz@linaro.org,
+        Christoph Hellwig <hch@infradead.org>, tglx@linutronix.de,
+        geert@linux-m68k.org, lftan@altera.com,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 8/9] NFSd: Protect addition to the file_hashtbl
-Message-ID: <20140605122719.5ed5b380@tlielax.poochiereds.net>
-In-Reply-To: <CAHQdGtTEZRjPKT4BGTTZXwhfYwNxZdY8g7HzDVOaVfkj=Aq6aA@mail.gmail.com>
-References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
-	<1401455373-18207-9-git-send-email-jlayton@primarydata.com>
-	<20140605161222.GG8362@fieldses.org>
-	<CAHQdGtTEZRjPKT4BGTTZXwhfYwNxZdY8g7HzDVOaVfkj=Aq6aA@mail.gmail.com>
+Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
+Date: Mon, 02 Jun 2014 20:52:43 +0200
+Message-ID: <5109660.teHoOW5tSd@wuerfel>
+In-Reply-To: <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <4178301.j9kWdGCRLC@wuerfel> <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 5 Jun 2014 12:18:09 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> On Thu, Jun 5, 2014 at 12:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Fri, May 30, 2014 at 09:09:32AM -0400, Jeff Layton wrote:
-> >> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> >>
-> >> Ensure that we only can have a single struct nfs4_file per inode
-> >> in the file_hashtbl and make addition atomic with respect to lookup.
-> >>
-> >> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> >> ---
-> >>  fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++-----------
-> >>  1 file changed, 35 insertions(+), 11 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> >> index a500033a2f87..553c2d6d48dc 100644
-> >> --- a/fs/nfsd/nfs4state.c
-> >> +++ b/fs/nfsd/nfs4state.c
-> >> @@ -2519,6 +2519,8 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
-> >>  {
-> >>       unsigned int hashval = file_hashval(ino);
-> >>
-> >> +     lockdep_assert_held(&state_lock);
-> >> +
-> >
-> > Oops, lockdep points out we overlooked a deadlock here: this function
-> > also calls igrab(), which takes the i_lock, the reverse ordering from
-> > what we take in the delegation-break case.
-> >
-> > Dropping this patch for now.
-> >
+On Monday 02 June 2014 11:04:23 Chuck Lever wrote:
+> I’m wondering what should be done about NFS. A solution for NFS should
+> match any scheme that is considered for local file systems, IMO.
 > 
-> This was the reason for the delegation recall locking changes which
-> are also part of the series.
+> NFSv2/3 timestamps are a pair of unsigned 32-bit values: one value for
+> seconds since midnight GMT Jan 1, 1970, and one value for nanoseconds.
+> (See the definition of nfstime3 in RFC 1813).
 > 
-> That said, why do we need igrab here as opposed to just ihold()?
+> NFSv4 uses a signed 64-bit value where zero represents midnight UTC
+> on January 1, 1970, and an unsigned 32-bit value for nanoseconds. (See
+> the definition of nfstime4 in RFC 5661).
 > 
+> The NFSv4 protocol is probably not problematic, and NFSv3 should be out
+> of the picture by 2038. But if changes are planned for dealing _now_
+> with timestamp issues, compatibility with NFSv3 is a consideration.
+> 
+> It is already the case that, via NFSv3, the Linux NFS client transmits
+> timestamps earlier than 1970 as large positive numbers. Try this with
+> xfstests generic/258.
 
-Yeah, that would be a lot simpler. We certainly already have a
-reference by virtue of the dentry in the filehandle so ihold is
-reasonable. I'll change it to use that.
+If I read the code correctly, a pre-1970 timestamp will be sent as
+a large unsigned integer, but received as a post-2038 timestamp on
+64-bit kernels, both in the nfs client and server code.
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+This behavior is clearly wrong, but it's the same bug that we have
+in lots of other file systems, and it makes sense to have the
+same fix everywhere, at lease the cases where we know what interpretation
+we actually want. NFS has the luxury of having an actual specification
+saying that the value is unsigned. For most of the legacy file systems,
+we can only make a guess at how other OSs would interpret the same
+numbers.
+
+	Arnd
