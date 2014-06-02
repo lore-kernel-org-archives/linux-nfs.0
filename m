@@ -1,45 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21042 "EHLO mx1.redhat.com"
+Received: from terminus.zytor.com ([198.137.202.10]:57908 "EHLO mail.zytor.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750822AbaFJKoS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 10 Jun 2014 06:44:18 -0400
-From: Mateusz Guzik <mguzik@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        stable@vger.kernel.org.#.3.4+
-Subject: [PATCH] NFS: populate ->net in mount data when remounting
-Date: Tue, 10 Jun 2014 12:44:12 +0200
-Message-Id: <1402397052-13970-1-git-send-email-mguzik@redhat.com>
+	id S1752124AbaFBXgg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Jun 2014 19:36:36 -0400
+Message-ID: <538D09CD.2080006@zytor.com>
+Date: Mon, 02 Jun 2014 16:33:33 -0700
+From: "H. Peter Anvin" <hpa@zytor.com>
+MIME-Version: 1.0
+To: "Theodore Ts'o" <tytso@mit.edu>, Chuck Lever <chuck.lever@oracle.com>,
+        Arnd Bergmann <arnd@arndb.de>,
+        Nicolas Pitre <nicolas.pitre@linaro.org>,
+        Dave Chinner <david@fromorbit.com>,
+        LKML Kernel <linux-kernel@vger.kernel.org>, linux-arch@vger.kernel.org,
+        joseph@codesourcery.com, john.stultz@linaro.org,
+        Christoph Hellwig <hch@infradead.org>, tglx@linutronix.de,
+        geert@linux-m68k.org, lftan@altera.com,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <8618458.1EVJCoVbkH@wuerfel> <alpine.LFD.2.11.1406012121430.17310@knanqh.ubzr> <4178301.j9kWdGCRLC@wuerfel> <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com> <20140602153124.GH30598@thunk.org> <538CB085.5000502@zytor.com> <20140602222954.GA29690@thunk.org> <538CFB83.20703@zytor.com> <20140602233212.GA2060@thunk.org>
+In-Reply-To: <20140602233212.GA2060@thunk.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Otherwise the kernel oopses when remounting with IPv6 server because
-net is dereferenced in dev_get_by_name.
+On 06/02/2014 04:32 PM, Theodore Ts'o wrote:
+> On Mon, Jun 02, 2014 at 03:32:35PM -0700, H. Peter Anvin wrote:
+>> On 06/02/2014 03:29 PM, Theodore Ts'o wrote:
+>>>
+>>> And since we are already returning (time_t) -1 in some cases, we might
+>>> as well try to make things a bit more formal.
+>>>
+>>
+>> Are we?  I am not aware of *Linux* actually using that.
+> 
+> Linux's time(2) can return (time_t) -1 and set errno to EFAULT, per
+> the Posix specification:
+> 
+> SYSCALL_DEFINE1(time, time_t __user *, tloc)
+> {
+> 	time_t i = get_seconds();
+> 
+> 	if (tloc) {
+> 		if (put_user(i,tloc))
+> 			return -EFAULT;
+> 	}
+> 	force_successful_syscall_return();
+> 	return i;
+> }
+> 
 
-Use net ns of current thread so that dev_get_by_name does not operate on
-foreign ns. Changing the address is prohibited anyway so this should not
-affect anything.
+OK, I guess I should have said... other than for -EFAULT.
 
-Signed-off-by: Mateusz Guzik <mguzik@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Cc: stable@vger.kernel.org # 3.4+
----
- fs/nfs/super.c | 1 +
- 1 file changed, 1 insertion(+)
+I just don't know of anyone using time(2) with an argument other than NULL.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2cb5694..104ef01 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2248,6 +2248,7 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
- 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
- 	data->version = nfsvers;
- 	data->minorversion = nfss->nfs_client->cl_minorversion;
-+	data->net = current->nsproxy->net_ns;
- 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
- 		data->nfs_server.addrlen);
- 
--- 
-1.8.3.1
+	-hpa
+
 
