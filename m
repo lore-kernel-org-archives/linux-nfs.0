@@ -1,200 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:42918 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751468AbaFMKsg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jun 2014 06:48:36 -0400
-Received: by mail-pa0-f49.google.com with SMTP id lj1so2005889pab.22
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Jun 2014 03:48:36 -0700 (PDT)
-Message-ID: <539AD6F7.8060301@gmail.com>
-Date: Fri, 13 Jun 2014 18:48:23 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH 1/3 v2] NFS4.0: Add IPv6 support
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from b.mx.filmlight.ltd.uk ([77.107.81.251]:9877 "HELO
+	b.mx.filmlight.ltd.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751362AbaFBTFG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 15:05:06 -0400
+Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
+From: Roger Willcocks <roger@filmlight.ltd.uk>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Arnd Bergmann <arnd@arndb.de>, Nicolas Pitre <nicolas.pitre@linaro.org>,
+        linux-arch@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        LKML Kernel <linux-kernel@vger.kernel.org>, lftan@altera.com,
+        Christoph Hellwig <hch@infradead.org>, john.stultz@linaro.org,
+        "H. Peter Anvin" <hpa@zytor.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, geert@linux-m68k.org,
+        tglx@linutronix.de, xfs@oss.sgi.com, joseph@codesourcery.com
+In-Reply-To: <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+	 <8618458.1EVJCoVbkH@wuerfel>
+	 <alpine.LFD.2.11.1406012121430.17310@knanqh.ubzr>
+	 <4178301.j9kWdGCRLC@wuerfel>
+	 <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com>
+Content-Type: text/plain
+Date: Mon, 02 Jun 2014 19:58:24 +0100
+Message-Id: <1401735504.6065.227.camel@montana.filmlight.ltd.uk>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: fix a bug for parsing path.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- nfs4.0/lib/rpc/rpc.py | 15 ++++++++++-----
- nfs4.0/nfs4lib.py     | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
- nfs4.0/testserver.py  | 26 ++++++--------------------
- 3 files changed, 64 insertions(+), 25 deletions(-)
+On Mon, 2014-06-02 at 11:04 -0400, Chuck Lever wrote:
 
-diff --git a/nfs4.0/lib/rpc/rpc.py b/nfs4.0/lib/rpc/rpc.py
-index 60f70bd..8b39df4 100644
---- a/nfs4.0/lib/rpc/rpc.py
-+++ b/nfs4.0/lib/rpc/rpc.py
-@@ -188,6 +188,9 @@ class RPCClient(object):
-         self.debug = 0
-         t = threading.currentThread()
-         self.lock = threading.Lock()
-+        self.af = socket.AF_INET;
-+        if host.find(':') != -1:
-+            self.af = socket.AF_INET6;
-         self.remotehost = host
-         self.remoteport = port
-         self.timeout = timeout
-@@ -207,6 +210,7 @@ class RPCClient(object):
-         self._init_security(self.sec_list) # Note this can make calls
-         self.security = sec_list[0]
- 
-+
-     def _init_security(self, list):
-         # Each element of list must have functions:
-         # initialize, secure_data, make_cred, make_verf
-@@ -235,8 +239,7 @@ class RPCClient(object):
-         if t in self._socket:
-             out = self._socket[t]
-         else:
--            out = self._socket[t] = socket.socket(socket.AF_INET,
--                                                  socket.SOCK_STREAM)
-+            out = self._socket[t] = socket.socket(self.af, socket.SOCK_STREAM)
-             if self.uselowport:
-                 self.bindsocket(out)
-             out.connect((self.remotehost, self.remoteport))
-@@ -301,8 +304,7 @@ class RPCClient(object):
-         t = threading.currentThread()
-         self.lock.acquire()
-         self._socket[t].close()
--        out = self._socket[t] = socket.socket(socket.AF_INET,
--                                              socket.SOCK_STREAM)
-+        out = self._socket[t] = socket.socket(self.af, socket.SOCK_STREAM)
-         # out.bind
-         out.connect((self.remotehost, self.remoteport))
-         out.settimeout(self.timeout)
-@@ -454,7 +456,10 @@ class RPCClient(object):
- 
- class Server(object):
-     def __init__(self, host='', port=51423, name="SERVER"):
--        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-+        try:
-+            self.s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-+        except:
-+            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-         self.s.bind((host, port))
-         self.port = self.s.getsockname()[1]
-diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
-index 5fc7bf3..0a20498 100644
---- a/nfs4.0/nfs4lib.py
-+++ b/nfs4.0/nfs4lib.py
-@@ -39,6 +39,7 @@ import time
- import struct
- import socket
- import sys
-+import re
- 
- class NFSException(rpc.RPCError):
-     pass
-@@ -1013,4 +1014,51 @@ def bitmap2list(bitmap):
-         bitmap >>= 1
-     return out
- 
-+def parse_nfs_url(url):
-+    """Parse [nfs://]host:port/path, format taken from rfc 2224
-+       multipath addr:port pair are as such:
- 
-+      $ip1:$port1,$ip2:$port2..
-+
-+    Returns triple server, port, path.
-+    """
-+    p = re.compile(r"""
-+    (?:nfs://)?               # Ignore an optionally prepended 'nfs://'
-+    (?P<servers>[^/]+)
-+    (?P<path>/.*)?            # set path=everything else, must start with /
-+    $
-+    """, re.VERBOSE)
-+
-+    m = p.match(url)
-+    if m:
-+        servers = m.group('servers')
-+        server_list = []
-+
-+        for server in servers.split(','):
-+            server = server.strip()
-+
-+            idx = server.rfind(':')
-+            bracket_idx = server.rfind(']')
-+
-+            # the first : is before ipv6 addr ] -> no port specified
-+            if bracket_idx > idx:
-+                idx = -1
-+
-+            if idx >= 0:
-+                host = server[:idx]
-+                port = server[idx+1:]
-+            else:
-+                host = server
-+                port = None
-+
-+            # remove brackets around IPv6 addrs, if they exist
-+            if host.startswith('[') and host.endswith(']'):
-+                host = host[1:-1]
-+
-+            port = (2049 if not port else int(port))
-+            server_list.append((host, port))
-+
-+        path = m.group('path')
-+        return tuple(server_list), path
-+    else:
-+        raise ValueError("Error parsing NFS URL: %s" % url)
-diff --git a/nfs4.0/testserver.py b/nfs4.0/testserver.py
-index 606e2f0..41be74a 100755
---- a/nfs4.0/testserver.py
-+++ b/nfs4.0/testserver.py
-@@ -35,7 +35,6 @@ if  __name__ == "__main__":
-     if os.path.isfile(os.path.join(sys.path[0], 'lib', 'testmod.py')):
-         sys.path.insert(1, os.path.join(sys.path[0], 'lib'))
- 
--import re
- import nfs4lib
- import testmod
- from optparse import OptionParser, OptionGroup, IndentedHelpFormatter
-@@ -57,23 +56,6 @@ if not hasattr(os, "getgid"):
- else:
-     GID = os.getgid()
- 
--
--def parse_url(url):
--    """Parse [nfs://]host:port/path"""
--    p = re.compile(r"""
--    (?:nfs://)?      # Ignore an optionally prepended 'nfs://'
--    (?P<host>[^:]+)  # set host=everything up to next :
--    :?
--    (?P<port>[^/]*)  # set port=everything up to next /
--    (?P<path>/.*$|$) # set path=everything else
--    """, re.VERBOSE)
--
--    m = p.match(url)
--    if m:
--        return m.group('host'), m.group('port'), m.group('path')
--    else:
--        return None, None, None
--        
- def unixpath2comps(str, pathcomps=None):
-     if pathcomps is None or str[0] == '/':
-         pathcomps = []
-@@ -284,9 +266,13 @@ def main():
-     if not args:
-         p.error("Need a server")
-     url = args.pop(0)
--    opt.server, opt.port, opt.path = parse_url(url)
--    if not opt.server:
-+    server_list, opt.path = nfs4lib.parse_nfs_url(url)
-+
-+    if not server_list:
-         p.error("%s not a valid server name" % url)
-+
-+    opt.server, opt.port = server_list[0]
-+
-     if not opt.port:
-         opt.port = 2049
-     else:
--- 
-1.9.3
+> NFSv2/3 timestamps are a pair of unsigned 32-bit values: one value for
+> seconds since midnight GMT Jan 1, 1970, and one value for nanoseconds.
+> (See the definition of nfstime3 in RFC 1813).
+> 
+
+nfstime3 could be extended by redefining the otherwise unused
+nanoseconds bits{31,30} as seconds{33,32}, to give a (signed) 34-bit
+seconds field and an unsigned 30-bit nanoseconds field.
+
+This could represent 1970 +/- 272 years.
+
+Servers could indicate they can understand the extended time format by
+adding a new FSINFO capability - FSF3_CANSETTIME_EX.
+
+Clients would use a new SET_TO_CLIENT_TIME_EX time_how enum when sending
+timestamps so old servers would be protected from new clients.
+
+Old clients don't need to be protected from new servers because the
+on-the-wire bit pattern for dates between 1970 and 2106 stays the same,
+so they're no worse off than they were before.
+
+Arguably the new server ought to clamp out-of-range timestamps before
+sending them to old clients but that would need per-client state (and
+nfs3 is stateless.)
+
+--
+Roger
+
 
