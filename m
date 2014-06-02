@@ -1,63 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.avalus.com ([89.16.176.221]:49888 "EHLO mail.avalus.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754541AbaFNJnl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 14 Jun 2014 05:43:41 -0400
-Date: Sat, 14 Jun 2014 10:37:14 +0100
-From: Alex Bligh <alex@alex.org.uk>
-Reply-To: Alex Bligh <alex@alex.org.uk>
-To: linux-nfs@vger.kernel.org
-cc: Alex Bligh <alex@alex.org.uk>
-Subject: Peculiarity in handling NFSv4 mount paths with fsid=0
-Message-ID: <EB04E1C061D36F087D431E74@nimrod.local>
+Received: from mail-vc0-f179.google.com ([209.85.220.179]:42914 "EHLO
+	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753331AbaFBQC3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 12:02:29 -0400
+Received: by mail-vc0-f179.google.com with SMTP id ij19so868047vcb.10
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Jun 2014 09:02:29 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+In-Reply-To: <20140602104948.4faf0bc2@tlielax.poochiereds.net>
+References: <20140602104948.4faf0bc2@tlielax.poochiereds.net>
+Date: Mon, 2 Jun 2014 12:02:28 -0400
+Message-ID: <CAHQdGtRR6SvEhXiqWo24hoUh9AU9cL82Z8Z-d8-7u951F_d+5g@mail.gmail.com>
+Subject: Re: nfs4_do_reclaim lockdep pop in v3.15.0-rc1
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jeff.layton@primarydata.com>,
+        John Stultz <john.stultz@linaro.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've discovered I think a peculiarity with handling mount paths with fsid=0.
-This is on Ubuntu Precise (old) but I've used 3.13 too with the same
-problem.
+On Mon, Jun 2, 2014 at 10:49 AM, Jeff Layton
+<jeff.layton@primarydata.com> wrote:
+> I've been working on the patchset to break up the client_mutex in nfsd.
+> While doing some debugging, I had mounted my kernel git tree with
+> NFSv4.1, and was running crash on the vmlinux image in it.
+>
+> A little while later, I saw the following lockdep inversion pop.
+> Unfortunately, I couldn't get the whole log, but I think it's enough to
+> show that there's a potential problem?
+>
+> I've not had time to give it a hard look yet, but thought I'd post it
+> here in the hopes that it might look familiar to someone:
+>
+> [ 2581.104687] ======================================================
+> [ 2581.104716] [ INFO: possible circular locking dependency detected ]
+> [ 2581.104716] 3.15.0-rc1.jlayton.1+ #2 Tainted: G           OE
+> [ 2581.104716] -------------------------------------------------------
+> [ 2581.104716] 2001:470:8:d63:/5622 is trying to acquire lock:
+> [ 2581.104716]  (&(&sp->so_lock)->rlock){+.+...}, at: [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+> [ 2581.104716]
+> [ 2581.104716] but task is already holding lock:
+> [ 2581.104716]  (&sp->so_reclaim_seqcount){+.+...}, at: [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+> [ 2581.104716]
+> [ 2581.104716] which lock already depends on the new lock.
+> [ 2581.104716]
+> [ 2581.104716]
+> [ 2581.104716] the existing dependency chain (in reverse order) is:
+> [ 2581.104716]
+> -> #1 (&sp->so_reclaim_seqcount){+.+...}:
+> [ 2581.104716]        [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
+> [ 2581.104716]        [<ffffffffa036d8b0>] nfs4_do_reclaim+0x290/0x7f0 [nfsv4]
+> [ 2581.104716]        [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+> [ 2581.104716]        [<ffffffff810c260f>] kthread+0xff/0x120
+> [ 2581.104716]        [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
+> [ 2581.104716]
+> -> #0 (&(&sp->so_lock)->rlock){+.+...}:
+> [ 2581.104716]        [<ffffffff810f919f>] __lock_acquire+0x1b8f/0x1ca0
+> [ 2581.104716]        [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
+> [ 2581.104716]        [<ffffffff817dbdae>] _raw_spin_lock+0x3e/0x80
+> [ 2581.104716]        [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+> [ 2581.104716]        [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+> [ 2581.104716]        [<ffffffff810c260f>] kthread+0xff/0x120
+> [ 2581.104716]        [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
+> [ 2581.104716]
+> [ 2581.104716] other info that might help us debug this:
+> [ 2581.104716]
+> [ 2581.104716]  Possible unsafe locking scenario:
+> [ 2581.104716]
+> [ 2581.104716]        CPU0                    CPU1
+> [ 2581.104716]        ----                    ----
+> [ 2581.104716]   lock(&sp->so_reclaim_seqcount);
+> [ 2581.104716]                                lock(&(&sp->so_lock)->rlock);
+> [ 2581.104716]                                lock(&sp->so_reclaim_seqcount);
+> [ 2581.104716]   lock(&(&sp->so_lock)->rlock);
+> [ 2581.104716]
+> [ 2581.104716]  *** DEADLOCK ***
+> [ 2581.104716]
+> [ 2581.104716] 1 lock held by 2001:470:8:d63:/5622:
+> [ 2581.104716]  #0:  (&sp->so_reclaim_seqcount){+.+...}, at: [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+> [ 2581.104716]
+> [ 2581.104716] stack backtrace:
+> [ 2581.104716] CPU: 2 PID: 5622 Comm: 2001:470:8:d63: Tainted: G           OE 3.15.0-rc1.jlayton.1+ #2
+> [ 2581.104716] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> [ 2581.104716]  0000000000000000 00000000d29e16c4 ffff8800d8d8fba8 ffffffff817d318e
+> [ 2581.104716]  ffffffff8262d5e0 ffff8800d8d8fbe8 ffffffff817ce525 ffff8800d8d8fc40
+> [ 2581.104716]  ffff8800362a8b98 ffff8800362a8b98 0000000000000001 ffff8800362a8000
+> [ 2581.104716] Call Trace:
+> [ 2581.104716]  [<ffffffff817d318e>] dump_stack+0x4d/0x66
+> [ 2581.104716]  [<ffffffff817ce525>] print_circular_bug+0x201/0x20f
+> [ 2581.104716]  [<ffffffff810f919f>] __lock_acquire+0x1b8f/0x1ca0
+> [ 2581.104716]  [<ffffffff813dbe9e>] ? debug_check_no_obj_freed+0x17e/0x270
+> [ 2581.104716]  [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
+> [ 2581.104716]  [<ffffffffa036dbdd>] ? nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+> [ 2581.104716]  [<ffffffff817dbdae>] _raw_spin_lock+0x3e/0x80
+> [ 2581.104716]  [<ffffffffa036dbdd>] ? nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+> [ 2581.104716]  [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
+> [ 2581.104716]  [<ffffffffa036e5fe>] ? nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+> [ 2581.104716]  [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
+> [ 2581.104716]  [<ffffffffa036de10>] ? nfs4_do_reclaim+0x7f0/0x7f0 [nfsv4]
+> [ 2581.104716]  [<ffffffff810c260f>] kthread+0xff/0x120
+> [ 2581.104716]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
+> [ 2581.104716]  [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
+> [ 2581.104716]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
 
-I have an exports line like this:
-/storage/local 
-*(rw,sync,wdelay,nohide,crossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,fsid=0,anonuid=65534,anongid=65534)
+OK. So now that lockdep has been added to raw_seqcount_begin() (commit
+1ca7d67cf5d5a), exactly what are we supposed to use when we DON'T want
+lockdep to "sanity check" our locking here?
 
+As far as we're concerned, the above check is completely bogus, and
+there is no deadlock. At best it would be a livelock, and it would be
+because the server is rebooting over and over again (in which case the
+client behaviour of retrying is _correct_).
 
-And mounted a directory like this (which succeeded)
-
-# mount -t nfs4 10.157.208.1:nfs-01 /mnt
-
-And unmount did this:
-
-# umount 10.157.208.1:nfs-01
-/mnt was not found in /proc/mounts
-/mnt was not found in /proc/mounts
-
-Examination showed /proc/mounts contained the line:
-
-10.157.208.1:/nfs-01 /mnt nfs4 
-rw,relatime,vers=4.0,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=10.157.208.1,local_lock=none,addr=10.157.208.1 
-0 0
-
-Whereas the outptut of 'mount' contained the line:
-
-10.157.208.1:nfs-01 on /mnt type nfs4 
-(rw,addr=10.157.208.1,clientaddr=10.157.208.1)
-
-There is a difference here between "/nfs-01" and "nfs-01".
-
-This might merely be an annoying bug, where it not for the fact that as
-far as I can tell the mount is now cannot be unmounted with userspace
-tools. No amount of --fake and -n appears to help. System reset required.
-
-Of course had I typed:
-
-# mount -t nfs4 10.157.208.1:/nfs-01 /mnt
-
-all would have been well.
-
-I suspect something should be canonicalising the path consistently.
+Trond
 
 -- 
-Alex Bligh
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
