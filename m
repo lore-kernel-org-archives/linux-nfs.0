@@ -1,61 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f43.google.com ([209.85.216.43]:60990 "EHLO
-	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751869AbaFZTV7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:59 -0400
-Received: by mail-qa0-f43.google.com with SMTP id k15so3253997qaq.30
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:59 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 105/117] nfsd: Remove nfs4_lock_state(): nfsd4_test_stateid/nfsd4_free_stateid
-Date: Thu, 26 Jun 2014 15:21:13 -0400
-Message-Id: <1403810485-16497-22-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from imap.thunk.org ([74.207.234.97]:46687 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751318AbaFBXch (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Jun 2014 19:32:37 -0400
+Date: Mon, 2 Jun 2014 19:32:12 -0400
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: "H. Peter Anvin" <hpa@zytor.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Arnd Bergmann <arnd@arndb.de>,
+        Nicolas Pitre <nicolas.pitre@linaro.org>,
+        Dave Chinner <david@fromorbit.com>,
+        LKML Kernel <linux-kernel@vger.kernel.org>, linux-arch@vger.kernel.org,
+        joseph@codesourcery.com, john.stultz@linaro.org,
+        Christoph Hellwig <hch@infradead.org>, tglx@linutronix.de,
+        geert@linux-m68k.org, lftan@altera.com,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
+Message-ID: <20140602233212.GA2060@thunk.org>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+ <8618458.1EVJCoVbkH@wuerfel>
+ <alpine.LFD.2.11.1406012121430.17310@knanqh.ubzr>
+ <4178301.j9kWdGCRLC@wuerfel>
+ <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com>
+ <20140602153124.GH30598@thunk.org>
+ <538CB085.5000502@zytor.com>
+ <20140602222954.GA29690@thunk.org>
+ <538CFB83.20703@zytor.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <538CFB83.20703@zytor.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Mon, Jun 02, 2014 at 03:32:35PM -0700, H. Peter Anvin wrote:
+> On 06/02/2014 03:29 PM, Theodore Ts'o wrote:
+> > 
+> > And since we are already returning (time_t) -1 in some cases, we might
+> > as well try to make things a bit more formal.
+> > 
+> 
+> Are we?  I am not aware of *Linux* actually using that.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 4 ----
- 1 file changed, 4 deletions(-)
+Linux's time(2) can return (time_t) -1 and set errno to EFAULT, per
+the Posix specification:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 658863ed1c35..e5b7b8bbc609 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4490,11 +4490,9 @@ nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfsd4_test_stateid_id *stateid;
- 	struct nfs4_client *cl = cstate->session->se_client;
- 
--	nfs4_lock_state();
- 	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list)
- 		stateid->ts_id_status =
- 			nfsd4_validate_stateid(cl, &stateid->ts_id_stateid);
--	nfs4_unlock_state();
- 
- 	return nfs_ok;
- }
-@@ -4510,7 +4508,6 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_client *cl = cstate->session->se_client;
- 	__be32 ret = nfserr_bad_stateid;
- 
--	nfs4_lock_state();
- 	spin_lock(&cl->cl_lock);
- 	s = find_stateid_locked(cl, stateid);
- 	if (!s)
-@@ -4547,7 +4544,6 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- out_unlock:
- 	spin_unlock(&cl->cl_lock);
- out:
--	nfs4_unlock_state();
- 	return ret;
- }
- 
--- 
-1.9.3
+SYSCALL_DEFINE1(time, time_t __user *, tloc)
+{
+	time_t i = get_seconds();
 
+	if (tloc) {
+		if (put_user(i,tloc))
+			return -EFAULT;
+	}
+	force_successful_syscall_return();
+	return i;
+}
+
+Cheers,
+
+						- Ted
