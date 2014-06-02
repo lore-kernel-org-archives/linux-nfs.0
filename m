@@ -1,179 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:50122 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758069AbaFSOwS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:18 -0400
-Received: by mail-qc0-f179.google.com with SMTP id x3so2290735qcv.10
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:17 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 055/104] NFSd: Protect adding/removing open state owners using client_lock
-Date: Thu, 19 Jun 2014 10:50:01 -0400
-Message-Id: <1403189450-18729-56-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from relay1.mentorg.com ([192.94.38.131]:43565 "EHLO
+	relay1.mentorg.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932214AbaFBVCe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 17:02:34 -0400
+Date: Mon, 2 Jun 2014 21:02:15 +0000
+From: "Joseph S. Myers" <joseph@codesourcery.com>
+To: Arnd Bergmann <arnd@arndb.de>
+CC: <linux-kernel@vger.kernel.org>, <linux-arch@vger.kernel.org>,
+        <john.stultz@linaro.org>, <hch@infradead.org>, <tglx@linutronix.de>,
+        <geert@linux-m68k.org>, <lftan@altera.com>, <hpa@zytor.com>,
+        <linux-fsdevel@vger.kernel.org>, <ceph-devel@vger.kernel.org>,
+        <cluster-devel@redhat.com>, <coda@cs.cmu.edu>,
+        <codalist@TELEMANN.coda.cs.cmu.edu>,
+        <fuse-devel@lists.sourceforge.net>, <linux-afs@lists.infradead.org>,
+        <linux-btrfs@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
+        <linux-ext4@vger.kernel.org>, <linux-f2fs-devel@lists.sourceforge.net>,
+        <linux-mtd@lists.infradead.org>, <linux-nfs@vger.kernel.org>,
+        <linux-ntfs-dev@lists.sourceforge.net>, <linux-scsi@vger.kernel.org>,
+        <logfs@logfs.org>, <ocfs2-devel@oss.oracle.com>,
+        <reiserfs-devel@vger.kernel.org>, <samba-technical@lists.samba.org>,
+        <xfs@oss.sgi.com>
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+In-Reply-To: <4233989.Saca0ocOUr@wuerfel>
+Message-ID: <Pine.LNX.4.64.1406022044090.27099@digraph.polyomino.org.uk>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+ <Pine.LNX.4.64.1406021350030.19591@digraph.polyomino.org.uk>
+ <4233989.Saca0ocOUr@wuerfel>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Mon, 2 Jun 2014, Arnd Bergmann wrote:
 
-* Ensure that alloc_init_open_stateowner() checks the hashtable
-  under the lock before adding a new element.
+> Ok. Sorry about missing linux-api, I confused it with linux-arch, which
+> may not be as relevant here, except for the one question whether we
+> actually want to have the new ABI on all 32-bit architectures or only
+> as an opt-in for those that expect to stay around for another 24 years.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 63 +++++++++++++++++++++++++++++++++++++++++++++--------
- 1 file changed, 54 insertions(+), 9 deletions(-)
+For glibc I think it will make the most sense to add the support for 
+64-bit time_t across all architectures that currently have 32-bit time_t 
+(with the new interfaces having fallback support to implementation in 
+terms of the 32-bit kernel interfaces, if the 64-bit syscalls are 
+unavailable either at runtime or in the kernel headers against which glibc 
+is compiled - this fallback code will of course need to check for overflow 
+when passing a time value to the kernel, hopefully with error handling 
+consistent with whatever the kernel ends up doing when a filesystem can't 
+support a timestamp).  If some architectures don't provide the new 
+interfaces in the kernel then that will mean the fallback code in glibc 
+can't be removed until glibc support for those architectures is removed 
+(as opposed to removing it when glibc no longer supports kernels predating 
+the kernel support).
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e7f7e89f2b8c..73c76a895015 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -71,6 +71,9 @@ static u64 current_sessionid = 1;
- /* forward declarations */
- static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
- static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
-+static struct nfs4_openowner *find_openstateowner_str_locked(
-+		unsigned int hashval, struct nfsd4_open *open,
-+		bool sessions, struct nfsd_net *nn);
- static void nfs4_put_stateowner(struct nfs4_stateowner *sop);
- 
- /* Locking: */
-@@ -876,8 +879,13 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
- 	put_generic_stateid(stp);
- }
- 
--static void unhash_openowner(struct nfs4_openowner *oo)
-+static void unhash_openowner_locked(struct nfs4_openowner *oo)
- {
-+	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-+						nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	list_del_init(&oo->oo_owner.so_strhash);
- 	list_del_init(&oo->oo_perclient);
- }
-@@ -896,18 +904,29 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
- static void release_openowner_stateids(struct nfs4_openowner *oo)
- {
- 	struct nfs4_ol_stateid *stp;
-+	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-+						nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
- 
- 	while (!list_empty(&oo->oo_owner.so_stateids)) {
- 		stp = list_first_entry(&oo->oo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
-+		spin_unlock(&nn->client_lock);
- 		release_open_stateid(stp);
-+		spin_lock(&nn->client_lock);
- 	}
- }
- 
- static void release_openowner(struct nfs4_openowner *oo)
- {
--	unhash_openowner(oo);
-+	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-+						nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	unhash_openowner_locked(oo);
- 	release_openowner_stateids(oo);
-+	spin_unlock(&nn->client_lock);
- 	release_last_closed_stateid(oo);
- 	nfs4_put_stateowner(&oo->oo_owner);
- }
-@@ -2898,8 +2917,11 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
- static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
- {
- 	struct nfs4_openowner *oo = openowner(so);
-+	struct nfsd_net *nn = net_generic(so->so_client->net, nfsd_net_id);
- 
--	unhash_openowner(oo);
-+	spin_lock(&nn->client_lock);
-+	unhash_openowner_locked(oo);
-+	spin_unlock(&nn->client_lock);
- }
- 
- static void nfs4_free_openowner(struct nfs4_stateowner *so)
-@@ -2915,7 +2937,8 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp,
- 			   struct nfsd4_open *open,
- 			   struct nfsd4_compound_state *cstate)
- {
--	struct nfs4_openowner *oo;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+	struct nfs4_openowner *oo, *ret;
- 
- 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
- 	if (!oo)
-@@ -2930,7 +2953,15 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp,
- 	oo->oo_time = 0;
- 	oo->oo_last_closed_stid = NULL;
- 	INIT_LIST_HEAD(&oo->oo_close_lru);
--	hash_openowner(oo, clp, strhashval);
-+	spin_lock(&nn->client_lock);
-+	ret = find_openstateowner_str_locked(strhashval,
-+			open, clp->cl_minorversion, nn);
-+	if (ret == NULL) {
-+		hash_openowner(oo, clp, strhashval);
-+		ret = oo;
-+	} else
-+		nfs4_free_openowner(&oo->oo_owner);
-+	spin_unlock(&nn->client_lock);
- 	return oo;
- }
- 
-@@ -3004,13 +3035,15 @@ same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner,
- }
- 
- static struct nfs4_openowner *
--find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
-+find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
- 			bool sessions, struct nfsd_net *nn)
- {
- 	struct nfs4_stateowner *so;
- 	struct nfs4_openowner *oo;
- 	struct nfs4_client *clp;
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	list_for_each_entry(so, &nn->ownerstr_hashtbl[hashval], so_strhash) {
- 		if (!so->so_is_open_owner)
- 			continue;
-@@ -3018,15 +3051,27 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
- 			oo = openowner(so);
- 			clp = oo->oo_owner.so_client;
- 			if ((bool)clp->cl_minorversion != sessions)
--				return NULL;
--			renew_client(oo->oo_owner.so_client);
--			atomic_inc(&oo->oo_owner.so_count);
-+				break;
-+			renew_client_locked(clp);
-+			atomic_inc(&so->so_count);
- 			return oo;
- 		}
- 	}
- 	return NULL;
- }
- 
-+static struct nfs4_openowner *
-+find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
-+			bool sessions, struct nfsd_net *nn)
-+{
-+	struct nfs4_openowner *oo;
-+
-+	spin_lock(&nn->client_lock);
-+	oo = find_openstateowner_str_locked(hashval, open, sessions, nn);
-+	spin_unlock(&nn->client_lock);
-+	return oo;
-+}
-+
- /* search file_hashtbl[] for file */
- static struct nfs4_file *
- find_file_locked(struct inode *ino)
+> Two more questions for you:
+> 
+> - are you (and others) happy with adding this type of stat syscall
+>   (fstatat64/fstat64) as opposed to the more generic xstat that has
+>   been discussed in the past and that never made it through the bike-
+>   shedding discussion?
+
+I am.
+
+> - once we have enough buy-in from reviewers to merge this initial
+>   series, should we proceed to define rest of the syscall ABI
+>   (minus driver ioctls) so glibc and kernel can do the conversion
+>   on top of that, or should we better try to do things one syscall
+>   family at a time and actually get the kernel to handle them
+>   correctly internally?
+
+I don't have any comments on that ordering question.
+
 -- 
-1.9.3
-
+Joseph S. Myers
+joseph@codesourcery.com
