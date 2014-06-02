@@ -1,60 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:43053 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750836AbaFJKEJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2014 06:04:09 -0400
-Received: by mail-pa0-f54.google.com with SMTP id rd3so537379pab.41
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jun 2014 03:04:08 -0700 (PDT)
-Message-ID: <5396D7FA.4050303@gmail.com>
-Date: Tue, 10 Jun 2014 18:03:38 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mout.kundenserver.de ([212.227.126.131]:52444 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751094AbaFBTUy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 15:20:54 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: "Joseph S. Myers" <joseph@codesourcery.com>
+Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
+        john.stultz@linaro.org, hch@infradead.org, tglx@linutronix.de,
+        geert@linux-m68k.org, lftan@altera.com, hpa@zytor.com,
+        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, coda@cs.cmu.edu,
+        codalist@TELEMANN.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-scsi@vger.kernel.org, logfs@logfs.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        samba-technical@lists.samba.org, xfs@oss.sgi.com
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Mon, 02 Jun 2014 21:19:55 +0200
+Message-ID: <4233989.Saca0ocOUr@wuerfel>
+In-Reply-To: <Pine.LNX.4.64.1406021350030.19591@digraph.polyomino.org.uk>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <Pine.LNX.4.64.1406021350030.19591@digraph.polyomino.org.uk>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH] NFS4.1: try to clean sessions after testing
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There are many sessions left after testing, they hold drc memory at server.
-This patch tries to clean session after each testcase.
+On Monday 02 June 2014 13:52:19 Joseph S. Myers wrote:
+> On Fri, 30 May 2014, Arnd Bergmann wrote:
+> 
+> > a) is this the right approach in general? The previous discussion
+> >    pointed this way, but there may be other opinions.
+> 
+> The syscall changes seem like the sort of thing I'd expect, although 
+> patches adding new syscalls or otherwise affecting the kernel/userspace 
+> interface (as opposed to those relating to an individual filesystem) 
+> should go to linux-api as well as other relevant lists.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- nfs4.1/server41tests/environment.py | 7 ++++++-
- nfs4.1/testmod.py                   | 1 +
- 2 files changed, 7 insertions(+), 1 deletion(-)
+Ok. Sorry about missing linux-api, I confused it with linux-arch, which
+may not be as relevant here, except for the one question whether we
+actually want to have the new ABI on all 32-bit architectures or only
+as an opt-in for those that expect to stay around for another 24 years.
 
-diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
-index b2df732..7632655 100644
---- a/nfs4.1/server41tests/environment.py
-+++ b/nfs4.1/server41tests/environment.py
-@@ -248,7 +248,12 @@ class Environment(testmod.Environment):
-     def testname(self, t):
-         """Returns a name for the test that is unique between runs"""
-         return "%s_%i" % (t.code, self.timestamp)
--    
-+
-+    def clean_sessions(self):
-+        """Destroy client name env.c1"""
-+        for sessionid in self.c1.sessions.keys():
-+            self.c1.compound([op.destroy_session(sessionid)])
-+
- #########################################
- debug_fail = False
- 
-diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
-index 5908066..661aed0 100644
---- a/nfs4.1/testmod.py
-+++ b/nfs4.1/testmod.py
-@@ -220,6 +220,7 @@ class Test(object):
-             environment.startUp()
-             self.runtest(self, environment)
-             self.result = self._pass_result
-+	    environment.clean_sessions()
-         except KeyboardInterrupt:
-             raise
-         except TestException, e:
--- 
-1.9.3
+Two more questions for you:
 
+- are you (and others) happy with adding this type of stat syscall
+  (fstatat64/fstat64) as opposed to the more generic xstat that has
+  been discussed in the past and that never made it through the bike-
+  shedding discussion?
+
+- once we have enough buy-in from reviewers to merge this initial
+  series, should we proceed to define rest of the syscall ABI
+  (minus driver ioctls) so glibc and kernel can do the conversion
+  on top of that, or should we better try to do things one syscall
+  family at a time and actually get the kernel to handle them
+  correctly internally?
+
+	Arnd
