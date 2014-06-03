@@ -1,92 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:62866 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932295AbaFSOwi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:38 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so2288012qcx.27
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:37 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 069/104] NFSd: Don't require client_lock in free_client
-Date: Thu, 19 Jun 2014 10:50:15 -0400
-Message-Id: <1403189450-18729-70-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mout.kundenserver.de ([212.227.126.187]:59038 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751158AbaFCMYW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 08:24:22 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: Vyacheslav Dubeyko <slava@dubeyko.com>
+Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
+        joseph@codesourcery.com, john.stultz@linaro.org, hch@infradead.org,
+        tglx@linutronix.de, geert@linux-m68k.org, lftan@altera.com,
+        hpa@zytor.com, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com, coda@cs.cmu.edu,
+        codalist@TELEMANN.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-scsi@vger.kernel.org, logfs@logfs.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        samba-technical@lists.samba.org, xfs@oss.sgi.com
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Tue, 03 Jun 2014 14:21:29 +0200
+Message-ID: <7080340.W1OdttOEiZ@wuerfel>
+In-Reply-To: <1401546649.2413.6.camel@slavad-CELSIUS-H720>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <1401546649.2413.6.camel@slavad-CELSIUS-H720>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Saturday 31 May 2014 18:30:49 Vyacheslav Dubeyko wrote:
+> By the way, what about NILFS2? Is NILFS2 ready for suggested approach
+> without any changes?
 
-The struct nfs_client is supposed to be invisible and unreferenced
-before it gets here.
+nilfs2 and a lot of other file systems don't need any changes for
+this, because they don't assign the inode time stamp fields to
+a 'struct timespec'.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 13 -------------
- 1 file changed, 13 deletions(-)
+FWIW, nilfs2 uses a 64-bit seconds value, which is always safe and
+can represent the full range of user space timespec on all machines.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7982f44aae83..2b3897f313b8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1225,9 +1225,6 @@ static void __free_session(struct nfsd4_session *ses)
- 
- static void free_session(struct nfsd4_session *ses)
- {
--	struct nfsd_net *nn = net_generic(ses->se_client->net, nfsd_net_id);
--
--	lockdep_assert_held(&nn->client_lock);
- 	nfsd4_del_conns(ses);
- 	nfsd4_put_drc_mem(&ses->se_fchannel);
- 	__free_session(ses);
-@@ -1377,9 +1374,6 @@ err_no_name:
- static void
- free_client(struct nfs4_client *clp)
- {
--	struct nfsd_net __maybe_unused *nn = net_generic(clp->net, nfsd_net_id);
--
--	lockdep_assert_held(&nn->client_lock);
- 	while (!list_empty(&clp->cl_sessions)) {
- 		struct nfsd4_session *ses;
- 		ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
-@@ -1438,7 +1432,6 @@ __destroy_client(struct nfs4_client *clp)
- 	struct nfs4_openowner *oo;
- 	struct nfs4_delegation *dp;
- 	struct list_head reaplist;
--	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
- 	INIT_LIST_HEAD(&reaplist);
- 	spin_lock(&state_lock);
-@@ -1466,10 +1459,7 @@ __destroy_client(struct nfs4_client *clp)
- 	nfsd4_shutdown_callback(clp);
- 	if (clp->cl_cb_conn.cb_xprt)
- 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
--	spin_lock(&nn->client_lock);
--	WARN_ON_ONCE(atomic_read(&clp->cl_refcount));
- 	free_client(clp);
--	spin_unlock(&nn->client_lock);
- }
- 
- static void
-@@ -1683,7 +1673,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 	struct sockaddr *sa = svc_addr(rqstp);
- 	int ret;
- 	struct net *net = SVC_NET(rqstp);
--	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	clp = alloc_client(name);
- 	if (clp == NULL)
-@@ -1691,9 +1680,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 
- 	ret = copy_cred(&clp->cl_cred, &rqstp->rq_cred);
- 	if (ret) {
--		spin_lock(&nn->client_lock);
- 		free_client(clp);
--		spin_unlock(&nn->client_lock);
- 		return NULL;
- 	}
- 	nfsd4_init_callback(&clp->cl_cb_null);
--- 
-1.9.3
-
+	Arnd
