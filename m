@@ -1,102 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:48548 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754624AbaF3PvN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:13 -0400
-Received: by mail-qa0-f44.google.com with SMTP id hw13so6649521qab.31
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:12 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 028/114] nfsd: set stateid access and deny bits in nfs4_get_vfs_file
-Date: Mon, 30 Jun 2014 11:48:57 -0400
-Message-Id: <1404143423-24381-29-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54916 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752556AbaFCOKw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jun 2014 10:10:52 -0400
+Date: Tue, 3 Jun 2014 10:10:21 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: Anna Schumaker <schumaker.anna@gmail.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 41/52] nfsd4: turn off zero-copy-read in exotic cases
+Message-ID: <20140603141021.GA14321@pad.redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+ <1400787148-25941-42-git-send-email-bfields@redhat.com>
+ <20140528080945.GA6797@infradead.org>
+ <20140528140151.GB13012@pad.redhat.com>
+ <5385EEF5.9050904@gmail.com>
+ <20140528142320.GC13012@pad.redhat.com>
+ <DA524584-24CD-42C5-9DCB-B5CD2A7F2CC6@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <DA524584-24CD-42C5-9DCB-B5CD2A7F2CC6@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cleanup -- ensure that the stateid bits are set at the same time that
-the file access refcounts are incremented. Keeping them coherent like
-this makes it easier to ensure that we account for all of the
-references.
+On Tue, Jun 03, 2014 at 12:18:34AM -0400, Weston Andros Adamson wrote:
+> On May 28, 2014, at 10:23 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+> > There's not much point re-running all the 4.1 tests over 4.2.  Maybe all
+> > we may need is to say "use minor version 2 on this compound" in tests of
+> > the new features.
+> > 
+> > But I haven't even tried to figure out how to tell pynfs about the new
+> > .x files.
+> 
+> I’ve made a lot of pynfs cleanups recently - mostly on the client test side 
+> (the nfs4.1 server), but they may make this a bit easier. I’ll clean them up
+> and share asap.
+> 
+> I was just adding new xdr to pynfs and AFAIK it's xdrgen has no include
+> support, so we’re stuck tacking things on the end of nfs4.x. Would it be
+> worthwhile for me to add some type of include support? Minor versions and
+> layouts could stay in separate .x files - that sounds much cleaner to me.
 
-Since the initialization of the st_*_bmap fields is done when it's
-hashed, we go ahead and hash the stateid before getting access to the
-file and unhash it if that function returns error. This will be
-necessary anyway in a follow-on patch that will overhaul deny mode
-handling.
+That does sound cleaner, but is that how the ietf's .x files work?
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 23 ++++++++++++-----------
- 1 file changed, 12 insertions(+), 11 deletions(-)
+It looks like
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9dba8b7baf3b..343b8de6309d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3280,7 +3280,8 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
- }
- 
- static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
--		struct svc_fh *cur_fh, struct nfsd4_open *open)
-+		struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp,
-+		struct nfsd4_open *open)
- {
- 	struct file *filp = NULL;
- 	__be32 status;
-@@ -3308,6 +3309,9 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 	if (status)
- 		goto out_put_access;
- 
-+	/* Set access and deny bits in stateid */
-+	set_access(open->op_share_access, stp);
-+	set_deny(open->op_share_deny, stp);
- 	return nfs_ok;
- 
- out_put_access:
-@@ -3319,20 +3323,15 @@ out:
- static __be32
- nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
- {
--	u32 op_share_access = open->op_share_access;
- 	__be32 status;
- 
--	if (!test_access(op_share_access, stp))
--		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open);
-+	if (!test_access(open->op_share_access, stp))
-+		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
- 	else
- 		status = nfsd4_truncate(rqstp, cur_fh, open);
- 
- 	if (status)
- 		return status;
--
--	/* remember the open */
--	set_access(op_share_access, stp);
--	set_deny(open->op_share_deny, stp);
- 	return nfs_ok;
- }
- 
-@@ -3580,12 +3579,14 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		if (status)
- 			goto out;
- 	} else {
--		status = nfs4_get_vfs_file(rqstp, fp, current_fh, open);
--		if (status)
--			goto out;
- 		stp = open->op_stp;
- 		open->op_stp = NULL;
- 		init_open_stateid(stp, fp, open);
-+		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
-+		if (status) {
-+			release_open_stateid(stp);
-+			goto out;
-+		}
- 	}
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
--- 
-1.9.3
+  http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-dot-x-26.txt
 
+just copies all the 4.1 definitions.
+
+I may not understand what you're proposing.
+
+--b.
