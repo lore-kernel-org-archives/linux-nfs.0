@@ -1,43 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:35073 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752929AbaFBSU1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 14:20:27 -0400
-Date: Mon, 2 Jun 2014 11:20:26 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: bfields@fieldses.org, trond.myklebust@primarydata.com,
-        bhalevy@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 9/9] NFSd: protect delegation setup with the i_lock
-Message-ID: <20140602182026.GA27238@infradead.org>
-References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
- <1401455373-18207-10-git-send-email-jlayton@primarydata.com>
- <20140602084616.GA2910@infradead.org>
- <20140602101733.651cd9c8@tlielax.poochiereds.net>
+Received: from mail-vc0-f173.google.com ([209.85.220.173]:55213 "EHLO
+	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933415AbaFCQo0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 12:44:26 -0400
+Received: by mail-vc0-f173.google.com with SMTP id ik5so4182365vcb.18
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Jun 2014 09:44:26 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140602101733.651cd9c8@tlielax.poochiereds.net>
+In-Reply-To: <538DF0F5.8090500@netapp.com>
+References: <538DF0F5.8090500@netapp.com>
+Date: Tue, 3 Jun 2014 12:44:25 -0400
+Message-ID: <CAHQdGtT8y2rcPcjOJveKvPsFm30OpOJNOXZcPHtqRGVMKqSSvA@mail.gmail.com>
+Subject: Re: [GIT PULL] Please pull NFS client RDMA changes for 3.16
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 02, 2014 at 10:17:33AM -0400, Jeff Layton wrote:
-> Ok, fair enough. A later patch in the series adds a per nfs4_file lock
-> (the fi_lock) that we can use for this purpose in lieu of the i_lock.
-> Nesting that within the i_lock shouldn't be too painful.
+On Tue, Jun 3, 2014 at 11:59 AM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> Hey Trond,
+>
+> The following changes since commit fad01e866afdbe01a1f3ec06a39c3a8b9e197014:
+>
+>   Linux 3.15-rc8 (2014-06-01 19:12:24 -0700)
+>
 
-i_lock is part of some very complex locking hierachies in the inode
-and dentry caches.  Long term I'd prefer to get the file locking code
-detangled from that, but let's keep it simple for now and nest
-the nfs4_file lock inside for now.
+Did you rebase these? All the commits appear to be labeled with
+today's date, and Chuck appears as the committer for all of them.
 
-> We could do that within the rpc_call_prepare operation, but the main
-> problem there is that the delegation could leak if the rpc task
-> allocation fails. Would you be amenable to adding a "cb_prepare"
-> operation or something that we could use to run things from the
-> workqueue before the actual callback runs?
+-- 
+Trond Myklebust
 
-I guess we'll have to do it then.  I'll see if it can be done nicely.
+Linux NFS client maintainer, PrimaryData
 
-I suspect the root problem of all this is that the file locking code
-calls the lock manager ops with i_lock held, which isn't very nice.
-
+trond.myklebust@primarydata.com
