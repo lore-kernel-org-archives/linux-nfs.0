@@ -1,90 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.kundenserver.de ([212.227.126.187]:56173 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752760AbaFBT4S (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 15:56:18 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: "H. Peter Anvin" <hpa@zytor.com>
-Cc: "Joseph S. Myers" <joseph@codesourcery.com>, linux-kernel@vger.kernel.org,
-        linux-arch@vger.kernel.org, john.stultz@linaro.org, hch@infradead.org,
-        tglx@linutronix.de, geert@linux-m68k.org, lftan@altera.com,
-        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, coda@cs.cmu.edu,
-        codalist@telemann.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-scsi@vger.kernel.org, logfs@logfs.org,
-        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
-        samba-technical@lists.samba.org, xfs@oss.sgi.com
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Mon, 02 Jun 2014 21:55:52 +0200
-Message-ID: <7175692.dpgYFMbTaP@wuerfel>
-In-Reply-To: <538CCFDE.2010107@zytor.com>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <4233989.Saca0ocOUr@wuerfel> <538CCFDE.2010107@zytor.com>
+Received: from mail-ve0-f174.google.com ([209.85.128.174]:45021 "EHLO
+	mail-ve0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932347AbaFCXIA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 19:08:00 -0400
+Received: by mail-ve0-f174.google.com with SMTP id jw12so7860887veb.33
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Jun 2014 16:07:59 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+In-Reply-To: <538E12B9.8030007@oracle.com>
+References: <538DF0F5.8090500@netapp.com>
+	<CAHQdGtT8y2rcPcjOJveKvPsFm30OpOJNOXZcPHtqRGVMKqSSvA@mail.gmail.com>
+	<538E0008.1010709@netapp.com>
+	<CAHQdGtRTV0UvZ=X0hnyWeE4Pb2hHAOJpTRp0ZETgDkt+9_03ig@mail.gmail.com>
+	<538E12B9.8030007@oracle.com>
+Date: Tue, 3 Jun 2014 19:07:59 -0400
+Message-ID: <CAHQdGtQdBjXCgQe62AV_Vm2uct9OtZw4t5AA3NKikA8_0rQ81A@mail.gmail.com>
+Subject: Re: [GIT PULL] Please pull NFS client RDMA changes for 3.16
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Shirley Ma <shirley.ma@oracle.com>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday 02 June 2014 12:26:22 H. Peter Anvin wrote:
-> On 06/02/2014 12:19 PM, Arnd Bergmann wrote:
-> > On Monday 02 June 2014 13:52:19 Joseph S. Myers wrote:
-> >> On Fri, 30 May 2014, Arnd Bergmann wrote:
-> >>
-> >>> a) is this the right approach in general? The previous discussion
-> >>>    pointed this way, but there may be other opinions.
-> >>
-> >> The syscall changes seem like the sort of thing I'd expect, although 
-> >> patches adding new syscalls or otherwise affecting the kernel/userspace 
-> >> interface (as opposed to those relating to an individual filesystem) 
-> >> should go to linux-api as well as other relevant lists.
-> > 
-> > Ok. Sorry about missing linux-api, I confused it with linux-arch, which
-> > may not be as relevant here, except for the one question whether we
-> > actually want to have the new ABI on all 32-bit architectures or only
-> > as an opt-in for those that expect to stay around for another 24 years.
-> > 
-> > Two more questions for you:
-> > 
-> > - are you (and others) happy with adding this type of stat syscall
-> >   (fstatat64/fstat64) as opposed to the more generic xstat that has
-> >   been discussed in the past and that never made it through the bike-
-> >   shedding discussion?
-> > 
-> > - once we have enough buy-in from reviewers to merge this initial
-> >   series, should we proceed to define rest of the syscall ABI
-> >   (minus driver ioctls) so glibc and kernel can do the conversion
-> >   on top of that, or should we better try to do things one syscall
-> >   family at a time and actually get the kernel to handle them
-> >   correctly internally?
-> > 
-> 
-> The bit that is really going to hurt is every single ioctl that uses a
-> timespec.
-> 
-> Honestly, though, I really don't understand the point with "struct
-> inode_time".  It seems like the zeroeth-order thing is to change the
-> kernel internal version of struct timespec to have a 64-bit time... it
-> isn't just about inodes.  We then should be explicit about the external
-> uses of time, and use accessors.
+On Tue, Jun 3, 2014 at 2:23 PM, Shirley Ma <shirley.ma@oracle.com> wrote:
+>
+>
+> On 06/03/2014 10:53 AM, Trond Myklebust wrote:
+>> On Tue, Jun 3, 2014 at 1:04 PM, Anna Schumaker
+>> <Anna.Schumaker@netapp.com> wrote:
+>>> I pulled from Chuck's branch earlier today before sending this.  He has all the date stamps set as June 2.
+>>>
+>>
+>> OK, this is broken and I'm not pulling. The point of asking you to
+>> maintain the tree was to ensure that the patches get reviewed by you,
+>> and that I have signed-off-bys etc showing that is the case.
+>
+> Thanks Trond for checking. Where was broken? What we can help here?
 
-I picked these because they are fairly isolated from all other uses,
-in particular since inode times are the only things where we really
-care about times in the distant past or future (decades away as opposed
-to things that happened between boot and shutdown).
+Hi Shirley,
 
-For other kernel-internal uses, we may be better off migrating to
-a completely different representation, such as nanoseconds since
-boot or the architecture specific ktime_t, but this is really something
-to decide for each subsystem.
+I meant that the process was broken, since I was losing the
+information about what Anna had reviewed and so the issue was how to
+fix that. I've now talked to Chuck and Anna and we've set up a model
+for how to work together in the future: the model I'd like to see is
+for Anna to publish a branch of patches that she has reviewed, with
+the signed-off-by line. That way I know that the contents are the
+exact same patches that were approved on the mailing lists.
 
-I just tried building an arm32 kernel with a s64 time_t, and that
-failed horribly, I get linker errors for missing 64-bit divides
-and lots of warnings for code that expects time_t pointers to
-functions taking a 'long' or vice versa. I also think the only
-way to maintain ABI compatibility is to separate the internal uses
-from the interface, which means auditing all code in the end.
+Cheers
+  Trond
 
-	Arnd
+>>> On 06/03/2014 12:44 PM, Trond Myklebust wrote:
+>>>> On Tue, Jun 3, 2014 at 11:59 AM, Anna Schumaker
+>>>> <Anna.Schumaker@netapp.com> wrote:
+>>>>> Hey Trond,
+>>>>>
+>>>>> The following changes since commit fad01e866afdbe01a1f3ec06a39c3a8b9e197014:
+>>>>>
+>>>>>   Linux 3.15-rc8 (2014-06-01 19:12:24 -0700)
+>>>>>
+>>>>
+>>>> Did you rebase these? All the commits appear to be labeled with
+>>>> today's date, and Chuck appears as the committer for all of them.
+>>>>
+>>>
+>
+> Shirley
+>
+
+
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
