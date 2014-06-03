@@ -1,105 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:59186 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751144AbaFJKaB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2014 06:30:01 -0400
-Received: by mail-pd0-f171.google.com with SMTP id ft15so684744pdb.16
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jun 2014 03:30:00 -0700 (PDT)
-Message-ID: <5396DE13.6070506@gmail.com>
-Date: Tue, 10 Jun 2014 18:29:39 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH] SUNRPC/NFSD: Change to type of bool for rq_usedeferral and
- rq_splice_ok
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from arafel.iwakd.de ([78.46.72.57]:54655 "EHLO arafel.iwakd.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752627AbaFCLZp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jun 2014 07:25:45 -0400
+From: Christian Seiler <christian@iwakd.de>
+To: linux-nfs@vger.kernel.org
+Cc: Christian Seiler <christian@iwakd.de>
+Subject: [PATCH] libnfsidmap: respect Nobody-User/Nobody-Group
+Date: Tue,  3 Jun 2014 13:17:44 +0200
+Message-Id: <1401794264-3975-1-git-send-email-christian@iwakd.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rq_usedeferral and rq_splice_ok are used as 0 and 1, just defined to bool.
+Previous behavior of libnfsidmap was to do a name lookup of
+nobody@DEFAULTDOMAIN (for both user and group), which does not match
+the behavior of rpc.idmapd.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+This patch makes libnfsidmap respect Nobody-User/Nobody-Group for
+lookups, thus making the nfsidmap utility properly handle the case if
+nobody@DEFAULTDOMAIN does not directly map to any user/group on the
+system.
+
+Signed-off-by: Christian Seiler <christian@iwakd.de>
 ---
- fs/nfsd/nfs4proc.c                | 4 ++--
- include/linux/sunrpc/svc.h        | 4 ++--
- net/sunrpc/auth_gss/svcauth_gss.c | 2 +-
- net/sunrpc/svc.c                  | 4 ++--
- 4 files changed, 7 insertions(+), 7 deletions(-)
+ libnfsidmap.c |   48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 48 insertions(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index baa3803..be67340 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1298,7 +1298,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	 * Don't use the deferral mechanism for NFSv4; compounds make it
- 	 * too hard to avoid non-idempotency problems.
- 	 */
--	rqstp->rq_usedeferral = 0;
-+	rqstp->rq_usedeferral = false;
+diff --git a/libnfsidmap.c b/libnfsidmap.c
+index 92bc493..4903c1e 100644
+--- a/libnfsidmap.c
++++ b/libnfsidmap.c
+@@ -62,6 +62,8 @@ static struct conf_list *local_realms;
+ int idmap_verbosity = 0;
+ static struct mapping_plugin **nfs4_plugins = NULL;
+ static struct mapping_plugin **gss_plugins = NULL;
++uid_t nobody_uid = (uid_t)-1;
++gid_t nobody_gid = (gid_t)-1;
  
- 	/*
- 	 * According to RFC3010, this takes precedence over all other errors.
-@@ -1417,7 +1417,7 @@ encode_op:
- 	BUG_ON(cstate->replay_owner);
+ #ifndef PATH_PLUGINS
+ #define PATH_PLUGINS "/usr/lib/libnfsidmap"
+@@ -228,6 +230,7 @@ int nfs4_init_name_mapping(char *conffile)
+ 	int ret = -ENOENT;
+ 	int dflt = 0;
+ 	struct conf_list *nfs4_methods, *gss_methods;
++	char *nobody_user, *nobody_group;
+ 
+ 	/* XXX: need to be able to reload configurations... */
+ 	if (nfs4_plugins) /* already succesfully initialized */
+@@ -324,6 +327,39 @@ int nfs4_init_name_mapping(char *conffile)
+ 		if (load_plugins(gss_methods, &gss_plugins) == -1)
+ 			goto out;
+ 	}
++
++	nobody_user = conf_get_str("Mapping", "Nobody-User");
++	if (nobody_user) {
++		size_t buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
++		struct passwd *buf;
++		struct passwd *pw = NULL;
++		int err;
++
++		buf = malloc(sizeof(*buf) + buflen);
++		if (buf) {
++			err = getpwnam_r(nobody_user, buf, ((char *)buf) + sizeof(*buf), buflen, &pw);
++			if (err == 0 && pw != NULL)
++				nobody_uid = pw->pw_uid;
++			free(buf);
++		}
++	}
++
++	nobody_group = conf_get_str("Mapping", "Nobody-Group");
++	if (nobody_group) {
++		size_t buflen = sysconf(_SC_GETGR_R_SIZE_MAX);
++		struct group *buf;
++		struct group *gr = NULL;
++		int err;
++
++		buf = malloc(sizeof(*buf) + buflen);
++		if (buf) {
++			err = getgrnam_r(nobody_group, buf, ((char *)buf) + sizeof(*buf), buflen, &gr);
++			if (err == 0 && gr != NULL)
++				nobody_gid = gr->gr_gid;
++			free(buf);
++		}
++	}
++
+ 	ret = 0;
  out:
- 	/* Reset deferral mechanism for RPC deferrals */
--	rqstp->rq_usedeferral = 1;
-+	rqstp->rq_usedeferral = true;
- 	dprintk("nfsv4 compound returned %d\n", ntohl(status));
- 	return status;
- }
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 1bc7cd0..cf61ecd 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -236,7 +236,7 @@ struct svc_rqst {
- 	struct svc_cred		rq_cred;	/* auth info */
- 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
- 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
--	int			rq_usedeferral;	/* use deferral */
-+	bool			rq_usedeferral;	/* use deferral */
+ 	if (ret) {
+@@ -453,6 +489,18 @@ static int set_id_to_nobody(int *id, int is_uid)
+ 	int rc = 0;
+ 	const char name[] = "nobody@";
+ 	char nobody[strlen(name) + strlen(get_default_domain()) + 1];
++
++	/* First try to see whether a Nobody-User/Nobody-Group was
++         * configured, before we try to do a full lookup for the
++         * NFS nobody user. */
++	if (is_uid && nobody_uid != (uid_t)-1) {
++		*id = (int)nobody_uid;
++		return 0;
++	} else if (!is_uid && nobody_gid != (gid_t)-1) {
++		*id = (int)nobody_gid;
++		return 0;
++	}
++
+ 	strcpy(nobody, name);
+ 	strcat(nobody, get_default_domain());
  
- 	size_t			rq_xprt_hlen;	/* xprt header len */
- 	struct xdr_buf		rq_arg;
-@@ -277,7 +277,7 @@ struct svc_rqst {
- 	struct auth_domain *	rq_gssclient;	/* "gss/"-style peer info */
- 	int			rq_cachetype;
- 	struct svc_cacherep *	rq_cacherep;	/* cache info */
--	int			rq_splice_ok;   /* turned off in gss privacy
-+	bool			rq_splice_ok;   /* turned off in gss privacy
- 						 * to prevent encrypting page
- 						 * cache pages */
- 	wait_queue_head_t	rq_wait;	/* synchronization */
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 4ce5ecce..c548ab2 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -886,7 +886,7 @@ unwrap_priv_data(struct svc_rqst *rqstp, struct xdr_buf *buf, u32 seq, struct gs
- 	u32 priv_len, maj_stat;
- 	int pad, saved_len, remaining_len, offset;
- 
--	rqstp->rq_splice_ok = 0;
-+	rqstp->rq_splice_ok = false;
- 
- 	priv_len = svc_getnl(&buf->head[0]);
- 	if (rqstp->rq_deferred) {
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 5de6801..1db5007 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1086,9 +1086,9 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 		goto err_short_len;
- 
- 	/* Will be turned off only in gss privacy case: */
--	rqstp->rq_splice_ok = 1;
-+	rqstp->rq_splice_ok = true;
- 	/* Will be turned off only when NFSv4 Sessions are used */
--	rqstp->rq_usedeferral = 1;
-+	rqstp->rq_usedeferral = true;
- 	rqstp->rq_dropme = false;
- 
- 	/* Setup reply header */
 -- 
-1.9.3
+1.7.10.4
 
