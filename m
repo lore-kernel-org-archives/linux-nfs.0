@@ -1,52 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52419 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751082AbaFEC3T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jun 2014 22:29:19 -0400
-Date: Wed, 4 Jun 2014 22:29:18 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH pynfs 02/17] 4.1 server: service RECLAIM_COMPLETE
- operations
-Message-ID: <20140605022918.GB12044@fieldses.org>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
- <1401915726-29092-3-git-send-email-dros@primarydata.com>
+Received: from mout.kundenserver.de ([212.227.17.13]:55621 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753707AbaFCOtb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 10:49:31 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: "Joseph S. Myers" <joseph@codesourcery.com>
+Cc: "H. Peter Anvin" <hpa@zytor.com>, linux-kernel@vger.kernel.org,
+        linux-arch@vger.kernel.org, john.stultz@linaro.org, hch@infradead.org,
+        tglx@linutronix.de, geert@linux-m68k.org, lftan@altera.com,
+        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, coda@cs.cmu.edu,
+        codalist@telemann.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-scsi@vger.kernel.org, logfs@logfs.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        samba-technical@lists.samba.org, xfs@oss.sgi.com
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Tue, 03 Jun 2014 16:37:46 +0200
+Message-ID: <18158267.ZX0ZMPkVDT@wuerfel>
+In-Reply-To: <Pine.LNX.4.64.1406031427130.12421@digraph.polyomino.org.uk>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <5011138.W0gbOc20Qp@wuerfel> <Pine.LNX.4.64.1406031427130.12421@digraph.polyomino.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1401915726-29092-3-git-send-email-dros@primarydata.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 04, 2014 at 05:01:50PM -0400, Weston Andros Adamson wrote:
-> Just return ok!
-
-Technically it should record whether or not the reclaim_complete has
-happened and return a GRACE error on any non-reclaim open performed
-before the reclaim_complete--but for your purposes you may not care...
-
---b.
-
+On Tuesday 03 June 2014 14:33:10 Joseph S. Myers wrote:
+> On Tue, 3 Jun 2014, Arnd Bergmann wrote:
 > 
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> ---
->  nfs4.1/nfs4server.py | 3 +++
->  1 file changed, 3 insertions(+)
+> > I think John Stultz and Thomas Gleixner have already started looking
+> > at how the timekeeping code can be updated. Once that is done, we should
+> > be able to add a functional 64-bit gettimeofday/settimeofday syscall
+> > pair. While I definitely agree this is one of the most basic things to
+> > have, it's also not an area of the kernel that is easy to change.
 > 
-> diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
-> index 65fb9af..3607dc0 100755
-> --- a/nfs4.1/nfs4server.py
-> +++ b/nfs4.1/nfs4server.py
-> @@ -1809,6 +1809,9 @@ class NFS4Server(rpc.Server):
->          with find_state(env, arg.deleg_stateid, allow_0=False) as state:
->              state.delegreturn()
->          return encode_status(NFS4_OK)
-> +
-> +    def op_reclaim_complete(self, arg, env):
-> +        return encode_status(NFS4_OK)
->      
->      def op_getdevicelist(self, arg, env): # STUB
->          check_session(env)
-> -- 
-> 1.8.5.2 (Apple Git-48)
-> 
+> 64-bit clock_gettime / clock_settime instead of gettimeofday / 
+> settimeofday should avoid the need for the kernel to have a 64-bit version 
+> of struct timeval.  (Userspace 64-bit gettimeofday / settimeofday would 
+> need to use a combination of the syscalls if the tz pointer is non-NULL.)
+
+Yes, that's what I meant.
+
+	Arnd
