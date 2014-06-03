@@ -1,137 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41302 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751144AbaFWVeg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jun 2014 17:34:36 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/3] nfsd: let nfsd_symlink assume null-terminated data
-Date: Mon, 23 Jun 2014 17:34:32 -0400
-Message-Id: <1403559272-11019-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1403559272-11019-1-git-send-email-bfields@redhat.com>
-References: <1403559272-11019-1-git-send-email-bfields@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:30558 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755167AbaFCSYA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 14:24:00 -0400
+Message-ID: <538E12B9.8030007@oracle.com>
+Date: Tue, 03 Jun 2014 11:23:53 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [GIT PULL] Please pull NFS client RDMA changes for 3.16
+References: <538DF0F5.8090500@netapp.com>	<CAHQdGtT8y2rcPcjOJveKvPsFm30OpOJNOXZcPHtqRGVMKqSSvA@mail.gmail.com>	<538E0008.1010709@netapp.com> <CAHQdGtRTV0UvZ=X0hnyWeE4Pb2hHAOJpTRp0ZETgDkt+9_03ig@mail.gmail.com>
+In-Reply-To: <CAHQdGtRTV0UvZ=X0hnyWeE4Pb2hHAOJpTRp0ZETgDkt+9_03ig@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-Currently nfsd_symlink has a weird hack to serve callers who don't
-null-terminate symlink data: it looks ahead at the next byte to see if
-it's zero, and copies it to a new buffer to null-terminate if not.
 
-That means callers don't have to null-terminate, but they *do* have to
-ensure that the byte following the end of the data is theirs to read.
+On 06/03/2014 10:53 AM, Trond Myklebust wrote:
+> On Tue, Jun 3, 2014 at 1:04 PM, Anna Schumaker
+> <Anna.Schumaker@netapp.com> wrote:
+>> I pulled from Chuck's branch earlier today before sending this.  He has all the date stamps set as June 2.
+>>
+> 
+> OK, this is broken and I'm not pulling. The point of asking you to
+> maintain the tree was to ensure that the patches get reviewed by you,
+> and that I have signed-off-bys etc showing that is the case.
 
-That's a bit subtle, and the NFSv4 code actually got this wrong.
+Thanks Trond for checking. Where was broken? What we can help here?
 
-So let's just throw out that code and let callers pass null-terminated
-strings; we've already fixed them to do that.
+>> On 06/03/2014 12:44 PM, Trond Myklebust wrote:
+>>> On Tue, Jun 3, 2014 at 11:59 AM, Anna Schumaker
+>>> <Anna.Schumaker@netapp.com> wrote:
+>>>> Hey Trond,
+>>>>
+>>>> The following changes since commit fad01e866afdbe01a1f3ec06a39c3a8b9e197014:
+>>>>
+>>>>   Linux 3.15-rc8 (2014-06-01 19:12:24 -0700)
+>>>>
+>>>
+>>> Did you rebase these? All the commits appear to be labeled with
+>>> today's date, and Chuck appears as the committer for all of them.
+>>>
+>>
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs3proc.c |    2 +-
- fs/nfsd/nfs4proc.c |    3 +--
- fs/nfsd/nfsproc.c  |    2 +-
- fs/nfsd/vfs.c      |   17 +++--------------
- fs/nfsd/vfs.h      |    2 +-
- 5 files changed, 7 insertions(+), 19 deletions(-)
-
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 4012899..4abf4dc 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -286,7 +286,7 @@ nfsd3_proc_symlink(struct svc_rqst *rqstp, struct nfsd3_symlinkargs *argp,
- 	fh_copy(&resp->dirfh, &argp->ffh);
- 	fh_init(&resp->fh, NFS3_FHSIZE);
- 	nfserr = nfsd_symlink(rqstp, &resp->dirfh, argp->fname, argp->flen,
--						   argp->tname, argp->tlen,
-+						   argp->tname,
- 						   &resp->fh, &argp->attrs);
- 	RETURN_STATUS(nfserr);
- }
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 453c907..4ee72a3 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -631,8 +631,7 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		data[len] = '\0';
- 		status = nfsd_symlink(rqstp, &cstate->current_fh,
- 				      create->cr_name, create->cr_namelen,
--				      data, len,
--				      &resfh, &create->cr_iattr);
-+				      data, &resfh, &create->cr_iattr);
- 		kfree(data);
- 		break;
+Shirley
  
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index aebe23c..583ed03 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -409,7 +409,7 @@ nfsd_proc_symlink(struct svc_rqst *rqstp, struct nfsd_symlinkargs *argp,
- 	 */
- 	argp->tname[argp->tlen] = '\0';
- 	nfserr = nfsd_symlink(rqstp, &argp->ffh, argp->fname, argp->flen,
--						 argp->tname, argp->tlen,
-+						 argp->tname,
- 				 		 &newfh, &argp->attrs);
- 
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 140c496..575fa9c 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1504,7 +1504,7 @@ out_nfserr:
- __be32
- nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				char *fname, int flen,
--				char *path,  int plen,
-+				char *path,
- 				struct svc_fh *resfhp,
- 				struct iattr *iap)
- {
-@@ -1513,7 +1513,7 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	int		host_err;
- 
- 	err = nfserr_noent;
--	if (!flen || !plen)
-+	if (!flen || path[0] == '\0')
- 		goto out;
- 	err = nfserr_exist;
- 	if (isdotent(fname, flen))
-@@ -1534,18 +1534,7 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (IS_ERR(dnew))
- 		goto out_nfserr;
- 
--	if (unlikely(path[plen] != 0)) {
--		char *path_alloced = kmalloc(plen+1, GFP_KERNEL);
--		if (path_alloced == NULL)
--			host_err = -ENOMEM;
--		else {
--			strncpy(path_alloced, path, plen);
--			path_alloced[plen] = 0;
--			host_err = vfs_symlink(dentry->d_inode, dnew, path_alloced);
--			kfree(path_alloced);
--		}
--	} else
--		host_err = vfs_symlink(dentry->d_inode, dnew, path);
-+	host_err = vfs_symlink(dentry->d_inode, dnew, path);
- 	err = nfserrno(host_err);
- 	if (!err)
- 		err = nfserrno(commit_metadata(fhp));
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 91b6ae3..9b9eb91 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -85,7 +85,7 @@ __be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
- __be32		nfsd_readlink(struct svc_rqst *, struct svc_fh *,
- 				char *, int *);
- __be32		nfsd_symlink(struct svc_rqst *, struct svc_fh *,
--				char *name, int len, char *path, int plen,
-+				char *name, int len, char *path,
- 				struct svc_fh *res, struct iattr *);
- __be32		nfsd_link(struct svc_rqst *, struct svc_fh *,
- 				char *, int, struct svc_fh *);
--- 
-1.7.9.5
-
