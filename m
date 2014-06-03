@@ -1,30 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52660 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:26813 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757724AbaFYRiO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jun 2014 13:38:14 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s5PHcEGa001931
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 13:38:14 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-52-219.rdu2.redhat.com [10.10.52.219])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s5PHc1aB019991
-	for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 13:38:11 -0400
-Message-ID: <53AB08F4.4020604@RedHat.com>
-Date: Wed, 25 Jun 2014 13:37:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S933055AbaFCP7x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jun 2014 11:59:53 -0400
+Message-ID: <538DF0F5.8090500@netapp.com>
+Date: Tue, 3 Jun 2014 11:59:49 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Canceled: Linux NFS Town Hall  meeting: Thur 06/25/14
-Content-Type: text/plain; charset=ISO-8859-1
+To: Trond Myklebust <trond.myklebust@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: [GIT PULL] Please pull NFS client RDMA changes for 3.16
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Hey Trond,
 
-Not much really going on... So lets skip this one.... 
+The following changes since commit fad01e866afdbe01a1f3ec06a39c3a8b9e197014:
 
-See ya two weeks!
+  Linux 3.15-rc8 (2014-06-01 19:12:24 -0700)
 
-steved.
+are available in the git repository at:
 
+  git://git.linux-nfs.org/projects/anna/nfs-rdma.git nfs-rdma
+
+for you to fetch changes up to dc7e3277e118e5bfd4796dc7cb386c1162c7c647:
+
+  xprtrdma: Disconnect on registration failure (2014-06-02 14:09:00 -0400)
+
+----------------------------------------------------------------
+Allen Andrews (1):
+      nfs-rdma: Fix for FMR leaks
+
+Chuck Lever (21):
+      xprtrdma: RPC/RDMA must invoke xprt_wake_pending_tasks() in process context
+      xprtrdma: Remove BOUNCEBUFFERS memory registration mode
+      xprtrdma: Remove MEMWINDOWS registration modes
+      xprtrdma: Remove REGISTER memory registration mode
+      xprtrdma: Fall back to MTHCAFMR when FRMR is not supported
+      xprtrdma: mount reports "Invalid mount option" if memreg mode not supported
+      xprtrdma: Simplify rpcrdma_deregister_external() synopsis
+      xprtrdma: Make rpcrdma_ep_destroy() return void
+      xprtrdma: Split the completion queue
+      xprtrmda: Reduce lock contention in completion handlers
+      xprtrmda: Reduce calls to ib_poll_cq() in completion handlers
+      xprtrdma: Limit work done by completion handler
+      xprtrdma: Reduce the number of hardway buffer allocations
+      xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting
+      xprtrdma: Remove Tavor MTU setting
+      xprtrdma: Use macros for reconnection timeout constants
+      xprtrdma: Reset connection timeout after successful reconnect
+      SUNRPC: Move congestion window constants to header file
+      xprtrdma: Avoid deadlock when credit window is reset
+      xprtrdma: Remove BUG_ON() call sites
+      xprtrdma: Disconnect on registration failure
+
+Shirley Ma (1):
+      xprtrdma: Allocate missing pagelist
+
+Steve Wise (1):
+      xprtrdma: mind the device's max fast register page list depth
+
+ include/linux/sunrpc/xprt.h     |   6 ++
+ net/sunrpc/xprt.c               |  28 +++------
+ net/sunrpc/xprtrdma/rpc_rdma.c  | 119 +++++++++++++++++---------------------
+ net/sunrpc/xprtrdma/transport.c |  90 ++++++++++-------------------
+ net/sunrpc/xprtrdma/verbs.c     | 753 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |  17 ++++--
+ 6 files changed, 411 insertions(+), 602 deletions(-)
