@@ -1,95 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:34551 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751578AbaF2Grm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Jun 2014 02:47:42 -0400
-Date: Sat, 28 Jun 2014 23:47:38 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 018/117] nfsd: clean up nfs4_release_lockowner
-Message-ID: <20140629064738.GA17739@infradead.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
- <1403810017-16062-19-git-send-email-jlayton@primarydata.com>
+Received: from mail-vc0-f172.google.com ([209.85.220.172]:65397 "EHLO
+	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754100AbaFCRx0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 13:53:26 -0400
+Received: by mail-vc0-f172.google.com with SMTP id lf12so7070532vcb.17
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Jun 2014 10:53:26 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403810017-16062-19-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <538E0008.1010709@netapp.com>
+References: <538DF0F5.8090500@netapp.com>
+	<CAHQdGtT8y2rcPcjOJveKvPsFm30OpOJNOXZcPHtqRGVMKqSSvA@mail.gmail.com>
+	<538E0008.1010709@netapp.com>
+Date: Tue, 3 Jun 2014 13:53:26 -0400
+Message-ID: <CAHQdGtRTV0UvZ=X0hnyWeE4Pb2hHAOJpTRp0ZETgDkt+9_03ig@mail.gmail.com>
+Subject: Re: [GIT PULL] Please pull NFS client RDMA changes for 3.16
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 26, 2014 at 03:11:58PM -0400, Jeff Layton wrote:
-> Now that we know that we won't have several lockowners with the same,
-> owner->data, we can simplify nfs4_release_lockowner and get rid of
-> the lo_list in the process.
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 44 ++++++++++++++++++++++----------------------
->  fs/nfsd/state.h     |  1 -
->  2 files changed, 22 insertions(+), 23 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 00a1b2cda3ab..a5bb96b97f09 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4828,7 +4828,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
->  			struct nfsd4_release_lockowner *rlockowner)
->  {
->  	clientid_t *clid = &rlockowner->rl_clientid;
-> -	struct nfs4_stateowner *sop;
-> +	struct nfs4_stateowner *sop = NULL, *tmp;
->  	struct nfs4_lockowner *lo;
->  	struct nfs4_ol_stateid *stp;
->  	struct xdr_netobj *owner = &rlockowner->rl_owner;
-> @@ -4849,31 +4849,31 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
->  	status = nfserr_locks_held;
->  	INIT_LIST_HEAD(&matches);
+On Tue, Jun 3, 2014 at 1:04 PM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> I pulled from Chuck's branch earlier today before sending this.  He has all the date stamps set as June 2.
+>
 
-I think matches is unused now.
+OK, this is broken and I'm not pulling. The point of asking you to
+maintain the tree was to ensure that the patches get reviewed by you,
+and that I have signed-off-bys etc showing that is the case.
 
->  
-> +	/* Find the matching lock stateowner */
-> +	list_for_each_entry(tmp, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-> +		if (tmp->so_is_open_owner)
-> +			continue;
-> +		if (same_owner_str(tmp, owner, clid)) {
-> +			sop = tmp;
-> +			break;
->  		}
->  	}
-> +
-> +	/* No matching owner found, maybe a replay? Just declare victory... */
-> +	if (!sop) {
-> +		status = nfs_ok;
-> +		goto out;
-> +	}
-> +
-> +	lo = lockowner(sop);
-> +	/* see if there are still any locks associated with it */
-> +	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
-> +		if (check_for_locks(stp->st_file, lo))
-> +			goto out;
->  	}
-> +
-> +	status = nfs_ok;
-> +	release_lockowner(lo);
 
-I would seem simpler to do all the work in the loop, something like:
+> On 06/03/2014 12:44 PM, Trond Myklebust wrote:
+>> On Tue, Jun 3, 2014 at 11:59 AM, Anna Schumaker
+>> <Anna.Schumaker@netapp.com> wrote:
+>>> Hey Trond,
+>>>
+>>> The following changes since commit fad01e866afdbe01a1f3ec06a39c3a8b9e197014:
+>>>
+>>>   Linux 3.15-rc8 (2014-06-01 19:12:24 -0700)
+>>>
+>>
+>> Did you rebase these? All the commits appear to be labeled with
+>> today's date, and Chuck appears as the committer for all of them.
+>>
+>
 
-	list_for_each_entry(sop, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-		if (sop->so_is_open_owner)
-			continue;
-		if (!same_owner_str(sop, owner, clid))
-			continue;
 
-		list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
-			if (check_for_locks(stp->st_file, lockowner(sop))) {
-				status = nfserr_locks_held;
-				goto out;
-			}
-		}
 
-		release_lockowner(lo);
-		break;
-	}
+-- 
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
