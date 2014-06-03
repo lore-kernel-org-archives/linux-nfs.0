@@ -1,54 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f173.google.com ([209.85.220.173]:46384 "EHLO
-	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755311AbaFYWeS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 18:34:18 -0400
-Received: by mail-vc0-f173.google.com with SMTP id lf12so2660077vcb.32
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 15:34:17 -0700 (PDT)
+Received: from mout.kundenserver.de ([212.227.126.187]:62135 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754053AbaFCOZL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 10:25:11 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: "H. Peter Anvin" <hpa@zytor.com>
+Cc: "Joseph S. Myers" <joseph@codesourcery.com>, linux-kernel@vger.kernel.org,
+        linux-arch@vger.kernel.org, john.stultz@linaro.org, hch@infradead.org,
+        tglx@linutronix.de, geert@linux-m68k.org, lftan@altera.com,
+        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, coda@cs.cmu.edu,
+        codalist@telemann.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-scsi@vger.kernel.org, logfs@logfs.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        samba-technical@lists.samba.org, xfs@oss.sgi.com
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Tue, 03 Jun 2014 16:22:19 +0200
+Message-ID: <5011138.W0gbOc20Qp@wuerfel>
+In-Reply-To: <538CF346.2070504@zytor.com>
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <7175692.dpgYFMbTaP@wuerfel> <538CF346.2070504@zytor.com>
 MIME-Version: 1.0
-In-Reply-To: <029c01cf90c4$ebae6b60$c30b4220$@mindspring.com>
-References: <029301cf90c0$4fabe660$ef03b320$@mindspring.com>
-	<CAHQdGtSdQ3keA2UgiAbtWWUMvheWQ8oanpAt_evAY2DSkr+y+Q@mail.gmail.com>
-	<029c01cf90c4$ebae6b60$c30b4220$@mindspring.com>
-Date: Wed, 25 Jun 2014 18:34:17 -0400
-Message-ID: <CAHQdGtRxORG5kn-9D1Bp7WZ80yF6jGL_M8yT+0KeJ7x-jyVojg@mail.gmail.com>
-Subject: Re: Execute only permission issue with client
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 25, 2014 at 6:29 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->> On Wed, Jun 25, 2014 at 5:56 PM, Frank Filz <ffilzlnx@mindspring.com>
->> wrote:
->> > Back a year ago or so, I ran the following test against Ganesha:
->> >
->> > http://www.tuxera.com/community/posix-test-suite/
->> >
->> > On NFS v4, one of the issues it tripped over was execute only files.
->> > Apparently the Linux v4 client doesn't make ACCESS calls in
->> > conjunction with an open system call, with the result that you can
->> > open an execute only file (per RFC 3530bis, the server is allowing
->> > such to allow clients to execute executables).
->>
->> That information is outdated. A wireshark dump should show that recent
->> Linux kernels include an ACCESS operation as part of the open() COMPOUND
->> and that it uses that information to distinguish between executable and read
->> access permissions.
->
-> Oh, cool, do you know when that went in? I'll go look and see if I can find it...
->
+On Monday 02 June 2014 14:57:26 H. Peter Anvin wrote:
+> On 06/02/2014 12:55 PM, Arnd Bergmann wrote:
+> >>
+> >> The bit that is really going to hurt is every single ioctl that uses a
+> >> timespec.
+> >>
+> >> Honestly, though, I really don't understand the point with "struct
+> >> inode_time".  It seems like the zeroeth-order thing is to change the
+> >> kernel internal version of struct timespec to have a 64-bit time... it
+> >> isn't just about inodes.  We then should be explicit about the external
+> >> uses of time, and use accessors.
+> > 
+> > I picked these because they are fairly isolated from all other uses,
+> > in particular since inode times are the only things where we really
+> > care about times in the distant past or future (decades away as opposed
+> > to things that happened between boot and shutdown).
+> > 
+> 
+> If nothing else, I would expect to be able to set the system time to
+> weird values for testing.  So I'm not so sure I agree with that...
 
-It should be a feature of Linux 3.7 (Dec 2012) and newer kernels.
+I think John Stultz and Thomas Gleixner have already started looking
+at how the timekeeping code can be updated. Once that is done, we should
+be able to add a functional 64-bit gettimeofday/settimeofday syscall
+pair. While I definitely agree this is one of the most basic things to
+have, it's also not an area of the kernel that is easy to change.
 
-Cheers
-  Trond
+> > For other kernel-internal uses, we may be better off migrating to
+> > a completely different representation, such as nanoseconds since
+> > boot or the architecture specific ktime_t, but this is really something
+> > to decide for each subsystem.
+> 
+> Having a bunch of different time representations in the kernel seems
+> like a real headache...
 
--- 
-Trond Myklebust
+We already have time_t, ktime_t, timeval, timespec, compat_timespec,
+clock_t, cputime_t, cputime64_t, tm, nanoseconds, jiffies, jiffies64,
+and lots of driver or file system specific representations. I'm all for
+removing a bunch of these from the kernel, but my feeling is that this is
+one of the cases where we first have to add new ones in order to remove
+those that are already there.
+To complicate things further, we also have various times bases
+(realtime/utc, realtime/tai, monotonic, monotonic_raw, boottime, ...),
+and at least for the timespec values we pass around, it's not always
+obvious which one is used, of if that's the right one.
 
-Linux NFS client maintainer, PrimaryData
+We probably don't want to add a lot of new representations, and it's
+possible that we can change most of the internal code we have to
+ktime_t and then convert that to whatever user space wants at the
+interfaces.
 
-trond.myklebust@primarydata.com
+The possible uses I can see for non-ktime_t types in the kernel are:
+* inodes need 96 bit timestamps to represent the full range of values
+  that can be stored in a file system, you made a convincing argument
+  for that. Almost everything else can fit into 64 bit on a 32-bit
+  kernel, in theory also on a 64-bit kernel if we want that.
+* A number of interfaces pass relative timespecs: nanosleep(), poll(),
+  select(), sigtimedwait(), alarm(), futex() and probably more. There is
+  nothing wrong with the use of timespec here, and it may be good to
+  annotate that by using a new type (e.g. struct timeout) that is defined
+  as compatible with the current timespec.
+* For new user interfaces, we need a new type such as the
+  __kernel_timespec64 I introduced, so it doesn't clash with the normal
+  user timespec that may be smaller, depending on the libc.
+* A lot of drivers will need new ioctl commands, and for drivers that
+  just need time stamps (audio, v4l, sockets, ...) it may be more
+  efficient and more correct to use a new timestamp_t (e.g. boot time
+  64-bit nanoseconds) than __kernel_timespec64, which is not normally
+  monotonic and requires a normalization step. If we end up introducing
+  such a type in the user interface, we can also start using it in the
+  kernel.
+
+	Arnd
