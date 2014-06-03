@@ -1,49 +1,225 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13209 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753720AbaFWNz1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jun 2014 09:55:27 -0400
-Date: Mon, 23 Jun 2014 09:55:23 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/3] nfs: ensure cached data is correct before using
- delegation
-Message-ID: <20140623135523.GI4510@tonberry.usersys.redhat.com>
-References: <20140620125140.GH4510@tonberry.usersys.redhat.com>
- <1403286083-14345-1-git-send-email-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403286083-14345-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:27289 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751128AbaFCRl3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 13:41:29 -0400
+Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: NFSoRDMA developers bi-weekly meeting minutes (5/28)
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <538E07F0.7030909@netapp.com>
+Date: Tue, 3 Jun 2014 13:41:03 -0400
+Cc: Shirley Ma <shirley.ma@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Jeff Becker <jeffrey.c.becker@nasa.gov>,
+        "<yanb@mellanox.com>" <yanb@mellanox.com>, wendy.cheng@intel.com,
+        "Coulter, Susan K" <skc@lanl.gov>,
+        Rupert Dance <rsdance@soft-forge.com>,
+        Doug Ledford <dledford@redhat.com>,
+        Devesh Sharma <Devesh.Sharma@Emulex.Com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Message-Id: <82DB6036-C40B-4A66-AAF3-1C74BA1C700F@oracle.com>
+References: <5387615E.20206@oracle.com> <53876938.7000704@oracle.com> <538E07F0.7030909@netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 20 Jun 2014, Trond Myklebust wrote:
 
-> Hi Scott,
-> 
-> How about the following 2 extra patches on top of yours? Do they help
-> with the performance regression?
+On Jun 3, 2014, at 1:37 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
 
-Yes, they do.  Thanks!
+> On 05/29/2014 01:07 PM, Shirley Ma wrote:
+>> Attendees:
+>> 
+>> Jeff Beck (NASA)
+>> Yan Burman (Mellanox)
+>> Wendy Cheng (Intel)
+>> Susan Coulter (LANL)
+>> Rupert Dance (Soft Forge)
+>> Chuck Lever (Oracle)
+>> Doug Ledford (RedHat)
+>> Shirley Ma (Oracle)
+>> Devesh Sharma (Emulex)
+>> Anna Schumaker (Net App)
+>> Steve Wise (OpenGridComputing, Chelsio)
+>> 
+>> Moderator:
+>> Shirley Ma (Oracle)
+>> 
+>> NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA development and test effort from different resources to speed up NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools development. Hopefully the quality of NFSoRDMA upstream patches can be improved by being tested by a quorum of HW vendors.
+>> 
+>> Today's meeting notes:
+>> 1. OFED release update from Rupert Dance through email:
+>> 
+>> a. OFED 3.12 was released yesterday without any patch from Chuck's git tree, one of the reason these patches haven't upstream yet. There were a number of new bugs filed on NFSRDMA (2489 and 2490).
+>> http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2489
+>> http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2490
+>> 
+>> b. Jeff Becker has pulled all of the patches from Chuck's git tree and made backports in his local branch of OFED 3.12. He has begun testing and is seeing good results so far.
+>> 
+>> c. OFED next release will be OFED 3.12-1 and it will be including all these updates along with support for RHEL 7.0 and Intel's OFED MIC.
+>> 
+>> 2. NFSoRDMA support with soft RoCE and Soft iWARP
+>> 
+>> There were some discussions regarding whether removing RPCRDMA_REGISTER support (one of Chuck's patchset) would impact any other components in the stack. So far soft RoCE hasn't been upstreamed yet.There was a broad consensus not to support out-of-tree providers unless an issue also affects in-tree providers. NFSoRDMA will follow kernel development policy, all work should be based upon upstream kernel. However Chuck Level will check Soft RoCE plan, Steve Wise will check soft iWARP plan to make sure nothing will be broken in both kernel and OFED release. 
+>> 
+>> 3. Update on testing NFSoRDMA client patches:
+>> 
+>> Devesh Sharma, Doug Ledford, Chuck Lever, Steve Wise all have tested Chuck git tree (up to last weeks patchsets) on different platforms with various vendor's HCAs. The test showed the stack pretty reliable for both NFSv3 and NFSv4. However NFSv4.1 hit server crash. (NFSv4.1 hasn't support yet).
+>> 
+>> Steve Wise's test covers iWARP Chelsio
+>> Devesh Sharma's test covers Emulex
+>> Chuck Lever/Shirley Ma's test covers Mellanox
+>> Doug Ledford's test covers various platforms and combination of HCAs (Interoperability test).
+>> Jeff Beck's test covers OFED release (backport)
+>> Rupert Dance's (IOL) team test covers various platforms and combination of HCAs as well.
+>> 
+>> The test coverage should be good enough for NFSoRDMA client patchsets to be merged to upstream by Anna and Trond.
+>> 
+>> Devesh is looking for performance benchmark tools. IOzone is recommended. Anna is going to send more performance tools.
+>> 
+>> A place to save test results as scratch sheets has been discussed so it will be easy to track the test history for any regressions. Anna will help to figure it out.
+>> 
+>> A couple of new bugs have been filed to track existing issues. Devesh had hit a bug in dbench test, which Steve Wise already worked on it.
+>> 
+>> https://bugzilla.linux-nfs.org/show_bug.cgi?id=255
+>> 
+>> Klemens Senn has reported a soft lockup in unloading kernel module. Shirley has tried to reproduce this problem with Linux server, Solaris client, it didn't hit any issue. So it's a problem between Linux client and server.
+>> 
+>> https://bugzilla.linux-nfs.org/show_bug.cgi?id=252
+>> 
+>> 
+>> 4. Steve shared his findings on some bug he has bee working on -- refactoring patchset.
+>> 
+>> 5. Followups update from last week
+>> a. Linux server maintenance is still in unresolved status.
+>> 
+>> b. NFSoRDMA debugging and diagnosis tools?
+>> Yan has made some progress on NFSoRDMA wireshark dissector. Selecting connection is not as simple as TCP, Yan has tried to use QP number/RDMA establish status to build the connection. Chuck suggested to try RPC XID field.
+>> 
+>> c. NFSoRDMA virtualization validation:
+>> Shirley has set up KVM guest with Mellanox Connect2 SRIOV. A panic occurred right away during mount, the panic is different with XEN domU guest.
+>> 
+>> Next meeting topics proposal:
+>> 1. Follow up the work has been discussed from this meeting.
+>> 
+>> 2. Walk through some of the stories on pivotal, link is as below:
+>> https://www.pivotaltracker.com/s/projects/958376
+>> 
+>> 3. Invite some of the developers to discuss some of their requirements and features.
+>> 
+>> Meeting time: one hour discussion every other Wed (next meeting will be
+>> on 6/11). A reminder will be sent out to both linux-nfs and linux-rdma
+>> mailing list:
+>> 
+>> 6/11/2014
+>> @8:00am PST
+>> @9:00am MST
+>> @10:00am CST
+>> @11:00am EST
+>> @Bangalore @9:00pm
+>> @Israel @6:00pm
+>> 
+>> Duration: 1 hour
+>> 
+>> Call-in number:
+>> Israel: +972 37219638
+>> Bangalore: +91 8039890080 (180030109800)
+>> US: 8666824770,  408-7744073
+>> Conference Code: 2308833
+>> Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
+>> 
+>> Thanks everyone for joining the call and providing valuable inputs/work to the community to make NFSoRDMA better.
+>> 
+>> Shirley
+>> 
+>> 
+>> 
+>> Attendees:
+>> 
+>> Jeff Beck (NASA)
+>> Yan Burman (Mellanox)
+>> Wendy Cheng (Intel)
+>> Susan Coulter (LANL)
+>> Rupert Dance (Soft Forge)
+>> Chuck Lever (Oracle)
+>> Doug Ledford (RedHat)
+>> Shirley Ma (Oracle)
+>> Devesh Sharma (Emulex)
+>> Anna Schumaker (Net App)
+>> Steve Wise (OpenGridComputing, Chelsio)
+>> 
+>> Moderator:
+>> Shirley Ma (Oracle)
+>> 
+>> NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA development and test effort from different resources to speed up NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools development. Hopefully the quality of NFSoRDMA upstream patches can be improved by being tested by a quorum of HW vendors.
+>> 
+>> Today's meeting notes:
+>> 1. OFED release update from Rupert Dance through email:
+>> 
+>> a. OFED 3.12 was released yesterday without any patch from Chuck's git tree, one of the reason these patches haven't upstream yet. There were a number of new bugs filed on NFSRDMA (2489 and 2490).
+>> http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2489
+>> http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2490
+>> 
+>> b. Jeff Becker has pulled all of the patches from Chuck's git tree and made backports in his local branch of OFED 3.12. He has begun testing and is seeing good results so far.
+>> 
+>> c. OFED next release will be OFED 3.12-1 and it will be including all these updates along with support for RHEL 7.0 and Intel's OFED MIC.
+>> 
+>> 2. NFSoRDMA support with soft RoCE and Soft iWARP
+>> 
+>> There were some discussions regarding whether removing RPCRDMA_REGISTER support (one of Chuck's patchset) would impact any other components in the stack. So far soft RoCE hasn't been upstreamed yet.There was a broad consensus not to support out-of-tree providers unless an issue also affects in-tree providers. NFSoRDMA will follow kernel development policy, all work should be based upon upstream kernel. However Chuck Level will check Soft RoCE plan, Steve Wise will check soft iWARP plan to make sure nothing will be broken in both kernel and OFED release. 
+>> 
+>> 3. Update on testing NFSoRDMA client patches:
+>> 
+>> Devesh Sharma, Doug Ledford, Chuck Lever, Steve Wise all have tested Chuck git tree (up to last weeks patchsets) on different platforms with various vendor's HCAs. The test showed the stack pretty reliable for both NFSv3 and NFSv4. However NFSv4.1 hit server crash. (NFSv4.1 hasn't support yet).
+>> 
+>> Steve Wise's test covers iWARP Chelsio
+>> Devesh Sharma's test covers Emulex
+>> Chuck Lever/Shirley Ma's test covers Mellanox
+>> Doug Ledford's test covers various platforms and combination of HCAs (Interoperability test).
+>> Jeff Beck's test covers OFED release (backport)
+>> Rupert Dance's (IOL) team test covers various platforms and combination of HCAs as well.
+>> 
+>> The test coverage should be good enough for NFSoRDMA client patchsets to be merged to upstream by Anna and Trond.
+>> 
+>> Devesh is looking for performance benchmark tools. IOzone is recommended. Anna is going to send more performance tools.
+>> 
+>> A place to save test results as scratch sheets has been discussed so it will be easy to track the test history for any regressions. Anna will help to figure it out.
+>> 
+>> A couple of new bugs have been filed to track existing issues. Devesh had hit a bug in dbench test, which Steve Wise already worked on it.
+>> 
+>> https://bugzilla.linux-nfs.org/show_bug.cgi?id=255
+>> 
+>> Klemens Senn has reported a soft lockup in unloading kernel module. Shirley has tried to reproduce this problem with Linux server, Solaris client, it didn't hit any issue. So it's a problem between Linux client and server.
+>> 
+>> https://bugzilla.linux-nfs.org/show_bug.cgi?id=252
+>> 
+>> 
+>> 4. Steve shared his findings on some bug he has bee working on -- refactoring patchset.
+>> 
+>> 5. Followups update from last week
+>> a. Linux server maintenance is still in unresolved status.
+>> 
+>> b. NFSoRDMA debugging and diagnosis tools?
+>> Yan has made some progress on NFSoRDMA wireshark dissector. Selecting connection is not as simple as TCP, Yan has tried to use QP number/RDMA establish status to build the connection. Chuck suggested to try RPC XID field.
+>> 
+>> c. NFSoRDMA virtualization validation:
+>> Shirley has set up KVM guest with Mellanox Connect2 SRIOV. A panic occurred right away during mount, the panic is different with XEN domU guest.
+>> 
+>> Next meeting topics proposal:
+>> 1. Follow up the work has been discussed from this meeting.
+> 
+> I mentioned nfsometer for performance testing during the last meeting.  Anybody interested can check out a copy here: git://git.linux-nfs.org/projects/dros/nfsometer.git
 
--Scott
+I added this to the NFS/RDMA wiki home page:
 
-> 
-> Cheers
->   Trond
-> 
-> Scott Mayhew (1):
->   nfs: Fix cache_validity check in nfs_write_pageuptodate()
-> 
-> Trond Myklebust (2):
->   NFS: Clear NFS_INO_REVAL_PAGECACHE when we update the file size
->   NFS: Don't mark the data cache as invalid if it has been flushed
-> 
->  fs/nfs/inode.c | 76 +++++++++++++++++++++++++++++++---------------------------
->  fs/nfs/write.c |  4 +++-
->  2 files changed, 44 insertions(+), 36 deletions(-)
-> 
-> -- 
-> 1.9.3
-> 
+ http://wiki.linux-nfs.org/wiki/index.php/NfsRdmaClient/Home
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
