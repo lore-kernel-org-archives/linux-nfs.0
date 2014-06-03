@@ -1,76 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:51260 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756947AbaF3Tjh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 15:39:37 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so2455461qgf.28
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 12:39:37 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 30 Jun 2014 15:39:33 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
-Message-ID: <20140630153933.69a54e1c@tlielax.poochiereds.net>
-In-Reply-To: <20140630193237.GA11935@fieldses.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-	<20140630125142.GA32089@infradead.org>
-	<20140630085934.2bf86ba0@tlielax.poochiereds.net>
-	<20140630193237.GA11935@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:8107 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752212AbaFCOgO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Jun 2014 10:36:14 -0400
+Date: Tue, 3 Jun 2014 10:35:49 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: Anna Schumaker <schumaker.anna@gmail.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 41/52] nfsd4: turn off zero-copy-read in exotic cases
+Message-ID: <20140603143548.GB14321@pad.redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+ <1400787148-25941-42-git-send-email-bfields@redhat.com>
+ <20140528080945.GA6797@infradead.org>
+ <20140528140151.GB13012@pad.redhat.com>
+ <5385EEF5.9050904@gmail.com>
+ <20140528142320.GC13012@pad.redhat.com>
+ <DA524584-24CD-42C5-9DCB-B5CD2A7F2CC6@primarydata.com>
+ <20140603141021.GA14321@pad.redhat.com>
+ <7FFBAE05-C5F6-4F98-817C-546851F559EC@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <7FFBAE05-C5F6-4F98-817C-546851F559EC@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 30 Jun 2014 15:32:37 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Mon, Jun 30, 2014 at 08:59:34AM -0400, Jeff Layton wrote:
-> > On Mon, 30 Jun 2014 05:51:42 -0700
-> > Christoph Hellwig <hch@infradead.org> wrote:
-> > 
-> > > I'm pretty happy with what's the first 25 patches in this version
-> > > with all the review comments addressed, so as far as I'm concerned
-> > > these are ready for for-next.  Does anyone else plan to do a review
-> > > as well?
-> > > 
-> > 
-> > Thanks very much for the review so far.
-> > 
-> > > I'll try to get to the locking changes as well soon, but I've got some
-> > > work keeping me fairly busy at the moment.  I guess it wasn't easily
-> > > feasible to move the various stateid refcounting to before the major
-> > > locking changes?
-> > > 
-> > 
-> > Not really. If I had done the set from scratch I would have probably
-> > done that instead, but Trond's original had those changes interleaved.
-> > Separating them would be a lot of work that I'd prefer to avoid.
-> > 
-> > > Btw, do you have any benchrmarks showing the improvements of the new
-> > > locking scheme?
-> > 
-> > No, I'm hoping to get those numbers soon from our QA folks. Most of the
-> > testing I've done has been for correctness and stability. I'm pretty
-> > happy with things at that end now, but I don't have any numbers that
-> > show whether and how much this helps scalability.
+On Tue, Jun 03, 2014 at 10:24:13AM -0400, Weston Andros Adamson wrote:
+> On Jun 3, 2014, at 10:10 AM, J. Bruce Fields <bfields@redhat.com> wrote:
 > 
-> The open-create problem at least shouldn't be hard to confirm.
+> > On Tue, Jun 03, 2014 at 12:18:34AM -0400, Weston Andros Adamson wrote:
+> >> On May 28, 2014, at 10:23 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+> >>> There's not much point re-running all the 4.1 tests over 4.2.  Maybe all
+> >>> we may need is to say "use minor version 2 on this compound" in tests of
+> >>> the new features.
+> >>> 
+> >>> But I haven't even tried to figure out how to tell pynfs about the new
+> >>> .x files.
+> >> 
+> >> I’ve made a lot of pynfs cleanups recently - mostly on the client test side 
+> >> (the nfs4.1 server), but they may make this a bit easier. I’ll clean them up
+> >> and share asap.
+> >> 
+> >> I was just adding new xdr to pynfs and AFAIK it's xdrgen has no include
+> >> support, so we’re stuck tacking things on the end of nfs4.x. Would it be
+> >> worthwhile for me to add some type of include support? Minor versions and
+> >> layouts could stay in separate .x files - that sounds much cleaner to me.
+> > 
+> > That does sound cleaner, but is that how the ietf's .x files work?
+> > 
+> > It looks like
+> > 
+> >  http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-dot-x-26.txt
+> > 
+> > just copies all the 4.1 definitions.
+> > 
+> > I may not understand what you're proposing.
 > 
-> It's also the only problem I've actually seen a complaint about--I do
-> wish it were possible to do just the minimum required to fix that before
-> doing all the rest.
-> 
+> Oh, yeah. I was thinking more about layouts - like the flex file draft - that don’t
+> repeat definitions and instead reference other xdr definitions.
 
-Yeah, I started writing a testcase that just did a bunch of opens from
-multiple tasks and timed it, but got sidetracked fixing other bugs in
-this set. I'll see if I can polish that off and at least get some rough
-numbers.
+OK, I don't really care about those yet--however you think it makes
+sense is fine to me....  If we can use the ietf's files verbatim then
+that will simplify keeping up with drafts and verifying we have the
+protocol right, so we should support includes if they use them.
 
-As far as speeding up opens/creates without touching other stuff...I
-just don't see how it's possible. It's almost certain that the worst
-serialization is coming from the client_mutex and I don't see how you'd
-go about removing it from just that codepath.
+> I don’t know if there is any restriction in the IETF that all types within a .x
+> have to be defined by that .x. If not, does it make sense to change the 4.2
+> spec to only have new types, or to prune out the differences for pynfs?
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+I guess that's a question for Tom and/or the ietf list.
+
+--b.
