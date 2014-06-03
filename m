@@ -1,68 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59659 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751703AbaFEOP7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jun 2014 10:15:59 -0400
-Message-ID: <53907B9A.3090802@RedHat.com>
-Date: Thu, 05 Jun 2014 10:15:54 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ditang Chen <chendt.fnst@cn.fujitsu.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH]statd: create statdpath dir if specify the "--with-statdpath=xx"
- parameter in configure nfs-utils source code
-References: <539026DB.30502@cn.fujitsu.com> <CAHQdGtRzw-Aizqd1Q8Y9FAXZgp2jefn115F-ogcPA8VSuqA1Dw@mail.gmail.com>
-In-Reply-To: <CAHQdGtRzw-Aizqd1Q8Y9FAXZgp2jefn115F-ogcPA8VSuqA1Dw@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:38773 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751489AbaFCOYS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 10:24:18 -0400
+Received: by mail-ie0-f173.google.com with SMTP id lx4so6041812iec.32
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Jun 2014 07:24:18 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH 41/52] nfsd4: turn off zero-copy-read in exotic cases
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20140603141021.GA14321@pad.redhat.com>
+Date: Tue, 3 Jun 2014 10:24:13 -0400
+Cc: Anna Schumaker <schumaker.anna@gmail.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <7FFBAE05-C5F6-4F98-817C-546851F559EC@primarydata.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com> <1400787148-25941-42-git-send-email-bfields@redhat.com> <20140528080945.GA6797@infradead.org> <20140528140151.GB13012@pad.redhat.com> <5385EEF5.9050904@gmail.com> <20140528142320.GC13012@pad.redhat.com> <DA524584-24CD-42C5-9DCB-B5CD2A7F2CC6@primarydata.com> <20140603141021.GA14321@pad.redhat.com>
+To: Bruce Fields <bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
+On Jun 3, 2014, at 10:10 AM, J. Bruce Fields <bfields@redhat.com> wrote:
 
-On 06/05/2014 08:38 AM, Trond Myklebust wrote:
-> On Thu, Jun 5, 2014 at 4:14 AM, Ditang Chen <chendt.fnst@cn.fujitsu.com> wrote:
->> When configure the nfs-utils source code with "--with-statdpath=/foo" parameterï¼Œ
->> #define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
->> but Makefile will not create "/foo" dir.
->>
->> Signed-off-by: chendt.fnst@cn.fujitsu.com
->> ---
->>  Makefile.am | 6 +++---
->>  1 file changed, 3 insertions(+), 3 deletions(-)
->>
->> diff --git a/Makefile.am b/Makefile.am
->> index ae7cd16..5c9ef44 100644
->> --- a/Makefile.am
->> +++ b/Makefile.am
->> @@ -54,10 +54,10 @@ install-data-hook:
->>         touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
->>         touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
->>         touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
->> -       mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
->>         touch $(DESTDIR)$(statedir)/state
->> -       chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
->> -       -chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
->> +       mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
->> +       chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
->> +       -chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
->>
+> On Tue, Jun 03, 2014 at 12:18:34AM -0400, Weston Andros Adamson wrote:
+>> On May 28, 2014, at 10:23 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+>>> There's not much point re-running all the 4.1 tests over 4.2.  Maybe all
+>>> we may need is to say "use minor version 2 on this compound" in tests of
+>>> the new features.
+>>> 
+>>> But I haven't even tried to figure out how to tell pynfs about the new
+>>> .x files.
+>> 
+>> I’ve made a lot of pynfs cleanups recently - mostly on the client test side 
+>> (the nfs4.1 server), but they may make this a bit easier. I’ll clean them up
+>> and share asap.
+>> 
+>> I was just adding new xdr to pynfs and AFAIK it's xdrgen has no include
+>> support, so we’re stuck tacking things on the end of nfs4.x. Would it be
+>> worthwhile for me to add some type of include support? Minor versions and
+>> layouts could stay in separate .x files - that sounds much cleaner to me.
 > 
-> The file 'state' is owned by rpc.statd. Isn't it therefore also
-> subject to the --with-statdpath modifier?
---with-statedir and --with-statdpath are basically the same thing.
-When --with-statdpath is not specified, its set to the --with-statedir
-value, that's why this these mkdir,chmod and chown were not needed.
-But I guess if you do want split out the statdpath from the statedir
-those mkdir,chmod and chown need to happen. 
-
-
+> That does sound cleaner, but is that how the ietf's .x files work?
 > 
-> At one point, the Fedora RPM packager even used to put it in
-> /var/lib/nfs/statd (as the manpage says it should) although that seems
-> to be broken now.
+> It looks like
 > 
-It still does... So does RHEL... We have being going that for years...
-How is that broken?
+>  http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-dot-x-26.txt
+> 
+> just copies all the 4.1 definitions.
+> 
+> I may not understand what you're proposing.
 
-steved. 
+Oh, yeah. I was thinking more about layouts - like the flex file draft - that don’t
+repeat definitions and instead reference other xdr definitions.
+
+I don’t know if there is any restriction in the IETF that all types within a .x
+have to be defined by that .x. If not, does it make sense to change the 4.2
+spec to only have new types, or to prune out the differences for pynfs?
+
+-dros
+
