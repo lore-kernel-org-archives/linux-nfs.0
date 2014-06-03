@@ -1,86 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:36741 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752352AbaFYWr1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 18:47:27 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-Subject: RE: [PATCH v1 00/13] NFS/RDMA patches for 3.17
-Date: Wed, 25 Jun 2014 17:47:54 -0500
-Message-ID: <007f01cf90c7$802c9210$8085b630$@opengridcomputing.com>
+Received: from mail-ve0-f172.google.com ([209.85.128.172]:60245 "EHLO
+	mail-ve0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932750AbaFCOZY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 10:25:24 -0400
+Received: by mail-ve0-f172.google.com with SMTP id oz11so7118114veb.3
+        for <linux-nfs@vger.kernel.org>; Tue, 03 Jun 2014 07:25:23 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
+In-Reply-To: <20140603105547.GV11096@twins.programming.kicks-ass.net>
+References: <20140602104948.4faf0bc2@tlielax.poochiereds.net>
+	<CAHQdGtRR6SvEhXiqWo24hoUh9AU9cL82Z8Z-d8-7u951F_d+5g@mail.gmail.com>
+	<CALAqxLVmRdv3eVaf_ue-NutDmjxJA2NNAXnH-Tm4a6ud2U7Q4g@mail.gmail.com>
+	<CAHQdGtSn9RwdgaFgEDQXjrxSA_Bg=rNWux+96-5f43dyUwXLRw@mail.gmail.com>
+	<CALAqxLUwtMnE9eB_dfV=C5CLuXpEdB9+mK7pw2jgo5Yg2ACKPA@mail.gmail.com>
+	<CAHQdGtQhurcOsAii7PYNZwEL4Xm-8a2CKBkS4OhrS0FhaAX3Aw@mail.gmail.com>
+	<CALAqxLXeuiTffvgu0uBbn2fiYQ0-3PVdZ4V4AxqC-ZkTaFSfQQ@mail.gmail.com>
+	<20140603105547.GV11096@twins.programming.kicks-ass.net>
+Date: Tue, 3 Jun 2014 10:25:23 -0400
+Message-ID: <CAHQdGtTotdPj9ijyCqnAcZeK=vmUe3R1pFaTzXwzQ3pu0Q8WPA@mail.gmail.com>
+Subject: Re: nfs4_do_reclaim lockdep pop in v3.15.0-rc1
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Peter Zijlstra <peterz@infradead.org>
+Cc: John Stultz <john.stultz@linaro.org>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Ingo Molnar <mingo@elte.hu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Chuck, 
+On Tue, Jun 3, 2014 at 6:55 AM, Peter Zijlstra <peterz@infradead.org> wrote:
+> Ah, I think I see what Trond means; so raw_write_seqcount_{begin,end}()
+> are without lockdep, _however_ raw_seqcount_begin() is with lockdep.
+>
+> This is inconsistent within the same API (seqcount/seqlock).
+>
+> Yes, we should fix that.
+>
+> raw_seqcount_begin() is a variant of read_seqcount_begin() but without
+> the spin loop in. Maybe we should find a new name for this.
 
-I did some testing on this series.  Just 2 nodes, both nfs3 and nfs4 over cxgb4 and mlx4:
+As far as I can see, there are 2 users of raw_seqcount_begin outside
+the NFS code: __d_lookup_rcu and netdev_get_name. Neither one of them
+are using it as part of a lock (no waiting), but rather as a notifier
+of conflicting events. As far as I can tell, there are therefore no
+users that benefit from lockdep checking here.
 
-cthon b/g/s 10 iterations
-iozone -a with direct IO and data validation
-fio write and rand-rw testing of large IO/files and 8 threads.
-xfs test suite.
+So is there any reason why we shouldn't just revert that part of
+commit 1ca7d67cf5d5a, and leave it to future generations to add a
+lockdep-enabled version if and when they need it?
 
-No regressions seen.
+-- 
+Trond Myklebust
 
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+Linux NFS client maintainer, PrimaryData
 
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf
-> Of Chuck Lever
-> Sent: Monday, June 23, 2014 5:39 PM
-> To: linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
-> Subject: [PATCH v1 00/13] NFS/RDMA patches for 3.17
-> 
-> The main purpose of this series is to address more connection drop
-> recovery issues by fixing FRMR re-use to make it less likely the
-> client will drop the connection due to a memory operation error.
-> 
-> Some other clean-ups and fixes are present as well.
-> 
-> See topic branch nfs-rdma-for-3.17 in
-> 
->   git://git.linux-nfs.org/projects/cel/cel-2.6.git
-> 
-> I tested with NFSv3 and NFSv4 on all three supported memory
-> registration modes. Used cthon04 and iozone with both Solaris
-> and Linux NFS/RDMA servers. Used xfstests with Linux.
-> 
-> ---
-> 
-> Chuck Lever (13):
->       xprtrdma: Fix panic in rpcrdma_register_frmr_external()
->       xprtrdma: Protect ->qp during FRMR deregistration
->       xprtrdma: Limit data payload size for ALLPHYSICAL
->       xprtrdma: Update rkeys after transport reconnect
->       xprtrdma: Don't drain CQs on transport disconnect
->       xprtrdma: Unclutter struct rpcrdma_mr_seg
->       xprtrdma: Encode Work Request opcode in wc->wr_id
->       xprtrdma: Back off rkey when FAST_REG_MR fails
->       xprtrdma: Refactor rpcrdma_buffer_put()
->       xprtrdma: Release FRMR segment buffers during LOCAL_INV completion
->       xprtrdma: Clean up rpcrdma_ep_disconnect()
->       xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
->       xprtrdma: Handle additional connection events
-> 
-> 
->  include/linux/sunrpc/xprtrdma.h |    2
->  net/sunrpc/xprtrdma/rpc_rdma.c  |   77 +++++----
->  net/sunrpc/xprtrdma/transport.c |   17 +-
->  net/sunrpc/xprtrdma/verbs.c     |  330 +++++++++++++++++++++++++++------------
->  net/sunrpc/xprtrdma/xprt_rdma.h |   63 ++++++-
->  5 files changed, 332 insertions(+), 157 deletions(-)
-> 
-> --
-> Chuck Lever
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+trond.myklebust@primarydata.com
