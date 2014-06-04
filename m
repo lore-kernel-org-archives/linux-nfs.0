@@ -1,64 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:37297 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751314AbaFEMyZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 08:54:25 -0400
-Received: by mail-ie0-f180.google.com with SMTP id at20so626009iec.39
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 05:54:25 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH pynfs 01/17] 4.1 client: reclaim_complete after create_session
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <20140605022640.GA12044@fieldses.org>
-Date: Thu, 5 Jun 2014 08:54:23 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <4E48F0D6-DD84-4388-83A8-9D4084CCAC34@primarydata.com>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com> <1401915726-29092-2-git-send-email-dros@primarydata.com> <20140605022640.GA12044@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:36156 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751500AbaFDVDj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jun 2014 17:03:39 -0400
+Date: Wed, 4 Jun 2014 17:03:38 -0400
+To: Dave Wysochanski <dwysocha@redhat.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] Simplify logic in cache_listeners_exist - only
+ return true if someone has the file open.
+Message-ID: <20140604210321.GB5603@fieldses.org>
+References: <1401891580-28510-1-git-send-email-dwysocha@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1401891580-28510-1-git-send-email-dwysocha@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun 4, 2014, at 10:26 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-
-> On Wed, Jun 04, 2014 at 05:01:49PM -0400, Weston Andros Adamson wrote:
->> Send RECLAIM_COMPLETE after CREATE_SESSION. This enables backend
->> communication to v4.1 linux nfsd servers (i/o through MDS only).
+On Wed, Jun 04, 2014 at 10:19:40AM -0400, Dave Wysochanski wrote:
+> The logic inside cache_listeners_exist contains heuristics to
+> determine whether there is a userspace process listening to the cache
+> file.  If there is a listener, the kernel will send a request to service
+> the cache to userspace, and wait for a response.
 > 
-> If that's unconditionally adding a reclaim_complete after every
-> create_sesion, that's probably not what we want since there are tests
-> that want to do the reclaim_complete by hand.  You probably want to use
-> new_client_session() instead?  See 219cf7b7f7d0 and the preceding
-> commit.
+> The logic is a bit hard to read, here's some comments which explain the
+> existing logic:
+>        /*
+>         * If at least one process has the channel file open currently,
+>         * someone is listening
+>         */
+>        if (atomic_read(&detail->readers))
+>                return true;
+>        /*
+>         * If no process has ever opened the channel file,
+>         * no one is listening
+>         */
+>        if (detail->last_close == 0)
+>                /* This cache was never opened */
+>                return false;
+>        /*
+>         * If the last time we closed the file was more than 30 seconds
+>         * ago, no one is listening.
+>         */
+>        if (detail->last_close < seconds_since_boot() - 30)
+>                /*
+>                 * We allow for the possibility that someone might
+>                 * restart a userspace daemon without restarting the
+>                 * server; but after 30 seconds, we give up.
+>                 */
+>                 return false;
+>        /*
+>         * In all other cases, assume someone is listening
+>         */
+>        return true;
 > 
-> —b.
+> The logic is unduly complicated and unfortunately can be 'fooled' into
+> thinking some userspace listener daemon exists when it does not.  For
+> example, we've seen where a simple diagnostic process reading all files
+> in /proc/net/rpc (for example, tarring the files up into an archive) can
+> fool the kernel due to this logic.  Once fooled, the kernel will then
+> send requests to validate the cache to userspace thinking some 'cache listener'
+> exists, and will timeout.  In the case of the nfs server, this leads to
+> silently dropped NFS requests due to failing RPC authentication.
+> A simple while loop as follows is enough to DoS the NFS server indefinitely:
+> while true; do
+>    cat /proc/net/rpc/auth.unix.gid/channel>/dev/null
+>    sleep 3
+> done
+> 
+> While a better userspace / kernel registration mechanism for cache listeners
+> would be the best solution, for now let's just simplify this logic by requiring
+> that there actually be someone holding the 'channel' file open for the kernel
+> to consider there's someone actually listening and servicing the cache.
+> 
+> The only downside is that now userspace daemons which restart will be noticed
+> by the kernel during the restart, but I think this makes sense since there's
+> no guarantee the listener will come back.
 
-Ok, thats a good point, but AFAIC new_client_session is never called - at least by
-nfs4server.
+I think this makes sense, thanks, applying.
 
-I’ll figure out a better way to do this.
-
--dros
+--b.
 
 > 
->> 
->> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->> ---
->> nfs4.1/nfs4client.py | 1 +
->> 1 file changed, 1 insertion(+)
->> 
->> diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
->> index e750728..0d94a42 100644
->> --- a/nfs4.1/nfs4client.py
->> +++ b/nfs4.1/nfs4client.py
->> @@ -367,6 +367,7 @@ class ClientRecord(object):
->>         self.seqid = inc_u32(csr.csr_sequence) # XXX Do we need to check this?
->>         sess = SessionRecord(csr, self)
->>         self.c.sessions[sess.sessionid] = sess
->> +        sess.compound([op.reclaim_complete(FALSE)])
->>         return sess
->> 
->>     def _cb_hook(self, prefix, opname, funct):
->> -- 
->> 1.8.5.2 (Apple Git-48)
->> 
-
+> Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+> ---
+>  net/sunrpc/cache.c | 14 +-------------
+>  1 file changed, 1 insertion(+), 13 deletions(-)
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index ae333c1..d5adefc 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -1137,19 +1137,7 @@ static void warn_no_listener(struct cache_detail *detail)
+>  
+>  static bool cache_listeners_exist(struct cache_detail *detail)
+>  {
+> -	if (atomic_read(&detail->readers))
+> -		return true;
+> -	if (detail->last_close == 0)
+> -		/* This cache was never opened */
+> -		return false;
+> -	if (detail->last_close < seconds_since_boot() - 30)
+> -		/*
+> -		 * We allow for the possibility that someone might
+> -		 * restart a userspace daemon without restarting the
+> -		 * server; but after 30 seconds, we give up.
+> -		 */
+> -		 return false;
+> -	return true;
+> +	return atomic_read(&detail->readers);
+>  }
+>  
+>  /*
+> -- 
+> 1.9.3
+> 
