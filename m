@@ -1,235 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:52532 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751676AbaFZTVq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:46 -0400
-Received: by mail-qc0-f176.google.com with SMTP id w7so3614509qcr.35
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:46 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 095/117] nfsd: abstract out the get and set routines into the fault injection ops
-Date: Thu, 26 Jun 2014 15:21:03 -0400
-Message-Id: <1403810485-16497-12-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:19582 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751566AbaFDOtC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 10:49:02 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: multipart/signed; boundary="Apple-Mail=_30B0B594-81C2-4703-9619-9982BD265C11"; protocol="application/pgp-signature"; micalg=pgp-sha512
+Subject: [ANNOUNCE] Announcing the release of fedfs-utils 0.9.6
+Date: Wed, 4 Jun 2014 10:48:25 -0400
+Message-Id: <D15355AD-FF6D-40B5-92FA-43F7A1061F80@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, autofs@vger.kernel.org,
+        samba-technical@lists.samba.org
+To: "fedfs-utils;release announcements"
+	<fedfs-utils-announce@oss.oracle.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that we've added more granular locking in other places, it's time
-to address the fault injection code. This code is currently quite
-reliant on the client_mutex for protection. Start to change this by
-adding a new set of fault injection op vectors.
 
-For now they all use the legacy ones. In later patches we'll add new
-routines that can deal with more granular locking.
+--Apple-Mail=_30B0B594-81C2-4703-9619-9982BD265C11
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=windows-1252
 
-Also, move some of the printk routines into the callers to make the
-results of the operations more uniform.
+This package contains an implementation of the Federated Filesystem =
+(FedFS) Proposed Standard for Linux. For an introduction to FedFS, see =
+RFC 5716.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/fault_inject.c | 129 ++++++++++++++++++++++++++++++-------------------
- 1 file changed, 78 insertions(+), 51 deletions(-)
+This is an ALPHA quality release.  The code in this release is not =
+guaranteed to work.  Programming, administrative, and user interfaces =
+may change significantly before the next release.  This release is for =
+technology preview only.
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index f1333fc35b33..b1159900d934 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -17,79 +17,50 @@
- 
- struct nfsd_fault_inject_op {
- 	char *file;
-+	u64 (*get)(struct nfsd_fault_inject_op *);
-+	u64 (*set_val)(struct nfsd_fault_inject_op *, u64);
-+	u64 (*set_clnt)(struct nfsd_fault_inject_op *,
-+			struct sockaddr_storage *, size_t);
- 	u64 (*forget)(struct nfs4_client *, u64);
- 	u64 (*print)(struct nfs4_client *, u64);
- };
- 
--static struct nfsd_fault_inject_op inject_ops[] = {
--	{
--		.file   = "forget_clients",
--		.forget = nfsd_forget_client,
--		.print  = nfsd_print_client,
--	},
--	{
--		.file   = "forget_locks",
--		.forget = nfsd_forget_client_locks,
--		.print  = nfsd_print_client_locks,
--	},
--	{
--		.file   = "forget_openowners",
--		.forget = nfsd_forget_client_openowners,
--		.print  = nfsd_print_client_openowners,
--	},
--	{
--		.file   = "forget_delegations",
--		.forget = nfsd_forget_client_delegations,
--		.print  = nfsd_print_client_delegations,
--	},
--	{
--		.file   = "recall_delegations",
--		.forget = nfsd_recall_client_delegations,
--		.print  = nfsd_print_client_delegations,
--	},
--};
--
--static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
- static struct dentry *debug_dir;
- 
--static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
-+static u64 nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
- {
--	u64 count = 0;
--
--	if (val == 0)
--		printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
--	else
--		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
-+	u64 count;
- 
- 	nfs4_lock_state();
- 	count = nfsd_for_n_state(val, op->forget);
- 	nfs4_unlock_state();
--	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
-+	return count;
- }
- 
--static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
-+static u64 nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
- 				   struct sockaddr_storage *addr,
- 				   size_t addr_size)
- {
--	char buf[INET6_ADDRSTRLEN];
- 	struct nfs4_client *clp;
--	u64 count;
-+	u64 count = 0;
- 
- 	nfs4_lock_state();
- 	clp = nfsd_find_client(addr, addr_size);
--	if (clp) {
-+	if (clp)
- 		count = op->forget(clp, 0);
--		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
--		printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file, buf, count);
--	}
- 	nfs4_unlock_state();
-+	return count;
- }
- 
--static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
-+static u64 nfsd_inject_get(struct nfsd_fault_inject_op *op)
- {
-+	u64 count;
-+
- 	nfs4_lock_state();
--	*val = nfsd_for_n_state(0, op->print);
-+	count = nfsd_for_n_state(0, op->print);
- 	nfs4_unlock_state();
-+
-+	return count;
- }
- 
- static ssize_t fault_inject_read(struct file *file, char __user *buf,
-@@ -99,9 +70,10 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
- 	char read_buf[25];
- 	size_t size;
- 	loff_t pos = *ppos;
-+	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
- 
- 	if (!pos)
--		nfsd_inject_get(file_inode(file)->i_private, &val);
-+		val = op->get(op);
- 	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
- 
- 	return simple_read_from_buffer(buf, len, ppos, read_buf, size);
-@@ -114,6 +86,7 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
- 	size_t size = min(sizeof(write_buf) - 1, len);
- 	struct net *net = current->nsproxy->net_ns;
- 	struct sockaddr_storage sa;
-+	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
- 	u64 val;
- 	char *nl;
- 
-@@ -129,11 +102,20 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
- 	}
- 
- 	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
--	if (size > 0)
--		nfsd_inject_set_client(file_inode(file)->i_private, &sa, size);
--	else {
-+	if (size > 0) {
-+		val = op->set_clnt(op, &sa, size);
-+		if (val)
-+			pr_info("NFSD [%s]: Client %s had %llu state object(s)\n",
-+				op->file, write_buf, val);
-+	} else {
- 		val = simple_strtoll(write_buf, NULL, 0);
--		nfsd_inject_set(file_inode(file)->i_private, val);
-+		if (val == 0)
-+			pr_info("NFSD Fault Injection: %s (all)", op->file);
-+		else
-+			pr_info("NFSD Fault Injection: %s (n = %llu)",
-+				op->file, val);
-+		val = op->set_val(op, val);
-+		pr_info("NFSD: %s: found %llu", op->file, val);
- 	}
- 	return len; /* on success, claim we got the whole input */
- }
-@@ -149,6 +131,51 @@ void nfsd_fault_inject_cleanup(void)
- 	debugfs_remove_recursive(debug_dir);
- }
- 
-+static struct nfsd_fault_inject_op inject_ops[] = {
-+	{
-+		.file     = "forget_clients",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_forget_client,
-+		.print    = nfsd_print_client,
-+	},
-+	{
-+		.file     = "forget_locks",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_forget_client_locks,
-+		.print    = nfsd_print_client_locks,
-+	},
-+	{
-+		.file     = "forget_openowners",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_forget_client_openowners,
-+		.print    = nfsd_print_client_openowners,
-+	},
-+	{
-+		.file     = "forget_delegations",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_forget_client_delegations,
-+		.print    = nfsd_print_client_delegations,
-+	},
-+	{
-+		.file     = "recall_delegations",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_recall_client_delegations,
-+		.print    = nfsd_print_client_delegations,
-+	},
-+};
-+
-+#define NUM_INJECT_OPS (sizeof(inject_ops)/sizeof(struct nfsd_fault_inject_op))
-+
- int nfsd_fault_inject_init(void)
- {
- 	unsigned int i;
--- 
-1.9.3
+Git repository:
+git://git.linux-nfs.org/projects/cel/fedfs-utils.git 0.9-stable
 
+The new head of the 0.9-stable branch is commit:
+
+  f04774c5 Release 0.9.6
+
+
+Changes since 0.9.5:   =20
+	=95 Man page correction
+	=95 Numerous fixes to error handling paths
+
+Changes since 0.9.4:
+	=95 Run rpcfedfsd.service after network.target is started
+	=95 Use correct RPC result type in fedfs-get-limited-nsdb-params
+	=95 SET_NSDB_PARAMS should not return NSDB_LDAP_VAL
+
+Changes since 0.9.3:
+	=95 Mount fails when domain has multiple SRV records
+	=95 Fix a problem with build environment
+
+Changes since 0.9.2:
+	=95 Make the use of liburiparser optional
+
+Changes since 0.9.1:
+	=95 Packaging-related improvements
+
+Changes since 0.9.0:
+	=95 Address build issues with recent automake and libtools
+	=95 Replace nl_langinfo(CODESET) check in command line tools
+
+New with fedfs-utils 0.9.0:
+	=95 NSDB schema complies with latest draft standard
+	=95 DNS SRV support complies with RFC 6641
+	=95 NSDB clients support the FEDFS_SEC_TLS security type
+	=95 NSDB clients can follow LDAP referrals returned by NSDB =
+nodes
+	=95 New tools for configuration of NSDBs
+	=95 New "display-junction" debugging command
+
+Tarball releases:
+git://git.linux-nfs.org/projects/cel/fedfs-releases.git
+
+Project web site
+http://wiki.linux-nfs.org/wiki/index.php/FedFsUtilsProject
+
+Installation guide:
+http://wiki.linux-nfs.org/wiki/index.php/FedFsInstallationGuide0.9
+
+Patchwork:
+http://patchwork.ozlabs.org/project/fedfs-utils/list/
+
+--=20
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+--Apple-Mail=_30B0B594-81C2-4703-9619-9982BD265C11
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIcBAEBCgAGBQJTjzHBAAoJEDNqszNvZn+Xm+0P/0SkE8sty+biFrS19h8zfl8E
+ZdKrQtA18717tdamPUw7P6e1jUyCF3vmHXlJ0FUQ1RT7vxO7w5h6M8/b9BvfZpuw
+GLUZuq0Sa/M5xqDoZcNtRAHUMq+2+VziuqaDC5Gryin1/wL2skZYlmhb1BdKWH4E
+Op0FB/QW3TAbQoa/0XUGl913MqLysGWeK6gCDD2J+G9IUctSzM6qWhRengOoauDX
+j44D+ep4jT4swN6y66SwfDDibeyU62a6hbYIDGaAy8XlCHSIwoIzG70JmWDcvsCK
+V2i2xFjs4SHDB3AfLbLkawJbjjPgCV9iU/24mH/D/om9uks/iNrQp0Q1e0iu8l4Y
+/PKp9DfGghMwB7MZydIrBbAOaSel4WhDQTy7dphc30drtXlE94QvejzX5/cJN0sj
+/mBG+P/P7gyus100j537b57DJ+mLhKj88JqJQmv4Gy43RGxW9E5usfyrEzGL6T6A
+dJvR3oo2Ki7mkJhfnd9CWKfOyy8I9sF+crBQyu64KJVfzXHTQTgP7Kor7uOs10xK
+n6MKiJAuScJsMPzq9FHeY44sSgEqV8pL28IWn5E95BPX/Te3Y78y4jA5WTqfPAgd
+r9OLlsSG/TaGTqRDIO96IMX8DlYZmB9FXOJoLEOaKFYt7auYiap5qFW3MxqHttSV
+mQm5bdDyGENP1qvmTbeF
+=Kchk
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_30B0B594-81C2-4703-9619-9982BD265C11--
