@@ -1,135 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f169.google.com ([209.85.216.169]:62108 "EHLO
-	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757959AbaFSOvj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:39 -0400
-Received: by mail-qc0-f169.google.com with SMTP id c9so2283181qcz.14
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:38 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 029/104] NFSd: Add locking to protect the state owner lists
-Date: Thu, 19 Jun 2014 10:49:35 -0400
-Message-Id: <1403189450-18729-30-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:32863 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753359AbaFDN1l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jun 2014 09:27:41 -0400
+Date: Wed, 4 Jun 2014 09:27:39 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Live lock in silly-rename.
+Message-ID: <20140604132739.GK6839@fieldses.org>
+References: <20140529164521.02324559@notabene.brown>
+ <CAHQdGtTtU9_zBcfzRb_wmEf7XaX9rNg-_Q85ZLX9BYax14D2Gg@mail.gmail.com>
+ <20140530075135.753fb7ed@notabene.brown>
+ <20140530004423.GA13746@fieldses.org>
+ <20140530134442.5a8e5983@notabene.brown>
+ <20140530215522.GA27615@fieldses.org>
+ <20140531081358.62ae69b3@notabene.brown>
+ <20140604173926.53918af3@notabene.brown>
+ <CAHQdGtR-YwT-nW-vcFhBFPsg3h=ZE6co08QB9KETGdiKrNNuUg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtR-YwT-nW-vcFhBFPsg3h=ZE6co08QB9KETGdiKrNNuUg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We use the clp->cl_lock for this. For now, there's a lot of cl_lock
-thrashing, but in a later patch we'll reduce that.
+On Wed, Jun 04, 2014 at 08:48:02AM -0400, Trond Myklebust wrote:
+> On Wed, Jun 4, 2014 at 3:39 AM, NeilBrown <neilb@suse.de> wrote:
+> > On Sat, 31 May 2014 08:13:58 +1000 NeilBrown <neilb@suse.de> wrote:
+> >
+> >> On Fri, 30 May 2014 17:55:23 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> >> wrote:
+> >>
+> >> > On Fri, May 30, 2014 at 01:44:42PM +1000, NeilBrown wrote:
+> >> > > On Thu, 29 May 2014 20:44:23 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+> >> > > wrote:
+> >> > >
+> >> > > > Yes, it's a known server bug.
+> >> > > >
+> >> > > > As a first attempt I was thinking of just sticking a timestamp in struct
+> >> > > > inode to record the time of the most recent conflicting access and deny
+> >> > > > delegations if the timestamp is too recent, for some definition of too
+> >> > > > recent.
+> >> > > >
+> >> > >
+> >> > > Hmmm... I'll have a look next week and see what I can come up with.
+> >> >
+> >> > Thanks!
+> >> >
+> >> > If we didn't think it was worth another struct inode field, we could
+> >> > probably get away with global state.  Even just refusing to give out any
+> >> > delegations for a few seconds after any delegation break would be enough
+> >> > to fix this bug.
+> >> >
+> >> > Or you could make it a little less harsh with a small hash table: "don't
+> >> > give out a delegation on any inode whose inode number hashes to X for a
+> >> > few seconds."
+> >>
+> >> I was thinking of using a bloom filter - or possibly two.
+> >> - avoid handing out delegations if either bloom filter reports a match
+> >> - when reclaiming a delegation add the inode to the second bloom filter
+> >> - every so-often zero-out the older filter and swap them.
+> >>
+> >> Might be a bit of overkill, but I won't know until I implement it.
+> >>
+> >
+> > Below is my suggestion.  It seems easy enough.  It even works.
+> >
+> > However it does raise an issue with the NFS client.
+> >
+> > NFS performs a silly-rename as an 'asynchronous' operation.  One consequence
+> > of this is that NFS4ERR_DELAY always results in a delay of
+> > NFS4_POLL_RETRY_MAX (15*HZ), where as sync requests use an exponential scale
+> > from _MIN to _MAX.
+> >
+> > So in my test case there is always a 15second delay:
+> >   - try to silly-rename
+> >   - get NFS4ERR_DELAY
+> >   - server reclaim delegation
+> >   - 15 seconds passes
+> >   - retry silly-rename - it works.
+> >
+> > I hacked the NFS server to store a timeout in 'struct nfs_renamedata', and
+> > use the same exponential retry pattern and the 15 seconds (obviously)
+> > disappeared.
+> >
+> > Trond: would  you accept a patch which did that more generally?  e.g. pass a
+> > timeout pointer to nfs4_async_handle_error() and various *_done function pass
+> > a pointer to a field in their calldata?
+> 
+> It depends. If we're touching nfs4_async_handle_error, then I think we
+> should also convert nfs4_async_handle_error to use the same "struct
+> nfs4_exception" argument that we use for the synchronous case so that
+> we can share a bit more code.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 21 +++++++++++++++++++--
- 1 file changed, 19 insertions(+), 2 deletions(-)
+I wonder why this hasn't been a major complaint before--is there
+something other servers are doing to mitigate the problem, or is
+renaming a delegated file just rarer than I would have expected?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 99995d2537c3..6e8d3ec088d9 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -763,6 +763,8 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_file *fp = stp->st_stid.sc_file;
- 
-+	lockdep_assert_held(&stp->st_stateowner->so_client->cl_lock);
-+
- 	spin_lock(&fp->fi_lock);
- 	list_del(&stp->st_perfile);
- 	spin_unlock(&fp->fi_lock);
-@@ -797,9 +799,13 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- static void __release_lock_stateid(struct nfs4_lockowner *lo,
- 		struct nfs4_ol_stateid *stp)
- {
-+	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
-+
-+	spin_lock(&oo->oo_owner.so_client->cl_lock);
- 	list_del(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
-+	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- 	put_generic_stateid(stp);
- }
- 
-@@ -843,20 +849,26 @@ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
- }
- 
- static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
-+	__releases(&open_stp->st_stateowner->so_client->cl_lock)
-+	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
- {
- 	struct nfs4_ol_stateid *stp;
- 
- 	while (!list_empty(&open_stp->st_locks)) {
- 		stp = list_entry(open_stp->st_locks.next,
- 				struct nfs4_ol_stateid, st_locks);
-+		spin_unlock(&open_stp->st_stateowner->so_client->cl_lock);
- 		release_lock_stateid(stp);
-+		spin_lock(&open_stp->st_stateowner->so_client->cl_lock);
- 	}
- }
- 
- static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
- {
-+	spin_lock(&stp->st_stateowner->so_client->cl_lock);
- 	unhash_generic_stateid(stp);
- 	release_open_stateid_locks(stp);
-+	spin_unlock(&stp->st_stateowner->so_client->cl_lock);
- }
- 
- static void release_open_stateid(struct nfs4_ol_stateid *stp)
-@@ -2862,7 +2874,6 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_locks);
--	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	stp->st_stateowner = &oo->oo_owner;
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
-@@ -2871,9 +2882,12 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	set_access(open->op_share_access, stp);
- 	set_deny(open->op_share_deny, stp);
- 	stp->st_openstp = NULL;
-+	spin_lock(&oo->oo_owner.so_client->cl_lock);
-+	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	spin_lock(&fp->fi_lock);
- 	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	spin_unlock(&fp->fi_lock);
-+	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- }
- 
- static void
-@@ -4544,6 +4558,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- static struct nfs4_ol_stateid *
- alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
- {
-+	struct nfs4_openowner *oo = openowner(open_stp->st_stateowner);
- 	struct nfs4_ol_stateid *stp;
- 	struct nfs4_client *clp = lo->lo_owner.so_client;
- 
-@@ -4551,7 +4566,6 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	if (stp == NULL)
- 		return NULL;
- 	stp->st_stid.sc_type = NFS4_LOCK_STID;
--	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
- 	stp->st_stateowner = &lo->lo_owner;
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
-@@ -4559,10 +4573,13 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
-+	spin_lock(&oo->oo_owner.so_client->cl_lock);
- 	list_add(&stp->st_locks, &open_stp->st_locks);
-+	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
- 	spin_lock(&fp->fi_lock);
- 	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	spin_unlock(&fp->fi_lock);
-+	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- 	return stp;
- }
- 
--- 
-1.9.3
-
+--b.
