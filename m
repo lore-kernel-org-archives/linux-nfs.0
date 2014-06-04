@@ -1,107 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f50.google.com ([209.85.160.50]:63217 "EHLO
-	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752199AbaFKXZB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2014 19:25:01 -0400
-Received: by mail-pb0-f50.google.com with SMTP id rp16so318481pbb.9
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Jun 2014 16:25:01 -0700 (PDT)
-Message-ID: <5398E544.9000105@gmail.com>
-Date: Thu, 12 Jun 2014 07:24:52 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: Re: [PATCH v2] NFS4.1: try to clean sessions after testing
-References: <5396D7FA.4050303@gmail.com> <5396F243.8080606@gmail.com> <20140611211742.GH19382@fieldses.org>
-In-Reply-To: <20140611211742.GH19382@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:36650 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752068AbaFDVCn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:43 -0400
+Received: by mail-ig0-f180.google.com with SMTP id c1so1549090igq.13
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:43 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs 15/17] nfs41 svr: get rid of old op_getdeviceinfo
+Date: Wed,  4 Jun 2014 17:02:04 -0400
+Message-Id: <1401915726-29092-17-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/12/2014 05:17, J. Bruce Fields wrote:
-> I tried to apply this, and the ipv6 patch (could we do that for 4.1
-> too?) and the 3 other patches, but:
+This has been commented out for a while.
 
-nfs4.1 has supports IPv6, the patch for nfs4.0 is a back-port from nfs4.1.
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ nfs4.1/nfs4server.py | 21 ---------------------
+ 1 file changed, 21 deletions(-)
 
-> 
-> 	- there are some conflicts with the latest pynfs (e.g. I already
-> 	  added a few acl tests, apologies)
-> 	- I'm getting failures to write to a read-only fs, apparently
-> 	  one of the tests is trying to write to the export root?  I
-> 	  didn't check which one.
-> 
-> Could you look into those and resend your pynfs patches?  Thanks!
+diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+index 062e3c4..27e2352 100755
+--- a/nfs4.1/nfs4server.py
++++ b/nfs4.1/nfs4server.py
+@@ -1870,27 +1870,6 @@ class NFS4Server(rpc.Server):
+                                   new_cookie >= len(list))
+         return encode_status(NFS4_OK, res)
+ 
+-#     def op_getdeviceinfo(self, arg, env): # STUB
+-#         check_session(env)
+-#         # check_cfh(env)
+-#         # fs = env.cfh.fs
+-#         # STUB - only deals with block volumes
+-#         kind = arg.gdia_layout_type
+-#         if kind != LAYOUT4_BLOCK_VOLUME:
+-#             return encode_status(NFS4ERR_INVAL)
+-#         # STUB - want to pull this from fs, not block module
+-#         d = block.devices.get(arg.gdia_device_id, None)
+-#         if d is None:
+-#             return encode_status(NFS4ERR_INVAL)
+-#         address = device_addr4(LAYOUT4_BLOCK_VOLUME, d.get_addr())
+-#         # Check that we don't exceed count
+-#         p = nfs4lib.FancyNFS4Packer()
+-#         p.pack_device_addr4(address)
+-#         if len(p.get_buffer()) > arg.gdia_maxcount:
+-#             return encode_status(NFS4ERR_TOOSMALL, gdir_mincount = len(p.get_buffer()))
+-#         res = GETDEVICEINFO4resok(address, 0)
+-#         return encode_status(NFS4_OK, res)
+-
+     def op_getdeviceinfo(self, arg, env): # STUB
+         # STUB - ignoring notifications
+         check_session(env)
+-- 
+1.8.5.2 (Apple Git-48)
 
-Yes, I will check those patch and resend them.
-
-thanks,
-Kinglong Mee
-
-> 
-> --b.
-> 
-> 
-> On Tue, Jun 10, 2014 at 07:55:47PM +0800, Kinglong Mee wrote:
->> There are many sessions left after testing, they hold drc memory at server.
->> This patch tries to clean session after each testcase.
->>
->> v2,
->> adds empty function of clean_sessions for nfs4.0,
->> because they are using the same testmod.py 
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  nfs4.0/servertests/environment.py   | 3 +++
->>  nfs4.1/server41tests/environment.py | 7 ++++++-
->>  nfs4.1/testmod.py                   | 1 +
->>  3 files changed, 10 insertions(+), 1 deletion(-)
->>
->> diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
->> index 993320d..9852178 100644
->> --- a/nfs4.0/servertests/environment.py
->> +++ b/nfs4.0/servertests/environment.py
->> @@ -226,6 +226,9 @@ class Environment(testmod.Environment):
->>              cmd += ' ' + args
->>              os.system(cmd);
->>  
->> +    def clean_sessions(self):
->> +        return
->> +
->>  #########################################
->>  debug_fail = False
->>  
->> diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
->> index b2df732..7632655 100644
->> --- a/nfs4.1/server41tests/environment.py
->> +++ b/nfs4.1/server41tests/environment.py
->> @@ -248,7 +248,12 @@ class Environment(testmod.Environment):
->>      def testname(self, t):
->>          """Returns a name for the test that is unique between runs"""
->>          return "%s_%i" % (t.code, self.timestamp)
->> -    
->> +
->> +    def clean_sessions(self):
->> +        """Destroy client name env.c1"""
->> +        for sessionid in self.c1.sessions.keys():
->> +            self.c1.compound([op.destroy_session(sessionid)])
->> +
->>  #########################################
->>  debug_fail = False
->>  
->> diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
->> index 5908066..661aed0 100644
->> --- a/nfs4.1/testmod.py
->> +++ b/nfs4.1/testmod.py
->> @@ -220,6 +220,7 @@ class Test(object):
->>              environment.startUp()
->>              self.runtest(self, environment)
->>              self.result = self._pass_result
->> +	    environment.clean_sessions()
->>          except KeyboardInterrupt:
->>              raise
->>          except TestException, e:
->> -- 
->> 1.9.3
->>
-> 
