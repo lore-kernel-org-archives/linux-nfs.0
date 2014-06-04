@@ -1,212 +1,992 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:47881 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751208AbaFZTPU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:20 -0400
-Received: by mail-qg0-f53.google.com with SMTP id i50so3428777qgf.40
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:19 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:34705 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751525AbaFDVCb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:31 -0400
+Received: by mail-ie0-f172.google.com with SMTP id tp5so69189ieb.17
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:31 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 069/117] nfsd: make openstateids hold references to their openowners
-Date: Thu, 26 Jun 2014 15:12:49 -0400
-Message-Id: <1403810017-16062-70-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs 12/17] add mntv3, portmapv2 and nfsv3 .x files
+Date: Wed,  4 Jun 2014 17:02:00 -0400
+Message-Id: <1401915726-29092-13-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change it so that only openstateids hold persistent references to
-openowners. References can still be held by compounds in progress.
+mntv3 and nfsv3 .x files made from IETF specs by Tom Haynes
+<thomas.haynes@primarydata.com>.
 
-With this, we can get rid of NFS4_OO_NEW. It's possible that we
-will create a new openowner in the process of doing the open, but
-something later fails. In the meantime, another task could find
-that openowner and start using it on a successful open. If that
-occurs we don't necessarily want to tear it down, just put the
-reference that the failing compound holds.
+portmap2 .x files made from IETF specs by Weston Andros Adamson
+<dros@primarydata.com>.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 71 +++++++++++++++++++++++------------------------------
- fs/nfsd/state.h     |  1 -
- 2 files changed, 31 insertions(+), 41 deletions(-)
+ nfs4.1/xdrdef/mnt3.x    |  68 ++++
+ nfs4.1/xdrdef/nfs3.x    | 818 ++++++++++++++++++++++++++++++++++++++++++++++++
+ nfs4.1/xdrdef/portmap.x |  51 +++
+ 3 files changed, 937 insertions(+)
+ create mode 100644 nfs4.1/xdrdef/mnt3.x
+ create mode 100644 nfs4.1/xdrdef/nfs3.x
+ create mode 100644 nfs4.1/xdrdef/portmap.x
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d8de65e0a457..d1b55d61ae6f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -904,7 +904,7 @@ static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
- 	struct nfs4_ol_stateid *stp = openlockstateid(stid);
- 
- 	release_all_access(stp);
--	if (stp->st_stateowner && stid->sc_type == NFS4_LOCK_STID)
-+	if (stp->st_stateowner)
- 		nfs4_put_stateowner(stp->st_stateowner);
- 	nfs4_free_stid(stateid_slab, stid);
- }
-@@ -1001,8 +1001,9 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
- 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
- 
- 	if (s) {
--		put_generic_stateid(s);
-+		list_del_init(&oo->oo_close_lru);
- 		oo->oo_last_closed_stid = NULL;
-+		put_generic_stateid(s);
- 	}
- }
- 
-@@ -1021,7 +1022,6 @@ static void release_openowner(struct nfs4_openowner *oo)
- {
- 	unhash_openowner(oo);
- 	release_openowner_stateids(oo);
--	list_del(&oo->oo_close_lru);
- 	release_last_closed_stateid(oo);
- 	nfs4_put_stateowner(&oo->oo_owner);
- }
-@@ -1494,6 +1494,7 @@ destroy_client(struct nfs4_client *clp)
- 	}
- 	while (!list_empty(&clp->cl_openowners)) {
- 		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
-+		atomic_inc(&oo->oo_owner.so_count);
- 		release_openowner(oo);
- 	}
- 	nfsd4_shutdown_callback(clp);
-@@ -3025,7 +3026,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- 	oo->oo_owner.so_unhash = nfs4_unhash_openowner;
- 	oo->oo_owner.so_is_open_owner = 1;
- 	oo->oo_owner.so_seqid = open->op_seqid;
--	oo->oo_flags = NFS4_OO_NEW;
-+	oo->oo_flags = 0;
- 	if (nfsd4_has_session(cstate))
- 		oo->oo_flags |= NFS4_OO_CONFIRMED;
- 	oo->oo_time = 0;
-@@ -3042,6 +3043,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_locks);
- 	stp->st_stateowner = &oo->oo_owner;
-+	atomic_inc(&stp->st_stateowner->so_count);
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
- 	stp->st_access_bmap = 0;
-@@ -3057,13 +3059,27 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- }
- 
-+/*
-+ * In the 4.0 case we need to keep the owners around a little while to handle
-+ * CLOSE replay. We still do need to release any file access that is held by
-+ * them before returning however.
-+ */
- static void
--move_to_close_lru(struct nfs4_openowner *oo, struct net *net)
-+move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- {
--	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+	struct nfs4_openowner *oo = openowner(s->st_stateowner);
-+	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
-+						nfsd_net_id);
- 
- 	dprintk("NFSD: move_to_close_lru nfs4_openowner %p\n", oo);
- 
-+	release_all_access(s);
-+	if (s->st_stid.sc_file) {
-+		put_nfs4_file(s->st_stid.sc_file);
-+		s->st_stid.sc_file = NULL;
-+	}
-+	release_last_closed_stateid(oo);
-+	oo->oo_last_closed_stid = s;
- 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
- 	oo->oo_time = get_seconds();
- }
-@@ -3094,6 +3110,7 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
- 			renew_client(oo->oo_owner.so_client);
-+			atomic_inc(&oo->oo_owner.so_count);
- 			return oo;
- 		}
- 	}
-@@ -3823,19 +3840,10 @@ void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
- 			      struct nfsd4_open *open, __be32 status)
- {
- 	if (open->op_openowner) {
--		struct nfs4_openowner *oo = open->op_openowner;
--
--		if (!list_empty(&oo->oo_owner.so_stateids))
--			list_del_init(&oo->oo_close_lru);
--		if (oo->oo_flags & NFS4_OO_NEW) {
--			if (status) {
--				release_openowner(oo);
--				open->op_openowner = NULL;
--			} else
--				oo->oo_flags &= ~NFS4_OO_NEW;
--		}
--		if (open->op_openowner)
--			nfsd4_cstate_assign_replay(cstate, &oo->oo_owner);
-+		struct nfs4_stateowner *so = &open->op_openowner->oo_owner;
+diff --git a/nfs4.1/xdrdef/mnt3.x b/nfs4.1/xdrdef/mnt3.x
+new file mode 100644
+index 0000000..b632322
+--- /dev/null
++++ b/nfs4.1/xdrdef/mnt3.x
+@@ -0,0 +1,68 @@
++const MNTPATHLEN = 1024;   /* Maximum bytes in a path name */
++const MNTNAMLEN = 255;     /* Maximum bytes in a name */
++const FHSIZE3 = 64;        /* Maximum bytes in a V3 file handle */
 +
-+		nfsd4_cstate_assign_replay(cstate, so);
-+		nfs4_put_stateowner(so);
- 	}
- 	if (open->op_file)
- 		nfsd4_free_file(open->op_file);
-@@ -3977,7 +3985,7 @@ nfs4_laundromat(struct nfsd_net *nn)
- 			new_timeo = min(new_timeo, t);
- 			break;
- 		}
--		release_openowner(oo);
-+		release_last_closed_stateid(oo);
- 	}
- 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
- 	nfs4_unlock_state();
-@@ -4556,31 +4564,14 @@ out:
- static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- {
- 	struct nfs4_client *clp = s->st_stid.sc_client;
--	struct nfs4_openowner *oo = openowner(s->st_stateowner);
- 
- 	s->st_stid.sc_type = NFS4_CLOSED_STID;
- 	unhash_open_stateid(s);
- 
--	if (clp->cl_minorversion) {
--		if (list_empty(&oo->oo_owner.so_stateids))
--			release_openowner(oo);
-+	if (clp->cl_minorversion)
- 		put_generic_stateid(s);
--	} else {
--		if (s->st_stid.sc_file) {
--			put_nfs4_file(s->st_stid.sc_file);
--			s->st_stid.sc_file = NULL;
--		}
--		oo->oo_last_closed_stid = s;
--		/*
--		 * In the 4.0 case we need to keep the owners around a
--		 * little while to handle CLOSE replay. We still do need
--		 * to release any file access that is held by them
--		 * before returning however.
--		 */
--		release_all_access(s);
--		if (list_empty(&oo->oo_owner.so_stateids))
--			move_to_close_lru(oo, clp->net);
--	}
-+	else
-+		move_to_close_lru(s, clp->net);
- }
- 
- /*
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e318fc29dd68..89d43c3b5078 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -364,7 +364,6 @@ struct nfs4_openowner {
- 	struct nfs4_ol_stateid *oo_last_closed_stid;
- 	time_t			oo_time; /* time of placement on so_close_lru */
- #define NFS4_OO_CONFIRMED   1
--#define NFS4_OO_NEW         4
- 	unsigned char		oo_flags;
- };
- 
++typedef opaque  fhandle3 <FHSIZE3>;
++typedef string  dirpath <MNTPATHLEN>;
++typedef string  name <MNTNAMLEN>;
++
++struct mountres3_ok {
++        fhandle3        fhandle;
++        int             auth_flavors <>;
++};
++
++union mountres3 switch (mountstat3 fhs_status) {
++case MNT3_OK:
++        mountres3_ok mountinfo;
++default:
++        void;
++};
++
++struct mountbody {
++        name            ml_hostname;
++        dirpath         ml_directory;
++        mountlist       ml_next;
++};
++
++typedef mountbody *mountlist;
++
++
++struct groupnode {
++        name            gr_name;
++        groups          gr_next;
++};
++
++typedef groupnode *groups;
++
++
++struct exportnode {
++        dirpath         ex_dir;
++        groups          ex_groups;
++        exports         ex_next;
++};
++
++typedef exportnode *exports;
++
++enum mountstat3 {
++        MNT3_OK = 0,                     /* no error */
++        MNT3ERR_PERM = 1,                /* Not owner */
++        MNT3ERR_NOENT = 2,               /* No such file or directory */
++        MNT3ERR_IO = 5,                  /* I/O error */
++        MNT3ERR_ACCES = 13,              /* Permission denied */
++        MNT3ERR_NOTDIR = 20,             /* Not a directory */
++        MNT3ERR_INVAL = 22,              /* Invalid argument */
++        MNT3ERR_NAMETOOLONG = 63,        /* Filename too long */
++        MNT3ERR_NOTSUPP = 10004,         /* Operation not supported */
++        MNT3ERR_SERVERFAULT = 10006      /* A failure on the server */
++};
++
++program MOUNT_PROGRAM {
++        version MOUNT_V3 {
++                void            MOUNTPROC3_NULL(void) = 0;
++                mountres3       MOUNTPROC3_MNT(dirpath) = 1;
++                mountlist       MOUNTPROC3_DUMP(void) = 2;
++                void            MOUNTPROC3_UMNT(dirpath) = 3;
++                void            MOUNTPROC3_UMNTALL(void) = 4;
++                exports         MOUNTPROC3_EXPORT(void) = 5;
++        } = 3;
++} = 100005;
+diff --git a/nfs4.1/xdrdef/nfs3.x b/nfs4.1/xdrdef/nfs3.x
+new file mode 100644
+index 0000000..ddd1395
+--- /dev/null
++++ b/nfs4.1/xdrdef/nfs3.x
+@@ -0,0 +1,818 @@
++const NFS3_FHSIZE = 64;        /* Maximum bytes in a V3 file handle */
++
++const FALSE = 0;
++const TRUE = 1;
++
++const NFS3_COOKIEVERFSIZE = 8;
++const NFS3_CREATEVERFSIZE = 8;
++const NFS3_WRITEVERFSIZE = 8;
++
++typedef unsigned hyper uint64;
++typedef hyper   int64;
++typedef unsigned int uint32;
++typedef int    int32;
++typedef string  filename3 <>;
++typedef string  nfspath3 <>;
++typedef uint64  fileid3;
++typedef uint64  cookie3;
++typedef opaque  cookieverf3[NFS3_COOKIEVERFSIZE];
++typedef opaque  createverf3[NFS3_CREATEVERFSIZE];
++typedef opaque  writeverf3[NFS3_WRITEVERFSIZE];
++typedef uint32  uid3;
++typedef uint32  gid3;
++typedef uint64  size3;
++typedef uint64  offset3;
++typedef uint32  mode3;
++typedef uint32  count3;
++
++enum nfsstat3 {
++        NFS3_OK = 0,
++        NFS3ERR_PERM = 1,
++        NFS3ERR_NOENT = 2,
++        NFS3ERR_IO = 5,
++        NFS3ERR_NXIO = 6,
++        NFS3ERR_ACCES = 13,
++        NFS3ERR_EXIST = 17,
++        NFS3ERR_XDEV = 18,
++        NFS3ERR_NODEV = 19,
++        NFS3ERR_NOTDIR = 20,
++        NFS3ERR_ISDIR = 21,
++        NFS3ERR_INVAL = 22,
++        NFS3ERR_FBIG = 27,
++        NFS3ERR_NOSPC = 28,
++        NFS3ERR_ROFS = 30,
++        NFS3ERR_MLINK = 31,
++        NFS3ERR_NAMETOOLONG = 63,
++        NFS3ERR_NOTEMPTY = 66,
++        NFS3ERR_DQUOT = 69,
++        NFS3ERR_STALE = 70,
++        NFS3ERR_REMOTE = 71,
++        NFS3ERR_BADHANDLE = 10001,
++        NFS3ERR_NOT_SYNC = 10002,
++        NFS3ERR_BAD_COOKIE = 10003,
++        NFS3ERR_NOTSUPP = 10004,
++        NFS3ERR_TOOSMALL = 10005,
++        NFS3ERR_SERVERFAULT = 10006,
++        NFS3ERR_BADTYPE = 10007,
++        NFS3ERR_JUKEBOX = 10008
++};
++
++enum ftype3 {
++        NF3REG = 1,
++        NF3DIR = 2,
++        NF3BLK = 3,
++        NF3CHR = 4,
++        NF3LNK = 5,
++        NF3SOCK = 6,
++        NF3FIFO = 7
++};
++
++struct specdata3 {
++        uint32          specdata1;
++        uint32          specdata2;
++};
++
++struct nfs_fh3 {
++        opaque          data <NFS3_FHSIZE>;
++};
++
++struct nfstime3 {
++        uint32          seconds;
++        uint32          nseconds;
++};
++
++struct fattr3 {
++        ftype3          type;
++        mode3           mode;
++        uint32          nlink;
++        uid3            uid;
++        gid3            gid;
++        size3           size;
++        size3           used;
++        specdata3       rdev;
++        uint64          fsid;
++        fileid3         fileid;
++        nfstime3        atime;
++        nfstime3        mtime;
++        nfstime3        ctime;
++};
++
++union post_op_attr switch (bool attributes_follow) {
++case TRUE:
++        fattr3 attributes;
++case FALSE:
++        void;
++};
++
++struct wcc_attr {
++        size3           size;
++        nfstime3        mtime;
++        nfstime3        ctime;
++};
++
++union pre_op_attr switch (bool attributes_follow) {
++case TRUE:
++        wcc_attr attributes;
++case FALSE:
++        void;
++};
++
++struct wcc_data {
++        pre_op_attr     before;
++        post_op_attr    after;
++};
++
++union post_op_fh3 switch (bool handle_follows) {
++case TRUE:
++        nfs_fh3 handle;
++case FALSE:
++        void;
++};
++
++enum time_how {
++        DONT_CHANGE = 0,
++        SET_TO_SERVER_TIME = 1,
++        SET_TO_CLIENT_TIME = 2
++};
++
++union set_mode3 switch (bool set_it) {
++case TRUE:
++        mode3 mode;
++default:
++        void;
++};
++
++union set_uid3 switch (bool set_it) {
++case TRUE:
++        uid3 uid;
++default:
++        void;
++};
++
++union set_gid3 switch (bool set_it) {
++case TRUE:
++        gid3 gid;
++default:
++        void;
++};
++
++union set_size3 switch (bool set_it) {
++case TRUE:
++        size3 size;
++default:
++        void;
++};
++
++union set_atime switch (time_how set_it) {
++case SET_TO_CLIENT_TIME:
++        nfstime3 atime;
++default:
++        void;
++};
++
++union set_mtime switch (time_how set_it) {
++case SET_TO_CLIENT_TIME:
++        nfstime3 mtime;
++default:
++        void;
++};
++
++struct sattr3 {
++        set_mode3       mode;
++        set_uid3        uid;
++        set_gid3        gid;
++        set_size3       size;
++        set_atime       atime;
++        set_mtime       mtime;
++};
++
++struct diropargs3 {
++        nfs_fh3         dir;
++        filename3       name;
++};
++
++struct GETATTR3args {
++        nfs_fh3         object;
++};
++
++struct GETATTR3resok {
++        fattr3          obj_attributes;
++};
++
++union GETATTR3res switch (nfsstat3 status) {
++case NFS3_OK:
++        GETATTR3resok resok;
++default:
++        void;
++};
++
++union sattrguard3 switch (bool check) {
++case TRUE:
++        nfstime3 obj_ctime;
++case FALSE:
++        void;
++};
++
++struct SETATTR3args {
++        nfs_fh3         object;
++        sattr3          new_attributes;
++        sattrguard3     guard;
++};
++
++struct SETATTR3resok {
++        wcc_data        obj_wcc;
++};
++
++struct SETATTR3resfail {
++        wcc_data        obj_wcc;
++};
++
++union SETATTR3res switch (nfsstat3 status) {
++case NFS3_OK:
++        SETATTR3resok resok;
++default:
++        SETATTR3resfail resfail;
++};
++
++struct LOOKUP3args {
++        diropargs3      what;
++};
++
++struct LOOKUP3resok {
++        nfs_fh3         object;
++        post_op_attr    obj_attributes;
++        post_op_attr    dir_attributes;
++};
++
++struct LOOKUP3resfail {
++        post_op_attr    dir_attributes;
++};
++
++union LOOKUP3res switch (nfsstat3 status) {
++case NFS3_OK:
++        LOOKUP3resok resok;
++default:
++        LOOKUP3resfail resfail;
++};
++
++const           ACCESS3_READ = 0x0001;
++const           ACCESS3_LOOKUP = 0x0002;
++const           ACCESS3_MODIFY = 0x0004;
++const           ACCESS3_EXTEND = 0x0008;
++const           ACCESS3_DELETE = 0x0010;
++const           ACCESS3_EXECUTE = 0x0020;
++
++struct ACCESS3args {
++        nfs_fh3         object;
++        uint32          access;
++};
++
++struct ACCESS3resok {
++        post_op_attr    obj_attributes;
++        uint32          access;
++};
++
++struct ACCESS3resfail {
++        post_op_attr    obj_attributes;
++};
++
++union ACCESS3res switch (nfsstat3 status) {
++case NFS3_OK:
++        ACCESS3resok resok;
++default:
++        ACCESS3resfail resfail;
++};
++
++struct READLINK3args {
++        nfs_fh3         symlink;
++};
++
++struct READLINK3resok {
++        post_op_attr    symlink_attributes;
++        nfspath3        data;
++};
++
++struct READLINK3resfail {
++        post_op_attr    symlink_attributes;
++};
++
++union READLINK3res switch (nfsstat3 status) {
++case NFS3_OK:
++        READLINK3resok resok;
++default:
++        READLINK3resfail resfail;
++};
++
++struct READ3args {
++        nfs_fh3         file;
++        offset3         offset;
++        count3          count;
++};
++
++struct READ3resok {
++        post_op_attr    file_attributes;
++        count3          count;
++        bool            eof;
++        opaque          data <>;
++};
++
++struct READ3resfail {
++        post_op_attr    file_attributes;
++};
++
++union READ3res switch (nfsstat3 status) {
++case NFS3_OK:
++        READ3resok resok;
++default:
++        READ3resfail resfail;
++};
++
++enum stable_how {
++        UNSTABLE = 0,
++        DATA_SYNC = 1,
++        FILE_SYNC = 2
++};
++
++struct WRITE3args {
++        nfs_fh3         file;
++        offset3         offset;
++        count3          count;
++        stable_how      stable;
++        opaque          data <>;
++};
++
++struct WRITE3resok {
++        wcc_data        file_wcc;
++        count3          count;
++        stable_how      committed;
++        writeverf3      verf;
++};
++
++struct WRITE3resfail {
++        wcc_data        file_wcc;
++};
++
++union WRITE3res switch (nfsstat3 status) {
++case NFS3_OK:
++        WRITE3resok resok;
++default:
++        WRITE3resfail resfail;
++};
++
++enum createmode3 {
++        UNCHECKED = 0,
++        GUARDED = 1,
++        EXCLUSIVE = 2
++};
++
++union createhow3 switch (createmode3 mode) {
++case UNCHECKED:
++case GUARDED:
++        sattr3 obj_attributes;
++case EXCLUSIVE:
++        createverf3 verf;
++};
++
++struct CREATE3args {
++        diropargs3      where;
++        createhow3      how;
++};
++
++struct CREATE3resok {
++        post_op_fh3     obj;
++        post_op_attr    obj_attributes;
++        wcc_data        dir_wcc;
++};
++
++struct CREATE3resfail {
++        wcc_data        dir_wcc;
++};
++
++union CREATE3res switch (nfsstat3 status) {
++case NFS3_OK:
++        CREATE3resok resok;
++default:
++        CREATE3resfail resfail;
++};
++
++struct MKDIR3args {
++        diropargs3      where;
++        sattr3          attributes;
++};
++
++struct MKDIR3resok {
++        post_op_fh3     obj;
++        post_op_attr    obj_attributes;
++        wcc_data        dir_wcc;
++};
++
++struct MKDIR3resfail {
++        wcc_data        dir_wcc;
++};
++
++union MKDIR3res switch (nfsstat3 status) {
++case NFS3_OK:
++        MKDIR3resok resok;
++default:
++        MKDIR3resfail resfail;
++};
++
++struct symlinkdata3 {
++        sattr3          symlink_attributes;
++        nfspath3        symlink_data;
++};
++
++struct SYMLINK3args {
++        diropargs3      where;
++        symlinkdata3    symlink;
++};
++
++struct SYMLINK3resok {
++        post_op_fh3     obj;
++        post_op_attr    obj_attributes;
++        wcc_data        dir_wcc;
++};
++
++struct SYMLINK3resfail {
++        wcc_data        dir_wcc;
++};
++
++union SYMLINK3res switch (nfsstat3 status) {
++case NFS3_OK:
++        SYMLINK3resok resok;
++default:
++        SYMLINK3resfail resfail;
++};
++
++struct devicedata3 {
++        sattr3          dev_attributes;
++        specdata3       spec;
++};
++
++union mknoddata3 switch (ftype3 type) {
++case NF3CHR:
++case NF3BLK:
++        devicedata3 device;
++case NF3SOCK:
++case NF3FIFO:
++        sattr3 pipe_attributes;
++default:
++        void;
++};
++
++struct MKNOD3args {
++        diropargs3      where;
++        mknoddata3      what;
++};
++
++struct MKNOD3resok {
++        post_op_fh3     obj;
++        post_op_attr    obj_attributes;
++        wcc_data        dir_wcc;
++};
++
++struct MKNOD3resfail {
++        wcc_data        dir_wcc;
++};
++
++union MKNOD3res switch (nfsstat3 status) {
++case NFS3_OK:
++        MKNOD3resok resok;
++default:
++        MKNOD3resfail resfail;
++};
++
++struct REMOVE3args {
++        diropargs3      object;
++};
++
++struct REMOVE3resok {
++        wcc_data        dir_wcc;
++};
++
++struct REMOVE3resfail {
++        wcc_data        dir_wcc;
++};
++
++union REMOVE3res switch (nfsstat3 status) {
++case NFS3_OK:
++        REMOVE3resok resok;
++default:
++        REMOVE3resfail resfail;
++};
++
++struct RMDIR3args {
++        diropargs3      object;
++};
++
++struct RMDIR3resok {
++        wcc_data        dir_wcc;
++};
++
++struct RMDIR3resfail {
++        wcc_data        dir_wcc;
++};
++
++union RMDIR3res switch (nfsstat3 status) {
++case NFS3_OK:
++        RMDIR3resok resok;
++default:
++        RMDIR3resfail resfail;
++};
++
++struct RENAME3args {
++        diropargs3      fromfile;
++        diropargs3      tofile;
++};
++
++struct RENAME3resok {
++        wcc_data        fromdir_wcc;
++        wcc_data        todir_wcc;
++};
++
++struct RENAME3resfail {
++        wcc_data        fromdir_wcc;
++        wcc_data        todir_wcc;
++};
++
++union RENAME3res switch (nfsstat3 status) {
++case NFS3_OK:
++        RENAME3resok resok;
++default:
++        RENAME3resfail resfail;
++};
++
++struct LINK3args {
++        nfs_fh3         file;
++        diropargs3      link;
++};
++
++struct LINK3resok {
++        post_op_attr    file_attributes;
++        wcc_data        linkdir_wcc;
++};
++
++struct LINK3resfail {
++        post_op_attr    file_attributes;
++        wcc_data        linkdir_wcc;
++};
++
++union LINK3res switch (nfsstat3 status) {
++case NFS3_OK:
++        LINK3resok resok;
++default:
++        LINK3resfail resfail;
++};
++
++struct READDIR3args {
++        nfs_fh3         dir;
++        cookie3         cookie;
++        cookieverf3     cookieverf;
++        count3          count;
++};
++
++struct entry3 {
++        fileid3         fileid;
++        filename3       name;
++        cookie3         cookie;
++        entry3         *nextentry;
++};
++
++struct dirlist3 {
++        entry3         *entries;
++        bool            eof;
++};
++
++struct READDIR3resok {
++        post_op_attr    dir_attributes;
++        cookieverf3     cookieverf;
++        dirlist3        reply;
++};
++
++struct READDIR3resfail {
++        post_op_attr    dir_attributes;
++};
++
++union READDIR3res switch (nfsstat3 status) {
++case NFS3_OK:
++        READDIR3resok resok;
++default:
++        READDIR3resfail resfail;
++};
++
++struct READDIRPLUS3args {
++        nfs_fh3         dir;
++        cookie3         cookie;
++        cookieverf3     cookieverf;
++        count3          dircount;
++        count3          maxcount;
++};
++
++struct entryplus3 {
++        fileid3         fileid;
++        filename3       name;
++        cookie3         cookie;
++        post_op_attr    name_attributes;
++        post_op_fh3     name_handle;
++        entryplus3     *nextentry;
++};
++
++struct dirlistplus3 {
++        entryplus3     *entries;
++        bool            eof;
++};
++
++struct READDIRPLUS3resok {
++        post_op_attr    dir_attributes;
++        cookieverf3     cookieverf;
++        dirlistplus3    reply;
++};
++
++struct READDIRPLUS3resfail {
++        post_op_attr    dir_attributes;
++};
++
++union READDIRPLUS3res switch (nfsstat3 status) {
++case NFS3_OK:
++        READDIRPLUS3resok resok;
++default:
++        READDIRPLUS3resfail resfail;
++};
++
++struct FSSTAT3args {
++        nfs_fh3         fsroot;
++};
++
++struct FSSTAT3resok {
++        post_op_attr    obj_attributes;
++        size3           tbytes;
++        size3           fbytes;
++        size3           abytes;
++        size3           tfiles;
++        size3           ffiles;
++        size3           afiles;
++        uint32          invarsec;
++};
++
++struct FSSTAT3resfail {
++        post_op_attr    obj_attributes;
++};
++
++union FSSTAT3res switch (nfsstat3 status) {
++case NFS3_OK:
++        FSSTAT3resok resok;
++default:
++        FSSTAT3resfail resfail;
++};
++
++const           FSF3_LINK = 0x0001;
++const           FSF3_SYMLINK = 0x0002;
++const           FSF3_HOMOGENEOUS = 0x0008;
++const           FSF3_CANSETTIME = 0x0010;
++
++struct FSINFOargs {
++        nfs_fh3         fsroot;
++};
++
++struct FSINFO3resok {
++        post_op_attr    obj_attributes;
++        uint32          rtmax;
++        uint32          rtpref;
++        uint32          rtmult;
++        uint32          wtmax;
++        uint32          wtpref;
++        uint32          wtmult;
++        uint32          dtpref;
++        size3           maxfilesize;
++        nfstime3        time_delta;
++        uint32          properties;
++};
++
++struct FSINFO3resfail {
++        post_op_attr    obj_attributes;
++};
++
++union FSINFO3res switch (nfsstat3 status) {
++case NFS3_OK:
++        FSINFO3resok resok;
++default:
++        FSINFO3resfail resfail;
++};
++
++struct PATHCONF3args {
++        nfs_fh3         object;
++};
++
++struct PATHCONF3resok {
++        post_op_attr    obj_attributes;
++        uint32          linkmax;
++        uint32          name_max;
++        bool            no_trunc;
++        bool            chown_restricted;
++        bool            case_insensitive;
++        bool            case_preserving;
++};
++
++struct PATHCONF3resfail {
++        post_op_attr    obj_attributes;
++};
++
++union PATHCONF3res switch (nfsstat3 status) {
++case NFS3_OK:
++        PATHCONF3resok resok;
++default:
++        PATHCONF3resfail resfail;
++};
++
++struct COMMIT3args {
++        nfs_fh3         file;
++        offset3         offset;
++        count3          count;
++};
++
++struct COMMIT3resok {
++        wcc_data        file_wcc;
++        writeverf3      verf;
++};
++
++struct COMMIT3resfail {
++        wcc_data        file_wcc;
++};
++
++union COMMIT3res switch (nfsstat3 status) {
++case NFS3_OK:
++        COMMIT3resok resok;
++default:
++        COMMIT3resfail resfail;
++};
++
++program         NFS_PROGRAM {
++        version         NFS_V3 {
++
++                void
++                NFSPROC3_NULL(void) = 0;
++
++                GETATTR3res
++                NFSPROC3_GETATTR(GETATTR3args) = 1;
++
++                SETATTR3res
++                NFSPROC3_SETATTR(SETATTR3args) = 2;
++
++                LOOKUP3res
++                NFSPROC3_LOOKUP(LOOKUP3args) = 3;
++
++                ACCESS3res
++                NFSPROC3_ACCESS(ACCESS3args) = 4;
++
++                READLINK3res
++                NFSPROC3_READLINK(READLINK3args) = 5;
++
++                READ3res
++                NFSPROC3_READ(READ3args) = 6;
++
++                WRITE3res
++                NFSPROC3_WRITE(WRITE3args) = 7;
++
++                CREATE3res
++                NFSPROC3_CREATE(CREATE3args) = 8;
++
++                MKDIR3res
++                NFSPROC3_MKDIR(MKDIR3args) = 9;
++
++                SYMLINK3res
++                NFSPROC3_SYMLINK(SYMLINK3args) = 10;
++
++                MKNOD3res
++                NFSPROC3_MKNOD(MKNOD3args) = 11;
++
++                REMOVE3res
++                NFSPROC3_REMOVE(REMOVE3args) = 12;
++
++                RMDIR3res
++                NFSPROC3_RMDIR(RMDIR3args) = 13;
++
++                RENAME3res
++                NFSPROC3_RENAME(RENAME3args) = 14;
++
++                LINK3res
++                NFSPROC3_LINK(LINK3args) = 15;
++
++                READDIR3res
++                NFSPROC3_READDIR(READDIR3args) = 16;
++
++                READDIRPLUS3res
++                NFSPROC3_READDIRPLUS(READDIRPLUS3args) = 17;
++
++                FSSTAT3res
++                NFSPROC3_FSSTAT(FSSTAT3args) = 18;
++
++                FSINFO3res
++                NFSPROC3_FSINFO(FSINFO3args) = 19;
++
++                PATHCONF3res
++                NFSPROC3_PATHCONF(PATHCONF3args) = 20;
++
++                COMMIT3res
++                NFSPROC3_COMMIT(COMMIT3args) = 21;
++        } = 3;
++} = 100003;
+diff --git a/nfs4.1/xdrdef/portmap.x b/nfs4.1/xdrdef/portmap.x
+new file mode 100644
+index 0000000..1158d4e
+--- /dev/null
++++ b/nfs4.1/xdrdef/portmap.x
+@@ -0,0 +1,51 @@
++const PMAP_PORT = 111;      /* portmapper port number */
++
++struct mapping {
++	unsigned int prog;
++	unsigned int vers;
++	unsigned int prot;
++	unsigned int port;
++};
++
++const IPPROTO_TCP = 6;      /* protocol number for TCP/IP */
++const IPPROTO_UDP = 17;     /* protocol number for UDP/IP */
++
++struct pmaplist {
++	mapping map;
++	pmaplist next;
++};
++
++struct call_args {
++	unsigned int prog;
++	unsigned int vers;
++	unsigned int proc;
++	opaque args<>;
++};
++
++struct call_result {
++	unsigned int port;
++	opaque res<>;
++};
++
++program PMAP_PROG {
++	version PMAP_VERS {
++		void
++		PMAPPROC_NULL(void)         = 0;
++
++		bool
++		PMAPPROC_SET(mapping)       = 1;
++
++		bool
++		PMAPPROC_UNSET(mapping)     = 2;
++
++		unsigned int
++		PMAPPROC_GETPORT(mapping)   = 3;
++
++		pmaplist
++		PMAPPROC_DUMP(void)         = 4;
++
++		call_result
++		PMAPPROC_CALLIT(call_args)  = 5;
++	} = 2;
++} = 100000;
++
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
