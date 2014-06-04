@@ -1,61 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.kundenserver.de ([212.227.126.131]:52444 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751094AbaFBTUy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 15:20:54 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: "Joseph S. Myers" <joseph@codesourcery.com>
-Cc: linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
-        john.stultz@linaro.org, hch@infradead.org, tglx@linutronix.de,
-        geert@linux-m68k.org, lftan@altera.com, hpa@zytor.com,
-        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, coda@cs.cmu.edu,
-        codalist@TELEMANN.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-scsi@vger.kernel.org, logfs@logfs.org,
-        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
-        samba-technical@lists.samba.org, xfs@oss.sgi.com
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Mon, 02 Jun 2014 21:19:55 +0200
-Message-ID: <4233989.Saca0ocOUr@wuerfel>
-In-Reply-To: <Pine.LNX.4.64.1406021350030.19591@digraph.polyomino.org.uk>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <Pine.LNX.4.64.1406021350030.19591@digraph.polyomino.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:48795 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752086AbaFDVCp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:45 -0400
+Received: by mail-ig0-f175.google.com with SMTP id uq10so6798277igb.8
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:44 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs 16/17] rpc: on socket error, close and mark pipe inactive
+Date: Wed,  4 Jun 2014 17:02:05 -0400
+Message-Id: <1401915726-29092-18-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday 02 June 2014 13:52:19 Joseph S. Myers wrote:
-> On Fri, 30 May 2014, Arnd Bergmann wrote:
-> 
-> > a) is this the right approach in general? The previous discussion
-> >    pointed this way, but there may be other opinions.
-> 
-> The syscall changes seem like the sort of thing I'd expect, although 
-> patches adding new syscalls or otherwise affecting the kernel/userspace 
-> interface (as opposed to those relating to an individual filesystem) 
-> should go to linux-api as well as other relevant lists.
+call _event_close() on socket errors instead of tracing back and mark the
+pipe as inactive so callers can reconnect as needed.
 
-Ok. Sorry about missing linux-api, I confused it with linux-arch, which
-may not be as relevant here, except for the one question whether we
-actually want to have the new ABI on all 32-bit architectures or only
-as an opt-in for those that expect to stay around for another 24 years.
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ rpc/rpc.py | 26 +++++++++++++++++++++++---
+ 1 file changed, 23 insertions(+), 3 deletions(-)
 
-Two more questions for you:
+diff --git a/rpc/rpc.py b/rpc/rpc.py
+index 250e945..4801883 100644
+--- a/rpc/rpc.py
++++ b/rpc/rpc.py
+@@ -351,6 +351,7 @@ class RpcPipe(Pipe):
+         self._pending = {} # {xid:defer}
+         self._lock = threading.Lock() # Protects fields below
+         self._xid = 0
++        self.set_active()
+ 
+     def _get_xid(self):
+         with self._lock:
+@@ -358,6 +359,15 @@ class RpcPipe(Pipe):
+             self._xid = inc_u32(out)
+         return out
+ 
++    def set_active(self):
++        self._active = True
++
++    def clear_active(self):
++        self._active = False
++
++    def is_active(self):
++        return self._active
++
+     def listen(self, xid, timeout=None):
+         """Wait for a reply to a CALL."""
+         self._pending[xid].wait(timeout)
+@@ -500,15 +510,24 @@ class ConnectionHandler(object):
+                 log_p.warn(1, "polling error from %i" % fd)
+                 # STUB - now what?
+             for fd in w:
+-                self._event_write(fd)
++                try:
++                    self._event_write(fd)
++                except socket.error, e:
++                    self._event_close(fd)
+             for fd in r:
+                 if fd in self.listeners:
+-                    self._event_connect_incoming(fd)
++                    try:
++                        self._event_connect_incoming(fd)
++                    except socket.error, e:
++                        self._event_close(fd)
+                 elif fd == self._alarm_poll.fileno():
+                     commands = self._alarm_poll.recv(self.rsize)
+                     for c in commands:
+                         data = self._alarm.pop()
+-                        switch[c](data)
++                        try:
++                            switch[c](data)
++                        except socket.error, e:
++                            self._event_close(fd)
+                 else:
+                     try:
+                         data = self.sockets[fd].recv_records(self.rsize)
+@@ -557,6 +576,7 @@ class ConnectionHandler(object):
+         self.writelist -= temp
+         self.readlist -= temp
+         self.errlist -= temp
++        self.sockets[fd].clear_active()
+         self.sockets[fd].close()
+         del self.sockets[fd]
+ 
+-- 
+1.8.5.2 (Apple Git-48)
 
-- are you (and others) happy with adding this type of stat syscall
-  (fstatat64/fstat64) as opposed to the more generic xstat that has
-  been discussed in the past and that never made it through the bike-
-  shedding discussion?
-
-- once we have enough buy-in from reviewers to merge this initial
-  series, should we proceed to define rest of the syscall ABI
-  (minus driver ioctls) so glibc and kernel can do the conversion
-  on top of that, or should we better try to do things one syscall
-  family at a time and actually get the kernel to handle them
-  correctly internally?
-
-	Arnd
