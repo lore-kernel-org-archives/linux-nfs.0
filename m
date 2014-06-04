@@ -1,207 +1,171 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:36070 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754563AbaF3Puy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:54 -0400
-Received: by mail-qa0-f53.google.com with SMTP id j15so6669123qaq.12
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:53 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:64456 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752051AbaFDVCd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:33 -0400
+Received: by mail-ig0-f181.google.com with SMTP id h3so1553494igd.2
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:32 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 015/114] nfsd: Allow struct nfsd4_compound_state to cache the nfs4_client
-Date: Mon, 30 Jun 2014 11:48:44 -0400
-Message-Id: <1404143423-24381-16-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs 13/17] dataserver: separate generic and 4.1 code
+Date: Wed,  4 Jun 2014 17:02:01 -0400
+Message-Id: <1401915726-29092-14-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to use the nfsd4_compound_state to cache the nfs4_client in
-order to optimise away extra lookups of the clid.
-
-In the v4.0 case, we use this to ensure that we only have to look up the
-client at most once per compound for each call into lookup_clientid. For
-v4.1+ we set the pointer in the cstate during SEQUENCE processing so we
-should never need to do a search for it.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 74 +++++++++++++++++++++++++++++++++++++----------------
- fs/nfsd/xdr4.h      |  1 +
- 2 files changed, 53 insertions(+), 22 deletions(-)
+ nfs4.1/dataserver.py | 99 ++++++++++++++++++++++++++++------------------------
+ 1 file changed, 54 insertions(+), 45 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e9bb39ecebae..4d162a0e4c6d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -189,6 +189,15 @@ static void put_client_renew_locked(struct nfs4_client *clp)
- 		renew_client_locked(clp);
- }
+diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
+index c73e195..40364d4 100644
+--- a/nfs4.1/dataserver.py
++++ b/nfs4.1/dataserver.py
+@@ -15,7 +15,7 @@ log = logging.getLogger("Dataserver Manager")
  
-+static void put_client_renew(struct nfs4_client *clp)
-+{
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	put_client_renew_locked(clp);
-+	spin_unlock(&nn->client_lock);
-+}
-+
- static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
- {
- 	__be32 status;
-@@ -2395,6 +2404,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 			goto out_put_session;
- 		cstate->slot = slot;
- 		cstate->session = session;
-+		cstate->clp = clp;
- 		/* Return the cached reply status and set cstate->status
- 		 * for nfsd4_proc_compound processing */
- 		status = nfsd4_replay_cache_entry(resp, seq);
-@@ -2429,6 +2439,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ op4 = nfs_ops.NFS4ops()
  
- 	cstate->slot = slot;
- 	cstate->session = session;
-+	cstate->clp = clp;
+-class DataServer41(object):
++class DataServer(object):
+     def __init__(self, server, port, path, flavor=rpc.AUTH_SYS, active=True, mdsds=True, multipath_servers=None, summary=None):
+         self.mdsds = mdsds
+         self.server = server
+@@ -43,28 +43,44 @@ class DataServer41(object):
+         self.active = True
+         if not self.mdsds:
+             self.connect()
++            self.make_root()
  
- out:
- 	switch (clp->cl_cb_state) {
-@@ -2465,7 +2476,8 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
- 		}
- 		/* Drop session reference that was taken in nfsd4_sequence() */
- 		nfsd4_put_session(cs->session);
--	}
-+	} else if (cs->clp)
-+		put_client_renew(cs->clp);
- }
+     def down(self):
++        self.disconnect()
+         self.active = False
  
- __be32
-@@ -2997,6 +3009,38 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
- 	return nfserr_bad_seqid;
- }
+-    def connect(self):
+-        # only support root with AUTH_SYS for now
+-        s1 = rpc.security.instance(rpc.AUTH_SYS)
+-        self.cred1 = s1.init_cred(uid=0, gid=0)
+-        self.c1 = nfs4client.NFS4Client(self.server, self.port,
+-                                        summary=self.summary)
+-        self.c1.set_cred(self.cred1)
+-        self.c1.null()
+-        c = self.c1.new_client("DS.init_%s" % self.server)
+-        # This is a hack to ensure MDS/DS communication path is at least
+-        # as wide as the client/MDS channel (at least for linux client)
+-        fore_attrs = type4.channel_attrs4(0, 16384, 16384, 2868, 8, 8, [])
+-        self.sess = c.create_session(fore_attrs=fore_attrs)
+-        self.make_root()
++    def reset(self):
++        self.down()
++        self.up()
++
++    def get_netaddr4(self):
++        # STUB server multipathing not supported yet
++        uaddr = '.'.join([self.server,
++                          str(self.port >> 8),
++                          str(self.port & 0xff)])
++        return type4.netaddr4(self.proto, uaddr)
++
++    def get_multipath_netaddr4s(self):
++        netaddr4s = []
++        for addr in self.multipath_servers:
++            server, port = addr
++            uaddr = '.'.join([server,
++                            str(port >> 8),
++                            str(port & 0xff)])
++            proto = "tcp"
++            if server.find(':') >= 0:
++                proto = "tcp6"
++
++            netaddr4s.append(type4.netaddr4(proto, uaddr))
++        return netaddr4s
++
++    def fh_to_name(self, mds_fh):
++        return hashlib.sha1("%r" % mds_fh).hexdigest()
  
-+static __be32 lookup_clientid(clientid_t *clid,
-+		struct nfsd4_compound_state *cstate,
-+		struct nfsd_net *nn)
-+{
-+	struct nfs4_client *found;
-+
-+	if (cstate->clp) {
-+		found = cstate->clp;
-+		if (!same_clid(&found->cl_clientid, clid))
-+			return nfserr_stale_clientid;
-+		return nfs_ok;
-+	}
-+
-+	if (STALE_CLIENTID(clid, nn))
-+		return nfserr_stale_clientid;
-+
-+	/*
-+	 * For v4.1+ we get the client in the SEQUENCE op. If we don't have one
-+	 * cached already then we know this is for is for v4.0 and "sessions"
-+	 * will be false.
-+	 */
-+	WARN_ON_ONCE(cstate->session);
-+	found = find_confirmed_client(clid, false, nn);
-+	if (!found)
-+		return nfserr_expired;
-+
-+	/* Cache the nfs4_client in cstate! */
-+	cstate->clp = found;
-+	atomic_inc(&found->cl_refcount);
-+	return nfs_ok;
-+}
-+
- __be32
- nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 		    struct nfsd4_open *open, struct nfsd_net *nn)
-@@ -3509,18 +3553,6 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
- 		free_generic_stateid(open->op_stp);
- }
+     def disconnect(self):
+         pass
  
--static __be32 lookup_clientid(clientid_t *clid, bool session, struct nfsd_net *nn, struct nfs4_client **clp)
--{
--	struct nfs4_client *found;
++class DataServer41(DataServer):
+     def _execute(self, ops, exceptions=[], delay=5, maxretries=3):
+         """ execute the NFS call
+         If an error code is specified in the exceptions it means that the
+@@ -85,36 +101,28 @@ class DataServer41(object):
+                     log.error("Too many retries with DS %s" % self.server)
+                     raise Exception("Dataserver communication retry error")
+             elif res.status in state_errors:
+-                self.disconnect()
+-                self.connect()
++                self.reset()
+             else:
+                 log.error("Unhandled status %s from DS %s" %
+                           (nfsstat4[res.status], self.server))
+                 raise Exception("Dataserver communication error")
+ 
+-    def get_netaddr4(self):
+-        # STUB server multipathing not supported yet
+-        uaddr = '.'.join([self.server,
+-                          str(self.port >> 8),
+-                          str(self.port & 0xff)])
+-        return type4.netaddr4(self.proto, uaddr)
 -
--	if (STALE_CLIENTID(clid, nn))
--		return nfserr_stale_clientid;
--	found = find_confirmed_client(clid, session, nn);
--	if (clp)
--		*clp = found;
--	return found ? nfs_ok : nfserr_expired;
--}
+-    def get_multipath_netaddr4s(self):
+-        netaddr4s = []
+-        for addr in self.multipath_servers:
+-            server, port = addr
+-            uaddr = '.'.join([server,
+-                            str(port >> 8),
+-                            str(port & 0xff)])
+-            proto = "tcp"
+-            if server.find(':') >= 0:
+-                proto = "tcp6"
 -
- __be32
- nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    clientid_t *clid)
-@@ -3532,9 +3564,10 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
- 	dprintk("process_renew(%08x/%08x): starting\n", 
- 			clid->cl_boot, clid->cl_id);
--	status = lookup_clientid(clid, cstate->minorversion, nn, &clp);
-+	status = lookup_clientid(clid, cstate, nn);
- 	if (status)
- 		goto out;
-+	clp = cstate->clp;
- 	status = nfserr_cb_path_down;
- 	if (!list_empty(&clp->cl_delegations)
- 			&& clp->cl_cb_state != NFSD4_CB_UP)
-@@ -3797,22 +3830,19 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 		     stateid_t *stateid, unsigned char typemask,
- 		     struct nfs4_stid **s, struct nfsd_net *nn)
- {
--	struct nfs4_client *cl;
- 	__be32 status;
--	bool sessions = cstate->minorversion != 0;
+-            netaddr4s.append(type4.netaddr4(proto, uaddr))
+-        return netaddr4s
+-
++    def connect(self):
++        # only support root with AUTH_SYS for now
++        s1 = rpc.security.instance(rpc.AUTH_SYS)
++        self.cred1 = s1.init_cred(uid=0, gid=0)
++        self.c1 = nfs4client.NFS4Client(self.server, self.port,
++                                        summary=self.summary)
++        self.c1.set_cred(self.cred1)
++        self.c1.null()
++        c = self.c1.new_client("DS.init_%s" % self.server)
++        # This is a hack to ensure MDS/DS communication path is at least
++        # as wide as the client/MDS channel (at least for linux client)
++        fore_attrs = type4.channel_attrs4(0, 16384, 16384, 2868, 8, 8, [])
++        self.sess = c.create_session(fore_attrs=fore_attrs)
  
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
- 		return nfserr_bad_stateid;
--	status = lookup_clientid(&stateid->si_opaque.so_clid, sessions,
--							nn, &cl);
-+	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
- 	if (status == nfserr_stale_clientid) {
--		if (sessions)
-+		if (cstate->session)
- 			return nfserr_bad_stateid;
- 		return nfserr_stale_stateid;
- 	}
- 	if (status)
- 		return status;
--	*s = find_stateid_by_type(cl, stateid, typemask);
-+	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
- 	if (!*s)
- 		return nfserr_bad_stateid;
- 	return nfs_ok;
-@@ -4662,7 +4692,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
+-    def make_root(self, attrs={const4.FATTR4_MODE:0777}):
++    def make_root(self):
++        attrs = {const4.FATTR4_MODE:0777}
+         existing_path = []
+         kind = type4.createtype4(const4.NF4DIR)
+         for comp in self.path:
+@@ -133,12 +141,13 @@ class DataServer41(object):
+             raise RuntimeError
+         # XXX clean DS directory
  
- 	if (!nfsd4_has_session(cstate)) {
--		status = lookup_clientid(&lockt->lt_clientid, false, nn, NULL);
-+		status = lookup_clientid(&lockt->lt_clientid, cstate, nn);
- 		if (status)
- 			goto out;
- 	}
-@@ -4831,7 +4861,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 
- 	nfs4_lock_state();
- 
--	status = lookup_clientid(clid, cstate->minorversion, nn, NULL);
-+	status = lookup_clientid(clid, cstate, nn);
- 	if (status)
- 		goto out;
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 7d8af164523b..312f6483a48e 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -55,6 +55,7 @@ struct nfsd4_compound_state {
- 	struct svc_fh		current_fh;
- 	struct svc_fh		save_fh;
- 	struct nfs4_stateowner	*replay_owner;
-+	struct nfs4_client	*clp;
- 	/* For sessions DRC */
- 	struct nfsd4_session	*session;
- 	struct nfsd4_slot	*slot;
+-    def fh_to_name(self, mds_fh):
+-        return hashlib.sha1("%r" % mds_fh).hexdigest()
+-
+-    def open_file(self, mds_fh, seqid=0,
+-                  access=const4.OPEN4_SHARE_ACCESS_BOTH, deny=const4.OPEN4_SHARE_DENY_NONE,
+-                  attrs={const4.FATTR4_MODE: 0777}, owner = "mds", mode=const4.GUARDED4):
++    def open_file(self, mds_fh):
++        seqid=0
++        access = const4.OPEN4_SHARE_ACCESS_BOTH
++        deny = const4.OPEN4_SHARE_DENY_NONE
++        attrs = {const4.FATTR4_MODE: 0777}
++        owner = "mds"
++        mode = const4.GUARDED4
+         verifier = self.sess.c.verifier
+         openflag = type4.openflag4(const4.OPEN4_CREATE, type4.createhow4(mode, attrs, verifier))
+         name = self.fh_to_name(mds_fh)
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
