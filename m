@@ -1,223 +1,282 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:47850 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751892AbaFZTVy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:54 -0400
-Received: by mail-qc0-f177.google.com with SMTP id r5so3550522qcx.36
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:54 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:59816 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751979AbaFDVCY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:24 -0400
+Received: by mail-ig0-f176.google.com with SMTP id a13so2456260igq.3
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:24 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 101/117] nfsd: add more granular locking to forget_openowners fault injector
-Date: Thu, 26 Jun 2014 15:21:09 -0400
-Message-Id: <1403810485-16497-18-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs 08/17] 4.1 server: add -s option to print summary of ops
+Date: Wed,  4 Jun 2014 17:01:56 -0400
+Message-Id: <1401915726-29092-9-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...instead of relying on the client_mutex.
+As a middle ground between verbose (-v) mode and silent mode, add
+"-s" (aka "--show_summary") to print one line per operation.
 
-Also, fix up the printk output that is generated when the file is read.
-It currently says that it's reporting the number of open files, but
-it's actually reporting the number of openowners.
+The summary mode will print a "role" header whenever the role changes.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Example output - mds starts, talks to v3 ds (.200), client (.11) mounts,
+touches an existing file:
+
+call v3 172.16.200.200:2049
+  access
+Mounting (2, 6) on '/files'
+
+handle v4.1 ::ffff:172.16.200.11:758
+  exchange_id
+  create_session
+  sequence, reclaim_complete
+  sequence, putrootfh, secinfo_no_name
+  sequence, putrootfh, getfh, getattr
+  sequence, putfh, getattr
+  (repeated 6 times)
+  sequence, putfh, access, getattr
+  sequence, putfh, lookup, getfh, getattr
+  (repeated 1 times)
+  sequence, putfh, secinfo -> NFS4ERR_NOTSUPP
+  sequence, putfh, getattr
+  (repeated 4 times)
+  sequence, putfh, access, getattr
+
+call v3 172.16.200.200:2049
+  create -> NFS3ERR_EXIST
+  lookup
+  getattr
+  (repeated 1 times)
+
+handle v4.1 ::ffff:172.16.200.11:758
+  sequence, putfh, open, getfh, access, getattr
+
+call v3 172.16.200.200:2049
+  getattr
+  (repeated 1 times)
+
+handle v4.1 ::ffff:172.16.200.11:758
+  sequence, putfh, setattr, getattr
+  sequence, putfh, close, getattr
+
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/fault_inject.c |   8 ++--
- fs/nfsd/nfs4state.c    | 122 +++++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/state.h        |   7 ++-
- 3 files changed, 122 insertions(+), 15 deletions(-)
+ nfs4.1/dataserver.py     | 16 ++++++++++------
+ nfs4.1/nfs4client.py     |  7 ++++++-
+ nfs4.1/nfs4server.py     | 47 ++++++++++++++++++++++++++++++++++++++++++++++-
+ nfs4.1/server_exports.py |  7 ++++---
+ 4 files changed, 66 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index a444d821d2a5..d4472cd19807 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -146,11 +146,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
- 	},
- 	{
- 		.file     = "forget_openowners",
--		.get	  = nfsd_inject_get,
--		.set_val  = nfsd_inject_set,
--		.set_clnt = nfsd_inject_set_client,
--		.forget   = nfsd_forget_client_openowners,
--		.print    = nfsd_print_client_openowners,
-+		.get	  = nfsd_inject_print_openowners,
-+		.set_val  = nfsd_inject_forget_openowners,
-+		.set_clnt = nfsd_inject_forget_client_openowners,
- 	},
- 	{
- 		.file     = "forget_delegations",
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ab5858e272b8..123b7d1eda1c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5936,30 +5936,136 @@ nfsd_inject_forget_locks(struct nfsd_fault_inject_op *op, u64 max)
- 	return count;
- }
+diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
+index d697631..9b0462d 100644
+--- a/nfs4.1/dataserver.py
++++ b/nfs4.1/dataserver.py
+@@ -13,8 +13,8 @@ import socket
  
--static u64 nfsd_foreach_client_open(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_openowner *))
-+static u64
-+nfsd_foreach_client_openowner(struct nfs4_client *clp, u64 max,
-+			      struct list_head *collect,
-+			      void (*func)(struct nfs4_openowner *))
- {
- 	struct nfs4_openowner *oop, *next;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
- 	u64 count = 0;
+ log = logging.getLogger("Dataserver Manager")
  
-+	lockdep_assert_held(&nn->client_lock);
-+
-+	spin_lock(&clp->cl_lock);
- 	list_for_each_entry_safe(oop, next, &clp->cl_openowners, oo_perclient) {
--		if (func)
-+		if (func) {
- 			func(oop);
--		if (++count == max)
-+			if (collect) {
-+				atomic_inc(&clp->cl_refcount);
-+				list_add(&oop->oo_perclient, collect);
-+			}
-+		}
-+		++count;
-+		/*
-+		 * Despite the fact that these functions deal with
-+		 * 64-bit integers for "count", we must ensure that
-+		 * it doesn't blow up the clp->cl_refcount. Throw a
-+		 * warning if we start to approach INT_MAX here.
-+		 */
-+		WARN_ON_ONCE(count == (INT_MAX / 2));
-+		if (count == max)
- 			break;
- 	}
-+	spin_unlock(&clp->cl_lock);
-+
-+	return count;
-+}
+-class DataServer(object):
+-    def __init__(self, server, port, path, flavor=rpc.AUTH_SYS, active=True, mdsds=True, multipath_servers=None):
++class DataServer41(object):
++    def __init__(self, server, port, path, flavor=rpc.AUTH_SYS, active=True, mdsds=True, multipath_servers=None, summary=None):
+         self.mdsds = mdsds
+         self.server = server
+         self.port = int(port)
+@@ -32,6 +32,8 @@ class DataServer(object):
+         else:
+             self.multipath_servers = []
  
-+static u64
-+nfsd_print_client_openowners(struct nfs4_client *clp)
-+{
-+	u64 count = nfsd_foreach_client_openowner(clp, 0, NULL, NULL);
++        self.summary = summary
 +
-+	nfsd_print_count(clp, count, "openowners");
- 	return count;
- }
+         if active:
+             self.up()
  
--u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
-+static u64
-+nfsd_collect_client_openowners(struct nfs4_client *clp,
-+			       struct list_head *collect, u64 max)
- {
--	return nfsd_foreach_client_open(clp, max, release_openowner);
-+	return nfsd_foreach_client_openowner(clp, max, collect,
-+						unhash_openowner_locked);
- }
+@@ -47,7 +49,8 @@ class DataServer(object):
+         # only support root with AUTH_SYS for now
+         s1 = rpc.security.instance(rpc.AUTH_SYS)
+         self.cred1 = s1.init_cred(uid=0, gid=0)
+-        self.c1 = nfs4client.NFS4Client(self.server, self.port)
++        self.c1 = nfs4client.NFS4Client(self.server, self.port,
++                                        summary=self.summary)
+         self.c1.set_cred(self.cred1)
+         self.c1.null()
+         c = self.c1.new_client("DS.init_%s" % self.server)
+@@ -172,7 +175,7 @@ class DSDevice(object):
+         self.address_body = None # set by load()
+         self.mdsds = mdsds # if you are both the DS and the MDS we are the only server
  
--u64 nfsd_print_client_openowners(struct nfs4_client *clp, u64 max)
-+u64
-+nfsd_inject_print_openowners(struct nfsd_fault_inject_op *op)
- {
--	u64 count = nfsd_foreach_client_open(clp, max, NULL);
--	nfsd_print_count(clp, count, "open files");
-+	struct nfs4_client *clp;
-+	u64 count = 0;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return 0;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry(clp, &nn->client_lru, cl_lru)
-+		count += nfsd_print_client_openowners(clp);
-+	spin_unlock(&nn->client_lock);
-+
-+	return count;
-+}
-+
-+static void
-+nfsd_reap_openowners(struct list_head *reaplist)
-+{
-+	struct nfs4_client *clp;
-+	struct nfs4_openowner *oop, *next;
-+
-+	list_for_each_entry_safe(oop, next, reaplist, oo_perclient) {
-+		list_del_init(&oop->oo_perclient);
-+		clp = oop->oo_owner.so_client;
-+		release_openowner(oop);
-+		put_client(clp);
-+	}
-+}
-+
-+u64
-+nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *op,
-+				struct sockaddr_storage *addr, size_t addr_size)
-+{
-+	unsigned int count = 0;
-+	struct nfs4_client *clp;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+	LIST_HEAD(reaplist);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return count;
-+
-+	spin_lock(&nn->client_lock);
-+	clp = nfsd_find_client(addr, addr_size);
-+	if (clp)
-+		count = nfsd_collect_client_openowners(clp, &reaplist, 0);
-+	spin_unlock(&nn->client_lock);
-+	nfsd_reap_openowners(&reaplist);
-+	return count;
-+}
-+
-+u64
-+nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *op, u64 max)
-+{
-+	u64 count = 0;
-+	struct nfs4_client *clp;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+	LIST_HEAD(reaplist);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return count;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
-+		count += nfsd_collect_client_openowners(clp, &reaplist,
-+							max - count);
-+		if (max != 0 && count >= max)
-+			break;
-+	}
-+	spin_unlock(&nn->client_lock);
-+	nfsd_reap_openowners(&reaplist);
- 	return count;
- }
+-    def load(self, filename):
++    def load(self, filename, server_obj):
+         """ Read dataservers from configuration file:
+         where each line has format e.g. server[:[port][/path]]
+         """
+@@ -194,8 +197,9 @@ class DSDevice(object):
+                 try:
+                     log.info("Adding dataserver ip:%s port:%s path:%s" %
+                              (server, port, '/'.join(path)))
+-                    ds = DataServer(server, port, path, mdsds=self.mdsds,
+-                                    multipath_servers=server_list)
++                    ds = DataServer41(server, port, path, mdsds=self.mdsds,
++                                    multipath_servers=server_list,
++                                    summary=server_obj.summary)
+                     self.list.append(ds)
+                 except socket.error:
+                     log.critical("cannot access %s:%i/%s" %
+diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
+index e504362..f5d2006 100644
+--- a/nfs4.1/nfs4client.py
++++ b/nfs4.1/nfs4client.py
+@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO,
+ log_cb = logging.getLogger("nfs.client.cb")
  
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 12ffe33662f1..9b35e84e8d81 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -483,11 +483,14 @@ u64 nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *,
- 				    struct sockaddr_storage *, size_t);
- u64 nfsd_inject_forget_locks(struct nfsd_fault_inject_op *, u64);
+ class NFS4Client(rpc.Client, rpc.Server):
+-    def __init__(self, host='localhost', port=2049, minorversion=1, ctrl_proc=16):
++    def __init__(self, host='localhost', port=2049, minorversion=1, ctrl_proc=16, summary=None):
+         rpc.Client.__init__(self, 100003, 4)
+         self.prog = 0x40000000
+         self.versions = [1] # List of supported versions of prog
+@@ -36,6 +36,7 @@ class NFS4Client(rpc.Client, rpc.Server):
+         self.c1 = self.connect(self.server_address)
+         self.sessions = {} # XXX Really, this should be per server
+         self.ctrl_proc = ctrl_proc
++        self.summary = summary
  
--u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
-+u64 nfsd_inject_print_openowners(struct nfsd_fault_inject_op *);
-+u64 nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *,
-+					 struct sockaddr_storage *, size_t);
-+u64 nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *, u64);
+     def set_cred(self, credinfo):
+         self.default_cred = credinfo
+@@ -83,6 +84,10 @@ class NFS4Client(rpc.Client, rpc.Server):
+         pipe = kwargs.get("pipe", None)
+         res = self.listen(xid, pipe=pipe)
+         log_cb.info("compound result = %r" % (res,))
++        if self.summary:
++            self.summary.show_op('call v4.1 %s:%s' % self.server_address,
++                [ nfs_opnum4[a.argop].lower()[3:] for a in args[0] ],
++                nfsstat4[res.status])
+         return res
+     
+     def listen(self, xid, pipe=None, timeout=10.0):
+diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+index 67adbf1..088e8c4 100755
+--- a/nfs4.1/nfs4server.py
++++ b/nfs4.1/nfs4server.py
+@@ -502,6 +502,41 @@ class Slot(object):
+ 
+     # STUB - for client, need to track slot usage
+ 
++class SummaryOutput:
++    def __init__(self, enabled=True):
++        self._enabled = enabled
++        self._last = None
++        self._last_role = None
++        self._repeat_count = 0
 +
- u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
- u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
++    def show_op(self, role, opnames, status):
++        if not self._enabled:
++            return
++
++        summary_line = "  %s" % ', '.join(opnames)
++
++        if status != "NFS4_OK" and status != "NFS3_OK":
++            summary_line += " -> %s" % (status,)
++
++        print_summary_line = True
++        if summary_line != self._last or role != self._last_role:
++            if self._last and self._repeat_count:
++                print "  (repeated %u times)" % self._repeat_count
++            self._last = summary_line
++            self._repeat_count = 0
++        else:
++            print_summary_line = False
++            self._repeat_count += 1
++
++        if self._last_role != role:
++            print
++            print role
++            self._last_role = role
++
++        if print_summary_line:
++            print summary_line
++
++
+ ##################################################
+ # The primary class - it is excessively long     #
+ ##################################################
+@@ -527,6 +562,8 @@ class NFS4Server(rpc.Server):
+             log_41.setLevel(9)
+             log_cfg.setLevel(20)
  
--u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
- #else /* CONFIG_NFSD_FAULT_INJECTION */
- static inline int nfsd_fault_inject_init(void) { return 0; }
++        self.summary = SummaryOutput(kwargs.pop('show_summary', False))
++
+         rpc.Server.__init__(self, prog=NFS4_PROGRAM, versions=[4], port=port,
+                             **kwargs)
+         self.root = RootFS().root # Root of exported filesystem tree
+@@ -776,6 +813,7 @@ class NFS4Server(rpc.Server):
+             return env
+         # Handle the individual operations
+         status = NFS4_OK
++        opnames = []
+         for arg in args.argarray:
+             opname = nfs_opnum4.get(arg.argop, 'op_illegal')
+             log_41.info("*** %s (%d) ***" % (opname, arg.argop))
+@@ -805,10 +843,14 @@ class NFS4Server(rpc.Server):
+                     result = encode_status_by_name(opname.lower()[3:],
+                                                    NFS4ERR_SERVERFAULT)
+             env.results.append(result)
++            opnames.append(opname.lower()[3:])
+             status = result.status
+             if status != NFS4_OK:
+                 break
+         log_41.info("Replying.  Status %s (%d)" % (nfsstat4[status], status))
++        client_addr = '%s:%s' % cred.connection._s.getpeername()[:2]
++        self.summary.show_op('handle v4.1 %s' % client_addr,
++                             opnames, nfsstat4[status])
+         return env
+ 
+     def delete_session(self, session, sessionid):
+@@ -2062,6 +2104,8 @@ def scan_options():
+                  help="Reset and clear any disk-based filesystems")
+     p.add_option("-v", "--verbose", action="store_true", default=False,
+                  help="Print debug info to screen and enter interpreter on ^C")
++    p.add_option("-s", "--show_summary", action="store_true", default=False,
++                 help="Print short summary of operations")
+     p.add_option("--use_block", action="store_true", default=False,
+                  help="Mount a block-pnfs fs")
+     p.add_option("--use_files", action="store_true", default=False,
+@@ -2095,7 +2139,8 @@ if __name__ == "__main__":
+     S = NFS4Server(port=opts.port,
+                    is_mds=opts.use_block or opts.use_files,
+                    is_ds = opts.is_ds,
+-                   verbose = opts.verbose)
++                   verbose = opts.verbose,
++                   show_summary = opts.show_summary)
+     read_exports(S, opts)
+     if True:
+         S.start()
+diff --git a/nfs4.1/server_exports.py b/nfs4.1/server_exports.py
+index d96b27b..ef857ee 100644
+--- a/nfs4.1/server_exports.py
++++ b/nfs4.1/server_exports.py
+@@ -15,7 +15,7 @@ def mount_stuff(server, opts):
+         E = BlockLayoutFS(5, backing_device=dev)
+         server.mount(E, path="/block")
+     if opts.use_files:
+-        dservers = _load_dataservers(opts.dataservers, server.is_ds and server.is_mds)
++        dservers = _load_dataservers(opts.dataservers, server)
+         if dservers is None:
+             return
+         F = FileLayoutFS(6, dservers)
+@@ -33,7 +33,8 @@ def _create_simple_block_dev():
+     c1 = Concat([s3, s1])
+     return BlockVolume(c1)
+ 
+-def _load_dataservers(file, connect_to_ds=False):
++def _load_dataservers(filename, server):
++    connect_to_ds = server.is_ds and server.is_mds
+     dss = DSDevice(connect_to_ds)
+-    dss.load(file)
++    dss.load(filename, server)
+     return dss;
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
