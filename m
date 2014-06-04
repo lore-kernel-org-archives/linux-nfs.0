@@ -1,90 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:49986 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751741AbaFZTOY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:24 -0400
-Received: by mail-qg0-f42.google.com with SMTP id e89so3547758qgf.1
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:23 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:33879 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752074AbaFDVCg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:36 -0400
+Received: by mail-ie0-f180.google.com with SMTP id tp5so66395ieb.39
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:35 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
-Subject: [PATCH v2 027/117] nfsd4: use cl_lock to synchronize all stateid idr calls
-Date: Thu, 26 Jun 2014 15:12:07 -0400
-Message-Id: <1403810017-16062-28-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs 15/17] 4.1 server: get rid of old op_getdeviceinfo
+Date: Wed,  4 Jun 2014 17:02:03 -0400
+Message-Id: <1401915726-29092-16-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@primarydata.com>
+This has been commented out for a while.
 
-Currently, this is serialized by the client_mutex, which is slated for
-removal. Add finer-grained locking here.
-
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+ nfs4.1/nfs4server.py | 21 ---------------------
+ 1 file changed, 21 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4cb64d12c9bf..a2b4f2cbab42 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -346,7 +346,6 @@ static void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
- kmem_cache *slab)
- {
--	struct idr *stateids = &cl->cl_stateids;
- 	struct nfs4_stid *stid;
- 	int new_id;
+diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+index 088e8c4..594e9d5 100755
+--- a/nfs4.1/nfs4server.py
++++ b/nfs4.1/nfs4server.py
+@@ -1870,27 +1870,6 @@ class NFS4Server(rpc.Server):
+                                   new_cookie >= len(list))
+         return encode_status(NFS4_OK, res)
  
-@@ -354,7 +353,11 @@ kmem_cache *slab)
- 	if (!stid)
- 		return NULL;
- 
--	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_KERNEL);
-+	idr_preload(GFP_KERNEL);
-+	spin_lock(&cl->cl_lock);
-+	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 0, 0, GFP_NOWAIT);
-+	spin_unlock(&cl->cl_lock);
-+	idr_preload_end();
- 	if (new_id < 0)
- 		goto out_free;
- 	stid->sc_client = cl;
-@@ -490,9 +493,11 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 
- static void remove_stid(struct nfs4_stid *s)
- {
--	struct idr *stateids = &s->sc_client->cl_stateids;
-+	struct nfs4_client *clp = s->sc_client;
- 
--	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
-+	spin_lock(&clp->cl_lock);
-+	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
-+	spin_unlock(&clp->cl_lock);
- }
- 
- static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
-@@ -1266,7 +1271,9 @@ free_client(struct nfs4_client *clp)
- 	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
- 	free_svc_cred(&clp->cl_cred);
- 	kfree(clp->cl_name.data);
-+	spin_lock(&clp->cl_lock);
- 	idr_destroy(&clp->cl_stateids);
-+	spin_unlock(&clp->cl_lock);
- 	kfree(clp);
- }
- 
-@@ -1489,7 +1496,9 @@ static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
- {
- 	struct nfs4_stid *ret;
- 
-+	spin_lock(&cl->cl_lock);
- 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
-+	spin_unlock(&cl->cl_lock);
- 	if (!ret || !ret->sc_type)
- 		return NULL;
- 	return ret;
+-#     def op_getdeviceinfo(self, arg, env): # STUB
+-#         check_session(env)
+-#         # check_cfh(env)
+-#         # fs = env.cfh.fs
+-#         # STUB - only deals with block volumes
+-#         kind = arg.gdia_layout_type
+-#         if kind != LAYOUT4_BLOCK_VOLUME:
+-#             return encode_status(NFS4ERR_INVAL)
+-#         # STUB - want to pull this from fs, not block module
+-#         d = block.devices.get(arg.gdia_device_id, None)
+-#         if d is None:
+-#             return encode_status(NFS4ERR_INVAL)
+-#         address = device_addr4(LAYOUT4_BLOCK_VOLUME, d.get_addr())
+-#         # Check that we don't exceed count
+-#         p = nfs4lib.FancyNFS4Packer()
+-#         p.pack_device_addr4(address)
+-#         if len(p.get_buffer()) > arg.gdia_maxcount:
+-#             return encode_status(NFS4ERR_TOOSMALL, gdir_mincount = len(p.get_buffer()))
+-#         res = GETDEVICEINFO4resok(address, 0)
+-#         return encode_status(NFS4_OK, res)
+-
+     def op_getdeviceinfo(self, arg, env): # STUB
+         # STUB - ignoring notifications
+         check_session(env)
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
