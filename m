@@ -1,60 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.kundenserver.de ([212.227.126.131]:64161 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752396AbaFBTLN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 15:11:13 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Roger Willcocks <roger@filmlight.ltd.uk>,
-        Nicolas Pitre <nicolas.pitre@linaro.org>, linux-arch@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML Kernel <linux-kernel@vger.kernel.org>, lftan@altera.com,
-        Christoph Hellwig <hch@infradead.org>, john.stultz@linaro.org,
-        "H. Peter Anvin" <hpa@zytor.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>, geert@linux-m68k.org,
-        tglx@linutronix.de, xfs@oss.sgi.com, joseph@codesourcery.com
-Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
-Date: Mon, 02 Jun 2014 21:10:47 +0200
-Message-ID: <5585593.Xe5bNQZW47@wuerfel>
-In-Reply-To: <C57EA6CA-236A-4C93-95F8-21F46A3622DA@oracle.com>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <1401735504.6065.227.camel@montana.filmlight.ltd.uk> <C57EA6CA-236A-4C93-95F8-21F46A3622DA@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:33096 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750939AbaFDOdS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jun 2014 10:33:18 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s54EXITj032240
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 4 Jun 2014 10:33:18 -0400
+From: Dave Wysochanski <dwysocha@redhat.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] Simplify logic in cache_listeners_exist - only return true if someone has the file open.
+Date: Wed,  4 Jun 2014 10:19:40 -0400
+Message-Id: <1401891580-28510-1-git-send-email-dwysocha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday 02 June 2014 15:04:27 Chuck Lever wrote:
-> On Jun 2, 2014, at 2:58 PM, Roger Willcocks <roger@filmlight.ltd.uk> wrote:
-> 
-> > 
-> > On Mon, 2014-06-02 at 11:04 -0400, Chuck Lever wrote:
-> > 
-> >> NFSv2/3 timestamps are a pair of unsigned 32-bit values: one value for
-> >> seconds since midnight GMT Jan 1, 1970, and one value for nanoseconds.
-> >> (See the definition of nfstime3 in RFC 1813).
-> >> 
-> > 
-> > nfstime3 could be extended by redefining the otherwise unused
-> > nanoseconds bits{31,30} as seconds{33,32}, to give a (signed) 34-bit
-> > seconds field and an unsigned 30-bit nanoseconds field.
-> > 
-> > This could represent 1970 +/- 272 years.
-> > 
-> > Servers could indicate they can understand the extended time format by
-> > adding a new FSINFO capability - FSF3_CANSETTIME_EX.
-> > 
-> > Clients would use a new SET_TO_CLIENT_TIME_EX time_how enum when sending
-> > timestamps so old servers would be protected from new clients.
-> 
-> You would have to get the IETF’s NFSv4 working group to sign off on
-> this change. Otherwise, Linux would be the only NFSv3 implementation
-> that supports the extension.
-> 
-> But I suspect the answer you’d get is “Use NFSv4.”
+The logic inside cache_listeners_exist contains heuristics to
+determine whether there is a userspace process listening to the cache
+file.  If there is a listener, the kernel will send a request to service
+the cache to userspace, and wait for a response.
 
-While I've never dealt with an NFS standardization, I'd assume this is
-a workable answer. The NFSv2 and NFSv3 definition clearly defines a valid
-range of times until 2106 using unsigned seconds, and that should really
-give enough time to migrate to something better (not necessarily NFSv4).
+The logic is a bit hard to read, here's some comments which explain the
+existing logic:
+       /*
+        * If at least one process has the channel file open currently,
+        * someone is listening
+        */
+       if (atomic_read(&detail->readers))
+               return true;
+       /*
+        * If no process has ever opened the channel file,
+        * no one is listening
+        */
+       if (detail->last_close == 0)
+               /* This cache was never opened */
+               return false;
+       /*
+        * If the last time we closed the file was more than 30 seconds
+        * ago, no one is listening.
+        */
+       if (detail->last_close < seconds_since_boot() - 30)
+               /*
+                * We allow for the possibility that someone might
+                * restart a userspace daemon without restarting the
+                * server; but after 30 seconds, we give up.
+                */
+                return false;
+       /*
+        * In all other cases, assume someone is listening
+        */
+       return true;
 
-	Arnd
+The logic is unduly complicated and unfortunately can be 'fooled' into
+thinking some userspace listener daemon exists when it does not.  For
+example, we've seen where a simple diagnostic process reading all files
+in /proc/net/rpc (for example, tarring the files up into an archive) can
+fool the kernel due to this logic.  Once fooled, the kernel will then
+send requests to validate the cache to userspace thinking some 'cache listener'
+exists, and will timeout.  In the case of the nfs server, this leads to
+silently dropped NFS requests due to failing RPC authentication.
+A simple while loop as follows is enough to DoS the NFS server indefinitely:
+while true; do
+   cat /proc/net/rpc/auth.unix.gid/channel>/dev/null
+   sleep 3
+done
+
+While a better userspace / kernel registration mechanism for cache listeners
+would be the best solution, for now let's just simplify this logic by requiring
+that there actually be someone holding the 'channel' file open for the kernel
+to consider there's someone actually listening and servicing the cache.
+
+The only downside is that now userspace daemons which restart will be noticed
+by the kernel during the restart, but I think this makes sense since there's
+no guarantee the listener will come back.
+
+Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+---
+ net/sunrpc/cache.c | 14 +-------------
+ 1 file changed, 1 insertion(+), 13 deletions(-)
+
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index ae333c1..d5adefc 100644
+--- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1137,19 +1137,7 @@ static void warn_no_listener(struct cache_detail *detail)
+ 
+ static bool cache_listeners_exist(struct cache_detail *detail)
+ {
+-	if (atomic_read(&detail->readers))
+-		return true;
+-	if (detail->last_close == 0)
+-		/* This cache was never opened */
+-		return false;
+-	if (detail->last_close < seconds_since_boot() - 30)
+-		/*
+-		 * We allow for the possibility that someone might
+-		 * restart a userspace daemon without restarting the
+-		 * server; but after 30 seconds, we give up.
+-		 */
+-		 return false;
+-	return true;
++	return atomic_read(&detail->readers);
+ }
+ 
+ /*
+-- 
+1.9.3
+
