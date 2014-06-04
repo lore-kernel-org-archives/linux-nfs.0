@@ -1,170 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:57768 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750897AbaF3PvT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:19 -0400
-Received: by mail-qa0-f41.google.com with SMTP id cm18so6615944qab.14
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:19 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 033/114] nfsd: Protect the nfs4_file delegation fields using the fi_lock
-Date: Mon, 30 Jun 2014 11:49:02 -0400
-Message-Id: <1404143423-24381-34-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:34922 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751494AbaFDWFc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jun 2014 18:05:32 -0400
+Date: Wed, 4 Jun 2014 18:05:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Live lock in silly-rename.
+Message-ID: <20140604220531.GA8362@fieldses.org>
+References: <20140529164521.02324559@notabene.brown>
+ <CAHQdGtTtU9_zBcfzRb_wmEf7XaX9rNg-_Q85ZLX9BYax14D2Gg@mail.gmail.com>
+ <20140530075135.753fb7ed@notabene.brown>
+ <20140530004423.GA13746@fieldses.org>
+ <20140530134442.5a8e5983@notabene.brown>
+ <20140530215522.GA27615@fieldses.org>
+ <20140531081358.62ae69b3@notabene.brown>
+ <20140604173926.53918af3@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140604173926.53918af3@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move more of the delegation fields to be protected by the fi_lock. It's
-more granular than the state_lock and in later patches we'll want to
-be able to rely on it in addition to the state_lock.
+On Wed, Jun 04, 2014 at 05:39:26PM +1000, NeilBrown wrote:
+> Below is my suggestion.  It seems easy enough.  It even works.
 
-Also, the current code in nfs4_setlease calls vfs_setlease and uses the
-client_mutex to ensure that it doesn't disappear before we can hash the
-delegation. With the client_mutex gone, we'll have a potential race
-condition.
+Woah!
 
-It's possible that the delegation could be recalled after we acquire the
-lease but before we ever get around to hashing it. If that happens, then
-we'd have a nfs4_file that *thinks* it has a delegation, when it
-actually has none.
+Anyway, looks reasonable to me, and it fixes an immediate problem so I'm
+inclined to just apply.
 
-Attempt to acquire a delegation. If that succeeds, take the state_lock
-and recheck to make sure the lease is still there. If it is, then take
-the fi_lock and set up the rest of the delegation fields. This prevents
-the race because the delegation break workqueue job must also take the
-state_lock.
+The vfs knows about delegations at this point, and there's been this
+vague idea we might give user space servers request them at some point,
+so we might eventually want this code to fs/locks.c instead of here.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 38 insertions(+), 13 deletions(-)
+Wonder if filehandle is the right thing to hash on, as opposed to inode
+number, or inode pointer, or something else?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f2ab4b39be22..f14b925f9de0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -614,6 +614,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
- 
- static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- {
-+	lockdep_assert_held(&state_lock);
-+
- 	if (!fp->fi_lease)
- 		return;
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
-@@ -633,11 +635,10 @@ static void
- hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
- 	lockdep_assert_held(&state_lock);
-+	lockdep_assert_held(&fp->fi_lock);
- 
- 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
--	spin_lock(&fp->fi_lock);
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
--	spin_unlock(&fp->fi_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- }
- 
-@@ -648,17 +649,17 @@ unhash_delegation(struct nfs4_delegation *dp)
- 	struct nfs4_file *fp = dp->dl_file;
- 
- 	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
- 	list_del_init(&dp->dl_recall_lru);
--	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
--	spin_unlock(&state_lock);
- 	if (fp) {
- 		nfs4_put_deleg_lease(fp);
--		put_nfs4_file(fp);
- 		dp->dl_file = NULL;
- 	}
-+	spin_unlock(&state_lock);
-+	put_nfs4_file(fp);
- }
- 
- 
-@@ -3458,7 +3459,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- {
- 	struct nfs4_file *fp = dp->dl_file;
- 	struct file_lock *fl;
--	int status;
-+	int status = 0;
- 
- 	fl = nfs4_alloc_init_lease(dp, NFS4_OPEN_DELEGATE_READ);
- 	if (!fl)
-@@ -3466,15 +3467,31 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	fl->fl_file = find_readable_file(fp);
- 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
- 	if (status)
--		goto out_free;
-+		goto out_fput;
-+	spin_lock(&state_lock);
-+	/* Did the lease get broken before we took the lock? */
-+	status = -EAGAIN;
-+	if (!file_has_lease(fl->fl_file))
-+		goto out_unlock;
-+	spin_lock(&fp->fi_lock);
-+	/* Race breaker */
-+	if (fp->fi_lease) {
-+		status = 0;
-+		atomic_inc(&fp->fi_delegees);
-+		hash_delegation_locked(dp, fp);
-+		spin_unlock(&fp->fi_lock);
-+		goto out_unlock;
-+	}
- 	fp->fi_lease = fl;
- 	fp->fi_deleg_file = fl->fl_file;
- 	atomic_set(&fp->fi_delegees, 1);
--	spin_lock(&state_lock);
- 	hash_delegation_locked(dp, fp);
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
--out_free:
-+out_unlock:
-+	spin_unlock(&state_lock);
-+out_fput:
- 	if (fl->fl_file)
- 		fput(fl->fl_file);
- 	locks_free_lock(fl);
-@@ -3483,19 +3500,27 @@ out_free:
- 
- static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
-+	int status = 0;
-+
- 	if (fp->fi_had_conflict)
- 		return -EAGAIN;
- 	get_nfs4_file(fp);
-+	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
- 	dp->dl_file = fp;
--	if (!fp->fi_lease)
-+	if (!fp->fi_lease) {
-+		spin_unlock(&fp->fi_lock);
-+		spin_unlock(&state_lock);
- 		return nfs4_setlease(dp);
--	spin_lock(&state_lock);
-+	}
- 	atomic_inc(&fp->fi_delegees);
- 	if (fp->fi_had_conflict) {
--		spin_unlock(&state_lock);
--		return -EAGAIN;
-+		status = -EAGAIN;
-+		goto out_unlock;
- 	}
- 	hash_delegation_locked(dp, fp);
-+out_unlock:
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
- }
--- 
-1.9.3
+--b.
+
+> The approach taken here is to use a bloom filter to record the filehandles
+> which are currently blocked from delegation, and to accept the cost of a few
+> false positives.
+> 
+> We have 2 bloom filters, each of which is valid for 30 seconds.   When a
+> delegation is recalled the filehandle is added to one filter and will remain
+> disabled for between 30 and 60 seconds.
+> 
+> We keep a count of the number of filehandles that have been added, so when
+> that count is zero we can bypass all other tests.
+> 
+> The bloom filters have 256 bits and 3 hash functions.  This should allow a
+> couple of dozen blocked  filehandles with minimal false positives.  If many
+> more filehandles are all blocked at once, behaviour will degrade towards
+> rejecting all delegations for between 30 and 60 seconds, then resetting and
+> allowing new delegations.
+> 
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 9a77a5a21557..45101b41fb04 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -41,6 +41,7 @@
+>  #include <linux/ratelimit.h>
+>  #include <linux/sunrpc/svcauth_gss.h>
+>  #include <linux/sunrpc/addr.h>
+> +#include <linux/hash.h>
+>  #include "xdr4.h"
+>  #include "xdr4cb.h"
+>  #include "vfs.h"
+> @@ -364,6 +365,79 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+>  	return openlockstateid(nfs4_alloc_stid(clp, stateid_slab));
+>  }
+>  
+> +/*
+> + * When we recall a delegation, we should be careful not to hand it
+> + * out again straight away.
+> + * To ensure this we keep a pair of bloom filters ('new' and 'old')
+> + * in which the filehandles of recalled delegations are "stored".
+> + * If a filehandle appear in either filter, a delegation is blocked.
+> + * When a delegation is recalled, the filehandle is stored in the "new"
+> + * filter.
+> + * Every 30 seconds we swap the filters and clear the "new" one,
+> + * unless both are empty of course.
+> + *
+> + * Each filter is 256 bits.  We hash the filehandle to 32bit and use the
+> + * low 3 bytes as hash-table indices.
+> + *
+> + * 'recall_lock', which is always held when block_delegations() is called,
+> + * is used to manage concurrent access.  Testing does not need the lock
+> + * except when swapping the two filters.
+> + */
+> +static struct bloom_pair {
+> +	int	entries, old_entries;
+> +	time_t	swap_time;
+> +	int	new; /* index into 'set' */
+> +	DECLARE_BITMAP(set[2], 256);
+> +} blocked_delegations;
+> +
+> +static int delegation_blocked(struct knfsd_fh *fh)
+> +{
+> +	u32 hash;
+> +	struct bloom_pair *bd = &blocked_delegations;
+> +
+> +	if (bd->entries == 0)
+> +		return 0;
+> +	if (seconds_since_boot() - bd->swap_time > 30) {
+> +		spin_lock(&recall_lock);
+> +		if (seconds_since_boot() - bd->swap_time > 30) {
+> +			bd->entries -= bd->old_entries;
+> +			bd->old_entries = bd->entries;
+> +			memset(bd->set[bd->new], 0,
+> +			       sizeof(bd->set[0]));
+> +			bd->new = 1-bd->new;
+> +			bd->swap_time = seconds_since_boot();
+> +		}
+> +		spin_unlock(&recall_lock);
+> +	}
+> +	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
+> +	if (test_bit(hash&255, bd->set[0]) &&
+> +	    test_bit((hash>>8)&255, bd->set[0]) &&
+> +	    test_bit((hash>>16)&255, bd->set[0]))
+> +		return 1;
+> +
+> +	if (test_bit(hash&255, bd->set[1]) &&
+> +	    test_bit((hash>>8)&255, bd->set[1]) &&
+> +	    test_bit((hash>>16)&255, bd->set[1]))
+> +		return 1;
+> +
+> +	return 0;
+> +}
+> +
+> +static void block_delegations(struct knfsd_fh *fh)
+> +{
+> +	u32 hash;
+> +	struct bloom_pair *bd = &blocked_delegations;
+> +
+> +	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
+> +
+> +	__set_bit(hash&255, bd->set[bd->new]);
+> +	__set_bit((hash>>8)&255, bd->set[bd->new]);
+> +	__set_bit((hash>>16)&255, bd->set[bd->new]);
+> +	if (bd->entries == 0)
+> +		bd->swap_time = seconds_since_boot();
+> +	bd->entries += 1;
+> +}
+> +
+>  static struct nfs4_delegation *
+>  alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
+>  {
+> @@ -372,6 +446,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+>  	dprintk("NFSD alloc_init_deleg\n");
+>  	if (num_delegations > max_delegations)
+>  		return NULL;
+> +	if (delegation_blocked(&current_fh->fh_handle))
+> +		return NULL;
+>  	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
+>  	if (dp == NULL)
+>  		return dp;
+> @@ -2742,6 +2818,8 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+>  	/* Only place dl_time is set; protected by i_lock: */
+>  	dp->dl_time = get_seconds();
+>  
+> +	block_delegations(&dp->dl_fh);
+> +
+>  	nfsd4_cb_recall(dp);
+>  }
+>  
+
 
