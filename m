@@ -1,66 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:65294 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932778AbaFSOxZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:53:25 -0400
-Received: by mail-qg0-f48.google.com with SMTP id q108so2209158qgd.35
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:53:25 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 103/104] nfsd: remove the client_mutex and the nfs4_lock/unlock_state wrappers
-Date: Thu, 19 Jun 2014 10:50:49 -0400
-Message-Id: <1403189450-18729-104-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mout.kundenserver.de ([212.227.17.13]:62051 "EHLO
+	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753776AbaFDPGQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 11:06:16 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: Dave Chinner <david@fromorbit.com>
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+Date: Wed, 4 Jun 2014 17:03:47 +0200
+Cc: "H. Peter Anvin" <hpa@zytor.com>,
+        "Joseph S. Myers" <joseph@codesourcery.com>,
+        linux-kernel@vger.kernel.org, linux-arch@vger.kernel.org,
+        john.stultz@linaro.org, hch@infradead.org, tglx@linutronix.de,
+        geert@linux-m68k.org, lftan@altera.com, linux-fsdevel@vger.kernel.org,
+        ceph-devel@vger.kernel.org, cluster-devel@redhat.com, coda@cs.cmu.edu,
+        codalist@telemann.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
+        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        linux-scsi@vger.kernel.org, logfs@logfs.org,
+        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
+        samba-technical@lists.samba.org, xfs@oss.sgi.com
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <5011138.W0gbOc20Qp@wuerfel> <20140603213802.GH14410@dastard>
+In-Reply-To: <20140603213802.GH14410@dastard>
+MIME-Version: 1.0
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201406041703.47592.arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 15 ---------------
- 1 file changed, 15 deletions(-)
+On Tuesday 03 June 2014, Dave Chinner wrote:
+> On Tue, Jun 03, 2014 at 04:22:19PM +0200, Arnd Bergmann wrote:
+> > On Monday 02 June 2014 14:57:26 H. Peter Anvin wrote:
+> > > On 06/02/2014 12:55 PM, Arnd Bergmann wrote:
+> > The possible uses I can see for non-ktime_t types in the kernel are:
+> > * inodes need 96 bit timestamps to represent the full range of values
+> >   that can be stored in a file system, you made a convincing argument
+> >   for that. Almost everything else can fit into 64 bit on a 32-bit
+> >   kernel, in theory also on a 64-bit kernel if we want that.
+> 
+> Just ot be pedantic, inodes don't need 96 bit timestamps - some
+> filesystems can *support up to* 96 bit timestamps. If the kernel
+> only supports 64 bit timestamps and that's all the kernel can
+> represent, then the upper bits of the 96 bit on-disk inode
+> timestamps simply remain zero.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a37e9d2aa047..e3df298b7aee 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -82,9 +82,6 @@ static __be32 lookup_clientid(clientid_t *clid,
- 
- /* Locking: */
- 
--/* Currently used for almost all code touching nfsv4 state: */
--static DEFINE_MUTEX(client_mutex);
--
- /*
-  * Currently used for the del_recall_lru and file hash table.  In an
-  * effort to decrease the scope of the client_mutex, this spinlock may
-@@ -104,12 +101,6 @@ static struct kmem_cache *file_slab;
- static struct kmem_cache *stateid_slab;
- static struct kmem_cache *deleg_slab;
- 
--void
--nfs4_lock_state(void)
--{
--	mutex_lock(&client_mutex);
--}
--
- static void free_session(struct nfsd4_session *);
- 
- static bool is_session_dead(struct nfsd4_session *ses)
-@@ -125,12 +116,6 @@ static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_b
- 	return nfs_ok;
- }
- 
--void
--nfs4_unlock_state(void)
--{
--	mutex_unlock(&client_mutex);
--}
--
- static bool is_client_expired(struct nfs4_client *clp)
- {
- 	return clp->cl_time == 0;
--- 
-1.9.3
+I meant the reverse: since we have file systems that can store
+96-bit timestamps when using 64-bit kernels, we need to extend
+32-bit kernels to have the same internal representation so we
+can actually read those file systems correctly.
 
+> If you move the filesystem between kernels with different time
+> ranges, then the filesystem needs to be able to tell the kernel what
+> it's supported range is.  This is where having the VFS limit the
+> range of supported timestamps is important: the limit is the
+> min(kernel range, filesystem range). This allows the filesystems
+> to be indepenent of the kernel time representation, and the kernel
+> to be independent of the physical filesystem time encoding....
+
+I agree it makes sense to let the kernel know about the limits
+of the file system it accesses, but for the reverse, we're probably
+better off just making the kernel representation large enough (i.e.
+96 bits) so it can work with any known file system. We need another
+check at the user space boundary to turn that into a value that the
+user can understand, but that's another problem.
+
+	Arnd
