@@ -1,88 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f172.google.com ([209.85.128.172]:46614 "EHLO
-	mail-ve0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751851AbaFJT3e convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2014 15:29:34 -0400
-Received: by mail-ve0-f172.google.com with SMTP id jz11so4642037veb.3
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Jun 2014 12:29:33 -0700 (PDT)
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:62903 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752401AbaFDMsC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 08:48:02 -0400
+Received: by mail-ie0-f181.google.com with SMTP id rp18so7183489iec.12
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 05:48:02 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <43CD0281-BAB1-4E29-A51C-876A017F4374@netapp.com>
-References: <1402342401-5640-1-git-send-email-andros@netapp.com>
-	<1402342401-5640-4-git-send-email-andros@netapp.com>
-	<1402417268.2577.4.camel@leira.trondhjem.org>
-	<43CD0281-BAB1-4E29-A51C-876A017F4374@netapp.com>
-Date: Tue, 10 Jun 2014 15:29:33 -0400
-Message-ID: <CAHQdGtQd2C2LLCoxNLLYiLA-iJd8kGoeRTZ3vr6AF5j5gM046A@mail.gmail.com>
-Subject: Re: [PATCH 3/3] NFS test SECINFO RPC_AUTH_GSS pseudoflavors for support
+In-Reply-To: <20140604173926.53918af3@notabene.brown>
+References: <20140529164521.02324559@notabene.brown>
+	<CAHQdGtTtU9_zBcfzRb_wmEf7XaX9rNg-_Q85ZLX9BYax14D2Gg@mail.gmail.com>
+	<20140530075135.753fb7ed@notabene.brown>
+	<20140530004423.GA13746@fieldses.org>
+	<20140530134442.5a8e5983@notabene.brown>
+	<20140530215522.GA27615@fieldses.org>
+	<20140531081358.62ae69b3@notabene.brown>
+	<20140604173926.53918af3@notabene.brown>
+Date: Wed, 4 Jun 2014 08:48:02 -0400
+Message-ID: <CAHQdGtR-YwT-nW-vcFhBFPsg3h=ZE6co08QB9KETGdiKrNNuUg@mail.gmail.com>
+Subject: Re: Live lock in silly-rename.
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, NFS <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 10, 2014 at 2:38 PM, Adamson, Andy
-<William.Adamson@netapp.com> wrote:
+On Wed, Jun 4, 2014 at 3:39 AM, NeilBrown <neilb@suse.de> wrote:
+> On Sat, 31 May 2014 08:13:58 +1000 NeilBrown <neilb@suse.de> wrote:
 >
-> On Jun 10, 2014, at 12:21 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->
->> On Mon, 2014-06-09 at 15:33 -0400, andros@netapp.com wrote:
->>> From: Andy Adamson <andros@netapp.com>
->>>
->>> The current code returns an RPC_AUTH_GSS pseudo-flavor without testing to see
->>> if it is configured properly. If an RPC_AUTH_GSS pseudoflavor fails then the
->>> next SECINFO flavor should be tried.
->>>
->>> Create an rpc_auth, rpc_cred, and initialize the cred (e.g. get a GSS Context)
->>> using the short-lived SECINFO rpc client to test if the use of the RPC_AUTH_GSS
->>> pseudoflavor succeeds.
->>>
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>> fs/nfs/nfs4namespace.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++--
->>> 1 file changed, 46 insertions(+), 2 deletions(-)
->>>
->>> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
->>> index fd4dcb6..e0a5491 100644
->>> --- a/fs/nfs/nfs4namespace.c
->>> +++ b/fs/nfs/nfs4namespace.c
->>> @@ -135,6 +135,39 @@ static size_t nfs_parse_server_name(char *string, size_t len,
->>> }
->>>
->>> /**
->>> + * nfs_test_gss - Test client support of pseudoflavor
->>> + * @server: NFS server struct
->>> + * @flavor: RPC_AUTH_GSS pseudoflavor
->>> + */
->>> +
->>> +static int nfs_test_gss_flavor(struct nfs_server *server,
->>> +                           rpc_authflavor_t pseudoflavor)
->>> +{
->>> +    struct rpc_auth_create_args auth_args = {
->>> +            .pseudoflavor = pseudoflavor,
->>> +    };
->>> +    struct rpc_auth *auth;
->>> +    struct rpc_cred *rcred;
->>> +    const struct cred *cred = current_cred();
->>> +    struct auth_cred acred = {
->>> +            .uid = cred->fsuid,
->>> +            .gid = cred->fsgid,
->>> +            .group_info = get_group_info(((struct cred *)cred)->group_info),
->>> +    };
->>> +
->>> +    auth = rpcauth_create(&auth_args, server->client);
+>> On Fri, 30 May 2014 17:55:23 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+>> wrote:
 >>
->> This call has the side-effect of changing the value of
->> server->client->cl_auth. Not sure that we want that here.
+>> > On Fri, May 30, 2014 at 01:44:42PM +1000, NeilBrown wrote:
+>> > > On Thu, 29 May 2014 20:44:23 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+>> > > wrote:
+>> > >
+>> > > > Yes, it's a known server bug.
+>> > > >
+>> > > > As a first attempt I was thinking of just sticking a timestamp in struct
+>> > > > inode to record the time of the most recent conflicting access and deny
+>> > > > delegations if the timestamp is too recent, for some definition of too
+>> > > > recent.
+>> > > >
+>> > >
+>> > > Hmmm... I'll have a look next week and see what I can come up with.
+>> >
+>> > Thanks!
+>> >
+>> > If we didn't think it was worth another struct inode field, we could
+>> > probably get away with global state.  Even just refusing to give out any
+>> > delegations for a few seconds after any delegation break would be enough
+>> > to fix this bug.
+>> >
+>> > Or you could make it a little less harsh with a small hash table: "don't
+>> > give out a delegation on any inode whose inode number hashes to X for a
+>> > few seconds."
+>>
+>> I was thinking of using a bloom filter - or possibly two.
+>> - avoid handing out delegations if either bloom filter reports a match
+>> - when reclaiming a delegation add the inode to the second bloom filter
+>> - every so-often zero-out the older filter and swap them.
+>>
+>> Might be a bit of overkill, but I won't know until I implement it.
+>>
 >
-> I don't see any other interface to get a gss_auth struct to pass to rpcauth_lookupcredcache.
+> Below is my suggestion.  It seems easy enough.  It even works.
 >
-> If the gss_cred/gss_context creation works, then the cl_auth being set is OK as it would have been set anyway by the callers of nfs4_negotiate_security (nfs4_submount or nfs4_create_sec_client so far) if we simply passed the flavor to those functions to “test” if RPC_AUTH_GSS can be used.
+> However it does raise an issue with the NFS client.
+>
+> NFS performs a silly-rename as an 'asynchronous' operation.  One consequence
+> of this is that NFS4ERR_DELAY always results in a delay of
+> NFS4_POLL_RETRY_MAX (15*HZ), where as sync requests use an exponential scale
+> from _MIN to _MAX.
+>
+> So in my test case there is always a 15second delay:
+>   - try to silly-rename
+>   - get NFS4ERR_DELAY
+>   - server reclaim delegation
+>   - 15 seconds passes
+>   - retry silly-rename - it works.
+>
+> I hacked the NFS server to store a timeout in 'struct nfs_renamedata', and
+> use the same exponential retry pattern and the 15 seconds (obviously)
+> disappeared.
+>
+> Trond: would  you accept a patch which did that more generally?  e.g. pass a
+> timeout pointer to nfs4_async_handle_error() and various *_done function pass
+> a pointer to a field in their calldata?
 
-Looking at the callers, I think I disagree. They are both trying to do
-lookups, so the WRONGSEC error that we're handling applies to the
-object being looked up, and not to the parent directory or the struct
-nfs_server that is being passed as an argument to nfs_find_best_sec().
+It depends. If we're touching nfs4_async_handle_error, then I think we
+should also convert nfs4_async_handle_error to use the same "struct
+nfs4_exception" argument that we use for the synchronous case so that
+we can share a bit more code.
 
 -- 
 Trond Myklebust
