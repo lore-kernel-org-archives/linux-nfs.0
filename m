@@ -1,56 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:56029 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754202AbaFYNgf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 09:36:35 -0400
-Received: by mail-qg0-f50.google.com with SMTP id j5so1678564qga.9
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 06:36:34 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 25 Jun 2014 09:36:32 -0400
-To: Jiri Slaby <jslaby@suse.cz>
-Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org, bfields@fieldses.org,
-        Tomas Kasparek <kasparek@fit.vutbr.cz>
-Subject: Re: [stable PATCH] nfsd: don't try to reuse an expired DRC entry
- off the list
-Message-ID: <20140625093632.0d7b58ac@tlielax.poochiereds.net>
-In-Reply-To: <53AACF88.5000006@suse.cz>
-References: <1403290612-15341-1-git-send-email-jlayton@primarydata.com>
-	<53AACF88.5000006@suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:45392 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751565AbaFENzv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 09:55:51 -0400
+Received: by mail-ie0-f176.google.com with SMTP id rl12so866855iec.7
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 06:55:50 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs v2 02/16] dataserver: only catch connection error
+Date: Thu,  5 Jun 2014 09:55:30 -0400
+Message-Id: <1401976544-36374-3-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401976544-36374-1-git-send-email-dros@primarydata.com>
+References: <1401976544-36374-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 25 Jun 2014 15:32:56 +0200
-Jiri Slaby <jslaby@suse.cz> wrote:
+This specifically checks for the error being reported, otherwise a
+other exceptions like a programming error  will be caught and treated
+as connection errors.
 
-> On 06/20/2014 08:56 PM, Jeff Layton wrote:
-> > From: Jeff Layton <jlayton@redhat.com>
-> > 
-> > This is commit a0ef5e19684f0447da9ff0654a12019c484f57ca in mainline.
-> > 
-> > While the commit message below doesn't lay this out, we've subsequently
-> > found that there are some cases where an entry that's still in use can
-> > be freed prematurely if a particular operation takes a *very* long time
-> > (on the order of minutes) and/or the server is very busy and doesn't
-> > have a lot of memory dedicated to the DRC. This patch eliminates that
-> > possibility, so it's actually more than just a cleanup.
-> > 
-> > The regression crept in in v3.9, and this patch went into mainline in
-> > v3.14. Please apply this to any stable kernel between those two
-> > mainline releases.
-> 
-> Now applied to 3.12. Thanks.
-> 
-> 
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ nfs4.1/dataserver.py | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Thank you! It also turns out that we're going to want to pull
-1b19453d1c6abcfa7c312ba6c9f11a277568fc94 from mainline into stable
-kernels as well. There's one more possibility for an entry to be freed
-while still in use that that patch will fix.
-
-I'll resend that to stable@vger later today...
-
-Thanks!
+diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
+index ade55e1..aca07ee 100644
+--- a/nfs4.1/dataserver.py
++++ b/nfs4.1/dataserver.py
+@@ -9,6 +9,7 @@ import nfs4client
+ import hashlib
+ import sys
+ import nfs4_ops as op
++import socket
+ 
+ log = logging.getLogger("Dataserver Manager")
+ 
+@@ -198,7 +199,7 @@ class DSDevice(object):
+                     ds = DataServer(server, port, path, mdsds=self.mdsds,
+                                     multipath_servers=server_list)
+                     self.list.append(ds)
+-                except:
++                except socket.error:
+                     log.critical("cannot access %s:%i/%s" %
+                                  (server, port, '/'.join(path)))
+                     sys.exit(1)
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.8.5.2 (Apple Git-48)
+
