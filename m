@@ -1,58 +1,240 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:36221 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756886AbaFYQEp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 12:04:45 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: <linux-rdma@vger.kernel.org>
-Cc: <linux-nfs@vger.kernel.org>, "Shirley Ma" <shirley.ma@oracle.com>,
-        "Chuck Lever" <chuck.lever@oracle.com>,
-        "Veeresh U. Kokatnur" <veereshuk@chelsio.com>,
-        "'Indranil Choudhury'" <indranil@chelsio.com>
-Subject: NFSRDMA test branch
-Date: Wed, 25 Jun 2014 11:05:12 -0500
-Message-ID: <004a01cf908f$3e8a7c60$bb9f7520$@opengridcomputing.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:64397 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752135AbaFETQm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 15:16:42 -0400
+Received: by mail-ie0-f181.google.com with SMTP id rp18so1324439iec.12
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 12:16:41 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH v2 6/6] pnfs: clean up *_resend_to_mds
+Date: Thu,  5 Jun 2014 15:16:31 -0400
+Message-Id: <1401995791-40213-7-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401995791-40213-1-git-send-email-dros@primarydata.com>
+References: <1401995791-40213-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
+Clean up pnfs_read_done_resend_to_mds and pnfs_write_done_resend_to_mds:
+ - instead of passing all arguments from a nfs_pgio_header, just pass the header
+ - share the common code
 
-Going forward, I am maintaining a git tree to be used by the various interested parties to
-test the current NFSRDMA related client and server patches that are heading upstream.
-The idea is to keep the current patches in a single repo that test groups can pull from.
-The repo is currently backed against 3.16-rc2 and contains these patches so far:
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/filelayout/filelayout.c | 10 ++-----
+ fs/nfs/pagelist.c              | 32 +++++++++++++++++++++
+ fs/nfs/pnfs.c                  | 63 ++++++------------------------------------
+ fs/nfs/pnfs.h                  |  8 ++----
+ include/linux/nfs_page.h       |  2 ++
+ 5 files changed, 47 insertions(+), 68 deletions(-)
 
-Chuck Lever (13):
-      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
-      xprtrdma: Protect ->qp during FRMR deregistration
-      xprtrdma: Limit data payload size for ALLPHYSICAL
-      xprtrdma: Update rkeys after transport reconnect
-      xprtrdma: Don't drain CQs on transport disconnect
-      xprtrdma: Unclutter struct rpcrdma_mr_seg
-      xprtrdma: Encode Work Request opcode in wc->wr_id
-      xprtrdma: Back off rkey when FAST_REG_MR fails
-      xprtrdma: Refactor rpcrdma_buffer_put()
-      xprtrdma: Release FRMR segment buffers during LOCAL_INV completion
-      xprtrdma: Clean up rpcrdma_ep_disconnect()
-      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
-      xprtrdma: Handle additional connection events
-
-Steve Wise (1):
-      iw_cxgb4: call iwpm_init() only once
-
-If you have critical patches that you would like included, please point me at them.  I
-request that the patches be only fixes that allow forward testing progress, critical
-regression fixes, or fixes that are heading upstream and are NFSRDMA related.  As patches
-under review change, I'll update my git tree and send up notifications when it changes.
-
-The branch is named for-test and the repo is at: 
-
-git://git.linux-nfs.org/projects/swise/linux.git
-
-Thanks,
-
-Steve.
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 29d14d2..cf4cc2d 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -97,10 +97,7 @@ static void filelayout_reset_write(struct nfs_pgio_header *hdr)
+ 			hdr->args.count,
+ 			(unsigned long long)hdr->args.offset);
+ 
+-		task->tk_status = pnfs_write_done_resend_to_mds(hdr->inode,
+-							&hdr->pages,
+-							hdr->completion_ops,
+-							hdr->dreq);
++		task->tk_status = pnfs_write_done_resend_to_mds(hdr);
+ 	}
+ }
+ 
+@@ -117,10 +114,7 @@ static void filelayout_reset_read(struct nfs_pgio_header *hdr)
+ 			hdr->args.count,
+ 			(unsigned long long)hdr->args.offset);
+ 
+-		task->tk_status = pnfs_read_done_resend_to_mds(hdr->inode,
+-							&hdr->pages,
+-							hdr->completion_ops,
+-							hdr->dreq);
++		task->tk_status = pnfs_read_done_resend_to_mds(hdr);
+ 	}
+ }
+ 
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index cc5ef6d..2ac0322 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -950,6 +950,38 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_add_request);
+ 
++/*
++ * nfs_pageio_resend - Transfer requests to new descriptor and resend
++ * @hdr - the pgio header to move request from
++ * @desc - the pageio descriptor to add requests to
++ *
++ * Try to move each request (nfs_page) from @hdr to @desc then attempt
++ * to send them.
++ *
++ * Returns 0 on success and < 0 on error.
++ */
++int nfs_pageio_resend(struct nfs_pageio_descriptor *desc,
++		      struct nfs_pgio_header *hdr)
++{
++	LIST_HEAD(failed);
++
++	desc->pg_dreq = hdr->dreq;
++	while (!list_empty(&hdr->pages)) {
++		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
++
++		nfs_list_remove_request(req);
++		if (!nfs_pageio_add_request(desc, req))
++			nfs_list_add_request(req, &failed);
++	}
++	nfs_pageio_complete(desc);
++	if (!list_empty(&failed)) {
++		list_move(&failed, &hdr->pages);
++		return -EIO;
++	}
++	return 0;
++}
++EXPORT_SYMBOL_GPL(nfs_pageio_resend);
++
+ /**
+  * nfs_pageio_complete - Complete I/O on an nfs_pageio_descriptor
+  * @desc: pointer to io descriptor
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 902783ab..9ccf86c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1466,35 +1466,14 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
+ 
+-int pnfs_write_done_resend_to_mds(struct inode *inode,
+-				struct list_head *head,
+-				const struct nfs_pgio_completion_ops *compl_ops,
+-				struct nfs_direct_req *dreq)
++int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_pageio_descriptor pgio;
+-	LIST_HEAD(failed);
+ 
+ 	/* Resend all requests through the MDS */
+-	nfs_pageio_init_write(&pgio, inode, FLUSH_STABLE, true, compl_ops);
+-	pgio.pg_dreq = dreq;
+-	while (!list_empty(head)) {
+-		struct nfs_page *req = nfs_list_entry(head->next);
+-
+-		nfs_list_remove_request(req);
+-		if (!nfs_pageio_add_request(&pgio, req))
+-			nfs_list_add_request(req, &failed);
+-	}
+-	nfs_pageio_complete(&pgio);
+-
+-	if (!list_empty(&failed)) {
+-		/* For some reason our attempt to resend pages. Mark the
+-		 * overall send request as having failed, and let
+-		 * nfs_writeback_release_full deal with the error.
+-		 */
+-		list_move(&failed, head);
+-		return -EIO;
+-	}
+-	return 0;
++	nfs_pageio_init_write(&pgio, hdr->inode, FLUSH_STABLE, true,
++			      hdr->completion_ops);
++	return nfs_pageio_resend(&pgio, hdr);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_write_done_resend_to_mds);
+ 
+@@ -1507,10 +1486,7 @@ static void pnfs_ld_handle_write_error(struct nfs_pgio_header *hdr)
+ 		pnfs_return_layout(hdr->inode);
+ 	}
+ 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
+-		hdr->task.tk_status = pnfs_write_done_resend_to_mds(hdr->inode,
+-							&hdr->pages,
+-							hdr->completion_ops,
+-							hdr->dreq);
++		hdr->task.tk_status = pnfs_write_done_resend_to_mds(hdr);
+ }
+ 
+ /*
+@@ -1608,31 +1584,13 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+ 
+-int pnfs_read_done_resend_to_mds(struct inode *inode,
+-				struct list_head *head,
+-				const struct nfs_pgio_completion_ops *compl_ops,
+-				struct nfs_direct_req *dreq)
++int pnfs_read_done_resend_to_mds(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_pageio_descriptor pgio;
+-	LIST_HEAD(failed);
+ 
+ 	/* Resend all requests through the MDS */
+-	nfs_pageio_init_read(&pgio, inode, true, compl_ops);
+-	pgio.pg_dreq = dreq;
+-	while (!list_empty(head)) {
+-		struct nfs_page *req = nfs_list_entry(head->next);
+-
+-		nfs_list_remove_request(req);
+-		if (!nfs_pageio_add_request(&pgio, req))
+-			nfs_list_add_request(req, &failed);
+-	}
+-	nfs_pageio_complete(&pgio);
+-
+-	if (!list_empty(&failed)) {
+-		list_move(&failed, head);
+-		return -EIO;
+-	}
+-	return 0;
++	nfs_pageio_init_read(&pgio, hdr->inode, true, hdr->completion_ops);
++	return nfs_pageio_resend(&pgio, hdr);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_read_done_resend_to_mds);
+ 
+@@ -1644,10 +1602,7 @@ static void pnfs_ld_handle_read_error(struct nfs_pgio_header *hdr)
+ 		pnfs_return_layout(hdr->inode);
+ 	}
+ 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
+-		hdr->task.tk_status = pnfs_read_done_resend_to_mds(hdr->inode,
+-							&hdr->pages,
+-							hdr->completion_ops,
+-							hdr->dreq);
++		hdr->task.tk_status = pnfs_read_done_resend_to_mds(hdr);
+ }
+ 
+ /*
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index f385afa..552b2e9 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -228,12 +228,8 @@ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
+ 					       gfp_t gfp_flags);
+ 
+ void nfs4_deviceid_mark_client_invalid(struct nfs_client *clp);
+-int pnfs_read_done_resend_to_mds(struct inode *inode, struct list_head *head,
+-			const struct nfs_pgio_completion_ops *compl_ops,
+-			struct nfs_direct_req *dreq);
+-int pnfs_write_done_resend_to_mds(struct inode *inode, struct list_head *head,
+-			const struct nfs_pgio_completion_ops *compl_ops,
+-			struct nfs_direct_req *dreq);
++int pnfs_read_done_resend_to_mds(struct nfs_pgio_header *);
++int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *);
+ struct nfs4_threshold *pnfs_mdsthreshold_alloc(void);
+ 
+ /* nfs4_deviceid_flags */
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index d0fae7b..4b48548 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -112,6 +112,8 @@ extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 			     int how);
+ extern	int nfs_pageio_add_request(struct nfs_pageio_descriptor *,
+ 				   struct nfs_page *);
++extern  int nfs_pageio_resend(struct nfs_pageio_descriptor *,
++			      struct nfs_pgio_header *);
+ extern	void nfs_pageio_complete(struct nfs_pageio_descriptor *desc);
+ extern	void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *, pgoff_t);
+ extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+-- 
+1.8.5.2 (Apple Git-48)
 
