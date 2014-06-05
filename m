@@ -1,50 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:63492 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755760AbaFWQTx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 12:19:53 -0400
-Received: by mail-qa0-f47.google.com with SMTP id hw13so5776812qab.6
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 09:19:53 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 23 Jun 2014 12:19:51 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        Benny Halevy <bhalevy@primarydata.com>
-Subject: Re: [PATCH v1 004/104] nfsd4: use cl_lock to synchronize all
- stateid idr calls
-Message-ID: <20140623121951.191f92cb@tlielax.poochiereds.net>
-In-Reply-To: <20140623160227.GB24193@infradead.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-	<1403189450-18729-5-git-send-email-jlayton@primarydata.com>
-	<20140623160227.GB24193@infradead.org>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:39301 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751471AbaFEPAy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 11:00:54 -0400
+Message-ID: <5390862B.3050007@opengridcomputing.com>
+Date: Thu, 05 Jun 2014 10:00:59 -0500
+From: Steve Wise <swise@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "'Bart Van Assche'" <bvanassche@acm.org>, bfields@fieldses.org
+CC: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        tom@opengridcomputing.com
+Subject: Re: [PATCH] svcrdma: Fence LOCAL_INV work requests
+References: <20140602171433.31076.5634.stgit@build.ogc.int> <53901ADB.9020405@acm.org> <002901cf80c5$d0b577e0$722067a0$@opengridcomputing.com>
+In-Reply-To: <002901cf80c5$d0b577e0$722067a0$@opengridcomputing.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 23 Jun 2014 09:02:27 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+On 6/5/2014 8:55 AM, Steve Wise wrote
+>> -----Original Message-----
+>> From: Bart Van Assche [mailto:bvanassche@acm.org]
+>> Sent: Thursday, June 05, 2014 2:23 AM
+>> To: Steve Wise; bfields@fieldses.org
+>> Cc: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org; tom@opengridcomputing.com
+>> Subject: Re: [PATCH] svcrdma: Fence LOCAL_INV work requests
+>>
+>> On 06/02/14 19:14, Steve Wise wrote:
+>>> Fencing forces the invalidate to only happen after all subsequent send
+>>> work requests have been completed.
+>> Shouldn't that read "prior" instead of "subsequent" ?
+>>
+> Yes.
+>   
 
-> This looks reasonable to me.  Am I right to assume this is just a
-> preparation for the state lock removal?  As far as I can tell currently
-> all calls are under nfs4_lock_state().
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> 
-> assuming it gets a proper patch description.
-> 
+I posted V2 of the patch to fix the comment.
 
-Yes, that's correct, and that's the case with pretty much all of the
-patches that add locking here. I can explicitly spell that out in every
-patch description but that may get tedious over >100 patches.
+Thanks,
 
-Also, let's be careful about terminology here...
-
-What we're removing is the client_mutex (which has unfortunately named
-wrappers around it called nfs4_lock_state and nfs4_unlock_state).
-
-We have yet another spinlock called the "state_lock" which protects the
-nfs4_file hashes and such, as well as some of the delegation code.
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+Steve.
