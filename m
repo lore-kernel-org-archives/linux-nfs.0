@@ -1,43 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:37584 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756853AbaFYOMb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 10:12:31 -0400
-Received: by mail-ig0-f174.google.com with SMTP id l13so6037851iga.7
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 07:12:30 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH] nfs: get rid of duplicate dprintk
-Date: Wed, 25 Jun 2014 10:12:22 -0400
-Message-Id: <1403705542-8623-1-git-send-email-dros@primarydata.com>
+Received: from cn.fujitsu.com ([59.151.112.132]:26566 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751125AbaFEIOd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 04:14:33 -0400
+Message-ID: <539026DB.30502@cn.fujitsu.com>
+Date: Thu, 5 Jun 2014 16:14:19 +0800
+From: Ditang Chen <chendt.fnst@cn.fujitsu.com>
+MIME-Version: 1.0
+To: Steve Dickson <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH]statd: create statdpath dir if specify the "--with-statdpath=xx"
+ parameter in configure nfs-utils source code
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This was introduced by a merge error with my recent pgio patchset.
+When configure the nfs-utils source code with "--with-statdpath=/foo" parameter，
+#define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
+but Makefile will not create "/foo" dir.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: chendt.fnst@cn.fujitsu.com
 ---
- fs/nfs/read.c | 6 ------
- 1 file changed, 6 deletions(-)
+ Makefile.am | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index b1532b7..beff276 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -115,12 +115,6 @@ static void nfs_readpage_release(struct nfs_page *req)
+diff --git a/Makefile.am b/Makefile.am
+index ae7cd16..5c9ef44 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -54,10 +54,10 @@ install-data-hook:
+ 	touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
+ 	touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
+ 	touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
+-	mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
+ 	touch $(DESTDIR)$(statedir)/state
+-	chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
+-	-chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
++	mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
++	chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
++	-chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
  
- 		unlock_page(req->wb_page);
- 	}
--
--	dprintk("NFS: read done (%s/%Lu %d@%Ld)\n",
--			req->wb_context->dentry->d_inode->i_sb->s_id,
--			(unsigned long long)NFS_FILEID(req->wb_context->dentry->d_inode),
--			req->wb_bytes,
--			(long long)req_offset(req));
- 	nfs_release_request(req);
- }
- 
+ uninstall-hook:
+ 	rm $(DESTDIR)$(statedir)/xtab
 -- 
-1.8.5.2 (Apple Git-48)
-
+1.8.2.1
