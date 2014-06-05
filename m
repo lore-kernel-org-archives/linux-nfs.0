@@ -1,255 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:46442 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751676AbaFZTVx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:53 -0400
-Received: by mail-qc0-f175.google.com with SMTP id i8so3533368qcq.6
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:52 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 100/117] nfsd: add more granular locking to forget_locks fault injector
-Date: Thu, 26 Jun 2014 15:21:08 -0400
-Message-Id: <1403810485-16497-17-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:37297 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751314AbaFEMyZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 08:54:25 -0400
+Received: by mail-ie0-f180.google.com with SMTP id at20so626009iec.39
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 05:54:25 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH pynfs 01/17] 4.1 client: reclaim_complete after create_session
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20140605022640.GA12044@fieldses.org>
+Date: Thu, 5 Jun 2014 08:54:23 -0400
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <4E48F0D6-DD84-4388-83A8-9D4084CCAC34@primarydata.com>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com> <1401915726-29092-2-git-send-email-dros@primarydata.com> <20140605022640.GA12044@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...instead of relying on the client_mutex.
+On Jun 4, 2014, at 10:26 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/fault_inject.c |   8 ++-
- fs/nfsd/nfs4state.c    | 136 +++++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/state.h        |   7 ++-
- 3 files changed, 135 insertions(+), 16 deletions(-)
+> On Wed, Jun 04, 2014 at 05:01:49PM -0400, Weston Andros Adamson wrote:
+>> Send RECLAIM_COMPLETE after CREATE_SESSION. This enables backend
+>> communication to v4.1 linux nfsd servers (i/o through MDS only).
+> 
+> If that's unconditionally adding a reclaim_complete after every
+> create_sesion, that's probably not what we want since there are tests
+> that want to do the reclaim_complete by hand.  You probably want to use
+> new_client_session() instead?  See 219cf7b7f7d0 and the preceding
+> commit.
+> 
+> —b.
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 76ecdff37ea2..a444d821d2a5 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -140,11 +140,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
- 	},
- 	{
- 		.file     = "forget_locks",
--		.get	  = nfsd_inject_get,
--		.set_val  = nfsd_inject_set,
--		.set_clnt = nfsd_inject_set_client,
--		.forget   = nfsd_forget_client_locks,
--		.print    = nfsd_print_client_locks,
-+		.get	  = nfsd_inject_print_locks,
-+		.set_val  = nfsd_inject_forget_locks,
-+		.set_clnt = nfsd_inject_forget_client_locks,
- 	},
- 	{
- 		.file     = "forget_openowners",
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c26ecd4ad3b2..ab5858e272b8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5690,6 +5690,16 @@ nfs4_check_open_reclaim(clientid_t *clid,
- }
- 
- #ifdef CONFIG_NFSD_FAULT_INJECTION
-+static void
-+put_client(struct nfs4_client *clp)
-+{
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	atomic_dec(&clp->cl_refcount);
-+	spin_unlock(&nn->client_lock);
-+}
-+
- u64
- nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
- {
-@@ -5777,6 +5787,22 @@ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
- 	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
- }
- 
-+static void
-+nfsd_inject_add_lock_to_list(struct nfs4_ol_stateid *lst,
-+			     struct list_head *collect)
-+{
-+	struct nfs4_client *clp = lst->st_stid.sc_client;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+					  nfsd_net_id);
-+
-+	if (!collect)
-+		return;
-+
-+	lockdep_assert_held(&nn->client_lock);
-+	atomic_inc(&clp->cl_refcount);
-+	list_add(&lst->st_locks, collect);
-+}
-+
- static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
- 				    struct list_head *collect,
- 				    void (*func)(struct nfs4_ol_stateid *))
-@@ -5786,6 +5812,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
- 	struct nfs4_ol_stateid *lst, *lst_next;
- 	u64 count = 0;
- 
-+	spin_lock(&clp->cl_lock);
- 	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
- 		list_for_each_entry_safe(stp, st_next,
- 				&oop->oo_owner.so_stateids, st_perstateowner) {
-@@ -5793,31 +5820,122 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
- 					&stp->st_locks, st_locks) {
- 				if (func) {
- 					func(lst);
--					if (collect)
--						list_add(&lst->st_locks,
--							 collect);
-+					nfsd_inject_add_lock_to_list(lst,
-+								collect);
- 				}
--				if (++count == max)
--					return count;
-+				++count;
-+				/*
-+				 * Despite the fact that these functions deal
-+				 * with 64-bit integers for "count", we must
-+				 * ensure that it doesn't blow up the
-+				 * clp->cl_refcount. Throw a warning if we
-+				 * start to approach INT_MAX here.
-+				 */
-+				WARN_ON_ONCE(count == (INT_MAX / 2));
-+				if (count == max)
-+					goto out;
- 			}
- 		}
- 	}
-+out:
-+	spin_unlock(&clp->cl_lock);
- 
- 	return count;
- }
- 
--u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
-+static u64
-+nfsd_collect_client_locks(struct nfs4_client *clp, struct list_head *collect,
-+			  u64 max)
- {
--	return nfsd_foreach_client_lock(clp, max, NULL, release_lock_stateid);
-+	return nfsd_foreach_client_lock(clp, max, collect, unhash_lock_stateid);
- }
- 
--u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
-+static u64
-+nfsd_print_client_locks(struct nfs4_client *clp)
- {
--	u64 count = nfsd_foreach_client_lock(clp, max, NULL, NULL);
-+	u64 count = nfsd_foreach_client_lock(clp, 0, NULL, NULL);
- 	nfsd_print_count(clp, count, "locked files");
- 	return count;
- }
- 
-+u64
-+nfsd_inject_print_locks(struct nfsd_fault_inject_op *op)
-+{
-+	struct nfs4_client *clp;
-+	u64 count = 0;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return 0;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry(clp, &nn->client_lru, cl_lru)
-+		count += nfsd_print_client_locks(clp);
-+	spin_unlock(&nn->client_lock);
-+
-+	return count;
-+}
-+
-+static void
-+nfsd_reap_locks(struct list_head *reaplist)
-+{
-+	struct nfs4_client *clp;
-+	struct nfs4_ol_stateid *stp, *next;
-+
-+	list_for_each_entry_safe(stp, next, reaplist, st_locks) {
-+		list_del_init(&stp->st_locks);
-+		clp = stp->st_stid.sc_client;
-+		put_generic_stateid(stp);
-+		put_client(clp);
-+	}
-+}
-+
-+u64
-+nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *op,
-+				struct sockaddr_storage *addr, size_t addr_size)
-+{
-+	unsigned int count = 0;
-+	struct nfs4_client *clp;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+	LIST_HEAD(reaplist);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return count;
-+
-+	spin_lock(&nn->client_lock);
-+	clp = nfsd_find_client(addr, addr_size);
-+	if (clp)
-+		count = nfsd_collect_client_locks(clp, &reaplist, 0);
-+	spin_unlock(&nn->client_lock);
-+	nfsd_reap_locks(&reaplist);
-+	return count;
-+}
-+
-+u64
-+nfsd_inject_forget_locks(struct nfsd_fault_inject_op *op, u64 max)
-+{
-+	u64 count = 0;
-+	struct nfs4_client *clp;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+	LIST_HEAD(reaplist);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return count;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
-+		count += nfsd_collect_client_locks(clp, &reaplist, max - count);
-+		if (max != 0 && count >= max)
-+			break;
-+	}
-+	spin_unlock(&nn->client_lock);
-+	nfsd_reap_locks(&reaplist);
-+	return count;
-+}
-+
- static u64 nfsd_foreach_client_open(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_openowner *))
- {
- 	struct nfs4_openowner *oop, *next;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 4fe973bbb68f..12ffe33662f1 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -478,12 +478,15 @@ u64 nfsd_inject_forget_client(struct nfsd_fault_inject_op *,
- 			      struct sockaddr_storage *, size_t);
- u64 nfsd_inject_forget_clients(struct nfsd_fault_inject_op *, u64);
- 
--u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
-+u64 nfsd_inject_print_locks(struct nfsd_fault_inject_op *);
-+u64 nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *,
-+				    struct sockaddr_storage *, size_t);
-+u64 nfsd_inject_forget_locks(struct nfsd_fault_inject_op *, u64);
-+
- u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
- u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
- 
--u64 nfsd_print_client_locks(struct nfs4_client *, u64);
- u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
- #else /* CONFIG_NFSD_FAULT_INJECTION */
--- 
-1.9.3
+Ok, thats a good point, but AFAIC new_client_session is never called - at least by
+nfs4server.
+
+I’ll figure out a better way to do this.
+
+-dros
+
+> 
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>> ---
+>> nfs4.1/nfs4client.py | 1 +
+>> 1 file changed, 1 insertion(+)
+>> 
+>> diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
+>> index e750728..0d94a42 100644
+>> --- a/nfs4.1/nfs4client.py
+>> +++ b/nfs4.1/nfs4client.py
+>> @@ -367,6 +367,7 @@ class ClientRecord(object):
+>>         self.seqid = inc_u32(csr.csr_sequence) # XXX Do we need to check this?
+>>         sess = SessionRecord(csr, self)
+>>         self.c.sessions[sess.sessionid] = sess
+>> +        sess.compound([op.reclaim_complete(FALSE)])
+>>         return sess
+>> 
+>>     def _cb_hook(self, prefix, opname, funct):
+>> -- 
+>> 1.8.5.2 (Apple Git-48)
+>> 
 
