@@ -1,107 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:39134 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752643AbaF3PwM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:12 -0400
-Received: by mail-qg0-f53.google.com with SMTP id i50so2178935qgf.12
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:12 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
+Received: from fieldses.org ([174.143.236.118]:52419 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751082AbaFEC3T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jun 2014 22:29:19 -0400
+Date: Wed, 4 Jun 2014 22:29:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Weston Andros Adamson <dros@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 070/114] nfsd: clean up and reorganize release_lockowner
-Date: Mon, 30 Jun 2014 11:49:39 -0400
-Message-Id: <1404143423-24381-71-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Subject: Re: [PATCH pynfs 02/17] 4.1 server: service RECLAIM_COMPLETE
+ operations
+Message-ID: <20140605022918.GB12044@fieldses.org>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+ <1401915726-29092-3-git-send-email-dros@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1401915726-29092-3-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Do more within the main loop, and simplify the function a bit. Also,
-there's no need to take a stateowner reference unless we're going to call
-release_lockowner.
+On Wed, Jun 04, 2014 at 05:01:50PM -0400, Weston Andros Adamson wrote:
+> Just return ok!
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 49 ++++++++++++++++++-------------------------------
- 1 file changed, 18 insertions(+), 31 deletions(-)
+Technically it should record whether or not the reclaim_complete has
+happened and return a GRACE error on any non-reclaim open performed
+before the reclaim_complete--but for your purposes you may not care...
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1bd7b2b0a4b1..4f82e502f53a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5359,8 +5359,8 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			struct nfsd4_release_lockowner *rlockowner)
- {
- 	clientid_t *clid = &rlockowner->rl_clientid;
--	struct nfs4_stateowner *sop = NULL, *tmp;
--	struct nfs4_lockowner *lo;
-+	struct nfs4_stateowner *sop;
-+	struct nfs4_lockowner *lo = NULL;
- 	struct nfs4_ol_stateid *stp;
- 	struct xdr_netobj *owner = &rlockowner->rl_owner;
- 	unsigned int hashval = ownerstr_hashval(owner);
-@@ -5377,45 +5377,32 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	if (status)
- 		goto out;
- 
--	status = nfserr_locks_held;
--
- 	clp = cstate->clp;
- 	/* Find the matching lock stateowner */
- 	spin_lock(&clp->cl_lock);
--	list_for_each_entry(tmp, &clp->cl_ownerstr_hashtbl[hashval],
-+	list_for_each_entry(sop, &clp->cl_ownerstr_hashtbl[hashval],
- 			    so_strhash) {
--		if (tmp->so_is_open_owner)
--			continue;
--		if (same_owner_str(tmp, owner)) {
--			sop = tmp;
--			atomic_inc(&sop->so_count);
--			break;
--		}
--	}
- 
--	/* No matching owner found, maybe a replay? Just declare victory... */
--	if (!sop) {
--		spin_unlock(&clp->cl_lock);
--		status = nfs_ok;
--		goto out;
--	}
-+		if (sop->so_is_open_owner || !same_owner_str(sop, owner))
-+			continue;
- 
--	lo = lockowner(sop);
--	/* see if there are still any locks associated with it */
--	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
--		if (check_for_locks(stp->st_stid.sc_file, lo)) {
--			spin_unlock(&clp->cl_lock);
--			goto out;
-+		/* see if there are still any locks associated with it */
-+		lo = lockowner(sop);
-+		list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
-+			if (check_for_locks(stp->st_stid.sc_file, lo)) {
-+				status = nfserr_locks_held;
-+				spin_unlock(&clp->cl_lock);
-+				goto out;
-+			}
- 		}
-+
-+		atomic_inc(&sop->so_count);
-+		break;
- 	}
- 	spin_unlock(&clp->cl_lock);
--
--	status = nfs_ok;
--	sop = NULL;
--	release_lockowner(lo);
-+	if (lo)
-+		release_lockowner(lo);
- out:
--	if (sop)
--		nfs4_put_stateowner(sop);
- 	nfs4_unlock_state();
- 	return status;
- }
--- 
-1.9.3
+--b.
 
+> 
+> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> ---
+>  nfs4.1/nfs4server.py | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+> index 65fb9af..3607dc0 100755
+> --- a/nfs4.1/nfs4server.py
+> +++ b/nfs4.1/nfs4server.py
+> @@ -1809,6 +1809,9 @@ class NFS4Server(rpc.Server):
+>          with find_state(env, arg.deleg_stateid, allow_0=False) as state:
+>              state.delegreturn()
+>          return encode_status(NFS4_OK)
+> +
+> +    def op_reclaim_complete(self, arg, env):
+> +        return encode_status(NFS4_OK)
+>      
+>      def op_getdevicelist(self, arg, env): # STUB
+>          check_session(env)
+> -- 
+> 1.8.5.2 (Apple Git-48)
+> 
