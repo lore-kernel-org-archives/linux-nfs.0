@@ -1,46 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([59.151.112.132]:26566 "EHLO
-	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751125AbaFEIOd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 04:14:33 -0400
-Message-ID: <539026DB.30502@cn.fujitsu.com>
-Date: Thu, 5 Jun 2014 16:14:19 +0800
-From: Ditang Chen <chendt.fnst@cn.fujitsu.com>
-MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH]statd: create statdpath dir if specify the "--with-statdpath=xx"
- parameter in configure nfs-utils source code
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:60117 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751915AbaFEREn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 13:04:43 -0400
+Received: by mail-ie0-f170.google.com with SMTP id to1so1168766ieb.15
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 10:04:41 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Use raw_write_seqcount_begin/end int nfs4_reclaim_open_state
+Date: Thu,  5 Jun 2014 13:04:39 -0400
+Message-Id: <1401987879-2927-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When configure the nfs-utils source code with "--with-statdpath=/foo" parameter，
-#define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
-but Makefile will not create "/foo" dir.
+The addition of lockdep code to write_seqcount_begin/end has lead to
+a bunch of false positive claims of ABBA deadlocks with the so_lock
+spinlock. Audits show that this simply cannot happen because the
+read side code does not spin while holding so_lock.
 
-Signed-off-by: chendt.fnst@cn.fujitsu.com
+Cc: <stable@vger.kernel.org> # 3.13.x
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- Makefile.am | 6 +++---
+ fs/nfs/nfs4state.c | 6 +++---
  1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/Makefile.am b/Makefile.am
-index ae7cd16..5c9ef44 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -54,10 +54,10 @@ install-data-hook:
- 	touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
- 	touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
- 	touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
--	mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
- 	touch $(DESTDIR)$(statedir)/state
--	chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
--	-chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
-+	mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
-+	chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
-+	-chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
- 
- uninstall-hook:
- 	rm $(DESTDIR)$(statedir)/xtab
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 2349518eef2c..21275148fc13 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1456,7 +1456,7 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
+ 	 * server that doesn't support a grace period.
+ 	 */
+ 	spin_lock(&sp->so_lock);
+-	write_seqcount_begin(&sp->so_reclaim_seqcount);
++	raw_write_seqcount_begin(&sp->so_reclaim_seqcount);
+ restart:
+ 	list_for_each_entry(state, &sp->so_states, open_states) {
+ 		if (!test_and_clear_bit(ops->state_flag_bit, &state->flags))
+@@ -1519,13 +1519,13 @@ restart:
+ 		spin_lock(&sp->so_lock);
+ 		goto restart;
+ 	}
+-	write_seqcount_end(&sp->so_reclaim_seqcount);
++	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
+ 	spin_unlock(&sp->so_lock);
+ 	return 0;
+ out_err:
+ 	nfs4_put_open_state(state);
+ 	spin_lock(&sp->so_lock);
+-	write_seqcount_end(&sp->so_reclaim_seqcount);
++	raw_write_seqcount_end(&sp->so_reclaim_seqcount);
+ 	spin_unlock(&sp->so_lock);
+ 	return status;
+ }
 -- 
-1.8.2.1
+1.9.3
+
