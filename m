@@ -1,104 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:60774 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751470AbaFZTOG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:06 -0400
-Received: by mail-qa0-f42.google.com with SMTP id dc16so3259361qab.29
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:05 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 014/117] nfsd: Allow struct nfsd4_compound_state to cache the nfs4_client
-Date: Thu, 26 Jun 2014 15:11:54 -0400
-Message-Id: <1403810017-16062-15-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ve0-f177.google.com ([209.85.128.177]:62377 "EHLO
+	mail-ve0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751326AbaFEQSK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 12:18:10 -0400
+Received: by mail-ve0-f177.google.com with SMTP id db11so1476410veb.22
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 09:18:10 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140605161222.GG8362@fieldses.org>
+References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
+	<1401455373-18207-9-git-send-email-jlayton@primarydata.com>
+	<20140605161222.GG8362@fieldses.org>
+Date: Thu, 5 Jun 2014 12:18:09 -0400
+Message-ID: <CAHQdGtTEZRjPKT4BGTTZXwhfYwNxZdY8g7HzDVOaVfkj=Aq6aA@mail.gmail.com>
+Subject: Re: [PATCH 8/9] NFSd: Protect addition to the file_hashtbl
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@primarydata.com>,
+        Benny Halevy <bhalevy@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, Jun 5, 2014 at 12:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, May 30, 2014 at 09:09:32AM -0400, Jeff Layton wrote:
+>> From: Trond Myklebust <trond.myklebust@primarydata.com>
+>>
+>> Ensure that we only can have a single struct nfs4_file per inode
+>> in the file_hashtbl and make addition atomic with respect to lookup.
+>>
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>>  fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++-----------
+>>  1 file changed, 35 insertions(+), 11 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index a500033a2f87..553c2d6d48dc 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -2519,6 +2519,8 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
+>>  {
+>>       unsigned int hashval = file_hashval(ino);
+>>
+>> +     lockdep_assert_held(&state_lock);
+>> +
+>
+> Oops, lockdep points out we overlooked a deadlock here: this function
+> also calls igrab(), which takes the i_lock, the reverse ordering from
+> what we take in the delegation-break case.
+>
+> Dropping this patch for now.
+>
 
-This will be used later to accelerate lookups of the clientid.
+This was the reason for the delegation recall locking changes which
+are also part of the series.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 20 +++++++++++++++++---
- fs/nfsd/xdr4.h      |  1 +
- 2 files changed, 18 insertions(+), 3 deletions(-)
+That said, why do we need igrab here as opposed to just ihold()?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 73517c02d38e..8fe76c83583e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -189,6 +189,15 @@ static void put_client_renew_locked(struct nfs4_client *clp)
- 		renew_client_locked(clp);
- }
- 
-+static void put_client_renew(struct nfs4_client *clp)
-+{
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	put_client_renew_locked(clp);
-+	spin_unlock(&nn->client_lock);
-+}
-+
- static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
- {
- 	__be32 status;
-@@ -2382,6 +2391,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 			goto out_put_session;
- 		cstate->slot = slot;
- 		cstate->session = session;
-+		cstate->clp = clp;
- 		/* Return the cached reply status and set cstate->status
- 		 * for nfsd4_proc_compound processing */
- 		status = nfsd4_replay_cache_entry(resp, seq);
-@@ -2416,6 +2426,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 
- 	cstate->slot = slot;
- 	cstate->session = session;
-+	cstate->clp = clp;
- 
- out:
- 	switch (clp->cl_cb_state) {
-@@ -2452,7 +2463,8 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
- 		}
- 		/* Drop session reference that was taken in nfsd4_sequence() */
- 		nfsd4_put_session(cs->session);
--	}
-+	} else if (cs->clp)
-+		put_client_renew(cs->clp);
- }
- 
- __be32
-@@ -5008,8 +5020,10 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*fun
- 	u64 count = 0;
- 
- 	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
--		list_for_each_entry_safe(stp, st_next, &oop->oo_owner.so_stateids, st_perstateowner) {
--			list_for_each_entry_safe(lop, lo_next, &stp->st_lockowners, lo_perstateid) {
-+		list_for_each_entry_safe(stp, st_next,
-+				&oop->oo_owner.so_stateids, st_perstateowner) {
-+			list_for_each_entry_safe(lop, lo_next,
-+					&stp->st_lockowners, lo_perstateid) {
- 				if (func)
- 					func(lop);
- 				if (++count == max)
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 7d8af164523b..312f6483a48e 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -55,6 +55,7 @@ struct nfsd4_compound_state {
- 	struct svc_fh		current_fh;
- 	struct svc_fh		save_fh;
- 	struct nfs4_stateowner	*replay_owner;
-+	struct nfs4_client	*clp;
- 	/* For sessions DRC */
- 	struct nfsd4_session	*session;
- 	struct nfsd4_slot	*slot;
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
