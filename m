@@ -1,59 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f179.google.com ([209.85.212.179]:65017 "EHLO
-	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752084AbaFAJKT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Jun 2014 05:10:19 -0400
-Received: by mail-wi0-f179.google.com with SMTP id bs8so3141232wib.6
-        for <linux-nfs@vger.kernel.org>; Sun, 01 Jun 2014 02:10:17 -0700 (PDT)
-Message-ID: <538AEDF6.8040301@gmail.com>
-Date: Sun, 01 Jun 2014 12:10:14 +0300
-From: Boaz Harrosh <openosd@gmail.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:55976 "EHLO
+	out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750719AbaFEEPc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 00:15:32 -0400
+Date: Wed, 4 Jun 2014 21:15:29 -0700
+From: Greg KH <greg@kroah.com>
+To: Rui Xiang <rui.xiang@huawei.com>,
+        Weng Meiling <wengmeiling.weng@huawei.com>,
+        Yijing Wang <wangyijing@huawei.com>, Jianguo Wu <wujianguo@huawei.com>
+Cc: stable@vger.kernel.org, Ben Hutchings <ben@decadent.org.uk>,
+        Li Zefan <lizefan@huawei.com>, bfields@fieldses.org,
+        skinsbursky@parallels.com, h.huangqiang@huawei.com,
         linux-nfs@vger.kernel.org
-CC: Boaz Harrosh <bharrosh@panasas.com>
-Subject: Re: [PATCH] pNFS: Handle allocation errors correctly in objlayout_alloc_layout_hdr()
-References: <1401409758-8035-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1401409758-8035-1-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=UTF-8
+Subject: pending 3.4.x backported patches.
+Message-ID: <20140605041529.GA4651@kroah.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5359B8F0.8030201@huawei.com>
+ <1398409948-10180-1-git-send-email-wangyijing@huawei.com>
+ <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+ <1398841733-10144-1-git-send-email-rui.xiang@huawei.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/30/2014 03:29 AM, Trond Myklebust wrote:
-> Return the NULL pointer when the allocation fails.
-> 
-> Cc: Boaz Harrosh <bharrosh@panasas.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/objlayout/objlayout.c | 8 ++++----
->  1 file changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-> index 2f955f671003..765d3f54e986 100644
-> --- a/fs/nfs/objlayout/objlayout.c
-> +++ b/fs/nfs/objlayout/objlayout.c
-> @@ -53,10 +53,10 @@ objlayout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
->  	struct objlayout *objlay;
->  
->  	objlay = kzalloc(sizeof(struct objlayout), gfp_flags);
-> -	if (objlay) {
-> -		spin_lock_init(&objlay->lock);
-> -		INIT_LIST_HEAD(&objlay->err_list);
-> -	}
-> +	if (!objlay)
-> +		return NULL;
-> +	spin_lock_init(&objlay->lock);
-> +	INIT_LIST_HEAD(&objlay->err_list);
->  	dprintk("%s: Return %p\n", __func__, objlay);
->  	return &objlay->pnfs_layout;
->  }
-> 
+Hi all,
 
-Thanks! ACK
+I've gotten through a lot of your 3.4 patches that you have backported,
+or told me how to backport, thank you very much.
 
-BTW it was not a bug. &NULL->pnfs_layout will return 0 because it is at offset 0.
-Which explains why it works.
+But, there are still more for me to do, and this kernel is big enough
+for me to want to release it as-is.  So I'm going to hold off on the
+rest of your pending patches for the next 3.4.x kernel release.
 
-Thanks again, good catch
-Boaz
+Don't worry, they aren't lost, and will get applied soon.
 
+thanks,
+
+greg k-h
