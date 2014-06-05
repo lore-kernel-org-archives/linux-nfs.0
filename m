@@ -1,38 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:36059 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753603AbaFKHYH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2014 03:24:07 -0400
-Date: Wed, 11 Jun 2014 00:24:02 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Philippe Troin <phil@fifi.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Subject: Re: Phantom ACL-related xattrs on 3.14.4 NFS client
-Message-ID: <20140611072402.GA2683@infradead.org>
-References: <1402082953.28220.7.camel@ceramic.home.fifi.org>
- <CAHQdGtS2BL9u4DV=FZ0HaXO-iTNPU4hTGVR--HubNa4A_6UNog@mail.gmail.com>
- <20140607140414.GA26534@infradead.org>
- <1402195701.12743.18.camel@ceramic.home.fifi.org>
- <1402435203.24047.9.camel@ceramic.home.fifi.org>
+Received: from mx1.redhat.com ([209.132.183.28]:59659 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751703AbaFEOP7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jun 2014 10:15:59 -0400
+Message-ID: <53907B9A.3090802@RedHat.com>
+Date: Thu, 05 Jun 2014 10:15:54 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1402435203.24047.9.camel@ceramic.home.fifi.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ditang Chen <chendt.fnst@cn.fujitsu.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH]statd: create statdpath dir if specify the "--with-statdpath=xx"
+ parameter in configure nfs-utils source code
+References: <539026DB.30502@cn.fujitsu.com> <CAHQdGtRzw-Aizqd1Q8Y9FAXZgp2jefn115F-ogcPA8VSuqA1Dw@mail.gmail.com>
+In-Reply-To: <CAHQdGtRzw-Aizqd1Q8Y9FAXZgp2jefn115F-ogcPA8VSuqA1Dw@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 10, 2014 at 02:20:03PM -0700, Philippe Troin wrote:
-> Trond, Christoph,
+Hey,
+
+On 06/05/2014 08:38 AM, Trond Myklebust wrote:
+> On Thu, Jun 5, 2014 at 4:14 AM, Ditang Chen <chendt.fnst@cn.fujitsu.com> wrote:
+>> When configure the nfs-utils source code with "--with-statdpath=/foo" parameter，
+>> #define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
+>> but Makefile will not create "/foo" dir.
+>>
+>> Signed-off-by: chendt.fnst@cn.fujitsu.com
+>> ---
+>>  Makefile.am | 6 +++---
+>>  1 file changed, 3 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/Makefile.am b/Makefile.am
+>> index ae7cd16..5c9ef44 100644
+>> --- a/Makefile.am
+>> +++ b/Makefile.am
+>> @@ -54,10 +54,10 @@ install-data-hook:
+>>         touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
+>>         touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
+>>         touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
+>> -       mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
+>>         touch $(DESTDIR)$(statedir)/state
+>> -       chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
+>> -       -chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
+>> +       mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
+>> +       chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
+>> +       -chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
+>>
 > 
-> Since my last email, I've been testing 3.14.6.
-> Stock 3.14.6 is still broken, and Christoph's patch does help, but does
-> not entirely cure the problem.
+> The file 'state' is owned by rpc.statd. Isn't it therefore also
+> subject to the --with-statdpath modifier?
+--with-statedir and --with-statdpath are basically the same thing.
+When --with-statdpath is not specified, its set to the --with-statedir
+value, that's why this these mkdir,chmod and chown were not needed.
+But I guess if you do want split out the statdpath from the statedir
+those mkdir,chmod and chown need to happen. 
 
-Can you send me the output of 
 
-getfattr -n system.posix_acl_access -e hex <file>
+> 
+> At one point, the Fedora RPM packager even used to put it in
+> /var/lib/nfs/statd (as the manpage says it should) although that seems
+> to be broken now.
+> 
+It still does... So does RHEL... We have being going that for years...
+How is that broken?
 
-for the working case, and the current kernel with my previous patch?
-
+steved. 
