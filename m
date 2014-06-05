@@ -1,170 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:37749 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758058AbaFSOwG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:06 -0400
-Received: by mail-qa0-f50.google.com with SMTP id m5so2018198qaj.23
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:06 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 047/104] nfsd: clean up lockowner refcounting when finding them
-Date: Thu, 19 Jun 2014 10:49:53 -0400
-Message-Id: <1403189450-18729-48-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:47880 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750840AbaFENS4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 09:18:56 -0400
+Received: by mail-ig0-f176.google.com with SMTP id a13so3187990igq.3
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 06:18:56 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH pynfs 02/17] 4.1 server: service RECLAIM_COMPLETE operations
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20140605130608.GB8362@fieldses.org>
+Date: Thu, 5 Jun 2014 09:18:54 -0400
+Cc: Trond Myklebust <trondmy@gmail.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <97724584-1F1E-48AE-84C9-DB56A911E7A5@primarydata.com>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com> <1401915726-29092-3-git-send-email-dros@primarydata.com> <20140605022918.GB12044@fieldses.org> <CAABAsM60taecJryiaryhnW8FbZGo5s0r4Oz=aRFXYCBPDQoBbA@mail.gmail.com> <50CFBC92-B124-4912-9D3D-16C81476C883@primarydata.com> <20140605130608.GB8362@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that when finding or creating a lockowner, that we get a
-reference to it. For now, we also take an extra reference when a
-lockowner is created that can be put when release_lockowner is called,
-but we'll remove that in a later patch once we change how references are
-held.
 
-Since we no longer destroy lockowners in the event of an error in
-nfsd4_lock, we must change how the seqid gets bumped in the lk_is_new
-case. Instead of doing so on creation, do it manually in nfsd4_lock.
+On Jun 5, 2014, at 9:06 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 38 insertions(+), 13 deletions(-)
+> On Thu, Jun 05, 2014 at 08:58:01AM -0400, Weston Andros Adamson wrote:
+>> Are you saying that the pynfs server supports state recovery? This has not
+>> been my experience. I’ll double check.
+> 
+> If you don't support state recovery, then I think the minimal correct
+> behavior would be to have no grace period at all: return NO_GRACE on
+> *every* reclaim operation and GRACE only on non-reclaims not preceded by
+> a global (one_fs == FALSE) RECLAIM_COMPLETE for that client.
+> 
+> All this does is catch misbehaving clients, and maybe that's not a
+> priority.  But it's easy enough to implement.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8152ad620e20..e40b8e92b65d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4608,6 +4608,7 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
- 			continue;
- 		if (!same_owner_str(so, owner, clid))
- 			continue;
-+		atomic_inc(&so->so_count);
- 		return lockowner(so);
- 	}
- 	return NULL;
-@@ -4644,9 +4645,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 		return NULL;
- 	INIT_LIST_HEAD(&lo->lo_owner.so_stateids);
- 	lo->lo_owner.so_is_open_owner = 0;
--	/* It is the openowner seqid that will be incremented in encode in the
--	 * case of new lockowners; so increment the lock seqid manually: */
--	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid + 1;
-+	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
- 	hash_lockowner(lo, strhashval, clp);
- 	lo->lo_owner.so_free = nfs4_free_lockowner;
- 	return lo;
-@@ -4741,8 +4740,13 @@ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- 	set_access(access, lock_stp);
- }
- 
--static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, struct nfs4_ol_stateid *ost, struct nfsd4_lock *lock, struct nfs4_ol_stateid **lst, bool *new)
-+static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
-+					  struct nfs4_ol_stateid *ost,
-+					  struct nfsd4_lock *lock,
-+					  struct nfs4_ol_stateid **lst,
-+					  bool *new)
- {
-+	__be32 status;
- 	struct nfs4_file *fi = ost->st_stid.sc_file;
- 	struct nfs4_openowner *oo = openowner(ost->st_stateowner);
- 	struct nfs4_client *cl = oo->oo_owner.so_client;
-@@ -4757,19 +4761,26 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
- 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
- 		if (lo == NULL)
- 			return nfserr_jukebox;
-+		/* FIXME: extra reference for new lockowners for the client */
-+		atomic_inc(&lo->lo_owner.so_count);
- 	} else {
- 		/* with an existing lockowner, seqids must be the same */
-+		status = nfserr_bad_seqid;
- 		if (!cstate->minorversion &&
- 		    lock->lk_new_lock_seqid != lo->lo_owner.so_seqid)
--			return nfserr_bad_seqid;
-+			goto out;
- 	}
- 
- 	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
- 	if (*lst == NULL) {
- 		release_lockowner_if_empty(lo);
--		return nfserr_jukebox;
-+		status = nfserr_jukebox;
-+		goto out;
- 	}
--	return nfs_ok;
-+	status = nfs_ok;
-+out:
-+	nfs4_put_stateowner(&lo->lo_owner);
-+	return status;
- }
- 
- /*
-@@ -4787,9 +4798,9 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct file_lock *file_lock = NULL;
- 	struct file_lock *conflock = NULL;
- 	__be32 status = 0;
--	bool new_state = false;
- 	int lkflg;
- 	int err;
-+	bool new = false;
- 	struct net *net = SVC_NET(rqstp);
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
-@@ -4832,7 +4843,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 						&lock->v.new.clientid))
- 			goto out;
- 		status = lookup_or_create_lock_state(cstate, open_stp, lock,
--							&lock_stp, &new_state);
-+							&lock_stp, &new);
- 	} else {
- 		status = nfs4_preprocess_seqid_op(cstate,
- 				       lock->lk_old_lock_seqid,
-@@ -4926,12 +4937,24 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- out:
- 	if (filp)
- 		fput(filp);
--	if (lock_stp)
-+	if (lock_stp) {
-+		/* Bump seqid manually if the 4.0 replay owner is openowner */
-+		if (cstate->replay_owner &&
-+		    cstate->replay_owner != &lock_sop->lo_owner &&
-+		    seqid_mutating_err(ntohl(status)))
-+			lock_sop->lo_owner.so_seqid++;
-+
-+		/*
-+		 * If this is a new, never-before-used stateid, and we are
-+		 * returning an error, then just go ahead and release it.
-+		 */
-+		if (status && new)
-+			release_lock_stateid(lock_stp);
-+
- 		put_generic_stateid(lock_stp);
-+	}
- 	if (open_stp)
- 		put_generic_stateid(open_stp);
--	if (status && new_state)
--		release_lockowner_if_empty(lock_sop);
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
- 	if (file_lock)
-@@ -4966,7 +4989,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    struct nfsd4_lockt *lockt)
- {
- 	struct file_lock *file_lock = NULL;
--	struct nfs4_lockowner *lo;
-+	struct nfs4_lockowner *lo = NULL;
- 	__be32 status;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
-@@ -5029,6 +5052,8 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		nfs4_set_lock_denied(file_lock, &lockt->lt_denied);
- 	}
- out:
-+	if (lo)
-+		nfs4_put_stateowner(&lo->lo_owner);
- 	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
--- 
-1.9.3
+Yeah, that sounds good.
+
+-dros
+
+> 
+> —b.
+> 
+>> -dros
+>> 
+>> 
+>> 
+>> On Jun 5, 2014, at 8:22 AM, Trond Myklebust <trondmy@gmail.com> wrote:
+>> 
+>>> On Wed, Jun 4, 2014 at 10:29 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>>> On Wed, Jun 04, 2014 at 05:01:50PM -0400, Weston Andros Adamson wrote:
+>>>>> Just return ok!
+>>>> 
+>>>> Technically it should record whether or not the reclaim_complete has
+>>>> happened and return a GRACE error on any non-reclaim open performed
+>>>> before the reclaim_complete--but for your purposes you may not care...
+>>>> 
+>>> 
+>>> ...and a NOGRACE error on any reclaim opens performed by that client
+>>> after the reclaim_complete?
+>>> 
+>>>> --b.
+>>>> 
+>>>>> 
+>>>>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>>>>> ---
+>>>>> nfs4.1/nfs4server.py | 3 +++
+>>>>> 1 file changed, 3 insertions(+)
+>>>>> 
+>>>>> diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+>>>>> index 65fb9af..3607dc0 100755
+>>>>> --- a/nfs4.1/nfs4server.py
+>>>>> +++ b/nfs4.1/nfs4server.py
+>>>>> @@ -1809,6 +1809,9 @@ class NFS4Server(rpc.Server):
+>>>>>        with find_state(env, arg.deleg_stateid, allow_0=False) as state:
+>>>>>            state.delegreturn()
+>>>>>        return encode_status(NFS4_OK)
+>>>>> +
+>>>>> +    def op_reclaim_complete(self, arg, env):
+>>>>> +        return encode_status(NFS4_OK)
+>>>>> 
+>>>>>    def op_getdevicelist(self, arg, env): # STUB
+>>>>>        check_session(env)
+>>>>> --
+>>>>> 1.8.5.2 (Apple Git-48)
+>>>>> 
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
 
