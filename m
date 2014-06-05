@@ -1,159 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:50712 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750849AbaFZTYQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:24:16 -0400
-Received: by mail-qc0-f175.google.com with SMTP id i8so3536146qcq.6
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:24:16 -0700 (PDT)
-Date: Thu, 26 Jun 2014 15:24:12 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 001/117] nfsd: fix file access refcount leak when
- nfsd4_truncate fails
-Message-ID: <20140626152412.7c27c03e@tlielax.poochiereds.net>
-In-Reply-To: <1403810017-16062-2-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-	<1403810017-16062-2-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:57483 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751380AbaFENzu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 09:55:50 -0400
+Received: by mail-ig0-f170.google.com with SMTP id h3so2925560igd.5
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 06:55:49 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs v2 01/16] dataserver: reclaim_complete after create_session
+Date: Thu,  5 Jun 2014 09:55:29 -0400
+Message-Id: <1401976544-36374-2-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401976544-36374-1-git-send-email-dros@primarydata.com>
+References: <1401976544-36374-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 26 Jun 2014 15:11:41 -0400
-Jeff Layton <jlayton@primarydata.com> wrote:
+Send RECLAIM_COMPLETE after CREATE_SESSION. This enables backend
+communication to v4.1 linux nfsd servers (i/o through MDS only).
 
-> From: Christoph Hellwig <hch@infradead.org>
-> 
-> nfsd4_process_open2 will currently will get access to the file, and then
-> call nfsd4_truncate to (possibly) truncate it. If that operation fails
-> though, then the access references will never be released as the
-> nfs4_ol_stateid is never initialized.
-> 
-> Fix by moving the nfsd4_truncate call into nfs4_get_vfs_file, ensuring
-> that the refcounts are properly put if the truncate fails.
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> Signed-off-by: Christoph Hellwig <hch@infradead.org>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ nfs4.1/dataserver.py | 1 +
+ 1 file changed, 1 insertion(+)
 
-Christoph, I took the liberty of composing a commit log and adding your
-SOB line here. Let me know if you have any objections.
-
-Thanks,
-Jeff
-
-> ---
->  fs/nfsd/nfs4state.c | 62
-> ++++++++++++++++++++++++++--------------------------- 1 file changed,
-> 30 insertions(+), 32 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 2204e1fe5725..f9049516bfae 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3042,6 +3042,21 @@ static inline int nfs4_access_to_access(u32
-> nfs4_access) return flags;
->  }
->  
-> +static inline __be32
-> +nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
-> +		struct nfsd4_open *open)
-> +{
-> +	struct iattr iattr = {
-> +		.ia_valid = ATTR_SIZE,
-> +		.ia_size = 0,
-> +	};
-> +	if (!open->op_truncate)
-> +		return 0;
-> +	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
-> +		return nfserr_inval;
-> +	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
-> +}
-> +
->  static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct
-> nfs4_file *fp, struct svc_fh *cur_fh, struct nfsd4_open *open)
->  {
-> @@ -3053,53 +3068,39 @@ static __be32 nfs4_get_vfs_file(struct
-> svc_rqst *rqstp, struct nfs4_file *fp, status = nfsd_open(rqstp,
-> cur_fh, S_IFREG, access, &fp->fi_fds[oflag]);
->  		if (status)
-> -			return status;
-> +			goto out;
->  	}
->  	nfs4_file_get_access(fp, oflag);
->  
-> +	status = nfsd4_truncate(rqstp, cur_fh, open);
-> +	if (status)
-> +		goto out_put_access;
-> +
->  	return nfs_ok;
-> -}
->  
-> -static inline __be32
-> -nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
-> -		struct nfsd4_open *open)
-> -{
-> -	struct iattr iattr = {
-> -		.ia_valid = ATTR_SIZE,
-> -		.ia_size = 0,
-> -	};
-> -	if (!open->op_truncate)
-> -		return 0;
-> -	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
-> -		return nfserr_inval;
-> -	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
-> +out_put_access:
-> +	nfs4_file_put_access(fp, oflag);
-> +out:
-> +	return status;
->  }
->  
->  static __be32
->  nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp,
-> struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open
-> *open) { u32 op_share_access = open->op_share_access;
-> -	bool new_access;
->  	__be32 status;
->  
-> -	new_access = !test_access(op_share_access, stp);
-> -	if (new_access) {
-> +	if (!test_access(op_share_access, stp))
->  		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open);
-> -		if (status)
-> -			return status;
-> -	}
-> -	status = nfsd4_truncate(rqstp, cur_fh, open);
-> -	if (status) {
-> -		if (new_access) {
-> -			int oflag =
-> nfs4_access_to_omode(op_share_access);
-> -			nfs4_file_put_access(fp, oflag);
-> -		}
-> +	else
-> +		status = nfsd4_truncate(rqstp, cur_fh, open);
-> +
-> +	if (status)
->  		return status;
-> -	}
-> +
->  	/* remember the open */
->  	set_access(op_share_access, stp);
->  	set_deny(open->op_share_deny, stp);
-> -
->  	return nfs_ok;
->  }
->  
-> @@ -3350,9 +3351,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp,
-> struct svc_fh *current_fh, struct nf status =
-> nfs4_get_vfs_file(rqstp, fp, current_fh, open); if (status)
->  			goto out;
-> -		status = nfsd4_truncate(rqstp, current_fh, open);
-> -		if (status)
-> -			goto out;
->  		stp = open->op_stp;
->  		open->op_stp = NULL;
->  		init_open_stateid(stp, fp, open);
-
-
+diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
+index 65e4f55..ade55e1 100644
+--- a/nfs4.1/dataserver.py
++++ b/nfs4.1/dataserver.py
+@@ -54,6 +54,7 @@ class DataServer(object):
+         # as wide as the client/MDS channel (at least for linux client)
+         fore_attrs = channel_attrs4(0, 16384, 16384, 2868, 8, 8, [])
+         self.sess = c.create_session(fore_attrs=fore_attrs)
++        sess.compound([op.reclaim_complete(FALSE)])
+         self.make_root()
+ 
+     def disconnect(self):
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+1.8.5.2 (Apple Git-48)
+
