@@ -1,79 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:34159 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755995AbaFQLo0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 07:44:26 -0400
-Received: by mail-qc0-f177.google.com with SMTP id r5so6138822qcx.36
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Jun 2014 04:44:25 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:34802 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751810AbaFEN4C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 09:56:02 -0400
+Received: by mail-ig0-f169.google.com with SMTP id a13so3131669igq.4
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 06:56:01 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 3/4] nfsd: nfsd_splice_read and nfsd_readv should return __be32
-Date: Tue, 17 Jun 2014 07:44:13 -0400
-Message-Id: <1403005454-7319-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
-References: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs v2 14/16] 4.1 server: get rid of old op_getdeviceinfo
+Date: Thu,  5 Jun 2014 09:55:42 -0400
+Message-Id: <1401976544-36374-15-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401976544-36374-1-git-send-email-dros@primarydata.com>
+References: <1401976544-36374-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The callers expect a __be32 return and the functions they call return
-__be32, so having these return int is just wrong. Also, nfsd_finish_read
-can be made static.
+This has been commented out for a while.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/vfs.c | 7 ++++---
- fs/nfsd/vfs.h | 4 ++--
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ nfs4.1/nfs4server.py | 21 ---------------------
+ 1 file changed, 21 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 140c496f612c..960f9e0bb88f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -820,7 +820,8 @@ static int nfsd_direct_splice_actor(struct pipe_inode_info *pipe,
- 	return __splice_from_pipe(pipe, sd, nfsd_splice_actor);
- }
+diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+index 3d2d4cf..7ca4d92 100755
+--- a/nfs4.1/nfs4server.py
++++ b/nfs4.1/nfs4server.py
+@@ -1867,27 +1867,6 @@ class NFS4Server(rpc.Server):
+                                   new_cookie >= len(list))
+         return encode_status(NFS4_OK, res)
  
--__be32 nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
-+static __be32
-+nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
- {
- 	if (host_err >= 0) {
- 		nfsdstats.io_read += host_err;
-@@ -831,7 +832,7 @@ __be32 nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
- 		return nfserrno(host_err);
- }
- 
--int nfsd_splice_read(struct svc_rqst *rqstp,
-+__be32 nfsd_splice_read(struct svc_rqst *rqstp,
- 		     struct file *file, loff_t offset, unsigned long *count)
- {
- 	struct splice_desc sd = {
-@@ -847,7 +848,7 @@ int nfsd_splice_read(struct svc_rqst *rqstp,
- 	return nfsd_finish_read(file, count, host_err);
- }
- 
--int nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
-+__be32 nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
- 		unsigned long *count)
- {
- 	mm_segment_t oldfs;
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 91b6ae3f658b..b84aef50f55d 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -74,9 +74,9 @@ struct raparms;
- __be32		nfsd_get_tmp_read_open(struct svc_rqst *, struct svc_fh *,
- 				struct file **, struct raparms **);
- void		nfsd_put_tmp_read_open(struct file *, struct raparms *);
--int		nfsd_splice_read(struct svc_rqst *,
-+__be32		nfsd_splice_read(struct svc_rqst *,
- 				struct file *, loff_t, unsigned long *);
--int		nfsd_readv(struct file *, loff_t, struct kvec *, int,
-+__be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
- 				unsigned long *);
- __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
- 				loff_t, struct kvec *, int, unsigned long *);
+-#     def op_getdeviceinfo(self, arg, env): # STUB
+-#         check_session(env)
+-#         # check_cfh(env)
+-#         # fs = env.cfh.fs
+-#         # STUB - only deals with block volumes
+-#         kind = arg.gdia_layout_type
+-#         if kind != LAYOUT4_BLOCK_VOLUME:
+-#             return encode_status(NFS4ERR_INVAL)
+-#         # STUB - want to pull this from fs, not block module
+-#         d = block.devices.get(arg.gdia_device_id, None)
+-#         if d is None:
+-#             return encode_status(NFS4ERR_INVAL)
+-#         address = device_addr4(LAYOUT4_BLOCK_VOLUME, d.get_addr())
+-#         # Check that we don't exceed count
+-#         p = nfs4lib.FancyNFS4Packer()
+-#         p.pack_device_addr4(address)
+-#         if len(p.get_buffer()) > arg.gdia_maxcount:
+-#             return encode_status(NFS4ERR_TOOSMALL, gdir_mincount = len(p.get_buffer()))
+-#         res = GETDEVICEINFO4resok(address, 0)
+-#         return encode_status(NFS4_OK, res)
+-
+     def op_getdeviceinfo(self, arg, env): # STUB
+         # STUB - ignoring notifications
+         check_session(env)
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
