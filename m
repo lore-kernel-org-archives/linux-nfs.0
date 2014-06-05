@@ -1,203 +1,244 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:36581 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751309AbaFZTVd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:33 -0400
-Received: by mail-qa0-f53.google.com with SMTP id j15so3153010qaq.26
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:32 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 085/117] nfsd: Protect session creation and client confirm using client_lock
-Date: Thu, 26 Jun 2014 15:20:53 -0400
-Message-Id: <1403810485-16497-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:44151 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751405AbaFETQj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 15:16:39 -0400
+Received: by mail-ig0-f171.google.com with SMTP id c1so7927855igq.4
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 12:16:39 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH v2 4/6] nfs: remove unused writeverf code
+Date: Thu,  5 Jun 2014 15:16:29 -0400
+Message-Id: <1401995791-40213-5-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401995791-40213-1-git-send-email-dros@primarydata.com>
+References: <1401995791-40213-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In particular, we want to ensure that the move_to_confirmed() is
-protected by the nn->client_lock spin lock, so that we can use that when
-looking up the clientid etc. instead of relying on the client_mutex.
+Remove duplicate writeverf structure from merge of nfs_pgio_header and
+nfs_pgio_data and remove writeverf related flags and logic to handle
+more than one RPC per nfs_pgio_header.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 65 ++++++++++++++++++++++++++++++++---------------------
- 1 file changed, 39 insertions(+), 26 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c |  2 +-
+ fs/nfs/direct.c                  | 25 ++++++++-----------------
+ fs/nfs/internal.h                |  1 +
+ fs/nfs/objlayout/objlayout.c     |  4 ++--
+ fs/nfs/pagelist.c                |  2 +-
+ fs/nfs/write.c                   | 27 +++++----------------------
+ include/linux/nfs_xdr.h          |  3 ---
+ 7 files changed, 18 insertions(+), 46 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f1a11b57d7e0..ba853aa0bfa0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -144,17 +144,6 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
- 	return nfs_ok;
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index c3ccfe4..04ac32b 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -445,7 +445,7 @@ static void bl_end_par_io_write(void *data, int num_se)
+ 	}
+ 
+ 	hdr->task.tk_status = hdr->pnfs_error;
+-	hdr->writeverf.committed = NFS_FILE_SYNC;
++	hdr->verf.committed = NFS_FILE_SYNC;
+ 	INIT_WORK(&hdr->task.u.tk_work, bl_write_cleanup);
+ 	schedule_work(&hdr->task.u.tk_work);
+ }
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index e4f7f82..2732f49 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -878,7 +878,7 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_direct_req *dreq = hdr->dreq;
+ 	struct nfs_commit_info cinfo;
+-	int bit = -1;
++	bool request_commit = false;
+ 	struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+ 
+ 	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
+@@ -892,27 +892,20 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 		dreq->flags = 0;
+ 		dreq->error = hdr->error;
+ 	}
+-	if (dreq->error != 0)
+-		bit = NFS_IOHDR_ERROR;
+-	else {
++	if (dreq->error == 0) {
+ 		dreq->count += hdr->good_bytes;
+-		if (test_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags)) {
+-			dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+-			bit = NFS_IOHDR_NEED_RESCHED;
+-		} else if (test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags)) {
++		if (nfs_write_need_commit(hdr)) {
+ 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+-				bit = NFS_IOHDR_NEED_RESCHED;
++				request_commit = true;
+ 			else if (dreq->flags == 0) {
+ 				nfs_direct_set_hdr_verf(dreq, hdr);
+-				bit = NFS_IOHDR_NEED_COMMIT;
++				request_commit = true;
+ 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+ 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+-				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr)) {
++				request_commit = true;
++				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr))
+ 					dreq->flags =
+ 						NFS_ODIRECT_RESCHED_WRITES;
+-					bit = NFS_IOHDR_NEED_RESCHED;
+-				} else
+-					bit = NFS_IOHDR_NEED_COMMIT;
+ 			}
+ 		}
+ 	}
+@@ -923,9 +916,7 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 
+ 		req = nfs_list_entry(hdr->pages.next);
+ 		nfs_list_remove_request(req);
+-		switch (bit) {
+-		case NFS_IOHDR_NEED_RESCHED:
+-		case NFS_IOHDR_NEED_COMMIT:
++		if (request_commit) {
+ 			kref_get(&req->wb_kref);
+ 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
+ 			do_destroy = false;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 8174227..f3b672b 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -443,6 +443,7 @@ int nfs_scan_commit(struct inode *inode, struct list_head *dst,
+ void nfs_mark_request_commit(struct nfs_page *req,
+ 			     struct pnfs_layout_segment *lseg,
+ 			     struct nfs_commit_info *cinfo);
++int nfs_write_need_commit(struct nfs_pgio_header *);
+ int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
+ 			    int how, struct nfs_commit_info *cinfo);
+ void nfs_retry_commit(struct list_head *page_list,
+diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
+index 8631278..697a16d 100644
+--- a/fs/nfs/objlayout/objlayout.c
++++ b/fs/nfs/objlayout/objlayout.c
+@@ -328,7 +328,7 @@ objlayout_write_done(struct objlayout_io_res *oir, ssize_t status, bool sync)
+ 	oir->status = hdr->task.tk_status = status;
+ 	if (status >= 0) {
+ 		hdr->res.count = status;
+-		hdr->writeverf.committed = oir->committed;
++		hdr->verf.committed = oir->committed;
+ 	} else {
+ 		hdr->pnfs_error = status;
+ 	}
+@@ -336,7 +336,7 @@ objlayout_write_done(struct objlayout_io_res *oir, ssize_t status, bool sync)
+ 	/* must not use oir after this point */
+ 
+ 	dprintk("%s: Return status %zd committed %d sync=%d\n", __func__,
+-		status, hdr->writeverf.committed, sync);
++		status, hdr->verf.committed, sync);
+ 
+ 	if (sync)
+ 		pnfs_ld_write_done(hdr);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 176adfd..6ff7797 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -545,7 +545,7 @@ static void nfs_pgio_rpcsetup(struct nfs_pgio_header *hdr,
+ 	hdr->res.fattr   = &hdr->fattr;
+ 	hdr->res.count   = count;
+ 	hdr->res.eof     = 0;
+-	hdr->res.verf    = &hdr->writeverf;
++	hdr->res.verf    = &hdr->verf;
+ 	nfs_fattr_init(&hdr->fattr);
  }
  
--static __be32 mark_client_expired(struct nfs4_client *clp)
--{
--	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
--	__be32 ret;
--
--	spin_lock(&nn->client_lock);
--	ret = mark_client_expired_locked(clp);
--	spin_unlock(&nn->client_lock);
--	return ret;
--}
--
- static __be32 get_client_locked(struct nfs4_client *clp)
- {
- 	if (is_client_expired(clp))
-@@ -1383,12 +1372,10 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
- 	new->se_cb_sec = cses->cb_sec;
- 	atomic_set(&new->se_ref, 0);
- 	idx = hash_sessionid(&new->se_sessionid);
--	spin_lock(&nn->client_lock);
- 	list_add(&new->se_hash, &nn->sessionid_hashtbl[idx]);
- 	spin_lock(&clp->cl_lock);
- 	list_add(&new->se_perclnt, &clp->cl_sessions);
- 	spin_unlock(&clp->cl_lock);
--	spin_unlock(&nn->client_lock);
- 
- 	if (cses->flags & SESSION4_BACK_CHAN) {
- 		struct sockaddr *sa = svc_addr(rqstp);
-@@ -2357,6 +2344,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- {
- 	struct sockaddr *sa = svc_addr(rqstp);
- 	struct nfs4_client *conf, *unconf;
-+	struct nfs4_client *old = NULL;
- 	struct nfsd4_session *new;
- 	struct nfsd4_conn *conn;
- 	struct nfsd4_clid_slot *cs_slot = NULL;
-@@ -2383,6 +2371,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		goto out_free_session;
- 
- 	nfs4_lock_state();
-+	spin_lock(&nn->client_lock);
- 	unconf = find_unconfirmed_client(&cr_ses->clientid, true, nn);
- 	conf = find_confirmed_client(&cr_ses->clientid, true, nn);
- 	WARN_ON_ONCE(conf && unconf);
-@@ -2401,7 +2390,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 			goto out_free_conn;
- 		}
- 	} else if (unconf) {
--		struct nfs4_client *old;
- 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
- 		    !rpc_cmp_addr(sa, (struct sockaddr *) &unconf->cl_addr)) {
- 			status = nfserr_clid_inuse;
-@@ -2419,10 +2407,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		}
- 		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
- 		if (old) {
--			status = mark_client_expired(old);
-+			status = mark_client_expired_locked(old);
- 			if (status)
- 				goto out_free_conn;
--			expire_client(old);
-+			unhash_client_locked(old);
- 		}
- 		move_to_confirmed(unconf);
- 		conf = unconf;
-@@ -2438,20 +2426,29 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 	cr_ses->flags &= ~SESSION4_RDMA;
- 
- 	init_session(rqstp, new, conf, cr_ses);
--	nfsd4_init_conn(rqstp, conn, new);
-+	nfsd4_get_session_locked(new);
- 
- 	memcpy(cr_ses->sessionid.data, new->se_sessionid.data,
- 	       NFS4_MAX_SESSIONID_LEN);
- 	cs_slot->sl_seqid++;
- 	cr_ses->seqid = cs_slot->sl_seqid;
- 
--	/* cache solo and embedded create sessions under the state lock */
-+	/* cache solo and embedded create sessions under the client_lock */
- 	nfsd4_cache_create_session(cr_ses, cs_slot, status);
-+	spin_unlock(&nn->client_lock);
-+	/* init connection and backchannel */
-+	nfsd4_init_conn(rqstp, conn, new);
-+	nfsd4_put_session(new);
- 	nfs4_unlock_state();
-+	if (old)
-+		expire_client(old);
- 	return status;
- out_free_conn:
-+	spin_unlock(&nn->client_lock);
- 	nfs4_unlock_state();
- 	free_conn(conn);
-+	if (old)
-+		expire_client(old);
- out_free_session:
- 	__free_session(new);
- out_release_drc_mem:
-@@ -2911,6 +2908,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 			 struct nfsd4_setclientid_confirm *setclientid_confirm)
- {
- 	struct nfs4_client *conf, *unconf;
-+	struct nfs4_client *old = NULL;
- 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
- 	clientid_t * clid = &setclientid_confirm->sc_clientid;
- 	__be32 status;
-@@ -2920,6 +2918,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 		return nfserr_stale_clientid;
- 	nfs4_lock_state();
- 
-+	spin_lock(&nn->client_lock);
- 	conf = find_confirmed_client(clid, false, nn);
- 	unconf = find_unconfirmed_client(clid, false, nn);
- 	/*
-@@ -2943,21 +2942,29 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0094994..1baca45 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -595,12 +595,11 @@ nfs_clear_request_commit(struct nfs_page *req)
  	}
- 	status = nfs_ok;
- 	if (conf) { /* case 1: callback update */
-+		old = unconf;
-+		unhash_client_locked(old);
- 		nfsd4_change_callback(conf, &unconf->cl_cb_conn);
--		nfsd4_probe_callback(conf);
--		expire_client(unconf);
- 	} else { /* case 3: normal case; new or rebooted client */
--		conf = find_confirmed_client_by_name(&unconf->cl_name, nn);
--		if (conf) {
--			status = mark_client_expired(conf);
-+		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
-+		if (old) {
-+			status = mark_client_expired_locked(old);
- 			if (status)
- 				goto out;
--			expire_client(conf);
-+			unhash_client_locked(old);
+ }
+ 
+-static inline
+ int nfs_write_need_commit(struct nfs_pgio_header *hdr)
+ {
+-	if (hdr->writeverf.committed == NFS_DATA_SYNC)
++	if (hdr->verf.committed == NFS_DATA_SYNC)
+ 		return hdr->lseg == NULL;
+-	return hdr->writeverf.committed != NFS_FILE_SYNC;
++	return hdr->verf.committed != NFS_FILE_SYNC;
+ }
+ 
+ #else
+@@ -626,7 +625,6 @@ nfs_clear_request_commit(struct nfs_page *req)
+ {
+ }
+ 
+-static inline
+ int nfs_write_need_commit(struct nfs_pgio_header *hdr)
+ {
+ 	return 0;
+@@ -654,11 +652,7 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
+ 			nfs_context_set_write_error(req->wb_context, hdr->error);
+ 			goto remove_req;
  		}
- 		move_to_confirmed(unconf);
--		nfsd4_probe_callback(unconf);
-+		conf = unconf;
+-		if (test_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags)) {
+-			nfs_mark_request_dirty(req);
+-			goto next;
+-		}
+-		if (test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags)) {
++		if (nfs_write_need_commit(hdr)) {
+ 			memcpy(&req->wb_verf, &hdr->verf.verifier, sizeof(req->wb_verf));
+ 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
+ 			goto next;
+@@ -668,7 +662,7 @@ remove_req:
+ next:
+ 		nfs_unlock_request(req);
+ 		nfs_end_page_writeback(req);
+-		do_destroy = !test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags);
++		do_destroy = !nfs_write_need_commit(hdr);
+ 		nfs_release_request(req);
  	}
-+	get_client_locked(conf);
-+	spin_unlock(&nn->client_lock);
-+	nfsd4_probe_callback(conf);
-+	spin_lock(&nn->client_lock);
-+	put_client_renew_locked(conf);
  out:
-+	spin_unlock(&nn->client_lock);
-+	if (old)
-+		expire_client(old);
- 	nfs4_unlock_state();
- 	return status;
- }
-@@ -5614,7 +5621,13 @@ nfs4_check_open_reclaim(clientid_t *clid,
+@@ -1086,18 +1080,7 @@ void nfs_commit_prepare(struct rpc_task *task, void *calldata)
  
- u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ static void nfs_writeback_release_common(struct nfs_pgio_header *hdr)
  {
--	if (mark_client_expired(clp))
-+	__be32 ret;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	ret = mark_client_expired_locked(clp);
-+	spin_unlock(&nn->client_lock);
-+	if (ret != nfs_ok)
- 		return 0;
- 	expire_client(clp);
- 	return 1;
+-	int status = hdr->task.tk_status;
+-
+-	if ((status >= 0) && nfs_write_need_commit(hdr)) {
+-		spin_lock(&hdr->lock);
+-		if (test_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags))
+-			; /* Do nothing */
+-		else if (!test_and_set_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags))
+-			memcpy(&hdr->verf, &hdr->writeverf, sizeof(hdr->verf));
+-		else if (memcmp(&hdr->verf, &hdr->writeverf, sizeof(hdr->verf)))
+-			set_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags);
+-		spin_unlock(&hdr->lock);
+-	}
++	/* do nothing! */
+ }
+ 
+ /*
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index efeaf76..e1b7b3b 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1253,8 +1253,6 @@ enum {
+ 	NFS_IOHDR_ERROR = 0,
+ 	NFS_IOHDR_EOF,
+ 	NFS_IOHDR_REDO,
+-	NFS_IOHDR_NEED_COMMIT,
+-	NFS_IOHDR_NEED_RESCHED,
+ };
+ 
+ struct nfs_pgio_header {
+@@ -1284,7 +1282,6 @@ struct nfs_pgio_header {
+ 	 */
+ 	struct rpc_task		task;
+ 	struct nfs_fattr	fattr;
+-	struct nfs_writeverf	writeverf;	/* Used for writes */
+ 	struct nfs_pgio_args	args;		/* argument struct */
+ 	struct nfs_pgio_res	res;		/* result struct */
+ 	unsigned long		timestamp;	/* For lease renewal */
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
