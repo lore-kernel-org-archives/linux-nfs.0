@@ -1,124 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34632 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752001AbaFKTqF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Jun 2014 15:46:05 -0400
-Date: Wed, 11 Jun 2014 15:46:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Using exp_get for export getting
-Message-ID: <20140611194603.GF19382@fieldses.org>
-References: <539710F4.6060806@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <539710F4.6060806@gmail.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:39299 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750926AbaFEM6D convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 08:58:03 -0400
+Received: by mail-ig0-f175.google.com with SMTP id uq10so7505219igb.2
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 05:58:03 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH pynfs 02/17] 4.1 server: service RECLAIM_COMPLETE operations
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <CAABAsM60taecJryiaryhnW8FbZGo5s0r4Oz=aRFXYCBPDQoBbA@mail.gmail.com>
+Date: Thu, 5 Jun 2014 08:58:01 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <50CFBC92-B124-4912-9D3D-16C81476C883@primarydata.com>
+References: <1401915726-29092-1-git-send-email-dros@primarydata.com> <1401915726-29092-3-git-send-email-dros@primarydata.com> <20140605022918.GB12044@fieldses.org> <CAABAsM60taecJryiaryhnW8FbZGo5s0r4Oz=aRFXYCBPDQoBbA@mail.gmail.com>
+To: Trond Myklebust <trondmy@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 10, 2014 at 10:06:44PM +0800, Kinglong Mee wrote:
-> Don't using cache_get besides export.h, using exp_get for export.
+Are you saying that the pynfs server supports state recovery? This has not
+been my experience. I’ll double check.
 
-I'm not even sure what difference it makes.
+-dros
 
-I guess it's a little cleaner.
 
-OK, applying this (and preceding three patches) for 3.17.  May be a
-little while before I get a 3.17 branch actually pushed out.
 
---b.
+On Jun 5, 2014, at 8:22 AM, Trond Myklebust <trondmy@gmail.com> wrote:
 
+> On Wed, Jun 4, 2014 at 10:29 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> On Wed, Jun 04, 2014 at 05:01:50PM -0400, Weston Andros Adamson wrote:
+>>> Just return ok!
+>> 
+>> Technically it should record whether or not the reclaim_complete has
+>> happened and return a GRACE error on any non-reclaim open performed
+>> before the reclaim_complete--but for your purposes you may not care...
+>> 
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/export.c   | 2 +-
->  fs/nfsd/export.h   | 3 ++-
->  fs/nfsd/nfs4proc.c | 6 +++---
->  fs/nfsd/nfsfh.c    | 3 +--
->  fs/nfsd/vfs.c      | 3 +--
->  5 files changed, 8 insertions(+), 9 deletions(-)
+> ...and a NOGRACE error on any reclaim opens performed by that client
+> after the reclaim_complete?
 > 
-> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> index ef2d9d6..72ffd7c 100644
-> --- a/fs/nfsd/export.c
-> +++ b/fs/nfsd/export.c
-> @@ -1253,7 +1253,7 @@ static int e_show(struct seq_file *m, void *p)
->  		return 0;
->  	}
->  
-> -	cache_get(&exp->h);
-> +	exp_get(exp);
->  	if (cache_check(cd, &exp->h, NULL))
->  		return 0;
->  	exp_put(exp);
-> diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-> index cfeea85..04dc8c1 100644
-> --- a/fs/nfsd/export.h
-> +++ b/fs/nfsd/export.h
-> @@ -101,9 +101,10 @@ static inline void exp_put(struct svc_export *exp)
->  	cache_put(&exp->h, exp->cd);
->  }
->  
-> -static inline void exp_get(struct svc_export *exp)
-> +static inline struct svc_export *exp_get(struct svc_export *exp)
->  {
->  	cache_get(&exp->h);
-> +	return exp;
->  }
->  struct svc_export * rqst_exp_find(struct svc_rqst *, int, u32 *);
->  
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index be67340..f3f0487 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -177,7 +177,7 @@ fh_dup2(struct svc_fh *dst, struct svc_fh *src)
->  	fh_put(dst);
->  	dget(src->fh_dentry);
->  	if (src->fh_export)
-> -		cache_get(&src->fh_export->h);
-> +		exp_get(src->fh_export);
->  	*dst = *src;
->  }
->  
-> @@ -918,8 +918,8 @@ nfsd4_secinfo_no_name(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstat
->  	default:
->  		return nfserr_inval;
->  	}
-> -	exp_get(cstate->current_fh.fh_export);
-> -	sin->sin_exp = cstate->current_fh.fh_export;
-> +
-> +	sin->sin_exp = exp_get(cstate->current_fh.fh_export);
->  	fh_put(&cstate->current_fh);
->  	return nfs_ok;
->  }
-> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> index ec83934..6f5cc76 100644
-> --- a/fs/nfsd/nfsfh.c
-> +++ b/fs/nfsd/nfsfh.c
-> @@ -539,8 +539,7 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
->  		       dentry);
->  
->  	fhp->fh_dentry = dget(dentry); /* our internal copy */
-> -	fhp->fh_export = exp;
-> -	cache_get(&exp->h);
-> +	fhp->fh_export = exp_get(exp);
->  
->  	if (fhp->fh_handle.fh_version == 0xca) {
->  		/* old style filehandle please */
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 7498099..df7cf61 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -189,8 +189,7 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  	dprintk("nfsd: nfsd_lookup(fh %s, %.*s)\n", SVCFH_fmt(fhp), len,name);
->  
->  	dparent = fhp->fh_dentry;
-> -	exp  = fhp->fh_export;
-> -	exp_get(exp);
-> +	exp = exp_get(fhp->fh_export);
->  
->  	/* Lookup the name, but don't follow links */
->  	if (isdotent(name, len)) {
-> -- 
-> 1.9.3
-> 
+>> --b.
+>> 
+>>> 
+>>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>>> ---
+>>> nfs4.1/nfs4server.py | 3 +++
+>>> 1 file changed, 3 insertions(+)
+>>> 
+>>> diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
+>>> index 65fb9af..3607dc0 100755
+>>> --- a/nfs4.1/nfs4server.py
+>>> +++ b/nfs4.1/nfs4server.py
+>>> @@ -1809,6 +1809,9 @@ class NFS4Server(rpc.Server):
+>>>         with find_state(env, arg.deleg_stateid, allow_0=False) as state:
+>>>             state.delegreturn()
+>>>         return encode_status(NFS4_OK)
+>>> +
+>>> +    def op_reclaim_complete(self, arg, env):
+>>> +        return encode_status(NFS4_OK)
+>>> 
+>>>     def op_getdevicelist(self, arg, env): # STUB
+>>>         check_session(env)
+>>> --
+>>> 1.8.5.2 (Apple Git-48)
+>>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
