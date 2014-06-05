@@ -1,160 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:59960 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758052AbaFSOwE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:04 -0400
-Received: by mail-qc0-f173.google.com with SMTP id l6so2220029qcy.4
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:03 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 045/104] NFSd: Add reference counting to state owners
-Date: Thu, 19 Jun 2014 10:49:51 -0400
-Message-Id: <1403189450-18729-46-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-vc0-f176.google.com ([209.85.220.176]:33723 "EHLO
+	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751480AbaFEOUt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 10:20:49 -0400
+Received: by mail-vc0-f176.google.com with SMTP id im17so1204455vcb.7
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 07:20:48 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <53907B9A.3090802@RedHat.com>
+References: <539026DB.30502@cn.fujitsu.com>
+	<CAHQdGtRzw-Aizqd1Q8Y9FAXZgp2jefn115F-ogcPA8VSuqA1Dw@mail.gmail.com>
+	<53907B9A.3090802@RedHat.com>
+Date: Thu, 5 Jun 2014 10:20:48 -0400
+Message-ID: <CAHQdGtSF0662w=p96qxYFqx1snM8RrAE1Qr8b02ajj6iU6Z3Kg@mail.gmail.com>
+Subject: Re: [PATCH]statd: create statdpath dir if specify the
+ "--with-statdpath=xx" parameter in configure nfs-utils source code
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Ditang Chen <chendt.fnst@cn.fujitsu.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, Jun 5, 2014 at 10:15 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> Hey,
+>
+> On 06/05/2014 08:38 AM, Trond Myklebust wrote:
+>> On Thu, Jun 5, 2014 at 4:14 AM, Ditang Chen <chendt.fnst@cn.fujitsu.com> wrote:
+>>> When configure the nfs-utils source code with "--with-statdpath=/foo" parameter，
+>>> #define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
+>>> but Makefile will not create "/foo" dir.
+>>>
+>>> Signed-off-by: chendt.fnst@cn.fujitsu.com
+>>> ---
+>>>  Makefile.am | 6 +++---
+>>>  1 file changed, 3 insertions(+), 3 deletions(-)
+>>>
+>>> diff --git a/Makefile.am b/Makefile.am
+>>> index ae7cd16..5c9ef44 100644
+>>> --- a/Makefile.am
+>>> +++ b/Makefile.am
+>>> @@ -54,10 +54,10 @@ install-data-hook:
+>>>         touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
+>>>         touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
+>>>         touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
+>>> -       mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
+>>>         touch $(DESTDIR)$(statedir)/state
+>>> -       chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
+>>> -       -chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
+>>> +       mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
+>>> +       chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
+>>> +       -chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
+>>>
+>>
+>> The file 'state' is owned by rpc.statd. Isn't it therefore also
+>> subject to the --with-statdpath modifier?
+> --with-statedir and --with-statdpath are basically the same thing.
+> When --with-statdpath is not specified, its set to the --with-statedir
+> value, that's why this these mkdir,chmod and chown were not needed.
+> But I guess if you do want split out the statdpath from the statedir
+> those mkdir,chmod and chown need to happen.
+>
+>
+>>
+>> At one point, the Fedora RPM packager even used to put it in
+>> /var/lib/nfs/statd (as the manpage says it should) although that seems
+>> to be broken now.
+>>
+> It still does... So does RHEL... We have being going that for years...
+> How is that broken?
+>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 42 ++++++++++++++++++++++++++++--------------
- fs/nfsd/state.h     |  3 +++
- 2 files changed, 31 insertions(+), 14 deletions(-)
+My nfs-utils rpms on Fedora seem to be creating /var/lib/nfs/state
+instead of putting it in the statd subdirectory.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4ddd7ec31d6c..c96a9b7071e1 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -71,6 +71,7 @@ static u64 current_sessionid = 1;
- /* forward declarations */
- static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
- static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
-+static void nfs4_put_stateowner(struct nfs4_stateowner *sop);
- 
- /* Locking: */
- 
-@@ -826,16 +827,10 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
- 	}
- }
- 
--static void nfs4_free_lockowner(struct nfs4_lockowner *lo)
--{
--	kfree(lo->lo_owner.so_owner.data);
--	kmem_cache_free(lockowner_slab, lo);
--}
--
- static void release_lockowner(struct nfs4_lockowner *lo)
- {
- 	unhash_lockowner(lo);
--	nfs4_free_lockowner(lo);
-+	nfs4_put_stateowner(&lo->lo_owner);
- }
- 
- static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
-@@ -905,18 +900,12 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
- 	}
- }
- 
--static void nfs4_free_openowner(struct nfs4_openowner *oo)
--{
--	kfree(oo->oo_owner.so_owner.data);
--	kmem_cache_free(openowner_slab, oo);
--}
--
- static void release_openowner(struct nfs4_openowner *oo)
- {
- 	unhash_openowner(oo);
- 	list_del(&oo->oo_close_lru);
- 	release_last_closed_stateid(oo);
--	nfs4_free_openowner(oo);
-+	nfs4_put_stateowner(&oo->oo_owner);
- }
- 
- static inline int
-@@ -2860,9 +2849,17 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
- 	INIT_LIST_HEAD(&sop->so_stateids);
- 	sop->so_client = clp;
- 	init_nfs4_replay(&sop->so_replay);
-+	atomic_set(&sop->so_count, 1);
- 	return sop;
- }
- 
-+static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
-+{
-+	if (!atomic_dec_and_test(&sop->so_count))
-+		return;
-+	sop->so_free(sop);
-+}
-+
- static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, unsigned int strhashval)
- {
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-@@ -2871,6 +2868,14 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
- 	list_add(&oo->oo_perclient, &clp->cl_openowners);
- }
- 
-+static void nfs4_free_openowner(struct nfs4_stateowner *so)
-+{
-+	struct nfs4_openowner *oo = openowner(so);
-+
-+	kfree(oo->oo_owner.so_owner.data);
-+	kmem_cache_free(openowner_slab, oo);
-+}
-+
- static struct nfs4_openowner *
- alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, struct nfsd4_open *open) {
- 	struct nfs4_openowner *oo;
-@@ -2878,6 +2883,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
- 	if (!oo)
- 		return NULL;
-+	oo->oo_owner.so_free = nfs4_free_openowner;
- 	oo->oo_owner.so_is_open_owner = 1;
- 	oo->oo_owner.so_seqid = open->op_seqid;
- 	oo->oo_flags = NFS4_OO_NEW;
-@@ -4590,6 +4596,13 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
- 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
- }
- 
-+static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
-+{
-+	struct nfs4_lockowner *lo = lockowner(sop);
-+	kfree(lo->lo_owner.so_owner.data);
-+	kmem_cache_free(lockowner_slab, lo);
-+}
-+
- /*
-  * Alloc a lock owner structure.
-  * Called in nfsd4_lock - therefore, OPEN and OPEN_CONFIRM (if needed) has 
-@@ -4611,6 +4624,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	 * case of new lockowners; so increment the lock seqid manually: */
- 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid + 1;
- 	hash_lockowner(lo, strhashval, clp);
-+	lo->lo_owner.so_free = nfs4_free_lockowner;
- 	return lo;
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index f5dee9e8550a..ebd3d302a572 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -340,10 +340,13 @@ struct nfs4_stateowner {
- 	struct nfs4_client *    so_client;
- 	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
- 	 * sequence id expected from the client: */
-+	atomic_t		so_count;
- 	u32                     so_seqid;
- 	struct xdr_netobj       so_owner;     /* open owner name */
- 	struct nfs4_replay	so_replay;
- 	bool			so_is_open_owner;
-+
-+	void (*so_free)(struct nfs4_stateowner *);
- };
- 
- struct nfs4_openowner {
+
+
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
