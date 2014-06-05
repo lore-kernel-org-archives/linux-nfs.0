@@ -1,191 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:58827 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751432AbaFZTOH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:07 -0400
-Received: by mail-qc0-f181.google.com with SMTP id x13so3523495qcv.26
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:07 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 015/117] nfsd: lock owners are not per open stateid
-Date: Thu, 26 Jun 2014 15:11:55 -0400
-Message-Id: <1403810017-16062-16-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:63520 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750907AbaFEQ1X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 12:27:23 -0400
+Received: by mail-qa0-f52.google.com with SMTP id cm18so1665910qab.39
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 09:27:22 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 5 Jun 2014 12:27:19 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Benny Halevy <bhalevy@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 8/9] NFSd: Protect addition to the file_hashtbl
+Message-ID: <20140605122719.5ed5b380@tlielax.poochiereds.net>
+In-Reply-To: <CAHQdGtTEZRjPKT4BGTTZXwhfYwNxZdY8g7HzDVOaVfkj=Aq6aA@mail.gmail.com>
+References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
+	<1401455373-18207-9-git-send-email-jlayton@primarydata.com>
+	<20140605161222.GG8362@fieldses.org>
+	<CAHQdGtTEZRjPKT4BGTTZXwhfYwNxZdY8g7HzDVOaVfkj=Aq6aA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, 5 Jun 2014 12:18:09 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-In the NFSv4 spec, lock stateids are per-file objects. Lockowners are not.
-This patch replaces the current list of lock owners in the open stateids
-with a list of lock stateids.
+> On Thu, Jun 5, 2014 at 12:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Fri, May 30, 2014 at 09:09:32AM -0400, Jeff Layton wrote:
+> >> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> >>
+> >> Ensure that we only can have a single struct nfs4_file per inode
+> >> in the file_hashtbl and make addition atomic with respect to lookup.
+> >>
+> >> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> >> ---
+> >>  fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++-----------
+> >>  1 file changed, 35 insertions(+), 11 deletions(-)
+> >>
+> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> >> index a500033a2f87..553c2d6d48dc 100644
+> >> --- a/fs/nfsd/nfs4state.c
+> >> +++ b/fs/nfsd/nfs4state.c
+> >> @@ -2519,6 +2519,8 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
+> >>  {
+> >>       unsigned int hashval = file_hashval(ino);
+> >>
+> >> +     lockdep_assert_held(&state_lock);
+> >> +
+> >
+> > Oops, lockdep points out we overlooked a deadlock here: this function
+> > also calls igrab(), which takes the i_lock, the reverse ordering from
+> > what we take in the delegation-break case.
+> >
+> > Dropping this patch for now.
+> >
+> 
+> This was the reason for the delegation recall locking changes which
+> are also part of the series.
+> 
+> That said, why do we need igrab here as opposed to just ihold()?
+> 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 51 +++++++++++++++++++++++++++++++++------------------
- fs/nfsd/state.h     |  3 +--
- 2 files changed, 34 insertions(+), 20 deletions(-)
+Yeah, that would be a lot simpler. We certainly already have a
+reference by virtue of the dentry in the filehandle so ihold is
+reasonable. I'll change it to use that.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8fe76c83583e..2d7887a752db 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -728,10 +728,11 @@ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
- 
--static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct file *file;
- 
-+	list_del(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
- 	file = find_any_file(stp->st_file);
-@@ -746,12 +747,11 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
- 	struct nfs4_ol_stateid *stp;
- 
- 	list_del(&lo->lo_owner.so_strhash);
--	list_del(&lo->lo_perstateid);
- 	list_del(&lo->lo_owner_ino_hash);
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		release_lock_stateid(stp);
-+		__release_lock_stateid(stp);
- 	}
- }
- 
-@@ -767,22 +767,36 @@ static void release_lockowner(struct nfs4_lockowner *lo)
- 	nfs4_free_lockowner(lo);
- }
- 
--static void
--release_stateid_lockowners(struct nfs4_ol_stateid *open_stp)
-+static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
-+{
-+	if (list_empty(&lo->lo_owner.so_stateids))
-+		release_lockowner(lo);
-+}
-+
-+static void release_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_lockowner *lo;
- 
--	while (!list_empty(&open_stp->st_lockowners)) {
--		lo = list_entry(open_stp->st_lockowners.next,
--				struct nfs4_lockowner, lo_perstateid);
--		release_lockowner(lo);
-+	lo = lockowner(stp->st_stateowner);
-+	__release_lock_stateid(stp);
-+	release_lockowner_if_empty(lo);
-+}
-+
-+static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
-+{
-+	struct nfs4_ol_stateid *stp;
-+
-+	while (!list_empty(&open_stp->st_locks)) {
-+		stp = list_entry(open_stp->st_locks.next,
-+				struct nfs4_ol_stateid, st_locks);
-+		release_lock_stateid(stp);
- 	}
- }
- 
- static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
- {
- 	unhash_generic_stateid(stp);
--	release_stateid_lockowners(stp);
-+	release_open_stateid_locks(stp);
- 	close_generic_stateid(stp);
- }
- 
-@@ -2780,7 +2794,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	struct nfs4_openowner *oo = open->op_openowner;
- 
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
--	INIT_LIST_HEAD(&stp->st_lockowners);
-+	INIT_LIST_HEAD(&stp->st_locks);
- 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	stp->st_stateowner = &oo->oo_owner;
-@@ -4380,7 +4394,6 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
- 
- 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
- 	list_add(&lo->lo_owner_ino_hash, &nn->lockowner_ino_hashtbl[inohash]);
--	list_add(&lo->lo_perstateid, &open_stp->st_lockowners);
- }
- 
- /*
-@@ -4425,6 +4438,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
-+	list_add(&stp->st_locks, &open_stp->st_locks);
- 	return stp;
- }
- 
-@@ -5012,20 +5026,21 @@ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
- 	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
- }
- 
--static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_lockowner *))
-+static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
-+				    void (*func)(struct nfs4_ol_stateid *))
- {
- 	struct nfs4_openowner *oop;
--	struct nfs4_lockowner *lop, *lo_next;
- 	struct nfs4_ol_stateid *stp, *st_next;
-+	struct nfs4_ol_stateid *lst, *lst_next;
- 	u64 count = 0;
- 
- 	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
- 		list_for_each_entry_safe(stp, st_next,
- 				&oop->oo_owner.so_stateids, st_perstateowner) {
--			list_for_each_entry_safe(lop, lo_next,
--					&stp->st_lockowners, lo_perstateid) {
-+			list_for_each_entry_safe(lst, lst_next,
-+					&stp->st_locks, st_locks) {
- 				if (func)
--					func(lop);
-+					func(lst);
- 				if (++count == max)
- 					return count;
- 			}
-@@ -5037,7 +5052,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*fun
- 
- u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
- {
--	return nfsd_foreach_client_lock(clp, max, release_lockowner);
-+	return nfsd_foreach_client_lock(clp, max, release_lock_stateid);
- }
- 
- u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 3475a9eb11c7..1bfc2482ba24 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -363,7 +363,6 @@ struct nfs4_openowner {
- struct nfs4_lockowner {
- 	struct nfs4_stateowner	lo_owner; /* must be first element */
- 	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
--	struct list_head        lo_perstateid;
- 	struct list_head	lo_list; /* for temporary uses */
- };
- 
-@@ -432,7 +431,7 @@ struct nfs4_ol_stateid {
- 	struct nfs4_stid    st_stid; /* must be first field */
- 	struct list_head              st_perfile;
- 	struct list_head              st_perstateowner;
--	struct list_head              st_lockowners;
-+	struct list_head              st_locks;
- 	struct nfs4_stateowner      * st_stateowner;
- 	struct nfs4_file            * st_file;
- 	unsigned long                 st_access_bmap;
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
