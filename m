@@ -1,200 +1,436 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:40380 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751831AbaFZTPX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:23 -0400
-Received: by mail-qg0-f51.google.com with SMTP id z60so3445107qgd.38
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:23 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:51733 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751677AbaFENz6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 09:55:58 -0400
+Received: by mail-ie0-f179.google.com with SMTP id rd18so914138iec.10
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 06:55:58 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 072/117] nfsd: Protect adding/removing lock owners using client_lock
-Date: Thu, 26 Jun 2014 15:12:52 -0400
-Message-Id: <1403810017-16062-73-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH pynfs v2 10/16] 4.1 server: move nfs4_ops.py to nfs_ops.py
+Date: Thu,  5 Jun 2014 09:55:38 -0400
+Message-Id: <1401976544-36374-11-git-send-email-dros@primarydata.com>
+In-Reply-To: <1401976544-36374-1-git-send-email-dros@primarydata.com>
+References: <1401976544-36374-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Also replace ugly exec & inspect code to just define a class with
+a __getattr__ switch.
 
-Once we remove client mutex protection, we'll need to ensure that
-stateowner lookup and creation are atomic between concurrent compounds.
-Ensure that alloc_init_lock_stateowner checks the hashtable under the
-client_lock before adding a new element.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 69 ++++++++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 61 insertions(+), 8 deletions(-)
+ nfs4.1/dataserver.py | 32 ++++++++++---------
+ nfs4.1/fs.py         |  2 --
+ nfs4.1/nfs4_ops.py   | 61 -----------------------------------
+ nfs4.1/nfs4client.py | 14 +++++----
+ nfs4.1/nfs4lib.py    |  8 +++--
+ nfs4.1/nfs4state.py  |  8 +++--
+ nfs4.1/nfs_ops.py    | 89 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 124 insertions(+), 90 deletions(-)
+ delete mode 100644 nfs4.1/nfs4_ops.py
+ create mode 100644 nfs4.1/nfs_ops.py
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4285bc405736..54aa5fbcb927 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -949,26 +949,42 @@ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
- 	put_generic_stateid(stp);
- }
+diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
+index f9e9740..d092cf7 100644
+--- a/nfs4.1/dataserver.py
++++ b/nfs4.1/dataserver.py
+@@ -8,11 +8,13 @@ import logging
+ import nfs4client
+ import hashlib
+ import sys
+-import nfs4_ops as op
++import nfs_ops
+ import socket
  
--static void unhash_lockowner(struct nfs4_lockowner *lo)
-+static void unhash_lockowner_locked(struct nfs4_lockowner *lo)
- {
-+	struct nfsd_net *nn = net_generic(lo->lo_owner.so_client->net,
-+						nfsd_net_id);
+ log = logging.getLogger("Dataserver Manager")
+ 
++op4 = nfs_ops.NFS4ops()
 +
-+	lockdep_assert_held(&nn->client_lock);
+ class DataServer41(object):
+     def __init__(self, server, port, path, flavor=rpc.AUTH_SYS, active=True, mdsds=True, multipath_servers=None, summary=None):
+         self.mdsds = mdsds
+@@ -122,12 +124,12 @@ class DataServer41(object):
+                                exceptions=[const4.NFS4ERR_NOENT])
+             if res.status == const4.NFS4ERR_NOENT:
+                 cr_ops = nfs4lib.use_obj(existing_path[:-1]) + \
+-                    [op.create(kind, comp, attrs)]
++                    [op4.create(kind, comp, attrs)]
+                 self._execute(cr_ops)
+-        res = self._execute(nfs4lib.use_obj(self.path) + [op.getfh()])
++        res = self._execute(nfs4lib.use_obj(self.path) + [op4.getfh()])
+         self.path_fh = res.resarray[-1].object
+         need = const4.ACCESS4_READ | const4.ACCESS4_LOOKUP | const4.ACCESS4_MODIFY | const4.ACCESS4_EXTEND
+-        res = self._execute(nfs4lib.use_obj(self.path_fh) + [op.access(need)])
++        res = self._execute(nfs4lib.use_obj(self.path_fh) + [op4.access(need)])
+         if res.resarray[-1].access != need:
+             raise RuntimeError
+         # XXX clean DS directory
+@@ -144,10 +146,10 @@ class DataServer41(object):
+         while True:
+             if mds_fh in self.filehandles:
+                 return
+-            open_op = op.open(seqid, access, deny,
++            open_op = op4.open(seqid, access, deny,
+                               type4.open_owner4(self.sess.client.clientid, owner),
+                               openflag, type4.open_claim4(const4.CLAIM_NULL, name))
+-            res = self._execute(nfs4lib.use_obj(self.path_fh) + [open_op, op.getfh()], exceptions=[const4.NFS4ERR_EXIST])
++            res = self._execute(nfs4lib.use_obj(self.path_fh) + [open_op, op4.getfh()], exceptions=[const4.NFS4ERR_EXIST])
+             if res.status == const4.NFS4_OK:
+                  ds_fh = res.resarray[-1].opgetfh.resok4.object
+                  ds_openstateid = type4.stateid4(0, res.resarray[-2].stateid.other)
+@@ -162,33 +164,33 @@ class DataServer41(object):
+         """close the given file"""
+         seqid=0 #FIXME: seqid must be !=0
+         fh, stateid = self.filehandles[mds_fh]
+-        ops = [op.putfh(fh)] + [op.close(seqid, stateid)]
++        ops = [op4.putfh(fh)] + [op4.close(seqid, stateid)]
+         res = self._execute(ops)
+         # ignoring return
+         del self.filehandles[mds_fh]
+ 
+     def read(self, fh, pos, count):
+-        ops = [op.putfh(fh),
+-               op.read(nfs4lib.state00, pos, count)]
++        ops = [op4.putfh(fh),
++               op4.read(nfs4lib.state00, pos, count)]
+         # There are all sorts of error handling issues here
+         res = self._execute(ops)
+         data = res.resarray[-1].data
+         return data
+ 
+     def write(self, fh, pos, data):
+-        ops = [op.putfh(fh),
+-               op.write(nfs4lib.state00, pos, const4.FILE_SYNC4, data)]
++        ops = [op4.putfh(fh),
++               op4.write(nfs4lib.state00, pos, const4.FILE_SYNC4, data)]
+         # There are all sorts of error handling issues here
+         res = self._execute(ops)
+ 
+     def truncate(self, fh, size):
+-        ops = [op.putfh(fh),
+-               op.setattr(nfs4lib.state00, {const4.FATTR4_SIZE: size})]
++        ops = [op4.putfh(fh),
++               op4.setattr(nfs4lib.state00, {const4.FATTR4_SIZE: size})]
+         res = self._execute(ops)
+ 
+     def get_size(self, fh):
+-        ops = [op.putfh(fh),
+-               op.getattr(1L << const4.FATTR4_SIZE)]
++        ops = [op4.putfh(fh),
++               op4.getattr(1L << const4.FATTR4_SIZE)]
+         res = self._execute(ops)
+         attrdict = res.resarray[-1].obj_attributes
+         return attrdict.get(const4.FATTR4_SIZE, 0)
+diff --git a/nfs4.1/fs.py b/nfs4.1/fs.py
+index 8fc49ef..8947014 100644
+--- a/nfs4.1/fs.py
++++ b/nfs4.1/fs.py
+@@ -1557,8 +1557,6 @@ class FileLayoutFile(object): # XXX This should inherit from fs_base.py
+         vol = FilelayoutVolWrapper(self._obj, device.list[index])
+         return vol, v_pos, remaining
+ 
+-import nfs4_ops as op
+-
+ class FilelayoutVolWrapper(object):
+     def __init__(self, obj, dataserver):
+         self._obj = obj
+diff --git a/nfs4.1/nfs4_ops.py b/nfs4.1/nfs4_ops.py
+deleted file mode 100644
+index 35a10ca..0000000
+--- a/nfs4.1/nfs4_ops.py
++++ /dev/null
+@@ -1,61 +0,0 @@
+-"""For each OP_<NAME> in nfs_argop4 and nfs_cb_argop4, create a function
+-<name>() that returns the appropriate *_argop4 structure, hiding
+-this routine packing from the user.
+-"""
+-import xdrdef.nfs4_type as _type
+-import xdrdef.nfs4_const as _const
+-
+-# This string is our general function template
+-code = """\
+-def %(funct_name)s(%(funct_args)s):
+-    %(create_args)s
+-    return _type.%(argop)s(_const.OP_%(enum_name)s, %(set_args)s)
+-"""
+-
+-def _mappings():
+-    return _pull_argops(_const.nfs_opnum4) + _pull_argops(_const.nfs_cb_opnum4)
+-
+-def _pull_argops(op_dict):
+-    """ For each entry in op_dict, create an appropriate dictionary that can
+-        be used to fill the 'code' template.
+-    """
+-    import inspect
+-    out = []
+-    keys = op_dict.keys()
+-    keys.sort() # Not necessary, but makes scanning the printout easier
+-    for k in keys:
+-        # Create a dictionary that will be used to fill the 'code' template
+-        d = {}
+-        d["enum_name"] = enum_name = op_dict[k][3:] # <NAME>
+-        d["funct_name"] = "%s" % enum_name.lower() # <name>
+-        class_name = "%s4args" % enum_name
+-        klass = getattr(_type, class_name, None)
+-        if klass is None:
+-            # This operation takes no arguments
+-            d["funct_args"] = d["create_args"] = d["set_args"] = ""
+-        else:
+-            if type(klass) is dict:
+-                arg_list = "enum_value"
+-                d["create_args"] = "args = enum_value"
+-            else:
+-                arg_list = ", ".join(inspect.getargspec(klass.__init__)[0][1:])
+-                d["create_args"] = "args = _type.%s(%s)" % (class_name, arg_list)
+-            d["funct_args"] = arg_list
+-            if enum_name.startswith("CB_"):
+-                d["set_args"] = "opcb%s=args" % enum_name.lower()[3:]
+-            else:
+-                d["set_args"] = "op%s=args" % enum_name.lower()
+-        if enum_name.startswith("CB_"):
+-            d["argop"] = "nfs_cb_argop4"
+-        else:
+-            d["argop"] = "nfs_argop4"
+-        out.append(d)
+-    return out
+-
+-if __name__ == "__main__":
+-    for _d in _mappings():
+-        print code % _d
+-else:
+-    for _d in _mappings():
+-        exec code % _d
+-    
+diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
+index 4ae884a..6912565 100644
+--- a/nfs4.1/nfs4client.py
++++ b/nfs4.1/nfs4client.py
+@@ -5,7 +5,7 @@ from nfs4lib import NFS4Error, NFS4Replay, inc_u32
+ from xdrdef.nfs4_type import *
+ from xdrdef.nfs4_const import *
+ from xdrdef.sctrl_pack import SCTRLPacker, SCTRLUnpacker
+-import nfs4_ops as op
++import nfs_ops
+ import time, struct
+ import threading
+ import hmac
+@@ -20,6 +20,8 @@ logging.basicConfig(level=logging.INFO,
+                     format="%(levelname)-7s:%(name)s:%(message)s")
+ log_cb = logging.getLogger("nfs.client.cb")
+ 
++op4 = nfs_ops.NFS4ops()
 +
- 	list_del_init(&lo->lo_owner.so_strhash);
- }
+ class NFS4Client(rpc.Client, rpc.Server):
+     def __init__(self, host='localhost', port=2049, minorversion=1, ctrl_proc=16, summary=None):
+         rpc.Client.__init__(self, 100003, 4)
+@@ -275,7 +277,7 @@ class NFS4Client(rpc.Client, rpc.Server):
+         owner = client_owner4(verf, name)
+         if protect is None:
+             protect = state_protect4_a(SP4_NONE)
+-        res = self.compound([op.exchange_id(owner, flags, protect,
++        res = self.compound([op4.exchange_id(owner, flags, protect,
+                                             [self.impl_id])],
+                             cred)
+         nfs4lib.check(res, expect)
+@@ -287,7 +289,7 @@ class NFS4Client(rpc.Client, rpc.Server):
+     def new_client_session(self, name, flags=0, sec=None):
+         c = self.new_client(name, flags=flags)
+         s = c.create_session(sec=sec)
+-        s.compound([op.reclaim_complete(FALSE)])
++        s.compound([op4.reclaim_complete(FALSE)])
+         return s
  
- static void release_lockowner_stateids(struct nfs4_lockowner *lo)
- {
-+	struct nfsd_net *nn = net_generic(lo->lo_owner.so_client->net,
-+						nfsd_net_id);
- 	struct nfs4_ol_stateid *stp;
+ class ClientStateProtection(object):
+@@ -339,7 +341,7 @@ class ClientRecord(object):
+         if prog is None:
+             prog = self.c.prog
+         for item in xrange(max_retries):
+-            res = self.c.compound([op.create_session(self.clientid, self.seqid,
++            res = self.c.compound([op4.create_session(self.clientid, self.seqid,
+                                                  flags,
+                                                  fore_attrs, back_attrs,
+                                                  prog, sec)],
+@@ -429,7 +431,7 @@ class SessionRecord(object):
+             raise RuntimeError
+             slot = self.fore_channel.slots[slot]
+         # STUB, need to properly set highest
+-        return op.sequence(self.sessionid, slot.get_seqid(seq_delta),
++        return op4.sequence(self.sessionid, slot.get_seqid(seq_delta),
+                            slot.id, slot.id, cache_this)
  
-+	lockdep_assert_held(&nn->client_lock);
+     def set_ssv(self, ssv=None, *args, **kwargs):
+@@ -442,7 +444,7 @@ class SessionRecord(object):
+         p = nfs4lib.FancyNFS4Packer()
+         p.pack_SEQUENCE4args(seq_op.opsequence)
+         digest =  protect.context.hmac(p.get_buffer(), SSV4_SUBKEY_MIC_I2T)
+-        ssv_op = op.set_ssv(ssv, digest)
++        ssv_op = op4.set_ssv(ssv, digest)
+         res = self.c.compound([seq_op, ssv_op], *args, **kwargs)
+         # STUB - do some checking
+         protect.context.set_ssv(ssv)
+diff --git a/nfs4.1/nfs4lib.py b/nfs4.1/nfs4lib.py
+index 116324a..02352e1 100644
+--- a/nfs4.1/nfs4lib.py
++++ b/nfs4.1/nfs4lib.py
+@@ -3,7 +3,7 @@ import rpc
+ import xdrdef.nfs4_const
+ from xdrdef.nfs4_pack import NFS4Packer, NFS4Unpacker
+ import xdrdef.nfs4_type
+-import nfs4_ops as op
++import nfs_ops
+ import time
+ import collections
+ import hmac
+@@ -30,6 +30,8 @@ state01 = xdrdef.nfs4_type.stateid4(1, "\0" * 12)
+ 
+ import hashlib # Note this requires 2.5 or higher
+ 
++op4 = nfs_ops.NFS4ops()
 +
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
-+		spin_unlock(&nn->client_lock);
- 		release_lock_stateid(stp);
-+		spin_lock(&nn->client_lock);
- 	}
- }
+ # Note that all the oid strings have tag and length bytes prepended, as
+ # per description of sec_oid4 in draft26 sect 3.2
  
- static void release_lockowner(struct nfs4_lockowner *lo)
- {
--	unhash_lockowner(lo);
-+	struct nfsd_net *nn = net_generic(lo->lo_owner.so_client->net,
-+						nfsd_net_id);
+@@ -626,9 +628,9 @@ def use_obj(file):
+     if file is None or file == [None]:
+         return []
+     elif type(file) is str:
+-        return [op.putfh(file)]
++        return [op4.putfh(file)]
+     else:
+-        return [op.putrootfh()] + [op.lookup(comp) for comp in file]
++        return [op4.putrootfh()] + [op4.lookup(comp) for comp in file]
+ 
+ ###############################################
+ # Attribute information
+diff --git a/nfs4.1/nfs4state.py b/nfs4.1/nfs4state.py
+index 2f3cd59..2214c0d 100644
+--- a/nfs4.1/nfs4state.py
++++ b/nfs4.1/nfs4state.py
+@@ -8,12 +8,14 @@ from nfs4lib import NFS4Error
+ #from xdrdef.nfs4_type import stateid4
+ from xdrdef.nfs4_type import *
+ from xdrdef.nfs4_const import *
+-import nfs4_ops as op
++import nfs_ops
+ import rpc
+ import logging
+ 
+ log = logging.getLogger("nfs.server.state")
+ 
++op4 = nfs_ops.NFS4ops()
 +
-+	spin_lock(&nn->client_lock);
-+	unhash_lockowner_locked(lo);
- 	release_lockowner_stateids(lo);
-+	spin_unlock(&nn->client_lock);
- 	nfs4_put_stateowner(&lo->lo_owner);
- }
+ POSIXLOCK = False
  
-@@ -4781,7 +4797,7 @@ nevermind:
- }
- 
- static struct nfs4_lockowner *
--find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
-+find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
- 		struct nfsd_net *nn)
- {
- 	unsigned int strhashval = ownerstr_hashval(clid->cl_id, owner);
-@@ -4798,9 +4814,25 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
- 	return NULL;
- }
- 
-+static struct nfs4_lockowner *
-+find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
-+		struct nfsd_net *nn)
-+{
-+	struct nfs4_lockowner *lo;
+ SHARE, BYTE, DELEG, LAYOUT, ANON = range(5) # State types
+@@ -748,9 +750,9 @@ class DelegEntry(StateTableEntry):
+         # ANSWER - we care about self.status, which can be set to 
+         # INVALID anytime by deleg_return
+         slot = session.channel_back.choose_slot()
+-        seq_op = op.cb_sequence(session.sessionid, slot.get_seqid(),
++        seq_op = op4.cb_sequence(session.sessionid, slot.get_seqid(),
+                                 slot.id, slot.id, True, []) # STUB
+-        recall_op = op.cb_recall(self.get_id(cb=True), False, self.file.fh)
++        recall_op = op4.cb_recall(self.get_id(cb=True), False, self.file.fh)
+         if self.invalid:
+             # Race here doesn't matter, but would like to avoid the
+             # RPC if possible.
+diff --git a/nfs4.1/nfs_ops.py b/nfs4.1/nfs_ops.py
+new file mode 100644
+index 0000000..0753716
+--- /dev/null
++++ b/nfs4.1/nfs_ops.py
+@@ -0,0 +1,89 @@
++"""For each OP_<NAME> in nfs_argop4 and nfs_cb_argop4, create a function
++<name>() that returns the appropriate *_argop4 structure, hiding
++this routine packing from the user.
++"""
 +
-+	spin_lock(&nn->client_lock);
-+	lo = find_lockowner_str_locked(clid, owner, nn);
-+	spin_unlock(&nn->client_lock);
-+	return lo;
-+}
++from xdrdef import nfs4_type
++from xdrdef import nfs4_const
 +
- static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
- {
--	unhash_lockowner(lockowner(sop));
-+	struct nfsd_net *nn = net_generic(sop->so_client->net, nfsd_net_id);
++from xdrdef import nfs3_type
++from xdrdef import nfs3_const
 +
-+	spin_lock(&nn->client_lock);
-+	unhash_lockowner_locked(lockowner(sop));
-+	spin_unlock(&nn->client_lock);
- }
- 
- static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
-@@ -4819,9 +4851,12 @@ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
-  * strhashval = ownerstr_hashval
-  */
- static struct nfs4_lockowner *
--alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, struct nfs4_ol_stateid *open_stp, struct nfsd4_lock *lock) {
--	struct nfs4_lockowner *lo;
-+alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp,
-+			   struct nfs4_ol_stateid *open_stp,
-+			   struct nfsd4_lock *lock)
-+{
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+	struct nfs4_lockowner *lo, *ret;
- 
- 	lo = alloc_stateowner(lockowner_slab, &lock->lk_new_owner, clp);
- 	if (!lo)
-@@ -4831,7 +4866,16 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
- 	lo->lo_owner.so_free = nfs4_free_lockowner;
- 	lo->lo_owner.so_unhash = nfs4_unhash_lockowner;
--	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
-+	spin_lock(&nn->client_lock);
-+	ret = find_lockowner_str_locked(&clp->cl_clientid,
-+			&lock->lk_new_owner, nn);
-+	if (ret == NULL) {
-+		list_add(&lo->lo_owner.so_strhash,
-+			 &nn->ownerstr_hashtbl[strhashval]);
-+		ret = lo;
-+	} else
-+		nfs4_free_lockowner(&lo->lo_owner);
-+	spin_unlock(&nn->client_lock);
- 	return lo;
- }
- 
-@@ -5360,6 +5404,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	unsigned int hashval = ownerstr_hashval(clid->cl_id, owner);
- 	__be32 status;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+	struct nfs4_client *clp;
- 
- 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
- 		clid->cl_boot, clid->cl_id);
-@@ -5374,6 +5419,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	INIT_LIST_HEAD(&matches);
- 
- 	/* Find the matching lock stateowner */
-+	spin_lock(&nn->client_lock);
- 	list_for_each_entry(tmp, &nn->ownerstr_hashtbl[hashval], so_strhash) {
- 		if (tmp->so_is_open_owner)
- 			continue;
-@@ -5383,6 +5429,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			break;
- 		}
- 	}
-+	spin_unlock(&nn->client_lock);
- 
- 	/* No matching owner found, maybe a replay? Just declare victory... */
- 	if (!sop) {
-@@ -5392,16 +5439,22 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 
- 	lo = lockowner(sop);
- 	/* see if there are still any locks associated with it */
-+	clp = cstate->clp;
-+	spin_lock(&clp->cl_lock);
- 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
- 		if (check_for_locks(stp->st_stid.sc_file, lo)) {
--			nfs4_put_stateowner(sop);
-+			spin_unlock(&clp->cl_lock);
- 			goto out;
- 		}
- 	}
-+	spin_unlock(&clp->cl_lock);
- 
- 	status = nfs_ok;
-+	sop = NULL;
- 	release_lockowner(lo);
- out:
-+	if (sop)
-+		nfs4_put_stateowner(sop);
- 	nfs4_unlock_state();
- 	return status;
- }
++def nfs4_op_names():
++    skip = len('OP_')
++    ops = [ x.lower()[skip:] for x in nfs4_const.nfs_opnum4.values() ]
++    ops.extend([ x.lower()[skip:] for x in nfs4_const.nfs_cb_opnum4.values()])
++    return ops
++
++def nfs3_proc_names():
++    pre = 'NFSPROC3_'
++    skip = len(pre)
++    procs = [ x.lower()[skip:] for x in dir(nfs3_const) if x.startswith(pre) ]
++    return procs
++
++class NFSops:
++    def __init__(self, is_v4):
++        self._is_v4 = is_v4
++        if is_v4:
++            self._op_names = nfs4_op_names()
++            self._type = nfs4_type
++            self._const = nfs4_const
++            self._args_suffix = '4args'
++            self._op_prefix = 'OP_'
++        else:
++            self._op_names = nfs3_proc_names()
++            self._type = nfs3_type
++            self._const = nfs3_const
++            self._args_suffix = '3args'
++            self._op_prefix = 'NFSPROC3_'
++
++    def __getattr__(self, attrname):
++        if attrname in self._op_names:
++            return lambda *args: self._handle_op(attrname, args)
++
++    def _handle_op(self, opname, args):
++        enum_name = opname.upper()
++
++        # RPC "args" class to create
++        class_name = "%s%s" % (enum_name, self._args_suffix)
++        klass = getattr(self._type, class_name, None)
++
++        if self._is_v4:
++            # stuff class into argop
++
++            # args to pass to argop __init__
++            opnum = getattr(self._const, self._op_prefix + enum_name)
++            kwargs = {}
++
++            if klass:
++                # otherwise it takes no arguments
++                if type(klass) is dict:
++                    assert len(args) == 1
++                    arg = args[0]
++                else:
++                    arg = klass(*args)
++
++                if enum_name.startswith("CB_"):
++                    kwargs['opcb%s' % enum_name.lower()] = arg
++                else:
++                    kwargs['op%s' % enum_name.lower()] = arg
++
++            if enum_name.startswith("CB_"):
++                argop = self._type.nfs_cb_argop4
++            else:
++                argop = self._type.nfs_argop4
++
++            return argop(opnum, **kwargs)
++
++        else:
++            # for v3 just return an instance
++            return klass(*args)
++
++class NFS3ops(NFSops):
++    def __init__(self):
++        NFSops.__init__(self, False)
++
++class NFS4ops(NFSops):
++    def __init__(self):
++        NFSops.__init__(self, True)
++
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
