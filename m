@@ -1,33 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:32946 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751423AbaF2MF0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Jun 2014 08:05:26 -0400
-Date: Sun, 29 Jun 2014 05:05:25 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v2 014/117] nfsd: Allow struct nfsd4_compound_state to
- cache the nfs4_client
-Message-ID: <20140629120525.GB16150@infradead.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
- <1403810017-16062-15-git-send-email-jlayton@primarydata.com>
+Received: from terminus.zytor.com ([198.137.202.10]:39895 "EHLO mail.zytor.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753308AbaFEAOO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Jun 2014 20:14:14 -0400
+Message-ID: <538FB570.8000502@zytor.com>
+Date: Wed, 04 Jun 2014 17:10:24 -0700
+From: "H. Peter Anvin" <hpa@zytor.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403810017-16062-15-git-send-email-jlayton@primarydata.com>
+To: Arnd Bergmann <arnd@arndb.de>, Nicolas Pitre <nicolas.pitre@linaro.org>
+CC: Dave Chinner <david@fromorbit.com>, hch@infradead.org,
+        linux-mtd@lists.infradead.org, logfs@logfs.org,
+        linux-afs@lists.infradead.org,
+        "Joseph S. Myers" <joseph@codesourcery.com>,
+        linux-arch@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-scsi@vger.kernel.org, ceph-devel@vger.kernel.org,
+        cluster-devel@redhat.com, coda@cs.cmu.edu, geert@linux-m68k.org,
+        linux-ext4@vger.kernel.org, codalist@telemann.coda.cs.cmu.edu,
+        fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, john.stultz@linaro.org, tglx@linutronix.de,
+        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
+        samba-technical@lists.samba.org, linux-kernel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        linux-fsdevel@vger.kernel.org, lftan@altera.com,
+        linux-btrfs@vger.kernel.org
+Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
+References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <201406041703.47592.arnd@arndb.de> <alpine.LFD.2.11.1406041308300.17310@knanqh.ubzr> <8770583.6XeZxCxOY8@wuerfel>
+In-Reply-To: <8770583.6XeZxCxOY8@wuerfel>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 26, 2014 at 03:11:54PM -0400, Jeff Layton wrote:
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
+On 06/04/2014 12:24 PM, Arnd Bergmann wrote:
 > 
-> This will be used later to accelerate lookups of the clientid.
+> For other timekeeping stuff in the kernel, I agree that using some
+> 64-bit representation (nanoseconds, 32/32 unsigned seconds/nanoseconds,
+> ...) has advantages, that's exactly the point I was making earlier
+> against simply extending the internal time_t/timespec to 64-bit
+> seconds for everything.
+> 
 
-While I've already given my reviewed by I need to get picky again here
-after reviewing a later patch.  The description should clearly state
-that we only cache it for 4.1+ here so far.
+How much of a performance issue is it to make time_t 64 bits, and for
+the bits there are, how hard are they to fix?
 
-Unless something else speaks against that I'd also strongly recommend
-we move the patch to also cache it for 4.0 right next after this patch.
+	-hpa
+
 
