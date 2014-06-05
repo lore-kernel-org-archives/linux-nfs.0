@@ -1,39 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49983 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751005AbaF0QWf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 27 Jun 2014 12:22:35 -0400
-Date: Fri, 27 Jun 2014 12:22:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
-Message-ID: <20140627162234.GA15610@fieldses.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:22743 "EHLO
+	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751676AbaFEF37 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 01:29:59 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Steve Wise <swise@opengridcomputing.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "tom@opengridcomputing.com" <tom@opengridcomputing.com>
+Subject: RE: [PATCH] svcrdma: Fence LOCAL_INV work requests
+Date: Thu, 5 Jun 2014 05:29:57 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE03AA3@CMEXMB1.ad.emulex.com>
+References: <20140602171433.31076.5634.stgit@build.ogc.int>
+In-Reply-To: <20140602171433.31076.5634.stgit@build.ogc.int>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 26, 2014 at 03:11:40PM -0400, Jeff Layton wrote:
-> I'd still like to see this merged for v3.17, so it would be ideal to
-> merge this into linux-next soon if possible. Bruce, please let me know
-> what you think the prospects are.
-
-I'm currently using the "for-3.17" branch at
-
-	git://linux-nfs.org/~bfields/linux.git
-
-to hold any changes that I think are well and truly committed (so that
-should be rebased never or only very rarely) and "nfsd-next" for things
-that have been posted but may still be waiting for review (including
-these), and may still be revised or dropped.
-
-I should probably come up with some more sensible scheme....
-
-I already had the first six patches.  I assumed without checking really
-carefully that you hadn't revised the versions you sent me, let me know
-if otherwise.
-
---b.
+UmVwb3J0ZWQgYnkgOiBEZXZlc2ggU2hhcm1hDQpBY2snZWQgYnk6IERldmVzaCBTaGFybWENCg0K
+LVJlZ2FyZHMNCiBEZXZlc2gNCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9t
+OiBsaW51eC1yZG1hLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LXJkbWEtDQo+
+IG93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIFN0ZXZlIFdpc2UNCj4gU2VudDog
+TW9uZGF5LCBKdW5lIDAyLCAyMDE0IDEwOjQ1IFBNDQo+IFRvOiBiZmllbGRzQGZpZWxkc2VzLm9y
+Zw0KPiBDYzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgbGludXgtcmRtYUB2Z2VyLmtlcm5l
+bC5vcmc7DQo+IHRvbUBvcGVuZ3JpZGNvbXB1dGluZy5jb20NCj4gU3ViamVjdDogW1BBVENIXSBz
+dmNyZG1hOiBGZW5jZSBMT0NBTF9JTlYgd29yayByZXF1ZXN0cw0KPiANCj4gVGhpcyBhcHBsaWVz
+IG9uIHRvcCBvZjoNCj4gDQo+IAljb21taXQgZTVhMDcwMjE2MzU2ZGJjYjAzNjA3Y2IyNjRjYzMx
+MDRlMTczMzliMw0KPiAJQXV0aG9yOiBTdGV2ZSBXaXNlIDxzd2lzZUBvcGVuZ3JpZGNvbXB1dGlu
+Zy5jb20+DQo+IAlEYXRlOiAgIFdlZCBNYXkgMjggMTU6MTI6MDEgMjAxNCAtMDUwMA0KPiANCj4g
+CSAgICBzdmNyZG1hOiByZWZhY3RvciBtYXJzaGFsbGluZyBsb2dpYw0KPiANCj4gRmVuY2luZyBm
+b3JjZXMgdGhlIGludmFsaWRhdGUgdG8gb25seSBoYXBwZW4gYWZ0ZXIgYWxsIHN1YnNlcXVlbnQg
+c2VuZCB3b3JrDQo+IHJlcXVlc3RzIGhhdmUgYmVlbiBjb21wbGV0ZWQuDQo+IA0KPiBTaWduZWQt
+b2ZmLWJ5OiBTdGV2ZSBXaXNlIDxzd2lzZUBvcGVuZ3JpZGNvbXB1dGluZy5jb20+DQo+IC0tLQ0K
+PiANCj4gIG5ldC9zdW5ycGMveHBydHJkbWEvc3ZjX3JkbWFfcmVjdmZyb20uYyB8ICAgIDIgKy0N
+Cj4gIDEgZmlsZXMgY2hhbmdlZCwgMSBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KPiAN
+Cj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydHJkbWEvc3ZjX3JkbWFfcmVjdmZyb20uYw0K
+PiBiL25ldC9zdW5ycGMveHBydHJkbWEvc3ZjX3JkbWFfcmVjdmZyb20uYw0KPiBpbmRleCA1MmQ5
+ZjJjLi44ZjkyYTYxIDEwMDY0NA0KPiAtLS0gYS9uZXQvc3VucnBjL3hwcnRyZG1hL3N2Y19yZG1h
+X3JlY3Zmcm9tLmMNCj4gKysrIGIvbmV0L3N1bnJwYy94cHJ0cmRtYS9zdmNfcmRtYV9yZWN2ZnJv
+bS5jDQo+IEBAIC0zMzgsNyArMzM4LDcgQEAgc3RhdGljIGludCByZG1hX3JlYWRfY2h1bmtfZnJt
+cihzdHJ1Y3Qgc3ZjeHBydF9yZG1hDQo+ICp4cHJ0LA0KPiAgCQltZW1zZXQoJmludl93ciwgMCwg
+c2l6ZW9mKGludl93cikpOw0KPiAgCQlpbnZfd3Iud3JfaWQgPSAodW5zaWduZWQgbG9uZyljdHh0
+Ow0KPiAgCQlpbnZfd3Iub3Bjb2RlID0gSUJfV1JfTE9DQUxfSU5WOw0KPiAtCQlpbnZfd3Iuc2Vu
+ZF9mbGFncyA9IElCX1NFTkRfU0lHTkFMRUQ7DQo+ICsJCWludl93ci5zZW5kX2ZsYWdzID0gSUJf
+U0VORF9TSUdOQUxFRCB8IElCX1NFTkRfRkVOQ0U7DQo+ICAJCWludl93ci5leC5pbnZhbGlkYXRl
+X3JrZXkgPSBmcm1yLT5tci0+bGtleTsNCj4gIAl9DQo+ICAJY3R4dC0+d3Jfb3AgPSByZWFkX3dy
+Lm9wY29kZTsNCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5k
+IHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1yZG1hIiBpbiB0aGUNCj4gYm9keSBvZiBhIG1l
+c3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3JlIG1ham9yZG9tbyBpbmZvIGF0
+DQo+IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0K
