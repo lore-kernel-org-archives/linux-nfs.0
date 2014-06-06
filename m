@@ -1,98 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:37020 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754652AbaF3PvS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:18 -0400
-Received: by mail-qc0-f176.google.com with SMTP id w7so7147045qcr.7
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:17 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 032/114] locks: add file_has_lease to prevent delegation break races
-Date: Mon, 30 Jun 2014 11:49:01 -0400
-Message-Id: <1404143423-24381-33-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from cn.fujitsu.com ([59.151.112.132]:41067 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751419AbaFFDRS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 23:17:18 -0400
+Message-ID: <539132AF.8060805@cn.fujitsu.com>
+Date: Fri, 6 Jun 2014 11:17:03 +0800
+From: Ditang Chen <chendt.fnst@cn.fujitsu.com>
+MIME-Version: 1.0
+To: Steve Dickson <steved@redhat.com>
+CC: Trond Myklebust <trond.myklebust@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "yaoxp@cn.fujitsu.com" <yaoxp@cn.fujitsu.com>
+Subject: [PATCH]statd: create statdpath dir if specify the "--with-statdpath=xx"
+ parameter in configure nfs-utils source code
+References: <539026DB.30502@cn.fujitsu.com>
+In-Reply-To: <539026DB.30502@cn.fujitsu.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, we'll have a potential race between
-setting a lease on a file and breaking the delegation. We may set the
-lease, but by the time we go to hash it, it may have already been
-broken. Currently, we know that this won't happen as the nfs4_laundromat
-takes the client_mutex, but we want to remove that.
+When configure the nfs-utils source code with "--with-statdpath=/foo" parameter，
+#define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
+but Makefile will not create "/foo" dir.
 
-As part of that fix, add a function that can tell us whether a
-particular file has a lease set on it. In a later nfsd patch, we'll use
-that to close the potential race window.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: chendt.fnst@cn.fujitsu.com
+Reported-by: yaoxp@cn.fujitsu.com
 ---
- fs/locks.c         | 26 ++++++++++++++++++++++++++
- include/linux/fs.h |  6 ++++++
- 2 files changed, 32 insertions(+)
+ Makefile.am | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 717fbc404e6b..005cc86927e3 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1308,6 +1308,32 @@ static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
- }
- 
- /**
-+ * file_has_lease - does the given file have a lease set on it?
-+ * @file: struct file on which we want to check the lease
-+ *
-+ * Returns true if a lease was is set on the given file description,
-+ * false otherwise.
-+ */
-+bool
-+file_has_lease(struct file *file)
-+{
-+	bool ret = false;
-+	struct inode *inode = file_inode(file);
-+	struct file_lock *fl;
-+
-+	spin_lock(&inode->i_lock);
-+	for (fl = inode->i_flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
-+		if (fl->fl_file == file) {
-+			ret = true;
-+			break;
-+		}
-+	}
-+	spin_unlock(&inode->i_lock);
-+	return ret;
-+}
-+EXPORT_SYMBOL(file_has_lease);
-+
-+/**
-  *	__break_lease	-	revoke all outstanding leases on file
-  *	@inode: the inode of the file to return
-  *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e11d60cc867b..7ae6f4869669 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -953,6 +953,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
- extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
- extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
- extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
-+extern bool file_has_lease(struct file *file);
- extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
- extern void lease_get_mtime(struct inode *, struct timespec *time);
- extern int generic_setlease(struct file *, long, struct file_lock **);
-@@ -1064,6 +1065,11 @@ static inline int flock_lock_file_wait(struct file *filp,
- 	return -ENOLCK;
- }
- 
-+static inline bool file_has_lease(struct file *file)
-+{
-+	return false;
-+}
-+
- static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- {
- 	return 0;
+diff --git a/Makefile.am b/Makefile.am
+index ae7cd16..5824adc 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -54,13 +54,13 @@ install-data-hook:
+        touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
+        touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
+        touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
+-       mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
+-       touch $(DESTDIR)$(statedir)/state
+-       chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
+-       -chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
++       mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
++       touch $(DESTDIR)$(statdpath)/state
++       chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statdpath)/state
++       -chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statdpath)/state
+
+ uninstall-hook:
+        rm $(DESTDIR)$(statedir)/xtab
+        rm $(DESTDIR)$(statedir)/etab
+        rm $(DESTDIR)$(statedir)/rmtab
+-       rm $(DESTDIR)$(statedir)/state
++       rm $(DESTDIR)$(statdpath)/state
 -- 
-1.9.3
+1.8.2.1
 
