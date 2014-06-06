@@ -1,70 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f179.google.com ([209.85.220.179]:54670 "EHLO
-	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754848AbaFYWV5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 18:21:57 -0400
-Received: by mail-vc0-f179.google.com with SMTP id id10so2643898vcb.38
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 15:21:56 -0700 (PDT)
+Received: from cn.fujitsu.com ([59.151.112.132]:8436 "EHLO
+	heian.cn.fujitsu.com" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751975AbaFFDJ3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 23:09:29 -0400
+Message-ID: <539130DA.20804@cn.fujitsu.com>
+Date: Fri, 6 Jun 2014 11:09:14 +0800
+From: Ditang Chen <chendt.fnst@cn.fujitsu.com>
 MIME-Version: 1.0
-In-Reply-To: <029301cf90c0$4fabe660$ef03b320$@mindspring.com>
-References: <029301cf90c0$4fabe660$ef03b320$@mindspring.com>
-Date: Wed, 25 Jun 2014 18:21:56 -0400
-Message-ID: <CAHQdGtSdQ3keA2UgiAbtWWUMvheWQ8oanpAt_evAY2DSkr+y+Q@mail.gmail.com>
-Subject: Re: Execute only permission issue with client
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Steve Dickson <SteveD@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "yaoxp@cn.fujitsu.com" <yaoxp@cn.fujitsu.com>
+Subject: Re: [PATCH]statd: create statdpath dir if specify the "--with-statdpath=xx"
+ parameter in configure nfs-utils source code
+References: <539026DB.30502@cn.fujitsu.com> <CAHQdGtRzw-Aizqd1Q8Y9FAXZgp2jefn115F-ogcPA8VSuqA1Dw@mail.gmail.com> <53907B9A.3090802@RedHat.com> <CAHQdGtSF0662w=p96qxYFqx1snM8RrAE1Qr8b02ajj6iU6Z3Kg@mail.gmail.com>
+In-Reply-To: <CAHQdGtSF0662w=p96qxYFqx1snM8RrAE1Qr8b02ajj6iU6Z3Kg@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Frank
+On 06/05/2014 10:20 PM, Trond Myklebust wrote:
+> On Thu, Jun 5, 2014 at 10:15 AM, Steve Dickson <SteveD@redhat.com> wrote:
+>> Hey,
+>>
+>> On 06/05/2014 08:38 AM, Trond Myklebust wrote:
+>>> On Thu, Jun 5, 2014 at 4:14 AM, Ditang Chen <chendt.fnst@cn.fujitsu.com> wrote:
+>>>> When configure the nfs-utils source code with "--with-statdpath=/foo" parameter，
+>>>> #define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
+>>>> but Makefile will not create "/foo" dir.
+>>>>
+>>>> Signed-off-by: chendt.fnst@cn.fujitsu.com
+>>>> ---
+>>>>  Makefile.am | 6 +++---
+>>>>  1 file changed, 3 insertions(+), 3 deletions(-)
+>>>>
+>>>> diff --git a/Makefile.am b/Makefile.am
+>>>> index ae7cd16..5c9ef44 100644
+>>>> --- a/Makefile.am
+>>>> +++ b/Makefile.am
+>>>> @@ -54,10 +54,10 @@ install-data-hook:
+>>>>         touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
+>>>>         touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
+>>>>         touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
+>>>> -       mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
+>>>>         touch $(DESTDIR)$(statedir)/state
+>>>> -       chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
+>>>> -       -chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
+>>>> +       mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
+>>>> +       chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
+>>>> +       -chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
+>>>>
+>>>
+>>> The file 'state' is owned by rpc.statd. Isn't it therefore also
+>>> subject to the --with-statdpath modifier?
+>> --with-statedir and --with-statdpath are basically the same thing.
+>> When --with-statdpath is not specified, its set to the --with-statedir
+>> value, that's why this these mkdir,chmod and chown were not needed.
+>> But I guess if you do want split out the statdpath from the statedir
+>> those mkdir,chmod and chown need to happen.
+>>
+>>
+>>>
+>>> At one point, the Fedora RPM packager even used to put it in
+>>> /var/lib/nfs/statd (as the manpage says it should) although that seems
+>>> to be broken now.
+>>>
+>> It still does... So does RHEL... We have being going that for years...
+>> How is that broken?
+>>
+> 
+> My nfs-utils rpms on Fedora seem to be creating /var/lib/nfs/state
+> instead of putting it in the statd subdirectory.
+> 
+I tested it on RHEL, the file 'state' subject to the --with-statdpath modifier.
 
-On Wed, Jun 25, 2014 at 5:56 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
-> Back a year ago or so, I ran the following test against Ganesha:
->
-> http://www.tuxera.com/community/posix-test-suite/
->
-> On NFS v4, one of the issues it tripped over was execute only files.
-> Apparently the Linux v4 client doesn't make ACCESS calls in conjunction with
-> an open system call, with the result that you can open an execute only file
-> (per RFC 3530bis, the server is allowing such to allow clients to execute
-> executables).
+nfs-utils rpms on Fedora/RHEL split out the statdpath from the statedir,configure 
+with '--with-statdpath=/var/lib/nfs/statd', and creating /var/lib/nfs/state file,
+but '/var/lib/nfs/state' seems not to be used, the really be used file is 
+/var/lib/nfs/statd/state.
 
-That information is outdated. A wireshark dump should show that recent
-Linux kernels include an ACCESS operation as part of the open()
-COMPOUND and that it uses that information to distinguish between
-executable and read access permissions.
+I‘ll send another patch to fix it.
+> 
+> 
 
->
-> We tripped over this issue again in some of our testing.
->
-> One bit that I don't actually understand is how the kernel differentiates
-> between bash (etc) issuing an open system call to load a script and vi
-> trying to browse same script...
->
-> I had done some testing executing shell scripts and such and saw some
-> inconsistency. Now, trying things, I can't seem to run a bash script that is
-> execute only (local, v3, or v4), but can run a compiled binary that is
-> execute only (local, v3, and v4), so I'm not sure what the deal is...
-
-The deal is that shell scripts require read permissions because the
-shell needs to be able to open and read them.
-
-[trondmy@leira ~]$ cat >script.sh
-#!/bin/bash
-#
-echo "foo"
-[trondmy@leira ~]$ chmod 0111 script.sh
-[trondmy@leira ~]$ ./script.sh
-/bin/bash: ./script.sh: Permission denied
-[trondmy@leira ~]$ chmod 0555 script.sh
-[trondmy@leira ~]$ ./script.sh
-foo
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
