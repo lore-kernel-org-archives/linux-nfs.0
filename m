@@ -1,47 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:60404 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752045AbaFDVCW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:22 -0400
-Received: by mail-ie0-f175.google.com with SMTP id y20so68439ier.6
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:21 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH pynfs 06/17] 4.1 client: remove unused imports
-Date: Wed,  4 Jun 2014 17:01:54 -0400
-Message-Id: <1401915726-29092-7-git-send-email-dros@primarydata.com>
-In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+Received: from mail-wg0-f47.google.com ([74.125.82.47]:36853 "EHLO
+	mail-wg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750710AbaFFGEZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jun 2014 02:04:25 -0400
+Date: Fri, 6 Jun 2014 08:04:19 +0200
+From: Ingo Molnar <mingo@kernel.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Peter Zijlstra <peterz@infradead.org>, Oleg Nesterov <oleg@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>, Roland McGrath <roland@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action
+ functions.
+Message-ID: <20140606060419.GA3737@gmail.com>
+References: <20140501123738.3e64b2d2@notabene.brown>
+ <20140522090502.GB30094@gmail.com>
+ <20140522195056.445f2dcb@notabene.brown>
+ <20140605124509.GA1975@gmail.com>
+ <20140606102303.09ef9fb3@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140606102303.09ef9fb3@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- nfs4.1/nfs4client.py | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-index 91c698d..0904577 100644
---- a/nfs4.1/nfs4client.py
-+++ b/nfs4.1/nfs4client.py
-@@ -8,15 +8,13 @@ from xdrdef.sctrl_pack import SCTRLPacker, SCTRLUnpacker
- import nfs4_ops as op
- import time, struct
- import threading
--import collections
- import hmac
--from locking import Lock
- from nfs4commoncode import CBCompoundState as CompoundState, \
-      cb_encode_status as encode_status, \
-      cb_encode_status_by_name as encode_status_by_name
- 
- 
--import sys, traceback
-+import traceback
- import logging
- logging.basicConfig(level=logging.INFO,
-                     format="%(levelname)-7s:%(name)s:%(message)s")
--- 
-1.8.5.2 (Apple Git-48)
+* NeilBrown <neilb@suse.de> wrote:
 
+> On Thu, 5 Jun 2014 14:45:09 +0200 Ingo Molnar <mingo@kernel.org> wrote:
+> 
+> > 
+> > * NeilBrown <neilb@suse.de> wrote:
+> > 
+> > > On Thu, 22 May 2014 11:05:02 +0200 Ingo Molnar <mingo@kernel.org> wrote:
+> > > 
+> > > > 
+> > > > * NeilBrown <neilb@suse.de> wrote:
+> > > > 
+> > > > > [[ get_maintainer.pl suggested 61 email address for this patch.
+> > > > >    I've trimmed that list somewhat.  Hope I didn't miss anyone
+> > > > >    important...
+> > > > >    I'm hoping it will go in through the scheduler tree, but would
+> > > > >    particularly like an Acked-by for the fscache parts.  Other acks
+> > > > >    welcome.
+> > > > > ]]
+> > > > > 
+> > > > > The current "wait_on_bit" interface requires an 'action' function
+> > > > > to be provided which does the actual waiting.
+> > > > > There are over 20 such functions, many of them identical.
+> > > > > Most cases can be satisfied by one of just two functions, one
+> > > > > which uses io_schedule() and one which just uses schedule().
+> > > > > 
+> > > > > So:
+> > > > >  Rename wait_on_bit and        wait_on_bit_lock to
+> > > > >         wait_on_bit_action and wait_on_bit_lock_action
+> > > > >  to make it explicit that they need an action function.
+> > > > > 
+> > > > >  Introduce new wait_on_bit{,_lock} and wait_on_bit{,_lock}_io
+> > > > >  which are *not* given an action function but implicitly use
+> > > > >  a standard one.
+> > > > >  The decision to error-out if a signal is pending is now made
+> > > > >  based on the 'mode' argument rather than being encoded in the action
+> > > > >  function.
+> > > > 
+> > > > this patch fails to build on x86-32 allyesconfigs.
+> > > 
+> > > Could you share the build errors?
+> > 
+> > Sure, find it attached below.
+> 
+> Thanks.
+> 
+> It looks like this is a wait_on_bit usage that was added after I created the
+> patch.
+> 
+> How about you drop my patch for now, we wait for -rc1 to come out, then I
+> submit a new version against -rc1 and we get that into -rc2.
+> That should minimise such conflicts.
+> 
+> Does that work for you?
+
+Sure, that sounds like a good approach, if Linus doesn't object.
+
+Thanks,
+
+	Ingo
