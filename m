@@ -1,115 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f176.google.com ([209.85.192.176]:38332 "EHLO
-	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755207AbaFLBiw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2014 21:38:52 -0400
-Received: by mail-pd0-f176.google.com with SMTP id p10so398412pdj.35
-        for <linux-nfs@vger.kernel.org>; Wed, 11 Jun 2014 18:38:51 -0700 (PDT)
-Message-ID: <53990498.7020300@gmail.com>
-Date: Thu, 12 Jun 2014 09:38:32 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: Re: [PATCH v2] NFS4.1: try to clean sessions after testing
-References: <5396D7FA.4050303@gmail.com> <5396F243.8080606@gmail.com> <20140611211742.GH19382@fieldses.org> <5398E544.9000105@gmail.com>
-In-Reply-To: <5398E544.9000105@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cantor2.suse.de ([195.135.220.15]:43145 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751409AbaFFAXV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Jun 2014 20:23:21 -0400
+Date: Fri, 6 Jun 2014 10:23:03 +1000
+From: NeilBrown <neilb@suse.de>
+To: Ingo Molnar <mingo@kernel.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Oleg Nesterov <oleg@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>, Roland McGrath <roland@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action
+ functions.
+Message-ID: <20140606102303.09ef9fb3@notabene.brown>
+In-Reply-To: <20140605124509.GA1975@gmail.com>
+References: <20140501123738.3e64b2d2@notabene.brown>
+	<20140522090502.GB30094@gmail.com>
+	<20140522195056.445f2dcb@notabene.brown>
+	<20140605124509.GA1975@gmail.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/fiPA8qbnQ1B8HYSL6RXukPC"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/12/2014 07:24, Kinglong Mee wrote:
-> On 6/12/2014 05:17, J. Bruce Fields wrote:
->> I tried to apply this, and the ipv6 patch (could we do that for 4.1
->> too?) and the 3 other patches, but:
-> 
-> nfs4.1 has supports IPv6, the patch for nfs4.0 is a back-port from nfs4.1.
-> 
->>
->> 	- there are some conflicts with the latest pynfs (e.g. I already
->> 	  added a few acl tests, apologies)
->> 	- I'm getting failures to write to a read-only fs, apparently
->> 	  one of the tests is trying to write to the export root?  I
->> 	  didn't check which one.
+--Sig_/fiPA8qbnQ1B8HYSL6RXukPC
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-Can you show me more information about this?
+On Thu, 5 Jun 2014 14:45:09 +0200 Ingo Molnar <mingo@kernel.org> wrote:
 
-thanks,
-Kinglong Mee
+>=20
+> * NeilBrown <neilb@suse.de> wrote:
+>=20
+> > On Thu, 22 May 2014 11:05:02 +0200 Ingo Molnar <mingo@kernel.org> wrote:
+> >=20
+> > >=20
+> > > * NeilBrown <neilb@suse.de> wrote:
+> > >=20
+> > > > [[ get_maintainer.pl suggested 61 email address for this patch.
+> > > >    I've trimmed that list somewhat.  Hope I didn't miss anyone
+> > > >    important...
+> > > >    I'm hoping it will go in through the scheduler tree, but would
+> > > >    particularly like an Acked-by for the fscache parts.  Other acks
+> > > >    welcome.
+> > > > ]]
+> > > >=20
+> > > > The current "wait_on_bit" interface requires an 'action' function
+> > > > to be provided which does the actual waiting.
+> > > > There are over 20 such functions, many of them identical.
+> > > > Most cases can be satisfied by one of just two functions, one
+> > > > which uses io_schedule() and one which just uses schedule().
+> > > >=20
+> > > > So:
+> > > >  Rename wait_on_bit and        wait_on_bit_lock to
+> > > >         wait_on_bit_action and wait_on_bit_lock_action
+> > > >  to make it explicit that they need an action function.
+> > > >=20
+> > > >  Introduce new wait_on_bit{,_lock} and wait_on_bit{,_lock}_io
+> > > >  which are *not* given an action function but implicitly use
+> > > >  a standard one.
+> > > >  The decision to error-out if a signal is pending is now made
+> > > >  based on the 'mode' argument rather than being encoded in the acti=
+on
+> > > >  function.
+> > >=20
+> > > this patch fails to build on x86-32 allyesconfigs.
+> >=20
+> > Could you share the build errors?
+>=20
+> Sure, find it attached below.
 
->>
->> Could you look into those and resend your pynfs patches?  Thanks!
-> 
-> Yes, I will check those patch and resend them.
-> 
-> thanks,
-> Kinglong Mee
-> 
->>
->> --b.
->>
->>
->> On Tue, Jun 10, 2014 at 07:55:47PM +0800, Kinglong Mee wrote:
->>> There are many sessions left after testing, they hold drc memory at server.
->>> This patch tries to clean session after each testcase.
->>>
->>> v2,
->>> adds empty function of clean_sessions for nfs4.0,
->>> because they are using the same testmod.py 
->>>
->>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->>> ---
->>>  nfs4.0/servertests/environment.py   | 3 +++
->>>  nfs4.1/server41tests/environment.py | 7 ++++++-
->>>  nfs4.1/testmod.py                   | 1 +
->>>  3 files changed, 10 insertions(+), 1 deletion(-)
->>>
->>> diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
->>> index 993320d..9852178 100644
->>> --- a/nfs4.0/servertests/environment.py
->>> +++ b/nfs4.0/servertests/environment.py
->>> @@ -226,6 +226,9 @@ class Environment(testmod.Environment):
->>>              cmd += ' ' + args
->>>              os.system(cmd);
->>>  
->>> +    def clean_sessions(self):
->>> +        return
->>> +
->>>  #########################################
->>>  debug_fail = False
->>>  
->>> diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
->>> index b2df732..7632655 100644
->>> --- a/nfs4.1/server41tests/environment.py
->>> +++ b/nfs4.1/server41tests/environment.py
->>> @@ -248,7 +248,12 @@ class Environment(testmod.Environment):
->>>      def testname(self, t):
->>>          """Returns a name for the test that is unique between runs"""
->>>          return "%s_%i" % (t.code, self.timestamp)
->>> -    
->>> +
->>> +    def clean_sessions(self):
->>> +        """Destroy client name env.c1"""
->>> +        for sessionid in self.c1.sessions.keys():
->>> +            self.c1.compound([op.destroy_session(sessionid)])
->>> +
->>>  #########################################
->>>  debug_fail = False
->>>  
->>> diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
->>> index 5908066..661aed0 100644
->>> --- a/nfs4.1/testmod.py
->>> +++ b/nfs4.1/testmod.py
->>> @@ -220,6 +220,7 @@ class Test(object):
->>>              environment.startUp()
->>>              self.runtest(self, environment)
->>>              self.result = self._pass_result
->>> +	    environment.clean_sessions()
->>>          except KeyboardInterrupt:
->>>              raise
->>>          except TestException, e:
->>> -- 
->>> 1.9.3
->>>
->>
-> 
+Thanks.
+
+It looks like this is a wait_on_bit usage that was added after I created the
+patch.
+
+How about you drop my patch for now, we wait for -rc1 to come out, then I
+submit a new version against -rc1 and we get that into -rc2.
+That should minimise such conflicts.
+
+Does that work for you?
+
+Thanks,
+NeilBrown
+
+
+>=20
+> > >=20
+> > > Could we keep the old names for a while, and remove them in the next=
+=20
+> > > cycle or so?
+> >=20
+> > I don't see how changing the names later rather than now will reduce the
+> > chance of errors... maybe I'm missing something.
+>=20
+> Well, it would reduce build errors?
+>=20
+> Thanks,
+>=20
+> 	Ingo
+>=20
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D>
+> fs/cifs/file.c: In function =E2=80=98cifs_oplock_break=E2=80=99:
+> fs/cifs/file.c:3652:4: warning: passing argument 3 of =E2=80=98wait_on_bi=
+t=E2=80=99 makes integer from pointer without a cast [enabled by default]
+>     cifs_pending_writers_wait, TASK_UNINTERRUPTIBLE);
+>     ^
+> In file included from include/linux/fs.h:6:0,
+>                  from fs/cifs/file.c:24:
+> include/linux/wait.h:878:1: note: expected =E2=80=98unsigned int=E2=80=99=
+ but argument is of type =E2=80=98int (*)(void *)=E2=80=99
+>  wait_on_bit(void *word, int bit, unsigned mode)
+>  ^
+> fs/cifs/file.c:3652:4: error: too many arguments to function =E2=80=98wai=
+t_on_bit=E2=80=99
+>     cifs_pending_writers_wait, TASK_UNINTERRUPTIBLE);
+>     ^
+> In file included from include/linux/fs.h:6:0,
+>                  from fs/cifs/file.c:24:
+> include/linux/wait.h:878:1: note: declared here
+>  wait_on_bit(void *word, int bit, unsigned mode)
+>  ^
+>   CC      kernel/smp.o
+>   CC      kernel/trace/trace_event_perf.o
+> make[2]: *** [fs/cifs/file.o] Error 1
+> make[2]: *** Waiting for unfinished jobs....
+>   CC      drivers/bcma/sprom.o
+>   CC      fs/btrfs/locking.o
+>   LD      sound/isa/ad1848/snd-ad1848.o
+>   LD      sound/isa/ad1848/built-in.o
+>   CC      sound/isa/cs423x/cs4231.o
+>   CC      lib/fonts/fonts.o
+>   CC      lib/fonts/font_sun8x16.o
+>   CC      drivers/bcma/driver_chipcommon.o
+>   CC      lib/fonts/font_sun12x22.o
+
+
+--Sig_/fiPA8qbnQ1B8HYSL6RXukPC
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU5EJ5znsnt1WYoG5AQKrmhAAuiLNpK4A5qmajKP6fCUhyhosJkjutCGM
+T9ILwSTPzIGp6fbAwxT7oNu1Kbkm1VeiqYnQizhW0OOseELTATKHPGkwXyqAyaOI
+AErDTNJkCTxEC6RZSGydc4rUvf5koECbYm+eL/TI8/4BScKwzrlSNzzOmuNh3GXD
+9Pf/KjEgq9rwBNos73HjMFUBNTi8xliroSHKIldkCmDuX5p7w770k2rtzzCTnPSV
+G8TFMVJsi//3fr4j/rtCmDT1BfL0NIlBiPbcstDEfM9S7y+RmSbiwC2074SY4XFG
+F/2TpVRB00dHrvQaUr/T8D5cZTVMim2n85wr7ma+aCrupuEQCqE6UrpQiGZhGSm7
+3croD4lYMto06H91VI3977ZBJ4UxblKrPJLxCUTjcOIwLdSzr/gVuvNFTocShSn2
+CiLvTkRyvJkZY+KBgI9/E3E14KWlUiY7woyvSI5OoCFxArDp3CZhb6rCL6kPtOi8
++ocVtPvJWQOeDIOzOIFLfB98PVFD8xKaem9m6caWOqA6hQ7fDcWytZhoIBlucjSF
+qfFVOpPXqiESNhAEJ1ZBk/x7o6YaUkOAR4QCwtvUqKkv9gev+GZsMKGdZntcslh0
+JCm8uI7M6O8OLaCYBlI0lIYv4rDS1bCQlBbxAhAh9G7otJ0B/JjnSTDrz3/YchOw
+ciFiCSJTxRI=
+=X+YS
+-----END PGP SIGNATURE-----
+
+--Sig_/fiPA8qbnQ1B8HYSL6RXukPC--
