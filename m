@@ -1,142 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:44209 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757835AbaFSOu7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:50:59 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so2217567qgf.28
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:50:59 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 001/104] nfsd: Protect addition to the file_hashtbl
-Date: Thu, 19 Jun 2014 10:49:07 -0400
-Message-Id: <1403189450-18729-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ve0-f180.google.com ([209.85.128.180]:41080 "EHLO
+	mail-ve0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752006AbaFFUhF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jun 2014 16:37:05 -0400
+Received: by mail-ve0-f180.google.com with SMTP id jw12so1028629veb.11
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Jun 2014 13:37:03 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1402082953.28220.7.camel@ceramic.home.fifi.org>
+References: <1402082953.28220.7.camel@ceramic.home.fifi.org>
+Date: Fri, 6 Jun 2014 16:37:03 -0400
+Message-ID: <CAHQdGtS2BL9u4DV=FZ0HaXO-iTNPU4hTGVR--HubNa4A_6UNog@mail.gmail.com>
+Subject: Re: Phantom ACL-related xattrs on 3.14.4 NFS client
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Philippe Troin <phil@coldcreektech.com>,
+        Christoph Hellwig <hch@infradead.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Fri, Jun 6, 2014 at 3:29 PM, Philippe Troin <phil@coldcreektech.com> wrote:
+> This happens on an NFS client running on:
+> Linux ceramic32 3.14.4 #1 SMP Fri May 30 00:52:07 PDT 2014 i686 i686 i386 GNU/Linux
+> (also happens on x86_64).
+>
+> The NFS server can be either 3.14 or 3.13, it doesn't change a thing.
+>
+> Mount options are:
+> (from /proc/mtab)
+> ceramic:/export/home/phil /home/phil nfs rw,nosuid,nodev,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.17.1.2,mountvers=3,mountport=20048,mountproto=tcp,local_lock=none,addr=172.17.1.2 0 0
+> (This is NFSv3)
+>
+> The symptom:
+>
+> Run getfacl on any NFS inode.  See there are no ACLs:
+>
+>         % getfacl .
+>         # file: .
+>         # owner: phil
+>         # group: phil
+>         user::rwx
+>         group::r-x
+>         other::r-x
+>
+> Yet, getfattr says there are some acl-related xattrs:
+>
+>         % getfattr -m '.*' .
+>         # file: .
+>         system.posix_acl_access
+>         system.posix_acl_default
+>
+> But when you want to retrieve these phantom xattrs, I get errors:
+>
+>         % getfattr -n system.posix_acl_access .
+>         .: system.posix_acl_access: No such attribute
+>         [1]    1136 exit 1     getfattr -n system.posix_acl_access .
+>         % getfattr -n system.posix_acl_default .
+>         .: system.posix_acl_default: No such attribute
+>         [1]    1146 exit 1     getfattr -n system.posix_acl_default .
+>
+> I've noticed because it breaks the patch utility.
+>
+> This is a regression from 3.13, probably due to the 3.14 NFS ACL overhaul.
+>
 
-Ensure that we only can have a single struct nfs4_file per inode
-in the file_hashtbl and make addition atomic with respect to lookup.
+Christoph, what is the intended interface for telling
+posix_acl_xattr_list() that there are no acls on a particular file?
+Should there perhaps be a call to get_acl()?
 
-To prevent an i_lock/state_lock inversion, change nfsd4_init_file to
-use ihold instead if igrab. That's also more efficient anyway as we
-definitely hold a reference to the inode at that point.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++++++++++++++------------
- 1 file changed, 37 insertions(+), 12 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0fea1da3dd24..4e4b054a545e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2535,17 +2535,18 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
- {
- 	unsigned int hashval = file_hashval(ino);
- 
-+	lockdep_assert_held(&state_lock);
-+
- 	atomic_set(&fp->fi_ref, 1);
- 	INIT_LIST_HEAD(&fp->fi_stateids);
- 	INIT_LIST_HEAD(&fp->fi_delegations);
--	fp->fi_inode = igrab(ino);
-+	ihold(ino);
-+	fp->fi_inode = ino;
- 	fp->fi_had_conflict = false;
- 	fp->fi_lease = NULL;
- 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
- 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
--	spin_lock(&state_lock);
- 	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
--	spin_unlock(&state_lock);
- }
- 
- void
-@@ -2711,23 +2712,49 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
- 
- /* search file_hashtbl[] for file */
- static struct nfs4_file *
--find_file(struct inode *ino)
-+find_file_locked(struct inode *ino)
- {
- 	unsigned int hashval = file_hashval(ino);
- 	struct nfs4_file *fp;
- 
--	spin_lock(&state_lock);
-+	lockdep_assert_held(&state_lock);
-+
- 	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
- 		if (fp->fi_inode == ino) {
- 			get_nfs4_file(fp);
--			spin_unlock(&state_lock);
- 			return fp;
- 		}
- 	}
--	spin_unlock(&state_lock);
- 	return NULL;
- }
- 
-+static struct nfs4_file *
-+find_file(struct inode *ino)
-+{
-+	struct nfs4_file *fp;
-+
-+	spin_lock(&state_lock);
-+	fp = find_file_locked(ino);
-+	spin_unlock(&state_lock);
-+	return fp;
-+}
-+
-+static struct nfs4_file *
-+find_or_add_file(struct inode *ino, struct nfs4_file *new)
-+{
-+	struct nfs4_file *fp;
-+
-+	spin_lock(&state_lock);
-+	fp = find_file_locked(ino);
-+	if (fp == NULL) {
-+		nfsd4_init_file(new, ino);
-+		fp = new;
-+	}
-+	spin_unlock(&state_lock);
-+
-+	return fp;
-+}
-+
- /*
-  * Called to check deny when READ with all zero stateid or
-  * WRITE with all zero or all one stateid
-@@ -3246,21 +3273,19 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	 * and check for delegations in the process of being recalled.
- 	 * If not found, create the nfs4_file struct
- 	 */
--	fp = find_file(ino);
--	if (fp) {
-+	fp = find_or_add_file(ino, open->op_file);
-+	if (fp != open->op_file) {
- 		if ((status = nfs4_check_open(fp, open, &stp)))
- 			goto out;
- 		status = nfs4_check_deleg(cl, open, &dp);
- 		if (status)
- 			goto out;
- 	} else {
-+		open->op_file = NULL;
- 		status = nfserr_bad_stateid;
- 		if (nfsd4_is_deleg_cur(open))
- 			goto out;
- 		status = nfserr_jukebox;
--		fp = open->op_file;
--		open->op_file = NULL;
--		nfsd4_init_file(fp, ino);
- 	}
- 
- 	/*
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
