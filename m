@@ -1,53 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:42950 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754385AbaF3Pvs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:48 -0400
-Received: by mail-qc0-f176.google.com with SMTP id w7so7300257qcr.35
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:47 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 053/114] nfsd: Prepare nfsd4_close() for open stateid referencing
-Date: Mon, 30 Jun 2014 11:49:22 -0400
-Message-Id: <1404143423-24381-54-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from static-209-166-131-148.expedient.com ([209.166.131.148]:55508
+	"EHLO natasha.panasas.com" rhost-flags-OK-FAIL-OK-OK)
+	by vger.kernel.org with ESMTP id S1751098AbaFFIeK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jun 2014 04:34:10 -0400
+Message-ID: <53917CF3.3010209@panasas.com>
+Date: Fri, 6 Jun 2014 11:33:55 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+CC: Elizabeth Ellenbogen Ziph <elizabeth@linuxbox.com>
+Subject: [GIT PULL] exofs: raid6 support for the 3.16 merge window
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Hi Linus
+The following changes since commit:
 
-Prepare nfsd4_close for a future where nfs4_preprocess_seqid_op()
-hands it a fully referenced open stateid. Necessary step toward
-client_mutex removal.
+	[d6d211db] Linux 3.15-rc5 (2014-05-09 13:10:52 -0700)
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 5 +++++
- 1 file changed, 5 insertions(+)
+are available in the git repository at:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9bf706f4b82b..08e3ab9c82f0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4528,10 +4528,15 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_bump_seqid(cstate, status);
- 	if (status)
- 		goto out; 
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&stp->st_stid.sc_count);
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
- 	nfsd4_close_open_stateid(stp);
-+
-+	/* put reference from nfs4_preprocess_seqid_op */
-+	put_generic_stateid(stp);
- out:
- 	nfs4_unlock_state();
- 	return status;
--- 
-1.9.3
+  git://git.open-osd.org/linux-open-osd.git for-linus
 
+for you to fetch changes up to:
+
+	[ce5d36aa] ore: Support for raid 6 (2014-05-22 14:48:15 +0300)
+
+proud to present support for raid6 in ORE.
+These simple patches will enable raid6 using the Kernel's raid6_pq engine
+for support under exofs and pnfs-objects. There is nothing needed to do
+at exofs and pnfs-obj. Just fire your mkfs.exofs with --raid=6 (that was
+already supported before) and off you go as usual. The ORE will pick up
+the new map and will start writing two devices of redundancy bits.
+The patches are so simple because most of the ORE was already for the
+general raid case, only a few bug fixes were needed and the actual wiring
+into the raid6_pq engine.
+
+Thanks
+Boaz
+
+----------------------------------------------------------------
+Boaz Harrosh (3):
+      ore: (trivial) reformat some code
+      ore: Remove redundant dev_order(), more cleanups
+      ore: Support for raid 6
+
+ fs/exofs/Kconfig.ore |   2 ++
+ fs/exofs/ore.c       | 100 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------
+ fs/exofs/ore_raid.c  |  56 ++++++++++++++++++++++++++++++--------------------------
+ fs/exofs/ore_raid.h  |  21 ++-------------------
+ 4 files changed, 98 insertions(+), 81 deletions(-)
