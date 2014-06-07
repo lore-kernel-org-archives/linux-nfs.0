@@ -1,48 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:33689 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754073AbaFBROe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 13:14:34 -0400
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH] svcrdma: Fence LOCAL_INV work requests
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
-        tom@opengridcomputing.com
-Date: Mon, 02 Jun 2014 12:14:33 -0500
-Message-ID: <20140602171433.31076.5634.stgit@build.ogc.int>
+Received: from bombadil.infradead.org ([198.137.202.9]:59560 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752642AbaFGOIB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jun 2014 10:08:01 -0400
+Date: Sat, 7 Jun 2014 07:08:00 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSd: nfs4_preprocess_seqid_op should only set *stpp on
+ success
+Message-ID: <20140607140800.GA18140@infradead.org>
+References: <1402080994-23737-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1402080994-23737-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This applies on top of:
+On Fri, Jun 06, 2014 at 02:56:34PM -0400, Jeff Layton wrote:
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 
-	commit e5a070216356dbcb03607cb264cc3104e17339b3
-	Author: Steve Wise <swise@opengridcomputing.com>
-	Date:   Wed May 28 15:12:01 2014 -0500
-
-	    svcrdma: refactor marshalling logic
-
-Fencing forces the invalidate to only happen after all subsequent send
-work requests have been completed.
-
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
----
-
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 52d9f2c..8f92a61 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -338,7 +338,7 @@ static int rdma_read_chunk_frmr(struct svcxprt_rdma *xprt,
- 		memset(&inv_wr, 0, sizeof(inv_wr));
- 		inv_wr.wr_id = (unsigned long)ctxt;
- 		inv_wr.opcode = IB_WR_LOCAL_INV;
--		inv_wr.send_flags = IB_SEND_SIGNALED;
-+		inv_wr.send_flags = IB_SEND_SIGNALED | IB_SEND_FENCE;
- 		inv_wr.ex.invalidate_rkey = frmr->mr->lkey;
- 	}
- 	ctxt->wr_op = read_wr.opcode;
+The new code looks correct, but shouldn't callers already take care
+not to use the returned stateid only if nfs4_preprocess_seqid_op returns
+0?
 
