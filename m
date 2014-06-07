@@ -1,142 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:56025 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752096AbaF3Puf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:35 -0400
-Received: by mail-qa0-f45.google.com with SMTP id v10so6471672qac.4
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:34 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH v3 001/114] nfsd: fix file access refcount leak when nfsd4_truncate fails
-Date: Mon, 30 Jun 2014 11:48:30 -0400
-Message-Id: <1404143423-24381-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:42135 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752707AbaFGOeL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jun 2014 10:34:11 -0400
+Received: by mail-qa0-f41.google.com with SMTP id dc16so5974993qab.0
+        for <linux-nfs@vger.kernel.org>; Sat, 07 Jun 2014 07:34:10 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sat, 7 Jun 2014 10:34:08 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com
+Subject: Re: [PATCH v2 2/2] nfsd: avoid taking the state_lock while holding
+ the i_lock
+Message-ID: <20140607103408.6e6629c9@tlielax.poochiereds.net>
+In-Reply-To: <20140607143133.GA5072@infradead.org>
+References: <1402060026-26511-1-git-send-email-jlayton@primarydata.com>
+	<1402060026-26511-3-git-send-email-jlayton@primarydata.com>
+	<20140607140904.GB18140@infradead.org>
+	<20140607102826.59a4af24@tlielax.poochiereds.net>
+	<20140607143133.GA5072@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Christoph Hellwig <hch@infradead.org>
+On Sat, 7 Jun 2014 07:31:33 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-nfsd4_process_open2 will currently will get access to the file, and then
-call nfsd4_truncate to (possibly) truncate it. If that operation fails
-though, then the access references will never be released as the
-nfs4_ol_stateid is never initialized.
+> On Sat, Jun 07, 2014 at 10:28:26AM -0400, Jeff Layton wrote:
+> > Well, I think using the fp->fi_lock instead of the i_lock here is
+> > reasonable. We at least avoid taking the state_lock (which is likely to
+> > be much more contended) within the i_lock.
+> 
+> Yes, avoiding i_lock usage inside nfsd is something I'd prefer.  But
+> with the current lock manager ops that are called with i_lock held
+> we'll have some leakage into the nfsd lock hierachy anyway
+> unfortunately.
+> 
 
-Fix by moving the nfsd4_truncate call into nfs4_get_vfs_file, ensuring
-that the refcounts are properly put if the truncate fails.
+Yeah. Switching the file locking infrastructure over to the i_lock
+seemed like such a good idea at the time...
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Signed-off-by: Christoph Hellwig <hch@infradead.org>
----
- fs/nfsd/nfs4state.c | 62 ++++++++++++++++++++++++++---------------------------
- 1 file changed, 30 insertions(+), 32 deletions(-)
+> > The thing that makes this
+> > patch nasty is all of the shenanigans to queue the delegation to the
+> > global list from within rpc_prepare or rpc_release.
+> > 
+> > Personally, I think it'd be cleaner to add some sort of cb_prepare
+> > operation to the generic callback framework you're building to
+> > handle that, but let me know what you thing.
+> 
+> I guess I'll have to do it that way then.  It's not like so far
+> unreleased code should be a hard blocker for a bug fix anyway.
+> 
+> Care to prefer a version that uses fi_lock, but otherwise works like
+> the first version?
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8242385a249c..c473bd6d52c8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3046,6 +3046,21 @@ static inline int nfs4_access_to_access(u32 nfs4_access)
- 	return flags;
- }
- 
-+static inline __be32
-+nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
-+		struct nfsd4_open *open)
-+{
-+	struct iattr iattr = {
-+		.ia_valid = ATTR_SIZE,
-+		.ia_size = 0,
-+	};
-+	if (!open->op_truncate)
-+		return 0;
-+	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
-+		return nfserr_inval;
-+	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
-+}
-+
- static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 		struct svc_fh *cur_fh, struct nfsd4_open *open)
- {
-@@ -3057,53 +3072,39 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
- 			&fp->fi_fds[oflag]);
- 		if (status)
--			return status;
-+			goto out;
- 	}
- 	nfs4_file_get_access(fp, oflag);
- 
-+	status = nfsd4_truncate(rqstp, cur_fh, open);
-+	if (status)
-+		goto out_put_access;
-+
- 	return nfs_ok;
--}
- 
--static inline __be32
--nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
--		struct nfsd4_open *open)
--{
--	struct iattr iattr = {
--		.ia_valid = ATTR_SIZE,
--		.ia_size = 0,
--	};
--	if (!open->op_truncate)
--		return 0;
--	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
--		return nfserr_inval;
--	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
-+out_put_access:
-+	nfs4_file_put_access(fp, oflag);
-+out:
-+	return status;
- }
- 
- static __be32
- nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
- {
- 	u32 op_share_access = open->op_share_access;
--	bool new_access;
- 	__be32 status;
- 
--	new_access = !test_access(op_share_access, stp);
--	if (new_access) {
-+	if (!test_access(op_share_access, stp))
- 		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open);
--		if (status)
--			return status;
--	}
--	status = nfsd4_truncate(rqstp, cur_fh, open);
--	if (status) {
--		if (new_access) {
--			int oflag = nfs4_access_to_omode(op_share_access);
--			nfs4_file_put_access(fp, oflag);
--		}
-+	else
-+		status = nfsd4_truncate(rqstp, cur_fh, open);
-+
-+	if (status)
- 		return status;
--	}
-+
- 	/* remember the open */
- 	set_access(op_share_access, stp);
- 	set_deny(open->op_share_deny, stp);
--
- 	return nfs_ok;
- }
- 
-@@ -3354,9 +3355,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		status = nfs4_get_vfs_file(rqstp, fp, current_fh, open);
- 		if (status)
- 			goto out;
--		status = nfsd4_truncate(rqstp, current_fh, open);
--		if (status)
--			goto out;
- 		stp = open->op_stp;
- 		open->op_stp = NULL;
- 		init_open_stateid(stp, fp, open);
+Nope, that'd be fine. It might take a few days to respin as I'll be at
+the bakeathon next week.
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
