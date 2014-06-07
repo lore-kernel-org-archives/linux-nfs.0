@@ -1,49 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:34268 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751912AbaFZTWK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:22:10 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so3615247qcx.13
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:22:09 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 113/117] nfsd: Remove nfs4_lock_state(): reclaim_complete()
-Date: Thu, 26 Jun 2014 15:21:21 -0400
-Message-Id: <1403810485-16497-30-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:59739 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752707AbaFGO0f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jun 2014 10:26:35 -0400
+Date: Sat, 7 Jun 2014 07:26:34 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSd: nfs4_preprocess_seqid_op should only set *stpp on
+ success
+Message-ID: <20140607142634.GA3700@infradead.org>
+References: <1402080994-23737-1-git-send-email-jlayton@primarydata.com>
+ <20140607140800.GA18140@infradead.org>
+ <20140607102326.3b48b558@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140607102326.3b48b558@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Sat, Jun 07, 2014 at 10:23:26AM -0400, Jeff Layton wrote:
+> Yeah, I mentioned that to Bruce on IRC. This is not really a bugfix,
+> per-se, but more of a defensive coding measure.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 2 --
- 1 file changed, 2 deletions(-)
+Looks fine to me for that,
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9d963037eaa2..ccf6bb390fbb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2856,7 +2856,6 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 		 return nfs_ok;
- 	}
- 
--	nfs4_lock_state();
- 	status = nfserr_complete_already;
- 	if (test_and_set_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
- 			     &cstate->session->se_client->cl_flags))
-@@ -2876,7 +2875,6 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 	status = nfs_ok;
- 	nfsd4_client_record_create(cstate->session->se_client);
- out:
--	nfs4_unlock_state();
- 	return status;
- }
- 
--- 
-1.9.3
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
