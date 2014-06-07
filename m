@@ -1,111 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f176.google.com ([209.85.220.176]:36805 "EHLO
-	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933863AbaFCVi5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 17:38:57 -0400
-Received: by mail-vc0-f176.google.com with SMTP id im17so383452vcb.35
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Jun 2014 14:38:56 -0700 (PDT)
+Received: from bombadil.infradead.org ([198.137.202.9]:59508 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752642AbaFGOEQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jun 2014 10:04:16 -0400
+Date: Sat, 7 Jun 2014 07:04:14 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Philippe Troin <phil@coldcreektech.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Subject: Re: Phantom ACL-related xattrs on 3.14.4 NFS client
+Message-ID: <20140607140414.GA26534@infradead.org>
+References: <1402082953.28220.7.camel@ceramic.home.fifi.org>
+ <CAHQdGtS2BL9u4DV=FZ0HaXO-iTNPU4hTGVR--HubNa4A_6UNog@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <538E35AB.3000108@netapp.com>
-References: <538E35AB.3000108@netapp.com>
-Date: Tue, 3 Jun 2014 17:38:56 -0400
-Message-ID: <CAHQdGtT=3wo+dCeKVQjejdKxZqaFKF2X0bpFxnEpQBK6cmcSeQ@mail.gmail.com>
-Subject: Re: [GIT PULL v2] Please pull NFS client RDMA changes for 3.16
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: "linux >> linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtS2BL9u4DV=FZ0HaXO-iTNPU4hTGVR--HubNa4A_6UNog@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 3, 2014 at 4:52 PM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> Hey Trond,
->
-> The following changes since commit cc6d854967ce8c7be9c9b6c1c9719604b36b925a:
->
->   Linux 3.15-rc8 (2014-06-03 13:56:29 -0400)
->
-> are available in the git repository at:
->
->   git://git.linux-nfs.org/projects/anna/nfs-rdma.git tags/nfs-rdma-3.16
->
-> for you to fetch changes up to d2c1c87ff96ac3cd85f75aa826ceef1f12d4a21d:
->
->   xprtrdma: Disconnect on registration failure (2014-06-03 15:45:40 -0400)
->
-> This pull request fixes the process-related bugs from earlier this afternoon:
-> - Signed-off-by lines have been added
-> - A signed tag has been created
->
-> There are no changes to the actual code.
->
+On Fri, Jun 06, 2014 at 04:37:03PM -0400, Trond Myklebust wrote:
+> Christoph, what is the intended interface for telling
+> posix_acl_xattr_list() that there are no acls on a particular file?
+> Should there perhaps be a call to get_acl()?
 
-Thanks! Pulled now...
+The interface is to not call posix_acl_xattr_list unless you have ACLs.
+Every implementation does this, except for generic_listxattr which is
+only used by NFS.
 
-> Anna
->
-> ----------------------------------------------------------------
-> NFS: Client side changes for RDMA
->
-> These patches are mostly cleanups and bugfixes for using RDMA as an
-> over-the-wire transport.
->
-> Highlights include:
->
-> - Remove obsolete memory registration modes.
-> - Removing BUG_ON()s to keep client's running.
-> - Fix deadlocks, NULL-pointer dereferences, and memory leaks.
->
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
->
-> ----------------------------------------------------------------
-> Allen Andrews (1):
->       nfs-rdma: Fix for FMR leaks
->
-> Chuck Lever (21):
->       xprtrdma: RPC/RDMA must invoke xprt_wake_pending_tasks() in process context
->       xprtrdma: Remove BOUNCEBUFFERS memory registration mode
->       xprtrdma: Remove MEMWINDOWS registration modes
->       xprtrdma: Remove REGISTER memory registration mode
->       xprtrdma: Fall back to MTHCAFMR when FRMR is not supported
->       xprtrdma: mount reports "Invalid mount option" if memreg mode not supported
->       xprtrdma: Simplify rpcrdma_deregister_external() synopsis
->       xprtrdma: Make rpcrdma_ep_destroy() return void
->       xprtrdma: Split the completion queue
->       xprtrmda: Reduce lock contention in completion handlers
->       xprtrmda: Reduce calls to ib_poll_cq() in completion handlers
->       xprtrdma: Limit work done by completion handler
->       xprtrdma: Reduce the number of hardway buffer allocations
->       xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting
->       xprtrdma: Remove Tavor MTU setting
->       xprtrdma: Use macros for reconnection timeout constants
->       xprtrdma: Reset connection timeout after successful reconnect
->       SUNRPC: Move congestion window constants to header file
->       xprtrdma: Avoid deadlock when credit window is reset
->       xprtrdma: Remove BUG_ON() call sites
->       xprtrdma: Disconnect on registration failure
->
-> Shirley Ma (1):
->       xprtrdma: Allocate missing pagelist
->
-> Steve Wise (1):
->       xprtrdma: mind the device's max fast register page list depth
->
->  include/linux/sunrpc/xprt.h     |   6 ++
->  net/sunrpc/xprt.c               |  28 +++------
->  net/sunrpc/xprtrdma/rpc_rdma.c  | 119 +++++++++++++++++---------------------
->  net/sunrpc/xprtrdma/transport.c |  90 ++++++++++-------------------
->  net/sunrpc/xprtrdma/verbs.c     | 753 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++----------------------------------------------------------------------------------------------------------------------------------------------
->  net/sunrpc/xprtrdma/xprt_rdma.h |  17 ++++--
->  6 files changed, 411 insertions(+), 602 deletions(-)
+Philippe, can you test the patch below?
 
 
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 871d6ed..e083827 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -247,3 +247,45 @@ const struct xattr_handler *nfs3_xattr_handlers[] = {
+ 	&posix_acl_default_xattr_handler,
+ 	NULL,
+ };
++
++static int
++nfs3_list_one_acl(struct inode *inode, int type, const char *name, void *data,
++		size_t size, ssize_t *result)
++{
++	struct posix_acl *acl;
++	char *p = data + *result;
++
++	acl = get_acl(inode, type);
++	if (!acl)
++		return 0;
++
++	posix_acl_release(acl);
++
++	*result += strlen(name);
++	if (!size)
++		return 0;
++	if (*result > size)
++		return -ERANGE;
++
++	strcpy(p, name);
++	return 0;
++}
++
++ssize_t
++nfs3_listxattr(struct dentry *dentry, char *data, size_t size)
++{
++	struct inode *inode = dentry->d_inode;
++	ssize_t result = 0;
++	int error;
++
++	error = nfs3_list_one_acl(inode, ACL_TYPE_ACCESS,
++			POSIX_ACL_XATTR_ACCESS, data, size, &result);
++	if (error)
++		return error;
++
++	error = nfs3_list_one_acl(inode, ACL_TYPE_DEFAULT,
++			POSIX_ACL_XATTR_DEFAULT, data, size, &result);
++	if (error)
++		return error;
++	return result;
++}
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index db60149..0e2bb26 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -891,7 +891,7 @@ static const struct inode_operations nfs3_dir_inode_operations = {
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+ #ifdef CONFIG_NFS_V3_ACL
+-	.listxattr	= generic_listxattr,
++	.listxattr	= nfs3_listxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.setxattr	= generic_setxattr,
+ 	.removexattr	= generic_removexattr,
+@@ -905,7 +905,7 @@ static const struct inode_operations nfs3_file_inode_operations = {
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+ #ifdef CONFIG_NFS_V3_ACL
+-	.listxattr	= generic_listxattr,
++	.listxattr	= nfs3_listxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.setxattr	= generic_setxattr,
+ 	.removexattr	= generic_removexattr,
