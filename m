@@ -1,114 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:33363 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751508AbaFZTP3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:29 -0400
-Received: by mail-qg0-f48.google.com with SMTP id q108so3415801qgd.21
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:29 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
+Received: from fieldses.org ([174.143.236.118]:57067 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753488AbaFHRRY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 8 Jun 2014 13:17:24 -0400
+Date: Sun, 8 Jun 2014 13:17:23 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 076/117] nfsd: optimize destroy_lockowner cl_lock thrashing
-Date: Thu, 26 Jun 2014 15:12:56 -0400
-Message-Id: <1403810017-16062-77-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Subject: Re: WARN_ON_ONCE pop with tip of your nfsd-next branch
+Message-ID: <20140608171723.GA32514@fieldses.org>
+References: <20140607215109.3cb5e368@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140607215109.3cb5e368@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reduce the cl_lock trashing in destroy_lockowner. Unhash all of the
-lockstateids on the lockowner's list. Put the reference under the lock
-and see if it was the last one. If so, then add it to a private list
-to be destroyed after we drop the lock.
+On Sat, Jun 07, 2014 at 09:51:09PM -0400, Jeff Layton wrote:
+> Hi Bruce,
+> 
+> Just a heads up...
+> 
+> Was doing some testing with a pile of patches (mostly v4 state-related)
+> on top of your nfsd-next branch, and saw this pop:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 50 +++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 33 insertions(+), 17 deletions(-)
+Do you know exactly was the commit id of the last commit from my branch?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 92680d6531e7..790ff7dacbfb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -938,14 +938,23 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- 	nfs4_put_stid(&stp->st_stid);
- }
- 
--static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void unhash_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
- 
--	spin_lock(&oo->oo_owner.so_client->cl_lock);
--	list_del(&stp->st_locks);
-+	lockdep_assert_held(&oo->oo_owner.so_client->cl_lock);
-+
-+	list_del_init(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
-+}
-+
-+static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-+{
-+	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
-+
-+	spin_lock(&oo->oo_owner.so_client->cl_lock);
-+	unhash_lock_stateid(stp);
- 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- 	put_generic_stateid(stp);
- }
-@@ -959,30 +968,37 @@ static void unhash_lockowner_locked(struct nfs4_lockowner *lo)
- 	list_del_init(&lo->lo_owner.so_strhash);
- }
- 
--static void release_lockowner_stateids(struct nfs4_lockowner *lo)
-+static void release_lockowner(struct nfs4_lockowner *lo)
- {
- 	struct nfs4_client *clp = lo->lo_owner.so_client;
- 	struct nfs4_ol_stateid *stp;
-+	struct list_head reaplist;
- 
--	lockdep_assert_held(&clp->cl_lock);
-+	INIT_LIST_HEAD(&reaplist);
- 
-+	spin_lock(&clp->cl_lock);
-+	unhash_lockowner_locked(lo);
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		spin_unlock(&clp->cl_lock);
--		release_lock_stateid(stp);
--		spin_lock(&clp->cl_lock);
-+		unhash_lock_stateid(stp);
-+		/*
-+		 * We now know that no new references can be added to the
-+		 * stateid. If ours is the last one, finish the unhashing
-+		 * and put it on the list to be reaped.
-+		 */
-+		if (atomic_dec_and_test(&stp->st_stid.sc_count)) {
-+			remove_stid_locked(clp, &stp->st_stid);
-+			list_add(&stp->st_locks, &reaplist);
-+		}
- 	}
--}
--
--static void release_lockowner(struct nfs4_lockowner *lo)
--{
--	struct nfs4_client *clp = lo->lo_owner.so_client;
--
--	spin_lock(&clp->cl_lock);
--	unhash_lockowner_locked(lo);
--	release_lockowner_stateids(lo);
- 	spin_unlock(&clp->cl_lock);
-+	while (!list_empty(&reaplist)) {
-+		stp = list_first_entry(&reaplist, struct nfs4_ol_stateid,
-+					st_locks);
-+		list_del(&stp->st_locks);
-+		stp->st_stid.sc_free(&stp->st_stid);
-+	}
- 	nfs4_put_stateowner(&lo->lo_owner);
- }
- 
--- 
-1.9.3
+--b.
 
+> 
+> [  111.066217] ------------[ cut here ]------------
+> [  111.067223] WARNING: CPU: 0 PID: 588 at fs/nfsd/nfs4xdr.c:3941 nfs4svc_encode_compoundres+0x9a/0xb0 [nfsd]()
+> [  111.070074] Modules linked in: rpcsec_gss_krb5 snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep snd_seq snd_seq_device snd_pcm ppdev joydev snd_timer microcode serio_raw snd virtio_console virtio_balloon virtio_net pcspkr soundcore parport_pc parport pvpanic nfsd(OE) i2c_piix4 auth_rpcgss nfs_acl lockd sunrpc qxl drm_kms_helper ttm virtio_blk drm virtio_pci virtio_ring i2c_core virtio ata_generic pata_acpi floppy
+> [  111.081001] CPU: 0 PID: 588 Comm: nfsd Tainted: G           OE 3.15.0-rc1.jlayton.1+ #2
+> [  111.083615] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> [  111.084924]  0000000000000000 00000000051421a7 ffff8800d6c3dcf0 ffffffff817d318e
+> [  111.086613]  0000000000000000 ffff8800d6c3dd28 ffffffff810958bd ffff88003602d000
+> [  111.088308]  ffff8800d8880000 ffff880118fb4018 ffff880118fb4000 000000000000001c
+> [  111.089978] Call Trace:
+> [  111.090552]  [<ffffffff817d318e>] dump_stack+0x4d/0x66
+> [  111.091652]  [<ffffffff810958bd>] warn_slowpath_common+0x7d/0xa0
+> [  111.092927]  [<ffffffff810959ea>] warn_slowpath_null+0x1a/0x20
+> [  111.094189]  [<ffffffffa018d91a>] nfs4svc_encode_compoundres+0x9a/0xb0 [nfsd]
+> [  111.095565]  [<ffffffffa016cf5f>] nfsd_dispatch+0x14f/0x200 [nfsd]
+> [  111.096915]  [<ffffffffa00f2bd0>] svc_process_common+0x480/0x6f0 [sunrpc]
+> [  111.098228]  [<ffffffffa00f2f47>] svc_process+0x107/0x170 [sunrpc]
+> [  111.099898]  [<ffffffffa016c253>] nfsd+0xd3/0x160 [nfsd]
+> [  111.100971]  [<ffffffffa016c180>] ? nfsd_destroy+0x210/0x210 [nfsd]
+> [  111.102219]  [<ffffffff810c260f>] kthread+0xff/0x120
+> [  111.103185]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
+> [  111.104345]  [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
+> [  111.105376]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
+> [  111.106476] ---[ end trace 48ac61da47c8e691 ]---
+> 
+> It's possible that it's due to something I broke, but seems more likely
+> to be something in your XDR overhaul.
+> 
+> -- 
+> Jeff Layton <jlayton@primarydata.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
