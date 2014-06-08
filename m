@@ -1,61 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20444 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932135AbaFQSGd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Jun 2014 14:06:33 -0400
-Message-ID: <53A083A4.4020304@RedHat.com>
-Date: Tue, 17 Jun 2014 14:06:28 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:37047 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753722AbaFHSww (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Jun 2014 14:52:52 -0400
+Received: by mail-qg0-f42.google.com with SMTP id q107so8017535qgd.15
+        for <linux-nfs@vger.kernel.org>; Sun, 08 Jun 2014 11:52:51 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sun, 8 Jun 2014 14:52:49 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: WARN_ON_ONCE pop with tip of your nfsd-next branch
+Message-ID: <20140608145249.2be6b75c@primarydata.com>
+In-Reply-To: <20140608184436.GA437@fieldses.org>
+References: <20140607215109.3cb5e368@tlielax.poochiereds.net>
+	<20140608171723.GA32514@fieldses.org>
+	<20140608184436.GA437@fieldses.org>
 MIME-Version: 1.0
-To: Ditang Chen <chendt.fnst@cn.fujitsu.com>
-CC: Trond Myklebust <trond.myklebust@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "yaoxp@cn.fujitsu.com" <yaoxp@cn.fujitsu.com>
-Subject: Re: [PATCH]statd: create statdpath dir if specify the "--with-statdpath=xx"
- parameter in configure nfs-utils source code
-References: <539026DB.30502@cn.fujitsu.com> <539132AF.8060805@cn.fujitsu.com>
-In-Reply-To: <539132AF.8060805@cn.fujitsu.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun, 8 Jun 2014 14:44:36 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
+> On Sun, Jun 08, 2014 at 01:17:23PM -0400, J. Bruce Fields wrote:
+> > On Sat, Jun 07, 2014 at 09:51:09PM -0400, Jeff Layton wrote:
+> > > Hi Bruce,
+> > > 
+> > > Just a heads up...
+> > > 
+> > > Was doing some testing with a pile of patches (mostly v4 state-related)
+> > > on top of your nfsd-next branch, and saw this pop:
+> > 
+> > Do you know exactly was the commit id of the last commit from my branch?
+> 
+> Also, do you remember what sort of testing it was?
+> 
+> --b.
 
-On 06/05/2014 11:17 PM, Ditang Chen wrote:
-> When configure the nfs-utils source code with "--with-statdpath=/foo" parameter，
-> #define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
-> but Makefile will not create "/foo" dir.
-> 
-> Signed-off-by: chendt.fnst@cn.fujitsu.com
-> Reported-by: yaoxp@cn.fujitsu.com
-> ---
->  Makefile.am | 10 +++++-----
->  1 file changed, 5 insertions(+), 5 deletions(-)
-Committed.... 
+The tip was at a676de9e22b4c13c8d4a27289b1f2bcf35dce6dd. It looks like
+maybe you rebased at some point though and now the commit IDs are
+different? To make it pop, I ran fsstress on a v4.1 mount. I think it
+was these options:
 
-steved
-> 
-> diff --git a/Makefile.am b/Makefile.am
-> index ae7cd16..5824adc 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -54,13 +54,13 @@ install-data-hook:
->         touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
->         touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
->         touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
-> -       mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
-> -       touch $(DESTDIR)$(statedir)/state
-> -       chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
-> -       -chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
-> +       mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
-> +       touch $(DESTDIR)$(statdpath)/state
-> +       chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statdpath)/state
-> +       -chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statdpath)/state
-> 
->  uninstall-hook:
->         rm $(DESTDIR)$(statedir)/xtab
->         rm $(DESTDIR)$(statedir)/etab
->         rm $(DESTDIR)$(statedir)/rmtab
-> -       rm $(DESTDIR)$(statedir)/state
-> +       rm $(DESTDIR)$(statdpath)/state
-> 
+    $ fsstress -d <dir> -n 1000 -p 128
+
+I'll see if I can make it happen again when I have some time for more
+testing.
+
+Thanks,
+-- 
+Jeff Layton <jlayton@primarydata.com>
