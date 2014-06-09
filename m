@@ -1,155 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:61709 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751017AbaFJSjM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2014 14:39:12 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFS test SECINFO RPC_AUTH_GSS pseudoflavors for
- support
-Date: Tue, 10 Jun 2014 18:38:51 +0000
-Message-ID: <43CD0281-BAB1-4E29-A51C-876A017F4374@netapp.com>
-References: <1402342401-5640-1-git-send-email-andros@netapp.com>
- <1402342401-5640-4-git-send-email-andros@netapp.com>
- <1402417268.2577.4.camel@leira.trondhjem.org>
-In-Reply-To: <1402417268.2577.4.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:40787 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753911AbaFIVra (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2014 17:47:30 -0400
+Received: by mail-ig0-f179.google.com with SMTP id r2so2454213igi.0
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jun 2014 14:47:29 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH] pnfs: fix lockup caused by pnfs_generic_pg_test
+Date: Mon,  9 Jun 2014 17:47:26 -0400
+Message-Id: <1402350446-2112-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+end_offset and req_offset both return u64 - avoid casting to u32
+until it's needed, when it's less than the (u32) size returned by
+nfs_generic_pg_test.
 
-On Jun 10, 2014, at 12:21 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Also, fix the comments in pnfs_generic_pg_test.
 
-> On Mon, 2014-06-09 at 15:33 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> The current code returns an RPC_AUTH_GSS pseudo-flavor without testing to see
->> if it is configured properly. If an RPC_AUTH_GSS pseudoflavor fails then the
->> next SECINFO flavor should be tried.
->> 
->> Create an rpc_auth, rpc_cred, and initialize the cred (e.g. get a GSS Context)
->> using the short-lived SECINFO rpc client to test if the use of the RPC_AUTH_GSS
->> pseudoflavor succeeds.
->> 
->> Signed-off-by: Andy Adamson <andros@netapp.com>
->> ---
->> fs/nfs/nfs4namespace.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++--
->> 1 file changed, 46 insertions(+), 2 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
->> index fd4dcb6..e0a5491 100644
->> --- a/fs/nfs/nfs4namespace.c
->> +++ b/fs/nfs/nfs4namespace.c
->> @@ -135,6 +135,39 @@ static size_t nfs_parse_server_name(char *string, size_t len,
->> }
->> 
->> /**
->> + * nfs_test_gss - Test client support of pseudoflavor
->> + * @server: NFS server struct
->> + * @flavor: RPC_AUTH_GSS pseudoflavor
->> + */
->> +
->> +static int nfs_test_gss_flavor(struct nfs_server *server,
->> +			       rpc_authflavor_t pseudoflavor)
->> +{
->> +	struct rpc_auth_create_args auth_args = {
->> +		.pseudoflavor = pseudoflavor,
->> +	};
->> +	struct rpc_auth *auth;
->> +	struct rpc_cred *rcred;
->> +	const struct cred *cred = current_cred();
->> +	struct auth_cred acred = {
->> +		.uid = cred->fsuid,
->> +		.gid = cred->fsgid,
->> +		.group_info = get_group_info(((struct cred *)cred)->group_info),
->> +	};
->> +
->> +	auth = rpcauth_create(&auth_args, server->client);
-> 
-> This call has the side-effect of changing the value of
-> server->client->cl_auth. Not sure that we want that here.
+Running the cthon04 special tests caused this lockup in the
+"write/read at 2GB, 4GB edges" test when running against a file layout server:
 
-I don't see any other interface to get a gss_auth struct to pass to rpcauth_lookupcredcache.
+BUG: soft lockup - CPU#0 stuck for 22s! [bigfile2:823]
+Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs fscache ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 ip6table_mangle ip6table_filter ip6_tables iptable_nat nf_nat_ipv4 nf_nat iptable_mangle ppdev crc32c_intel aesni_intel aes_x86_64 glue_helper lrw gf128mul ablk_helper cryptd serio_raw e1000 shpchp i2c_piix4 i2c_core parport_pc parport nfsd auth_rpcgss oid_registry exportfs nfs_acl lockd sunrpc btrfs xor zlib_deflate raid6_pq mptspi scsi_transport_spi mptscsih mptbase ata_generic floppy autofs4
+irq event stamp: 205958
+hardirqs last  enabled at (205957): [<ffffffff814a62dc>] restore_args+0x0/0x30
+hardirqs last disabled at (205958): [<ffffffff814ad96a>] apic_timer_interrupt+0x6a/0x80
+softirqs last  enabled at (205956): [<ffffffff8103ffb2>] __do_softirq+0x1ea/0x2ab
+softirqs last disabled at (205951): [<ffffffff8104026d>] irq_exit+0x44/0x9a
+CPU: 0 PID: 823 Comm: bigfile2 Not tainted 3.15.0-rc1-branch-pgio_plus+ #3
+Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+task: ffff8800792ec480 ti: ffff880078c4e000 task.ti: ffff880078c4e000
+RIP: 0010:[<ffffffffa02ce51f>]  [<ffffffffa02ce51f>] nfs_page_group_unlock+0x3e/0x4b [nfs]
+RSP: 0018:ffff880078c4fab0  EFLAGS: 00000202
+RAX: 0000000000000fff RBX: ffff88006bf83300 RCX: 0000000000000000
+RDX: 0000000000000001 RSI: 0000000000000000 RDI: ffff88006bf83300
+RBP: ffff880078c4fab8 R08: 0000000000000001 R09: 0000000000000000
+R10: ffffffff8249840c R11: 0000000000000000 R12: 0000000000000035
+R13: ffff88007ffc72d8 R14: 0000000000000001 R15: 0000000000000000
+FS:  00007f45f11b7740(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f3a8cb632d0 CR3: 000000007931c000 CR4: 00000000001407f0
+Stack:
+ ffff88006bf832c0 ffff880078c4fb00 ffffffffa02cec22 ffff880078c4fad8
+ 00000fff810f9d99 ffff880078c4fca0 ffff88006bf832c0 ffff88006bf832c0
+ ffff880078c4fca0 ffff880078c4fd60 ffff880078c4fb28 ffffffffa02cee34
+Call Trace:
+ [<ffffffffa02cec22>] __nfs_pageio_add_request+0x298/0x34f [nfs]
+ [<ffffffffa02cee34>] nfs_pageio_add_request+0x1f/0x42 [nfs]
+ [<ffffffffa02d1722>] nfs_do_writepage+0x1b5/0x1e4 [nfs]
+ [<ffffffffa02d1764>] nfs_writepages_callback+0x13/0x25 [nfs]
+ [<ffffffffa02d1751>] ? nfs_do_writepage+0x1e4/0x1e4 [nfs]
+ [<ffffffff810eb32d>] write_cache_pages+0x254/0x37f
+ [<ffffffffa02d1751>] ? nfs_do_writepage+0x1e4/0x1e4 [nfs]
+ [<ffffffff8149cf9e>] ? printk+0x54/0x56
+ [<ffffffff810eacca>] ? __set_page_dirty_nobuffers+0x22/0xe9
+ [<ffffffffa016d864>] ? put_rpccred+0x38/0x101 [sunrpc]
+ [<ffffffffa02d1ae1>] nfs_writepages+0xb4/0xf8 [nfs]
+ [<ffffffff810ec59c>] do_writepages+0x21/0x2f
+ [<ffffffff810e36e8>] __filemap_fdatawrite_range+0x55/0x57
+ [<ffffffff810e374a>] filemap_write_and_wait_range+0x2d/0x5b
+ [<ffffffffa030ba0a>] nfs4_file_fsync+0x3a/0x98 [nfsv4]
+ [<ffffffff8114ee3c>] vfs_fsync_range+0x18/0x20
+ [<ffffffff810e40c2>] generic_file_aio_write+0xa7/0xbd
+ [<ffffffffa02c5c6b>] nfs_file_write+0xf0/0x170 [nfs]
+ [<ffffffff81129215>] do_sync_write+0x59/0x78
+ [<ffffffff8112956c>] vfs_write+0xab/0x107
+ [<ffffffff81129c8b>] SyS_write+0x49/0x7f
+ [<ffffffff814acd12>] system_call_fastpath+0x16/0x1b
 
-If the gss_cred/gss_context creation works, then the cl_auth being set is OK as it would have been set anyway by the callers of nfs4_negotiate_security (nfs4_submount or nfs4_create_sec_client so far) if we simply passed the flavor to those functions to “test” if RPC_AUTH_GSS can be used.
+Reported-by: Anna Schumaker <Anna.Schumaker@netapp.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/pnfs.c | 32 ++++++++++++++++++--------------
+ 1 file changed, 18 insertions(+), 14 deletions(-)
 
-But on failure, you’re right, the cl_auth needs to be reaped. I’ll add a call to rpcauth_release() if nfs_test_gss_flavor() fails and set the cl_auth to NULL - and check that it is actually reaped. Since failure means no gss_context was created it is more simple than otherwise.
-
-> 
->> +	if (IS_ERR(auth))
->> +		return -EACCES;
->> +
->> +	/* This will call cr_init to create a gss context */
->> +	rcred = rpcauth_lookup_credcache(auth, &acred, 0);
-> 
-> Why not call rpcauth_lookupcred() instead of open-coding?
-
-I see - it will call rpcauth_lookupcredcache for me (gssand do the put of the group_info as well. Good - I’ll use it.
-
-> 
-> Also note that there is a credential refcount leak here
-
-I’ll make sure this is addressed
-
-Thanks for the review :)
-
-—>Andy
-
-
-
-> (and a
-> group_info refcount leak).
-> 
->> +	if (IS_ERR(cred))
->> +		return -EACCES;
->> +
->> +	return 0;
->> +}
->> +
->> +/**
->>  * nfs_find_best_sec - Find a security mechanism supported locally
->>  * @server: NFS server struct
->>  * @flavors: List of security tuples returned by SECINFO procedure
->> @@ -152,21 +185,32 @@ static rpc_authflavor_t nfs_find_best_sec(struct nfs_server *server,
->> 	rpc_authflavor_t pseudoflavor;
->> 	struct nfs4_secinfo4 *secinfo;
->> 	unsigned int i;
->> +	int err = 0;
->> 
->> 	for (i = 0; i < flavors->num_flavors; i++) {
->> +		bool gss = false;
->> +
->> 		secinfo = &flavors->flavors[i];
->> 
->> 		switch (secinfo->flavor) {
->> +		case RPC_AUTH_GSS:
->> +			gss = true;
->> 		case RPC_AUTH_NULL:
->> 		case RPC_AUTH_UNIX:
->> -		case RPC_AUTH_GSS:
->> 			pseudoflavor = rpcauth_get_pseudoflavor(secinfo->flavor,
->> 							&secinfo->flavor_info);
->> 			/* make sure pseudoflavor matches sec= mount opt */
->> 			if (pseudoflavor != RPC_AUTH_MAXFLAVOR &&
->> 			    nfs_auth_info_match(&server->auth_info,
->> -						pseudoflavor))
->> +						pseudoflavor)) {
->> +				if (gss) {
->> +					err = nfs_test_gss_flavor(server,
->> +								  pseudoflavor);
->> +					if (err) /* try the next flavor */
->> +						continue;
->> +				}
->> 				return pseudoflavor;
->> +			}
->> 			break;
->> 		}
->> 	}
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0ecaf6e..059eb58 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1433,33 +1433,37 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		     struct nfs_page *req)
+ {
+ 	unsigned int size;
+-	u64 end;
++	u64 seg_end, req_start, seg_left;
+ 
+ 	size = nfs_generic_pg_test(pgio, prev, req);
+ 	if (!size)
+ 		return 0;
+ 
+ 	/*
+-	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
+-	 * Note that this test makes several assumptions:
+-	 * - that the previous nfs_page in the struct nfs_pageio_descriptor
+-	 *   is known to lie within the range.
+-	 *   - that the nfs_page being tested is known to be contiguous with the
+-	 *   previous nfs_page.
+-	 *   - Layout ranges are page aligned, so we only have to test the
+-	 *   start offset of the request.
++	 * 'size' contains the number of bytes left in the current page (up
++	 * to the original size asked for in @req->wb_bytes).
++	 *
++	 * Calculate how many bytes are left in the layout segment
++	 * and if there are less bytes than 'size', return that instead.
+ 	 *
+ 	 * Please also note that 'end_offset' is actually the offset of the
+ 	 * first byte that lies outside the pnfs_layout_range. FIXME?
+ 	 *
+ 	 */
+ 	if (pgio->pg_lseg) {
+-		end = end_offset(pgio->pg_lseg->pls_range.offset,
+-				 pgio->pg_lseg->pls_range.length);
+-		WARN_ON_ONCE(req_offset(req) > end);
+-		if (req_offset(req) >= end)
++		seg_end = end_offset(pgio->pg_lseg->pls_range.offset,
++				     pgio->pg_lseg->pls_range.length);
++		req_start = req_offset(req);
++		WARN_ON_ONCE(req_start > seg_end);
++		/* start of request is past the last byte of this segment */
++		if (req_start >= seg_end)
+ 			return 0;
+-		size = min((unsigned int)(end - req_offset(req)), size);
++
++		/* adjust 'size' iff there are fewer bytes left in the
++		 * segment than what nfs_generic_pg_test returned */
++		seg_left = seg_end - req_start;
++		if (seg_left < size)
++			size = (unsigned int)seg_left;
+ 	}
+ 
+ 	return size;
+-- 
+1.8.5.2 (Apple Git-48)
 
