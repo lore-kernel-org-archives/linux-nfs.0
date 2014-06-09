@@ -1,58 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.kundenserver.de ([212.227.17.24]:55760 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751189AbaFBSwv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 14:52:51 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Nicolas Pitre <nicolas.pitre@linaro.org>, "H. Peter Anvin" <hpa@zytor.com>,
-        Dave Chinner <david@fromorbit.com>,
-        LKML Kernel <linux-kernel@vger.kernel.org>, linux-arch@vger.kernel.org,
-        joseph@codesourcery.com, john.stultz@linaro.org,
-        Christoph Hellwig <hch@infradead.org>, tglx@linutronix.de,
-        geert@linux-m68k.org, lftan@altera.com,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
-Date: Mon, 02 Jun 2014 20:52:43 +0200
-Message-ID: <5109660.teHoOW5tSd@wuerfel>
-In-Reply-To: <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <4178301.j9kWdGCRLC@wuerfel> <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:48252 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932195AbaFIVZ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jun 2014 17:25:58 -0400
+Date: Mon, 9 Jun 2014 17:25:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH pynfs v2 00/16] prep for flex file layout server
+Message-ID: <20140609212556.GE10041@fieldses.org>
+References: <1401976544-36374-1-git-send-email-dros@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1401976544-36374-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday 02 June 2014 11:04:23 Chuck Lever wrote:
-> I’m wondering what should be done about NFS. A solution for NFS should
-> match any scheme that is considered for local file systems, IMO.
+On Thu, Jun 05, 2014 at 09:55:28AM -0400, Weston Andros Adamson wrote:
+> Changes in v2:
 > 
-> NFSv2/3 timestamps are a pair of unsigned 32-bit values: one value for
-> seconds since midnight GMT Jan 1, 1970, and one value for nanoseconds.
-> (See the definition of nfstime3 in RFC 1813).
+>  - moved "4.1 client: reclaim_complete after create_session" to
+>    "dataserver: reclaim_complete after create_session" as the implicit
+>    reclaim complete is needed in DS path, but not in all server tests.
 > 
-> NFSv4 uses a signed 64-bit value where zero represents midnight UTC
-> on January 1, 1970, and an unsigned 32-bit value for nanoseconds. (See
-> the definition of nfstime4 in RFC 5661).
+>  - dropped "4.1 server: service RECLAIM_COMPLETE operations" as it's
+>    unneeded.
 > 
-> The NFSv4 protocol is probably not problematic, and NFSv3 should be out
-> of the picture by 2038. But if changes are planned for dealing _now_
-> with timestamp issues, compatibility with NFSv3 is a consideration.
+>  - formatted these patches with -M flag so we can see moved files
 > 
-> It is already the case that, via NFSv3, the Linux NFS client transmits
-> timestamps earlier than 1970 as large positive numbers. Try this with
-> xfstests generic/258.
+> .. and I pushed the changes to my ff_prep branch.
 
-If I read the code correctly, a pre-1970 timestamp will be sent as
-a large unsigned integer, but received as a post-2038 timestamp on
-64-bit kernels, both in the nfs client and server code.
+Thanks for the patches!  Applied, checked that they didn't break
+anything for me, and pushed out.
 
-This behavior is clearly wrong, but it's the same bug that we have
-in lots of other file systems, and it makes sense to have the
-same fix everywhere, at lease the cases where we know what interpretation
-we actually want. NFS has the luxury of having an actual specification
-saying that the value is unsigned. For most of the legacy file systems,
-we can only make a guess at how other OSs would interpret the same
-numbers.
+(The only thing I noticed was that I had to rebuild things, to account
+for the renamed files.)
 
-	Arnd
+--b.
+
+> 
+> Thanks!
+>  -dros
+> 
+> 
+> These patches are in preparation for the pynfs implementation of a flex
+> file layout server.
+> 
+> I already have patches for a working flex file server, but I figure those
+> should wait until the spec is complete ;)
+> 
+> I pushed these patches to my linux-nfs.org tree on branch 'ff_prep':
+> 
+>  git://git.linux-nfs.org/projects/dros/pynfs.git
+> 
+> The prep includes:
+> 
+>  - patches that enable pynfs mds using real v4.1 DSes (on the backend,
+>    not usable from clients as there is no stateid sharing between mds and ds)
+> 
+>  - fix several bugs in pnfs path
+> 
+>  - move .x files to subdir 'xdrdef' - the nfs4.1 directory was getting crowded
+>    and we're going to add several more .x files along with all of the
+>    autogenerated files.  Note this change touches server tests too.
+> 
+>  - clean up the nfs4server's output - no longer print out EVERY part of EVERY
+>    operation which was very efficient at hiding tracebacks and made pynfs
+>    even slower. Old functionality is now switched on with -v flag. Also
+>    added an in-between mode "-s" that prints a summary of whats going on.
+> 
+>  - support for NFSv3 backend communication - this is not actually used yet,
+>    but can be tested with file layout by always returning
+>    NFS4ERR_LAYOUTUNAVAILABLE in layoutget and using DataServer3 class instead
+>    of DataServer41
+> 
+> 
+> Weston Andros Adamson (16):
+>   dataserver: reclaim_complete after create_session
+>   dataserver: only catch connection error
+>   4.1 server: avoid traceback in DS disconnect()
+>   move .x files to subdir 'xdrdef'
+>   4.1 client: remove unused imports
+>   4.1 server: add -v flag & silence random output
+>   4.1 server: add -s option to print summary of ops
+>   dataserver: make generic interface to ops
+>   dataserver: don't import * from nfs4 specific mods
+>   4.1 server: move nfs4_ops.py to nfs_ops.py
+>   add mntv3, portmapv2 and nfsv3 .x files
+>   dataserver: separate generic and 4.1 code
+>   4.1 server: add support for NFSv3 data servers
+>   4.1 server: get rid of old op_getdeviceinfo
+>   rpc: on socket error, close and mark pipe inactive
+>   nfs3clnt: reconnect when sending on inactive pipe
+> 
+>  nfs4.1/block.py                             |   8 +-
+>  nfs4.1/client41tests/environment.py         |   4 +-
+>  nfs4.1/config.py                            |   8 +-
+>  nfs4.1/dataserver.py                        | 308 ++++++++---
+>  nfs4.1/fs.py                                |  38 +-
+>  nfs4.1/nfs3client.py                        | 185 +++++++
+>  nfs4.1/nfs4_ops.py                          |  61 ---
+>  nfs4.1/nfs4client.py                        |  47 +-
+>  nfs4.1/nfs4commoncode.py                    |  10 +-
+>  nfs4.1/nfs4lib.py                           |  62 ++-
+>  nfs4.1/nfs4server.py                        | 163 +++---
+>  nfs4.1/nfs4state.py                         |  15 +-
+>  nfs4.1/nfs_ops.py                           |  89 +++
+>  nfs4.1/server41tests/environment.py         |   4 +-
+>  nfs4.1/server41tests/st_block.py            |   4 +-
+>  nfs4.1/server41tests/st_compound.py         |   4 +-
+>  nfs4.1/server41tests/st_create_session.py   |   4 +-
+>  nfs4.1/server41tests/st_current_stateid.py  |   8 +-
+>  nfs4.1/server41tests/st_debug.py            |   4 +-
+>  nfs4.1/server41tests/st_delegation.py       |   4 +-
+>  nfs4.1/server41tests/st_destroy_clientid.py |   2 +-
+>  nfs4.1/server41tests/st_destroy_session.py  |   4 +-
+>  nfs4.1/server41tests/st_exchange_id.py      |   4 +-
+>  nfs4.1/server41tests/st_getdevicelist.py    |   4 +-
+>  nfs4.1/server41tests/st_lookup.py           |   2 +-
+>  nfs4.1/server41tests/st_lookupp.py          |   2 +-
+>  nfs4.1/server41tests/st_open.py             |   8 +-
+>  nfs4.1/server41tests/st_putfh.py            |   2 +-
+>  nfs4.1/server41tests/st_reboot.py           |   4 +-
+>  nfs4.1/server41tests/st_reclaim_complete.py |   2 +-
+>  nfs4.1/server41tests/st_rename.py           |   4 +-
+>  nfs4.1/server41tests/st_secinfo.py          |   4 +-
+>  nfs4.1/server41tests/st_secinfo_no_name.py  |   4 +-
+>  nfs4.1/server41tests/st_sequence.py         |   4 +-
+>  nfs4.1/server41tests/st_trunking.py         |   4 +-
+>  nfs4.1/server41tests/st_verify.py           |   2 +-
+>  nfs4.1/server_exports.py                    |   7 +-
+>  nfs4.1/setup.py                             |  33 +-
+>  nfs4.1/testclient.py                        |   2 +-
+>  nfs4.1/testserver.py                        |   2 +-
+>  nfs4.1/xdrdef/__init__.py                   |   0
+>  nfs4.1/xdrdef/mnt3.x                        |  68 +++
+>  nfs4.1/xdrdef/nfs3.x                        | 818 ++++++++++++++++++++++++++++
+>  nfs4.1/{ => xdrdef}/nfs4.x                  |   0
+>  nfs4.1/{ => xdrdef}/nfs4.x.diff             |   0
+>  nfs4.1/{ => xdrdef}/pnfs_block.x            |   0
+>  nfs4.1/xdrdef/portmap.x                     |  51 ++
+>  nfs4.1/{ => xdrdef}/sctrl.x                 |   0
+>  rpc/rpc.py                                  |  26 +-
+>  49 files changed, 1704 insertions(+), 389 deletions(-)
+>  create mode 100644 nfs4.1/nfs3client.py
+>  delete mode 100644 nfs4.1/nfs4_ops.py
+>  create mode 100644 nfs4.1/nfs_ops.py
+>  create mode 100644 nfs4.1/xdrdef/__init__.py
+>  create mode 100644 nfs4.1/xdrdef/mnt3.x
+>  create mode 100644 nfs4.1/xdrdef/nfs3.x
+>  rename nfs4.1/{ => xdrdef}/nfs4.x (100%)
+>  rename nfs4.1/{ => xdrdef}/nfs4.x.diff (100%)
+>  rename nfs4.1/{ => xdrdef}/pnfs_block.x (100%)
+>  create mode 100644 nfs4.1/xdrdef/portmap.x
+>  rename nfs4.1/{ => xdrdef}/sctrl.x (100%)
+> 
+> -- 
+> 1.8.5.2 (Apple Git-48)
+> 
