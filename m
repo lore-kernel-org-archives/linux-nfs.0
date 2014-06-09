@@ -1,93 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:39555 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752199AbaF3K7Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 06:59:16 -0400
-Received: by mail-qg0-f45.google.com with SMTP id a108so1763578qge.32
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 03:59:15 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 30 Jun 2014 06:59:13 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v2 022/117] nfsd: Cache the client that was looked up in
- lookup_clientid()
-Message-ID: <20140630065913.2fe89c25@f20.localdomain>
-In-Reply-To: <20140630103453.GB22010@infradead.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-	<1403810017-16062-23-git-send-email-jlayton@primarydata.com>
-	<20140629121419.GC16150@infradead.org>
-	<20140629105702.2ca9e6ee@f20.localdomain>
-	<20140630103453.GB22010@infradead.org>
+Received: from mx12.netapp.com ([216.240.18.77]:54825 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753773AbaFITd2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Jun 2014 15:33:28 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 3/3] NFS test SECINFO RPC_AUTH_GSS pseudoflavors for support
+Date: Mon, 9 Jun 2014 15:33:21 -0400
+Message-ID: <1402342401-5640-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1402342401-5640-1-git-send-email-andros@netapp.com>
+References: <1402342401-5640-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 30 Jun 2014 03:34:53 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> On Sun, Jun 29, 2014 at 10:57:02AM -0400, Jeff Layton wrote:
-> > Depends on what you mean by "normal case". For v4.0 we do look it up at
-> > least once for each call into here. For v4.1 we get the pointer to the
-> > client "for free" by virtue of looking up the session in the SEQUENCE
-> > op. So, I think we are doing a bit more than just verifying the
-> > clientid here. The name seems appropriate to me.
-> 
-> So everything but the first call for 4.0 is just a small verification.
-> I'm not going to hold up the series for something as trivial, but the
-> name still smells a little..
-> 
+The current code returns an RPC_AUTH_GSS pseudoflavor without testing to see
+if it is configured properly. If an RPC_AUTH_GSS pseudoflavor fails then the
+next SECINFO flavor should be tried.
 
-Fair enough. The "verify" name smells to me a little since we aren't
-guaranteed to have one when the function is called. "lookup" seems
-reasonable since we are looking it up, it's just that once this patch
-goes in we'll usually have it cached in the cstate.
+Create an rpc_auth, rpc_cred, and initialize the cred (e.g. get a GSS Context)
+using the short-lived SECINFO rpc client to test if the use of the RPC_AUTH_GSS
+pseudoflavor succeeds.
 
-> > > While it doesn't belong into this patch:  why don't we cache the
-> > > nfsd_net in the nfsd4_compound_state
-> > > 
-> > 
-> > I'll go further and say that it doesn't really belong in this
-> > series.
-> 
-> Anything we can keep out of this series is good, agreed..
-> 
-> > There are certain calls that don't require a SEQUENCE operation:
-> > 
-> >     BIND_CONN_TO_SESSION
-> >     EXCHANGE_ID
-> >     CREATE_SESSION
-> >     DESTROY_SESSION
-> > 
-> > Granted, for those we don't use lookup_clientid but the "Usually"
-> > still applies, in general. That said, if it bothers you I'll remove
-> > it.
-> 
-> my major issue is the combination of the usually with this:
-> 
-> > > > +		 * if we don't have one cached already then we
-> > > > know this is for
-> > > > +		 * is for v4.0 and "sessions" will be false.
-> 
-> so we can have a case where we are 4.1 but don't have a cached
-> session. This is getting into deep nitpick land, but comments that
-> aren't entirely coherent always confuse me.
-> 
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4namespace.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 46 insertions(+), 2 deletions(-)
 
-Ok, that's understandable. How about this?
-
-+       /*
-+        * For v4.1+ we get the client in the SEQUENCE op. If we don't have one
-+        * cached already then we know this is for is for v4.0 and "sessions"
-+        * will be false.
-+        */
-+       found = find_confirmed_client(clid, false, nn);
-
-FWIW, the main reason for the comment is to explain why we're
-hardcoding the "session" arg to false here instead of using
-cstate->session.
-
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index fd4dcb6..e0a5491 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -135,6 +135,39 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+ }
+ 
+ /**
++ * nfs_test_gss - Test client support of pseudoflavor
++ * @server: NFS server struct
++ * @flavor: RPC_AUTH_GSS pseudoflavor
++ */
++
++static int nfs_test_gss_flavor(struct nfs_server *server,
++			       rpc_authflavor_t pseudoflavor)
++{
++	struct rpc_auth_create_args auth_args = {
++		.pseudoflavor = pseudoflavor,
++	};
++	struct rpc_auth *auth;
++	struct rpc_cred *rcred;
++	const struct cred *cred = current_cred();
++	struct auth_cred acred = {
++		.uid = cred->fsuid,
++		.gid = cred->fsgid,
++		.group_info = get_group_info(((struct cred *)cred)->group_info),
++	};
++
++	auth = rpcauth_create(&auth_args, server->client);
++	if (IS_ERR(auth))
++		return -EACCES;
++
++	/* This will call cr_init to create a gss context */
++	rcred = rpcauth_lookup_credcache(auth, &acred, 0);
++	if (IS_ERR(cred))
++		return -EACCES;
++
++	return 0;
++}
++
++/**
+  * nfs_find_best_sec - Find a security mechanism supported locally
+  * @server: NFS server struct
+  * @flavors: List of security tuples returned by SECINFO procedure
+@@ -152,21 +185,32 @@ static rpc_authflavor_t nfs_find_best_sec(struct nfs_server *server,
+ 	rpc_authflavor_t pseudoflavor;
+ 	struct nfs4_secinfo4 *secinfo;
+ 	unsigned int i;
++	int err = 0;
+ 
+ 	for (i = 0; i < flavors->num_flavors; i++) {
++		bool gss = false;
++
+ 		secinfo = &flavors->flavors[i];
+ 
+ 		switch (secinfo->flavor) {
++		case RPC_AUTH_GSS:
++			gss = true;
+ 		case RPC_AUTH_NULL:
+ 		case RPC_AUTH_UNIX:
+-		case RPC_AUTH_GSS:
+ 			pseudoflavor = rpcauth_get_pseudoflavor(secinfo->flavor,
+ 							&secinfo->flavor_info);
+ 			/* make sure pseudoflavor matches sec= mount opt */
+ 			if (pseudoflavor != RPC_AUTH_MAXFLAVOR &&
+ 			    nfs_auth_info_match(&server->auth_info,
+-						pseudoflavor))
++						pseudoflavor)) {
++				if (gss) {
++					err = nfs_test_gss_flavor(server,
++								  pseudoflavor);
++					if (err) /* try the next flavor */
++						continue;
++				}
+ 				return pseudoflavor;
++			}
+ 			break;
+ 		}
+ 	}
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.8.3.1
+
