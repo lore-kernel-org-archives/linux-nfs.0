@@ -1,58 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46125 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S966820AbaFTMpD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Jun 2014 08:45:03 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: Fix handling of change_attr updates in nfs_update_inode()
-Date: Fri, 20 Jun 2014 08:45:01 -0400
-Message-Id: <1403268301-29719-1-git-send-email-smayhew@redhat.com>
+Received: from out2-smtp.messagingengine.com ([66.111.4.26]:58629 "EHLO
+	out2-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754350AbaFIXp0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2014 19:45:26 -0400
+Received: from compute4.internal (compute4.nyi.mail.srv.osa [10.202.2.44])
+	by gateway1.nyi.mail.srv.osa (Postfix) with ESMTP id E524821765
+	for <linux-nfs@vger.kernel.org>; Mon,  9 Jun 2014 19:45:24 -0400 (EDT)
+Date: Mon, 9 Jun 2014 16:49:11 -0700
+From: Greg KH <greg@kroah.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Weng Meiling <wengmeiling.weng@huawei.com>, stable@vger.kernel.org,
+        lizefan@huawei.com, skinsbursky@parallels.com, h.huangqiang@huawei.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 3.4 0/9] fix the NULL pointer when use nfs in diferent
+ net ns
+Message-ID: <20140609234911.GB377@kroah.com>
+References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+ <20140504123011.GE21635@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140504123011.GE21635@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we detect that the change attribute has changed on the server, it's
-only necessary to invalidate our caches if we're not holding a write
-delegation.  Otherwise, the change attribute is changing as the result
-of our modifications and we can just silently update our copy.
+On Sun, May 04, 2014 at 08:30:11AM -0400, J. Bruce Fields wrote:
+> ACK to these for stable.--b.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- fs/nfs/inode.c | 20 +++++++++++---------
- 1 file changed, 11 insertions(+), 9 deletions(-)
+All now queued up, thanks.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index c496f8a..186562d 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1563,15 +1563,17 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	/* More cache consistency checks */
- 	if (fattr->valid & NFS_ATTR_FATTR_CHANGE) {
- 		if (inode->i_version != fattr->change_attr) {
--			dprintk("NFS: change_attr change on server for file %s/%ld\n",
--					inode->i_sb->s_id, inode->i_ino);
--			invalid |= NFS_INO_INVALID_ATTR
--				| NFS_INO_INVALID_DATA
--				| NFS_INO_INVALID_ACCESS
--				| NFS_INO_INVALID_ACL
--				| NFS_INO_REVAL_PAGECACHE;
--			if (S_ISDIR(inode->i_mode))
--				nfs_force_lookup_revalidate(inode);
-+			if (!NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE)) {
-+				dprintk("NFS: change_attr change on server for file %s/%ld\n",
-+						inode->i_sb->s_id, inode->i_ino);
-+				invalid |= NFS_INO_INVALID_ATTR
-+					| NFS_INO_INVALID_DATA
-+					| NFS_INO_INVALID_ACCESS
-+					| NFS_INO_INVALID_ACL
-+					| NFS_INO_REVAL_PAGECACHE;
-+				if (S_ISDIR(inode->i_mode))
-+					nfs_force_lookup_revalidate(inode);
-+			}
- 			inode->i_version = fattr->change_attr;
- 		}
- 	} else if (server->caps & NFS_CAP_CHANGE_ATTR)
--- 
-1.9.3
-
+greg k-h
