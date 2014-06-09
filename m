@@ -1,88 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:39072 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751413AbaFYLD3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 07:03:29 -0400
-Received: by mail-pa0-f42.google.com with SMTP id lj1so1597909pab.29
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 04:03:29 -0700 (PDT)
-Message-ID: <53AAAC63.5040307@gmail.com>
-Date: Wed, 25 Jun 2014 19:02:59 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH 4/4] NFSD: Add missing checking of authentication name
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:59681 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932675AbaFIPsq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2014 11:48:46 -0400
+Received: by mail-ie0-f172.google.com with SMTP id lx4so2681309iec.17
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jun 2014 08:48:46 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH v3 7/7] nfs: remove unneeded EXPORTs
+Date: Mon,  9 Jun 2014 11:48:39 -0400
+Message-Id: <1402328919-5065-8-git-send-email-dros@primarydata.com>
+In-Reply-To: <1402328919-5065-1-git-send-email-dros@primarydata.com>
+References: <1402328919-5065-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4idmap.c | 14 +++++---------
- 1 file changed, 5 insertions(+), 9 deletions(-)
+EXPORT_GPLs of nfs_pageio_add_request and nfs_pageio_complete aren't
+needed anymore.
 
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index dc948f6..e1b3d3d 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -215,7 +215,8 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
- 	memset(&ent, 0, sizeof(ent));
- 
- 	/* Authentication name */
--	if (qword_get(&buf, buf1, PAGE_SIZE) <= 0)
-+	len = qword_get(&buf, buf1, PAGE_SIZE);
-+	if (len <= 0 || len >= IDMAP_NAMESZ)
- 		goto out;
- 	memcpy(ent.authname, buf1, sizeof(ent.authname));
- 
-@@ -245,12 +246,10 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
- 	/* Name */
- 	error = -EINVAL;
- 	len = qword_get(&buf, buf1, PAGE_SIZE);
--	if (len < 0)
-+	if (len < 0 || len >= IDMAP_NAMESZ)
- 		goto out;
- 	if (len == 0)
- 		set_bit(CACHE_NEGATIVE, &ent.h.flags);
--	else if (len >= IDMAP_NAMESZ)
--		goto out;
- 	else
- 		memcpy(ent.name, buf1, sizeof(ent.name));
- 	error = -ENOMEM;
-@@ -259,15 +258,12 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
- 		goto out;
- 
- 	cache_put(&res->h, cd);
--
- 	error = 0;
- out:
- 	kfree(buf1);
--
- 	return error;
+Suggested-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/pagelist.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 6c5dd8b..9097ee9 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -947,7 +947,6 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 	} while (ret);
+ 	return ret;
  }
+-EXPORT_SYMBOL_GPL(nfs_pageio_add_request);
  
--
- static struct ent *
- idtoname_lookup(struct cache_detail *cd, struct ent *item)
- {
-@@ -381,7 +377,8 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
- 	memset(&ent, 0, sizeof(ent));
- 
- 	/* Authentication name */
--	if (qword_get(&buf, buf1, PAGE_SIZE) <= 0)
-+	len = qword_get(&buf, buf1, PAGE_SIZE);
-+	if (len <= 0 || len >= IDMAP_NAMESZ)
- 		goto out;
- 	memcpy(ent.authname, buf1, sizeof(ent.authname));
- 
-@@ -421,7 +418,6 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
- 	error = 0;
- out:
- 	kfree(buf1);
--
- 	return (error);
+ /*
+  * nfs_pageio_resend - Transfer requests to new descriptor and resend
+@@ -995,7 +994,6 @@ void nfs_pageio_complete(struct nfs_pageio_descriptor *desc)
+ 			break;
+ 	}
  }
+-EXPORT_SYMBOL_GPL(nfs_pageio_complete);
  
+ /**
+  * nfs_pageio_cond_complete - Conditional I/O completion
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
