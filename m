@@ -1,37 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:45205 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753218AbaFYGzE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 02:55:04 -0400
-Message-ID: <53AA7244.5060101@oracle.com>
-Date: Tue, 24 Jun 2014 23:55:00 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
-MIME-Version: 1.0
-To: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: NFSoRDMA bi-weekly meeting reminder
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:42717 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932277AbaFIOiM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2014 10:38:12 -0400
+Received: by mail-ig0-f173.google.com with SMTP id r2so1946578igi.0
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jun 2014 07:38:11 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH v2 3/6] nfs: merge nfs_pgio_data into _header
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20140607143406.GC9469@infradead.org>
+Date: Mon, 9 Jun 2014 10:38:11 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <3D24A7F6-E98E-4A87-BD5E-3BA2C6217638@primarydata.com>
+References: <1401995791-40213-1-git-send-email-dros@primarydata.com> <1401995791-40213-4-git-send-email-dros@primarydata.com> <20140607143406.GC9469@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-6/25/2014
-@8:00am PST summer time
-@9:00am MST summer time
-@10:00am CST summer time
-@11:00am EST summer time
-@Bangalore @8:00pm
-@Israel @6:00pm
+On Jun 7, 2014, at 10:34 AM, Christoph Hellwig <hch@infradead.org> wrote:
 
-Duration: 1 hour
+> On Thu, Jun 05, 2014 at 03:16:28PM -0400, Weston Andros Adamson wrote:
+>> struct nfs_pgio_data only exists as a member of nfs_pgio_header, but is
+>> passed around everywhere, because there used to be multiple _data structs
+>> per _header. Many of these functions then use the _data to find a pointer
+>> to the _header.  This patch cleans this up by merging the nfs_pgio_data
+>> structure into nfs_pgio_header and passing nfs_pgio_header around instead.
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> 
+> Looks good,
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> 
+> But now that we only have a _header and no _data should we just
+> call this struct nfs_pgio?
 
-Call-in number:
-Israel: +972 37219638
-Bangalore: +91 8039890080 (180030109800)
-France 	Colombes +33 1 5760 2222 	+33 176728936
-US: 8666824770,  408-7744073
+That sounds reasonable.  I’ll give it a shot when I rename nfs_page.
 
-Conference Code: 2308833
-Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
-
-Thanks
-Shirley
+-dros
