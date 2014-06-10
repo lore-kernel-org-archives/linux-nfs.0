@@ -1,154 +1,171 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:59125 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751327AbaFZTVh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:37 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so3614527qcx.13
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:36 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 088/117] nfsd: Add lockdep assertions to document the nfs4_client/session locking
-Date: Thu, 26 Jun 2014 15:20:56 -0400
-Message-Id: <1403810485-16497-5-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:50007 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932345AbaFJBlM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2014 21:41:12 -0400
+Received: by mail-ie0-f174.google.com with SMTP id lx4so3225681iec.5
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Jun 2014 18:41:11 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH pynfs v2 00/16] prep for flex file layout server
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20140609212556.GE10041@fieldses.org>
+Date: Mon, 9 Jun 2014 21:41:07 -0400
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <4F7DF1A0-FAB9-479A-9A21-6B6F80A86C66@primarydata.com>
+References: <1401976544-36374-1-git-send-email-dros@primarydata.com> <20140609212556.GE10041@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Jun 9, 2014, at 5:25 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+> On Thu, Jun 05, 2014 at 09:55:28AM -0400, Weston Andros Adamson wrote:
+>> Changes in v2:
+>> 
+>> - moved "4.1 client: reclaim_complete after create_session" to
+>>   "dataserver: reclaim_complete after create_session" as the implicit
+>>   reclaim complete is needed in DS path, but not in all server tests.
+>> 
+>> - dropped "4.1 server: service RECLAIM_COMPLETE operations" as it's
+>>   unneeded.
+>> 
+>> - formatted these patches with -M flag so we can see moved files
+>> 
+>> .. and I pushed the changes to my ff_prep branch.
+> 
+> Thanks for the patches!  Applied, checked that they didn't break
+> anything for me, and pushed out.
+> 
+> (The only thing I noticed was that I had to rebuild things, to account
+> for the renamed files.)
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e81c97435f7f..f49def48464d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -146,6 +146,10 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
- 
- static __be32 get_client_locked(struct nfs4_client *clp)
- {
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	if (is_client_expired(clp))
- 		return nfserr_expired;
- 	atomic_inc(&clp->cl_refcount);
-@@ -186,6 +190,10 @@ renew_client(struct nfs4_client *clp)
- 
- static void put_client_renew_locked(struct nfs4_client *clp)
- {
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	if (!atomic_dec_and_test(&clp->cl_refcount))
- 		return;
- 	if (!is_client_expired(clp))
-@@ -217,6 +225,9 @@ static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
- static void nfsd4_put_session_locked(struct nfsd4_session *ses)
- {
- 	struct nfs4_client *clp = ses->se_client;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
- 
- 	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
- 		free_session(ses);
-@@ -1399,6 +1410,8 @@ __find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
- 	int idx;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	dump_sessionid(__func__, sessionid);
- 	idx = hash_sessionid(sessionid);
- 	/* Search in the appropriate list */
-@@ -1435,6 +1448,11 @@ out:
- static void
- unhash_session(struct nfsd4_session *ses)
- {
-+	struct nfs4_client *clp = ses->se_client;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	list_del(&ses->se_hash);
- 	spin_lock(&ses->se_client->cl_lock);
- 	list_del(&ses->se_perclnt);
-@@ -1523,6 +1541,8 @@ unhash_client_locked(struct nfs4_client *clp)
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	struct nfsd4_session *ses;
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	/* Mark the client as expired! */
- 	clp->cl_time = 0;
- 	/* Make it invisible */
-@@ -1852,6 +1872,8 @@ add_to_unconfirmed(struct nfs4_client *clp)
- 	unsigned int idhashval;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	clear_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
- 	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
- 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
-@@ -1865,6 +1887,8 @@ move_to_confirmed(struct nfs4_client *clp)
- 	unsigned int idhashval = clientid_hashval(clp->cl_clientid.cl_id);
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	dprintk("NFSD: move_to_confirm nfs4_client %p\n", clp);
- 	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
- 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
-@@ -1895,6 +1919,7 @@ find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
- {
- 	struct list_head *tbl = nn->conf_id_hashtbl;
- 
-+	lockdep_assert_held(&nn->client_lock);
- 	return find_client_in_id_table(tbl, clid, sessions);
- }
- 
-@@ -1903,6 +1928,7 @@ find_unconfirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
- {
- 	struct list_head *tbl = nn->unconf_id_hashtbl;
- 
-+	lockdep_assert_held(&nn->client_lock);
- 	return find_client_in_id_table(tbl, clid, sessions);
- }
- 
-@@ -1914,12 +1940,14 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
- static struct nfs4_client *
- find_confirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
- {
-+	lockdep_assert_held(&nn->client_lock);
- 	return find_clp_in_name_tree(name, &nn->conf_name_tree);
- }
- 
- static struct nfs4_client *
- find_unconfirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
- {
-+	lockdep_assert_held(&nn->client_lock);
- 	return find_clp_in_name_tree(name, &nn->unconf_name_tree);
- }
- 
-@@ -4874,6 +4902,8 @@ find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
- 	unsigned int strhashval = ownerstr_hashval(owner);
- 	struct nfs4_stateowner *so;
- 
-+	lockdep_assert_held(&clp->cl_lock);
-+
- 	list_for_each_entry(so, &clp->cl_ownerstr_hashtbl[strhashval],
- 			    so_strhash) {
- 		if (so->so_is_open_owner)
--- 
-1.9.3
+Great, thanks!
+
+-dros
+
+
+> --b.
+> 
+>> 
+>> Thanks!
+>> -dros
+>> 
+>> 
+>> These patches are in preparation for the pynfs implementation of a flex
+>> file layout server.
+>> 
+>> I already have patches for a working flex file server, but I figure those
+>> should wait until the spec is complete ;)
+>> 
+>> I pushed these patches to my linux-nfs.org tree on branch 'ff_prep':
+>> 
+>> git://git.linux-nfs.org/projects/dros/pynfs.git
+>> 
+>> The prep includes:
+>> 
+>> - patches that enable pynfs mds using real v4.1 DSes (on the backend,
+>>   not usable from clients as there is no stateid sharing between mds and ds)
+>> 
+>> - fix several bugs in pnfs path
+>> 
+>> - move .x files to subdir 'xdrdef' - the nfs4.1 directory was getting crowded
+>>   and we're going to add several more .x files along with all of the
+>>   autogenerated files.  Note this change touches server tests too.
+>> 
+>> - clean up the nfs4server's output - no longer print out EVERY part of EVERY
+>>   operation which was very efficient at hiding tracebacks and made pynfs
+>>   even slower. Old functionality is now switched on with -v flag. Also
+>>   added an in-between mode "-s" that prints a summary of whats going on.
+>> 
+>> - support for NFSv3 backend communication - this is not actually used yet,
+>>   but can be tested with file layout by always returning
+>>   NFS4ERR_LAYOUTUNAVAILABLE in layoutget and using DataServer3 class instead
+>>   of DataServer41
+>> 
+>> 
+>> Weston Andros Adamson (16):
+>>  dataserver: reclaim_complete after create_session
+>>  dataserver: only catch connection error
+>>  4.1 server: avoid traceback in DS disconnect()
+>>  move .x files to subdir 'xdrdef'
+>>  4.1 client: remove unused imports
+>>  4.1 server: add -v flag & silence random output
+>>  4.1 server: add -s option to print summary of ops
+>>  dataserver: make generic interface to ops
+>>  dataserver: don't import * from nfs4 specific mods
+>>  4.1 server: move nfs4_ops.py to nfs_ops.py
+>>  add mntv3, portmapv2 and nfsv3 .x files
+>>  dataserver: separate generic and 4.1 code
+>>  4.1 server: add support for NFSv3 data servers
+>>  4.1 server: get rid of old op_getdeviceinfo
+>>  rpc: on socket error, close and mark pipe inactive
+>>  nfs3clnt: reconnect when sending on inactive pipe
+>> 
+>> nfs4.1/block.py                             |   8 +-
+>> nfs4.1/client41tests/environment.py         |   4 +-
+>> nfs4.1/config.py                            |   8 +-
+>> nfs4.1/dataserver.py                        | 308 ++++++++---
+>> nfs4.1/fs.py                                |  38 +-
+>> nfs4.1/nfs3client.py                        | 185 +++++++
+>> nfs4.1/nfs4_ops.py                          |  61 ---
+>> nfs4.1/nfs4client.py                        |  47 +-
+>> nfs4.1/nfs4commoncode.py                    |  10 +-
+>> nfs4.1/nfs4lib.py                           |  62 ++-
+>> nfs4.1/nfs4server.py                        | 163 +++---
+>> nfs4.1/nfs4state.py                         |  15 +-
+>> nfs4.1/nfs_ops.py                           |  89 +++
+>> nfs4.1/server41tests/environment.py         |   4 +-
+>> nfs4.1/server41tests/st_block.py            |   4 +-
+>> nfs4.1/server41tests/st_compound.py         |   4 +-
+>> nfs4.1/server41tests/st_create_session.py   |   4 +-
+>> nfs4.1/server41tests/st_current_stateid.py  |   8 +-
+>> nfs4.1/server41tests/st_debug.py            |   4 +-
+>> nfs4.1/server41tests/st_delegation.py       |   4 +-
+>> nfs4.1/server41tests/st_destroy_clientid.py |   2 +-
+>> nfs4.1/server41tests/st_destroy_session.py  |   4 +-
+>> nfs4.1/server41tests/st_exchange_id.py      |   4 +-
+>> nfs4.1/server41tests/st_getdevicelist.py    |   4 +-
+>> nfs4.1/server41tests/st_lookup.py           |   2 +-
+>> nfs4.1/server41tests/st_lookupp.py          |   2 +-
+>> nfs4.1/server41tests/st_open.py             |   8 +-
+>> nfs4.1/server41tests/st_putfh.py            |   2 +-
+>> nfs4.1/server41tests/st_reboot.py           |   4 +-
+>> nfs4.1/server41tests/st_reclaim_complete.py |   2 +-
+>> nfs4.1/server41tests/st_rename.py           |   4 +-
+>> nfs4.1/server41tests/st_secinfo.py          |   4 +-
+>> nfs4.1/server41tests/st_secinfo_no_name.py  |   4 +-
+>> nfs4.1/server41tests/st_sequence.py         |   4 +-
+>> nfs4.1/server41tests/st_trunking.py         |   4 +-
+>> nfs4.1/server41tests/st_verify.py           |   2 +-
+>> nfs4.1/server_exports.py                    |   7 +-
+>> nfs4.1/setup.py                             |  33 +-
+>> nfs4.1/testclient.py                        |   2 +-
+>> nfs4.1/testserver.py                        |   2 +-
+>> nfs4.1/xdrdef/__init__.py                   |   0
+>> nfs4.1/xdrdef/mnt3.x                        |  68 +++
+>> nfs4.1/xdrdef/nfs3.x                        | 818 ++++++++++++++++++++++++++++
+>> nfs4.1/{ => xdrdef}/nfs4.x                  |   0
+>> nfs4.1/{ => xdrdef}/nfs4.x.diff             |   0
+>> nfs4.1/{ => xdrdef}/pnfs_block.x            |   0
+>> nfs4.1/xdrdef/portmap.x                     |  51 ++
+>> nfs4.1/{ => xdrdef}/sctrl.x                 |   0
+>> rpc/rpc.py                                  |  26 +-
+>> 49 files changed, 1704 insertions(+), 389 deletions(-)
+>> create mode 100644 nfs4.1/nfs3client.py
+>> delete mode 100644 nfs4.1/nfs4_ops.py
+>> create mode 100644 nfs4.1/nfs_ops.py
+>> create mode 100644 nfs4.1/xdrdef/__init__.py
+>> create mode 100644 nfs4.1/xdrdef/mnt3.x
+>> create mode 100644 nfs4.1/xdrdef/nfs3.x
+>> rename nfs4.1/{ => xdrdef}/nfs4.x (100%)
+>> rename nfs4.1/{ => xdrdef}/nfs4.x.diff (100%)
+>> rename nfs4.1/{ => xdrdef}/pnfs_block.x (100%)
+>> create mode 100644 nfs4.1/xdrdef/portmap.x
+>> rename nfs4.1/{ => xdrdef}/sctrl.x (100%)
+>> 
+>> -- 
+>> 1.8.5.2 (Apple Git-48)
+>> 
 
