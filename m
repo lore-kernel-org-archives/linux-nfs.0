@@ -1,83 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:39919 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757917AbaFSOwY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:24 -0400
-Received: by mail-qg0-f44.google.com with SMTP id j107so2191006qga.17
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:23 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 059/104] NFSd: Convert nfsd4_process_open1() to work with lookup_clientid()
-Date: Thu, 19 Jun 2014 10:50:05 -0400
-Message-Id: <1403189450-18729-60-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pd0-f175.google.com ([209.85.192.175]:51039 "EHLO
+	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750861AbaFJL4S (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2014 07:56:18 -0400
+Received: by mail-pd0-f175.google.com with SMTP id z10so6009930pdj.6
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jun 2014 04:56:17 -0700 (PDT)
+Message-ID: <5396F243.8080606@gmail.com>
+Date: Tue, 10 Jun 2014 19:55:47 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH v2] NFS4.1: try to clean sessions after testing
+References: <5396D7FA.4050303@gmail.com>
+In-Reply-To: <5396D7FA.4050303@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+There are many sessions left after testing, they hold drc memory at server.
+This patch tries to clean session after each testcase.
 
-...and have alloc_init_open_stateowner just use the cstate->clp pointer
-instead of passing in a clp separately.
+v2,
+adds empty function of clean_sessions for nfs4.0,
+because they are using the same testmod.py 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4state.c | 17 ++++++++++-------
- 1 file changed, 10 insertions(+), 7 deletions(-)
+ nfs4.0/servertests/environment.py   | 3 +++
+ nfs4.1/server41tests/environment.py | 7 ++++++-
+ nfs4.1/testmod.py                   | 1 +
+ 3 files changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 428944aef83f..42c5f487a7a5 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -75,6 +75,9 @@ static struct nfs4_openowner *find_openstateowner_str_locked(
- 		unsigned int hashval, struct nfsd4_open *open,
- 		bool sessions, struct nfsd_net *nn);
- static void nfs4_put_stateowner(struct nfs4_stateowner *sop);
-+static __be32 lookup_clientid(clientid_t *clid,
-+		struct nfsd4_compound_state *cstate,
-+		struct nfsd_net *nn);
+diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
+index 993320d..9852178 100644
+--- a/nfs4.0/servertests/environment.py
++++ b/nfs4.0/servertests/environment.py
+@@ -226,6 +226,9 @@ class Environment(testmod.Environment):
+             cmd += ' ' + args
+             os.system(cmd);
  
- /* Locking: */
++    def clean_sessions(self):
++        return
++
+ #########################################
+ debug_fail = False
  
-@@ -2949,10 +2952,10 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
- }
+diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
+index b2df732..7632655 100644
+--- a/nfs4.1/server41tests/environment.py
++++ b/nfs4.1/server41tests/environment.py
+@@ -248,7 +248,12 @@ class Environment(testmod.Environment):
+     def testname(self, t):
+         """Returns a name for the test that is unique between runs"""
+         return "%s_%i" % (t.code, self.timestamp)
+-    
++
++    def clean_sessions(self):
++        """Destroy client name env.c1"""
++        for sessionid in self.c1.sessions.keys():
++            self.c1.compound([op.destroy_session(sessionid)])
++
+ #########################################
+ debug_fail = False
  
- static struct nfs4_openowner *
--alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp,
--			   struct nfsd4_open *open,
-+alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- 			   struct nfsd4_compound_state *cstate)
- {
-+	struct nfs4_client *clp = cstate->clp;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	struct nfs4_openowner *oo, *ret;
- 
-@@ -3269,10 +3272,10 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	oo = find_openstateowner_str(strhashval, open, cstate->minorversion, nn);
- 	open->op_openowner = oo;
- 	if (!oo) {
--		clp = find_confirmed_client(clientid, cstate->minorversion,
--					    nn);
--		if (clp == NULL)
--			return nfserr_expired;
-+		status = lookup_clientid(clientid, cstate, nn);
-+		if (status)
-+			return status;
-+		clp = cstate->clp;
- 		goto new_owner;
- 	}
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
-@@ -3288,7 +3291,7 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	clp = oo->oo_owner.so_client;
- 	goto alloc_stateid;
- new_owner:
--	oo = alloc_init_open_stateowner(strhashval, clp, open, cstate);
-+	oo = alloc_init_open_stateowner(strhashval, open, cstate);
- 	if (oo == NULL)
- 		return nfserr_jukebox;
- 	open->op_openowner = oo;
+diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
+index 5908066..661aed0 100644
+--- a/nfs4.1/testmod.py
++++ b/nfs4.1/testmod.py
+@@ -220,6 +220,7 @@ class Test(object):
+             environment.startUp()
+             self.runtest(self, environment)
+             self.result = self._pass_result
++	    environment.clean_sessions()
+         except KeyboardInterrupt:
+             raise
+         except TestException, e:
 -- 
 1.9.3
 
