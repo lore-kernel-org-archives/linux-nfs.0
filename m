@@ -1,46 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:58394 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757071AbaFTRl2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jun 2014 13:41:28 -0400
-Received: by mail-ie0-f172.google.com with SMTP id lx4so3530262iec.31
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Jun 2014 10:41:28 -0700 (PDT)
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:46689 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752952AbaFJQVN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Jun 2014 12:21:13 -0400
+Received: by mail-ig0-f174.google.com with SMTP id h3so5318613igd.13
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Jun 2014 09:21:13 -0700 (PDT)
+Message-ID: <1402417268.2577.4.camel@leira.trondhjem.org>
+Subject: Re: [PATCH 3/3] NFS test SECINFO RPC_AUTH_GSS pseudoflavors for
+ support
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/3] NFS: Clear NFS_INO_REVAL_PAGECACHE when we update the file size
-Date: Fri, 20 Jun 2014 13:41:21 -0400
-Message-Id: <1403286083-14345-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1403286083-14345-1-git-send-email-trond.myklebust@primarydata.com>
-References: <20140620125140.GH4510@tonberry.usersys.redhat.com>
- <1403286083-14345-1-git-send-email-trond.myklebust@primarydata.com>
+To: andros@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 10 Jun 2014 12:21:08 -0400
+In-Reply-To: <1402342401-5640-4-git-send-email-andros@netapp.com>
+References: <1402342401-5640-1-git-send-email-andros@netapp.com>
+	 <1402342401-5640-4-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In nfs_update_inode(), if the change attribute is seen to change on
-the server, then we set NFS_INO_REVAL_PAGECACHE in order to make
-sure that we check the file size.
-However, if we also update the file size in the same function, we
-don't need to check it again. So make sure that we clear the
-NFS_INO_REVAL_PAGECACHE that was set earlier.
+On Mon, 2014-06-09 at 15:33 -0400, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> The current code returns an RPC_AUTH_GSS pseudoflavor without testing to see
+> if it is configured properly. If an RPC_AUTH_GSS pseudoflavor fails then the
+> next SECINFO flavor should be tried.
+> 
+> Create an rpc_auth, rpc_cred, and initialize the cred (e.g. get a GSS Context)
+> using the short-lived SECINFO rpc client to test if the use of the RPC_AUTH_GSS
+> pseudoflavor succeeds.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4namespace.c | 48 ++++++++++++++++++++++++++++++++++++++++++++++--
+>  1 file changed, 46 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+> index fd4dcb6..e0a5491 100644
+> --- a/fs/nfs/nfs4namespace.c
+> +++ b/fs/nfs/nfs4namespace.c
+> @@ -135,6 +135,39 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+>  }
+>  
+>  /**
+> + * nfs_test_gss - Test client support of pseudoflavor
+> + * @server: NFS server struct
+> + * @flavor: RPC_AUTH_GSS pseudoflavor
+> + */
+> +
+> +static int nfs_test_gss_flavor(struct nfs_server *server,
+> +			       rpc_authflavor_t pseudoflavor)
+> +{
+> +	struct rpc_auth_create_args auth_args = {
+> +		.pseudoflavor = pseudoflavor,
+> +	};
+> +	struct rpc_auth *auth;
+> +	struct rpc_cred *rcred;
+> +	const struct cred *cred = current_cred();
+> +	struct auth_cred acred = {
+> +		.uid = cred->fsuid,
+> +		.gid = cred->fsgid,
+> +		.group_info = get_group_info(((struct cred *)cred)->group_info),
+> +	};
+> +
+> +	auth = rpcauth_create(&auth_args, server->client);
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/inode.c | 1 +
- 1 file changed, 1 insertion(+)
+This call has the side-effect of changing the value of
+server->client->cl_auth. Not sure that we want that here.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index c496f8a74639..51dda21ebc4e 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1601,6 +1601,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			if ((nfsi->npages == 0) || new_isize > cur_isize) {
- 				i_size_write(inode, new_isize);
- 				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
-+				invalid &= ~NFS_INO_REVAL_PAGECACHE;
- 			}
- 			dprintk("NFS: isize change on server for file %s/%ld "
- 					"(%Ld to %Ld)\n",
+> +	if (IS_ERR(auth))
+> +		return -EACCES;
+> +
+> +	/* This will call cr_init to create a gss context */
+> +	rcred = rpcauth_lookup_credcache(auth, &acred, 0);
+
+Why not call rpcauth_lookupcred() instead of open-coding?
+
+Also note that there is a credential refcount leak here (and a
+group_info refcount leak).
+
+> +	if (IS_ERR(cred))
+> +		return -EACCES;
+> +
+> +	return 0;
+> +}
+> +
+> +/**
+>   * nfs_find_best_sec - Find a security mechanism supported locally
+>   * @server: NFS server struct
+>   * @flavors: List of security tuples returned by SECINFO procedure
+> @@ -152,21 +185,32 @@ static rpc_authflavor_t nfs_find_best_sec(struct nfs_server *server,
+>  	rpc_authflavor_t pseudoflavor;
+>  	struct nfs4_secinfo4 *secinfo;
+>  	unsigned int i;
+> +	int err = 0;
+>  
+>  	for (i = 0; i < flavors->num_flavors; i++) {
+> +		bool gss = false;
+> +
+>  		secinfo = &flavors->flavors[i];
+>  
+>  		switch (secinfo->flavor) {
+> +		case RPC_AUTH_GSS:
+> +			gss = true;
+>  		case RPC_AUTH_NULL:
+>  		case RPC_AUTH_UNIX:
+> -		case RPC_AUTH_GSS:
+>  			pseudoflavor = rpcauth_get_pseudoflavor(secinfo->flavor,
+>  							&secinfo->flavor_info);
+>  			/* make sure pseudoflavor matches sec= mount opt */
+>  			if (pseudoflavor != RPC_AUTH_MAXFLAVOR &&
+>  			    nfs_auth_info_match(&server->auth_info,
+> -						pseudoflavor))
+> +						pseudoflavor)) {
+> +				if (gss) {
+> +					err = nfs_test_gss_flavor(server,
+> +								  pseudoflavor);
+> +					if (err) /* try the next flavor */
+> +						continue;
+> +				}
+>  				return pseudoflavor;
+> +			}
+>  			break;
+>  		}
+>  	}
+
 -- 
-1.9.3
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
 
