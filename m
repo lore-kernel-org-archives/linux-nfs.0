@@ -1,110 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:47664 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754260AbaF3Pvw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:52 -0400
-Received: by mail-qa0-f50.google.com with SMTP id m5so6667395qaj.9
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:51 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 056/114] nfsd: Migrate the stateid reference into nfs4_preprocess_seqid_op
-Date: Mon, 30 Jun 2014 11:49:25 -0400
-Message-Id: <1404143423-24381-57-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pb0-f50.google.com ([209.85.160.50]:63217 "EHLO
+	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752199AbaFKXZB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2014 19:25:01 -0400
+Received: by mail-pb0-f50.google.com with SMTP id rp16so318481pbb.9
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jun 2014 16:25:01 -0700 (PDT)
+Message-ID: <5398E544.9000105@gmail.com>
+Date: Thu, 12 Jun 2014 07:24:52 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: Re: [PATCH v2] NFS4.1: try to clean sessions after testing
+References: <5396D7FA.4050303@gmail.com> <5396F243.8080606@gmail.com> <20140611211742.GH19382@fieldses.org>
+In-Reply-To: <20140611211742.GH19382@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On 6/12/2014 05:17, J. Bruce Fields wrote:
+> I tried to apply this, and the ipv6 patch (could we do that for 4.1
+> too?) and the 3 other patches, but:
 
-Allow nfs4_preprocess_seqid_op to take the stateid reference, instead
-of having all the callers do so.
+nfs4.1 has supports IPv6, the patch for nfs4.0 is a back-port from nfs4.1.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 26 +++++++++++---------------
- 1 file changed, 11 insertions(+), 15 deletions(-)
+> 
+> 	- there are some conflicts with the latest pynfs (e.g. I already
+> 	  added a few acl tests, apologies)
+> 	- I'm getting failures to write to a read-only fs, apparently
+> 	  one of the tests is trying to write to the export root?  I
+> 	  didn't check which one.
+> 
+> Could you look into those and resend your pynfs patches?  Thanks!
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f2df0778448e..2b7ce084eb04 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4341,8 +4341,11 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
- 
- 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
--	if (!status)
-+	if (!status) {
-+		/* FIXME: move into find_stateid_by_type */
-+		atomic_inc(&stp->st_stid.sc_count);
- 		*stpp = stp;
-+	}
- 	return status;
- }
- 
-@@ -4351,16 +4354,18 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- {
- 	__be32 status;
- 	struct nfs4_openowner *oo;
-+	struct nfs4_ol_stateid *stp;
- 
- 	status = nfs4_preprocess_seqid_op(cstate, seqid, stateid,
--						NFS4_OPEN_STID, stpp, nn);
-+						NFS4_OPEN_STID, &stp, nn);
- 	if (status)
- 		return status;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&(*stpp)->st_stid.sc_count);
--	oo = openowner((*stpp)->st_stateowner);
--	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
-+	oo = openowner(stp->st_stateowner);
-+	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
-+		put_generic_stateid(stp);
- 		return nfserr_bad_stateid;
-+	}
-+	*stpp = stp;
- 	return nfs_ok;
- }
- 
-@@ -4387,8 +4392,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					NFS4_OPEN_STID, &stp, nn);
- 	if (status)
- 		goto out;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	oo = openowner(stp->st_stateowner);
- 	status = nfserr_bad_stateid;
- 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
-@@ -4536,8 +4539,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_bump_seqid(cstate, status);
- 	if (status)
- 		goto out; 
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
-@@ -4887,9 +4888,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 				       lock->lk_old_lock_seqid,
- 				       &lock->lk_old_lock_stateid,
- 				       NFS4_LOCK_STID, &lock_stp, nn);
--		/* FIXME: move into nfs4_preprocess_seqid_op */
--		if (!status)
--			atomic_inc(&lock_stp->st_stid.sc_count);
- 	}
- 	if (status)
- 		goto out;
-@@ -5112,8 +5110,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
--- 
-1.9.3
+Yes, I will check those patch and resend them.
 
+thanks,
+Kinglong Mee
+
+> 
+> --b.
+> 
+> 
+> On Tue, Jun 10, 2014 at 07:55:47PM +0800, Kinglong Mee wrote:
+>> There are many sessions left after testing, they hold drc memory at server.
+>> This patch tries to clean session after each testcase.
+>>
+>> v2,
+>> adds empty function of clean_sessions for nfs4.0,
+>> because they are using the same testmod.py 
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  nfs4.0/servertests/environment.py   | 3 +++
+>>  nfs4.1/server41tests/environment.py | 7 ++++++-
+>>  nfs4.1/testmod.py                   | 1 +
+>>  3 files changed, 10 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
+>> index 993320d..9852178 100644
+>> --- a/nfs4.0/servertests/environment.py
+>> +++ b/nfs4.0/servertests/environment.py
+>> @@ -226,6 +226,9 @@ class Environment(testmod.Environment):
+>>              cmd += ' ' + args
+>>              os.system(cmd);
+>>  
+>> +    def clean_sessions(self):
+>> +        return
+>> +
+>>  #########################################
+>>  debug_fail = False
+>>  
+>> diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
+>> index b2df732..7632655 100644
+>> --- a/nfs4.1/server41tests/environment.py
+>> +++ b/nfs4.1/server41tests/environment.py
+>> @@ -248,7 +248,12 @@ class Environment(testmod.Environment):
+>>      def testname(self, t):
+>>          """Returns a name for the test that is unique between runs"""
+>>          return "%s_%i" % (t.code, self.timestamp)
+>> -    
+>> +
+>> +    def clean_sessions(self):
+>> +        """Destroy client name env.c1"""
+>> +        for sessionid in self.c1.sessions.keys():
+>> +            self.c1.compound([op.destroy_session(sessionid)])
+>> +
+>>  #########################################
+>>  debug_fail = False
+>>  
+>> diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
+>> index 5908066..661aed0 100644
+>> --- a/nfs4.1/testmod.py
+>> +++ b/nfs4.1/testmod.py
+>> @@ -220,6 +220,7 @@ class Test(object):
+>>              environment.startUp()
+>>              self.runtest(self, environment)
+>>              self.result = self._pass_result
+>> +	    environment.clean_sessions()
+>>          except KeyboardInterrupt:
+>>              raise
+>>          except TestException, e:
+>> -- 
+>> 1.9.3
+>>
+> 
