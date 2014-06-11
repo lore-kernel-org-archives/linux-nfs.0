@@ -1,61 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55645 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:34632 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755976AbaFXUoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 24 Jun 2014 16:44:16 -0400
-Date: Tue, 24 Jun 2014 16:44:13 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+	id S1752001AbaFKTqF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Jun 2014 15:46:05 -0400
+Date: Wed, 11 Jun 2014 15:46:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] nfsd: fix rare symlink decoding bug
-Message-ID: <20140624204413.GE2343@pad.redhat.com>
-References: <1403559272-11019-1-git-send-email-bfields@redhat.com>
- <CAHQdGtQXjvyaXx9PkYW=96F+wvPEj8-=eGFV2NDpfFZEB77E5w@mail.gmail.com>
- <20140623221016.GA9429@pad.redhat.com>
- <CAHQdGtR54dy4DJLbx9jBEFbOM7dxihkZBqFgLpafSXdYuqei9A@mail.gmail.com>
+Subject: Re: [PATCH] NFSD: Using exp_get for export getting
+Message-ID: <20140611194603.GF19382@fieldses.org>
+References: <539710F4.6060806@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtR54dy4DJLbx9jBEFbOM7dxihkZBqFgLpafSXdYuqei9A@mail.gmail.com>
+In-Reply-To: <539710F4.6060806@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 23, 2014 at 07:28:16PM -0400, Trond Myklebust wrote:
-> On Mon, Jun 23, 2014 at 6:10 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> > index 2d305a1..56bdf4a 100644
-> > --- a/fs/nfsd/nfs4xdr.c
-> > +++ b/fs/nfsd/nfs4xdr.c
-> > @@ -600,7 +600,18 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
-> >                 READ_BUF(4);
-> >                 create->cr_linklen = be32_to_cpup(p++);
-> >                 READ_BUF(create->cr_linklen);
-> > -               SAVEMEM(create->cr_linkname, create->cr_linklen);
-> > +               /*
-> > +                * The VFS will want a null-terminated string, and
-> > +                * null-terminating in place isn't safe since this might
-> > +                * end on a page boundary:
-> > +                */
-> > +               create->cr_linkname =
-> > +                               kmalloc(create->cr_linklen + 1, GFP_KERNEL);
-> > +               if (!create->cr_linkname)
-> > +                       return nfserr_jukebox;
-> > +               memcpy(create->cr_linkname, p, create->cr_linklen);
-> > +               create->cr_linkname[create->cr_linklen] = '\0';
-> > +               defer_free(argp, kfree, create->cr_linkname);
-> >                 break;
-> >         case NF4BLK:
-> >         case NF4CHR:
-> 
-> Note that "defer_free()" does yet another allocation here in order to
-> make space for a small 'struct tmpbuf' structure. Unlike the first
-> allocation, there is no check for whether or not that second
-> allocation is successful above, so you can easily end up with a silent
-> memory leakage (ditto for a number of other callers of defer_free()).
-> 
-> Looking around at all the other users, wouldn't it perhaps make sense
-> to replace defer_free() with a helper that does just a single
-> allocation for both the memory buffer and the struct tmpbuf?
+On Tue, Jun 10, 2014 at 10:06:44PM +0800, Kinglong Mee wrote:
+> Don't using cache_get besides export.h, using exp_get for export.
 
-Yeah, thanks, working on it....
+I'm not even sure what difference it makes.
+
+I guess it's a little cleaner.
+
+OK, applying this (and preceding three patches) for 3.17.  May be a
+little while before I get a 3.17 branch actually pushed out.
 
 --b.
+
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/export.c   | 2 +-
+>  fs/nfsd/export.h   | 3 ++-
+>  fs/nfsd/nfs4proc.c | 6 +++---
+>  fs/nfsd/nfsfh.c    | 3 +--
+>  fs/nfsd/vfs.c      | 3 +--
+>  5 files changed, 8 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index ef2d9d6..72ffd7c 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -1253,7 +1253,7 @@ static int e_show(struct seq_file *m, void *p)
+>  		return 0;
+>  	}
+>  
+> -	cache_get(&exp->h);
+> +	exp_get(exp);
+>  	if (cache_check(cd, &exp->h, NULL))
+>  		return 0;
+>  	exp_put(exp);
+> diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+> index cfeea85..04dc8c1 100644
+> --- a/fs/nfsd/export.h
+> +++ b/fs/nfsd/export.h
+> @@ -101,9 +101,10 @@ static inline void exp_put(struct svc_export *exp)
+>  	cache_put(&exp->h, exp->cd);
+>  }
+>  
+> -static inline void exp_get(struct svc_export *exp)
+> +static inline struct svc_export *exp_get(struct svc_export *exp)
+>  {
+>  	cache_get(&exp->h);
+> +	return exp;
+>  }
+>  struct svc_export * rqst_exp_find(struct svc_rqst *, int, u32 *);
+>  
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index be67340..f3f0487 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -177,7 +177,7 @@ fh_dup2(struct svc_fh *dst, struct svc_fh *src)
+>  	fh_put(dst);
+>  	dget(src->fh_dentry);
+>  	if (src->fh_export)
+> -		cache_get(&src->fh_export->h);
+> +		exp_get(src->fh_export);
+>  	*dst = *src;
+>  }
+>  
+> @@ -918,8 +918,8 @@ nfsd4_secinfo_no_name(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstat
+>  	default:
+>  		return nfserr_inval;
+>  	}
+> -	exp_get(cstate->current_fh.fh_export);
+> -	sin->sin_exp = cstate->current_fh.fh_export;
+> +
+> +	sin->sin_exp = exp_get(cstate->current_fh.fh_export);
+>  	fh_put(&cstate->current_fh);
+>  	return nfs_ok;
+>  }
+> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+> index ec83934..6f5cc76 100644
+> --- a/fs/nfsd/nfsfh.c
+> +++ b/fs/nfsd/nfsfh.c
+> @@ -539,8 +539,7 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
+>  		       dentry);
+>  
+>  	fhp->fh_dentry = dget(dentry); /* our internal copy */
+> -	fhp->fh_export = exp;
+> -	cache_get(&exp->h);
+> +	fhp->fh_export = exp_get(exp);
+>  
+>  	if (fhp->fh_handle.fh_version == 0xca) {
+>  		/* old style filehandle please */
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 7498099..df7cf61 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -189,8 +189,7 @@ nfsd_lookup_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  	dprintk("nfsd: nfsd_lookup(fh %s, %.*s)\n", SVCFH_fmt(fhp), len,name);
+>  
+>  	dparent = fhp->fh_dentry;
+> -	exp  = fhp->fh_export;
+> -	exp_get(exp);
+> +	exp = exp_get(fhp->fh_export);
+>  
+>  	/* Lookup the name, but don't follow links */
+>  	if (isdotent(name, len)) {
+> -- 
+> 1.9.3
+> 
