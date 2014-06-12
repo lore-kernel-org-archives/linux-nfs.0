@@ -1,130 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46912 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:60474 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755871AbaFZBsO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jun 2014 21:48:14 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trondmy@gmail.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 5/8] nfsd4: remove unused defer_free argument
-Date: Wed, 25 Jun 2014 21:48:05 -0400
-Message-Id: <1403747288-21590-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1403747288-21590-1-git-send-email-bfields@redhat.com>
-References: <20140624204418.GG2343@pad.redhat.com>
- <1403747288-21590-1-git-send-email-bfields@redhat.com>
+	id S1750790AbaFLTCt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jun 2014 15:02:49 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 0/1] NFS: Fix SECINFO processing regression
+Date: Thu, 12 Jun 2014 15:02:31 -0400
+Message-ID: <1402599752-3168-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Andy Adamson <andros@netapp.com>
 
-28e05dd8457c "knfsd: nfsd4: represent nfsv4 acl with array instead of
-linked list" removed the last user that wanted a custom free function.
+Sorry for the repeat send - there is only one patch in Version 2...
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |   21 +++++++++------------
- fs/nfsd/xdr4.h    |    1 -
- 2 files changed, 9 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 3d07496..13f91ce 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -182,16 +182,14 @@ static int zero_clientid(clientid_t *clid)
- 
- /**
-  * defer_free - mark an allocation as deferred freed
-- * @argp: NFSv4 compound argument structure to be freed with
-- * @release: release callback to free @p, typically kfree()
-- * @p: pointer to be freed
-+ * @argp: NFSv4 compound argument structure
-+ * @p: pointer to be freed (with kfree())
-  *
-  * Marks @p to be freed when processing the compound operation
-  * described in @argp finishes.
-  */
- static int
--defer_free(struct nfsd4_compoundargs *argp,
--		void (*release)(const void *), void *p)
-+defer_free(struct nfsd4_compoundargs *argp, void *p)
- {
- 	struct tmpbuf *tb;
- 
-@@ -199,7 +197,6 @@ defer_free(struct nfsd4_compoundargs *argp,
- 	if (!tb)
- 		return -ENOMEM;
- 	tb->buf = p;
--	tb->release = release;
- 	tb->next = argp->to_free;
- 	argp->to_free = tb;
- 	return 0;
-@@ -225,7 +222,7 @@ static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
- 		BUG_ON(p != argp->tmpp);
- 		argp->tmpp = NULL;
- 	}
--	if (defer_free(argp, kfree, p)) {
-+	if (defer_free(argp, p)) {
- 		kfree(p);
- 		return NULL;
- 	} else
-@@ -296,7 +293,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		if (*acl == NULL)
- 			return nfserr_jukebox;
- 
--		defer_free(argp, kfree, *acl);
-+		defer_free(argp, *acl);
- 
- 		(*acl)->naces = nace;
- 		for (ace = (*acl)->aces; ace < (*acl)->aces + nace; ace++) {
-@@ -422,7 +419,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		if (!label->data)
- 			return nfserr_jukebox;
- 		label->len = dummy32;
--		defer_free(argp, kfree, label->data);
-+		defer_free(argp, label->data);
- 		memcpy(label->data, buf, dummy32);
- 	}
- #endif
-@@ -610,7 +607,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
- 			return nfserr_jukebox;
- 		memcpy(create->cr_data, p, create->cr_datalen);
- 		create->cr_data[create->cr_datalen] = '\0';
--		defer_free(argp, kfree, create->cr_data);
-+		defer_free(argp, create->cr_data);
- 		break;
- 	case NF4BLK:
- 	case NF4CHR:
-@@ -1486,7 +1483,7 @@ nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_sta
- 			goto out;
- 		}
- 
--		defer_free(argp, kfree, stateid);
-+		defer_free(argp, stateid);
- 		INIT_LIST_HEAD(&stateid->ts_id_list);
- 		list_add_tail(&stateid->ts_id_list, &test_stateid->ts_stateid_list);
- 
-@@ -3972,7 +3969,7 @@ int nfsd4_release_compoundargs(void *rq, __be32 *p, void *resp)
- 	while (args->to_free) {
- 		struct tmpbuf *tb = args->to_free;
- 		args->to_free = tb->next;
--		tb->release(tb->buf);
-+		kfree(tb->buf);
- 		kfree(tb);
- 	}
- 	return 1;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index b8bf63a..4379cc8 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -488,7 +488,6 @@ struct nfsd4_compoundargs {
- 	__be32 *			tmpp;
- 	struct tmpbuf {
- 		struct tmpbuf *next;
--		void (*release)(const void *);
- 		void *buf;
- 	}				*to_free;
- 
+Iterate over multiple flavors returned by SECINFO. If RPC_AUTH_GSS is in the
+secinfo list, fully test (get and auth, credential, and gss_context)
+
+Fix some error paths.
+
+Version 2:
+- Responded to Trond's comments. Cloned an RPC client for each flavor to test
+which creates an rpc_auth. Use rpcauth_lookupcred() to create a cred for the
+user (and gss_context for gss).
+
+- Removed nfs4_negotiate_security from nfs4_submount as is was just called
+from nfs4_proc_lookup_mountpoint.
+
+
+Testing: Minimal testing of the nfs_test_gss_flavor. Will run more tests after
+the June 2014 bakeathon
+
+Note: Can supply a patch for SECINFO_NO_name to use nfs4_negotiate_security.
+
+-->Andy
+
+
+Andy Adamson (1):
+  NFS NFS test SECINFO RPC_AUTH_GSS pseudoflavors for support
+
+ fs/nfs/nfs4_fs.h       |   2 +-
+ fs/nfs/nfs4namespace.c | 103 ++++++++++++++++++++++++++++---------------------
+ fs/nfs/nfs4proc.c      |   2 +-
+ net/sunrpc/auth.c      |   1 +
+ 4 files changed, 61 insertions(+), 47 deletions(-)
+
 -- 
-1.7.9.5
+1.8.3.1
 
