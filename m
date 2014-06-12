@@ -1,74 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8107 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752212AbaFCOgO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Jun 2014 10:36:14 -0400
-Date: Tue, 3 Jun 2014 10:35:49 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: Anna Schumaker <schumaker.anna@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 41/52] nfsd4: turn off zero-copy-read in exotic cases
-Message-ID: <20140603143548.GB14321@pad.redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
- <1400787148-25941-42-git-send-email-bfields@redhat.com>
- <20140528080945.GA6797@infradead.org>
- <20140528140151.GB13012@pad.redhat.com>
- <5385EEF5.9050904@gmail.com>
- <20140528142320.GC13012@pad.redhat.com>
- <DA524584-24CD-42C5-9DCB-B5CD2A7F2CC6@primarydata.com>
- <20140603141021.GA14321@pad.redhat.com>
- <7FFBAE05-C5F6-4F98-817C-546851F559EC@primarydata.com>
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:38332 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755207AbaFLBiw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2014 21:38:52 -0400
+Received: by mail-pd0-f176.google.com with SMTP id p10so398412pdj.35
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Jun 2014 18:38:51 -0700 (PDT)
+Message-ID: <53990498.7020300@gmail.com>
+Date: Thu, 12 Jun 2014 09:38:32 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <7FFBAE05-C5F6-4F98-817C-546851F559EC@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: Re: [PATCH v2] NFS4.1: try to clean sessions after testing
+References: <5396D7FA.4050303@gmail.com> <5396F243.8080606@gmail.com> <20140611211742.GH19382@fieldses.org> <5398E544.9000105@gmail.com>
+In-Reply-To: <5398E544.9000105@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 03, 2014 at 10:24:13AM -0400, Weston Andros Adamson wrote:
-> On Jun 3, 2014, at 10:10 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+On 6/12/2014 07:24, Kinglong Mee wrote:
+> On 6/12/2014 05:17, J. Bruce Fields wrote:
+>> I tried to apply this, and the ipv6 patch (could we do that for 4.1
+>> too?) and the 3 other patches, but:
 > 
-> > On Tue, Jun 03, 2014 at 12:18:34AM -0400, Weston Andros Adamson wrote:
-> >> On May 28, 2014, at 10:23 AM, J. Bruce Fields <bfields@redhat.com> wrote:
-> >>> There's not much point re-running all the 4.1 tests over 4.2.  Maybe all
-> >>> we may need is to say "use minor version 2 on this compound" in tests of
-> >>> the new features.
-> >>> 
-> >>> But I haven't even tried to figure out how to tell pynfs about the new
-> >>> .x files.
-> >> 
-> >> I’ve made a lot of pynfs cleanups recently - mostly on the client test side 
-> >> (the nfs4.1 server), but they may make this a bit easier. I’ll clean them up
-> >> and share asap.
-> >> 
-> >> I was just adding new xdr to pynfs and AFAIK it's xdrgen has no include
-> >> support, so we’re stuck tacking things on the end of nfs4.x. Would it be
-> >> worthwhile for me to add some type of include support? Minor versions and
-> >> layouts could stay in separate .x files - that sounds much cleaner to me.
-> > 
-> > That does sound cleaner, but is that how the ietf's .x files work?
-> > 
-> > It looks like
-> > 
-> >  http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-dot-x-26.txt
-> > 
-> > just copies all the 4.1 definitions.
-> > 
-> > I may not understand what you're proposing.
+> nfs4.1 has supports IPv6, the patch for nfs4.0 is a back-port from nfs4.1.
 > 
-> Oh, yeah. I was thinking more about layouts - like the flex file draft - that don’t
-> repeat definitions and instead reference other xdr definitions.
+>>
+>> 	- there are some conflicts with the latest pynfs (e.g. I already
+>> 	  added a few acl tests, apologies)
+>> 	- I'm getting failures to write to a read-only fs, apparently
+>> 	  one of the tests is trying to write to the export root?  I
+>> 	  didn't check which one.
 
-OK, I don't really care about those yet--however you think it makes
-sense is fine to me....  If we can use the ietf's files verbatim then
-that will simplify keeping up with drafts and verifying we have the
-protocol right, so we should support includes if they use them.
+Can you show me more information about this?
 
-> I don’t know if there is any restriction in the IETF that all types within a .x
-> have to be defined by that .x. If not, does it make sense to change the 4.2
-> spec to only have new types, or to prune out the differences for pynfs?
+thanks,
+Kinglong Mee
 
-I guess that's a question for Tom and/or the ietf list.
-
---b.
+>>
+>> Could you look into those and resend your pynfs patches?  Thanks!
+> 
+> Yes, I will check those patch and resend them.
+> 
+> thanks,
+> Kinglong Mee
+> 
+>>
+>> --b.
+>>
+>>
+>> On Tue, Jun 10, 2014 at 07:55:47PM +0800, Kinglong Mee wrote:
+>>> There are many sessions left after testing, they hold drc memory at server.
+>>> This patch tries to clean session after each testcase.
+>>>
+>>> v2,
+>>> adds empty function of clean_sessions for nfs4.0,
+>>> because they are using the same testmod.py 
+>>>
+>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>>> ---
+>>>  nfs4.0/servertests/environment.py   | 3 +++
+>>>  nfs4.1/server41tests/environment.py | 7 ++++++-
+>>>  nfs4.1/testmod.py                   | 1 +
+>>>  3 files changed, 10 insertions(+), 1 deletion(-)
+>>>
+>>> diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
+>>> index 993320d..9852178 100644
+>>> --- a/nfs4.0/servertests/environment.py
+>>> +++ b/nfs4.0/servertests/environment.py
+>>> @@ -226,6 +226,9 @@ class Environment(testmod.Environment):
+>>>              cmd += ' ' + args
+>>>              os.system(cmd);
+>>>  
+>>> +    def clean_sessions(self):
+>>> +        return
+>>> +
+>>>  #########################################
+>>>  debug_fail = False
+>>>  
+>>> diff --git a/nfs4.1/server41tests/environment.py b/nfs4.1/server41tests/environment.py
+>>> index b2df732..7632655 100644
+>>> --- a/nfs4.1/server41tests/environment.py
+>>> +++ b/nfs4.1/server41tests/environment.py
+>>> @@ -248,7 +248,12 @@ class Environment(testmod.Environment):
+>>>      def testname(self, t):
+>>>          """Returns a name for the test that is unique between runs"""
+>>>          return "%s_%i" % (t.code, self.timestamp)
+>>> -    
+>>> +
+>>> +    def clean_sessions(self):
+>>> +        """Destroy client name env.c1"""
+>>> +        for sessionid in self.c1.sessions.keys():
+>>> +            self.c1.compound([op.destroy_session(sessionid)])
+>>> +
+>>>  #########################################
+>>>  debug_fail = False
+>>>  
+>>> diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
+>>> index 5908066..661aed0 100644
+>>> --- a/nfs4.1/testmod.py
+>>> +++ b/nfs4.1/testmod.py
+>>> @@ -220,6 +220,7 @@ class Test(object):
+>>>              environment.startUp()
+>>>              self.runtest(self, environment)
+>>>              self.result = self._pass_result
+>>> +	    environment.clean_sessions()
+>>>          except KeyboardInterrupt:
+>>>              raise
+>>>          except TestException, e:
+>>> -- 
+>>> 1.9.3
+>>>
+>>
+> 
