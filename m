@@ -1,166 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:60647 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754699AbaF3Pvm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:42 -0400
-Received: by mail-qa0-f46.google.com with SMTP id i13so6428915qae.5
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:42 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 047/114] nfsd: ensure atomicity in nfsd4_free_stateid and nfsd4_validate_stateid
-Date: Mon, 30 Jun 2014 11:49:16 -0400
-Message-Id: <1404143423-24381-48-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:19477 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750886AbaFLSzW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Jun 2014 14:55:22 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 0/3] NFS: Fix SECINFO processing regression
+Date: Thu, 12 Jun 2014 14:55:14 -0400
+Message-ID: <1402599315-2967-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hold the cl_lock over the bulk of these functions. In addition to
-ensuring that they aren't freed prematurely, this will also help prevent
-a potential race that could be introduced later. Once we remove the
-client_mutex, it'll be possible for FREE_STATEID and CLOSE to race and
-for both to try to put the "persistent" reference to the stateid.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 67 ++++++++++++++++++++++++++++-------------------------
- 1 file changed, 35 insertions(+), 32 deletions(-)
+Iterate over multiple flavors returned by SECINFO. If RPC_AUTH_GSS is in the
+secinfo list, fully test (get and auth, credential, and gss_context)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 54c9631a602c..e56071ef945a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1671,16 +1671,6 @@ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
- 	return ret;
- }
- 
--static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
--{
--	struct nfs4_stid *ret;
--
--	spin_lock(&cl->cl_lock);
--	ret = find_stateid_locked(cl, t);
--	spin_unlock(&cl->cl_lock);
--	return ret;
--}
--
- static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
- {
- 	struct nfs4_stid *s;
-@@ -4051,10 +4041,10 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- {
- 	struct nfs4_stid *s;
- 	struct nfs4_ol_stateid *ols;
--	__be32 status;
-+	__be32 status = nfserr_bad_stateid;
- 
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
--		return nfserr_bad_stateid;
-+		return status;
- 	/* Client debugging aid. */
- 	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
- 		char addr_str[INET6_ADDRSTRLEN];
-@@ -4062,34 +4052,42 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 				 sizeof(addr_str));
- 		pr_warn_ratelimited("NFSD: client %s testing state ID "
- 					"with incorrect client ID\n", addr_str);
--		return nfserr_bad_stateid;
-+		return status;
- 	}
--	s = find_stateid(cl, stateid);
-+	spin_lock(&cl->cl_lock);
-+	s = find_stateid_locked(cl, stateid);
- 	if (!s)
--		return nfserr_bad_stateid;
-+		goto out_unlock;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 	if (status)
--		return status;
-+		goto out_unlock;
- 	switch (s->sc_type) {
- 	case NFS4_DELEG_STID:
--		return nfs_ok;
-+		status = nfs_ok;
-+		break;
- 	case NFS4_REVOKED_DELEG_STID:
--		return nfserr_deleg_revoked;
-+		status = nfserr_deleg_revoked;
-+		break;
- 	case NFS4_OPEN_STID:
- 	case NFS4_LOCK_STID:
- 		ols = openlockstateid(s);
- 		if (ols->st_stateowner->so_is_open_owner
- 	    			&& !(openowner(ols->st_stateowner)->oo_flags
- 						& NFS4_OO_CONFIRMED))
--			return nfserr_bad_stateid;
--		return nfs_ok;
-+			status = nfserr_bad_stateid;
-+		else
-+			status = nfs_ok;
-+		break;
- 	default:
- 		printk("unknown stateid type %x\n", s->sc_type);
- 		/* Fallthrough */
- 	case NFS4_CLOSED_STID:
- 	case NFS4_CLOSED_DELEG_STID:
--		return nfserr_bad_stateid;
-+		status = nfserr_bad_stateid;
- 	}
-+out_unlock:
-+	spin_unlock(&cl->cl_lock);
-+	return status;
- }
- 
- static __be32
-@@ -4240,31 +4238,36 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	__be32 ret = nfserr_bad_stateid;
- 
- 	nfs4_lock_state();
--	s = find_stateid(cl, stateid);
-+	spin_lock(&cl->cl_lock);
-+	s = find_stateid_locked(cl, stateid);
- 	if (!s)
--		goto out;
-+		goto out_unlock;
- 	switch (s->sc_type) {
- 	case NFS4_DELEG_STID:
- 		ret = nfserr_locks_held;
--		goto out;
-+		break;
- 	case NFS4_OPEN_STID:
- 	case NFS4_LOCK_STID:
- 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 		if (ret)
--			goto out;
--		if (s->sc_type == NFS4_LOCK_STID)
--			ret = nfsd4_free_lock_stateid(openlockstateid(s));
--		else
-+			break;
-+		if (s->sc_type != NFS4_LOCK_STID) {
- 			ret = nfserr_locks_held;
--		break;
-+			break;
-+		}
-+		spin_unlock(&cl->cl_lock);
-+		ret = nfsd4_free_lock_stateid(openlockstateid(s));
-+		goto out;
- 	case NFS4_REVOKED_DELEG_STID:
-+		spin_unlock(&cl->cl_lock);
- 		dp = delegstateid(s);
- 		destroy_revoked_delegation(dp);
- 		ret = nfs_ok;
--		break;
--	default:
--		ret = nfserr_bad_stateid;
-+		goto out;
-+	/* Default falls through and returns nfserr_bad_stateid */
- 	}
-+out_unlock:
-+	spin_unlock(&cl->cl_lock);
- out:
- 	nfs4_unlock_state();
- 	return ret;
+Fix some error paths.
+
+Version 2:
+- Responded to Trond's comments. Cloned an RPC client for each flavor to test
+which creates an rpc_auth. Use rpcauth_lookupcred() to create a cred for the
+user (and gss_context for gss).
+
+- Removed nfs4_negotiate_security from nfs4_submount as is was just called
+from nfs4_proc_lookup_mountpoint.
+
+
+Testing: Minimal testing of the nfs_test_gss_flavor. Will run more tests after
+the June 2014 bakeathon
+
+Note: Can supply a patch for SECINFO_NO_name to use nfs4_negotiate_security.
+
+-->Andy
+
+Andy Adamson (3):
+  NFS check the return of nfs4_negotiate_security in nfs4_submount
+  NFS Return -EPERM if no supported or matching SECINFO flavor
+  NFS test SECINFO RPC_AUTH_GSS pseudoflavors for support
+
+ fs/nfs/nfs4namespace.c | 66 +++++++++++++++++++++++++++++++++++++++++---------
+ 1 file changed, 55 insertions(+), 11 deletions(-)
+
 -- 
-1.9.3
+1.8.3.1
 
