@@ -1,153 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:34650 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754260AbaF3Pv6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:58 -0400
-Received: by mail-qg0-f50.google.com with SMTP id j5so2177395qga.9
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:57 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 060/114] nfsd: Keep a reference to the open stateid for the NFSv4.0 replay cache
-Date: Mon, 30 Jun 2014 11:49:29 -0400
-Message-Id: <1404143423-24381-61-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:37824 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754528AbaFLBoH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Jun 2014 21:44:07 -0400
+Date: Thu, 12 Jun 2014 11:43:57 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Live lock in silly-rename.
+Message-ID: <20140612114357.3a50f3ab@notabene.brown>
+In-Reply-To: <20140611142102.GB19382@fieldses.org>
+References: <20140529164521.02324559@notabene.brown>
+	<CAHQdGtTtU9_zBcfzRb_wmEf7XaX9rNg-_Q85ZLX9BYax14D2Gg@mail.gmail.com>
+	<20140530075135.753fb7ed@notabene.brown>
+	<20140530004423.GA13746@fieldses.org>
+	<20140530134442.5a8e5983@notabene.brown>
+	<20140530215522.GA27615@fieldses.org>
+	<20140531081358.62ae69b3@notabene.brown>
+	<20140604173926.53918af3@notabene.brown>
+	<20140604220531.GA8362@fieldses.org>
+	<20140605103423.43e21569@notabene.brown>
+	<20140611142102.GB19382@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/nMq1J81jRSEAG+Bb7.2XR5J"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+--Sig_/nMq1J81jRSEAG+Bb7.2XR5J
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Ensure that nfsd4_cstate_assign_replay/nfsd4_cstate_clear_replay take
-a reference to the stateowner when they are using it for NFSv4.0
-open and lock replay caching.
+On Wed, 11 Jun 2014 10:21:02 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4proc.c  |  5 +----
- fs/nfsd/nfs4state.c | 26 +++++++++++++++++++++++++-
- fs/nfsd/xdr4.h      | 26 ++++----------------------
- 3 files changed, 30 insertions(+), 27 deletions(-)
+> On Thu, Jun 05, 2014 at 10:34:23AM +1000, NeilBrown wrote:
+> > On Wed, 4 Jun 2014 18:05:31 -0400 "J. Bruce Fields" <bfields@fieldses.o=
+rg>
+> > wrote:
+> >=20
+> > > On Wed, Jun 04, 2014 at 05:39:26PM +1000, NeilBrown wrote:
+> > > > Below is my suggestion.  It seems easy enough.  It even works.
+> > >=20
+> > > Woah!
+> > >=20
+> > > Anyway, looks reasonable to me, and it fixes an immediate problem so =
+I'm
+> > > inclined to just apply.
+> ...
+> > And if you are going to apply it, you'll want:
+> >=20
+> >    Signed-off-by: NeilBrown <neilb@suse.de>
+>=20
+> Oh, gah, then I forgot to actually apply.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index fc48d1d51f1d..cdce2f39b09c 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -467,10 +467,7 @@ out:
- 		fh_put(resfh);
- 		kfree(resfh);
- 	}
--	nfsd4_cleanup_open_state(open, status);
--	if (open->op_openowner)
--		nfsd4_cstate_assign_replay(cstate,
--				&open->op_openowner->oo_owner);
-+	nfsd4_cleanup_open_state(cstate, open, status);
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
- 	return status;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d260bb3145ed..98cbe9b7c01e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2918,6 +2918,27 @@ static void init_nfs4_replay(struct nfs4_replay *rp)
- 	mutex_init(&rp->rp_mutex);
- }
- 
-+static void nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
-+		struct nfs4_stateowner *so)
-+{
-+	if (!nfsd4_has_session(cstate)) {
-+		mutex_lock(&so->so_replay.rp_mutex);
-+		cstate->replay_owner = so;
-+		atomic_inc(&so->so_count);
-+	}
-+}
-+
-+void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
-+{
-+	struct nfs4_stateowner *so = cstate->replay_owner;
-+
-+	if (so != NULL) {
-+		cstate->replay_owner = NULL;
-+		mutex_unlock(&so->so_replay.rp_mutex);
-+		nfs4_put_stateowner(so);
-+	}
-+}
-+
- static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj *owner, struct nfs4_client *clp)
- {
- 	struct nfs4_stateowner *sop;
-@@ -3808,7 +3829,8 @@ out:
- 	return status;
- }
- 
--void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
-+void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
-+			      struct nfsd4_open *open, __be32 status)
- {
- 	if (open->op_openowner) {
- 		struct nfs4_openowner *oo = open->op_openowner;
-@@ -3822,6 +3844,8 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
- 			} else
- 				oo->oo_flags &= ~NFS4_OO_NEW;
- 		}
-+		if (open->op_openowner)
-+			nfsd4_cstate_assign_replay(cstate, &oo->oo_owner);
- 	}
- 	if (open->op_file)
- 		nfsd4_free_file(open->op_file);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index ec9674a009bd..634e016f50d3 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -74,27 +74,6 @@ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
- 	return cs->slot != NULL;
- }
- 
--static inline void
--nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
--				struct nfs4_stateowner *so)
--{
--	if (!nfsd4_has_session(cstate)) {
--		mutex_lock(&so->so_replay.rp_mutex);
--		cstate->replay_owner = so;
--	}
--}
--
--static inline void
--nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
--{
--	struct nfs4_stateowner *so = cstate->replay_owner;
--
--	if (so != NULL) {
--		cstate->replay_owner = NULL;
--		mutex_unlock(&so->so_replay.rp_mutex);
--	}
--}
--
- struct nfsd4_change_info {
- 	u32		atomic;
- 	bool		change_supported;
-@@ -616,7 +595,9 @@ extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
- 		struct nfsd4_open *open, struct nfsd_net *nn);
- extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
- 		struct svc_fh *current_fh, struct nfsd4_open *open);
--extern void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status);
-+extern void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate);
-+extern void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
-+		struct nfsd4_open *open, __be32 status);
- extern __be32 nfsd4_open_confirm(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_open_confirm *oc);
- extern __be32 nfsd4_close(struct svc_rqst *rqstp,
-@@ -647,6 +628,7 @@ extern __be32 nfsd4_test_stateid(struct svc_rqst *rqstp,
- extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
- extern void nfsd4_bump_seqid(struct nfsd4_compound_state *, __be32 nfserr);
-+
- #endif
- 
- /*
--- 
-1.9.3
+The best laid plan of mice ....
 
+>=20
+> Anyway, it's a reasonably self-contained fix for an important bug so
+> I'll send it as part of a later bugfix pull request.
+>=20
+> I thought it could also use a more explicit description of the resulting
+> problem, so I added:
+>=20
+> 	... so further delegations should not be handed out.
+>=20
+> 	The current code fails to do so, and the result is effectively a
+> 	live-lock under some workloads: a client attempting a
+> 	conflicting operation on a read-delegated file receives
+> 	NFS4ERR_DELAY and retries the operation, but by the time it
+> 	retries the server may already have given out another
+> 	delegation.
+
+Looks good, thanks.
+
+NeilBrown
+
+--Sig_/nMq1J81jRSEAG+Bb7.2XR5J
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU5kF3Tnsnt1WYoG5AQKUJg//d+2CTOlv1lkZ27yhMGvhY0j4wh22FGSC
+Vebnv9INee/yyLN5qsh3hkxauoQ/3psIq0F0dzxFS1IgnaXZ7uzY0UTlpuUhFSpZ
+Q/vpc45F24m+JgEVBLY21xkAAsv46+zQrzwDmyFO27jXNHJcgMF+pXEZgmMEtpkT
+zIe/xNeH9kSE8zPu3VL5GzFrjra5PqAOS/p/Y+akvOQNHjJC+5Cd3LAFEFiRRKQY
+nrhXSwgoUZXLCReBWhzKEfixZho+A7ump6s/0PDnPKMfgIWCkH+Nj+fa+ntSv4U5
+suxn7gUO3fNbRjM3VrXHiJ7L/l1B5XE3hlo1B/ztNQAyFUUDEDOmPUutrjaj7lB6
+ZSghDxRoUN0loAUG0M1wqdXHQ+y217nQmSmjtxidNGQyvOFfglPkgjX0e+0Eaw3M
+po24kTh2L0wEgTlWvkha940MDSz/lk5kerus9pfN/IxcPGS0QZaqqymUQQp9xp5R
+fXRKwryIoTGhDnFBKNfZiZwkqb4ZgQjwAVFnKSyhPvzAgFJku3IGJa9+9KGpoc4k
+/+oBjuR5sGHqzTuMejkBq6+p+zCc3UdXuFfcqrBxt8i320Qwa+3g/5w3pSolxufb
+k2JnTXyvMpcV5UvJ8x3S+sshv7c082qJV6NzKj45kFouBVJXDvmxIel+MV//t4RD
+RL4RkxA1lJI=
+=2hEK
+-----END PGP SIGNATURE-----
+
+--Sig_/nMq1J81jRSEAG+Bb7.2XR5J--
