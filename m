@@ -1,80 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f178.google.com ([209.85.216.178]:49586 "EHLO
-	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750832AbaFZTNy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:13:54 -0400
-Received: by mail-qc0-f178.google.com with SMTP id c9so3518120qcz.23
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:13:53 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 005/117] nfsd: nfsd_splice_read and nfsd_readv should return __be32
-Date: Thu, 26 Jun 2014 15:11:45 -0400
-Message-Id: <1403810017-16062-6-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:42918 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751468AbaFMKsg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jun 2014 06:48:36 -0400
+Received: by mail-pa0-f49.google.com with SMTP id lj1so2005889pab.22
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Jun 2014 03:48:36 -0700 (PDT)
+Message-ID: <539AD6F7.8060301@gmail.com>
+Date: Fri, 13 Jun 2014 18:48:23 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH 1/3 v2] NFS4.0: Add IPv6 support
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The callers expect a __be32 return and the functions they call return
-__be32, so having these return int is just wrong. Also, nfsd_finish_read
-can be made static.
+v2: fix a bug for parsing path.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/vfs.c | 7 ++++---
- fs/nfsd/vfs.h | 4 ++--
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ nfs4.0/lib/rpc/rpc.py | 15 ++++++++++-----
+ nfs4.0/nfs4lib.py     | 48 ++++++++++++++++++++++++++++++++++++++++++++++++
+ nfs4.0/testserver.py  | 26 ++++++--------------------
+ 3 files changed, 64 insertions(+), 25 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 140c496f612c..960f9e0bb88f 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -820,7 +820,8 @@ static int nfsd_direct_splice_actor(struct pipe_inode_info *pipe,
- 	return __splice_from_pipe(pipe, sd, nfsd_splice_actor);
- }
+diff --git a/nfs4.0/lib/rpc/rpc.py b/nfs4.0/lib/rpc/rpc.py
+index 60f70bd..8b39df4 100644
+--- a/nfs4.0/lib/rpc/rpc.py
++++ b/nfs4.0/lib/rpc/rpc.py
+@@ -188,6 +188,9 @@ class RPCClient(object):
+         self.debug = 0
+         t = threading.currentThread()
+         self.lock = threading.Lock()
++        self.af = socket.AF_INET;
++        if host.find(':') != -1:
++            self.af = socket.AF_INET6;
+         self.remotehost = host
+         self.remoteport = port
+         self.timeout = timeout
+@@ -207,6 +210,7 @@ class RPCClient(object):
+         self._init_security(self.sec_list) # Note this can make calls
+         self.security = sec_list[0]
  
--__be32 nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
-+static __be32
-+nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
- {
- 	if (host_err >= 0) {
- 		nfsdstats.io_read += host_err;
-@@ -831,7 +832,7 @@ __be32 nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
- 		return nfserrno(host_err);
- }
++
+     def _init_security(self, list):
+         # Each element of list must have functions:
+         # initialize, secure_data, make_cred, make_verf
+@@ -235,8 +239,7 @@ class RPCClient(object):
+         if t in self._socket:
+             out = self._socket[t]
+         else:
+-            out = self._socket[t] = socket.socket(socket.AF_INET,
+-                                                  socket.SOCK_STREAM)
++            out = self._socket[t] = socket.socket(self.af, socket.SOCK_STREAM)
+             if self.uselowport:
+                 self.bindsocket(out)
+             out.connect((self.remotehost, self.remoteport))
+@@ -301,8 +304,7 @@ class RPCClient(object):
+         t = threading.currentThread()
+         self.lock.acquire()
+         self._socket[t].close()
+-        out = self._socket[t] = socket.socket(socket.AF_INET,
+-                                              socket.SOCK_STREAM)
++        out = self._socket[t] = socket.socket(self.af, socket.SOCK_STREAM)
+         # out.bind
+         out.connect((self.remotehost, self.remoteport))
+         out.settimeout(self.timeout)
+@@ -454,7 +456,10 @@ class RPCClient(object):
  
--int nfsd_splice_read(struct svc_rqst *rqstp,
-+__be32 nfsd_splice_read(struct svc_rqst *rqstp,
- 		     struct file *file, loff_t offset, unsigned long *count)
- {
- 	struct splice_desc sd = {
-@@ -847,7 +848,7 @@ int nfsd_splice_read(struct svc_rqst *rqstp,
- 	return nfsd_finish_read(file, count, host_err);
- }
+ class Server(object):
+     def __init__(self, host='', port=51423, name="SERVER"):
+-        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
++        try:
++            self.s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
++        except:
++            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+         self.s.bind((host, port))
+         self.port = self.s.getsockname()[1]
+diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
+index 5fc7bf3..0a20498 100644
+--- a/nfs4.0/nfs4lib.py
++++ b/nfs4.0/nfs4lib.py
+@@ -39,6 +39,7 @@ import time
+ import struct
+ import socket
+ import sys
++import re
  
--int nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
-+__be32 nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
- 		unsigned long *count)
- {
- 	mm_segment_t oldfs;
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 91b6ae3f658b..b84aef50f55d 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -74,9 +74,9 @@ struct raparms;
- __be32		nfsd_get_tmp_read_open(struct svc_rqst *, struct svc_fh *,
- 				struct file **, struct raparms **);
- void		nfsd_put_tmp_read_open(struct file *, struct raparms *);
--int		nfsd_splice_read(struct svc_rqst *,
-+__be32		nfsd_splice_read(struct svc_rqst *,
- 				struct file *, loff_t, unsigned long *);
--int		nfsd_readv(struct file *, loff_t, struct kvec *, int,
-+__be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
- 				unsigned long *);
- __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
- 				loff_t, struct kvec *, int, unsigned long *);
+ class NFSException(rpc.RPCError):
+     pass
+@@ -1013,4 +1014,51 @@ def bitmap2list(bitmap):
+         bitmap >>= 1
+     return out
+ 
++def parse_nfs_url(url):
++    """Parse [nfs://]host:port/path, format taken from rfc 2224
++       multipath addr:port pair are as such:
+ 
++      $ip1:$port1,$ip2:$port2..
++
++    Returns triple server, port, path.
++    """
++    p = re.compile(r"""
++    (?:nfs://)?               # Ignore an optionally prepended 'nfs://'
++    (?P<servers>[^/]+)
++    (?P<path>/.*)?            # set path=everything else, must start with /
++    $
++    """, re.VERBOSE)
++
++    m = p.match(url)
++    if m:
++        servers = m.group('servers')
++        server_list = []
++
++        for server in servers.split(','):
++            server = server.strip()
++
++            idx = server.rfind(':')
++            bracket_idx = server.rfind(']')
++
++            # the first : is before ipv6 addr ] -> no port specified
++            if bracket_idx > idx:
++                idx = -1
++
++            if idx >= 0:
++                host = server[:idx]
++                port = server[idx+1:]
++            else:
++                host = server
++                port = None
++
++            # remove brackets around IPv6 addrs, if they exist
++            if host.startswith('[') and host.endswith(']'):
++                host = host[1:-1]
++
++            port = (2049 if not port else int(port))
++            server_list.append((host, port))
++
++        path = m.group('path')
++        return tuple(server_list), path
++    else:
++        raise ValueError("Error parsing NFS URL: %s" % url)
+diff --git a/nfs4.0/testserver.py b/nfs4.0/testserver.py
+index 606e2f0..41be74a 100755
+--- a/nfs4.0/testserver.py
++++ b/nfs4.0/testserver.py
+@@ -35,7 +35,6 @@ if  __name__ == "__main__":
+     if os.path.isfile(os.path.join(sys.path[0], 'lib', 'testmod.py')):
+         sys.path.insert(1, os.path.join(sys.path[0], 'lib'))
+ 
+-import re
+ import nfs4lib
+ import testmod
+ from optparse import OptionParser, OptionGroup, IndentedHelpFormatter
+@@ -57,23 +56,6 @@ if not hasattr(os, "getgid"):
+ else:
+     GID = os.getgid()
+ 
+-
+-def parse_url(url):
+-    """Parse [nfs://]host:port/path"""
+-    p = re.compile(r"""
+-    (?:nfs://)?      # Ignore an optionally prepended 'nfs://'
+-    (?P<host>[^:]+)  # set host=everything up to next :
+-    :?
+-    (?P<port>[^/]*)  # set port=everything up to next /
+-    (?P<path>/.*$|$) # set path=everything else
+-    """, re.VERBOSE)
+-
+-    m = p.match(url)
+-    if m:
+-        return m.group('host'), m.group('port'), m.group('path')
+-    else:
+-        return None, None, None
+-        
+ def unixpath2comps(str, pathcomps=None):
+     if pathcomps is None or str[0] == '/':
+         pathcomps = []
+@@ -284,9 +266,13 @@ def main():
+     if not args:
+         p.error("Need a server")
+     url = args.pop(0)
+-    opt.server, opt.port, opt.path = parse_url(url)
+-    if not opt.server:
++    server_list, opt.path = nfs4lib.parse_nfs_url(url)
++
++    if not server_list:
+         p.error("%s not a valid server name" % url)
++
++    opt.server, opt.port = server_list[0]
++
+     if not opt.port:
+         opt.port = 2049
+     else:
 -- 
 1.9.3
 
