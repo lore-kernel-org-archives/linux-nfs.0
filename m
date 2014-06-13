@@ -1,78 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:39821 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932334AbaFBORh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 10:17:37 -0400
-Received: by mail-qa0-f48.google.com with SMTP id i13so2740824qae.21
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Jun 2014 07:17:36 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 2 Jun 2014 10:17:33 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, trond.myklebust@primarydata.com,
-        bhalevy@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 9/9] NFSd: protect delegation setup with the i_lock
-Message-ID: <20140602101733.651cd9c8@tlielax.poochiereds.net>
-In-Reply-To: <20140602084616.GA2910@infradead.org>
-References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
-	<1401455373-18207-10-git-send-email-jlayton@primarydata.com>
-	<20140602084616.GA2910@infradead.org>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:46331 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751468AbaFMKo6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jun 2014 06:44:58 -0400
+Received: by mail-pa0-f47.google.com with SMTP id fa1so2003702pad.20
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Jun 2014 03:44:57 -0700 (PDT)
+Message-ID: <539AD609.4040205@gmail.com>
+Date: Fri, 13 Jun 2014 18:44:25 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: Re: [PATCH v2] NFS4.1: try to clean sessions after testing
+References: <5396D7FA.4050303@gmail.com> <5396F243.8080606@gmail.com> <20140611211742.GH19382@fieldses.org> <5398E544.9000105@gmail.com> <53990498.7020300@gmail.com> <20140612152528.GD5437@fieldses.org>
+In-Reply-To: <20140612152528.GD5437@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2 Jun 2014 01:46:16 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
-
-> On Fri, May 30, 2014 at 09:09:33AM -0400, Jeff Layton wrote:
-> > From: Trond Myklebust <trond.myklebust@primarydata.com>
-> > 
-> > state_lock is a heavily contended global lock. We don't want to grab
-> > that while simultaneously holding the inode->i_lock. Avoid doing that in
-> > the delegation break callback by ensuring that we add/remove the
-> > dl_perfile under the inode->i_lock.
+On 6/12/2014 23:25, J. Bruce Fields wrote:
+> On Thu, Jun 12, 2014 at 09:38:32AM +0800, Kinglong Mee wrote:
+>> On 6/12/2014 07:24, Kinglong Mee wrote:
+>>> On 6/12/2014 05:17, J. Bruce Fields wrote:
+>>>> I tried to apply this, and the ipv6 patch (could we do that for 4.1
+>>>> too?) and the 3 other patches, but:
+>>>
+>>> nfs4.1 has supports IPv6, the patch for nfs4.0 is a back-port from nfs4.1.
 > 
-> The current code never takes the state lock (or recall lock) under
-> i_lock.  Non-trivial use of i_lock in nfsd is only added in this patch.
+> OK, thanks for explaining.
 > 
-> > 
-> > This however, can cause an ABBA deadlock between the state_lock and the
-> > i_lock. Work around that by doing the list manipulation in the delegation
-> > recall from the workqueue context prior to starting the rpc call.
+>>>
+>>>>
+>>>> 	- there are some conflicts with the latest pynfs (e.g. I already
+>>>> 	  added a few acl tests, apologies)
+>>>> 	- I'm getting failures to write to a read-only fs, apparently
+>>>> 	  one of the tests is trying to write to the export root?  I
+>>>> 	  didn't check which one.
+>>
+>> Can you show me more information about this?
 > 
-> I very much dislike the patch for multiple reasons.  For one thing
-> nfsd currently stays away from i_lock which is a VFS (and sometimes
-> abused by the fs) lock except for a single case in the file locking code
-> which really should be factored into common code.  I'd rather have
-> locks in nfsd than starting to use i_lock in nfsd and making auditing
-> it's use and it's lock hierchies more complex by introducing usage
-> outside of the VFS.
+> [root@pip5 pynfs]# ./nfs4.0/testserver.py f19:/exports/xfs/pynfstest-user --maketree
+> Initialization failed, no tests run.
+> Traceback (most recent call last):
+>   File "./nfs4.0/testserver.py", line 381, in <module>
+>     main()
+>   File "./nfs4.0/testserver.py", line 344, in main
+>     env.init()
+>   File "/root/pynfs/nfs4.0/servertests/environment.py", line 140, in init
+>     self._maketree()
+>   File "/root/pynfs/nfs4.0/servertests/environment.py", line 162, in _maketree
+>     check(res, msg="Trying to create /%s," % '/'.join(path))
+>   File "/root/pynfs/nfs4.0/servertests/environment.py", line 253, in check
+>     raise testmod.FailureException(msg)
+> testmod.FailureException: Trying to create /tmp, should return NFS4_OK, instead got NFS4ERR_ROFS
 > 
-
-Ok, fair enough. A later patch in the series adds a per nfs4_file lock
-(the fi_lock) that we can use for this purpose in lieu of the i_lock.
-Nesting that within the i_lock shouldn't be too painful.
-
-> Second I really don't like pushing the delegation setup into the
-> callback workqueue.  I have a patchset refactoring the callback code
-> to allow adding more callbacks without lots of copy & paste, and except
-> for this new addition the code in the workqueue already is almost
-> perfectly generic for arbitrary callbacks.
+> This happens after the ipv6 patch.
 > 
-> Please add a lock in struct nfs4_file to protects it's own members
-> instead.
-> 
+> Note /exports on my server is exported read-only, xfs is a separate writeable
+> filesystem.
 
-This is a problem however. The del_recall_lru list is a per-namespace
-list, so we need a lock that is either global or per-namespace to add
-things onto it. The point of this patch is to get that extra locking
-out of the codepath where the i_lock is already held.
+Thanks for your testing.
+I have found this bug in IPv6 path, and will send three new path all I have.
 
-We could do that within the rpc_call_prepare operation, but the main
-problem there is that the delegation could leak if the rpc task
-allocation fails. Would you be amenable to adding a "cb_prepare"
-operation or something that we could use to run things from the
-workqueue before the actual callback runs?
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+thanks,
+Kinglong Mee
