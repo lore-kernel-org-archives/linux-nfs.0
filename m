@@ -1,90 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:33877 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751286AbaF3PvB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:01 -0400
-Received: by mail-qa0-f48.google.com with SMTP id x12so6646111qac.35
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:01 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
-Subject: [PATCH v3 020/114] nfsd4: use cl_lock to synchronize all stateid idr calls
-Date: Mon, 30 Jun 2014 11:48:49 -0400
-Message-Id: <1404143423-24381-21-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:64430 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751458AbaFMKug (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jun 2014 06:50:36 -0400
+Received: by mail-pa0-f49.google.com with SMTP id lj1so2007900pab.36
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Jun 2014 03:50:36 -0700 (PDT)
+Message-ID: <539AD76F.4000200@gmail.com>
+Date: Fri, 13 Jun 2014 18:50:23 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH 2/3 v3] NFS4.0: Cases for SGID/SUID status after writing
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@primarydata.com>
+v3, same as v2.
+v2, Adds Environment.c3. 
 
-Currently, this is serialized by the client_mutex, which is slated for
-removal. Add finer-grained locking here.
-
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4state.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+ nfs4.0/servertests/environment.py |  4 ++
+ nfs4.0/servertests/st_write.py    | 84 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 88 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7f81207c3862..993aa196dd9e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -343,7 +343,6 @@ static void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
- kmem_cache *slab)
- {
--	struct idr *stateids = &cl->cl_stateids;
- 	struct nfs4_stid *stid;
- 	int new_id;
- 
-@@ -351,7 +350,11 @@ kmem_cache *slab)
- 	if (!stid)
- 		return NULL;
- 
--	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_KERNEL);
-+	idr_preload(GFP_KERNEL);
-+	spin_lock(&cl->cl_lock);
-+	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 0, 0, GFP_NOWAIT);
-+	spin_unlock(&cl->cl_lock);
-+	idr_preload_end();
- 	if (new_id < 0)
- 		goto out_free;
- 	stid->sc_client = cl;
-@@ -487,9 +490,11 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 
- static void remove_stid(struct nfs4_stid *s)
- {
--	struct idr *stateids = &s->sc_client->cl_stateids;
-+	struct nfs4_client *clp = s->sc_client;
- 
--	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
-+	spin_lock(&clp->cl_lock);
-+	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
-+	spin_unlock(&clp->cl_lock);
- }
- 
- static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
-@@ -1263,7 +1268,9 @@ free_client(struct nfs4_client *clp)
- 	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
- 	free_svc_cred(&clp->cl_cred);
- 	kfree(clp->cl_name.data);
-+	spin_lock(&clp->cl_lock);
- 	idr_destroy(&clp->cl_stateids);
-+	spin_unlock(&clp->cl_lock);
- 	kfree(clp);
- }
- 
-@@ -1486,7 +1493,9 @@ static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
- {
- 	struct nfs4_stid *ret;
- 
-+	spin_lock(&cl->cl_lock);
- 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
-+	spin_unlock(&cl->cl_lock);
- 	if (!ret || !ret->sc_type)
- 		return NULL;
- 	return ret;
+diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
+index 9852178..48d4e26 100644
+--- a/nfs4.0/servertests/environment.py
++++ b/nfs4.0/servertests/environment.py
+@@ -104,12 +104,16 @@ class Environment(testmod.Environment):
+         sec1, sec2 = self._get_security(opts)
+ #        authsys1 = rpc.SecAuthSys(0, opts.machinename, opts.uid, opts.gid, [])
+         authsys2 = rpc.SecAuthSys(0, opts.machinename, opts.uid+1, opts.gid+1, [])
++        authsys3 = rpc.SecAuthSys(0, opts.machinename, opts.uid+2, opts.gid+2, [])
+         self.c1 = NFS4Client('client1_pid%i' % os.getpid(),
+                              opts.server, opts.port, opts.path,
+                              sec_list=[sec1], opts=opts)
+         self.c2 = NFS4Client('client2_pid%i' % os.getpid(),
+                              opts.server, opts.port, opts.path,
+                              sec_list=[authsys2], opts=opts)
++        self.c3 = NFS4Client('client3_pid%i' % os.getpid(),
++                             opts.server, opts.port, opts.path,
++                             sec_list=[authsys3], opts=opts)
+         self.longname = "a"*512
+         self.uid = 0
+         self.gid = 0
+diff --git a/nfs4.0/servertests/st_write.py b/nfs4.0/servertests/st_write.py
+index c76cf94..3e58cba 100644
+--- a/nfs4.0/servertests/st_write.py
++++ b/nfs4.0/servertests/st_write.py
+@@ -457,3 +457,87 @@ def testMultipleReadWrites(t,env):
+         if resdata != expect:
+             t.fail("READ %d returned %s, expected %s" %
+                     (i+1, repr(resdata), repr(expect)))
++
++def doCheckMode(t, c, fh, mode):
++    ops = c.use_obj(fh)
++    ops += [c.getattr([FATTR4_MODE, FATTR4_OWNER, FATTR4_OWNER_GROUP])]
++    res = c.compound(ops)
++    check(res)
++
++    attrs = res.resarray[-1].obj_attributes
++    if FATTR4_MODE not in attrs.keys():
++         t.fail("Attributes not contains FATTR4_MODE")
++    resmode = attrs[FATTR4_MODE]
++    if resmode != mode:
++         t.fail("Mode is %o, not expected %o" % (resmode, mode))
++
++def doCheckSGUID(t, env, cc, cw, cmode = 06777):
++    c = env.c1
++    path = c.homedir + [t.code]
++    res = c.create_obj(path, attrs={FATTR4_MODE:0777})
++    check(res)
++
++    cc.init_connection()
++    attrs = {FATTR4_SIZE: 32, FATTR4_MODE: 06777}
++    path += [t.code]
++    fh, stateid = cc.create_confirm(t.code, path, attrs=attrs,
++                                   deny=OPEN4_SHARE_DENY_NONE)
++    doCheckMode(t, cc, fh, 06777)
++
++    cw.init_connection()
++    ops = cw.use_obj(fh)
++    ops += [cw.write_op(stateid4(0, ''), 0, UNSTABLE4, 'for test')]
++    res = cw.compound(ops)
++    check(res)
++
++    doCheckMode(t, cw, fh, cmode)
++
++def testSGUIDRootRoot(t, env):
++    """ root writing data to file (blongs to root)
++        will not clear the SUID/SGID mode
++
++    FLAGS: wrtie file all
++    DEPEND: MODE MKFILE
++    CODE: WRT16a
++    """
++    doCheckSGUID(t, env, env.c1, env.c1)
++
++def testSGUIDRootNoRoot(t, env):
++    """ root writing data to file (blongs to no-root)
++        will not clear the SUID/SGID mode
++
++    FLAGS: wrtie file all
++    DEPEND: MODE MKFILE
++    CODE: WRT16b
++    """
++    doCheckSGUID(t, env, env.c2, env.c1)
++
++def testSGUIDNoRootSelf(t, env):
++    """ no-root writing data to file (blongs to self)
++        will clear the SUID/SGID mode
++
++    FLAGS: wrtie file all
++    DEPEND: MODE MKFILE
++    CODE: WRT16c
++    """
++    doCheckSGUID(t, env, env.c2, env.c2, 0777)
++
++def testSGUIDNoRootRoot(t, env):
++    """ no-root writing data to file (blongs to root)
++        will clear the SUID/SGID mode
++
++    FLAGS: wrtie file all
++    DEPEND: MODE MKFILE
++    CODE: WRT16d
++    """
++    doCheckSGUID(t, env, env.c1, env.c2, 0777)
++
++def testSGUIDNoRootNoRoot(t, env):
++    """ no-root writing data to file (blongs to no-root)
++        will clear the SUID/SGID mode
++
++    FLAGS: wrtie file all
++    DEPEND: MODE MKFILE
++    CODE: WRT16e
++    """
++    doCheckSGUID(t, env, env.c2, env.c3, 0777)
 -- 
 1.9.3
 
