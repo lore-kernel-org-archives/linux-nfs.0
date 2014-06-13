@@ -1,119 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:62158 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752427AbaFWWjw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:39:52 -0400
-Subject: [PATCH v1 06/13] xprtrdma: Unclutter struct rpcrdma_mr_seg
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Jun 2014 18:39:50 -0400
-Message-ID: <20140623223950.1634.11937.stgit@manet.1015granger.net>
-In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+Received: from mail.aixigo.de ([80.149.209.52]:53237 "EHLO mail.aixigo.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752577AbaFMOed (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 13 Jun 2014 10:34:33 -0400
+Received: from srvvm01.ac.aixigo.de (mail.ac.aixigo.de [172.19.96.11])
+	by mail.aixigo.com (8.14.3/8.14.3) with ESMTP id s5DEBG96030859
+	for <linux-nfs@vger.kernel.org>; Fri, 13 Jun 2014 16:11:16 +0200 (CEST)
+Message-ID: <539B0683.3020605@aixigo.de>
+Date: Fri, 13 Jun 2014 16:11:15 +0200
+From: Harald Dunkel <harald.dunkel@aixigo.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: NFS service inside a container
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean ups:
- - make it obvious that the rl_mw field is a pointer -- allocated
-   separately, not as part of struct rpcrdma_mr_seg
- - promote "struct {} frmr;" to a named type
- - promote the state enum to a named type
- - name the MW state field the same way other fields in
-   rpcrdma_mw are named
+Hi folks,
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/verbs.c     |    6 +++--
- net/sunrpc/xprtrdma/xprt_rdma.h |   44 +++++++++++++++++++++++++++++----------
- 2 files changed, 36 insertions(+), 14 deletions(-)
+I would like to run an NFServer inside a container. The idea
+is to mirror the whole NFS service container to a fallback
+host using drbd, and to provide preconfigured NFS containers
+to whoever needs it.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 451e100..e8ed81c 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -156,9 +156,9 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- 		return;
- 
- 	if (wc->opcode == IB_WC_FAST_REG_MR)
--		frmr->r.frmr.state = FRMR_IS_VALID;
-+		frmr->r.frmr.fr_state = FRMR_IS_VALID;
- 	else if (wc->opcode == IB_WC_LOCAL_INV)
--		frmr->r.frmr.state = FRMR_IS_INVALID;
-+		frmr->r.frmr.fr_state = FRMR_IS_INVALID;
- }
- 
- static int
-@@ -1518,7 +1518,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
- 		__func__, seg1->mr_chunk.rl_mw, i);
- 
--	if (unlikely(seg1->mr_chunk.rl_mw->r.frmr.state == FRMR_IS_VALID)) {
-+	if (unlikely(seg1->mr_chunk.rl_mw->r.frmr.fr_state == FRMR_IS_VALID)) {
- 		dprintk("RPC:       %s: frmr %x left valid, posting invalidate.\n",
- 			__func__,
- 			seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c270e59..28c8570 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -146,6 +146,38 @@ struct rpcrdma_rep {
- };
- 
- /*
-+ * struct rpcrdma_mw - external memory region metadata
-+ *
-+ * An external memory region is any buffer or page that is registered
-+ * on the fly (ie, not pre-registered).
-+ *
-+ * Each rpcrdma_buffer has a list of these anchored in rb_mws. During
-+ * call_allocate, rpcrdma_buffer_get() assigns one to each segment in
-+ * an rpcrdma_req. Then rpcrdma_register_external() grabs these to keep
-+ * track of registration metadata while each RPC is pending.
-+ * rpcrdma_deregister_external() uses this metadata to unmap and
-+ * release these resources when an RPC is complete.
-+ */
-+enum rpcrdma_frmr_state {
-+	FRMR_IS_INVALID,
-+	FRMR_IS_VALID,
-+};
-+
-+struct rpcrdma_frmr {
-+	struct ib_fast_reg_page_list	*fr_pgl;
-+	struct ib_mr			*fr_mr;
-+	enum rpcrdma_frmr_state		fr_state;
-+};
-+
-+struct rpcrdma_mw {
-+	union {
-+		struct ib_fmr		*fmr;
-+		struct rpcrdma_frmr	frmr;
-+	} r;
-+	struct list_head	mw_list;
-+};
-+
-+/*
-  * struct rpcrdma_req -- structure central to the request/reply sequence.
-  *
-  * N of these are associated with a transport instance, and stored in
-@@ -172,17 +204,7 @@ struct rpcrdma_rep {
- struct rpcrdma_mr_seg {		/* chunk descriptors */
- 	union {				/* chunk memory handles */
- 		struct ib_mr	*rl_mr;		/* if registered directly */
--		struct rpcrdma_mw {		/* if registered from region */
--			union {
--				struct ib_fmr	*fmr;
--				struct {
--					struct ib_fast_reg_page_list *fr_pgl;
--					struct ib_mr *fr_mr;
--					enum { FRMR_IS_INVALID, FRMR_IS_VALID  } state;
--				} frmr;
--			} r;
--			struct list_head mw_list;
--		} *rl_mw;
-+		struct rpcrdma_mw *rl_mw;	/* if registered from region */
- 	} mr_chunk;
- 	u64		mr_base;	/* registration result */
- 	u32		mr_rkey;	/* registration result */
+Unfortunately the kernel (3.14 of Debian Jessie, backported to
+Wheezy) did not share my enthusiasm:
 
+Jun 13 15:33:55 srvl011a kernel: [  725.372466] WARNING: CPU: 6 PID: 11134 at /build/linux-v1L7fI/linux-3.14.4/fs/nfsd/nfs4recover.c:1195 nfsd4_umh_cltrack_init+0x42/0x50 [nfsd]()
+Jun 13 15:33:55 srvl011a kernel: [  725.372468] NFSD: attempt to initialize umh client tracking in a container!
+Jun 13 15:33:55 srvl011a kernel: [  725.376800] Modules linked in: veth sha256_ssse3 sha256_generic hmac drbd lru_cache libcrc32c nfsd auth_rpcgss oid_registry nfs_acl nfs lockd fscache sunrpc bonding bridge stp llc dm_crypt ioatdma radeon iTCO_wdt iTCO_vendor_support i5400_edac lpc_ich mfd_core rng_core ttm edac_core i2c_i801 i5k_amb coretemp drm_kms_helper psmouse shpchp serio_raw joydev pcspkr evdev drm parport_pc parport processor button kvm tpm_tis tpm thermal_sys ext4 crc16 mbcache jbd2 crc32c btrfs xor raid6_pq dm_mod hid_generic usbhid hid sd_mod crct10dif_generic crc_t10dif crct10dif_common sg sr_mod cdrom ata_generic ehci_pci ata_piix uhci_hcd ehci_hcd libata usbcore e1000e usb_common igb i2c_algo_bit i2c_core dca ptp pps_core 3w_9xxx scsi_mod
+Jun 13 15:33:55 srvl011a kernel: [  725.376868] CPU: 6 PID: 11134 Comm: rpc.nfsd Tainted: G        W I  3.14-0.bpo.1-amd64 #1 Debian 3.14.4-1~bpo70+1
+Jun 13 15:33:55 srvl011a kernel: [  725.376870] Hardware name: Supermicro X7DW3/X7DWN+, BIOS  1.2 11/04/2008
+Jun 13 15:33:55 srvl011a kernel: [  725.376872]  0000000000000000 ffffffffa0740758 ffffffff814eb7c7 ffff8810278cbd78
+Jun 13 15:33:55 srvl011a kernel: [  725.376875]  ffffffff81064cc7 ffff880fecbeac00 ffff880febfc0100 ffff880febfc0100
+Jun 13 15:33:55 srvl011a kernel: [  725.376878]  ffff880fecbeac00 0000000000000000 ffffffff81064db5 ffffffffa0740710
+Jun 13 15:33:55 srvl011a kernel: [  725.376881] Call Trace:
+Jun 13 15:33:55 srvl011a kernel: [  725.376889]  [<ffffffff814eb7c7>] ? dump_stack+0x41/0x51
+Jun 13 15:33:55 srvl011a kernel: [  725.376894]  [<ffffffff81064cc7>] ? warn_slowpath_common+0x87/0xc0
+Jun 13 15:33:55 srvl011a kernel: [  725.376896]  [<ffffffff81064db5>] ? warn_slowpath_fmt+0x45/0x50
+Jun 13 15:33:55 srvl011a kernel: [  725.376902]  [<ffffffffa073a652>] ? nfsd4_umh_cltrack_init+0x42/0x50 [nfsd]
+Jun 13 15:33:55 srvl011a kernel: [  725.376907]  [<ffffffffa073b5b1>] ? nfsd4_client_tracking_init+0x91/0x130 [nfsd]
+Jun 13 15:33:55 srvl011a kernel: [  725.376914]  [<ffffffffa073590d>] ? nfs4_state_start_net+0x27d/0x320 [nfsd]
+Jun 13 15:33:55 srvl011a kernel: [  725.376919]  [<ffffffffa070fae3>] ? nfsd_svc+0x1b3/0x360 [nfsd]
+Jun 13 15:33:55 srvl011a kernel: [  725.376924]  [<ffffffffa07108b0>] ? write_filehandle+0x230/0x230 [nfsd]
+Jun 13 15:33:55 srvl011a kernel: [  725.376927]  [<ffffffff812a008b>] ? simple_strtoull+0x2b/0x50
+Jun 13 15:33:55 srvl011a kernel: [  725.376932]  [<ffffffffa07108b0>] ? write_filehandle+0x230/0x230 [nfsd]
+Jun 13 15:33:55 srvl011a kernel: [  725.376936]  [<ffffffffa0710925>] ? write_threads+0x75/0xc0 [nfsd]
+Jun 13 15:33:55 srvl011a kernel: [  725.376941]  [<ffffffff81131fa9>] ? __get_free_pages+0x9/0x50
+Jun 13 15:33:55 srvl011a kernel: [  725.376946]  [<ffffffff811bd061>] ? simple_transaction_get+0xc1/0xe0
+Jun 13 15:33:55 srvl011a kernel: [  725.376951]  [<ffffffffa07108b0>] ? write_filehandle+0x230/0x230 [nfsd]
+Jun 13 15:33:55 srvl011a kernel: [  725.376955]  [<ffffffffa0710116>] ? nfsctl_transaction_write+0x56/0x80 [nfsd]
+Jun 13 15:33:55 srvl011a kernel: [  725.376959]  [<ffffffff81198026>] ? vfs_write+0xc6/0x1f0
+Jun 13 15:33:55 srvl011a kernel: [  725.376962]  [<ffffffff8119851b>] ? SyS_write+0x4b/0xb0
+Jun 13 15:33:55 srvl011a kernel: [  725.376965]  [<ffffffff814f9779>] ? system_call_fastpath+0x16/0x1b
+Jun 13 15:33:55 srvl011a kernel: [  725.376967] ---[ end trace a408a046f76bfc25 ]---
+Jun 13 15:33:55 srvl011a kernel: [  725.377001] ------------[ cut here ]------------
+
+
+I have found a thread on lkml about this (http://lkml.org/lkml/2013/3/1/78),
+but it seems there was no conclusion.
+
+Is this something that could be supported?
+
+
+Regards
+Harri
+-- 
+aixigo AG, Karl-Friedrich-Strasse 68, 52072 Aachen, Germany
+phone: +49 241 559709-79, fax: +49 241 559709-99
+eMail: harald.dunkel@aixigo.de, web: http://www.aixigo.de
+Amtsgericht Aachen - HRB 8057, Vorstand: Erich Borsch, Christian Friedrich, Tobias Haustein, Vors. des Aufsichtsrates: Prof. Dr. Ruediger von Nitzsch
