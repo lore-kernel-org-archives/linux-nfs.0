@@ -1,54 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:62132 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751536AbaFZTWB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:22:01 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so3534330qgf.0
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:22:00 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 106/117] nfsd: Remove nfs4_lock_state(): nfsd4_release_lockowner
-Date: Thu, 26 Jun 2014 15:21:14 -0400
-Message-Id: <1403810485-16497-23-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:32967 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754183AbaFQK2P (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 06:28:15 -0400
+Date: Tue, 17 Jun 2014 03:28:12 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: sparse endianness warning cleanups
+Message-ID: <20140617102812.GA32216@infradead.org>
+References: <1403000146-31394-1-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1403000146-31394-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+> @@ -581,8 +581,8 @@ static void gen_boot_verifier(nfs4_verifier *verifier, struct net *net)
+>  	__be32 verf[2];
+>  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+>  
+> -	verf[0] = (__be32)nn->nfssvc_boot.tv_sec;
+> -	verf[1] = (__be32)nn->nfssvc_boot.tv_usec;
+> +	verf[0] = (__force __be32)nn->nfssvc_boot.tv_sec;
+> +	verf[1] = (__force __be32)nn->nfssvc_boot.tv_usec;
+>  	memcpy(verifier->data, verf, sizeof(verifier->data));
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 5 +----
- 1 file changed, 1 insertion(+), 4 deletions(-)
+Given that the verifier should be opaque is there any reason not to
+simple do the byte swap here?  If not I think the rule that no __force
+cast should be without a comment applies here.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e5b7b8bbc609..2be356341929 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5532,11 +5532,9 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
- 		clid->cl_boot, clid->cl_id);
- 
--	nfs4_lock_state();
--
- 	status = lookup_clientid(clid, cstate, nn);
- 	if (status)
--		goto out;
-+		return status;
- 
- 	status = nfserr_locks_held;
- 	INIT_LIST_HEAD(&matches);
-@@ -5578,7 +5576,6 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- out:
- 	if (sop)
- 		nfs4_put_stateowner(sop);
--	nfs4_unlock_state();
- 	return status;
- }
- 
--- 
-1.9.3
+> -	verf[0] = (__be32)get_seconds();
+> -	verf[1] = (__be32)i++;
+> +	verf[0] = (__force __be32)get_seconds();
+> +	verf[1] = (__force __be32)i++;
+>  	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
 
+Same here.
+
+In general I think one patch per issue also would better, and some
+comments of what's fixed (trivial for the places adding static, not so
+trivial for various __force overrides)
