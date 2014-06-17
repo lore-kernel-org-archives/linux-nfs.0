@@ -1,109 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:47568 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753066AbaF2LIO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Jun 2014 07:08:14 -0400
-Received: by mail-qa0-f47.google.com with SMTP id hw13so5454312qab.6
-        for <linux-nfs@vger.kernel.org>; Sun, 29 Jun 2014 04:08:14 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Sun, 29 Jun 2014 07:08:12 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 018/117] nfsd: clean up nfs4_release_lockowner
-Message-ID: <20140629070812.414343ae@tlielax.poochiereds.net>
-In-Reply-To: <20140629064738.GA17739@infradead.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-	<1403810017-16062-19-git-send-email-jlayton@primarydata.com>
-	<20140629064738.GA17739@infradead.org>
+Received: from api.opinsys.fi ([217.112.254.4]:46550 "EHLO mail.opinsys.fi"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S932133AbaFQNtp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 09:49:45 -0400
+Date: Tue, 17 Jun 2014 13:51:42 +0000 (UTC)
+From: Tuomas =?utf-8?B?UsOkc8OkbmVu?= <tuomasjjrasanen@opinsys.fi>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>, linux-nfs@vger.kernel.org
+Message-ID: <1049368555.86792.1403013102335.JavaMail.zimbra@opinsys.fi>
+In-Reply-To: <1726881404.72983.1402308693418.JavaMail.zimbra@opinsys.fi>
+References: <199810131.34257.1400570367382.JavaMail.zimbra@opinsys.fi> <1176115795.34522.1400575248541.JavaMail.zimbra@opinsys.fi> <20140520102117.2582abac@tlielax.poochiereds.net> <2137177707.38241.1400684149690.JavaMail.zimbra@opinsys.fi> <20140521165304.4331255d@tlielax.poochiereds.net> <1726881404.72983.1402308693418.JavaMail.zimbra@opinsys.fi>
+Subject: Re: Soft lockups on kerberised NFSv4.0 clients
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 28 Jun 2014 23:47:38 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+----- Original Message -----
+> From: "Tuomas Räsänen" <tuomasjjrasanen@opinsys.fi>
+> 
+> The lockup mechnism seems to be as follows: the process (which is always
+> firefox) is killed, and it tries to unlock the file (which is always a
+> mmapped sqlite3 WAL index) which still has some pending IOs going on. The
+> return value of nfs_wait_bit_killable() (-ERESTARTSYS from
+> fatal_signal_pending(current)) is ignored and the process just keeps looṕing
+> because io_count seems to be stuck at 1 (I still don't know why..). 
 
-> On Thu, Jun 26, 2014 at 03:11:58PM -0400, Jeff Layton wrote:
-> > Now that we know that we won't have several lockowners with the same,
-> > owner->data, we can simplify nfs4_release_lockowner and get rid of
-> > the lo_list in the process.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 44 ++++++++++++++++++++++----------------------
-> >  fs/nfsd/state.h     |  1 -
-> >  2 files changed, 22 insertions(+), 23 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 00a1b2cda3ab..a5bb96b97f09 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -4828,7 +4828,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
-> >  			struct nfsd4_release_lockowner *rlockowner)
-> >  {
-> >  	clientid_t *clid = &rlockowner->rl_clientid;
-> > -	struct nfs4_stateowner *sop;
-> > +	struct nfs4_stateowner *sop = NULL, *tmp;
-> >  	struct nfs4_lockowner *lo;
-> >  	struct nfs4_ol_stateid *stp;
-> >  	struct xdr_netobj *owner = &rlockowner->rl_owner;
-> > @@ -4849,31 +4849,31 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
-> >  	status = nfserr_locks_held;
-> >  	INIT_LIST_HEAD(&matches);
-> 
-> I think matches is unused now.
-> 
+I wrote a simple program which simulates the behavior described above
+and causes softlockups (see the bottom of the file).
 
-Yep -- good catch.
+Here's what it does:
+- creates and opens jamfile.dat (10M)
+- locks the file with flock
+- spawns N threads which all:
+  - mmap the whole file and write to the map
+- unlocks the file after spawning threads
 
-> >  
-> > +	/* Find the matching lock stateowner */
-> > +	list_for_each_entry(tmp, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-> > +		if (tmp->so_is_open_owner)
-> > +			continue;
-> > +		if (same_owner_str(tmp, owner, clid)) {
-> > +			sop = tmp;
-> > +			break;
-> >  		}
-> >  	}
-> > +
-> > +	/* No matching owner found, maybe a replay? Just declare victory... */
-> > +	if (!sop) {
-> > +		status = nfs_ok;
-> > +		goto out;
-> > +	}
-> > +
-> > +	lo = lockowner(sop);
-> > +	/* see if there are still any locks associated with it */
-> > +	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
-> > +		if (check_for_locks(stp->st_file, lo))
-> > +			goto out;
-> >  	}
-> > +
-> > +	status = nfs_ok;
-> > +	release_lockowner(lo);
-> 
-> I would seem simpler to do all the work in the loop, something like:
-> 
-> 	list_for_each_entry(sop, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-> 		if (sop->so_is_open_owner)
-> 			continue;
-> 		if (!same_owner_str(sop, owner, clid))
-> 			continue;
-> 
-> 		list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
-> 			if (check_for_locks(stp->st_file, lockowner(sop))) {
-> 				status = nfserr_locks_held;
-> 				goto out;
-> 			}
-> 		}
-> 
-> 		release_lockowner(lo);
-> 		break;
-> 	}
-> 
+Sometimes unlocking flock() blocks for a while, waiting for pending
+IOs [*]. If the process is killed during unlock (signaled SIGINT before the
+program has printed 'unlock ok'), it seems to get stuck: pending IOs are
+not finished and -ERESTARTSYS from nfs_wait_bit_killable() is not
+handled, causing the task to loop inside __nfs_iocounter_wait()
+indefinitely.
 
-Ok, sure...
+How to cause soft lockups:
+
+1. Compile: gcc -pthread -o jam jam.c
+
+2. Run ./jam
+
+3. Press C-c shortly after running the script, after 'unlock' but before
+   'unlock ok' is printed
+
+4. You might need to repeat steps 2. and 3. couple of times
+
+[*]: Sometimes flock() seem to block for *very* long time (for ever?),
+     but sometimes only for a short period of time. But regarding this
+     problem, it does not matter: whenever the task is killed during the
+     unlock, the process freezes.
+
+Applying the patch from my previous mail fixes the soft lockup issue,
+because the task does not get into a infinite (or at least indefinite)
+loop because interruptible wait_on_bit() is used instead. But what are
+its side-effects? Is it completely brain-dead idea?
+
+jam.c:
+
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/file.h>
+#include <sys/mman.h>
+#include <unistd.h>
+
+#define MAP_SIZE (sizeof(char) *  1024 * 1024 * 10)
+#define THREADS 4
+
+void *work_on_file(void *const arg)
+{
+	int i;
+	int fd;
+	char *map;
+
+	fd = *((int *) arg);
+	map = (char *) mmap(NULL, MAP_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+	printf("write begins\n");
+	for (i = 0; i < MAP_SIZE; ++i) {
+		map[i] = 'a';
+	}
+	printf("write ends\n");
+
+	return NULL;
+}
+
+int main(void)
+{
+	int i;
+	pthread_t *threads;
+	int fd;
+
+	fd = open("jamfile.dat", O_RDWR | O_CREAT);
+	ftruncate(fd, MAP_SIZE);
+
+	threads = malloc(sizeof(pthread_t) * THREADS);
+
+	printf("lock\n");
+	if (flock(fd, LOCK_EX) == -1) {
+		perror("failed to lock");
+		return -1;
+	}
+	printf("lock ok\n");
+
+	for (i = 0; i < THREADS; ++i) {
+		pthread_attr_t attr;
+		pthread_attr_init(&attr);
+		pthread_create(&threads[i], &attr, &work_on_file, &fd);
+		pthread_attr_destroy(&attr);
+	}
+
+	printf("unlock\n");
+	if (flock(fd, LOCK_UN) == -1) {
+		perror("failed to unlock");
+		return -1;
+	}
+	printf("unlock ok\n");
+
+	for (i = 0; i < THREADS; ++i) {
+		pthread_join(threads[i], NULL);
+	}
+
+	free(threads);
+
+	return close(fd);
+}
 
 -- 
-Jeff Layton <jlayton@primarydata.com>
+Tuomas
