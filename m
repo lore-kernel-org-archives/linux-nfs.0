@@ -1,47 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:47900 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755314AbaF3PzY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:55:24 -0400
-Received: by mail-qc0-f170.google.com with SMTP id l6so7367546qcy.29
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:55:24 -0700 (PDT)
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:35174 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753135AbaFQKOO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 06:14:14 -0400
+Received: by mail-qc0-f178.google.com with SMTP id c9so9486066qcz.37
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Jun 2014 03:14:13 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 111/114] nfsd: remove nfs4_lock_state: nfs4_laundromat
-Date: Mon, 30 Jun 2014 11:54:58 -0400
-Message-Id: <1404143701-24740-13-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH] nfsd: fix return of nfs4_acl_write_who
+Date: Tue, 17 Jun 2014 06:14:08 -0400
+Message-Id: <1403000048-31245-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+AFAICT, the only way to hit this error is to pass this function a bogus
+"who" value. In that case, we probably don't want to return -1 as that
+could get sent back to the client. Turn this into nfserr_serverfault,
+which is a more appropriate error for a server bug like this.
+
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 3 ---
- 1 file changed, 3 deletions(-)
+ fs/nfsd/nfs4acl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 740f4ea47d48..5d3c4679d48d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4115,8 +4115,6 @@ nfs4_laundromat(struct nfsd_net *nn)
- 	time_t cutoff = get_seconds() - nn->nfsd4_lease;
- 	time_t t, new_timeo = nn->nfsd4_lease;
- 
--	nfs4_lock_state();
--
- 	dprintk("NFSD: laundromat service - starting\n");
- 	nfsd4_end_grace(nn);
- 	INIT_LIST_HEAD(&reaplist);
-@@ -4184,7 +4182,6 @@ nfs4_laundromat(struct nfsd_net *nn)
- 	spin_unlock(&nn->client_lock);
- 
- 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
--	nfs4_unlock_state();
- 	return new_timeo;
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index d714156a19fd..b0cf00d3ee7d 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -935,5 +935,5 @@ __be32 nfs4_acl_write_who(struct xdr_stream *xdr, int who)
+ 		return 0;
+ 	}
+ 	WARN_ON_ONCE(1);
+-	return -1;
++	return nfserr_serverfault;
  }
- 
 -- 
 1.9.3
 
