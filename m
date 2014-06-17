@@ -1,49 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:36766 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756382AbaFYOcn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 10:32:43 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH v1 10/13] xprtrdma: Release FRMR segment buffers during LOCAL_INV completion
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <53AA5B72.3010200@oracle.com>
-Date: Wed, 25 Jun 2014 10:32:38 -0400
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <89930B1D-AE3B-48AD-922C-6FCA754D2B01@oracle.com>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net> <20140623224023.1634.67233.stgit@manet.1015granger.net> <53AA5B72.3010200@oracle.com>
-To: Shirley Ma <shirley.ma@oracle.com>
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:59551 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755861AbaFQLoX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 07:44:23 -0400
+Received: by mail-qc0-f179.google.com with SMTP id x3so8493526qcv.38
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Jun 2014 04:44:23 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 1/4] nfsd: add __force to opaque verifier field casts
+Date: Tue, 17 Jun 2014 07:44:11 -0400
+Message-Id: <1403005454-7319-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
+References: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Shirley-
+sparse complains that we're stuffing non-byte-swapped values into
+__be32's here. Since they're supposed to be opaque, it doesn't matter
+much. Just add __force to make sparse happy.
 
-On Jun 25, 2014, at 1:17 AM, Shirley Ma <shirley.ma@oracle.com> wrote:
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4proc.c  | 8 ++++++--
+ fs/nfsd/nfs4state.c | 8 ++++++--
+ 2 files changed, 12 insertions(+), 4 deletions(-)
 
-> Would it be possible to delay rpcrdma_buffer_put() until LOCAL_INV request send completion? remove rpcrdma_buffer_put() from xprt_rdma_free(), add a call back after LOCAL_INV completed?
-
-That’s exactly what this patch does. The relevant part of
-rpcrdma_buffer_put() is:
-
-  list_add(&mw->mw_list, &buf->rb_mws);
-
-This is now wrapped with a reference count so that
-rpcrdma_buffer_put() and the LOCAL_INV completion can run in any
-order. The FRMR is added back to the list only after both of those
-two have finished.
-
-Nothing in xprt_rdma_free() is allowed to sleep, so we can’t wait for
-LOCAL_INV completion in there.
-
-The only alternative I can think of is having rpcrdma_buffer_get() check
-fr_state as it removes FRMRs from the rb_mws list. Only if the FRMR is
-marked FRMR_IS_INVALID, rpcrdma_buffer_get() will add it to the
-rpcrdma_req.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 6851b003f2a4..8904c9cbcb89 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -581,8 +581,12 @@ static void gen_boot_verifier(nfs4_verifier *verifier, struct net *net)
+ 	__be32 verf[2];
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+-	verf[0] = (__be32)nn->nfssvc_boot.tv_sec;
+-	verf[1] = (__be32)nn->nfssvc_boot.tv_usec;
++	/*
++	 * This is opaque to client, so no need to byte-swap. Use
++	 * __force to keep sparse happy
++	 */
++	verf[0] = (__force __be32)nn->nfssvc_boot.tv_sec;
++	verf[1] = (__force __be32)nn->nfssvc_boot.tv_usec;
+ 	memcpy(verifier->data, verf, sizeof(verifier->data));
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c0d45cec9958..0fea1da3dd24 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1345,8 +1345,12 @@ static void gen_confirm(struct nfs4_client *clp)
+ 	__be32 verf[2];
+ 	static u32 i;
+ 
+-	verf[0] = (__be32)get_seconds();
+-	verf[1] = (__be32)i++;
++	/*
++	 * This is opaque to client, so no need to byte-swap. Use
++	 * __force to keep sparse happy
++	 */
++	verf[0] = (__force __be32)get_seconds();
++	verf[1] = (__force __be32)i++;
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ }
+ 
+-- 
+1.9.3
 
