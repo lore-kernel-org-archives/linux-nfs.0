@@ -1,157 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:34269 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751099AbaFVAw2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Jun 2014 20:52:28 -0400
-Received: by mail-qa0-f54.google.com with SMTP id v10so4474363qac.13
-        for <linux-nfs@vger.kernel.org>; Sat, 21 Jun 2014 17:52:27 -0700 (PDT)
+Received: from mail-qa0-f47.google.com ([209.85.216.47]:43773 "EHLO
+	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755995AbaFQLo1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 07:44:27 -0400
+Received: by mail-qa0-f47.google.com with SMTP id hw13so7728811qab.6
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Jun 2014 04:44:27 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/3] sunrpc: add a new "stringify_acceptor" rpc_credop
-Date: Sat, 21 Jun 2014 20:52:16 -0400
-Message-Id: <1403398337-4174-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403398337-4174-1-git-send-email-jlayton@primarydata.com>
-References: <1403398337-4174-1-git-send-email-jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 4/4] nfsd: add appropriate __force directives to filehandle generation code
+Date: Tue, 17 Jun 2014 07:44:14 -0400
+Message-Id: <1403005454-7319-5-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
+References: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@poochiereds.net>
+The filehandle structs all use host-endian values, but will sometimes
+stuff big-endian values into those fields. This is OK since these
+values are opaque to the client, but it confuses sparse. Add __force to
+make it clear that we are doing this intentionally.
 
-...and add an new rpc_auth function to call it when it exists. This
-is only applicable for AUTH_GSS mechanisms, so we only specify this
-for those sorts of credentials.
-
-Signed-off-by: Jeff Layton <jlayton@poochiereds.net>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- include/linux/sunrpc/auth.h    |  2 ++
- net/sunrpc/auth.c              |  9 ++++++
- net/sunrpc/auth_gss/auth_gss.c | 62 ++++++++++++++++++++++++++++--------------
- 3 files changed, 53 insertions(+), 20 deletions(-)
+ fs/nfsd/nfsfh.c |  9 ++++++++-
+ fs/nfsd/nfsfh.h | 15 +++++++++++----
+ 2 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 790be1472792..c683b9a06913 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -140,6 +140,7 @@ struct rpc_credops {
- 						void *, __be32 *, void *);
- 	int			(*crkey_timeout)(struct rpc_cred *);
- 	bool			(*crkey_to_expire)(struct rpc_cred *);
-+	char *			(*crstringify_acceptor)(struct rpc_cred *);
- };
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index ec8393418154..7e5b2d993372 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -162,7 +162,14 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 			/* deprecated, convert to type 3 */
+ 			len = key_len(FSID_ENCODE_DEV)/4;
+ 			fh->fh_fsid_type = FSID_ENCODE_DEV;
+-			fh->fh_fsid[0] = new_encode_dev(MKDEV(ntohl(fh->fh_fsid[0]), ntohl(fh->fh_fsid[1])));
++			/*
++			 * struct knfsd_fh uses host-endian fields, which are
++			 * sometimes used to hold net-endian values. This
++			 * confuses sparse, so we must use __force here to
++			 * keep it from complaining.
++			 */
++			fh->fh_fsid[0] = new_encode_dev(MKDEV(ntohl((__force __be32)fh->fh_fsid[0]),
++							ntohl((__force __be32)fh->fh_fsid[1])));
+ 			fh->fh_fsid[1] = fh->fh_fsid[2];
+ 		}
+ 		data_left -= len;
+diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+index 2e89e70ac15c..08236d70c667 100644
+--- a/fs/nfsd/nfsfh.h
++++ b/fs/nfsd/nfsfh.h
+@@ -73,8 +73,15 @@ enum fsid_source {
+ extern enum fsid_source fsid_source(struct svc_fh *fhp);
  
- extern const struct rpc_authops	authunix_ops;
-@@ -182,6 +183,7 @@ void			rpcauth_clear_credcache(struct rpc_cred_cache *);
- int			rpcauth_key_timeout_notify(struct rpc_auth *,
- 						struct rpc_cred *);
- bool			rpcauth_cred_key_to_expire(struct rpc_cred *);
-+char *			rpcauth_stringify_acceptor(struct rpc_cred *);
  
- static inline
- struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index f77366717420..1481efff6aa2 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -363,6 +363,15 @@ rpcauth_cred_key_to_expire(struct rpc_cred *cred)
- }
- EXPORT_SYMBOL_GPL(rpcauth_cred_key_to_expire);
- 
-+char *
-+rpcauth_stringify_acceptor(struct rpc_cred *cred)
-+{
-+	if (!cred->cr_ops->crstringify_acceptor)
-+		return NULL;
-+	return cred->cr_ops->crstringify_acceptor(cred);
-+}
-+EXPORT_SYMBOL_GPL(rpcauth_stringify_acceptor);
-+
- /*
-  * Destroy a list of credentials
+-/* This might look a little large to "inline" but in all calls except
++/*
++ * This might look a little large to "inline" but in all calls except
+  * one, 'vers' is constant so moste of the function disappears.
++ *
++ * In some cases the values are considered to be host endian and in
++ * others, net endian. fsidv is always considered to be u32 as the
++ * callers don't know which it will be. So we must use __force to keep
++ * sparse from complaining. Since these values are opaque to the
++ * client, that shouldn't be a problem.
   */
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index e34af68603bd..73854314fb85 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1346,6 +1346,26 @@ gss_cred_init(struct rpc_auth *auth, struct rpc_cred *cred)
- 	return err;
- }
+ static inline void mk_fsid(int vers, u32 *fsidv, dev_t dev, ino_t ino,
+ 			   u32 fsid, unsigned char *uuid)
+@@ -82,7 +89,7 @@ static inline void mk_fsid(int vers, u32 *fsidv, dev_t dev, ino_t ino,
+ 	u32 *up;
+ 	switch(vers) {
+ 	case FSID_DEV:
+-		fsidv[0] = htonl((MAJOR(dev)<<16) |
++		fsidv[0] = (__force __u32)htonl((MAJOR(dev)<<16) |
+ 				 MINOR(dev));
+ 		fsidv[1] = ino_t_to_u32(ino);
+ 		break;
+@@ -90,8 +97,8 @@ static inline void mk_fsid(int vers, u32 *fsidv, dev_t dev, ino_t ino,
+ 		fsidv[0] = fsid;
+ 		break;
+ 	case FSID_MAJOR_MINOR:
+-		fsidv[0] = htonl(MAJOR(dev));
+-		fsidv[1] = htonl(MINOR(dev));
++		fsidv[0] = (__force __u32)htonl(MAJOR(dev));
++		fsidv[1] = (__force __u32)htonl(MINOR(dev));
+ 		fsidv[2] = ino_t_to_u32(ino);
+ 		break;
  
-+static char *
-+gss_stringify_acceptor(struct rpc_cred *cred)
-+{
-+	char *string;
-+	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
-+	struct xdr_netobj *acceptor = &gss_cred->gc_ctx->gc_acceptor;
-+
-+	/* no point if there's no string */
-+	if (!acceptor->len)
-+		return NULL;
-+
-+	string = kmalloc(acceptor->len + 1, GFP_KERNEL);
-+	if (!string)
-+		return string;
-+
-+	memcpy(string, acceptor->data, acceptor->len);
-+	string[acceptor->len] = '\0';
-+	return string;
-+}
-+
- /*
-  * Returns -EACCES if GSS context is NULL or will expire within the
-  * timeout (miliseconds)
-@@ -1923,29 +1943,31 @@ static const struct rpc_authops authgss_ops = {
- };
- 
- static const struct rpc_credops gss_credops = {
--	.cr_name	= "AUTH_GSS",
--	.crdestroy	= gss_destroy_cred,
--	.cr_init	= gss_cred_init,
--	.crbind		= rpcauth_generic_bind_cred,
--	.crmatch	= gss_match,
--	.crmarshal	= gss_marshal,
--	.crrefresh	= gss_refresh,
--	.crvalidate	= gss_validate,
--	.crwrap_req	= gss_wrap_req,
--	.crunwrap_resp	= gss_unwrap_resp,
--	.crkey_timeout	= gss_key_timeout,
-+	.cr_name		= "AUTH_GSS",
-+	.crdestroy		= gss_destroy_cred,
-+	.cr_init		= gss_cred_init,
-+	.crbind			= rpcauth_generic_bind_cred,
-+	.crmatch		= gss_match,
-+	.crmarshal		= gss_marshal,
-+	.crrefresh		= gss_refresh,
-+	.crvalidate		= gss_validate,
-+	.crwrap_req		= gss_wrap_req,
-+	.crunwrap_resp		= gss_unwrap_resp,
-+	.crkey_timeout		= gss_key_timeout,
-+	.crstringify_acceptor	= gss_stringify_acceptor,
- };
- 
- static const struct rpc_credops gss_nullops = {
--	.cr_name	= "AUTH_GSS",
--	.crdestroy	= gss_destroy_nullcred,
--	.crbind		= rpcauth_generic_bind_cred,
--	.crmatch	= gss_match,
--	.crmarshal	= gss_marshal,
--	.crrefresh	= gss_refresh_null,
--	.crvalidate	= gss_validate,
--	.crwrap_req	= gss_wrap_req,
--	.crunwrap_resp	= gss_unwrap_resp,
-+	.cr_name		= "AUTH_GSS",
-+	.crdestroy		= gss_destroy_nullcred,
-+	.crbind			= rpcauth_generic_bind_cred,
-+	.crmatch		= gss_match,
-+	.crmarshal		= gss_marshal,
-+	.crrefresh		= gss_refresh_null,
-+	.crvalidate		= gss_validate,
-+	.crwrap_req		= gss_wrap_req,
-+	.crunwrap_resp		= gss_unwrap_resp,
-+	.crstringify_acceptor	= gss_stringify_acceptor,
- };
- 
- static const struct rpc_pipe_ops gss_upcall_ops_v0 = {
 -- 
 1.9.3
 
