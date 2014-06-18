@@ -1,53 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:60838 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750897AbaF3Pvn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:43 -0400
-Received: by mail-qg0-f44.google.com with SMTP id j107so2169238qga.3
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:43 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 050/114] nfsd: Ensure that nfs4_open_delegation() references the delegation stateid
-Date: Mon, 30 Jun 2014 11:49:19 -0400
-Message-Id: <1404143423-24381-51-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from casper.infradead.org ([85.118.1.10]:53644 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933182AbaFRJEu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jun 2014 05:04:50 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Philippe Troin <phil@fifi.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: only show Posix ACLs in listxattr if actually present
+Date: Wed, 18 Jun 2014 11:07:03 +0200
+Message-Id: <1403082423-13131-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+The big ACL switched nfs to use generic_listxattr, which calls all existing
+->list handlers.  Add a custom .listxattr implementation that only lists
+the ACLs if they actually are present on the given inode.
 
-Ensure that nfs4_open_delegation() keeps a reference to the delegation
-stateid until it is done working with it. Necessary step toward
-client_mutex removal.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reported-by: Philippe Troin <phil@fifi.org>
+Tested-by: Philippe Troin <phil@fifi.org>
 ---
- fs/nfsd/nfs4state.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfs/nfs3acl.c  |   43 +++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs3proc.c |    4 ++--
+ 2 files changed, 45 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 73e94d3e6161..7dfef1647a01 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -663,6 +663,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	lockdep_assert_held(&state_lock);
- 	lockdep_assert_held(&fp->fi_lock);
- 
-+	atomic_inc(&dp->dl_stid.sc_count);
- 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
-@@ -3657,6 +3658,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
- 	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
- 		STATEID_VAL(&dp->dl_stid.sc_stateid));
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
-+	nfs4_put_delegation(dp);
- 	return;
- out_free:
- 	unhash_and_destroy_delegation(dp);
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 871d6ed..8f854dd 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -247,3 +247,46 @@ const struct xattr_handler *nfs3_xattr_handlers[] = {
+ 	&posix_acl_default_xattr_handler,
+ 	NULL,
+ };
++
++static int
++nfs3_list_one_acl(struct inode *inode, int type, const char *name, void *data,
++		size_t size, ssize_t *result)
++{
++	struct posix_acl *acl;
++	char *p = data + *result;
++
++	acl = get_acl(inode, type);
++	if (!acl)
++		return 0;
++
++	posix_acl_release(acl);
++
++	*result += strlen(name);
++	*result += 1;
++	if (!size)
++		return 0;
++	if (*result > size)
++		return -ERANGE;
++
++	strcpy(p, name);
++	return 0;
++}
++
++ssize_t
++nfs3_listxattr(struct dentry *dentry, char *data, size_t size)
++{
++	struct inode *inode = dentry->d_inode;
++	ssize_t result = 0;
++	int error;
++
++	error = nfs3_list_one_acl(inode, ACL_TYPE_ACCESS,
++			POSIX_ACL_XATTR_ACCESS, data, size, &result);
++	if (error)
++		return error;
++
++	error = nfs3_list_one_acl(inode, ACL_TYPE_DEFAULT,
++			POSIX_ACL_XATTR_DEFAULT, data, size, &result);
++	if (error)
++		return error;
++	return result;
++}
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index e7daa42..f0afa29 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -885,7 +885,7 @@ static const struct inode_operations nfs3_dir_inode_operations = {
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+ #ifdef CONFIG_NFS_V3_ACL
+-	.listxattr	= generic_listxattr,
++	.listxattr	= nfs3_listxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.setxattr	= generic_setxattr,
+ 	.removexattr	= generic_removexattr,
+@@ -899,7 +899,7 @@ static const struct inode_operations nfs3_file_inode_operations = {
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+ #ifdef CONFIG_NFS_V3_ACL
+-	.listxattr	= generic_listxattr,
++	.listxattr	= nfs3_listxattr,
+ 	.getxattr	= generic_getxattr,
+ 	.setxattr	= generic_setxattr,
+ 	.removexattr	= generic_removexattr,
 -- 
-1.9.3
+1.7.10.4
 
