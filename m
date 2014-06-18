@@ -1,85 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:45843 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754328AbaF3PwS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:18 -0400
-Received: by mail-qa0-f44.google.com with SMTP id hw13so6567223qab.17
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:17 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 074/114] nfsd: close potential race in nfsd4_free_stateid
-Date: Mon, 30 Jun 2014 11:49:43 -0400
-Message-Id: <1404143423-24381-75-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:36386 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751653AbaFRQFa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Jun 2014 12:05:30 -0400
+Date: Wed, 18 Jun 2014 12:05:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] NFS4.1: try to clean sessions after testing
+Message-ID: <20140618160528.GG17790@fieldses.org>
+References: <5396D7FA.4050303@gmail.com>
+ <5396F243.8080606@gmail.com>
+ <20140611211742.GH19382@fieldses.org>
+ <5398E544.9000105@gmail.com>
+ <53990498.7020300@gmail.com>
+ <20140612152528.GD5437@fieldses.org>
+ <539AD609.4040205@gmail.com>
+ <539C140B.4090209@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <539C140B.4090209@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, it'll be possible for the sc_type of a
-lock stateid to change after it's found and checked, but before we can
-go to destroy it. If that happens, we can end up putting the persistent
-reference to the stateid more than once, and unhash it more than once.
+On Sat, Jun 14, 2014 at 05:21:15PM +0800, Kinglong Mee wrote:
+> On 6/13/2014 18:44, Kinglong Mee wrote:
+> > On 6/12/2014 23:25, J. Bruce Fields wrote:
+> >> On Thu, Jun 12, 2014 at 09:38:32AM +0800, Kinglong Mee wrote:
+> >>> On 6/12/2014 07:24, Kinglong Mee wrote:
+> >>>> On 6/12/2014 05:17, J. Bruce Fields wrote:
+> >>>>> I tried to apply this, and the ipv6 patch (could we do that for 4.1
+> >>>>> too?) and the 3 other patches, but:
+> >>>>
+> >>>> nfs4.1 has supports IPv6, the patch for nfs4.0 is a back-port from nfs4.1.
+> >>
+> >> OK, thanks for explaining.
+> >>
+> >>>>
+> >>>>>
+> >>>>> 	- there are some conflicts with the latest pynfs (e.g. I already
+> >>>>> 	  added a few acl tests, apologies)
+> >>>>> 	- I'm getting failures to write to a read-only fs, apparently
+> >>>>> 	  one of the tests is trying to write to the export root?  I
+> >>>>> 	  didn't check which one.
+> >>>
+> >>> Can you show me more information about this?
+> >>
+> >> [root@pip5 pynfs]# ./nfs4.0/testserver.py f19:/exports/xfs/pynfstest-user --maketree
+> >> Initialization failed, no tests run.
+> >> Traceback (most recent call last):
+> >>   File "./nfs4.0/testserver.py", line 381, in <module>
+> >>     main()
+> >>   File "./nfs4.0/testserver.py", line 344, in main
+> >>     env.init()
+> >>   File "/root/pynfs/nfs4.0/servertests/environment.py", line 140, in init
+> >>     self._maketree()
+> >>   File "/root/pynfs/nfs4.0/servertests/environment.py", line 162, in _maketree
+> >>     check(res, msg="Trying to create /%s," % '/'.join(path))
+> >>   File "/root/pynfs/nfs4.0/servertests/environment.py", line 253, in check
+> >>     raise testmod.FailureException(msg)
+> >> testmod.FailureException: Trying to create /tmp, should return NFS4_OK, instead got NFS4ERR_ROFS
+> >>
+> >> This happens after the ipv6 patch.
+> >>
+> >> Note /exports on my server is exported read-only, xfs is a separate writeable
+> >> filesystem.
+> > 
+> > Thanks for your testing.
+> > I have found this bug in IPv6 path, and will send three new path all I have.
+> 
+> I found you have revert the following two patch in your tree,
+> 
+> "NFS4.1: try to clean sessions after testing" and,
+> "NFS4.0: Case for linking to bad source path with zero-length"
 
-Fix this by unhashing the lock stateid prior to dropping the cl_lock but
-after finding it.
+I think those only every showed up in a temporary testing branch?
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 24 +++++++++---------------
- 1 file changed, 9 insertions(+), 15 deletions(-)
+Anyway, pushed out now, with the ipv6 change.  Others waiting for you to
+resend or me to get a chance to look at them (may be a few days).
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e840d41fe2c9..0f56fb179e8a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4357,17 +4357,6 @@ unlock_state:
- 	return status;
- }
- 
--static __be32
--nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
--{
--	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
--
--	if (check_for_locks(stp->st_stid.sc_file, lo))
--		return nfserr_locks_held;
--	release_lock_stateid(stp);
--	return nfs_ok;
--}
--
- /*
-  * Test if the stateid is valid
-  */
-@@ -4394,6 +4383,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	stateid_t *stateid = &free_stateid->fr_stateid;
- 	struct nfs4_stid *s;
- 	struct nfs4_delegation *dp;
-+	struct nfs4_ol_stateid *stp;
- 	struct nfs4_client *cl = cstate->session->se_client;
- 	__be32 ret = nfserr_bad_stateid;
- 
-@@ -4411,12 +4401,16 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 		if (ret)
- 			break;
--		if (s->sc_type != NFS4_LOCK_STID) {
--			ret = nfserr_locks_held;
-+		stp = openlockstateid(s);
-+		ret = nfserr_locks_held;
-+		if (s->sc_type == NFS4_OPEN_STID ||
-+		    check_for_locks(s->sc_file,
-+				    lockowner(stp->st_stateowner)))
- 			break;
--		}
-+		unhash_lock_stateid(stp);
- 		spin_unlock(&cl->cl_lock);
--		ret = nfsd4_free_lock_stateid(openlockstateid(s));
-+		put_generic_stateid(stp);
-+		ret = nfs_ok;
- 		goto out;
- 	case NFS4_REVOKED_DELEG_STID:
- 		spin_unlock(&cl->cl_lock);
--- 
-1.9.3
-
+--b.
