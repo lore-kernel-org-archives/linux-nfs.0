@@ -1,68 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:38210 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758052AbaFSOwC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:02 -0400
-Received: by mail-qc0-f177.google.com with SMTP id r5so2252609qcx.36
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:01 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 044/104] NFSd: Migrate the stateid reference into nfs4_find_stateid_by_type()
-Date: Thu, 19 Jun 2014 10:49:50 -0400
-Message-Id: <1403189450-18729-45-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ve0-f180.google.com ([209.85.128.180]:39294 "EHLO
+	mail-ve0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933182AbaFRLf1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jun 2014 07:35:27 -0400
+Received: by mail-ve0-f180.google.com with SMTP id jw12so642588veb.25
+        for <linux-nfs@vger.kernel.org>; Wed, 18 Jun 2014 04:35:27 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1403082423-13131-1-git-send-email-hch@lst.de>
+References: <1403082423-13131-1-git-send-email-hch@lst.de>
+Date: Wed, 18 Jun 2014 07:35:27 -0400
+Message-ID: <CAHQdGtSBN4_MPVUWZ1dhOAXyp9w++YGYLP9fmYNq5RPqzrDwPA@mail.gmail.com>
+Subject: Re: [PATCH] nfs: only show Posix ACLs in listxattr if actually present
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Philippe Troin <phil@fifi.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Hi Christoph,
 
-Allow nfs4_find_stateid_by_type to take the stateid reference, while
-still holding the &cl->cl_lock.
+On Wed, Jun 18, 2014 at 5:07 AM, Christoph Hellwig <hch@lst.de> wrote:
+> The big ACL switched nfs to use generic_listxattr, which calls all existing
+> ->list handlers.  Add a custom .listxattr implementation that only lists
+> the ACLs if they actually are present on the given inode.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Reported-by: Philippe Troin <phil@fifi.org>
+> Tested-by: Philippe Troin <phil@fifi.org>
+> ---
+>  fs/nfs/nfs3acl.c  |   43 +++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfs/nfs3proc.c |    4 ++--
+>  2 files changed, 45 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+> index 871d6ed..8f854dd 100644
+> --- a/fs/nfs/nfs3acl.c
+> +++ b/fs/nfs/nfs3acl.c
+> @@ -247,3 +247,46 @@ const struct xattr_handler *nfs3_xattr_handlers[] = {
+>         &posix_acl_default_xattr_handler,
+>         NULL,
+>  };
+> +
+> +static int
+> +nfs3_list_one_acl(struct inode *inode, int type, const char *name, void *data,
+> +               size_t size, ssize_t *result)
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+Why do you make 'result' a pointer to ssize_t rather than a size_t here?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 25af8b7628ae..4ddd7ec31d6c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1590,8 +1590,12 @@ static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t
- 
- 	spin_lock(&cl->cl_lock);
- 	s = find_stateid_locked(cl, t);
--	if (s != NULL && !(typemask & s->sc_type))
--		s = NULL;
-+	if (s != NULL) {
-+		if (typemask & s->sc_type)
-+			atomic_inc(&s->sc_count);
-+		else
-+			s = NULL;
-+	}
- 	spin_unlock(&cl->cl_lock);
- 	return s;
- }
-@@ -3181,8 +3185,6 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
- 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
- 	if (!ret)
- 		return NULL;
--	/* FIXME: move into find_stateid_by_type */
--	atomic_inc(&ret->sc_count);
- 	return delegstateid(ret);
- }
- 
-@@ -3998,8 +4000,6 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
- 	*s = find_stateid_by_type(cl, stateid, typemask);
- 	if (!*s)
- 		return nfserr_bad_stateid;
--	/* FIXME: move into find_stateid_by_type */
--	atomic_inc(&(*s)->sc_count);
- 	return nfs_ok;
- }
- 
+> +{
+> +       struct posix_acl *acl;
+> +       char *p = data + *result;
+> +
+> +       acl = get_acl(inode, type);
+> +       if (!acl)
+> +               return 0;
+> +
+> +       posix_acl_release(acl);
+> +
+> +       *result += strlen(name);
+> +       *result += 1;
+> +       if (!size)
+> +               return 0;
+> +       if (*result > size)
+> +               return -ERANGE;
+> +
+> +       strcpy(p, name);
+> +       return 0;
+> +}
+> +
+> +ssize_t
+> +nfs3_listxattr(struct dentry *dentry, char *data, size_t size)
+> +{
+> +       struct inode *inode = dentry->d_inode;
+> +       ssize_t result = 0;
+> +       int error;
+> +
+> +       error = nfs3_list_one_acl(inode, ACL_TYPE_ACCESS,
+> +                       POSIX_ACL_XATTR_ACCESS, data, size, &result);
+> +       if (error)
+> +               return error;
+> +
+> +       error = nfs3_list_one_acl(inode, ACL_TYPE_DEFAULT,
+> +                       POSIX_ACL_XATTR_DEFAULT, data, size, &result);
+> +       if (error)
+> +               return error;
+> +       return result;
+> +}
+> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+> index e7daa42..f0afa29 100644
+> --- a/fs/nfs/nfs3proc.c
+> +++ b/fs/nfs/nfs3proc.c
+> @@ -885,7 +885,7 @@ static const struct inode_operations nfs3_dir_inode_operations = {
+>         .getattr        = nfs_getattr,
+>         .setattr        = nfs_setattr,
+>  #ifdef CONFIG_NFS_V3_ACL
+> -       .listxattr      = generic_listxattr,
+> +       .listxattr      = nfs3_listxattr,
+>         .getxattr       = generic_getxattr,
+>         .setxattr       = generic_setxattr,
+>         .removexattr    = generic_removexattr,
+> @@ -899,7 +899,7 @@ static const struct inode_operations nfs3_file_inode_operations = {
+>         .getattr        = nfs_getattr,
+>         .setattr        = nfs_setattr,
+>  #ifdef CONFIG_NFS_V3_ACL
+> -       .listxattr      = generic_listxattr,
+> +       .listxattr      = nfs3_listxattr,
+>         .getxattr       = generic_getxattr,
+>         .setxattr       = generic_setxattr,
+>         .removexattr    = generic_removexattr,
+> --
+> 1.7.10.4
+>
+
+
+
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
