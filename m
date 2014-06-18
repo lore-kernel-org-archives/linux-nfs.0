@@ -1,51 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:58080 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753909AbaFWQsd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 12:48:33 -0400
-Received: by mail-qc0-f181.google.com with SMTP id x13so6307258qcv.12
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 09:48:32 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 23 Jun 2014 12:48:31 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 009/104] locks: add file_has_lease
-Message-ID: <20140623124831.2785c803@tlielax.poochiereds.net>
-In-Reply-To: <20140623161254.GG24193@infradead.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-	<1403189450-18729-10-git-send-email-jlayton@primarydata.com>
-	<20140623161254.GG24193@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:15077 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755305AbaFRUpA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Jun 2014 16:45:00 -0400
+Message-ID: <53A1FA42.5000000@RedHat.com>
+Date: Wed, 18 Jun 2014 16:44:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [Libtirpc-devel] [PATCH] xdr_rejected_reply: Don't crash with
+ invalid server rejection
+References: <1401976096-16802-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1401976096-16802-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 23 Jun 2014 09:12:54 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
 
-> On Thu, Jun 19, 2014 at 10:49:15AM -0400, Jeff Layton wrote:
-> > Add a function that can tell us whether a file description has had a
-> > lease set on it.
+
+On 06/05/2014 09:48 AM, Steve Dickson wrote:
+> It seems legacy servers like to return invalid
+> rejection status when a RPC is rejected. This
+> should not crash the app then it happens.
 > 
-> The code looks good, but how is this information useful given that it
-> will be stable as soon as i_lock is dropped?
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed.... 
+
+steved.
+
+> ---
+>  src/rpc_prot.c | 1 -
+>  1 file changed, 1 deletion(-)
 > 
-
-The next patch is what uses it. I can squash the two together, but I
-figured it was best to keep them separate since we're touching two
-different subsystems here.
-
-The basic idea here is to avoid calling vfs_setlease under a spinlock.
-The next patch does that and then takes the spinlocks and hash the
-delegation once the lease is set.
-
-Problem: what if the delegation got broken before we could hash it?
-
-The workqueue job that's queued by break_deleg will take the state_lock
-spinlock before it can unhash the delegation. So, we take the
-state_lock and then call file_has_lease. If the lease is still present
-then we know that it hasn't been (and won't be) broken before we could
-hash it.
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+> diff --git a/src/rpc_prot.c b/src/rpc_prot.c
+> index e562deb..5841e51 100644
+> --- a/src/rpc_prot.c
+> +++ b/src/rpc_prot.c
+> @@ -150,7 +150,6 @@ xdr_rejected_reply(xdrs, rr)
+>  		return (xdr_enum(xdrs, (enum_t *)&(rr->rj_why)));
+>  	}
+>  	/* NOTREACHED */
+> -	assert(0);
+>  	return (FALSE);
+>  }
+>  
+> 
