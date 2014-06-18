@@ -1,282 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:59816 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751979AbaFDVCY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:24 -0400
-Received: by mail-ig0-f176.google.com with SMTP id a13so2456260igq.3
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:24 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH pynfs 08/17] 4.1 server: add -s option to print summary of ops
-Date: Wed,  4 Jun 2014 17:01:56 -0400
-Message-Id: <1401915726-29092-9-git-send-email-dros@primarydata.com>
-In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:38130 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755400AbaFRV2Q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jun 2014 17:28:16 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH] xprtrdma: Fix DMA-API-DEBUG warning by checking dma_map result
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1403008747-23923-1-git-send-email-yanb@mellanox.com>
+Date: Wed, 18 Jun 2014 17:28:09 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org
+Message-Id: <933342C7-B554-4B85-8533-A953BF3A4ABC@oracle.com>
+References: <1403008747-23923-1-git-send-email-yanb@mellanox.com>
+To: Yan Burman <yanb@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As a middle ground between verbose (-v) mode and silent mode, add
-"-s" (aka "--show_summary") to print one line per operation.
 
-The summary mode will print a "role" header whenever the role changes.
+On Jun 17, 2014, at 8:39 AM, Yan Burman <yanb@mellanox.com> wrote:
 
-Example output - mds starts, talks to v3 ds (.200), client (.11) mounts,
-touches an existing file:
+> Fix the following warning when DMA-API debug is enabled by checking ib_dma_map_single result:
+> [ 1455.345548] ------------[ cut here ]------------
+> [ 1455.346863] WARNING: CPU: 3 PID: 3929 at /home/yanb/kernel/net-next/lib/dma-debug.c:1140 check_unmap+0x4e5/0x990()
+> [ 1455.349350] mlx4_core 0000:00:07.0: DMA-API: device driver failed to check map error[device address=0x000000007c9f2090] [size=2656 bytes] [mapped as single]
+> [ 1455.349350] Modules linked in: xprtrdma netconsole configfs nfsv3 nfs_acl ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm autofs4 auth_rpcgss oid_registry nfsv4 nfs fscache lockd sunrpc dm_mirror dm_region_hash dm_log microcode pcspkr mlx4_ib ib_sa ib_mad ib_core ib_addr mlx4_en ipv6 ptp pps_core vxlan mlx4_core virtio_balloon cirrus ttm drm_kms_helper drm sysimgblt sysfillrect syscopyarea i2c_piix4 i2c_core button ext3 jbd virtio_blk virtio_net virtio_pci virtio_ring virtio uhci_hcd ata_generic ata_piix libata
+> [ 1455.349350] CPU: 3 PID: 3929 Comm: mount.nfs Not tainted 3.15.0-rc1-dbg+ #13
+> [ 1455.349350] Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2007
+> [ 1455.349350]  0000000000000474 ffff880069dcf628 ffffffff8151c341 ffffffff817b69d8
+> [ 1455.349350]  ffff880069dcf678 ffff880069dcf668 ffffffff8105b5fc 0000000069dcf658
+> [ 1455.349350]  ffff880069dcf778 ffff88007b0c9f00 ffffffff8255ec40 0000000000000a60
+> [ 1455.349350] Call Trace:
+> [ 1455.349350]  [<ffffffff8151c341>] dump_stack+0x52/0x81
+> [ 1455.349350]  [<ffffffff8105b5fc>] warn_slowpath_common+0x8c/0xc0
+> [ 1455.349350]  [<ffffffff8105b6e6>] warn_slowpath_fmt+0x46/0x50
+> [ 1455.349350]  [<ffffffff812e6305>] check_unmap+0x4e5/0x990
+> [ 1455.349350]  [<ffffffff81521fb0>] ? _raw_spin_unlock_irq+0x30/0x60
+> [ 1455.349350]  [<ffffffff812e6a0a>] debug_dma_unmap_page+0x5a/0x60
+> [ 1455.349350]  [<ffffffffa0389583>] rpcrdma_deregister_internal+0xb3/0xd0 [xprtrdma]
+> [ 1455.349350]  [<ffffffffa038a639>] rpcrdma_buffer_destroy+0x69/0x170 [xprtrdma]
+> [ 1455.349350]  [<ffffffffa03872ff>] xprt_rdma_destroy+0x3f/0xb0 [xprtrdma]
+> [ 1455.349350]  [<ffffffffa04a95ff>] xprt_destroy+0x6f/0x80 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a9625>] xprt_put+0x15/0x20 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a899a>] rpc_free_client+0x8a/0xe0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a8a58>] rpc_release_client+0x68/0xa0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a9060>] rpc_shutdown_client+0xb0/0xc0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a8f5d>] ? rpc_ping+0x5d/0x70 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a91ab>] rpc_create_xprt+0xbb/0xd0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a9273>] rpc_create+0xb3/0x160 [sunrpc]
+> [ 1455.349350]  [<ffffffff81129749>] ? __probe_kernel_read+0x69/0xb0
+> [ 1455.349350]  [<ffffffffa053851c>] nfs_create_rpc_client+0xdc/0x100 [nfs]
+> [ 1455.349350]  [<ffffffffa0538cfa>] nfs_init_client+0x3a/0x90 [nfs]
+> [ 1455.349350]  [<ffffffffa05391c8>] nfs_get_client+0x478/0x5b0 [nfs]
+> [ 1455.349350]  [<ffffffffa0538e50>] ? nfs_get_client+0x100/0x5b0 [nfs]
+> [ 1455.349350]  [<ffffffff81172c6d>] ? kmem_cache_alloc_trace+0x24d/0x260
+> [ 1455.349350]  [<ffffffffa05393f3>] nfs_create_server+0xf3/0x4c0 [nfs]
+> [ 1455.349350]  [<ffffffffa0545ff0>] ? nfs_request_mount+0xf0/0x1a0 [nfs]
+> [ 1455.349350]  [<ffffffffa031c0c3>] nfs3_create_server+0x13/0x30 [nfsv3]
+> [ 1455.349350]  [<ffffffffa0546293>] nfs_try_mount+0x1f3/0x230 [nfs]
+> [ 1455.349350]  [<ffffffff8108ea21>] ? get_parent_ip+0x11/0x50
+> [ 1455.349350]  [<ffffffff812d6343>] ? __this_cpu_preempt_check+0x13/0x20
+> [ 1455.349350]  [<ffffffff810d632b>] ? try_module_get+0x6b/0x190
+> [ 1455.349350]  [<ffffffffa05449f7>] nfs_fs_mount+0x187/0x9d0 [nfs]
+> [ 1455.349350]  [<ffffffffa0545940>] ? nfs_clone_super+0x140/0x140 [nfs]
+> [ 1455.349350]  [<ffffffffa0543b20>] ? nfs_auth_info_match+0x40/0x40 [nfs]
+> [ 1455.349350]  [<ffffffff8117e360>] mount_fs+0x20/0xe0
+> [ 1455.349350]  [<ffffffff811a1c16>] vfs_kern_mount+0x76/0x160
+> [ 1455.349350]  [<ffffffff811a29a8>] do_mount+0x428/0xae0
+> [ 1455.349350]  [<ffffffff811a30f0>] SyS_mount+0x90/0xe0
+> [ 1455.349350]  [<ffffffff8152af52>] system_call_fastpath+0x16/0x1b
+> [ 1455.349350] ---[ end trace f1f31572972e211d ]---
+> 
+> Signed-off-by: Yan Burman <yanb@mellanox.com>
 
-call v3 172.16.200.200:2049
-  access
-Mounting (2, 6) on '/files'
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-handle v4.1 ::ffff:172.16.200.11:758
-  exchange_id
-  create_session
-  sequence, reclaim_complete
-  sequence, putrootfh, secinfo_no_name
-  sequence, putrootfh, getfh, getattr
-  sequence, putfh, getattr
-  (repeated 6 times)
-  sequence, putfh, access, getattr
-  sequence, putfh, lookup, getfh, getattr
-  (repeated 1 times)
-  sequence, putfh, secinfo -> NFS4ERR_NOTSUPP
-  sequence, putfh, getattr
-  (repeated 4 times)
-  sequence, putfh, access, getattr
 
-call v3 172.16.200.200:2049
-  create -> NFS3ERR_EXIST
-  lookup
-  getattr
-  (repeated 1 times)
+> ---
+> net/sunrpc/xprtrdma/verbs.c |    4 ++++
+> 1 file changed, 4 insertions(+)
+> 
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 13dbd1c..076c244 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1388,6 +1388,10 @@ rpcrdma_register_internal(struct rpcrdma_ia *ia, void *va, int len,
+> 	 */
+> 	iov->addr = ib_dma_map_single(ia->ri_id->device,
+> 			va, len, DMA_BIDIRECTIONAL);
+> +	if (ib_dma_mapping_error(ia->ri_id->device, iov->addr)) {
+> +		return -ENOMEM;
+> +	}
+> +
+> 	iov->length = len;
+> 
+> 	if (ia->ri_have_dma_lkey) {
+> -- 
+> 1.7.10.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-handle v4.1 ::ffff:172.16.200.11:758
-  sequence, putfh, open, getfh, access, getattr
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-call v3 172.16.200.200:2049
-  getattr
-  (repeated 1 times)
 
-handle v4.1 ::ffff:172.16.200.11:758
-  sequence, putfh, setattr, getattr
-  sequence, putfh, close, getattr
-
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- nfs4.1/dataserver.py     | 16 ++++++++++------
- nfs4.1/nfs4client.py     |  7 ++++++-
- nfs4.1/nfs4server.py     | 47 ++++++++++++++++++++++++++++++++++++++++++++++-
- nfs4.1/server_exports.py |  7 ++++---
- 4 files changed, 66 insertions(+), 11 deletions(-)
-
-diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
-index d697631..9b0462d 100644
---- a/nfs4.1/dataserver.py
-+++ b/nfs4.1/dataserver.py
-@@ -13,8 +13,8 @@ import socket
- 
- log = logging.getLogger("Dataserver Manager")
- 
--class DataServer(object):
--    def __init__(self, server, port, path, flavor=rpc.AUTH_SYS, active=True, mdsds=True, multipath_servers=None):
-+class DataServer41(object):
-+    def __init__(self, server, port, path, flavor=rpc.AUTH_SYS, active=True, mdsds=True, multipath_servers=None, summary=None):
-         self.mdsds = mdsds
-         self.server = server
-         self.port = int(port)
-@@ -32,6 +32,8 @@ class DataServer(object):
-         else:
-             self.multipath_servers = []
- 
-+        self.summary = summary
-+
-         if active:
-             self.up()
- 
-@@ -47,7 +49,8 @@ class DataServer(object):
-         # only support root with AUTH_SYS for now
-         s1 = rpc.security.instance(rpc.AUTH_SYS)
-         self.cred1 = s1.init_cred(uid=0, gid=0)
--        self.c1 = nfs4client.NFS4Client(self.server, self.port)
-+        self.c1 = nfs4client.NFS4Client(self.server, self.port,
-+                                        summary=self.summary)
-         self.c1.set_cred(self.cred1)
-         self.c1.null()
-         c = self.c1.new_client("DS.init_%s" % self.server)
-@@ -172,7 +175,7 @@ class DSDevice(object):
-         self.address_body = None # set by load()
-         self.mdsds = mdsds # if you are both the DS and the MDS we are the only server
- 
--    def load(self, filename):
-+    def load(self, filename, server_obj):
-         """ Read dataservers from configuration file:
-         where each line has format e.g. server[:[port][/path]]
-         """
-@@ -194,8 +197,9 @@ class DSDevice(object):
-                 try:
-                     log.info("Adding dataserver ip:%s port:%s path:%s" %
-                              (server, port, '/'.join(path)))
--                    ds = DataServer(server, port, path, mdsds=self.mdsds,
--                                    multipath_servers=server_list)
-+                    ds = DataServer41(server, port, path, mdsds=self.mdsds,
-+                                    multipath_servers=server_list,
-+                                    summary=server_obj.summary)
-                     self.list.append(ds)
-                 except socket.error:
-                     log.critical("cannot access %s:%i/%s" %
-diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-index e504362..f5d2006 100644
---- a/nfs4.1/nfs4client.py
-+++ b/nfs4.1/nfs4client.py
-@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO,
- log_cb = logging.getLogger("nfs.client.cb")
- 
- class NFS4Client(rpc.Client, rpc.Server):
--    def __init__(self, host='localhost', port=2049, minorversion=1, ctrl_proc=16):
-+    def __init__(self, host='localhost', port=2049, minorversion=1, ctrl_proc=16, summary=None):
-         rpc.Client.__init__(self, 100003, 4)
-         self.prog = 0x40000000
-         self.versions = [1] # List of supported versions of prog
-@@ -36,6 +36,7 @@ class NFS4Client(rpc.Client, rpc.Server):
-         self.c1 = self.connect(self.server_address)
-         self.sessions = {} # XXX Really, this should be per server
-         self.ctrl_proc = ctrl_proc
-+        self.summary = summary
- 
-     def set_cred(self, credinfo):
-         self.default_cred = credinfo
-@@ -83,6 +84,10 @@ class NFS4Client(rpc.Client, rpc.Server):
-         pipe = kwargs.get("pipe", None)
-         res = self.listen(xid, pipe=pipe)
-         log_cb.info("compound result = %r" % (res,))
-+        if self.summary:
-+            self.summary.show_op('call v4.1 %s:%s' % self.server_address,
-+                [ nfs_opnum4[a.argop].lower()[3:] for a in args[0] ],
-+                nfsstat4[res.status])
-         return res
-     
-     def listen(self, xid, pipe=None, timeout=10.0):
-diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
-index 67adbf1..088e8c4 100755
---- a/nfs4.1/nfs4server.py
-+++ b/nfs4.1/nfs4server.py
-@@ -502,6 +502,41 @@ class Slot(object):
- 
-     # STUB - for client, need to track slot usage
- 
-+class SummaryOutput:
-+    def __init__(self, enabled=True):
-+        self._enabled = enabled
-+        self._last = None
-+        self._last_role = None
-+        self._repeat_count = 0
-+
-+    def show_op(self, role, opnames, status):
-+        if not self._enabled:
-+            return
-+
-+        summary_line = "  %s" % ', '.join(opnames)
-+
-+        if status != "NFS4_OK" and status != "NFS3_OK":
-+            summary_line += " -> %s" % (status,)
-+
-+        print_summary_line = True
-+        if summary_line != self._last or role != self._last_role:
-+            if self._last and self._repeat_count:
-+                print "  (repeated %u times)" % self._repeat_count
-+            self._last = summary_line
-+            self._repeat_count = 0
-+        else:
-+            print_summary_line = False
-+            self._repeat_count += 1
-+
-+        if self._last_role != role:
-+            print
-+            print role
-+            self._last_role = role
-+
-+        if print_summary_line:
-+            print summary_line
-+
-+
- ##################################################
- # The primary class - it is excessively long     #
- ##################################################
-@@ -527,6 +562,8 @@ class NFS4Server(rpc.Server):
-             log_41.setLevel(9)
-             log_cfg.setLevel(20)
- 
-+        self.summary = SummaryOutput(kwargs.pop('show_summary', False))
-+
-         rpc.Server.__init__(self, prog=NFS4_PROGRAM, versions=[4], port=port,
-                             **kwargs)
-         self.root = RootFS().root # Root of exported filesystem tree
-@@ -776,6 +813,7 @@ class NFS4Server(rpc.Server):
-             return env
-         # Handle the individual operations
-         status = NFS4_OK
-+        opnames = []
-         for arg in args.argarray:
-             opname = nfs_opnum4.get(arg.argop, 'op_illegal')
-             log_41.info("*** %s (%d) ***" % (opname, arg.argop))
-@@ -805,10 +843,14 @@ class NFS4Server(rpc.Server):
-                     result = encode_status_by_name(opname.lower()[3:],
-                                                    NFS4ERR_SERVERFAULT)
-             env.results.append(result)
-+            opnames.append(opname.lower()[3:])
-             status = result.status
-             if status != NFS4_OK:
-                 break
-         log_41.info("Replying.  Status %s (%d)" % (nfsstat4[status], status))
-+        client_addr = '%s:%s' % cred.connection._s.getpeername()[:2]
-+        self.summary.show_op('handle v4.1 %s' % client_addr,
-+                             opnames, nfsstat4[status])
-         return env
- 
-     def delete_session(self, session, sessionid):
-@@ -2062,6 +2104,8 @@ def scan_options():
-                  help="Reset and clear any disk-based filesystems")
-     p.add_option("-v", "--verbose", action="store_true", default=False,
-                  help="Print debug info to screen and enter interpreter on ^C")
-+    p.add_option("-s", "--show_summary", action="store_true", default=False,
-+                 help="Print short summary of operations")
-     p.add_option("--use_block", action="store_true", default=False,
-                  help="Mount a block-pnfs fs")
-     p.add_option("--use_files", action="store_true", default=False,
-@@ -2095,7 +2139,8 @@ if __name__ == "__main__":
-     S = NFS4Server(port=opts.port,
-                    is_mds=opts.use_block or opts.use_files,
-                    is_ds = opts.is_ds,
--                   verbose = opts.verbose)
-+                   verbose = opts.verbose,
-+                   show_summary = opts.show_summary)
-     read_exports(S, opts)
-     if True:
-         S.start()
-diff --git a/nfs4.1/server_exports.py b/nfs4.1/server_exports.py
-index d96b27b..ef857ee 100644
---- a/nfs4.1/server_exports.py
-+++ b/nfs4.1/server_exports.py
-@@ -15,7 +15,7 @@ def mount_stuff(server, opts):
-         E = BlockLayoutFS(5, backing_device=dev)
-         server.mount(E, path="/block")
-     if opts.use_files:
--        dservers = _load_dataservers(opts.dataservers, server.is_ds and server.is_mds)
-+        dservers = _load_dataservers(opts.dataservers, server)
-         if dservers is None:
-             return
-         F = FileLayoutFS(6, dservers)
-@@ -33,7 +33,8 @@ def _create_simple_block_dev():
-     c1 = Concat([s3, s1])
-     return BlockVolume(c1)
- 
--def _load_dataservers(file, connect_to_ds=False):
-+def _load_dataservers(filename, server):
-+    connect_to_ds = server.is_ds and server.is_mds
-     dss = DSDevice(connect_to_ds)
--    dss.load(file)
-+    dss.load(filename, server)
-     return dss;
--- 
-1.8.5.2 (Apple Git-48)
 
