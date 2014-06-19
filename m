@@ -1,86 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57068 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750742AbaFENGK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jun 2014 09:06:10 -0400
-Date: Thu, 5 Jun 2014 09:06:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: Trond Myklebust <trondmy@gmail.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH pynfs 02/17] 4.1 server: service RECLAIM_COMPLETE
- operations
-Message-ID: <20140605130608.GB8362@fieldses.org>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
- <1401915726-29092-3-git-send-email-dros@primarydata.com>
- <20140605022918.GB12044@fieldses.org>
- <CAABAsM60taecJryiaryhnW8FbZGo5s0r4Oz=aRFXYCBPDQoBbA@mail.gmail.com>
- <50CFBC92-B124-4912-9D3D-16C81476C883@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <50CFBC92-B124-4912-9D3D-16C81476C883@primarydata.com>
+Received: from mail-qc0-f172.google.com ([209.85.216.172]:35278 "EHLO
+	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932295AbaFSOwl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:41 -0400
+Received: by mail-qc0-f172.google.com with SMTP id o8so2251366qcw.17
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:40 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 071/104] NFSd: Protect unconfirmed client creation using client_lock
+Date: Thu, 19 Jun 2014 10:50:17 -0400
+Message-Id: <1403189450-18729-72-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 05, 2014 at 08:58:01AM -0400, Weston Andros Adamson wrote:
-> Are you saying that the pynfs server supports state recovery? This has not
-> been my experience. I’ll double check.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-If you don't support state recovery, then I think the minimal correct
-behavior would be to have no grace period at all: return NO_GRACE on
-*every* reclaim operation and GRACE only on non-reclaims not preceded by
-a global (one_fs == FALSE) RECLAIM_COMPLETE for that client.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 33 ++++++++++++++++++++++-----------
+ 1 file changed, 22 insertions(+), 11 deletions(-)
 
-All this does is catch misbehaving clients, and maybe that's not a
-priority.  But it's easy enough to implement.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ed568b10c35e..1beea0b19744 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1744,7 +1744,7 @@ add_to_unconfirmed(struct nfs4_client *clp)
+ 	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
+ 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+ 	list_add(&clp->cl_idhash, &nn->unconf_id_hashtbl[idhashval]);
+-	renew_client(clp);
++	renew_client_locked(clp);
+ }
+ 
+ static void
+@@ -1758,7 +1758,7 @@ move_to_confirmed(struct nfs4_client *clp)
+ 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
+ 	add_clp_to_name_tree(clp, &nn->conf_name_tree);
+ 	set_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
+-	renew_client(clp);
++	renew_client_locked(clp);
+ }
+ 
+ static struct nfs4_client *
+@@ -1771,7 +1771,7 @@ find_client_in_id_table(struct list_head *tbl, clientid_t *clid, bool sessions)
+ 		if (same_clid(&clp->cl_clientid, clid)) {
+ 			if ((bool)clp->cl_minorversion != sessions)
+ 				return NULL;
+-			renew_client(clp);
++			renew_client_locked(clp);
+ 			return clp;
+ 		}
+ 	}
+@@ -1973,7 +1973,8 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		  struct nfsd4_compound_state *cstate,
+ 		  struct nfsd4_exchange_id *exid)
+ {
+-	struct nfs4_client *unconf, *conf, *new;
++	struct nfs4_client *conf, *new;
++	struct nfs4_client *unconf = NULL;
+ 	__be32 status;
+ 	char			addr_str[INET6_ADDRSTRLEN];
+ 	nfs4_verifier		verf = exid->verifier;
+@@ -2008,6 +2009,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 
+ 	/* Cases below refer to rfc 5661 section 18.35.4: */
+ 	nfs4_lock_state();
++	spin_lock(&nn->client_lock);
+ 	conf = find_confirmed_client_by_name(&exid->clname, nn);
+ 	if (conf) {
+ 		bool creds_match = same_creds(&conf->cl_cred, &rqstp->rq_cred);
+@@ -2039,7 +2041,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 				status = nfserr_clid_inuse;
+ 				goto out;
+ 			}
+-			expire_client(conf);
+ 			goto out_new;
+ 		}
+ 		if (verfs_match) { /* case 2 */
+@@ -2047,6 +2048,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 			goto out_copy;
+ 		}
+ 		/* case 5, client reboot */
++		conf = NULL;
+ 		goto out_new;
+ 	}
+ 
+@@ -2057,17 +2059,18 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 
+ 	unconf  = find_unconfirmed_client_by_name(&exid->clname, nn);
+ 	if (unconf) /* case 4, possible retry or client restart */
+-		expire_client(unconf);
++		unhash_client_locked(unconf);
+ 
+ 	/* case 1 (normal case) */
+ out_new:
++	if (conf)
++		unhash_client_locked(conf);
+ 	new->cl_minorversion = cstate->minorversion;
+ 	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
+ 
+ 	gen_clid(new, nn);
+ 	add_to_unconfirmed(new);
+-	conf = new;
+-	new = NULL;
++	swap(new, conf);
+ out_copy:
+ 	exid->clientid.cl_boot = conf->cl_clientid.cl_boot;
+ 	exid->clientid.cl_id = conf->cl_clientid.cl_id;
+@@ -2080,9 +2083,12 @@ out_copy:
+ 	status = nfs_ok;
+ 
+ out:
++	spin_unlock(&nn->client_lock);
+ 	nfs4_unlock_state();
+ 	if (new)
+-		free_client(new);
++		expire_client(new);
++	if (unconf)
++		expire_client(unconf);
+ 	return status;
+ }
+ 
+@@ -2721,7 +2727,8 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	struct xdr_netobj 	clname = setclid->se_name;
+ 	nfs4_verifier		clverifier = setclid->se_verf;
+-	struct nfs4_client	*conf, *unconf, *new;
++	struct nfs4_client	*conf, *new;
++	struct nfs4_client	*unconf = NULL;
+ 	__be32 			status;
+ 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+@@ -2730,6 +2737,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_jukebox;
+ 	/* Cases below refer to rfc 3530 section 14.2.33: */
+ 	nfs4_lock_state();
++	spin_lock(&nn->client_lock);
+ 	conf = find_confirmed_client_by_name(&clname, nn);
+ 	if (conf) {
+ 		/* case 0: */
+@@ -2747,7 +2755,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
+ 	unconf = find_unconfirmed_client_by_name(&clname, nn);
+ 	if (unconf)
+-		expire_client(unconf);
++		unhash_client_locked(unconf);
+ 	if (conf && same_verf(&conf->cl_verifier, &clverifier))
+ 		/* case 1: probable callback update */
+ 		copy_clid(new, conf);
+@@ -2762,9 +2770,12 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	new = NULL;
+ 	status = nfs_ok;
+ out:
++	spin_unlock(&nn->client_lock);
+ 	nfs4_unlock_state();
+ 	if (new)
+ 		free_client(new);
++	if (unconf)
++		expire_client(unconf);
+ 	return status;
+ }
+ 
+-- 
+1.9.3
 
---b.
-
-> -dros
-> 
-> 
-> 
-> On Jun 5, 2014, at 8:22 AM, Trond Myklebust <trondmy@gmail.com> wrote:
-> 
-> > On Wed, Jun 4, 2014 at 10:29 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> On Wed, Jun 04, 2014 at 05:01:50PM -0400, Weston Andros Adamson wrote:
-> >>> Just return ok!
-> >> 
-> >> Technically it should record whether or not the reclaim_complete has
-> >> happened and return a GRACE error on any non-reclaim open performed
-> >> before the reclaim_complete--but for your purposes you may not care...
-> >> 
-> > 
-> > ...and a NOGRACE error on any reclaim opens performed by that client
-> > after the reclaim_complete?
-> > 
-> >> --b.
-> >> 
-> >>> 
-> >>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> >>> ---
-> >>> nfs4.1/nfs4server.py | 3 +++
-> >>> 1 file changed, 3 insertions(+)
-> >>> 
-> >>> diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
-> >>> index 65fb9af..3607dc0 100755
-> >>> --- a/nfs4.1/nfs4server.py
-> >>> +++ b/nfs4.1/nfs4server.py
-> >>> @@ -1809,6 +1809,9 @@ class NFS4Server(rpc.Server):
-> >>>         with find_state(env, arg.deleg_stateid, allow_0=False) as state:
-> >>>             state.delegreturn()
-> >>>         return encode_status(NFS4_OK)
-> >>> +
-> >>> +    def op_reclaim_complete(self, arg, env):
-> >>> +        return encode_status(NFS4_OK)
-> >>> 
-> >>>     def op_getdevicelist(self, arg, env): # STUB
-> >>>         check_session(env)
-> >>> --
-> >>> 1.8.5.2 (Apple Git-48)
-> >>> 
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
