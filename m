@@ -1,188 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:35637 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752068AbaFDVC2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:28 -0400
-Received: by mail-ie0-f174.google.com with SMTP id lx4so68474iec.19
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:27 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
+Received: from mail-qa0-f43.google.com ([209.85.216.43]:57572 "EHLO
+	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757959AbaFSOv0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:26 -0400
+Received: by mail-qa0-f43.google.com with SMTP id k15so2032605qaq.2
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:25 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH pynfs 10/17] dataserver: don't import * from nfs4 specific mods
-Date: Wed,  4 Jun 2014 17:01:58 -0400
-Message-Id: <1401915726-29092-11-git-send-email-dros@primarydata.com>
-In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 019/104] NFSd: Simplify stateid management
+Date: Thu, 19 Jun 2014 10:49:25 -0400
+Message-Id: <1403189450-18729-20-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-don't pollute the global namespace with constants and types from nfs4_*
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-this is in preparation for NFSv3 DSes.
+Don't allow stateids to clear the open file pointer until they are
+being destroyed.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- nfs4.1/dataserver.py | 60 ++++++++++++++++++++++++++--------------------------
- 1 file changed, 30 insertions(+), 30 deletions(-)
+ fs/nfsd/nfs4state.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
-index 5a3b851..a825615 100644
---- a/nfs4.1/dataserver.py
-+++ b/nfs4.1/dataserver.py
-@@ -1,8 +1,8 @@
- import rpc
- import nfs4lib
--from xdrdef.nfs4_type import *
-+import xdrdef.nfs4_type as type4
- from xdrdef.nfs4_pack import NFS4Packer
--from xdrdef.nfs4_const import *
-+import xdrdef.nfs4_const as const4
- import time
- import logging
- import nfs4client
-@@ -56,7 +56,7 @@ class DataServer41(object):
-         c = self.c1.new_client("DS.init_%s" % self.server)
-         # This is a hack to ensure MDS/DS communication path is at least
-         # as wide as the client/MDS channel (at least for linux client)
--        fore_attrs = channel_attrs4(0, 16384, 16384, 2868, 8, 8, [])
-+        fore_attrs = type4.channel_attrs4(0, 16384, 16384, 2868, 8, 8, [])
-         self.sess = c.create_session(fore_attrs=fore_attrs)
-         self.make_root()
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 427efcdb81e6..6f9a0d2d0223 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -447,7 +447,7 @@ kmem_cache *slab)
+ 	struct nfs4_stid *stid;
+ 	int new_id;
  
-@@ -68,12 +68,12 @@ class DataServer41(object):
-         If an error code is specified in the exceptions it means that the
-         caller wants to handle the error himself
-         """
--        retry_errors = [NFS4ERR_DELAY, NFS4ERR_GRACE]
--        state_errors = [NFS4ERR_STALE_CLIENTID, NFS4ERR_BADSESSION,
--                        NFS4ERR_BADSLOT, NFS4ERR_DEADSESSION]
-+        retry_errors = [const4.NFS4ERR_DELAY, const4.NFS4ERR_GRACE]
-+        state_errors = [const4.NFS4ERR_STALE_CLIENTID, const4.NFS4ERR_BADSESSION,
-+                        const4.NFS4ERR_BADSLOT, const4.NFS4ERR_DEADSESSION]
-         while True:
-             res = self.sess.compound(ops)
--            if res.status == NFS4_OK or res.status in exceptions:
-+            if res.status == const4.NFS4_OK or res.status in exceptions:
-                 return res
-             elif res.status in retry_errors:
-                 if maxretries > 0:
-@@ -95,7 +95,7 @@ class DataServer41(object):
-         uaddr = '.'.join([self.server,
-                           str(self.port >> 8),
-                           str(self.port & 0xff)])
--        return netaddr4(self.proto, uaddr)
-+        return type4.netaddr4(self.proto, uaddr)
+-	stid = kmem_cache_alloc(slab, GFP_KERNEL);
++	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
+ 	if (!stid)
+ 		return NULL;
  
-     def get_multipath_netaddr4s(self):
-         netaddr4s = []
-@@ -108,24 +108,24 @@ class DataServer41(object):
-             if server.find(':') >= 0:
-                 proto = "tcp6"
+@@ -459,11 +459,9 @@ kmem_cache *slab)
+ 	if (new_id < 0)
+ 		goto out_free;
+ 	stid->sc_client = cl;
+-	stid->sc_type = 0;
+ 	stid->sc_stateid.si_opaque.so_id = new_id;
+ 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
+ 	/* Will be incremented before return to client: */
+-	stid->sc_stateid.si_generation = 0;
+ 	atomic_set(&stid->sc_count, 1);
  
--            netaddr4s.append(netaddr4(proto, uaddr))
-+            netaddr4s.append(type4.netaddr4(proto, uaddr))
-         return netaddr4s
- 
- 
--    def make_root(self, attrs={FATTR4_MODE:0777}):
-+    def make_root(self, attrs={const4.FATTR4_MODE:0777}):
-         existing_path = []
--        kind = createtype4(NF4DIR)
-+        kind = type4.createtype4(const4.NF4DIR)
-         for comp in self.path:
-             existing_path.append(comp)
-             res = self._execute(nfs4lib.use_obj(existing_path),
--                               exceptions=[NFS4ERR_NOENT])
--            if res.status == NFS4ERR_NOENT:
-+                               exceptions=[const4.NFS4ERR_NOENT])
-+            if res.status == const4.NFS4ERR_NOENT:
-                 cr_ops = nfs4lib.use_obj(existing_path[:-1]) + \
-                     [op.create(kind, comp, attrs)]
-                 self._execute(cr_ops)
-         res = self._execute(nfs4lib.use_obj(self.path) + [op.getfh()])
-         self.path_fh = res.resarray[-1].object
--        need = ACCESS4_READ | ACCESS4_LOOKUP | ACCESS4_MODIFY | ACCESS4_EXTEND
-+        need = const4.ACCESS4_READ | const4.ACCESS4_LOOKUP | const4.ACCESS4_MODIFY | const4.ACCESS4_EXTEND
-         res = self._execute(nfs4lib.use_obj(self.path_fh) + [op.access(need)])
-         if res.resarray[-1].access != need:
-             raise RuntimeError
-@@ -135,25 +135,25 @@ class DataServer41(object):
-         return hashlib.sha1("%r" % mds_fh).hexdigest()
- 
-     def open_file(self, mds_fh, seqid=0,
--                  access=OPEN4_SHARE_ACCESS_BOTH, deny=OPEN4_SHARE_DENY_NONE,
--                  attrs={FATTR4_MODE: 0777}, owner = "mds", mode=GUARDED4):
-+                  access=const4.OPEN4_SHARE_ACCESS_BOTH, deny=const4.OPEN4_SHARE_DENY_NONE,
-+                  attrs={const4.FATTR4_MODE: 0777}, owner = "mds", mode=const4.GUARDED4):
-         verifier = self.sess.c.verifier
--        openflag = openflag4(OPEN4_CREATE, createhow4(mode, attrs, verifier))
-+        openflag = type4.openflag4(const4.OPEN4_CREATE, type4.createhow4(mode, attrs, verifier))
-         name = self.fh_to_name(mds_fh)
-         while True:
-             if mds_fh in self.filehandles:
-                 return
-             open_op = op.open(seqid, access, deny,
--                              open_owner4(self.sess.client.clientid, owner),
--                              openflag, open_claim4(CLAIM_NULL, name))
--            res = self._execute(nfs4lib.use_obj(self.path_fh) + [open_op, op.getfh()], exceptions=[NFS4ERR_EXIST])
--            if res.status == NFS4_OK:
-+                              type4.open_owner4(self.sess.client.clientid, owner),
-+                              openflag, type4.open_claim4(const4.CLAIM_NULL, name))
-+            res = self._execute(nfs4lib.use_obj(self.path_fh) + [open_op, op.getfh()], exceptions=[const4.NFS4ERR_EXIST])
-+            if res.status == const4.NFS4_OK:
-                  ds_fh = res.resarray[-1].opgetfh.resok4.object
--                 ds_openstateid = stateid4(0, res.resarray[-2].stateid.other)
-+                 ds_openstateid = type4.stateid4(0, res.resarray[-2].stateid.other)
-                  self.filehandles[mds_fh] = (ds_fh, ds_openstateid)
-                  return
--            elif res.status == NFS4ERR_EXIST:
--                 openflag = openflag4(OPEN4_NOCREATE)
-+            elif res.status == const4.NFS4ERR_EXIST:
-+                 openflag = type4.openflag4(const4.OPEN4_NOCREATE)
-             else:
-                 raise RuntimeError
- 
-@@ -176,26 +176,26 @@ class DataServer41(object):
- 
-     def write(self, fh, pos, data):
-         ops = [op.putfh(fh),
--               op.write(nfs4lib.state00, pos, FILE_SYNC4, data)]
-+               op.write(nfs4lib.state00, pos, const4.FILE_SYNC4, data)]
-         # There are all sorts of error handling issues here
-         res = self._execute(ops)
- 
-     def truncate(self, fh, size):
-         ops = [op.putfh(fh),
--               op.setattr(nfs4lib.state00, {FATTR4_SIZE: size})]
-+               op.setattr(nfs4lib.state00, {const4.FATTR4_SIZE: size})]
-         res = self._execute(ops)
- 
-     def get_size(self, fh):
-         ops = [op.putfh(fh),
--               op.getattr(1L << FATTR4_SIZE)]
-+               op.getattr(1L << const4.FATTR4_SIZE)]
-         res = self._execute(ops)
-         attrdict = res.resarray[-1].obj_attributes
--        return attrdict.get(FATTR4_SIZE, 0)
-+        return attrdict.get(const4.FATTR4_SIZE, 0)
+ 	/*
+@@ -507,10 +505,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	INIT_LIST_HEAD(&dp->dl_perfile);
+ 	INIT_LIST_HEAD(&dp->dl_perclnt);
+ 	INIT_LIST_HEAD(&dp->dl_recall_lru);
+-	dp->dl_file = NULL;
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+-	dp->dl_time = 0;
+ 	nfsd4_init_callback(&dp->dl_recall);
+ 	return dp;
+ }
+@@ -533,6 +529,8 @@ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+ 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
++		if (dp->dl_file)
++			put_nfs4_file(dp->dl_file);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+ 	}
+@@ -580,12 +578,9 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	list_del_init(&dp->dl_recall_lru);
+ 	list_del_init(&dp->dl_perfile);
+ 	spin_unlock(&fp->fi_lock);
+-	if (fp) {
++	if (fp)
+ 		nfs4_put_deleg_lease(fp);
+-		dp->dl_file = NULL;
+-	}
+ 	spin_unlock(&state_lock);
+-	put_nfs4_file(fp);
+ }
  
  
- class DSDevice(object):
-     def __init__(self, mdsds):
--        self.list = [] # list of DataServer instances
-+        self.list = [] # list of DataServer41 instances
-         # STUB only one data group supported for now
-         self.devid = 0
-         self.active = 0
-@@ -247,7 +247,7 @@ class DSDevice(object):
-                 netaddrs.append(multipath)
-                 stripe_indices.append(index)
-                 index = index + 1
--        addr = nfsv4_1_file_layout_ds_addr4(stripe_indices, netaddrs)
-+        addr = type4.nfsv4_1_file_layout_ds_addr4(stripe_indices, netaddrs)
-         p = NFS4Packer()
-         p.pack_nfsv4_1_file_layout_ds_addr4(addr)
-         return p.get_buffer()
+@@ -745,13 +740,13 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	release_all_access(stp);
+-	put_nfs4_file(stp->st_file);
+-	stp->st_file = NULL;
+ }
+ 
+ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	remove_stid(&stp->st_stid);
++	if (stp->st_file)
++		put_nfs4_file(stp->st_file);
+ 	nfs4_free_stid(stateid_slab, &stp->st_stid);
+ }
+ 
+@@ -4329,8 +4324,13 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	if (cstate->minorversion)
+ 		free_generic_stateid(stp);
+-	else
++	else {
++		if (stp->st_file) {
++			put_nfs4_file(stp->st_file);
++			stp->st_file = NULL;
++		}
+ 		oo->oo_last_closed_stid = stp;
++	}
+ 
+ 	if (list_empty(&oo->oo_owner.so_stateids)) {
+ 		if (cstate->minorversion)
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
