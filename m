@@ -1,143 +1,229 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:64430 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751458AbaFMKug (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Jun 2014 06:50:36 -0400
-Received: by mail-pa0-f49.google.com with SMTP id lj1so2007900pab.36
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Jun 2014 03:50:36 -0700 (PDT)
-Message-ID: <539AD76F.4000200@gmail.com>
-Date: Fri, 13 Jun 2014 18:50:23 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH 2/3 v3] NFS4.0: Cases for SGID/SUID status after writing
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:51494 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932295AbaFSOw4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:56 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so2235500qcx.41
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:55 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 082/104] nfsd: abstract out the get and set routines into the fault injection ops
+Date: Thu, 19 Jun 2014 10:50:28 -0400
+Message-Id: <1403189450-18729-83-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v3, same as v2.
-v2, Adds Environment.c3. 
+For now they all use the standard ones. In later patches we'll add new
+routines that can deal with more granular locking.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Also, move some of the printk routines into the callers to make the
+results of the operations more uniform.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- nfs4.0/servertests/environment.py |  4 ++
- nfs4.0/servertests/st_write.py    | 84 +++++++++++++++++++++++++++++++++++++++
- 2 files changed, 88 insertions(+)
+ fs/nfsd/fault_inject.c | 128 +++++++++++++++++++++++++++++--------------------
+ 1 file changed, 77 insertions(+), 51 deletions(-)
 
-diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
-index 9852178..48d4e26 100644
---- a/nfs4.0/servertests/environment.py
-+++ b/nfs4.0/servertests/environment.py
-@@ -104,12 +104,16 @@ class Environment(testmod.Environment):
-         sec1, sec2 = self._get_security(opts)
- #        authsys1 = rpc.SecAuthSys(0, opts.machinename, opts.uid, opts.gid, [])
-         authsys2 = rpc.SecAuthSys(0, opts.machinename, opts.uid+1, opts.gid+1, [])
-+        authsys3 = rpc.SecAuthSys(0, opts.machinename, opts.uid+2, opts.gid+2, [])
-         self.c1 = NFS4Client('client1_pid%i' % os.getpid(),
-                              opts.server, opts.port, opts.path,
-                              sec_list=[sec1], opts=opts)
-         self.c2 = NFS4Client('client2_pid%i' % os.getpid(),
-                              opts.server, opts.port, opts.path,
-                              sec_list=[authsys2], opts=opts)
-+        self.c3 = NFS4Client('client3_pid%i' % os.getpid(),
-+                             opts.server, opts.port, opts.path,
-+                             sec_list=[authsys3], opts=opts)
-         self.longname = "a"*512
-         self.uid = 0
-         self.gid = 0
-diff --git a/nfs4.0/servertests/st_write.py b/nfs4.0/servertests/st_write.py
-index c76cf94..3e58cba 100644
---- a/nfs4.0/servertests/st_write.py
-+++ b/nfs4.0/servertests/st_write.py
-@@ -457,3 +457,87 @@ def testMultipleReadWrites(t,env):
-         if resdata != expect:
-             t.fail("READ %d returned %s, expected %s" %
-                     (i+1, repr(resdata), repr(expect)))
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index f1333fc35b33..bbb00dcd926a 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -17,79 +17,50 @@
+ 
+ struct nfsd_fault_inject_op {
+ 	char *file;
++	u64 (*get)(struct nfsd_fault_inject_op *);
++	u64 (*set_val)(struct nfsd_fault_inject_op *, u64);
++	u64 (*set_clnt)(struct nfsd_fault_inject_op *,
++			struct sockaddr_storage *, size_t);
+ 	u64 (*forget)(struct nfs4_client *, u64);
+ 	u64 (*print)(struct nfs4_client *, u64);
+ };
+ 
+-static struct nfsd_fault_inject_op inject_ops[] = {
+-	{
+-		.file   = "forget_clients",
+-		.forget = nfsd_forget_client,
+-		.print  = nfsd_print_client,
+-	},
+-	{
+-		.file   = "forget_locks",
+-		.forget = nfsd_forget_client_locks,
+-		.print  = nfsd_print_client_locks,
+-	},
+-	{
+-		.file   = "forget_openowners",
+-		.forget = nfsd_forget_client_openowners,
+-		.print  = nfsd_print_client_openowners,
+-	},
+-	{
+-		.file   = "forget_delegations",
+-		.forget = nfsd_forget_client_delegations,
+-		.print  = nfsd_print_client_delegations,
+-	},
+-	{
+-		.file   = "recall_delegations",
+-		.forget = nfsd_recall_client_delegations,
+-		.print  = nfsd_print_client_delegations,
+-	},
+-};
+-
+-static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
+ static struct dentry *debug_dir;
+ 
+-static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
++static u64 nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
+ {
+-	u64 count = 0;
+-
+-	if (val == 0)
+-		printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
+-	else
+-		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
++	u64 count;
+ 
+ 	nfs4_lock_state();
+ 	count = nfsd_for_n_state(val, op->forget);
+ 	nfs4_unlock_state();
+-	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
++	return count;
+ }
+ 
+-static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
++static u64 nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
+ 				   struct sockaddr_storage *addr,
+ 				   size_t addr_size)
+ {
+-	char buf[INET6_ADDRSTRLEN];
+ 	struct nfs4_client *clp;
+-	u64 count;
++	u64 count = 0;
+ 
+ 	nfs4_lock_state();
+ 	clp = nfsd_find_client(addr, addr_size);
+-	if (clp) {
++	if (clp)
+ 		count = op->forget(clp, 0);
+-		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
+-		printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file, buf, count);
+-	}
+ 	nfs4_unlock_state();
++	return count;
+ }
+ 
+-static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
++static u64 nfsd_inject_get(struct nfsd_fault_inject_op *op)
+ {
++	u64 count;
 +
-+def doCheckMode(t, c, fh, mode):
-+    ops = c.use_obj(fh)
-+    ops += [c.getattr([FATTR4_MODE, FATTR4_OWNER, FATTR4_OWNER_GROUP])]
-+    res = c.compound(ops)
-+    check(res)
+ 	nfs4_lock_state();
+-	*val = nfsd_for_n_state(0, op->print);
++	count = nfsd_for_n_state(0, op->print);
+ 	nfs4_unlock_state();
 +
-+    attrs = res.resarray[-1].obj_attributes
-+    if FATTR4_MODE not in attrs.keys():
-+         t.fail("Attributes not contains FATTR4_MODE")
-+    resmode = attrs[FATTR4_MODE]
-+    if resmode != mode:
-+         t.fail("Mode is %o, not expected %o" % (resmode, mode))
++	return count;
+ }
+ 
+ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+@@ -99,9 +70,10 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+ 	char read_buf[25];
+ 	size_t size;
+ 	loff_t pos = *ppos;
++	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
+ 
+ 	if (!pos)
+-		nfsd_inject_get(file_inode(file)->i_private, &val);
++		val = op->get(op);
+ 	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
+ 
+ 	return simple_read_from_buffer(buf, len, ppos, read_buf, size);
+@@ -114,6 +86,7 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 	size_t size = min(sizeof(write_buf) - 1, len);
+ 	struct net *net = current->nsproxy->net_ns;
+ 	struct sockaddr_storage sa;
++	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
+ 	u64 val;
+ 	char *nl;
+ 
+@@ -129,11 +102,19 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 	}
+ 
+ 	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
+-	if (size > 0)
+-		nfsd_inject_set_client(file_inode(file)->i_private, &sa, size);
+-	else {
++	if (size > 0) {
++		val = op->set_clnt(op, &sa, size);
++		if (val)
++			printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file,
++				write_buf, val);
++	} else {
+ 		val = simple_strtoll(write_buf, NULL, 0);
+-		nfsd_inject_set(file_inode(file)->i_private, val);
++		if (val == 0)
++			printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
++		else
++			printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
++		val = op->set_val(op, val);
++		printk(KERN_INFO "NFSD: %s: found %llu", op->file, val);
+ 	}
+ 	return len; /* on success, claim we got the whole input */
+ }
+@@ -149,6 +130,51 @@ void nfsd_fault_inject_cleanup(void)
+ 	debugfs_remove_recursive(debug_dir);
+ }
+ 
++static struct nfsd_fault_inject_op inject_ops[] = {
++	{
++		.file     = "forget_clients",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_forget_client,
++		.print    = nfsd_print_client,
++	},
++	{
++		.file     = "forget_locks",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_forget_client_locks,
++		.print    = nfsd_print_client_locks,
++	},
++	{
++		.file     = "forget_openowners",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_forget_client_openowners,
++		.print    = nfsd_print_client_openowners,
++	},
++	{
++		.file     = "forget_delegations",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_forget_client_delegations,
++		.print    = nfsd_print_client_delegations,
++	},
++	{
++		.file     = "recall_delegations",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_recall_client_delegations,
++		.print    = nfsd_print_client_delegations,
++	},
++};
 +
-+def doCheckSGUID(t, env, cc, cw, cmode = 06777):
-+    c = env.c1
-+    path = c.homedir + [t.code]
-+    res = c.create_obj(path, attrs={FATTR4_MODE:0777})
-+    check(res)
++#define NUM_INJECT_OPS (sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op))
 +
-+    cc.init_connection()
-+    attrs = {FATTR4_SIZE: 32, FATTR4_MODE: 06777}
-+    path += [t.code]
-+    fh, stateid = cc.create_confirm(t.code, path, attrs=attrs,
-+                                   deny=OPEN4_SHARE_DENY_NONE)
-+    doCheckMode(t, cc, fh, 06777)
-+
-+    cw.init_connection()
-+    ops = cw.use_obj(fh)
-+    ops += [cw.write_op(stateid4(0, ''), 0, UNSTABLE4, 'for test')]
-+    res = cw.compound(ops)
-+    check(res)
-+
-+    doCheckMode(t, cw, fh, cmode)
-+
-+def testSGUIDRootRoot(t, env):
-+    """ root writing data to file (blongs to root)
-+        will not clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16a
-+    """
-+    doCheckSGUID(t, env, env.c1, env.c1)
-+
-+def testSGUIDRootNoRoot(t, env):
-+    """ root writing data to file (blongs to no-root)
-+        will not clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16b
-+    """
-+    doCheckSGUID(t, env, env.c2, env.c1)
-+
-+def testSGUIDNoRootSelf(t, env):
-+    """ no-root writing data to file (blongs to self)
-+        will clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16c
-+    """
-+    doCheckSGUID(t, env, env.c2, env.c2, 0777)
-+
-+def testSGUIDNoRootRoot(t, env):
-+    """ no-root writing data to file (blongs to root)
-+        will clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16d
-+    """
-+    doCheckSGUID(t, env, env.c1, env.c2, 0777)
-+
-+def testSGUIDNoRootNoRoot(t, env):
-+    """ no-root writing data to file (blongs to no-root)
-+        will clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16e
-+    """
-+    doCheckSGUID(t, env, env.c2, env.c3, 0777)
+ int nfsd_fault_inject_init(void)
+ {
+ 	unsigned int i;
 -- 
 1.9.3
 
