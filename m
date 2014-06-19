@@ -1,90 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:52119 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754260AbaF3Pvx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:53 -0400
-Received: by mail-qc0-f175.google.com with SMTP id i8so7248061qcq.34
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:53 -0700 (PDT)
+Received: from mail-qa0-f50.google.com ([209.85.216.50]:37917 "EHLO
+	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757884AbaFSOvG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:06 -0400
+Received: by mail-qa0-f50.google.com with SMTP id m5so2016970qaj.23
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:05 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 057/114] nfsd: Migrate the stateid reference into nfs4_lookup_stateid()
-Date: Mon, 30 Jun 2014 11:49:26 -0400
-Message-Id: <1404143423-24381-58-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 005/104] NFSd: Add fine grained protection for the nfs4_file->fi_stateids list
+Date: Thu, 19 Jun 2014 10:49:11 -0400
+Message-Id: <1403189450-18729-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Allow nfs4_lookup_stateid to take the stateid reference, instead
-of having all the callers do so.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c | 20 +++++++++++++++++---
+ 1 file changed, 17 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2b7ce084eb04..9d9cb26c391c 100644
+index 8dc1289a7b74..d1b975b29334 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4124,6 +4124,8 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
- 	if (!*s)
- 		return nfserr_bad_stateid;
-+	/* FIXME: move into find_stateid_by_type */
-+	atomic_inc(&(*s)->sc_count);
+@@ -625,7 +625,11 @@ release_all_access(struct nfs4_ol_stateid *stp)
+ 
+ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
++	struct nfs4_file *fp = stp->st_file;
++
++	spin_lock(&fp->fi_lock);
+ 	list_del(&stp->st_perfile);
++	spin_unlock(&fp->fi_lock);
+ 	list_del(&stp->st_perstateowner);
+ }
+ 
+@@ -2672,7 +2676,6 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_lockowners);
+ 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+-	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	stp->st_stateowner = &oo->oo_owner;
+ 	get_nfs4_file(fp);
+ 	stp->st_file = fp;
+@@ -2681,6 +2684,9 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	set_access(open->op_share_access, stp);
+ 	set_deny(open->op_share_deny, stp);
+ 	stp->st_openstp = NULL;
++	spin_lock(&fp->fi_lock);
++	list_add(&stp->st_perfile, &fp->fi_stateids);
++	spin_unlock(&fp->fi_lock);
+ }
+ 
+ static void
+@@ -2788,6 +2794,7 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
+ 		return nfs_ok;
+ 	ret = nfserr_locked;
+ 	/* Search for conflicting share reservations */
++	spin_lock(&fp->fi_lock);
+ 	list_for_each_entry(stp, &fp->fi_stateids, st_perfile) {
+ 		if (test_deny(deny_type, stp) ||
+ 		    test_deny(NFS4_SHARE_DENY_BOTH, stp))
+@@ -2795,6 +2802,7 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
+ 	}
+ 	ret = nfs_ok;
+ out:
++	spin_unlock(&fp->fi_lock);
+ 	put_nfs4_file(fp);
+ 	return ret;
+ }
+@@ -2993,6 +3001,7 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
+ 	struct nfs4_ol_stateid *local;
+ 	struct nfs4_openowner *oo = open->op_openowner;
+ 
++	spin_lock(&fp->fi_lock);
+ 	list_for_each_entry(local, &fp->fi_stateids, st_perfile) {
+ 		/* ignore lock owners */
+ 		if (local->st_stateowner->so_is_open_owner == 0)
+@@ -3001,9 +3010,12 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
+ 		if (local->st_stateowner == &oo->oo_owner)
+ 			*stpp = local;
+ 		/* check for conflicting share reservations */
+-		if (!test_share(local, open))
++		if (!test_share(local, open)) {
++			spin_unlock(&fp->fi_lock);
+ 			return nfserr_share_denied;
++		}
+ 	}
++	spin_unlock(&fp->fi_lock);
  	return nfs_ok;
  }
  
-@@ -4158,7 +4160,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
- 				&s, nn);
- 	if (status)
--		goto out;
-+		goto unlock_state;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
- 	if (status)
- 		goto out;
-@@ -4207,6 +4209,8 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 	if (file)
- 		*filpp = file;
- out:
-+	nfs4_put_stid(s);
-+unlock_state:
- 	nfs4_unlock_state();
- 	return status;
+@@ -4308,7 +4320,6 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	if (stp == NULL)
+ 		return NULL;
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+-	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+@@ -4316,6 +4327,9 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
++	spin_lock(&fp->fi_lock);
++	list_add(&stp->st_perfile, &fp->fi_stateids);
++	spin_unlock(&fp->fi_lock);
+ 	return stp;
  }
-@@ -4341,11 +4345,10 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
- 
- 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
--	if (!status) {
--		/* FIXME: move into find_stateid_by_type */
--		atomic_inc(&stp->st_stid.sc_count);
-+	if (!status)
- 		*stpp = stp;
--	}
-+	else
-+		put_generic_stateid(stp);
- 	return status;
- }
- 
-@@ -4571,9 +4574,11 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	dp = delegstateid(s);
- 	status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
- 	if (status)
--		goto out;
-+		goto put_stateid;
- 
- 	unhash_and_destroy_delegation(dp);
-+put_stateid:
-+	nfs4_put_delegation(dp);
- out:
- 	nfs4_unlock_state();
  
 -- 
 1.9.3
