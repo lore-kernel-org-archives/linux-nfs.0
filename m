@@ -1,59 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from api.opinsys.fi ([217.112.254.4]:58683 "EHLO mail.opinsys.fi"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752990AbaFBKBN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Jun 2014 06:01:13 -0400
-Date: Mon, 2 Jun 2014 09:56:45 +0000 (UTC)
-From: Tuomas =?utf-8?B?UsOkc8OkbmVu?= <tuomasjjrasanen@opinsys.fi>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>, linux-nfs@vger.kernel.org
-Message-ID: <1863565244.57055.1401703005363.JavaMail.zimbra@opinsys.fi>
-In-Reply-To: <20140521165304.4331255d@tlielax.poochiereds.net>
-References: <199810131.34257.1400570367382.JavaMail.zimbra@opinsys.fi> <1176115795.34522.1400575248541.JavaMail.zimbra@opinsys.fi> <20140520102117.2582abac@tlielax.poochiereds.net> <2137177707.38241.1400684149690.JavaMail.zimbra@opinsys.fi> <20140521165304.4331255d@tlielax.poochiereds.net>
-Subject: Re: Soft lockups on kerberised NFSv4.0 clients
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-qa0-f43.google.com ([209.85.216.43]:61733 "EHLO
+	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757787AbaFSOws (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:48 -0400
+Received: by mail-qa0-f43.google.com with SMTP id k15so2049733qaq.16
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:47 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 076/104] nfsd: protect the close_lru list and oo_last_closed_stid with client_lock
+Date: Thu, 19 Jun 2014 10:50:22 -0400
+Message-Id: <1403189450-18729-77-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message -----
-> From: "Jeff Layton" <jlayton@poochiereds.net>
-> 
-.
-.
-.
-> Ok, now that I look closer at your stack trace the problem appears to
-> be that the unlock code is waiting for the lock context's io_count to
-> drop to zero before allowing the unlock to proceed.
-> 
-> That likely means that there is some outstanding I/O that isn't
-> completing, but it's possible that the problem is the CB_RECALL is
-> being ignored. This will probably require some analysis of wire captures.
-> 
-> In your earlier mail, you mentioned that the client was responding to
-> the CB_RECALL with NFS4ERR_BADHANDLE. Determining why that's happening
-> may be the best place to focus your efforts.
-> 
-> Now that I look, nfs4_callback_recall does this:
-> 
->         res = htonl(NFS4ERR_BADHANDLE);
->         inode = nfs_delegation_find_inode(cps->clp, &args->fh);
->         if (inode == NULL)
->                 goto out;
-> 
-> So it looks like it's not finding the delegation for some reason.
-> You'll probably need to hunt down which open gave you the delegation in
-> the first place and then sanity check the CB_RECALL request to
-> determine whether it's the client or server that's insane here...
-> 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 33 +++++++++++++++++++++++++++------
+ 1 file changed, 27 insertions(+), 6 deletions(-)
 
-Speaking of insanity, I'll try to describe some of our findings in hope someone helps us to get a better grasp of the issue.
-
-OPEN requests seem valid to me, there does not seem be any real difference between with OPENs granting RECALLable delegations and OPENs granting delegations which cause BADHANDLEs to be returned when RECALLed. I don't have any ideas what to look for.. probably been staring at capturelogs for too long...
-
-BADHANDLE resposes to CB_RECALLs seem to be fairly common in our environment and there is not clear link between those and the softlockups described describer earlier by Veli-Matti. BADHANDLEs can happen multiple times before the first softlockup. After the first softlockup, the system keeps experiencing lockups (with various tracebacks) with an increasing speed, so I guess only the very first trace is meaningful. And the very first traceback seems to always be the traceback posted by Veli-Matti in his first email.
-
-The BADHANDLE situation is also quite volatile: if nfs_delegation_find_inode() is called again, a bit later, before returning from nfs4_callback_recall(), it returns a valid inode instead of NULL. What does this indicate? Somehow related to the nature of RCU? 
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 72ca1b62cf16..561c77a02920 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -917,13 +917,19 @@ static void unhash_openowner_locked(struct nfs4_openowner *oo)
+ 
+ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ {
+-	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++					  nfsd_net_id);
++	struct nfs4_ol_stateid *s;
+ 
++	spin_lock(&nn->client_lock);
++	s = oo->oo_last_closed_stid;
+ 	if (s) {
+ 		list_del_init(&oo->oo_close_lru);
+ 		oo->oo_last_closed_stid = NULL;
+-		put_generic_stateid(s);
+ 	}
++	spin_unlock(&nn->client_lock);
++	if (s)
++		put_generic_stateid(s);
+ }
+ 
+ static void release_openowner(struct nfs4_openowner *oo)
+@@ -3098,6 +3104,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ static void
+ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+ {
++	struct nfs4_ol_stateid *last;
+ 	struct nfs4_openowner *oo = openowner(s->st_stateowner);
+ 	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
+ 						nfsd_net_id);
+@@ -3121,10 +3128,14 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+ 		s->st_stid.sc_file = NULL;
+ 	}
+ 
+-	release_last_closed_stateid(oo);
++	spin_lock(&nn->client_lock);
++	last = oo->oo_last_closed_stid;
+ 	oo->oo_last_closed_stid = s;
+ 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
+ 	oo->oo_time = get_seconds();
++	spin_unlock(&nn->client_lock);
++	if (last)
++		put_generic_stateid(last);
+ }
+ 
+ static int
+@@ -3970,6 +3981,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	struct nfs4_client *clp;
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
++	struct nfs4_ol_stateid *stp;
+ 	struct list_head *pos, *next, reaplist;
+ 	time_t cutoff = get_seconds() - nn->nfsd4_lease;
+ 	time_t t, new_timeo = nn->nfsd4_lease;
+@@ -4021,15 +4033,24 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+ 		revoke_delegation(dp);
+ 	}
+-	list_for_each_safe(pos, next, &nn->close_lru) {
+-		oo = container_of(pos, struct nfs4_openowner, oo_close_lru);
++
++	spin_lock(&nn->client_lock);
++	while (!list_empty(&nn->close_lru)) {
++		oo = list_first_entry(&nn->close_lru, struct nfs4_openowner, oo_close_lru);
+ 		if (time_after((unsigned long)oo->oo_time, (unsigned long)cutoff)) {
+ 			t = oo->oo_time - cutoff;
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		release_last_closed_stateid(oo);
++		list_del_init(&oo->oo_close_lru);
++		stp = oo->oo_last_closed_stid;
++		oo->oo_last_closed_stid = NULL;
++		spin_unlock(&nn->client_lock);
++		put_generic_stateid(stp);
++		spin_lock(&nn->client_lock);
+ 	}
++	spin_unlock(&nn->client_lock);
++
+ 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ 	nfs4_unlock_state();
+ 	return new_timeo;
 -- 
-Tuomas
+1.9.3
+
