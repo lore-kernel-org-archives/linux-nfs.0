@@ -1,83 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:62089 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752482AbaFXOh2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2014 10:37:28 -0400
-MIME-Version: 1.0
-In-Reply-To: <20140623223909.1634.33362.stgit@manet.1015granger.net>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-	<20140623223909.1634.33362.stgit@manet.1015granger.net>
-Date: Tue, 24 Jun 2014 17:37:27 +0300
-Message-ID: <CAJZOPZJQ9+-qiSYcxbLkx-nr91njSqFTwhP4kqzRoO=8AQhneg@mail.gmail.com>
-Subject: Re: [PATCH v1 01/13] xprtrdma: Fix panic in rpcrdma_register_frmr_external()
-From: Or Gerlitz <or.gerlitz@gmail.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:38888 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932184AbaFSOwa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:30 -0400
+Received: by mail-qg0-f42.google.com with SMTP id e89so2254633qgf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:29 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 063/104] nfsd: add locking to stateowner release
+Date: Thu, 19 Jun 2014 10:50:09 -0400
+Message-Id: <1403189450-18729-64-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 24, 2014 at 1:39 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> seg1->mr_nsegs is not yet initialized when it is used to unmap
-> segments during an error exit. Use the same unmapping logic for
-> all error exits.
->
-> "if (frmr_wr.wr.fast_reg.length < len) {" used to be a BUG_ON check.
-> The broken code should never be executed under normal operation.
->
-> Fixes: c977dea22708688eae31774f70126c97aa4dfe83
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
-Here you should put the information provided by git log --oneline e.g
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 858778cbcc7d..e5e1a7abee06 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -563,6 +563,8 @@ static void nfs4_put_stid(struct nfs4_stid *s)
+ {
+ 	struct nfs4_client *clp = s->sc_client;
+ 
++	lockdep_assert_not_held(&clp->cl_lock);
++
+ 	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock)) {
+ 		wake_up_all(&close_wq);
+ 		return;
+@@ -2923,9 +2925,14 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
+ 
+ static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
+ {
+-	if (!atomic_dec_and_test(&sop->so_count))
++	struct nfs4_client *clp = sop->so_client;
++
++	lockdep_assert_not_held(&clp->cl_lock);
++
++	if (!atomic_dec_and_lock(&sop->so_count, &clp->cl_lock))
+ 		return;
+ 	sop->so_unhash(sop);
++	spin_unlock(&clp->cl_lock);
+ 	sop->so_free(sop);
+ }
+ 
+@@ -2939,11 +2946,7 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ 
+ static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
+ {
+-	struct nfs4_client *clp = so->so_client;
+-
+-	spin_lock(&clp->cl_lock);
+ 	unhash_openowner_locked(openowner(so));
+-	spin_unlock(&clp->cl_lock);
+ }
+ 
+ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+@@ -4730,11 +4733,7 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
+ 
+ static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
+ {
+-	struct nfs4_client *clp = sop->so_client;
+-
+-	spin_lock(&clp->cl_lock);
+ 	unhash_lockowner_locked(lockowner(sop));
+-	spin_unlock(&clp->cl_lock);
+ }
+ 
+ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
+-- 
+1.9.3
 
-Fixes: c977dea22 ('THE COMMIT TITLE')
-
-
-
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  net/sunrpc/xprtrdma/verbs.c |   12 +++++++-----
->  1 file changed, 7 insertions(+), 5 deletions(-)
->
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 13dbd1c..78bd7c6 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -1545,9 +1545,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->         frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
->         frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
->         if (frmr_wr.wr.fast_reg.length < len) {
-> -               while (seg1->mr_nsegs--)
-> -                       rpcrdma_unmap_one(ia, seg++);
-> -               return -EIO;
-> +               rc = -EIO;
-> +               goto out_err;
->         }
->
->         /* Bump the key */
-> @@ -1565,8 +1564,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->         if (rc) {
->                 dprintk("RPC:       %s: failed ib_post_send for register,"
->                         " status %i\n", __func__, rc);
-> -               while (i--)
-> -                       rpcrdma_unmap_one(ia, --seg);
-> +               goto out_err;
->         } else {
->                 seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
->                 seg1->mr_base = seg1->mr_dma + pageoff;
-> @@ -1574,6 +1572,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->                 seg1->mr_len = len;
->         }
->         *nsegs = i;
-> +       return 0;
-> +out_err:
-> +       while (i--)
-> +               rpcrdma_unmap_one(ia, --seg);
->         return rc;
->  }
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
