@@ -1,161 +1,277 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:40155 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754038AbaF3Pum (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:42 -0400
-Received: by mail-qg0-f53.google.com with SMTP id i50so2128428qgf.40
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:41 -0700 (PDT)
+Received: from mail-qa0-f47.google.com ([209.85.216.47]:56294 "EHLO
+	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932295AbaFSOxF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:53:05 -0400
+Received: by mail-qa0-f47.google.com with SMTP id hw13so2010669qab.20
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:53:05 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 006/114] nfsd: Cleanup nfs4svc_encode_compoundres
-Date: Mon, 30 Jun 2014 11:48:35 -0400
-Message-Id: <1404143423-24381-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 089/104] nfsd: add more granular locking to *_delegations fault injectors
+Date: Thu, 19 Jun 2014 10:50:35 -0400
+Message-Id: <1403189450-18729-90-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-
-Move the slot return, put session etc into a helper in fs/nfsd/nfs4state.c
-instead of open coding in nfs4svc_encode_compoundres.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 35 ++++++++++++++++++++++-------------
- fs/nfsd/nfs4xdr.c   | 15 +--------------
- fs/nfsd/state.h     |  1 -
- fs/nfsd/xdr4.h      |  2 +-
- 4 files changed, 24 insertions(+), 29 deletions(-)
+ fs/nfsd/fault_inject.c |  16 ++---
+ fs/nfsd/nfs4state.c    | 156 ++++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/state.h        |   9 +--
+ 3 files changed, 145 insertions(+), 36 deletions(-)
 
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 0c2ab9caf803..aa114c893189 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -151,19 +151,15 @@ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	},
+ 	{
+ 		.file     = "forget_delegations",
+-		.get	  = nfsd_inject_get,
+-		.set_val  = nfsd_inject_set,
+-		.set_clnt = nfsd_inject_set_client,
+-		.forget   = nfsd_forget_client_delegations,
+-		.print    = nfsd_print_client_delegations,
++		.get	  = nfsd_inject_print_delegations,
++		.set_val  = nfsd_inject_forget_delegations,
++		.set_clnt = nfsd_inject_forget_client_delegations,
+ 	},
+ 	{
+ 		.file     = "recall_delegations",
+-		.get	  = nfsd_inject_get,
+-		.set_val  = nfsd_inject_set,
+-		.set_clnt = nfsd_inject_set_client,
+-		.forget   = nfsd_recall_client_delegations,
+-		.print    = nfsd_print_client_delegations,
++		.get	  = nfsd_inject_print_delegations,
++		.set_val  = nfsd_inject_recall_delegations,
++		.set_clnt = nfsd_inject_recall_client_delegations,
+ 	},
+ };
+ 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3ce5dc30f767..ade15fcddd08 100644
+index 2f18de7dc913..3cae26492cf5 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -203,18 +203,6 @@ static void put_client_renew_locked(struct nfs4_client *clp)
- 		renew_client_locked(clp);
+@@ -5923,60 +5923,172 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+ 				     struct list_head *victims)
+ {
+ 	struct nfs4_delegation *dp, *next;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
+ 	u64 count = 0;
+ 
+-	lockdep_assert_held(&state_lock);
++	lockdep_assert_held(&nn->client_lock);
++
++	spin_lock(&state_lock);
+ 	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
+ 		if (victims) {
++			atomic_inc(&clp->cl_refcount);
+ 			unhash_delegation_locked(dp);
+ 			list_add(&dp->dl_recall_lru, victims);
+ 		}
+-		if (++count == max)
++		++count;
++		/*
++		 * Despite the fact that these functions deal with
++		 * 64-bit integers for "count", we must ensure that
++		 * it doesn't blow up the clp->cl_refcount. Throw a
++		 * warning if we start to approach INT_MAX here.
++		 */
++		WARN_ON_ONCE(count == (INT_MAX / 2));
++		if (count == max)
+ 			break;
+ 	}
++	spin_unlock(&state_lock);
+ 	return count;
  }
  
--void put_client_renew(struct nfs4_client *clp)
--{
--	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
--
--	if (!atomic_dec_and_lock(&clp->cl_refcount, &nn->client_lock))
--		return;
--	if (!is_client_expired(clp))
--		renew_client_locked(clp);
--	spin_unlock(&nn->client_lock);
--}
--
--
- static inline u32
- opaque_hashval(const void *ptr, int nbytes)
+-u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
++static u64
++nfsd_print_client_delegations(struct nfs4_client *clp)
  {
-@@ -1650,7 +1638,7 @@ out_err:
- /*
-  * Cache a reply. nfsd4_check_resp_size() has bounded the cache size.
-  */
--void
-+static void
- nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- {
- 	struct xdr_buf *buf = resp->xdr.buf;
-@@ -2422,6 +2410,27 @@ out_put_client:
- 	goto out_no_session;
- }
+-	struct nfs4_delegation *dp, *next;
+-	LIST_HEAD(victims);
+-	u64 count;
++	u64 count = nfsd_find_all_delegations(clp, 0, NULL);
++	nfsd_print_count(clp, count, "delegations");
++	return count;
++}
  
-+void
-+nfsd4_sequence_done(struct nfsd4_compoundres *resp)
+-	spin_lock(&state_lock);
+-	count = nfsd_find_all_delegations(clp, max, &victims);
+-	spin_unlock(&state_lock);
++u64
++nfsd_inject_print_delegations(struct nfsd_fault_inject_op *op)
 +{
-+	struct nfsd4_compound_state *cs = &resp->cstate;
++	struct nfs4_client *clp;
++	u64 count = 0;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
 +
-+	if (nfsd4_has_session(cs)) {
-+		struct nfs4_client *clp = cs->session->se_client;
-+		struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++	if (!nfsd_netns_ready(nn))
++		return 0;
+ 
+-	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru)
++		count += nfsd_print_client_delegations(clp);
++	spin_unlock(&nn->client_lock);
 +
-+		if (cs->status != nfserr_replay_cache) {
-+			nfsd4_store_cache_entry(resp);
-+			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
-+		}
-+		/* Renew the clientid on success and on replay */
-+		spin_lock(&nn->client_lock);
-+		nfsd4_put_session(cs->session);
-+		put_client_renew_locked(clp);
-+		spin_unlock(&nn->client_lock);
++	return count;
++}
++
++static void
++nfsd_forget_delegations(struct list_head *reaplist)
++{
++	struct nfs4_client *clp;
++	struct nfs4_delegation *dp, *next;
++
++	list_for_each_entry_safe(dp, next, reaplist, dl_recall_lru) {
++		list_del_init(&dp->dl_recall_lru);
++		clp = dp->dl_stid.sc_client;
+ 		revoke_delegation(dp);
++		put_client(clp);
 +	}
 +}
 +
- __be32
- nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
++u64
++nfsd_inject_forget_client_delegations(struct nfsd_fault_inject_op *op,
++				      struct sockaddr_storage *addr, size_t addr_size)
++{
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
+ 
++	spin_lock(&nn->client_lock);
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp)
++		count = nfsd_find_all_delegations(clp, 0, &reaplist);
++	spin_unlock(&nn->client_lock);
++
++	nfsd_forget_delegations(&reaplist);
+ 	return count;
+ }
+ 
+-u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
++u64
++nfsd_inject_forget_delegations(struct nfsd_fault_inject_op *op, u64 max)
  {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index a1c48b4111d2..1c5e87e660cd 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -4006,7 +4006,6 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 	/*
- 	 * All that remains is to write the tag and operation count...
- 	 */
--	struct nfsd4_compound_state *cs = &resp->cstate;
- 	struct xdr_buf *buf = resp->xdr.buf;
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		count += nfsd_find_all_delegations(clp, max - count, &reaplist);
++		if (max != 0 && count >= max)
++			break;
++	}
++	spin_unlock(&nn->client_lock);
++	nfsd_forget_delegations(&reaplist);
++	return count;
++}
++
++static void
++nfsd_recall_delegations(struct list_head *reaplist)
++{
++	struct nfs4_client *clp;
+ 	struct nfs4_delegation *dp, *next;
+-	LIST_HEAD(victims);
+-	u64 count;
  
- 	WARN_ON_ONCE(buf->len != buf->head[0].iov_len + buf->page_len +
-@@ -4020,19 +4019,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 	p += XDR_QUADLEN(resp->taglen);
- 	*p++ = htonl(resp->opcnt);
+-	spin_lock(&state_lock);
+-	count = nfsd_find_all_delegations(clp, max, &victims);
+-	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
++	list_for_each_entry_safe(dp, next, reaplist, dl_recall_lru) {
++		list_del_init(&dp->dl_recall_lru);
++		clp = dp->dl_stid.sc_client;
+ 		nfsd_break_one_deleg(dp);
+-	spin_unlock(&state_lock);
++		put_client(clp);
++	}
++}
  
--	if (nfsd4_has_session(cs)) {
--		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
--		struct nfs4_client *clp = cs->session->se_client;
--		if (cs->status != nfserr_replay_cache) {
--			nfsd4_store_cache_entry(resp);
--			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
--		}
--		/* Renew the clientid on success and on replay */
--		spin_lock(&nn->client_lock);
--		nfsd4_put_session(cs->session);
--		spin_unlock(&nn->client_lock);
--		put_client_renew(clp);
--	}
-+	nfsd4_sequence_done(resp);
- 	return 1;
++u64
++nfsd_inject_recall_client_delegations(struct nfsd_fault_inject_op *op,
++				      struct sockaddr_storage *addr, size_t addr_size)
++{
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp)
++		count = nfsd_find_all_delegations(clp, 0, &reaplist);
++	spin_unlock(&nn->client_lock);
++
++	nfsd_recall_delegations(&reaplist);
+ 	return count;
+ }
+ 
+-u64 nfsd_print_client_delegations(struct nfs4_client *clp, u64 max)
++u64
++nfsd_inject_recall_delegations(struct nfsd_fault_inject_op *op, u64 max)
+ {
+ 	u64 count = 0;
++	struct nfs4_client *clp, *next;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++	LIST_HEAD(reaplist);
+ 
+-	spin_lock(&state_lock);
+-	count = nfsd_find_all_delegations(clp, max, NULL);
+-	spin_unlock(&state_lock);
++	if (!nfsd_netns_ready(nn))
++		return count;
+ 
+-	nfsd_print_count(clp, count, "delegations");
++	spin_lock(&nn->client_lock);
++	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
++		count += nfsd_find_all_delegations(clp, max - count, &reaplist);
++		if (max != 0 && ++count >= max)
++			break;
++	}
++	spin_unlock(&nn->client_lock);
++	nfsd_recall_delegations(&reaplist);
+ 	return count;
  }
  
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 7d6ba06c1abe..24eec922685c 100644
+index 597841e691bb..4f6b65189031 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
-@@ -477,7 +477,6 @@ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- 							struct nfsd_net *nn);
- extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
--extern void put_client_renew(struct nfs4_client *clp);
+@@ -486,10 +486,11 @@ u64 nfsd_inject_print_openowners(struct nfsd_fault_inject_op *);
+ u64 nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *, struct sockaddr_storage *, size_t);
+ u64 nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *, u64);
  
- /* nfs4recover operations */
- extern int nfsd4_client_tracking_init(struct net *net);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 18cbb6d9c8a9..7d8af164523b 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -574,7 +574,6 @@ extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
- extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_setclientid_confirm *setclientid_confirm);
--extern void nfsd4_store_cache_entry(struct nfsd4_compoundres *resp);
- extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_exchange_id *);
- extern __be32 nfsd4_backchannel_ctl(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_backchannel_ctl *);
-@@ -585,6 +584,7 @@ extern __be32 nfsd4_create_session(struct svc_rqst *,
- extern __be32 nfsd4_sequence(struct svc_rqst *,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_sequence *);
-+extern void nfsd4_sequence_done(struct nfsd4_compoundres *resp);
- extern __be32 nfsd4_destroy_session(struct svc_rqst *,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_destroy_session *);
+-u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+-u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+-
+-u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
++u64 nfsd_inject_print_delegations(struct nfsd_fault_inject_op *);
++u64 nfsd_inject_forget_client_delegations(struct nfsd_fault_inject_op *, struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_delegations(struct nfsd_fault_inject_op *, u64);
++u64 nfsd_inject_recall_client_delegations(struct nfsd_fault_inject_op *, struct sockaddr_storage *, size_t);
++u64 nfsd_inject_recall_delegations(struct nfsd_fault_inject_op *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+ static inline int nfsd_fault_inject_init(void) { return 0; }
+ static inline void nfsd_fault_inject_cleanup(void) {}
 -- 
 1.9.3
 
