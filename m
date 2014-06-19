@@ -1,110 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33096 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750939AbaFDOdS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jun 2014 10:33:18 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s54EXITj032240
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 4 Jun 2014 10:33:18 -0400
-From: Dave Wysochanski <dwysocha@redhat.com>
-To: bfields@redhat.com
+Received: from mail-qc0-f169.google.com ([209.85.216.169]:50057 "EHLO
+	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757959AbaFSOvn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:43 -0400
+Received: by mail-qc0-f169.google.com with SMTP id c9so2286132qcz.28
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:43 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] Simplify logic in cache_listeners_exist - only return true if someone has the file open.
-Date: Wed,  4 Jun 2014 10:19:40 -0400
-Message-Id: <1401891580-28510-1-git-send-email-dwysocha@redhat.com>
+Subject: [PATCH v1 032/104] NFSd: Slight cleanup of find_stateid()
+Date: Thu, 19 Jun 2014 10:49:38 -0400
+Message-Id: <1403189450-18729-33-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The logic inside cache_listeners_exist contains heuristics to
-determine whether there is a userspace process listening to the cache
-file.  If there is a listener, the kernel will send a request to service
-the cache to userspace, and wait for a response.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-The logic is a bit hard to read, here's some comments which explain the
-existing logic:
-       /*
-        * If at least one process has the channel file open currently,
-        * someone is listening
-        */
-       if (atomic_read(&detail->readers))
-               return true;
-       /*
-        * If no process has ever opened the channel file,
-        * no one is listening
-        */
-       if (detail->last_close == 0)
-               /* This cache was never opened */
-               return false;
-       /*
-        * If the last time we closed the file was more than 30 seconds
-        * ago, no one is listening.
-        */
-       if (detail->last_close < seconds_since_boot() - 30)
-               /*
-                * We allow for the possibility that someone might
-                * restart a userspace daemon without restarting the
-                * server; but after 30 seconds, we give up.
-                */
-                return false;
-       /*
-        * In all other cases, assume someone is listening
-        */
-       return true;
+In preparation of reference counting...
 
-The logic is unduly complicated and unfortunately can be 'fooled' into
-thinking some userspace listener daemon exists when it does not.  For
-example, we've seen where a simple diagnostic process reading all files
-in /proc/net/rpc (for example, tarring the files up into an archive) can
-fool the kernel due to this logic.  Once fooled, the kernel will then
-send requests to validate the cache to userspace thinking some 'cache listener'
-exists, and will timeout.  In the case of the nfs server, this leads to
-silently dropped NFS requests due to failing RPC authentication.
-A simple while loop as follows is enough to DoS the NFS server indefinitely:
-while true; do
-   cat /proc/net/rpc/auth.unix.gid/channel>/dev/null
-   sleep 3
-done
-
-While a better userspace / kernel registration mechanism for cache listeners
-would be the best solution, for now let's just simplify this logic by requiring
-that there actually be someone holding the 'channel' file open for the kernel
-to consider there's someone actually listening and servicing the cache.
-
-The only downside is that now userspace daemons which restart will be noticed
-by the kernel during the restart, but I think this makes sense since there's
-no guarantee the listener will come back.
-
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/cache.c | 14 +-------------
- 1 file changed, 1 insertion(+), 13 deletions(-)
+ fs/nfsd/nfs4state.c | 26 +++++++++++++++++---------
+ 1 file changed, 17 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index ae333c1..d5adefc 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1137,19 +1137,7 @@ static void warn_no_listener(struct cache_detail *detail)
- 
- static bool cache_listeners_exist(struct cache_detail *detail)
- {
--	if (atomic_read(&detail->readers))
--		return true;
--	if (detail->last_close == 0)
--		/* This cache was never opened */
--		return false;
--	if (detail->last_close < seconds_since_boot() - 30)
--		/*
--		 * We allow for the possibility that someone might
--		 * restart a userspace daemon without restarting the
--		 * server; but after 30 seconds, we give up.
--		 */
--		 return false;
--	return true;
-+	return atomic_read(&detail->readers);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 020bc981ccd3..42ef5ecc1def 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1561,28 +1561,36 @@ static void gen_confirm(struct nfs4_client *clp)
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
  }
  
- /*
+-static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
++static struct nfs4_stid *find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ {
+ 	struct nfs4_stid *ret;
+ 
+-	spin_lock(&cl->cl_lock);
+ 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
+-	spin_unlock(&cl->cl_lock);
+ 	if (!ret || !ret->sc_type)
+ 		return NULL;
+ 	return ret;
+ }
+ 
++static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
++{
++	struct nfs4_stid *ret;
++
++	spin_lock(&cl->cl_lock);
++	ret = find_stateid_locked(cl, t);
++	spin_unlock(&cl->cl_lock);
++	return ret;
++}
++
+ static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
+ {
+ 	struct nfs4_stid *s;
+ 
+-	s = find_stateid(cl, t);
+-	if (!s)
+-		return NULL;
+-	if (typemask & s->sc_type)
+-		return s;
+-	return NULL;
++	spin_lock(&cl->cl_lock);
++	s = find_stateid_locked(cl, t);
++	if (s != NULL && !(typemask & s->sc_type))
++		s = NULL;
++	spin_unlock(&cl->cl_lock);
++	return s;
+ }
+ 
+ static struct nfs4_client *create_client(struct xdr_netobj name,
 -- 
 1.9.3
 
