@@ -1,96 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56821 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751890AbaFPNwF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Jun 2014 09:52:05 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s5GDq47J026523
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Jun 2014 09:52:05 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-57-83.rdu2.redhat.com [10.10.57.83])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s5GDq3XD030143
-	for <linux-nfs@vger.kernel.org>; Mon, 16 Jun 2014 09:52:04 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfsiostat: Document the output columns in the manpage
-Date: Mon, 16 Jun 2014 09:52:01 -0400
-Message-Id: <1402926721-8104-1-git-send-email-steved@redhat.com>
+Received: from mail-qc0-f169.google.com ([209.85.216.169]:40569 "EHLO
+	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932295AbaFSOwn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:43 -0400
+Received: by mail-qc0-f169.google.com with SMTP id c9so2299998qcz.0
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:43 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 073/104] NFSd: Protect nfsd4_destroy_clientid using client_lock
+Date: Thu, 19 Jun 2014 10:50:19 -0400
+Message-Id: <1403189450-18729-74-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jan Chaloupka <jchaloup@redhat.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- tools/nfs-iostat/nfsiostat.man | 55 ++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 55 insertions(+)
+ fs/nfsd/nfs4state.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/tools/nfs-iostat/nfsiostat.man b/tools/nfs-iostat/nfsiostat.man
-index 3ec245d..b477a9a 100644
---- a/tools/nfs-iostat/nfsiostat.man
-+++ b/tools/nfs-iostat/nfsiostat.man
-@@ -38,6 +38,61 @@ If one or more
- .I <mount point> 
- names are specified, statistics for only these mount points will
- be displayed.  Otherwise, all NFS mount points on the client are listed.
-+.TP
-+The meaning of each column of \fBnfsiostat\fR's output is the following:
-+.RS 8
-+- \fBop/s\fR
-+.RS
-+This is the number of operations per second.
-+.RS
-+.RE
-+.RE
-+.RE
-+.RS 8
-+- \fBrpc bklog\fR
-+.RS
-+This is the length of the backlog queue.
-+.RE
-+.RE
-+.RE
-+.RS 8
-+- \fBkB/s\fR
-+.RS
-+This is the number of kB written/read per second.
-+.RE
-+.RE
-+.RE
-+.RS 8
-+- \fBkB/op\fR
-+.RS
-+This is the number of kB written/read per each operation.
-+.RE
-+.RE
-+.RE
-+.RS 8
-+- \fBretrans\fR
-+.RS
-+This is the number of retransmissions.
-+.RE
-+.RE
-+.RE
-+.RS 8
-+- \fBavg RTT (ms)\fR
-+.RS
-+This is the duration from the time that client's kernel sends the RPC request until the time it receives the reply.
-+.RE
-+.RE
-+.RE
-+.RS 8
-+- \fBavg exe (ms)\fR
-+.RS
-+This is the duration from the time that NFS client does the RPC request to its kernel until the RPC request is completed, this includes the RTT time above.
-+.RE
-+.RE
-+.RE
-+.TP
-+Note that if an interval is used as argument to \fBnfsiostat\fR, then the diffrence from previous interval will be displayed, otherwise the results will be from the time that the share was mounted.
-+
- .SH OPTIONS
- .TP
- .B \-a " or " \-\-attr
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index be84ac190052..955027d4dc85 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2647,22 +2647,23 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
+ __be32
+ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
+ {
+-	struct nfs4_client *conf, *unconf, *clp;
++	struct nfs4_client *conf, *unconf;
++	struct nfs4_client *clp= NULL;
+ 	__be32 status = 0;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	nfs4_lock_state();
++	spin_lock(&nn->client_lock);
+ 	unconf = find_unconfirmed_client(&dc->clientid, true, nn);
+ 	conf = find_confirmed_client(&dc->clientid, true, nn);
+ 	WARN_ON_ONCE(conf && unconf);
+ 
+ 	if (conf) {
+-		clp = conf;
+-
+ 		if (client_has_state(conf)) {
+ 			status = nfserr_clientid_busy;
+ 			goto out;
+ 		}
++		clp = conf;
+ 	} else if (unconf)
+ 		clp = unconf;
+ 	else {
+@@ -2670,12 +2671,16 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 		goto out;
+ 	}
+ 	if (!mach_creds_match(clp, rqstp)) {
++		clp = NULL;
+ 		status = nfserr_wrong_cred;
+ 		goto out;
+ 	}
+-	expire_client(clp);
++	unhash_client_locked(clp);
+ out:
++	spin_unlock(&nn->client_lock);
+ 	nfs4_unlock_state();
++	if (clp)
++		expire_client(clp);
+ 	return status;
+ }
+ 
 -- 
-1.9.0
+1.9.3
 
