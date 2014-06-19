@@ -1,49 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:39947 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755718AbaFWQMX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 12:12:23 -0400
-Date: Mon, 23 Jun 2014 09:12:22 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 008/104] NFSd: Ensure that nfs4_file_get_access
- enforces share access modes
-Message-ID: <20140623161222.GF24193@infradead.org>
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:33163 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932184AbaFSOwb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:31 -0400
+Received: by mail-qa0-f54.google.com with SMTP id v10so2059180qac.27
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:30 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 064/104] nfsd: optimize destroy_lockowner cl_lock thrashing
+Date: Thu, 19 Jun 2014 10:50:10 -0400
+Message-Id: <1403189450-18729-65-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
- <1403189450-18729-9-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403189450-18729-9-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 19, 2014 at 10:49:14AM -0400, Jeff Layton wrote:
-> Lock atomicity requires us to check the share access mode when we
-> actually open the file. Note that ideally this would also be atomic
-> with file creation.
-> 
-> With the change to make nfs4_file_get_access enforce the share mode, we
-> now have a bogus WARN_ON that can fire. It's now normal to call
-> nfs4_file_get_access before populating the fi_fds field for the open
-> flag, so we should no longer warn on that situation.
+Reduce the cl_lock trashing in destroy_lockowner. Unhash all of the
+lockstateids on the lockowner's list. Put the reference under the lock
+and see if it was the last one. If so, then add it to a private list
+to be destroyed after we drop the lock.
 
-Which change is that?  Seems like this is a previous commit, so it
-would be good to refer to it explicitly.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 49 ++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 32 insertions(+), 17 deletions(-)
 
-> The other case is a WARN_ON that can occur if there's a O_RDWR open
-> already present. I'm unclear on why we'd WARN_ON in that case. This
-> patch removes it, but please do enlighten me if there's some reason
-> we ought to keep it instead.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e5e1a7abee06..62af2431f118 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -819,14 +819,23 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	nfs4_put_stid(&stp->st_stid);
+ }
+ 
+-static void release_lock_stateid(struct nfs4_ol_stateid *stp)
++static void unhash_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+ 
+-	spin_lock(&oo->oo_owner.so_client->cl_lock);
+-	list_del(&stp->st_locks);
++	lockdep_assert_held(&oo->oo_owner.so_client->cl_lock);
++
++	list_del_init(&stp->st_locks);
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
++}
++
++static void release_lock_stateid(struct nfs4_ol_stateid *stp)
++{
++	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
++
++	spin_lock(&oo->oo_owner.so_client->cl_lock);
++	unhash_lock_stateid(stp);
+ 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ 	put_generic_stateid(stp);
+ }
+@@ -840,30 +849,36 @@ static void unhash_lockowner_locked(struct nfs4_lockowner *lo)
+ 	list_del_init(&lo->lo_owner.so_strhash);
+ }
+ 
+-static void release_lockowner_stateids(struct nfs4_lockowner *lo)
++static void destroy_lockowner(struct nfs4_lockowner *lo)
+ {
+ 	struct nfs4_client *clp = lo->lo_owner.so_client;
+ 	struct nfs4_ol_stateid *stp;
++	struct list_head reaplist;
+ 
+-	lockdep_assert_held(&clp->cl_lock);
++	INIT_LIST_HEAD(&reaplist);
+ 
++	spin_lock(&clp->cl_lock);
++	unhash_lockowner_locked(lo);
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		spin_unlock(&clp->cl_lock);
+-		release_lock_stateid(stp);
+-		spin_lock(&clp->cl_lock);
++		unhash_lock_stateid(stp);
++		/*
++		 * We now know that no new references can be added to the
++		 * stateid. If ours is the last one, finish the unhashing
++		 * and put it on the list to be reaped.
++		 */
++		if (atomic_dec_and_test(&stp->st_stid.sc_count)) {
++			remove_stid_locked(clp, &stp->st_stid);
++			list_add(&stp->st_locks, &reaplist);
++		}
+ 	}
+-}
+-
+-static void destroy_lockowner(struct nfs4_lockowner *lo)
+-{
+-	struct nfs4_client *clp = lo->lo_owner.so_client;
+-
+-	spin_lock(&clp->cl_lock);
+-	unhash_lockowner_locked(lo);
+-	release_lockowner_stateids(lo);
+ 	spin_unlock(&clp->cl_lock);
++	while (!list_empty(&reaplist)) {
++		stp = list_first_entry(&reaplist, struct nfs4_ol_stateid, st_locks);
++		list_del(&stp->st_locks);
++		stp->st_stid.sc_free(&stp->st_stid);
++	}
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+-- 
+1.9.3
 
-I have a really hard time mapping from what's in this description
-to what happens in the patch.
-
-Looking over the patch I can see that it:
-
-adds a fi_share_deny field to struct nfs4_file, which gets set up in
-nfs4_file_get_access, and cleared from nfs4_file_put_access, as well
-as some general refactoring around nfs4_file_get_access.  Can you
-split the refactor into a first patch that has a description what's
-going on, and keep the addition of the deny mask separate, again
-including a description of what it's trying to help with?
