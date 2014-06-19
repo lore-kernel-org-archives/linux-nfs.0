@@ -1,48 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:44982 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754908AbaFKQWj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Jun 2014 12:22:39 -0400
-Date: Wed, 11 Jun 2014 09:22:38 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Philippe Troin <phil@fifi.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Subject: Re: Phantom ACL-related xattrs on 3.14.4 NFS client
-Message-ID: <20140611162238.GA28340@infradead.org>
-References: <1402082953.28220.7.camel@ceramic.home.fifi.org>
- <CAHQdGtS2BL9u4DV=FZ0HaXO-iTNPU4hTGVR--HubNa4A_6UNog@mail.gmail.com>
- <20140607140414.GA26534@infradead.org>
- <1402195701.12743.18.camel@ceramic.home.fifi.org>
- <1402435203.24047.9.camel@ceramic.home.fifi.org>
- <20140611072402.GA2683@infradead.org>
- <1402503318.27314.12.camel@niobium.home.fifi.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1402503318.27314.12.camel@niobium.home.fifi.org>
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:64670 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757959AbaFSOvh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:37 -0400
+Received: by mail-qc0-f170.google.com with SMTP id l6so2323785qcy.1
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:36 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 027/104] NFSd: Cleanup the freeing of stateids
+Date: Thu, 19 Jun 2014 10:49:33 -0400
+Message-Id: <1403189450-18729-28-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 11, 2014 at 09:15:18AM -0700, Philippe Troin wrote:
-> So, the only regression remaining between 3.13.11 and 3.14.6 + your
-> patch is the one where listxattr(2) and friends do not NUL-terminate the
-> xattr names they return.  This is detailed in
-> <1402435203.24047.9.camel@ceramic.home.fifi.org> I sent yesterday.
+Add a ->free() callback to the struct nfs4_stid, so that we can
+release a reference to the stid without caring about the contents.
 
-Oh, that's a bug in my patch.  The following incremental patch should
-fix it:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 62 +++++++++++++++++++++++++++++++++++------------------
+ fs/nfsd/state.h     |  2 ++
+ 2 files changed, 43 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index e083827..8f854dd 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -262,6 +262,7 @@ nfs3_list_one_acl(struct inode *inode, int type, const char *name, void *data,
- 	posix_acl_release(acl);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 827e749e258e..b0e22d1ea6df 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -70,6 +70,7 @@ static u64 current_sessionid = 1;
  
- 	*result += strlen(name);
-+	*result += 1;
- 	if (!size)
- 		return 0;
- 	if (*result > size)
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
++static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
+ 
+ /* Locking: */
+ 
+@@ -441,8 +442,15 @@ static void nfs4_file_put_access(struct nfs4_file *fp, u32 access, u32 deny)
+ 		__nfs4_file_put_access(fp, oflag);
+ }
+ 
+-static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
+-kmem_cache *slab)
++static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
++{
++	if (s->sc_file)
++		put_nfs4_file(s->sc_file);
++	kmem_cache_free(slab, s);
++}
++
++static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
++					 struct kmem_cache *slab)
+ {
+ 	struct nfs4_stid *stid;
+ 	int new_id;
+@@ -481,7 +489,22 @@ out_free:
+ 
+ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+ {
+-	return openlockstateid(nfs4_alloc_stid(clp, stateid_slab));
++	struct nfs4_stid *stid;
++	struct nfs4_ol_stateid *stp;
++
++	stid = nfs4_alloc_stid(clp, stateid_slab);
++	if (!stid)
++		return NULL;
++
++	stp = openlockstateid(stid);
++	stp->st_stid.sc_free = nfs4_free_generic_stateid;
++	return stp;
++}
++
++static void nfs4_free_deleg(struct nfs4_stid *stid)
++{
++	nfs4_free_stid(deleg_slab, stid);
++	num_delegations--;
+ }
+ 
+ static struct nfs4_delegation *
+@@ -495,6 +518,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
+ 	if (dp == NULL)
+ 		return dp;
++
++	dp->dl_stid.sc_free = nfs4_free_deleg;
+ 	/*
+ 	 * delegation seqid's are never incremented.  The 4.1 special
+ 	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
+@@ -518,30 +543,21 @@ static void remove_stid_locked(struct nfs4_client *clp, struct nfs4_stid *s)
+ 	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
+ }
+ 
+-static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+-{
+-	if (s->sc_file)
+-		put_nfs4_file(s->sc_file);
+-	kmem_cache_free(slab, s);
+-}
+-
+-static bool nfs4_put_stid(struct kmem_cache *slab, struct nfs4_stid *s)
++static void nfs4_put_stid(struct nfs4_stid *s)
+ {
+ 	struct nfs4_client *clp = s->sc_client;
+ 
+ 	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock))
+-		return false;
++		return;
+ 	remove_stid_locked(clp, s);
+ 	spin_unlock(&clp->cl_lock);
+-	nfs4_free_stid(slab, s);
+-	return true;
++	s->sc_free(s);
+ }
+ 
+ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+-	if (nfs4_put_stid(deleg_slab, &dp->dl_stid))
+-		num_delegations--;
++	nfs4_put_stid(&dp->dl_stid);
+ }
+ 
+ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+@@ -753,14 +769,17 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	list_del(&stp->st_perstateowner);
+ }
+ 
+-static void close_generic_stateid(struct nfs4_ol_stateid *stp)
++static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
+ {
++	struct nfs4_ol_stateid *stp = openlockstateid(stid);
++
+ 	release_all_access(stp);
++	nfs4_free_stid(stateid_slab, stid);
+ }
+ 
+ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+-	nfs4_put_stid(stateid_slab, &stp->st_stid);
++	nfs4_put_stid(&stp->st_stid);
+ }
+ 
+ static void __release_lock_stateid(struct nfs4_lockowner *lo,
+@@ -774,7 +793,6 @@ static void __release_lock_stateid(struct nfs4_lockowner *lo,
+ 	file = find_any_file(stp->st_stid.sc_file);
+ 	if (file)
+ 		filp_close(file, (fl_owner_t)lo);
+-	close_generic_stateid(stp);
+ 	put_generic_stateid(stp);
+ }
+ 
+@@ -832,7 +850,6 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	unhash_generic_stateid(stp);
+ 	release_open_stateid_locks(stp);
+-	close_generic_stateid(stp);
+ }
+ 
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+@@ -4322,8 +4339,11 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 		oo->oo_last_closed_stid = s;
+ 		/*
+ 		 * In the 4.0 case we need to keep the owners around a
+-		 * little while to handle CLOSE replay.
++		 * little while to handle CLOSE replay. We still do need
++		 * to release any file access that is held by them
++		 * before returning however.
+ 		 */
++		release_all_access(s);
+ 		if (list_empty(&oo->oo_owner.so_stateids))
+ 			move_to_close_lru(oo, clp->net);
+ 	}
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 78ed70bd666d..f5dee9e8550a 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -86,6 +86,8 @@ struct nfs4_stid {
+ 	stateid_t sc_stateid;
+ 	struct nfs4_client *sc_client;
+ 	struct nfs4_file *sc_file;
++
++	void (*sc_free)(struct nfs4_stid *);
+ };
+ 
+ struct nfs4_delegation {
+-- 
+1.9.3
+
