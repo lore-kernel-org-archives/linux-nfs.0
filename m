@@ -1,111 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46901 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754799AbaFZBsM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jun 2014 21:48:12 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trondmy@gmail.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/8] nfsd: fix rare symlink decoding bug
-Date: Wed, 25 Jun 2014 21:48:01 -0400
-Message-Id: <1403747288-21590-1-git-send-email-bfields@redhat.com>
-In-Reply-To: <20140624204418.GG2343@pad.redhat.com>
-References: <20140624204418.GG2343@pad.redhat.com>
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:61476 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932775AbaFSOxU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:53:20 -0400
+Received: by mail-qg0-f44.google.com with SMTP id j107so2240717qga.31
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:53:19 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 099/104] NFSd: Remove nfs4_lock_state(): setclientid, setclientid_confirm, renew
+Date: Thu, 19 Jun 2014 10:50:45 -0400
+Message-Id: <1403189450-18729-100-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-An NFS operation that creates a new symlink includes the symlink data,
-which is xdr-encoded as a length followed by the data plus 0 to 3 bytes
-of zero-padding as required to reach a 4-byte boundary.
-
-The vfs, on the other hand, wants null-terminated data.
-
-The simple way to handle this would be by copying the data into a newly
-allocated buffer with space for the final null.
-
-The current nfsd_symlink code tries to be more clever by skipping that
-step in the (likely) case where the byte following the string is already
-0.
-
-But that assumes that the byte following the string is ours to look at.
-In fact, it might be the first byte of a page that we can't read, or of
-some object that another task might modify.
-
-Worse, the NFSv4 code tries to fix the problem by actually writing to
-that byte.
-
-In the NFSv2/v3 cases this actually appears to be safe:
-
-	- nfs3svc_decode_symlinkargs explicitly null-terminates the data
-	  (after first checking its length and copying it to a new
-	  page).
-	- NFSv2 limits symlinks to 1k.  The buffer holding the rpc
-	  request is always at least a page, and the link data (and
-	  previous fields) have maximum lengths that prevent the request
-	  from reaching the end of a page.
-
-In the NFSv4 case the CREATE op is potentially just one part of a long
-compound so can end up on the end of a page if you're unlucky.
-
-The minimal fix here is to copy and null-terminate in the NFSv4 case.
-The nfsd_symlink() interface here seems too fragile, though.  It should
-really either do the copy itself every time or just require a
-null-terminated string.
-
-Reported-by: Jeff Layton <jlayton@primarydata.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4proc.c |    9 ---------
- fs/nfsd/nfs4xdr.c  |   13 ++++++++++++-
- 2 files changed, 12 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4state.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a6be9d3..2b3795a 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -621,15 +621,6 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d91247f86d6b..e159e316ecdb 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2783,7 +2783,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (new == NULL)
+ 		return nfserr_jukebox;
+ 	/* Cases below refer to rfc 3530 section 14.2.33: */
+-	nfs4_lock_state();
+ 	spin_lock(&nn->client_lock);
+ 	conf = find_confirmed_client_by_name(&clname, nn);
+ 	if (conf) {
+@@ -2818,7 +2817,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	status = nfs_ok;
+ out:
+ 	spin_unlock(&nn->client_lock);
+-	nfs4_unlock_state();
+ 	if (new)
+ 		free_client(new);
+ 	if (unconf)
+@@ -2841,7 +2839,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
  
- 	switch (create->cr_type) {
- 	case NF4LNK:
--		/* ugh! we have to null-terminate the linktext, or
--		 * vfs_symlink() will choke.  it is always safe to
--		 * null-terminate by brute force, since at worst we
--		 * will overwrite the first byte of the create namelen
--		 * in the XDR buffer, which has already been extracted
--		 * during XDR decode.
--		 */
--		create->cr_linkname[create->cr_linklen] = 0;
--
- 		status = nfsd_symlink(rqstp, &cstate->current_fh,
- 				      create->cr_name, create->cr_namelen,
- 				      create->cr_linkname, create->cr_linklen,
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 30913c8..a1c48b4 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -600,7 +600,18 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
- 		READ_BUF(4);
- 		create->cr_linklen = be32_to_cpup(p++);
- 		READ_BUF(create->cr_linklen);
--		SAVEMEM(create->cr_linkname, create->cr_linklen);
-+		/*
-+		 * The VFS will want a null-terminated string, and
-+		 * null-terminating in place isn't safe since this might
-+		 * end on a page boundary:
-+		 */
-+		create->cr_linkname =
-+				kmalloc(create->cr_linklen + 1, GFP_KERNEL);
-+		if (!create->cr_linkname)
-+			return nfserr_jukebox;
-+		memcpy(create->cr_linkname, p, create->cr_linklen);
-+		create->cr_linkname[create->cr_linklen] = '\0';
-+		defer_free(argp, kfree, create->cr_linkname);
- 		break;
- 	case NF4BLK:
- 	case NF4CHR:
+ 	if (STALE_CLIENTID(clid, nn))
+ 		return nfserr_stale_clientid;
+-	nfs4_lock_state();
+ 
+ 	spin_lock(&nn->client_lock);
+ 	conf = find_confirmed_client(clid, false, nn);
+@@ -2891,7 +2888,6 @@ out:
+ 	spin_unlock(&nn->client_lock);
+ 	if (old)
+ 		expire_client(old);
+-	nfs4_unlock_state();
+ 	return status;
+ }
+ 
+@@ -3948,7 +3944,6 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 status;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+-	nfs4_lock_state();
+ 	dprintk("process_renew(%08x/%08x): starting\n", 
+ 			clid->cl_boot, clid->cl_id);
+ 	status = lookup_clientid(clid, cstate, nn);
+@@ -3961,7 +3956,6 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
+ 	status = nfs_ok;
+ out:
+-	nfs4_unlock_state();
+ 	return status;
+ }
+ 
 -- 
-1.7.9.5
+1.9.3
 
