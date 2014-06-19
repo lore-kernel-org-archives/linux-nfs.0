@@ -1,116 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:59095 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750931AbaFWWj1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:39:27 -0400
-Subject: [PATCH v1 03/13] xprtrdma: Limit data payload size for ALLPHYSICAL
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Jun 2014 18:39:25 -0400
-Message-ID: <20140623223925.1634.48882.stgit@manet.1015granger.net>
-In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:40185 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758054AbaFSOwL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:11 -0400
+Received: by mail-qa0-f52.google.com with SMTP id w8so2008460qac.25
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:10 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 050/104] nfsd: clean up nfs4_release_lockowner
+Date: Thu, 19 Jun 2014 10:49:56 -0400
+Message-Id: <1403189450-18729-51-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the client uses physical memory registration, each page in the
-payload gets its own array entry in the RPC/RDMA header's chunk list.
+Now that we know that we won't have several lockowners with the same,
+owner->data, we can simplify nfs4_release_lockowner and get rid of
+the lo_list in the process.
 
-Therefore, don't advertise a maximum payload size that would require
-more array entries than can fit in the RPC buffer where RPC/RDMA
-headers are built.
-
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=248
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    4 +++-
- net/sunrpc/xprtrdma/verbs.c     |   41 +++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 3 files changed, 45 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 46 ++++++++++++++++++++++++----------------------
+ fs/nfsd/state.h     |  1 -
+ 2 files changed, 24 insertions(+), 23 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 66f91f0..4185102 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -296,7 +296,6 @@ xprt_setup_rdma(struct xprt_create *args)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cb8bdadb176a..17a1136ad0a1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5190,7 +5190,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			struct nfsd4_release_lockowner *rlockowner)
+ {
+ 	clientid_t *clid = &rlockowner->rl_clientid;
+-	struct nfs4_stateowner *sop;
++	struct nfs4_stateowner *sop = NULL, *tmp;
+ 	struct nfs4_lockowner *lo;
+ 	struct nfs4_ol_stateid *stp;
+ 	struct xdr_netobj *owner = &rlockowner->rl_owner;
+@@ -5211,31 +5211,33 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	status = nfserr_locks_held;
+ 	INIT_LIST_HEAD(&matches);
  
- 	xprt->resvport = 0;		/* privileged port not needed */
- 	xprt->tsh_size = 0;		/* RPC-RDMA handles framing */
--	xprt->max_payload = RPCRDMA_MAX_DATA_SEGS * PAGE_SIZE;
- 	xprt->ops = &xprt_rdma_procs;
- 
- 	/*
-@@ -382,6 +381,9 @@ xprt_setup_rdma(struct xprt_create *args)
- 	new_ep->rep_xprt = xprt;
- 
- 	xprt_rdma_format_addresses(xprt);
-+	xprt->max_payload = rpcrdma_max_payload(new_xprt);
-+	dprintk("RPC:       %s: transport data payload maximum: %zu bytes\n",
-+		__func__, xprt->max_payload);
- 
- 	if (!try_module_get(THIS_MODULE))
- 		goto out4;
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index f70b8ad..3c7f904 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1819,3 +1819,44 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
- 			rc);
- 	return rc;
- }
+-	list_for_each_entry(sop, &nn->ownerstr_hashtbl[hashval], so_strhash) {
+-		if (sop->so_is_open_owner)
+-			continue;
+-		if (!same_owner_str(sop, owner, clid))
++	/* Find the matching lock stateowner */
++	list_for_each_entry(tmp, &nn->ownerstr_hashtbl[hashval], so_strhash) {
++		if (tmp->so_is_open_owner)
+ 			continue;
+-		list_for_each_entry(stp, &sop->so_stateids,
+-				st_perstateowner) {
+-			lo = lockowner(sop);
+-			if (check_for_locks(stp->st_stid.sc_file, lo))
+-				goto out;
+-			list_add(&lo->lo_list, &matches);
++		if (same_owner_str(tmp, owner, clid)) {
++			sop = tmp;
++			atomic_inc(&sop->so_count);
++			break;
+ 		}
+ 	}
+-	/* Clients probably won't expect us to return with some (but not all)
+-	 * of the lockowner state released; so don't release any until all
+-	 * have been checked. */
+-	status = nfs_ok;
+-	while (!list_empty(&matches)) {
+-		lo = list_entry(matches.next, struct nfs4_lockowner,
+-								lo_list);
+-		/* unhash_stateowner deletes so_perclient only
+-		 * for openowners. */
+-		list_del(&lo->lo_list);
+-		release_lockowner(lo);
 +
-+/* Physical mapping means one Read/Write list entry per-page.
-+ * All list entries must fit within an inline buffer
-+ *
-+ * NB: The server must return a Write list for NFS READ,
-+ *     which has the same constraint. Factor in the inline
-+ *     rsize as well.
-+ */
-+static size_t
-+rpcrdma_physical_max_payload(struct rpcrdma_xprt *r_xprt)
-+{
-+	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
-+	unsigned int inline_size, pages;
++	/* No matching owner found, maybe a replay? Just declare victory... */
++	if (!sop) {
++		status = nfs_ok;
++		goto out;
+ 	}
 +
-+	inline_size = min_t(unsigned int,
-+			cdata->inline_wsize, cdata->inline_rsize) -
-+				RPCRDMA_HDRLEN_MIN;
-+	pages = inline_size / sizeof(struct rpcrdma_segment);
-+	return pages << PAGE_SHIFT;
-+}
-+
-+static size_t
-+rpcrdma_mr_max_payload(struct rpcrdma_xprt *r_xprt)
-+{
-+	return RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT;
-+}
-+
-+size_t
-+rpcrdma_max_payload(struct rpcrdma_xprt *r_xprt)
-+{
-+	size_t result;
-+
-+	switch (r_xprt->rx_ia.ri_memreg_strategy) {
-+	case RPCRDMA_ALLPHYSICAL:
-+		result = rpcrdma_physical_max_payload(r_xprt);
-+		break;
-+	default:
-+		result = rpcrdma_mr_max_payload(r_xprt);
++	lo = lockowner(sop);
++	/* see if there are still any locks associated with it */
++	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
++		if (check_for_locks(stp->st_stid.sc_file, lo))
++			goto out;
 +	}
-+	return result;
-+}
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 97ca516..f3d86b2 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -348,6 +348,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
-  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
-  */
- int rpcrdma_marshal_req(struct rpc_rqst *);
-+size_t rpcrdma_max_payload(struct rpcrdma_xprt *);
++
++	status = nfs_ok;
++	release_lockowner(lo);
++	nfs4_put_stateowner(sop);
+ out:
+ 	nfs4_unlock_state();
+ 	return status;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 147d0c91b819..00f2951423cc 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -370,7 +370,6 @@ struct nfs4_openowner {
  
- /* Temporary NFS request map cache. Created in svc_rdma.c  */
- extern struct kmem_cache *svc_rdma_map_cachep;
+ struct nfs4_lockowner {
+ 	struct nfs4_stateowner	lo_owner; /* must be first element */
+-	struct list_head	lo_list; /* for temporary uses */
+ };
+ 
+ static inline struct nfs4_openowner * openowner(struct nfs4_stateowner *so)
+-- 
+1.9.3
 
