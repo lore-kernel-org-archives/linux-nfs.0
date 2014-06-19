@@ -1,127 +1,227 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f54.google.com ([209.85.160.54]:63218 "EHLO
-	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757173AbaFZAGY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 20:06:24 -0400
-Received: by mail-pb0-f54.google.com with SMTP id un15so2335872pbc.41
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 17:06:24 -0700 (PDT)
-Message-ID: <53AB63D3.90509@gmail.com>
-Date: Thu, 26 Jun 2014 08:05:39 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: Re: [PATCH 3/3 v3] ACL: Add some test cases for nfsv4 acl
-References: <539AD7DD.5060108@gmail.com> <20140618145626.GC17790@fieldses.org>
-In-Reply-To: <20140618145626.GC17790@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:54268 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932490AbaFSOxC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:53:02 -0400
+Received: by mail-qg0-f54.google.com with SMTP id q107so2233605qgd.27
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:53:02 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 087/104] nfsd: add more granular locking to forget_locks fault injector
+Date: Thu, 19 Jun 2014 10:50:33 -0400
+Message-Id: <1403189450-18729-88-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/18/2014 22:56, J. Bruce Fields wrote:
-> On Fri, Jun 13, 2014 at 06:52:13PM +0800, Kinglong Mee wrote:
->> v3, modify for exist st_acl.py
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  nfs4.0/servertests/st_acl.py | 337 +++++++++++++++++++++++++++++++++++++++++--
->>  1 file changed, 326 insertions(+), 11 deletions(-)
-... snip ...
->> +def doSetACLEnv(t, env, type = NF4REG):
->> +    c = env.c1
->> +    path = c.homedir + [t.code]
->> +    res = c.create_obj(path, attrs={FATTR4_MODE:0777})
->> +    check(res)
->> +
->> +    c1 = env.c2
-> 
-> That's pretty confusing variable naming.
-
-A new patch fixing the variable is added below.
-Please have a check, thanks.
-
-> 
->> +    c1.init_connection()
->> +
->> +    path += [t.code]
->> +    attrs = {FATTR4_MODE: 0777}
->> +
->> +    if type == NF4REG:
->> +        fh, stateid = c1.create_confirm(t.code, path, attrs=attrs,
->> +                                        deny=OPEN4_SHARE_DENY_NONE)
-> 
-> Also, this creates a minor cleanup annoyance: a later run of pynfs will
-> attempt to reuse the already-existing tree and if it's not running as
-> root tries to make everything writable (see nfs4.0/nfs4lib.py:clean_dir)
-> so pynfs gives up when a setattr of mode fails (because this file is
-> owned by someone else).
-
-Yes, that's right.
-I will check the problem with running as a non-root user,
-and try to find the resolve.
-
-> 
-> Honestly I don't really understand how pynfs is meant to work here or
-> who's fault this is, but I'm setting this patch aside for now.
-> 
-
-As you said, I always run it as a root-user, so pynfs works correctly.
-
-thanks,
-Kinglong Mee
-
->From b340bb95ab063d19f421fb987114ef05c395ee64 Mon Sep 17 00:00:00 2001
-From: Kinglong Mee <kinglongmee@gmail.com>
-Date: Thu, 26 Jun 2014 15:57:11 +0800
-Subject: [PATCH] nfs4.0/acl: meaningful variable naming for session
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- nfs4.0/servertests/st_acl.py | 21 ++++++++++++---------
- 1 file changed, 12 insertions(+), 9 deletions(-)
+ fs/nfsd/fault_inject.c |   8 ++--
+ fs/nfsd/nfs4state.c    | 117 ++++++++++++++++++++++++++++++++++++++++++++++---
+ fs/nfsd/state.h        |   6 ++-
+ 3 files changed, 117 insertions(+), 14 deletions(-)
 
-diff --git a/nfs4.0/servertests/st_acl.py b/nfs4.0/servertests/st_acl.py
-index 5c7146a..7869189 100644
---- a/nfs4.0/servertests/st_acl.py
-+++ b/nfs4.0/servertests/st_acl.py
-@@ -130,25 +130,28 @@ def doCheckACL(t, c, file, acl):
- #    print printableacl(attrs[FATTR4_ACL])
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index d7c79e984d16..675594cd316c 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -139,11 +139,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	},
+ 	{
+ 		.file     = "forget_locks",
+-		.get	  = nfsd_inject_get,
+-		.set_val  = nfsd_inject_set,
+-		.set_clnt = nfsd_inject_set_client,
+-		.forget   = nfsd_forget_client_locks,
+-		.print    = nfsd_print_client_locks,
++		.get	  = nfsd_inject_print_locks,
++		.set_val  = nfsd_inject_forget_locks,
++		.set_clnt = nfsd_inject_forget_client_locks,
+ 	},
+ 	{
+ 		.file     = "forget_openowners",
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 61102b93902c..af726e934ea9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -209,6 +209,16 @@ static void put_client_renew(struct nfs4_client *clp)
+ 	spin_unlock(&nn->client_lock);
+ }
  
- def doSetACLEnv(t, env, type = NF4REG):
--    c = env.c1
--    path = c.homedir + [t.code]
--    res = c.create_obj(path, attrs={FATTR4_MODE:0777})
-+    """ Create a directory with 0777 as top dir, and create a directory
-+        or a regualr file for testing by other user under the above dir.
-+    """
-+    cdir = env.c1
-+    path = cdir.homedir + [t.code]
-+    res = cdir.create_obj(path, attrs={FATTR4_MODE:0777})
-     check(res)
++static void
++put_client(struct nfs4_client *clp)
++{
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	atomic_dec(&clp->cl_refcount);
++	spin_unlock(&nn->client_lock);
++}
++
+ static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+ {
+ 	__be32 status;
+@@ -5661,37 +5671,130 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 	struct nfs4_openowner *oop;
+ 	struct nfs4_ol_stateid *stp, *st_next;
+ 	struct nfs4_ol_stateid *lst, *lst_next;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
+ 	u64 count = 0;
  
--    c1 = env.c2
--    c1.init_connection()
-+    ctest = env.c2
-+    ctest.init_connection()
++	spin_lock(&clp->cl_lock);
+ 	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
+ 		list_for_each_entry_safe(stp, st_next, &oop->oo_owner.so_stateids, st_perstateowner) {
+ 			list_for_each_entry_safe(lst, lst_next, &stp->st_locks, st_locks) {
+ 				if (func) {
+ 					func(lst);
+-					if (collect)
++					if (collect) {
++						lockdep_assert_held(&nn->client_lock);
++						atomic_inc(&clp->cl_refcount);
+ 						list_add(&lst->st_locks, collect);
++					}
+ 				}
+-				if (++count == max)
+-					return count;
++				++count;
++				/*
++				 * Despite the fact that these functions deal
++				 * with 64-bit integers for "count", we must
++				 * ensure that it doesn't blow up the
++				 * clp->cl_refcount. Throw a warning if we
++				 * start to approach INT_MAX here.
++				 */
++				WARN_ON_ONCE(count == (INT_MAX / 2));
++				if (count == max)
++					goto out;
+ 			}
+ 		}
+ 	}
++out:
++	spin_unlock(&clp->cl_lock);
  
-     path += [t.code]
-     attrs = {FATTR4_MODE: 0777}
+ 	return count;
+ }
  
-     if type == NF4REG:
--        fh, stateid = c1.create_confirm(t.code, path, attrs=attrs,
-+        fh, stateid = ctest.create_confirm(t.code, path, attrs=attrs,
-                                         deny=OPEN4_SHARE_DENY_NONE)
--        return (c1, path, fh, stateid)
-+        return (ctest, path, fh, stateid)
-     else:
--        res = c1.create_obj(path, attrs=attrs)
-+        res = ctest.create_obj(path, attrs=attrs)
-         check(res)
--        return (c1, path)
-+        return (ctest, path)
+-u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
++static u64
++nfsd_collect_client_locks(struct nfs4_client *clp, struct list_head *collect, u64 max)
+ {
+-	return nfsd_foreach_client_lock(clp, max, NULL, release_lock_stateid);
++	return nfsd_foreach_client_lock(clp, max, collect, unhash_lock_stateid);
+ }
  
- def testWriteFileWithoutACL(t, env):
-     """ Check write file without write ACL
+-u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
++static u64
++nfsd_print_client_locks(struct nfs4_client *clp)
+ {
+-	u64 count = nfsd_foreach_client_lock(clp, max, NULL, NULL);
++	u64 count = nfsd_foreach_client_lock(clp, 0, NULL, NULL);
+ 	nfsd_print_count(clp, count, "locked files");
+ 	return count;
+ }
+ 
++u64
++nfsd_inject_print_locks(struct nfsd_fault_inject_op *op)
++{
++	struct nfs4_client *clp;
++	u64 count = 0;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++
++	if (!nfsd_netns_ready(nn))
++		return 0;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru)
++		count += nfsd_print_client_locks(clp);
++	spin_unlock(&nn->client_lock);
++
++	return count;
++}
++
++static void
++nfsd_reap_locks(struct list_head *reaplist)
++{
++	struct nfs4_client *clp;
++	struct nfs4_ol_stateid *stp, *next;
++
++	list_for_each_entry_safe(stp, next, reaplist, st_locks) {
++		list_del_init(&stp->st_locks);
++		clp = stp->st_stid.sc_client;
++		put_generic_stateid(stp);
++		put_client(clp);
++	}
++}
++
++u64
++nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *op,
++				struct sockaddr_storage *addr, size_t addr_size)
++{
++	unsigned int count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp)
++		count = nfsd_collect_client_locks(clp, &reaplist, 0);
++	spin_unlock(&nn->client_lock);
++	nfsd_reap_locks(&reaplist);
++	return count;
++}
++
++u64
++nfsd_inject_forget_locks(struct nfsd_fault_inject_op *op, u64 max)
++{
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		count += nfsd_collect_client_locks(clp, &reaplist, max - count);
++		if (max != 0 && count >= max)
++			break;
++	}
++	spin_unlock(&nn->client_lock);
++	nfsd_reap_locks(&reaplist);
++	return count;
++}
++
+ static u64 nfsd_foreach_client_open(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_openowner *))
+ {
+ 	struct nfs4_openowner *oop, *next;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 0c4247b2bf8c..fdac0c19cb3c 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -478,12 +478,14 @@ u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
+ u64 nfsd_inject_forget_client(struct nfsd_fault_inject_op *, struct sockaddr_storage *, size_t);
+ u64 nfsd_inject_forget_clients(struct nfsd_fault_inject_op *, u64);
+ 
+-u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
++u64 nfsd_inject_print_locks(struct nfsd_fault_inject_op *);
++u64 nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *, struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_locks(struct nfsd_fault_inject_op *, u64);
++
+ u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+ u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ 
+-u64 nfsd_print_client_locks(struct nfs4_client *, u64);
+ u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
 -- 
 1.9.3
 
