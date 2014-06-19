@@ -1,59 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from b.mx.filmlight.ltd.uk ([77.107.81.251]:10840 "HELO
-	b.mx.filmlight.ltd.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S932545AbaFCNJq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 09:09:46 -0400
-Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
-From: Roger Willcocks <roger@filmlight.ltd.uk>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Cc: "H. Peter Anvin" <hpa@zytor.com>, Nicolas Pitre <nicolas.pitre@linaro.org>,
-        linux-arch@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Arnd Bergmann <arnd@arndb.de>,
-        LKML Kernel <linux-kernel@vger.kernel.org>, xfs@oss.sgi.com,
-        Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>, john.stultz@linaro.org,
-        lftan@altera.com, linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        geert@linux-m68k.org, tglx@linutronix.de, joseph@codesourcery.com
-In-Reply-To: <20140602233212.GA2060@thunk.org>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
-	 <8618458.1EVJCoVbkH@wuerfel>
-	 <alpine.LFD.2.11.1406012121430.17310@knanqh.ubzr>
-	 <4178301.j9kWdGCRLC@wuerfel>
-	 <6868F108-F0B2-423F-AE31-90DF86A5B7DD@oracle.com>
-	 <20140602153124.GH30598@thunk.org> <538CB085.5000502@zytor.com>
-	 <20140602222954.GA29690@thunk.org> <538CFB83.20703@zytor.com>
-	 <20140602233212.GA2060@thunk.org>
-Content-Type: text/plain
-Date: Tue, 03 Jun 2014 14:09:43 +0100
-Message-Id: <1401800983.6065.272.camel@montana.filmlight.ltd.uk>
-Mime-Version: 1.0
+Received: from mail-qc0-f172.google.com ([209.85.216.172]:64576 "EHLO
+	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757917AbaFSOwV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:21 -0400
+Received: by mail-qc0-f172.google.com with SMTP id o8so2277046qcw.3
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:20 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 057/104] NFSd: Cleanup - Let nfsd4_lookup_stateid() take a cstate argument
+Date: Thu, 19 Jun 2014 10:50:03 -0400
+Message-Id: <1403189450-18729-58-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-On Mon, 2014-06-02 at 19:32 -0400, Theodore Ts'o wrote:
+The cstate already holds information about the session, and hence
+the client id, so it makes more sense to pass that information
+rather than the current practice of passing a 'minor version' number.
 
-> Linux's time(2) can return (time_t) -1 and set errno to EFAULT, per
-> the Posix specification:
-> 
-> SYSCALL_DEFINE1(time, time_t __user *, tloc)
-> {
-> 	time_t i = get_seconds();
-> 
-> 	if (tloc) {
-> 		if (put_user(i,tloc))
-> 			return -EFAULT;
-> 	}
-> 	force_successful_syscall_return();
-> 	return i;
-> }
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
 
-get_seconds() returns an unsigned long so there's potential for overflow
-here.
-
---
-Roger
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a8969884f65e..7034db2d00b3 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4106,12 +4106,14 @@ out_put_stid:
+ 	return status;
+ }
+ 
+-static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
+-				   struct nfs4_stid **s, bool sessions,
+-				   struct nfsd_net *nn)
++static __be32
++nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
++		     stateid_t *stateid, unsigned char typemask,
++		     struct nfs4_stid **s, struct nfsd_net *nn)
+ {
+ 	struct nfs4_client *cl;
+ 	__be32 status;
++	bool sessions = cstate->minorversion != 0;
+ 
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+ 		return nfserr_bad_stateid;
+@@ -4157,8 +4159,9 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 
+ 	nfs4_lock_state();
+ 
+-	status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
+-				      &s, cstate->minorversion, nn);
++	status = nfsd4_lookup_stateid(cstate, stateid,
++				      NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
++				      &s, nn);
+ 	if (status)
+ 		goto unlock_state;
+ 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
+@@ -4332,8 +4335,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 		seqid, STATEID_VAL(stateid));
+ 
+ 	*stpp = NULL;
+-	status = nfsd4_lookup_stateid(stateid, typemask, &s,
+-				      cstate->minorversion, nn);
++	status = nfsd4_lookup_stateid(cstate, stateid, typemask, &s, nn);
+ 	if (status)
+ 		return status;
+ 	stp = openlockstateid(s);
+@@ -4589,8 +4591,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return status;
+ 
+ 	nfs4_lock_state();
+-	status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID, &s,
+-				      cstate->minorversion, nn);
++	status = nfsd4_lookup_stateid(cstate, stateid, NFS4_DELEG_STID, &s, nn);
+ 	if (status)
+ 		goto out;
+ 	dp = delegstateid(s);
+-- 
+1.9.3
 
