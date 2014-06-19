@@ -1,107 +1,77 @@
-From: Doug Ledford <dledford@redhat.com>
-Subject: Re: NFSoRDMA developers bi-weekly meeting announcement (4/30)
-Date: Wed, 30 Apr 2014 19:58:07 -0400 (EDT)
-Message-ID: <7221.30496656082$1398902322@news.gmane.org>
-References: <53614C03.80606@oracle.com> <CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com> <BBF761A6-2407-4457-92D5-8C2EC736BC9D@oracle.com> <CAJZOPZJgp-QdxR+PmwACWOSc4h_167J0iBjfmMrPX8sek600WA@mail.gmail.com> <536161D0.3000600@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Jeff Becker <jeffrey.c.becker@nasa.gov>, yanb <yanb@mellanox.com>,
-	Phil Cayton <phil.cayton@intel.com>,
-	Susan K Coulter <skc@lanl.gov>,
-	Anna Schumaker <Anna.Schumaker@netapp.com>,
-	"Devesh.Sharma" <Devesh.Sharma@emulex.com>,
-	Steve Wise <swise@opengridcomputing.com>,
-	Allen Andrews <Allen.Andrews@emulex.com>,
-	Jeff Layton <jlayton@redhat.com>,
-	linux-rdma <linux-rdma@vger.kernel.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	emossman <emossman@iol.unh.edu>,
-	Or Gerlitz <or.gerlitz@gmail.com>,
-	Chuck Lever <chuck.lever@oracle.com>
-To: Shirley Ma <shirley.ma@oracle.com>
-Return-path: <linux-rdma-owner@vger.kernel.org>
-In-Reply-To: <536161D0.3000600@oracle.com>
-Sender: linux-rdma-owner@vger.kernel.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:44910 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757917AbaFSOvv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:51 -0400
+Received: by mail-qg0-f50.google.com with SMTP id j5so2166098qga.23
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:50 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 037/104] NFSd: nfsd4_process_open2() must reference the delegation stateid
+Date: Thu, 19 Jun 2014 10:49:43 -0400
+Message-Id: <1403189450-18729-38-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/302014 Shirley Ma wrote:
-> On 04/30/2014 01:00 PM, Or Gerlitz wrote:
-> > On Wed, Apr 30, 2014 at 10:47 PM, Chuck Lever
-> > <chuck.lever@oracle.com>
-> >
-> >> If I understood Yan, he is trying to use NFS/RDMA in guests
-> >> (kvm?).  We
-> >> are pretty sure that is not working at the moment,
-> > can you provide a short 1-2 liner why/what is broken there? the
-> > only
-> > thing which I can think of to be not-supported over mlx4 VFs is the
-> > proprietary FMRs, but AFAIK, the nfs-rdma code doesn't even have a
-> > mode which uses them, right?
-> I've created Xen guest on DomU. Dom0 PF works which has no mtts been
-> enabled, however DomU I hit this problem by just mounting the file
-> system:
-> mlx4_core 0000:00:04.0: Failed to allocate mtts for 66 pages(order 7)
-> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order
-> 12)
-> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order
-> 12)
-> 
-> RDMA microbenchmark perftest works ok. I enabled mtts scripts when
-> booting the Xen guest. cat /proc/mtrr:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-What OS/RDMA stack are you using?  I'm not familiar with any mtts
-scripts, however I know there is an mtrr fixup script I wrote for
-the RDMA stack in Fedora/RHEL (and so I assume it's in Oracle Linux
-too, but I haven't checked).  In fact, I assume that's the script
-you are referring to based on the fact that your next bit of your
-email cats the /proc/mtrr file.  But I don't believe whether there
-is an mtrr setting mixup or not that is should have any impact on
-the mtts allocations in the driver.  Even if your mtrr registers
-were set incorrectly, the problem then becomes either A) a serious
-performance bottleneck (in the case of Intel hardware that needs
-write combining in order to get more than about 50MByte/s of
-throughput on their cards) or B) failed operation because MMIO
-writes to the card are being cached/write combined when they should
-not be.
+Ensure that nfsd4_process_open2() keeps a reference to the delegation
+stateid until it is done working with it.
 
-I suspect this is more likely Xen related than mtts/mtrr related.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
 
-> [root@ca-nfsdev1vm1 log]# cat /proc/mtrr
-> reg00: base=0x0f0000000 ( 3840MB), size=  128MB, count=1: uncachable
-> reg01: base=0x0f8000000 ( 3968MB), size=   64MB, count=1: uncachable
-> 
-> lspci -v
-> 00:04.0 InfiniBand: Mellanox Technologies MT25400 Family [ConnectX-2
-> Virtual Function] (rev b0)
->      Subsystem: Mellanox Technologies Device 61b0
->      Physical Slot: 4
->      Flags: bus master, fast devsel, latency 0
->      Memory at f0000000 (64-bit, prefetchable) [size=128M]
->      Capabilities: [60] Express Endpoint, MSI 00
->      Capabilities: [9c] MSI-X: Enable+ Count=4 Masked-
->      Kernel driver in use: mlx4_core
->      Kernel modules: mlx4_core
-> 
-> I will need to find another machine to try KVM guest. Yan might hit a
-> different problem.
-> 
-> I have ConnectX-2, FW level is 2.11.2012. Yan has ConnectX-3, he
-> tried
-> it on KVM guest.
-> >> but that is a priority
-> >> to get fixed. Shirley has a lab set up and has been looking into
-> >> it.
-> Shirley
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cf3b19bb5839..4878faec4c68 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3180,6 +3180,8 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
+ 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
+ 	if (!ret)
+ 		return NULL;
++	/* FIXME: move into find_stateid_by_type */
++	atomic_inc(&ret->sc_count);
+ 	return delegstateid(ret);
+ }
+ 
+@@ -3195,14 +3197,18 @@ nfs4_check_deleg(struct nfs4_client *cl, struct nfsd4_open *open,
+ {
+ 	int flags;
+ 	__be32 status = nfserr_bad_stateid;
++	struct nfs4_delegation *deleg;
+ 
+-	*dp = find_deleg_stateid(cl, &open->op_delegate_stateid);
+-	if (*dp == NULL)
++	deleg = find_deleg_stateid(cl, &open->op_delegate_stateid);
++	if (deleg == NULL)
+ 		goto out;
+ 	flags = share_access_to_flags(open->op_share_access);
+-	status = nfs4_check_delegmode(*dp, flags);
+-	if (status)
+-		*dp = NULL;
++	status = nfs4_check_delegmode(deleg, flags);
++	if (status) {
++		nfs4_put_delegation(deleg);
++		goto out;
++	}
++	*dp = deleg;
+ out:
+ 	if (!nfsd4_is_deleg_cur(open))
+ 		return nfs_ok;
+@@ -3644,6 +3650,8 @@ out:
+ 	if (!(open->op_openowner->oo_flags & NFS4_OO_CONFIRMED) &&
+ 	    !nfsd4_has_session(&resp->cstate))
+ 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
++	if (dp)
++		nfs4_put_delegation(dp);
+ 
+ 	return status;
+ }
 -- 
-Doug Ledford <dledford@redhat.com>
-              GPG KeyID: 0E572FDD
-	      http://people.redhat.com/dledford
+1.9.3
 
