@@ -1,103 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:33096 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751423AbaF2MOU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Jun 2014 08:14:20 -0400
-Date: Sun, 29 Jun 2014 05:14:19 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v2 022/117] nfsd: Cache the client that was looked up in
- lookup_clientid()
-Message-ID: <20140629121419.GC16150@infradead.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
- <1403810017-16062-23-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403810017-16062-23-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f169.google.com ([209.85.216.169]:62108 "EHLO
+	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757959AbaFSOvj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:39 -0400
+Received: by mail-qc0-f169.google.com with SMTP id c9so2283181qcz.14
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:38 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 029/104] NFSd: Add locking to protect the state owner lists
+Date: Thu, 19 Jun 2014 10:49:35 -0400
+Message-Id: <1403189450-18729-30-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 26, 2014 at 03:12:02PM -0400, Jeff Layton wrote:
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> 
-> We want to use the nfsd4_compound_state to cache the nfs4_client
-> in order to optimise away extra lookups of the clid.
+We use the clp->cl_lock for this. For now, there's a lot of cl_lock
+thrashing, but in a later patch we'll reduce that.
 
-Should mention that this is only for 4.0.  Actually, kooking at
-"nfsd: Allow struct nfsd4_compound_state to cache the nfs4_client" that
-patch seems to mostly be a few random code cleanups that should have
-a different title so it might make more sense to move the caching
-of the client for 4.1+ to this patch as well.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
 
-And please write proper, detailed changelogs :)
-
-> +static __be32 lookup_clientid(clientid_t *clid,
-> +		struct nfsd4_compound_state *cstate,
-> +		struct nfsd_net *nn)
-
-Now that we don't look up the client idea for the normal case but just
-verify it we should probably rename this function to
-nfsd4_verify_clientid or something similar.
-
-While it doesn't belong into this patch:  why don't we cache the
-nfsd_net in the nfsd4_compound_state
-
->  {
->  	struct nfs4_client *found;
->  
-> +	if (cstate->clp != NULL) {
-> +		found = cstate->clp;
-> +		if (!same_clid(&found->cl_clientid, clid))
-> +			return nfserr_stale_clientid;
-> +	} else {
-> +		if (STALE_CLIENTID(clid, nn))
-> +			return nfserr_stale_clientid;
-> +		/*
-> +		 * Usually for v4.1+ we get the client in the SEQUENCE op, so
-
-Usually implices there might be a case where we don't get it.  Which
-case would that be?
-
-> +		 * if we don't have one cached already then we know this is for
-> +		 * is for v4.0 and "sessions" will be false.
-> +		 */
-> +		found = find_confirmed_client(clid, false, nn);
-> +		/* Cache the nfs4_client in cstate! */
-> +		if (found) {
-> +			cstate->clp = found;
-> +			atomic_inc(&found->cl_refcount);
-> +		}
-> +	}
->  	return found ? nfs_ok : nfserr_expired;
-
-The whole thing could be simplified a little more:
-
-	if (cstate->clp) {
-		if (!same_clid(&cstate->clp->cl_clientid, clid))
-			return nfserr_stale_clientid;
-		retur nfs_ok;
-	}
-
-	if (STALE_CLIENTID(clid, nn))
-		return nfserr_stale_clientid;
-
-	found = find_confirmed_client(clid, false, nn);
-	if (!found)
-		return nfserr_expired;
-
-	cstate->clp = found;
-	atomic_inc(&found->cl_refcount);
-	return nfs_ok;
-
-> +	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
->  	if (status == nfserr_stale_clientid) {
-> +		if (cstate->session)
->  			return nfserr_bad_stateid;
->  		return nfserr_stale_stateid;
->  	}
-
-Why do we return a different error here for the 4.1+ case?  And why not
-in other places using lookup_clientid?
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 99995d2537c3..6e8d3ec088d9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -763,6 +763,8 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_file *fp = stp->st_stid.sc_file;
+ 
++	lockdep_assert_held(&stp->st_stateowner->so_client->cl_lock);
++
+ 	spin_lock(&fp->fi_lock);
+ 	list_del(&stp->st_perfile);
+ 	spin_unlock(&fp->fi_lock);
+@@ -797,9 +799,13 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ static void __release_lock_stateid(struct nfs4_lockowner *lo,
+ 		struct nfs4_ol_stateid *stp)
+ {
++	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
++
++	spin_lock(&oo->oo_owner.so_client->cl_lock);
+ 	list_del(&stp->st_locks);
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
++	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ 	put_generic_stateid(stp);
+ }
+ 
+@@ -843,20 +849,26 @@ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ }
+ 
+ static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
++	__releases(&open_stp->st_stateowner->so_client->cl_lock)
++	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
+ {
+ 	struct nfs4_ol_stateid *stp;
+ 
+ 	while (!list_empty(&open_stp->st_locks)) {
+ 		stp = list_entry(open_stp->st_locks.next,
+ 				struct nfs4_ol_stateid, st_locks);
++		spin_unlock(&open_stp->st_stateowner->so_client->cl_lock);
+ 		release_lock_stateid(stp);
++		spin_lock(&open_stp->st_stateowner->so_client->cl_lock);
+ 	}
+ }
+ 
+ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ {
++	spin_lock(&stp->st_stateowner->so_client->cl_lock);
+ 	unhash_generic_stateid(stp);
+ 	release_open_stateid_locks(stp);
++	spin_unlock(&stp->st_stateowner->so_client->cl_lock);
+ }
+ 
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+@@ -2862,7 +2874,6 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_locks);
+-	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+ 	stp->st_stateowner = &oo->oo_owner;
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
+@@ -2871,9 +2882,12 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	set_access(open->op_share_access, stp);
+ 	set_deny(open->op_share_deny, stp);
+ 	stp->st_openstp = NULL;
++	spin_lock(&oo->oo_owner.so_client->cl_lock);
++	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+ 	spin_lock(&fp->fi_lock);
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	spin_unlock(&fp->fi_lock);
++	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ }
+ 
+ static void
+@@ -4544,6 +4558,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ static struct nfs4_ol_stateid *
+ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
+ {
++	struct nfs4_openowner *oo = openowner(open_stp->st_stateowner);
+ 	struct nfs4_ol_stateid *stp;
+ 	struct nfs4_client *clp = lo->lo_owner.so_client;
+ 
+@@ -4551,7 +4566,6 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	if (stp == NULL)
+ 		return NULL;
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+-	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
+@@ -4559,10 +4573,13 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
++	spin_lock(&oo->oo_owner.so_client->cl_lock);
+ 	list_add(&stp->st_locks, &open_stp->st_locks);
++	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
+ 	spin_lock(&fp->fi_lock);
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	spin_unlock(&fp->fi_lock);
++	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ 	return stp;
+ }
+ 
+-- 
+1.9.3
 
