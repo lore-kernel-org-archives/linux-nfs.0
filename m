@@ -1,122 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:56692 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751727AbaFZTVs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:48 -0400
-Received: by mail-qg0-f48.google.com with SMTP id q108so3445236qgd.7
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:47 -0700 (PDT)
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:49508 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757787AbaFSOwr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:47 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so2235277qcx.41
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:46 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 096/117] nfsd: add a forget_clients "get" routine with proper locking
-Date: Thu, 26 Jun 2014 15:21:04 -0400
-Message-Id: <1403810485-16497-13-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v1 075/104] NFSd: Add assertions to document the nfs4_client/session locking
+Date: Thu, 19 Jun 2014 10:50:21 -0400
+Message-Id: <1403189450-18729-76-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new "get" routine for forget_clients that relies on the
-client_lock instead of the client_mutex.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/fault_inject.c |  3 +--
- fs/nfsd/nfs4state.c    | 30 ++++++++++++++++++++++--------
- fs/nfsd/state.h        |  4 +++-
- 3 files changed, 26 insertions(+), 11 deletions(-)
+ fs/nfsd/nfs4state.c | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index b1159900d934..a0387fd47e14 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -134,11 +134,10 @@ void nfsd_fault_inject_cleanup(void)
- static struct nfsd_fault_inject_op inject_ops[] = {
- 	{
- 		.file     = "forget_clients",
--		.get	  = nfsd_inject_get,
-+		.get	  = nfsd_inject_print_clients,
- 		.set_val  = nfsd_inject_set,
- 		.set_clnt = nfsd_inject_set_client,
- 		.forget   = nfsd_forget_client,
--		.print    = nfsd_print_client,
- 	},
- 	{
- 		.file     = "forget_locks",
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a0b1a727c415..eee87cca8430 100644
+index 6e6d34111f5f..72ca1b62cf16 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5690,6 +5690,28 @@ nfs4_check_open_reclaim(clientid_t *clid,
+@@ -145,6 +145,10 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ 
+ static __be32 get_client_locked(struct nfs4_client *clp)
+ {
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	if (is_client_expired(clp))
+ 		return nfserr_expired;
+ 	atomic_inc(&clp->cl_refcount);
+@@ -185,6 +189,10 @@ renew_client(struct nfs4_client *clp)
+ 
+ static void put_client_renew_locked(struct nfs4_client *clp)
+ {
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	if (!atomic_dec_and_test(&clp->cl_refcount))
+ 		return;
+ 	if (!is_client_expired(clp))
+@@ -216,6 +224,9 @@ static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+ static void nfsd4_put_session_locked(struct nfsd4_session *ses)
+ {
+ 	struct nfs4_client *clp = ses->se_client;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
+ 
+ 	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
+ 		free_session(ses);
+@@ -1262,6 +1273,8 @@ __find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
+ 	int idx;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	dump_sessionid(__func__, sessionid);
+ 	idx = hash_sessionid(sessionid);
+ 	/* Search in the appropriate list */
+@@ -1298,6 +1311,11 @@ out:
+ static void
+ unhash_session(struct nfsd4_session *ses)
+ {
++	struct nfs4_client *clp = ses->se_client;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_del(&ses->se_hash);
+ 	spin_lock(&ses->se_client->cl_lock);
+ 	list_del(&ses->se_perclnt);
+@@ -1386,6 +1404,8 @@ unhash_client_locked(struct nfs4_client *clp)
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct nfsd4_session *ses;
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	/* Mark the client as expired! */
+ 	clp->cl_time = 0;
+ 	/* Make it invisible */
+@@ -1727,6 +1747,8 @@ add_to_unconfirmed(struct nfs4_client *clp)
+ 	unsigned int idhashval;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	clear_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
+ 	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
+ 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+@@ -1740,6 +1762,8 @@ move_to_confirmed(struct nfs4_client *clp)
+ 	unsigned int idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	dprintk("NFSD: move_to_confirm nfs4_client %p\n", clp);
+ 	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
+ 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
+@@ -1770,6 +1794,7 @@ find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
+ {
+ 	struct list_head *tbl = nn->conf_id_hashtbl;
+ 
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_client_in_id_table(tbl, clid, sessions);
  }
  
- #ifdef CONFIG_NFSD_FAULT_INJECTION
-+u64
-+nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
-+{
-+	struct nfs4_client *clp;
-+	u64 count = 0;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+					  nfsd_net_id);
-+	char buf[INET6_ADDRSTRLEN];
-+
-+	if (!nfsd_netns_ready(nn))
-+		return 0;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
-+		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
-+		pr_info("NFS Client: %s\n", buf);
-+		++count;
-+	}
-+	spin_unlock(&nn->client_lock);
-+
-+	return count;
-+}
- 
- u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+@@ -1778,6 +1803,7 @@ find_unconfirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
  {
-@@ -5705,14 +5727,6 @@ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
- 	return 1;
+ 	struct list_head *tbl = nn->unconf_id_hashtbl;
+ 
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_client_in_id_table(tbl, clid, sessions);
  }
  
--u64 nfsd_print_client(struct nfs4_client *clp, u64 num)
--{
--	char buf[INET6_ADDRSTRLEN];
--	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
--	printk(KERN_INFO "NFS Client: %s\n", buf);
--	return 1;
--}
--
- static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
- 			     const char *type)
+@@ -1789,12 +1815,14 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
+ static struct nfs4_client *
+ find_confirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
  {
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index a09a72fdb5a6..61f42e1783d6 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -466,18 +466,20 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_clp_in_name_tree(name, &nn->conf_name_tree);
+ }
  
- /* nfs fault injection functions */
- #ifdef CONFIG_NFSD_FAULT_INJECTION
-+struct nfsd_fault_inject_op;
+ static struct nfs4_client *
+ find_unconfirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
+ {
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_clp_in_name_tree(name, &nn->unconf_name_tree);
+ }
+ 
+@@ -4758,6 +4786,8 @@ find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
+ 	unsigned int strhashval = ownerstr_hashval(owner);
+ 	struct nfs4_stateowner *so;
+ 
++	lockdep_assert_held(&clp->cl_lock);
 +
- int nfsd_fault_inject_init(void);
- void nfsd_fault_inject_cleanup(void);
- u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
- struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
- 
-+u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
- u64 nfsd_forget_client(struct nfs4_client *, u64);
- u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
- u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
- u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
- 
--u64 nfsd_print_client(struct nfs4_client *, u64);
- u64 nfsd_print_client_locks(struct nfs4_client *, u64);
- u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
+ 	list_for_each_entry(so, &clp->cl_ownerstr_hashtbl[strhashval], so_strhash) {
+ 		if (so->so_is_open_owner)
+ 			continue;
 -- 
 1.9.3
 
