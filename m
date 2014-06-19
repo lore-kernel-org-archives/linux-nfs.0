@@ -1,106 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:44446 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751302AbaF3Pwf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:35 -0400
-Received: by mail-qg0-f47.google.com with SMTP id q108so2138022qgd.6
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:35 -0700 (PDT)
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:44209 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757835AbaFSOu7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:50:59 -0400
+Received: by mail-qg0-f41.google.com with SMTP id i50so2217567qgf.28
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:50:59 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 087/114] nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock
-Date: Mon, 30 Jun 2014 11:49:56 -0400
-Message-Id: <1404143423-24381-88-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v1 001/104] nfsd: Protect addition to the file_hashtbl
+Date: Thu, 19 Jun 2014 10:49:07 -0400
+Message-Id: <1403189450-18729-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, both destroy_revoked_delegation and revoke_delegation
-manipulate the cl_revoked list without any locking aside from the
-client_mutex. Ensure that the clp->cl_lock is held when manipulating it,
-except for the list walking in destroy_client. At that point, the client
-should no longer be in use, and so it should be safe to walk the list
-without any locking. That also means that we don't need to do the
-list_splice_init there either.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Also, the fact that destroy_revoked_delegation and revoke_delegation
-delete dl_recall_lru without any locking makes it difficult to know
-whether they're doing so safely in all cases. Move the list_del_init
-calls into the callers, and add WARN_ONs in the event that these calls
-are passed a delegation that has a non-empty list_head.
+Ensure that we only can have a single struct nfs4_file per inode
+in the file_hashtbl and make addition atomic with respect to lookup.
 
+To prevent an i_lock/state_lock inversion, change nfsd4_init_file to
+use ihold instead if igrab. That's also more efficient anyway as we
+definitely hold a reference to the inode at that point.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 21 ++++++++++++++-------
- 1 file changed, 14 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 37 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9a8f9ab37d19..5194ebb0a56f 100644
+index 0fea1da3dd24..4e4b054a545e 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -724,7 +724,7 @@ static void unhash_and_destroy_delegation(struct nfs4_delegation *dp)
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+@@ -2535,17 +2535,18 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
  {
--	list_del_init(&dp->dl_recall_lru);
-+	WARN_ON(!list_empty(&dp->dl_recall_lru));
- 	nfs4_put_delegation(dp);
- }
+ 	unsigned int hashval = file_hashval(ino);
  
-@@ -732,11 +732,15 @@ static void revoke_delegation(struct nfs4_delegation *dp)
- {
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 
-+	WARN_ON(!list_empty(&dp->dl_recall_lru));
++	lockdep_assert_held(&state_lock);
 +
- 	if (clp->cl_minorversion == 0)
- 		destroy_revoked_delegation(dp);
- 	else {
- 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
--		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
-+		spin_lock(&clp->cl_lock);
-+		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
-+		spin_unlock(&clp->cl_lock);
- 	}
+ 	atomic_set(&fp->fi_ref, 1);
+ 	INIT_LIST_HEAD(&fp->fi_stateids);
+ 	INIT_LIST_HEAD(&fp->fi_delegations);
+-	fp->fi_inode = igrab(ino);
++	ihold(ino);
++	fp->fi_inode = ino;
+ 	fp->fi_had_conflict = false;
+ 	fp->fi_lease = NULL;
+ 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
+ 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
+-	spin_lock(&state_lock);
+ 	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
+-	spin_unlock(&state_lock);
  }
  
-@@ -1589,9 +1593,9 @@ __destroy_client(struct nfs4_client *clp)
- 		list_del_init(&dp->dl_recall_lru);
- 		destroy_delegation(dp);
+ void
+@@ -2711,23 +2712,49 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
+ 
+ /* search file_hashtbl[] for file */
+ static struct nfs4_file *
+-find_file(struct inode *ino)
++find_file_locked(struct inode *ino)
+ {
+ 	unsigned int hashval = file_hashval(ino);
+ 	struct nfs4_file *fp;
+ 
+-	spin_lock(&state_lock);
++	lockdep_assert_held(&state_lock);
++
+ 	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
+ 		if (fp->fi_inode == ino) {
+ 			get_nfs4_file(fp);
+-			spin_unlock(&state_lock);
+ 			return fp;
+ 		}
  	}
--	list_splice_init(&clp->cl_revoked, &reaplist);
--	while (!list_empty(&reaplist)) {
-+	while (!list_empty(&clp->cl_revoked)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
- 		destroy_revoked_delegation(dp);
- 	}
- 	while (!list_empty(&clp->cl_openowners)) {
-@@ -4170,8 +4174,10 @@ nfs4_laundromat(struct nfsd_net *nn)
- 		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
--	list_for_each_safe(pos, next, &reaplist) {
--		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
-+	while (!list_empty(&reaplist)) {
-+		dp = list_first_entry(&reaplist, struct nfs4_delegation,
-+					dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
- 		revoke_delegation(dp);
+-	spin_unlock(&state_lock);
+ 	return NULL;
+ }
+ 
++static struct nfs4_file *
++find_file(struct inode *ino)
++{
++	struct nfs4_file *fp;
++
++	spin_lock(&state_lock);
++	fp = find_file_locked(ino);
++	spin_unlock(&state_lock);
++	return fp;
++}
++
++static struct nfs4_file *
++find_or_add_file(struct inode *ino, struct nfs4_file *new)
++{
++	struct nfs4_file *fp;
++
++	spin_lock(&state_lock);
++	fp = find_file_locked(ino);
++	if (fp == NULL) {
++		nfsd4_init_file(new, ino);
++		fp = new;
++	}
++	spin_unlock(&state_lock);
++
++	return fp;
++}
++
+ /*
+  * Called to check deny when READ with all zero stateid or
+  * WRITE with all zero or all one stateid
+@@ -3246,21 +3273,19 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	 * and check for delegations in the process of being recalled.
+ 	 * If not found, create the nfs4_file struct
+ 	 */
+-	fp = find_file(ino);
+-	if (fp) {
++	fp = find_or_add_file(ino, open->op_file);
++	if (fp != open->op_file) {
+ 		if ((status = nfs4_check_open(fp, open, &stp)))
+ 			goto out;
+ 		status = nfs4_check_deleg(cl, open, &dp);
+ 		if (status)
+ 			goto out;
+ 	} else {
++		open->op_file = NULL;
+ 		status = nfserr_bad_stateid;
+ 		if (nfsd4_is_deleg_cur(open))
+ 			goto out;
+ 		status = nfserr_jukebox;
+-		fp = open->op_file;
+-		open->op_file = NULL;
+-		nfsd4_init_file(fp, ino);
  	}
  
-@@ -4534,8 +4540,9 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		ret = nfs_ok;
- 		goto out;
- 	case NFS4_REVOKED_DELEG_STID:
--		spin_unlock(&cl->cl_lock);
- 		dp = delegstateid(s);
-+		list_del_init(&dp->dl_recall_lru);
-+		spin_unlock(&cl->cl_lock);
- 		destroy_revoked_delegation(dp);
- 		ret = nfs_ok;
- 		goto out;
+ 	/*
 -- 
 1.9.3
 
