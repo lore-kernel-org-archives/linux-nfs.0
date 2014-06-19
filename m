@@ -1,169 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f172.google.com ([209.85.216.172]:35278 "EHLO
-	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932295AbaFSOwl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:41 -0400
-Received: by mail-qc0-f172.google.com with SMTP id o8so2251366qcw.17
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:40 -0700 (PDT)
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:59085 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932579AbaFSOxE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:53:04 -0400
+Received: by mail-qg0-f46.google.com with SMTP id q107so2200804qgd.33
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:53:03 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 071/104] NFSd: Protect unconfirmed client creation using client_lock
-Date: Thu, 19 Jun 2014 10:50:17 -0400
-Message-Id: <1403189450-18729-72-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v1 088/104] nfsd: add more granular locking to forget_openowners fault injector
+Date: Thu, 19 Jun 2014 10:50:34 -0400
+Message-Id: <1403189450-18729-89-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Also, fix up the printk output that is generated when the file is read.
+It currently says that it's reporting the number of open files, but
+it's actually reporting the number of openowners.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 33 ++++++++++++++++++++++-----------
- 1 file changed, 22 insertions(+), 11 deletions(-)
+ fs/nfsd/fault_inject.c |   8 ++--
+ fs/nfsd/nfs4state.c    | 113 +++++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/state.h        |   6 ++-
+ 3 files changed, 112 insertions(+), 15 deletions(-)
 
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 675594cd316c..0c2ab9caf803 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -145,11 +145,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	},
+ 	{
+ 		.file     = "forget_openowners",
+-		.get	  = nfsd_inject_get,
+-		.set_val  = nfsd_inject_set,
+-		.set_clnt = nfsd_inject_set_client,
+-		.forget   = nfsd_forget_client_openowners,
+-		.print    = nfsd_print_client_openowners,
++		.get	  = nfsd_inject_print_openowners,
++		.set_val  = nfsd_inject_forget_openowners,
++		.set_clnt = nfsd_inject_forget_client_openowners,
+ 	},
+ 	{
+ 		.file     = "forget_delegations",
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ed568b10c35e..1beea0b19744 100644
+index af726e934ea9..2f18de7dc913 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1744,7 +1744,7 @@ add_to_unconfirmed(struct nfs4_client *clp)
- 	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
- 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
- 	list_add(&clp->cl_idhash, &nn->unconf_id_hashtbl[idhashval]);
--	renew_client(clp);
-+	renew_client_locked(clp);
+@@ -5795,30 +5795,127 @@ nfsd_inject_forget_locks(struct nfsd_fault_inject_op *op, u64 max)
+ 	return count;
  }
  
- static void
-@@ -1758,7 +1758,7 @@ move_to_confirmed(struct nfs4_client *clp)
- 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
- 	add_clp_to_name_tree(clp, &nn->conf_name_tree);
- 	set_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
--	renew_client(clp);
-+	renew_client_locked(clp);
- }
- 
- static struct nfs4_client *
-@@ -1771,7 +1771,7 @@ find_client_in_id_table(struct list_head *tbl, clientid_t *clid, bool sessions)
- 		if (same_clid(&clp->cl_clientid, clid)) {
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
--			renew_client(clp);
-+			renew_client_locked(clp);
- 			return clp;
- 		}
- 	}
-@@ -1973,7 +1973,8 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		  struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_exchange_id *exid)
+-static u64 nfsd_foreach_client_open(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_openowner *))
++static u64
++nfsd_foreach_client_openowner(struct nfs4_client *clp, u64 max,
++			 struct list_head *collect, void (*func)(struct nfs4_openowner *))
  {
--	struct nfs4_client *unconf, *conf, *new;
-+	struct nfs4_client *conf, *new;
-+	struct nfs4_client *unconf = NULL;
- 	__be32 status;
- 	char			addr_str[INET6_ADDRSTRLEN];
- 	nfs4_verifier		verf = exid->verifier;
-@@ -2008,6 +2009,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 	struct nfs4_openowner *oop, *next;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
+ 	u64 count = 0;
  
- 	/* Cases below refer to rfc 5661 section 18.35.4: */
- 	nfs4_lock_state();
-+	spin_lock(&nn->client_lock);
- 	conf = find_confirmed_client_by_name(&exid->clname, nn);
- 	if (conf) {
- 		bool creds_match = same_creds(&conf->cl_cred, &rqstp->rq_cred);
-@@ -2039,7 +2041,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 				status = nfserr_clid_inuse;
- 				goto out;
- 			}
--			expire_client(conf);
- 			goto out_new;
- 		}
- 		if (verfs_match) { /* case 2 */
-@@ -2047,6 +2048,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 			goto out_copy;
- 		}
- 		/* case 5, client reboot */
-+		conf = NULL;
- 		goto out_new;
++	lockdep_assert_held(&nn->client_lock);
++
++	spin_lock(&clp->cl_lock);
+ 	list_for_each_entry_safe(oop, next, &clp->cl_openowners, oo_perclient) {
+-		if (func)
++		if (func) {
+ 			func(oop);
+-		if (++count == max)
++			if (collect) {
++				atomic_inc(&clp->cl_refcount);
++				list_add(&oop->oo_perclient, collect);
++			}
++		}
++		++count;
++		/*
++		 * Despite the fact that these functions deal with
++		 * 64-bit integers for "count", we must ensure that
++		 * it doesn't blow up the clp->cl_refcount. Throw a
++		 * warning if we start to approach INT_MAX here.
++		 */
++		WARN_ON_ONCE(count == (INT_MAX / 2));
++		if (count == max)
+ 			break;
  	}
- 
-@@ -2057,17 +2059,18 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 
- 	unconf  = find_unconfirmed_client_by_name(&exid->clname, nn);
- 	if (unconf) /* case 4, possible retry or client restart */
--		expire_client(unconf);
-+		unhash_client_locked(unconf);
- 
- 	/* case 1 (normal case) */
- out_new:
-+	if (conf)
-+		unhash_client_locked(conf);
- 	new->cl_minorversion = cstate->minorversion;
- 	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
- 
- 	gen_clid(new, nn);
- 	add_to_unconfirmed(new);
--	conf = new;
--	new = NULL;
-+	swap(new, conf);
- out_copy:
- 	exid->clientid.cl_boot = conf->cl_clientid.cl_boot;
- 	exid->clientid.cl_id = conf->cl_clientid.cl_id;
-@@ -2080,9 +2083,12 @@ out_copy:
- 	status = nfs_ok;
- 
- out:
++	spin_unlock(&clp->cl_lock);
++
++	return count;
++}
++
++static u64
++nfsd_print_client_openowners(struct nfs4_client *clp)
++{
++	u64 count = nfsd_foreach_client_openowner(clp, 0, NULL, NULL);
++	nfsd_print_count(clp, count, "openowners");
++	return count;
++}
++
++static u64
++nfsd_collect_client_openowners(struct nfs4_client *clp, struct list_head *collect, u64 max)
++{
++	return nfsd_foreach_client_openowner(clp, max, collect, unhash_openowner_locked);
++}
++
++u64
++nfsd_inject_print_openowners(struct nfsd_fault_inject_op *op)
++{
++	struct nfs4_client *clp;
++	u64 count = 0;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++
++	if (!nfsd_netns_ready(nn))
++		return 0;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru)
++		count += nfsd_print_client_openowners(clp);
 +	spin_unlock(&nn->client_lock);
- 	nfs4_unlock_state();
- 	if (new)
--		free_client(new);
-+		expire_client(new);
-+	if (unconf)
-+		expire_client(unconf);
- 	return status;
+ 
+ 	return count;
  }
  
-@@ -2721,7 +2727,8 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+-u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
++static void
++nfsd_reap_openowners(struct list_head *reaplist)
++{
++	struct nfs4_client *clp;
++	struct nfs4_openowner *oop, *next;
++
++	list_for_each_entry_safe(oop, next, reaplist, oo_perclient) {
++		list_del_init(&oop->oo_perclient);
++		clp = oop->oo_owner.so_client;
++		release_openowner(oop);
++		put_client(clp);
++	}
++}
++
++u64
++nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *op,
++				struct sockaddr_storage *addr, size_t addr_size)
  {
- 	struct xdr_netobj 	clname = setclid->se_name;
- 	nfs4_verifier		clverifier = setclid->se_verf;
--	struct nfs4_client	*conf, *unconf, *new;
-+	struct nfs4_client	*conf, *new;
-+	struct nfs4_client	*unconf = NULL;
- 	__be32 			status;
- 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
-@@ -2730,6 +2737,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_jukebox;
- 	/* Cases below refer to rfc 3530 section 14.2.33: */
- 	nfs4_lock_state();
+-	return nfsd_foreach_client_open(clp, max, release_openowner);
++	unsigned int count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
 +	spin_lock(&nn->client_lock);
- 	conf = find_confirmed_client_by_name(&clname, nn);
- 	if (conf) {
- 		/* case 0: */
-@@ -2747,7 +2755,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 	unconf = find_unconfirmed_client_by_name(&clname, nn);
- 	if (unconf)
--		expire_client(unconf);
-+		unhash_client_locked(unconf);
- 	if (conf && same_verf(&conf->cl_verifier, &clverifier))
- 		/* case 1: probable callback update */
- 		copy_clid(new, conf);
-@@ -2762,9 +2770,12 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	new = NULL;
- 	status = nfs_ok;
- out:
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp)
++		count = nfsd_collect_client_openowners(clp, &reaplist, 0);
 +	spin_unlock(&nn->client_lock);
- 	nfs4_unlock_state();
- 	if (new)
- 		free_client(new);
-+	if (unconf)
-+		expire_client(unconf);
- 	return status;
++	nfsd_reap_openowners(&reaplist);
++	return count;
  }
  
+-u64 nfsd_print_client_openowners(struct nfs4_client *clp, u64 max)
++u64
++nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *op, u64 max)
+ {
+-	u64 count = nfsd_foreach_client_open(clp, max, NULL);
+-	nfsd_print_count(clp, count, "open files");
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		count += nfsd_collect_client_openowners(clp, &reaplist, max - count);
++		if (max != 0 && count >= max)
++			break;
++	}
++	spin_unlock(&nn->client_lock);
++	nfsd_reap_openowners(&reaplist);
+ 	return count;
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index fdac0c19cb3c..597841e691bb 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -482,11 +482,13 @@ u64 nfsd_inject_print_locks(struct nfsd_fault_inject_op *);
+ u64 nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *, struct sockaddr_storage *, size_t);
+ u64 nfsd_inject_forget_locks(struct nfsd_fault_inject_op *, u64);
+ 
+-u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
++u64 nfsd_inject_print_openowners(struct nfsd_fault_inject_op *);
++u64 nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *, struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *, u64);
++
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+ u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ 
+-u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+ static inline int nfsd_fault_inject_init(void) { return 0; }
 -- 
 1.9.3
 
