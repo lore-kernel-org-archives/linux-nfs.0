@@ -1,159 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37219 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751254AbaF3U2U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jun 2014 16:28:20 -0400
-Date: Mon, 30 Jun 2014 16:28:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v3 002/114] nfsd: Protect addition to the file_hashtbl
-Message-ID: <20140630202818.GA14728@fieldses.org>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
- <1404143423-24381-3-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1404143423-24381-3-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:50024 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758027AbaFSOv6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:58 -0400
+Received: by mail-qa0-f46.google.com with SMTP id i13so2002563qae.5
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:58 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 042/104] NFSd: Migrate the stateid reference into nfs4_preprocess_seqid_op
+Date: Thu, 19 Jun 2014 10:49:48 -0400
+Message-Id: <1403189450-18729-43-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 30, 2014 at 11:48:31AM -0400, Jeff Layton wrote:
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> 
-> Ensure that we only can have a single struct nfs4_file per inode
-> in the file_hashtbl and make addition atomic with respect to lookup.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-This changelog gives the impression it's a bugfix, and it isn't.  I
-understand it's tedious in this series, but really I think at a minimum
-a changelog should always make it clear whether a patch is a bugfix or
-not.  Applying with changelog rewritten to:
+Allow nfs4_preprocess_seqid_op to take the stateid reference, instead
+of having all the callers do so.
 
-	Current code depends on the client_mutex to guarantee a single
-	struct nfs4_file per inode in the file_hashtbl and make addition
-	atomic with respect to lookup.  Rely instead on the state_Lock,
-	to make it easier to stop taking the client_mutex here later.
-	...
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 26 +++++++++++---------------
+ 1 file changed, 11 insertions(+), 15 deletions(-)
 
---b.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ff6e0f99413c..7ce4edcc0e61 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4209,8 +4209,11 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
+ 
+ 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
+-	if (!status)
++	if (!status) {
++		/* FIXME: move into find_stateid_by_type */
++		atomic_inc(&stp->st_stid.sc_count);
+ 		*stpp = stp;
++	}
+ 	return status;
+ }
+ 
+@@ -4219,16 +4222,18 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
+ {
+ 	__be32 status;
+ 	struct nfs4_openowner *oo;
++	struct nfs4_ol_stateid *stp;
+ 
+ 	status = nfs4_preprocess_seqid_op(cstate, seqid, stateid,
+-						NFS4_OPEN_STID, stpp, nn);
++						NFS4_OPEN_STID, &stp, nn);
+ 	if (status)
+ 		return status;
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&(*stpp)->st_stid.sc_count);
+-	oo = openowner((*stpp)->st_stateowner);
+-	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
++	oo = openowner(stp->st_stateowner);
++	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
++		put_generic_stateid(stp);
+ 		return nfserr_bad_stateid;
++	}
++	*stpp = stp;
+ 	return nfs_ok;
+ }
+ 
+@@ -4255,8 +4260,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					NFS4_OPEN_STID, &stp, nn);
+ 	if (status)
+ 		goto out;
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&stp->st_stid.sc_count);
+ 	oo = openowner(stp->st_stateowner);
+ 	status = nfserr_bad_stateid;
+ 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
+@@ -4441,8 +4444,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (status)
+ 		goto out; 
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&stp->st_stid.sc_count);
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ 
+@@ -4794,9 +4795,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 				       lock->lk_old_lock_seqid,
+ 				       &lock->lk_old_lock_stateid,
+ 				       NFS4_LOCK_STID, &lock_stp, nn);
+-		/* FIXME: move into nfs4_preprocess_seqid_op */
+-		if (!status)
+-			atomic_inc(&lock_stp->st_stid.sc_count);
+ 	}
+ 	if (status)
+ 		goto out;
+@@ -5019,8 +5017,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					&stp, nn);
+ 	if (status)
+ 		goto out;
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&stp->st_stid.sc_count);
+ 	filp = find_any_file(stp->st_stid.sc_file);
+ 	if (!filp) {
+ 		status = nfserr_lock_range;
+-- 
+1.9.3
 
-> 
-> To prevent an i_lock/state_lock inversion, change nfsd4_init_file to
-> use ihold instead if igrab. That's also more efficient anyway as we
-> definitely hold a reference to the inode at that point.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++++++++++++++------------
->  1 file changed, 37 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index c473bd6d52c8..29788fd0da24 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2611,17 +2611,18 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
->  {
->  	unsigned int hashval = file_hashval(ino);
->  
-> +	lockdep_assert_held(&state_lock);
-> +
->  	atomic_set(&fp->fi_ref, 1);
->  	INIT_LIST_HEAD(&fp->fi_stateids);
->  	INIT_LIST_HEAD(&fp->fi_delegations);
-> -	fp->fi_inode = igrab(ino);
-> +	ihold(ino);
-> +	fp->fi_inode = ino;
->  	fp->fi_had_conflict = false;
->  	fp->fi_lease = NULL;
->  	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
->  	memset(fp->fi_access, 0, sizeof(fp->fi_access));
-> -	spin_lock(&state_lock);
->  	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
-> -	spin_unlock(&state_lock);
->  }
->  
->  void
-> @@ -2787,23 +2788,49 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
->  
->  /* search file_hashtbl[] for file */
->  static struct nfs4_file *
-> -find_file(struct inode *ino)
-> +find_file_locked(struct inode *ino)
->  {
->  	unsigned int hashval = file_hashval(ino);
->  	struct nfs4_file *fp;
->  
-> -	spin_lock(&state_lock);
-> +	lockdep_assert_held(&state_lock);
-> +
->  	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
->  		if (fp->fi_inode == ino) {
->  			get_nfs4_file(fp);
-> -			spin_unlock(&state_lock);
->  			return fp;
->  		}
->  	}
-> -	spin_unlock(&state_lock);
->  	return NULL;
->  }
->  
-> +static struct nfs4_file *
-> +find_file(struct inode *ino)
-> +{
-> +	struct nfs4_file *fp;
-> +
-> +	spin_lock(&state_lock);
-> +	fp = find_file_locked(ino);
-> +	spin_unlock(&state_lock);
-> +	return fp;
-> +}
-> +
-> +static struct nfs4_file *
-> +find_or_add_file(struct inode *ino, struct nfs4_file *new)
-> +{
-> +	struct nfs4_file *fp;
-> +
-> +	spin_lock(&state_lock);
-> +	fp = find_file_locked(ino);
-> +	if (fp == NULL) {
-> +		nfsd4_init_file(new, ino);
-> +		fp = new;
-> +	}
-> +	spin_unlock(&state_lock);
-> +
-> +	return fp;
-> +}
-> +
->  /*
->   * Called to check deny when READ with all zero stateid or
->   * WRITE with all zero or all one stateid
-> @@ -3325,21 +3352,19 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
->  	 * and check for delegations in the process of being recalled.
->  	 * If not found, create the nfs4_file struct
->  	 */
-> -	fp = find_file(ino);
-> -	if (fp) {
-> +	fp = find_or_add_file(ino, open->op_file);
-> +	if (fp != open->op_file) {
->  		if ((status = nfs4_check_open(fp, open, &stp)))
->  			goto out;
->  		status = nfs4_check_deleg(cl, open, &dp);
->  		if (status)
->  			goto out;
->  	} else {
-> +		open->op_file = NULL;
->  		status = nfserr_bad_stateid;
->  		if (nfsd4_is_deleg_cur(open))
->  			goto out;
->  		status = nfserr_jukebox;
-> -		fp = open->op_file;
-> -		open->op_file = NULL;
-> -		nfsd4_init_file(fp, ino);
->  	}
->  
->  	/*
-> -- 
-> 1.9.3
-> 
