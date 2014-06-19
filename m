@@ -1,16 +1,16 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:45559 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757917AbaFSOw0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:26 -0400
-Received: by mail-qc0-f181.google.com with SMTP id x13so2231776qcv.26
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:25 -0700 (PDT)
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:61829 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757862AbaFSOvD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:03 -0400
+Received: by mail-qg0-f41.google.com with SMTP id i50so2217641qgf.28
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:02 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 060/104] NFSd: Always use lookup_clientid() in nfsd4_process_open1
-Date: Thu, 19 Jun 2014 10:50:06 -0400
-Message-Id: <1403189450-18729-61-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v1 003/104] NFSd: nfs4_preprocess_seqid_op should only set *stpp on success
+Date: Thu, 19 Jun 2014 10:49:09 -0400
+Message-Id: <1403189450-18729-4-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,50 +18,43 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Preparation for moving the stateowner table into the nfs4_client
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 42c5f487a7a5..4b668d0430b8 100644
+index 42c6d6ecc77d..d18fd8c7691c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3268,19 +3268,19 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	if (open->op_file == NULL)
- 		return nfserr_jukebox;
+@@ -3891,6 +3891,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ {
+ 	__be32 status;
+ 	struct nfs4_stid *s;
++	struct nfs4_ol_stateid *stp = NULL;
  
-+	status = lookup_clientid(clientid, cstate, nn);
-+	if (status)
-+		return status;
-+	clp = cstate->clp;
-+
- 	strhashval = ownerstr_hashval(clientid->cl_id, &open->op_owner);
- 	oo = find_openstateowner_str(strhashval, open, cstate->minorversion, nn);
- 	open->op_openowner = oo;
- 	if (!oo) {
--		status = lookup_clientid(clientid, cstate, nn);
--		if (status)
--			return status;
--		clp = cstate->clp;
- 		goto new_owner;
- 	}
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
- 		/* Replace unconfirmed owners without checking for replay. */
--		clp = oo->oo_owner.so_client;
- 		release_openowner(oo);
- 		open->op_openowner = NULL;
- 		goto new_owner;
-@@ -3288,7 +3288,6 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	status = nfsd4_check_seqid(cstate, &oo->oo_owner, open->op_seqid);
+ 	dprintk("NFSD: %s: seqid=%d stateid = " STATEID_FMT "\n", __func__,
+ 		seqid, STATEID_VAL(stateid));
+@@ -3900,11 +3901,14 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 				      cstate->minorversion, nn);
  	if (status)
  		return status;
--	clp = oo->oo_owner.so_client;
- 	goto alloc_stateid;
- new_owner:
- 	oo = alloc_init_open_stateowner(strhashval, open, cstate);
+-	*stpp = openlockstateid(s);
++	stp = openlockstateid(s);
+ 	if (!nfsd4_has_session(cstate))
+-		cstate->replay_owner = (*stpp)->st_stateowner;
++		cstate->replay_owner = stp->st_stateowner;
+ 
+-	return nfs4_seqid_op_checks(cstate, stateid, seqid, *stpp);
++	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
++	if (!status)
++		*stpp = stp;
++	return status;
+ }
+ 
+ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
 -- 
 1.9.3
 
