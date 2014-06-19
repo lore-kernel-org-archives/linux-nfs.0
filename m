@@ -1,124 +1,203 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:64903 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751470AbaFZTOI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:08 -0400
-Received: by mail-qa0-f44.google.com with SMTP id hw13so3195639qab.3
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:08 -0700 (PDT)
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:46158 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757787AbaFSOvC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:02 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so2157246qge.25
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:01 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 016/117] nfsd: Allow lockowners to hold several stateids
-Date: Thu, 26 Jun 2014 15:11:56 -0400
-Message-Id: <1403810017-16062-17-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v1 002/104] NFSd: Avoid taking state_lock while holding inode lock in nfsd_break_one_deleg
+Date: Thu, 19 Jun 2014 10:49:08 -0400
+Message-Id: <1403189450-18729-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A lockowner can have more than one lock stateid. For instance, if a
-process has more than one file open and has locks on both, then the same
-lockowner has more than one stateid associated with it. Change it so
-that this reality is better reflected by the objects that nfsd uses.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+state_lock is a heavily contended global lock. We don't want to grab
+that while simultaneously holding the inode->i_lock
+Instead do the list manipulations from the work queue context prior to
+starting the rpc call.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 55 ++++++++++++++++++++++++++++++++---------------------
- 1 file changed, 33 insertions(+), 22 deletions(-)
+ fs/nfsd/nfs4callback.c | 18 ++++++++++++++++--
+ fs/nfsd/nfs4state.c    | 42 ++++++++++++++++++++++++++++--------------
+ fs/nfsd/state.h        |  2 ++
+ 3 files changed, 46 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2d7887a752db..5b903761ba73 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3913,12 +3913,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
- 
- 	if (check_for_locks(stp->st_file, lo))
- 		return nfserr_locks_held;
--	/*
--	 * Currently there's a 1-1 lock stateid<->lockowner
--	 * correspondance, and we have to delete the lockowner when we
--	 * delete the lock stateid:
--	 */
--	release_lockowner(lo);
-+	release_lockowner_if_empty(lo);
- 	return nfs_ok;
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 2c73cae9899d..3d67bbf26cee 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1011,9 +1011,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 		run_nfsd4_cb(cb);
  }
  
-@@ -4442,6 +4437,19 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	return stp;
+-static void nfsd4_do_callback_rpc(struct work_struct *w)
++static void nfsd4_run_callback_rpc(struct nfsd4_callback *cb)
+ {
+-	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
+ 	struct nfs4_client *clp = cb->cb_clp;
+ 	struct rpc_clnt *clnt;
+ 
+@@ -1031,11 +1030,25 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
+ 			cb->cb_ops, cb);
  }
  
-+static struct nfs4_ol_stateid *
-+find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
++static void nfsd4_do_callback_rpc(struct work_struct *w)
 +{
-+	struct nfs4_ol_stateid *lst;
-+
-+	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
-+		if (lst->st_file == fp)
-+			return lst;
-+	}
-+	return NULL;
++	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
++	nfsd4_run_callback_rpc(cb);
 +}
 +
-+
- static int
- check_lock_length(u64 offset, u64 length)
+ void nfsd4_init_callback(struct nfsd4_callback *cb)
  {
-@@ -4471,25 +4479,28 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
- 
- 	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid,
- 				&lock->v.new.owner, nn);
--	if (lo) {
--		if (!cstate->minorversion)
-+	if (!lo) {
-+		strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
-+				&lock->v.new.owner);
-+		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
-+		if (lo == NULL)
-+			return nfserr_jukebox;
-+	} else {
-+		/* with an existing lockowner, seqids must be the same */
-+		if (!cstate->minorversion &&
-+		    lock->lk_new_lock_seqid != lo->lo_owner.so_seqid)
- 			return nfserr_bad_seqid;
--		/* XXX: a lockowner always has exactly one stateid: */
--		*lst = list_first_entry(&lo->lo_owner.so_stateids,
--				struct nfs4_ol_stateid, st_perstateowner);
--		return nfs_ok;
- 	}
--	strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
--			&lock->v.new.owner);
--	lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
--	if (lo == NULL)
--		return nfserr_jukebox;
--	*lst = alloc_init_lock_stateid(lo, fi, ost);
-+
-+	*lst = find_lock_stateid(lo, fi);
- 	if (*lst == NULL) {
--		release_lockowner(lo);
--		return nfserr_jukebox;
-+		*lst = alloc_init_lock_stateid(lo, fi, ost);
-+		if (*lst == NULL) {
-+			release_lockowner_if_empty(lo);
-+			return nfserr_jukebox;
-+		}
-+		*new = true;
- 	}
--	*new = true;
- 	return nfs_ok;
+ 	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
  }
  
-@@ -4646,7 +4657,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++static void nfsd4_do_cb_recall(struct work_struct *w)
++{
++	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
++
++	nfsd4_prepare_cb_recall(cb->cb_op);
++	nfsd4_run_callback_rpc(cb);
++}
++
+ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfsd4_callback *cb = &dp->dl_recall;
+@@ -1052,6 +1065,7 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ 
+ 	INIT_LIST_HEAD(&cb->cb_per_client);
+ 	cb->cb_done = true;
++	INIT_WORK(&cb->cb_work, nfsd4_do_cb_recall);
+ 
+ 	run_nfsd4_cb(&dp->dl_recall);
+ }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4e4b054a545e..42c6d6ecc77d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -438,7 +438,9 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	lockdep_assert_held(&state_lock);
+ 
+ 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
++	spin_lock(&fp->fi_lock);
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
++	spin_unlock(&fp->fi_lock);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ }
+ 
+@@ -446,14 +448,18 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ static void
+ unhash_delegation(struct nfs4_delegation *dp)
+ {
++	struct nfs4_file *fp = dp->dl_file;
++
+ 	spin_lock(&state_lock);
+ 	list_del_init(&dp->dl_perclnt);
+-	list_del_init(&dp->dl_perfile);
+ 	list_del_init(&dp->dl_recall_lru);
++	spin_lock(&fp->fi_lock);
++	list_del_init(&dp->dl_perfile);
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+-	if (dp->dl_file) {
+-		nfs4_put_deleg_lease(dp->dl_file);
+-		put_nfs4_file(dp->dl_file);
++	if (fp) {
++		nfs4_put_deleg_lease(fp);
++		put_nfs4_file(fp);
+ 		dp->dl_file = NULL;
  	}
- out:
- 	if (status && new_state)
--		release_lockowner(lock_sop);
-+		release_lockowner_if_empty(lock_sop);
- 	nfsd4_bump_seqid(cstate, status);
- 	if (!cstate->replay_owner)
- 		nfs4_unlock_state();
+ }
+@@ -2538,6 +2544,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
+ 	lockdep_assert_held(&state_lock);
+ 
+ 	atomic_set(&fp->fi_ref, 1);
++	spin_lock_init(&fp->fi_lock);
+ 	INIT_LIST_HEAD(&fp->fi_stateids);
+ 	INIT_LIST_HEAD(&fp->fi_delegations);
+ 	ihold(ino);
+@@ -2783,24 +2790,31 @@ out:
+ 	return ret;
+ }
+ 
+-static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
++void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
+-	lockdep_assert_held(&state_lock);
++	/*
++	 * We can't do this in nfsd_break_deleg_cb because it is
++	 * already holding inode->i_lock
++	 */
++	spin_lock(&state_lock);
++	if (list_empty(&dp->dl_recall_lru)) {
++		dp->dl_time = get_seconds();
++		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
++	}
++	spin_unlock(&state_lock);
++}
++
++static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
++{
+ 	/* We're assuming the state code never drops its reference
+ 	 * without first removing the lease.  Since we're in this lease
+ 	 * callback (and since the lease code is serialized by the kernel
+ 	 * lock) we know the server hasn't removed the lease yet, we know
+ 	 * it's safe to take a reference: */
+ 	atomic_inc(&dp->dl_count);
+-
+-	list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+-
+-	/* Only place dl_time is set; protected by i_lock: */
+-	dp->dl_time = get_seconds();
+-
+ 	nfsd4_cb_recall(dp);
+ }
+ 
+@@ -2825,11 +2839,11 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+ 	 */
+ 	fl->fl_break_time = 0;
+ 
+-	spin_lock(&state_lock);
+ 	fp->fi_had_conflict = true;
++	spin_lock(&fp->fi_lock);
+ 	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
+ 		nfsd_break_one_deleg(dp);
+-	spin_unlock(&state_lock);
++	spin_unlock(&fp->fi_lock);
+ }
+ 
+ static
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 374c66283ac5..366887ab5204 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -382,6 +382,7 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
+ /* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
+ struct nfs4_file {
+ 	atomic_t		fi_ref;
++	spinlock_t		fi_lock;
+ 	struct hlist_node       fi_hash;    /* hash by "struct inode *" */
+ 	struct list_head        fi_stateids;
+ 	struct list_head	fi_delegations;
+@@ -472,6 +473,7 @@ extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
+ extern int nfsd4_create_callback_queue(void);
+ extern void nfsd4_destroy_callback_queue(void);
+ extern void nfsd4_shutdown_callback(struct nfs4_client *);
++extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
+ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
 -- 
 1.9.3
 
