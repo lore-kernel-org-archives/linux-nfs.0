@@ -1,103 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.kundenserver.de ([212.227.126.187]:62135 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754053AbaFCOZL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 10:25:11 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: "H. Peter Anvin" <hpa@zytor.com>
-Cc: "Joseph S. Myers" <joseph@codesourcery.com>, linux-kernel@vger.kernel.org,
-        linux-arch@vger.kernel.org, john.stultz@linaro.org, hch@infradead.org,
-        tglx@linutronix.de, geert@linux-m68k.org, lftan@altera.com,
-        linux-fsdevel@vger.kernel.org, ceph-devel@vger.kernel.org,
-        cluster-devel@redhat.com, coda@cs.cmu.edu,
-        codalist@telemann.coda.cs.cmu.edu, fuse-devel@lists.sourceforge.net,
-        linux-afs@lists.infradead.org, linux-btrfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        linux-scsi@vger.kernel.org, logfs@logfs.org,
-        ocfs2-devel@oss.oracle.com, reiserfs-devel@vger.kernel.org,
-        samba-technical@lists.samba.org, xfs@oss.sgi.com
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Date: Tue, 03 Jun 2014 16:22:19 +0200
-Message-ID: <5011138.W0gbOc20Qp@wuerfel>
-In-Reply-To: <538CF346.2070504@zytor.com>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <7175692.dpgYFMbTaP@wuerfel> <538CF346.2070504@zytor.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-qc0-f169.google.com ([209.85.216.169]:45955 "EHLO
+	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932213AbaFSOwd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:33 -0400
+Received: by mail-qc0-f169.google.com with SMTP id c9so2284513qcz.14
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:33 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 066/104] NFSd: Convert nfs4_check_open_reclaim() to work with lookup_clientid()
+Date: Thu, 19 Jun 2014 10:50:12 -0400
+Message-Id: <1403189450-18729-67-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday 02 June 2014 14:57:26 H. Peter Anvin wrote:
-> On 06/02/2014 12:55 PM, Arnd Bergmann wrote:
-> >>
-> >> The bit that is really going to hurt is every single ioctl that uses a
-> >> timespec.
-> >>
-> >> Honestly, though, I really don't understand the point with "struct
-> >> inode_time".  It seems like the zeroeth-order thing is to change the
-> >> kernel internal version of struct timespec to have a 64-bit time... it
-> >> isn't just about inodes.  We then should be explicit about the external
-> >> uses of time, and use accessors.
-> > 
-> > I picked these because they are fairly isolated from all other uses,
-> > in particular since inode times are the only things where we really
-> > care about times in the distant past or future (decades away as opposed
-> > to things that happened between boot and shutdown).
-> > 
-> 
-> If nothing else, I would expect to be able to set the system time to
-> weird values for testing.  So I'm not so sure I agree with that...
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-I think John Stultz and Thomas Gleixner have already started looking
-at how the timekeeping code can be updated. Once that is done, we should
-be able to add a functional 64-bit gettimeofday/settimeofday syscall
-pair. While I definitely agree this is one of the most basic things to
-have, it's also not an area of the kernel that is easy to change.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4proc.c  |  3 +--
+ fs/nfsd/nfs4state.c | 13 ++++++++-----
+ fs/nfsd/state.h     |  3 ++-
+ 3 files changed, 11 insertions(+), 8 deletions(-)
 
-> > For other kernel-internal uses, we may be better off migrating to
-> > a completely different representation, such as nanoseconds since
-> > boot or the architecture specific ktime_t, but this is really something
-> > to decide for each subsystem.
-> 
-> Having a bunch of different time representations in the kernel seems
-> like a real headache...
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 72e673781e6b..833c753e4775 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -431,8 +431,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			break;
+ 		case NFS4_OPEN_CLAIM_PREVIOUS:
+ 			status = nfs4_check_open_reclaim(&open->op_clientid,
+-							 cstate->minorversion,
+-							 nn);
++							 cstate, nn);
+ 			if (status)
+ 				goto out;
+ 			open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7bb7dd19e275..dd436ebf1123 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5446,16 +5446,19 @@ nfsd4_find_reclaim_client(const char *recdir, struct nfsd_net *nn)
+ * Called from OPEN. Look for clientid in reclaim list.
+ */
+ __be32
+-nfs4_check_open_reclaim(clientid_t *clid, bool sessions, struct nfsd_net *nn)
++nfs4_check_open_reclaim(clientid_t *clid,
++		struct nfsd4_compound_state *cstate,
++		struct nfsd_net *nn)
+ {
+-	struct nfs4_client *clp;
++	__be32 status;
+ 
+ 	/* find clientid in conf_id_hashtbl */
+-	clp = find_confirmed_client(clid, sessions, nn);
+-	if (clp == NULL)
++	status = lookup_clientid(clid, cstate, nn);
++	if (status)
+ 		return nfserr_reclaim_bad;
+ 
+-	return nfsd4_client_record_check(clp) ? nfserr_reclaim_bad : nfs_ok;
++	return nfsd4_client_record_check(cstate->clp) ?
++		nfserr_reclaim_bad : nfs_ok;
+ }
+ 
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 747ab44b806a..880b5acd05f3 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -440,7 +440,8 @@ void nfs4_remove_reclaim_record(struct nfs4_client_reclaim *, struct nfsd_net *)
+ extern void nfs4_release_reclaim(struct nfsd_net *);
+ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
+ 							struct nfsd_net *nn);
+-extern __be32 nfs4_check_open_reclaim(clientid_t *clid, bool sessions, struct nfsd_net *nn);
++extern __be32 nfs4_check_open_reclaim(clientid_t *clid,
++		struct nfsd4_compound_state *cstate, struct nfsd_net *nn);
+ extern int set_callback_cred(void);
+ extern void nfsd4_init_callback(struct nfsd4_callback *);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+-- 
+1.9.3
 
-We already have time_t, ktime_t, timeval, timespec, compat_timespec,
-clock_t, cputime_t, cputime64_t, tm, nanoseconds, jiffies, jiffies64,
-and lots of driver or file system specific representations. I'm all for
-removing a bunch of these from the kernel, but my feeling is that this is
-one of the cases where we first have to add new ones in order to remove
-those that are already there.
-To complicate things further, we also have various times bases
-(realtime/utc, realtime/tai, monotonic, monotonic_raw, boottime, ...),
-and at least for the timespec values we pass around, it's not always
-obvious which one is used, of if that's the right one.
-
-We probably don't want to add a lot of new representations, and it's
-possible that we can change most of the internal code we have to
-ktime_t and then convert that to whatever user space wants at the
-interfaces.
-
-The possible uses I can see for non-ktime_t types in the kernel are:
-* inodes need 96 bit timestamps to represent the full range of values
-  that can be stored in a file system, you made a convincing argument
-  for that. Almost everything else can fit into 64 bit on a 32-bit
-  kernel, in theory also on a 64-bit kernel if we want that.
-* A number of interfaces pass relative timespecs: nanosleep(), poll(),
-  select(), sigtimedwait(), alarm(), futex() and probably more. There is
-  nothing wrong with the use of timespec here, and it may be good to
-  annotate that by using a new type (e.g. struct timeout) that is defined
-  as compatible with the current timespec.
-* For new user interfaces, we need a new type such as the
-  __kernel_timespec64 I introduced, so it doesn't clash with the normal
-  user timespec that may be smaller, depending on the libc.
-* A lot of drivers will need new ioctl commands, and for drivers that
-  just need time stamps (audio, v4l, sockets, ...) it may be more
-  efficient and more correct to use a new timestamp_t (e.g. boot time
-  64-bit nanoseconds) than __kernel_timespec64, which is not normally
-  monotonic and requires a normalization step. If we end up introducing
-  such a type in the user interface, we can also start using it in the
-  kernel.
-
-	Arnd
