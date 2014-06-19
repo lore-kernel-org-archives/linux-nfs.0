@@ -1,35 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:58243 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750759AbaF3LED (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 07:04:03 -0400
-Date: Mon, 30 Jun 2014 04:04:02 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 018/117] nfsd: clean up nfs4_release_lockowner
-Message-ID: <20140630110402.GB2002@infradead.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
- <1403810017-16062-19-git-send-email-jlayton@primarydata.com>
- <20140629064738.GA17739@infradead.org>
- <20140629070812.414343ae@tlielax.poochiereds.net>
- <20140630070208.541871b7@f20.localdomain>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140630070208.541871b7@f20.localdomain>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:35054 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757917AbaFSOvt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:49 -0400
+Received: by mail-qc0-f171.google.com with SMTP id w7so2304523qcr.30
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:49 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 036/104] NFSd: Ensure that nfs4_open_delegation() references the delegation stateid
+Date: Thu, 19 Jun 2014 10:49:42 -0400
+Message-Id: <1403189450-18729-37-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 30, 2014 at 07:02:08AM -0400, Jeff Layton wrote:
-> I started looking at reorganizing the function like you suggested, and
-> there's a bit of a problem. Once we start adding in locking this
-> becomes a bit of a mess, at least until the ownerstr_hashtbl gets moved
-> into the nfs4_client.
-> 
-> What I'd suggest is that we go ahead and take this patch as-is for now,
-> and I'll do the reorganization of the function along those lines in a
-> later patch once we only need to deal with the cl_lock there. Sound ok?
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-ok..
+Ensure that nfs4_open_delegation() keeps a reference to the delegation
+stateid until it is done working with it.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 08425b1bc3b1..cf3b19bb5839 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -589,6 +589,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	lockdep_assert_held(&state_lock);
+ 	lockdep_assert_held(&fp->fi_lock);
+ 
++	atomic_inc(&dp->dl_stid.sc_count);
+ 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+@@ -3513,6 +3514,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+ 	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
+ 		STATEID_VAL(&dp->dl_stid.sc_stateid));
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
++	nfs4_put_delegation(dp);
+ 	return;
+ out_free:
+ 	unhash_and_destroy_delegation(dp);
+-- 
+1.9.3
 
