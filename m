@@ -1,108 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:34733 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752096AbaF3Pui (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:38 -0400
-Received: by mail-qc0-f177.google.com with SMTP id r5so7152500qcx.8
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:37 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 003/114] nfsd: wait to initialize work struct just prior to using it
-Date: Mon, 30 Jun 2014 11:48:32 -0400
-Message-Id: <1404143423-24381-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:54017 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932336AbaFSMZc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 08:25:32 -0400
+Message-ID: <53A2D6B8.9080608@gmail.com>
+Date: Thu, 19 Jun 2014 08:25:28 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
+MIME-Version: 1.0
+To: Yan Burman <yanb@mellanox.com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH] xprtrdma: Fix DMA-API-DEBUG warning by checking dma_map
+ result
+References: <1403008747-23923-1-git-send-email-yanb@mellanox.com>
+In-Reply-To: <1403008747-23923-1-git-send-email-yanb@mellanox.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There's a fair chance we won't ever need this work struct, so we might
-as well delay initializing it until just before we're going to use it.
-In a later patch, we'll need to intialize the work with a different
-function for delegation callbacks. By delaying this, we avoid having
-to do it twice.
+On 06/17/2014 08:39 AM, Yan Burman wrote:
+> Fix the following warning when DMA-API debug is enabled by checking ib_dma_map_single result:
+> [ 1455.345548] ------------[ cut here ]------------
+> [ 1455.346863] WARNING: CPU: 3 PID: 3929 at /home/yanb/kernel/net-next/lib/dma-debug.c:1140 check_unmap+0x4e5/0x990()
+> [ 1455.349350] mlx4_core 0000:00:07.0: DMA-API: device driver failed to check map error[device address=0x000000007c9f2090] [size=2656 bytes] [mapped as single]
+> [ 1455.349350] Modules linked in: xprtrdma netconsole configfs nfsv3 nfs_acl ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm autofs4 auth_rpcgss oid_registry nfsv4 nfs fscache lockd sunrpc dm_mirror dm_region_hash dm_log microcode pcspkr mlx4_ib ib_sa ib_mad ib_core ib_addr mlx4_en ipv6 ptp pps_core vxlan mlx4_core virtio_balloon cirrus ttm drm_kms_helper drm sysimgblt sysfillrect syscopyarea i2c_piix4 i2c_core button ext3 jbd virtio_blk virtio_net virtio_pci virtio_ring virtio uhci_hcd ata_generic ata_piix libata
+> [ 1455.349350] CPU: 3 PID: 3929 Comm: mount.nfs Not tainted 3.15.0-rc1-dbg+ #13
+> [ 1455.349350] Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2007
+> [ 1455.349350]  0000000000000474 ffff880069dcf628 ffffffff8151c341 ffffffff817b69d8
+> [ 1455.349350]  ffff880069dcf678 ffff880069dcf668 ffffffff8105b5fc 0000000069dcf658
+> [ 1455.349350]  ffff880069dcf778 ffff88007b0c9f00 ffffffff8255ec40 0000000000000a60
+> [ 1455.349350] Call Trace:
+> [ 1455.349350]  [<ffffffff8151c341>] dump_stack+0x52/0x81
+> [ 1455.349350]  [<ffffffff8105b5fc>] warn_slowpath_common+0x8c/0xc0
+> [ 1455.349350]  [<ffffffff8105b6e6>] warn_slowpath_fmt+0x46/0x50
+> [ 1455.349350]  [<ffffffff812e6305>] check_unmap+0x4e5/0x990
+> [ 1455.349350]  [<ffffffff81521fb0>] ? _raw_spin_unlock_irq+0x30/0x60
+> [ 1455.349350]  [<ffffffff812e6a0a>] debug_dma_unmap_page+0x5a/0x60
+> [ 1455.349350]  [<ffffffffa0389583>] rpcrdma_deregister_internal+0xb3/0xd0 [xprtrdma]
+> [ 1455.349350]  [<ffffffffa038a639>] rpcrdma_buffer_destroy+0x69/0x170 [xprtrdma]
+> [ 1455.349350]  [<ffffffffa03872ff>] xprt_rdma_destroy+0x3f/0xb0 [xprtrdma]
+> [ 1455.349350]  [<ffffffffa04a95ff>] xprt_destroy+0x6f/0x80 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a9625>] xprt_put+0x15/0x20 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a899a>] rpc_free_client+0x8a/0xe0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a8a58>] rpc_release_client+0x68/0xa0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a9060>] rpc_shutdown_client+0xb0/0xc0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a8f5d>] ? rpc_ping+0x5d/0x70 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a91ab>] rpc_create_xprt+0xbb/0xd0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a9273>] rpc_create+0xb3/0x160 [sunrpc]
+> [ 1455.349350]  [<ffffffff81129749>] ? __probe_kernel_read+0x69/0xb0
+> [ 1455.349350]  [<ffffffffa053851c>] nfs_create_rpc_client+0xdc/0x100 [nfs]
+> [ 1455.349350]  [<ffffffffa0538cfa>] nfs_init_client+0x3a/0x90 [nfs]
+> [ 1455.349350]  [<ffffffffa05391c8>] nfs_get_client+0x478/0x5b0 [nfs]
+> [ 1455.349350]  [<ffffffffa0538e50>] ? nfs_get_client+0x100/0x5b0 [nfs]
+> [ 1455.349350]  [<ffffffff81172c6d>] ? kmem_cache_alloc_trace+0x24d/0x260
+> [ 1455.349350]  [<ffffffffa05393f3>] nfs_create_server+0xf3/0x4c0 [nfs]
+> [ 1455.349350]  [<ffffffffa0545ff0>] ? nfs_request_mount+0xf0/0x1a0 [nfs]
+> [ 1455.349350]  [<ffffffffa031c0c3>] nfs3_create_server+0x13/0x30 [nfsv3]
+> [ 1455.349350]  [<ffffffffa0546293>] nfs_try_mount+0x1f3/0x230 [nfs]
+> [ 1455.349350]  [<ffffffff8108ea21>] ? get_parent_ip+0x11/0x50
+> [ 1455.349350]  [<ffffffff812d6343>] ? __this_cpu_preempt_check+0x13/0x20
+> [ 1455.349350]  [<ffffffff810d632b>] ? try_module_get+0x6b/0x190
+> [ 1455.349350]  [<ffffffffa05449f7>] nfs_fs_mount+0x187/0x9d0 [nfs]
+> [ 1455.349350]  [<ffffffffa0545940>] ? nfs_clone_super+0x140/0x140 [nfs]
+> [ 1455.349350]  [<ffffffffa0543b20>] ? nfs_auth_info_match+0x40/0x40 [nfs]
+> [ 1455.349350]  [<ffffffff8117e360>] mount_fs+0x20/0xe0
+> [ 1455.349350]  [<ffffffff811a1c16>] vfs_kern_mount+0x76/0x160
+> [ 1455.349350]  [<ffffffff811a29a8>] do_mount+0x428/0xae0
+> [ 1455.349350]  [<ffffffff811a30f0>] SyS_mount+0x90/0xe0
+> [ 1455.349350]  [<ffffffff8152af52>] system_call_fastpath+0x16/0x1b
+> [ 1455.349350] ---[ end trace f1f31572972e211d ]---
+>
+> Signed-off-by: Yan Burman <yanb@mellanox.com>
+> ---
+>  net/sunrpc/xprtrdma/verbs.c |    4 ++++
+>  1 file changed, 4 insertions(+)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 13dbd1c..076c244 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1388,6 +1388,10 @@ rpcrdma_register_internal(struct rpcrdma_ia *ia, void *va, int len,
+>  	 */
+>  	iov->addr = ib_dma_map_single(ia->ri_id->device,
+>  			va, len, DMA_BIDIRECTIONAL);
+> +	if (ib_dma_mapping_error(ia->ri_id->device, iov->addr)) {
+> +		return -ENOMEM;
+> +	}
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4callback.c | 10 +++++-----
- fs/nfsd/nfs4state.c    |  2 --
- fs/nfsd/state.h        |  1 -
- 3 files changed, 5 insertions(+), 8 deletions(-)
+nit:  you don't need the curly braces since this is a one-line "if".
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 2c73cae9899d..00cb9b7a75f6 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -43,6 +43,7 @@
- #define NFSDDBG_FACILITY                NFSDDBG_PROC
- 
- static void nfsd4_mark_cb_fault(struct nfs4_client *, int reason);
-+static void nfsd4_do_callback_rpc(struct work_struct *w);
- 
- #define NFSPROC4_CB_NULL 0
- #define NFSPROC4_CB_COMPOUND 1
-@@ -763,6 +764,8 @@ static void do_probe_callback(struct nfs4_client *clp)
- 
- 	cb->cb_ops = &nfsd4_cb_probe_ops;
- 
-+	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
-+
- 	run_nfsd4_cb(cb);
- }
- 
-@@ -1031,11 +1034,6 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
- 			cb->cb_ops, cb);
- }
- 
--void nfsd4_init_callback(struct nfsd4_callback *cb)
--{
--	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
--}
--
- void nfsd4_cb_recall(struct nfs4_delegation *dp)
- {
- 	struct nfsd4_callback *cb = &dp->dl_recall;
-@@ -1053,5 +1051,7 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
- 	INIT_LIST_HEAD(&cb->cb_per_client);
- 	cb->cb_done = true;
- 
-+	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
-+
- 	run_nfsd4_cb(&dp->dl_recall);
- }
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 29788fd0da24..b49b46b0ce23 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -466,7 +466,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time = 0;
- 	atomic_set(&dp->dl_count, 1);
--	nfsd4_init_callback(&dp->dl_recall);
- 	return dp;
- }
- 
-@@ -1472,7 +1471,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 		spin_unlock(&nn->client_lock);
- 		return NULL;
- 	}
--	nfsd4_init_callback(&clp->cl_cb_null);
- 	clp->cl_time = get_seconds();
- 	clear_bit(0, &clp->cl_cb_slot_busy);
- 	copy_verf(clp, verf);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 374c66283ac5..9447f86f2778 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -464,7 +464,6 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
- 							struct nfsd_net *nn);
- extern __be32 nfs4_check_open_reclaim(clientid_t *clid, bool sessions, struct nfsd_net *nn);
- extern int set_callback_cred(void);
--extern void nfsd4_init_callback(struct nfsd4_callback *);
- extern void nfsd4_probe_callback(struct nfs4_client *clp);
- extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
- extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
--- 
-1.9.3
+Anna
+> +
+>  	iov->length = len;
+>  
+>  	if (ia->ri_have_dma_lkey) {
 
