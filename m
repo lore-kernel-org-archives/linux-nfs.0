@@ -1,61 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:36930 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754385AbaF3Pvt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:49 -0400
-Received: by mail-qc0-f171.google.com with SMTP id w7so7181664qcr.16
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:48 -0700 (PDT)
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:42069 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757959AbaFSOvX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:23 -0400
+Received: by mail-qc0-f176.google.com with SMTP id w7so2248285qcr.21
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:22 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 054/114] nfsd: nfsd4_open_confirm() must reference the open stateid
-Date: Mon, 30 Jun 2014 11:49:23 -0400
-Message-Id: <1404143423-24381-55-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v1 017/104] NFSd: Allow struct nfsd4_compound_state to cache the nfs4_client
+Date: Thu, 19 Jun 2014 10:49:23 -0400
+Message-Id: <1403189450-18729-18-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Ensure that nfsd4_open_confirm() keeps a reference to the open
-stateid until it is done working with it.
-
-Necessary step toward client_mutex removal.
+This will be used later to accelerate lookups of the clientid
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 14 +++++++++++++-
+ fs/nfsd/xdr4.h      |  1 +
+ 2 files changed, 14 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 08e3ab9c82f0..8ed48d0015e1 100644
+index bd753abdc405..0ec1ac089e9c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4385,10 +4385,12 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					NFS4_OPEN_STID, &stp, nn);
- 	if (status)
- 		goto out;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&stp->st_stid.sc_count);
- 	oo = openowner(stp->st_stateowner);
- 	status = nfserr_bad_stateid;
- 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
--		goto out;
-+		goto put_stateid;
- 	oo->oo_flags |= NFS4_OO_CONFIRMED;
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&oc->oc_resp_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
-@@ -4397,6 +4399,8 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+@@ -188,6 +188,15 @@ static void put_client_renew_locked(struct nfs4_client *clp)
+ 		renew_client_locked(clp);
+ }
  
- 	nfsd4_client_record_create(oo->oo_owner.so_client);
- 	status = nfs_ok;
-+put_stateid:
-+	put_generic_stateid(stp);
++static void put_client_renew(struct nfs4_client *clp)
++{
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	put_client_renew_locked(clp);
++	spin_unlock(&nn->client_lock);
++}
++
+ static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+ {
+ 	__be32 status;
+@@ -2428,6 +2437,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 			goto out_put_session;
+ 		cstate->slot = slot;
+ 		cstate->session = session;
++		cstate->clp = clp;
+ 		/* Return the cached reply status and set cstate->status
+ 		 * for nfsd4_proc_compound processing */
+ 		status = nfsd4_replay_cache_entry(resp, seq);
+@@ -2462,6 +2472,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 
+ 	cstate->slot = slot;
+ 	cstate->session = session;
++	cstate->clp = clp;
+ 
  out:
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
+ 	switch (clp->cl_cb_state) {
+@@ -2498,7 +2509,8 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
+ 		}
+ 		/* Drop session reference that was taken in nfsd4_sequence() */
+ 		nfsd4_put_session(cs->session);
+-	}
++	} else if (cs->clp)
++		put_client_renew(cs->clp);
+ }
+ 
+ __be32
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 570073aac50c..c9bf09bebdae 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -55,6 +55,7 @@ struct nfsd4_compound_state {
+ 	struct svc_fh		current_fh;
+ 	struct svc_fh		save_fh;
+ 	struct nfs4_stateowner	*replay_owner;
++	struct nfs4_client	*clp;
+ 	/* For sessions DRC */
+ 	struct nfsd4_session	*session;
+ 	struct nfsd4_slot	*slot;
 -- 
 1.9.3
 
