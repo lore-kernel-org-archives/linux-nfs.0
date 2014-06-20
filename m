@@ -1,49 +1,181 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37210 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752661AbaFBQvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Jun 2014 12:51:53 -0400
-Date: Mon, 2 Jun 2014 12:51:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: "'Devesh Sharma'" <Devesh.Sharma@Emulex.Com>, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org, tom@opengridcomputing.com
-Subject: Re: [PATCH V3] svcrdma: refactor marshalling logic
-Message-ID: <20140602165151.GA20031@fieldses.org>
-References: <20140529165532.16349.95248.stgit@build.ogc.int>
- <EE7902D3F51F404C82415C4803930ACD3FE01265@CMEXMB1.ad.emulex.com>
- <000001cf7c07$72e613d0$58b23b70$@opengridcomputing.com>
- <EE7902D3F51F404C82415C4803930ACD3FE01355@CMEXMB1.ad.emulex.com>
- <004101cf7e82$68b58ad0$3a20a070$@opengridcomputing.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <004101cf7e82$68b58ad0$3a20a070$@opengridcomputing.com>
+Received: from LGEMRELSE6Q.lge.com ([156.147.1.121]:57747 "EHLO
+	lgemrelse6q.lge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934625AbaFTGr7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jun 2014 02:47:59 -0400
+From: Minchan Kim <minchan@kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Rik van Riel <riel@redhat.com>, Mel Gorman <mgorman@suse.de>,
+        Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@suse.cz>,
+        Hugh Dickins <hughd@google.com>, Minchan Kim <minchan@kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: [RFCv2 2/3] mm: Introduce atomic_remove_mapping
+Date: Fri, 20 Jun 2014 15:48:31 +0900
+Message-Id: <1403246912-18237-3-git-send-email-minchan@kernel.org>
+In-Reply-To: <1403246912-18237-1-git-send-email-minchan@kernel.org>
+References: <1403246912-18237-1-git-send-email-minchan@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 02, 2014 at 11:47:58AM -0500, Steve Wise wrote:
-> 
-> 
-> > Steve
-> > 
-> > I have not checked the code because I am away from my laptop
-> > But I assume mlx and mthca is using fmr and cxgb4 is using rdma-read-with-invalidate
-> which
-> > has implicit fence.
-> > 
-> > If invalidate is issued before read is completed its a problem.
-> > 
-> 
-> You're correct.  And this bug appears to be in the current upstream code as well.  If an
-> IB_WR_LOCAL_INV wr is used, it must include IB_SEND_FENCE to fence it until the prior read
-> completes.
-> 
-> Good catch!  I'll post V4 soon.
+For release page from atomic context(ie, softirq), locks
+related to the work should be aware of that.
 
-Any chance that can be handled as a separate patch rather than folded
-in?
+There are two locks.
 
-(Disclaimer: I've been following the discussion only very
-superficially.)
+One is mapping->tree_lock and the other is swap_info_struct->lock.
+The mapping->tree_lock is alreay aware of irq so it's no problem
+but swap_info_struct->lock isn't so atomic_remove_mapping uses just
+try_spinlock and if it fails to hold a lock, it just depends on
+a fallback plan which moves the page into LRU's tail and expect page
+freeing in next.
 
---b.
+A change I know is mapping->a_ops->free is called on atomic context
+by this patch. Only user is nfs_readdir_clear_array which is no
+problem when I look at.
+
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Minchan Kim <minchan@kernel.org>
+---
+ include/linux/swap.h |  4 ++++
+ mm/swapfile.c        | 11 ++++++++-
+ mm/vmscan.c          | 63 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 77 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 94fd0b23f3f9..5df540205bda 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -336,6 +336,8 @@ extern unsigned long mem_cgroup_shrink_node_zone(struct mem_cgroup *mem,
+ 						unsigned long *nr_scanned);
+ extern unsigned long shrink_all_memory(unsigned long nr_pages);
+ extern int vm_swappiness;
++extern int atomic_remove_mapping(struct address_space *mapping,
++					struct page *page);
+ extern int remove_mapping(struct address_space *mapping, struct page *page);
+ extern unsigned long vm_total_pages;
+ 
+@@ -441,6 +443,7 @@ static inline long get_nr_swap_pages(void)
+ }
+ 
+ extern void si_swapinfo(struct sysinfo *);
++extern struct swap_info_struct *swap_info_get(swp_entry_t entry);
+ extern swp_entry_t get_swap_page(void);
+ extern swp_entry_t get_swap_page_of_type(int);
+ extern int add_swap_count_continuation(swp_entry_t, gfp_t);
+@@ -449,6 +452,7 @@ extern int swap_duplicate(swp_entry_t);
+ extern int swapcache_prepare(swp_entry_t);
+ extern void swap_free(swp_entry_t);
+ extern void swapcache_free(swp_entry_t);
++extern void __swapcache_free(swp_entry_t);
+ extern int free_swap_and_cache(swp_entry_t);
+ extern int swap_type_of(dev_t, sector_t, struct block_device **);
+ extern unsigned int count_swap_pages(int, int);
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index ec2ce926ea5f..d76496a8a104 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -722,7 +722,7 @@ swp_entry_t get_swap_page_of_type(int type)
+ 	return (swp_entry_t) {0};
+ }
+ 
+-static struct swap_info_struct *swap_info_get(swp_entry_t entry)
++struct swap_info_struct *swap_info_get(swp_entry_t entry)
+ {
+ 	struct swap_info_struct *p;
+ 	unsigned long offset, type;
+@@ -855,6 +855,15 @@ void swapcache_free(swp_entry_t entry)
+ 	}
+ }
+ 
++void __swapcache_free(swp_entry_t entry)
++{
++	struct swap_info_struct *p;
++
++	p = swap_info_get(entry);
++	if (p)
++		swap_entry_free(p, entry, SWAP_HAS_CACHE);
++}
++
+ /*
+  * How many references to page are currently swapped out?
+  * This does not give an exact answer when swap count is continued,
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 521f7eab1798..a7efddc571f4 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -526,6 +526,69 @@ static pageout_t pageout(struct page *page, struct address_space *mapping,
+ }
+ 
+ /*
++ * Attempt to detach a locked page from its ->mapping in atomic context.
++ * If it is dirty or if someone else has a ref on the page or couldn't
++ * get necessary locks, abort and return 0.
++ * If it was successfully detached, return 1.
++ * Assumes the caller has a single ref on this page.
++ */
++int atomic_remove_mapping(struct address_space *mapping,
++				struct page *page)
++{
++	BUG_ON(!PageLocked(page));
++	BUG_ON(mapping != page_mapping(page));
++	BUG_ON(!irqs_disabled());
++
++	spin_lock(&mapping->tree_lock);
++
++	/* Look at comment in __remove_mapping */
++	if (!page_freeze_refs(page, 2))
++		goto cannot_free;
++	/* note: atomic_cmpxchg in page_freeze_refs provides the smp_rmb */
++	if (unlikely(PageDirty(page))) {
++		page_unfreeze_refs(page, 2);
++		goto cannot_free;
++	}
++
++	if (PageSwapCache(page)) {
++		swp_entry_t swap = { .val = page_private(page) };
++		struct swap_info_struct *p = swap_info_get(swap);
++
++		if (!p || !spin_trylock(&p->lock)) {
++			page_unfreeze_refs(page, 2);
++			goto cannot_free;
++		}
++
++		mem_cgroup_swapout(page, swap);
++		__delete_from_swap_cache(page);
++		spin_unlock(&mapping->tree_lock);
++		__swapcache_free(swap);
++		spin_unlock(&p->lock);
++	} else {
++		void (*freepage)(struct page *);
++
++		freepage = mapping->a_ops->freepage;
++		__delete_from_page_cache(page, NULL);
++		spin_unlock(&mapping->tree_lock);
++
++		if (freepage != NULL)
++			freepage(page);
++	}
++
++	/*
++	 * Unfreezing the refcount with 1 rather than 2 effectively
++	 * drops the pagecache ref for us without requiring another
++	 * atomic operation.
++	 */
++	page_unfreeze_refs(page, 1);
++	return 1;
++
++cannot_free:
++	spin_unlock(&mapping->tree_lock);
++	return 0;
++}
++
++/*
+  * Same as remove_mapping, but if the page is removed from the mapping, it
+  * gets returned with a refcount of 0.
+  */
+-- 
+2.0.0
+
