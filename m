@@ -1,63 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:35552 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751189AbaFZTNx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:13:53 -0400
-Received: by mail-qa0-f44.google.com with SMTP id hw13so3172969qab.17
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:13:52 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 004/117] nfsd: clean up sparse endianness warnings in nfscache.c
-Date: Thu, 26 Jun 2014 15:11:44 -0400
-Message-Id: <1403810017-16062-5-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:4568 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934326AbaFTMvn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 20 Jun 2014 08:51:43 -0400
+Date: Fri, 20 Jun 2014 08:51:40 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC] nfs: ensure cached data is correct before using
+ delegation
+Message-ID: <20140620125140.GH4510@tonberry.usersys.redhat.com>
+References: <1402683488-23725-1-git-send-email-smayhew@redhat.com>
+ <1402683488-23725-2-git-send-email-smayhew@redhat.com>
+ <CAABAsM5kJFJK_-VwL4bB4ZUvpdx4pFEYqXKN1S7KqdF6=Xc76g@mail.gmail.com>
+ <20140617210439.GC4510@tonberry.usersys.redhat.com>
+ <CAHQdGtS=jTwzh+Q7WHy5Bg=vqXXsJvLK+O3-r55bq58DXNiZrQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtS=jTwzh+Q7WHy5Bg=vqXXsJvLK+O3-r55bq58DXNiZrQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We currently hash the XID to determine a hash bucket to use for the
-reply cache entry, which is fed into hash_32 without byte-swapping it.
-Add __force to make sparse happy, and add some comments to explain
-why.
+On Tue, 17 Jun 2014, Trond Myklebust wrote:
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfscache.c | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
+> On Tue, Jun 17, 2014 at 5:04 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+> >
+> > I did some more digging and I think I see 2 areas that could be
+> > improved.
+> >
+> > The first would be to clear NFS_INO_INVALID_DATA if we've just
+> > truncated the inode to 0 bytes -- after all, if we've just unmapped
+> > all the pages from the inode's address space then isn't our data
+> > consisitent?:
+> 
+> What say we rather just don't set/clear NFS_INO_INVALID_DATA if
+> mapping->nrpages == 0? That should catch the above case, plus a couple
+> of other potential false positives.
+> 
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 6040da8830ff..ff9567633245 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -221,7 +221,12 @@ static void
- hash_refile(struct svc_cacherep *rp)
- {
- 	hlist_del_init(&rp->c_hash);
--	hlist_add_head(&rp->c_hash, cache_hash + hash_32(rp->c_xid, maskbits));
-+	/*
-+	 * No point in byte swapping c_xid since we're just using it to pick
-+	 * a hash bucket.
-+	 */
-+	hlist_add_head(&rp->c_hash, cache_hash +
-+			hash_32((__force u32)rp->c_xid, maskbits));
- }
- 
- /*
-@@ -356,7 +361,11 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
- 	struct hlist_head 	*rh;
- 	unsigned int		entries = 0;
- 
--	rh = &cache_hash[hash_32(rqstp->rq_xid, maskbits)];
-+	/*
-+	 * No point in byte swapping rq_xid since we're just using it to pick
-+	 * a hash bucket.
-+	 */
-+	rh = &cache_hash[hash_32((__force u32)rqstp->rq_xid, maskbits)];
- 	hlist_for_each_entry(rp, rh, c_hash) {
- 		++entries;
- 		if (nfsd_cache_match(rqstp, csum, rp)) {
--- 
-1.9.3
+That'd be fine too, but I'm not clear on whether I should do this check
+for all files or just for regular files (I'm not sure how it would make
+that big a difference for directory inodes for instance).
 
+-Scott
