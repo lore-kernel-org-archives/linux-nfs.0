@@ -1,145 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56281 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751140AbaFEQMX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Jun 2014 12:12:23 -0400
-Date: Thu, 5 Jun 2014 12:12:23 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: trond.myklebust@primarydata.com, bhalevy@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 8/9] NFSd: Protect addition to the file_hashtbl
-Message-ID: <20140605161222.GG8362@fieldses.org>
-References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
- <1401455373-18207-9-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1401455373-18207-9-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:58394 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757071AbaFTRl2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Jun 2014 13:41:28 -0400
+Received: by mail-ie0-f172.google.com with SMTP id lx4so3530262iec.31
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Jun 2014 10:41:28 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/3] NFS: Clear NFS_INO_REVAL_PAGECACHE when we update the file size
+Date: Fri, 20 Jun 2014 13:41:21 -0400
+Message-Id: <1403286083-14345-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1403286083-14345-1-git-send-email-trond.myklebust@primarydata.com>
+References: <20140620125140.GH4510@tonberry.usersys.redhat.com>
+ <1403286083-14345-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 30, 2014 at 09:09:32AM -0400, Jeff Layton wrote:
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> 
-> Ensure that we only can have a single struct nfs4_file per inode
-> in the file_hashtbl and make addition atomic with respect to lookup.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++++++++-----------
->  1 file changed, 35 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a500033a2f87..553c2d6d48dc 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2519,6 +2519,8 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
->  {
->  	unsigned int hashval = file_hashval(ino);
->  
-> +	lockdep_assert_held(&state_lock);
-> +
+In nfs_update_inode(), if the change attribute is seen to change on
+the server, then we set NFS_INO_REVAL_PAGECACHE in order to make
+sure that we check the file size.
+However, if we also update the file size in the same function, we
+don't need to check it again. So make sure that we clear the
+NFS_INO_REVAL_PAGECACHE that was set earlier.
 
-Oops, lockdep points out we overlooked a deadlock here: this function
-also calls igrab(), which takes the i_lock, the reverse ordering from
-what we take in the delegation-break case.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/inode.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Dropping this patch for now.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index c496f8a74639..51dda21ebc4e 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1601,6 +1601,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			if ((nfsi->npages == 0) || new_isize > cur_isize) {
+ 				i_size_write(inode, new_isize);
+ 				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
++				invalid &= ~NFS_INO_REVAL_PAGECACHE;
+ 			}
+ 			dprintk("NFS: isize change on server for file %s/%ld "
+ 					"(%Ld to %Ld)\n",
+-- 
+1.9.3
 
---b.
-
->  	atomic_set(&fp->fi_ref, 1);
->  	INIT_LIST_HEAD(&fp->fi_stateids);
->  	INIT_LIST_HEAD(&fp->fi_delegations);
-> @@ -2527,9 +2529,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
->  	fp->fi_lease = NULL;
->  	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
->  	memset(fp->fi_access, 0, sizeof(fp->fi_access));
-> -	spin_lock(&state_lock);
->  	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
-> -	spin_unlock(&state_lock);
->  }
->  
->  void
-> @@ -2695,23 +2695,49 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
->  
->  /* search file_hashtbl[] for file */
->  static struct nfs4_file *
-> -find_file(struct inode *ino)
-> +find_file_locked(struct inode *ino)
->  {
->  	unsigned int hashval = file_hashval(ino);
->  	struct nfs4_file *fp;
->  
-> -	spin_lock(&state_lock);
-> +	lockdep_assert_held(&state_lock);
-> +
->  	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
->  		if (fp->fi_inode == ino) {
->  			get_nfs4_file(fp);
-> -			spin_unlock(&state_lock);
->  			return fp;
->  		}
->  	}
-> -	spin_unlock(&state_lock);
->  	return NULL;
->  }
->  
-> +static struct nfs4_file *
-> +find_file(struct inode *ino)
-> +{
-> +	struct nfs4_file *fp;
-> +
-> +	spin_lock(&state_lock);
-> +	fp = find_file_locked(ino);
-> +	spin_unlock(&state_lock);
-> +	return fp;
-> +}
-> +
-> +static struct nfs4_file *
-> +find_or_add_file(struct inode *ino, struct nfs4_file *new)
-> +{
-> +	struct nfs4_file *fp;
-> +
-> +	spin_lock(&state_lock);
-> +	fp = find_file_locked(ino);
-> +	if (fp == NULL) {
-> +		nfsd4_init_file(new, ino);
-> +		fp = new;
-> +	}
-> +	spin_unlock(&state_lock);
-> +
-> +	return fp;
-> +}
-> +
->  /*
->   * Called to check deny when READ with all zero stateid or
->   * WRITE with all zero or all one stateid
-> @@ -3230,21 +3256,19 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
->  	 * and check for delegations in the process of being recalled.
->  	 * If not found, create the nfs4_file struct
->  	 */
-> -	fp = find_file(ino);
-> -	if (fp) {
-> +	fp = find_or_add_file(ino, open->op_file);
-> +	if (fp != open->op_file) {
->  		if ((status = nfs4_check_open(fp, open, &stp)))
->  			goto out;
->  		status = nfs4_check_deleg(cl, open, &dp);
->  		if (status)
->  			goto out;
->  	} else {
-> +		open->op_file = NULL;
->  		status = nfserr_bad_stateid;
->  		if (nfsd4_is_deleg_cur(open))
->  			goto out;
->  		status = nfserr_jukebox;
-> -		fp = open->op_file;
-> -		open->op_file = NULL;
-> -		nfsd4_init_file(fp, ino);
->  	}
->  
->  	/*
-> -- 
-> 1.9.3
-> 
