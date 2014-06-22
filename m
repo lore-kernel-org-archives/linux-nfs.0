@@ -1,40 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:39301 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751471AbaFEPAy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 11:00:54 -0400
-Message-ID: <5390862B.3050007@opengridcomputing.com>
-Date: Thu, 05 Jun 2014 10:00:59 -0500
-From: Steve Wise <swise@opengridcomputing.com>
+Received: from mail-qa0-f66.google.com ([209.85.216.66]:52342 "EHLO
+	mail-qa0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751235AbaFVA74 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Jun 2014 20:59:56 -0400
+Received: by mail-qa0-f66.google.com with SMTP id m5so1549736qaj.1
+        for <linux-nfs@vger.kernel.org>; Sat, 21 Jun 2014 17:59:56 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sat, 21 Jun 2014 20:59:54 -0400
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/3] nfs4: file locking fixes and cleanups
+Message-ID: <20140621205954.6ff89007@tlielax.poochiereds.net>
+In-Reply-To: <1398940127-31150-1-git-send-email-jlayton@poochiereds.net>
+References: <1398940127-31150-1-git-send-email-jlayton@poochiereds.net>
 MIME-Version: 1.0
-To: "'Bart Van Assche'" <bvanassche@acm.org>, bfields@fieldses.org
-CC: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
-        tom@opengridcomputing.com
-Subject: Re: [PATCH] svcrdma: Fence LOCAL_INV work requests
-References: <20140602171433.31076.5634.stgit@build.ogc.int> <53901ADB.9020405@acm.org> <002901cf80c5$d0b577e0$722067a0$@opengridcomputing.com>
-In-Reply-To: <002901cf80c5$d0b577e0$722067a0$@opengridcomputing.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/5/2014 8:55 AM, Steve Wise wrote
->> -----Original Message-----
->> From: Bart Van Assche [mailto:bvanassche@acm.org]
->> Sent: Thursday, June 05, 2014 2:23 AM
->> To: Steve Wise; bfields@fieldses.org
->> Cc: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org; tom@opengridcomputing.com
->> Subject: Re: [PATCH] svcrdma: Fence LOCAL_INV work requests
->>
->> On 06/02/14 19:14, Steve Wise wrote:
->>> Fencing forces the invalidate to only happen after all subsequent send
->>> work requests have been completed.
->> Shouldn't that read "prior" instead of "subsequent" ?
->>
-> Yes.
->   
+On Thu,  1 May 2014 06:28:44 -0400
+Jeff Layton <jlayton@poochiereds.net> wrote:
 
-I posted V2 of the patch to fix the comment.
+> Hi Trond,
+> This set is basically unchanged from the last one, aside from a bit
+> more cleanup of unneeded arguments in patch #1.
+> 
+> I know that you basically NAKed this set earlier this week. The issue
+> you saw was that the generic locking codepaths never set the fl_owner
+> value for flock locks. That's true, but nfs_flock does set this for any
+> file_lock request that comes through it, so patch #1 is safe to apply
+> now if you see no other issue with it.
+> 
+> I have a patch queued for v3.16 that makes the generic flock codepaths
+> set the fl_owner, but that's just cleanup and won't really affect how
+> this works.
+> 
+> The main problem that I think we need to fix soon though is the one that
+> patch #2 fixes. An unprivileged user can trigger that BUG() and if
+> panic_on_oops is set, then that's an unprivileged DoS at least.
+> 
+> Jeff Layton (3):
+>   nfs4: treat lock owners as opaque values
+>   nfs4: queue free_lock_state job submission to nfsiod
+>   nfs4: turn free_lock_state into a void return operation
+> 
+>  fs/nfs/nfs4_fs.h   | 26 +++++++-------------
+>  fs/nfs/nfs4proc.c  | 14 +++++------
+>  fs/nfs/nfs4state.c | 69 +++++++++++++++++++++---------------------------------
+>  3 files changed, 42 insertions(+), 67 deletions(-)
+> 
+
+Hi Trond,
+
+The patch that moves the setting of fl_owner for flock locks into the
+generic locking code was merged for v3.16. Are you willing to rescind
+your earlier NACK now that that's done?
 
 Thanks,
-
-Steve.
+-- 
+Jeff Layton <jlayton@primarydata.com>
