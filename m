@@ -1,84 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f43.google.com ([209.85.192.43]:56135 "EHLO
-	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755245AbaF3PzP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:55:15 -0400
-Received: by mail-qg0-f43.google.com with SMTP id z60so2226532qgd.30
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:55:14 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 104/114] nfsd: Remove nfs4_lock_state(): nfsd4_lock/locku/lockt()
-Date: Mon, 30 Jun 2014 11:54:51 -0400
-Message-Id: <1404143701-24740-6-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ve0-f169.google.com ([209.85.128.169]:48696 "EHLO
+	mail-ve0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752851AbaFWVlc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 17:41:32 -0400
+Received: by mail-ve0-f169.google.com with SMTP id pa12so6652239veb.14
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 14:41:31 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1403559272-11019-1-git-send-email-bfields@redhat.com>
+References: <1403559272-11019-1-git-send-email-bfields@redhat.com>
+Date: Mon, 23 Jun 2014 17:41:31 -0400
+Message-ID: <CAHQdGtQXjvyaXx9PkYW=96F+wvPEj8-=eGFV2NDpfFZEB77E5w@mail.gmail.com>
+Subject: Re: [PATCH 1/3] nfsd: fix rare symlink decoding bug
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Mon, Jun 23, 2014 at 5:34 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+>
+> An NFS operation that creates a new symlink includes the symlink data,
+> which is xdr-encoded as a length followed by the data plus 0 to 3 bytes
+> of zero-padding as required to reach a 4-byte boundary.
+>
+> The vfs, on the other hand, wants null-terminated data.
+>
+> The simple way to handle this would be by copying the data into a newly
+> allocated buffer with space for the final null.
+>
+> The current nfsd_symlink code tries to be more clever by skipping that
+> step in the (likely) case where the byte following the string is already
+> 0.
+>
+> But that assumes that the byte following the string is ours to look at.
+> In fact, it might be the first byte of a page that we can't read, or of
+> some object that another task might modify.
+>
+> Worse, the NFSv4 code tries to fix the problem by actually writing to
+> that byte.
+>
+> In the NFSv2/v3 cases this actually appears to be safe:
+>
+>         - nfs3svc_decode_symlinkargs explicitly null-terminates the data
+>           (after first checking its length and copying it to a new
+>           page).
+>         - NFSv2 limits symlinks to 1k.  The buffer holding the rpc
+>           request is always at least a page, and the link data (and
+>           previous fields) have maximum lengths that prevent the request
+>           from reaching the end of a page.
+>
+> In the NFSv4 case the CREATE op is potentially just one part of a long
+> compound so can end up on the end of a page if you're unlucky.
+>
+> The minimal fix here is to copy and null-terminate in the NFSv4 case.
+> The nfsd_symlink() interface here seems too fragile, though.  It should
+> really either do the copy itself every time or just require a
+> null-terminated string.
+>
+> Reported-by: Jeff Layton <jlayton@primarydata.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfs4proc.c |   22 +++++++++++++---------
+>  1 file changed, 13 insertions(+), 9 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 6851b00..453c907 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -601,6 +601,8 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  {
+>         struct svc_fh resfh;
+>         __be32 status;
+> +       u32 len;
+> +       char *data;
+>         dev_t rdev;
+>
+>         fh_init(&resfh, NFS4_FHSIZE);
+> @@ -617,19 +619,21 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>
+>         switch (create->cr_type) {
+>         case NF4LNK:
+> -               /* ugh! we have to null-terminate the linktext, or
+> -                * vfs_symlink() will choke.  it is always safe to
+> -                * null-terminate by brute force, since at worst we
+> -                * will overwrite the first byte of the create namelen
+> -                * in the XDR buffer, which has already been extracted
+> -                * during XDR decode.
+> +               len = create->cr_linklen;
+> +               data = kmalloc(len + 1, GFP_KERNEL);
+> +               /*
+> +                * Null-terminating in place isn't safe since
+> +                * cr_linkname might end on a page boundary.
+>                  */
+> -               create->cr_linkname[create->cr_linklen] = 0;
+> -
+> +               if (!data)
+> +                       return nfserr_jukebox;
+> +               memcpy(data, create->cr_linkname, len + 1);
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 9 ---------
- 1 file changed, 9 deletions(-)
+Shouldn't that be a copy of 'len' bytes?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 99e51d4e097e..ba42aa4e4b51 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5160,8 +5160,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return status;
- 	}
- 
--	nfs4_lock_state();
--
- 	if (lock->lk_is_new) {
- 		if (nfsd4_has_session(cstate))
- 			/* See rfc 5661 18.10.3: given clientid is ignored: */
-@@ -5299,7 +5297,6 @@ out:
- 	if (open_stp)
- 		put_generic_stateid(open_stp);
- 	nfsd4_bump_seqid(cstate, status);
--	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	if (conflock)
-@@ -5342,8 +5339,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (check_lock_length(lockt->lt_offset, lockt->lt_length))
- 		 return nfserr_inval;
- 
--	nfs4_lock_state();
--
- 	if (!nfsd4_has_session(cstate)) {
- 		status = lookup_clientid(&lockt->lt_clientid, cstate, nn);
- 		if (status)
-@@ -5398,7 +5393,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- out:
- 	if (lo)
- 		nfs4_put_stateowner(&lo->lo_owner);
--	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	return status;
-@@ -5422,8 +5416,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (check_lock_length(locku->lu_offset, locku->lu_length))
- 		 return nfserr_inval;
- 
--	nfs4_lock_state();
--									        
- 	status = nfs4_preprocess_seqid_op(cstate, locku->lu_seqid,
- 					&locku->lu_stateid, NFS4_LOCK_STID,
- 					&stp, nn);
-@@ -5466,7 +5458,6 @@ put_stateid:
- 	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	return status;
+> +               data[len] = '\0';
+>                 status = nfsd_symlink(rqstp, &cstate->current_fh,
+>                                       create->cr_name, create->cr_namelen,
+> -                                     create->cr_linkname, create->cr_linklen,
+> +                                     data, len,
+>                                       &resfh, &create->cr_iattr);
+> +               kfree(data);
+>                 break;
+>
+>         case NF4BLK:
+> --
+> 1.7.9.5
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
