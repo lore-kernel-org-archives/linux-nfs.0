@@ -1,60 +1,246 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:36641 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750897AbaF3Pvm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:42 -0400
-Received: by mail-qc0-f171.google.com with SMTP id w7so7383016qcr.30
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:41 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 049/114] nfsd: nfsd4_locku() must reference the lock stateid
-Date: Mon, 30 Jun 2014 11:49:18 -0400
-Message-Id: <1404143423-24381-50-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:45421 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750931AbaFWWjg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:39:36 -0400
+Subject: [PATCH v1 04/13] xprtrdma: Update rkeys after transport reconnect
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 23 Jun 2014 18:39:34 -0400
+Message-ID: <20140623223934.1634.46646.stgit@manet.1015granger.net>
+In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Various reports of:
 
-Ensure that nfsd4_locku() keeps a reference to the lock stateid
-until it is done working with it. Necessary step toward client_mutex
-removal.
+  rpcrdma_qp_async_error_upcall: QP error 3 on device mlx4_0
+		ep ffff8800bfd3e848
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Ensure that rkeys in already-marshalled RPC/RDMA headers are
+refreshed after the QP has been replaced by a reconnect.
+
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=249
+Suggested-by: Selvin Xavier <Selvin.Xavier@Emulex.Com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   77 ++++++++++++++++++++-------------------
+ net/sunrpc/xprtrdma/transport.c |   11 +++---
+ net/sunrpc/xprtrdma/xprt_rdma.h |   10 +++++
+ 3 files changed, 56 insertions(+), 42 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 06411edf9a9f..73e94d3e6161 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5084,10 +5084,12 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&stp->st_stid.sc_count);
- 	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
--		goto out;
-+		goto put_stateid;
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 693966d..6eeb6d2 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -53,14 +53,6 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
+ 
+-enum rpcrdma_chunktype {
+-	rpcrdma_noch = 0,
+-	rpcrdma_readch,
+-	rpcrdma_areadch,
+-	rpcrdma_writech,
+-	rpcrdma_replych
+-};
+-
+ #ifdef RPC_DEBUG
+ static const char transfertypes[][12] = {
+ 	"pure inline",	/* no chunks */
+@@ -286,6 +278,30 @@ out:
+ }
+ 
+ /*
++ * Marshal chunks. This routine returns the header length
++ * consumed by marshaling.
++ *
++ * Returns positive RPC/RDMA header size, or negative errno.
++ */
++
++ssize_t
++rpcrdma_marshal_chunks(struct rpc_rqst *rqst, ssize_t result)
++{
++	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
++	struct rpcrdma_msg *headerp = (struct rpcrdma_msg *)req->rl_base;
++
++	if (req->rl_rtype != rpcrdma_noch) {
++		result = rpcrdma_create_chunks(rqst,
++				&rqst->rq_snd_buf, headerp, req->rl_rtype);
++
++	} else if (req->rl_wtype != rpcrdma_noch) {
++		result = rpcrdma_create_chunks(rqst,
++				&rqst->rq_rcv_buf, headerp, req->rl_wtype);
++	}
++	return result;
++}
++
++/*
+  * Copy write data inline.
+  * This function is used for "small" requests. Data which is passed
+  * to RPC via iovecs (or page list) is copied directly into the
+@@ -377,7 +393,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	char *base;
+ 	size_t rpclen, padlen;
+ 	ssize_t hdrlen;
+-	enum rpcrdma_chunktype rtype, wtype;
+ 	struct rpcrdma_msg *headerp;
+ 
+ 	/*
+@@ -415,13 +430,13 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 * into pages; otherwise use reply chunks.
+ 	 */
+ 	if (rqst->rq_rcv_buf.buflen <= RPCRDMA_INLINE_READ_THRESHOLD(rqst))
+-		wtype = rpcrdma_noch;
++		req->rl_wtype = rpcrdma_noch;
+ 	else if (rqst->rq_rcv_buf.page_len == 0)
+-		wtype = rpcrdma_replych;
++		req->rl_wtype = rpcrdma_replych;
+ 	else if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
+-		wtype = rpcrdma_writech;
++		req->rl_wtype = rpcrdma_writech;
+ 	else
+-		wtype = rpcrdma_replych;
++		req->rl_wtype = rpcrdma_replych;
+ 
+ 	/*
+ 	 * Chunks needed for arguments?
+@@ -438,16 +453,16 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 * TBD check NFSv4 setacl
+ 	 */
+ 	if (rqst->rq_snd_buf.len <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst))
+-		rtype = rpcrdma_noch;
++		req->rl_rtype = rpcrdma_noch;
+ 	else if (rqst->rq_snd_buf.page_len == 0)
+-		rtype = rpcrdma_areadch;
++		req->rl_rtype = rpcrdma_areadch;
+ 	else
+-		rtype = rpcrdma_readch;
++		req->rl_rtype = rpcrdma_readch;
+ 
+ 	/* The following simplification is not true forever */
+-	if (rtype != rpcrdma_noch && wtype == rpcrdma_replych)
+-		wtype = rpcrdma_noch;
+-	if (rtype != rpcrdma_noch && wtype != rpcrdma_noch) {
++	if (req->rl_rtype != rpcrdma_noch && req->rl_wtype == rpcrdma_replych)
++		req->rl_wtype = rpcrdma_noch;
++	if (req->rl_rtype != rpcrdma_noch && req->rl_wtype != rpcrdma_noch) {
+ 		dprintk("RPC:       %s: cannot marshal multiple chunk lists\n",
+ 			__func__);
+ 		return -EIO;
+@@ -461,7 +476,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 * When padding is in use and applies to the transfer, insert
+ 	 * it and change the message type.
+ 	 */
+-	if (rtype == rpcrdma_noch) {
++	if (req->rl_rtype == rpcrdma_noch) {
+ 
+ 		padlen = rpcrdma_inline_pullup(rqst,
+ 						RPCRDMA_INLINE_PAD_VALUE(rqst));
+@@ -476,7 +491,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 			headerp->rm_body.rm_padded.rm_pempty[1] = xdr_zero;
+ 			headerp->rm_body.rm_padded.rm_pempty[2] = xdr_zero;
+ 			hdrlen += 2 * sizeof(u32); /* extra words in padhdr */
+-			if (wtype != rpcrdma_noch) {
++			if (req->rl_wtype != rpcrdma_noch) {
+ 				dprintk("RPC:       %s: invalid chunk list\n",
+ 					__func__);
+ 				return -EIO;
+@@ -497,30 +512,18 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 			 * on receive. Therefore, we request a reply chunk
+ 			 * for non-writes wherever feasible and efficient.
+ 			 */
+-			if (wtype == rpcrdma_noch)
+-				wtype = rpcrdma_replych;
++			if (req->rl_wtype == rpcrdma_noch)
++				req->rl_wtype = rpcrdma_replych;
+ 		}
  	}
- 	file_lock = locks_alloc_lock();
- 	if (!file_lock) {
-@@ -5117,6 +5119,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- fput:
- 	fput(filp);
-+put_stateid:
-+	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
--- 
-1.9.3
+ 
+-	/*
+-	 * Marshal chunks. This routine will return the header length
+-	 * consumed by marshaling.
+-	 */
+-	if (rtype != rpcrdma_noch) {
+-		hdrlen = rpcrdma_create_chunks(rqst,
+-					&rqst->rq_snd_buf, headerp, rtype);
+-		wtype = rtype;	/* simplify dprintk */
+-
+-	} else if (wtype != rpcrdma_noch) {
+-		hdrlen = rpcrdma_create_chunks(rqst,
+-					&rqst->rq_rcv_buf, headerp, wtype);
+-	}
++	hdrlen = rpcrdma_marshal_chunks(rqst, hdrlen);
+ 	if (hdrlen < 0)
+ 		return hdrlen;
+ 
+ 	dprintk("RPC:       %s: %s: hdrlen %zd rpclen %zd padlen %zd"
+ 		" headerp 0x%p base 0x%p lkey 0x%x\n",
+-		__func__, transfertypes[wtype], hdrlen, rpclen, padlen,
++		__func__, transfertypes[req->rl_wtype], hdrlen, rpclen, padlen,
+ 		headerp, base, req->rl_iov.lkey);
+ 
+ 	/*
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 4185102..f6d280b 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -597,13 +597,14 @@ xprt_rdma_send_request(struct rpc_task *task)
+ 	struct rpc_xprt *xprt = rqst->rq_xprt;
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+-	int rc;
++	int rc = 0;
+ 
+-	if (req->rl_niovs == 0) {
++	if (req->rl_niovs == 0)
+ 		rc = rpcrdma_marshal_req(rqst);
+-		if (rc < 0)
+-			goto failed_marshal;
+-	}
++	else if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
++		rc = rpcrdma_marshal_chunks(rqst, 0);
++	if (rc < 0)
++		goto failed_marshal;
+ 
+ 	if (req->rl_reply == NULL) 		/* e.g. reconnection */
+ 		rpcrdma_recv_buffer_get(req);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index f3d86b2..c270e59 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -99,6 +99,14 @@ struct rpcrdma_ep {
+ #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+ #define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
+ 
++enum rpcrdma_chunktype {
++	rpcrdma_noch = 0,
++	rpcrdma_readch,
++	rpcrdma_areadch,
++	rpcrdma_writech,
++	rpcrdma_replych
++};
++
+ /*
+  * struct rpcrdma_rep -- this structure encapsulates state required to recv
+  * and complete a reply, asychronously. It needs several pieces of
+@@ -192,6 +200,7 @@ struct rpcrdma_req {
+ 	unsigned int	rl_niovs;	/* 0, 2 or 4 */
+ 	unsigned int	rl_nchunks;	/* non-zero if chunks */
+ 	unsigned int	rl_connect_cookie;	/* retry detection */
++	enum rpcrdma_chunktype	rl_rtype, rl_wtype;
+ 	struct rpcrdma_buffer *rl_buffer; /* home base for this structure */
+ 	struct rpcrdma_rep	*rl_reply;/* holder for reply buffer */
+ 	struct rpcrdma_mr_seg rl_segments[RPCRDMA_MAX_SEGS];/* chunk segments */
+@@ -347,6 +356,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+ /*
+  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
+  */
++ssize_t rpcrdma_marshal_chunks(struct rpc_rqst *, ssize_t);
+ int rpcrdma_marshal_req(struct rpc_rqst *);
+ size_t rpcrdma_max_payload(struct rpcrdma_xprt *);
+ 
 
