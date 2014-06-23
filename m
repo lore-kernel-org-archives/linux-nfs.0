@@ -1,69 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f180.google.com ([209.85.216.180]:36492 "EHLO
-	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758066AbaFSOwN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:13 -0400
-Received: by mail-qc0-f180.google.com with SMTP id r5so2260306qcx.39
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:13 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 052/104] nfsd: declare v4.1+ openowners confirmed on creation
-Date: Thu, 19 Jun 2014 10:49:58 -0400
-Message-Id: <1403189450-18729-53-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:59095 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750931AbaFWWj1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:39:27 -0400
+Subject: [PATCH v1 03/13] xprtrdma: Limit data payload size for ALLPHYSICAL
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 23 Jun 2014 18:39:25 -0400
+Message-ID: <20140623223925.1634.48882.stgit@manet.1015granger.net>
+In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
+When the client uses physical memory registration, each page in the
+payload gets its own array entry in the RPC/RDMA header's chunk list.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a80ba729e8b3..28bfffbafb0c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2902,7 +2902,10 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+Therefore, don't advertise a maximum payload size that would require
+more array entries than can fit in the RPC buffer where RPC/RDMA
+headers are built.
+
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=248
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/transport.c |    4 +++-
+ net/sunrpc/xprtrdma/verbs.c     |   41 +++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 3 files changed, 45 insertions(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 66f91f0..4185102 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -296,7 +296,6 @@ xprt_setup_rdma(struct xprt_create *args)
+ 
+ 	xprt->resvport = 0;		/* privileged port not needed */
+ 	xprt->tsh_size = 0;		/* RPC-RDMA handles framing */
+-	xprt->max_payload = RPCRDMA_MAX_DATA_SEGS * PAGE_SIZE;
+ 	xprt->ops = &xprt_rdma_procs;
+ 
+ 	/*
+@@ -382,6 +381,9 @@ xprt_setup_rdma(struct xprt_create *args)
+ 	new_ep->rep_xprt = xprt;
+ 
+ 	xprt_rdma_format_addresses(xprt);
++	xprt->max_payload = rpcrdma_max_payload(new_xprt);
++	dprintk("RPC:       %s: transport data payload maximum: %zu bytes\n",
++		__func__, xprt->max_payload);
+ 
+ 	if (!try_module_get(THIS_MODULE))
+ 		goto out4;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index f70b8ad..3c7f904 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1819,3 +1819,44 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+ 			rc);
+ 	return rc;
  }
- 
- static struct nfs4_openowner *
--alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, struct nfsd4_open *open) {
-+alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp,
-+			   struct nfsd4_open *open,
-+			   struct nfsd4_compound_state *cstate)
++
++/* Physical mapping means one Read/Write list entry per-page.
++ * All list entries must fit within an inline buffer
++ *
++ * NB: The server must return a Write list for NFS READ,
++ *     which has the same constraint. Factor in the inline
++ *     rsize as well.
++ */
++static size_t
++rpcrdma_physical_max_payload(struct rpcrdma_xprt *r_xprt)
 +{
- 	struct nfs4_openowner *oo;
++	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
++	unsigned int inline_size, pages;
++
++	inline_size = min_t(unsigned int,
++			cdata->inline_wsize, cdata->inline_rsize) -
++				RPCRDMA_HDRLEN_MIN;
++	pages = inline_size / sizeof(struct rpcrdma_segment);
++	return pages << PAGE_SHIFT;
++}
++
++static size_t
++rpcrdma_mr_max_payload(struct rpcrdma_xprt *r_xprt)
++{
++	return RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT;
++}
++
++size_t
++rpcrdma_max_payload(struct rpcrdma_xprt *r_xprt)
++{
++	size_t result;
++
++	switch (r_xprt->rx_ia.ri_memreg_strategy) {
++	case RPCRDMA_ALLPHYSICAL:
++		result = rpcrdma_physical_max_payload(r_xprt);
++		break;
++	default:
++		result = rpcrdma_mr_max_payload(r_xprt);
++	}
++	return result;
++}
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 97ca516..f3d86b2 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -348,6 +348,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
+  */
+ int rpcrdma_marshal_req(struct rpc_rqst *);
++size_t rpcrdma_max_payload(struct rpcrdma_xprt *);
  
- 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
-@@ -2913,6 +2916,8 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	oo->oo_owner.so_is_open_owner = 1;
- 	oo->oo_owner.so_seqid = open->op_seqid;
- 	oo->oo_flags = NFS4_OO_NEW;
-+	if (nfsd4_has_session(cstate))
-+		oo->oo_flags |= NFS4_OO_CONFIRMED;
- 	oo->oo_time = 0;
- 	oo->oo_last_closed_stid = NULL;
- 	INIT_LIST_HEAD(&oo->oo_close_lru);
-@@ -3185,7 +3190,7 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	clp = oo->oo_owner.so_client;
- 	goto alloc_stateid;
- new_owner:
--	oo = alloc_init_open_stateowner(strhashval, clp, open);
-+	oo = alloc_init_open_stateowner(strhashval, clp, open, cstate);
- 	if (oo == NULL)
- 		return nfserr_jukebox;
- 	open->op_openowner = oo;
-@@ -3654,8 +3659,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
- 	if (nfsd4_has_session(&resp->cstate)) {
--		open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
--
- 		if (open->op_deleg_want & NFS4_SHARE_WANT_NO_DELEG) {
- 			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
- 			open->op_why_no_deleg = WND4_NOT_WANTED;
--- 
-1.9.3
+ /* Temporary NFS request map cache. Created in svc_rdma.c  */
+ extern struct kmem_cache *svc_rdma_map_cachep;
 
