@@ -1,56 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f172.google.com ([209.85.220.172]:65397 "EHLO
-	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754100AbaFCRx0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 13:53:26 -0400
-Received: by mail-vc0-f172.google.com with SMTP id lf12so7070532vcb.17
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Jun 2014 10:53:26 -0700 (PDT)
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:62522 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753285AbaFWN4s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 09:56:48 -0400
+Received: by mail-qa0-f45.google.com with SMTP id v10so5520762qac.4
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 06:56:47 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 23 Jun 2014 09:56:45 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 000/104] nfsd: eliminate the client_mutex
+Message-ID: <20140623095645.1fc23e9c@tlielax.poochiereds.net>
+In-Reply-To: <20140623133926.GA32746@infradead.org>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+	<20140623133926.GA32746@infradead.org>
 MIME-Version: 1.0
-In-Reply-To: <538E0008.1010709@netapp.com>
-References: <538DF0F5.8090500@netapp.com>
-	<CAHQdGtT8y2rcPcjOJveKvPsFm30OpOJNOXZcPHtqRGVMKqSSvA@mail.gmail.com>
-	<538E0008.1010709@netapp.com>
-Date: Tue, 3 Jun 2014 13:53:26 -0400
-Message-ID: <CAHQdGtRTV0UvZ=X0hnyWeE4Pb2hHAOJpTRp0ZETgDkt+9_03ig@mail.gmail.com>
-Subject: Re: [GIT PULL] Please pull NFS client RDMA changes for 3.16
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 3, 2014 at 1:04 PM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> I pulled from Chuck's branch earlier today before sending this.  He has all the date stamps set as June 2.
->
+On Mon, 23 Jun 2014 06:39:26 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-OK, this is broken and I'm not pulling. The point of asking you to
-maintain the tree was to ensure that the patches get reviewed by you,
-and that I have signed-off-bys etc showing that is the case.
+> Hi Jeff,
+> 
+> thanks for bringing this forward.  I've started looking at the series,
+> but I'm a little overwhelmed as it's growing bigger and bigger with
+> each posting.  That also makes me a little worried about putting all
+> of it into 3.17.  I know you've started separating a few bits out and
+> some of those actually went into 3.16, but maybe we really should
+> start to some easier to split piece in first and make sure they get
+> into 3.17 and then see if we can get through the rest of it in time.
+> 
 
+Thanks for taking a look. The big problem with breaking this set up is
+that it will likely result in at least some performance regression in
+the interim. We're adding more granular locking inside of the
+coarse-grained client_mutex, which is likely to mean at least some
+slowdown until the client_mutex is removed. Maybe that's worth it
+though.
 
-> On 06/03/2014 12:44 PM, Trond Myklebust wrote:
->> On Tue, Jun 3, 2014 at 11:59 AM, Anna Schumaker
->> <Anna.Schumaker@netapp.com> wrote:
->>> Hey Trond,
->>>
->>> The following changes since commit fad01e866afdbe01a1f3ec06a39c3a8b9e197014:
->>>
->>>   Linux 3.15-rc8 (2014-06-01 19:12:24 -0700)
->>>
->>
->> Did you rebase these? All the commits appear to be labeled with
->> today's date, and Chuck appears as the committer for all of them.
->>
->
+> Besides the obvious fixes for bits that were racy before and don't
+> just need better scalability one thing that strikes to mind are some
+> of the higher level logic changes, like the changes fixes to various
+> stateowner / stateid relations.
+> 
 
+I'll have to think about how to break those out. Unfortunately, there
+are strong dependencies between some of those changes, which makes it
+hard to do this in pieces.
 
+> Besides that some higher level comments from glacing over the series:
+> 
+>  - the patches that touch locks.c and the lockdep code should go
+>    first, and include the maintainer (at least for lockdep, locks.c is
+>    easy :)) and relevant mailing lists.
+
+Fair enough. I meant to cc the lockdep folks on the
+lockdep_assert_not_held patch. I don't expect pushback from them, but
+you're correct that they should be Cc'ed.
+
+>  - lots of patches only have a subject line, but no explanation in the
+>    body at all.  While this might be enough for trivial patches few
+>    of them are trivial enough that this would be enough.
+
+Ok. I'll try to flesh them out for the next posting.
+
+>  - some patches have a signoff from Trond, but no From: line for him
+>    in the body.  I suspect this just got lost somewhere.
+
+Yeah. Some of them were originally written by Trond, but then I ended
+up having to do large scale rework of them. I prob should have just
+dropped his SOB lines from those. I'll go over those and do that or fix
+the From: lines.
+
+>  - there is some confusion of NFSd vs nfsd in the subsystem prefixes.
+>    While it seems odd and against the usual naming NFSd seems to be
+>    the common one for nfs patches.
+> 
+
+I tend to prefer "nfsd", but ok -- "NFSd" it is.
+
+> checkpatch.pl also has various valid complains (mostly about too long
+> lines) and a few silly ones about printks, might be worth to address
+> them.
+> 
+
+Ahh right. I need to fix those -- Steve French reported a few of those
+too (and sent me patches privately).
+
+> Last but not least I get a new compiler warning with the whole series
+> applied, as put_client is only used by the fault injection code, but
+> still compiled when the config option for it is not set.
+> 
+
+Good catch. I'll fix that.
+
+> I hope I'll have some more useful detailed reviews soon.
+> 
+
+Thanks. I should also note that a couple of races were found in the
+nfs4_ol_stateid handling while testing this set, so I'll be respinning
+it to fix those up anyway.
 
 -- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Jeff Layton <jlayton@primarydata.com>
