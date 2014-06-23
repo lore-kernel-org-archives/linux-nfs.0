@@ -1,37 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54028 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:41300 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932564AbaFSPBZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jun 2014 11:01:25 -0400
-Date: Thu, 19 Jun 2014 11:01:23 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Kinglong Mee <kinglongmee@gmail.com>, NeilBrown <neilb@suse.de>
-Subject: bugfixes for 3.16
-Message-ID: <20140619150123.GA4787@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751308AbaFWVeg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jun 2014 17:34:36 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/3] nfsd: make NFSv2 null terminate symlink data
+Date: Mon, 23 Jun 2014 17:34:31 -0400
+Message-Id: <1403559272-11019-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1403559272-11019-1-git-send-email-bfields@redhat.com>
+References: <1403559272-11019-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull bugfixes for 3.16 from
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-  git://linux-nfs.org/~bfields/linux.git for-3.16
+It's simple enough for NFSv2 to null-terminate the symlink data.
 
-Fixes for a new regression from the xdr encoding rewrite, and a
-delegation problem we've had for a while (made somewhat more annoying by
-the vfs delegation support added in 3.13.)
+A bit weird (it depends on knowing that we've already read the following
+byte, which is either padding or part of the mode), but no worse than
+the conditional kstrdup it otherwise relies on in nfsd_symlink().
 
---b.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfsproc.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-----------------------------------------------------------------
-Kinglong Mee (1):
-      NFSD: fix bug for readdir of pseudofs
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 54c6b3d..aebe23c 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -403,8 +403,11 @@ nfsd_proc_symlink(struct svc_rqst *rqstp, struct nfsd_symlinkargs *argp,
+ 
+ 	fh_init(&newfh, NFS_FHSIZE);
+ 	/*
+-	 * Create the link, look up new file and set attrs.
++	 * Crazy hack: the request fits in a page, and already-decoded
++	 * attributes follow argp->tname, so it's safe to just write a
++	 * null to ensure it's null-terminated:
+ 	 */
++	argp->tname[argp->tlen] = '\0';
+ 	nfserr = nfsd_symlink(rqstp, &argp->ffh, argp->fname, argp->flen,
+ 						 argp->tname, argp->tlen,
+ 				 		 &newfh, &argp->attrs);
+-- 
+1.7.9.5
 
-NeilBrown (1):
-      NFSD: Don't hand out delegations for 30 seconds after recalling them.
-
- fs/nfsd/nfs4state.c | 78 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c   |  1 +
- 2 files changed, 79 insertions(+)
