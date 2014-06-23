@@ -1,115 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:49440 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750986AbaFZTPd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:33 -0400
-Received: by mail-qa0-f44.google.com with SMTP id hw13so3223263qab.31
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:33 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 079/117] nfsd: don't thrash the cl_lock while freeing an open stateid
-Date: Thu, 26 Jun 2014 15:12:59 -0400
-Message-Id: <1403810017-16062-80-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:60662 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750931AbaFWWjT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:39:19 -0400
+Subject: [PATCH v1 02/13] xprtrdma: Protect ->qp during FRMR deregistration
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 23 Jun 2014 18:39:17 -0400
+Message-ID: <20140623223917.1634.39429.stgit@manet.1015granger.net>
+In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we remove the client_mutex, we'll have a potential race between
-FREE_STATEID and CLOSE.
+Ensure the QP remains valid while posting LOCAL_INV during a
+transport reconnect. Otherwise, ia->ri_id->qp is NULL, which
+triggers a panic.
 
-The root of the problem is that we are walking the st_locks list,
-dropping the spinlock and then trying to release the persistent
-reference to the lockstateid. In between, a FREE_STATEID call can come
-along and take the lock, find the stateid and then try to put the
-reference. That leads to a double put.
-
-Fix this by not releasing the cl_lock in order to release each lock
-stateid. Use put_generic_stateid_locked to unhash them and gather
-them onto a list, and free_stateid_reaplist to free any that end up
-on the list.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=259
+Fixes: ec62f40d3505a643497d105c297093bb90afd44e
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 32 ++++++++++++++++++--------------
- 1 file changed, 18 insertions(+), 14 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |   14 +++++++++++---
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 60dc6b4921dd..ca87362b9a17 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1032,27 +1032,26 @@ static void release_lockowner(struct nfs4_lockowner *lo)
- 	nfs4_put_stateowner(&lo->lo_owner);
- }
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 78bd7c6..f70b8ad 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -613,6 +613,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	/* Else will do memory reg/dereg for each chunk */
+ 	ia->ri_memreg_strategy = memreg;
  
--static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
--	__releases(&open_stp->st_stateowner->so_client->cl_lock)
--	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
-+static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp,
-+				       struct list_head *reaplist)
++	rwlock_init(&ia->ri_qplock);
+ 	return 0;
+ out2:
+ 	rdma_destroy_id(ia->ri_id);
+@@ -859,7 +860,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ int
+ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
  {
- 	struct nfs4_ol_stateid *stp;
+-	struct rdma_cm_id *id;
++	struct rdma_cm_id *id, *old;
+ 	int rc = 0;
+ 	int retry_count = 0;
  
- 	while (!list_empty(&open_stp->st_locks)) {
- 		stp = list_entry(open_stp->st_locks.next,
- 				struct nfs4_ol_stateid, st_locks);
--		spin_unlock(&open_stp->st_stateowner->so_client->cl_lock);
--		release_lock_stateid(stp);
--		spin_lock(&open_stp->st_stateowner->so_client->cl_lock);
-+		unhash_lock_stateid(stp);
-+		put_generic_stateid_locked(stp, reaplist);
- 	}
- }
+@@ -905,9 +906,14 @@ retry:
+ 			rc = -ENETUNREACH;
+ 			goto out;
+ 		}
+-		rdma_destroy_qp(ia->ri_id);
+-		rdma_destroy_id(ia->ri_id);
++
++		write_lock(&ia->ri_qplock);
++		old = ia->ri_id;
+ 		ia->ri_id = id;
++		write_unlock(&ia->ri_qplock);
++
++		rdma_destroy_qp(old);
++		rdma_destroy_id(old);
+ 	} else {
+ 		dprintk("RPC:       %s: connecting...\n", __func__);
+ 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+@@ -1597,7 +1603,9 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
  
--static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
-+static void unhash_open_stateid(struct nfs4_ol_stateid *stp,
-+				struct list_head *reaplist)
- {
- 	lockdep_assert_held(&stp->st_stateowner->so_client->cl_lock);
- 
- 	unhash_generic_stateid(stp);
--	release_open_stateid_locks(stp);
-+	release_open_stateid_locks(stp, reaplist);
- }
- 
- static void unhash_openowner_locked(struct nfs4_openowner *oo)
-@@ -1089,7 +1088,7 @@ static void release_openowner(struct nfs4_openowner *oo)
- 	while (!list_empty(&oo->oo_owner.so_stateids)) {
- 		stp = list_first_entry(&oo->oo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		unhash_open_stateid(stp);
-+		unhash_open_stateid(stp, &reaplist);
- 		put_generic_stateid_locked(stp, &reaplist);
- 	}
- 	spin_unlock(&clp->cl_lock);
-@@ -4670,16 +4669,21 @@ out:
- static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- {
- 	struct nfs4_client *clp = s->st_stid.sc_client;
-+	LIST_HEAD(reaplist);
- 
- 	s->st_stid.sc_type = NFS4_CLOSED_STID;
- 	spin_lock(&clp->cl_lock);
--	unhash_open_stateid(s);
--	spin_unlock(&clp->cl_lock);
-+	unhash_open_stateid(s, &reaplist);
- 
--	if (clp->cl_minorversion)
--		put_generic_stateid(s);
--	else
-+	if (clp->cl_minorversion) {
-+		put_generic_stateid_locked(s, &reaplist);
-+		spin_unlock(&clp->cl_lock);
-+		free_stateid_reaplist(&reaplist);
-+	} else {
-+		spin_unlock(&clp->cl_lock);
-+		free_stateid_reaplist(&reaplist);
- 		move_to_close_lru(s, clp->net);
-+	}
- }
- 
- /*
--- 
-1.9.3
++	read_lock(&ia->ri_qplock);
+ 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
++	read_unlock(&ia->ri_qplock);
+ 	if (rc)
+ 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+ 			" status %i\n", __func__, rc);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 89e7cd4..97ca516 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -59,6 +59,7 @@
+  * Interface Adapter -- one per transport instance
+  */
+ struct rpcrdma_ia {
++	rwlock_t		ri_qplock;
+ 	struct rdma_cm_id 	*ri_id;
+ 	struct ib_pd		*ri_pd;
+ 	struct ib_mr		*ri_bind_mem;
 
