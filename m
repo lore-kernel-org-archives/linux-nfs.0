@@ -1,70 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:57267 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751189AbaFZTNv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:13:51 -0400
-Received: by mail-qa0-f45.google.com with SMTP id v10so3161024qac.18
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:13:51 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 003/117] nfsd: add __force to opaque verifier field casts
-Date: Thu, 26 Jun 2014 15:11:43 -0400
-Message-Id: <1403810017-16062-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:56573 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751400AbaFWWkd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:40:33 -0400
+Subject: [PATCH v1 11/13] xprtrdma: Clean up rpcrdma_ep_disconnect()
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 23 Jun 2014 18:40:31 -0400
+Message-ID: <20140623224031.1634.30045.stgit@manet.1015granger.net>
+In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-sparse complains that we're stuffing non-byte-swapped values into
-__be32's here. Since they're supposed to be opaque, it doesn't matter
-much. Just add __force to make sparse happy.
+The return code is used only for dprintk's that are already
+redundant.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4proc.c  | 8 ++++++--
- fs/nfsd/nfs4state.c | 8 ++++++--
- 2 files changed, 12 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |    2 +-
+ net/sunrpc/xprtrdma/verbs.c     |   13 +++----------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 3 files changed, 5 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 6851b003f2a4..8904c9cbcb89 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -581,8 +581,12 @@ static void gen_boot_verifier(nfs4_verifier *verifier, struct net *net)
- 	__be32 verf[2];
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
--	verf[0] = (__be32)nn->nfssvc_boot.tv_sec;
--	verf[1] = (__be32)nn->nfssvc_boot.tv_usec;
-+	/*
-+	 * This is opaque to client, so no need to byte-swap. Use
-+	 * __force to keep sparse happy
-+	 */
-+	verf[0] = (__force __be32)nn->nfssvc_boot.tv_sec;
-+	verf[1] = (__force __be32)nn->nfssvc_boot.tv_usec;
- 	memcpy(verifier->data, verf, sizeof(verifier->data));
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index f6d280b..2faac49 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -414,7 +414,7 @@ xprt_rdma_close(struct rpc_xprt *xprt)
+ 	if (r_xprt->rx_ep.rep_connected > 0)
+ 		xprt->reestablish_timeout = 0;
+ 	xprt_disconnect_done(xprt);
+-	(void) rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
++	rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
  }
  
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f9049516bfae..c473bd6d52c8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1421,8 +1421,12 @@ static void gen_confirm(struct nfs4_client *clp)
- 	__be32 verf[2];
- 	static u32 i;
+ static void
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 52f57f7..b6c52c7 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -838,10 +838,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	cancel_delayed_work_sync(&ep->rep_connect_worker);
  
--	verf[0] = (__be32)get_seconds();
--	verf[1] = (__be32)i++;
-+	/*
-+	 * This is opaque to client, so no need to byte-swap. Use
-+	 * __force to keep sparse happy
-+	 */
-+	verf[0] = (__force __be32)get_seconds();
-+	verf[1] = (__force __be32)i++;
- 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ 	if (ia->ri_id->qp) {
+-		rc = rpcrdma_ep_disconnect(ep, ia);
+-		if (rc)
+-			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+-				" returned %i\n", __func__, rc);
++		rpcrdma_ep_disconnect(ep, ia);
+ 		rdma_destroy_qp(ia->ri_id);
+ 		ia->ri_id->qp = NULL;
+ 	}
+@@ -879,10 +876,7 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 		struct rpcrdma_xprt *xprt;
+ retry:
+ 		dprintk("RPC:       %s: reconnecting...\n", __func__);
+-		rc = rpcrdma_ep_disconnect(ep, ia);
+-		if (rc && rc != -ENOTCONN)
+-			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+-				" status %i\n", __func__, rc);
++		rpcrdma_ep_disconnect(ep, ia);
+ 
+ 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+ 		id = rpcrdma_create_id(xprt, ia,
+@@ -988,7 +982,7 @@ out:
+  * This call is not reentrant, and must not be made in parallel
+  * on the same endpoint.
+  */
+-int
++void
+ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ {
+ 	int rc;
+@@ -1004,7 +998,6 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 		dprintk("RPC:       %s: rdma_disconnect %i\n", __func__, rc);
+ 		ep->rep_connected = rc;
+ 	}
+-	return rc;
  }
  
--- 
-1.9.3
+ /*
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 7a140fe..4f7de2a 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -343,7 +343,7 @@ int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
+ 				struct rpcrdma_create_data_internal *);
+ void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+-int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
++void rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ 
+ int rpcrdma_ep_post(struct rpcrdma_ia *, struct rpcrdma_ep *,
+ 				struct rpcrdma_req *);
 
