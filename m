@@ -1,93 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:43773 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755995AbaFQLo1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 07:44:27 -0400
-Received: by mail-qa0-f47.google.com with SMTP id hw13so7728811qab.6
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Jun 2014 04:44:27 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 4/4] nfsd: add appropriate __force directives to filehandle generation code
-Date: Tue, 17 Jun 2014 07:44:14 -0400
-Message-Id: <1403005454-7319-5-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
-References: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:39984 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754912AbaFWQMz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 12:12:55 -0400
+Date: Mon, 23 Jun 2014 09:12:54 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 009/104] locks: add file_has_lease
+Message-ID: <20140623161254.GG24193@infradead.org>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+ <1403189450-18729-10-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1403189450-18729-10-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The filehandle structs all use host-endian values, but will sometimes
-stuff big-endian values into those fields. This is OK since these
-values are opaque to the client, but it confuses sparse. Add __force to
-make it clear that we are doing this intentionally.
+On Thu, Jun 19, 2014 at 10:49:15AM -0400, Jeff Layton wrote:
+> Add a function that can tell us whether a file description has had a
+> lease set on it.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfsfh.c |  9 ++++++++-
- fs/nfsd/nfsfh.h | 15 +++++++++++----
- 2 files changed, 19 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-index ec8393418154..7e5b2d993372 100644
---- a/fs/nfsd/nfsfh.c
-+++ b/fs/nfsd/nfsfh.c
-@@ -162,7 +162,14 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
- 			/* deprecated, convert to type 3 */
- 			len = key_len(FSID_ENCODE_DEV)/4;
- 			fh->fh_fsid_type = FSID_ENCODE_DEV;
--			fh->fh_fsid[0] = new_encode_dev(MKDEV(ntohl(fh->fh_fsid[0]), ntohl(fh->fh_fsid[1])));
-+			/*
-+			 * struct knfsd_fh uses host-endian fields, which are
-+			 * sometimes used to hold net-endian values. This
-+			 * confuses sparse, so we must use __force here to
-+			 * keep it from complaining.
-+			 */
-+			fh->fh_fsid[0] = new_encode_dev(MKDEV(ntohl((__force __be32)fh->fh_fsid[0]),
-+							ntohl((__force __be32)fh->fh_fsid[1])));
- 			fh->fh_fsid[1] = fh->fh_fsid[2];
- 		}
- 		data_left -= len;
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index 2e89e70ac15c..08236d70c667 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -73,8 +73,15 @@ enum fsid_source {
- extern enum fsid_source fsid_source(struct svc_fh *fhp);
- 
- 
--/* This might look a little large to "inline" but in all calls except
-+/*
-+ * This might look a little large to "inline" but in all calls except
-  * one, 'vers' is constant so moste of the function disappears.
-+ *
-+ * In some cases the values are considered to be host endian and in
-+ * others, net endian. fsidv is always considered to be u32 as the
-+ * callers don't know which it will be. So we must use __force to keep
-+ * sparse from complaining. Since these values are opaque to the
-+ * client, that shouldn't be a problem.
-  */
- static inline void mk_fsid(int vers, u32 *fsidv, dev_t dev, ino_t ino,
- 			   u32 fsid, unsigned char *uuid)
-@@ -82,7 +89,7 @@ static inline void mk_fsid(int vers, u32 *fsidv, dev_t dev, ino_t ino,
- 	u32 *up;
- 	switch(vers) {
- 	case FSID_DEV:
--		fsidv[0] = htonl((MAJOR(dev)<<16) |
-+		fsidv[0] = (__force __u32)htonl((MAJOR(dev)<<16) |
- 				 MINOR(dev));
- 		fsidv[1] = ino_t_to_u32(ino);
- 		break;
-@@ -90,8 +97,8 @@ static inline void mk_fsid(int vers, u32 *fsidv, dev_t dev, ino_t ino,
- 		fsidv[0] = fsid;
- 		break;
- 	case FSID_MAJOR_MINOR:
--		fsidv[0] = htonl(MAJOR(dev));
--		fsidv[1] = htonl(MINOR(dev));
-+		fsidv[0] = (__force __u32)htonl(MAJOR(dev));
-+		fsidv[1] = (__force __u32)htonl(MINOR(dev));
- 		fsidv[2] = ino_t_to_u32(ino);
- 		break;
- 
--- 
-1.9.3
+The code looks good, but how is this information useful given that it
+will be stable as soon as i_lock is dropped?
 
