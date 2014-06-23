@@ -1,52 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:51427 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755574AbaFXRHz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2014 13:07:55 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH v1 00/13] NFS/RDMA patches for 3.17
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAJZOPZ+ix6tPDHXbVrSnVzofHSbzqOoyTBvzkEo-GJpOYOaPFA@mail.gmail.com>
-Date: Tue, 24 Jun 2014 13:07:50 -0400
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A922572E-627F-4283-9CC9-2D4D47AF619F@oracle.com>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net> <CAJZOPZ+ix6tPDHXbVrSnVzofHSbzqOoyTBvzkEo-GJpOYOaPFA@mail.gmail.com>
-To: Or Gerlitz <or.gerlitz@gmail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:37964 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755608AbaFWQC2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 12:02:28 -0400
+Date: Mon, 23 Jun 2014 09:02:27 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        Benny Halevy <bhalevy@primarydata.com>
+Subject: Re: [PATCH v1 004/104] nfsd4: use cl_lock to synchronize all stateid
+ idr calls
+Message-ID: <20140623160227.GB24193@infradead.org>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+ <1403189450-18729-5-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1403189450-18729-5-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This looks reasonable to me.  Am I right to assume this is just a
+preparation for the state lock removal?  As far as I can tell currently
+all calls are under nfs4_lock_state().
 
-On Jun 24, 2014, at 10:35 AM, Or Gerlitz <or.gerlitz@gmail.com> wrote:
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-> On Tue, Jun 24, 2014 at 1:39 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->> The main purpose of this series is to address more connection drop
->> recovery issues by fixing FRMR re-use to make it less likely the
->> client will drop the connection due to a memory operation error.
->> 
->> Some other clean-ups and fixes are present as well.
-> 
-> 
-> From quick looking, patches 1,2 and 5 of series and maybe more have
-> very good match for 3.16-rc (fix kernel crashes etc), I don't think
-> they need to wait for 3.17
-
-My take:
-
-1/13 fixes a panic that should never be hit (that used to be a BUG,
-which never fired in operation).
-
-2/13 might be a candidate for 3.16-rc. It’s up to Trond.
-
-5/13 doesn’t fix a regression, it always worked that way.
-
-I’ve updated the “Fixes:” tag in these, will appear in v2 of the series.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+assuming it gets a proper patch description.
 
