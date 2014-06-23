@@ -1,88 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:49765 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751286AbaF3Pux (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:53 -0400
-Received: by mail-qg0-f52.google.com with SMTP id f51so2139007qge.39
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:52 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 014/114] nfsd: Cleanup - Let nfsd4_lookup_stateid() take a cstate argument
-Date: Mon, 30 Jun 2014 11:48:43 -0400
-Message-Id: <1404143423-24381-15-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-vc0-f178.google.com ([209.85.220.178]:33318 "EHLO
+	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753209AbaFWX2R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 19:28:17 -0400
+Received: by mail-vc0-f178.google.com with SMTP id ij19so6972740vcb.9
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 16:28:16 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140623221016.GA9429@pad.redhat.com>
+References: <1403559272-11019-1-git-send-email-bfields@redhat.com>
+	<CAHQdGtQXjvyaXx9PkYW=96F+wvPEj8-=eGFV2NDpfFZEB77E5w@mail.gmail.com>
+	<20140623221016.GA9429@pad.redhat.com>
+Date: Mon, 23 Jun 2014 19:28:16 -0400
+Message-ID: <CAHQdGtR54dy4DJLbx9jBEFbOM7dxihkZBqFgLpafSXdYuqei9A@mail.gmail.com>
+Subject: Re: [PATCH 1/3] nfsd: fix rare symlink decoding bug
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Mon, Jun 23, 2014 at 6:10 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 2d305a1..56bdf4a 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -600,7 +600,18 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+>                 READ_BUF(4);
+>                 create->cr_linklen = be32_to_cpup(p++);
+>                 READ_BUF(create->cr_linklen);
+> -               SAVEMEM(create->cr_linkname, create->cr_linklen);
+> +               /*
+> +                * The VFS will want a null-terminated string, and
+> +                * null-terminating in place isn't safe since this might
+> +                * end on a page boundary:
+> +                */
+> +               create->cr_linkname =
+> +                               kmalloc(create->cr_linklen + 1, GFP_KERNEL);
+> +               if (!create->cr_linkname)
+> +                       return nfserr_jukebox;
+> +               memcpy(create->cr_linkname, p, create->cr_linklen);
+> +               create->cr_linkname[create->cr_linklen] = '\0';
+> +               defer_free(argp, kfree, create->cr_linkname);
+>                 break;
+>         case NF4BLK:
+>         case NF4CHR:
 
-The cstate already holds information about the session, and hence
-the client id, so it makes more sense to pass that information
-rather than the current practice of passing a 'minor version' number.
+Note that "defer_free()" does yet another allocation here in order to
+make space for a small 'struct tmpbuf' structure. Unlike the first
+allocation, there is no check for whether or not that second
+allocation is successful above, so you can easily end up with a silent
+memory leakage (ditto for a number of other callers of defer_free()).
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4state.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+Looking around at all the other users, wouldn't it perhaps make sense
+to replace defer_free() with a helper that does just a single
+allocation for both the memory buffer and the struct tmpbuf?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8c9b1498aa38..e9bb39ecebae 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3792,12 +3792,14 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 	}
- }
- 
--static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
--				   struct nfs4_stid **s, bool sessions,
--				   struct nfsd_net *nn)
-+static __be32
-+nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
-+		     stateid_t *stateid, unsigned char typemask,
-+		     struct nfs4_stid **s, struct nfsd_net *nn)
- {
- 	struct nfs4_client *cl;
- 	__be32 status;
-+	bool sessions = cstate->minorversion != 0;
- 
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
- 		return nfserr_bad_stateid;
-@@ -3843,9 +3845,9 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 
- 	nfs4_lock_state();
- 
--	status = nfsd4_lookup_stateid(stateid,
-+	status = nfsd4_lookup_stateid(cstate, stateid,
- 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
--				&s, cstate->minorversion, nn);
-+				&s, nn);
- 	if (status)
- 		goto out;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
-@@ -4015,8 +4017,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 		seqid, STATEID_VAL(stateid));
- 
- 	*stpp = NULL;
--	status = nfsd4_lookup_stateid(stateid, typemask, &s,
--				      cstate->minorversion, nn);
-+	status = nfsd4_lookup_stateid(cstate, stateid, typemask, &s, nn);
- 	if (status)
- 		return status;
- 	stp = openlockstateid(s);
-@@ -4240,8 +4241,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return status;
- 
- 	nfs4_lock_state();
--	status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID, &s,
--				      cstate->minorversion, nn);
-+	status = nfsd4_lookup_stateid(cstate, stateid, NFS4_DELEG_STID, &s, nn);
- 	if (status)
- 		goto out;
- 	dp = delegstateid(s);
+Cheers
+  Trond
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
