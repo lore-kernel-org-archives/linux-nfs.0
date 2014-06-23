@@ -1,96 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:37712 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751005AbaF0QRy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jun 2014 12:17:54 -0400
-Message-ID: <53AD992B.8010009@oracle.com>
-Date: Fri, 27 Jun 2014 09:17:47 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:55817 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750962AbaFWWkA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:40:00 -0400
+Subject: [PATCH v1 07/13] xprtrdma: Encode Work Request opcode in wc->wr_id
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 23 Jun 2014 18:39:58 -0400
+Message-ID: <20140623223958.1634.60529.stgit@manet.1015granger.net>
+In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: Steve Wise <swise@opengridcomputing.com>,
-        "'Chuck Lever'" <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 00/13] NFS/RDMA patches for 3.17
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net> <007f01cf90c7$802c9210$8085b630$@opengridcomputing.com>
-In-Reply-To: <007f01cf90c7$802c9210$8085b630$@opengridcomputing.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Passed cthon4, iozone test interoperability test between Linux client and Solaris server, no regressions.
+The wc->opcode field is unreliable when a completion fails.
+Up until now, the completion handler has ignored unsuccessful
+completions, so that didn't matter to xprtrdma.
 
-Shirley
+In a subsequent patch, however, the send CQ handler will need
+to know which Work Request opcode is completing, even if for
+error completions.
 
-On 06/25/2014 03:47 PM, Steve Wise wrote:
-> Hey Chuck, 
-> 
-> I did some testing on this series.  Just 2 nodes, both nfs3 and nfs4 over cxgb4 and mlx4:
-> 
-> cthon b/g/s 10 iterations
-> iozone -a with direct IO and data validation
-> fio write and rand-rw testing of large IO/files and 8 threads.
-> xfs test suite.
-> 
-> No regressions seen.
-> 
-> Tested-by: Steve Wise <swise@opengridcomputing.com>
-> 
-> 
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf
->> Of Chuck Lever
->> Sent: Monday, June 23, 2014 5:39 PM
->> To: linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
->> Subject: [PATCH v1 00/13] NFS/RDMA patches for 3.17
->>
->> The main purpose of this series is to address more connection drop
->> recovery issues by fixing FRMR re-use to make it less likely the
->> client will drop the connection due to a memory operation error.
->>
->> Some other clean-ups and fixes are present as well.
->>
->> See topic branch nfs-rdma-for-3.17 in
->>
->>   git://git.linux-nfs.org/projects/cel/cel-2.6.git
->>
->> I tested with NFSv3 and NFSv4 on all three supported memory
->> registration modes. Used cthon04 and iozone with both Solaris
->> and Linux NFS/RDMA servers. Used xfstests with Linux.
->>
->> ---
->>
->> Chuck Lever (13):
->>       xprtrdma: Fix panic in rpcrdma_register_frmr_external()
->>       xprtrdma: Protect ->qp during FRMR deregistration
->>       xprtrdma: Limit data payload size for ALLPHYSICAL
->>       xprtrdma: Update rkeys after transport reconnect
->>       xprtrdma: Don't drain CQs on transport disconnect
->>       xprtrdma: Unclutter struct rpcrdma_mr_seg
->>       xprtrdma: Encode Work Request opcode in wc->wr_id
->>       xprtrdma: Back off rkey when FAST_REG_MR fails
->>       xprtrdma: Refactor rpcrdma_buffer_put()
->>       xprtrdma: Release FRMR segment buffers during LOCAL_INV completion
->>       xprtrdma: Clean up rpcrdma_ep_disconnect()
->>       xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
->>       xprtrdma: Handle additional connection events
->>
->>
->>  include/linux/sunrpc/xprtrdma.h |    2
->>  net/sunrpc/xprtrdma/rpc_rdma.c  |   77 +++++----
->>  net/sunrpc/xprtrdma/transport.c |   17 +-
->>  net/sunrpc/xprtrdma/verbs.c     |  330 +++++++++++++++++++++++++++------------
->>  net/sunrpc/xprtrdma/xprt_rdma.h |   63 ++++++-
->>  5 files changed, 332 insertions(+), 157 deletions(-)
->>
->> --
->> Chuck Lever
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+xprtrdma posts three Work Request opcodes via the send queue:
+SEND, FAST_REG_MR, and LOCAL_INV:
+
+For SEND, wc->wr_id is zero. Those completions are ignored.
+
+The other two plant a pointer to an rpcrdma_mw in wc->wr_id. Make
+the low-order bit indicate which of FAST_REG_MR or LOCAL_INV is
+being done.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c     |   19 +++++++++++--------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
+ 2 files changed, 13 insertions(+), 8 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index e8ed81c..cef67fd 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -145,20 +145,22 @@ rpcrdma_cq_async_error_upcall(struct ib_event *event, void *context)
+ static void
+ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+ {
+-	struct rpcrdma_mw *frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
++	unsigned long wrid = wc->wr_id;
++	struct rpcrdma_mw *mw;
++	int fastreg;
+ 
+-	dprintk("RPC:       %s: frmr %p status %X opcode %d\n",
+-		__func__, frmr, wc->status, wc->opcode);
++	dprintk("RPC:       %s: wr_id %lx status %X opcode %d\n",
++		__func__, wrid, wc->status, wc->opcode);
+ 
+-	if (wc->wr_id == 0ULL)
++	if (wrid == 0)
+ 		return;
+ 	if (wc->status != IB_WC_SUCCESS)
+ 		return;
+ 
+-	if (wc->opcode == IB_WC_FAST_REG_MR)
+-		frmr->r.frmr.fr_state = FRMR_IS_VALID;
+-	else if (wc->opcode == IB_WC_LOCAL_INV)
+-		frmr->r.frmr.fr_state = FRMR_IS_INVALID;
++	fastreg = test_and_clear_bit(RPCRDMA_BIT_FASTREG, &wrid);
++	mw = (struct rpcrdma_mw *)wrid;
++
++	mw->r.frmr.fr_state = fastreg ? FRMR_IS_VALID : FRMR_IS_INVALID;
+ }
+ 
+ static int
+@@ -1538,6 +1540,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	/* Prepare FRMR WR */
+ 	memset(&frmr_wr, 0, sizeof frmr_wr);
+ 	frmr_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
++	frmr_wr.wr_id |= (u64)1 << RPCRDMA_BIT_FASTREG;
+ 	frmr_wr.opcode = IB_WR_FAST_REG_MR;
+ 	frmr_wr.send_flags = IB_SEND_SIGNALED;
+ 	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 28c8570..6b5d243 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -177,6 +177,8 @@ struct rpcrdma_mw {
+ 	struct list_head	mw_list;
+ };
+ 
++#define RPCRDMA_BIT_FASTREG		(0)
++
+ /*
+  * struct rpcrdma_req -- structure central to the request/reply sequence.
+  *
+
