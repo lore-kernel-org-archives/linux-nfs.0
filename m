@@ -1,76 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from granite.fifsource.com ([173.255.216.206]:44075 "EHLO
-	granite.fifsource.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932228AbaFIQF4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2014 12:05:56 -0400
-Message-ID: <1402329504.3814.13.camel@niobium.home.fifi.org>
-Subject: Re: Phantom ACL-related xattrs on 3.14.4 NFS client
-From: Philippe Troin <phil@fifi.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:40032 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753909AbaFWQN4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 12:13:56 -0400
+Date: Mon, 23 Jun 2014 09:13:55 -0700
+From: Christoph Hellwig <hch@infradead.org>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Date: Mon, 09 Jun 2014 08:58:24 -0700
-In-Reply-To: <20140609144645.GB8390@fieldses.org>
-References: <1402082953.28220.7.camel@ceramic.home.fifi.org>
-	 <CAHQdGtS2BL9u4DV=FZ0HaXO-iTNPU4hTGVR--HubNa4A_6UNog@mail.gmail.com>
-	 <20140607140414.GA26534@infradead.org>
-	 <1402195701.12743.18.camel@ceramic.home.fifi.org>
-	 <20140609144645.GB8390@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 000/104] nfsd: eliminate the client_mutex
+Message-ID: <20140623161355.GA11047@infradead.org>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+ <20140623133926.GA32746@infradead.org>
+ <20140623095645.1fc23e9c@tlielax.poochiereds.net>
+ <20140623160001.GA24193@infradead.org>
+ <20140623161026.GA5898@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140623161026.GA5898@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2014-06-09 at 10:46 -0400, J. Bruce Fields wrote:
-> On Sat, Jun 07, 2014 at 07:48:21PM -0700, Philippe Troin wrote:
-> > Hi Trond & Christoph,
+On Mon, Jun 23, 2014 at 12:10:26PM -0400, J. Bruce Fields wrote:
+> On Mon, Jun 23, 2014 at 09:00:01AM -0700, Christoph Hellwig wrote:
+> > On Mon, Jun 23, 2014 at 09:56:45AM -0400, Jeff Layton wrote:
+> > > >  - there is some confusion of NFSd vs nfsd in the subsystem prefixes.
+> > > >    While it seems odd and against the usual naming NFSd seems to be
+> > > >    the common one for nfs patches.
+> > > > 
+> > > 
+> > > I tend to prefer "nfsd", but ok -- "NFSd" it is.
 > > 
-> > It's still broken, but in a different way.
-> > The phantom attrs are gone, but the attr/acl interaction is still
-> > uncertain.
-> > 
-> > I have tested vanilla  3.14.5 + this patch on x86_64.
-> > Mount options are the same as last time (NFSv3).
-> > 
-> > This is what I see on the client:
-> > 
-> >         nfsv3client% mkdir x
-> >         nfsv3client% cd x
-> >         nfsv3client% getfattr -m '.*' .
-> >         nfsv3client% getfacl .
-> >         # file: .
-> >         # owner: phil
-> >         # group: phil
-> >         user::rwx
-> >         group::rwx
-> >         other::r-x
-> > 
-> > OK so far: no more phantom attrs.
-> > This is where things get dodgy:
-> >         
-> >         nfsv3client% setfacl -m u:root:r .   
-> >         nfsv3client% getfacl .
-> >         # file: .
-> >         # owner: phil
-> >         # group: phil
-> >         user::rwx
-> >         user:root:r--
-> >         group::rwx
-> >         mask::rwx
-> >         other::r-x
-> >         
-> >         nfsv3client% getfattr -m '.*' .
-> >         [1]    2123 segmentation fault  getfattr -m '.*' .
+> > I'd prefer nfsd as well, but in Rome do as the Romans do, so..
 > 
-> Is there a backtrace or anything in the system logs?
+> These Romans?:
 
-No, nothing but the SIGSEGV getting logged in dmesg.
-
-Since I've tested on 3.14.5, 3.14.6 came out, and contains NFSd related
-patches that look to address further ACL issues.  I'm going to be trying
-that out.
-
-Phil.
+Oops, sorry.  It's mostly Trond for the client who is using the upper
+case NFS*.
 
