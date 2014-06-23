@@ -1,29 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:38824 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932588AbaFQNw4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 09:52:56 -0400
-Date: Tue, 17 Jun 2014 06:52:55 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH v2 2/4] nfsd: clean up sparse endianness warnings in
- nfscache.c
-Message-ID: <20140617135255.GB13980@infradead.org>
-References: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
- <1403005454-7319-3-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403005454-7319-3-git-send-email-jlayton@primarydata.com>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:47232 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753888AbaFWN4I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jun 2014 09:56:08 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id CC77D2803A3
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 15:56:05 +0200 (CEST)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 9E3A810D9
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 15:56:05 +0200 (MEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: beatify pynfs and CI integration 
+Date: Mon, 23 Jun 2014 15:56:01 +0200
+Message-Id: <1403531763-13441-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 17, 2014 at 07:44:12AM -0400, Jeff Layton wrote:
-> We currently hash the XID to determine a hash bucket to use for the
-> reply cache entry, which is fed into hash_32 without byte-swapping it.
-> Add __force to make sparse happy, and add some comments to explain
-> why.
+Two small patches:
 
-Would seem simpler to me to simply do the byteswap, but..
+One allows to map nfs requests to pynfs tests based on tags.
+Second groups test results by test module, which makes generated
+output to look like regular junit report. This nicely fits into
+any modern CI system.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
