@@ -1,68 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:51215 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751158AbaFBSsa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 14:48:30 -0400
-Received: by mail-qa0-f50.google.com with SMTP id j15so3357896qaq.9
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Jun 2014 11:48:30 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 2 Jun 2014 14:48:26 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
-        trond.myklebust@primarydata.com, bhalevy@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 9/9] NFSd: protect delegation setup with the i_lock
-Message-ID: <20140602144826.627a06f4@tlielax.poochiereds.net>
-In-Reply-To: <20140602182026.GA27238@infradead.org>
-References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
-	<1401455373-18207-10-git-send-email-jlayton@primarydata.com>
-	<20140602084616.GA2910@infradead.org>
-	<20140602101733.651cd9c8@tlielax.poochiereds.net>
-	<20140602182026.GA27238@infradead.org>
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:54144 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750931AbaFWWjD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:39:03 -0400
+Subject: [PATCH v1 00/13] NFS/RDMA patches for 3.17
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 23 Jun 2014 18:39:00 -0400
+Message-ID: <20140623223201.1634.83888.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2 Jun 2014 11:20:26 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+The main purpose of this series is to address more connection drop
+recovery issues by fixing FRMR re-use to make it less likely the
+client will drop the connection due to a memory operation error.
 
-> On Mon, Jun 02, 2014 at 10:17:33AM -0400, Jeff Layton wrote:
-> > Ok, fair enough. A later patch in the series adds a per nfs4_file lock
-> > (the fi_lock) that we can use for this purpose in lieu of the i_lock.
-> > Nesting that within the i_lock shouldn't be too painful.
-> 
-> i_lock is part of some very complex locking hierachies in the inode
-> and dentry caches.  Long term I'd prefer to get the file locking code
-> detangled from that, but let's keep it simple for now and nest
-> the nfs4_file lock inside for now.
-> 
-> > We could do that within the rpc_call_prepare operation, but the main
-> > problem there is that the delegation could leak if the rpc task
-> > allocation fails. Would you be amenable to adding a "cb_prepare"
-> > operation or something that we could use to run things from the
-> > workqueue before the actual callback runs?
-> 
-> I guess we'll have to do it then.  I'll see if it can be done nicely.
-> 
+Some other clean-ups and fixes are present as well.
 
-There is another option, but it's sort of ugly...
+See topic branch nfs-rdma-for-3.17 in
 
-We could try to queue the thing in the rpc_call_prepare op, but if that
-fails to occur then we could do it in the rpc_release callback. The
-tricky part is figuring out whether we'll need to queue it in
-rpc_release.
+  git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-Perhaps we can try to use the dl_time field to indicate that as well so
-we won't need to add a separate flag for it.
+I tested with NFSv3 and NFSv4 on all three supported memory
+registration modes. Used cthon04 and iozone with both Solaris
+and Linux NFS/RDMA servers. Used xfstests with Linux.
 
-> I suspect the root problem of all this is that the file locking code
-> calls the lock manager ops with i_lock held, which isn't very nice.
-> 
+---
 
-Yeah, it would be nice if it didn't, but it's better than it was. It
-used to use a global spinlock for that instead of the i_lock, but that
-was also a clear scalability problem...
+Chuck Lever (13):
+      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
+      xprtrdma: Protect ->qp during FRMR deregistration
+      xprtrdma: Limit data payload size for ALLPHYSICAL
+      xprtrdma: Update rkeys after transport reconnect
+      xprtrdma: Don't drain CQs on transport disconnect
+      xprtrdma: Unclutter struct rpcrdma_mr_seg
+      xprtrdma: Encode Work Request opcode in wc->wr_id
+      xprtrdma: Back off rkey when FAST_REG_MR fails
+      xprtrdma: Refactor rpcrdma_buffer_put()
+      xprtrdma: Release FRMR segment buffers during LOCAL_INV completion
+      xprtrdma: Clean up rpcrdma_ep_disconnect()
+      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
+      xprtrdma: Handle additional connection events
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+
+ include/linux/sunrpc/xprtrdma.h |    2 
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   77 +++++----
+ net/sunrpc/xprtrdma/transport.c |   17 +-
+ net/sunrpc/xprtrdma/verbs.c     |  330 +++++++++++++++++++++++++++------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   63 ++++++-
+ 5 files changed, 332 insertions(+), 157 deletions(-)
+
+--
+Chuck Lever
