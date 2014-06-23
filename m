@@ -1,166 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f180.google.com ([209.85.216.180]:43476 "EHLO
-	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751511AbaFZTO4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:56 -0400
-Received: by mail-qc0-f180.google.com with SMTP id r5so3541933qcx.39
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:55 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 051/117] nfsd: ensure atomicity in nfsd4_free_stateid and nfsd4_validate_stateid
-Date: Thu, 26 Jun 2014 15:12:31 -0400
-Message-Id: <1403810017-16062-52-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:42964 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754153AbaFWN4M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Jun 2014 09:56:12 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 8A43A28040A
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 15:56:10 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 7AF4B1147
+	for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 15:56:10 +0200 (MEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH 2/2] group junit like output by filenames
+Date: Mon, 23 Jun 2014 15:56:03 +0200
+Message-Id: <1403531763-13441-3-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1403531763-13441-1-git-send-email-tigran.mkrtchyan@desy.de>
+References: <1403531763-13441-1-git-send-email-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hold the cl_lock over the bulk of these functions. In addition to
-ensuring that they aren't freed prematurely, this will also help prevent
-a potential race that could be introduced later. Once we remove the
-client_mutex, it'll be possible for FREE_STATEID and CLOSE to race and
-for both to try to put the "persistent" reference to the stateid.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 ---
- fs/nfsd/nfs4state.c | 67 ++++++++++++++++++++++++++++-------------------------
- 1 file changed, 35 insertions(+), 32 deletions(-)
+ nfs4.1/testmod.py | 9 +++++----
+ 1 file changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b188a40f6416..42fea991ae0b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1693,16 +1693,6 @@ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
- 	return ret;
- }
+diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
+index 661aed0..32f51a9 100644
+--- a/nfs4.1/testmod.py
++++ b/nfs4.1/testmod.py
+@@ -97,10 +97,11 @@ class Test(object):
+     _funct_result = Result(DEP_FUNCT, default=True)
+     __re = re.compile(r'(\D*)(\d*)(.*)')
  
--static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
--{
--	struct nfs4_stid *ret;
--
--	spin_lock(&cl->cl_lock);
--	ret = find_stateid_locked(cl, t);
--	spin_unlock(&cl->cl_lock);
--	return ret;
--}
--
- static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
- {
- 	struct nfs4_stid *s;
-@@ -4063,10 +4053,10 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- {
- 	struct nfs4_stid *s;
- 	struct nfs4_ol_stateid *ols;
--	__be32 status;
-+	__be32 status = nfserr_bad_stateid;
+-    def __init__(self, function, module=""):
++    def __init__(self, suite, function, module=""):
+         """Needs function to be run"""
+         self.runtest = function
+         self.name = function.__name__
++        self.suite = suite
+         if module:
+             self.fullname = module.split('.')[-1] + '.' + self.name
+         else:
+@@ -347,7 +348,7 @@ def createtests(testdir):
+         for attr in dir(mod):
+             if attr.startswith("test"):
+                 f = getattr(mod, attr)
+-                tests.append(Test(f, testmod))
++                tests.append(Test(testfile, f, testmod))
+     # Reduce doc string info into format easier to work with
+     used_codes = {}
+     flag_dict = {}
+@@ -451,8 +452,8 @@ def xml_printresults(tests, file_name, suite='all'):
+         for t in tests:
+             testcase = doc.createElement("testcase")
+             testsuite.appendChild(testcase)
+-            testcase.setAttribute("name", str(t))
+-            testcase.setAttribute("classname", suite)
++            testcase.setAttribute("name", t.name)
++            testcase.setAttribute("classname", t.suite)
+             testcase.setAttribute("time", str(t.time_taken))
  
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
--		return nfserr_bad_stateid;
-+		return status;
- 	/* Client debugging aid. */
- 	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
- 		char addr_str[INET6_ADDRSTRLEN];
-@@ -4074,34 +4064,42 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 				 sizeof(addr_str));
- 		pr_warn_ratelimited("NFSD: client %s testing state ID "
- 					"with incorrect client ID\n", addr_str);
--		return nfserr_bad_stateid;
-+		return status;
- 	}
--	s = find_stateid(cl, stateid);
-+	spin_lock(&cl->cl_lock);
-+	s = find_stateid_locked(cl, stateid);
- 	if (!s)
--		return nfserr_bad_stateid;
-+		goto out_unlock;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 	if (status)
--		return status;
-+		goto out_unlock;
- 	switch (s->sc_type) {
- 	case NFS4_DELEG_STID:
--		return nfs_ok;
-+		status = nfs_ok;
-+		break;
- 	case NFS4_REVOKED_DELEG_STID:
--		return nfserr_deleg_revoked;
-+		status = nfserr_deleg_revoked;
-+		break;
- 	case NFS4_OPEN_STID:
- 	case NFS4_LOCK_STID:
- 		ols = openlockstateid(s);
- 		if (ols->st_stateowner->so_is_open_owner
- 	    			&& !(openowner(ols->st_stateowner)->oo_flags
- 						& NFS4_OO_CONFIRMED))
--			return nfserr_bad_stateid;
--		return nfs_ok;
-+			status = nfserr_bad_stateid;
-+		else
-+			status = nfs_ok;
-+		break;
- 	default:
- 		printk("unknown stateid type %x\n", s->sc_type);
- 		/* Fallthrough */
- 	case NFS4_CLOSED_STID:
- 	case NFS4_CLOSED_DELEG_STID:
--		return nfserr_bad_stateid;
-+		status = nfserr_bad_stateid;
- 	}
-+out_unlock:
-+	spin_unlock(&cl->cl_lock);
-+	return status;
- }
- 
- static __be32
-@@ -4252,31 +4250,36 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	__be32 ret = nfserr_bad_stateid;
- 
- 	nfs4_lock_state();
--	s = find_stateid(cl, stateid);
-+	spin_lock(&cl->cl_lock);
-+	s = find_stateid_locked(cl, stateid);
- 	if (!s)
--		goto out;
-+		goto out_unlock;
- 	switch (s->sc_type) {
- 	case NFS4_DELEG_STID:
- 		ret = nfserr_locks_held;
--		goto out;
-+		break;
- 	case NFS4_OPEN_STID:
- 	case NFS4_LOCK_STID:
- 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 		if (ret)
--			goto out;
--		if (s->sc_type == NFS4_LOCK_STID)
--			ret = nfsd4_free_lock_stateid(openlockstateid(s));
--		else
-+			break;
-+		if (s->sc_type != NFS4_LOCK_STID) {
- 			ret = nfserr_locks_held;
--		break;
-+			break;
-+		}
-+		spin_unlock(&cl->cl_lock);
-+		ret = nfsd4_free_lock_stateid(openlockstateid(s));
-+		goto out;
- 	case NFS4_REVOKED_DELEG_STID:
-+		spin_unlock(&cl->cl_lock);
- 		dp = delegstateid(s);
- 		destroy_revoked_delegation(dp);
- 		ret = nfs_ok;
--		break;
--	default:
--		ret = nfserr_bad_stateid;
-+		goto out;
-+	/* Default falls through and returns nfserr_bad_stateid */
- 	}
-+out_unlock:
-+	spin_unlock(&cl->cl_lock);
- out:
- 	nfs4_unlock_state();
- 	return ret;
+             total_time += t.time_taken
 -- 
 1.9.3
 
