@@ -1,98 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:60084 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751754AbaFZTOe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:34 -0400
-Received: by mail-qa0-f41.google.com with SMTP id cm18so3214704qab.28
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:34 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 035/117] locks: add file_has_lease to prevent delegation break races
-Date: Thu, 26 Jun 2014 15:12:15 -0400
-Message-Id: <1403810017-16062-36-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:62089 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752482AbaFXOh2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2014 10:37:28 -0400
+MIME-Version: 1.0
+In-Reply-To: <20140623223909.1634.33362.stgit@manet.1015granger.net>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+	<20140623223909.1634.33362.stgit@manet.1015granger.net>
+Date: Tue, 24 Jun 2014 17:37:27 +0300
+Message-ID: <CAJZOPZJQ9+-qiSYcxbLkx-nr91njSqFTwhP4kqzRoO=8AQhneg@mail.gmail.com>
+Subject: Re: [PATCH v1 01/13] xprtrdma: Fix panic in rpcrdma_register_frmr_external()
+From: Or Gerlitz <or.gerlitz@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, we'll have a potential race between
-setting a lease on a file and breaking the delegation. We may set the
-lease, but by the time we go to hash it, it may have already been
-broken. Currently, we know that this won't happen as the nfs4_laundromat
-takes the client_mutex, but we want to remove that.
+On Tue, Jun 24, 2014 at 1:39 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> seg1->mr_nsegs is not yet initialized when it is used to unmap
+> segments during an error exit. Use the same unmapping logic for
+> all error exits.
+>
+> "if (frmr_wr.wr.fast_reg.length < len) {" used to be a BUG_ON check.
+> The broken code should never be executed under normal operation.
+>
+> Fixes: c977dea22708688eae31774f70126c97aa4dfe83
 
-As part of that fix, add a function that can tell us whether a
-particular file has a lease set on it. In a later nfsd patch, we'll use
-that to close the potential race window.
+Here you should put the information provided by git log --oneline e.g
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/locks.c         | 26 ++++++++++++++++++++++++++
- include/linux/fs.h |  6 ++++++
- 2 files changed, 32 insertions(+)
+Fixes: c977dea22 ('THE COMMIT TITLE')
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 717fbc404e6b..005cc86927e3 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1308,6 +1308,32 @@ static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
- }
- 
- /**
-+ * file_has_lease - does the given file have a lease set on it?
-+ * @file: struct file on which we want to check the lease
-+ *
-+ * Returns true if a lease was is set on the given file description,
-+ * false otherwise.
-+ */
-+bool
-+file_has_lease(struct file *file)
-+{
-+	bool ret = false;
-+	struct inode *inode = file_inode(file);
-+	struct file_lock *fl;
-+
-+	spin_lock(&inode->i_lock);
-+	for (fl = inode->i_flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
-+		if (fl->fl_file == file) {
-+			ret = true;
-+			break;
-+		}
-+	}
-+	spin_unlock(&inode->i_lock);
-+	return ret;
-+}
-+EXPORT_SYMBOL(file_has_lease);
-+
-+/**
-  *	__break_lease	-	revoke all outstanding leases on file
-  *	@inode: the inode of the file to return
-  *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e11d60cc867b..7ae6f4869669 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -953,6 +953,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
- extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
- extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
- extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
-+extern bool file_has_lease(struct file *file);
- extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
- extern void lease_get_mtime(struct inode *, struct timespec *time);
- extern int generic_setlease(struct file *, long, struct file_lock **);
-@@ -1064,6 +1065,11 @@ static inline int flock_lock_file_wait(struct file *filp,
- 	return -ENOLCK;
- }
- 
-+static inline bool file_has_lease(struct file *file)
-+{
-+	return false;
-+}
-+
- static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- {
- 	return 0;
--- 
-1.9.3
 
+
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/verbs.c |   12 +++++++-----
+>  1 file changed, 7 insertions(+), 5 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 13dbd1c..78bd7c6 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1545,9 +1545,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>         frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
+>         frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
+>         if (frmr_wr.wr.fast_reg.length < len) {
+> -               while (seg1->mr_nsegs--)
+> -                       rpcrdma_unmap_one(ia, seg++);
+> -               return -EIO;
+> +               rc = -EIO;
+> +               goto out_err;
+>         }
+>
+>         /* Bump the key */
+> @@ -1565,8 +1564,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>         if (rc) {
+>                 dprintk("RPC:       %s: failed ib_post_send for register,"
+>                         " status %i\n", __func__, rc);
+> -               while (i--)
+> -                       rpcrdma_unmap_one(ia, --seg);
+> +               goto out_err;
+>         } else {
+>                 seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+>                 seg1->mr_base = seg1->mr_dma + pageoff;
+> @@ -1574,6 +1572,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>                 seg1->mr_len = len;
+>         }
+>         *nsegs = i;
+> +       return 0;
+> +out_err:
+> +       while (i--)
+> +               rpcrdma_unmap_one(ia, --seg);
+>         return rc;
+>  }
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
