@@ -1,147 +1,24 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40029 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751122AbaFDVe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jun 2014 17:34:57 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/4] nfsd4: kill READ64
-Date: Wed,  4 Jun 2014 17:34:54 -0400
-Message-Id: <1401917695-8309-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1401917695-8309-1-git-send-email-bfields@redhat.com>
-References: <1401917695-8309-1-git-send-email-bfields@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:39346 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752542AbaFXMAo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2014 08:00:44 -0400
+Date: Tue, 24 Jun 2014 05:00:43 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 015/104] NFSd: Cleanup nfs4svc_encode_compoundres
+Message-ID: <20140624120043.GE31935@infradead.org>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+ <1403189450-18729-16-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1403189450-18729-16-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+This seems like another candidate for the prep series.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |   33 ++++++++++++++++-----------------
- 1 file changed, 16 insertions(+), 17 deletions(-)
+Looks good,
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index a23fa00..2d305a1 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -98,10 +98,6 @@ xdr_error:					\
- 	status = nfserr_bad_xdr;		\
- 	goto out
- 
--#define READ64(x)         do {			\
--	(x) = (u64)ntohl(*p++) << 32;		\
--	(x) |= ntohl(*p++);			\
--} while (0)
- #define READMEM(x,nbytes) do {			\
- 	x = (char *)p;				\
- 	p += XDR_QUADLEN(nbytes);		\
-@@ -269,6 +265,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- {
- 	int expected_len, len = 0;
- 	u32 dummy32;
-+	u64 sec;
- 	char *buf;
- 
- 	DECODE_HEAD;
-@@ -282,7 +279,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 	if (bmval[0] & FATTR4_WORD0_SIZE) {
- 		READ_BUF(8);
- 		len += 8;
--		READ64(iattr->ia_size);
-+		p = xdr_decode_hyper(p, &iattr->ia_size);
- 		iattr->ia_valid |= ATTR_SIZE;
- 	}
- 	if (bmval[0] & FATTR4_WORD0_ACL) {
-@@ -365,7 +362,8 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 			   all 32 bits of 'nseconds'. */
- 			READ_BUF(12);
- 			len += 12;
--			READ64(iattr->ia_atime.tv_sec);
-+			p = xdr_decode_hyper(p, &sec);
-+			iattr->ia_atime.tv_sec = (time_t)sec;
- 			iattr->ia_atime.tv_nsec = be32_to_cpup(p++);
- 			if (iattr->ia_atime.tv_nsec >= (u32)1000000000)
- 				return nfserr_inval;
-@@ -388,7 +386,8 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 			   all 32 bits of 'nseconds'. */
- 			READ_BUF(12);
- 			len += 12;
--			READ64(iattr->ia_mtime.tv_sec);
-+			p = xdr_decode_hyper(p, &sec);
-+			iattr->ia_mtime.tv_sec = sec;
- 			iattr->ia_mtime.tv_nsec = be32_to_cpup(p++);
- 			if (iattr->ia_mtime.tv_nsec >= (u32)1000000000)
- 				return nfserr_inval;
-@@ -583,7 +582,7 @@ nfsd4_decode_commit(struct nfsd4_compoundargs *argp, struct nfsd4_commit *commit
- 	DECODE_HEAD;
- 
- 	READ_BUF(12);
--	READ64(commit->co_offset);
-+	p = xdr_decode_hyper(p, &commit->co_offset);
- 	commit->co_count = be32_to_cpup(p++);
- 
- 	DECODE_TAIL;
-@@ -671,8 +670,8 @@ nfsd4_decode_lock(struct nfsd4_compoundargs *argp, struct nfsd4_lock *lock)
- 	if ((lock->lk_type < NFS4_READ_LT) || (lock->lk_type > NFS4_WRITEW_LT))
- 		goto xdr_error;
- 	lock->lk_reclaim = be32_to_cpup(p++);
--	READ64(lock->lk_offset);
--	READ64(lock->lk_length);
-+	p = xdr_decode_hyper(p, &lock->lk_offset);
-+	p = xdr_decode_hyper(p, &lock->lk_length);
- 	lock->lk_is_new = be32_to_cpup(p++);
- 
- 	if (lock->lk_is_new) {
-@@ -707,8 +706,8 @@ nfsd4_decode_lockt(struct nfsd4_compoundargs *argp, struct nfsd4_lockt *lockt)
- 	lockt->lt_type = be32_to_cpup(p++);
- 	if((lockt->lt_type < NFS4_READ_LT) || (lockt->lt_type > NFS4_WRITEW_LT))
- 		goto xdr_error;
--	READ64(lockt->lt_offset);
--	READ64(lockt->lt_length);
-+	p = xdr_decode_hyper(p, &lockt->lt_offset);
-+	p = xdr_decode_hyper(p, &lockt->lt_length);
- 	COPYMEM(&lockt->lt_clientid, 8);
- 	lockt->lt_owner.len = be32_to_cpup(p++);
- 	READ_BUF(lockt->lt_owner.len);
-@@ -731,8 +730,8 @@ nfsd4_decode_locku(struct nfsd4_compoundargs *argp, struct nfsd4_locku *locku)
- 	if (status)
- 		return status;
- 	READ_BUF(16);
--	READ64(locku->lu_offset);
--	READ64(locku->lu_length);
-+	p = xdr_decode_hyper(p, &locku->lu_offset);
-+	p = xdr_decode_hyper(p, &locku->lu_length);
- 
- 	DECODE_TAIL;
- }
-@@ -1018,7 +1017,7 @@ nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
- 	if (status)
- 		return status;
- 	READ_BUF(12);
--	READ64(read->rd_offset);
-+	p = xdr_decode_hyper(p, &read->rd_offset);
- 	read->rd_length = be32_to_cpup(p++);
- 
- 	DECODE_TAIL;
-@@ -1030,7 +1029,7 @@ nfsd4_decode_readdir(struct nfsd4_compoundargs *argp, struct nfsd4_readdir *read
- 	DECODE_HEAD;
- 
- 	READ_BUF(24);
--	READ64(readdir->rd_cookie);
-+	p = xdr_decode_hyper(p, &readdir->rd_cookie);
- 	COPYMEM(readdir->rd_verf.data, sizeof(readdir->rd_verf.data));
- 	readdir->rd_dircount = be32_to_cpup(p++);
- 	readdir->rd_maxcount = be32_to_cpup(p++);
-@@ -1203,7 +1202,7 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
- 	if (status)
- 		return status;
- 	READ_BUF(16);
--	READ64(write->wr_offset);
-+	p = xdr_decode_hyper(p, &write->wr_offset);
- 	write->wr_stable_how = be32_to_cpup(p++);
- 	if (write->wr_stable_how > 2)
- 		goto xdr_error;
--- 
-1.7.9.5
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
