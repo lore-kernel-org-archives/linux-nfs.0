@@ -1,181 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f178.google.com ([209.85.220.178]:56416 "EHLO
-	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932442AbaFCA7W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 20:59:22 -0400
-Received: by mail-vc0-f178.google.com with SMTP id hy4so2338167vcb.9
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Jun 2014 17:59:21 -0700 (PDT)
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:50289 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752611AbaFXNsB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2014 09:48:01 -0400
+Message-ID: <53A9818D.40800@gmail.com>
+Date: Tue, 24 Jun 2014 09:47:57 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <CALAqxLUwtMnE9eB_dfV=C5CLuXpEdB9+mK7pw2jgo5Yg2ACKPA@mail.gmail.com>
-References: <20140602104948.4faf0bc2@tlielax.poochiereds.net>
-	<CAHQdGtRR6SvEhXiqWo24hoUh9AU9cL82Z8Z-d8-7u951F_d+5g@mail.gmail.com>
-	<CALAqxLVmRdv3eVaf_ue-NutDmjxJA2NNAXnH-Tm4a6ud2U7Q4g@mail.gmail.com>
-	<CAHQdGtSn9RwdgaFgEDQXjrxSA_Bg=rNWux+96-5f43dyUwXLRw@mail.gmail.com>
-	<CALAqxLUwtMnE9eB_dfV=C5CLuXpEdB9+mK7pw2jgo5Yg2ACKPA@mail.gmail.com>
-Date: Mon, 2 Jun 2014 20:59:21 -0400
-Message-ID: <CAHQdGtQhurcOsAii7PYNZwEL4Xm-8a2CKBkS4OhrS0FhaAX3Aw@mail.gmail.com>
-Subject: Re: nfs4_do_reclaim lockdep pop in v3.15.0-rc1
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: John Stultz <john.stultz@linaro.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Ingo Molnar <mingo@elte.hu>, Peter Zijlstra <peterz@infradead.org>
-Content-Type: text/plain; charset=UTF-8
+To: Yan Burman <yanb@mellanox.com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH V2] xprtrdma: Fix DMA-API-DEBUG warning by checking dma_map
+ result
+References: <1403183190-21607-1-git-send-email-yanb@mellanox.com>
+In-Reply-To: <1403183190-21607-1-git-send-email-yanb@mellanox.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 2, 2014 at 6:49 PM, John Stultz <john.stultz@linaro.org> wrote:
-> On Mon, Jun 2, 2014 at 3:42 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Mon, Jun 2, 2014 at 6:12 PM, John Stultz <john.stultz@linaro.org> wrote:
->>> On Mon, Jun 2, 2014 at 9:02 AM, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>>> On Mon, Jun 2, 2014 at 10:49 AM, Jeff Layton
->>>> <jeff.layton@primarydata.com> wrote:
->>>>> I've been working on the patchset to break up the client_mutex in nfsd.
->>>>> While doing some debugging, I had mounted my kernel git tree with
->>>>> NFSv4.1, and was running crash on the vmlinux image in it.
->>>>>
->>>>> A little while later, I saw the following lockdep inversion pop.
->>>>> Unfortunately, I couldn't get the whole log, but I think it's enough to
->>>>> show that there's a potential problem?
->>>>>
->>>>> I've not had time to give it a hard look yet, but thought I'd post it
->>>>> here in the hopes that it might look familiar to someone:
->>>>>
->>>>> [ 2581.104687] ======================================================
->>>>> [ 2581.104716] [ INFO: possible circular locking dependency detected ]
->>>>> [ 2581.104716] 3.15.0-rc1.jlayton.1+ #2 Tainted: G           OE
->>>>> [ 2581.104716] -------------------------------------------------------
->>>>> [ 2581.104716] 2001:470:8:d63:/5622 is trying to acquire lock:
->>>>> [ 2581.104716]  (&(&sp->so_lock)->rlock){+.+...}, at: [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>> [ 2581.104716]
->>>>> [ 2581.104716] but task is already holding lock:
->>>>> [ 2581.104716]  (&sp->so_reclaim_seqcount){+.+...}, at: [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>> [ 2581.104716]
->>>>> [ 2581.104716] which lock already depends on the new lock.
->>>>> [ 2581.104716]
->>>>> [ 2581.104716]
->>>>> [ 2581.104716] the existing dependency chain (in reverse order) is:
->>>>> [ 2581.104716]
->>>>> -> #1 (&sp->so_reclaim_seqcount){+.+...}:
->>>>> [ 2581.104716]        [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
->>>>> [ 2581.104716]        [<ffffffffa036d8b0>] nfs4_do_reclaim+0x290/0x7f0 [nfsv4]
->>>>> [ 2581.104716]        [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>> [ 2581.104716]        [<ffffffff810c260f>] kthread+0xff/0x120
->>>>> [ 2581.104716]        [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
->>>>> [ 2581.104716]
->>>>> -> #0 (&(&sp->so_lock)->rlock){+.+...}:
->>>>> [ 2581.104716]        [<ffffffff810f919f>] __lock_acquire+0x1b8f/0x1ca0
->>>>> [ 2581.104716]        [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
->>>>> [ 2581.104716]        [<ffffffff817dbdae>] _raw_spin_lock+0x3e/0x80
->>>>> [ 2581.104716]        [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>> [ 2581.104716]        [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>> [ 2581.104716]        [<ffffffff810c260f>] kthread+0xff/0x120
->>>>> [ 2581.104716]        [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
->>>>> [ 2581.104716]
->>>>> [ 2581.104716] other info that might help us debug this:
->>>>> [ 2581.104716]
->>>>> [ 2581.104716]  Possible unsafe locking scenario:
->>>>> [ 2581.104716]
->>>>> [ 2581.104716]        CPU0                    CPU1
->>>>> [ 2581.104716]        ----                    ----
->>>>> [ 2581.104716]   lock(&sp->so_reclaim_seqcount);
->>>>> [ 2581.104716]                                lock(&(&sp->so_lock)->rlock);
->>>>> [ 2581.104716]                                lock(&sp->so_reclaim_seqcount);
->>>>> [ 2581.104716]   lock(&(&sp->so_lock)->rlock);
->>>>> [ 2581.104716]
->>>>> [ 2581.104716]  *** DEADLOCK ***
->>>>> [ 2581.104716]
->>>>> [ 2581.104716] 1 lock held by 2001:470:8:d63:/5622:
->>>>> [ 2581.104716]  #0:  (&sp->so_reclaim_seqcount){+.+...}, at: [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>> [ 2581.104716]
->>>>> [ 2581.104716] stack backtrace:
->>>>> [ 2581.104716] CPU: 2 PID: 5622 Comm: 2001:470:8:d63: Tainted: G           OE 3.15.0-rc1.jlayton.1+ #2
->>>>> [ 2581.104716] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
->>>>> [ 2581.104716]  0000000000000000 00000000d29e16c4 ffff8800d8d8fba8 ffffffff817d318e
->>>>> [ 2581.104716]  ffffffff8262d5e0 ffff8800d8d8fbe8 ffffffff817ce525 ffff8800d8d8fc40
->>>>> [ 2581.104716]  ffff8800362a8b98 ffff8800362a8b98 0000000000000001 ffff8800362a8000
->>>>> [ 2581.104716] Call Trace:
->>>>> [ 2581.104716]  [<ffffffff817d318e>] dump_stack+0x4d/0x66
->>>>> [ 2581.104716]  [<ffffffff817ce525>] print_circular_bug+0x201/0x20f
->>>>> [ 2581.104716]  [<ffffffff810f919f>] __lock_acquire+0x1b8f/0x1ca0
->>>>> [ 2581.104716]  [<ffffffff813dbe9e>] ? debug_check_no_obj_freed+0x17e/0x270
->>>>> [ 2581.104716]  [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
->>>>> [ 2581.104716]  [<ffffffffa036dbdd>] ? nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>> [ 2581.104716]  [<ffffffff817dbdae>] _raw_spin_lock+0x3e/0x80
->>>>> [ 2581.104716]  [<ffffffffa036dbdd>] ? nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>> [ 2581.104716]  [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>> [ 2581.104716]  [<ffffffffa036e5fe>] ? nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>> [ 2581.104716]  [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>> [ 2581.104716]  [<ffffffffa036de10>] ? nfs4_do_reclaim+0x7f0/0x7f0 [nfsv4]
->>>>> [ 2581.104716]  [<ffffffff810c260f>] kthread+0xff/0x120
->>>>> [ 2581.104716]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
->>>>> [ 2581.104716]  [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
->>>>> [ 2581.104716]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
->>>>
->>>> OK. So now that lockdep has been added to raw_seqcount_begin() (commit
->>>> 1ca7d67cf5d5a), exactly what are we supposed to use when we DON'T want
->>>> lockdep to "sanity check" our locking here?
->>>
->>> So raw_write_seqcount_*  provides the lockdep-disabled methods.
->>>
->>>> As far as we're concerned, the above check is completely bogus, and
->>>> there is no deadlock. At best it would be a livelock, and it would be
->>>> because the server is rebooting over and over again (in which case the
->>>> client behaviour of retrying is _correct_).
->>>
->>> I've not been able to totally trace the locking path there, but having
->>> a seqlock writes and spinlock ABBA deadlock seems problematic.... at
->>> least at first glance.
->>>
->>> So if I'm reading this right...  nfs4_reclaim_open_state() takes a
->>> spinlock on so_lock, then the write on the so_reclaim_seqcount, then
->>> drops the so_lock and calls nfs4_put_open_state which reaquires the
->>> so_lock.
->>>
->>> And lockdep is worried there may be another thread which called into
->>> nfs4_reclaim_open_state() and took the so_lock while it was
->>> momentarily free, and is blocking waiting on the so_reclaim_seqcount.
->>> This would cause the first threads requisition of the so_lock to
->>> potentially deadlock.
->>>
->>> And your point is that this isn't a concern since no other threads can
->>> call nfs4_reclaim_open_state() or any other code path that acquires
->>> those two locks in order?  If you're going to disable the lockdep
->>> checks here, you might want to make this restriction really clear in a
->>> comment so no one accidentally breaks that rule.
->>>
->>
->> It's a general rule in the NFSv4 client that the only thread that is
->> allowed to call state recovery functions (after a server reboot or a
->> long-lived network partition) is the state manager thread. That
->> applies to _all_ state, not just open state.
->>
->> The so_reclaim_seqcount only exists in order to tell the other threads
->> that they may need to replay file open or file lock requests that have
->> raced with state recovery (because those threads got scheduled out
->> after their RPC calls ran, but before they managed to set up the
->> tracking of the new state). It is basically an edge condition
->> killer...
+On 06/19/2014 09:06 AM, Yan Burman wrote:
+> Fix the following warning when DMA-API debug is enabled by checking ib_dma_map_single result:
+> [ 1455.345548] ------------[ cut here ]------------
+> [ 1455.346863] WARNING: CPU: 3 PID: 3929 at /home/yanb/kernel/net-next/lib/dma-debug.c:1140 check_unmap+0x4e5/0x990()
+> [ 1455.349350] mlx4_core 0000:00:07.0: DMA-API: device driver failed to check map error[device address=0x000000007c9f2090] [size=2656 bytes] [mapped as single]
+> [ 1455.349350] Modules linked in: xprtrdma netconsole configfs nfsv3 nfs_acl ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm autofs4 auth_rpcgss oid_registry nfsv4 nfs fscache lockd sunrpc dm_mirror dm_region_hash dm_log microcode pcspkr mlx4_ib ib_sa ib_mad ib_core ib_addr mlx4_en ipv6 ptp pps_core vxlan mlx4_core virtio_balloon cirrus ttm drm_kms_helper drm sysimgblt sysfillrect syscopyarea i2c_piix4 i2c_core button ext3 jbd virtio_blk virtio_net virtio_pci virtio_ring virtio uhci_hcd ata_generic ata_piix libata
+> [ 1455.349350] CPU: 3 PID: 3929 Comm: mount.nfs Not tainted 3.15.0-rc1-dbg+ #13
+> [ 1455.349350] Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2007
+> [ 1455.349350]  0000000000000474 ffff880069dcf628 ffffffff8151c341 ffffffff817b69d8
+> [ 1455.349350]  ffff880069dcf678 ffff880069dcf668 ffffffff8105b5fc 0000000069dcf658
+> [ 1455.349350]  ffff880069dcf778 ffff88007b0c9f00 ffffffff8255ec40 0000000000000a60
+> [ 1455.349350] Call Trace:
+> [ 1455.349350]  [<ffffffff8151c341>] dump_stack+0x52/0x81
+> [ 1455.349350]  [<ffffffff8105b5fc>] warn_slowpath_common+0x8c/0xc0
+> [ 1455.349350]  [<ffffffff8105b6e6>] warn_slowpath_fmt+0x46/0x50
+> [ 1455.349350]  [<ffffffff812e6305>] check_unmap+0x4e5/0x990
+> [ 1455.349350]  [<ffffffff81521fb0>] ? _raw_spin_unlock_irq+0x30/0x60
+> [ 1455.349350]  [<ffffffff812e6a0a>] debug_dma_unmap_page+0x5a/0x60
+> [ 1455.349350]  [<ffffffffa0389583>] rpcrdma_deregister_internal+0xb3/0xd0 [xprtrdma]
+> [ 1455.349350]  [<ffffffffa038a639>] rpcrdma_buffer_destroy+0x69/0x170 [xprtrdma]
+> [ 1455.349350]  [<ffffffffa03872ff>] xprt_rdma_destroy+0x3f/0xb0 [xprtrdma]
+> [ 1455.349350]  [<ffffffffa04a95ff>] xprt_destroy+0x6f/0x80 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a9625>] xprt_put+0x15/0x20 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a899a>] rpc_free_client+0x8a/0xe0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a8a58>] rpc_release_client+0x68/0xa0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a9060>] rpc_shutdown_client+0xb0/0xc0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a8f5d>] ? rpc_ping+0x5d/0x70 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a91ab>] rpc_create_xprt+0xbb/0xd0 [sunrpc]
+> [ 1455.349350]  [<ffffffffa04a9273>] rpc_create+0xb3/0x160 [sunrpc]
+> [ 1455.349350]  [<ffffffff81129749>] ? __probe_kernel_read+0x69/0xb0
+> [ 1455.349350]  [<ffffffffa053851c>] nfs_create_rpc_client+0xdc/0x100 [nfs]
+> [ 1455.349350]  [<ffffffffa0538cfa>] nfs_init_client+0x3a/0x90 [nfs]
+> [ 1455.349350]  [<ffffffffa05391c8>] nfs_get_client+0x478/0x5b0 [nfs]
+> [ 1455.349350]  [<ffffffffa0538e50>] ? nfs_get_client+0x100/0x5b0 [nfs]
+> [ 1455.349350]  [<ffffffff81172c6d>] ? kmem_cache_alloc_trace+0x24d/0x260
+> [ 1455.349350]  [<ffffffffa05393f3>] nfs_create_server+0xf3/0x4c0 [nfs]
+> [ 1455.349350]  [<ffffffffa0545ff0>] ? nfs_request_mount+0xf0/0x1a0 [nfs]
+> [ 1455.349350]  [<ffffffffa031c0c3>] nfs3_create_server+0x13/0x30 [nfsv3]
+> [ 1455.349350]  [<ffffffffa0546293>] nfs_try_mount+0x1f3/0x230 [nfs]
+> [ 1455.349350]  [<ffffffff8108ea21>] ? get_parent_ip+0x11/0x50
+> [ 1455.349350]  [<ffffffff812d6343>] ? __this_cpu_preempt_check+0x13/0x20
+> [ 1455.349350]  [<ffffffff810d632b>] ? try_module_get+0x6b/0x190
+> [ 1455.349350]  [<ffffffffa05449f7>] nfs_fs_mount+0x187/0x9d0 [nfs]
+> [ 1455.349350]  [<ffffffffa0545940>] ? nfs_clone_super+0x140/0x140 [nfs]
+> [ 1455.349350]  [<ffffffffa0543b20>] ? nfs_auth_info_match+0x40/0x40 [nfs]
+> [ 1455.349350]  [<ffffffff8117e360>] mount_fs+0x20/0xe0
+> [ 1455.349350]  [<ffffffff811a1c16>] vfs_kern_mount+0x76/0x160
+> [ 1455.349350]  [<ffffffff811a29a8>] do_mount+0x428/0xae0
+> [ 1455.349350]  [<ffffffff811a30f0>] SyS_mount+0x90/0xe0
+> [ 1455.349350]  [<ffffffff8152af52>] system_call_fastpath+0x16/0x1b
+> [ 1455.349350] ---[ end trace f1f31572972e211d ]---
 >
-> Would then swapping the acquisition order, so the seqcount is taken
-> before the so_lock at the top of nfs4_reclaim_open_state() avoid this
-> then, without having to disable lockdep?
+> Signed-off-by: Yan Burman <yanb@mellanox.com>
+
+Thanks Yan!  I've applied this to a bugfixes branch that I'll push out later today.
+
+Chuck - Should I add your "Reviewed By" from v1 to this version of the patch?
+
+Anna
+
+> ---
 >
+> Changes from V1:
+> Removed curly braces
+>
+>  net/sunrpc/xprtrdma/verbs.c |    3 +++
+>  1 files changed, 3 insertions(+), 0 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 13dbd1c..176dafc 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1388,6 +1388,9 @@ rpcrdma_register_internal(struct rpcrdma_ia *ia, void *va, int len,
+>  	 */
+>  	iov->addr = ib_dma_map_single(ia->ri_id->device,
+>  			va, len, DMA_BIDIRECTIONAL);
+> +	if (ib_dma_mapping_error(ia->ri_id->device, iov->addr))
+> +		return -ENOMEM;
+> +
+>  	iov->length = len;
+>  
+>  	if (ia->ri_have_dma_lkey) {
 
-I can change the write seqcount to use raw_write_seqcount(), but that
-doesn't answer the question of why raw_seqcount_begin() is the _only_
-object out there with a "raw_" prefix, that doesn't explicitly disable
-lockdep checking.
-
-What justifies the inconsistency?
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
