@@ -1,136 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:42658 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753233AbaF3Pw0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:26 -0400
-Received: by mail-qa0-f53.google.com with SMTP id j15so6500564qaq.26
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:25 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 080/114] nfsd: Move create_client() call outside the lock
-Date: Mon, 30 Jun 2014 11:49:49 -0400
-Message-Id: <1404143423-24381-81-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:56312 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752520AbaFXPrx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2014 11:47:53 -0400
+Message-ID: <53A99DA6.90808@gmail.com>
+Date: Tue, 24 Jun 2014 11:47:50 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 08/13] xprtrdma: Back off rkey when FAST_REG_MR fails
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net> <20140623224007.1634.55636.stgit@manet.1015granger.net>
+In-Reply-To: <20140623224007.1634.55636.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On 06/23/2014 06:40 PM, Chuck Lever wrote:
+> If posting a FAST_REG_MR Work Reqeust fails, or the FAST_REG WR
+> flushes, revert the rkey update to avoid subsequent
+> IB_WC_MW_BIND_ERR completions.
+>
+> Suggested-by: Steve Wise <swise@opengridcomputing.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/verbs.c |   39 +++++++++++++++++++++++++++++----------
+>  1 file changed, 29 insertions(+), 10 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index cef67fd..3efc007 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -61,6 +61,8 @@
+>  # define RPCDBG_FACILITY	RPCDBG_TRANS
+>  #endif
+>  
+> +static void rpcrdma_decrement_frmr_rkey(struct rpcrdma_mw *);
+> +
+>  /*
+>   * internal functions
+>   */
+> @@ -154,13 +156,17 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+>  
+>  	if (wrid == 0)
+>  		return;
+> -	if (wc->status != IB_WC_SUCCESS)
+> -		return;
+>  
+>  	fastreg = test_and_clear_bit(RPCRDMA_BIT_FASTREG, &wrid);
+>  	mw = (struct rpcrdma_mw *)wrid;
+>  
+> -	mw->r.frmr.fr_state = fastreg ? FRMR_IS_VALID : FRMR_IS_INVALID;
+> +	if (wc->status == IB_WC_SUCCESS) {
+> +		mw->r.frmr.fr_state = fastreg ?
+> +				FRMR_IS_VALID : FRMR_IS_INVALID;
+> +	} else {
+> +		if (fastreg)
+> +			rpcrdma_decrement_frmr_rkey(mw);
 
-For efficiency reasons, and because we want to use spin locks instead
-of relying on the client_mutex.
+Isn't this the same as "else if (fastreg)"?
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 35 +++++++++++++++++++----------------
- 1 file changed, 19 insertions(+), 16 deletions(-)
+Anna
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e107f0c8ea74..d85985171cdd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2120,6 +2120,10 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		return nfserr_encr_alg_unsupp;
- 	}
- 
-+	new = create_client(exid->clname, rqstp, &verf);
-+	if (new == NULL)
-+		return nfserr_jukebox;
-+
- 	/* Cases below refer to rfc 5661 section 18.35.4: */
- 	nfs4_lock_state();
- 	conf = find_confirmed_client_by_name(&exid->clname, nn);
-@@ -2146,7 +2150,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 			}
- 			/* case 6 */
- 			exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
--			new = conf;
- 			goto out_copy;
- 		}
- 		if (!creds_match) { /* case 3 */
-@@ -2159,7 +2162,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		}
- 		if (verfs_match) { /* case 2 */
- 			conf->cl_exchange_flags |= EXCHGID4_FLAG_CONFIRMED_R;
--			new = conf;
- 			goto out_copy;
- 		}
- 		/* case 5, client reboot */
-@@ -2177,29 +2179,28 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 
- 	/* case 1 (normal case) */
- out_new:
--	new = create_client(exid->clname, rqstp, &verf);
--	if (new == NULL) {
--		status = nfserr_jukebox;
--		goto out;
--	}
- 	new->cl_minorversion = cstate->minorversion;
- 	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
- 
- 	gen_clid(new, nn);
- 	add_to_unconfirmed(new);
-+	conf = new;
-+	new = NULL;
- out_copy:
--	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
--	exid->clientid.cl_id = new->cl_clientid.cl_id;
-+	exid->clientid.cl_boot = conf->cl_clientid.cl_boot;
-+	exid->clientid.cl_id = conf->cl_clientid.cl_id;
- 
--	exid->seqid = new->cl_cs_slot.sl_seqid + 1;
--	nfsd4_set_ex_flags(new, exid);
-+	exid->seqid = conf->cl_cs_slot.sl_seqid + 1;
-+	nfsd4_set_ex_flags(conf, exid);
- 
- 	dprintk("nfsd4_exchange_id seqid %d flags %x\n",
--		new->cl_cs_slot.sl_seqid, new->cl_exchange_flags);
-+		conf->cl_cs_slot.sl_seqid, conf->cl_exchange_flags);
- 	status = nfs_ok;
- 
- out:
- 	nfs4_unlock_state();
-+	if (new)
-+		free_client(new);
- 	return status;
- }
- 
-@@ -2842,6 +2843,9 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	__be32 			status;
- 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
-+	new = create_client(clname, rqstp, &clverifier);
-+	if (new == NULL)
-+		return nfserr_jukebox;
- 	/* Cases below refer to rfc 3530 section 14.2.33: */
- 	nfs4_lock_state();
- 	conf = find_confirmed_client_by_name(&clname, nn);
-@@ -2862,10 +2866,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	unconf = find_unconfirmed_client_by_name(&clname, nn);
- 	if (unconf)
- 		expire_client(unconf);
--	status = nfserr_jukebox;
--	new = create_client(clname, rqstp, &clverifier);
--	if (new == NULL)
--		goto out;
- 	if (conf && same_verf(&conf->cl_verifier, &clverifier))
- 		/* case 1: probable callback update */
- 		copy_clid(new, conf);
-@@ -2877,9 +2877,12 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
- 	setclid->se_clientid.cl_id = new->cl_clientid.cl_id;
- 	memcpy(setclid->se_confirm.data, new->cl_confirm.data, sizeof(setclid->se_confirm.data));
-+	new = NULL;
- 	status = nfs_ok;
- out:
- 	nfs4_unlock_state();
-+	if (new)
-+		free_client(new);
- 	return status;
- }
- 
--- 
-1.9.3
+> +	}
+>  }
+>  
+>  static int
+> @@ -1480,6 +1486,24 @@ rpcrdma_unmap_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg)
+>  				seg->mr_dma, seg->mr_dmalen, seg->mr_dir);
+>  }
+>  
+> +static void
+> +rpcrdma_increment_frmr_rkey(struct rpcrdma_mw *mw)
+> +{
+> +	struct ib_mr *frmr = mw->r.frmr.fr_mr;
+> +	u8 key = frmr->rkey & 0x000000FF;
+> +
+> +	ib_update_fast_reg_key(frmr, ++key);
+> +}
+> +
+> +static void
+> +rpcrdma_decrement_frmr_rkey(struct rpcrdma_mw *mw)
+> +{
+> +	struct ib_mr *frmr = mw->r.frmr.fr_mr;
+> +	u8 key = frmr->rkey & 0x000000FF;
+> +
+> +	ib_update_fast_reg_key(frmr, --key);
+> +}
+> +
+>  static int
+>  rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  			int *nsegs, int writing, struct rpcrdma_ia *ia,
+> @@ -1487,8 +1511,6 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  {
+>  	struct rpcrdma_mr_seg *seg1 = seg;
+>  	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
+> -
+> -	u8 key;
+>  	int len, pageoff;
+>  	int i, rc;
+>  	int seg_len;
+> @@ -1552,14 +1574,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  		rc = -EIO;
+>  		goto out_err;
+>  	}
+> -
+> -	/* Bump the key */
+> -	key = (u8)(seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey & 0x000000FF);
+> -	ib_update_fast_reg_key(seg1->mr_chunk.rl_mw->r.frmr.fr_mr, ++key);
+> -
+>  	frmr_wr.wr.fast_reg.access_flags = (writing ?
+>  				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+>  				IB_ACCESS_REMOTE_READ);
+> +	rpcrdma_increment_frmr_rkey(seg1->mr_chunk.rl_mw);
+>  	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+>  	DECR_CQCOUNT(&r_xprt->rx_ep);
+>  
+> @@ -1568,6 +1586,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  	if (rc) {
+>  		dprintk("RPC:       %s: failed ib_post_send for register,"
+>  			" status %i\n", __func__, rc);
+> +		rpcrdma_decrement_frmr_rkey(seg1->mr_chunk.rl_mw);
+>  		goto out_err;
+>  	} else {
+>  		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
