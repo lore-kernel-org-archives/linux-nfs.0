@@ -1,181 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46921 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:55645 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755341AbaFZBsP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jun 2014 21:48:15 -0400
+	id S1755976AbaFXUoQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 24 Jun 2014 16:44:16 -0400
+Date: Tue, 24 Jun 2014 16:44:13 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trondmy@gmail.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 8/8] nfsd4: replace defer_free by svcxdr_tmpalloc
-Date: Wed, 25 Jun 2014 21:48:08 -0400
-Message-Id: <1403747288-21590-8-git-send-email-bfields@redhat.com>
-In-Reply-To: <1403747288-21590-1-git-send-email-bfields@redhat.com>
-References: <20140624204418.GG2343@pad.redhat.com>
- <1403747288-21590-1-git-send-email-bfields@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] nfsd: fix rare symlink decoding bug
+Message-ID: <20140624204413.GE2343@pad.redhat.com>
+References: <1403559272-11019-1-git-send-email-bfields@redhat.com>
+ <CAHQdGtQXjvyaXx9PkYW=96F+wvPEj8-=eGFV2NDpfFZEB77E5w@mail.gmail.com>
+ <20140623221016.GA9429@pad.redhat.com>
+ <CAHQdGtR54dy4DJLbx9jBEFbOM7dxihkZBqFgLpafSXdYuqei9A@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtR54dy4DJLbx9jBEFbOM7dxihkZBqFgLpafSXdYuqei9A@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Mon, Jun 23, 2014 at 07:28:16PM -0400, Trond Myklebust wrote:
+> On Mon, Jun 23, 2014 at 6:10 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > index 2d305a1..56bdf4a 100644
+> > --- a/fs/nfsd/nfs4xdr.c
+> > +++ b/fs/nfsd/nfs4xdr.c
+> > @@ -600,7 +600,18 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+> >                 READ_BUF(4);
+> >                 create->cr_linklen = be32_to_cpup(p++);
+> >                 READ_BUF(create->cr_linklen);
+> > -               SAVEMEM(create->cr_linkname, create->cr_linklen);
+> > +               /*
+> > +                * The VFS will want a null-terminated string, and
+> > +                * null-terminating in place isn't safe since this might
+> > +                * end on a page boundary:
+> > +                */
+> > +               create->cr_linkname =
+> > +                               kmalloc(create->cr_linklen + 1, GFP_KERNEL);
+> > +               if (!create->cr_linkname)
+> > +                       return nfserr_jukebox;
+> > +               memcpy(create->cr_linkname, p, create->cr_linklen);
+> > +               create->cr_linkname[create->cr_linklen] = '\0';
+> > +               defer_free(argp, kfree, create->cr_linkname);
+> >                 break;
+> >         case NF4BLK:
+> >         case NF4CHR:
+> 
+> Note that "defer_free()" does yet another allocation here in order to
+> make space for a small 'struct tmpbuf' structure. Unlike the first
+> allocation, there is no check for whether or not that second
+> allocation is successful above, so you can easily end up with a silent
+> memory leakage (ditto for a number of other callers of defer_free()).
+> 
+> Looking around at all the other users, wouldn't it perhaps make sense
+> to replace defer_free() with a helper that does just a single
+> allocation for both the memory buffer and the struct tmpbuf?
 
-Avoid an extra allocation for the tmpbuf struct itself, and stop
-ignoring some allocation failures.
+Yeah, thanks, working on it....
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |   46 +++++++++++++++++-----------------------------
- fs/nfsd/xdr4.h    |   13 +++++++++----
- 2 files changed, 26 insertions(+), 33 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index be4f19c..46115f2 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -181,25 +181,24 @@ static int zero_clientid(clientid_t *clid)
- }
- 
- /**
-- * defer_free - mark an allocation as deferred freed
-+ * svcxdr_tmpalloc - allocate memory to be freed after compound processing
-  * @argp: NFSv4 compound argument structure
-  * @p: pointer to be freed (with kfree())
-  *
-  * Marks @p to be freed when processing the compound operation
-  * described in @argp finishes.
-  */
--static int
--defer_free(struct nfsd4_compoundargs *argp, void *p)
-+static void *
-+svcxdr_tmpalloc(struct nfsd4_compoundargs *argp, u32 len)
- {
--	struct tmpbuf *tb;
-+	struct svcxdr_tmpbuf *tb;
- 
--	tb = kmalloc(sizeof(*tb), GFP_KERNEL);
-+	tb = kmalloc(sizeof(*tb) + len, GFP_KERNEL);
- 	if (!tb)
--		return -ENOMEM;
--	tb->buf = p;
-+		return NULL;
- 	tb->next = argp->to_free;
- 	argp->to_free = tb;
--	return 0;
-+	return tb->buf;
- }
- 
- /*
-@@ -212,13 +211,12 @@ defer_free(struct nfsd4_compoundargs *argp, void *p)
- static char *
- svcxdr_dupstr(struct nfsd4_compoundargs *argp, void *buf, u32 len)
- {
--	char *p = kmalloc(len + 1, GFP_KERNEL);
-+	char *p = svcxdr_tmpalloc(argp, len + 1);
- 
- 	if (!p)
- 		return NULL;
- 	memcpy(p, buf, len);
- 	p[len] = '\0';
--	defer_free(argp, p);
- 	return p;
- }
- 
-@@ -234,19 +232,13 @@ svcxdr_dupstr(struct nfsd4_compoundargs *argp, void *buf, u32 len)
-  */
- static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
- {
--	if (p == argp->tmp) {
--		p = kmemdup(argp->tmp, nbytes, GFP_KERNEL);
--		if (!p)
--			return NULL;
--	} else {
--		BUG_ON(p != argp->tmpp);
--		argp->tmpp = NULL;
--	}
--	if (defer_free(argp, p)) {
--		kfree(p);
-+	void *ret;
-+
-+	ret = svcxdr_tmpalloc(argp, nbytes);
-+	if (!ret)
- 		return NULL;
--	} else
--		return (char *)p;
-+	memcpy(ret, p, nbytes);
-+	return ret;
- }
- 
- static __be32
-@@ -309,12 +301,10 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		if (nace > NFS4_ACL_MAX)
- 			return nfserr_fbig;
- 
--		*acl = kmalloc(nfs4_acl_size(nace), GFP_KERNEL);
-+		*acl = svcxdr_tmpalloc(argp, nfs4_acl_bytes(nace));
- 		if (*acl == NULL)
- 			return nfserr_jukebox;
- 
--		defer_free(argp, *acl);
--
- 		(*acl)->naces = nace;
- 		for (ace = (*acl)->aces; ace < (*acl)->aces + nace; ace++) {
- 			READ_BUF(16); len += 16;
-@@ -1487,13 +1477,12 @@ nfsd4_decode_test_stateid(struct nfsd4_compoundargs *argp, struct nfsd4_test_sta
- 	INIT_LIST_HEAD(&test_stateid->ts_stateid_list);
- 
- 	for (i = 0; i < test_stateid->ts_num_ids; i++) {
--		stateid = kmalloc(sizeof(struct nfsd4_test_stateid_id), GFP_KERNEL);
-+		stateid = svcxdr_tmpalloc(argp, sizeof(*stateid));
- 		if (!stateid) {
- 			status = nfserrno(-ENOMEM);
- 			goto out;
- 		}
- 
--		defer_free(argp, stateid);
- 		INIT_LIST_HEAD(&stateid->ts_id_list);
- 		list_add_tail(&stateid->ts_id_list, &test_stateid->ts_stateid_list);
- 
-@@ -3977,9 +3966,8 @@ int nfsd4_release_compoundargs(void *rq, __be32 *p, void *resp)
- 	kfree(args->tmpp);
- 	args->tmpp = NULL;
- 	while (args->to_free) {
--		struct tmpbuf *tb = args->to_free;
-+		struct svcxdr_tmpbuf *tb = args->to_free;
- 		args->to_free = tb->next;
--		kfree(tb->buf);
- 		kfree(tb);
- 	}
- 	return 1;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 4379cc8..efce901 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -478,6 +478,14 @@ struct nfsd4_op {
- 
- bool nfsd4_cache_this_op(struct nfsd4_op *);
- 
-+/*
-+ * Memory needed just for the duration of processing one compound:
-+ */
-+struct svcxdr_tmpbuf {
-+	struct svcxdr_tmpbuf *next;
-+	char buf[];
-+};
-+
- struct nfsd4_compoundargs {
- 	/* scratch variables for XDR decode */
- 	__be32 *			p;
-@@ -486,10 +494,7 @@ struct nfsd4_compoundargs {
- 	int				pagelen;
- 	__be32				tmp[8];
- 	__be32 *			tmpp;
--	struct tmpbuf {
--		struct tmpbuf *next;
--		void *buf;
--	}				*to_free;
-+	struct svcxdr_tmpbuf		*to_free;
- 
- 	struct svc_rqst			*rqstp;
- 
--- 
-1.7.9.5
-
+--b.
