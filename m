@@ -1,121 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:51239 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754624AbaF3PvL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:11 -0400
-Received: by mail-qc0-f175.google.com with SMTP id i8so7247095qcq.34
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:11 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 027/114] nfsd: shrink st_access_bmap and st_deny_bmap
-Date: Mon, 30 Jun 2014 11:48:56 -0400
-Message-Id: <1404143423-24381-28-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:36221 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756886AbaFYQEp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 12:04:45 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: <linux-rdma@vger.kernel.org>
+Cc: <linux-nfs@vger.kernel.org>, "Shirley Ma" <shirley.ma@oracle.com>,
+        "Chuck Lever" <chuck.lever@oracle.com>,
+        "Veeresh U. Kokatnur" <veereshuk@chelsio.com>,
+        "'Indranil Choudhury'" <indranil@chelsio.com>
+Subject: NFSRDMA test branch
+Date: Wed, 25 Jun 2014 11:05:12 -0500
+Message-ID: <004a01cf908f$3e8a7c60$bb9f7520$@opengridcomputing.com>
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We never use anything above bit #3, so an unsigned long for each is
-wasteful. Shrink them to a char each, and add some WARN_ON_ONCE calls if
-we try to set or clear bits that would go outside those sizes.
+Hey,
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 26 +++++++++++++++-----------
- fs/nfsd/state.h     |  4 ++--
- 2 files changed, 17 insertions(+), 13 deletions(-)
+Going forward, I am maintaining a git tree to be used by the various interested parties to
+test the current NFSRDMA related client and server patches that are heading upstream.
+The idea is to keep the current patches in a single repo that test groups can pull from.
+The repo is currently backed against 3.16-rc2 and contains these patches so far:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 485a0dc039d5..9dba8b7baf3b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -722,42 +722,46 @@ test_share(struct nfs4_ol_stateid *stp, struct nfsd4_open *open) {
- static inline void
- set_access(u32 access, struct nfs4_ol_stateid *stp)
- {
--	__set_bit(access, &stp->st_access_bmap);
-+	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
-+	__set_bit(access, (unsigned long *)&stp->st_access_bmap);
- }
- 
- /* clear share access for a given stateid */
- static inline void
- clear_access(u32 access, struct nfs4_ol_stateid *stp)
- {
--	__clear_bit(access, &stp->st_access_bmap);
-+	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
-+	__clear_bit(access, (unsigned long *)&stp->st_access_bmap);
- }
- 
- /* test whether a given stateid has access */
- static inline bool
- test_access(u32 access, struct nfs4_ol_stateid *stp)
- {
--	return test_bit(access, &stp->st_access_bmap);
-+	return test_bit(access, (unsigned long *)&stp->st_access_bmap);
- }
- 
- /* set share deny for a given stateid */
- static inline void
--set_deny(u32 access, struct nfs4_ol_stateid *stp)
-+set_deny(u32 deny, struct nfs4_ol_stateid *stp)
- {
--	__set_bit(access, &stp->st_deny_bmap);
-+	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
-+	__set_bit(deny, (unsigned long *)&stp->st_deny_bmap);
- }
- 
- /* clear share deny for a given stateid */
- static inline void
--clear_deny(u32 access, struct nfs4_ol_stateid *stp)
-+clear_deny(u32 deny, struct nfs4_ol_stateid *stp)
- {
--	__clear_bit(access, &stp->st_deny_bmap);
-+	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
-+	__clear_bit(deny, (unsigned long *)&stp->st_deny_bmap);
- }
- 
- /* test whether a given stateid is denying specific access */
- static inline bool
--test_deny(u32 access, struct nfs4_ol_stateid *stp)
-+test_deny(u32 deny, struct nfs4_ol_stateid *stp)
- {
--	return test_bit(access, &stp->st_deny_bmap);
-+	return test_bit(deny, (unsigned long *)&stp->st_deny_bmap);
- }
- 
- /* release all access and file references for a given stateid */
-@@ -4270,12 +4274,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 		goto out; 
- 	status = nfserr_inval;
- 	if (!test_access(od->od_share_access, stp)) {
--		dprintk("NFSD: access not a subset current bitmap: 0x%lx, input access=%08x\n",
-+		dprintk("NFSD: access not a subset of current bitmap: 0x%hhx, input access=%08x\n",
- 			stp->st_access_bmap, od->od_share_access);
- 		goto out;
- 	}
- 	if (!test_deny(od->od_share_deny, stp)) {
--		dprintk("NFSD:deny not a subset current bitmap: 0x%lx, input deny=%08x\n",
-+		dprintk("NFSD: deny not a subset of current bitmap: 0x%hhx, input deny=%08x\n",
- 			stp->st_deny_bmap, od->od_share_deny);
- 		goto out;
- 	}
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index dc56ec234df7..949b331d9e13 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -407,8 +407,8 @@ struct nfs4_ol_stateid {
- 	struct list_head              st_locks;
- 	struct nfs4_stateowner      * st_stateowner;
- 	struct nfs4_file            * st_file;
--	unsigned long                 st_access_bmap;
--	unsigned long                 st_deny_bmap;
-+	unsigned char                 st_access_bmap;
-+	unsigned char                 st_deny_bmap;
- 	struct nfs4_ol_stateid         * st_openstp;
- };
- 
--- 
-1.9.3
+Chuck Lever (13):
+      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
+      xprtrdma: Protect ->qp during FRMR deregistration
+      xprtrdma: Limit data payload size for ALLPHYSICAL
+      xprtrdma: Update rkeys after transport reconnect
+      xprtrdma: Don't drain CQs on transport disconnect
+      xprtrdma: Unclutter struct rpcrdma_mr_seg
+      xprtrdma: Encode Work Request opcode in wc->wr_id
+      xprtrdma: Back off rkey when FAST_REG_MR fails
+      xprtrdma: Refactor rpcrdma_buffer_put()
+      xprtrdma: Release FRMR segment buffers during LOCAL_INV completion
+      xprtrdma: Clean up rpcrdma_ep_disconnect()
+      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
+      xprtrdma: Handle additional connection events
+
+Steve Wise (1):
+      iw_cxgb4: call iwpm_init() only once
+
+If you have critical patches that you would like included, please point me at them.  I
+request that the patches be only fixes that allow forward testing progress, critical
+regression fixes, or fixes that are heading upstream and are NFSRDMA related.  As patches
+under review change, I'll update my git tree and send up notifications when it changes.
+
+The branch is named for-test and the repo is at: 
+
+git://git.linux-nfs.org/projects/swise/linux.git
+
+Thanks,
+
+Steve.
 
