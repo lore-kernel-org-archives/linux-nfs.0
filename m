@@ -1,65 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f180.google.com ([209.85.216.180]:45039 "EHLO
-	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750957AbaFZTOC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:02 -0400
-Received: by mail-qc0-f180.google.com with SMTP id r5so3516806qcx.25
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:02 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 011/117] nfsd: nfs4_preprocess_seqid_op should only set *stpp on success
-Date: Thu, 26 Jun 2014 15:11:51 -0400
-Message-Id: <1403810017-16062-12-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:39072 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751413AbaFYLD3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 07:03:29 -0400
+Received: by mail-pa0-f42.google.com with SMTP id lj1so1597909pab.29
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 04:03:29 -0700 (PDT)
+Message-ID: <53AAAC63.5040307@gmail.com>
+Date: Wed, 25 Jun 2014 19:02:59 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH 4/4] NFSD: Add missing checking of authentication name
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-
-Not technically a bugfix, since nothing tries to use the return pointer
-if this function doesn't return success, but it could be a problem
-with some coming changes.
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4state.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4idmap.c | 14 +++++---------
+ 1 file changed, 5 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 461229a01963..3ce5dc30f767 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3964,6 +3964,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- {
- 	__be32 status;
- 	struct nfs4_stid *s;
-+	struct nfs4_ol_stateid *stp = NULL;
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index dc948f6..e1b3d3d 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -215,7 +215,8 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
+ 	memset(&ent, 0, sizeof(ent));
  
- 	dprintk("NFSD: %s: seqid=%d stateid = " STATEID_FMT "\n", __func__,
- 		seqid, STATEID_VAL(stateid));
-@@ -3973,11 +3974,14 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 				      cstate->minorversion, nn);
- 	if (status)
- 		return status;
--	*stpp = openlockstateid(s);
-+	stp = openlockstateid(s);
- 	if (!nfsd4_has_session(cstate))
--		cstate->replay_owner = (*stpp)->st_stateowner;
-+		cstate->replay_owner = stp->st_stateowner;
+ 	/* Authentication name */
+-	if (qword_get(&buf, buf1, PAGE_SIZE) <= 0)
++	len = qword_get(&buf, buf1, PAGE_SIZE);
++	if (len <= 0 || len >= IDMAP_NAMESZ)
+ 		goto out;
+ 	memcpy(ent.authname, buf1, sizeof(ent.authname));
  
--	return nfs4_seqid_op_checks(cstate, stateid, seqid, *stpp);
-+	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
-+	if (!status)
-+		*stpp = stp;
-+	return status;
+@@ -245,12 +246,10 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
+ 	/* Name */
+ 	error = -EINVAL;
+ 	len = qword_get(&buf, buf1, PAGE_SIZE);
+-	if (len < 0)
++	if (len < 0 || len >= IDMAP_NAMESZ)
+ 		goto out;
+ 	if (len == 0)
+ 		set_bit(CACHE_NEGATIVE, &ent.h.flags);
+-	else if (len >= IDMAP_NAMESZ)
+-		goto out;
+ 	else
+ 		memcpy(ent.name, buf1, sizeof(ent.name));
+ 	error = -ENOMEM;
+@@ -259,15 +258,12 @@ idtoname_parse(struct cache_detail *cd, char *buf, int buflen)
+ 		goto out;
+ 
+ 	cache_put(&res->h, cd);
+-
+ 	error = 0;
+ out:
+ 	kfree(buf1);
+-
+ 	return error;
  }
  
- static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+-
+ static struct ent *
+ idtoname_lookup(struct cache_detail *cd, struct ent *item)
+ {
+@@ -381,7 +377,8 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
+ 	memset(&ent, 0, sizeof(ent));
+ 
+ 	/* Authentication name */
+-	if (qword_get(&buf, buf1, PAGE_SIZE) <= 0)
++	len = qword_get(&buf, buf1, PAGE_SIZE);
++	if (len <= 0 || len >= IDMAP_NAMESZ)
+ 		goto out;
+ 	memcpy(ent.authname, buf1, sizeof(ent.authname));
+ 
+@@ -421,7 +418,6 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
+ 	error = 0;
+ out:
+ 	kfree(buf1);
+-
+ 	return (error);
+ }
+ 
 -- 
 1.9.3
 
