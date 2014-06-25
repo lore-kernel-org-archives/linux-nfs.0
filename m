@@ -1,279 +1,210 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f169.google.com ([209.85.216.169]:36698 "EHLO
-	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757959AbaFSOvV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:21 -0400
-Received: by mail-qc0-f169.google.com with SMTP id c9so2285624qcz.28
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:20 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 016/104] NFSd: Don't get a session reference without a client reference
-Date: Thu, 19 Jun 2014 10:49:22 -0400
-Message-Id: <1403189450-18729-17-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:27637 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750789AbaFYFRn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 01:17:43 -0400
+Message-ID: <53AA5B72.3010200@oracle.com>
+Date: Tue, 24 Jun 2014 22:17:38 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 10/13] xprtrdma: Release FRMR segment buffers during
+ LOCAL_INV completion
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net> <20140623224023.1634.67233.stgit@manet.1015granger.net>
+In-Reply-To: <20140623224023.1634.67233.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Would it be possible to delay rpcrdma_buffer_put() until LOCAL_INV request send completion? remove rpcrdma_buffer_put() from xprt_rdma_free(), add a call back after LOCAL_INV completed?
 
-If the client were to disappear from underneath us while we're holding
-a session reference, things would be bad. This cleanup ensures that
-it cannot.
+Shirley
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 112 +++++++++++++++++++++++++++++++---------------------
- fs/nfsd/state.h     |   2 -
- 2 files changed, 68 insertions(+), 46 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 20e23dbf39e5..bd753abdc405 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -102,12 +102,6 @@ static bool is_session_dead(struct nfsd4_session *ses)
- 	return ses->se_flags & NFS4_SESSION_DEAD;
- }
- 
--void nfsd4_put_session(struct nfsd4_session *ses)
--{
--	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
--		free_session(ses);
--}
--
- static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_by_me)
- {
- 	if (atomic_read(&ses->se_ref) > ref_held_by_me)
-@@ -116,14 +110,6 @@ static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_b
- 	return nfs_ok;
- }
- 
--static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
--{
--	if (is_session_dead(ses))
--		return nfserr_badsession;
--	atomic_inc(&ses->se_ref);
--	return nfs_ok;
--}
--
- void
- nfs4_unlock_state(void)
- {
-@@ -202,6 +188,39 @@ static void put_client_renew_locked(struct nfs4_client *clp)
- 		renew_client_locked(clp);
- }
- 
-+static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
-+{
-+	__be32 status;
-+
-+	if (is_session_dead(ses))
-+		return nfserr_badsession;
-+	status = get_client_locked(ses->se_client);
-+	if (status)
-+		return status;
-+	atomic_inc(&ses->se_ref);
-+	return nfs_ok;
-+}
-+
-+static void nfsd4_put_session_locked(struct nfsd4_session *ses)
-+{
-+	struct nfs4_client *clp = ses->se_client;
-+
-+	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
-+		free_session(ses);
-+	put_client_renew_locked(clp);
-+}
-+
-+static void nfsd4_put_session(struct nfsd4_session *ses)
-+{
-+	struct nfs4_client *clp = ses->se_client;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	nfsd4_put_session_locked(ses);
-+	spin_unlock(&nn->client_lock);
-+}
-+
-+
- static inline u32
- opaque_hashval(const void *ptr, int nbytes)
- {
-@@ -1154,7 +1173,7 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
- 
- /* caller must hold client_lock */
- static struct nfsd4_session *
--find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
-+__find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
- {
- 	struct nfsd4_session *elem;
- 	int idx;
-@@ -1174,6 +1193,24 @@ find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
- 	return NULL;
- }
- 
-+static struct nfsd4_session *
-+find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net,
-+		__be32 *ret)
-+{
-+	struct nfsd4_session *session;
-+	__be32 status = nfserr_badsession;
-+
-+	session = __find_in_sessionid_hashtbl(sessionid, net);
-+	if (!session)
-+		goto out;
-+	status = nfsd4_get_session_locked(session);
-+	if (status)
-+		session = NULL;
-+out:
-+	*ret = status;
-+	return session;
-+}
-+
- /* caller must hold client_lock */
- static void
- unhash_session(struct nfsd4_session *ses)
-@@ -2194,17 +2231,17 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- 	__be32 status;
- 	struct nfsd4_conn *conn;
- 	struct nfsd4_session *session;
--	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+	struct net *net = SVC_NET(rqstp);
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	if (!nfsd4_last_compound_op(rqstp))
- 		return nfserr_not_only_op;
- 	nfs4_lock_state();
- 	spin_lock(&nn->client_lock);
--	session = find_in_sessionid_hashtbl(&bcts->sessionid, SVC_NET(rqstp));
-+	session = find_in_sessionid_hashtbl(&bcts->sessionid, net, &status);
- 	spin_unlock(&nn->client_lock);
--	status = nfserr_badsession;
- 	if (!session)
--		goto out;
-+		goto out_no_session;
- 	status = nfserr_wrong_cred;
- 	if (!mach_creds_match(session->se_client, rqstp))
- 		goto out;
-@@ -2218,6 +2255,8 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- 	nfsd4_init_conn(rqstp, conn, session);
- 	status = nfs_ok;
- out:
-+	nfsd4_put_session(session);
-+out_no_session:
- 	nfs4_unlock_state();
- 	return status;
- }
-@@ -2237,7 +2276,8 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	struct nfsd4_session *ses;
- 	__be32 status;
- 	int ref_held_by_me = 0;
--	struct nfsd_net *nn = net_generic(SVC_NET(r), nfsd_net_id);
-+	struct net *net = SVC_NET(r);
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	nfs4_lock_state();
- 	status = nfserr_not_only_op;
-@@ -2248,14 +2288,12 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	}
- 	dump_sessionid(__func__, &sessionid->sessionid);
- 	spin_lock(&nn->client_lock);
--	ses = find_in_sessionid_hashtbl(&sessionid->sessionid, SVC_NET(r));
--	status = nfserr_badsession;
-+	ses = find_in_sessionid_hashtbl(&sessionid->sessionid, net, &status);
- 	if (!ses)
- 		goto out_client_lock;
- 	status = nfserr_wrong_cred;
- 	if (!mach_creds_match(ses->se_client, r))
--		goto out_client_lock;
--	nfsd4_get_session_locked(ses);
-+		goto out_put_session;
- 	status = mark_session_dead_locked(ses, 1 + ref_held_by_me);
- 	if (status)
- 		goto out_put_session;
-@@ -2267,7 +2305,7 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	spin_lock(&nn->client_lock);
- 	status = nfs_ok;
- out_put_session:
--	nfsd4_put_session(ses);
-+	nfsd4_put_session_locked(ses);
- out_client_lock:
- 	spin_unlock(&nn->client_lock);
- out:
-@@ -2342,7 +2380,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	struct nfsd4_conn *conn;
- 	__be32 status;
- 	int buflen;
--	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+	struct net *net = SVC_NET(rqstp);
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	if (resp->opcnt != 1)
- 		return nfserr_sequence_pos;
-@@ -2356,17 +2395,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 		return nfserr_jukebox;
- 
- 	spin_lock(&nn->client_lock);
--	status = nfserr_badsession;
--	session = find_in_sessionid_hashtbl(&seq->sessionid, SVC_NET(rqstp));
-+	session = find_in_sessionid_hashtbl(&seq->sessionid, net, &status);
- 	if (!session)
- 		goto out_no_session;
- 	clp = session->se_client;
--	status = get_client_locked(clp);
--	if (status)
--		goto out_no_session;
--	status = nfsd4_get_session_locked(session);
--	if (status)
--		goto out_put_client;
- 
- 	status = nfserr_too_many_ops;
- 	if (nfsd4_session_too_many_ops(rqstp, session))
-@@ -2450,9 +2482,7 @@ out_no_session:
- 	spin_unlock(&nn->client_lock);
- 	return status;
- out_put_session:
--	nfsd4_put_session(session);
--out_put_client:
--	put_client_renew_locked(clp);
-+	nfsd4_put_session_locked(session);
- 	goto out_no_session;
- }
- 
-@@ -2462,18 +2492,12 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
- 	struct nfsd4_compound_state *cs = &resp->cstate;
- 
- 	if (nfsd4_has_session(cs)) {
--		struct nfs4_client *clp = cs->session->se_client;
--		struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
--
- 		if (cs->status != nfserr_replay_cache) {
- 			nfsd4_store_cache_entry(resp);
- 			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
- 		}
--		/* Renew the clientid on success and on replay */
--		spin_lock(&nn->client_lock);
-+		/* Drop session reference that was taken in nfsd4_sequence() */
- 		nfsd4_put_session(cs->session);
--		put_client_renew_locked(clp);
--		spin_unlock(&nn->client_lock);
- 	}
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index dee801d67e4a..d928c444f91e 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -212,8 +212,6 @@ struct nfsd4_session {
- 	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
- };
- 
--extern void nfsd4_put_session(struct nfsd4_session *ses);
--
- /* formatted contents of nfs4_sessionid */
- struct nfsd4_sessionid {
- 	clientid_t	clientid;
--- 
-1.9.3
-
+On 06/23/2014 03:40 PM, Chuck Lever wrote:
+> FRMR uses a LOCAL_INV Work Request, which is asynchronous, to
+> deregister segment buffers.  Other registration strategies use
+> synchronous deregistration mechanisms (like ib_unmap_fmr()).
+> 
+> For a synchronous deregistration mechanism, it makes sense for
+> xprt_rdma_free() to put segment buffers back into the buffer pool
+> immediately once rpcrdma_deregister_external() returns.
+> 
+> This is currently also what FRMR is doing. It is releasing segment
+> buffers just after the LOCAL_INV WR is posted.
+> 
+> But segment buffers need to be put back after the LOCAL_INV WR
+> _completes_ (or flushes). Otherwise, rpcrdma_buffer_get() can then
+> assign these segment buffers to another RPC task while they are
+> still "in use" by the hardware.
+> 
+> The result of re-using an FRMR too quickly is that it's rkey
+> no longer matches the rkey that was registered with the provider.
+> This results in FAST_REG_MR or LOCAL_INV Work Requests completing
+> with IB_WC_MW_BIND_ERR, and the FRMR, and thus the transport,
+> becomes unusable.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/verbs.c     |   44 +++++++++++++++++++++++++++++++++++----
+>  net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
+>  2 files changed, 42 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index f24f0bf..52f57f7 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -62,6 +62,8 @@
+>  #endif
+>  
+>  static void rpcrdma_decrement_frmr_rkey(struct rpcrdma_mw *);
+> +static void rpcrdma_get_mw(struct rpcrdma_mw *);
+> +static void rpcrdma_put_mw(struct rpcrdma_mw *);
+>  
+>  /*
+>   * internal functions
+> @@ -167,6 +169,7 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+>  		if (fastreg)
+>  			rpcrdma_decrement_frmr_rkey(mw);
+>  	}
+> +	rpcrdma_put_mw(mw);
+>  }
+>  
+>  static int
+> @@ -1034,7 +1037,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+>  	len += cdata->padding;
+>  	switch (ia->ri_memreg_strategy) {
+>  	case RPCRDMA_FRMR:
+> -		len += buf->rb_max_requests * RPCRDMA_MAX_SEGS *
+> +		len += (buf->rb_max_requests + 1) * RPCRDMA_MAX_SEGS *
+>  				sizeof(struct rpcrdma_mw);
+>  		break;
+>  	case RPCRDMA_MTHCAFMR:
+> @@ -1076,7 +1079,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+>  	r = (struct rpcrdma_mw *)p;
+>  	switch (ia->ri_memreg_strategy) {
+>  	case RPCRDMA_FRMR:
+> -		for (i = buf->rb_max_requests * RPCRDMA_MAX_SEGS; i; i--) {
+> +		for (i = (buf->rb_max_requests+1) * RPCRDMA_MAX_SEGS; i; i--) {
+>  			r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
+>  						ia->ri_max_frmr_depth);
+>  			if (IS_ERR(r->r.frmr.fr_mr)) {
+> @@ -1252,12 +1255,36 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+>  }
+>  
+>  static void
+> -rpcrdma_put_mw_locked(struct rpcrdma_mw *mw)
+> +rpcrdma_free_mw(struct kref *kref)
+>  {
+> +	struct rpcrdma_mw *mw = container_of(kref, struct rpcrdma_mw, mw_ref);
+>  	list_add_tail(&mw->mw_list, &mw->mw_pool->rb_mws);
+>  }
+>  
+>  static void
+> +rpcrdma_put_mw_locked(struct rpcrdma_mw *mw)
+> +{
+> +	kref_put(&mw->mw_ref, rpcrdma_free_mw);
+> +}
+> +
+> +static void
+> +rpcrdma_get_mw(struct rpcrdma_mw *mw)
+> +{
+> +	kref_get(&mw->mw_ref);
+> +}
+> +
+> +static void
+> +rpcrdma_put_mw(struct rpcrdma_mw *mw)
+> +{
+> +	struct rpcrdma_buffer *buffers = mw->mw_pool;
+> +	unsigned long flags;
+> +
+> +	spin_lock_irqsave(&buffers->rb_lock, flags);
+> +	rpcrdma_put_mw_locked(mw);
+> +	spin_unlock_irqrestore(&buffers->rb_lock, flags);
+> +}
+> +
+> +static void
+>  rpcrdma_buffer_put_mw(struct rpcrdma_mw **mw)
+>  {
+>  	rpcrdma_put_mw_locked(*mw);
+> @@ -1304,6 +1331,7 @@ rpcrdma_buffer_get_mws(struct rpcrdma_req *req, struct rpcrdma_buffer *buffers)
+>  		r = list_entry(buffers->rb_mws.next,
+>  				struct rpcrdma_mw, mw_list);
+>  		list_del(&r->mw_list);
+> +		kref_init(&r->mw_ref);
+>  		r->mw_pool = buffers;
+>  		req->rl_segments[i].mr_chunk.rl_mw = r;
+>  	}
+> @@ -1583,6 +1611,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
+>  		__func__, seg1->mr_chunk.rl_mw, i);
+>  
+> +	rpcrdma_get_mw(seg1->mr_chunk.rl_mw);
+>  	if (unlikely(seg1->mr_chunk.rl_mw->r.frmr.fr_state == FRMR_IS_VALID)) {
+>  		dprintk("RPC:       %s: frmr %x left valid, posting invalidate.\n",
+>  			__func__,
+> @@ -1595,6 +1624,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  		invalidate_wr.send_flags = IB_SEND_SIGNALED;
+>  		invalidate_wr.ex.invalidate_rkey =
+>  			seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+> +		rpcrdma_get_mw(seg1->mr_chunk.rl_mw);
+>  		DECR_CQCOUNT(&r_xprt->rx_ep);
+>  		post_wr = &invalidate_wr;
+>  	} else
+> @@ -1638,6 +1668,9 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  	*nsegs = i;
+>  	return 0;
+>  out_err:
+> +	rpcrdma_put_mw(seg1->mr_chunk.rl_mw);
+> +	if (post_wr == &invalidate_wr)
+> +		rpcrdma_put_mw(seg1->mr_chunk.rl_mw);
+>  	while (i--)
+>  		rpcrdma_unmap_one(ia, --seg);
+>  	return rc;
+> @@ -1653,6 +1686,7 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+>  
+>  	while (seg1->mr_nsegs--)
+>  		rpcrdma_unmap_one(ia, seg++);
+> +	rpcrdma_get_mw(seg1->mr_chunk.rl_mw);
+>  
+>  	memset(&invalidate_wr, 0, sizeof invalidate_wr);
+>  	invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
+> @@ -1664,9 +1698,11 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+>  	read_lock(&ia->ri_qplock);
+>  	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+>  	read_unlock(&ia->ri_qplock);
+> -	if (rc)
+> +	if (rc) {
+> +		rpcrdma_put_mw(seg1->mr_chunk.rl_mw);
+>  		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+>  			" status %i\n", __func__, rc);
+> +	}
+>  	return rc;
+>  }
+>  
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index b81e5b5..7a140fe 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -44,6 +44,7 @@
+>  #include <linux/spinlock.h> 		/* spinlock_t, etc */
+>  #include <linux/atomic.h>			/* atomic_t, etc */
+>  #include <linux/workqueue.h>		/* struct work_struct */
+> +#include <linux/kref.h>
+>  
+>  #include <rdma/rdma_cm.h>		/* RDMA connection api */
+>  #include <rdma/ib_verbs.h>		/* RDMA verbs api */
+> @@ -176,6 +177,7 @@ struct rpcrdma_mw {
+>  	} r;
+>  	struct list_head	mw_list;
+>  	struct rpcrdma_buffer	*mw_pool;
+> +	struct kref		mw_ref;
+>  };
+>  
+>  #define RPCRDMA_BIT_FASTREG		(0)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
