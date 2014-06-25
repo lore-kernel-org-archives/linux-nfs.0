@@ -1,142 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f169.google.com ([209.85.216.169]:59298 "EHLO
-	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751403AbaFZTNs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:13:48 -0400
-Received: by mail-qc0-f169.google.com with SMTP id c9so3594160qcz.28
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:13:48 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH v2 001/117] nfsd: fix file access refcount leak when nfsd4_truncate fails
-Date: Thu, 26 Jun 2014 15:11:41 -0400
-Message-Id: <1403810017-16062-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-vc0-f173.google.com ([209.85.220.173]:46384 "EHLO
+	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755311AbaFYWeS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 18:34:18 -0400
+Received: by mail-vc0-f173.google.com with SMTP id lf12so2660077vcb.32
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 15:34:17 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <029c01cf90c4$ebae6b60$c30b4220$@mindspring.com>
+References: <029301cf90c0$4fabe660$ef03b320$@mindspring.com>
+	<CAHQdGtSdQ3keA2UgiAbtWWUMvheWQ8oanpAt_evAY2DSkr+y+Q@mail.gmail.com>
+	<029c01cf90c4$ebae6b60$c30b4220$@mindspring.com>
+Date: Wed, 25 Jun 2014 18:34:17 -0400
+Message-ID: <CAHQdGtRxORG5kn-9D1Bp7WZ80yF6jGL_M8yT+0KeJ7x-jyVojg@mail.gmail.com>
+Subject: Re: Execute only permission issue with client
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Christoph Hellwig <hch@infradead.org>
+On Wed, Jun 25, 2014 at 6:29 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
+>> On Wed, Jun 25, 2014 at 5:56 PM, Frank Filz <ffilzlnx@mindspring.com>
+>> wrote:
+>> > Back a year ago or so, I ran the following test against Ganesha:
+>> >
+>> > http://www.tuxera.com/community/posix-test-suite/
+>> >
+>> > On NFS v4, one of the issues it tripped over was execute only files.
+>> > Apparently the Linux v4 client doesn't make ACCESS calls in
+>> > conjunction with an open system call, with the result that you can
+>> > open an execute only file (per RFC 3530bis, the server is allowing
+>> > such to allow clients to execute executables).
+>>
+>> That information is outdated. A wireshark dump should show that recent
+>> Linux kernels include an ACCESS operation as part of the open() COMPOUND
+>> and that it uses that information to distinguish between executable and read
+>> access permissions.
+>
+> Oh, cool, do you know when that went in? I'll go look and see if I can find it...
+>
 
-nfsd4_process_open2 will currently will get access to the file, and then
-call nfsd4_truncate to (possibly) truncate it. If that operation fails
-though, then the access references will never be released as the
-nfs4_ol_stateid is never initialized.
+It should be a feature of Linux 3.7 (Dec 2012) and newer kernels.
 
-Fix by moving the nfsd4_truncate call into nfs4_get_vfs_file, ensuring
-that the refcounts are properly put if the truncate fails.
+Cheers
+  Trond
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Signed-off-by: Christoph Hellwig <hch@infradead.org>
----
- fs/nfsd/nfs4state.c | 62 ++++++++++++++++++++++++++---------------------------
- 1 file changed, 30 insertions(+), 32 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2204e1fe5725..f9049516bfae 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3042,6 +3042,21 @@ static inline int nfs4_access_to_access(u32 nfs4_access)
- 	return flags;
- }
- 
-+static inline __be32
-+nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
-+		struct nfsd4_open *open)
-+{
-+	struct iattr iattr = {
-+		.ia_valid = ATTR_SIZE,
-+		.ia_size = 0,
-+	};
-+	if (!open->op_truncate)
-+		return 0;
-+	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
-+		return nfserr_inval;
-+	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
-+}
-+
- static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 		struct svc_fh *cur_fh, struct nfsd4_open *open)
- {
-@@ -3053,53 +3068,39 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
- 			&fp->fi_fds[oflag]);
- 		if (status)
--			return status;
-+			goto out;
- 	}
- 	nfs4_file_get_access(fp, oflag);
- 
-+	status = nfsd4_truncate(rqstp, cur_fh, open);
-+	if (status)
-+		goto out_put_access;
-+
- 	return nfs_ok;
--}
- 
--static inline __be32
--nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
--		struct nfsd4_open *open)
--{
--	struct iattr iattr = {
--		.ia_valid = ATTR_SIZE,
--		.ia_size = 0,
--	};
--	if (!open->op_truncate)
--		return 0;
--	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
--		return nfserr_inval;
--	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
-+out_put_access:
-+	nfs4_file_put_access(fp, oflag);
-+out:
-+	return status;
- }
- 
- static __be32
- nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
- {
- 	u32 op_share_access = open->op_share_access;
--	bool new_access;
- 	__be32 status;
- 
--	new_access = !test_access(op_share_access, stp);
--	if (new_access) {
-+	if (!test_access(op_share_access, stp))
- 		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open);
--		if (status)
--			return status;
--	}
--	status = nfsd4_truncate(rqstp, cur_fh, open);
--	if (status) {
--		if (new_access) {
--			int oflag = nfs4_access_to_omode(op_share_access);
--			nfs4_file_put_access(fp, oflag);
--		}
-+	else
-+		status = nfsd4_truncate(rqstp, cur_fh, open);
-+
-+	if (status)
- 		return status;
--	}
-+
- 	/* remember the open */
- 	set_access(op_share_access, stp);
- 	set_deny(open->op_share_deny, stp);
--
- 	return nfs_ok;
- }
- 
-@@ -3350,9 +3351,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		status = nfs4_get_vfs_file(rqstp, fp, current_fh, open);
- 		if (status)
- 			goto out;
--		status = nfsd4_truncate(rqstp, current_fh, open);
--		if (status)
--			goto out;
- 		stp = open->op_stp;
- 		open->op_stp = NULL;
- 		init_open_stateid(stp, fp, open);
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
