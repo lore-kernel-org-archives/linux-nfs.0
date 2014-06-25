@@ -1,33 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59888 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752886AbaFGOhB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jun 2014 10:37:01 -0400
-Date: Sat, 7 Jun 2014 07:37:01 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 6/6] pnfs: clean up *_resend_to_mds
-Message-ID: <20140607143701.GD9469@infradead.org>
-References: <1401995791-40213-1-git-send-email-dros@primarydata.com>
- <1401995791-40213-7-git-send-email-dros@primarydata.com>
+Received: from mail-pd0-f182.google.com ([209.85.192.182]:50030 "EHLO
+	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755372AbaFYK76 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 06:59:58 -0400
+Received: by mail-pd0-f182.google.com with SMTP id y13so1508769pdi.41
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 03:59:57 -0700 (PDT)
+Message-ID: <53AAAB93.9030307@gmail.com>
+Date: Wed, 25 Jun 2014 18:59:31 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1401995791-40213-7-git-send-email-dros@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH 1/4] NFSD: Fix missing reset creds in nfsd4_create_clid_dir
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 05, 2014 at 03:16:31PM -0400, Weston Andros Adamson wrote:
-> Clean up pnfs_read_done_resend_to_mds and pnfs_write_done_resend_to_mds:
->  - instead of passing all arguments from a nfs_pgio_header, just pass the header
->  - share the common code
-> 
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4recover.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Looks good,
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-
-I think the exports for nfs_pageio_add_request and nfs_pageio_complete
-can be dropped as well after this.
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 9c271f4..e37ac1c 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -188,7 +188,7 @@ nfsd4_create_clid_dir(struct nfs4_client *clp)
+ 
+ 	status = mnt_want_write_file(nn->rec_file);
+ 	if (status)
+-		return;
++		goto out_creds;
+ 
+ 	dir = nn->rec_file->f_path.dentry;
+ 	/* lock the parent */
+@@ -228,6 +228,7 @@ out_unlock:
+ 				user_recovery_dirname);
+ 	}
+ 	mnt_drop_write_file(nn->rec_file);
++out_creds:
+ 	nfs4_reset_creds(original_cred);
+ }
+ 
+-- 
+1.9.3
 
