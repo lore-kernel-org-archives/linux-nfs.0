@@ -1,93 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:48795 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752086AbaFDVCp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:45 -0400
-Received: by mail-ig0-f175.google.com with SMTP id uq10so6798277igb.8
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:44 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH pynfs 16/17] rpc: on socket error, close and mark pipe inactive
-Date: Wed,  4 Jun 2014 17:02:05 -0400
-Message-Id: <1401915726-29092-18-git-send-email-dros@primarydata.com>
-In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:40728 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751413AbaFYLCU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 07:02:20 -0400
+Received: by mail-pa0-f41.google.com with SMTP id fb1so1590177pad.28
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 04:02:20 -0700 (PDT)
+Message-ID: <53AAAC23.90201@gmail.com>
+Date: Wed, 25 Jun 2014 19:01:55 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH 3/4] NFSD: Fix bad using of return value from qword_get
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-call _event_close() on socket errors instead of tracing back and mark the
-pipe as inactive so callers can reconnect as needed.
-
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- rpc/rpc.py | 26 +++++++++++++++++++++++---
- 1 file changed, 23 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4idmap.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/rpc/rpc.py b/rpc/rpc.py
-index 250e945..4801883 100644
---- a/rpc/rpc.py
-+++ b/rpc/rpc.py
-@@ -351,6 +351,7 @@ class RpcPipe(Pipe):
-         self._pending = {} # {xid:defer}
-         self._lock = threading.Lock() # Protects fields below
-         self._xid = 0
-+        self.set_active()
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index a0ab0a8..dc948f6 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -368,7 +368,7 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
+ {
+ 	struct ent ent, *res;
+ 	char *buf1;
+-	int error = -EINVAL;
++	int len, error = -EINVAL;
  
-     def _get_xid(self):
-         with self._lock:
-@@ -358,6 +359,15 @@ class RpcPipe(Pipe):
-             self._xid = inc_u32(out)
-         return out
+ 	if (buf[buflen - 1] != '\n')
+ 		return (-EINVAL);
+@@ -392,8 +392,8 @@ nametoid_parse(struct cache_detail *cd, char *buf, int buflen)
+ 		IDMAP_TYPE_USER : IDMAP_TYPE_GROUP;
  
-+    def set_active(self):
-+        self._active = True
-+
-+    def clear_active(self):
-+        self._active = False
-+
-+    def is_active(self):
-+        return self._active
-+
-     def listen(self, xid, timeout=None):
-         """Wait for a reply to a CALL."""
-         self._pending[xid].wait(timeout)
-@@ -500,15 +510,24 @@ class ConnectionHandler(object):
-                 log_p.warn(1, "polling error from %i" % fd)
-                 # STUB - now what?
-             for fd in w:
--                self._event_write(fd)
-+                try:
-+                    self._event_write(fd)
-+                except socket.error, e:
-+                    self._event_close(fd)
-             for fd in r:
-                 if fd in self.listeners:
--                    self._event_connect_incoming(fd)
-+                    try:
-+                        self._event_connect_incoming(fd)
-+                    except socket.error, e:
-+                        self._event_close(fd)
-                 elif fd == self._alarm_poll.fileno():
-                     commands = self._alarm_poll.recv(self.rsize)
-                     for c in commands:
-                         data = self._alarm.pop()
--                        switch[c](data)
-+                        try:
-+                            switch[c](data)
-+                        except socket.error, e:
-+                            self._event_close(fd)
-                 else:
-                     try:
-                         data = self.sockets[fd].recv_records(self.rsize)
-@@ -557,6 +576,7 @@ class ConnectionHandler(object):
-         self.writelist -= temp
-         self.readlist -= temp
-         self.errlist -= temp
-+        self.sockets[fd].clear_active()
-         self.sockets[fd].close()
-         del self.sockets[fd]
+ 	/* Name */
+-	error = qword_get(&buf, buf1, PAGE_SIZE);
+-	if (error <= 0 || error >= IDMAP_NAMESZ)
++	len = qword_get(&buf, buf1, PAGE_SIZE);
++	if (len <= 0 || len >= IDMAP_NAMESZ)
+ 		goto out;
+ 	memcpy(ent.name, buf1, sizeof(ent.name));
  
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
