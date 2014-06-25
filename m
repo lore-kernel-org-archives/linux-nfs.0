@@ -1,48 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:63983 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932778AbaFSOxV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:53:21 -0400
-Received: by mail-qa0-f45.google.com with SMTP id v10so2000994qac.4
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:53:20 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 100/104] NFSd: Remove nfs4_lock_state(): reclaim_complete()
-Date: Thu, 19 Jun 2014 10:50:46 -0400
-Message-Id: <1403189450-18729-101-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:36766 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756382AbaFYOcn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 10:32:43 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH v1 10/13] xprtrdma: Release FRMR segment buffers during LOCAL_INV completion
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <53AA5B72.3010200@oracle.com>
+Date: Wed, 25 Jun 2014 10:32:38 -0400
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <89930B1D-AE3B-48AD-922C-6FCA754D2B01@oracle.com>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net> <20140623224023.1634.67233.stgit@manet.1015granger.net> <53AA5B72.3010200@oracle.com>
+To: Shirley Ma <shirley.ma@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Hi Shirley-
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 2 --
- 1 file changed, 2 deletions(-)
+On Jun 25, 2014, at 1:17 AM, Shirley Ma <shirley.ma@oracle.com> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e159e316ecdb..6000da3285d7 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2744,7 +2744,6 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 		 return nfs_ok;
- 	}
- 
--	nfs4_lock_state();
- 	status = nfserr_complete_already;
- 	if (test_and_set_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
- 			     &cstate->session->se_client->cl_flags))
-@@ -2764,7 +2763,6 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 	status = nfs_ok;
- 	nfsd4_client_record_create(cstate->session->se_client);
- out:
--	nfs4_unlock_state();
- 	return status;
- }
- 
--- 
-1.9.3
+> Would it be possible to delay rpcrdma_buffer_put() until LOCAL_INV request send completion? remove rpcrdma_buffer_put() from xprt_rdma_free(), add a call back after LOCAL_INV completed?
+
+That’s exactly what this patch does. The relevant part of
+rpcrdma_buffer_put() is:
+
+  list_add(&mw->mw_list, &buf->rb_mws);
+
+This is now wrapped with a reference count so that
+rpcrdma_buffer_put() and the LOCAL_INV completion can run in any
+order. The FRMR is added back to the list only after both of those
+two have finished.
+
+Nothing in xprt_rdma_free() is allowed to sleep, so we can’t wait for
+LOCAL_INV completion in there.
+
+The only alternative I can think of is having rpcrdma_buffer_get() check
+fr_state as it removes FRMRs from the rb_mws list. Only if the FRMR is
+marked FRMR_IS_INVALID, rpcrdma_buffer_get() will add it to the
+rpcrdma_req.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
