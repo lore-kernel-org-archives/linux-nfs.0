@@ -1,152 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:49508 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757787AbaFSOwr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:47 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so2235277qcx.41
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:46 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 075/104] NFSd: Add assertions to document the nfs4_client/session locking
-Date: Thu, 19 Jun 2014 10:50:21 -0400
-Message-Id: <1403189450-18729-76-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:56029 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754202AbaFYNgf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 09:36:35 -0400
+Received: by mail-qg0-f50.google.com with SMTP id j5so1678564qga.9
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 06:36:34 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 25 Jun 2014 09:36:32 -0400
+To: Jiri Slaby <jslaby@suse.cz>
+Cc: stable@vger.kernel.org, linux-nfs@vger.kernel.org, bfields@fieldses.org,
+        Tomas Kasparek <kasparek@fit.vutbr.cz>
+Subject: Re: [stable PATCH] nfsd: don't try to reuse an expired DRC entry
+ off the list
+Message-ID: <20140625093632.0d7b58ac@tlielax.poochiereds.net>
+In-Reply-To: <53AACF88.5000006@suse.cz>
+References: <1403290612-15341-1-git-send-email-jlayton@primarydata.com>
+	<53AACF88.5000006@suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Wed, 25 Jun 2014 15:32:56 +0200
+Jiri Slaby <jslaby@suse.cz> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+> On 06/20/2014 08:56 PM, Jeff Layton wrote:
+> > From: Jeff Layton <jlayton@redhat.com>
+> > 
+> > This is commit a0ef5e19684f0447da9ff0654a12019c484f57ca in mainline.
+> > 
+> > While the commit message below doesn't lay this out, we've subsequently
+> > found that there are some cases where an entry that's still in use can
+> > be freed prematurely if a particular operation takes a *very* long time
+> > (on the order of minutes) and/or the server is very busy and doesn't
+> > have a lot of memory dedicated to the DRC. This patch eliminates that
+> > possibility, so it's actually more than just a cleanup.
+> > 
+> > The regression crept in in v3.9, and this patch went into mainline in
+> > v3.14. Please apply this to any stable kernel between those two
+> > mainline releases.
+> 
+> Now applied to 3.12. Thanks.
+> 
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6e6d34111f5f..72ca1b62cf16 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -145,6 +145,10 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
- 
- static __be32 get_client_locked(struct nfs4_client *clp)
- {
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	if (is_client_expired(clp))
- 		return nfserr_expired;
- 	atomic_inc(&clp->cl_refcount);
-@@ -185,6 +189,10 @@ renew_client(struct nfs4_client *clp)
- 
- static void put_client_renew_locked(struct nfs4_client *clp)
- {
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	if (!atomic_dec_and_test(&clp->cl_refcount))
- 		return;
- 	if (!is_client_expired(clp))
-@@ -216,6 +224,9 @@ static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
- static void nfsd4_put_session_locked(struct nfsd4_session *ses)
- {
- 	struct nfs4_client *clp = ses->se_client;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
- 
- 	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
- 		free_session(ses);
-@@ -1262,6 +1273,8 @@ __find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
- 	int idx;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	dump_sessionid(__func__, sessionid);
- 	idx = hash_sessionid(sessionid);
- 	/* Search in the appropriate list */
-@@ -1298,6 +1311,11 @@ out:
- static void
- unhash_session(struct nfsd4_session *ses)
- {
-+	struct nfs4_client *clp = ses->se_client;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	list_del(&ses->se_hash);
- 	spin_lock(&ses->se_client->cl_lock);
- 	list_del(&ses->se_perclnt);
-@@ -1386,6 +1404,8 @@ unhash_client_locked(struct nfs4_client *clp)
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	struct nfsd4_session *ses;
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	/* Mark the client as expired! */
- 	clp->cl_time = 0;
- 	/* Make it invisible */
-@@ -1727,6 +1747,8 @@ add_to_unconfirmed(struct nfs4_client *clp)
- 	unsigned int idhashval;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	clear_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
- 	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
- 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
-@@ -1740,6 +1762,8 @@ move_to_confirmed(struct nfs4_client *clp)
- 	unsigned int idhashval = clientid_hashval(clp->cl_clientid.cl_id);
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	dprintk("NFSD: move_to_confirm nfs4_client %p\n", clp);
- 	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
- 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
-@@ -1770,6 +1794,7 @@ find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
- {
- 	struct list_head *tbl = nn->conf_id_hashtbl;
- 
-+	lockdep_assert_held(&nn->client_lock);
- 	return find_client_in_id_table(tbl, clid, sessions);
- }
- 
-@@ -1778,6 +1803,7 @@ find_unconfirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
- {
- 	struct list_head *tbl = nn->unconf_id_hashtbl;
- 
-+	lockdep_assert_held(&nn->client_lock);
- 	return find_client_in_id_table(tbl, clid, sessions);
- }
- 
-@@ -1789,12 +1815,14 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
- static struct nfs4_client *
- find_confirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
- {
-+	lockdep_assert_held(&nn->client_lock);
- 	return find_clp_in_name_tree(name, &nn->conf_name_tree);
- }
- 
- static struct nfs4_client *
- find_unconfirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
- {
-+	lockdep_assert_held(&nn->client_lock);
- 	return find_clp_in_name_tree(name, &nn->unconf_name_tree);
- }
- 
-@@ -4758,6 +4786,8 @@ find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
- 	unsigned int strhashval = ownerstr_hashval(owner);
- 	struct nfs4_stateowner *so;
- 
-+	lockdep_assert_held(&clp->cl_lock);
-+
- 	list_for_each_entry(so, &clp->cl_ownerstr_hashtbl[strhashval], so_strhash) {
- 		if (so->so_is_open_owner)
- 			continue;
+Thank you! It also turns out that we're going to want to pull
+1b19453d1c6abcfa7c312ba6c9f11a277568fc94 from mainline into stable
+kernels as well. There's one more possibility for an entry to be freed
+while still in use that that patch will fix.
+
+I'll resend that to stable@vger later today...
+
+Thanks!
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
