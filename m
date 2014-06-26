@@ -1,97 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:55817 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750962AbaFWWkA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:40:00 -0400
-Subject: [PATCH v1 07/13] xprtrdma: Encode Work Request opcode in wc->wr_id
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Jun 2014 18:39:58 -0400
-Message-ID: <20140623223958.1634.60529.stgit@manet.1015granger.net>
-In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:34843 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751511AbaFZTOt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:49 -0400
+Received: by mail-qc0-f179.google.com with SMTP id x3so3533735qcv.24
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:48 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 046/117] nfsd: do filp_close in sc_free callback for lock stateids
+Date: Thu, 26 Jun 2014 15:12:26 -0400
+Message-Id: <1403810017-16062-47-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The wc->opcode field is unreliable when a completion fails.
-Up until now, the completion handler has ignored unsuccessful
-completions, so that didn't matter to xprtrdma.
+Releasing locks when we unhash the stateid instead of doing so only when
+the stateid is actually released is problematic and will complicate some
+later changes.
 
-In a subsequent patch, however, the send CQ handler will need
-to know which Work Request opcode is completing, even if for
-error completions.
-
-xprtrdma posts three Work Request opcodes via the send queue:
-SEND, FAST_REG_MR, and LOCAL_INV:
-
-For SEND, wc->wr_id is zero. Those completions are ignored.
-
-The other two plant a pointer to an rpcrdma_mw in wc->wr_id. Make
-the low-order bit indicate which of FAST_REG_MR or LOCAL_INV is
-being done.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c     |   19 +++++++++++--------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
- 2 files changed, 13 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4state.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index e8ed81c..cef67fd 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -145,20 +145,22 @@ rpcrdma_cq_async_error_upcall(struct ib_event *event, void *context)
- static void
- rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- {
--	struct rpcrdma_mw *frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-+	unsigned long wrid = wc->wr_id;
-+	struct rpcrdma_mw *mw;
-+	int fastreg;
- 
--	dprintk("RPC:       %s: frmr %p status %X opcode %d\n",
--		__func__, frmr, wc->status, wc->opcode);
-+	dprintk("RPC:       %s: wr_id %lx status %X opcode %d\n",
-+		__func__, wrid, wc->status, wc->opcode);
- 
--	if (wc->wr_id == 0ULL)
-+	if (wrid == 0)
- 		return;
- 	if (wc->status != IB_WC_SUCCESS)
- 		return;
- 
--	if (wc->opcode == IB_WC_FAST_REG_MR)
--		frmr->r.frmr.fr_state = FRMR_IS_VALID;
--	else if (wc->opcode == IB_WC_LOCAL_INV)
--		frmr->r.frmr.fr_state = FRMR_IS_INVALID;
-+	fastreg = test_and_clear_bit(RPCRDMA_BIT_FASTREG, &wrid);
-+	mw = (struct rpcrdma_mw *)wrid;
-+
-+	mw->r.frmr.fr_state = fastreg ? FRMR_IS_VALID : FRMR_IS_INVALID;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b56ff136039d..93876dc366cc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -899,6 +899,18 @@ static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
+ 	nfs4_free_stid(stateid_slab, stid);
  }
  
- static int
-@@ -1538,6 +1540,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	/* Prepare FRMR WR */
- 	memset(&frmr_wr, 0, sizeof frmr_wr);
- 	frmr_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
-+	frmr_wr.wr_id |= (u64)1 << RPCRDMA_BIT_FASTREG;
- 	frmr_wr.opcode = IB_WR_FAST_REG_MR;
- 	frmr_wr.send_flags = IB_SEND_SIGNALED;
- 	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 28c8570..6b5d243 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -177,6 +177,8 @@ struct rpcrdma_mw {
- 	struct list_head	mw_list;
- };
- 
-+#define RPCRDMA_BIT_FASTREG		(0)
++static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
++{
++	struct nfs4_ol_stateid *stp = openlockstateid(stid);
++	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
++	struct file *file;
 +
- /*
-  * struct rpcrdma_req -- structure central to the request/reply sequence.
-  *
++	file = find_any_file(stp->st_stid.sc_file);
++	if (file)
++		filp_close(file, (fl_owner_t)lo);
++	nfs4_free_generic_stateid(stid);
++}
++
+ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	nfs4_put_stid(&stp->st_stid);
+@@ -906,14 +918,9 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ 
+ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+-	struct file *file;
+-
+ 	list_del(&stp->st_locks);
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
+-	file = find_any_file(stp->st_stid.sc_file);
+-	if (file)
+-		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
+ 	put_generic_stateid(stp);
+ }
+ 
+@@ -4673,6 +4680,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
++	stp->st_stid.sc_free = nfs4_free_lock_stateid;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
+-- 
+1.9.3
 
