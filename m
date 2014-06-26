@@ -1,87 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:37059 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751536AbaFZTON (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:13 -0400
-Received: by mail-qg0-f51.google.com with SMTP id z60so3509582qgd.10
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:12 -0700 (PDT)
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:34998 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751819AbaFZTPG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:06 -0400
+Received: by mail-qa0-f52.google.com with SMTP id w8so3235099qac.11
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:06 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 019/117] nfsd: declare v4.1+ openowners confirmed on creation
-Date: Thu, 26 Jun 2014 15:11:59 -0400
-Message-Id: <1403810017-16062-20-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 059/117] nfsd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
+Date: Thu, 26 Jun 2014 15:12:39 -0400
+Message-Id: <1403810017-16062-60-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There's no need to confirm an openowner in v4.1 and above, so we can
-go ahead and set NFS4_OO_CONFIRMED when we create openowners in
-those versions. This will also be necessary when we remove the
-client_mutex, as it'll be possible for two concurrent opens to race
-in versions >4.0.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Ensure that all the callers put the open stateid after use.
+Necessary step toward client_mutex removal.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 16 ++++++++++------
- 1 file changed, 10 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a5bb96b97f09..44e98e5fe44a 100644
+index 32d0238cb0bf..b810be1ce2f7 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -2773,7 +2773,10 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
- }
+@@ -4368,6 +4368,8 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
+ 						NFS4_OPEN_STID, stpp, nn);
+ 	if (status)
+ 		return status;
++	/* FIXME: move into nfs4_preprocess_seqid_op */
++	atomic_inc(&(*stpp)->st_stid.sc_count);
+ 	oo = openowner((*stpp)->st_stateowner);
+ 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
+ 		return nfserr_bad_stateid;
+@@ -4487,12 +4489,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	if (!test_access(od->od_share_access, stp)) {
+ 		dprintk("NFSD: access not a subset current bitmap: 0x%lx, input access=%08x\n",
+ 			stp->st_access_bmap, od->od_share_access);
+-		goto out;
++		goto put_stateid;
+ 	}
+ 	if (!test_deny(od->od_share_deny, stp)) {
+ 		dprintk("NFSD:deny not a subset current bitmap: 0x%lx, input deny=%08x\n",
+ 			stp->st_deny_bmap, od->od_share_deny);
+-		goto out;
++		goto put_stateid;
+ 	}
+ 	nfs4_stateid_downgrade(stp, od->od_share_access);
  
- static struct nfs4_openowner *
--alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, struct nfsd4_open *open) {
-+alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp,
-+			   struct nfsd4_open *open,
-+			   struct nfsd4_compound_state *cstate)
-+{
- 	struct nfs4_openowner *oo;
- 
- 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
-@@ -2782,6 +2785,8 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	oo->oo_owner.so_is_open_owner = 1;
- 	oo->oo_owner.so_seqid = open->op_seqid;
- 	oo->oo_flags = NFS4_OO_NEW;
-+	if (nfsd4_has_session(cstate))
-+		oo->oo_flags |= NFS4_OO_CONFIRMED;
- 	oo->oo_time = 0;
- 	oo->oo_last_closed_stid = NULL;
- 	INIT_LIST_HEAD(&oo->oo_close_lru);
-@@ -3047,7 +3052,7 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	clp = oo->oo_owner.so_client;
- 	goto alloc_stateid;
- new_owner:
--	oo = alloc_init_open_stateowner(strhashval, clp, open);
-+	oo = alloc_init_open_stateowner(strhashval, clp, open, cstate);
- 	if (oo == NULL)
- 		return nfserr_jukebox;
- 	open->op_openowner = oo;
-@@ -3457,8 +3462,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	memcpy(&open->op_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
- 	if (nfsd4_has_session(&resp->cstate)) {
--		open->op_openowner->oo_flags |= NFS4_OO_CONFIRMED;
--
- 		if (open->op_deleg_want & NFS4_SHARE_WANT_NO_DELEG) {
- 			open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE_EXT;
- 			open->op_why_no_deleg = WND4_NOT_WANTED;
-@@ -3852,8 +3855,9 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 
+@@ -4501,6 +4503,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&od->od_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ 	status = nfs_ok;
++put_stateid:
++	put_generic_stateid(stp);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+ 	nfs4_unlock_state();
+@@ -4851,6 +4855,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfs4_openowner *open_sop = NULL;
+ 	struct nfs4_lockowner *lock_sop = NULL;
+ 	struct nfs4_ol_stateid *lock_stp = NULL;
++	struct nfs4_ol_stateid *open_stp = NULL;
+ 	struct file *filp = NULL;
+ 	struct file_lock *file_lock = NULL;
+ 	struct file_lock *conflock = NULL;
+@@ -4878,8 +4883,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
  	nfs4_lock_state();
  
--	status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
--				      &s, cstate->minorversion, nn);
-+	status = nfsd4_lookup_stateid(stateid,
-+				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
-+				&s, cstate->minorversion, nn);
- 	if (status)
- 		goto out;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
+ 	if (lock->lk_is_new) {
+-		struct nfs4_ol_stateid *open_stp = NULL;
+-
+ 		if (nfsd4_has_session(cstate))
+ 			/* See rfc 5661 18.10.3: given clientid is ignored: */
+ 			memcpy(&lock->v.new.clientid,
+@@ -5007,6 +5010,8 @@ out:
+ 		fput(filp);
+ 	if (lock_stp)
+ 		put_generic_stateid(lock_stp);
++	if (open_stp)
++		put_generic_stateid(open_stp);
+ 	if (status && new_state)
+ 		release_lockowner_if_empty(lock_sop);
+ 	nfsd4_bump_seqid(cstate, status);
 -- 
 1.9.3
 
