@@ -1,255 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:48074 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754524AbaF3Puv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:51 -0400
-Received: by mail-qa0-f48.google.com with SMTP id x12so6500692qac.7
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:51 -0700 (PDT)
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:59125 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751327AbaFZTVh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:37 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so3614527qcx.13
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:36 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 011/114] nfsd: NFSv4 lock-owners are not associated to a specific file
-Date: Mon, 30 Jun 2014 11:48:40 -0400
-Message-Id: <1404143423-24381-12-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v2 088/117] nfsd: Add lockdep assertions to document the nfs4_client/session locking
+Date: Thu, 26 Jun 2014 15:20:56 -0400
+Message-Id: <1403810485-16497-5-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Just like open-owners, lock-owners are associated with a name, a clientid
-and, in the case of minor version 0, a sequence id. There is no association
-to a file.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/netns.h     |  4 ---
- fs/nfsd/nfs4state.c | 73 ++++++++++-------------------------------------------
- fs/nfsd/state.h     |  1 -
- 3 files changed, 14 insertions(+), 64 deletions(-)
+ fs/nfsd/nfs4state.c | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index d32b3aa6600d..beaceac90ad3 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -29,9 +29,6 @@
- #define CLIENT_HASH_SIZE                (1 << CLIENT_HASH_BITS)
- #define CLIENT_HASH_MASK                (CLIENT_HASH_SIZE - 1)
- 
--#define LOCKOWNER_INO_HASH_BITS		8
--#define LOCKOWNER_INO_HASH_SIZE		(1 << LOCKOWNER_INO_HASH_BITS)
--
- #define SESSION_HASH_SIZE	512
- 
- struct cld_net;
-@@ -67,7 +64,6 @@ struct nfsd_net {
- 	struct list_head *unconf_id_hashtbl;
- 	struct rb_root unconf_name_tree;
- 	struct list_head *ownerstr_hashtbl;
--	struct list_head *lockowner_ino_hashtbl;
- 	struct list_head *sessionid_hashtbl;
- 	/*
- 	 * client_lru holds client queue ordered by nfs4_client.cl_time
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index dfa68cce12c3..e7b77c0ff15a 100644
+index e81c97435f7f..f49def48464d 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -719,7 +719,6 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
- 	struct nfs4_ol_stateid *stp;
+@@ -146,6 +146,10 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
  
- 	list_del(&lo->lo_owner.so_strhash);
--	list_del(&lo->lo_owner_ino_hash);
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
-@@ -4236,8 +4235,6 @@ out:
- 
- #define LOFF_OVERFLOW(start, len)      ((u64)(len) > ~(u64)(start))
- 
--#define LOCKOWNER_INO_HASH_MASK (LOCKOWNER_INO_HASH_SIZE - 1)
--
- static inline u64
- end_offset(u64 start, u64 len)
+ static __be32 get_client_locked(struct nfs4_client *clp)
  {
-@@ -4258,13 +4255,6 @@ last_byte_offset(u64 start, u64 len)
- 	return end > start ? end - 1: NFS4_MAX_UINT64;
- }
- 
--static unsigned int lockowner_ino_hashval(struct inode *inode, u32 cl_id, struct xdr_netobj *ownername)
--{
--	return (file_hashval(inode) + cl_id
--			+ opaque_hashval(ownername->data, ownername->len))
--		& LOCKOWNER_INO_HASH_MASK;
--}
--
- /*
-  * TODO: Linux file offsets are _signed_ 64-bit quantities, which means that
-  * we can't properly handle lock requests that go beyond the (2^63 - 1)-th
-@@ -4317,46 +4307,23 @@ nevermind:
- 		deny->ld_type = NFS4_WRITE_LT;
- }
- 
--static bool same_lockowner_ino(struct nfs4_lockowner *lo, struct inode *inode, clientid_t *clid, struct xdr_netobj *owner)
--{
--	struct nfs4_ol_stateid *lst;
--
--	if (!same_owner_str(&lo->lo_owner, owner, clid))
--		return false;
--	if (list_empty(&lo->lo_owner.so_stateids)) {
--		WARN_ON_ONCE(1);
--		return false;
--	}
--	lst = list_first_entry(&lo->lo_owner.so_stateids,
--			       struct nfs4_ol_stateid, st_perstateowner);
--	return lst->st_file->fi_inode == inode;
--}
--
- static struct nfs4_lockowner *
--find_lockowner_str(struct inode *inode, clientid_t *clid,
--		   struct xdr_netobj *owner, struct nfsd_net *nn)
-+find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
-+		struct nfsd_net *nn)
- {
--	unsigned int hashval = lockowner_ino_hashval(inode, clid->cl_id, owner);
--	struct nfs4_lockowner *lo;
-+	unsigned int strhashval = ownerstr_hashval(clid->cl_id, owner);
-+	struct nfs4_stateowner *so;
- 
--	list_for_each_entry(lo, &nn->lockowner_ino_hashtbl[hashval], lo_owner_ino_hash) {
--		if (same_lockowner_ino(lo, inode, clid, owner))
--			return lo;
-+	list_for_each_entry(so, &nn->ownerstr_hashtbl[strhashval], so_strhash) {
-+		if (so->so_is_open_owner)
-+			continue;
-+		if (!same_owner_str(so, owner, clid))
-+			continue;
-+		return lockowner(so);
- 	}
- 	return NULL;
- }
- 
--static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, struct nfs4_client *clp, struct nfs4_ol_stateid *open_stp)
--{
--	struct inode *inode = open_stp->st_file->fi_inode;
--	unsigned int inohash = lockowner_ino_hashval(inode,
--			clp->cl_clientid.cl_id, &lo->lo_owner.so_owner);
--	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
--
--	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
--	list_add(&lo->lo_owner_ino_hash, &nn->lockowner_ino_hashtbl[inohash]);
--}
--
- /*
-  * Alloc a lock owner structure.
-  * Called in nfsd4_lock - therefore, OPEN and OPEN_CONFIRM (if needed) has 
-@@ -4364,10 +4331,10 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
-  *
-  * strhashval = ownerstr_hashval
-  */
--
- static struct nfs4_lockowner *
- alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, struct nfs4_ol_stateid *open_stp, struct nfsd4_lock *lock) {
- 	struct nfs4_lockowner *lo;
 +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	if (is_client_expired(clp))
+ 		return nfserr_expired;
+ 	atomic_inc(&clp->cl_refcount);
+@@ -186,6 +190,10 @@ renew_client(struct nfs4_client *clp)
  
- 	lo = alloc_stateowner(lockowner_slab, &lock->lk_new_owner, clp);
- 	if (!lo)
-@@ -4377,7 +4344,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	/* It is the openowner seqid that will be incremented in encode in the
- 	 * case of new lockowners; so increment the lock seqid manually: */
- 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid + 1;
--	hash_lockowner(lo, strhashval, clp, open_stp);
-+	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
- 	return lo;
+ static void put_client_renew_locked(struct nfs4_client *clp)
+ {
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	if (!atomic_dec_and_test(&clp->cl_refcount))
+ 		return;
+ 	if (!is_client_expired(clp))
+@@ -217,6 +225,9 @@ static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+ static void nfsd4_put_session_locked(struct nfsd4_session *ses)
+ {
+ 	struct nfs4_client *clp = ses->se_client;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
+ 
+ 	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
+ 		free_session(ses);
+@@ -1399,6 +1410,8 @@ __find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
+ 	int idx;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	dump_sessionid(__func__, sessionid);
+ 	idx = hash_sessionid(sessionid);
+ 	/* Search in the appropriate list */
+@@ -1435,6 +1448,11 @@ out:
+ static void
+ unhash_session(struct nfsd4_session *ses)
+ {
++	struct nfs4_client *clp = ses->se_client;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_del(&ses->se_hash);
+ 	spin_lock(&ses->se_client->cl_lock);
+ 	list_del(&ses->se_perclnt);
+@@ -1523,6 +1541,8 @@ unhash_client_locked(struct nfs4_client *clp)
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct nfsd4_session *ses;
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	/* Mark the client as expired! */
+ 	clp->cl_time = 0;
+ 	/* Make it invisible */
+@@ -1852,6 +1872,8 @@ add_to_unconfirmed(struct nfs4_client *clp)
+ 	unsigned int idhashval;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	clear_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
+ 	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
+ 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+@@ -1865,6 +1887,8 @@ move_to_confirmed(struct nfs4_client *clp)
+ 	unsigned int idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	dprintk("NFSD: move_to_confirm nfs4_client %p\n", clp);
+ 	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
+ 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
+@@ -1895,6 +1919,7 @@ find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
+ {
+ 	struct list_head *tbl = nn->conf_id_hashtbl;
+ 
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_client_in_id_table(tbl, clid, sessions);
  }
  
-@@ -4443,8 +4410,7 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
- 	unsigned int strhashval;
- 	struct nfsd_net *nn = net_generic(cl->net, nfsd_net_id);
- 
--	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid,
--				&lock->v.new.owner, nn);
-+	lo = find_lockowner_str(&cl->cl_clientid, &lock->v.new.owner, nn);
- 	if (!lo) {
- 		strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
- 				&lock->v.new.owner);
-@@ -4658,7 +4624,6 @@ __be32
- nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    struct nfsd4_lockt *lockt)
+@@ -1903,6 +1928,7 @@ find_unconfirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
  {
--	struct inode *inode;
- 	struct file_lock *file_lock = NULL;
- 	struct nfs4_lockowner *lo;
- 	__be32 status;
-@@ -4681,7 +4646,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
- 		goto out;
+ 	struct list_head *tbl = nn->unconf_id_hashtbl;
  
--	inode = cstate->current_fh.fh_dentry->d_inode;
- 	file_lock = locks_alloc_lock();
- 	if (!file_lock) {
- 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
-@@ -4704,7 +4668,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out;
- 	}
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_client_in_id_table(tbl, clid, sessions);
+ }
  
--	lo = find_lockowner_str(inode, &lockt->lt_clientid, &lockt->lt_owner, nn);
-+	lo = find_lockowner_str(&lockt->lt_clientid, &lockt->lt_owner, nn);
- 	if (lo)
- 		file_lock->fl_owner = (fl_owner_t)lo;
- 	file_lock->fl_pid = current->tgid;
-@@ -5198,10 +5162,6 @@ static int nfs4_state_create_net(struct net *net)
- 			OWNER_HASH_SIZE, GFP_KERNEL);
- 	if (!nn->ownerstr_hashtbl)
- 		goto err_ownerstr;
--	nn->lockowner_ino_hashtbl = kmalloc(sizeof(struct list_head) *
--			LOCKOWNER_INO_HASH_SIZE, GFP_KERNEL);
--	if (!nn->lockowner_ino_hashtbl)
--		goto err_lockowner_ino;
- 	nn->sessionid_hashtbl = kmalloc(sizeof(struct list_head) *
- 			SESSION_HASH_SIZE, GFP_KERNEL);
- 	if (!nn->sessionid_hashtbl)
-@@ -5213,8 +5173,6 @@ static int nfs4_state_create_net(struct net *net)
- 	}
- 	for (i = 0; i < OWNER_HASH_SIZE; i++)
- 		INIT_LIST_HEAD(&nn->ownerstr_hashtbl[i]);
--	for (i = 0; i < LOCKOWNER_INO_HASH_SIZE; i++)
--		INIT_LIST_HEAD(&nn->lockowner_ino_hashtbl[i]);
- 	for (i = 0; i < SESSION_HASH_SIZE; i++)
- 		INIT_LIST_HEAD(&nn->sessionid_hashtbl[i]);
- 	nn->conf_name_tree = RB_ROOT;
-@@ -5230,8 +5188,6 @@ static int nfs4_state_create_net(struct net *net)
- 	return 0;
+@@ -1914,12 +1940,14 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
+ static struct nfs4_client *
+ find_confirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
+ {
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_clp_in_name_tree(name, &nn->conf_name_tree);
+ }
  
- err_sessionid:
--	kfree(nn->lockowner_ino_hashtbl);
--err_lockowner_ino:
- 	kfree(nn->ownerstr_hashtbl);
- err_ownerstr:
- 	kfree(nn->unconf_id_hashtbl);
-@@ -5263,7 +5219,6 @@ nfs4_state_destroy_net(struct net *net)
- 	}
+ static struct nfs4_client *
+ find_unconfirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
+ {
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_clp_in_name_tree(name, &nn->unconf_name_tree);
+ }
  
- 	kfree(nn->sessionid_hashtbl);
--	kfree(nn->lockowner_ino_hashtbl);
- 	kfree(nn->ownerstr_hashtbl);
- 	kfree(nn->unconf_id_hashtbl);
- 	kfree(nn->conf_id_hashtbl);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 4c6d6c3f8eae..2fe58f5f4833 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -364,7 +364,6 @@ struct nfs4_openowner {
+@@ -4874,6 +4902,8 @@ find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
+ 	unsigned int strhashval = ownerstr_hashval(owner);
+ 	struct nfs4_stateowner *so;
  
- struct nfs4_lockowner {
- 	struct nfs4_stateowner	lo_owner; /* must be first element */
--	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
- 	struct list_head	lo_list; /* for temporary uses */
- };
- 
++	lockdep_assert_held(&clp->cl_lock);
++
+ 	list_for_each_entry(so, &clp->cl_ownerstr_hashtbl[strhashval],
+ 			    so_strhash) {
+ 		if (so->so_is_open_owner)
 -- 
 1.9.3
 
