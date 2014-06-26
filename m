@@ -1,60 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:36650 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752068AbaFDVCn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:43 -0400
-Received: by mail-ig0-f180.google.com with SMTP id c1so1549090igq.13
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:43 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH pynfs 15/17] nfs41 svr: get rid of old op_getdeviceinfo
-Date: Wed,  4 Jun 2014 17:02:04 -0400
-Message-Id: <1401915726-29092-17-git-send-email-dros@primarydata.com>
-In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:46906 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755560AbaFZBsN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jun 2014 21:48:13 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trondmy@gmail.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/8] nfsd: make NFSv2 null terminate symlink data
+Date: Wed, 25 Jun 2014 21:48:02 -0400
+Message-Id: <1403747288-21590-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1403747288-21590-1-git-send-email-bfields@redhat.com>
+References: <20140624204418.GG2343@pad.redhat.com>
+ <1403747288-21590-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This has been commented out for a while.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+It's simple enough for NFSv2 to null-terminate the symlink data.
+
+A bit weird (it depends on knowing that we've already read the following
+byte, which is either padding or part of the mode), but no worse than
+the conditional kstrdup it otherwise relies on in nfsd_symlink().
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- nfs4.1/nfs4server.py | 21 ---------------------
- 1 file changed, 21 deletions(-)
+ fs/nfsd/nfsproc.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
-index 062e3c4..27e2352 100755
---- a/nfs4.1/nfs4server.py
-+++ b/nfs4.1/nfs4server.py
-@@ -1870,27 +1870,6 @@ class NFS4Server(rpc.Server):
-                                   new_cookie >= len(list))
-         return encode_status(NFS4_OK, res)
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 54c6b3d..aebe23c 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -403,8 +403,11 @@ nfsd_proc_symlink(struct svc_rqst *rqstp, struct nfsd_symlinkargs *argp,
  
--#     def op_getdeviceinfo(self, arg, env): # STUB
--#         check_session(env)
--#         # check_cfh(env)
--#         # fs = env.cfh.fs
--#         # STUB - only deals with block volumes
--#         kind = arg.gdia_layout_type
--#         if kind != LAYOUT4_BLOCK_VOLUME:
--#             return encode_status(NFS4ERR_INVAL)
--#         # STUB - want to pull this from fs, not block module
--#         d = block.devices.get(arg.gdia_device_id, None)
--#         if d is None:
--#             return encode_status(NFS4ERR_INVAL)
--#         address = device_addr4(LAYOUT4_BLOCK_VOLUME, d.get_addr())
--#         # Check that we don't exceed count
--#         p = nfs4lib.FancyNFS4Packer()
--#         p.pack_device_addr4(address)
--#         if len(p.get_buffer()) > arg.gdia_maxcount:
--#             return encode_status(NFS4ERR_TOOSMALL, gdir_mincount = len(p.get_buffer()))
--#         res = GETDEVICEINFO4resok(address, 0)
--#         return encode_status(NFS4_OK, res)
--
-     def op_getdeviceinfo(self, arg, env): # STUB
-         # STUB - ignoring notifications
-         check_session(env)
+ 	fh_init(&newfh, NFS_FHSIZE);
+ 	/*
+-	 * Create the link, look up new file and set attrs.
++	 * Crazy hack: the request fits in a page, and already-decoded
++	 * attributes follow argp->tname, so it's safe to just write a
++	 * null to ensure it's null-terminated:
+ 	 */
++	argp->tname[argp->tlen] = '\0';
+ 	nfserr = nfsd_symlink(rqstp, &argp->ffh, argp->fname, argp->flen,
+ 						 argp->tname, argp->tlen,
+ 				 		 &newfh, &argp->attrs);
 -- 
-1.8.5.2 (Apple Git-48)
+1.7.9.5
 
