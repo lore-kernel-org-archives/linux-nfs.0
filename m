@@ -1,17 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:63060 "EHLO
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:45659 "EHLO
 	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751596AbaFZTOO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:14 -0400
-Received: by mail-qc0-f181.google.com with SMTP id x13so3605249qcv.12
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:13 -0700 (PDT)
+	with ESMTP id S1751836AbaFZTPW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:22 -0400
+Received: by mail-qc0-f181.google.com with SMTP id x13so3606647qcv.12
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:22 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 020/117] nfsd: Cleanup - Let nfsd4_lookup_stateid() take a cstate argument
-Date: Thu, 26 Jun 2014 15:12:00 -0400
-Message-Id: <1403810017-16062-21-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v2 071/117] nfsd: Protect adding/removing open state owners using client_lock
+Date: Thu, 26 Jun 2014 15:12:51 -0400
+Message-Id: <1403810017-16062-72-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -19,69 +19,164 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-The cstate already holds information about the session, and hence
-the client id, so it makes more sense to pass that information
-rather than the current practice of passing a 'minor version' number.
+Once we remove client mutex protection, we'll need to ensure that
+stateowner lookup and creation are atomic between concurrent compounds.
+Ensure that alloc_init_open_stateowner checks the hashtable under the
+client_lock before adding a new element.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 18 +++++++++---------
- 1 file changed, 9 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4state.c | 63 +++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 54 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 44e98e5fe44a..5f79625982b8 100644
+index 029e41b4de84..4285bc405736 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3804,12 +3804,14 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+@@ -72,6 +72,9 @@ static u64 current_sessionid = 1;
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+ static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
++static struct nfs4_openowner *find_openstateowner_str_locked(
++		unsigned int hashval, struct nfsd4_open *open,
++		bool sessions, struct nfsd_net *nn);
+ static void nfs4_put_stateowner(struct nfs4_stateowner *sop);
+ static __be32 lookup_clientid(clientid_t *clid,
+ 		struct nfsd4_compound_state *cstate,
+@@ -998,8 +1001,13 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ 	put_generic_stateid(stp);
+ }
+ 
+-static void unhash_openowner(struct nfs4_openowner *oo)
++static void unhash_openowner_locked(struct nfs4_openowner *oo)
+ {
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++						nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_del_init(&oo->oo_owner.so_strhash);
+ 	list_del_init(&oo->oo_perclient);
+ }
+@@ -1018,18 +1026,29 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ static void release_openowner_stateids(struct nfs4_openowner *oo)
+ {
+ 	struct nfs4_ol_stateid *stp;
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++						nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
+ 
+ 	while (!list_empty(&oo->oo_owner.so_stateids)) {
+ 		stp = list_first_entry(&oo->oo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
++		spin_unlock(&nn->client_lock);
+ 		release_open_stateid(stp);
++		spin_lock(&nn->client_lock);
  	}
  }
  
--static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
--				   struct nfs4_stid **s, bool sessions,
--				   struct nfsd_net *nn)
-+static __be32
-+nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
-+		     stateid_t *stateid, unsigned char typemask,
-+		     struct nfs4_stid **s, struct nfsd_net *nn)
+ static void release_openowner(struct nfs4_openowner *oo)
  {
- 	struct nfs4_client *cl;
- 	__be32 status;
-+	bool sessions = cstate->minorversion != 0;
+-	unhash_openowner(oo);
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++						nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	unhash_openowner_locked(oo);
+ 	release_openowner_stateids(oo);
++	spin_unlock(&nn->client_lock);
+ 	release_last_closed_stateid(oo);
+ 	nfs4_put_stateowner(&oo->oo_owner);
+ }
+@@ -3008,8 +3027,11 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
+ {
+ 	struct nfs4_openowner *oo = openowner(so);
++	struct nfsd_net *nn = net_generic(so->so_client->net, nfsd_net_id);
  
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
- 		return nfserr_bad_stateid;
-@@ -3855,9 +3857,9 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+-	unhash_openowner(oo);
++	spin_lock(&nn->client_lock);
++	unhash_openowner_locked(oo);
++	spin_unlock(&nn->client_lock);
+ }
  
- 	nfs4_lock_state();
+ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+@@ -3025,7 +3047,8 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 			   struct nfsd4_compound_state *cstate)
+ {
+ 	struct nfs4_client *clp = cstate->clp;
+-	struct nfs4_openowner *oo;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++	struct nfs4_openowner *oo, *ret;
  
--	status = nfsd4_lookup_stateid(stateid,
-+	status = nfsd4_lookup_stateid(cstate, stateid,
- 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
--				&s, cstate->minorversion, nn);
-+				&s, nn);
- 	if (status)
- 		goto out;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
-@@ -4027,8 +4029,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 		seqid, STATEID_VAL(stateid));
+ 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
+ 	if (!oo)
+@@ -3040,7 +3063,15 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	oo->oo_time = 0;
+ 	oo->oo_last_closed_stid = NULL;
+ 	INIT_LIST_HEAD(&oo->oo_close_lru);
+-	hash_openowner(oo, clp, strhashval);
++	spin_lock(&nn->client_lock);
++	ret = find_openstateowner_str_locked(strhashval,
++			open, clp->cl_minorversion, nn);
++	if (ret == NULL) {
++		hash_openowner(oo, clp, strhashval);
++		ret = oo;
++	} else
++		nfs4_free_openowner(&oo->oo_owner);
++	spin_unlock(&nn->client_lock);
+ 	return oo;
+ }
  
- 	*stpp = NULL;
--	status = nfsd4_lookup_stateid(stateid, typemask, &s,
--				      cstate->minorversion, nn);
-+	status = nfsd4_lookup_stateid(cstate, stateid, typemask, &s, nn);
- 	if (status)
- 		return status;
- 	stp = openlockstateid(s);
-@@ -4254,8 +4255,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return status;
+@@ -3114,13 +3145,15 @@ same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner,
+ }
  
- 	nfs4_lock_state();
--	status = nfsd4_lookup_stateid(stateid, NFS4_DELEG_STID, &s,
--				      cstate->minorversion, nn);
-+	status = nfsd4_lookup_stateid(cstate, stateid, NFS4_DELEG_STID, &s, nn);
- 	if (status)
- 		goto out;
- 	dp = delegstateid(s);
+ static struct nfs4_openowner *
+-find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
++find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
+ 			bool sessions, struct nfsd_net *nn)
+ {
+ 	struct nfs4_stateowner *so;
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_client *clp;
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_for_each_entry(so, &nn->ownerstr_hashtbl[hashval], so_strhash) {
+ 		if (!so->so_is_open_owner)
+ 			continue;
+@@ -3128,15 +3161,27 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
+ 			oo = openowner(so);
+ 			clp = oo->oo_owner.so_client;
+ 			if ((bool)clp->cl_minorversion != sessions)
+-				return NULL;
+-			renew_client(oo->oo_owner.so_client);
+-			atomic_inc(&oo->oo_owner.so_count);
++				break;
++			renew_client_locked(clp);
++			atomic_inc(&so->so_count);
+ 			return oo;
+ 		}
+ 	}
+ 	return NULL;
+ }
+ 
++static struct nfs4_openowner *
++find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
++			bool sessions, struct nfsd_net *nn)
++{
++	struct nfs4_openowner *oo;
++
++	spin_lock(&nn->client_lock);
++	oo = find_openstateowner_str_locked(hashval, open, sessions, nn);
++	spin_unlock(&nn->client_lock);
++	return oo;
++}
++
+ /* search file_hashtbl[] for file */
+ static struct nfs4_file *
+ find_file_locked(struct inode *ino)
 -- 
 1.9.3
 
