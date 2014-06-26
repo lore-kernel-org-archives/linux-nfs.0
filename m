@@ -1,62 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:56138 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751808AbaFZTPD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:03 -0400
-Received: by mail-qc0-f170.google.com with SMTP id l6so3659548qcy.1
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:02 -0700 (PDT)
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:49986 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751741AbaFZTOY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:24 -0400
+Received: by mail-qg0-f42.google.com with SMTP id e89so3547758qgf.1
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:23 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 056/117] nfsd: nfsd4_process_open2() must reference the open stateid
-Date: Thu, 26 Jun 2014 15:12:36 -0400
-Message-Id: <1403810017-16062-57-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
+Subject: [PATCH v2 027/117] nfsd4: use cl_lock to synchronize all stateid idr calls
+Date: Thu, 26 Jun 2014 15:12:07 -0400
+Message-Id: <1403810017-16062-28-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+From: Benny Halevy <bhalevy@primarydata.com>
 
-Ensure that nfsd4_process_open2() keeps a reference to the open
-stateid until it is done working with it. Necessary step toward
-client_mutex removal.
+Currently, this is serialized by the client_mutex, which is slated for
+removal. Add finer-grained locking here.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/nfsd/nfs4state.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5b88cb314b99..bb0676051b6b 100644
+index 4cb64d12c9bf..a2b4f2cbab42 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3001,6 +3001,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
- 	struct nfs4_openowner *oo = open->op_openowner;
+@@ -346,7 +346,6 @@ static void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+ static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
+ kmem_cache *slab)
+ {
+-	struct idr *stateids = &cl->cl_stateids;
+ 	struct nfs4_stid *stid;
+ 	int new_id;
  
-+	atomic_inc(&stp->st_stid.sc_count);
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_locks);
- 	stp->st_stateowner = &oo->oo_owner;
-@@ -3340,6 +3341,7 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
- 		/* remember if we have seen this open owner */
- 		if (local->st_stateowner == &oo->oo_owner) {
- 			ret = local;
-+			atomic_inc(&ret->st_stid.sc_count);
- 			break;
- 		}
- 	}
-@@ -3776,6 +3778,8 @@ out:
- 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
- 	if (dp)
- 		nfs4_put_delegation(dp);
-+	if (stp)
-+		put_generic_stateid(stp);
+@@ -354,7 +353,11 @@ kmem_cache *slab)
+ 	if (!stid)
+ 		return NULL;
  
- 	return status;
+-	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_KERNEL);
++	idr_preload(GFP_KERNEL);
++	spin_lock(&cl->cl_lock);
++	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 0, 0, GFP_NOWAIT);
++	spin_unlock(&cl->cl_lock);
++	idr_preload_end();
+ 	if (new_id < 0)
+ 		goto out_free;
+ 	stid->sc_client = cl;
+@@ -490,9 +493,11 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 
+ static void remove_stid(struct nfs4_stid *s)
+ {
+-	struct idr *stateids = &s->sc_client->cl_stateids;
++	struct nfs4_client *clp = s->sc_client;
+ 
+-	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
++	spin_lock(&clp->cl_lock);
++	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
++	spin_unlock(&clp->cl_lock);
  }
+ 
+ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+@@ -1266,7 +1271,9 @@ free_client(struct nfs4_client *clp)
+ 	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
+ 	free_svc_cred(&clp->cl_cred);
+ 	kfree(clp->cl_name.data);
++	spin_lock(&clp->cl_lock);
+ 	idr_destroy(&clp->cl_stateids);
++	spin_unlock(&clp->cl_lock);
+ 	kfree(clp);
+ }
+ 
+@@ -1489,7 +1496,9 @@ static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
+ {
+ 	struct nfs4_stid *ret;
+ 
++	spin_lock(&cl->cl_lock);
+ 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
++	spin_unlock(&cl->cl_lock);
+ 	if (!ret || !ret->sc_type)
+ 		return NULL;
+ 	return ret;
 -- 
 1.9.3
 
