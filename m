@@ -1,121 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:50659 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752728AbaF3PwD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:03 -0400
-Received: by mail-qa0-f44.google.com with SMTP id hw13so6594419qab.3
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:03 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 064/114] nfsd: clean up refcounting for lockowners
-Date: Mon, 30 Jun 2014 11:49:33 -0400
-Message-Id: <1404143423-24381-65-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:54188 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756355AbaFZLRy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 07:17:54 -0400
+Date: Thu, 26 Jun 2014 04:17:52 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: fix file access refcount leak when nfsd4_truncate
+ fails
+Message-ID: <20140626111752.GA21065@infradead.org>
+References: <1403779756-5070-1-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1403779756-5070-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that lockowner references are only held by lockstateids and
-operations that are in-progress. With this, we can get rid of
-release_lockowner_if_empty, which will be racy once we remove
-client_mutex protection.
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2204e1fe5725..3b19008c2978 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3351,8 +3351,11 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+>  		if (status)
+>  			goto out;
+>  		status = nfsd4_truncate(rqstp, current_fh, open);
+> -		if (status)
+> +		if (status) {
+> +			nfs4_file_put_access(fp,
+> +				nfs4_access_to_omode(open->op_share_access));
+>  			goto out;
+> +		}
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 29 +++++++----------------------
- 1 file changed, 7 insertions(+), 22 deletions(-)
+This looks correct, but a little awkward.  Given that nfs4_get_vfs_file
+generally is followed by the truncate something like the (untested)
+patch below seems much nicer (and as a follow on I'd merge
+nfs4_upgrade_open into nfsd4_process_open2):
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9a760aac6ef2..b658fd481c4e 100644
+index 2204e1f..f904951 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -904,7 +904,7 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- 	nfs4_put_stid(&stp->st_stid);
+@@ -3042,6 +3042,21 @@ static inline int nfs4_access_to_access(u32 nfs4_access)
+ 	return flags;
  }
  
--static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void release_lock_stateid(struct nfs4_ol_stateid *stp)
++static inline __be32
++nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
++		struct nfsd4_open *open)
++{
++	struct iattr iattr = {
++		.ia_valid = ATTR_SIZE,
++		.ia_size = 0,
++	};
++	if (!open->op_truncate)
++		return 0;
++	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
++		return nfserr_inval;
++	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
++}
++
+ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 		struct svc_fh *cur_fh, struct nfsd4_open *open)
  {
- 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
- 
-@@ -928,7 +928,7 @@ static void release_lockowner_stateids(struct nfs4_lockowner *lo)
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		__release_lock_stateid(stp);
-+		release_lock_stateid(stp);
+@@ -3053,53 +3068,39 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
+ 			&fp->fi_fds[oflag]);
+ 		if (status)
+-			return status;
++			goto out;
  	}
+ 	nfs4_file_get_access(fp, oflag);
+ 
++	status = nfsd4_truncate(rqstp, cur_fh, open);
++	if (status)
++		goto out_put_access;
++
+ 	return nfs_ok;
+-}
+ 
+-static inline __be32
+-nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+-		struct nfsd4_open *open)
+-{
+-	struct iattr iattr = {
+-		.ia_valid = ATTR_SIZE,
+-		.ia_size = 0,
+-	};
+-	if (!open->op_truncate)
+-		return 0;
+-	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
+-		return nfserr_inval;
+-	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
++out_put_access:
++	nfs4_file_put_access(fp, oflag);
++out:
++	return status;
  }
  
-@@ -939,21 +939,6 @@ static void release_lockowner(struct nfs4_lockowner *lo)
- 	nfs4_put_stateowner(&lo->lo_owner);
- }
+ static __be32
+ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
+ {
+ 	u32 op_share_access = open->op_share_access;
+-	bool new_access;
+ 	__be32 status;
  
--static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
--{
--	if (list_empty(&lo->lo_owner.so_stateids))
--		release_lockowner(lo);
--}
+-	new_access = !test_access(op_share_access, stp);
+-	if (new_access) {
++	if (!test_access(op_share_access, stp))
+ 		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open);
+-		if (status)
+-			return status;
+-	}
+-	status = nfsd4_truncate(rqstp, cur_fh, open);
+-	if (status) {
+-		if (new_access) {
+-			int oflag = nfs4_access_to_omode(op_share_access);
+-			nfs4_file_put_access(fp, oflag);
+-		}
++	else
++		status = nfsd4_truncate(rqstp, cur_fh, open);
++
++	if (status)
+ 		return status;
+-	}
++
+ 	/* remember the open */
+ 	set_access(op_share_access, stp);
+ 	set_deny(open->op_share_deny, stp);
 -
--static void release_lock_stateid(struct nfs4_ol_stateid *stp)
--{
--	struct nfs4_lockowner *lo;
--
--	lo = lockowner(stp->st_stateowner);
--	__release_lock_stateid(stp);
--	release_lockowner_if_empty(lo);
--}
--
- static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
- 	__releases(&open_stp->st_stateowner->so_client->cl_lock)
- 	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
-@@ -4273,7 +4258,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
- 
- 	if (check_for_locks(stp->st_stid.sc_file, lo))
- 		return nfserr_locks_held;
--	release_lockowner_if_empty(lo);
-+	release_lock_stateid(stp);
  	return nfs_ok;
  }
  
-@@ -4883,8 +4868,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
- 		if (lo == NULL)
- 			return nfserr_jukebox;
--		/* FIXME: extra reference for new lockowners for the client */
--		atomic_inc(&lo->lo_owner.so_count);
- 	} else {
- 		/* with an existing lockowner, seqids must be the same */
- 		status = nfserr_bad_seqid;
-@@ -4895,7 +4878,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 
- 	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
- 	if (*lst == NULL) {
--		release_lockowner_if_empty(lo);
- 		status = nfserr_jukebox;
- 		goto out;
- 	}
-@@ -5309,6 +5291,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			continue;
- 		if (same_owner_str(tmp, owner, clid)) {
- 			sop = tmp;
-+			atomic_inc(&sop->so_count);
- 			break;
- 		}
- 	}
-@@ -5322,8 +5305,10 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	lo = lockowner(sop);
- 	/* see if there are still any locks associated with it */
- 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
--		if (check_for_locks(stp->st_stid.sc_file, lo))
-+		if (check_for_locks(stp->st_stid.sc_file, lo)) {
-+			nfs4_put_stateowner(sop);
+@@ -3350,9 +3351,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		status = nfs4_get_vfs_file(rqstp, fp, current_fh, open);
+ 		if (status)
  			goto out;
-+		}
- 	}
- 
- 	status = nfs_ok;
--- 
-1.9.3
-
+-		status = nfsd4_truncate(rqstp, current_fh, open);
+-		if (status)
+-			goto out;
+ 		stp = open->op_stp;
+ 		open->op_stp = NULL;
+ 		init_open_stateid(stp, fp, open);
