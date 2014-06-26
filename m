@@ -1,14 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41304 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46901 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751912AbaFWVeg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jun 2014 17:34:36 -0400
+	id S1754799AbaFZBsM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jun 2014 21:48:12 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/3] nfsd: fix rare symlink decoding bug
-Date: Mon, 23 Jun 2014 17:34:30 -0400
-Message-Id: <1403559272-11019-1-git-send-email-bfields@redhat.com>
+Cc: Trond Myklebust <trondmy@gmail.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 1/8] nfsd: fix rare symlink decoding bug
+Date: Wed, 25 Jun 2014 21:48:01 -0400
+Message-Id: <1403747288-21590-1-git-send-email-bfields@redhat.com>
+In-Reply-To: <20140624204418.GG2343@pad.redhat.com>
+References: <20140624204418.GG2343@pad.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -55,23 +58,15 @@ null-terminated string.
 Reported-by: Jeff Layton <jlayton@primarydata.com>
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4proc.c |   22 +++++++++++++---------
- 1 file changed, 13 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4proc.c |    9 ---------
+ fs/nfsd/nfs4xdr.c  |   13 ++++++++++++-
+ 2 files changed, 12 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 6851b00..453c907 100644
+index a6be9d3..2b3795a 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -601,6 +601,8 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	struct svc_fh resfh;
- 	__be32 status;
-+	u32 len;
-+	char *data;
- 	dev_t rdev;
- 
- 	fh_init(&resfh, NFS4_FHSIZE);
-@@ -617,19 +619,21 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+@@ -621,15 +621,6 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
  
  	switch (create->cr_type) {
  	case NF4LNK:
@@ -81,27 +76,36 @@ index 6851b00..453c907 100644
 -		 * will overwrite the first byte of the create namelen
 -		 * in the XDR buffer, which has already been extracted
 -		 * during XDR decode.
-+		len = create->cr_linklen;
-+		data = kmalloc(len + 1, GFP_KERNEL);
-+		/*
-+		 * Null-terminating in place isn't safe since
-+		 * cr_linkname might end on a page boundary.
- 		 */
+-		 */
 -		create->cr_linkname[create->cr_linklen] = 0;
 -
-+		if (!data)
-+			return nfserr_jukebox;
-+		memcpy(data, create->cr_linkname, len + 1);
-+		data[len] = '\0';
  		status = nfsd_symlink(rqstp, &cstate->current_fh,
  				      create->cr_name, create->cr_namelen,
--				      create->cr_linkname, create->cr_linklen,
-+				      data, len,
- 				      &resfh, &create->cr_iattr);
-+		kfree(data);
+ 				      create->cr_linkname, create->cr_linklen,
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 30913c8..a1c48b4 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -600,7 +600,18 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+ 		READ_BUF(4);
+ 		create->cr_linklen = be32_to_cpup(p++);
+ 		READ_BUF(create->cr_linklen);
+-		SAVEMEM(create->cr_linkname, create->cr_linklen);
++		/*
++		 * The VFS will want a null-terminated string, and
++		 * null-terminating in place isn't safe since this might
++		 * end on a page boundary:
++		 */
++		create->cr_linkname =
++				kmalloc(create->cr_linklen + 1, GFP_KERNEL);
++		if (!create->cr_linkname)
++			return nfserr_jukebox;
++		memcpy(create->cr_linkname, p, create->cr_linklen);
++		create->cr_linkname[create->cr_linklen] = '\0';
++		defer_free(argp, kfree, create->cr_linkname);
  		break;
- 
  	case NF4BLK:
+ 	case NF4CHR:
 -- 
 1.7.9.5
 
