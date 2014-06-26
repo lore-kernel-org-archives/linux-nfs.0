@@ -1,219 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f182.google.com ([209.85.128.182]:50814 "EHLO
-	mail-ve0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752013AbaFCDTB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 23:19:01 -0400
-Received: by mail-ve0-f182.google.com with SMTP id sa20so6411812veb.27
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Jun 2014 20:19:01 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQhurcOsAii7PYNZwEL4Xm-8a2CKBkS4OhrS0FhaAX3Aw@mail.gmail.com>
-References: <20140602104948.4faf0bc2@tlielax.poochiereds.net>
-	<CAHQdGtRR6SvEhXiqWo24hoUh9AU9cL82Z8Z-d8-7u951F_d+5g@mail.gmail.com>
-	<CALAqxLVmRdv3eVaf_ue-NutDmjxJA2NNAXnH-Tm4a6ud2U7Q4g@mail.gmail.com>
-	<CAHQdGtSn9RwdgaFgEDQXjrxSA_Bg=rNWux+96-5f43dyUwXLRw@mail.gmail.com>
-	<CALAqxLUwtMnE9eB_dfV=C5CLuXpEdB9+mK7pw2jgo5Yg2ACKPA@mail.gmail.com>
-	<CAHQdGtQhurcOsAii7PYNZwEL4Xm-8a2CKBkS4OhrS0FhaAX3Aw@mail.gmail.com>
-Date: Mon, 2 Jun 2014 20:19:00 -0700
-Message-ID: <CALAqxLXeuiTffvgu0uBbn2fiYQ0-3PVdZ4V4AxqC-ZkTaFSfQQ@mail.gmail.com>
-Subject: Re: nfs4_do_reclaim lockdep pop in v3.15.0-rc1
-From: John Stultz <john.stultz@linaro.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Ingo Molnar <mingo@elte.hu>, Peter Zijlstra <peterz@infradead.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qc0-f180.google.com ([209.85.216.180]:55764 "EHLO
+	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751437AbaFZTOE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:04 -0400
+Received: by mail-qc0-f180.google.com with SMTP id r5so3516830qcx.25
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:03 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 012/117] nfsd: Cleanup nfs4svc_encode_compoundres
+Date: Thu, 26 Jun 2014 15:11:52 -0400
+Message-Id: <1403810017-16062-13-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 2, 2014 at 5:59 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Mon, Jun 2, 2014 at 6:49 PM, John Stultz <john.stultz@linaro.org> wrote:
->> On Mon, Jun 2, 2014 at 3:42 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->>> The so_reclaim_seqcount only exists in order to tell the other threads
->>> that they may need to replay file open or file lock requests that have
->>> raced with state recovery (because those threads got scheduled out
->>> after their RPC calls ran, but before they managed to set up the
->>> tracking of the new state). It is basically an edge condition
->>> killer...
->>
->> Would then swapping the acquisition order, so the seqcount is taken
->> before the so_lock at the top of nfs4_reclaim_open_state() avoid this
->> then, without having to disable lockdep?
->>
->
-> I can change the write seqcount to use raw_write_seqcount(), but that
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-So this doesn't address my suggestion to change the locking order...
-is that solution not feasible?
+Move the slot return, put session etc into a helper in fs/nfsd/nfs4state.c
+instead of open coding in nfs4svc_encode_compoundres.
 
-> doesn't answer the question of why raw_seqcount_begin() is the _only_
-> object out there with a "raw_" prefix, that doesn't explicitly disable
-> lockdep checking.
->
-> What justifies the inconsistency?
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 35 ++++++++++++++++++++++-------------
+ fs/nfsd/nfs4xdr.c   | 15 +--------------
+ fs/nfsd/state.h     |  1 -
+ fs/nfsd/xdr4.h      |  2 +-
+ 4 files changed, 24 insertions(+), 29 deletions(-)
 
-Here's the naming discussion...
-https://lkml.org/lkml/2014/1/2/404
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3ce5dc30f767..ade15fcddd08 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -203,18 +203,6 @@ static void put_client_renew_locked(struct nfs4_client *clp)
+ 		renew_client_locked(clp);
+ }
+ 
+-void put_client_renew(struct nfs4_client *clp)
+-{
+-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+-
+-	if (!atomic_dec_and_lock(&clp->cl_refcount, &nn->client_lock))
+-		return;
+-	if (!is_client_expired(clp))
+-		renew_client_locked(clp);
+-	spin_unlock(&nn->client_lock);
+-}
+-
+-
+ static inline u32
+ opaque_hashval(const void *ptr, int nbytes)
+ {
+@@ -1650,7 +1638,7 @@ out_err:
+ /*
+  * Cache a reply. nfsd4_check_resp_size() has bounded the cache size.
+  */
+-void
++static void
+ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ {
+ 	struct xdr_buf *buf = resp->xdr.buf;
+@@ -2422,6 +2410,27 @@ out_put_client:
+ 	goto out_no_session;
+ }
+ 
++void
++nfsd4_sequence_done(struct nfsd4_compoundres *resp)
++{
++	struct nfsd4_compound_state *cs = &resp->cstate;
++
++	if (nfsd4_has_session(cs)) {
++		struct nfs4_client *clp = cs->session->se_client;
++		struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++		if (cs->status != nfserr_replay_cache) {
++			nfsd4_store_cache_entry(resp);
++			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
++		}
++		/* Renew the clientid on success and on replay */
++		spin_lock(&nn->client_lock);
++		nfsd4_put_session(cs->session);
++		put_client_renew_locked(clp);
++		spin_unlock(&nn->client_lock);
++	}
++}
++
+ __be32
+ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
+ {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 83baf2bfe9e9..68ea99d389ad 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3999,7 +3999,6 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	/*
+ 	 * All that remains is to write the tag and operation count...
+ 	 */
+-	struct nfsd4_compound_state *cs = &resp->cstate;
+ 	struct xdr_buf *buf = resp->xdr.buf;
+ 
+ 	WARN_ON_ONCE(buf->len != buf->head[0].iov_len + buf->page_len +
+@@ -4013,19 +4012,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	p += XDR_QUADLEN(resp->taglen);
+ 	*p++ = htonl(resp->opcnt);
+ 
+-	if (nfsd4_has_session(cs)) {
+-		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+-		struct nfs4_client *clp = cs->session->se_client;
+-		if (cs->status != nfserr_replay_cache) {
+-			nfsd4_store_cache_entry(resp);
+-			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
+-		}
+-		/* Renew the clientid on success and on replay */
+-		spin_lock(&nn->client_lock);
+-		nfsd4_put_session(cs->session);
+-		spin_unlock(&nn->client_lock);
+-		put_client_renew(clp);
+-	}
++	nfsd4_sequence_done(resp);
+ 	return 1;
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 7d6ba06c1abe..24eec922685c 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -477,7 +477,6 @@ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
+ extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+-extern void put_client_renew(struct nfs4_client *clp);
+ 
+ /* nfs4recover operations */
+ extern int nfsd4_client_tracking_init(struct net *net);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 18cbb6d9c8a9..7d8af164523b 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -574,7 +574,6 @@ extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
+ extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_setclientid_confirm *setclientid_confirm);
+-extern void nfsd4_store_cache_entry(struct nfsd4_compoundres *resp);
+ extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_exchange_id *);
+ extern __be32 nfsd4_backchannel_ctl(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_backchannel_ctl *);
+@@ -585,6 +584,7 @@ extern __be32 nfsd4_create_session(struct svc_rqst *,
+ extern __be32 nfsd4_sequence(struct svc_rqst *,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_sequence *);
++extern void nfsd4_sequence_done(struct nfsd4_compoundres *resp);
+ extern __be32 nfsd4_destroy_session(struct svc_rqst *,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_destroy_session *);
+-- 
+1.9.3
 
-thanks
--john
-
-
-On Mon, Jun 2, 2014 at 5:59 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Mon, Jun 2, 2014 at 6:49 PM, John Stultz <john.stultz@linaro.org> wrote:
->> On Mon, Jun 2, 2014 at 3:42 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->>> On Mon, Jun 2, 2014 at 6:12 PM, John Stultz <john.stultz@linaro.org> wrote:
->>>> On Mon, Jun 2, 2014 at 9:02 AM, Trond Myklebust
->>>> <trond.myklebust@primarydata.com> wrote:
->>>>> On Mon, Jun 2, 2014 at 10:49 AM, Jeff Layton
->>>>> <jeff.layton@primarydata.com> wrote:
->>>>>> I've been working on the patchset to break up the client_mutex in nfsd.
->>>>>> While doing some debugging, I had mounted my kernel git tree with
->>>>>> NFSv4.1, and was running crash on the vmlinux image in it.
->>>>>>
->>>>>> A little while later, I saw the following lockdep inversion pop.
->>>>>> Unfortunately, I couldn't get the whole log, but I think it's enough to
->>>>>> show that there's a potential problem?
->>>>>>
->>>>>> I've not had time to give it a hard look yet, but thought I'd post it
->>>>>> here in the hopes that it might look familiar to someone:
->>>>>>
->>>>>> [ 2581.104687] ======================================================
->>>>>> [ 2581.104716] [ INFO: possible circular locking dependency detected ]
->>>>>> [ 2581.104716] 3.15.0-rc1.jlayton.1+ #2 Tainted: G           OE
->>>>>> [ 2581.104716] -------------------------------------------------------
->>>>>> [ 2581.104716] 2001:470:8:d63:/5622 is trying to acquire lock:
->>>>>> [ 2581.104716]  (&(&sp->so_lock)->rlock){+.+...}, at: [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716] but task is already holding lock:
->>>>>> [ 2581.104716]  (&sp->so_reclaim_seqcount){+.+...}, at: [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716] which lock already depends on the new lock.
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716] the existing dependency chain (in reverse order) is:
->>>>>> [ 2581.104716]
->>>>>> -> #1 (&sp->so_reclaim_seqcount){+.+...}:
->>>>>> [ 2581.104716]        [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
->>>>>> [ 2581.104716]        [<ffffffffa036d8b0>] nfs4_do_reclaim+0x290/0x7f0 [nfsv4]
->>>>>> [ 2581.104716]        [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>>> [ 2581.104716]        [<ffffffff810c260f>] kthread+0xff/0x120
->>>>>> [ 2581.104716]        [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
->>>>>> [ 2581.104716]
->>>>>> -> #0 (&(&sp->so_lock)->rlock){+.+...}:
->>>>>> [ 2581.104716]        [<ffffffff810f919f>] __lock_acquire+0x1b8f/0x1ca0
->>>>>> [ 2581.104716]        [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
->>>>>> [ 2581.104716]        [<ffffffff817dbdae>] _raw_spin_lock+0x3e/0x80
->>>>>> [ 2581.104716]        [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>>> [ 2581.104716]        [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>>> [ 2581.104716]        [<ffffffff810c260f>] kthread+0xff/0x120
->>>>>> [ 2581.104716]        [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716] other info that might help us debug this:
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716]  Possible unsafe locking scenario:
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716]        CPU0                    CPU1
->>>>>> [ 2581.104716]        ----                    ----
->>>>>> [ 2581.104716]   lock(&sp->so_reclaim_seqcount);
->>>>>> [ 2581.104716]                                lock(&(&sp->so_lock)->rlock);
->>>>>> [ 2581.104716]                                lock(&sp->so_reclaim_seqcount);
->>>>>> [ 2581.104716]   lock(&(&sp->so_lock)->rlock);
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716]  *** DEADLOCK ***
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716] 1 lock held by 2001:470:8:d63:/5622:
->>>>>> [ 2581.104716]  #0:  (&sp->so_reclaim_seqcount){+.+...}, at: [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>>> [ 2581.104716]
->>>>>> [ 2581.104716] stack backtrace:
->>>>>> [ 2581.104716] CPU: 2 PID: 5622 Comm: 2001:470:8:d63: Tainted: G           OE 3.15.0-rc1.jlayton.1+ #2
->>>>>> [ 2581.104716] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
->>>>>> [ 2581.104716]  0000000000000000 00000000d29e16c4 ffff8800d8d8fba8 ffffffff817d318e
->>>>>> [ 2581.104716]  ffffffff8262d5e0 ffff8800d8d8fbe8 ffffffff817ce525 ffff8800d8d8fc40
->>>>>> [ 2581.104716]  ffff8800362a8b98 ffff8800362a8b98 0000000000000001 ffff8800362a8000
->>>>>> [ 2581.104716] Call Trace:
->>>>>> [ 2581.104716]  [<ffffffff817d318e>] dump_stack+0x4d/0x66
->>>>>> [ 2581.104716]  [<ffffffff817ce525>] print_circular_bug+0x201/0x20f
->>>>>> [ 2581.104716]  [<ffffffff810f919f>] __lock_acquire+0x1b8f/0x1ca0
->>>>>> [ 2581.104716]  [<ffffffff813dbe9e>] ? debug_check_no_obj_freed+0x17e/0x270
->>>>>> [ 2581.104716]  [<ffffffff810f9aa2>] lock_acquire+0xa2/0x1d0
->>>>>> [ 2581.104716]  [<ffffffffa036dbdd>] ? nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>>> [ 2581.104716]  [<ffffffff817dbdae>] _raw_spin_lock+0x3e/0x80
->>>>>> [ 2581.104716]  [<ffffffffa036dbdd>] ? nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>>> [ 2581.104716]  [<ffffffffa036dbdd>] nfs4_do_reclaim+0x5bd/0x7f0 [nfsv4]
->>>>>> [ 2581.104716]  [<ffffffffa036e5fe>] ? nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>>> [ 2581.104716]  [<ffffffffa036e5fe>] nfs4_run_state_manager+0x7ee/0xc00 [nfsv4]
->>>>>> [ 2581.104716]  [<ffffffffa036de10>] ? nfs4_do_reclaim+0x7f0/0x7f0 [nfsv4]
->>>>>> [ 2581.104716]  [<ffffffff810c260f>] kthread+0xff/0x120
->>>>>> [ 2581.104716]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
->>>>>> [ 2581.104716]  [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
->>>>>> [ 2581.104716]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
->>>>>
->>>>> OK. So now that lockdep has been added to raw_seqcount_begin() (commit
->>>>> 1ca7d67cf5d5a), exactly what are we supposed to use when we DON'T want
->>>>> lockdep to "sanity check" our locking here?
->>>>
->>>> So raw_write_seqcount_*  provides the lockdep-disabled methods.
->>>>
->>>>> As far as we're concerned, the above check is completely bogus, and
->>>>> there is no deadlock. At best it would be a livelock, and it would be
->>>>> because the server is rebooting over and over again (in which case the
->>>>> client behaviour of retrying is _correct_).
->>>>
->>>> I've not been able to totally trace the locking path there, but having
->>>> a seqlock writes and spinlock ABBA deadlock seems problematic.... at
->>>> least at first glance.
->>>>
->>>> So if I'm reading this right...  nfs4_reclaim_open_state() takes a
->>>> spinlock on so_lock, then the write on the so_reclaim_seqcount, then
->>>> drops the so_lock and calls nfs4_put_open_state which reaquires the
->>>> so_lock.
->>>>
->>>> And lockdep is worried there may be another thread which called into
->>>> nfs4_reclaim_open_state() and took the so_lock while it was
->>>> momentarily free, and is blocking waiting on the so_reclaim_seqcount.
->>>> This would cause the first threads requisition of the so_lock to
->>>> potentially deadlock.
->>>>
->>>> And your point is that this isn't a concern since no other threads can
->>>> call nfs4_reclaim_open_state() or any other code path that acquires
->>>> those two locks in order?  If you're going to disable the lockdep
->>>> checks here, you might want to make this restriction really clear in a
->>>> comment so no one accidentally breaks that rule.
->>>>
->>>
->>> It's a general rule in the NFSv4 client that the only thread that is
->>> allowed to call state recovery functions (after a server reboot or a
->>> long-lived network partition) is the state manager thread. That
->>> applies to _all_ state, not just open state.
->>>
->>> The so_reclaim_seqcount only exists in order to tell the other threads
->>> that they may need to replay file open or file lock requests that have
->>> raced with state recovery (because those threads got scheduled out
->>> after their RPC calls ran, but before they managed to set up the
->>> tracking of the new state). It is basically an edge condition
->>> killer...
->>
->> Would then swapping the acquisition order, so the seqcount is taken
->> before the so_lock at the top of nfs4_reclaim_open_state() avoid this
->> then, without having to disable lockdep?
->>
->
-> I can change the write seqcount to use raw_write_seqcount(), but that
-> doesn't answer the question of why raw_seqcount_begin() is the _only_
-> object out there with a "raw_" prefix, that doesn't explicitly disable
-> lockdep checking.
->
-> What justifies the inconsistency?
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
