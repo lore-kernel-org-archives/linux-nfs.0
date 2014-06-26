@@ -1,75 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay1.mentorg.com ([192.94.38.131]:43565 "EHLO
-	relay1.mentorg.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932214AbaFBVCe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 17:02:34 -0400
-Date: Mon, 2 Jun 2014 21:02:15 +0000
-From: "Joseph S. Myers" <joseph@codesourcery.com>
-To: Arnd Bergmann <arnd@arndb.de>
-CC: <linux-kernel@vger.kernel.org>, <linux-arch@vger.kernel.org>,
-        <john.stultz@linaro.org>, <hch@infradead.org>, <tglx@linutronix.de>,
-        <geert@linux-m68k.org>, <lftan@altera.com>, <hpa@zytor.com>,
-        <linux-fsdevel@vger.kernel.org>, <ceph-devel@vger.kernel.org>,
-        <cluster-devel@redhat.com>, <coda@cs.cmu.edu>,
-        <codalist@TELEMANN.coda.cs.cmu.edu>,
-        <fuse-devel@lists.sourceforge.net>, <linux-afs@lists.infradead.org>,
-        <linux-btrfs@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
-        <linux-ext4@vger.kernel.org>, <linux-f2fs-devel@lists.sourceforge.net>,
-        <linux-mtd@lists.infradead.org>, <linux-nfs@vger.kernel.org>,
-        <linux-ntfs-dev@lists.sourceforge.net>, <linux-scsi@vger.kernel.org>,
-        <logfs@logfs.org>, <ocfs2-devel@oss.oracle.com>,
-        <reiserfs-devel@vger.kernel.org>, <samba-technical@lists.samba.org>,
-        <xfs@oss.sgi.com>
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-In-Reply-To: <4233989.Saca0ocOUr@wuerfel>
-Message-ID: <Pine.LNX.4.64.1406022044090.27099@digraph.polyomino.org.uk>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
- <Pine.LNX.4.64.1406021350030.19591@digraph.polyomino.org.uk>
- <4233989.Saca0ocOUr@wuerfel>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="US-ASCII"
+Received: from mail-qc0-f180.google.com ([209.85.216.180]:43476 "EHLO
+	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751511AbaFZTO4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:56 -0400
+Received: by mail-qc0-f180.google.com with SMTP id r5so3541933qcx.39
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:55 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 051/117] nfsd: ensure atomicity in nfsd4_free_stateid and nfsd4_validate_stateid
+Date: Thu, 26 Jun 2014 15:12:31 -0400
+Message-Id: <1403810017-16062-52-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2 Jun 2014, Arnd Bergmann wrote:
+Hold the cl_lock over the bulk of these functions. In addition to
+ensuring that they aren't freed prematurely, this will also help prevent
+a potential race that could be introduced later. Once we remove the
+client_mutex, it'll be possible for FREE_STATEID and CLOSE to race and
+for both to try to put the "persistent" reference to the stateid.
 
-> Ok. Sorry about missing linux-api, I confused it with linux-arch, which
-> may not be as relevant here, except for the one question whether we
-> actually want to have the new ABI on all 32-bit architectures or only
-> as an opt-in for those that expect to stay around for another 24 years.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 67 ++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 35 insertions(+), 32 deletions(-)
 
-For glibc I think it will make the most sense to add the support for 
-64-bit time_t across all architectures that currently have 32-bit time_t 
-(with the new interfaces having fallback support to implementation in 
-terms of the 32-bit kernel interfaces, if the 64-bit syscalls are 
-unavailable either at runtime or in the kernel headers against which glibc 
-is compiled - this fallback code will of course need to check for overflow 
-when passing a time value to the kernel, hopefully with error handling 
-consistent with whatever the kernel ends up doing when a filesystem can't 
-support a timestamp).  If some architectures don't provide the new 
-interfaces in the kernel then that will mean the fallback code in glibc 
-can't be removed until glibc support for those architectures is removed 
-(as opposed to removing it when glibc no longer supports kernels predating 
-the kernel support).
-
-> Two more questions for you:
-> 
-> - are you (and others) happy with adding this type of stat syscall
->   (fstatat64/fstat64) as opposed to the more generic xstat that has
->   been discussed in the past and that never made it through the bike-
->   shedding discussion?
-
-I am.
-
-> - once we have enough buy-in from reviewers to merge this initial
->   series, should we proceed to define rest of the syscall ABI
->   (minus driver ioctls) so glibc and kernel can do the conversion
->   on top of that, or should we better try to do things one syscall
->   family at a time and actually get the kernel to handle them
->   correctly internally?
-
-I don't have any comments on that ordering question.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b188a40f6416..42fea991ae0b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1693,16 +1693,6 @@ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ 	return ret;
+ }
+ 
+-static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
+-{
+-	struct nfs4_stid *ret;
+-
+-	spin_lock(&cl->cl_lock);
+-	ret = find_stateid_locked(cl, t);
+-	spin_unlock(&cl->cl_lock);
+-	return ret;
+-}
+-
+ static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
+ {
+ 	struct nfs4_stid *s;
+@@ -4063,10 +4053,10 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ {
+ 	struct nfs4_stid *s;
+ 	struct nfs4_ol_stateid *ols;
+-	__be32 status;
++	__be32 status = nfserr_bad_stateid;
+ 
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+-		return nfserr_bad_stateid;
++		return status;
+ 	/* Client debugging aid. */
+ 	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
+ 		char addr_str[INET6_ADDRSTRLEN];
+@@ -4074,34 +4064,42 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 				 sizeof(addr_str));
+ 		pr_warn_ratelimited("NFSD: client %s testing state ID "
+ 					"with incorrect client ID\n", addr_str);
+-		return nfserr_bad_stateid;
++		return status;
+ 	}
+-	s = find_stateid(cl, stateid);
++	spin_lock(&cl->cl_lock);
++	s = find_stateid_locked(cl, stateid);
+ 	if (!s)
+-		return nfserr_bad_stateid;
++		goto out_unlock;
+ 	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 	if (status)
+-		return status;
++		goto out_unlock;
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+-		return nfs_ok;
++		status = nfs_ok;
++		break;
+ 	case NFS4_REVOKED_DELEG_STID:
+-		return nfserr_deleg_revoked;
++		status = nfserr_deleg_revoked;
++		break;
+ 	case NFS4_OPEN_STID:
+ 	case NFS4_LOCK_STID:
+ 		ols = openlockstateid(s);
+ 		if (ols->st_stateowner->so_is_open_owner
+ 	    			&& !(openowner(ols->st_stateowner)->oo_flags
+ 						& NFS4_OO_CONFIRMED))
+-			return nfserr_bad_stateid;
+-		return nfs_ok;
++			status = nfserr_bad_stateid;
++		else
++			status = nfs_ok;
++		break;
+ 	default:
+ 		printk("unknown stateid type %x\n", s->sc_type);
+ 		/* Fallthrough */
+ 	case NFS4_CLOSED_STID:
+ 	case NFS4_CLOSED_DELEG_STID:
+-		return nfserr_bad_stateid;
++		status = nfserr_bad_stateid;
+ 	}
++out_unlock:
++	spin_unlock(&cl->cl_lock);
++	return status;
+ }
+ 
+ static __be32
+@@ -4252,31 +4250,36 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 ret = nfserr_bad_stateid;
+ 
+ 	nfs4_lock_state();
+-	s = find_stateid(cl, stateid);
++	spin_lock(&cl->cl_lock);
++	s = find_stateid_locked(cl, stateid);
+ 	if (!s)
+-		goto out;
++		goto out_unlock;
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+ 		ret = nfserr_locks_held;
+-		goto out;
++		break;
+ 	case NFS4_OPEN_STID:
+ 	case NFS4_LOCK_STID:
+ 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 		if (ret)
+-			goto out;
+-		if (s->sc_type == NFS4_LOCK_STID)
+-			ret = nfsd4_free_lock_stateid(openlockstateid(s));
+-		else
++			break;
++		if (s->sc_type != NFS4_LOCK_STID) {
+ 			ret = nfserr_locks_held;
+-		break;
++			break;
++		}
++		spin_unlock(&cl->cl_lock);
++		ret = nfsd4_free_lock_stateid(openlockstateid(s));
++		goto out;
+ 	case NFS4_REVOKED_DELEG_STID:
++		spin_unlock(&cl->cl_lock);
+ 		dp = delegstateid(s);
+ 		destroy_revoked_delegation(dp);
+ 		ret = nfs_ok;
+-		break;
+-	default:
+-		ret = nfserr_bad_stateid;
++		goto out;
++	/* Default falls through and returns nfserr_bad_stateid */
+ 	}
++out_unlock:
++	spin_unlock(&cl->cl_lock);
+ out:
+ 	nfs4_unlock_state();
+ 	return ret;
 -- 
-Joseph S. Myers
-joseph@codesourcery.com
+1.9.3
+
