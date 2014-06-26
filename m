@@ -1,82 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:49503 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754279AbaF3PzT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:55:19 -0400
-Received: by mail-qg0-f45.google.com with SMTP id a108so2078760qge.18
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:55:18 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 107/114] nfsd: Remove nfs4_lock_state(): nfsd4_open and nfsd4_open_confirm
-Date: Mon, 30 Jun 2014 11:54:54 -0400
-Message-Id: <1404143701-24740-9-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:46916 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755308AbaFZBsO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jun 2014 21:48:14 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trondmy@gmail.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 6/8] nfsd4: define svcxdr_dupstr to share some common code
+Date: Wed, 25 Jun 2014 21:48:06 -0400
+Message-Id: <1403747288-21590-6-git-send-email-bfields@redhat.com>
+In-Reply-To: <1403747288-21590-1-git-send-email-bfields@redhat.com>
+References: <20140624204418.GG2343@pad.redhat.com>
+ <1403747288-21590-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4proc.c  | 3 ---
- fs/nfsd/nfs4state.c | 6 ------
- 2 files changed, 9 deletions(-)
+ fs/nfsd/nfs4xdr.c |   36 +++++++++++++++++++++++-------------
+ 1 file changed, 23 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index cdce2f39b09c..8381f9429340 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -385,8 +385,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (nfsd4_has_session(cstate))
- 		copy_clientid(&open->op_clientid, cstate->session);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 13f91ce..8fb0f37 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -202,6 +202,26 @@ defer_free(struct nfsd4_compoundargs *argp, void *p)
+ 	return 0;
+ }
  
--	nfs4_lock_state();
--
- 	/* check seqid for replay. set nfs4_owner */
- 	resp = rqstp->rq_resp;
- 	status = nfsd4_process_open1(&resp->cstate, open, nn);
-@@ -469,7 +467,6 @@ out:
++/*
++ * For xdr strings that need to be passed to other kernel api's
++ * as null-terminated strings.
++ *
++ * Note null-terminating in place usually isn't safe since the
++ * buffer might end on a page boundary.
++ */
++static char *
++svcxdr_dupstr(struct nfsd4_compoundargs *argp, void *buf, u32 len)
++{
++	char *p = kmalloc(len + 1, GFP_KERNEL);
++
++	if (!p)
++		return NULL;
++	memcpy(p, buf, len);
++	p[len] = '\0';
++	defer_free(argp, p);
++	return p;
++}
++
+ /**
+  * savemem - duplicate a chunk of memory for later processing
+  * @argp: NFSv4 compound argument structure to be freed with
+@@ -415,12 +435,10 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 			return nfserr_badlabel;
+ 		len += (XDR_QUADLEN(dummy32) << 2);
+ 		READMEM(buf, dummy32);
+-		label->data = kzalloc(dummy32 + 1, GFP_KERNEL);
++		label->len = dummy32;
++		label->data = svcxdr_dupstr(argp, buf, dummy32);
+ 		if (!label->data)
+ 			return nfserr_jukebox;
+-		label->len = dummy32;
+-		defer_free(argp, label->data);
+-		memcpy(label->data, buf, dummy32);
  	}
- 	nfsd4_cleanup_open_state(cstate, open, status);
- 	nfsd4_bump_seqid(cstate, status);
--	nfs4_unlock_state();
- 	return status;
- }
+ #endif
  
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 952aca4d3b2d..13615fe64b48 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3969,9 +3969,6 @@ static void nfsd4_deleg_xgrade_none_ext(struct nfsd4_open *open,
- 	 */
- }
- 
--/*
-- * called with nfs4_lock_state() held.
-- */
- __be32
- nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
- {
-@@ -4649,8 +4646,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (status)
- 		return status;
- 
--	nfs4_lock_state();
--
- 	status = nfs4_preprocess_seqid_op(cstate,
- 					oc->oc_seqid, &oc->oc_req_stateid,
- 					NFS4_OPEN_STID, &stp, nn);
-@@ -4744,7 +4739,6 @@ put_stateid:
- 	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	nfs4_unlock_state();
- 	return status;
- }
- 
+@@ -597,17 +615,9 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+ 		READ_BUF(4);
+ 		create->cr_datalen = be32_to_cpup(p++);
+ 		READ_BUF(create->cr_datalen);
+-		/*
+-		 * The VFS will want a null-terminated string, and
+-		 * null-terminating in place isn't safe since this might
+-		 * end on a page boundary:
+-		 */
+-		create->cr_data = kmalloc(create->cr_datalen + 1, GFP_KERNEL);
++		create->cr_data = svcxdr_dupstr(argp, p, create->cr_datalen);
+ 		if (!create->cr_data)
+ 			return nfserr_jukebox;
+-		memcpy(create->cr_data, p, create->cr_datalen);
+-		create->cr_data[create->cr_datalen] = '\0';
+-		defer_free(argp, create->cr_data);
+ 		break;
+ 	case NF4BLK:
+ 	case NF4CHR:
 -- 
-1.9.3
+1.7.9.5
 
