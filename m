@@ -1,36 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:36907 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751796AbaFBITk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 04:19:40 -0400
-Date: Mon, 2 Jun 2014 01:19:40 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: commit layouts in fdatasync
-Message-ID: <20140602081940.GA32300@infradead.org>
-References: <20140421172917.GA20036@infradead.org>
- <20140505065624.GA32658@infradead.org>
- <20140527160044.GA17587@infradead.org>
- <CAHQdGtSKHRt3DZad9ezvF0Wx+i5SfQuJTHzHUOOwdgi1GoscKw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtSKHRt3DZad9ezvF0Wx+i5SfQuJTHzHUOOwdgi1GoscKw@mail.gmail.com>
+Received: from mail-qa0-f47.google.com ([209.85.216.47]:53168 "EHLO
+	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751208AbaFZTP1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:27 -0400
+Received: by mail-qa0-f47.google.com with SMTP id hw13so3141188qab.20
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:26 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Peter Zijlstra <peterz@infradead.org>,
+        Ingo Molnar <mingo@redhat.com>
+Subject: [PATCH v2 074/117] lockdep: add lockdep_assert_not_held
+Date: Thu, 26 Jun 2014 15:12:54 -0400
+Message-Id: <1403810017-16062-75-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 28, 2014 at 07:00:08PM -0400, Trond Myklebust wrote:
-> Applied for 3.16. Not sure about -stable eligibility, since this only
-> affects pnfs blocks for now (files and objects should both be able to
-> recover in case of client failure).
+We currently have the ability to call lockdep_assert_held to throw a
+warning when a spinlock isn't held in a codepath. There are also times
+when we'd like to throw a warning when a lock is held (i.e. when there
+is the potential for deadlock with atomic_dec_and_lock or similar).
 
-At least the linux-nfs.org object server needs the layoutcommit to
-update i_size on the inode, so changes won't be persistent without the
-layoutcommit.  I expect loosely coupled file servers to work in a
-similar fashion.
+Cc: Peter Zijlstra <peterz@infradead.org>
+Cc: Ingo Molnar <mingo@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ include/linux/lockdep.h | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-> Are you seeing this in production
-> environments?
-
-This was found during data integrity testing.
+diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
+index 008388f920d7..1e5f1d544029 100644
+--- a/include/linux/lockdep.h
++++ b/include/linux/lockdep.h
+@@ -362,6 +362,8 @@ extern void lockdep_trace_alloc(gfp_t mask);
+ 		WARN_ON(debug_locks && !lockdep_is_held(l));	\
+ 	} while (0)
+ 
++#define lockdep_assert_not_held(l) WARN_ON(debug_locks && lockdep_is_held(l))
++
+ #define lockdep_recursing(tsk)	((tsk)->lockdep_recursion)
+ 
+ #else /* !CONFIG_LOCKDEP */
+@@ -413,6 +415,8 @@ struct lock_class_key { };
+ 
+ #define lockdep_assert_held(l)			do { (void)(l); } while (0)
+ 
++#define lockdep_assert_not_held(l)		(void)(l)
++
+ #define lockdep_recursing(tsk)			(0)
+ 
+ #endif /* !LOCKDEP */
+-- 
+1.9.3
 
