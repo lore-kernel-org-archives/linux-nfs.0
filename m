@@ -1,122 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:62404 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753645AbaF3Pwn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:43 -0400
-Received: by mail-qg0-f47.google.com with SMTP id q108so2124803qgd.20
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:43 -0700 (PDT)
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:34751 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751936AbaFZTWO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:22:14 -0400
+Received: by mail-qc0-f181.google.com with SMTP id x13so3541444qcv.40
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:22:13 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 093/114] nfsd: add a forget_clients "get" routine with proper locking
-Date: Mon, 30 Jun 2014 11:50:02 -0400
-Message-Id: <1404143423-24381-94-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v2 116/117] nfsd: remove the client_mutex and the nfs4_lock/unlock_state wrappers
+Date: Thu, 26 Jun 2014 15:21:24 -0400
+Message-Id: <1403810485-16497-33-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new "get" routine for forget_clients that relies on the
-client_lock instead of the client_mutex.
-
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/fault_inject.c |  3 +--
- fs/nfsd/nfs4state.c    | 30 ++++++++++++++++++++++--------
- fs/nfsd/state.h        |  4 +++-
- 3 files changed, 26 insertions(+), 11 deletions(-)
+ fs/nfsd/nfs4state.c | 15 ---------------
+ 1 file changed, 15 deletions(-)
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index b1159900d934..a0387fd47e14 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -134,11 +134,10 @@ void nfsd_fault_inject_cleanup(void)
- static struct nfsd_fault_inject_op inject_ops[] = {
- 	{
- 		.file     = "forget_clients",
--		.get	  = nfsd_inject_get,
-+		.get	  = nfsd_inject_print_clients,
- 		.set_val  = nfsd_inject_set,
- 		.set_clnt = nfsd_inject_set_client,
- 		.forget   = nfsd_forget_client,
--		.print    = nfsd_print_client,
- 	},
- 	{
- 		.file     = "forget_locks",
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4799d6e652d0..ade71f32a070 100644
+index 55c3405d0327..d2103a67d6c6 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5664,6 +5664,28 @@ nfs4_check_open_reclaim(clientid_t *clid,
- }
+@@ -83,9 +83,6 @@ static __be32 lookup_clientid(clientid_t *clid,
  
- #ifdef CONFIG_NFSD_FAULT_INJECTION
-+u64
-+nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
-+{
-+	struct nfs4_client *clp;
-+	u64 count = 0;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+					  nfsd_net_id);
-+	char buf[INET6_ADDRSTRLEN];
-+
-+	if (!nfsd_netns_ready(nn))
-+		return 0;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
-+		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
-+		pr_info("NFS Client: %s\n", buf);
-+		++count;
-+	}
-+	spin_unlock(&nn->client_lock);
-+
-+	return count;
-+}
+ /* Locking: */
  
- u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
- {
-@@ -5679,14 +5701,6 @@ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
- 	return 1;
- }
+-/* Currently used for almost all code touching nfsv4 state: */
+-static DEFINE_MUTEX(client_mutex);
+-
+ /*
+  * Currently used for the del_recall_lru and file hash table.  In an
+  * effort to decrease the scope of the client_mutex, this spinlock may
+@@ -105,12 +102,6 @@ static struct kmem_cache *file_slab;
+ static struct kmem_cache *stateid_slab;
+ static struct kmem_cache *deleg_slab;
  
--u64 nfsd_print_client(struct nfs4_client *clp, u64 num)
+-void
+-nfs4_lock_state(void)
 -{
--	char buf[INET6_ADDRSTRLEN];
--	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
--	printk(KERN_INFO "NFS Client: %s\n", buf);
--	return 1;
+-	mutex_lock(&client_mutex);
 -}
 -
- static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
- 			     const char *type)
+ static void free_session(struct nfsd4_session *);
+ 
+ static bool is_session_dead(struct nfsd4_session *ses)
+@@ -126,12 +117,6 @@ static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_b
+ 	return nfs_ok;
+ }
+ 
+-void
+-nfs4_unlock_state(void)
+-{
+-	mutex_unlock(&client_mutex);
+-}
+-
+ static bool is_client_expired(struct nfs4_client *clp)
  {
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 7e395f665b0f..e0bf42051c1f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -466,18 +466,20 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
- 
- /* nfs fault injection functions */
- #ifdef CONFIG_NFSD_FAULT_INJECTION
-+struct nfsd_fault_inject_op;
-+
- int nfsd_fault_inject_init(void);
- void nfsd_fault_inject_cleanup(void);
- u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
- struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
- 
-+u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
- u64 nfsd_forget_client(struct nfs4_client *, u64);
- u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
- u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
- u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
- 
--u64 nfsd_print_client(struct nfs4_client *, u64);
- u64 nfsd_print_client_locks(struct nfs4_client *, u64);
- u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
+ 	return clp->cl_time == 0;
 -- 
 1.9.3
 
