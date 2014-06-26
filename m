@@ -1,159 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:40726 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757952AbaFSOvU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:20 -0400
-Received: by mail-qg0-f44.google.com with SMTP id j107so2189556qga.17
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:19 -0700 (PDT)
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:45997 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750986AbaFZTPj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:39 -0400
+Received: by mail-qa0-f49.google.com with SMTP id w8so3158984qac.8
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:38 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 015/104] NFSd: Cleanup nfs4svc_encode_compoundres
-Date: Thu, 19 Jun 2014 10:49:21 -0400
-Message-Id: <1403189450-18729-16-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 083/117] nfsd: Move create_client() call outside the lock
+Date: Thu, 26 Jun 2014 15:13:03 -0400
+Message-Id: <1403810017-16062-84-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Move the slot return, put session etc into a helper in fs/nfsd/nfs4state.c
-instead of open coding in nfs4svc_encode_compoundres.
+For efficiency reasons, and because we want to use spin locks instead
+of relying on the client_mutex.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 35 ++++++++++++++++++++++-------------
- fs/nfsd/nfs4xdr.c   | 15 +--------------
- fs/nfsd/state.h     |  1 -
- fs/nfsd/xdr4.h      |  2 +-
- 4 files changed, 24 insertions(+), 29 deletions(-)
+ fs/nfsd/nfs4state.c | 35 +++++++++++++++++++----------------
+ 1 file changed, 19 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b1e833d22207..20e23dbf39e5 100644
+index 461e6d5c6af1..974617538a49 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -202,18 +202,6 @@ static void put_client_renew_locked(struct nfs4_client *clp)
- 		renew_client_locked(clp);
- }
+@@ -2127,6 +2127,10 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		return nfserr_encr_alg_unsupp;
+ 	}
  
--void put_client_renew(struct nfs4_client *clp)
--{
--	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
--
--	if (!atomic_dec_and_lock(&clp->cl_refcount, &nn->client_lock))
--		return;
--	if (!is_client_expired(clp))
--		renew_client_locked(clp);
--	spin_unlock(&nn->client_lock);
--}
--
--
- static inline u32
- opaque_hashval(const void *ptr, int nbytes)
- {
-@@ -1696,7 +1684,7 @@ out_err:
- /*
-  * Cache a reply. nfsd4_check_resp_size() has bounded the cache size.
-  */
--void
-+static void
- nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- {
- 	struct xdr_buf *buf = resp->xdr.buf;
-@@ -2468,6 +2456,27 @@ out_put_client:
- 	goto out_no_session;
- }
- 
-+void
-+nfsd4_sequence_done(struct nfsd4_compoundres *resp)
-+{
-+	struct nfsd4_compound_state *cs = &resp->cstate;
++	new = create_client(exid->clname, rqstp, &verf);
++	if (new == NULL)
++		return nfserr_jukebox;
 +
-+	if (nfsd4_has_session(cs)) {
-+		struct nfs4_client *clp = cs->session->se_client;
-+		struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+		if (cs->status != nfserr_replay_cache) {
-+			nfsd4_store_cache_entry(resp);
-+			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
-+		}
-+		/* Renew the clientid on success and on replay */
-+		spin_lock(&nn->client_lock);
-+		nfsd4_put_session(cs->session);
-+		put_client_renew_locked(clp);
-+		spin_unlock(&nn->client_lock);
-+	}
-+}
-+
- __be32
- nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
- {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index bd0ebd7ff043..8aa15595b1a7 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3996,7 +3996,6 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 	/*
- 	 * All that remains is to write the tag and operation count...
- 	 */
--	struct nfsd4_compound_state *cs = &resp->cstate;
- 	struct xdr_buf *buf = resp->xdr.buf;
+ 	/* Cases below refer to rfc 5661 section 18.35.4: */
+ 	nfs4_lock_state();
+ 	conf = find_confirmed_client_by_name(&exid->clname, nn);
+@@ -2153,7 +2157,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 			}
+ 			/* case 6 */
+ 			exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
+-			new = conf;
+ 			goto out_copy;
+ 		}
+ 		if (!creds_match) { /* case 3 */
+@@ -2166,7 +2169,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		}
+ 		if (verfs_match) { /* case 2 */
+ 			conf->cl_exchange_flags |= EXCHGID4_FLAG_CONFIRMED_R;
+-			new = conf;
+ 			goto out_copy;
+ 		}
+ 		/* case 5, client reboot */
+@@ -2184,29 +2186,28 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
  
- 	WARN_ON_ONCE(buf->len != buf->head[0].iov_len + buf->page_len +
-@@ -4010,19 +4009,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 	p += XDR_QUADLEN(resp->taglen);
- 	*p++ = htonl(resp->opcnt);
- 
--	if (nfsd4_has_session(cs)) {
--		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
--		struct nfs4_client *clp = cs->session->se_client;
--		if (cs->status != nfserr_replay_cache) {
--			nfsd4_store_cache_entry(resp);
--			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
--		}
--		/* Renew the clientid on success and on replay */
--		spin_lock(&nn->client_lock);
--		nfsd4_put_session(cs->session);
--		spin_unlock(&nn->client_lock);
--		put_client_renew(clp);
+ 	/* case 1 (normal case) */
+ out_new:
+-	new = create_client(exid->clname, rqstp, &verf);
+-	if (new == NULL) {
+-		status = nfserr_jukebox;
+-		goto out;
 -	}
-+	nfsd4_sequence_done(resp);
- 	return 1;
+ 	new->cl_minorversion = cstate->minorversion;
+ 	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
+ 
+ 	gen_clid(new, nn);
+ 	add_to_unconfirmed(new);
++	conf = new;
++	new = NULL;
+ out_copy:
+-	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
+-	exid->clientid.cl_id = new->cl_clientid.cl_id;
++	exid->clientid.cl_boot = conf->cl_clientid.cl_boot;
++	exid->clientid.cl_id = conf->cl_clientid.cl_id;
+ 
+-	exid->seqid = new->cl_cs_slot.sl_seqid + 1;
+-	nfsd4_set_ex_flags(new, exid);
++	exid->seqid = conf->cl_cs_slot.sl_seqid + 1;
++	nfsd4_set_ex_flags(conf, exid);
+ 
+ 	dprintk("nfsd4_exchange_id seqid %d flags %x\n",
+-		new->cl_cs_slot.sl_seqid, new->cl_exchange_flags);
++		conf->cl_cs_slot.sl_seqid, conf->cl_exchange_flags);
+ 	status = nfs_ok;
+ 
+ out:
+ 	nfs4_unlock_state();
++	if (new)
++		free_client(new);
+ 	return status;
  }
  
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index c6b2bd11896d..dee801d67e4a 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -452,7 +452,6 @@ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- 							struct nfsd_net *nn);
- extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
--extern void put_client_renew(struct nfs4_client *clp);
+@@ -2849,6 +2850,9 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 			status;
+ 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
  
- /* nfs4recover operations */
- extern int nfsd4_client_tracking_init(struct net *net);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index b577273224e7..570073aac50c 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -593,7 +593,6 @@ extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
- extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_setclientid_confirm *setclientid_confirm);
--extern void nfsd4_store_cache_entry(struct nfsd4_compoundres *resp);
- extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_exchange_id *);
- extern __be32 nfsd4_backchannel_ctl(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_backchannel_ctl *);
-@@ -604,6 +603,7 @@ extern __be32 nfsd4_create_session(struct svc_rqst *,
- extern __be32 nfsd4_sequence(struct svc_rqst *,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_sequence *);
-+extern void nfsd4_sequence_done(struct nfsd4_compoundres *resp);
- extern __be32 nfsd4_destroy_session(struct svc_rqst *,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_destroy_session *);
++	new = create_client(clname, rqstp, &clverifier);
++	if (new == NULL)
++		return nfserr_jukebox;
+ 	/* Cases below refer to rfc 3530 section 14.2.33: */
+ 	nfs4_lock_state();
+ 	conf = find_confirmed_client_by_name(&clname, nn);
+@@ -2869,10 +2873,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	unconf = find_unconfirmed_client_by_name(&clname, nn);
+ 	if (unconf)
+ 		expire_client(unconf);
+-	status = nfserr_jukebox;
+-	new = create_client(clname, rqstp, &clverifier);
+-	if (new == NULL)
+-		goto out;
+ 	if (conf && same_verf(&conf->cl_verifier, &clverifier))
+ 		/* case 1: probable callback update */
+ 		copy_clid(new, conf);
+@@ -2884,9 +2884,12 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
+ 	setclid->se_clientid.cl_id = new->cl_clientid.cl_id;
+ 	memcpy(setclid->se_confirm.data, new->cl_confirm.data, sizeof(setclid->se_confirm.data));
++	new = NULL;
+ 	status = nfs_ok;
+ out:
+ 	nfs4_unlock_state();
++	if (new)
++		free_client(new);
+ 	return status;
+ }
+ 
 -- 
 1.9.3
 
