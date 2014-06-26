@@ -1,65 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f54.google.com ([209.85.160.54]:54036 "EHLO
-	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751886AbaFFT3P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jun 2014 15:29:15 -0400
-Received: by mail-pb0-f54.google.com with SMTP id jt11so2866395pbb.13
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Jun 2014 12:29:15 -0700 (PDT)
-Message-ID: <1402082953.28220.7.camel@ceramic.home.fifi.org>
-Subject: Phantom ACL-related xattrs on 3.14.4 NFS client
-From: Philippe Troin <phil@coldcreektech.com>
-To: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Date: Fri, 06 Jun 2014 12:29:13 -0700
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:54036 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751845AbaFZTP2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:28 -0400
+Received: by mail-qg0-f54.google.com with SMTP id q107so3410901qgd.41
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:27 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 075/117] nfsd: add locking to stateowner release
+Date: Thu, 26 Jun 2014 15:12:55 -0400
+Message-Id: <1403810017-16062-76-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This happens on an NFS client running on:
-Linux ceramic32 3.14.4 #1 SMP Fri May 30 00:52:07 PDT 2014 i686 i686 i386 GNU/Linux
-(also happens on x86_64).
+Once we remove the client_mutex, we'll need to properly protect
+the stateowner reference counts using the cl_lock.
 
-The NFS server can be either 3.14 or 3.13, it doesn't change a thing.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
-Mount options are:
-(from /proc/mtab)
-ceramic:/export/home/phil /home/phil nfs rw,nosuid,nodev,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=172.17.1.2,mountvers=3,mountport=20048,mountproto=tcp,local_lock=none,addr=172.17.1.2 0 0
-(This is NFSv3)
-
-The symptom:
-
-Run getfacl on any NFS inode.  See there are no ACLs:
-
-        % getfacl .
-        # file: .
-        # owner: phil
-        # group: phil
-        user::rwx
-        group::r-x
-        other::r-x
-
-Yet, getfattr says there are some acl-related xattrs:
-
-        % getfattr -m '.*' .
-        # file: .
-        system.posix_acl_access
-        system.posix_acl_default
-
-But when you want to retrieve these phantom xattrs, I get errors:
-
-        % getfattr -n system.posix_acl_access . 
-        .: system.posix_acl_access: No such attribute
-        [1]    1136 exit 1     getfattr -n system.posix_acl_access .
-        % getfattr -n system.posix_acl_default .
-        .: system.posix_acl_default: No such attribute
-        [1]    1146 exit 1     getfattr -n system.posix_acl_default .
-        
-I've noticed because it breaks the patch utility.
-
-This is a regression from 3.13, probably due to the 3.14 NFS ACL overhaul.
-
-I'm ready & willing to try patches.
-
-Phil.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 503beb3faa6c..92680d6531e7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -678,6 +678,8 @@ static void nfs4_put_stid(struct nfs4_stid *s)
+ {
+ 	struct nfs4_client *clp = s->sc_client;
+ 
++	lockdep_assert_not_held(&clp->cl_lock);
++
+ 	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock)) {
+ 		wake_up_all(&close_wq);
+ 		return;
+@@ -3030,9 +3032,14 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
+ 
+ static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
+ {
+-	if (!atomic_dec_and_test(&sop->so_count))
++	struct nfs4_client *clp = sop->so_client;
++
++	lockdep_assert_not_held(&clp->cl_lock);
++
++	if (!atomic_dec_and_lock(&sop->so_count, &clp->cl_lock))
+ 		return;
+ 	sop->so_unhash(sop);
++	spin_unlock(&clp->cl_lock);
+ 	sop->so_free(sop);
+ }
+ 
+@@ -3047,11 +3054,7 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ 
+ static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
+ {
+-	struct nfs4_client *clp = so->so_client;
+-
+-	spin_lock(&clp->cl_lock);
+ 	unhash_openowner_locked(openowner(so));
+-	spin_unlock(&clp->cl_lock);
+ }
+ 
+ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+@@ -4823,11 +4826,7 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
+ 
+ static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
+ {
+-	struct nfs4_client *clp = sop->so_client;
+-
+-	spin_lock(&clp->cl_lock);
+ 	unhash_lockowner_locked(lockowner(sop));
+-	spin_unlock(&clp->cl_lock);
+ }
+ 
+ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
+-- 
+1.9.3
 
