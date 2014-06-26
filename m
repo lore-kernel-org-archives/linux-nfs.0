@@ -1,119 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from api.opinsys.fi ([217.112.254.4]:60749 "EHLO mail.opinsys.fi"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752244AbaFBTJR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 15:09:17 -0400
-Date: Mon, 2 Jun 2014 19:10:29 +0000 (UTC)
-From: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
-To: Tuomas =?utf-8?B?UsOkc8OkbmVu?= <tuomasjjrasanen@opinsys.fi>
-Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
-Message-ID: <2116194027.57919.1401736229722.JavaMail.zimbra@opinsys.fi>
-In-Reply-To: <1863565244.57055.1401703005363.JavaMail.zimbra@opinsys.fi>
-References: <199810131.34257.1400570367382.JavaMail.zimbra@opinsys.fi> <1176115795.34522.1400575248541.JavaMail.zimbra@opinsys.fi> <20140520102117.2582abac@tlielax.poochiereds.net> <2137177707.38241.1400684149690.JavaMail.zimbra@opinsys.fi> <20140521165304.4331255d@tlielax.poochiereds.net> <1863565244.57055.1401703005363.JavaMail.zimbra@opinsys.fi>
-Subject: Re: Soft lockups on kerberised NFSv4.0 clients
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:36526 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751688AbaFZTVp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:45 -0400
+Received: by mail-qg0-f51.google.com with SMTP id z60so3453224qgd.38
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:44 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 094/117] nfsd: protect clid and verifier generation with client_lock
+Date: Thu, 26 Jun 2014 15:21:02 -0400
+Message-Id: <1403810485-16497-11-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The clid counter is a global counter currently. Move it to be a per-net
+property so that it can be properly protected by the nn->client_lock
+instead of relying on the client_mutex.
 
------ Original Message -----
-> From: "Tuomas Räsänen" <tuomasjjrasanen@opinsys.fi>
-> 
-> ----- Original Message -----
-> > From: "Jeff Layton" <jlayton@poochiereds.net>
-> .
-> > Ok, now that I look closer at your stack trace the problem appears to
-> > be that the unlock code is waiting for the lock context's io_count to
-> > drop to zero before allowing the unlock to proceed.
-> > 
-> > That likely means that there is some outstanding I/O that isn't
-> > completing, but it's possible that the problem is the CB_RECALL is
-> > being ignored. This will probably require some analysis of wire captures.
-> > 
-> > In your earlier mail, you mentioned that the client was responding to
-> > the CB_RECALL with NFS4ERR_BADHANDLE. Determining why that's happening
-> > may be the best place to focus your efforts.
-> > 
-> > Now that I look, nfs4_callback_recall does this:
-> > 
-> >         res = htonl(NFS4ERR_BADHANDLE);
-> >         inode = nfs_delegation_find_inode(cps->clp, &args->fh);
-> >         if (inode == NULL)
-> >                 goto out;
-> > 
-> > So it looks like it's not finding the delegation for some reason.
-> > You'll probably need to hunt down which open gave you the delegation in
-> > the first place and then sanity check the CB_RECALL request to
-> > determine whether it's the client or server that's insane here...
-> > 
-> 
-> Speaking of insanity, I'll try to describe some of our findings in hope
-> someone helps us to get a better grasp of the issue.
-> 
-> OPEN requests seem valid to me, there does not seem be any real difference
-> between with OPENs granting RECALLable delegations and OPENs granting
-> delegations which cause BADHANDLEs to be returned when RECALLed. I don't
-> have any ideas what to look for.. probably been staring at capturelogs for
-> too long...
-> 
-> BADHANDLE resposes to CB_RECALLs seem to be fairly common in our environment
-> and there is not clear link between those and the softlockups described
-> describer earlier by Veli-Matti. BADHANDLEs can happen multiple times before
-> the first softlockup. After the first softlockup, the system keeps
-> experiencing lockups (with various tracebacks) with an increasing speed, so
-> I guess only the very first trace is meaningful. And the very first
-> traceback seems to always be the traceback posted by Veli-Matti in his first
-> email.
-> 
-> The BADHANDLE situation is also quite volatile: if
-> nfs_delegation_find_inode() is called again, a bit later, before returning
-> from nfs4_callback_recall(), it returns a valid inode instead of NULL. What
-> does this indicate? Somehow related to the nature of RCU?
+The verifier generator is also potentially racy if there are two
+simultaneous callers. Generate the verifier when we generate the clid
+value, so it's also created under the client_lock. With this, there's
+no need to keep two counters as they'd always be in sync anyway, so
+just use the clientid_counter for both.
 
-Adding to what Tuomas just wrote, there seem to be different sequences
-that result in BADHANDLEs. Just by looking at the dumpcap dumps, it
-looks like they all happen close to sillyrenames if I read them 
-correctly.
+As Trond points out, what would be best is to eventually move this
+code to use IDR instead of the hash tables. That would also help ensure
+uniqueness, but that's probably best done as a separate project.
 
-Here's one where the delegation is returned before first CB_RECALL from
-the server. Both CB_RECALLs result in NFS4ERR_BADHANDLE as the client
-has already returned the delegation and if I understand correctly there 
-seems to be no code in nfsd to check whether the recalled delegation is
-still valid on the server when BADHANDLE is received. Because of this
-nfsd4_cb_recall_done() retries the request once with 2sec delay and then
-marks the callback channel to be down. When the client next time sends
-RENEW, it results in NFS4ERR_CB_PATH_DOWN that triggers all the
-delegations to be returned to the server.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/netns.h     |  6 +++---
+ fs/nfsd/nfs4state.c | 21 +++++++++------------
+ 2 files changed, 12 insertions(+), 15 deletions(-)
 
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index f89042ae0056..831abbdc6c52 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -92,11 +92,11 @@ struct nfsd_net {
+ 	bool nfsd_net_up;
+ 	bool lockd_up;
+ 
+-	/*
+-	 * Time of server startup
+-	 */
++	/* Time of server startup */
+ 	struct timeval nfssvc_boot;
+ 
++	u32 clientid_counter;
++
+ 	struct svc_serv *nfsd_serv;
+ };
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 02cb3f4e27d5..a0b1a727c415 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1761,28 +1761,26 @@ static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
+ 	return 0 == strcmp(cl->cl_cred.cr_principal, cr->cr_principal);
+ }
+ 
+-static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
+-{
+-	static u32 current_clientid = 1;
+-
+-	clp->cl_clientid.cl_boot = nn->boot_time;
+-	clp->cl_clientid.cl_id = current_clientid++; 
+-}
+-
+-static void gen_confirm(struct nfs4_client *clp)
++static void gen_confirm(struct nfs4_client *clp, struct nfsd_net *nn)
+ {
+ 	__be32 verf[2];
+-	static u32 i;
+ 
+ 	/*
+ 	 * This is opaque to client, so no need to byte-swap. Use
+ 	 * __force to keep sparse happy
+ 	 */
+ 	verf[0] = (__force __be32)get_seconds();
+-	verf[1] = (__force __be32)i++;
++	verf[1] = (__force __be32)nn->clientid_counter;
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ }
+ 
++static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
++{
++	clp->cl_clientid.cl_boot = nn->boot_time;
++	clp->cl_clientid.cl_id = nn->clientid_counter++;
++	gen_confirm(clp, nn);
++}
++
+ static struct nfs4_stid *
+ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ {
+@@ -1831,7 +1829,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+ 	copy_verf(clp, verf);
+ 	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
+-	gen_confirm(clp);
+ 	clp->cl_cb_session = NULL;
+ 	clp->net = net;
+ 	return clp;
+-- 
+1.9.3
 
-static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
-{
-...
-        if (dp->dl_retries--) {
-                rpc_delay(task, 2*HZ);
-                task->tk_status = 0;
-                rpc_restart_call_prepare(task);
-                return;
-        }
-        nfsd4_mark_cb_down(clp, task->tk_status);
-        cb->cb_done = true;
-}
-
-15387748 12:01:08.759023   10.249.0.2 -> 10.249.15.254 NFS 254 V4 Call DELEGRETURN StateID:0xe21e
-15387751 12:01:08.759077 10.249.15.254 -> 10.249.0.2   NFS 214 V4 Reply (Call In 15387748) DELEGRETURN
-15387757 12:01:08.759158 10.249.15.254 -> 10.249.0.2   NFS 226 V1 CB_COMPOUND Call <EMPTY> CB_RECALL
-15387770 12:01:08.759541   10.249.0.2 -> 10.249.15.254 NFS 114 V1 CB_COMPOUND Reply (Call In 15387757) <EMPTY> CB_RECALL
-15467475 12:01:10.763189 10.249.15.254 -> 10.249.0.2   NFS 226 V1 CB_COMPOUND Call <EMPTY> CB_RECALL
-15467510 12:01:10.764042   10.249.0.2 -> 10.249.15.254 NFS 114 V1 CB_COMPOUND Reply (Call In 15467475) <EMPTY> CB_RECALL
-16412787 12:01:40.362237   10.249.0.2 -> 10.249.15.254 NFS 174 V4 Call RENEW CID: 0x7cff
-16412788 12:01:40.362266 10.249.15.254 -> 10.249.0.2   NFS 114 V4 Reply (Call In 16412787) RENEW Status: NFS4ERR_CB_PATH_DOWN
-
-And as Tuomas wrote, there is no clear link between these and the
-softlockups, but recalling all delegations at once makes this a suspect
-in my untrained eyes.
-
-
-Happy hacking!
-
-Veli-Matti
