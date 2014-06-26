@@ -1,60 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:34802 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751810AbaFEN4C (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 09:56:02 -0400
-Received: by mail-ig0-f169.google.com with SMTP id a13so3131669igq.4
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 06:56:01 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:51556 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751609AbaFZTOT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:19 -0400
+Received: by mail-qa0-f44.google.com with SMTP id hw13so3173483qab.17
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:19 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH pynfs v2 14/16] 4.1 server: get rid of old op_getdeviceinfo
-Date: Thu,  5 Jun 2014 09:55:42 -0400
-Message-Id: <1401976544-36374-15-git-send-email-dros@primarydata.com>
-In-Reply-To: <1401976544-36374-1-git-send-email-dros@primarydata.com>
-References: <1401976544-36374-1-git-send-email-dros@primarydata.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 024/117] nfsd: Always use lookup_clientid() in nfsd4_process_open1
+Date: Thu, 26 Jun 2014 15:12:04 -0400
+Message-Id: <1403810017-16062-25-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This has been commented out for a while.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+In later patches, we'll be moving the stateowner table into the
+nfs4_client, and by doing this we ensure that we have a cached
+nfs4_client pointer.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- nfs4.1/nfs4server.py | 21 ---------------------
- 1 file changed, 21 deletions(-)
+ fs/nfsd/nfs4state.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
-index 3d2d4cf..7ca4d92 100755
---- a/nfs4.1/nfs4server.py
-+++ b/nfs4.1/nfs4server.py
-@@ -1867,27 +1867,6 @@ class NFS4Server(rpc.Server):
-                                   new_cookie >= len(list))
-         return encode_status(NFS4_OK, res)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ab45350fbd5a..6b9dbdc52b47 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3032,19 +3032,19 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+ 	if (open->op_file == NULL)
+ 		return nfserr_jukebox;
  
--#     def op_getdeviceinfo(self, arg, env): # STUB
--#         check_session(env)
--#         # check_cfh(env)
--#         # fs = env.cfh.fs
--#         # STUB - only deals with block volumes
--#         kind = arg.gdia_layout_type
--#         if kind != LAYOUT4_BLOCK_VOLUME:
--#             return encode_status(NFS4ERR_INVAL)
--#         # STUB - want to pull this from fs, not block module
--#         d = block.devices.get(arg.gdia_device_id, None)
--#         if d is None:
--#             return encode_status(NFS4ERR_INVAL)
--#         address = device_addr4(LAYOUT4_BLOCK_VOLUME, d.get_addr())
--#         # Check that we don't exceed count
--#         p = nfs4lib.FancyNFS4Packer()
--#         p.pack_device_addr4(address)
--#         if len(p.get_buffer()) > arg.gdia_maxcount:
--#             return encode_status(NFS4ERR_TOOSMALL, gdir_mincount = len(p.get_buffer()))
--#         res = GETDEVICEINFO4resok(address, 0)
--#         return encode_status(NFS4_OK, res)
--
-     def op_getdeviceinfo(self, arg, env): # STUB
-         # STUB - ignoring notifications
-         check_session(env)
++	status = lookup_clientid(clientid, cstate, nn);
++	if (status)
++		return status;
++	clp = cstate->clp;
++
+ 	strhashval = ownerstr_hashval(clientid->cl_id, &open->op_owner);
+ 	oo = find_openstateowner_str(strhashval, open, cstate->minorversion, nn);
+ 	open->op_openowner = oo;
+ 	if (!oo) {
+-		status = lookup_clientid(clientid, cstate, nn);
+-		if (status)
+-			return status;
+-		clp = cstate->clp;
+ 		goto new_owner;
+ 	}
+ 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
+ 		/* Replace unconfirmed owners without checking for replay. */
+-		clp = oo->oo_owner.so_client;
+ 		release_openowner(oo);
+ 		open->op_openowner = NULL;
+ 		goto new_owner;
+@@ -3052,7 +3052,6 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+ 	status = nfsd4_check_seqid(cstate, &oo->oo_owner, open->op_seqid);
+ 	if (status)
+ 		return status;
+-	clp = oo->oo_owner.so_client;
+ 	goto alloc_stateid;
+ new_owner:
+ 	oo = alloc_init_open_stateowner(strhashval, open, cstate);
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
