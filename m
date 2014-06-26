@@ -1,51 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35724 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752085AbaFAROi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Jun 2014 13:14:38 -0400
-Message-ID: <538B5F79.6030908@RedHat.com>
-Date: Sun, 01 Jun 2014 13:14:33 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
-CC: linux-nfs@vger.kernel.org,
-        =?UTF-8?B?VHVvbWFzIFLDpHPDpG5lbg==?= <tuomas.rasanen@opinsys.fi>,
-        Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH] gssd: Fix allocated buffer size for the scraped acceptor
- name  in do_downcall
-References: <41011674.48947.1401180626967.JavaMail.zimbra@opinsys.fi>
-In-Reply-To: <41011674.48947.1401180626967.JavaMail.zimbra@opinsys.fi>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-wg0-f41.google.com ([74.125.82.41]:35551 "EHLO
+	mail-wg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751557AbaFZOXR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 10:23:17 -0400
+Received: by mail-wg0-f41.google.com with SMTP id a1so3724662wgh.12
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 07:23:16 -0700 (PDT)
+From: Avi Kivity <avi@cloudius-systems.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: fix nfs4d readlink truncated packet
+Date: Thu, 26 Jun 2014 17:23:12 +0300
+Message-Id: <1403792592-1517-1-git-send-email-avi@cloudius-systems.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+XDR requires 4-byte alignment; nfs4d READLINK reply writes out the padding,
+but truncates the packet to the padding-less size.
 
+Fix by taking the padding into consideration when truncating the packet.
 
-On 05/27/2014 04:50 AM, Veli-Matti Lintu wrote:
-> 
-> In commit 51fda07a "gssd: scrape the acceptor name out of the context"
-> the allocated buffer size is not large enough to hold the actual data
-> that is written to the buffer. This fixes the allocated buffer size.
-> 
-> Signed-off-by: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
-Committed..
+Signed-off-by: Avi Kivity <avi@cloudius-systems.com>
+---
+ fs/nfsd/nfs4xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-steved.
-> ---
->  utils/gssd/gssd_proc.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 69bb3c6..40ff188 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -696,7 +696,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
->  	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
->  		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
->  		sizeof(context_token->length) + context_token->length +
-> -		acceptor->length;
-> +		sizeof(acceptor->length) + acceptor->length;
->  	p = buf = malloc(buf_size);
->  	if (!buf)
->  		goto out_err;
-> 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 83baf2b..cba93ea 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3267,7 +3267,7 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 
+ 	wire_count = htonl(maxcount);
+ 	write_bytes_to_xdr_buf(xdr->buf, length_offset, &wire_count, 4);
+-	xdr_truncate_encode(xdr, length_offset + 4 + maxcount);
++	xdr_truncate_encode(xdr, length_offset + 4 + ALIGN(maxcount, 4));
+ 	if (maxcount & 3)
+ 		write_bytes_to_xdr_buf(xdr->buf, length_offset + 4 + maxcount,
+ 						&zero, 4 - (maxcount&3));
+-- 
+1.9.3
+
