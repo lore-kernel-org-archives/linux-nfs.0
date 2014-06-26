@@ -1,53 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:65462 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932295AbaFSOwg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:36 -0400
-Received: by mail-qc0-f171.google.com with SMTP id w7so2305658qcr.30
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:36 -0700 (PDT)
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:53362 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750832AbaFZTN5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:13:57 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so3516145qcx.41
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:13:56 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 068/104] NFSd: Ensure that the laundromat unhashes the client before releasing locks
-Date: Thu, 19 Jun 2014 10:50:14 -0400
-Message-Id: <1403189450-18729-69-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v2 007/117] nfsd: properly handle embedded newlines in fault_injection input
+Date: Thu, 26 Jun 2014 15:11:47 -0400
+Message-Id: <1403810017-16062-8-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Currently rpc_pton() fails to handle the case where you echo an address
+into the file, as it barfs on the newline. Ensure that we NULL out the
+first occurrence of any newline.
 
-If we leave the client on the confirmed/unconfirmed tables, and leave
-the sessions visible on the sessionid_hashtbl, then someone might
-find them before we've had a chance to destroy them.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+ fs/nfsd/fault_inject.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9d6cc32fd2fb..7982f44aae83 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3949,13 +3949,15 @@ nfs4_laundromat(struct nfsd_net *nn)
- 				clp->cl_clientid.cl_id);
- 			continue;
- 		}
--		list_move(&clp->cl_lru, &reaplist);
-+		unhash_client_locked(clp);
-+		list_add(&clp->cl_lru, &reaplist);
- 	}
- 	spin_unlock(&nn->client_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
- 		clp = list_entry(pos, struct nfs4_client, cl_lru);
- 		dprintk("NFSD: purging unused client (clientid %08x)\n",
- 			clp->cl_clientid.cl_id);
-+		list_del_init(&clp->cl_lru);
- 		expire_client(clp);
- 	}
- 	spin_lock(&state_lock);
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 2ed05c3cd43d..f1333fc35b33 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -115,11 +115,19 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 	struct net *net = current->nsproxy->net_ns;
+ 	struct sockaddr_storage sa;
+ 	u64 val;
++	char *nl;
+ 
+ 	if (copy_from_user(write_buf, buf, size))
+ 		return -EFAULT;
+ 	write_buf[size] = '\0';
+ 
++	/* Deal with any embedded newlines in the string */
++	nl = strchr(write_buf, '\n');
++	if (nl) {
++		size = nl - write_buf;
++		*nl = '\0';
++	}
++
+ 	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
+ 	if (size > 0)
+ 		nfsd_inject_set_client(file_inode(file)->i_private, &sa, size);
 -- 
 1.9.3
 
