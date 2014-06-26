@@ -1,100 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:32863 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753359AbaFDN1l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jun 2014 09:27:41 -0400
-Date: Wed, 4 Jun 2014 09:27:39 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: NeilBrown <neilb@suse.de>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Live lock in silly-rename.
-Message-ID: <20140604132739.GK6839@fieldses.org>
-References: <20140529164521.02324559@notabene.brown>
- <CAHQdGtTtU9_zBcfzRb_wmEf7XaX9rNg-_Q85ZLX9BYax14D2Gg@mail.gmail.com>
- <20140530075135.753fb7ed@notabene.brown>
- <20140530004423.GA13746@fieldses.org>
- <20140530134442.5a8e5983@notabene.brown>
- <20140530215522.GA27615@fieldses.org>
- <20140531081358.62ae69b3@notabene.brown>
- <20140604173926.53918af3@notabene.brown>
- <CAHQdGtR-YwT-nW-vcFhBFPsg3h=ZE6co08QB9KETGdiKrNNuUg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtR-YwT-nW-vcFhBFPsg3h=ZE6co08QB9KETGdiKrNNuUg@mail.gmail.com>
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:35635 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750832AbaFZTOB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:01 -0400
+Received: by mail-qg0-f41.google.com with SMTP id i50so3481253qgf.14
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:00 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 010/117] nfsd: Avoid taking state_lock while holding inode lock in nfsd_break_one_deleg
+Date: Thu, 26 Jun 2014 15:11:50 -0400
+Message-Id: <1403810017-16062-11-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 04, 2014 at 08:48:02AM -0400, Trond Myklebust wrote:
-> On Wed, Jun 4, 2014 at 3:39 AM, NeilBrown <neilb@suse.de> wrote:
-> > On Sat, 31 May 2014 08:13:58 +1000 NeilBrown <neilb@suse.de> wrote:
-> >
-> >> On Fri, 30 May 2014 17:55:23 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> >> wrote:
-> >>
-> >> > On Fri, May 30, 2014 at 01:44:42PM +1000, NeilBrown wrote:
-> >> > > On Thu, 29 May 2014 20:44:23 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> >> > > wrote:
-> >> > >
-> >> > > > Yes, it's a known server bug.
-> >> > > >
-> >> > > > As a first attempt I was thinking of just sticking a timestamp in struct
-> >> > > > inode to record the time of the most recent conflicting access and deny
-> >> > > > delegations if the timestamp is too recent, for some definition of too
-> >> > > > recent.
-> >> > > >
-> >> > >
-> >> > > Hmmm... I'll have a look next week and see what I can come up with.
-> >> >
-> >> > Thanks!
-> >> >
-> >> > If we didn't think it was worth another struct inode field, we could
-> >> > probably get away with global state.  Even just refusing to give out any
-> >> > delegations for a few seconds after any delegation break would be enough
-> >> > to fix this bug.
-> >> >
-> >> > Or you could make it a little less harsh with a small hash table: "don't
-> >> > give out a delegation on any inode whose inode number hashes to X for a
-> >> > few seconds."
-> >>
-> >> I was thinking of using a bloom filter - or possibly two.
-> >> - avoid handing out delegations if either bloom filter reports a match
-> >> - when reclaiming a delegation add the inode to the second bloom filter
-> >> - every so-often zero-out the older filter and swap them.
-> >>
-> >> Might be a bit of overkill, but I won't know until I implement it.
-> >>
-> >
-> > Below is my suggestion.  It seems easy enough.  It even works.
-> >
-> > However it does raise an issue with the NFS client.
-> >
-> > NFS performs a silly-rename as an 'asynchronous' operation.  One consequence
-> > of this is that NFS4ERR_DELAY always results in a delay of
-> > NFS4_POLL_RETRY_MAX (15*HZ), where as sync requests use an exponential scale
-> > from _MIN to _MAX.
-> >
-> > So in my test case there is always a 15second delay:
-> >   - try to silly-rename
-> >   - get NFS4ERR_DELAY
-> >   - server reclaim delegation
-> >   - 15 seconds passes
-> >   - retry silly-rename - it works.
-> >
-> > I hacked the NFS server to store a timeout in 'struct nfs_renamedata', and
-> > use the same exponential retry pattern and the 15 seconds (obviously)
-> > disappeared.
-> >
-> > Trond: would  you accept a patch which did that more generally?  e.g. pass a
-> > timeout pointer to nfs4_async_handle_error() and various *_done function pass
-> > a pointer to a field in their calldata?
-> 
-> It depends. If we're touching nfs4_async_handle_error, then I think we
-> should also convert nfs4_async_handle_error to use the same "struct
-> nfs4_exception" argument that we use for the synchronous case so that
-> we can share a bit more code.
+state_lock is a heavily contended global lock. We don't want to grab
+that while simultaneously holding the inode->i_lock.
 
-I wonder why this hasn't been a major complaint before--is there
-something other servers are doing to mitigate the problem, or is
-renaming a delegated file just rarer than I would have expected?
+Add a new per-nfs4_file lock that we can use to protect the
+per-nfs4_file delegation list. Hold that while walking the list in the
+break_deleg callback and queue the workqueue job for each one.
 
---b.
+The workqueue job can then take the state_lock and do the list
+manipulations without the i_lock being held prior to starting the
+rpc call.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4callback.c | 22 ++++++++++++++++++----
+ fs/nfsd/nfs4state.c    | 43 ++++++++++++++++++++++++++++---------------
+ fs/nfsd/state.h        |  2 ++
+ 3 files changed, 48 insertions(+), 19 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 00cb9b7a75f6..771323ae1b33 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1014,9 +1014,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 		run_nfsd4_cb(cb);
+ }
+ 
+-static void nfsd4_do_callback_rpc(struct work_struct *w)
++static void nfsd4_run_callback_rpc(struct nfsd4_callback *cb)
+ {
+-	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
+ 	struct nfs4_client *clp = cb->cb_clp;
+ 	struct rpc_clnt *clnt;
+ 
+@@ -1034,6 +1033,22 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
+ 			cb->cb_ops, cb);
+ }
+ 
++static void nfsd4_do_callback_rpc(struct work_struct *w)
++{
++	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback,
++							cb_work);
++	nfsd4_run_callback_rpc(cb);
++}
++
++static void nfsd4_do_cb_recall(struct work_struct *w)
++{
++	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback,
++							cb_work);
++
++	nfsd4_prepare_cb_recall(cb->cb_op);
++	nfsd4_run_callback_rpc(cb);
++}
++
+ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfsd4_callback *cb = &dp->dl_recall;
+@@ -1050,8 +1065,7 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ 
+ 	INIT_LIST_HEAD(&cb->cb_per_client);
+ 	cb->cb_done = true;
+-
+-	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
++	INIT_WORK(&cb->cb_work, nfsd4_do_cb_recall);
+ 
+ 	run_nfsd4_cb(&dp->dl_recall);
+ }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b49b46b0ce23..461229a01963 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -513,7 +513,9 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	lockdep_assert_held(&state_lock);
+ 
+ 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
++	spin_lock(&fp->fi_lock);
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
++	spin_unlock(&fp->fi_lock);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ }
+ 
+@@ -521,14 +523,18 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ static void
+ unhash_delegation(struct nfs4_delegation *dp)
+ {
++	struct nfs4_file *fp = dp->dl_file;
++
+ 	spin_lock(&state_lock);
+ 	list_del_init(&dp->dl_perclnt);
+-	list_del_init(&dp->dl_perfile);
+ 	list_del_init(&dp->dl_recall_lru);
++	spin_lock(&fp->fi_lock);
++	list_del_init(&dp->dl_perfile);
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+-	if (dp->dl_file) {
+-		nfs4_put_deleg_lease(dp->dl_file);
+-		put_nfs4_file(dp->dl_file);
++	if (fp) {
++		nfs4_put_deleg_lease(fp);
++		put_nfs4_file(fp);
+ 		dp->dl_file = NULL;
+ 	}
+ }
+@@ -2612,6 +2618,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
+ 	lockdep_assert_held(&state_lock);
+ 
+ 	atomic_set(&fp->fi_ref, 1);
++	spin_lock_init(&fp->fi_lock);
+ 	INIT_LIST_HEAD(&fp->fi_stateids);
+ 	INIT_LIST_HEAD(&fp->fi_delegations);
+ 	ihold(ino);
+@@ -2857,26 +2864,32 @@ out:
+ 	return ret;
+ }
+ 
+-static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
++void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
+-	lockdep_assert_held(&state_lock);
++	/*
++	 * We can't do this in nfsd_break_deleg_cb because it is
++	 * already holding inode->i_lock
++	 */
++	spin_lock(&state_lock);
++	if (list_empty(&dp->dl_recall_lru)) {
++		dp->dl_time = get_seconds();
++		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
++	}
++	spin_unlock(&state_lock);
++}
++
++static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
++{
+ 	/* We're assuming the state code never drops its reference
+ 	 * without first removing the lease.  Since we're in this lease
+ 	 * callback (and since the lease code is serialized by the kernel
+ 	 * lock) we know the server hasn't removed the lease yet, we know
+ 	 * it's safe to take a reference: */
+ 	atomic_inc(&dp->dl_count);
+-
+-	list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+-
+-	/* Only place dl_time is set; protected by i_lock: */
+-	dp->dl_time = get_seconds();
+-
+ 	block_delegations(&dp->dl_fh);
+-
+ 	nfsd4_cb_recall(dp);
+ }
+ 
+@@ -2901,11 +2914,11 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+ 	 */
+ 	fl->fl_break_time = 0;
+ 
+-	spin_lock(&state_lock);
+ 	fp->fi_had_conflict = true;
++	spin_lock(&fp->fi_lock);
+ 	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
+ 		nfsd_break_one_deleg(dp);
+-	spin_unlock(&state_lock);
++	spin_unlock(&fp->fi_lock);
+ }
+ 
+ static
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 9447f86f2778..7d6ba06c1abe 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -382,6 +382,7 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
+ /* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
+ struct nfs4_file {
+ 	atomic_t		fi_ref;
++	spinlock_t		fi_lock;
+ 	struct hlist_node       fi_hash;    /* hash by "struct inode *" */
+ 	struct list_head        fi_stateids;
+ 	struct list_head	fi_delegations;
+@@ -471,6 +472,7 @@ extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
+ extern int nfsd4_create_callback_queue(void);
+ extern void nfsd4_destroy_callback_queue(void);
+ extern void nfsd4_shutdown_callback(struct nfs4_client *);
++extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
+ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
+-- 
+1.9.3
+
