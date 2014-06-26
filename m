@@ -1,26 +1,278 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:39984 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754912AbaFWQMz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 12:12:55 -0400
-Date: Mon, 23 Jun 2014 09:12:54 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 009/104] locks: add file_has_lease
-Message-ID: <20140623161254.GG24193@infradead.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
- <1403189450-18729-10-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403189450-18729-10-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:53036 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751751AbaFZTO2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:28 -0400
+Received: by mail-qg0-f41.google.com with SMTP id i50so3488805qgf.28
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:27 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 030/117] nfsd: Add locking to the nfs4_file->fi_fds[] array
+Date: Thu, 26 Jun 2014 15:12:10 -0400
+Message-Id: <1403810017-16062-31-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 19, 2014 at 10:49:15AM -0400, Jeff Layton wrote:
-> Add a function that can tell us whether a file description has had a
-> lease set on it.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-The code looks good, but how is this information useful given that it
-will be stable as soon as i_lock is dropped?
+Preparation for removal of the client_mutex, which currently protects
+this array.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 105 ++++++++++++++++++++++++++++++++++++++++++++--------
+ fs/nfsd/state.h     |  26 -------------
+ 2 files changed, 89 insertions(+), 42 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ba5408828b23..40171e2f9178 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -269,6 +269,52 @@ get_nfs4_file(struct nfs4_file *fi)
+ 	atomic_inc(&fi->fi_ref);
+ }
+ 
++static struct file *__nfs4_get_fd(struct nfs4_file *f, int oflag)
++{
++	if (f->fi_fds[oflag])
++		return get_file(f->fi_fds[oflag]);
++	return NULL;
++}
++
++static struct file *find_writeable_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_WRONLY);
++	if (!ret)
++		ret = __nfs4_get_fd(f, O_RDWR);
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
++static struct file *find_readable_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_RDONLY);
++	if (!ret)
++		ret = __nfs4_get_fd(f, O_RDWR);
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
++static struct file *find_any_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_RDWR);
++	if (!ret) {
++		ret = __nfs4_get_fd(f, O_WRONLY);
++		if (!ret)
++			ret = __nfs4_get_fd(f, O_RDONLY);
++	}
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
+ static int num_delegations;
+ unsigned long max_delegations;
+ 
+@@ -317,20 +363,29 @@ static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
+ 		__nfs4_file_get_access(fp, oflag);
+ }
+ 
+-static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
++static struct file *nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
+ {
+-	if (fp->fi_fds[oflag]) {
+-		fput(fp->fi_fds[oflag]);
+-		fp->fi_fds[oflag] = NULL;
+-	}
++	struct file *filp;
++
++	filp = fp->fi_fds[oflag];
++	fp->fi_fds[oflag] = NULL;
++	return filp;
+ }
+ 
+ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+ {
+-	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
+-		nfs4_file_put_fd(fp, oflag);
++	if (atomic_dec_and_lock(&fp->fi_access[oflag], &fp->fi_lock)) {
++		struct file *f1 = NULL;
++		struct file *f2 = NULL;
++
++		f1 = nfs4_file_put_fd(fp, oflag);
+ 		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
+-			nfs4_file_put_fd(fp, O_RDWR);
++			f2 = nfs4_file_put_fd(fp, O_RDWR);
++		spin_unlock(&fp->fi_lock);
++		if (f1)
++			fput(f1);
++		if (f2)
++			fput(f2);
+ 	}
+ }
+ 
+@@ -748,8 +803,10 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
+ 	file = find_any_file(stp->st_file);
+-	if (file)
++	if (file) {
+ 		locks_remove_posix(file, (fl_owner_t)lockowner(stp->st_stateowner));
++		fput(file);
++	}
+ 	close_generic_stateid(stp);
+ 	free_generic_stateid(stp);
+ }
+@@ -3190,17 +3247,27 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 		struct svc_fh *cur_fh, struct nfsd4_open *open)
+ {
++	struct file *filp = NULL;
+ 	__be32 status;
+ 	int oflag = nfs4_access_to_omode(open->op_share_access);
+ 	int access = nfs4_access_to_access(open->op_share_access);
+ 
++	spin_lock(&fp->fi_lock);
+ 	if (!fp->fi_fds[oflag]) {
+-		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
+-			&fp->fi_fds[oflag]);
++		spin_unlock(&fp->fi_lock);
++		status = nfsd_open(rqstp, cur_fh, S_IFREG, access, &filp);
+ 		if (status)
+ 			goto out;
++		spin_lock(&fp->fi_lock);
++		if (!fp->fi_fds[oflag]) {
++			fp->fi_fds[oflag] = filp;
++			filp = NULL;
++		}
+ 	}
+ 	nfs4_file_get_access(fp, oflag);
++	spin_unlock(&fp->fi_lock);
++	if (filp)
++		fput(filp);
+ 
+ 	status = nfsd4_truncate(rqstp, cur_fh, open);
+ 	if (status)
+@@ -3285,13 +3352,15 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	if (status)
+ 		goto out_free;
+ 	fp->fi_lease = fl;
+-	fp->fi_deleg_file = get_file(fl->fl_file);
++	fp->fi_deleg_file = fl->fl_file;
+ 	atomic_set(&fp->fi_delegees, 1);
+ 	spin_lock(&state_lock);
+ 	hash_delegation_locked(dp, fp);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+ out_free:
++	if (fl->fl_file)
++		fput(fl->fl_file);
+ 	locks_free_lock(fl);
+ 	return status;
+ }
+@@ -3917,6 +3986,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 				status = nfserr_serverfault;
+ 				goto out;
+ 			}
++			get_file(file);
+ 		}
+ 		break;
+ 	case NFS4_OPEN_STID:
+@@ -3944,7 +4014,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 	}
+ 	status = nfs_ok;
+ 	if (file)
+-		*filpp = get_file(file);
++		*filpp = file;
+ out:
+ 	nfs4_unlock_state();
+ 	return status;
+@@ -4661,6 +4731,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		break;
+ 	}
+ out:
++	if (filp)
++		fput(filp);
+ 	if (status && new_state)
+ 		release_lockowner_if_empty(lock_sop);
+ 	nfsd4_bump_seqid(cstate, status);
+@@ -4800,7 +4872,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!file_lock) {
+ 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+ 		status = nfserr_jukebox;
+-		goto out;
++		goto fput;
+ 	}
+ 	locks_init_lock(file_lock);
+ 	file_lock->fl_type = F_UNLCK;
+@@ -4822,7 +4894,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+-
++fput:
++	fput(filp);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+ 	nfs4_unlock_state();
+@@ -4832,7 +4905,7 @@ out:
+ 
+ out_nfserr:
+ 	status = nfserrno(err);
+-	goto out;
++	goto fput;
+ }
+ 
+ /*
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 30ad57089896..dc56ec234df7 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -399,32 +399,6 @@ struct nfs4_file {
+ 	bool			fi_had_conflict;
+ };
+ 
+-/* XXX: for first cut may fall back on returning file that doesn't work
+- * at all? */
+-static inline struct file *find_writeable_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_WRONLY])
+-		return f->fi_fds[O_WRONLY];
+-	return f->fi_fds[O_RDWR];
+-}
+-
+-static inline struct file *find_readable_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_RDONLY])
+-		return f->fi_fds[O_RDONLY];
+-	return f->fi_fds[O_RDWR];
+-}
+-
+-static inline struct file *find_any_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_RDWR])
+-		return f->fi_fds[O_RDWR];
+-	else if (f->fi_fds[O_WRONLY])
+-		return f->fi_fds[O_WRONLY];
+-	else
+-		return f->fi_fds[O_RDONLY];
+-}
+-
+ /* "ol" stands for "Open or Lock".  Better suggestions welcome. */
+ struct nfs4_ol_stateid {
+ 	struct nfs4_stid    st_stid; /* must be first field */
+-- 
+1.9.3
 
