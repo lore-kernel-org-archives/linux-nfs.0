@@ -1,138 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46904 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755341AbaFZBsN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 25 Jun 2014 21:48:13 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trondmy@gmail.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/8] nfsd: let nfsd_symlink assume null-terminated data
-Date: Wed, 25 Jun 2014 21:48:03 -0400
-Message-Id: <1403747288-21590-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1403747288-21590-1-git-send-email-bfields@redhat.com>
-References: <20140624204418.GG2343@pad.redhat.com>
- <1403747288-21590-1-git-send-email-bfields@redhat.com>
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:47649 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751672AbaFZTOR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:17 -0400
+Received: by mail-qg0-f47.google.com with SMTP id q108so3482075qgd.34
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:16 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 022/117] nfsd: Cache the client that was looked up in lookup_clientid()
+Date: Thu, 26 Jun 2014 15:12:02 -0400
+Message-Id: <1403810017-16062-23-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Currently nfsd_symlink has a weird hack to serve callers who don't
-null-terminate symlink data: it looks ahead at the next byte to see if
-it's zero, and copies it to a new buffer to null-terminate if not.
+We want to use the nfsd4_compound_state to cache the nfs4_client
+in order to optimise away extra lookups of the clid.
 
-That means callers don't have to null-terminate, but they *do* have to
-ensure that the byte following the end of the data is theirs to read.
-
-That's a bit subtle, and the NFSv4 code actually got this wrong.
-
-So let's just throw out that code and let callers pass null-terminated
-strings; we've already fixed them to do that.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs3proc.c |    2 +-
- fs/nfsd/nfs4proc.c |    2 +-
- fs/nfsd/nfsproc.c  |    2 +-
- fs/nfsd/vfs.c      |   17 +++--------------
- fs/nfsd/vfs.h      |    2 +-
- 5 files changed, 7 insertions(+), 18 deletions(-)
+ fs/nfsd/nfs4state.c | 44 +++++++++++++++++++++++++++++---------------
+ 1 file changed, 29 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 61ef42c..19ba233 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -282,7 +282,7 @@ nfsd3_proc_symlink(struct svc_rqst *rqstp, struct nfsd3_symlinkargs *argp,
- 	fh_copy(&resp->dirfh, &argp->ffh);
- 	fh_init(&resp->fh, NFS3_FHSIZE);
- 	nfserr = nfsd_symlink(rqstp, &resp->dirfh, argp->fname, argp->flen,
--						   argp->tname, argp->tlen,
-+						   argp->tname,
- 						   &resp->fh, &argp->attrs);
- 	RETURN_STATUS(nfserr);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f782ed5cad63..fb78d1ab2655 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3521,15 +3521,31 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
+ 		free_generic_stateid(open->op_stp);
  }
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 2b3795a..7aa83bf 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -623,7 +623,7 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	case NF4LNK:
- 		status = nfsd_symlink(rqstp, &cstate->current_fh,
- 				      create->cr_name, create->cr_namelen,
--				      create->cr_linkname, create->cr_linklen,
-+				      create->cr_linkname,
- 				      &resfh, &create->cr_iattr);
- 		break;
  
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index aebe23c..583ed03 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -409,7 +409,7 @@ nfsd_proc_symlink(struct svc_rqst *rqstp, struct nfsd_symlinkargs *argp,
- 	 */
- 	argp->tname[argp->tlen] = '\0';
- 	nfserr = nfsd_symlink(rqstp, &argp->ffh, argp->fname, argp->flen,
--						 argp->tname, argp->tlen,
-+						 argp->tname,
- 				 		 &newfh, &argp->attrs);
- 
- 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6ffaa70..7518c65 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -1504,7 +1504,7 @@ out_nfserr:
- __be32
- nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 				char *fname, int flen,
--				char *path,  int plen,
-+				char *path,
- 				struct svc_fh *resfhp,
- 				struct iattr *iap)
+-static __be32 lookup_clientid(clientid_t *clid, bool session, struct nfsd_net *nn, struct nfs4_client **clp)
++static __be32 lookup_clientid(clientid_t *clid,
++		struct nfsd4_compound_state *cstate,
++		struct nfsd_net *nn)
  {
-@@ -1513,7 +1513,7 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	int		host_err;
+ 	struct nfs4_client *found;
  
- 	err = nfserr_noent;
--	if (!flen || !plen)
-+	if (!flen || path[0] == '\0')
+-	if (STALE_CLIENTID(clid, nn))
+-		return nfserr_stale_clientid;
+-	found = find_confirmed_client(clid, session, nn);
+-	if (clp)
+-		*clp = found;
++	if (cstate->clp != NULL) {
++		found = cstate->clp;
++		if (!same_clid(&found->cl_clientid, clid))
++			return nfserr_stale_clientid;
++	} else {
++		if (STALE_CLIENTID(clid, nn))
++			return nfserr_stale_clientid;
++		/*
++		 * Usually for v4.1+ we get the client in the SEQUENCE op, so
++		 * if we don't have one cached already then we know this is for
++		 * is for v4.0 and "sessions" will be false.
++		 */
++		found = find_confirmed_client(clid, false, nn);
++		/* Cache the nfs4_client in cstate! */
++		if (found) {
++			cstate->clp = found;
++			atomic_inc(&found->cl_refcount);
++		}
++	}
+ 	return found ? nfs_ok : nfserr_expired;
+ }
+ 
+@@ -3544,9 +3560,10 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfs4_lock_state();
+ 	dprintk("process_renew(%08x/%08x): starting\n", 
+ 			clid->cl_boot, clid->cl_id);
+-	status = lookup_clientid(clid, cstate->minorversion, nn, &clp);
++	status = lookup_clientid(clid, cstate, nn);
+ 	if (status)
  		goto out;
- 	err = nfserr_exist;
- 	if (isdotent(fname, flen))
-@@ -1534,18 +1534,7 @@ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	if (IS_ERR(dnew))
- 		goto out_nfserr;
++	clp = cstate->clp;
+ 	status = nfserr_cb_path_down;
+ 	if (!list_empty(&clp->cl_delegations)
+ 			&& clp->cl_cb_state != NFSD4_CB_UP)
+@@ -3809,22 +3826,19 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 		     stateid_t *stateid, unsigned char typemask,
+ 		     struct nfs4_stid **s, struct nfsd_net *nn)
+ {
+-	struct nfs4_client *cl;
+ 	__be32 status;
+-	bool sessions = cstate->minorversion != 0;
  
--	if (unlikely(path[plen] != 0)) {
--		char *path_alloced = kmalloc(plen+1, GFP_KERNEL);
--		if (path_alloced == NULL)
--			host_err = -ENOMEM;
--		else {
--			strncpy(path_alloced, path, plen);
--			path_alloced[plen] = 0;
--			host_err = vfs_symlink(dentry->d_inode, dnew, path_alloced);
--			kfree(path_alloced);
--		}
--	} else
--		host_err = vfs_symlink(dentry->d_inode, dnew, path);
-+	host_err = vfs_symlink(dentry->d_inode, dnew, path);
- 	err = nfserrno(host_err);
- 	if (!err)
- 		err = nfserrno(commit_metadata(fhp));
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index b84aef5..20e4b66 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -85,7 +85,7 @@ __be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
- __be32		nfsd_readlink(struct svc_rqst *, struct svc_fh *,
- 				char *, int *);
- __be32		nfsd_symlink(struct svc_rqst *, struct svc_fh *,
--				char *name, int len, char *path, int plen,
-+				char *name, int len, char *path,
- 				struct svc_fh *res, struct iattr *);
- __be32		nfsd_link(struct svc_rqst *, struct svc_fh *,
- 				char *, int, struct svc_fh *);
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+ 		return nfserr_bad_stateid;
+-	status = lookup_clientid(&stateid->si_opaque.so_clid, sessions,
+-							nn, &cl);
++	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
+ 	if (status == nfserr_stale_clientid) {
+-		if (sessions)
++		if (cstate->session)
+ 			return nfserr_bad_stateid;
+ 		return nfserr_stale_stateid;
+ 	}
+ 	if (status)
+ 		return status;
+-	*s = find_stateid_by_type(cl, stateid, typemask);
++	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
+ 	if (!*s)
+ 		return nfserr_bad_stateid;
+ 	return nfs_ok;
+@@ -4674,7 +4688,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfs4_lock_state();
+ 
+ 	if (!nfsd4_has_session(cstate)) {
+-		status = lookup_clientid(&lockt->lt_clientid, false, nn, NULL);
++		status = lookup_clientid(&lockt->lt_clientid, cstate, nn);
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -4844,7 +4858,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 
+ 	nfs4_lock_state();
+ 
+-	status = lookup_clientid(clid, cstate->minorversion, nn, NULL);
++	status = lookup_clientid(clid, cstate, nn);
+ 	if (status)
+ 		goto out;
+ 
 -- 
-1.7.9.5
+1.9.3
 
