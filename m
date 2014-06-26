@@ -1,92 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:47880 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750840AbaFENS4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 09:18:56 -0400
-Received: by mail-ig0-f176.google.com with SMTP id a13so3187990igq.3
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 06:18:56 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH pynfs 02/17] 4.1 server: service RECLAIM_COMPLETE operations
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <20140605130608.GB8362@fieldses.org>
-Date: Thu, 5 Jun 2014 09:18:54 -0400
-Cc: Trond Myklebust <trondmy@gmail.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <97724584-1F1E-48AE-84C9-DB56A911E7A5@primarydata.com>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com> <1401915726-29092-3-git-send-email-dros@primarydata.com> <20140605022918.GB12044@fieldses.org> <CAABAsM60taecJryiaryhnW8FbZGo5s0r4Oz=aRFXYCBPDQoBbA@mail.gmail.com> <50CFBC92-B124-4912-9D3D-16C81476C883@primarydata.com> <20140605130608.GB8362@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:49586 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750832AbaFZTNy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:13:54 -0400
+Received: by mail-qc0-f178.google.com with SMTP id c9so3518120qcz.23
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:13:53 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 005/117] nfsd: nfsd_splice_read and nfsd_readv should return __be32
+Date: Thu, 26 Jun 2014 15:11:45 -0400
+Message-Id: <1403810017-16062-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The callers expect a __be32 return and the functions they call return
+__be32, so having these return int is just wrong. Also, nfsd_finish_read
+can be made static.
 
-On Jun 5, 2014, at 9:06 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/vfs.c | 7 ++++---
+ fs/nfsd/vfs.h | 4 ++--
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
-> On Thu, Jun 05, 2014 at 08:58:01AM -0400, Weston Andros Adamson wrote:
->> Are you saying that the pynfs server supports state recovery? This has not
->> been my experience. I’ll double check.
-> 
-> If you don't support state recovery, then I think the minimal correct
-> behavior would be to have no grace period at all: return NO_GRACE on
-> *every* reclaim operation and GRACE only on non-reclaims not preceded by
-> a global (one_fs == FALSE) RECLAIM_COMPLETE for that client.
-> 
-> All this does is catch misbehaving clients, and maybe that's not a
-> priority.  But it's easy enough to implement.
-
-Yeah, that sounds good.
-
--dros
-
-> 
-> —b.
-> 
->> -dros
->> 
->> 
->> 
->> On Jun 5, 2014, at 8:22 AM, Trond Myklebust <trondmy@gmail.com> wrote:
->> 
->>> On Wed, Jun 4, 2014 at 10:29 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>>> On Wed, Jun 04, 2014 at 05:01:50PM -0400, Weston Andros Adamson wrote:
->>>>> Just return ok!
->>>> 
->>>> Technically it should record whether or not the reclaim_complete has
->>>> happened and return a GRACE error on any non-reclaim open performed
->>>> before the reclaim_complete--but for your purposes you may not care...
->>>> 
->>> 
->>> ...and a NOGRACE error on any reclaim opens performed by that client
->>> after the reclaim_complete?
->>> 
->>>> --b.
->>>> 
->>>>> 
->>>>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->>>>> ---
->>>>> nfs4.1/nfs4server.py | 3 +++
->>>>> 1 file changed, 3 insertions(+)
->>>>> 
->>>>> diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
->>>>> index 65fb9af..3607dc0 100755
->>>>> --- a/nfs4.1/nfs4server.py
->>>>> +++ b/nfs4.1/nfs4server.py
->>>>> @@ -1809,6 +1809,9 @@ class NFS4Server(rpc.Server):
->>>>>        with find_state(env, arg.deleg_stateid, allow_0=False) as state:
->>>>>            state.delegreturn()
->>>>>        return encode_status(NFS4_OK)
->>>>> +
->>>>> +    def op_reclaim_complete(self, arg, env):
->>>>> +        return encode_status(NFS4_OK)
->>>>> 
->>>>>    def op_getdevicelist(self, arg, env): # STUB
->>>>>        check_session(env)
->>>>> --
->>>>> 1.8.5.2 (Apple Git-48)
->>>>> 
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 140c496f612c..960f9e0bb88f 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -820,7 +820,8 @@ static int nfsd_direct_splice_actor(struct pipe_inode_info *pipe,
+ 	return __splice_from_pipe(pipe, sd, nfsd_splice_actor);
+ }
+ 
+-__be32 nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
++static __be32
++nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
+ {
+ 	if (host_err >= 0) {
+ 		nfsdstats.io_read += host_err;
+@@ -831,7 +832,7 @@ __be32 nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
+ 		return nfserrno(host_err);
+ }
+ 
+-int nfsd_splice_read(struct svc_rqst *rqstp,
++__be32 nfsd_splice_read(struct svc_rqst *rqstp,
+ 		     struct file *file, loff_t offset, unsigned long *count)
+ {
+ 	struct splice_desc sd = {
+@@ -847,7 +848,7 @@ int nfsd_splice_read(struct svc_rqst *rqstp,
+ 	return nfsd_finish_read(file, count, host_err);
+ }
+ 
+-int nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
++__be32 nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
+ 		unsigned long *count)
+ {
+ 	mm_segment_t oldfs;
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 91b6ae3f658b..b84aef50f55d 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -74,9 +74,9 @@ struct raparms;
+ __be32		nfsd_get_tmp_read_open(struct svc_rqst *, struct svc_fh *,
+ 				struct file **, struct raparms **);
+ void		nfsd_put_tmp_read_open(struct file *, struct raparms *);
+-int		nfsd_splice_read(struct svc_rqst *,
++__be32		nfsd_splice_read(struct svc_rqst *,
+ 				struct file *, loff_t, unsigned long *);
+-int		nfsd_readv(struct file *, loff_t, struct kvec *, int,
++__be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
+ 				unsigned long *);
+ __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
+ 				loff_t, struct kvec *, int, unsigned long *);
+-- 
+1.9.3
 
