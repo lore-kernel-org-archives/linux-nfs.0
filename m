@@ -1,186 +1,223 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f54.google.com ([209.85.192.54]:58244 "EHLO
-	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757913AbaFSOvO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:14 -0400
-Received: by mail-qg0-f54.google.com with SMTP id q107so2231156qgd.27
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:13 -0700 (PDT)
+Received: from mail-qc0-f177.google.com ([209.85.216.177]:47850 "EHLO
+	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751892AbaFZTVy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:54 -0400
+Received: by mail-qc0-f177.google.com with SMTP id r5so3550522qcx.36
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:54 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 011/104] NFSd: Lock owners are not per open stateid
-Date: Thu, 19 Jun 2014 10:49:17 -0400
-Message-Id: <1403189450-18729-12-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v2 101/117] nfsd: add more granular locking to forget_openowners fault injector
+Date: Thu, 26 Jun 2014 15:21:09 -0400
+Message-Id: <1403810485-16497-18-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+...instead of relying on the client_mutex.
 
-In the NFSv4 spec, lock stateids are per-file objects. Lockowners are not.
-This patch replaces the current list of lock owners in the open stateids
-with a list of lock stateids.
+Also, fix up the printk output that is generated when the file is read.
+It currently says that it's reporting the number of open files, but
+it's actually reporting the number of openowners.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 48 +++++++++++++++++++++++++++++++-----------------
- fs/nfsd/state.h     |  3 +--
- 2 files changed, 32 insertions(+), 19 deletions(-)
+ fs/nfsd/fault_inject.c |   8 ++--
+ fs/nfsd/nfs4state.c    | 122 +++++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/state.h        |   7 ++-
+ 3 files changed, 122 insertions(+), 15 deletions(-)
 
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index a444d821d2a5..d4472cd19807 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -146,11 +146,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	},
+ 	{
+ 		.file     = "forget_openowners",
+-		.get	  = nfsd_inject_get,
+-		.set_val  = nfsd_inject_set,
+-		.set_clnt = nfsd_inject_set_client,
+-		.forget   = nfsd_forget_client_openowners,
+-		.print    = nfsd_print_client_openowners,
++		.get	  = nfsd_inject_print_openowners,
++		.set_val  = nfsd_inject_forget_openowners,
++		.set_clnt = nfsd_inject_forget_client_openowners,
+ 	},
+ 	{
+ 		.file     = "forget_delegations",
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cf940210cc58..8b0aa9ea343d 100644
+index ab5858e272b8..123b7d1eda1c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -739,10 +739,11 @@ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
+@@ -5936,30 +5936,136 @@ nfsd_inject_forget_locks(struct nfsd_fault_inject_op *op, u64 max)
+ 	return count;
  }
  
--static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+-static u64 nfsd_foreach_client_open(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_openowner *))
++static u64
++nfsd_foreach_client_openowner(struct nfs4_client *clp, u64 max,
++			      struct list_head *collect,
++			      void (*func)(struct nfs4_openowner *))
  {
- 	struct file *file;
- 
-+	list_del(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
- 	file = find_any_file(stp->st_file);
-@@ -759,12 +760,11 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
- 	struct nfs4_ol_stateid *stp;
- 
- 	list_del(&lo->lo_owner.so_strhash);
--	list_del(&lo->lo_perstateid);
- 	list_del(&lo->lo_owner_ino_hash);
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		release_lock_stateid(stp);
-+		__release_lock_stateid(stp);
- 	}
- }
- 
-@@ -780,22 +780,36 @@ static void release_lockowner(struct nfs4_lockowner *lo)
- 	nfs4_free_lockowner(lo);
- }
- 
--static void
--release_stateid_lockowners(struct nfs4_ol_stateid *open_stp)
-+static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
-+{
-+	if (list_empty(&lo->lo_owner.so_stateids))
-+		release_lockowner(lo);
-+}
-+
-+static void release_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_lockowner *lo;
- 
--	while (!list_empty(&open_stp->st_lockowners)) {
--		lo = list_entry(open_stp->st_lockowners.next,
--				struct nfs4_lockowner, lo_perstateid);
--		release_lockowner(lo);
-+	lo = lockowner(stp->st_stateowner);
-+	__release_lock_stateid(stp);
-+	release_lockowner_if_empty(lo);
-+}
-+
-+static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
-+{
-+	struct nfs4_ol_stateid *stp;
-+
-+	while (!list_empty(&open_stp->st_locks)) {
-+		stp = list_entry(open_stp->st_locks.next,
-+				struct nfs4_ol_stateid, st_locks);
-+		release_lock_stateid(stp);
- 	}
- }
- 
- static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
- {
- 	unhash_generic_stateid(stp);
--	release_stateid_lockowners(stp);
-+	release_open_stateid_locks(stp);
- 	close_generic_stateid(stp);
- }
- 
-@@ -2771,7 +2785,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	struct nfs4_openowner *oo = open->op_openowner;
- 
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
--	INIT_LIST_HEAD(&stp->st_lockowners);
-+	INIT_LIST_HEAD(&stp->st_locks);
- 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	stp->st_stateowner = &oo->oo_owner;
- 	get_nfs4_file(fp);
-@@ -4447,7 +4461,6 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
- 
- 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
- 	list_add(&lo->lo_owner_ino_hash, &nn->lockowner_ino_hashtbl[inohash]);
--	list_add(&lo->lo_perstateid, &open_stp->st_lockowners);
- }
- 
- /*
-@@ -4491,6 +4504,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
-+	list_add(&stp->st_locks, &open_stp->st_locks);
- 	spin_lock(&fp->fi_lock);
- 	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	spin_unlock(&fp->fi_lock);
-@@ -5081,18 +5095,18 @@ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
- 	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
- }
- 
--static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_lockowner *))
-+static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_ol_stateid *))
- {
- 	struct nfs4_openowner *oop;
--	struct nfs4_lockowner *lop, *lo_next;
- 	struct nfs4_ol_stateid *stp, *st_next;
-+	struct nfs4_ol_stateid *lst, *lst_next;
+ 	struct nfs4_openowner *oop, *next;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
  	u64 count = 0;
  
- 	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
- 		list_for_each_entry_safe(stp, st_next, &oop->oo_owner.so_stateids, st_perstateowner) {
--			list_for_each_entry_safe(lop, lo_next, &stp->st_lockowners, lo_perstateid) {
-+			list_for_each_entry_safe(lst, lst_next, &stp->st_locks, st_locks) {
- 				if (func)
--					func(lop);
-+					func(lst);
- 				if (++count == max)
- 					return count;
- 			}
-@@ -5104,7 +5118,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*fun
++	lockdep_assert_held(&nn->client_lock);
++
++	spin_lock(&clp->cl_lock);
+ 	list_for_each_entry_safe(oop, next, &clp->cl_openowners, oo_perclient) {
+-		if (func)
++		if (func) {
+ 			func(oop);
+-		if (++count == max)
++			if (collect) {
++				atomic_inc(&clp->cl_refcount);
++				list_add(&oop->oo_perclient, collect);
++			}
++		}
++		++count;
++		/*
++		 * Despite the fact that these functions deal with
++		 * 64-bit integers for "count", we must ensure that
++		 * it doesn't blow up the clp->cl_refcount. Throw a
++		 * warning if we start to approach INT_MAX here.
++		 */
++		WARN_ON_ONCE(count == (INT_MAX / 2));
++		if (count == max)
+ 			break;
+ 	}
++	spin_unlock(&clp->cl_lock);
++
++	return count;
++}
  
- u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
- {
--	return nfsd_foreach_client_lock(clp, max, release_lockowner);
-+	return nfsd_foreach_client_lock(clp, max, release_lock_stateid);
++static u64
++nfsd_print_client_openowners(struct nfs4_client *clp)
++{
++	u64 count = nfsd_foreach_client_openowner(clp, 0, NULL, NULL);
++
++	nfsd_print_count(clp, count, "openowners");
+ 	return count;
  }
  
- u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
+-u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
++static u64
++nfsd_collect_client_openowners(struct nfs4_client *clp,
++			       struct list_head *collect, u64 max)
+ {
+-	return nfsd_foreach_client_open(clp, max, release_openowner);
++	return nfsd_foreach_client_openowner(clp, max, collect,
++						unhash_openowner_locked);
+ }
+ 
+-u64 nfsd_print_client_openowners(struct nfs4_client *clp, u64 max)
++u64
++nfsd_inject_print_openowners(struct nfsd_fault_inject_op *op)
+ {
+-	u64 count = nfsd_foreach_client_open(clp, max, NULL);
+-	nfsd_print_count(clp, count, "open files");
++	struct nfs4_client *clp;
++	u64 count = 0;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
++
++	if (!nfsd_netns_ready(nn))
++		return 0;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru)
++		count += nfsd_print_client_openowners(clp);
++	spin_unlock(&nn->client_lock);
++
++	return count;
++}
++
++static void
++nfsd_reap_openowners(struct list_head *reaplist)
++{
++	struct nfs4_client *clp;
++	struct nfs4_openowner *oop, *next;
++
++	list_for_each_entry_safe(oop, next, reaplist, oo_perclient) {
++		list_del_init(&oop->oo_perclient);
++		clp = oop->oo_owner.so_client;
++		release_openowner(oop);
++		put_client(clp);
++	}
++}
++
++u64
++nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *op,
++				struct sockaddr_storage *addr, size_t addr_size)
++{
++	unsigned int count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp)
++		count = nfsd_collect_client_openowners(clp, &reaplist, 0);
++	spin_unlock(&nn->client_lock);
++	nfsd_reap_openowners(&reaplist);
++	return count;
++}
++
++u64
++nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *op, u64 max)
++{
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		count += nfsd_collect_client_openowners(clp, &reaplist,
++							max - count);
++		if (max != 0 && count >= max)
++			break;
++	}
++	spin_unlock(&nn->client_lock);
++	nfsd_reap_openowners(&reaplist);
+ 	return count;
+ }
+ 
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index be5ab8151b0c..c28e1ac87549 100644
+index 12ffe33662f1..9b35e84e8d81 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
-@@ -366,7 +366,6 @@ struct nfs4_openowner {
- struct nfs4_lockowner {
- 	struct nfs4_stateowner	lo_owner; /* must be first element */
- 	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
--	struct list_head        lo_perstateid;
- 	struct list_head	lo_list; /* for temporary uses */
- };
+@@ -483,11 +483,14 @@ u64 nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *,
+ 				    struct sockaddr_storage *, size_t);
+ u64 nfsd_inject_forget_locks(struct nfsd_fault_inject_op *, u64);
  
-@@ -410,7 +409,7 @@ struct nfs4_ol_stateid {
- 	struct nfs4_stid    st_stid; /* must be first field */
- 	struct list_head              st_perfile;
- 	struct list_head              st_perstateowner;
--	struct list_head              st_lockowners;
-+	struct list_head              st_locks;
- 	struct nfs4_stateowner      * st_stateowner;
- 	struct nfs4_file            * st_file;
- 	unsigned long                 st_access_bmap;
+-u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
++u64 nfsd_inject_print_openowners(struct nfsd_fault_inject_op *);
++u64 nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *,
++					 struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *, u64);
++
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+ u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ 
+-u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+ static inline int nfsd_fault_inject_init(void) { return 0; }
 -- 
 1.9.3
 
