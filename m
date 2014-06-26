@@ -1,91 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailp.voltaire.com ([193.47.165.129]:50965 "EHLO mellanox.co.il"
-	rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756754AbaFSORW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 19 Jun 2014 10:17:22 -0400
-From: Yan Burman <yanb@mellanox.com>
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Yan Burman <yanb@mellanox.com>
-Subject: [PATCH V2] xprtrdma: Fix DMA-API-DEBUG warning by checking dma_map result
-Date: Thu, 19 Jun 2014 16:06:30 +0300
-Message-Id: <1403183190-21607-1-git-send-email-yanb@mellanox.com>
+Received: from mail-qg0-f45.google.com ([209.85.192.45]:34912 "EHLO
+	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751511AbaFZTO5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:57 -0400
+Received: by mail-qg0-f45.google.com with SMTP id 63so3470772qgz.32
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:56 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 052/117] nfsd: Add reference counting to lock stateids
+Date: Thu, 26 Jun 2014 15:12:32 -0400
+Message-Id: <1403810017-16062-53-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix the following warning when DMA-API debug is enabled by checking ib_dma_map_single result:
-[ 1455.345548] ------------[ cut here ]------------
-[ 1455.346863] WARNING: CPU: 3 PID: 3929 at /home/yanb/kernel/net-next/lib/dma-debug.c:1140 check_unmap+0x4e5/0x990()
-[ 1455.349350] mlx4_core 0000:00:07.0: DMA-API: device driver failed to check map error[device address=0x000000007c9f2090] [size=2656 bytes] [mapped as single]
-[ 1455.349350] Modules linked in: xprtrdma netconsole configfs nfsv3 nfs_acl ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm autofs4 auth_rpcgss oid_registry nfsv4 nfs fscache lockd sunrpc dm_mirror dm_region_hash dm_log microcode pcspkr mlx4_ib ib_sa ib_mad ib_core ib_addr mlx4_en ipv6 ptp pps_core vxlan mlx4_core virtio_balloon cirrus ttm drm_kms_helper drm sysimgblt sysfillrect syscopyarea i2c_piix4 i2c_core button ext3 jbd virtio_blk virtio_net virtio_pci virtio_ring virtio uhci_hcd ata_generic ata_piix libata
-[ 1455.349350] CPU: 3 PID: 3929 Comm: mount.nfs Not tainted 3.15.0-rc1-dbg+ #13
-[ 1455.349350] Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2007
-[ 1455.349350]  0000000000000474 ffff880069dcf628 ffffffff8151c341 ffffffff817b69d8
-[ 1455.349350]  ffff880069dcf678 ffff880069dcf668 ffffffff8105b5fc 0000000069dcf658
-[ 1455.349350]  ffff880069dcf778 ffff88007b0c9f00 ffffffff8255ec40 0000000000000a60
-[ 1455.349350] Call Trace:
-[ 1455.349350]  [<ffffffff8151c341>] dump_stack+0x52/0x81
-[ 1455.349350]  [<ffffffff8105b5fc>] warn_slowpath_common+0x8c/0xc0
-[ 1455.349350]  [<ffffffff8105b6e6>] warn_slowpath_fmt+0x46/0x50
-[ 1455.349350]  [<ffffffff812e6305>] check_unmap+0x4e5/0x990
-[ 1455.349350]  [<ffffffff81521fb0>] ? _raw_spin_unlock_irq+0x30/0x60
-[ 1455.349350]  [<ffffffff812e6a0a>] debug_dma_unmap_page+0x5a/0x60
-[ 1455.349350]  [<ffffffffa0389583>] rpcrdma_deregister_internal+0xb3/0xd0 [xprtrdma]
-[ 1455.349350]  [<ffffffffa038a639>] rpcrdma_buffer_destroy+0x69/0x170 [xprtrdma]
-[ 1455.349350]  [<ffffffffa03872ff>] xprt_rdma_destroy+0x3f/0xb0 [xprtrdma]
-[ 1455.349350]  [<ffffffffa04a95ff>] xprt_destroy+0x6f/0x80 [sunrpc]
-[ 1455.349350]  [<ffffffffa04a9625>] xprt_put+0x15/0x20 [sunrpc]
-[ 1455.349350]  [<ffffffffa04a899a>] rpc_free_client+0x8a/0xe0 [sunrpc]
-[ 1455.349350]  [<ffffffffa04a8a58>] rpc_release_client+0x68/0xa0 [sunrpc]
-[ 1455.349350]  [<ffffffffa04a9060>] rpc_shutdown_client+0xb0/0xc0 [sunrpc]
-[ 1455.349350]  [<ffffffffa04a8f5d>] ? rpc_ping+0x5d/0x70 [sunrpc]
-[ 1455.349350]  [<ffffffffa04a91ab>] rpc_create_xprt+0xbb/0xd0 [sunrpc]
-[ 1455.349350]  [<ffffffffa04a9273>] rpc_create+0xb3/0x160 [sunrpc]
-[ 1455.349350]  [<ffffffff81129749>] ? __probe_kernel_read+0x69/0xb0
-[ 1455.349350]  [<ffffffffa053851c>] nfs_create_rpc_client+0xdc/0x100 [nfs]
-[ 1455.349350]  [<ffffffffa0538cfa>] nfs_init_client+0x3a/0x90 [nfs]
-[ 1455.349350]  [<ffffffffa05391c8>] nfs_get_client+0x478/0x5b0 [nfs]
-[ 1455.349350]  [<ffffffffa0538e50>] ? nfs_get_client+0x100/0x5b0 [nfs]
-[ 1455.349350]  [<ffffffff81172c6d>] ? kmem_cache_alloc_trace+0x24d/0x260
-[ 1455.349350]  [<ffffffffa05393f3>] nfs_create_server+0xf3/0x4c0 [nfs]
-[ 1455.349350]  [<ffffffffa0545ff0>] ? nfs_request_mount+0xf0/0x1a0 [nfs]
-[ 1455.349350]  [<ffffffffa031c0c3>] nfs3_create_server+0x13/0x30 [nfsv3]
-[ 1455.349350]  [<ffffffffa0546293>] nfs_try_mount+0x1f3/0x230 [nfs]
-[ 1455.349350]  [<ffffffff8108ea21>] ? get_parent_ip+0x11/0x50
-[ 1455.349350]  [<ffffffff812d6343>] ? __this_cpu_preempt_check+0x13/0x20
-[ 1455.349350]  [<ffffffff810d632b>] ? try_module_get+0x6b/0x190
-[ 1455.349350]  [<ffffffffa05449f7>] nfs_fs_mount+0x187/0x9d0 [nfs]
-[ 1455.349350]  [<ffffffffa0545940>] ? nfs_clone_super+0x140/0x140 [nfs]
-[ 1455.349350]  [<ffffffffa0543b20>] ? nfs_auth_info_match+0x40/0x40 [nfs]
-[ 1455.349350]  [<ffffffff8117e360>] mount_fs+0x20/0xe0
-[ 1455.349350]  [<ffffffff811a1c16>] vfs_kern_mount+0x76/0x160
-[ 1455.349350]  [<ffffffff811a29a8>] do_mount+0x428/0xae0
-[ 1455.349350]  [<ffffffff811a30f0>] SyS_mount+0x90/0xe0
-[ 1455.349350]  [<ffffffff8152af52>] system_call_fastpath+0x16/0x1b
-[ 1455.349350] ---[ end trace f1f31572972e211d ]---
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Yan Burman <yanb@mellanox.com>
+Ensure that nfsd4_lock() references the lock stateid while it is
+manipulating it. Not currently necessary, but will be once the
+client_mutex is removed.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
+ fs/nfsd/nfs4state.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
-Changes from V1:
-Removed curly braces
-
- net/sunrpc/xprtrdma/verbs.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 13dbd1c..176dafc 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1388,6 +1388,9 @@ rpcrdma_register_internal(struct rpcrdma_ia *ia, void *va, int len,
- 	 */
- 	iov->addr = ib_dma_map_single(ia->ri_id->device,
- 			va, len, DMA_BIDIRECTIONAL);
-+	if (ib_dma_mapping_error(ia->ri_id->device, iov->addr))
-+		return -ENOMEM;
-+
- 	iov->length = len;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 42fea991ae0b..29b31a6d749b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4704,6 +4704,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
  
- 	if (ia->ri_have_dma_lkey) {
+ 	lockdep_assert_held(&clp->cl_lock);
+ 
++	atomic_inc(&stp->st_stid.sc_count);
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+@@ -4728,8 +4729,10 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
+ 	lockdep_assert_held(&clp->cl_lock);
+ 
+ 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
+-		if (lst->st_stid.sc_file == fp)
++		if (lst->st_stid.sc_file == fp) {
++			atomic_inc(&lst->st_stid.sc_count);
+ 			return lst;
++		}
+ 	}
+ 	return NULL;
+ }
+@@ -4824,7 +4827,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	struct nfs4_openowner *open_sop = NULL;
+ 	struct nfs4_lockowner *lock_sop = NULL;
+-	struct nfs4_ol_stateid *lock_stp;
++	struct nfs4_ol_stateid *lock_stp = NULL;
+ 	struct file *filp = NULL;
+ 	struct file_lock *file_lock = NULL;
+ 	struct file_lock *conflock = NULL;
+@@ -4878,11 +4881,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			goto out;
+ 		status = lookup_or_create_lock_state(cstate, open_stp, lock,
+ 							&lock_stp, &new_state);
+-	} else
++	} else {
+ 		status = nfs4_preprocess_seqid_op(cstate,
+ 				       lock->lk_old_lock_seqid,
+ 				       &lock->lk_old_lock_stateid,
+ 				       NFS4_LOCK_STID, &lock_stp, nn);
++		/* FIXME: move into nfs4_preprocess_seqid_op */
++		if (!status)
++			atomic_inc(&lock_stp->st_stid.sc_count);
++	}
+ 	if (status)
+ 		goto out;
+ 	lock_sop = lockowner(lock_stp->st_stateowner);
+@@ -4975,6 +4982,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out:
+ 	if (filp)
+ 		fput(filp);
++	if (lock_stp)
++		put_generic_stateid(lock_stp);
+ 	if (status && new_state)
+ 		release_lockowner_if_empty(lock_sop);
+ 	nfsd4_bump_seqid(cstate, status);
 -- 
-1.7.1
+1.9.3
 
