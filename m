@@ -1,158 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:37473 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752067AbaFDVC0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:02:26 -0400
-Received: by mail-ie0-f176.google.com with SMTP id rl12so69154iec.21
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Jun 2014 14:02:25 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH pynfs 09/17] dataserver: make generic interface to ops
-Date: Wed,  4 Jun 2014 17:01:57 -0400
-Message-Id: <1401915726-29092-10-git-send-email-dros@primarydata.com>
-In-Reply-To: <1401915726-29092-1-git-send-email-dros@primarydata.com>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com>
+Received: from mail-pb0-f54.google.com ([209.85.160.54]:63218 "EHLO
+	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757173AbaFZAGY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 20:06:24 -0400
+Received: by mail-pb0-f54.google.com with SMTP id un15so2335872pbc.41
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Jun 2014 17:06:24 -0700 (PDT)
+Message-ID: <53AB63D3.90509@gmail.com>
+Date: Thu, 26 Jun 2014 08:05:39 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: Re: [PATCH 3/3 v3] ACL: Add some test cases for nfsv4 acl
+References: <539AD7DD.5060108@gmail.com> <20140618145626.GC17790@fieldses.org>
+In-Reply-To: <20140618145626.GC17790@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hide the execute method to make DataServer objects more generic.
+On 6/18/2014 22:56, J. Bruce Fields wrote:
+> On Fri, Jun 13, 2014 at 06:52:13PM +0800, Kinglong Mee wrote:
+>> v3, modify for exist st_acl.py
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  nfs4.0/servertests/st_acl.py | 337 +++++++++++++++++++++++++++++++++++++++++--
+>>  1 file changed, 326 insertions(+), 11 deletions(-)
+... snip ...
+>> +def doSetACLEnv(t, env, type = NF4REG):
+>> +    c = env.c1
+>> +    path = c.homedir + [t.code]
+>> +    res = c.create_obj(path, attrs={FATTR4_MODE:0777})
+>> +    check(res)
+>> +
+>> +    c1 = env.c2
+> 
+> That's pretty confusing variable naming.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+A new patch fixing the variable is added below.
+Please have a check, thanks.
+
+> 
+>> +    c1.init_connection()
+>> +
+>> +    path += [t.code]
+>> +    attrs = {FATTR4_MODE: 0777}
+>> +
+>> +    if type == NF4REG:
+>> +        fh, stateid = c1.create_confirm(t.code, path, attrs=attrs,
+>> +                                        deny=OPEN4_SHARE_DENY_NONE)
+> 
+> Also, this creates a minor cleanup annoyance: a later run of pynfs will
+> attempt to reuse the already-existing tree and if it's not running as
+> root tries to make everything writable (see nfs4.0/nfs4lib.py:clean_dir)
+> so pynfs gives up when a setattr of mode fails (because this file is
+> owned by someone else).
+
+Yes, that's right.
+I will check the problem with running as a non-root user,
+and try to find the resolve.
+
+> 
+> Honestly I don't really understand how pynfs is meant to work here or
+> who's fault this is, but I'm setting this patch aside for now.
+> 
+
+As you said, I always run it as a root-user, so pynfs works correctly.
+
+thanks,
+Kinglong Mee
+
+>From b340bb95ab063d19f421fb987114ef05c395ee64 Mon Sep 17 00:00:00 2001
+From: Kinglong Mee <kinglongmee@gmail.com>
+Date: Thu, 26 Jun 2014 15:57:11 +0800
+Subject: [PATCH] nfs4.0/acl: meaningful variable naming for session
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- nfs4.1/dataserver.py | 41 ++++++++++++++++++++++++++++++++++-------
- nfs4.1/fs.py         | 24 ++++--------------------
- 2 files changed, 38 insertions(+), 27 deletions(-)
+ nfs4.0/servertests/st_acl.py | 21 ++++++++++++---------
+ 1 file changed, 12 insertions(+), 9 deletions(-)
 
-diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
-index 9b0462d..5a3b851 100644
---- a/nfs4.1/dataserver.py
-+++ b/nfs4.1/dataserver.py
-@@ -63,7 +63,7 @@ class DataServer41(object):
-     def disconnect(self):
-         pass
+diff --git a/nfs4.0/servertests/st_acl.py b/nfs4.0/servertests/st_acl.py
+index 5c7146a..7869189 100644
+--- a/nfs4.0/servertests/st_acl.py
++++ b/nfs4.0/servertests/st_acl.py
+@@ -130,25 +130,28 @@ def doCheckACL(t, c, file, acl):
+ #    print printableacl(attrs[FATTR4_ACL])
  
--    def execute(self, ops, exceptions=[], delay=5, maxretries=3):
-+    def _execute(self, ops, exceptions=[], delay=5, maxretries=3):
-         """ execute the NFS call
-         If an error code is specified in the exceptions it means that the
-         caller wants to handle the error himself
-@@ -117,16 +117,16 @@ class DataServer41(object):
-         kind = createtype4(NF4DIR)
-         for comp in self.path:
-             existing_path.append(comp)
--            res = self.execute(nfs4lib.use_obj(existing_path),
-+            res = self._execute(nfs4lib.use_obj(existing_path),
-                                exceptions=[NFS4ERR_NOENT])
-             if res.status == NFS4ERR_NOENT:
-                 cr_ops = nfs4lib.use_obj(existing_path[:-1]) + \
-                     [op.create(kind, comp, attrs)]
--                self.execute(cr_ops)
--        res = self.execute(nfs4lib.use_obj(self.path) + [op.getfh()])
-+                self._execute(cr_ops)
-+        res = self._execute(nfs4lib.use_obj(self.path) + [op.getfh()])
-         self.path_fh = res.resarray[-1].object
-         need = ACCESS4_READ | ACCESS4_LOOKUP | ACCESS4_MODIFY | ACCESS4_EXTEND
--        res = self.execute(nfs4lib.use_obj(self.path_fh) + [op.access(need)])
-+        res = self._execute(nfs4lib.use_obj(self.path_fh) + [op.access(need)])
-         if res.resarray[-1].access != need:
-             raise RuntimeError
-         # XXX clean DS directory
-@@ -146,7 +146,7 @@ class DataServer41(object):
-             open_op = op.open(seqid, access, deny,
-                               open_owner4(self.sess.client.clientid, owner),
-                               openflag, open_claim4(CLAIM_NULL, name))
--            res = self.execute(nfs4lib.use_obj(self.path_fh) + [open_op, op.getfh()], exceptions=[NFS4ERR_EXIST])
-+            res = self._execute(nfs4lib.use_obj(self.path_fh) + [open_op, op.getfh()], exceptions=[NFS4ERR_EXIST])
-             if res.status == NFS4_OK:
-                  ds_fh = res.resarray[-1].opgetfh.resok4.object
-                  ds_openstateid = stateid4(0, res.resarray[-2].stateid.other)
-@@ -162,10 +162,37 @@ class DataServer41(object):
-         seqid=0 #FIXME: seqid must be !=0
-         fh, stateid = self.filehandles[mds_fh]
-         ops = [op.putfh(fh)] + [op.close(seqid, stateid)]
--        res = self.execute(ops)
-+        res = self._execute(ops)
-         # ignoring return
-         del self.filehandles[mds_fh]
+ def doSetACLEnv(t, env, type = NF4REG):
+-    c = env.c1
+-    path = c.homedir + [t.code]
+-    res = c.create_obj(path, attrs={FATTR4_MODE:0777})
++    """ Create a directory with 0777 as top dir, and create a directory
++        or a regualr file for testing by other user under the above dir.
++    """
++    cdir = env.c1
++    path = cdir.homedir + [t.code]
++    res = cdir.create_obj(path, attrs={FATTR4_MODE:0777})
+     check(res)
  
-+    def read(self, fh, pos, count):
-+        ops = [op.putfh(fh),
-+               op.read(nfs4lib.state00, pos, count)]
-+        # There are all sorts of error handling issues here
-+        res = self._execute(ops)
-+        data = res.resarray[-1].data
-+        return data
-+
-+    def write(self, fh, pos, data):
-+        ops = [op.putfh(fh),
-+               op.write(nfs4lib.state00, pos, FILE_SYNC4, data)]
-+        # There are all sorts of error handling issues here
-+        res = self._execute(ops)
-+
-+    def truncate(self, fh, size):
-+        ops = [op.putfh(fh),
-+               op.setattr(nfs4lib.state00, {FATTR4_SIZE: size})]
-+        res = self._execute(ops)
-+
-+    def get_size(self, fh):
-+        ops = [op.putfh(fh),
-+               op.getattr(1L << FATTR4_SIZE)]
-+        res = self._execute(ops)
-+        attrdict = res.resarray[-1].obj_attributes
-+        return attrdict.get(FATTR4_SIZE, 0)
-+
-+
- class DSDevice(object):
-     def __init__(self, mdsds):
-         self.list = [] # list of DataServer instances
-diff --git a/nfs4.1/fs.py b/nfs4.1/fs.py
-index 6ef283b..8fc49ef 100644
---- a/nfs4.1/fs.py
-+++ b/nfs4.1/fs.py
-@@ -1567,12 +1567,7 @@ class FilelayoutVolWrapper(object):
-         self._pos = 0
+-    c1 = env.c2
+-    c1.init_connection()
++    ctest = env.c2
++    ctest.init_connection()
  
-     def read(self, count):
--        # STUB stateid0 is illegal to a ds
--        ops = [op.putfh(self._fh),
--               op.read(nfs4lib.state00, self._pos, count)]
--        # There are all sorts of error handling issues here
--        res = self._ds.execute(ops)
--        data = res.resarray[-1].data
-+        data = self._ds.read(self._fh, self._pos, count)
-         self._pos += len(data)
-         return data
+     path += [t.code]
+     attrs = {FATTR4_MODE: 0777}
  
-@@ -1580,25 +1575,14 @@ class FilelayoutVolWrapper(object):
-         self._pos = offset
+     if type == NF4REG:
+-        fh, stateid = c1.create_confirm(t.code, path, attrs=attrs,
++        fh, stateid = ctest.create_confirm(t.code, path, attrs=attrs,
+                                         deny=OPEN4_SHARE_DENY_NONE)
+-        return (c1, path, fh, stateid)
++        return (ctest, path, fh, stateid)
+     else:
+-        res = c1.create_obj(path, attrs=attrs)
++        res = ctest.create_obj(path, attrs=attrs)
+         check(res)
+-        return (c1, path)
++        return (ctest, path)
  
-     def write(self, data):
--        ops = [op.putfh(self._fh),
--               op.write(nfs4lib.state00, self._pos, FILE_SYNC4, data)]
--        # There are all sorts of error handling issues here
--        res = self._ds.execute(ops)
-+        self._ds.write(self._fh, self._pos, data)
-         self._pos += len(data)
--        return
- 
-     def truncate(self, size):
--        ops = [op.putfh(self._fh),
--               op.setattr(nfs4lib.state00, {FATTR4_SIZE: size})]
--        res = self._ds.execute(ops)
--        return
-+        self._ds.truncate(self._fh, size)
- 
-     def get_size(self):
--        ops = [op.putfh(self._fh),
--               op.getattr(1L << FATTR4_SIZE)]
--        res = self._ds.execute(ops)
--        attrdict = res.resarray[-1].obj_attributes
--        return attrdict.get(FATTR4_SIZE, 0)
-+        return self._ds.get_size(self._fh)
- 
- ################################################
- 
+ def testWriteFileWithoutACL(t, env):
+     """ Check write file without write ACL
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
