@@ -1,129 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:53908 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757917AbaFSOwW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:22 -0400
-Received: by mail-qa0-f45.google.com with SMTP id v10so2014726qac.18
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:22 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 058/104] NFSd: Cache the client that was looked up in lookup_clientid()
-Date: Thu, 19 Jun 2014 10:50:04 -0400
-Message-Id: <1403189450-18729-59-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:32859 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932097AbaFZNX4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 09:23:56 -0400
+Date: Thu, 26 Jun 2014 14:23:52 +0100
+From: Luis Henriques <luis.henriques@canonical.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Jiri Slaby <jslaby@suse.cz>, stable@vger.kernel.org,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org,
+        Tomas Kasparek <kasparek@fit.vutbr.cz>
+Subject: Re: [stable PATCH] nfsd: don't try to reuse an expired DRC entry off
+ the list
+Message-ID: <20140626132352.GC15901@hercules>
+References: <1403290612-15341-1-git-send-email-jlayton@primarydata.com>
+ <53AACF88.5000006@suse.cz>
+ <20140625093632.0d7b58ac@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20140625093632.0d7b58ac@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Wed, Jun 25, 2014 at 09:36:32AM -0400, Jeff Layton wrote:
+> On Wed, 25 Jun 2014 15:32:56 +0200
+> Jiri Slaby <jslaby@suse.cz> wrote:
+> 
+> > On 06/20/2014 08:56 PM, Jeff Layton wrote:
+> > > From: Jeff Layton <jlayton@redhat.com>
+> > > 
+> > > This is commit a0ef5e19684f0447da9ff0654a12019c484f57ca in mainline.
+> > > 
+> > > While the commit message below doesn't lay this out, we've subsequently
+> > > found that there are some cases where an entry that's still in use can
+> > > be freed prematurely if a particular operation takes a *very* long time
+> > > (on the order of minutes) and/or the server is very busy and doesn't
+> > > have a lot of memory dedicated to the DRC. This patch eliminates that
+> > > possibility, so it's actually more than just a cleanup.
+> > > 
+> > > The regression crept in in v3.9, and this patch went into mainline in
+> > > v3.14. Please apply this to any stable kernel between those two
+> > > mainline releases.
+> > 
+> > Now applied to 3.12. Thanks.
+> > 
+> > 
+> 
+> Thank you! It also turns out that we're going to want to pull
+> 1b19453d1c6abcfa7c312ba6c9f11a277568fc94 from mainline into stable
+> kernels as well. There's one more possibility for an entry to be freed
+> while still in use that that patch will fix.
+> 
+> I'll resend that to stable@vger later today...
+> 
+> Thanks!
+> -- 
+> Jeff Layton <jlayton@primarydata.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe stable" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-We want to use the nfsd4_compound_state to cache the nfs4_client
-in order to optimise away extra lookups of the clid.
+Thanks, I'll queue both patches for the 3.11 kernel.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 44 +++++++++++++++++++++++++++++---------------
- 1 file changed, 29 insertions(+), 15 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7034db2d00b3..428944aef83f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3814,15 +3814,31 @@ void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
- 		put_generic_stateid(open->op_stp);
- }
- 
--static __be32 lookup_clientid(clientid_t *clid, bool session, struct nfsd_net *nn, struct nfs4_client **clp)
-+static __be32 lookup_clientid(clientid_t *clid,
-+		struct nfsd4_compound_state *cstate,
-+		struct nfsd_net *nn)
- {
- 	struct nfs4_client *found;
- 
--	if (STALE_CLIENTID(clid, nn))
--		return nfserr_stale_clientid;
--	found = find_confirmed_client(clid, session, nn);
--	if (clp)
--		*clp = found;
-+	if (cstate->clp != NULL) {
-+		found = cstate->clp;
-+		if (!same_clid(&found->cl_clientid, clid))
-+			return nfserr_stale_clientid;
-+	} else {
-+		if (STALE_CLIENTID(clid, nn))
-+			return nfserr_stale_clientid;
-+		/*
-+		 * Usually for v4.1+ we get the client in the SEQUENCE op, so
-+		 * if we don't have one cached already then we know this is for
-+		 * is for v4.0 and "sessions" will be false.
-+		 */
-+		found = find_confirmed_client(clid, false, nn);
-+		/* Cache the nfs4_client in cstate! */
-+		if (found) {
-+			cstate->clp = found;
-+			atomic_inc(&found->cl_refcount);
-+		}
-+	}
- 	return found ? nfs_ok : nfserr_expired;
- }
- 
-@@ -3837,9 +3853,10 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
- 	dprintk("process_renew(%08x/%08x): starting\n", 
- 			clid->cl_boot, clid->cl_id);
--	status = lookup_clientid(clid, cstate->minorversion, nn, &clp);
-+	status = lookup_clientid(clid, cstate, nn);
- 	if (status)
- 		goto out;
-+	clp = cstate->clp;
- 	status = nfserr_cb_path_down;
- 	if (!list_empty(&clp->cl_delegations)
- 			&& clp->cl_cb_state != NFSD4_CB_UP)
-@@ -4111,22 +4128,19 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 		     stateid_t *stateid, unsigned char typemask,
- 		     struct nfs4_stid **s, struct nfsd_net *nn)
- {
--	struct nfs4_client *cl;
- 	__be32 status;
--	bool sessions = cstate->minorversion != 0;
- 
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
- 		return nfserr_bad_stateid;
--	status = lookup_clientid(&stateid->si_opaque.so_clid, sessions,
--							nn, &cl);
-+	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
- 	if (status == nfserr_stale_clientid) {
--		if (sessions)
-+		if (cstate->session)
- 			return nfserr_bad_stateid;
- 		return nfserr_stale_stateid;
- 	}
- 	if (status)
- 		return status;
--	*s = find_stateid_by_type(cl, stateid, typemask);
-+	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
- 	if (!*s)
- 		return nfserr_bad_stateid;
- 	return nfs_ok;
-@@ -5119,7 +5133,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
- 
- 	if (!nfsd4_has_session(cstate)) {
--		status = lookup_clientid(&lockt->lt_clientid, false, nn, NULL);
-+		status = lookup_clientid(&lockt->lt_clientid, cstate, nn);
- 		if (status)
- 			goto out;
- 	}
-@@ -5294,7 +5308,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 
- 	nfs4_lock_state();
- 
--	status = lookup_clientid(clid, cstate->minorversion, nn, NULL);
-+	status = lookup_clientid(clid, cstate, nn);
- 	if (status)
- 		goto out;
- 
--- 
-1.9.3
-
+Cheers,
+--
+Luís
