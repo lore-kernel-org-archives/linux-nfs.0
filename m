@@ -1,174 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:62317 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751333AbaF3UcF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 16:32:05 -0400
-Received: by mail-qg0-f42.google.com with SMTP id e89so2498181qgf.1
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 13:32:04 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 30 Jun 2014 16:32:02 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v3 002/114] nfsd: Protect addition to the file_hashtbl
-Message-ID: <20140630163202.3b0de324@tlielax.poochiereds.net>
-In-Reply-To: <20140630202818.GA14728@fieldses.org>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-	<1404143423-24381-3-git-send-email-jlayton@primarydata.com>
-	<20140630202818.GA14728@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:39626 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751764AbaFZTOg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:36 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so3592637qcq.34
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:35 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 036/117] nfsd: Protect the nfs4_file delegation fields using the fi_lock
+Date: Thu, 26 Jun 2014 15:12:16 -0400
+Message-Id: <1403810017-16062-37-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 30 Jun 2014 16:28:19 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Move more of the delegation fields to be protected by the fi_lock. It's
+more granular than the state_lock and in later patches we'll want to
+be able to rely on it in addition to the state_lock.
 
-> On Mon, Jun 30, 2014 at 11:48:31AM -0400, Jeff Layton wrote:
-> > From: Trond Myklebust <trond.myklebust@primarydata.com>
-> > 
-> > Ensure that we only can have a single struct nfs4_file per inode
-> > in the file_hashtbl and make addition atomic with respect to lookup.
-> 
-> This changelog gives the impression it's a bugfix, and it isn't.  I
-> understand it's tedious in this series, but really I think at a minimum
-> a changelog should always make it clear whether a patch is a bugfix or
-> not.  Applying with changelog rewritten to:
-> 
-> 	Current code depends on the client_mutex to guarantee a single
-> 	struct nfs4_file per inode in the file_hashtbl and make addition
-> 	atomic with respect to lookup.  Rely instead on the state_Lock,
-> 	to make it easier to stop taking the client_mutex here later.
-> 	...
-> 
-> --b.
-> 
+Also, the current code in nfs4_setlease calls vfs_setlease and uses the
+client_mutex to ensure that it doesn't disappear before we can hash the
+delegation. With the client_mutex gone, we'll have a potential race
+condition.
 
-Thanks and sorry, it's definitely correct that it's not a bugfix wrt
-the existing code. I thought I had updated that patch to spell it out,
-but I guess I missed that one...
+It's possible that the delegation could be recalled after we acquire the
+lease but before we ever get around to hashing it. If that happens, then
+we'd have a nfs4_file that *thinks* it has a delegation, when it
+actually has none.
 
-> > 
-> > To prevent an i_lock/state_lock inversion, change nfsd4_init_file to
-> > use ihold instead if igrab. That's also more efficient anyway as we
-> > definitely hold a reference to the inode at that point.
-> > 
-> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > Reviewed-by: Christoph Hellwig <hch@lst.de>
-> > ---
-> >  fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++++++++++++++------------
-> >  1 file changed, 37 insertions(+), 12 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index c473bd6d52c8..29788fd0da24 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -2611,17 +2611,18 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
-> >  {
-> >  	unsigned int hashval = file_hashval(ino);
-> >  
-> > +	lockdep_assert_held(&state_lock);
-> > +
-> >  	atomic_set(&fp->fi_ref, 1);
-> >  	INIT_LIST_HEAD(&fp->fi_stateids);
-> >  	INIT_LIST_HEAD(&fp->fi_delegations);
-> > -	fp->fi_inode = igrab(ino);
-> > +	ihold(ino);
-> > +	fp->fi_inode = ino;
-> >  	fp->fi_had_conflict = false;
-> >  	fp->fi_lease = NULL;
-> >  	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
-> >  	memset(fp->fi_access, 0, sizeof(fp->fi_access));
-> > -	spin_lock(&state_lock);
-> >  	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
-> > -	spin_unlock(&state_lock);
-> >  }
-> >  
-> >  void
-> > @@ -2787,23 +2788,49 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
-> >  
-> >  /* search file_hashtbl[] for file */
-> >  static struct nfs4_file *
-> > -find_file(struct inode *ino)
-> > +find_file_locked(struct inode *ino)
-> >  {
-> >  	unsigned int hashval = file_hashval(ino);
-> >  	struct nfs4_file *fp;
-> >  
-> > -	spin_lock(&state_lock);
-> > +	lockdep_assert_held(&state_lock);
-> > +
-> >  	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
-> >  		if (fp->fi_inode == ino) {
-> >  			get_nfs4_file(fp);
-> > -			spin_unlock(&state_lock);
-> >  			return fp;
-> >  		}
-> >  	}
-> > -	spin_unlock(&state_lock);
-> >  	return NULL;
-> >  }
-> >  
-> > +static struct nfs4_file *
-> > +find_file(struct inode *ino)
-> > +{
-> > +	struct nfs4_file *fp;
-> > +
-> > +	spin_lock(&state_lock);
-> > +	fp = find_file_locked(ino);
-> > +	spin_unlock(&state_lock);
-> > +	return fp;
-> > +}
-> > +
-> > +static struct nfs4_file *
-> > +find_or_add_file(struct inode *ino, struct nfs4_file *new)
-> > +{
-> > +	struct nfs4_file *fp;
-> > +
-> > +	spin_lock(&state_lock);
-> > +	fp = find_file_locked(ino);
-> > +	if (fp == NULL) {
-> > +		nfsd4_init_file(new, ino);
-> > +		fp = new;
-> > +	}
-> > +	spin_unlock(&state_lock);
-> > +
-> > +	return fp;
-> > +}
-> > +
-> >  /*
-> >   * Called to check deny when READ with all zero stateid or
-> >   * WRITE with all zero or all one stateid
-> > @@ -3325,21 +3352,19 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
-> >  	 * and check for delegations in the process of being recalled.
-> >  	 * If not found, create the nfs4_file struct
-> >  	 */
-> > -	fp = find_file(ino);
-> > -	if (fp) {
-> > +	fp = find_or_add_file(ino, open->op_file);
-> > +	if (fp != open->op_file) {
-> >  		if ((status = nfs4_check_open(fp, open, &stp)))
-> >  			goto out;
-> >  		status = nfs4_check_deleg(cl, open, &dp);
-> >  		if (status)
-> >  			goto out;
-> >  	} else {
-> > +		open->op_file = NULL;
-> >  		status = nfserr_bad_stateid;
-> >  		if (nfsd4_is_deleg_cur(open))
-> >  			goto out;
-> >  		status = nfserr_jukebox;
-> > -		fp = open->op_file;
-> > -		open->op_file = NULL;
-> > -		nfsd4_init_file(fp, ino);
-> >  	}
-> >  
-> >  	/*
-> > -- 
-> > 1.9.3
-> > 
+Attempt to acquire a delegation. If that succeeds, take the state_lock
+and recheck to make sure the lease is still there. If it is, then take
+the fi_lock and set up the rest of the delegation fields. This prevents
+the race because the delegation break workqueue job must also take the
+state_lock.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 38 insertions(+), 13 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e75cb6da1e64..01970b3cf593 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -658,6 +658,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
+ 
+ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+ {
++	lockdep_assert_held(&state_lock);
++
+ 	if (!fp->fi_lease)
+ 		return;
+ 	if (atomic_dec_and_test(&fp->fi_delegees)) {
+@@ -677,11 +679,10 @@ static void
+ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ {
+ 	lockdep_assert_held(&state_lock);
++	lockdep_assert_held(&fp->fi_lock);
+ 
+ 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+-	spin_lock(&fp->fi_lock);
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+-	spin_unlock(&fp->fi_lock);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ }
+ 
+@@ -692,17 +693,17 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	struct nfs4_file *fp = dp->dl_file;
+ 
+ 	spin_lock(&state_lock);
++	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_recall_lru);
+-	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perfile);
+ 	spin_unlock(&fp->fi_lock);
+-	spin_unlock(&state_lock);
+ 	if (fp) {
+ 		nfs4_put_deleg_lease(fp);
+-		put_nfs4_file(fp);
+ 		dp->dl_file = NULL;
+ 	}
++	spin_unlock(&state_lock);
++	put_nfs4_file(fp);
+ }
+ 
+ 
+@@ -3440,7 +3441,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_file *fp = dp->dl_file;
+ 	struct file_lock *fl;
+-	int status;
++	int status = 0;
+ 
+ 	fl = nfs4_alloc_init_lease(dp, NFS4_OPEN_DELEGATE_READ);
+ 	if (!fl)
+@@ -3448,15 +3449,31 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	fl->fl_file = find_readable_file(fp);
+ 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+ 	if (status)
+-		goto out_free;
++		goto out_fput;
++	spin_lock(&state_lock);
++	/* Did the lease get broken before we took the lock? */
++	status = -EAGAIN;
++	if (!file_has_lease(fl->fl_file))
++		goto out_unlock;
++	spin_lock(&fp->fi_lock);
++	/* Race breaker */
++	if (fp->fi_lease) {
++		status = 0;
++		atomic_inc(&fp->fi_delegees);
++		hash_delegation_locked(dp, fp);
++		spin_unlock(&fp->fi_lock);
++		goto out_unlock;
++	}
+ 	fp->fi_lease = fl;
+ 	fp->fi_deleg_file = fl->fl_file;
+ 	atomic_set(&fp->fi_delegees, 1);
+-	spin_lock(&state_lock);
+ 	hash_delegation_locked(dp, fp);
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+-out_free:
++out_unlock:
++	spin_unlock(&state_lock);
++out_fput:
+ 	if (fl->fl_file)
+ 		fput(fl->fl_file);
+ 	locks_free_lock(fl);
+@@ -3465,19 +3482,27 @@ out_free:
+ 
+ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ {
++	int status = 0;
++
+ 	if (fp->fi_had_conflict)
+ 		return -EAGAIN;
+ 	get_nfs4_file(fp);
++	spin_lock(&state_lock);
++	spin_lock(&fp->fi_lock);
+ 	dp->dl_file = fp;
+-	if (!fp->fi_lease)
++	if (!fp->fi_lease) {
++		spin_unlock(&fp->fi_lock);
++		spin_unlock(&state_lock);
+ 		return nfs4_setlease(dp);
+-	spin_lock(&state_lock);
++	}
+ 	atomic_inc(&fp->fi_delegees);
+ 	if (fp->fi_had_conflict) {
+-		spin_unlock(&state_lock);
+-		return -EAGAIN;
++		status = -EAGAIN;
++		goto out_unlock;
+ 	}
+ 	hash_delegation_locked(dp, fp);
++out_unlock:
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+ }
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
