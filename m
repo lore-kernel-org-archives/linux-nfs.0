@@ -1,234 +1,212 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:52351 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751953AbaFETQk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 15:16:40 -0400
-Received: by mail-ie0-f182.google.com with SMTP id x19so1321359ier.27
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 12:16:40 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH v2 5/6] nfs: remove pgio_header refcount, related cleanup
-Date: Thu,  5 Jun 2014 15:16:30 -0400
-Message-Id: <1401995791-40213-6-git-send-email-dros@primarydata.com>
-In-Reply-To: <1401995791-40213-1-git-send-email-dros@primarydata.com>
-References: <1401995791-40213-1-git-send-email-dros@primarydata.com>
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:47881 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751208AbaFZTPU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:20 -0400
+Received: by mail-qg0-f53.google.com with SMTP id i50so3428777qgf.40
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:19 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 069/117] nfsd: make openstateids hold references to their openowners
+Date: Thu, 26 Jun 2014 15:12:49 -0400
+Message-Id: <1403810017-16062-70-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The refcounting on nfs_pgio_header was related to there being (possibly)
-more than one nfs_pgio_data. Now that nfs_pgio_data has been merged into
-nfs_pgio_header, there is no reason to do this ref counting.  Just call
-the completion callback on nfs_pgio_release/nfs_pgio_error.
+Change it so that only openstateids hold persistent references to
+openowners. References can still be held by compounds in progress.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+With this, we can get rid of NFS4_OO_NEW. It's possible that we
+will create a new openowner in the process of doing the open, but
+something later fails. In the meantime, another task could find
+that openowner and start using it on a successful open. If that
+occurs we don't necessarily want to tear it down, just put the
+reference that the failing compound holds.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/internal.h       |  2 +-
- fs/nfs/pagelist.c       | 61 +++++++++++++++++++------------------------------
- fs/nfs/pnfs.c           | 10 ++------
- include/linux/nfs_xdr.h |  1 -
- 4 files changed, 27 insertions(+), 47 deletions(-)
+ fs/nfsd/nfs4state.c | 71 +++++++++++++++++++++++------------------------------
+ fs/nfsd/state.h     |  1 -
+ 2 files changed, 31 insertions(+), 41 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f3b672b..e0e2b6d 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -240,8 +240,8 @@ int nfs_iocounter_wait(struct nfs_io_counter *c);
- extern const struct nfs_pageio_ops nfs_pgio_rw_ops;
- struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *);
- void nfs_pgio_header_free(struct nfs_pgio_header *);
--void nfs_pgio_data_destroy(struct nfs_pgio_header *);
- int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
-+void nfs_generic_pgio_reset(struct nfs_pgio_header *);
- int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_header *,
- 		      const struct rpc_call_ops *, int, int);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d8de65e0a457..d1b55d61ae6f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -904,7 +904,7 @@ static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
+ 	struct nfs4_ol_stateid *stp = openlockstateid(stid);
  
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 6ff7797..cc5ef6d 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -459,7 +459,6 @@ struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *ops)
- 	if (hdr) {
- 		INIT_LIST_HEAD(&hdr->pages);
- 		spin_lock_init(&hdr->lock);
--		atomic_set(&hdr->refcnt, 0);
- 		hdr->rw_ops = ops;
+ 	release_all_access(stp);
+-	if (stp->st_stateowner && stid->sc_type == NFS4_LOCK_STID)
++	if (stp->st_stateowner)
+ 		nfs4_put_stateowner(stp->st_stateowner);
+ 	nfs4_free_stid(stateid_slab, stid);
+ }
+@@ -1001,8 +1001,9 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+ 
+ 	if (s) {
+-		put_generic_stateid(s);
++		list_del_init(&oo->oo_close_lru);
+ 		oo->oo_last_closed_stid = NULL;
++		put_generic_stateid(s);
  	}
- 	return hdr;
-@@ -477,35 +476,6 @@ void nfs_pgio_header_free(struct nfs_pgio_header *hdr)
- EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
+ }
  
- /**
-- * nfs_pgio_data_alloc - Allocate pageio data
-- * @hdr: The header making a request
-- * @pagecount: Number of pages to create
-- */
--static bool nfs_pgio_data_init(struct nfs_pgio_header *hdr,
--			       unsigned int pagecount)
--{
--	if (nfs_pgarray_set(&hdr->page_array, pagecount)) {
--		atomic_inc(&hdr->refcnt);
--		return true;
--	}
--	return false;
--}
--
--/**
-- * nfs_pgio_data_destroy - Properly release pageio data
-- * @hdr: The header with data to destroy
-- */
--void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
--{
--	put_nfs_open_context(hdr->args.context);
--	if (hdr->page_array.pagevec != hdr->page_array.page_array)
--		kfree(hdr->page_array.pagevec);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
--}
--EXPORT_SYMBOL_GPL(nfs_pgio_data_destroy);
--
--/**
-  * nfs_pgio_rpcsetup - Set up arguments for a pageio call
-  * @hdr: The pageio hdr
-  * @count: Number of bytes to read
-@@ -619,7 +589,8 @@ static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
- 			  struct nfs_pgio_header *hdr)
+@@ -1021,7 +1022,6 @@ static void release_openowner(struct nfs4_openowner *oo)
  {
- 	set_bit(NFS_IOHDR_REDO, &hdr->flags);
--	nfs_pgio_data_destroy(hdr);
-+	nfs_generic_pgio_reset(hdr);
-+	hdr->completion_ops->completion(hdr);
- 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- 	return -ENOMEM;
+ 	unhash_openowner(oo);
+ 	release_openowner_stateids(oo);
+-	list_del(&oo->oo_close_lru);
+ 	release_last_closed_stateid(oo);
+ 	nfs4_put_stateowner(&oo->oo_owner);
  }
-@@ -633,7 +604,8 @@ static void nfs_pgio_release(void *calldata)
- 	struct nfs_pgio_header *hdr = calldata;
- 	if (hdr->rw_ops->rw_release)
- 		hdr->rw_ops->rw_release(hdr);
--	nfs_pgio_data_destroy(hdr);
-+	nfs_generic_pgio_reset(hdr);
-+	hdr->completion_ops->completion(hdr);
+@@ -1494,6 +1494,7 @@ destroy_client(struct nfs4_client *clp)
+ 	}
+ 	while (!list_empty(&clp->cl_openowners)) {
+ 		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
++		atomic_inc(&oo->oo_owner.so_count);
+ 		release_openowner(oo);
+ 	}
+ 	nfsd4_shutdown_callback(clp);
+@@ -3025,7 +3026,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	oo->oo_owner.so_unhash = nfs4_unhash_openowner;
+ 	oo->oo_owner.so_is_open_owner = 1;
+ 	oo->oo_owner.so_seqid = open->op_seqid;
+-	oo->oo_flags = NFS4_OO_NEW;
++	oo->oo_flags = 0;
+ 	if (nfsd4_has_session(cstate))
+ 		oo->oo_flags |= NFS4_OO_CONFIRMED;
+ 	oo->oo_time = 0;
+@@ -3042,6 +3043,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_locks);
+ 	stp->st_stateowner = &oo->oo_owner;
++	atomic_inc(&stp->st_stateowner->so_count);
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
+ 	stp->st_access_bmap = 0;
+@@ -3057,13 +3059,27 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
  }
  
- /**
-@@ -707,9 +679,10 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- 	struct page		**pages;
- 	struct list_head *head = &desc->pg_list;
- 	struct nfs_commit_info cinfo;
-+	unsigned int pagecount;
- 
--	if (!nfs_pgio_data_init(hdr, nfs_page_array_len(desc->pg_base,
--			   desc->pg_count)))
-+	pagecount = nfs_page_array_len(desc->pg_base, desc->pg_count);
-+	if (!nfs_pgarray_set(&hdr->page_array, pagecount))
- 		return nfs_pgio_error(desc, hdr);
- 
- 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
-@@ -732,6 +705,23 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- }
- EXPORT_SYMBOL_GPL(nfs_generic_pgio);
- 
-+/**
-+ * nfs_generic_pgio_reset - make @hdr suitable for reuse
-+ *
-+ * Frees memory and releases refs from nfs_generic_pgio, so that it may
-+ * be called again.
-+ *
-+ * @hdr: A header that has had nfs_generic_pgio called
++/*
++ * In the 4.0 case we need to keep the owners around a little while to handle
++ * CLOSE replay. We still do need to release any file access that is held by
++ * them before returning however.
 + */
-+void nfs_generic_pgio_reset(struct nfs_pgio_header *hdr)
-+{
-+	put_nfs_open_context(hdr->args.context);
-+	if (hdr->page_array.pagevec != hdr->page_array.page_array)
-+		kfree(hdr->page_array.pagevec);
-+}
-+EXPORT_SYMBOL_GPL(nfs_generic_pgio_reset);
-+
-+
- static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
+ static void
+-move_to_close_lru(struct nfs4_openowner *oo, struct net *net)
++move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
  {
- 	struct nfs_pgio_header *hdr;
-@@ -743,14 +733,11 @@ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
- 		return -ENOMEM;
- 	}
- 	nfs_pgheader_init(desc, hdr, nfs_pgio_header_free);
--	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret == 0)
- 		ret = nfs_initiate_pgio(NFS_CLIENT(hdr->inode),
- 					hdr, desc->pg_rpc_callops,
- 					desc->pg_ioflags, 0);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
- 	return ret;
- }
+-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct nfs4_openowner *oo = openowner(s->st_stateowner);
++	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
++						nfsd_net_id);
  
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 1b7da44..902783ab 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1537,7 +1537,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
- 		nfs_pageio_reset_write_mds(desc);
- 		desc->pg_recoalesce = 1;
- 	}
--	nfs_pgio_data_destroy(hdr);
-+	nfs_generic_pgio_reset(hdr);
- }
+ 	dprintk("NFSD: move_to_close_lru nfs4_openowner %p\n", oo);
  
- static enum pnfs_try_status
-@@ -1598,15 +1598,12 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 	}
- 	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
- 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
--	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret != 0) {
- 		pnfs_put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
- 	} else
- 		pnfs_do_write(desc, hdr, desc->pg_ioflags);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
- 	return ret;
++	release_all_access(s);
++	if (s->st_stid.sc_file) {
++		put_nfs4_file(s->st_stid.sc_file);
++		s->st_stid.sc_file = NULL;
++	}
++	release_last_closed_stateid(oo);
++	oo->oo_last_closed_stid = s;
+ 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
+ 	oo->oo_time = get_seconds();
  }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
-@@ -1677,7 +1674,7 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
- 		nfs_pageio_reset_read_mds(desc);
- 		desc->pg_recoalesce = 1;
+@@ -3094,6 +3110,7 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
+ 			if ((bool)clp->cl_minorversion != sessions)
+ 				return NULL;
+ 			renew_client(oo->oo_owner.so_client);
++			atomic_inc(&oo->oo_owner.so_count);
+ 			return oo;
+ 		}
  	}
--	nfs_pgio_data_destroy(hdr);
-+	nfs_generic_pgio_reset(hdr);
+@@ -3823,19 +3840,10 @@ void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
+ 			      struct nfsd4_open *open, __be32 status)
+ {
+ 	if (open->op_openowner) {
+-		struct nfs4_openowner *oo = open->op_openowner;
+-
+-		if (!list_empty(&oo->oo_owner.so_stateids))
+-			list_del_init(&oo->oo_close_lru);
+-		if (oo->oo_flags & NFS4_OO_NEW) {
+-			if (status) {
+-				release_openowner(oo);
+-				open->op_openowner = NULL;
+-			} else
+-				oo->oo_flags &= ~NFS4_OO_NEW;
+-		}
+-		if (open->op_openowner)
+-			nfsd4_cstate_assign_replay(cstate, &oo->oo_owner);
++		struct nfs4_stateowner *so = &open->op_openowner->oo_owner;
++
++		nfsd4_cstate_assign_replay(cstate, so);
++		nfs4_put_stateowner(so);
+ 	}
+ 	if (open->op_file)
+ 		nfsd4_free_file(open->op_file);
+@@ -3977,7 +3985,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		release_openowner(oo);
++		release_last_closed_stateid(oo);
+ 	}
+ 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ 	nfs4_unlock_state();
+@@ -4556,31 +4564,14 @@ out:
+ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ {
+ 	struct nfs4_client *clp = s->st_stid.sc_client;
+-	struct nfs4_openowner *oo = openowner(s->st_stateowner);
+ 
+ 	s->st_stid.sc_type = NFS4_CLOSED_STID;
+ 	unhash_open_stateid(s);
+ 
+-	if (clp->cl_minorversion) {
+-		if (list_empty(&oo->oo_owner.so_stateids))
+-			release_openowner(oo);
++	if (clp->cl_minorversion)
+ 		put_generic_stateid(s);
+-	} else {
+-		if (s->st_stid.sc_file) {
+-			put_nfs4_file(s->st_stid.sc_file);
+-			s->st_stid.sc_file = NULL;
+-		}
+-		oo->oo_last_closed_stid = s;
+-		/*
+-		 * In the 4.0 case we need to keep the owners around a
+-		 * little while to handle CLOSE replay. We still do need
+-		 * to release any file access that is held by them
+-		 * before returning however.
+-		 */
+-		release_all_access(s);
+-		if (list_empty(&oo->oo_owner.so_stateids))
+-			move_to_close_lru(oo, clp->net);
+-	}
++	else
++		move_to_close_lru(s, clp->net);
  }
  
  /*
-@@ -1741,15 +1738,12 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- 	}
- 	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
- 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
--	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret != 0) {
- 		pnfs_put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
- 	} else
- 		pnfs_do_read(desc, hdr);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
- 	return ret;
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index e1b7b3b..81cbbf31 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1259,7 +1259,6 @@ struct nfs_pgio_header {
- 	struct inode		*inode;
- 	struct rpc_cred		*cred;
- 	struct list_head	pages;
--	atomic_t		refcnt;
- 	struct nfs_page		*req;
- 	struct nfs_writeverf	verf;		/* Used for writes */
- 	struct pnfs_layout_segment *lseg;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e318fc29dd68..89d43c3b5078 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -364,7 +364,6 @@ struct nfs4_openowner {
+ 	struct nfs4_ol_stateid *oo_last_closed_stid;
+ 	time_t			oo_time; /* time of placement on so_close_lru */
+ #define NFS4_OO_CONFIRMED   1
+-#define NFS4_OO_NEW         4
+ 	unsigned char		oo_flags;
+ };
+ 
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
