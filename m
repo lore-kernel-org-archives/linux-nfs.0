@@ -1,137 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:46031 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750897AbaF3Pvd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:33 -0400
-Received: by mail-qg0-f46.google.com with SMTP id q107so2136622qgd.33
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:33 -0700 (PDT)
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:49028 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751511AbaFZTOw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:52 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so3524898qcq.6
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:51 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 043/114] nfsd: Add locking to protect the state owner lists
-Date: Mon, 30 Jun 2014 11:49:12 -0400
-Message-Id: <1404143423-24381-44-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v2 048/117] nfsd: clean up races in lock stateid searching and creation
+Date: Thu, 26 Jun 2014 15:12:28 -0400
+Message-Id: <1403810017-16062-49-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change to using the clp->cl_lock for this. For now, there's a lot of
-cl_lock thrashing, but in later patches we'll eliminate that and close
-the potential races that can occur when releasing the cl_lock while
-walking the lists. For now, the client_mutex prevents those races.
+Preparation for removal of the client_mutex.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Currently, no lock aside from the client_mutex is held when calling
+find_lock_state. Ensure that the cl_lock is held by adding a lockdep
+assertion.
+
+Once we remove the client_mutex, it'll be possible for another thread to
+race in and insert a lock state for the same file after we search but
+before we insert a new one. Ensure that doesn't happen by redoing the
+search after allocating a new stid that we plan to insert. If one is
+found just put the one we just allocated.
+
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 21 +++++++++++++++++++--
- 1 file changed, 19 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c | 58 +++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 41 insertions(+), 17 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index aea256264266..05d0fac2e50a 100644
+index a3413cb4ac46..6e918aa0829c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -863,6 +863,8 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_file *fp = stp->st_stid.sc_file;
- 
-+	lockdep_assert_held(&stp->st_stateowner->so_client->cl_lock);
-+
- 	spin_lock(&fp->fi_lock);
- 	list_del(&stp->st_perfile);
- 	spin_unlock(&fp->fi_lock);
-@@ -896,9 +898,13 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- 
- static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
- {
-+	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
-+
-+	spin_lock(&oo->oo_owner.so_client->cl_lock);
- 	list_del(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
-+	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- 	put_generic_stateid(stp);
+@@ -4680,16 +4680,14 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	return lo;
  }
  
-@@ -942,20 +948,26 @@ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
- }
- 
- static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
-+	__releases(&open_stp->st_stateowner->so_client->cl_lock)
-+	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
+-static struct nfs4_ol_stateid *
+-alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
++static void
++init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
++		  struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
  {
- 	struct nfs4_ol_stateid *stp;
- 
- 	while (!list_empty(&open_stp->st_locks)) {
- 		stp = list_entry(open_stp->st_locks.next,
- 				struct nfs4_ol_stateid, st_locks);
-+		spin_unlock(&open_stp->st_stateowner->so_client->cl_lock);
- 		release_lock_stateid(stp);
-+		spin_lock(&open_stp->st_stateowner->so_client->cl_lock);
- 	}
- }
- 
- static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
- {
-+	spin_lock(&stp->st_stateowner->so_client->cl_lock);
- 	unhash_generic_stateid(stp);
- 	release_open_stateid_locks(stp);
-+	spin_unlock(&stp->st_stateowner->so_client->cl_lock);
- }
- 
- static void release_open_stateid(struct nfs4_ol_stateid *stp)
-@@ -2965,7 +2977,6 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_locks);
--	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	stp->st_stateowner = &oo->oo_owner;
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
-@@ -2974,9 +2985,12 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	set_access(open->op_share_access, stp);
- 	set_deny(open->op_share_deny, stp);
- 	stp->st_openstp = NULL;
-+	spin_lock(&oo->oo_owner.so_client->cl_lock);
-+	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	spin_lock(&fp->fi_lock);
- 	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	spin_unlock(&fp->fi_lock);
-+	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- }
- 
- static void
-@@ -4641,6 +4655,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- static struct nfs4_ol_stateid *
- alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
- {
-+	struct nfs4_openowner *oo = openowner(open_stp->st_stateowner);
- 	struct nfs4_ol_stateid *stp;
+-	struct nfs4_openowner *oo = openowner(open_stp->st_stateowner);
+-	struct nfs4_ol_stateid *stp;
  	struct nfs4_client *clp = lo->lo_owner.so_client;
  
-@@ -4648,7 +4663,6 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	if (stp == NULL)
- 		return NULL;
+-	stp = nfs4_alloc_stateid(clp);
+-	if (stp == NULL)
+-		return NULL;
++	lockdep_assert_held(&clp->cl_lock);
++
  	stp->st_stid.sc_type = NFS4_LOCK_STID;
--	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
  	stp->st_stateowner = &lo->lo_owner;
  	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
-@@ -4656,10 +4670,13 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+@@ -4698,20 +4696,20 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
  	stp->st_access_bmap = 0;
  	stp->st_deny_bmap = open_stp->st_deny_bmap;
  	stp->st_openstp = open_stp;
-+	spin_lock(&oo->oo_owner.so_client->cl_lock);
+-	spin_lock(&oo->oo_owner.so_client->cl_lock);
  	list_add(&stp->st_locks, &open_stp->st_locks);
-+	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
+ 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
  	spin_lock(&fp->fi_lock);
  	list_add(&stp->st_perfile, &fp->fi_stateids);
  	spin_unlock(&fp->fi_lock);
-+	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- 	return stp;
+-	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+-	return stp;
  }
  
+ static struct nfs4_ol_stateid *
+ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
+ {
+ 	struct nfs4_ol_stateid *lst;
++	struct nfs4_client *clp = lo->lo_owner.so_client;
++
++	lockdep_assert_held(&clp->cl_lock);
+ 
+ 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
+ 		if (lst->st_stid.sc_file == fp)
+@@ -4720,6 +4718,36 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
+ 	return NULL;
+ }
+ 
++static struct nfs4_ol_stateid *
++find_or_create_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fi,
++			    struct nfs4_ol_stateid *ost, bool *new)
++{
++	struct nfs4_ol_stateid *lst, *nst = NULL;
++	struct nfs4_openowner *oo = openowner(ost->st_stateowner);
++	struct nfs4_client *clp = oo->oo_owner.so_client;
++
++	spin_lock(&clp->cl_lock);
++	lst = find_lock_stateid(lo, fi);
++	if (lst == NULL) {
++		spin_unlock(&clp->cl_lock);
++		nst = nfs4_alloc_stateid(clp);
++		if (nst == NULL)
++			return NULL;
++
++		spin_lock(&clp->cl_lock);
++		lst = find_lock_stateid(lo, fi);
++		if (likely(!lst)) {
++			init_lock_stateid(nst, lo, fi, ost);
++			lst = nst;
++			nst = NULL;
++			*new = true;
++		}
++	}
++	spin_unlock(&clp->cl_lock);
++	if (nst)
++		put_generic_stateid(nst);
++	return lst;
++}
+ 
+ static int
+ check_lock_length(u64 offset, u64 length)
+@@ -4763,14 +4791,10 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
+ 			return nfserr_bad_seqid;
+ 	}
+ 
+-	*lst = find_lock_stateid(lo, fi);
++	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
+ 	if (*lst == NULL) {
+-		*lst = alloc_init_lock_stateid(lo, fi, ost);
+-		if (*lst == NULL) {
+-			release_lockowner_if_empty(lo);
+-			return nfserr_jukebox;
+-		}
+-		*new = true;
++		release_lockowner_if_empty(lo);
++		return nfserr_jukebox;
+ 	}
+ 	return nfs_ok;
+ }
 -- 
 1.9.3
 
