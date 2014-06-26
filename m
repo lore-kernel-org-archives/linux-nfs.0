@@ -1,116 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:18503 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752539AbaFXOIx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2014 10:08:53 -0400
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH V2] xprtrdma: Fix DMA-API-DEBUG warning by checking dma_map result
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <53A9818D.40800@gmail.com>
-Date: Tue, 24 Jun 2014 10:08:43 -0400
-Cc: Yan Burman <yanb@mellanox.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Message-Id: <F821883E-5CE6-430C-93E0-F2A84D57ABEF@oracle.com>
-References: <1403183190-21607-1-git-send-email-yanb@mellanox.com> <53A9818D.40800@gmail.com>
-To: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from mail-qa0-f50.google.com ([209.85.216.50]:36671 "EHLO
+	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751916AbaFZTWF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:22:05 -0400
+Received: by mail-qa0-f50.google.com with SMTP id m5so3151904qaj.23
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:22:04 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 109/117] nfsd: Remove nfs4_lock_state(): nfsd4_delegreturn()
+Date: Thu, 26 Jun 2014 15:21:17 -0400
+Message-Id: <1403810485-16497-26-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-On Jun 24, 2014, at 9:47 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 3 ---
+ 1 file changed, 3 deletions(-)
 
-> On 06/19/2014 09:06 AM, Yan Burman wrote:
->> Fix the following warning when DMA-API debug is enabled by checking ib_dma_map_single result:
->> [ 1455.345548] ------------[ cut here ]------------
->> [ 1455.346863] WARNING: CPU: 3 PID: 3929 at /home/yanb/kernel/net-next/lib/dma-debug.c:1140 check_unmap+0x4e5/0x990()
->> [ 1455.349350] mlx4_core 0000:00:07.0: DMA-API: device driver failed to check map error[device address=0x000000007c9f2090] [size=2656 bytes] [mapped as single]
->> [ 1455.349350] Modules linked in: xprtrdma netconsole configfs nfsv3 nfs_acl ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad rdma_cm ib_cm iw_cm autofs4 auth_rpcgss oid_registry nfsv4 nfs fscache lockd sunrpc dm_mirror dm_region_hash dm_log microcode pcspkr mlx4_ib ib_sa ib_mad ib_core ib_addr mlx4_en ipv6 ptp pps_core vxlan mlx4_core virtio_balloon cirrus ttm drm_kms_helper drm sysimgblt sysfillrect syscopyarea i2c_piix4 i2c_core button ext3 jbd virtio_blk virtio_net virtio_pci virtio_ring virtio uhci_hcd ata_generic ata_piix libata
->> [ 1455.349350] CPU: 3 PID: 3929 Comm: mount.nfs Not tainted 3.15.0-rc1-dbg+ #13
->> [ 1455.349350] Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2007
->> [ 1455.349350]  0000000000000474 ffff880069dcf628 ffffffff8151c341 ffffffff817b69d8
->> [ 1455.349350]  ffff880069dcf678 ffff880069dcf668 ffffffff8105b5fc 0000000069dcf658
->> [ 1455.349350]  ffff880069dcf778 ffff88007b0c9f00 ffffffff8255ec40 0000000000000a60
->> [ 1455.349350] Call Trace:
->> [ 1455.349350]  [<ffffffff8151c341>] dump_stack+0x52/0x81
->> [ 1455.349350]  [<ffffffff8105b5fc>] warn_slowpath_common+0x8c/0xc0
->> [ 1455.349350]  [<ffffffff8105b6e6>] warn_slowpath_fmt+0x46/0x50
->> [ 1455.349350]  [<ffffffff812e6305>] check_unmap+0x4e5/0x990
->> [ 1455.349350]  [<ffffffff81521fb0>] ? _raw_spin_unlock_irq+0x30/0x60
->> [ 1455.349350]  [<ffffffff812e6a0a>] debug_dma_unmap_page+0x5a/0x60
->> [ 1455.349350]  [<ffffffffa0389583>] rpcrdma_deregister_internal+0xb3/0xd0 [xprtrdma]
->> [ 1455.349350]  [<ffffffffa038a639>] rpcrdma_buffer_destroy+0x69/0x170 [xprtrdma]
->> [ 1455.349350]  [<ffffffffa03872ff>] xprt_rdma_destroy+0x3f/0xb0 [xprtrdma]
->> [ 1455.349350]  [<ffffffffa04a95ff>] xprt_destroy+0x6f/0x80 [sunrpc]
->> [ 1455.349350]  [<ffffffffa04a9625>] xprt_put+0x15/0x20 [sunrpc]
->> [ 1455.349350]  [<ffffffffa04a899a>] rpc_free_client+0x8a/0xe0 [sunrpc]
->> [ 1455.349350]  [<ffffffffa04a8a58>] rpc_release_client+0x68/0xa0 [sunrpc]
->> [ 1455.349350]  [<ffffffffa04a9060>] rpc_shutdown_client+0xb0/0xc0 [sunrpc]
->> [ 1455.349350]  [<ffffffffa04a8f5d>] ? rpc_ping+0x5d/0x70 [sunrpc]
->> [ 1455.349350]  [<ffffffffa04a91ab>] rpc_create_xprt+0xbb/0xd0 [sunrpc]
->> [ 1455.349350]  [<ffffffffa04a9273>] rpc_create+0xb3/0x160 [sunrpc]
->> [ 1455.349350]  [<ffffffff81129749>] ? __probe_kernel_read+0x69/0xb0
->> [ 1455.349350]  [<ffffffffa053851c>] nfs_create_rpc_client+0xdc/0x100 [nfs]
->> [ 1455.349350]  [<ffffffffa0538cfa>] nfs_init_client+0x3a/0x90 [nfs]
->> [ 1455.349350]  [<ffffffffa05391c8>] nfs_get_client+0x478/0x5b0 [nfs]
->> [ 1455.349350]  [<ffffffffa0538e50>] ? nfs_get_client+0x100/0x5b0 [nfs]
->> [ 1455.349350]  [<ffffffff81172c6d>] ? kmem_cache_alloc_trace+0x24d/0x260
->> [ 1455.349350]  [<ffffffffa05393f3>] nfs_create_server+0xf3/0x4c0 [nfs]
->> [ 1455.349350]  [<ffffffffa0545ff0>] ? nfs_request_mount+0xf0/0x1a0 [nfs]
->> [ 1455.349350]  [<ffffffffa031c0c3>] nfs3_create_server+0x13/0x30 [nfsv3]
->> [ 1455.349350]  [<ffffffffa0546293>] nfs_try_mount+0x1f3/0x230 [nfs]
->> [ 1455.349350]  [<ffffffff8108ea21>] ? get_parent_ip+0x11/0x50
->> [ 1455.349350]  [<ffffffff812d6343>] ? __this_cpu_preempt_check+0x13/0x20
->> [ 1455.349350]  [<ffffffff810d632b>] ? try_module_get+0x6b/0x190
->> [ 1455.349350]  [<ffffffffa05449f7>] nfs_fs_mount+0x187/0x9d0 [nfs]
->> [ 1455.349350]  [<ffffffffa0545940>] ? nfs_clone_super+0x140/0x140 [nfs]
->> [ 1455.349350]  [<ffffffffa0543b20>] ? nfs_auth_info_match+0x40/0x40 [nfs]
->> [ 1455.349350]  [<ffffffff8117e360>] mount_fs+0x20/0xe0
->> [ 1455.349350]  [<ffffffff811a1c16>] vfs_kern_mount+0x76/0x160
->> [ 1455.349350]  [<ffffffff811a29a8>] do_mount+0x428/0xae0
->> [ 1455.349350]  [<ffffffff811a30f0>] SyS_mount+0x90/0xe0
->> [ 1455.349350]  [<ffffffff8152af52>] system_call_fastpath+0x16/0x1b
->> [ 1455.349350] ---[ end trace f1f31572972e211d ]---
->> 
->> Signed-off-by: Yan Burman <yanb@mellanox.com>
-> 
-> Thanks Yan!  I've applied this to a bugfixes branch that I'll push out later today.
-> 
-> Chuck - Should I add your "Reviewed By" from v1 to this version of the patch?
-
-Yes, thanks!
-
-> 
-> Anna
-> 
->> ---
->> 
->> Changes from V1:
->> Removed curly braces
->> 
->> net/sunrpc/xprtrdma/verbs.c |    3 +++
->> 1 files changed, 3 insertions(+), 0 deletions(-)
->> 
->> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
->> index 13dbd1c..176dafc 100644
->> --- a/net/sunrpc/xprtrdma/verbs.c
->> +++ b/net/sunrpc/xprtrdma/verbs.c
->> @@ -1388,6 +1388,9 @@ rpcrdma_register_internal(struct rpcrdma_ia *ia, void *va, int len,
->> 	 */
->> 	iov->addr = ib_dma_map_single(ia->ri_id->device,
->> 			va, len, DMA_BIDIRECTIONAL);
->> +	if (ib_dma_mapping_error(ia->ri_id->device, iov->addr))
->> +		return -ENOMEM;
->> +
->> 	iov->length = len;
->> 
->> 	if (ia->ri_have_dma_lkey) {
-> 
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2d67dd5268e8..8734847f7e49 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4825,7 +4825,6 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
+ 		return status;
+ 
+-	nfs4_lock_state();
+ 	status = nfsd4_lookup_stateid(cstate, stateid, NFS4_DELEG_STID, &s, nn);
+ 	if (status)
+ 		goto out;
+@@ -4838,8 +4837,6 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ put_stateid:
+ 	nfs4_put_delegation(dp);
+ out:
+-	nfs4_unlock_state();
+-
+ 	return status;
+ }
+ 
+-- 
+1.9.3
 
