@@ -1,142 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:60952 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751152AbaFFNHU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Jun 2014 09:07:20 -0400
-Received: by mail-qa0-f47.google.com with SMTP id s7so3683894qap.34
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Jun 2014 06:07:19 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        hch@infradead.org
-Subject: [PATCH v2 1/2] nfsd: Protect addition to the file_hashtbl
-Date: Fri,  6 Jun 2014 09:07:05 -0400
-Message-Id: <1402060026-26511-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1402060026-26511-1-git-send-email-jlayton@primarydata.com>
-References: <1402060026-26511-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:50712 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750849AbaFZTYQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:24:16 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so3536146qcq.6
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:24:16 -0700 (PDT)
+Date: Thu, 26 Jun 2014 15:24:12 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 001/117] nfsd: fix file access refcount leak when
+ nfsd4_truncate fails
+Message-ID: <20140626152412.7c27c03e@tlielax.poochiereds.net>
+In-Reply-To: <1403810017-16062-2-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+	<1403810017-16062-2-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, 26 Jun 2014 15:11:41 -0400
+Jeff Layton <jlayton@primarydata.com> wrote:
 
-Ensure that we only can have a single struct nfs4_file per inode
-in the file_hashtbl and make addition atomic with respect to lookup.
+> From: Christoph Hellwig <hch@infradead.org>
+> 
+> nfsd4_process_open2 will currently will get access to the file, and then
+> call nfsd4_truncate to (possibly) truncate it. If that operation fails
+> though, then the access references will never be released as the
+> nfs4_ol_stateid is never initialized.
+> 
+> Fix by moving the nfsd4_truncate call into nfs4_get_vfs_file, ensuring
+> that the refcounts are properly put if the truncate fails.
+> 
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> Signed-off-by: Christoph Hellwig <hch@infradead.org>
 
-To prevent an i_lock/state_lock inversion, change nfsd4_init_file to
-use ihold instead if igrab. That's also more efficient anyway as we
-definitely hold a reference to the inode at that point.
+Christoph, I took the liberty of composing a commit log and adding your
+SOB line here. Let me know if you have any objections.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++++++++++++++------------
- 1 file changed, 37 insertions(+), 12 deletions(-)
+Thanks,
+Jeff
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a500033a2f87..cbec573e9445 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2519,17 +2519,18 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
- {
- 	unsigned int hashval = file_hashval(ino);
- 
-+	lockdep_assert_held(&state_lock);
-+
- 	atomic_set(&fp->fi_ref, 1);
- 	INIT_LIST_HEAD(&fp->fi_stateids);
- 	INIT_LIST_HEAD(&fp->fi_delegations);
--	fp->fi_inode = igrab(ino);
-+	ihold(ino);
-+	fp->fi_inode = ino;
- 	fp->fi_had_conflict = false;
- 	fp->fi_lease = NULL;
- 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
- 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
--	spin_lock(&state_lock);
- 	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
--	spin_unlock(&state_lock);
- }
- 
- void
-@@ -2695,23 +2696,49 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
- 
- /* search file_hashtbl[] for file */
- static struct nfs4_file *
--find_file(struct inode *ino)
-+find_file_locked(struct inode *ino)
- {
- 	unsigned int hashval = file_hashval(ino);
- 	struct nfs4_file *fp;
- 
--	spin_lock(&state_lock);
-+	lockdep_assert_held(&state_lock);
-+
- 	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
- 		if (fp->fi_inode == ino) {
- 			get_nfs4_file(fp);
--			spin_unlock(&state_lock);
- 			return fp;
- 		}
- 	}
--	spin_unlock(&state_lock);
- 	return NULL;
- }
- 
-+static struct nfs4_file *
-+find_file(struct inode *ino)
-+{
-+	struct nfs4_file *fp;
-+
-+	spin_lock(&state_lock);
-+	fp = find_file_locked(ino);
-+	spin_unlock(&state_lock);
-+	return fp;
-+}
-+
-+static struct nfs4_file *
-+find_or_add_file(struct inode *ino, struct nfs4_file *new)
-+{
-+	struct nfs4_file *fp;
-+
-+	spin_lock(&state_lock);
-+	fp = find_file_locked(ino);
-+	if (fp == NULL) {
-+		nfsd4_init_file(new, ino);
-+		fp = new;
-+	}
-+	spin_unlock(&state_lock);
-+
-+	return fp;
-+}
-+
- /*
-  * Called to check deny when READ with all zero stateid or
-  * WRITE with all zero or all one stateid
-@@ -3230,21 +3257,19 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	 * and check for delegations in the process of being recalled.
- 	 * If not found, create the nfs4_file struct
- 	 */
--	fp = find_file(ino);
--	if (fp) {
-+	fp = find_or_add_file(ino, open->op_file);
-+	if (fp != open->op_file) {
- 		if ((status = nfs4_check_open(fp, open, &stp)))
- 			goto out;
- 		status = nfs4_check_deleg(cl, open, &dp);
- 		if (status)
- 			goto out;
- 	} else {
-+		open->op_file = NULL;
- 		status = nfserr_bad_stateid;
- 		if (nfsd4_is_deleg_cur(open))
- 			goto out;
- 		status = nfserr_jukebox;
--		fp = open->op_file;
--		open->op_file = NULL;
--		nfsd4_init_file(fp, ino);
- 	}
- 
- 	/*
+> ---
+>  fs/nfsd/nfs4state.c | 62
+> ++++++++++++++++++++++++++--------------------------- 1 file changed,
+> 30 insertions(+), 32 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2204e1fe5725..f9049516bfae 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3042,6 +3042,21 @@ static inline int nfs4_access_to_access(u32
+> nfs4_access) return flags;
+>  }
+>  
+> +static inline __be32
+> +nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+> +		struct nfsd4_open *open)
+> +{
+> +	struct iattr iattr = {
+> +		.ia_valid = ATTR_SIZE,
+> +		.ia_size = 0,
+> +	};
+> +	if (!open->op_truncate)
+> +		return 0;
+> +	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
+> +		return nfserr_inval;
+> +	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
+> +}
+> +
+>  static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct
+> nfs4_file *fp, struct svc_fh *cur_fh, struct nfsd4_open *open)
+>  {
+> @@ -3053,53 +3068,39 @@ static __be32 nfs4_get_vfs_file(struct
+> svc_rqst *rqstp, struct nfs4_file *fp, status = nfsd_open(rqstp,
+> cur_fh, S_IFREG, access, &fp->fi_fds[oflag]);
+>  		if (status)
+> -			return status;
+> +			goto out;
+>  	}
+>  	nfs4_file_get_access(fp, oflag);
+>  
+> +	status = nfsd4_truncate(rqstp, cur_fh, open);
+> +	if (status)
+> +		goto out_put_access;
+> +
+>  	return nfs_ok;
+> -}
+>  
+> -static inline __be32
+> -nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+> -		struct nfsd4_open *open)
+> -{
+> -	struct iattr iattr = {
+> -		.ia_valid = ATTR_SIZE,
+> -		.ia_size = 0,
+> -	};
+> -	if (!open->op_truncate)
+> -		return 0;
+> -	if (!(open->op_share_access & NFS4_SHARE_ACCESS_WRITE))
+> -		return nfserr_inval;
+> -	return nfsd_setattr(rqstp, fh, &iattr, 0, (time_t)0);
+> +out_put_access:
+> +	nfs4_file_put_access(fp, oflag);
+> +out:
+> +	return status;
+>  }
+>  
+>  static __be32
+>  nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp,
+> struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open
+> *open) { u32 op_share_access = open->op_share_access;
+> -	bool new_access;
+>  	__be32 status;
+>  
+> -	new_access = !test_access(op_share_access, stp);
+> -	if (new_access) {
+> +	if (!test_access(op_share_access, stp))
+>  		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open);
+> -		if (status)
+> -			return status;
+> -	}
+> -	status = nfsd4_truncate(rqstp, cur_fh, open);
+> -	if (status) {
+> -		if (new_access) {
+> -			int oflag =
+> nfs4_access_to_omode(op_share_access);
+> -			nfs4_file_put_access(fp, oflag);
+> -		}
+> +	else
+> +		status = nfsd4_truncate(rqstp, cur_fh, open);
+> +
+> +	if (status)
+>  		return status;
+> -	}
+> +
+>  	/* remember the open */
+>  	set_access(op_share_access, stp);
+>  	set_deny(open->op_share_deny, stp);
+> -
+>  	return nfs_ok;
+>  }
+>  
+> @@ -3350,9 +3351,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp,
+> struct svc_fh *current_fh, struct nf status =
+> nfs4_get_vfs_file(rqstp, fp, current_fh, open); if (status)
+>  			goto out;
+> -		status = nfsd4_truncate(rqstp, current_fh, open);
+> -		if (status)
+> -			goto out;
+>  		stp = open->op_stp;
+>  		open->op_stp = NULL;
+>  		init_open_stateid(stp, fp, open);
+
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@poochiereds.net>
