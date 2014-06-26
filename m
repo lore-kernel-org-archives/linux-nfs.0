@@ -1,94 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:64705 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751511AbaFZTOp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:45 -0400
-Received: by mail-qa0-f52.google.com with SMTP id w8so3165337qac.39
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:44 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 043/117] nfsd: Ensure stateids remain unique until they are freed
-Date: Thu, 26 Jun 2014 15:12:23 -0400
-Message-Id: <1403810017-16062-44-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:41705 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755560AbaFZB03 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jun 2014 21:26:29 -0400
+Date: Wed, 25 Jun 2014 21:26:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 000/104] nfsd: eliminate the client_mutex
+Message-ID: <20140626012629.GA19952@fieldses.org>
+References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+ <20140619113328.598cf759@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140619113328.598cf759@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+I'm seeing this, by the way.--b.
 
-Add an extra delegation state to allow the stateid to remain in the idr
-tree until the last reference has been released. This will be necessary
-to ensure uniqueness once the client_mutex is removed.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 8 +++++---
- fs/nfsd/state.h     | 1 +
- 2 files changed, 6 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a02a5892f839..2aa21a263510 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -640,6 +640,7 @@ static void remove_stid(struct nfs4_stid *s)
- 
- static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
- {
-+	remove_stid(s);
- 	if (s->sc_file)
- 		put_nfs4_file(s->sc_file);
- 	kmem_cache_free(slab, s);
-@@ -710,7 +711,7 @@ unhash_delegation(struct nfs4_delegation *dp)
- 
- static void destroy_delegation(struct nfs4_delegation *dp)
- {
--	remove_stid(&dp->dl_stid);
-+	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
- 	nfs4_put_delegation(dp);
- }
- 
-@@ -723,7 +724,7 @@ static void unhash_and_destroy_delegation(struct nfs4_delegation *dp)
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
- {
- 	list_del_init(&dp->dl_recall_lru);
--	destroy_delegation(dp);
-+	nfs4_put_delegation(dp);
- }
- 
- static void revoke_delegation(struct nfs4_delegation *dp)
-@@ -876,7 +877,6 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
- 		return;
--	remove_stid(&stp->st_stid);
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
- 
-@@ -4041,7 +4041,9 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 		return nfs_ok;
- 	default:
- 		printk("unknown stateid type %x\n", s->sc_type);
-+		/* Fallthrough */
- 	case NFS4_CLOSED_STID:
-+	case NFS4_CLOSED_DELEG_STID:
- 		return nfserr_bad_stateid;
- 	}
- }
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index fc71ad61238d..7aaf6e74504c 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -81,6 +81,7 @@ struct nfs4_stid {
- #define NFS4_CLOSED_STID 8
- /* For a deleg stateid kept around only to process free_stateid's: */
- #define NFS4_REVOKED_DELEG_STID 16
-+#define NFS4_CLOSED_DELEG_STID 32
- 	unsigned char sc_type;
- 	stateid_t sc_stateid;
- 	struct nfs4_client *sc_client;
--- 
-1.9.3
-
+[  512.960652] nfsd: non-standard errno: -7
+[  650.442646] ------------[ cut here ]------------
+[  650.442754] WARNING: CPU: 3 PID: 647 at fs/nfsd/nfs4state.c:761
+revoke_delegation+0xa7/0xb0 [nfsd]()
+[  650.442760] Modules linked in: rpcsec_gss_krb5 nfsd auth_rpcgss
+oid_registry nfs_acl lockd sunrpc
+[  650.442792] CPU: 3 PID: 647 Comm: kworker/u8:2 Not tainted
+3.16.0-rc2-00479-gb675b9c #2982
+[  650.442796] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[  650.442814] Workqueue: nfsd4 laundromat_main [nfsd]
+[  650.442821]  0000000000000009 ffff880036287c48 ffffffff81a439d6
+0000000000000001
+[  650.442836]  0000000000000000 ffff880036287c88 ffffffff8106d65c
+ffff880036287c68
+[  650.442851]  ffff8800312aee60 ffff88001bcfe800 ffff8800312aeeb0
+ffffffff822c7cc0
+[  650.442865] Call Trace:
+[  650.442878]  [<ffffffff81a439d6>] dump_stack+0x4f/0x7c
+[  650.442889]  [<ffffffff8106d65c>] warn_slowpath_common+0x8c/0xc0
+[  650.442897]  [<ffffffff8106d6aa>] warn_slowpath_null+0x1a/0x20
+[  650.442917]  [<ffffffffa011a607>] revoke_delegation+0xa7/0xb0 [nfsd]
+[  650.442936]  [<ffffffffa011aaec>] laundromat_main+0x2dc/0x480 [nfsd]
+[  650.442956]  [<ffffffffa011a9f4>] ? laundromat_main+0x1e4/0x480
+[nfsd]
+[  650.442967]  [<ffffffff8108924e>] process_one_work+0x1ce/0x500
+[  650.442976]  [<ffffffff810891db>] ? process_one_work+0x15b/0x500
+[  650.442985]  [<ffffffff81089b9b>] worker_thread+0x11b/0x4f0
+[  650.442995]  [<ffffffff810bba2d>] ? trace_hardirqs_on+0xd/0x10
+[  650.443004]  [<ffffffff81a4c36b>] ?
+_raw_spin_unlock_irqrestore+0x4b/0x80
+[  650.443013]  [<ffffffff81089a80>] ? init_pwq+0x190/0x190
+[  650.443022]  [<ffffffff81090ac4>] kthread+0xe4/0x100
+[  650.443032]  [<ffffffff810909e0>] ? __init_kthread_worker+0x70/0x70
+[  650.443041]  [<ffffffff81a4caac>] ret_from_fork+0x7c/0xb0
+[  650.443050]  [<ffffffff810909e0>] ? __init_kthread_worker+0x70/0x70
+[  650.443055] ---[ end trace e3faa7f0516143d3 ]---
