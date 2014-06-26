@@ -1,37 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:59242 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754702AbaFIOlB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2014 10:41:01 -0400
-Received: by mail-ig0-f179.google.com with SMTP id r2so1961689igi.0
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Jun 2014 07:41:00 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH v2 5/6] nfs: remove pgio_header refcount, related cleanup
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <20140607143901.GE9469@infradead.org>
-Date: Mon, 9 Jun 2014 10:40:59 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <D0C47686-740E-4DEB-9C37-AA0446AC7A4E@primarydata.com>
-References: <1401995791-40213-1-git-send-email-dros@primarydata.com> <1401995791-40213-6-git-send-email-dros@primarydata.com> <20140607143901.GE9469@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from mail-qa0-f43.google.com ([209.85.216.43]:50539 "EHLO
+	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751511AbaFZTPB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:01 -0400
+Received: by mail-qa0-f43.google.com with SMTP id k15so3159207qaq.2
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:00 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 055/117] nfsd: nfsd4_process_open2() must reference the delegation stateid
+Date: Thu, 26 Jun 2014 15:12:35 -0400
+Message-Id: <1403810017-16062-56-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun 7, 2014, at 10:39 AM, Christoph Hellwig <hch@infradead.org> wrote:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-> On Thu, Jun 05, 2014 at 03:16:30PM -0400, Weston Andros Adamson wrote:
->> The refcounting on nfs_pgio_header was related to there being (possibly)
->> more than one nfs_pgio_data. Now that nfs_pgio_data has been merged into
->> nfs_pgio_header, there is no reason to do this ref counting.  Just call
->> the completion callback on nfs_pgio_release/nfs_pgio_error.
-> 
-> 
-> I think nfs_generic_pgio_reset isn't an all that descriptive name, why
-> not keep nfs_pgio_data_destroy?
+Ensure that nfsd4_process_open2() keeps a reference to the delegation
+stateid until it is done working with it. Necessary step toward
+client_mutex removal.
 
-That sounds reasonable - I renamed because struct nfs_pgio_data is gone, but
-the name still makes sense.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
 
--dros
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ed5091e0abec..5b88cb314b99 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3287,6 +3287,8 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
+ 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
+ 	if (!ret)
+ 		return NULL;
++	/* FIXME: move into find_stateid_by_type */
++	atomic_inc(&ret->sc_count);
+ 	return delegstateid(ret);
+ }
+ 
+@@ -3302,14 +3304,18 @@ nfs4_check_deleg(struct nfs4_client *cl, struct nfsd4_open *open,
+ {
+ 	int flags;
+ 	__be32 status = nfserr_bad_stateid;
++	struct nfs4_delegation *deleg;
+ 
+-	*dp = find_deleg_stateid(cl, &open->op_delegate_stateid);
+-	if (*dp == NULL)
++	deleg = find_deleg_stateid(cl, &open->op_delegate_stateid);
++	if (deleg == NULL)
+ 		goto out;
+ 	flags = share_access_to_flags(open->op_share_access);
+-	status = nfs4_check_delegmode(*dp, flags);
+-	if (status)
+-		*dp = NULL;
++	status = nfs4_check_delegmode(deleg, flags);
++	if (status) {
++		nfs4_put_delegation(deleg);
++		goto out;
++	}
++	*dp = deleg;
+ out:
+ 	if (!nfsd4_is_deleg_cur(open))
+ 		return nfs_ok;
+@@ -3768,6 +3774,8 @@ out:
+ 	if (!(open->op_openowner->oo_flags & NFS4_OO_CONFIRMED) &&
+ 	    !nfsd4_has_session(&resp->cstate))
+ 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
++	if (dp)
++		nfs4_put_delegation(dp);
+ 
+ 	return status;
+ }
+-- 
+1.9.3
+
