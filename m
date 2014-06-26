@@ -1,107 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:62522 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753285AbaFWN4s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 09:56:48 -0400
-Received: by mail-qa0-f45.google.com with SMTP id v10so5520762qac.4
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 06:56:47 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 23 Jun 2014 09:56:45 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 000/104] nfsd: eliminate the client_mutex
-Message-ID: <20140623095645.1fc23e9c@tlielax.poochiereds.net>
-In-Reply-To: <20140623133926.GA32746@infradead.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-	<20140623133926.GA32746@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:64903 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751470AbaFZTOI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:08 -0400
+Received: by mail-qa0-f44.google.com with SMTP id hw13so3195639qab.3
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:08 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 016/117] nfsd: Allow lockowners to hold several stateids
+Date: Thu, 26 Jun 2014 15:11:56 -0400
+Message-Id: <1403810017-16062-17-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 23 Jun 2014 06:39:26 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+A lockowner can have more than one lock stateid. For instance, if a
+process has more than one file open and has locks on both, then the same
+lockowner has more than one stateid associated with it. Change it so
+that this reality is better reflected by the objects that nfsd uses.
 
-> Hi Jeff,
-> 
-> thanks for bringing this forward.  I've started looking at the series,
-> but I'm a little overwhelmed as it's growing bigger and bigger with
-> each posting.  That also makes me a little worried about putting all
-> of it into 3.17.  I know you've started separating a few bits out and
-> some of those actually went into 3.16, but maybe we really should
-> start to some easier to split piece in first and make sure they get
-> into 3.17 and then see if we can get through the rest of it in time.
-> 
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 55 ++++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 33 insertions(+), 22 deletions(-)
 
-Thanks for taking a look. The big problem with breaking this set up is
-that it will likely result in at least some performance regression in
-the interim. We're adding more granular locking inside of the
-coarse-grained client_mutex, which is likely to mean at least some
-slowdown until the client_mutex is removed. Maybe that's worth it
-though.
-
-> Besides the obvious fixes for bits that were racy before and don't
-> just need better scalability one thing that strikes to mind are some
-> of the higher level logic changes, like the changes fixes to various
-> stateowner / stateid relations.
-> 
-
-I'll have to think about how to break those out. Unfortunately, there
-are strong dependencies between some of those changes, which makes it
-hard to do this in pieces.
-
-> Besides that some higher level comments from glacing over the series:
-> 
->  - the patches that touch locks.c and the lockdep code should go
->    first, and include the maintainer (at least for lockdep, locks.c is
->    easy :)) and relevant mailing lists.
-
-Fair enough. I meant to cc the lockdep folks on the
-lockdep_assert_not_held patch. I don't expect pushback from them, but
-you're correct that they should be Cc'ed.
-
->  - lots of patches only have a subject line, but no explanation in the
->    body at all.  While this might be enough for trivial patches few
->    of them are trivial enough that this would be enough.
-
-Ok. I'll try to flesh them out for the next posting.
-
->  - some patches have a signoff from Trond, but no From: line for him
->    in the body.  I suspect this just got lost somewhere.
-
-Yeah. Some of them were originally written by Trond, but then I ended
-up having to do large scale rework of them. I prob should have just
-dropped his SOB lines from those. I'll go over those and do that or fix
-the From: lines.
-
->  - there is some confusion of NFSd vs nfsd in the subsystem prefixes.
->    While it seems odd and against the usual naming NFSd seems to be
->    the common one for nfs patches.
-> 
-
-I tend to prefer "nfsd", but ok -- "NFSd" it is.
-
-> checkpatch.pl also has various valid complains (mostly about too long
-> lines) and a few silly ones about printks, might be worth to address
-> them.
-> 
-
-Ahh right. I need to fix those -- Steve French reported a few of those
-too (and sent me patches privately).
-
-> Last but not least I get a new compiler warning with the whole series
-> applied, as put_client is only used by the fault injection code, but
-> still compiled when the config option for it is not set.
-> 
-
-Good catch. I'll fix that.
-
-> I hope I'll have some more useful detailed reviews soon.
-> 
-
-Thanks. I should also note that a couple of races were found in the
-nfs4_ol_stateid handling while testing this set, so I'll be respinning
-it to fix those up anyway.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2d7887a752db..5b903761ba73 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3913,12 +3913,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+ 
+ 	if (check_for_locks(stp->st_file, lo))
+ 		return nfserr_locks_held;
+-	/*
+-	 * Currently there's a 1-1 lock stateid<->lockowner
+-	 * correspondance, and we have to delete the lockowner when we
+-	 * delete the lock stateid:
+-	 */
+-	release_lockowner(lo);
++	release_lockowner_if_empty(lo);
+ 	return nfs_ok;
+ }
+ 
+@@ -4442,6 +4437,19 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	return stp;
+ }
+ 
++static struct nfs4_ol_stateid *
++find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
++{
++	struct nfs4_ol_stateid *lst;
++
++	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
++		if (lst->st_file == fp)
++			return lst;
++	}
++	return NULL;
++}
++
++
+ static int
+ check_lock_length(u64 offset, u64 length)
+ {
+@@ -4471,25 +4479,28 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
+ 
+ 	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid,
+ 				&lock->v.new.owner, nn);
+-	if (lo) {
+-		if (!cstate->minorversion)
++	if (!lo) {
++		strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
++				&lock->v.new.owner);
++		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
++		if (lo == NULL)
++			return nfserr_jukebox;
++	} else {
++		/* with an existing lockowner, seqids must be the same */
++		if (!cstate->minorversion &&
++		    lock->lk_new_lock_seqid != lo->lo_owner.so_seqid)
+ 			return nfserr_bad_seqid;
+-		/* XXX: a lockowner always has exactly one stateid: */
+-		*lst = list_first_entry(&lo->lo_owner.so_stateids,
+-				struct nfs4_ol_stateid, st_perstateowner);
+-		return nfs_ok;
+ 	}
+-	strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
+-			&lock->v.new.owner);
+-	lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
+-	if (lo == NULL)
+-		return nfserr_jukebox;
+-	*lst = alloc_init_lock_stateid(lo, fi, ost);
++
++	*lst = find_lock_stateid(lo, fi);
+ 	if (*lst == NULL) {
+-		release_lockowner(lo);
+-		return nfserr_jukebox;
++		*lst = alloc_init_lock_stateid(lo, fi, ost);
++		if (*lst == NULL) {
++			release_lockowner_if_empty(lo);
++			return nfserr_jukebox;
++		}
++		*new = true;
+ 	}
+-	*new = true;
+ 	return nfs_ok;
+ }
+ 
+@@ -4646,7 +4657,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
+ out:
+ 	if (status && new_state)
+-		release_lockowner(lock_sop);
++		release_lockowner_if_empty(lock_sop);
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (!cstate->replay_owner)
+ 		nfs4_unlock_state();
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
