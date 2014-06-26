@@ -1,66 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f178.google.com ([209.85.220.178]:33318 "EHLO
-	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753209AbaFWX2R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 19:28:17 -0400
-Received: by mail-vc0-f178.google.com with SMTP id ij19so6972740vcb.9
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 16:28:16 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140623221016.GA9429@pad.redhat.com>
-References: <1403559272-11019-1-git-send-email-bfields@redhat.com>
-	<CAHQdGtQXjvyaXx9PkYW=96F+wvPEj8-=eGFV2NDpfFZEB77E5w@mail.gmail.com>
-	<20140623221016.GA9429@pad.redhat.com>
-Date: Mon, 23 Jun 2014 19:28:16 -0400
-Message-ID: <CAHQdGtR54dy4DJLbx9jBEFbOM7dxihkZBqFgLpafSXdYuqei9A@mail.gmail.com>
-Subject: Re: [PATCH 1/3] nfsd: fix rare symlink decoding bug
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:45630 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751621AbaFZTPQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:16 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so3602104qcx.27
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:15 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 066/117] nfsd: add an operation for unhashing a stateowner
+Date: Thu, 26 Jun 2014 15:12:46 -0400
+Message-Id: <1403810017-16062-67-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 23, 2014 at 6:10 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 2d305a1..56bdf4a 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -600,7 +600,18 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
->                 READ_BUF(4);
->                 create->cr_linklen = be32_to_cpup(p++);
->                 READ_BUF(create->cr_linklen);
-> -               SAVEMEM(create->cr_linkname, create->cr_linklen);
-> +               /*
-> +                * The VFS will want a null-terminated string, and
-> +                * null-terminating in place isn't safe since this might
-> +                * end on a page boundary:
-> +                */
-> +               create->cr_linkname =
-> +                               kmalloc(create->cr_linklen + 1, GFP_KERNEL);
-> +               if (!create->cr_linkname)
-> +                       return nfserr_jukebox;
-> +               memcpy(create->cr_linkname, p, create->cr_linklen);
-> +               create->cr_linkname[create->cr_linklen] = '\0';
-> +               defer_free(argp, kfree, create->cr_linkname);
->                 break;
->         case NF4BLK:
->         case NF4CHR:
+Allow stateowners to be unhashed and destroyed when the last reference
+is put. The unhashing must be idempotent. In a future patch, we'll add
+some locking around it, but for now it's only protected by the
+client_mutex.
 
-Note that "defer_free()" does yet another allocation here in order to
-make space for a small 'struct tmpbuf' structure. Unlike the first
-allocation, there is no check for whether or not that second
-allocation is successful above, so you can easily end up with a silent
-memory leakage (ditto for a number of other callers of defer_free()).
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 45 +++++++++++++++++++++++++++++++++++----------
+ fs/nfsd/state.h     |  1 +
+ 2 files changed, 36 insertions(+), 10 deletions(-)
 
-Looking around at all the other users, wouldn't it perhaps make sense
-to replace defer_free() with a helper that does just a single
-allocation for both the memory buffer and the struct tmpbuf?
-
-Cheers
-  Trond
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 28d42aaf9745..3ae5a3b56a85 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -938,9 +938,13 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 
+ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ {
++	list_del_init(&lo->lo_owner.so_strhash);
++}
++
++static void release_lockowner_stateids(struct nfs4_lockowner *lo)
++{
+ 	struct nfs4_ol_stateid *stp;
+ 
+-	list_del(&lo->lo_owner.so_strhash);
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+@@ -951,6 +955,7 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ static void release_lockowner(struct nfs4_lockowner *lo)
+ {
+ 	unhash_lockowner(lo);
++	release_lockowner_stateids(lo);
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+@@ -1000,15 +1005,8 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ 
+ static void unhash_openowner(struct nfs4_openowner *oo)
+ {
+-	struct nfs4_ol_stateid *stp;
+-
+-	list_del(&oo->oo_owner.so_strhash);
+-	list_del(&oo->oo_perclient);
+-	while (!list_empty(&oo->oo_owner.so_stateids)) {
+-		stp = list_first_entry(&oo->oo_owner.so_stateids,
+-				struct nfs4_ol_stateid, st_perstateowner);
+-		release_open_stateid(stp);
+-	}
++	list_del_init(&oo->oo_owner.so_strhash);
++	list_del_init(&oo->oo_perclient);
+ }
+ 
+ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+@@ -1021,9 +1019,21 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	}
+ }
+ 
++static void release_openowner_stateids(struct nfs4_openowner *oo)
++{
++	struct nfs4_ol_stateid *stp;
++
++	while (!list_empty(&oo->oo_owner.so_stateids)) {
++		stp = list_first_entry(&oo->oo_owner.so_stateids,
++				struct nfs4_ol_stateid, st_perstateowner);
++		release_open_stateid(stp);
++	}
++}
++
+ static void release_openowner(struct nfs4_openowner *oo)
+ {
+ 	unhash_openowner(oo);
++	release_openowner_stateids(oo);
+ 	list_del(&oo->oo_close_lru);
+ 	release_last_closed_stateid(oo);
+ 	nfs4_put_stateowner(&oo->oo_owner);
+@@ -2987,6 +2997,7 @@ static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
+ {
+ 	if (!atomic_dec_and_test(&sop->so_count))
+ 		return;
++	sop->so_unhash(sop);
+ 	sop->so_free(sop);
+ }
+ 
+@@ -2998,6 +3009,13 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ 	list_add(&oo->oo_perclient, &clp->cl_openowners);
+ }
+ 
++static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
++{
++	struct nfs4_openowner *oo = openowner(so);
++
++	unhash_openowner(oo);
++}
++
+ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+ {
+ 	struct nfs4_openowner *oo = openowner(so);
+@@ -3017,6 +3035,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	if (!oo)
+ 		return NULL;
+ 	oo->oo_owner.so_free = nfs4_free_openowner;
++	oo->oo_owner.so_unhash = nfs4_unhash_openowner;
+ 	oo->oo_owner.so_is_open_owner = 1;
+ 	oo->oo_owner.so_seqid = open->op_seqid;
+ 	oo->oo_flags = NFS4_OO_NEW;
+@@ -4736,6 +4755,11 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
+ 	return NULL;
+ }
+ 
++static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
++{
++	unhash_lockowner(lockowner(sop));
++}
++
+ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
+ {
+ 	struct nfs4_lockowner *lo = lockowner(sop);
+@@ -4763,6 +4787,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	lo->lo_owner.so_is_open_owner = 0;
+ 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
+ 	lo->lo_owner.so_free = nfs4_free_lockowner;
++	lo->lo_owner.so_unhash = nfs4_unhash_lockowner;
+ 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
+ 	return lo;
+ }
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e8a9bd8c3c61..e318fc29dd68 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -347,6 +347,7 @@ struct nfs4_stateowner {
+ 	bool			so_is_open_owner;
+ 
+ 	void (*so_free)(struct nfs4_stateowner *);
++	void (*so_unhash)(struct nfs4_stateowner *);
+ };
+ 
+ struct nfs4_openowner {
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
