@@ -1,40 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:43108 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932277AbaFINLy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 9 Jun 2014 09:11:54 -0400
-Message-ID: <5395B291.9050501@netapp.com>
-Date: Mon, 9 Jun 2014 09:11:45 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Or Gerlitz <or.gerlitz@gmail.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "Roland Dreier" <roland@kernel.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma <linux-rdma@vger.kernel.org>
-Subject: Re: [PATCH v5 00/24] Series short description
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>	<005501cf7b5f$4e4359a0$eaca0ce0$@opengridcomputing.com> <CAJZOPZ+SBT=yX3v4kvzg4TsZU2=L-05r3=ht-4y86Ox44M3mpQ@mail.gmail.com>
-In-Reply-To: <CAJZOPZ+SBT=yX3v4kvzg4TsZU2=L-05r3=ht-4y86Ox44M3mpQ@mail.gmail.com>
-Content-Type: text/plain; charset="ISO-8859-1"
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:51155 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751570AbaFZTWG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:22:06 -0400
+Received: by mail-qa0-f49.google.com with SMTP id w8so3157978qac.36
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:22:06 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 110/117] nfsd: Remove nfs4_lock_state(): nfsd4_open and nfsd4_open_confirm
+Date: Thu, 26 Jun 2014 15:21:18 -0400
+Message-Id: <1403810485-16497-27-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/09/2014 05:55 AM, Or Gerlitz wrote:
-> On Thu, May 29, 2014 at 7:59 PM, Steve Wise <swise@opengridcomputing.com> wrote:
->> I tested this series over cxgb4 and mlx4, running cthon04, fio read/rand-rw, and xfstests, and over mthca cthon04.  No regressions.
-> 
-> Steve, Chuck, all
-> 
-> Where this series stands? I don't see it in Roland's tree for-next
-> branch... is this planned to go upstream through another maintainer
-> tree? if not, I think we're good to go, so Roland, are you picking it
-> up?
-> 
-> Or.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-This is going through the NFS tree (Trond should already have it).
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4proc.c  | 3 ---
+ fs/nfsd/nfs4state.c | 6 ------
+ 2 files changed, 9 deletions(-)
 
-Anna
-> 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 833c753e4775..0b718f545785 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -385,8 +385,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (nfsd4_has_session(cstate))
+ 		copy_clientid(&open->op_clientid, cstate->session);
+ 
+-	nfs4_lock_state();
+-
+ 	/* check seqid for replay. set nfs4_owner */
+ 	resp = rqstp->rq_resp;
+ 	status = nfsd4_process_open1(&resp->cstate, open, nn);
+@@ -469,7 +467,6 @@ out:
+ 	}
+ 	nfsd4_cleanup_open_state(cstate, open, status);
+ 	nfsd4_bump_seqid(cstate, status);
+-	nfs4_unlock_state();
+ 	return status;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8734847f7e49..879328c70e4b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3930,9 +3930,6 @@ static void nfsd4_deleg_xgrade_none_ext(struct nfsd4_open *open,
+ 	 */
+ }
+ 
+-/*
+- * called with nfs4_lock_state() held.
+- */
+ __be32
+ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
+ {
+@@ -4644,8 +4641,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		return status;
+ 
+-	nfs4_lock_state();
+-
+ 	status = nfs4_preprocess_seqid_op(cstate,
+ 					oc->oc_seqid, &oc->oc_req_stateid,
+ 					NFS4_OPEN_STID, &stp, nn);
+@@ -4755,7 +4750,6 @@ put_stateid:
+ 	put_generic_stateid(stp);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+-	nfs4_unlock_state();
+ 	return status;
+ }
+ 
+-- 
+1.9.3
 
