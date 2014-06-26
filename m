@@ -1,196 +1,235 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45027 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755983AbaFLPOd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Jun 2014 11:14:33 -0400
-Date: Thu, 12 Jun 2014 11:14:30 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd: add support for case-insensitive file names.
-Message-ID: <20140612151430.GC5437@fieldses.org>
-References: <20140612124947.725f47bd@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140612124947.725f47bd@notabene.brown>
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:52532 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751676AbaFZTVq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:46 -0400
+Received: by mail-qc0-f176.google.com with SMTP id w7so3614509qcr.35
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:46 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 095/117] nfsd: abstract out the get and set routines into the fault injection ops
+Date: Thu, 26 Jun 2014 15:21:03 -0400
+Message-Id: <1403810485-16497-12-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 12, 2014 at 12:49:47PM +1000, NeilBrown wrote:
-> Case insensitive filesystems support textually distinct names for the
-> same directory. i.e. you can access it with a name other than the
-> canonical name.
-> For example if you
->   mkdir /mnt/export
-> 
-> then add /mnt/EXPORT to /etc/exports, and on a client
->   mount server:/mnt/EXPORT /import
-> 
-> then the mount will work, but if the kernel on the server needs to
-> refresh the export information, it will ask about "/mnt/export", which
-> is not listed in /etc/exports and so will fail.
-> 
-> To fix this we need mountd to perform case-insensitive name
-> comparisons, but only when the filesystem would, and in exactly the
-> same way that the filesystem would.
-> 
-> So, when comparing paths for equality first try some simple heuristics
-> which will not be fooled by case and then ask the kernel if they are
-> the same.
-> 
-> By preference we use name_to_handle_at() as it reports the mntid which
-> can distinguish between bind mounts.  If that is not available, use
-> lstat() and compare rdev and ino.
+Now that we've added more granular locking in other places, it's time
+to address the fault injection code. This code is currently quite
+reliant on the client_mutex for protection. Start to change this by
+adding a new set of fault injection op vectors.
 
-ACK to the patch.
+For now they all use the legacy ones. In later patches we'll add new
+routines that can deal with more granular locking.
 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> 
-> ---
-> This was discussed a little while ago under the subject
->   Should exportfs/mountd cope with case-insensitive directory names.
-> 
-> I've added name_to_handle_at support if it is available to
-> get a more precise result.
-> 
-> I've tested by exporting a subdirectory of a VFAT filesystem using a different
-> name than the one the directory was created with.
-> This works with old code until you
-> 
-> date +%s > /proc/net/rpc/nfsd.export/flush 
-> 
-> (or wait 15 minutes) at which point you get a stale file handle.
-> With the patch, you don't get the stale file handle.
+Also, move some of the printk routines into the callers to make the
+results of the operations more uniform.
 
-I'd stick leave the test case in the changelog, though.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/fault_inject.c | 129 ++++++++++++++++++++++++++++++-------------------
+ 1 file changed, 78 insertions(+), 51 deletions(-)
 
-Actually, ideally we'd have it in code.
-
-The exports logic is pretty complicated and I've got no regular
-regression testing for it.
-
---b.
-
-> 
-> 
-> Thanks,
-> NeilBrown
-> 
-> diff --git a/configure.ac b/configure.ac
-> index 7b93de6386db..408f4c85bd98 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -411,7 +411,7 @@ AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
->                 getnameinfo getrpcbyname getifaddrs \
->                 gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
->                 ppoll realpath rmdir select socket strcasecmp strchr strdup \
-> -               strerror strrchr strtol strtoul sigprocmask])
-> +               strerror strrchr strtol strtoul sigprocmask name_to_handle_at])
->  
->  
->  dnl *************************************************************
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 9a1bb2767ac2..6dad257e03ce 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -377,6 +377,80 @@ static char *next_mnt(void **v, char *p)
->  	return me->mnt_dir;
->  }
->  
-> +/* same_path() check is two paths refer to the same directory.
-> + * We don't rely on 'strcmp()' as some filesystems support case-insensitive
-> + * names and we might have two different names for the one directory.
-> + * Theoretically the lengths of the names could be different, but the
-> + * number of components must be the same.
-> + * So if the paths have the same number of components (but aren't identical)
-> + * we ask the kernel if they are the same thing.
-> + * By preference we use name_to_handle_at(), as the mntid it returns
-> + * will distinguish between bind-mount points.  If that isn't available
-> + * we fall back on lstat, which is usually good enough.
-> + */
-> +static inline int count_slashes(char *p)
-> +{
-> +	int cnt = 0;
-> +	while (*p)
-> +		if (*p++ == '/')
-> +			cnt++;
-> +	return cnt;
-> +}
-> +
-> +static int same_path(char *child, char *parent, int len)
-> +{
-> +	static char p[PATH_MAX];
-> +	if (len <= 0)
-> +		len = strlen(child);
-> +	strncpy(p, child, len);
-> +	p[len] = 0;
-> +	if (strcmp(p, parent) == 0)
-> +		return 1;
-> +
-> +	/* If number of '/' are different, they must be different */
-> +	if (count_slashes(p) != count_slashes(parent))
-> +		return 0;
-> +
-> +#if HAVE_NAME_TO_HANDLE_AT
-> +	struct {
-> +		struct file_handle fh;
-> +		unsigned char handle[128];
-> +	} fchild, fparent;
-> +	int mnt_child, mnt_parent;
-> +	fchild.fh.handle_bytes = 128;
-> +	fparent.fh.handle_bytes = 128;
-> +	if (name_to_handle_at(AT_FDCWD, p, &fchild.fh, &mnt_child, 0) != 0) {
-> +		if (errno == ENOSYS)
-> +			goto fallback;
-> +		return 0;
-> +	}
-> +	if (name_to_handle_at(AT_FDCWD, parent, &fparent.fh, &mnt_parent, 0) != 0)
-> +		return 0;
-> +	if (mnt_child != mnt_parent ||
-> +	    fchild.fh.handle_bytes != fparent.fh.handle_bytes ||
-> +	    fchild.fh.handle_type != fparent.fh.handle_type ||
-> +	    memcmp(fchild.handle, fparent.handle,
-> +		   fchild.fh.handle_bytes) != 0)
-> +		return 0;
-> +	return 1;
-> +fallback:;
-> +#endif
-> +	/* This is nearly good enough.  However if a directory is
-> +	 * bind-mounted in two places and both are exported, it
-> +	 * could give a false positive
-> +	 */
-> +	struct stat sc, sp;
-> +	if (lstat(p, &sc) != 0)
-> +		return 0;
-> +	if (lstat(parent, &sp) != 0)
-> +		return 0;
-> +	if (sc.st_dev != sp.st_dev)
-> +		return 0;
-> +	if (sc.st_ino != sp.st_ino)
-> +		return 0;
-> +	return 1;
-> +}
-> +
->  static int is_subdirectory(char *child, char *parent)
->  {
->  	/* Check is child is strictly a subdirectory of
-> @@ -387,7 +461,7 @@ static int is_subdirectory(char *child, char *parent)
->  	if (strcmp(parent, "/") == 0 && child[1] != 0)
->  		return 1;
->  
-> -	return (strncmp(child, parent, l) == 0 && child[l] == '/');
-> +	return (same_path(child, parent, l) && child[l] == '/');
->  }
->  
->  static int path_matches(nfs_export *exp, char *path)
-> @@ -396,7 +470,7 @@ static int path_matches(nfs_export *exp, char *path)
->  	 * exact match, or does the export have CROSSMOUNT, and path
->  	 * is a descendant?
->  	 */
-> -	return strcmp(path, exp->m_export.e_path) == 0
-> +	return same_path(path, exp->m_export.e_path, 0)
->  		|| ((exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
->  		    && is_subdirectory(path, exp->m_export.e_path));
->  }
-
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index f1333fc35b33..b1159900d934 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -17,79 +17,50 @@
+ 
+ struct nfsd_fault_inject_op {
+ 	char *file;
++	u64 (*get)(struct nfsd_fault_inject_op *);
++	u64 (*set_val)(struct nfsd_fault_inject_op *, u64);
++	u64 (*set_clnt)(struct nfsd_fault_inject_op *,
++			struct sockaddr_storage *, size_t);
+ 	u64 (*forget)(struct nfs4_client *, u64);
+ 	u64 (*print)(struct nfs4_client *, u64);
+ };
+ 
+-static struct nfsd_fault_inject_op inject_ops[] = {
+-	{
+-		.file   = "forget_clients",
+-		.forget = nfsd_forget_client,
+-		.print  = nfsd_print_client,
+-	},
+-	{
+-		.file   = "forget_locks",
+-		.forget = nfsd_forget_client_locks,
+-		.print  = nfsd_print_client_locks,
+-	},
+-	{
+-		.file   = "forget_openowners",
+-		.forget = nfsd_forget_client_openowners,
+-		.print  = nfsd_print_client_openowners,
+-	},
+-	{
+-		.file   = "forget_delegations",
+-		.forget = nfsd_forget_client_delegations,
+-		.print  = nfsd_print_client_delegations,
+-	},
+-	{
+-		.file   = "recall_delegations",
+-		.forget = nfsd_recall_client_delegations,
+-		.print  = nfsd_print_client_delegations,
+-	},
+-};
+-
+-static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
+ static struct dentry *debug_dir;
+ 
+-static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
++static u64 nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
+ {
+-	u64 count = 0;
+-
+-	if (val == 0)
+-		printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
+-	else
+-		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
++	u64 count;
+ 
+ 	nfs4_lock_state();
+ 	count = nfsd_for_n_state(val, op->forget);
+ 	nfs4_unlock_state();
+-	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
++	return count;
+ }
+ 
+-static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
++static u64 nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
+ 				   struct sockaddr_storage *addr,
+ 				   size_t addr_size)
+ {
+-	char buf[INET6_ADDRSTRLEN];
+ 	struct nfs4_client *clp;
+-	u64 count;
++	u64 count = 0;
+ 
+ 	nfs4_lock_state();
+ 	clp = nfsd_find_client(addr, addr_size);
+-	if (clp) {
++	if (clp)
+ 		count = op->forget(clp, 0);
+-		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
+-		printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file, buf, count);
+-	}
+ 	nfs4_unlock_state();
++	return count;
+ }
+ 
+-static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
++static u64 nfsd_inject_get(struct nfsd_fault_inject_op *op)
+ {
++	u64 count;
++
+ 	nfs4_lock_state();
+-	*val = nfsd_for_n_state(0, op->print);
++	count = nfsd_for_n_state(0, op->print);
+ 	nfs4_unlock_state();
++
++	return count;
+ }
+ 
+ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+@@ -99,9 +70,10 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+ 	char read_buf[25];
+ 	size_t size;
+ 	loff_t pos = *ppos;
++	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
+ 
+ 	if (!pos)
+-		nfsd_inject_get(file_inode(file)->i_private, &val);
++		val = op->get(op);
+ 	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
+ 
+ 	return simple_read_from_buffer(buf, len, ppos, read_buf, size);
+@@ -114,6 +86,7 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 	size_t size = min(sizeof(write_buf) - 1, len);
+ 	struct net *net = current->nsproxy->net_ns;
+ 	struct sockaddr_storage sa;
++	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
+ 	u64 val;
+ 	char *nl;
+ 
+@@ -129,11 +102,20 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 	}
+ 
+ 	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
+-	if (size > 0)
+-		nfsd_inject_set_client(file_inode(file)->i_private, &sa, size);
+-	else {
++	if (size > 0) {
++		val = op->set_clnt(op, &sa, size);
++		if (val)
++			pr_info("NFSD [%s]: Client %s had %llu state object(s)\n",
++				op->file, write_buf, val);
++	} else {
+ 		val = simple_strtoll(write_buf, NULL, 0);
+-		nfsd_inject_set(file_inode(file)->i_private, val);
++		if (val == 0)
++			pr_info("NFSD Fault Injection: %s (all)", op->file);
++		else
++			pr_info("NFSD Fault Injection: %s (n = %llu)",
++				op->file, val);
++		val = op->set_val(op, val);
++		pr_info("NFSD: %s: found %llu", op->file, val);
+ 	}
+ 	return len; /* on success, claim we got the whole input */
+ }
+@@ -149,6 +131,51 @@ void nfsd_fault_inject_cleanup(void)
+ 	debugfs_remove_recursive(debug_dir);
+ }
+ 
++static struct nfsd_fault_inject_op inject_ops[] = {
++	{
++		.file     = "forget_clients",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_forget_client,
++		.print    = nfsd_print_client,
++	},
++	{
++		.file     = "forget_locks",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_forget_client_locks,
++		.print    = nfsd_print_client_locks,
++	},
++	{
++		.file     = "forget_openowners",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_forget_client_openowners,
++		.print    = nfsd_print_client_openowners,
++	},
++	{
++		.file     = "forget_delegations",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_forget_client_delegations,
++		.print    = nfsd_print_client_delegations,
++	},
++	{
++		.file     = "recall_delegations",
++		.get	  = nfsd_inject_get,
++		.set_val  = nfsd_inject_set,
++		.set_clnt = nfsd_inject_set_client,
++		.forget   = nfsd_recall_client_delegations,
++		.print    = nfsd_print_client_delegations,
++	},
++};
++
++#define NUM_INJECT_OPS (sizeof(inject_ops)/sizeof(struct nfsd_fault_inject_op))
++
+ int nfsd_fault_inject_init(void)
+ {
+ 	unsigned int i;
+-- 
+1.9.3
 
