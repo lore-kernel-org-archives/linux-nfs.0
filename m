@@ -1,43 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:36132 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752326AbaFWKHX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 06:07:23 -0400
-Received: by mail-qa0-f49.google.com with SMTP id w8so5310546qac.22
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 03:07:22 -0700 (PDT)
-MIME-Version: 1.0
-Date: Mon, 23 Jun 2014 12:07:22 +0200
-Message-ID: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
-Subject: `ls` shows no files in mounted nfs folder, but ls 'file' works
-From: Andreas Fenkart <afenkart@gmail.com>
-To: rond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Cc: Daniel Mack <zonque@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qc0-f169.google.com ([209.85.216.169]:57033 "EHLO
+	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751570AbaFZTVm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:42 -0400
+Received: by mail-qc0-f169.google.com with SMTP id c9so3604138qcz.28
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:41 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 092/117] nfsd: don't destroy client if mark_client_expired_locked fails
+Date: Thu, 26 Jun 2014 15:21:00 -0400
+Message-Id: <1403810485-16497-9-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Found regression introduced by this patch
+If it fails, it means that the client is in use and so destroying it
+would be bad. Currently, the client_mutex prevents this from happening
+but once we remove it, we won't be able to do this.
 
-311324ad NFS: Be more aggressive in using readdirplus for 'ls -l' situations"
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-# cd /bin
--sh: cd: /bin: Not a directory
-root@192:/# pwd
-/
-root@192:/# ls /bin
-ls: /bin
-root@192:/# ls -l /bin/sh
-lrwxrwxrwx    1 root     root             9 Jun 16 13:59 /bin/sh -> /bin/bash
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3bd24d5b973e..014849dfaa4b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2447,8 +2447,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
+ 		if (old) {
+ 			status = mark_client_expired_locked(old);
+-			if (status)
++			if (status) {
++				old = NULL;
+ 				goto out_free_conn;
++			}
+ 		}
+ 		move_to_confirmed(unconf);
+ 		conf = unconf;
+@@ -2992,8 +2994,10 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
+ 		if (old) {
+ 			status = mark_client_expired_locked(old);
+-			if (status)
++			if (status) {
++				old = NULL;
+ 				goto out;
++			}
+ 		}
+ 		move_to_confirmed(unconf);
+ 		conf = unconf;
+-- 
+1.9.3
 
-the mount options of the client, an embedded system, mounting nfsroot:
-nfs(rw,relatime,vers=2,rsize=4096,wsize=4096,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=192.168.xx.xx,mountvers=1,mountproto=udp,local_lock=all,addr=192.168.xx.xx)
-vers: 3.16.0-rc1
-
-the server exports:
-/exports/rootfs 192.168.xx.xx(rw,no_root_squash,subtree_check)
-vers: 3.14-1-amd64 #1 SMP Debian 3.14.4-1 (2014-05-13) x86_64 GNU/Linux
-
-reverting above patch, dirlisting with 'ls /' works again
-
-/Andreas
