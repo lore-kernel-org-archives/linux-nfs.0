@@ -1,159 +1,283 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:36763 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751192AbaFVAw3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Jun 2014 20:52:29 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so4802070qgf.0
-        for <linux-nfs@vger.kernel.org>; Sat, 21 Jun 2014 17:52:28 -0700 (PDT)
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:42778 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751432AbaFZTOF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:05 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so3413277qge.25
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:04 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/3] nfs4: copy acceptor name from context to nfs_client
-Date: Sat, 21 Jun 2014 20:52:17 -0400
-Message-Id: <1403398337-4174-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403398337-4174-1-git-send-email-jlayton@primarydata.com>
-References: <1403398337-4174-1-git-send-email-jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 013/117] nfsd: Don't get a session reference without a client reference
+Date: Thu, 26 Jun 2014 15:11:53 -0400
+Message-Id: <1403810017-16062-14-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@poochiereds.net>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-The current CB_COMPOUND handling code tries to compare the principal
-name of the request with the cl_hostname in the client. This is not
-guaranteed to ever work, particularly if the client happened to mount
-a CNAME of the server or a non-fqdn.
+Preparatory patch for client_mutex removal.
 
-Fix this by instead comparing the cr_principal string with the acceptor
-name that we get from gssd. In the event that gssd didn't send one
-down (i.e. it was too old), then we fall back to trying to use the
-cl_hostname as we do today.
+If the client were to disappear from underneath us while we're holding
+a session reference, things would be bad. This cleanup helps ensure
+that it cannot.
 
-Signed-off-by: Jeff Layton <jlayton@poochiereds.net>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/callback.c         | 12 ++++++++++++
- fs/nfs/client.c           |  1 +
- fs/nfs/nfs4proc.c         | 33 ++++++++++++++++++++++++++++++++-
- include/linux/nfs_fs_sb.h |  1 +
- include/linux/nfs_xdr.h   |  1 +
- 5 files changed, 47 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 112 +++++++++++++++++++++++++++++++---------------------
+ fs/nfsd/state.h     |   2 -
+ 2 files changed, 68 insertions(+), 46 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 073b4cf67ed9..54de482143cc 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -428,6 +428,18 @@ check_gss_callback_principal(struct nfs_client *clp, struct svc_rqst *rqstp)
- 	if (p == NULL)
- 		return 0;
- 
-+	/*
-+	 * Did we get the acceptor from userland during the SETCLIENID
-+	 * negotiation?
-+	 */
-+	if (clp->cl_acceptor)
-+		return !strcmp(p, clp->cl_acceptor);
-+
-+	/*
-+	 * Otherwise try to verify it using the cl_hostname. Note that this
-+	 * doesn't work if a non-canonical hostname was used in the devname.
-+	 */
-+
- 	/* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
- 
- 	if (memcmp(p, "nfs@", 4) != 0)
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 1d09289c8f0e..6a461378fcf2 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -252,6 +252,7 @@ void nfs_free_client(struct nfs_client *clp)
- 	put_net(clp->cl_net);
- 	put_nfs_version(clp->cl_nfs_mod);
- 	kfree(clp->cl_hostname);
-+	kfree(clp->cl_acceptor);
- 	kfree(clp);
- 
- 	dprintk("<-- nfs_free_client()\n");
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index b0e5705599bf..f198a1e86e8d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4886,6 +4886,18 @@ nfs4_init_callback_netid(const struct nfs_client *clp, char *buf, size_t len)
- 		return scnprintf(buf, len, "tcp");
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ade15fcddd08..73517c02d38e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -103,12 +103,6 @@ static bool is_session_dead(struct nfsd4_session *ses)
+ 	return ses->se_flags & NFS4_SESSION_DEAD;
  }
  
-+static void nfs4_setclientid_done(struct rpc_task *task, void *calldata)
+-void nfsd4_put_session(struct nfsd4_session *ses)
+-{
+-	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
+-		free_session(ses);
+-}
+-
+ static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_by_me)
+ {
+ 	if (atomic_read(&ses->se_ref) > ref_held_by_me)
+@@ -117,14 +111,6 @@ static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_b
+ 	return nfs_ok;
+ }
+ 
+-static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+-{
+-	if (is_session_dead(ses))
+-		return nfserr_badsession;
+-	atomic_inc(&ses->se_ref);
+-	return nfs_ok;
+-}
+-
+ void
+ nfs4_unlock_state(void)
+ {
+@@ -203,6 +189,39 @@ static void put_client_renew_locked(struct nfs4_client *clp)
+ 		renew_client_locked(clp);
+ }
+ 
++static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
 +{
-+	struct nfs4_setclientid *sc = calldata;
++	__be32 status;
 +
-+	if (task->tk_status == 0)
-+		sc->sc_cred = get_rpccred(task->tk_rqstp->rq_cred);
++	if (is_session_dead(ses))
++		return nfserr_badsession;
++	status = get_client_locked(ses->se_client);
++	if (status)
++		return status;
++	atomic_inc(&ses->se_ref);
++	return nfs_ok;
 +}
 +
-+static const struct rpc_call_ops nfs4_setclientid_ops = {
-+	.rpc_call_done = nfs4_setclientid_done,
-+};
++static void nfsd4_put_session_locked(struct nfsd4_session *ses)
++{
++	struct nfs4_client *clp = ses->se_client;
 +
- /**
-  * nfs4_proc_setclientid - Negotiate client ID
-  * @clp: state data structure
-@@ -4912,6 +4924,14 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 		.rpc_resp = res,
- 		.rpc_cred = cred,
- 	};
-+	struct rpc_task *task;
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = clp->cl_rpcclient,
-+		.rpc_message = &msg,
-+		.callback_ops = &nfs4_setclientid_ops,
-+		.callback_data = &setclientid,
-+		.flags = RPC_TASK_TIMEOUT,
-+	};
- 	int status;
++	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
++		free_session(ses);
++	put_client_renew_locked(clp);
++}
++
++static void nfsd4_put_session(struct nfsd4_session *ses)
++{
++	struct nfs4_client *clp = ses->se_client;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	nfsd4_put_session_locked(ses);
++	spin_unlock(&nn->client_lock);
++}
++
++
+ static inline u32
+ opaque_hashval(const void *ptr, int nbytes)
+ {
+@@ -1113,7 +1132,7 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
  
- 	/* nfs_client_id4 */
-@@ -4938,7 +4958,18 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
- 	dprintk("NFS call  setclientid auth=%s, '%.*s'\n",
- 		clp->cl_rpcclient->cl_auth->au_ops->au_name,
- 		setclientid.sc_name_len, setclientid.sc_name);
--	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-+	task = rpc_run_task(&task_setup_data);
-+	if (IS_ERR(task)) {
-+		status = PTR_ERR(task);
+ /* caller must hold client_lock */
+ static struct nfsd4_session *
+-find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
++__find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
+ {
+ 	struct nfsd4_session *elem;
+ 	int idx;
+@@ -1133,6 +1152,24 @@ find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
+ 	return NULL;
+ }
+ 
++static struct nfsd4_session *
++find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net,
++		__be32 *ret)
++{
++	struct nfsd4_session *session;
++	__be32 status = nfserr_badsession;
++
++	session = __find_in_sessionid_hashtbl(sessionid, net);
++	if (!session)
 +		goto out;
-+	}
-+	status = task->tk_status;
-+	if (setclientid.sc_cred) {
-+		clp->cl_acceptor = rpcauth_stringify_acceptor(setclientid.sc_cred);
-+		put_rpccred(setclientid.sc_cred);
-+	}
-+	rpc_put_task(task);
++	status = nfsd4_get_session_locked(session);
++	if (status)
++		session = NULL;
 +out:
- 	trace_nfs4_setclientid(clp, status);
- 	dprintk("NFS reply setclientid: %d\n", status);
- 	return status;
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 1150ea41b626..922be2e050f5 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -45,6 +45,7 @@ struct nfs_client {
- 	struct sockaddr_storage	cl_addr;	/* server identifier */
- 	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
-+	char *			cl_acceptor;	/* GSSAPI acceptor name */
- 	struct list_head	cl_share_link;	/* link in global client list */
- 	struct list_head	cl_superblocks;	/* List of nfs_server structs */
++	*ret = status;
++	return session;
++}
++
+ /* caller must hold client_lock */
+ static void
+ unhash_session(struct nfsd4_session *ses)
+@@ -2148,17 +2185,17 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+ 	__be32 status;
+ 	struct nfsd4_conn *conn;
+ 	struct nfsd4_session *session;
+-	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
++	struct net *net = SVC_NET(rqstp);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
  
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 81cbbf313272..0040629894df 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -993,6 +993,7 @@ struct nfs4_setclientid {
- 	unsigned int			sc_uaddr_len;
- 	char				sc_uaddr[RPCBIND_MAXUADDRLEN + 1];
- 	u32				sc_cb_ident;
-+	struct rpc_cred			*sc_cred;
+ 	if (!nfsd4_last_compound_op(rqstp))
+ 		return nfserr_not_only_op;
+ 	nfs4_lock_state();
+ 	spin_lock(&nn->client_lock);
+-	session = find_in_sessionid_hashtbl(&bcts->sessionid, SVC_NET(rqstp));
++	session = find_in_sessionid_hashtbl(&bcts->sessionid, net, &status);
+ 	spin_unlock(&nn->client_lock);
+-	status = nfserr_badsession;
+ 	if (!session)
+-		goto out;
++		goto out_no_session;
+ 	status = nfserr_wrong_cred;
+ 	if (!mach_creds_match(session->se_client, rqstp))
+ 		goto out;
+@@ -2172,6 +2209,8 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
+ 	nfsd4_init_conn(rqstp, conn, session);
+ 	status = nfs_ok;
+ out:
++	nfsd4_put_session(session);
++out_no_session:
+ 	nfs4_unlock_state();
+ 	return status;
+ }
+@@ -2191,7 +2230,8 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ 	struct nfsd4_session *ses;
+ 	__be32 status;
+ 	int ref_held_by_me = 0;
+-	struct nfsd_net *nn = net_generic(SVC_NET(r), nfsd_net_id);
++	struct net *net = SVC_NET(r);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	nfs4_lock_state();
+ 	status = nfserr_not_only_op;
+@@ -2202,14 +2242,12 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ 	}
+ 	dump_sessionid(__func__, &sessionid->sessionid);
+ 	spin_lock(&nn->client_lock);
+-	ses = find_in_sessionid_hashtbl(&sessionid->sessionid, SVC_NET(r));
+-	status = nfserr_badsession;
++	ses = find_in_sessionid_hashtbl(&sessionid->sessionid, net, &status);
+ 	if (!ses)
+ 		goto out_client_lock;
+ 	status = nfserr_wrong_cred;
+ 	if (!mach_creds_match(ses->se_client, r))
+-		goto out_client_lock;
+-	nfsd4_get_session_locked(ses);
++		goto out_put_session;
+ 	status = mark_session_dead_locked(ses, 1 + ref_held_by_me);
+ 	if (status)
+ 		goto out_put_session;
+@@ -2221,7 +2259,7 @@ nfsd4_destroy_session(struct svc_rqst *r,
+ 	spin_lock(&nn->client_lock);
+ 	status = nfs_ok;
+ out_put_session:
+-	nfsd4_put_session(ses);
++	nfsd4_put_session_locked(ses);
+ out_client_lock:
+ 	spin_unlock(&nn->client_lock);
+ out:
+@@ -2296,7 +2334,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	struct nfsd4_conn *conn;
+ 	__be32 status;
+ 	int buflen;
+-	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
++	struct net *net = SVC_NET(rqstp);
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	if (resp->opcnt != 1)
+ 		return nfserr_sequence_pos;
+@@ -2310,17 +2349,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 		return nfserr_jukebox;
+ 
+ 	spin_lock(&nn->client_lock);
+-	status = nfserr_badsession;
+-	session = find_in_sessionid_hashtbl(&seq->sessionid, SVC_NET(rqstp));
++	session = find_in_sessionid_hashtbl(&seq->sessionid, net, &status);
+ 	if (!session)
+ 		goto out_no_session;
+ 	clp = session->se_client;
+-	status = get_client_locked(clp);
+-	if (status)
+-		goto out_no_session;
+-	status = nfsd4_get_session_locked(session);
+-	if (status)
+-		goto out_put_client;
+ 
+ 	status = nfserr_too_many_ops;
+ 	if (nfsd4_session_too_many_ops(rqstp, session))
+@@ -2404,9 +2436,7 @@ out_no_session:
+ 	spin_unlock(&nn->client_lock);
+ 	return status;
+ out_put_session:
+-	nfsd4_put_session(session);
+-out_put_client:
+-	put_client_renew_locked(clp);
++	nfsd4_put_session_locked(session);
+ 	goto out_no_session;
+ }
+ 
+@@ -2416,18 +2446,12 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
+ 	struct nfsd4_compound_state *cs = &resp->cstate;
+ 
+ 	if (nfsd4_has_session(cs)) {
+-		struct nfs4_client *clp = cs->session->se_client;
+-		struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+-
+ 		if (cs->status != nfserr_replay_cache) {
+ 			nfsd4_store_cache_entry(resp);
+ 			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
+ 		}
+-		/* Renew the clientid on success and on replay */
+-		spin_lock(&nn->client_lock);
++		/* Drop session reference that was taken in nfsd4_sequence() */
+ 		nfsd4_put_session(cs->session);
+-		put_client_renew_locked(clp);
+-		spin_unlock(&nn->client_lock);
+ 	}
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 24eec922685c..3475a9eb11c7 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -212,8 +212,6 @@ struct nfsd4_session {
+ 	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
  };
  
- struct nfs4_setclientid_res {
+-extern void nfsd4_put_session(struct nfsd4_session *ses);
+-
+ /* formatted contents of nfs4_sessionid */
+ struct nfsd4_sessionid {
+ 	clientid_t	clientid;
 -- 
 1.9.3
 
