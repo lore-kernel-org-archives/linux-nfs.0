@@ -1,57 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:49318 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754210AbaFWNj2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 09:39:28 -0400
-Date: Mon, 23 Jun 2014 06:39:26 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 000/104] nfsd: eliminate the client_mutex
-Message-ID: <20140623133926.GA32746@infradead.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:58827 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751432AbaFZTOH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:07 -0400
+Received: by mail-qc0-f181.google.com with SMTP id x13so3523495qcv.26
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:07 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 015/117] nfsd: lock owners are not per open stateid
+Date: Thu, 26 Jun 2014 15:11:55 -0400
+Message-Id: <1403810017-16062-16-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff,
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-thanks for bringing this forward.  I've started looking at the series,
-but I'm a little overwhelmed as it's growing bigger and bigger with
-each posting.  That also makes me a little worried about putting all
-of it into 3.17.  I know you've started separating a few bits out and
-some of those actually went into 3.16, but maybe we really should
-start to some easier to split piece in first and make sure they get
-into 3.17 and then see if we can get through the rest of it in time.
+In the NFSv4 spec, lock stateids are per-file objects. Lockowners are not.
+This patch replaces the current list of lock owners in the open stateids
+with a list of lock stateids.
 
-Besides the obvious fixes for bits that were racy before and don't
-just need better scalability one thing that strikes to mind are some
-of the higher level logic changes, like the changes fixes to various
-stateowner / stateid relations.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 51 +++++++++++++++++++++++++++++++++------------------
+ fs/nfsd/state.h     |  3 +--
+ 2 files changed, 34 insertions(+), 20 deletions(-)
 
-Besides that some higher level comments from glacing over the series:
-
- - the patches that touch locks.c and the lockdep code should go
-   first, and include the maintainer (at least for lockdep, locks.c is
-   easy :)) and relevant mailing lists.
- - lots of patches only have a subject line, but no explanation in the
-   body at all.  While this might be enough for trivial patches few
-   of them are trivial enough that this would be enough.
- - some patches have a signoff from Trond, but no From: line for him
-   in the body.  I suspect this just got lost somewhere.
- - there is some confusion of NFSd vs nfsd in the subsystem prefixes.
-   While it seems odd and against the usual naming NFSd seems to be
-   the common one for nfs patches.
-
-checkpatch.pl also has various valid complains (mostly about too long
-lines) and a few silly ones about printks, might be worth to address
-them.
-
-Last but not least I get a new compiler warning with the whole series
-applied, as put_client is only used by the fault injection code, but
-still compiled when the config option for it is not set.
-
-I hope I'll have some more useful detailed reviews soon.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8fe76c83583e..2d7887a752db 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -728,10 +728,11 @@ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	nfs4_free_stid(stateid_slab, &stp->st_stid);
+ }
+ 
+-static void release_lock_stateid(struct nfs4_ol_stateid *stp)
++static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct file *file;
+ 
++	list_del(&stp->st_locks);
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
+ 	file = find_any_file(stp->st_file);
+@@ -746,12 +747,11 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ 	struct nfs4_ol_stateid *stp;
+ 
+ 	list_del(&lo->lo_owner.so_strhash);
+-	list_del(&lo->lo_perstateid);
+ 	list_del(&lo->lo_owner_ino_hash);
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		release_lock_stateid(stp);
++		__release_lock_stateid(stp);
+ 	}
+ }
+ 
+@@ -767,22 +767,36 @@ static void release_lockowner(struct nfs4_lockowner *lo)
+ 	nfs4_free_lockowner(lo);
+ }
+ 
+-static void
+-release_stateid_lockowners(struct nfs4_ol_stateid *open_stp)
++static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
++{
++	if (list_empty(&lo->lo_owner.so_stateids))
++		release_lockowner(lo);
++}
++
++static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_lockowner *lo;
+ 
+-	while (!list_empty(&open_stp->st_lockowners)) {
+-		lo = list_entry(open_stp->st_lockowners.next,
+-				struct nfs4_lockowner, lo_perstateid);
+-		release_lockowner(lo);
++	lo = lockowner(stp->st_stateowner);
++	__release_lock_stateid(stp);
++	release_lockowner_if_empty(lo);
++}
++
++static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
++{
++	struct nfs4_ol_stateid *stp;
++
++	while (!list_empty(&open_stp->st_locks)) {
++		stp = list_entry(open_stp->st_locks.next,
++				struct nfs4_ol_stateid, st_locks);
++		release_lock_stateid(stp);
+ 	}
+ }
+ 
+ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	unhash_generic_stateid(stp);
+-	release_stateid_lockowners(stp);
++	release_open_stateid_locks(stp);
+ 	close_generic_stateid(stp);
+ }
+ 
+@@ -2780,7 +2794,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	struct nfs4_openowner *oo = open->op_openowner;
+ 
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+-	INIT_LIST_HEAD(&stp->st_lockowners);
++	INIT_LIST_HEAD(&stp->st_locks);
+ 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	stp->st_stateowner = &oo->oo_owner;
+@@ -4380,7 +4394,6 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
+ 
+ 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
+ 	list_add(&lo->lo_owner_ino_hash, &nn->lockowner_ino_hashtbl[inohash]);
+-	list_add(&lo->lo_perstateid, &open_stp->st_lockowners);
+ }
+ 
+ /*
+@@ -4425,6 +4438,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
++	list_add(&stp->st_locks, &open_stp->st_locks);
+ 	return stp;
+ }
+ 
+@@ -5012,20 +5026,21 @@ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ 	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
+ }
+ 
+-static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_lockowner *))
++static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
++				    void (*func)(struct nfs4_ol_stateid *))
+ {
+ 	struct nfs4_openowner *oop;
+-	struct nfs4_lockowner *lop, *lo_next;
+ 	struct nfs4_ol_stateid *stp, *st_next;
++	struct nfs4_ol_stateid *lst, *lst_next;
+ 	u64 count = 0;
+ 
+ 	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
+ 		list_for_each_entry_safe(stp, st_next,
+ 				&oop->oo_owner.so_stateids, st_perstateowner) {
+-			list_for_each_entry_safe(lop, lo_next,
+-					&stp->st_lockowners, lo_perstateid) {
++			list_for_each_entry_safe(lst, lst_next,
++					&stp->st_locks, st_locks) {
+ 				if (func)
+-					func(lop);
++					func(lst);
+ 				if (++count == max)
+ 					return count;
+ 			}
+@@ -5037,7 +5052,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*fun
+ 
+ u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ {
+-	return nfsd_foreach_client_lock(clp, max, release_lockowner);
++	return nfsd_foreach_client_lock(clp, max, release_lock_stateid);
+ }
+ 
+ u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 3475a9eb11c7..1bfc2482ba24 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -363,7 +363,6 @@ struct nfs4_openowner {
+ struct nfs4_lockowner {
+ 	struct nfs4_stateowner	lo_owner; /* must be first element */
+ 	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
+-	struct list_head        lo_perstateid;
+ 	struct list_head	lo_list; /* for temporary uses */
+ };
+ 
+@@ -432,7 +431,7 @@ struct nfs4_ol_stateid {
+ 	struct nfs4_stid    st_stid; /* must be first field */
+ 	struct list_head              st_perfile;
+ 	struct list_head              st_perstateowner;
+-	struct list_head              st_lockowners;
++	struct list_head              st_locks;
+ 	struct nfs4_stateowner      * st_stateowner;
+ 	struct nfs4_file            * st_file;
+ 	unsigned long                 st_access_bmap;
+-- 
+1.9.3
 
