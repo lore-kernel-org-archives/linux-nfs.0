@@ -1,17 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:42026 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751892AbaFZTV6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:58 -0400
-Received: by mail-qg0-f45.google.com with SMTP id 63so3440137qgz.18
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:58 -0700 (PDT)
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:61433 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751511AbaFZTOy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:14:54 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so3414270qge.25
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:14:54 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 104/117] nfsd: Remove nfs4_lock_state(): nfs4_preprocess_stateid_op()
-Date: Thu, 26 Jun 2014 15:21:12 -0400
-Message-Id: <1403810485-16497-21-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v2 050/117] nfsd: Slight cleanup of find_stateid()
+Date: Thu, 26 Jun 2014 15:12:30 -0400
+Message-Id: <1403810017-16062-51-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -19,39 +19,64 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
+In preparation of reference counting.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 27 ++++++++++++++++++---------
+ 1 file changed, 18 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 16269a54b689..658863ed1c35 100644
+index 714273b942ce..b188a40f6416 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4423,13 +4423,11 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
- 		return check_special_stateids(net, current_fh, stateid, flags);
- 
--	nfs4_lock_state();
--
- 	status = nfsd4_lookup_stateid(cstate, stateid,
- 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
- 				&s, nn);
- 	if (status)
--		goto unlock_state;
-+		return status;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
- 	if (status)
- 		goto out;
-@@ -4479,8 +4477,6 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 		*filpp = file;
- out:
- 	nfs4_put_stid(s);
--unlock_state:
--	nfs4_unlock_state();
- 	return status;
+@@ -1682,28 +1682,37 @@ static void gen_confirm(struct nfs4_client *clp)
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
  }
  
+-static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
++static struct nfs4_stid *
++find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ {
+ 	struct nfs4_stid *ret;
+ 
+-	spin_lock(&cl->cl_lock);
+ 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
+-	spin_unlock(&cl->cl_lock);
+ 	if (!ret || !ret->sc_type)
+ 		return NULL;
+ 	return ret;
+ }
+ 
++static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
++{
++	struct nfs4_stid *ret;
++
++	spin_lock(&cl->cl_lock);
++	ret = find_stateid_locked(cl, t);
++	spin_unlock(&cl->cl_lock);
++	return ret;
++}
++
+ static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
+ {
+ 	struct nfs4_stid *s;
+ 
+-	s = find_stateid(cl, t);
+-	if (!s)
+-		return NULL;
+-	if (typemask & s->sc_type)
+-		return s;
+-	return NULL;
++	spin_lock(&cl->cl_lock);
++	s = find_stateid_locked(cl, t);
++	if (s != NULL && !(typemask & s->sc_type))
++		s = NULL;
++	spin_unlock(&cl->cl_lock);
++	return s;
+ }
+ 
+ static struct nfs4_client *create_client(struct xdr_netobj name,
 -- 
 1.9.3
 
