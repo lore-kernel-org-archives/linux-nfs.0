@@ -1,107 +1,203 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f179.google.com ([209.85.160.179]:38284 "EHLO
-	mail-yk0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750742AbaF3UjI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 16:39:08 -0400
-Received: by mail-yk0-f179.google.com with SMTP id 20so5026466yks.24
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 13:39:08 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Ensure that we handle ENOBUFS errors correctly.
-Date: Mon, 30 Jun 2014 16:39:04 -0400
-Message-Id: <1404160744-4840-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:36581 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751309AbaFZTVd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:33 -0400
+Received: by mail-qa0-f53.google.com with SMTP id j15so3153010qaq.26
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:32 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 085/117] nfsd: Protect session creation and client confirm using client_lock
+Date: Thu, 26 Jun 2014 15:20:53 -0400
+Message-Id: <1403810485-16497-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, an ENOBUFS error will result in a fatal error for the RPC
-call. Normally, we will just want to wait and then retry.
+In particular, we want to ensure that the move_to_confirmed() is
+protected by the nn->client_lock spin lock, so that we can use that when
+looking up the clientid etc. instead of relying on the client_mutex.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/clnt.c     | 4 ++++
- net/sunrpc/xprtsock.c | 5 +++++
- 2 files changed, 9 insertions(+)
+ fs/nfsd/nfs4state.c | 65 ++++++++++++++++++++++++++++++++---------------------
+ 1 file changed, 39 insertions(+), 26 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 2e6ab10734f6..575e63f6c13e 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1746,6 +1746,7 @@ call_bind_status(struct rpc_task *task)
- 	case -EHOSTDOWN:
- 	case -EHOSTUNREACH:
- 	case -ENETUNREACH:
-+	case -ENOBUFS:
- 	case -EPIPE:
- 		dprintk("RPC: %5u remote rpcbind unreachable: %d\n",
- 				task->tk_pid, task->tk_status);
-@@ -1812,6 +1813,7 @@ call_connect_status(struct rpc_task *task)
- 	case -ECONNABORTED:
- 	case -ENETUNREACH:
- 	case -EHOSTUNREACH:
-+	case -ENOBUFS:
- 		if (RPC_IS_SOFTCONN(task))
- 			break;
- 		/* retry with existing socket, after a delay */
-@@ -1918,6 +1920,7 @@ call_transmit_status(struct rpc_task *task)
- 	case -ECONNRESET:
- 	case -ECONNABORTED:
- 	case -ENOTCONN:
-+	case -ENOBUFS:
- 	case -EPIPE:
- 		rpc_task_force_reencode(task);
- 	}
-@@ -2034,6 +2037,7 @@ call_status(struct rpc_task *task)
- 	case -ECONNRESET:
- 	case -ECONNABORTED:
- 		rpc_force_rebind(clnt);
-+	case -ENOBUFS:
- 		rpc_delay(task, 3*HZ);
- 	case -EPIPE:
- 	case -ENOTCONN:
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index be8bbd5d65ec..8f8589fedfdd 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -594,6 +594,7 @@ static int xs_local_send_request(struct rpc_task *task)
- 	}
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f1a11b57d7e0..ba853aa0bfa0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -144,17 +144,6 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ 	return nfs_ok;
+ }
  
- 	switch (status) {
-+	case -ENOBUFS:
- 	case -EAGAIN:
- 		status = xs_nospace(task);
- 		break;
-@@ -661,6 +662,7 @@ static int xs_udp_send_request(struct rpc_task *task)
- 		dprintk("RPC:       sendmsg returned unrecognized error %d\n",
- 			-status);
- 	case -ENETUNREACH:
-+	case -ENOBUFS:
- 	case -EPIPE:
- 	case -ECONNREFUSED:
- 		/* When the server has died, an ICMP port unreachable message
-@@ -758,6 +760,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 		status = -ENOTCONN;
- 		/* Should we call xs_close() here? */
- 		break;
-+	case -ENOBUFS:
- 	case -EAGAIN:
- 		status = xs_nospace(task);
- 		break;
-@@ -1946,6 +1949,7 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
- 		dprintk("RPC:       xprt %p connected to %s\n",
- 				xprt, xprt->address_strings[RPC_DISPLAY_ADDR]);
- 		xprt_set_connected(xprt);
-+	case -ENOBUFS:
- 		break;
- 	case -ENOENT:
- 		dprintk("RPC:       xprt %p: socket %s does not exist\n",
-@@ -2281,6 +2285,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 	case -ECONNREFUSED:
- 	case -ECONNRESET:
- 	case -ENETUNREACH:
-+	case -ENOBUFS:
- 		/* retry with existing socket, after a delay */
- 		goto out;
+-static __be32 mark_client_expired(struct nfs4_client *clp)
+-{
+-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+-	__be32 ret;
+-
+-	spin_lock(&nn->client_lock);
+-	ret = mark_client_expired_locked(clp);
+-	spin_unlock(&nn->client_lock);
+-	return ret;
+-}
+-
+ static __be32 get_client_locked(struct nfs4_client *clp)
+ {
+ 	if (is_client_expired(clp))
+@@ -1383,12 +1372,10 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
+ 	new->se_cb_sec = cses->cb_sec;
+ 	atomic_set(&new->se_ref, 0);
+ 	idx = hash_sessionid(&new->se_sessionid);
+-	spin_lock(&nn->client_lock);
+ 	list_add(&new->se_hash, &nn->sessionid_hashtbl[idx]);
+ 	spin_lock(&clp->cl_lock);
+ 	list_add(&new->se_perclnt, &clp->cl_sessions);
+ 	spin_unlock(&clp->cl_lock);
+-	spin_unlock(&nn->client_lock);
+ 
+ 	if (cses->flags & SESSION4_BACK_CHAN) {
+ 		struct sockaddr *sa = svc_addr(rqstp);
+@@ -2357,6 +2344,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ {
+ 	struct sockaddr *sa = svc_addr(rqstp);
+ 	struct nfs4_client *conf, *unconf;
++	struct nfs4_client *old = NULL;
+ 	struct nfsd4_session *new;
+ 	struct nfsd4_conn *conn;
+ 	struct nfsd4_clid_slot *cs_slot = NULL;
+@@ -2383,6 +2371,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		goto out_free_session;
+ 
+ 	nfs4_lock_state();
++	spin_lock(&nn->client_lock);
+ 	unconf = find_unconfirmed_client(&cr_ses->clientid, true, nn);
+ 	conf = find_confirmed_client(&cr_ses->clientid, true, nn);
+ 	WARN_ON_ONCE(conf && unconf);
+@@ -2401,7 +2390,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 			goto out_free_conn;
+ 		}
+ 	} else if (unconf) {
+-		struct nfs4_client *old;
+ 		if (!same_creds(&unconf->cl_cred, &rqstp->rq_cred) ||
+ 		    !rpc_cmp_addr(sa, (struct sockaddr *) &unconf->cl_addr)) {
+ 			status = nfserr_clid_inuse;
+@@ -2419,10 +2407,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		}
+ 		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
+ 		if (old) {
+-			status = mark_client_expired(old);
++			status = mark_client_expired_locked(old);
+ 			if (status)
+ 				goto out_free_conn;
+-			expire_client(old);
++			unhash_client_locked(old);
+ 		}
+ 		move_to_confirmed(unconf);
+ 		conf = unconf;
+@@ -2438,20 +2426,29 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 	cr_ses->flags &= ~SESSION4_RDMA;
+ 
+ 	init_session(rqstp, new, conf, cr_ses);
+-	nfsd4_init_conn(rqstp, conn, new);
++	nfsd4_get_session_locked(new);
+ 
+ 	memcpy(cr_ses->sessionid.data, new->se_sessionid.data,
+ 	       NFS4_MAX_SESSIONID_LEN);
+ 	cs_slot->sl_seqid++;
+ 	cr_ses->seqid = cs_slot->sl_seqid;
+ 
+-	/* cache solo and embedded create sessions under the state lock */
++	/* cache solo and embedded create sessions under the client_lock */
+ 	nfsd4_cache_create_session(cr_ses, cs_slot, status);
++	spin_unlock(&nn->client_lock);
++	/* init connection and backchannel */
++	nfsd4_init_conn(rqstp, conn, new);
++	nfsd4_put_session(new);
+ 	nfs4_unlock_state();
++	if (old)
++		expire_client(old);
+ 	return status;
+ out_free_conn:
++	spin_unlock(&nn->client_lock);
+ 	nfs4_unlock_state();
+ 	free_conn(conn);
++	if (old)
++		expire_client(old);
+ out_free_session:
+ 	__free_session(new);
+ out_release_drc_mem:
+@@ -2911,6 +2908,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 			 struct nfsd4_setclientid_confirm *setclientid_confirm)
+ {
+ 	struct nfs4_client *conf, *unconf;
++	struct nfs4_client *old = NULL;
+ 	nfs4_verifier confirm = setclientid_confirm->sc_confirm; 
+ 	clientid_t * clid = &setclientid_confirm->sc_clientid;
+ 	__be32 status;
+@@ -2920,6 +2918,7 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 		return nfserr_stale_clientid;
+ 	nfs4_lock_state();
+ 
++	spin_lock(&nn->client_lock);
+ 	conf = find_confirmed_client(clid, false, nn);
+ 	unconf = find_unconfirmed_client(clid, false, nn);
+ 	/*
+@@ -2943,21 +2942,29 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
  	}
+ 	status = nfs_ok;
+ 	if (conf) { /* case 1: callback update */
++		old = unconf;
++		unhash_client_locked(old);
+ 		nfsd4_change_callback(conf, &unconf->cl_cb_conn);
+-		nfsd4_probe_callback(conf);
+-		expire_client(unconf);
+ 	} else { /* case 3: normal case; new or rebooted client */
+-		conf = find_confirmed_client_by_name(&unconf->cl_name, nn);
+-		if (conf) {
+-			status = mark_client_expired(conf);
++		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
++		if (old) {
++			status = mark_client_expired_locked(old);
+ 			if (status)
+ 				goto out;
+-			expire_client(conf);
++			unhash_client_locked(old);
+ 		}
+ 		move_to_confirmed(unconf);
+-		nfsd4_probe_callback(unconf);
++		conf = unconf;
+ 	}
++	get_client_locked(conf);
++	spin_unlock(&nn->client_lock);
++	nfsd4_probe_callback(conf);
++	spin_lock(&nn->client_lock);
++	put_client_renew_locked(conf);
+ out:
++	spin_unlock(&nn->client_lock);
++	if (old)
++		expire_client(old);
+ 	nfs4_unlock_state();
+ 	return status;
+ }
+@@ -5614,7 +5621,13 @@ nfs4_check_open_reclaim(clientid_t *clid,
+ 
+ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ {
+-	if (mark_client_expired(clp))
++	__be32 ret;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	ret = mark_client_expired_locked(clp);
++	spin_unlock(&nn->client_lock);
++	if (ret != nfs_ok)
+ 		return 0;
+ 	expire_client(clp);
+ 	return 1;
 -- 
 1.9.3
 
