@@ -1,69 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:59551 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755861AbaFQLoX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Jun 2014 07:44:23 -0400
-Received: by mail-qc0-f179.google.com with SMTP id x3so8493526qcv.38
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Jun 2014 04:44:23 -0700 (PDT)
+Received: from mail-qc0-f177.google.com ([209.85.216.177]:60466 "EHLO
+	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750986AbaFZTPg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:36 -0400
+Received: by mail-qc0-f177.google.com with SMTP id r5so3542974qcx.36
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:36 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 1/4] nfsd: add __force to opaque verifier field casts
-Date: Tue, 17 Jun 2014 07:44:11 -0400
-Message-Id: <1403005454-7319-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
-References: <1403005454-7319-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 081/117] nfsd: Ensure that the laundromat unhashes the client before releasing locks
+Date: Thu, 26 Jun 2014 15:13:01 -0400
+Message-Id: <1403810017-16062-82-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-sparse complains that we're stuffing non-byte-swapped values into
-__be32's here. Since they're supposed to be opaque, it doesn't matter
-much. Just add __force to make sparse happy.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+If we leave the client on the confirmed/unconfirmed tables, and leave
+the sessions visible on the sessionid_hashtbl, then someone might
+find them before we've had a chance to destroy them.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4proc.c  | 8 ++++++--
- fs/nfsd/nfs4state.c | 8 ++++++--
- 2 files changed, 12 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4state.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 6851b003f2a4..8904c9cbcb89 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -581,8 +581,12 @@ static void gen_boot_verifier(nfs4_verifier *verifier, struct net *net)
- 	__be32 verf[2];
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
--	verf[0] = (__be32)nn->nfssvc_boot.tv_sec;
--	verf[1] = (__be32)nn->nfssvc_boot.tv_usec;
-+	/*
-+	 * This is opaque to client, so no need to byte-swap. Use
-+	 * __force to keep sparse happy
-+	 */
-+	verf[0] = (__force __be32)nn->nfssvc_boot.tv_sec;
-+	verf[1] = (__force __be32)nn->nfssvc_boot.tv_usec;
- 	memcpy(verifier->data, verf, sizeof(verifier->data));
- }
- 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c0d45cec9958..0fea1da3dd24 100644
+index 8a973601718e..889854591557 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1345,8 +1345,12 @@ static void gen_confirm(struct nfs4_client *clp)
- 	__be32 verf[2];
- 	static u32 i;
- 
--	verf[0] = (__be32)get_seconds();
--	verf[1] = (__be32)i++;
-+	/*
-+	 * This is opaque to client, so no need to byte-swap. Use
-+	 * __force to keep sparse happy
-+	 */
-+	verf[0] = (__force __be32)get_seconds();
-+	verf[1] = (__force __be32)i++;
- 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
- }
- 
+@@ -4085,13 +4085,15 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 				clp->cl_clientid.cl_id);
+ 			continue;
+ 		}
+-		list_move(&clp->cl_lru, &reaplist);
++		unhash_client_locked(clp);
++		list_add(&clp->cl_lru, &reaplist);
+ 	}
+ 	spin_unlock(&nn->client_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		clp = list_entry(pos, struct nfs4_client, cl_lru);
+ 		dprintk("NFSD: purging unused client (clientid %08x)\n",
+ 			clp->cl_clientid.cl_id);
++		list_del_init(&clp->cl_lru);
+ 		expire_client(clp);
+ 	}
+ 	spin_lock(&state_lock);
 -- 
 1.9.3
 
