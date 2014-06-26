@@ -1,48 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56535 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:46910 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753482AbaFWQcf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jun 2014 12:32:35 -0400
-Date: Mon, 23 Jun 2014 12:32:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 005/104] NFSd: Add fine grained protection for the
- nfs4_file->fi_stateids list
-Message-ID: <20140623163230.GB5898@fieldses.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
- <1403189450-18729-6-git-send-email-jlayton@primarydata.com>
- <20140623160407.GC24193@infradead.org>
- <20140623122039.78056ec9@tlielax.poochiereds.net>
- <20140623162332.GA22250@infradead.org>
- <20140623122458.655c431e@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140623122458.655c431e@tlielax.poochiereds.net>
+	id S1754799AbaFZBsN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 25 Jun 2014 21:48:13 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trondmy@gmail.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 4/8] nfsd4: rename cr_linkname->cr_data
+Date: Wed, 25 Jun 2014 21:48:04 -0400
+Message-Id: <1403747288-21590-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1403747288-21590-1-git-send-email-bfields@redhat.com>
+References: <20140624204418.GG2343@pad.redhat.com>
+ <1403747288-21590-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 23, 2014 at 12:24:58PM -0400, Jeff Layton wrote:
-> On Mon, 23 Jun 2014 09:23:32 -0700
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > On Mon, Jun 23, 2014 at 12:20:39PM -0400, Jeff Layton wrote:
-> > > Correct. I'll add that into the desciption if you think it's warranted,
-> > > but again that's the case with many of the patches in this series.
-> > 
-> > It might be fairly obvious in the context of the series, it's not
-> > if someone goes back in history with a git-blame.
-> > 
-> > And it's not a 100% obvious with the series either, at least earlier
-> > versions also fixes pre-existing races, although all of that might be
-> > upstream now.
-> > 
-> > So as far as I am concerned a simple one-line blurb mentioning what
-> > the new locking is for would be useful to be added to all patches
-> > just changing the locking.
-> 
-> Fair enough. I'll do that.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I appreciate that it's tedious but yes, thanks, that would be helpful.
+The name of a link is currently stored in cr_name and cr_namelen, and
+the content in cr_linkname and cr_linklen.  That's confusing.
 
---b.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |    2 +-
+ fs/nfsd/nfs4xdr.c  |   15 +++++++--------
+ fs/nfsd/xdr4.h     |    8 ++++----
+ 3 files changed, 12 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 7aa83bf..b57c882 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -623,7 +623,7 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	case NF4LNK:
+ 		status = nfsd_symlink(rqstp, &cstate->current_fh,
+ 				      create->cr_name, create->cr_namelen,
+-				      create->cr_linkname,
++				      create->cr_data,
+ 				      &resfh, &create->cr_iattr);
+ 		break;
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a1c48b4..3d07496 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -598,20 +598,19 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
+ 	switch (create->cr_type) {
+ 	case NF4LNK:
+ 		READ_BUF(4);
+-		create->cr_linklen = be32_to_cpup(p++);
+-		READ_BUF(create->cr_linklen);
++		create->cr_datalen = be32_to_cpup(p++);
++		READ_BUF(create->cr_datalen);
+ 		/*
+ 		 * The VFS will want a null-terminated string, and
+ 		 * null-terminating in place isn't safe since this might
+ 		 * end on a page boundary:
+ 		 */
+-		create->cr_linkname =
+-				kmalloc(create->cr_linklen + 1, GFP_KERNEL);
+-		if (!create->cr_linkname)
++		create->cr_data = kmalloc(create->cr_datalen + 1, GFP_KERNEL);
++		if (!create->cr_data)
+ 			return nfserr_jukebox;
+-		memcpy(create->cr_linkname, p, create->cr_linklen);
+-		create->cr_linkname[create->cr_linklen] = '\0';
+-		defer_free(argp, kfree, create->cr_linkname);
++		memcpy(create->cr_data, p, create->cr_datalen);
++		create->cr_data[create->cr_datalen] = '\0';
++		defer_free(argp, kfree, create->cr_data);
+ 		break;
+ 	case NF4BLK:
+ 	case NF4CHR:
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 18cbb6d..b8bf63a 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -107,8 +107,8 @@ struct nfsd4_create {
+ 	u32		cr_type;            /* request */
+ 	union {                             /* request */
+ 		struct {
+-			u32 namelen;
+-			char *name;
++			u32 datalen;
++			char *data;
+ 		} link;   /* NF4LNK */
+ 		struct {
+ 			u32 specdata1;
+@@ -121,8 +121,8 @@ struct nfsd4_create {
+ 	struct nfs4_acl *cr_acl;
+ 	struct xdr_netobj cr_label;
+ };
+-#define cr_linklen	u.link.namelen
+-#define cr_linkname	u.link.name
++#define cr_datalen	u.link.datalen
++#define cr_data		u.link.data
+ #define cr_specdata1	u.dev.specdata1
+ #define cr_specdata2	u.dev.specdata2
+ 
+-- 
+1.7.9.5
+
