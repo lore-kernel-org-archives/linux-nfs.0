@@ -1,91 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f172.google.com ([209.85.216.172]:46520 "EHLO
-	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751819AbaFZTPJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:09 -0400
-Received: by mail-qc0-f172.google.com with SMTP id o8so3570231qcw.17
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:08 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 061/117] nfsd: Migrate the stateid reference into nfs4_lookup_stateid()
-Date: Thu, 26 Jun 2014 15:12:41 -0400
-Message-Id: <1403810017-16062-62-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:65113 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751277AbaF0TIG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Jun 2014 15:08:06 -0400
+Received: by mail-qc0-f174.google.com with SMTP id x13so4811054qcv.5
+        for <linux-nfs@vger.kernel.org>; Fri, 27 Jun 2014 12:08:05 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 27 Jun 2014 15:08:03 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
+Message-ID: <20140627150803.3d663208@tlielax.poochiereds.net>
+In-Reply-To: <20140627162234.GA15610@fieldses.org>
 References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+	<20140627162234.GA15610@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Fri, 27 Jun 2014 12:22:34 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Allow nfs4_lookup_stateid to take the stateid reference, instead
-of having all the callers do so.
+> On Thu, Jun 26, 2014 at 03:11:40PM -0400, Jeff Layton wrote:
+> > I'd still like to see this merged for v3.17, so it would be ideal to
+> > merge this into linux-next soon if possible. Bruce, please let me know
+> > what you think the prospects are.
+> 
+> I'm currently using the "for-3.17" branch at
+> 
+> 	git://linux-nfs.org/~bfields/linux.git
+> 
+> to hold any changes that I think are well and truly committed (so that
+> should be rebased never or only very rarely) and "nfsd-next" for things
+> that have been posted but may still be waiting for review (including
+> these), and may still be revised or dropped.
+> 
+> I should probably come up with some more sensible scheme....
+> 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+Ahh ok, I had looked the other day and didn't see them merged so I
+figured it wouldn't hurt to resend them. Thanks for putting the pile
+into nfsd-next! Let's hope it shakes loose some more bugs ;)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0eb74ffb8db5..e0f140c7c5a4 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4136,6 +4136,8 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
- 	if (!*s)
- 		return nfserr_bad_stateid;
-+	/* FIXME: move into find_stateid_by_type */
-+	atomic_inc(&(*s)->sc_count);
- 	return nfs_ok;
- }
- 
-@@ -4170,7 +4172,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
- 				&s, nn);
- 	if (status)
--		goto out;
-+		goto unlock_state;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
- 	if (status)
- 		goto out;
-@@ -4219,6 +4221,8 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 	if (file)
- 		*filpp = file;
- out:
-+	nfs4_put_stid(s);
-+unlock_state:
- 	nfs4_unlock_state();
- 	return status;
- }
-@@ -4353,11 +4357,10 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
- 
- 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
--	if (!status) {
--		/* FIXME: move into find_stateid_by_type */
--		atomic_inc(&stp->st_stid.sc_count);
-+	if (!status)
- 		*stpp = stp;
--	}
-+	else
-+		put_generic_stateid(stp);
- 	return status;
- }
- 
-@@ -4599,9 +4602,11 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	dp = delegstateid(s);
- 	status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
- 	if (status)
--		goto out;
-+		goto put_stateid;
- 
- 	unhash_and_destroy_delegation(dp);
-+put_stateid:
-+	nfs4_put_delegation(dp);
- out:
- 	nfs4_unlock_state();
- 
+> I already had the first six patches.  I assumed without checking really
+> carefully that you hadn't revised the versions you sent me, let me know
+> if otherwise.
+> 
+
+That's correct -- the first six patches are unchanged.
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
