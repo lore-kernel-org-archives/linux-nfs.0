@@ -1,48 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15077 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755305AbaFRUpA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Jun 2014 16:45:00 -0400
-Message-ID: <53A1FA42.5000000@RedHat.com>
-Date: Wed, 18 Jun 2014 16:44:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:32892 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751423AbaF2MAG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Jun 2014 08:00:06 -0400
+Date: Sun, 29 Jun 2014 05:00:03 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v2 021/117] nfsd: clean up nfsd4_close_open_stateid
+Message-ID: <20140629120003.GA16150@infradead.org>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+ <1403810017-16062-22-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [Libtirpc-devel] [PATCH] xdr_rejected_reply: Don't crash with
- invalid server rejection
-References: <1401976096-16802-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1401976096-16802-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1403810017-16062-22-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 06/05/2014 09:48 AM, Steve Dickson wrote:
-> It seems legacy servers like to return invalid
-> rejection status when a RPC is rejected. This
-> should not crash the app then it happens.
+On Thu, Jun 26, 2014 at 03:12:01PM -0400, Jeff Layton wrote:
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed.... 
-
-steved.
-
-> ---
->  src/rpc_prot.c | 1 -
->  1 file changed, 1 deletion(-)
+> Minor cleanup that should introduce no behavioral changes.
 > 
-> diff --git a/src/rpc_prot.c b/src/rpc_prot.c
-> index e562deb..5841e51 100644
-> --- a/src/rpc_prot.c
-> +++ b/src/rpc_prot.c
-> @@ -150,7 +150,6 @@ xdr_rejected_reply(xdrs, rr)
->  		return (xdr_enum(xdrs, (enum_t *)&(rr->rj_why)));
->  	}
->  	/* NOTREACHED */
-> -	assert(0);
->  	return (FALSE);
->  }
->  
-> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+
+The actual change looks okay, the changelog is severly lacking,
+as it nicer explains what changed nor why.
+
