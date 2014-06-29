@@ -1,229 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:51494 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932295AbaFSOw4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:52:56 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so2235500qcx.41
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:52:55 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 082/104] nfsd: abstract out the get and set routines into the fault injection ops
-Date: Thu, 19 Jun 2014 10:50:28 -0400
-Message-Id: <1403189450-18729-83-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:34037 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752449AbaF2LSy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Jun 2014 07:18:54 -0400
+Received: by mail-pa0-f47.google.com with SMTP id kq14so6982595pab.20
+        for <linux-nfs@vger.kernel.org>; Sun, 29 Jun 2014 04:18:53 -0700 (PDT)
+Message-ID: <53AFF5F9.2040401@gmail.com>
+Date: Sun, 29 Jun 2014 19:18:17 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: kbuild test robot <fengguang.wu@intel.com>
+CC: "J. Bruce Fields" <bfields@redhat.com>, kbuild-all@01.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+Subject: [PATCH] NFSD: Avoid warning message when compile at i686 arch
+References: <53aebf38.2Sl+piCGJ4BiEZLl%fengguang.wu@intel.com>
+In-Reply-To: <53aebf38.2Sl+piCGJ4BiEZLl%fengguang.wu@intel.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For now they all use the standard ones. In later patches we'll add new
-routines that can deal with more granular locking.
+fs/nfsd/nfs4xdr.c: In function 'nfsd4_encode_readv':
+>> fs/nfsd/nfs4xdr.c:3137:148: warning: comparison of distinct pointer types lacks a cast [enabled by default]
+thislen = min(len, ((void *)xdr->end - (void *)xdr->p));
 
-Also, move some of the printk routines into the callers to make the
-results of the operations more uniform.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reported-by: Fengguang Wu <fengguang.wu@intel.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/fault_inject.c | 128 +++++++++++++++++++++++++++++--------------------
- 1 file changed, 77 insertions(+), 51 deletions(-)
+ fs/nfsd/nfs4xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index f1333fc35b33..bbb00dcd926a 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -17,79 +17,50 @@
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index ec198fa..1b61fbe 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3150,7 +3150,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 	len = maxcount;
+ 	v = 0;
  
- struct nfsd_fault_inject_op {
- 	char *file;
-+	u64 (*get)(struct nfsd_fault_inject_op *);
-+	u64 (*set_val)(struct nfsd_fault_inject_op *, u64);
-+	u64 (*set_clnt)(struct nfsd_fault_inject_op *,
-+			struct sockaddr_storage *, size_t);
- 	u64 (*forget)(struct nfs4_client *, u64);
- 	u64 (*print)(struct nfs4_client *, u64);
- };
- 
--static struct nfsd_fault_inject_op inject_ops[] = {
--	{
--		.file   = "forget_clients",
--		.forget = nfsd_forget_client,
--		.print  = nfsd_print_client,
--	},
--	{
--		.file   = "forget_locks",
--		.forget = nfsd_forget_client_locks,
--		.print  = nfsd_print_client_locks,
--	},
--	{
--		.file   = "forget_openowners",
--		.forget = nfsd_forget_client_openowners,
--		.print  = nfsd_print_client_openowners,
--	},
--	{
--		.file   = "forget_delegations",
--		.forget = nfsd_forget_client_delegations,
--		.print  = nfsd_print_client_delegations,
--	},
--	{
--		.file   = "recall_delegations",
--		.forget = nfsd_recall_client_delegations,
--		.print  = nfsd_print_client_delegations,
--	},
--};
--
--static long int NUM_INJECT_OPS = sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op);
- static struct dentry *debug_dir;
- 
--static void nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
-+static u64 nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
- {
--	u64 count = 0;
--
--	if (val == 0)
--		printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
--	else
--		printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
-+	u64 count;
- 
- 	nfs4_lock_state();
- 	count = nfsd_for_n_state(val, op->forget);
- 	nfs4_unlock_state();
--	printk(KERN_INFO "NFSD: %s: found %llu", op->file, count);
-+	return count;
- }
- 
--static void nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
-+static u64 nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
- 				   struct sockaddr_storage *addr,
- 				   size_t addr_size)
- {
--	char buf[INET6_ADDRSTRLEN];
- 	struct nfs4_client *clp;
--	u64 count;
-+	u64 count = 0;
- 
- 	nfs4_lock_state();
- 	clp = nfsd_find_client(addr, addr_size);
--	if (clp) {
-+	if (clp)
- 		count = op->forget(clp, 0);
--		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
--		printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file, buf, count);
--	}
- 	nfs4_unlock_state();
-+	return count;
- }
- 
--static void nfsd_inject_get(struct nfsd_fault_inject_op *op, u64 *val)
-+static u64 nfsd_inject_get(struct nfsd_fault_inject_op *op)
- {
-+	u64 count;
-+
- 	nfs4_lock_state();
--	*val = nfsd_for_n_state(0, op->print);
-+	count = nfsd_for_n_state(0, op->print);
- 	nfs4_unlock_state();
-+
-+	return count;
- }
- 
- static ssize_t fault_inject_read(struct file *file, char __user *buf,
-@@ -99,9 +70,10 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
- 	char read_buf[25];
- 	size_t size;
- 	loff_t pos = *ppos;
-+	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
- 
- 	if (!pos)
--		nfsd_inject_get(file_inode(file)->i_private, &val);
-+		val = op->get(op);
- 	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
- 
- 	return simple_read_from_buffer(buf, len, ppos, read_buf, size);
-@@ -114,6 +86,7 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
- 	size_t size = min(sizeof(write_buf) - 1, len);
- 	struct net *net = current->nsproxy->net_ns;
- 	struct sockaddr_storage sa;
-+	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
- 	u64 val;
- 	char *nl;
- 
-@@ -129,11 +102,19 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
- 	}
- 
- 	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
--	if (size > 0)
--		nfsd_inject_set_client(file_inode(file)->i_private, &sa, size);
--	else {
-+	if (size > 0) {
-+		val = op->set_clnt(op, &sa, size);
-+		if (val)
-+			printk(KERN_INFO "NFSD [%s]: Client %s had %llu state object(s)\n", op->file,
-+				write_buf, val);
-+	} else {
- 		val = simple_strtoll(write_buf, NULL, 0);
--		nfsd_inject_set(file_inode(file)->i_private, val);
-+		if (val == 0)
-+			printk(KERN_INFO "NFSD Fault Injection: %s (all)", op->file);
-+		else
-+			printk(KERN_INFO "NFSD Fault Injection: %s (n = %llu)", op->file, val);
-+		val = op->set_val(op, val);
-+		printk(KERN_INFO "NFSD: %s: found %llu", op->file, val);
- 	}
- 	return len; /* on success, claim we got the whole input */
- }
-@@ -149,6 +130,51 @@ void nfsd_fault_inject_cleanup(void)
- 	debugfs_remove_recursive(debug_dir);
- }
- 
-+static struct nfsd_fault_inject_op inject_ops[] = {
-+	{
-+		.file     = "forget_clients",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_forget_client,
-+		.print    = nfsd_print_client,
-+	},
-+	{
-+		.file     = "forget_locks",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_forget_client_locks,
-+		.print    = nfsd_print_client_locks,
-+	},
-+	{
-+		.file     = "forget_openowners",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_forget_client_openowners,
-+		.print    = nfsd_print_client_openowners,
-+	},
-+	{
-+		.file     = "forget_delegations",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_forget_client_delegations,
-+		.print    = nfsd_print_client_delegations,
-+	},
-+	{
-+		.file     = "recall_delegations",
-+		.get	  = nfsd_inject_get,
-+		.set_val  = nfsd_inject_set,
-+		.set_clnt = nfsd_inject_set_client,
-+		.forget   = nfsd_recall_client_delegations,
-+		.print    = nfsd_print_client_delegations,
-+	},
-+};
-+
-+#define NUM_INJECT_OPS (sizeof(inject_ops) / sizeof(struct nfsd_fault_inject_op))
-+
- int nfsd_fault_inject_init(void)
- {
- 	unsigned int i;
+-	thislen = min(len, ((void *)xdr->end - (void *)xdr->p));
++	thislen = min_t(long, len, ((void *)xdr->end - (void *)xdr->p));
+ 	p = xdr_reserve_space(xdr, (thislen+3)&~3);
+ 	WARN_ON_ONCE(!p);
+ 	resp->rqstp->rq_vec[v].iov_base = p;
 -- 
 1.9.3
+
 
