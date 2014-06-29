@@ -1,49 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55046 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751210AbaFRPmF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Jun 2014 11:42:05 -0400
-Date: Wed, 18 Jun 2014 11:42:04 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: fix return of nfs4_acl_write_who
-Message-ID: <20140618154204.GF17790@fieldses.org>
-References: <1403000048-31245-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:57903 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751982AbaF2PIe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Jun 2014 11:08:34 -0400
+Received: by mail-qg0-f54.google.com with SMTP id q107so1149565qgd.13
+        for <linux-nfs@vger.kernel.org>; Sun, 29 Jun 2014 08:08:33 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sun, 29 Jun 2014 11:08:31 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v2 023/117] nfsd: Convert nfsd4_process_open1() to work
+ with lookup_clientid()
+Message-ID: <20140629110831.719e57f1@f20.localdomain>
+In-Reply-To: <20140629121600.GD16150@infradead.org>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+	<1403810017-16062-24-git-send-email-jlayton@primarydata.com>
+	<20140629121600.GD16150@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403000048-31245-1-git-send-email-jlayton@primarydata.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 17, 2014 at 06:14:08AM -0400, Jeff Layton wrote:
-> AFAICT, the only way to hit this error is to pass this function a bogus
-> "who" value. In that case, we probably don't want to return -1 as that
-> could get sent back to the client. Turn this into nfserr_serverfault,
-> which is a more appropriate error for a server bug like this.
+On Sun, 29 Jun 2014 05:16:00 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-I don't really care since there shouldn't be any way to hit this, but
-OK, applying for 3.17.
+> > +static __be32 lookup_clientid(clientid_t *clid,
+> > +		struct nfsd4_compound_state *cstate,
+> > +		struct nfsd_net *nn);
+> 
+> This hunk should have been in the previous patch.  Or given that
+> lookup_clientid was mostly rewritten it make sense to just move it to
+> avoid the forward declaration entirely.
+> 
 
---b.
+Does it? It's not until this patch that the forward declaration is
+needed at all. That said, I have a general aversion to forward
+declarations so moving it up sounds good to me.
 
+> Otherwise looks good to me,
 > 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4acl.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-> index d714156a19fd..b0cf00d3ee7d 100644
-> --- a/fs/nfsd/nfs4acl.c
-> +++ b/fs/nfsd/nfs4acl.c
-> @@ -935,5 +935,5 @@ __be32 nfs4_acl_write_who(struct xdr_stream *xdr, int who)
->  		return 0;
->  	}
->  	WARN_ON_ONCE(1);
-> -	return -1;
-> +	return nfserr_serverfault;
->  }
-> -- 
-> 1.9.3
-> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+
+Thanks!
+-- 
+Jeff Layton <jlayton@primarydata.com>
