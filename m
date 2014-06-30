@@ -1,59 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:63730 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752574AbaFXMAd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2014 08:00:33 -0400
-Received: by mail-qc0-f179.google.com with SMTP id x3so149671qcv.10
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Jun 2014 05:00:32 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 24 Jun 2014 08:00:31 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 012/104] NFSd: Clean up helper __release_lock_stateid
-Message-ID: <20140624080031.2c3de85d@tlielax.poochiereds.net>
-In-Reply-To: <20140624115336.GB31935@infradead.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-	<1403189450-18729-13-git-send-email-jlayton@primarydata.com>
-	<20140624115336.GB31935@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:64099 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754260AbaF3Pvz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:55 -0400
+Received: by mail-qa0-f41.google.com with SMTP id cm18so6706756qab.0
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:54 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 058/114] nfsd: Migrate the stateid reference into nfs4_find_stateid_by_type()
+Date: Mon, 30 Jun 2014 11:49:27 -0400
+Message-Id: <1404143423-24381-59-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 24 Jun 2014 04:53:36 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-> On Thu, Jun 19, 2014 at 10:49:18AM -0400, Jeff Layton wrote:
-> > From: Trond Myklebust <trond.myklebust@primarydata.com>
-> > 
-> > Use filp_close() instead of open coding
-> 
-> filp_close does more than what's currently opencoded here:
-> 
->  - file_count debug check which seems pointless but harmless
->  - calling ->flush. This doesn't do much on nfs exportable filesystem
->    except for exofs, which does dumb shit in it that should be removed,
->    but the maintainer refuse.
->  - call into dnotify, which we probably should be doing here.
-> 
+Allow nfs4_find_stateid_by_type to take the stateid reference, while
+still holding the &cl->cl_lock. Necessary step toward client_mutex
+removal.
 
-Yeah. It is a small change in behavior but seems like the right thing
-to do. I'll flesh out the commit message to spell that out though.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-> > -static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
-> > +static void __release_lock_stateid(struct nfs4_lockowner *lo,
-> > +		struct nfs4_ol_stateid *stp)
-> 
-> But what's the point of explicitly passing the lock owner instead of
-> deriving it?
-> 
-
-I thought that was a little silly too, but didn't care enough to change
-it. I can only assume that Trond figured that the callers all needed to
-know what the lockowner was so you wouldn't need to do two lockowner()
-calls. Still, those are just container_of(), so I don't see the point
-in avoiding them either. I'll change it not to pass the owner.
-
-Thanks,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9d9cb26c391c..0f30716c9093 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1678,8 +1678,12 @@ static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t
+ 
+ 	spin_lock(&cl->cl_lock);
+ 	s = find_stateid_locked(cl, t);
+-	if (s != NULL && !(typemask & s->sc_type))
+-		s = NULL;
++	if (s != NULL) {
++		if (typemask & s->sc_type)
++			atomic_inc(&s->sc_count);
++		else
++			s = NULL;
++	}
+ 	spin_unlock(&cl->cl_lock);
+ 	return s;
+ }
+@@ -3298,8 +3302,6 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
+ 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
+ 	if (!ret)
+ 		return NULL;
+-	/* FIXME: move into find_stateid_by_type */
+-	atomic_inc(&ret->sc_count);
+ 	return delegstateid(ret);
+ }
+ 
+@@ -4124,8 +4126,6 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
+ 	if (!*s)
+ 		return nfserr_bad_stateid;
+-	/* FIXME: move into find_stateid_by_type */
+-	atomic_inc(&(*s)->sc_count);
+ 	return nfs_ok;
+ }
+ 
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
