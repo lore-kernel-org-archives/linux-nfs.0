@@ -1,172 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:52323 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751127AbaFZTVc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:21:32 -0400
-Received: by mail-qg0-f49.google.com with SMTP id f51so3410273qge.22
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:21:31 -0700 (PDT)
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:48964 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752096AbaF3Pug (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:36 -0400
+Received: by mail-qa0-f49.google.com with SMTP id w8so6504529qac.8
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:36 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 084/117] nfsd: Protect unconfirmed client creation using client_lock
-Date: Thu, 26 Jun 2014 15:20:52 -0400
-Message-Id: <1403810485-16497-1-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v3 002/114] nfsd: Protect addition to the file_hashtbl
+Date: Mon, 30 Jun 2014 11:48:31 -0400
+Message-Id: <1404143423-24381-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-...instead of relying on the client_mutex.
+Ensure that we only can have a single struct nfs4_file per inode
+in the file_hashtbl and make addition atomic with respect to lookup.
+
+To prevent an i_lock/state_lock inversion, change nfsd4_init_file to
+use ihold instead if igrab. That's also more efficient anyway as we
+definitely hold a reference to the inode at that point.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 33 ++++++++++++++++++++++-----------
- 1 file changed, 22 insertions(+), 11 deletions(-)
+ fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++++++++++++++------------
+ 1 file changed, 37 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 974617538a49..f1a11b57d7e0 100644
+index c473bd6d52c8..29788fd0da24 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1869,7 +1869,7 @@ add_to_unconfirmed(struct nfs4_client *clp)
- 	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
- 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
- 	list_add(&clp->cl_idhash, &nn->unconf_id_hashtbl[idhashval]);
--	renew_client(clp);
-+	renew_client_locked(clp);
- }
- 
- static void
-@@ -1883,7 +1883,7 @@ move_to_confirmed(struct nfs4_client *clp)
- 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
- 	add_clp_to_name_tree(clp, &nn->conf_name_tree);
- 	set_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
--	renew_client(clp);
-+	renew_client_locked(clp);
- }
- 
- static struct nfs4_client *
-@@ -1896,7 +1896,7 @@ find_client_in_id_table(struct list_head *tbl, clientid_t *clid, bool sessions)
- 		if (same_clid(&clp->cl_clientid, clid)) {
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
--			renew_client(clp);
-+			renew_client_locked(clp);
- 			return clp;
- 		}
- 	}
-@@ -2098,7 +2098,8 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		  struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_exchange_id *exid)
+@@ -2611,17 +2611,18 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
  {
--	struct nfs4_client *unconf, *conf, *new;
-+	struct nfs4_client *conf, *new;
-+	struct nfs4_client *unconf = NULL;
- 	__be32 status;
- 	char			addr_str[INET6_ADDRSTRLEN];
- 	nfs4_verifier		verf = exid->verifier;
-@@ -2133,6 +2134,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 	unsigned int hashval = file_hashval(ino);
  
- 	/* Cases below refer to rfc 5661 section 18.35.4: */
- 	nfs4_lock_state();
-+	spin_lock(&nn->client_lock);
- 	conf = find_confirmed_client_by_name(&exid->clname, nn);
- 	if (conf) {
- 		bool creds_match = same_creds(&conf->cl_cred, &rqstp->rq_cred);
-@@ -2164,7 +2166,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 				status = nfserr_clid_inuse;
- 				goto out;
- 			}
--			expire_client(conf);
- 			goto out_new;
- 		}
- 		if (verfs_match) { /* case 2 */
-@@ -2172,6 +2173,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 			goto out_copy;
- 		}
- 		/* case 5, client reboot */
-+		conf = NULL;
- 		goto out_new;
- 	}
- 
-@@ -2182,17 +2184,18 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 
- 	unconf  = find_unconfirmed_client_by_name(&exid->clname, nn);
- 	if (unconf) /* case 4, possible retry or client restart */
--		expire_client(unconf);
-+		unhash_client_locked(unconf);
- 
- 	/* case 1 (normal case) */
- out_new:
-+	if (conf)
-+		unhash_client_locked(conf);
- 	new->cl_minorversion = cstate->minorversion;
- 	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
- 
- 	gen_clid(new, nn);
- 	add_to_unconfirmed(new);
--	conf = new;
--	new = NULL;
-+	swap(new, conf);
- out_copy:
- 	exid->clientid.cl_boot = conf->cl_clientid.cl_boot;
- 	exid->clientid.cl_id = conf->cl_clientid.cl_id;
-@@ -2205,9 +2208,12 @@ out_copy:
- 	status = nfs_ok;
- 
- out:
-+	spin_unlock(&nn->client_lock);
- 	nfs4_unlock_state();
- 	if (new)
--		free_client(new);
-+		expire_client(new);
-+	if (unconf)
-+		expire_client(unconf);
- 	return status;
++	lockdep_assert_held(&state_lock);
++
+ 	atomic_set(&fp->fi_ref, 1);
+ 	INIT_LIST_HEAD(&fp->fi_stateids);
+ 	INIT_LIST_HEAD(&fp->fi_delegations);
+-	fp->fi_inode = igrab(ino);
++	ihold(ino);
++	fp->fi_inode = ino;
+ 	fp->fi_had_conflict = false;
+ 	fp->fi_lease = NULL;
+ 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
+ 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
+-	spin_lock(&state_lock);
+ 	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
+-	spin_unlock(&state_lock);
  }
  
-@@ -2846,7 +2852,8 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ void
+@@ -2787,23 +2788,49 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
+ 
+ /* search file_hashtbl[] for file */
+ static struct nfs4_file *
+-find_file(struct inode *ino)
++find_file_locked(struct inode *ino)
  {
- 	struct xdr_netobj 	clname = setclid->se_name;
- 	nfs4_verifier		clverifier = setclid->se_verf;
--	struct nfs4_client	*conf, *unconf, *new;
-+	struct nfs4_client	*conf, *new;
-+	struct nfs4_client	*unconf = NULL;
- 	__be32 			status;
- 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 	unsigned int hashval = file_hashval(ino);
+ 	struct nfs4_file *fp;
  
-@@ -2855,6 +2862,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_jukebox;
- 	/* Cases below refer to rfc 3530 section 14.2.33: */
- 	nfs4_lock_state();
-+	spin_lock(&nn->client_lock);
- 	conf = find_confirmed_client_by_name(&clname, nn);
- 	if (conf) {
- 		/* case 0: */
-@@ -2872,7 +2880,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+-	spin_lock(&state_lock);
++	lockdep_assert_held(&state_lock);
++
+ 	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
+ 		if (fp->fi_inode == ino) {
+ 			get_nfs4_file(fp);
+-			spin_unlock(&state_lock);
+ 			return fp;
+ 		}
  	}
- 	unconf = find_unconfirmed_client_by_name(&clname, nn);
- 	if (unconf)
--		expire_client(unconf);
-+		unhash_client_locked(unconf);
- 	if (conf && same_verf(&conf->cl_verifier, &clverifier))
- 		/* case 1: probable callback update */
- 		copy_clid(new, conf);
-@@ -2887,9 +2895,12 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	new = NULL;
- 	status = nfs_ok;
- out:
-+	spin_unlock(&nn->client_lock);
- 	nfs4_unlock_state();
- 	if (new)
- 		free_client(new);
-+	if (unconf)
-+		expire_client(unconf);
- 	return status;
+-	spin_unlock(&state_lock);
+ 	return NULL;
  }
  
++static struct nfs4_file *
++find_file(struct inode *ino)
++{
++	struct nfs4_file *fp;
++
++	spin_lock(&state_lock);
++	fp = find_file_locked(ino);
++	spin_unlock(&state_lock);
++	return fp;
++}
++
++static struct nfs4_file *
++find_or_add_file(struct inode *ino, struct nfs4_file *new)
++{
++	struct nfs4_file *fp;
++
++	spin_lock(&state_lock);
++	fp = find_file_locked(ino);
++	if (fp == NULL) {
++		nfsd4_init_file(new, ino);
++		fp = new;
++	}
++	spin_unlock(&state_lock);
++
++	return fp;
++}
++
+ /*
+  * Called to check deny when READ with all zero stateid or
+  * WRITE with all zero or all one stateid
+@@ -3325,21 +3352,19 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	 * and check for delegations in the process of being recalled.
+ 	 * If not found, create the nfs4_file struct
+ 	 */
+-	fp = find_file(ino);
+-	if (fp) {
++	fp = find_or_add_file(ino, open->op_file);
++	if (fp != open->op_file) {
+ 		if ((status = nfs4_check_open(fp, open, &stp)))
+ 			goto out;
+ 		status = nfs4_check_deleg(cl, open, &dp);
+ 		if (status)
+ 			goto out;
+ 	} else {
++		open->op_file = NULL;
+ 		status = nfserr_bad_stateid;
+ 		if (nfsd4_is_deleg_cur(open))
+ 			goto out;
+ 		status = nfserr_jukebox;
+-		fp = open->op_file;
+-		open->op_file = NULL;
+-		nfsd4_init_file(fp, ino);
+ 	}
+ 
+ 	/*
 -- 
 1.9.3
 
