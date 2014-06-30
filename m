@@ -1,120 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:60630 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751147AbaFWWkJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:40:09 -0400
-Subject: [PATCH v1 08/13] xprtrdma: Back off rkey when FAST_REG_MR fails
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Jun 2014 18:40:07 -0400
-Message-ID: <20140623224007.1634.55636.stgit@manet.1015granger.net>
-In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:36077 "EHLO e9.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751001AbaF3NVE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jun 2014 09:21:04 -0400
+Received: from /spool/local
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 30 Jun 2014 09:21:03 -0400
+Received: from b01cxnp23033.gho.pok.ibm.com (b01cxnp23033.gho.pok.ibm.com [9.57.198.28])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 4504038C803B
+	for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 09:21:01 -0400 (EDT)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by b01cxnp23033.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s5UDKxRn5833004
+	for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 13:21:00 GMT
+Received: from d01av01.pok.ibm.com (localhost [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id s5UDKwAX011128
+	for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 09:20:59 -0400
+Date: Mon, 30 Jun 2014 08:20:57 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: Richard Thornton <richie.thornton@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS working but I have unwanted 500MB quota
+Message-ID: <20140630132057.GA26132@us.ibm.com>
+References: <CA++rrJoQG76ag2gTBo6nA3s1nM1gVNoGR4+8YuzA6yjJqMufBQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA++rrJoQG76ag2gTBo6nA3s1nM1gVNoGR4+8YuzA6yjJqMufBQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If posting a FAST_REG_MR Work Reqeust fails, or the FAST_REG WR
-flushes, revert the rkey update to avoid subsequent
-IB_WC_MW_BIND_ERR completions.
+Richard Thornton [richie.thornton@gmail.com] wrote:
+> Hi,
+> 
+> Can somebody help please.
+> 
+> I setup NFS between two Ubuntu 14.04 systems and I can save files to
+> the server but I have a 500MB quota I never setup (The btrfs partition
+> has 1TB remaining but I can see I have only 500MB remaining on the
+> directory, trying to copy anything larger gives an error), I would
+> like to permanently remove the quota but can't seem to find the right
+> info and commands.
 
-Suggested-by: Steve Wise <swise@opengridcomputing.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/verbs.c |   39 +++++++++++++++++++++++++++++----------
- 1 file changed, 29 insertions(+), 10 deletions(-)
+You need help with btrfs here. quota will be managed by btrfs, not NFS.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index cef67fd..3efc007 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -61,6 +61,8 @@
- # define RPCDBG_FACILITY	RPCDBG_TRANS
- #endif
- 
-+static void rpcrdma_decrement_frmr_rkey(struct rpcrdma_mw *);
-+
- /*
-  * internal functions
-  */
-@@ -154,13 +156,17 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- 
- 	if (wrid == 0)
- 		return;
--	if (wc->status != IB_WC_SUCCESS)
--		return;
- 
- 	fastreg = test_and_clear_bit(RPCRDMA_BIT_FASTREG, &wrid);
- 	mw = (struct rpcrdma_mw *)wrid;
- 
--	mw->r.frmr.fr_state = fastreg ? FRMR_IS_VALID : FRMR_IS_INVALID;
-+	if (wc->status == IB_WC_SUCCESS) {
-+		mw->r.frmr.fr_state = fastreg ?
-+				FRMR_IS_VALID : FRMR_IS_INVALID;
-+	} else {
-+		if (fastreg)
-+			rpcrdma_decrement_frmr_rkey(mw);
-+	}
- }
- 
- static int
-@@ -1480,6 +1486,24 @@ rpcrdma_unmap_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg)
- 				seg->mr_dma, seg->mr_dmalen, seg->mr_dir);
- }
- 
-+static void
-+rpcrdma_increment_frmr_rkey(struct rpcrdma_mw *mw)
-+{
-+	struct ib_mr *frmr = mw->r.frmr.fr_mr;
-+	u8 key = frmr->rkey & 0x000000FF;
-+
-+	ib_update_fast_reg_key(frmr, ++key);
-+}
-+
-+static void
-+rpcrdma_decrement_frmr_rkey(struct rpcrdma_mw *mw)
-+{
-+	struct ib_mr *frmr = mw->r.frmr.fr_mr;
-+	u8 key = frmr->rkey & 0x000000FF;
-+
-+	ib_update_fast_reg_key(frmr, --key);
-+}
-+
- static int
- rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 			int *nsegs, int writing, struct rpcrdma_ia *ia,
-@@ -1487,8 +1511,6 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- {
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
--
--	u8 key;
- 	int len, pageoff;
- 	int i, rc;
- 	int seg_len;
-@@ -1552,14 +1574,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 		rc = -EIO;
- 		goto out_err;
- 	}
--
--	/* Bump the key */
--	key = (u8)(seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey & 0x000000FF);
--	ib_update_fast_reg_key(seg1->mr_chunk.rl_mw->r.frmr.fr_mr, ++key);
--
- 	frmr_wr.wr.fast_reg.access_flags = (writing ?
- 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
- 				IB_ACCESS_REMOTE_READ);
-+	rpcrdma_increment_frmr_rkey(seg1->mr_chunk.rl_mw);
- 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
-@@ -1568,6 +1586,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
- 			" status %i\n", __func__, rc);
-+		rpcrdma_decrement_frmr_rkey(seg1->mr_chunk.rl_mw);
- 		goto out_err;
- 	} else {
- 		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+Regards, Malahal.
+
+> I used this page as a reference
+> https://help.ubuntu.com/community/SettingUpNFSHowTo.
+> 
+> While trying to figure the quota issue out, I installed "quota" but
+> haven't had any luck with the quota, repquota, edquota, quotacheck,
+> setquota commands...very confusing.
+> 
+> Googling has given me nothing.
+> 
+> Thanks for taking a look.
+> 
+> Cheers
+> Richard
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
