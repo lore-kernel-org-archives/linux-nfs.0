@@ -1,60 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:61829 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757862AbaFSOvD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:03 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so2217641qgf.28
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:02 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 003/104] NFSd: nfs4_preprocess_seqid_op should only set *stpp on success
-Date: Thu, 19 Jun 2014 10:49:09 -0400
-Message-Id: <1403189450-18729-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Received: from mailrelay007.isp.belgacom.be ([195.238.6.173]:57333 "EHLO
+	mailrelay007.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753256AbaF3RvD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 13:51:03 -0400
+From: Fabian Frederick <fabf@skynet.be>
+To: linux-kernel@vger.kernel.org
+Cc: Fabian Frederick <fabf@skynet.be>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] NFS: use ARRAY_SIZE instead of sizeof/sizeof[0]
+Date: Mon, 30 Jun 2014 19:49:39 +0200
+Message-Id: <1404150579-8092-1-git-send-email-fabf@skynet.be>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Use macro definition
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Fabian Frederick <fabf@skynet.be>
 ---
- fs/nfsd/nfs4state.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ fs/nfs/super.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 42c6d6ecc77d..d18fd8c7691c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3891,6 +3891,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 084af10..c08e837 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1027,8 +1027,7 @@ static bool nfs_auth_info_add(struct nfs_auth_info *auth_info,
+ 			      rpc_authflavor_t flavor)
  {
- 	__be32 status;
- 	struct nfs4_stid *s;
-+	struct nfs4_ol_stateid *stp = NULL;
+ 	unsigned int i;
+-	unsigned int max_flavor_len = (sizeof(auth_info->flavors) /
+-				       sizeof(auth_info->flavors[0]));
++	unsigned int max_flavor_len = ARRAY_SIZE(auth_info->flavors);
  
- 	dprintk("NFSD: %s: seqid=%d stateid = " STATEID_FMT "\n", __func__,
- 		seqid, STATEID_VAL(stateid));
-@@ -3900,11 +3901,14 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 				      cstate->minorversion, nn);
- 	if (status)
- 		return status;
--	*stpp = openlockstateid(s);
-+	stp = openlockstateid(s);
- 	if (!nfsd4_has_session(cstate))
--		cstate->replay_owner = (*stpp)->st_stateowner;
-+		cstate->replay_owner = stp->st_stateowner;
- 
--	return nfs4_seqid_op_checks(cstate, stateid, seqid, *stpp);
-+	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
-+	if (!status)
-+		*stpp = stp;
-+	return status;
- }
- 
- static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 	/* make sure this flavor isn't already in the list */
+ 	for (i = 0; i < auth_info->flavor_len; i++) {
 -- 
-1.9.3
+1.8.4.5
 
