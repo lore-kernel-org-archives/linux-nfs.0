@@ -1,68 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35761 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754847AbaFHS7l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 8 Jun 2014 14:59:41 -0400
-Date: Sun, 8 Jun 2014 14:59:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: WARN_ON_ONCE pop with tip of your nfsd-next branch
-Message-ID: <20140608185940.GB437@fieldses.org>
-References: <20140607215109.3cb5e368@tlielax.poochiereds.net>
- <20140608171723.GA32514@fieldses.org>
- <20140608184436.GA437@fieldses.org>
- <20140608145249.2be6b75c@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140608145249.2be6b75c@primarydata.com>
+Received: from mail-qg0-f45.google.com ([209.85.192.45]:39328 "EHLO
+	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753807AbaF3PwX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:23 -0400
+Received: by mail-qg0-f45.google.com with SMTP id a108so2122341qge.32
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:23 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 078/114] nfsd: Ensure that the laundromat unhashes the client before releasing locks
+Date: Mon, 30 Jun 2014 11:49:47 -0400
+Message-Id: <1404143423-24381-79-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jun 08, 2014 at 02:52:49PM -0400, Jeff Layton wrote:
-> On Sun, 8 Jun 2014 14:44:36 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Sun, Jun 08, 2014 at 01:17:23PM -0400, J. Bruce Fields wrote:
-> > > On Sat, Jun 07, 2014 at 09:51:09PM -0400, Jeff Layton wrote:
-> > > > Hi Bruce,
-> > > > 
-> > > > Just a heads up...
-> > > > 
-> > > > Was doing some testing with a pile of patches (mostly v4 state-related)
-> > > > on top of your nfsd-next branch, and saw this pop:
-> > > 
-> > > Do you know exactly was the commit id of the last commit from my branch?
-> > 
-> > Also, do you remember what sort of testing it was?
-> > 
-> > --b.
-> 
-> The tip was at a676de9e22b4c13c8d4a27289b1f2bcf35dce6dd.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-That's kind of old and I already fixed something that I think would have
-caused that WARN at that spot.  So I'd recommend not spending any more
-time on it and just rebasing.
+If we leave the client on the confirmed/unconfirmed tables, and leave
+the sessions visible on the sessionid_hashtbl, then someone might
+find them before we've had a chance to destroy them.
 
-> It looks like
-> maybe you rebased at some point though and now the commit IDs are
-> different?
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Yeah, apologies, I've been rebasing a lot.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index db35f7893b37..77f516c907e7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4088,13 +4088,15 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 				clp->cl_clientid.cl_id);
+ 			continue;
+ 		}
+-		list_move(&clp->cl_lru, &reaplist);
++		unhash_client_locked(clp);
++		list_add(&clp->cl_lru, &reaplist);
+ 	}
+ 	spin_unlock(&nn->client_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		clp = list_entry(pos, struct nfs4_client, cl_lru);
+ 		dprintk("NFSD: purging unused client (clientid %08x)\n",
+ 			clp->cl_clientid.cl_id);
++		list_del_init(&clp->cl_lru);
+ 		expire_client(clp);
+ 	}
+ 	spin_lock(&state_lock);
+-- 
+1.9.3
 
-Next time around I think I'm going to advertise separate stable/unstable
-branches so at least there's warning which things I'm likely to rebase.
-
---b.
-
-> To make it pop, I ran fsstress on a v4.1 mount. I think it
-> was these options:
-> 
->     $ fsstress -d <dir> -n 1000 -p 128
-> 
-> I'll see if I can make it happen again when I have some time for more
-> testing.
-> 
-> Thanks,
-> -- 
-> Jeff Layton <jlayton@primarydata.com>
