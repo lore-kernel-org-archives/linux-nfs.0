@@ -1,161 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:43293 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754260AbaF3PwA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:00 -0400
-Received: by mail-qg0-f49.google.com with SMTP id f51so2127960qge.8
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:00 -0700 (PDT)
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:52466 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755498AbaF3Pz0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:55:26 -0400
+Received: by mail-qg0-f46.google.com with SMTP id q107so2123570qgd.19
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:55:25 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 062/114] nfsd: add an operation for unhashing a stateowner
-Date: Mon, 30 Jun 2014 11:49:31 -0400
-Message-Id: <1404143423-24381-63-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v3 112/114] nfsd: remove nfs4_lock_state: nfs4_state_shutdown_net
+Date: Mon, 30 Jun 2014 11:54:59 -0400
+Message-Id: <1404143701-24740-14-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow stateowners to be unhashed and destroyed when the last reference
-is put. The unhashing must be idempotent. In a future patch, we'll add
-some locking around it, but for now it's only protected by the
-client_mutex.
-
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 45 +++++++++++++++++++++++++++++++++++----------
- fs/nfsd/state.h     |  1 +
- 2 files changed, 36 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4state.c | 2 --
+ 1 file changed, 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 395232b7efef..effce92b54de 100644
+index 5d3c4679d48d..36a8ba158ed3 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -916,9 +916,13 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+@@ -6333,7 +6333,6 @@ nfs4_state_shutdown_net(struct net *net)
+ 	cancel_delayed_work_sync(&nn->laundromat_work);
+ 	locks_end_grace(&nn->nfsd4_manager);
  
- static void unhash_lockowner(struct nfs4_lockowner *lo)
- {
-+	list_del_init(&lo->lo_owner.so_strhash);
-+}
-+
-+static void release_lockowner_stateids(struct nfs4_lockowner *lo)
-+{
- 	struct nfs4_ol_stateid *stp;
+-	nfs4_lock_state();
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+@@ -6350,7 +6349,6 @@ nfs4_state_shutdown_net(struct net *net)
  
--	list_del(&lo->lo_owner.so_strhash);
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
-@@ -929,6 +933,7 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
- static void release_lockowner(struct nfs4_lockowner *lo)
- {
- 	unhash_lockowner(lo);
-+	release_lockowner_stateids(lo);
- 	nfs4_put_stateowner(&lo->lo_owner);
+ 	nfsd4_client_tracking_exit(net);
+ 	nfs4_state_destroy_net(net);
+-	nfs4_unlock_state();
  }
  
-@@ -978,15 +983,8 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
- 
- static void unhash_openowner(struct nfs4_openowner *oo)
- {
--	struct nfs4_ol_stateid *stp;
--
--	list_del(&oo->oo_owner.so_strhash);
--	list_del(&oo->oo_perclient);
--	while (!list_empty(&oo->oo_owner.so_stateids)) {
--		stp = list_first_entry(&oo->oo_owner.so_stateids,
--				struct nfs4_ol_stateid, st_perstateowner);
--		release_open_stateid(stp);
--	}
-+	list_del_init(&oo->oo_owner.so_strhash);
-+	list_del_init(&oo->oo_perclient);
- }
- 
- static void release_last_closed_stateid(struct nfs4_openowner *oo)
-@@ -999,9 +997,21 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
- 	}
- }
- 
-+static void release_openowner_stateids(struct nfs4_openowner *oo)
-+{
-+	struct nfs4_ol_stateid *stp;
-+
-+	while (!list_empty(&oo->oo_owner.so_stateids)) {
-+		stp = list_first_entry(&oo->oo_owner.so_stateids,
-+				struct nfs4_ol_stateid, st_perstateowner);
-+		release_open_stateid(stp);
-+	}
-+}
-+
- static void release_openowner(struct nfs4_openowner *oo)
- {
- 	unhash_openowner(oo);
-+	release_openowner_stateids(oo);
- 	list_del(&oo->oo_close_lru);
- 	release_last_closed_stateid(oo);
- 	nfs4_put_stateowner(&oo->oo_owner);
-@@ -2965,6 +2975,7 @@ static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
- {
- 	if (!atomic_dec_and_test(&sop->so_count))
- 		return;
-+	sop->so_unhash(sop);
- 	sop->so_free(sop);
- }
- 
-@@ -2976,6 +2987,13 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
- 	list_add(&oo->oo_perclient, &clp->cl_openowners);
- }
- 
-+static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
-+{
-+	struct nfs4_openowner *oo = openowner(so);
-+
-+	unhash_openowner(oo);
-+}
-+
- static void nfs4_free_openowner(struct nfs4_stateowner *so)
- {
- 	struct nfs4_openowner *oo = openowner(so);
-@@ -2995,6 +3013,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- 	if (!oo)
- 		return NULL;
- 	oo->oo_owner.so_free = nfs4_free_openowner;
-+	oo->oo_owner.so_unhash = nfs4_unhash_openowner;
- 	oo->oo_owner.so_is_open_owner = 1;
- 	oo->oo_owner.so_seqid = open->op_seqid;
- 	oo->oo_flags = NFS4_OO_NEW;
-@@ -4708,6 +4727,11 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
- 	return NULL;
- }
- 
-+static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
-+{
-+	unhash_lockowner(lockowner(sop));
-+}
-+
- static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
- {
- 	struct nfs4_lockowner *lo = lockowner(sop);
-@@ -4735,6 +4759,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	lo->lo_owner.so_is_open_owner = 0;
- 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
- 	lo->lo_owner.so_free = nfs4_free_lockowner;
-+	lo->lo_owner.so_unhash = nfs4_unhash_lockowner;
- 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
- 	return lo;
- }
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index eba7283a2613..f6639fb5a56f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -347,6 +347,7 @@ struct nfs4_stateowner {
- 	bool			so_is_open_owner;
- 
- 	void (*so_free)(struct nfs4_stateowner *);
-+	void (*so_unhash)(struct nfs4_stateowner *);
- };
- 
- struct nfs4_openowner {
+ void
 -- 
 1.9.3
 
