@@ -1,124 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:36500 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754510AbaF3Pur (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:47 -0400
-Received: by mail-qg0-f47.google.com with SMTP id q108so2135448qgd.6
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:46 -0700 (PDT)
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:55409 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755314AbaF3PzK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:55:10 -0400
+Received: by mail-qa0-f52.google.com with SMTP id w8so6542792qac.39
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:55:10 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 010/114] nfsd: Allow lockowners to hold several stateids
-Date: Mon, 30 Jun 2014 11:48:39 -0400
-Message-Id: <1404143423-24381-11-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 101/114] nfsd: Remove nfs4_lock_state(): nfs4_preprocess_stateid_op()
+Date: Mon, 30 Jun 2014 11:54:48 -0400
+Message-Id: <1404143701-24740-3-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A lockowner can have more than one lock stateid. For instance, if a
-process has more than one file open and has locks on both, then the same
-lockowner has more than one stateid associated with it. Change it so
-that this reality is better reflected by the objects that nfsd uses.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 55 ++++++++++++++++++++++++++++++++---------------------
- 1 file changed, 33 insertions(+), 22 deletions(-)
+ fs/nfsd/nfs4state.c | 6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a3321601f55f..dfa68cce12c3 100644
+index 9d6ecbdd2eae..2ba896fb8d31 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3881,12 +3881,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+@@ -4428,13 +4428,11 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+ 		return check_special_stateids(net, current_fh, stateid, flags);
  
- 	if (check_for_locks(stp->st_file, lo))
- 		return nfserr_locks_held;
--	/*
--	 * Currently there's a 1-1 lock stateid<->lockowner
--	 * correspondance, and we have to delete the lockowner when we
--	 * delete the lock stateid:
--	 */
--	release_lockowner(lo);
-+	release_lockowner_if_empty(lo);
- 	return nfs_ok;
- }
- 
-@@ -4408,6 +4403,19 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	return stp;
- }
- 
-+static struct nfs4_ol_stateid *
-+find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
-+{
-+	struct nfs4_ol_stateid *lst;
-+
-+	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
-+		if (lst->st_file == fp)
-+			return lst;
-+	}
-+	return NULL;
-+}
-+
-+
- static int
- check_lock_length(u64 offset, u64 length)
- {
-@@ -4437,25 +4445,28 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
- 
- 	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid,
- 				&lock->v.new.owner, nn);
--	if (lo) {
--		if (!cstate->minorversion)
-+	if (!lo) {
-+		strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
-+				&lock->v.new.owner);
-+		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
-+		if (lo == NULL)
-+			return nfserr_jukebox;
-+	} else {
-+		/* with an existing lockowner, seqids must be the same */
-+		if (!cstate->minorversion &&
-+		    lock->lk_new_lock_seqid != lo->lo_owner.so_seqid)
- 			return nfserr_bad_seqid;
--		/* XXX: a lockowner always has exactly one stateid: */
--		*lst = list_first_entry(&lo->lo_owner.so_stateids,
--				struct nfs4_ol_stateid, st_perstateowner);
--		return nfs_ok;
- 	}
--	strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
--			&lock->v.new.owner);
--	lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
--	if (lo == NULL)
--		return nfserr_jukebox;
--	*lst = alloc_init_lock_stateid(lo, fi, ost);
-+
-+	*lst = find_lock_stateid(lo, fi);
- 	if (*lst == NULL) {
--		release_lockowner(lo);
--		return nfserr_jukebox;
-+		*lst = alloc_init_lock_stateid(lo, fi, ost);
-+		if (*lst == NULL) {
-+			release_lockowner_if_empty(lo);
-+			return nfserr_jukebox;
-+		}
-+		*new = true;
- 	}
--	*new = true;
- 	return nfs_ok;
- }
- 
-@@ -4612,7 +4623,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
+-	nfs4_lock_state();
+-
+ 	status = nfsd4_lookup_stateid(cstate, stateid,
+ 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
+ 				&s, nn);
+ 	if (status)
+-		goto unlock_state;
++		return status;
+ 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
+ 	if (status)
+ 		goto out;
+@@ -4484,8 +4482,6 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 		*filpp = file;
  out:
- 	if (status && new_state)
--		release_lockowner(lock_sop);
-+		release_lockowner_if_empty(lock_sop);
- 	nfsd4_bump_seqid(cstate, status);
- 	if (!cstate->replay_owner)
- 		nfs4_unlock_state();
+ 	nfs4_put_stid(s);
+-unlock_state:
+-	nfs4_unlock_state();
+ 	return status;
+ }
+ 
 -- 
 1.9.3
 
