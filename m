@@ -1,84 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f176.google.com ([209.85.220.176]:33723 "EHLO
-	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751480AbaFEOUt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 10:20:49 -0400
-Received: by mail-vc0-f176.google.com with SMTP id im17so1204455vcb.7
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 07:20:48 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <53907B9A.3090802@RedHat.com>
-References: <539026DB.30502@cn.fujitsu.com>
-	<CAHQdGtRzw-Aizqd1Q8Y9FAXZgp2jefn115F-ogcPA8VSuqA1Dw@mail.gmail.com>
-	<53907B9A.3090802@RedHat.com>
-Date: Thu, 5 Jun 2014 10:20:48 -0400
-Message-ID: <CAHQdGtSF0662w=p96qxYFqx1snM8RrAE1Qr8b02ajj6iU6Z3Kg@mail.gmail.com>
-Subject: Re: [PATCH]statd: create statdpath dir if specify the
- "--with-statdpath=xx" parameter in configure nfs-utils source code
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Ditang Chen <chendt.fnst@cn.fujitsu.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:46577 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754038AbaF3Pup (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:45 -0400
+Received: by mail-qa0-f49.google.com with SMTP id w8so6446860qac.22
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:45 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 008/114] nfsd: clean up nfsd4_close_open_stateid
+Date: Mon, 30 Jun 2014 11:48:37 -0400
+Message-Id: <1404143423-24381-9-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 5, 2014 at 10:15 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> Hey,
->
-> On 06/05/2014 08:38 AM, Trond Myklebust wrote:
->> On Thu, Jun 5, 2014 at 4:14 AM, Ditang Chen <chendt.fnst@cn.fujitsu.com> wrote:
->>> When configure the nfs-utils source code with "--with-statdpath=/foo" parameter，
->>> #define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
->>> but Makefile will not create "/foo" dir.
->>>
->>> Signed-off-by: chendt.fnst@cn.fujitsu.com
->>> ---
->>>  Makefile.am | 6 +++---
->>>  1 file changed, 3 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/Makefile.am b/Makefile.am
->>> index ae7cd16..5c9ef44 100644
->>> --- a/Makefile.am
->>> +++ b/Makefile.am
->>> @@ -54,10 +54,10 @@ install-data-hook:
->>>         touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
->>>         touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
->>>         touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
->>> -       mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
->>>         touch $(DESTDIR)$(statedir)/state
->>> -       chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
->>> -       -chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
->>> +       mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
->>> +       chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
->>> +       -chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
->>>
->>
->> The file 'state' is owned by rpc.statd. Isn't it therefore also
->> subject to the --with-statdpath modifier?
-> --with-statedir and --with-statdpath are basically the same thing.
-> When --with-statdpath is not specified, its set to the --with-statedir
-> value, that's why this these mkdir,chmod and chown were not needed.
-> But I guess if you do want split out the statdpath from the statedir
-> those mkdir,chmod and chown need to happen.
->
->
->>
->> At one point, the Fedora RPM packager even used to put it in
->> /var/lib/nfs/statd (as the manpage says it should) although that seems
->> to be broken now.
->>
-> It still does... So does RHEL... We have being going that for years...
-> How is that broken?
->
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-My nfs-utils rpms on Fedora seem to be creating /var/lib/nfs/state
-instead of putting it in the statd subdirectory.
+Minor cleanup that should introduce no behavioral changes.
 
+Currently this function just unhashes the stateid and leaves the caller
+to do the work of the CLOSE processing.
 
+Change nfsd4_close_open_stateid so that it handles doing all of the work
+of closing a stateid. Move the handling of the unhashed stateid into it
+instead of doing that work in nfsd4_close. This will help isolate some
+coming changes to stateid handling from nfsd4_close.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 38 ++++++++++++++++++--------------------
+ 1 file changed, 18 insertions(+), 20 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e77e34002913..08586646e962 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4140,8 +4140,25 @@ out:
+ 
+ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ {
+-	unhash_open_stateid(s);
++	struct nfs4_client *clp = s->st_stid.sc_client;
++	struct nfs4_openowner *oo = openowner(s->st_stateowner);
++
+ 	s->st_stid.sc_type = NFS4_CLOSED_STID;
++	unhash_open_stateid(s);
++
++	if (clp->cl_minorversion) {
++		free_generic_stateid(s);
++		if (list_empty(&oo->oo_owner.so_stateids))
++			release_openowner(oo);
++	} else {
++		oo->oo_last_closed_stid = s;
++		/*
++		 * In the 4.0 case we need to keep the owners around a
++		 * little while to handle CLOSE replay.
++		 */
++		if (list_empty(&oo->oo_owner.so_stateids))
++			move_to_close_lru(oo, clp->net);
++	}
+ }
+ 
+ /*
+@@ -4152,7 +4169,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	    struct nfsd4_close *close)
+ {
+ 	__be32 status;
+-	struct nfs4_openowner *oo;
+ 	struct nfs4_ol_stateid *stp;
+ 	struct net *net = SVC_NET(rqstp);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+@@ -4168,28 +4184,10 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (status)
+ 		goto out; 
+-	oo = openowner(stp->st_stateowner);
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ 
+ 	nfsd4_close_open_stateid(stp);
+-
+-	if (cstate->minorversion)
+-		free_generic_stateid(stp);
+-	else
+-		oo->oo_last_closed_stid = stp;
+-
+-	if (list_empty(&oo->oo_owner.so_stateids)) {
+-		if (cstate->minorversion)
+-			release_openowner(oo);
+-		else {
+-			/*
+-			 * In the 4.0 case we need to keep the owners around a
+-			 * little while to handle CLOSE replay.
+-			 */
+-			move_to_close_lru(oo, SVC_NET(rqstp));
+-		}
+-	}
+ out:
+ 	if (!cstate->replay_owner)
+ 		nfs4_unlock_state();
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
