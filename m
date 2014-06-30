@@ -1,61 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:38773 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751489AbaFCOYS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Jun 2014 10:24:18 -0400
-Received: by mail-ie0-f173.google.com with SMTP id lx4so6041812iec.32
-        for <linux-nfs@vger.kernel.org>; Tue, 03 Jun 2014 07:24:18 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH 41/52] nfsd4: turn off zero-copy-read in exotic cases
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <20140603141021.GA14321@pad.redhat.com>
-Date: Tue, 3 Jun 2014 10:24:13 -0400
-Cc: Anna Schumaker <schumaker.anna@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <7FFBAE05-C5F6-4F98-817C-546851F559EC@primarydata.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com> <1400787148-25941-42-git-send-email-bfields@redhat.com> <20140528080945.GA6797@infradead.org> <20140528140151.GB13012@pad.redhat.com> <5385EEF5.9050904@gmail.com> <20140528142320.GC13012@pad.redhat.com> <DA524584-24CD-42C5-9DCB-B5CD2A7F2CC6@primarydata.com> <20140603141021.GA14321@pad.redhat.com>
-To: Bruce Fields <bfields@redhat.com>
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:64231 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754260AbaF3PwC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:02 -0400
+Received: by mail-qg0-f47.google.com with SMTP id q108so2123767qgd.20
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:01 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 063/114] nfsd: Make lock stateid take a reference to the lockowner
+Date: Mon, 30 Jun 2014 11:49:32 -0400
+Message-Id: <1404143423-24381-64-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jun 3, 2014, at 10:10 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-> On Tue, Jun 03, 2014 at 12:18:34AM -0400, Weston Andros Adamson wrote:
->> On May 28, 2014, at 10:23 AM, J. Bruce Fields <bfields@redhat.com> wrote:
->>> There's not much point re-running all the 4.1 tests over 4.2.  Maybe all
->>> we may need is to say "use minor version 2 on this compound" in tests of
->>> the new features.
->>> 
->>> But I haven't even tried to figure out how to tell pynfs about the new
->>> .x files.
->> 
->> I’ve made a lot of pynfs cleanups recently - mostly on the client test side 
->> (the nfs4.1 server), but they may make this a bit easier. I’ll clean them up
->> and share asap.
->> 
->> I was just adding new xdr to pynfs and AFAIK it's xdrgen has no include
->> support, so we’re stuck tacking things on the end of nfs4.x. Would it be
->> worthwhile for me to add some type of include support? Minor versions and
->> layouts could stay in separate .x files - that sounds much cleaner to me.
-> 
-> That does sound cleaner, but is that how the ietf's .x files work?
-> 
-> It looks like
-> 
->  http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-dot-x-26.txt
-> 
-> just copies all the 4.1 definitions.
-> 
-> I may not understand what you're proposing.
+A necessary step toward client_mutex removal.
 
-Oh, yeah. I was thinking more about layouts - like the flex file draft - that don’t
-repeat definitions and instead reference other xdr definitions.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-I don’t know if there is any restriction in the IETF that all types within a .x
-have to be defined by that .x. If not, does it make sense to change the 4.2
-spec to only have new types, or to prune out the differences for pynfs?
-
--dros
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index effce92b54de..9a760aac6ef2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -882,6 +882,8 @@ static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
+ 	struct nfs4_ol_stateid *stp = openlockstateid(stid);
+ 
+ 	release_all_access(stp);
++	if (stp->st_stateowner && stid->sc_type == NFS4_LOCK_STID)
++		nfs4_put_stateowner(stp->st_stateowner);
+ 	nfs4_free_stid(stateid_slab, stid);
+ }
+ 
+@@ -4775,6 +4777,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
+ 	atomic_inc(&stp->st_stid.sc_count);
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+ 	stp->st_stateowner = &lo->lo_owner;
++	atomic_inc(&lo->lo_owner.so_count);
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
+ 	stp->st_stid.sc_free = nfs4_free_lock_stateid;
+-- 
+1.9.3
 
