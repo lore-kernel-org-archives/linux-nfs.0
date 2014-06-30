@@ -1,72 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:39299 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750926AbaFEM6D convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 08:58:03 -0400
-Received: by mail-ig0-f175.google.com with SMTP id uq10so7505219igb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 05:58:03 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH pynfs 02/17] 4.1 server: service RECLAIM_COMPLETE operations
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <CAABAsM60taecJryiaryhnW8FbZGo5s0r4Oz=aRFXYCBPDQoBbA@mail.gmail.com>
-Date: Thu, 5 Jun 2014 08:58:01 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <50CFBC92-B124-4912-9D3D-16C81476C883@primarydata.com>
-References: <1401915726-29092-1-git-send-email-dros@primarydata.com> <1401915726-29092-3-git-send-email-dros@primarydata.com> <20140605022918.GB12044@fieldses.org> <CAABAsM60taecJryiaryhnW8FbZGo5s0r4Oz=aRFXYCBPDQoBbA@mail.gmail.com>
-To: Trond Myklebust <trondmy@gmail.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:37414 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897AbaF3Pvf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:35 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so7121679qcq.20
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:34 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 044/114] nfsd: clean up races in lock stateid searching and creation
+Date: Mon, 30 Jun 2014 11:49:13 -0400
+Message-Id: <1404143423-24381-45-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Are you saying that the pynfs server supports state recovery? This has not
-been my experience. I’ll double check.
+Preparation for removal of the client_mutex.
 
--dros
+Currently, no lock aside from the client_mutex is held when calling
+find_lock_state. Ensure that the cl_lock is held by adding a lockdep
+assertion.
 
+Once we remove the client_mutex, it'll be possible for another thread to
+race in and insert a lock state for the same file after we search but
+before we insert a new one. Ensure that doesn't happen by redoing the
+search after allocating a new stid that we plan to insert. If one is
+found just put the one we just allocated.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 58 +++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 41 insertions(+), 17 deletions(-)
 
-On Jun 5, 2014, at 8:22 AM, Trond Myklebust <trondmy@gmail.com> wrote:
-
-> On Wed, Jun 4, 2014 at 10:29 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> On Wed, Jun 04, 2014 at 05:01:50PM -0400, Weston Andros Adamson wrote:
->>> Just return ok!
->> 
->> Technically it should record whether or not the reclaim_complete has
->> happened and return a GRACE error on any non-reclaim open performed
->> before the reclaim_complete--but for your purposes you may not care...
->> 
-> 
-> ...and a NOGRACE error on any reclaim opens performed by that client
-> after the reclaim_complete?
-> 
->> --b.
->> 
->>> 
->>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->>> ---
->>> nfs4.1/nfs4server.py | 3 +++
->>> 1 file changed, 3 insertions(+)
->>> 
->>> diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
->>> index 65fb9af..3607dc0 100755
->>> --- a/nfs4.1/nfs4server.py
->>> +++ b/nfs4.1/nfs4server.py
->>> @@ -1809,6 +1809,9 @@ class NFS4Server(rpc.Server):
->>>         with find_state(env, arg.deleg_stateid, allow_0=False) as state:
->>>             state.delegreturn()
->>>         return encode_status(NFS4_OK)
->>> +
->>> +    def op_reclaim_complete(self, arg, env):
->>> +        return encode_status(NFS4_OK)
->>> 
->>>     def op_getdevicelist(self, arg, env): # STUB
->>>         check_session(env)
->>> --
->>> 1.8.5.2 (Apple Git-48)
->>> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 05d0fac2e50a..60cc162cc8a5 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4652,16 +4652,14 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	return lo;
+ }
+ 
+-static struct nfs4_ol_stateid *
+-alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
++static void
++init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
++		  struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
+ {
+-	struct nfs4_openowner *oo = openowner(open_stp->st_stateowner);
+-	struct nfs4_ol_stateid *stp;
+ 	struct nfs4_client *clp = lo->lo_owner.so_client;
+ 
+-	stp = nfs4_alloc_stateid(clp);
+-	if (stp == NULL)
+-		return NULL;
++	lockdep_assert_held(&clp->cl_lock);
++
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+@@ -4670,20 +4668,20 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
+-	spin_lock(&oo->oo_owner.so_client->cl_lock);
+ 	list_add(&stp->st_locks, &open_stp->st_locks);
+ 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
+ 	spin_lock(&fp->fi_lock);
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	spin_unlock(&fp->fi_lock);
+-	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+-	return stp;
+ }
+ 
+ static struct nfs4_ol_stateid *
+ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
+ {
+ 	struct nfs4_ol_stateid *lst;
++	struct nfs4_client *clp = lo->lo_owner.so_client;
++
++	lockdep_assert_held(&clp->cl_lock);
+ 
+ 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
+ 		if (lst->st_stid.sc_file == fp)
+@@ -4692,6 +4690,36 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
+ 	return NULL;
+ }
+ 
++static struct nfs4_ol_stateid *
++find_or_create_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fi,
++			    struct nfs4_ol_stateid *ost, bool *new)
++{
++	struct nfs4_ol_stateid *lst, *nst = NULL;
++	struct nfs4_openowner *oo = openowner(ost->st_stateowner);
++	struct nfs4_client *clp = oo->oo_owner.so_client;
++
++	spin_lock(&clp->cl_lock);
++	lst = find_lock_stateid(lo, fi);
++	if (lst == NULL) {
++		spin_unlock(&clp->cl_lock);
++		nst = nfs4_alloc_stateid(clp);
++		if (nst == NULL)
++			return NULL;
++
++		spin_lock(&clp->cl_lock);
++		lst = find_lock_stateid(lo, fi);
++		if (likely(!lst)) {
++			init_lock_stateid(nst, lo, fi, ost);
++			lst = nst;
++			nst = NULL;
++			*new = true;
++		}
++	}
++	spin_unlock(&clp->cl_lock);
++	if (nst)
++		put_generic_stateid(nst);
++	return lst;
++}
+ 
+ static int
+ check_lock_length(u64 offset, u64 length)
+@@ -4739,14 +4767,10 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
+ 			return nfserr_bad_seqid;
+ 	}
+ 
+-	*lst = find_lock_stateid(lo, fi);
++	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
+ 	if (*lst == NULL) {
+-		*lst = alloc_init_lock_stateid(lo, fi, ost);
+-		if (*lst == NULL) {
+-			release_lockowner_if_empty(lo);
+-			return nfserr_jukebox;
+-		}
+-		*new = true;
++		release_lockowner_if_empty(lo);
++		return nfserr_jukebox;
+ 	}
+ 	return nfs_ok;
+ }
+-- 
+1.9.3
 
