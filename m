@@ -1,57 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52991 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756501AbaF3Tck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jun 2014 15:32:40 -0400
-Date: Mon, 30 Jun 2014 15:32:37 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
-Message-ID: <20140630193237.GA11935@fieldses.org>
+Received: from mail-qg0-f45.google.com ([209.85.192.45]:39555 "EHLO
+	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752199AbaF3K7Q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 06:59:16 -0400
+Received: by mail-qg0-f45.google.com with SMTP id a108so1763578qge.32
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 03:59:15 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 30 Jun 2014 06:59:13 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v2 022/117] nfsd: Cache the client that was looked up in
+ lookup_clientid()
+Message-ID: <20140630065913.2fe89c25@f20.localdomain>
+In-Reply-To: <20140630103453.GB22010@infradead.org>
 References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
- <20140630125142.GA32089@infradead.org>
- <20140630085934.2bf86ba0@tlielax.poochiereds.net>
+	<1403810017-16062-23-git-send-email-jlayton@primarydata.com>
+	<20140629121419.GC16150@infradead.org>
+	<20140629105702.2ca9e6ee@f20.localdomain>
+	<20140630103453.GB22010@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140630085934.2bf86ba0@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 30, 2014 at 08:59:34AM -0400, Jeff Layton wrote:
-> On Mon, 30 Jun 2014 05:51:42 -0700
-> Christoph Hellwig <hch@infradead.org> wrote:
+On Mon, 30 Jun 2014 03:34:53 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
+
+> On Sun, Jun 29, 2014 at 10:57:02AM -0400, Jeff Layton wrote:
+> > Depends on what you mean by "normal case". For v4.0 we do look it up at
+> > least once for each call into here. For v4.1 we get the pointer to the
+> > client "for free" by virtue of looking up the session in the SEQUENCE
+> > op. So, I think we are doing a bit more than just verifying the
+> > clientid here. The name seems appropriate to me.
 > 
-> > I'm pretty happy with what's the first 25 patches in this version
-> > with all the review comments addressed, so as far as I'm concerned
-> > these are ready for for-next.  Does anyone else plan to do a review
-> > as well?
+> So everything but the first call for 4.0 is just a small verification.
+> I'm not going to hold up the series for something as trivial, but the
+> name still smells a little..
+> 
+
+Fair enough. The "verify" name smells to me a little since we aren't
+guaranteed to have one when the function is called. "lookup" seems
+reasonable since we are looking it up, it's just that once this patch
+goes in we'll usually have it cached in the cstate.
+
+> > > While it doesn't belong into this patch:  why don't we cache the
+> > > nfsd_net in the nfsd4_compound_state
+> > > 
 > > 
+> > I'll go further and say that it doesn't really belong in this
+> > series.
 > 
-> Thanks very much for the review so far.
+> Anything we can keep out of this series is good, agreed..
 > 
-> > I'll try to get to the locking changes as well soon, but I've got some
-> > work keeping me fairly busy at the moment.  I guess it wasn't easily
-> > feasible to move the various stateid refcounting to before the major
-> > locking changes?
+> > There are certain calls that don't require a SEQUENCE operation:
 > > 
+> >     BIND_CONN_TO_SESSION
+> >     EXCHANGE_ID
+> >     CREATE_SESSION
+> >     DESTROY_SESSION
+> > 
+> > Granted, for those we don't use lookup_clientid but the "Usually"
+> > still applies, in general. That said, if it bothers you I'll remove
+> > it.
 > 
-> Not really. If I had done the set from scratch I would have probably
-> done that instead, but Trond's original had those changes interleaved.
-> Separating them would be a lot of work that I'd prefer to avoid.
+> my major issue is the combination of the usually with this:
 > 
-> > Btw, do you have any benchrmarks showing the improvements of the new
-> > locking scheme?
+> > > > +		 * if we don't have one cached already then we
+> > > > know this is for
+> > > > +		 * is for v4.0 and "sessions" will be false.
 > 
-> No, I'm hoping to get those numbers soon from our QA folks. Most of the
-> testing I've done has been for correctness and stability. I'm pretty
-> happy with things at that end now, but I don't have any numbers that
-> show whether and how much this helps scalability.
+> so we can have a case where we are 4.1 but don't have a cached
+> session. This is getting into deep nitpick land, but comments that
+> aren't entirely coherent always confuse me.
+> 
 
-The open-create problem at least shouldn't be hard to confirm.
+Ok, that's understandable. How about this?
 
-It's also the only problem I've actually seen a complaint about--I do
-wish it were possible to do just the minimum required to fix that before
-doing all the rest.
++       /*
++        * For v4.1+ we get the client in the SEQUENCE op. If we don't have one
++        * cached already then we know this is for is for v4.0 and "sessions"
++        * will be false.
++        */
++       found = find_confirmed_client(clid, false, nn);
 
---b.
+FWIW, the main reason for the comment is to explain why we're
+hardcoding the "session" arg to false here instead of using
+cstate->session.
+
+-- 
+Jeff Layton <jlayton@primarydata.com>
