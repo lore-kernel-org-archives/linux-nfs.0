@@ -1,91 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10612 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752529AbaFWMpo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 23 Jun 2014 08:45:44 -0400
-Message-ID: <53A8214F.8050505@redhat.com>
-Date: Mon, 23 Jun 2014 13:45:03 +0100
-From: Steven Whitehouse <swhiteho@redhat.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>, Peter Zijlstra <peterz@infradead.org>,
-        Ingo Molnar <mingo@elte.hu>
-CC: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Oleg Nesterov <oleg@redhat.com>,
-        Steve French <sfrench@samba.org>, David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH 0/2] Update wait_on_bit functions
-References: <20140623004945.21714.26253.stgit@notabene.brown>
-In-Reply-To: <20140623004945.21714.26253.stgit@notabene.brown>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-qc0-f180.google.com ([209.85.216.180]:43142 "EHLO
+	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754558AbaF3Puu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:50 -0400
+Received: by mail-qc0-f180.google.com with SMTP id r5so7070935qcx.25
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:49 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 012/114] nfsd: clean up nfsd4_release_lockowner
+Date: Mon, 30 Jun 2014 11:48:41 -0400
+Message-Id: <1404143423-24381-13-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Now that we know that we won't have several lockowners with the same,
+owner->data, we can simplify nfsd4_release_lockowner and get rid of
+the lo_list in the process.
 
-On 23/06/14 01:52, NeilBrown wrote:
-> These patches were in 'tip' for a while, but caused conflicts
-> with other changes - both NFS and CIFS added new uses of
-> wait_on_bit functions.
->
-> So here they are again against 3.16-rc2.  Hopefully no new users will
-> be added before -rc3 or -rc4...
->
-> (I hoped to submit this in the rc1 -> rc2 window, but that happened
-> while I was on leave...)
->
-> Thanks,
-> NeilBrown
-Acked-by: Steven Whitehouse <swhiteho@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 46 ++++++++++++++++++++++------------------------
+ fs/nfsd/state.h     |  1 -
+ 2 files changed, 22 insertions(+), 25 deletions(-)
 
-Steve.
-
-> ---
->
-> NeilBrown (2):
->        SCHED: remove proliferation of wait_on_bit action functions.
->        SCHED: allow wait_on_bit_action functions to support a timeout.
->
->
->   Documentation/filesystems/caching/operations.txt |    2
->   drivers/md/dm-bufio.c                            |   41 ++-----
->   drivers/md/dm-snap.c                             |   10 --
->   drivers/media/usb/dvb-usb-v2/dvb_usb_core.c      |   12 --
->   fs/btrfs/extent_io.c                             |   10 --
->   fs/buffer.c                                      |   11 --
->   fs/cifs/connect.c                                |   10 --
->   fs/cifs/file.c                                   |    9 --
->   fs/cifs/inode.c                                  |    6 +
->   fs/cifs/misc.c                                   |    2
->   fs/fs-writeback.c                                |    3 -
->   fs/fscache/cookie.c                              |    7 +
->   fs/fscache/internal.h                            |    2
->   fs/fscache/main.c                                |   18 ---
->   fs/fscache/page.c                                |    4 -
->   fs/gfs2/glock.c                                  |   25 ----
->   fs/gfs2/lock_dlm.c                               |    8 -
->   fs/gfs2/ops_fstype.c                             |   11 --
->   fs/gfs2/recovery.c                               |    8 -
->   fs/gfs2/super.c                                  |    8 -
->   fs/inode.c                                       |    7 -
->   fs/jbd2/transaction.c                            |   10 --
->   fs/nfs/file.c                                    |    4 -
->   fs/nfs/filelayout/filelayoutdev.c                |    4 -
->   fs/nfs/inode.c                                   |    6 +
->   fs/nfs/internal.h                                |    2
->   fs/nfs/nfs4state.c                               |    4 -
->   fs/nfs/pagelist.c                                |   14 +-
->   fs/nfs/pnfs.c                                    |    2
->   fs/nfs/write.c                                   |    4 -
->   include/linux/sunrpc/sched.h                     |    2
->   include/linux/wait.h                             |  125 +++++++++++++++++++++-
->   include/linux/writeback.h                        |    3 -
->   kernel/ptrace.c                                  |    8 -
->   kernel/sched/wait.c                              |   30 ++++-
->   mm/filemap.c                                     |   20 +---
->   mm/ksm.c                                         |    8 -
->   net/bluetooth/hci_core.c                         |    8 -
->   net/sunrpc/sched.c                               |    4 -
->   security/keys/gc.c                               |   11 --
->   security/keys/request_key.c                      |   23 ----
->   41 files changed, 214 insertions(+), 292 deletions(-)
->
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e7b77c0ff15a..65b093d2aa16 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4794,11 +4794,10 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			struct nfsd4_release_lockowner *rlockowner)
+ {
+ 	clientid_t *clid = &rlockowner->rl_clientid;
+-	struct nfs4_stateowner *sop;
++	struct nfs4_stateowner *sop = NULL, *tmp;
+ 	struct nfs4_lockowner *lo;
+ 	struct nfs4_ol_stateid *stp;
+ 	struct xdr_netobj *owner = &rlockowner->rl_owner;
+-	struct list_head matches;
+ 	unsigned int hashval = ownerstr_hashval(clid->cl_id, owner);
+ 	__be32 status;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+@@ -4813,33 +4812,32 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 		goto out;
+ 
+ 	status = nfserr_locks_held;
+-	INIT_LIST_HEAD(&matches);
+ 
+-	list_for_each_entry(sop, &nn->ownerstr_hashtbl[hashval], so_strhash) {
+-		if (sop->so_is_open_owner)
+-			continue;
+-		if (!same_owner_str(sop, owner, clid))
++	/* Find the matching lock stateowner */
++	list_for_each_entry(tmp, &nn->ownerstr_hashtbl[hashval], so_strhash) {
++		if (tmp->so_is_open_owner)
+ 			continue;
+-		list_for_each_entry(stp, &sop->so_stateids,
+-				st_perstateowner) {
+-			lo = lockowner(sop);
+-			if (check_for_locks(stp->st_file, lo))
+-				goto out;
+-			list_add(&lo->lo_list, &matches);
++		if (same_owner_str(tmp, owner, clid)) {
++			sop = tmp;
++			break;
+ 		}
+ 	}
+-	/* Clients probably won't expect us to return with some (but not all)
+-	 * of the lockowner state released; so don't release any until all
+-	 * have been checked. */
+-	status = nfs_ok;
+-	while (!list_empty(&matches)) {
+-		lo = list_entry(matches.next, struct nfs4_lockowner,
+-								lo_list);
+-		/* unhash_stateowner deletes so_perclient only
+-		 * for openowners. */
+-		list_del(&lo->lo_list);
+-		release_lockowner(lo);
++
++	/* No matching owner found, maybe a replay? Just declare victory... */
++	if (!sop) {
++		status = nfs_ok;
++		goto out;
++	}
++
++	lo = lockowner(sop);
++	/* see if there are still any locks associated with it */
++	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
++		if (check_for_locks(stp->st_file, lo))
++			goto out;
+ 	}
++
++	status = nfs_ok;
++	release_lockowner(lo);
+ out:
+ 	nfs4_unlock_state();
+ 	return status;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 2fe58f5f4833..a7d13cd97921 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -364,7 +364,6 @@ struct nfs4_openowner {
+ 
+ struct nfs4_lockowner {
+ 	struct nfs4_stateowner	lo_owner; /* must be first element */
+-	struct list_head	lo_list; /* for temporary uses */
+ };
+ 
+ static inline struct nfs4_openowner * openowner(struct nfs4_stateowner *so)
+-- 
+1.9.3
 
