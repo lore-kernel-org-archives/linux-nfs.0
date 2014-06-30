@@ -1,72 +1,179 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.aixigo.de ([80.149.209.52]:53237 "EHLO mail.aixigo.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752577AbaFMOed (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 13 Jun 2014 10:34:33 -0400
-Received: from srvvm01.ac.aixigo.de (mail.ac.aixigo.de [172.19.96.11])
-	by mail.aixigo.com (8.14.3/8.14.3) with ESMTP id s5DEBG96030859
-	for <linux-nfs@vger.kernel.org>; Fri, 13 Jun 2014 16:11:16 +0200 (CEST)
-Message-ID: <539B0683.3020605@aixigo.de>
-Date: Fri, 13 Jun 2014 16:11:15 +0200
-From: Harald Dunkel <harald.dunkel@aixigo.de>
-MIME-Version: 1.0
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: NFS service inside a container
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:33046 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897AbaF3PvW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:22 -0400
+Received: by mail-qg0-f51.google.com with SMTP id z60so2154670qgd.38
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:22 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 035/114] nfsd: Fix delegation revocation
+Date: Mon, 30 Jun 2014 11:49:04 -0400
+Message-Id: <1404143423-24381-36-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-I would like to run an NFServer inside a container. The idea
-is to mirror the whole NFS service container to a fallback
-host using drbd, and to provide preconfigured NFS containers
-to whoever needs it.
+Ensure that the delegations cannot be found by the laundromat etc once
+we add them to the various 'revoke' lists.
 
-Unfortunately the kernel (3.14 of Debian Jessie, backported to
-Wheezy) did not share my enthusiasm:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 56 +++++++++++++++++++++++++++++++++--------------------
+ 1 file changed, 35 insertions(+), 21 deletions(-)
 
-Jun 13 15:33:55 srvl011a kernel: [  725.372466] WARNING: CPU: 6 PID: 11134 at /build/linux-v1L7fI/linux-3.14.4/fs/nfsd/nfs4recover.c:1195 nfsd4_umh_cltrack_init+0x42/0x50 [nfsd]()
-Jun 13 15:33:55 srvl011a kernel: [  725.372468] NFSD: attempt to initialize umh client tracking in a container!
-Jun 13 15:33:55 srvl011a kernel: [  725.376800] Modules linked in: veth sha256_ssse3 sha256_generic hmac drbd lru_cache libcrc32c nfsd auth_rpcgss oid_registry nfs_acl nfs lockd fscache sunrpc bonding bridge stp llc dm_crypt ioatdma radeon iTCO_wdt iTCO_vendor_support i5400_edac lpc_ich mfd_core rng_core ttm edac_core i2c_i801 i5k_amb coretemp drm_kms_helper psmouse shpchp serio_raw joydev pcspkr evdev drm parport_pc parport processor button kvm tpm_tis tpm thermal_sys ext4 crc16 mbcache jbd2 crc32c btrfs xor raid6_pq dm_mod hid_generic usbhid hid sd_mod crct10dif_generic crc_t10dif crct10dif_common sg sr_mod cdrom ata_generic ehci_pci ata_piix uhci_hcd ehci_hcd libata usbcore e1000e usb_common igb i2c_algo_bit i2c_core dca ptp pps_core 3w_9xxx scsi_mod
-Jun 13 15:33:55 srvl011a kernel: [  725.376868] CPU: 6 PID: 11134 Comm: rpc.nfsd Tainted: G        W I  3.14-0.bpo.1-amd64 #1 Debian 3.14.4-1~bpo70+1
-Jun 13 15:33:55 srvl011a kernel: [  725.376870] Hardware name: Supermicro X7DW3/X7DWN+, BIOS  1.2 11/04/2008
-Jun 13 15:33:55 srvl011a kernel: [  725.376872]  0000000000000000 ffffffffa0740758 ffffffff814eb7c7 ffff8810278cbd78
-Jun 13 15:33:55 srvl011a kernel: [  725.376875]  ffffffff81064cc7 ffff880fecbeac00 ffff880febfc0100 ffff880febfc0100
-Jun 13 15:33:55 srvl011a kernel: [  725.376878]  ffff880fecbeac00 0000000000000000 ffffffff81064db5 ffffffffa0740710
-Jun 13 15:33:55 srvl011a kernel: [  725.376881] Call Trace:
-Jun 13 15:33:55 srvl011a kernel: [  725.376889]  [<ffffffff814eb7c7>] ? dump_stack+0x41/0x51
-Jun 13 15:33:55 srvl011a kernel: [  725.376894]  [<ffffffff81064cc7>] ? warn_slowpath_common+0x87/0xc0
-Jun 13 15:33:55 srvl011a kernel: [  725.376896]  [<ffffffff81064db5>] ? warn_slowpath_fmt+0x45/0x50
-Jun 13 15:33:55 srvl011a kernel: [  725.376902]  [<ffffffffa073a652>] ? nfsd4_umh_cltrack_init+0x42/0x50 [nfsd]
-Jun 13 15:33:55 srvl011a kernel: [  725.376907]  [<ffffffffa073b5b1>] ? nfsd4_client_tracking_init+0x91/0x130 [nfsd]
-Jun 13 15:33:55 srvl011a kernel: [  725.376914]  [<ffffffffa073590d>] ? nfs4_state_start_net+0x27d/0x320 [nfsd]
-Jun 13 15:33:55 srvl011a kernel: [  725.376919]  [<ffffffffa070fae3>] ? nfsd_svc+0x1b3/0x360 [nfsd]
-Jun 13 15:33:55 srvl011a kernel: [  725.376924]  [<ffffffffa07108b0>] ? write_filehandle+0x230/0x230 [nfsd]
-Jun 13 15:33:55 srvl011a kernel: [  725.376927]  [<ffffffff812a008b>] ? simple_strtoull+0x2b/0x50
-Jun 13 15:33:55 srvl011a kernel: [  725.376932]  [<ffffffffa07108b0>] ? write_filehandle+0x230/0x230 [nfsd]
-Jun 13 15:33:55 srvl011a kernel: [  725.376936]  [<ffffffffa0710925>] ? write_threads+0x75/0xc0 [nfsd]
-Jun 13 15:33:55 srvl011a kernel: [  725.376941]  [<ffffffff81131fa9>] ? __get_free_pages+0x9/0x50
-Jun 13 15:33:55 srvl011a kernel: [  725.376946]  [<ffffffff811bd061>] ? simple_transaction_get+0xc1/0xe0
-Jun 13 15:33:55 srvl011a kernel: [  725.376951]  [<ffffffffa07108b0>] ? write_filehandle+0x230/0x230 [nfsd]
-Jun 13 15:33:55 srvl011a kernel: [  725.376955]  [<ffffffffa0710116>] ? nfsctl_transaction_write+0x56/0x80 [nfsd]
-Jun 13 15:33:55 srvl011a kernel: [  725.376959]  [<ffffffff81198026>] ? vfs_write+0xc6/0x1f0
-Jun 13 15:33:55 srvl011a kernel: [  725.376962]  [<ffffffff8119851b>] ? SyS_write+0x4b/0xb0
-Jun 13 15:33:55 srvl011a kernel: [  725.376965]  [<ffffffff814f9779>] ? system_call_fastpath+0x16/0x1b
-Jun 13 15:33:55 srvl011a kernel: [  725.376967] ---[ end trace a408a046f76bfc25 ]---
-Jun 13 15:33:55 srvl011a kernel: [  725.377001] ------------[ cut here ]------------
-
-
-I have found a thread on lkml about this (http://lkml.org/lkml/2013/3/1/78),
-but it seems there was no conclusion.
-
-Is this something that could be supported?
-
-
-Regards
-Harri
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fdbd209b02a6..befeb322cb92 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -640,13 +640,13 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ }
+ 
+-/* Called under the state lock. */
+ static void
+-unhash_delegation(struct nfs4_delegation *dp)
++unhash_delegation_locked(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_file *fp = dp->dl_file;
+ 
+-	spin_lock(&state_lock);
++	lockdep_assert_held(&state_lock);
++
+ 	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_recall_lru);
+@@ -654,23 +654,32 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	spin_unlock(&fp->fi_lock);
+ 	if (fp)
+ 		nfs4_put_deleg_lease(fp);
+-	spin_unlock(&state_lock);
+ }
+ 
++static void
++unhash_delegation(struct nfs4_delegation *dp)
++{
++	spin_lock(&state_lock);
++	unhash_delegation_locked(dp);
++	spin_unlock(&state_lock);
++}
+ 
+-
+-static void destroy_revoked_delegation(struct nfs4_delegation *dp)
++static void destroy_delegation(struct nfs4_delegation *dp)
+ {
+-	list_del_init(&dp->dl_recall_lru);
+ 	remove_stid(&dp->dl_stid);
+ 	nfs4_put_delegation(dp);
+ }
+ 
+-static void destroy_delegation(struct nfs4_delegation *dp)
++static void unhash_and_destroy_delegation(struct nfs4_delegation *dp)
+ {
+ 	unhash_delegation(dp);
+-	remove_stid(&dp->dl_stid);
+-	nfs4_put_delegation(dp);
++	destroy_delegation(dp);
++}
++
++static void destroy_revoked_delegation(struct nfs4_delegation *dp)
++{
++	list_del_init(&dp->dl_recall_lru);
++	destroy_delegation(dp);
+ }
+ 
+ static void revoke_delegation(struct nfs4_delegation *dp)
+@@ -678,11 +687,10 @@ static void revoke_delegation(struct nfs4_delegation *dp)
+ 	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 
+ 	if (clp->cl_minorversion == 0)
+-		destroy_delegation(dp);
++		destroy_revoked_delegation(dp);
+ 	else {
+-		unhash_delegation(dp);
+ 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
+-		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
++		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
+ 	}
+ }
+ 
+@@ -1416,12 +1424,13 @@ destroy_client(struct nfs4_client *clp)
+ 	spin_lock(&state_lock);
+ 	while (!list_empty(&clp->cl_delegations)) {
+ 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
+-		list_del_init(&dp->dl_perclnt);
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		unhash_delegation_locked(dp);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	while (!list_empty(&reaplist)) {
+ 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
++		list_del_init(&dp->dl_recall_lru);
+ 		destroy_delegation(dp);
+ 	}
+ 	list_splice_init(&clp->cl_revoked, &reaplist);
+@@ -3604,7 +3613,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
+ 	return;
+ out_free:
+-	destroy_delegation(dp);
++	unhash_and_destroy_delegation(dp);
+ out_no_deleg:
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
+ 	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
+@@ -3843,7 +3852,8 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		unhash_delegation_locked(dp);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+@@ -4469,7 +4479,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		goto out;
+ 
+-	destroy_delegation(dp);
++	unhash_and_destroy_delegation(dp);
+ out:
+ 	nfs4_unlock_state();
+ 
+@@ -5293,8 +5303,10 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+ 
+ 	lockdep_assert_held(&state_lock);
+ 	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
+-		if (victims)
+-			list_move(&dp->dl_recall_lru, victims);
++		if (victims) {
++			unhash_delegation_locked(dp);
++			list_add(&dp->dl_recall_lru, victims);
++		}
+ 		if (++count == max)
+ 			break;
+ 	}
+@@ -5543,11 +5555,13 @@ nfs4_state_shutdown_net(struct net *net)
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		unhash_delegation_locked(dp);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
++		list_del_init(&dp->dl_recall_lru);
+ 		destroy_delegation(dp);
+ 	}
+ 
 -- 
-aixigo AG, Karl-Friedrich-Strasse 68, 52072 Aachen, Germany
-phone: +49 241 559709-79, fax: +49 241 559709-99
-eMail: harald.dunkel@aixigo.de, web: http://www.aixigo.de
-Amtsgericht Aachen - HRB 8057, Vorstand: Erich Borsch, Christian Friedrich, Tobias Haustein, Vors. des Aufsichtsrates: Prof. Dr. Ruediger von Nitzsch
+1.9.3
+
