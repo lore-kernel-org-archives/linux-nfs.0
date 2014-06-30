@@ -1,105 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:34017 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757959AbaFSOv3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Jun 2014 10:51:29 -0400
-Received: by mail-qg0-f47.google.com with SMTP id q108so2216124qgd.34
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Jun 2014 07:51:29 -0700 (PDT)
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:39604 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753807AbaF3PwY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:24 -0400
+Received: by mail-qa0-f54.google.com with SMTP id v10so6580689qac.27
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:24 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v1 022/104] NFSd: clean up nfsd4_close_open_stateid
-Date: Thu, 19 Jun 2014 10:49:28 -0400
-Message-Id: <1403189450-18729-23-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 079/114] nfsd: Don't require client_lock in free_client
+Date: Mon, 30 Jun 2014 11:49:48 -0400
+Message-Id: <1404143423-24381-80-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
+The struct nfs_client is supposed to be invisible and unreferenced
+before it gets here.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 47 ++++++++++++++++++++++-------------------------
- 1 file changed, 22 insertions(+), 25 deletions(-)
+ fs/nfsd/nfs4state.c | 13 -------------
+ 1 file changed, 13 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c01f1628c989..2af6cd2564e7 100644
+index 77f516c907e7..e107f0c8ea74 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4300,8 +4300,29 @@ out:
+@@ -1355,9 +1355,6 @@ static void __free_session(struct nfsd4_session *ses)
  
- static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ static void free_session(struct nfsd4_session *ses)
  {
--	unhash_open_stateid(s);
-+	struct nfs4_client *clp = s->st_stid.sc_client;
-+	struct nfs4_openowner *oo = openowner(s->st_stateowner);
-+
- 	s->st_stid.sc_type = NFS4_CLOSED_STID;
-+	unhash_open_stateid(s);
-+
-+	if (clp->cl_minorversion) {
-+		if (list_empty(&oo->oo_owner.so_stateids))
-+			release_openowner(oo);
-+		put_generic_stateid(s);
-+	} else {
-+		if (s->st_file) {
-+			put_nfs4_file(s->st_file);
-+			s->st_file = NULL;
-+		}
-+		oo->oo_last_closed_stid = s;
-+		/*
-+		 * In the 4.0 case we need to keep the owners around a
-+		 * little while to handle CLOSE replay.
-+		 */
-+		if (list_empty(&oo->oo_owner.so_stateids))
-+			move_to_close_lru(oo, clp->net);
-+	}
+-	struct nfsd_net *nn = net_generic(ses->se_client->net, nfsd_net_id);
+-
+-	lockdep_assert_held(&nn->client_lock);
+ 	nfsd4_del_conns(ses);
+ 	nfsd4_put_drc_mem(&ses->se_fchannel);
+ 	__free_session(ses);
+@@ -1507,9 +1504,6 @@ err_no_name:
+ static void
+ free_client(struct nfs4_client *clp)
+ {
+-	struct nfsd_net __maybe_unused *nn = net_generic(clp->net, nfsd_net_id);
+-
+-	lockdep_assert_held(&nn->client_lock);
+ 	while (!list_empty(&clp->cl_sessions)) {
+ 		struct nfsd4_session *ses;
+ 		ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
+@@ -1568,7 +1562,6 @@ __destroy_client(struct nfs4_client *clp)
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
+ 	struct list_head reaplist;
+-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&state_lock);
+@@ -1596,10 +1589,7 @@ __destroy_client(struct nfs4_client *clp)
+ 	nfsd4_shutdown_callback(clp);
+ 	if (clp->cl_cb_conn.cb_xprt)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+-	spin_lock(&nn->client_lock);
+-	WARN_ON_ONCE(atomic_read(&clp->cl_refcount));
+ 	free_client(clp);
+-	spin_unlock(&nn->client_lock);
  }
  
- /*
-@@ -4312,7 +4333,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    struct nfsd4_close *close)
- {
- 	__be32 status;
--	struct nfs4_openowner *oo;
- 	struct nfs4_ol_stateid *stp;
+ static void
+@@ -1802,7 +1792,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	struct sockaddr *sa = svc_addr(rqstp);
+ 	int ret;
  	struct net *net = SVC_NET(rqstp);
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-@@ -4328,33 +4348,10 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_bump_seqid(cstate, status);
- 	if (status)
- 		goto out; 
--	oo = openowner(stp->st_stateowner);
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
  
- 	nfsd4_close_open_stateid(stp);
--
--	if (cstate->minorversion)
--		put_generic_stateid(stp);
--	else {
--		if (stp->st_file) {
--			put_nfs4_file(stp->st_file);
--			stp->st_file = NULL;
--		}
--		oo->oo_last_closed_stid = stp;
--	}
--
--	if (list_empty(&oo->oo_owner.so_stateids)) {
--		if (cstate->minorversion)
--			release_openowner(oo);
--		else {
--			/*
--			 * In the 4.0 case we need to keep the owners around a
--			 * little while to handle CLOSE replay.
--			 */
--			move_to_close_lru(oo, SVC_NET(rqstp));
--		}
--	}
- out:
- 	nfs4_unlock_state();
- 	return status;
+ 	clp = alloc_client(name);
+ 	if (clp == NULL)
+@@ -1810,9 +1799,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 
+ 	ret = copy_cred(&clp->cl_cred, &rqstp->rq_cred);
+ 	if (ret) {
+-		spin_lock(&nn->client_lock);
+ 		free_client(clp);
+-		spin_unlock(&nn->client_lock);
+ 		return NULL;
+ 	}
+ 	clp->cl_time = get_seconds();
 -- 
 1.9.3
 
