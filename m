@@ -1,71 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:42550 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751286AbaF3Pu7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:59 -0400
-Received: by mail-qg0-f42.google.com with SMTP id e89so2211822qgf.15
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:58 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 017/114] nfsd: Always use lookup_clientid() in nfsd4_process_open1
-Date: Mon, 30 Jun 2014 11:48:46 -0400
-Message-Id: <1404143423-24381-18-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+Received: from mx02.posteo.de ([89.146.194.165]:50455 "EHLO posteo.de"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751286AbaF3Lk4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jun 2014 07:40:56 -0400
+Message-ID: <53B14CC4.4000803@posteo.de>
+Date: Mon, 30 Jun 2014 13:40:52 +0200
+From: Karl-Philipp Richter <krichter@posteo.de>
+MIME-Version: 1.0
+To: Anna Schumaker <schumaker.anna@gmail.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: (Follow) sparse file support (development)
+References: <53B03ED5.6040400@posteo.de> <CAFX2Jfne-eDPBChRmBqp2N08-+i6tYBpSosnudg_J6Yd2dNNcg@mail.gmail.com>
+In-Reply-To: <CAFX2Jfne-eDPBChRmBqp2N08-+i6tYBpSosnudg_J6Yd2dNNcg@mail.gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ protocol="application/pgp-signature";
+ boundary="upheUEQNIX9RVrGp5S0ms30Uef6eM4B6c"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--upheUEQNIX9RVrGp5S0ms30Uef6eM4B6c
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-In later patches, we'll be moving the stateowner table into the
-nfs4_client, and by doing this we ensure that we have a cached
-nfs4_client pointer.
+Hi Anna,
+Yes you did, thank you! I'd like to recommend you to put this
+information in the wiki, if you don't want to rely on $SEARCH_ENGINE
+finding this thread in the mailing list archives only :)
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4state.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
+Best regards,
+Kalle
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 199e9d5e23ac..a482fb97964f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3061,19 +3061,19 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	if (open->op_file == NULL)
- 		return nfserr_jukebox;
- 
-+	status = lookup_clientid(clientid, cstate, nn);
-+	if (status)
-+		return status;
-+	clp = cstate->clp;
-+
- 	strhashval = ownerstr_hashval(clientid->cl_id, &open->op_owner);
- 	oo = find_openstateowner_str(strhashval, open, cstate->minorversion, nn);
- 	open->op_openowner = oo;
- 	if (!oo) {
--		status = lookup_clientid(clientid, cstate, nn);
--		if (status)
--			return status;
--		clp = cstate->clp;
- 		goto new_owner;
- 	}
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
- 		/* Replace unconfirmed owners without checking for replay. */
--		clp = oo->oo_owner.so_client;
- 		release_openowner(oo);
- 		open->op_openowner = NULL;
- 		goto new_owner;
-@@ -3081,7 +3081,6 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	status = nfsd4_check_seqid(cstate, &oo->oo_owner, open->op_seqid);
- 	if (status)
- 		return status;
--	clp = oo->oo_owner.so_client;
- 	goto alloc_stateid;
- new_owner:
- 	oo = alloc_init_open_stateowner(strhashval, open, cstate);
--- 
-1.9.3
+Am 30.06.2014 01:39, schrieb Anna Schumaker:
+> Hi Kalle,
+>=20
+> Currently you can use SEEK_SET to create sparse files through seeking. =
+ NFS
+> v4.2 (currently in development) will add support for an fallocate
+> interface, but that won't be merged into Linux until after the draft is=
 
+> finished.
+>=20
+> I hope I answered your question!
+>=20
+> Anna
+>=20
+> On Sunday, June 29, 2014, Karl-Philipp Richter <krichter@posteo.de> wro=
+te:
+>=20
+>> Hi together,
+>> I had trouble finding a statement in the NFS wiki
+>>
+>>     http://wiki.linux-nfs.org/wiki/index.php/Main_Page
+>>
+>> about sparse file support or development plans for it outside of (very=
+
+>> very) technical documents which I honestly didn't take the time to
+>> understand. Maybe I can get you to give me short statement on this :).=
+
+>>
+>> Best regards,
+>> Kalle Richter
+>>
+>>
+>=20
+
+
+--upheUEQNIX9RVrGp5S0ms30Uef6eM4B6c
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iQEcBAEBAgAGBQJTsUzEAAoJEGadKJ8eJ7ZGBqgH/2ZE+CM8W1E+RofQwsW4/hrg
+WR8EX8WQF/VbT7G4B1qg2JK8KatcuHTeThU94Df2aBs6zMJ8SjeOyCK63cKl8FoI
+O3IXJNGdmwPAZzwukzwdAM0+bw6WOTevFpOlufN55uYGpeCQnkuAc86Js4uy80kZ
+HxuP32BPpPbABJCYW7SGSvyJ7jbSvUNXISiiGT2ilVATdtpq+c/a35ZYtEcCBAL2
+aNJgkSw9NbHxR1alP5vKUFkmYSmtI5nuW7jfE8DsYGRn5YMK/UWJRy5sGGLLAQTg
+pyDWQE9cqKX66mitgJjFG9zIvRzI04iMP24sQOf/VgA80giulioShrJfyMZp250=
+=7HBy
+-----END PGP SIGNATURE-----
+
+--upheUEQNIX9RVrGp5S0ms30Uef6eM4B6c--
