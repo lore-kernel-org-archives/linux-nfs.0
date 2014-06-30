@@ -1,41 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:57483 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751380AbaFENzu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 09:55:50 -0400
-Received: by mail-ig0-f170.google.com with SMTP id h3so2925560igd.5
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 06:55:49 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:41850 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753645AbaF3Pws (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:48 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so7249127qcq.34
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:47 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH pynfs v2 01/16] dataserver: reclaim_complete after create_session
-Date: Thu,  5 Jun 2014 09:55:29 -0400
-Message-Id: <1401976544-36374-2-git-send-email-dros@primarydata.com>
-In-Reply-To: <1401976544-36374-1-git-send-email-dros@primarydata.com>
-References: <1401976544-36374-1-git-send-email-dros@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 096/114] nfsd: add a list_head arg to nfsd_foreach_client_lock
+Date: Mon, 30 Jun 2014 11:50:05 -0400
+Message-Id: <1404143423-24381-97-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Send RECLAIM_COMPLETE after CREATE_SESSION. This enables backend
-communication to v4.1 linux nfsd servers (i/o through MDS only).
+In a later patch, we'll want to collect the locks onto a list for later
+destruction. If "func" is defined and "collect" is defined, then we'll
+add the lock stateid to the list.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- nfs4.1/dataserver.py | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfsd/nfs4state.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-diff --git a/nfs4.1/dataserver.py b/nfs4.1/dataserver.py
-index 65e4f55..ade55e1 100644
---- a/nfs4.1/dataserver.py
-+++ b/nfs4.1/dataserver.py
-@@ -54,6 +54,7 @@ class DataServer(object):
-         # as wide as the client/MDS channel (at least for linux client)
-         fore_attrs = channel_attrs4(0, 16384, 16384, 2868, 8, 8, [])
-         self.sess = c.create_session(fore_attrs=fore_attrs)
-+        sess.compound([op.reclaim_complete(FALSE)])
-         self.make_root()
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f395afc19d4c..2f57fa4fd244 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5752,6 +5752,7 @@ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ }
  
-     def disconnect(self):
+ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
++				    struct list_head *collect,
+ 				    void (*func)(struct nfs4_ol_stateid *))
+ {
+ 	struct nfs4_openowner *oop;
+@@ -5764,8 +5765,12 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 				&oop->oo_owner.so_stateids, st_perstateowner) {
+ 			list_for_each_entry_safe(lst, lst_next,
+ 					&stp->st_locks, st_locks) {
+-				if (func)
++				if (func) {
+ 					func(lst);
++					if (collect)
++						list_add(&lst->st_locks,
++							 collect);
++				}
+ 				if (++count == max)
+ 					return count;
+ 			}
+@@ -5777,12 +5782,12 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 
+ u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ {
+-	return nfsd_foreach_client_lock(clp, max, release_lock_stateid);
++	return nfsd_foreach_client_lock(clp, max, NULL, release_lock_stateid);
+ }
+ 
+ u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
+ {
+-	u64 count = nfsd_foreach_client_lock(clp, max, NULL);
++	u64 count = nfsd_foreach_client_lock(clp, max, NULL, NULL);
+ 	nfsd_print_count(clp, count, "locked files");
+ 	return count;
+ }
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
