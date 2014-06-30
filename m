@@ -1,120 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from vms173017pub.verizon.net ([206.46.173.17]:33252 "EHLO
-	vms173017pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751856AbaFDWEC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 18:04:02 -0400
-Received: from CappsG570 ([unknown] [198.95.226.236])
- by vms173017.mailsrvcs.net
- (Sun Java(tm) System Messaging Server 7u2-7.02 32bit (built Apr 16 2009))
- with ESMTPA id <0N6N00EF0X6DR830@vms173017.mailsrvcs.net> for
- linux-nfs@vger.kernel.org; Wed, 04 Jun 2014 16:03:50 -0500 (CDT)
-Reply-to: <capps@iozone.org>
-From: "Iozone" <capps@iozone.org>
-To: "'Trond Myklebust'" <trond.myklebust@primarydata.com>
-Cc: "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
-References: <004501cf8013$7a3373c0$6e9a5b40$@iozone.org>
- <005d01cf801f$363aabf0$a2b003d0$@iozone.org>
- <CAHQdGtQ9ceYQJD0eEehLhq1T2KsWRv11hkOVg9=NdpS9h4OJLA@mail.gmail.com>
-In-reply-to: <CAHQdGtQ9ceYQJD0eEehLhq1T2KsWRv11hkOVg9=NdpS9h4OJLA@mail.gmail.com>
-Subject: RE: FW: Forwarding request at suggestion from support
-Date: Wed, 04 Jun 2014 16:03:45 -0500
-Message-id: <006101cf8038$79c71d90$6d5558b0$@iozone.org>
-MIME-version: 1.0
-Content-type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:52991 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756501AbaF3Tck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 30 Jun 2014 15:32:40 -0400
+Date: Mon, 30 Jun 2014 15:32:37 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
+Message-ID: <20140630193237.GA11935@fieldses.org>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+ <20140630125142.GA32089@infradead.org>
+ <20140630085934.2bf86ba0@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140630085934.2bf86ba0@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond,
+On Mon, Jun 30, 2014 at 08:59:34AM -0400, Jeff Layton wrote:
+> On Mon, 30 Jun 2014 05:51:42 -0700
+> Christoph Hellwig <hch@infradead.org> wrote:
+> 
+> > I'm pretty happy with what's the first 25 patches in this version
+> > with all the review comments addressed, so as far as I'm concerned
+> > these are ready for for-next.  Does anyone else plan to do a review
+> > as well?
+> > 
+> 
+> Thanks very much for the review so far.
+> 
+> > I'll try to get to the locking changes as well soon, but I've got some
+> > work keeping me fairly busy at the moment.  I guess it wasn't easily
+> > feasible to move the various stateid refcounting to before the major
+> > locking changes?
+> > 
+> 
+> Not really. If I had done the set from scratch I would have probably
+> done that instead, but Trond's original had those changes interleaved.
+> Separating them would be a lot of work that I'd prefer to avoid.
+> 
+> > Btw, do you have any benchrmarks showing the improvements of the new
+> > locking scheme?
+> 
+> No, I'm hoping to get those numbers soon from our QA folks. Most of the
+> testing I've done has been for correctness and stability. I'm pretty
+> happy with things at that end now, but I don't have any numbers that
+> show whether and how much this helps scalability.
 
-	Ok... but as the replies are coming back, all but one with EOF and zero bytes
-	transferred, does it still make sense to keep issuing reads that are beyond EOF ?
+The open-create problem at least shouldn't be hard to confirm.
 
-Enjoy,
-Don Capps
+It's also the only problem I've actually seen a complaint about--I do
+wish it were possible to do just the minimum required to fix that before
+doing all the rest.
 
------Original Message-----
-From: Trond Myklebust [mailto:trond.myklebust@primarydata.com] 
-Sent: Wednesday, June 04, 2014 3:42 PM
-To: capps@iozone.org
-Cc: Linux NFS Mailing List
-Subject: Re: FW: Forwarding request at suggestion from support
-
-Hi Don,
-
-On Wed, Jun 4, 2014 at 2:02 PM, Iozone <capps@iozone.org> wrote:
->
->
-> From: Iozone [mailto:capps@iozone.org]
-> Sent: Wednesday, June 04, 2014 11:39 AM
-> To: linux-nfs@vger.kernel.org
-> Subject: Forwarding request at suggestion from support
->
->                 Dear kernel folks,
->
->                                 Please take a look at Bugzilla bug:
->
-> https://bugzilla.redhat.com/show_bug.cgi?id=1104696
->
-> Description of problem:
->
->    Linux NFSv3 clients can issue extra reads beyond EOF.
->
-> Condition of the test:  (32KB_file is a file that is 32KB in size)
->           File is being read over an NFSv3 mount.
->
->           dd if=/mnt/32KB_file  of=/dev/null iflag=direct bs=1M 
-> count=1
->
-> What one should expect over the wire:
->           NFSv3_read for 32k, or NFS_read for 1M
->           NFSv3_read Reply return of 32KB and EOF set.
->
-> What happens with Linux NFSv3 client:
->           NFSv3 read for 128k
->           NFSv3 read for 128k,
->           NFSv3 read for 128k,
->           NFSv3 read for 128k,
->           NFSv3 read for 128k,
->           NFSv3 read for 128k,
->           NFSv3 read for 128k,
->           NFSv3 read for 128k.
->        followed by:
->           NFSv3 read reply of 32k,
->           NFSv3 read reply of 0,
->           NFSv3 read reply of 0,
->           NFSv3 read reply of 0,
->           NFSv3 read reply of 0,
->           NFSv3 read reply of 0,
->           NFSv3 read reply of 0,
->           NFSv3 read reply of 0.
->
-> So… instead of a single round trip with a short read length returned, 
-> there were 8 async I/O ops sent to the NFS server, and 8 replies from 
-> the NFS server.
-> The client knew the file size before even sending the very first 
-> request, but went ahead and issued an large number of reads that it 
-> should have known were beyond EOF.
->
-> This client behavior hammers NFS servers with requests that are 
-> guaranteed to always fail, and burn CPU cycles, for operations that it 
-> knew were pointless.
->
-> While the application is getting correct answers to the API calls, the 
-> poor client and server are beating each other senseless over the wire.
->
-> NOTE: This only happens if O_DIRECT is being used… (thus the 
-> iflag=direct)
-
-Yes. This behaviour is intentional in the case of O_DIRECT. The reason why we should not change it is that we don't ever want to rely on cached values for the file size when doing uncached I/O.
-An application such as Oracle may have out-of-band information about writes to the file that were made by another client directly to the server, in which case it would be wrong for the kernel to truncate those reads based on its cached information.
-
-Cheers
-  Trond
-
---
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
-
+--b.
