@@ -1,102 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:53644 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933182AbaFRJEu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Jun 2014 05:04:50 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Philippe Troin <phil@fifi.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: only show Posix ACLs in listxattr if actually present
-Date: Wed, 18 Jun 2014 11:07:03 +0200
-Message-Id: <1403082423-13131-1-git-send-email-hch@lst.de>
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:37020 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754652AbaF3PvS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:18 -0400
+Received: by mail-qc0-f176.google.com with SMTP id w7so7147045qcr.7
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:17 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 032/114] locks: add file_has_lease to prevent delegation break races
+Date: Mon, 30 Jun 2014 11:49:01 -0400
+Message-Id: <1404143423-24381-33-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The big ACL switched nfs to use generic_listxattr, which calls all existing
-->list handlers.  Add a custom .listxattr implementation that only lists
-the ACLs if they actually are present on the given inode.
+Once we remove the client_mutex, we'll have a potential race between
+setting a lease on a file and breaking the delegation. We may set the
+lease, but by the time we go to hash it, it may have already been
+broken. Currently, we know that this won't happen as the nfs4_laundromat
+takes the client_mutex, but we want to remove that.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reported-by: Philippe Troin <phil@fifi.org>
-Tested-by: Philippe Troin <phil@fifi.org>
+As part of that fix, add a function that can tell us whether a
+particular file has a lease set on it. In a later nfsd patch, we'll use
+that to close the potential race window.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/nfs3acl.c  |   43 +++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs3proc.c |    4 ++--
- 2 files changed, 45 insertions(+), 2 deletions(-)
+ fs/locks.c         | 26 ++++++++++++++++++++++++++
+ include/linux/fs.h |  6 ++++++
+ 2 files changed, 32 insertions(+)
 
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index 871d6ed..8f854dd 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -247,3 +247,46 @@ const struct xattr_handler *nfs3_xattr_handlers[] = {
- 	&posix_acl_default_xattr_handler,
- 	NULL,
- };
-+
-+static int
-+nfs3_list_one_acl(struct inode *inode, int type, const char *name, void *data,
-+		size_t size, ssize_t *result)
+diff --git a/fs/locks.c b/fs/locks.c
+index 717fbc404e6b..005cc86927e3 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1308,6 +1308,32 @@ static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
+ }
+ 
+ /**
++ * file_has_lease - does the given file have a lease set on it?
++ * @file: struct file on which we want to check the lease
++ *
++ * Returns true if a lease was is set on the given file description,
++ * false otherwise.
++ */
++bool
++file_has_lease(struct file *file)
 +{
-+	struct posix_acl *acl;
-+	char *p = data + *result;
++	bool ret = false;
++	struct inode *inode = file_inode(file);
++	struct file_lock *fl;
 +
-+	acl = get_acl(inode, type);
-+	if (!acl)
-+		return 0;
++	spin_lock(&inode->i_lock);
++	for (fl = inode->i_flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (fl->fl_file == file) {
++			ret = true;
++			break;
++		}
++	}
++	spin_unlock(&inode->i_lock);
++	return ret;
++}
++EXPORT_SYMBOL(file_has_lease);
 +
-+	posix_acl_release(acl);
-+
-+	*result += strlen(name);
-+	*result += 1;
-+	if (!size)
-+		return 0;
-+	if (*result > size)
-+		return -ERANGE;
-+
-+	strcpy(p, name);
-+	return 0;
++/**
+  *	__break_lease	-	revoke all outstanding leases on file
+  *	@inode: the inode of the file to return
+  *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e11d60cc867b..7ae6f4869669 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -953,6 +953,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
++extern bool file_has_lease(struct file *file);
+ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **);
+@@ -1064,6 +1065,11 @@ static inline int flock_lock_file_wait(struct file *filp,
+ 	return -ENOLCK;
+ }
+ 
++static inline bool file_has_lease(struct file *file)
++{
++	return false;
 +}
 +
-+ssize_t
-+nfs3_listxattr(struct dentry *dentry, char *data, size_t size)
-+{
-+	struct inode *inode = dentry->d_inode;
-+	ssize_t result = 0;
-+	int error;
-+
-+	error = nfs3_list_one_acl(inode, ACL_TYPE_ACCESS,
-+			POSIX_ACL_XATTR_ACCESS, data, size, &result);
-+	if (error)
-+		return error;
-+
-+	error = nfs3_list_one_acl(inode, ACL_TYPE_DEFAULT,
-+			POSIX_ACL_XATTR_DEFAULT, data, size, &result);
-+	if (error)
-+		return error;
-+	return result;
-+}
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index e7daa42..f0afa29 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -885,7 +885,7 @@ static const struct inode_operations nfs3_dir_inode_operations = {
- 	.getattr	= nfs_getattr,
- 	.setattr	= nfs_setattr,
- #ifdef CONFIG_NFS_V3_ACL
--	.listxattr	= generic_listxattr,
-+	.listxattr	= nfs3_listxattr,
- 	.getxattr	= generic_getxattr,
- 	.setxattr	= generic_setxattr,
- 	.removexattr	= generic_removexattr,
-@@ -899,7 +899,7 @@ static const struct inode_operations nfs3_file_inode_operations = {
- 	.getattr	= nfs_getattr,
- 	.setattr	= nfs_setattr,
- #ifdef CONFIG_NFS_V3_ACL
--	.listxattr	= generic_listxattr,
-+	.listxattr	= nfs3_listxattr,
- 	.getxattr	= generic_getxattr,
- 	.setxattr	= generic_setxattr,
- 	.removexattr	= generic_removexattr,
+ static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	return 0;
 -- 
-1.7.10.4
+1.9.3
 
