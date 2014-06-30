@@ -1,67 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:32859 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932097AbaFZNX4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 09:23:56 -0400
-Date: Thu, 26 Jun 2014 14:23:52 +0100
-From: Luis Henriques <luis.henriques@canonical.com>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Jiri Slaby <jslaby@suse.cz>, stable@vger.kernel.org,
-        linux-nfs@vger.kernel.org, bfields@fieldses.org,
-        Tomas Kasparek <kasparek@fit.vutbr.cz>
-Subject: Re: [stable PATCH] nfsd: don't try to reuse an expired DRC entry off
- the list
-Message-ID: <20140626132352.GC15901@hercules>
-References: <1403290612-15341-1-git-send-email-jlayton@primarydata.com>
- <53AACF88.5000006@suse.cz>
- <20140625093632.0d7b58ac@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20140625093632.0d7b58ac@tlielax.poochiereds.net>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:36930 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754385AbaF3Pvt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:49 -0400
+Received: by mail-qc0-f171.google.com with SMTP id w7so7181664qcr.16
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:48 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 054/114] nfsd: nfsd4_open_confirm() must reference the open stateid
+Date: Mon, 30 Jun 2014 11:49:23 -0400
+Message-Id: <1404143423-24381-55-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 25, 2014 at 09:36:32AM -0400, Jeff Layton wrote:
-> On Wed, 25 Jun 2014 15:32:56 +0200
-> Jiri Slaby <jslaby@suse.cz> wrote:
-> 
-> > On 06/20/2014 08:56 PM, Jeff Layton wrote:
-> > > From: Jeff Layton <jlayton@redhat.com>
-> > > 
-> > > This is commit a0ef5e19684f0447da9ff0654a12019c484f57ca in mainline.
-> > > 
-> > > While the commit message below doesn't lay this out, we've subsequently
-> > > found that there are some cases where an entry that's still in use can
-> > > be freed prematurely if a particular operation takes a *very* long time
-> > > (on the order of minutes) and/or the server is very busy and doesn't
-> > > have a lot of memory dedicated to the DRC. This patch eliminates that
-> > > possibility, so it's actually more than just a cleanup.
-> > > 
-> > > The regression crept in in v3.9, and this patch went into mainline in
-> > > v3.14. Please apply this to any stable kernel between those two
-> > > mainline releases.
-> > 
-> > Now applied to 3.12. Thanks.
-> > 
-> > 
-> 
-> Thank you! It also turns out that we're going to want to pull
-> 1b19453d1c6abcfa7c312ba6c9f11a277568fc94 from mainline into stable
-> kernels as well. There's one more possibility for an entry to be freed
-> while still in use that that patch will fix.
-> 
-> I'll resend that to stable@vger later today...
-> 
-> Thanks!
-> -- 
-> Jeff Layton <jlayton@primarydata.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe stable" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Thanks, I'll queue both patches for the 3.11 kernel.
+Ensure that nfsd4_open_confirm() keeps a reference to the open
+stateid until it is done working with it.
 
-Cheers,
---
-Luís
+Necessary step toward client_mutex removal.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 08e3ab9c82f0..8ed48d0015e1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4385,10 +4385,12 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					NFS4_OPEN_STID, &stp, nn);
+ 	if (status)
+ 		goto out;
++	/* FIXME: move into nfs4_preprocess_seqid_op */
++	atomic_inc(&stp->st_stid.sc_count);
+ 	oo = openowner(stp->st_stateowner);
+ 	status = nfserr_bad_stateid;
+ 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
+-		goto out;
++		goto put_stateid;
+ 	oo->oo_flags |= NFS4_OO_CONFIRMED;
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&oc->oc_resp_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+@@ -4397,6 +4399,8 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfsd4_client_record_create(oo->oo_owner.so_client);
+ 	status = nfs_ok;
++put_stateid:
++	put_generic_stateid(stp);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+ 	nfs4_unlock_state();
+-- 
+1.9.3
+
