@@ -1,24 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:39346 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752542AbaFXMAo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Jun 2014 08:00:44 -0400
-Date: Tue, 24 Jun 2014 05:00:43 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 015/104] NFSd: Cleanup nfs4svc_encode_compoundres
-Message-ID: <20140624120043.GE31935@infradead.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
- <1403189450-18729-16-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403189450-18729-16-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:43961 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753645AbaF3Pwp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:45 -0400
+Received: by mail-qc0-f181.google.com with SMTP id x13so7281747qcv.12
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:44 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 094/114] nfsd: add a forget_client set_clnt routine
+Date: Mon, 30 Jun 2014 11:50:03 -0400
+Message-Id: <1404143423-24381-95-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This seems like another candidate for the prep series.
+...that relies on the client_lock instead of client_mutex.
 
-Looks good,
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/fault_inject.c |  2 +-
+ fs/nfsd/nfs4state.c    | 28 ++++++++++++++++++++++++++++
+ fs/nfsd/state.h        |  3 +++
+ 3 files changed, 32 insertions(+), 1 deletion(-)
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index a0387fd47e14..5f3ead0c72fb 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -136,7 +136,7 @@ static struct nfsd_fault_inject_op inject_ops[] = {
+ 		.file     = "forget_clients",
+ 		.get	  = nfsd_inject_print_clients,
+ 		.set_val  = nfsd_inject_set,
+-		.set_clnt = nfsd_inject_set_client,
++		.set_clnt = nfsd_inject_forget_client,
+ 		.forget   = nfsd_forget_client,
+ 	},
+ 	{
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ade71f32a070..2795f549e29e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5701,6 +5701,34 @@ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ 	return 1;
+ }
+ 
++u64
++nfsd_inject_forget_client(struct nfsd_fault_inject_op *op,
++			  struct sockaddr_storage *addr, size_t addr_size)
++{
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++					  nfsd_net_id);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp) {
++		if (mark_client_expired_locked(clp) == nfs_ok)
++			++count;
++		else
++			clp = NULL;
++	}
++	spin_unlock(&nn->client_lock);
++
++	if (clp)
++		expire_client(clp);
++
++	return count;
++}
++
+ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ 			     const char *type)
+ {
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e0bf42051c1f..ead0fe9027fb 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -475,6 +475,9 @@ struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
+ 
+ u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
+ u64 nfsd_forget_client(struct nfs4_client *, u64);
++u64 nfsd_inject_forget_client(struct nfsd_fault_inject_op *,
++			      struct sockaddr_storage *, size_t);
++
+ u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
+ u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+-- 
+1.9.3
+
