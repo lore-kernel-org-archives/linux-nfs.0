@@ -1,48 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:63273 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935150AbaFTRaf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 20 Jun 2014 13:30:35 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfs: Fix unused variable error
-Date: Fri, 20 Jun 2014 13:30:26 -0400
-Message-ID: <1403285426-1835-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:45843 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754328AbaF3PwS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:18 -0400
+Received: by mail-qa0-f44.google.com with SMTP id hw13so6567223qab.17
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:17 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 074/114] nfsd: close potential race in nfsd4_free_stateid
+Date: Mon, 30 Jun 2014 11:49:43 -0400
+Message-Id: <1404143423-24381-75-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-inode is unused when CONFIG_SUNRPC_DEBUG=n.
+Once we remove the client_mutex, it'll be possible for the sc_type of a
+lock stateid to change after it's found and checked, but before we can
+go to destroy it. If that happens, we can end up putting the persistent
+reference to the stateid more than once, and unhash it more than once.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Fix this by unhashing the lock stateid prior to dropping the cl_lock but
+after finding it.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/pagelist.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c | 24 +++++++++---------------
+ 1 file changed, 9 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 8143d6b..6e2c0bc 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -552,7 +552,6 @@ static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_header *hdr,
- 		      const struct rpc_call_ops *call_ops, int how, int flags)
- {
--	struct inode *inode = hdr->inode;
- 	struct rpc_task *task;
- 	struct rpc_message msg = {
- 		.rpc_argp = &hdr->args,
-@@ -575,8 +574,8 @@ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_header *hdr,
- 	dprintk("NFS: %5u initiated pgio call "
- 		"(req %s/%llu, %u bytes @ offset %llu)\n",
- 		hdr->task.tk_pid,
--		inode->i_sb->s_id,
--		(unsigned long long)NFS_FILEID(inode),
-+		hdr->inode->i_sb->s_id,
-+		(unsigned long long)NFS_FILEID(hdr->inode),
- 		hdr->args.count,
- 		(unsigned long long)hdr->args.offset);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e840d41fe2c9..0f56fb179e8a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4357,17 +4357,6 @@ unlock_state:
+ 	return status;
+ }
  
+-static __be32
+-nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+-{
+-	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
+-
+-	if (check_for_locks(stp->st_stid.sc_file, lo))
+-		return nfserr_locks_held;
+-	release_lock_stateid(stp);
+-	return nfs_ok;
+-}
+-
+ /*
+  * Test if the stateid is valid
+  */
+@@ -4394,6 +4383,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	stateid_t *stateid = &free_stateid->fr_stateid;
+ 	struct nfs4_stid *s;
+ 	struct nfs4_delegation *dp;
++	struct nfs4_ol_stateid *stp;
+ 	struct nfs4_client *cl = cstate->session->se_client;
+ 	__be32 ret = nfserr_bad_stateid;
+ 
+@@ -4411,12 +4401,16 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 		if (ret)
+ 			break;
+-		if (s->sc_type != NFS4_LOCK_STID) {
+-			ret = nfserr_locks_held;
++		stp = openlockstateid(s);
++		ret = nfserr_locks_held;
++		if (s->sc_type == NFS4_OPEN_STID ||
++		    check_for_locks(s->sc_file,
++				    lockowner(stp->st_stateowner)))
+ 			break;
+-		}
++		unhash_lock_stateid(stp);
+ 		spin_unlock(&cl->cl_lock);
+-		ret = nfsd4_free_lock_stateid(openlockstateid(s));
++		put_generic_stateid(stp);
++		ret = nfs_ok;
+ 		goto out;
+ 	case NFS4_REVOKED_DELEG_STID:
+ 		spin_unlock(&cl->cl_lock);
 -- 
-2.0.0
+1.9.3
 
