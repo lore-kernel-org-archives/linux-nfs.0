@@ -1,69 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.kundenserver.de ([212.227.126.131]:58296 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750998AbaFBSw1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Jun 2014 14:52:27 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: "H. Peter Anvin" <hpa@zytor.com>
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Chuck Lever <chuck.lever@oracle.com>,
-        Nicolas Pitre <nicolas.pitre@linaro.org>,
-        Dave Chinner <david@fromorbit.com>,
-        LKML Kernel <linux-kernel@vger.kernel.org>, linux-arch@vger.kernel.org,
-        joseph@codesourcery.com, john.stultz@linaro.org,
-        Christoph Hellwig <hch@infradead.org>, tglx@linutronix.de,
-        geert@linux-m68k.org, lftan@altera.com,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>, xfs@oss.sgi.com,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC 11/32] xfs: convert to struct inode_time
-Date: Mon, 02 Jun 2014 20:50:55 +0200
-Message-ID: <4548598.6TTMEpKtuS@wuerfel>
-In-Reply-To: <538CB085.5000502@zytor.com>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de> <20140602153124.GH30598@thunk.org> <538CB085.5000502@zytor.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-qc0-f177.google.com ([209.85.216.177]:34733 "EHLO
+	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752096AbaF3Pui (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:38 -0400
+Received: by mail-qc0-f177.google.com with SMTP id r5so7152500qcx.8
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:37 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 003/114] nfsd: wait to initialize work struct just prior to using it
+Date: Mon, 30 Jun 2014 11:48:32 -0400
+Message-Id: <1404143423-24381-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday 02 June 2014 10:12:37 H. Peter Anvin wrote:
-> On 06/02/2014 08:31 AM, Theodore Ts'o wrote:
-> > 
-> > I wonder if it would make sense to try to promulgate via the Austin
-> > group, and possibly the C standards committee the concept of a bit
-> > pattern (that might commonly be INT_MAX or UINT_MAX) that means "time
-> > unknown", or "time indefinite" or "we couldn't encode the time".
-> > 
-> 
-> (time_t)-1 already has this meaning for some calls (e.g. time(2)).
-> However, this also means Wed Dec 31 23:59:59 UTC 1969, and unfortunately
-> something similar applies to all possible bit patterns, certainly within
-> the range of an int.
+There's a fair chance we won't ever need this work struct, so we might
+as well delay initializing it until just before we're going to use it.
+In a later patch, we'll need to intialize the work with a different
+function for delegation callbacks. By delaying this, we avoid having
+to do it twice.
 
-Worse than Wed Dec 31 23:59:59 UTC 1969, on NFSv3 it also means
-"Sun Feb  7 07:28:15 CET 2106", and that is much harder to distinguish
-from a real future date.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4callback.c | 10 +++++-----
+ fs/nfsd/nfs4state.c    |  2 --
+ fs/nfsd/state.h        |  1 -
+ 3 files changed, 5 insertions(+), 8 deletions(-)
 
-If we had the choice, I'd go for something like 1, i.e.
-"Thu Jan  1 01:00:01 CET 1970".
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 2c73cae9899d..00cb9b7a75f6 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -43,6 +43,7 @@
+ #define NFSDDBG_FACILITY                NFSDDBG_PROC
+ 
+ static void nfsd4_mark_cb_fault(struct nfs4_client *, int reason);
++static void nfsd4_do_callback_rpc(struct work_struct *w);
+ 
+ #define NFSPROC4_CB_NULL 0
+ #define NFSPROC4_CB_COMPOUND 1
+@@ -763,6 +764,8 @@ static void do_probe_callback(struct nfs4_client *clp)
+ 
+ 	cb->cb_ops = &nfsd4_cb_probe_ops;
+ 
++	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
++
+ 	run_nfsd4_cb(cb);
+ }
+ 
+@@ -1031,11 +1034,6 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
+ 			cb->cb_ops, cb);
+ }
+ 
+-void nfsd4_init_callback(struct nfsd4_callback *cb)
+-{
+-	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
+-}
+-
+ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfsd4_callback *cb = &dp->dl_recall;
+@@ -1053,5 +1051,7 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ 	INIT_LIST_HEAD(&cb->cb_per_client);
+ 	cb->cb_done = true;
+ 
++	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
++
+ 	run_nfsd4_cb(&dp->dl_recall);
+ }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 29788fd0da24..b49b46b0ce23 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -466,7 +466,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+ 	atomic_set(&dp->dl_count, 1);
+-	nfsd4_init_callback(&dp->dl_recall);
+ 	return dp;
+ }
+ 
+@@ -1472,7 +1471,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 		spin_unlock(&nn->client_lock);
+ 		return NULL;
+ 	}
+-	nfsd4_init_callback(&clp->cl_cb_null);
+ 	clp->cl_time = get_seconds();
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+ 	copy_verf(clp, verf);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 374c66283ac5..9447f86f2778 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -464,7 +464,6 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
+ 							struct nfsd_net *nn);
+ extern __be32 nfs4_check_open_reclaim(clientid_t *clid, bool sessions, struct nfsd_net *nn);
+ extern int set_callback_cred(void);
+-extern void nfsd4_init_callback(struct nfsd4_callback *);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+ extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
+ extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
+-- 
+1.9.3
 
-> > We would then teach gmtime(3) and asctime(3) to print some appropriate
-> > message, and we could teach programs like find (with the -mtime)
-> > option, make, tmpwatch, et. al., that they can't make any presumption
-> > about the comparibility of any timestamp which has a value of
-> > TIME_UNDEFINIED.
-> > 
-> > It would be problematic for time(2) or gettimeofday(2) to return
-> > TIME_UNDEFINED, since there are programs that care about time ticking
-> > forward, but I could imagine a new interface which would be permitted
-> > to return a flag indicating that we don't know the current time
-> > (because the CMOS battery had run down, etc.) so instead we're going
-> > to be counting the number of seconds since the system was booted.
-> 
-> This assumes that we actually know that that is the case, which may be
-> an aggressive assumption.
-
-It's harder for time(2), but for the inode case, we can definitely
-detect when the file system specific representation overflows
-or underflows, which may be be at a number of very different points
-of time.
-
-	Arnd
