@@ -1,53 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:22743 "EHLO
-	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751676AbaFEF37 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 01:29:59 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Steve Wise <swise@opengridcomputing.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "tom@opengridcomputing.com" <tom@opengridcomputing.com>
-Subject: RE: [PATCH] svcrdma: Fence LOCAL_INV work requests
-Date: Thu, 5 Jun 2014 05:29:57 +0000
-Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE03AA3@CMEXMB1.ad.emulex.com>
-References: <20140602171433.31076.5634.stgit@build.ogc.int>
-In-Reply-To: <20140602171433.31076.5634.stgit@build.ogc.int>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:44446 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751302AbaF3Pwf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:35 -0400
+Received: by mail-qg0-f47.google.com with SMTP id q108so2138022qgd.6
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:35 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 087/114] nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock
+Date: Mon, 30 Jun 2014 11:49:56 -0400
+Message-Id: <1404143423-24381-88-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-UmVwb3J0ZWQgYnkgOiBEZXZlc2ggU2hhcm1hDQpBY2snZWQgYnk6IERldmVzaCBTaGFybWENCg0K
-LVJlZ2FyZHMNCiBEZXZlc2gNCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9t
-OiBsaW51eC1yZG1hLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LXJkbWEtDQo+
-IG93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIFN0ZXZlIFdpc2UNCj4gU2VudDog
-TW9uZGF5LCBKdW5lIDAyLCAyMDE0IDEwOjQ1IFBNDQo+IFRvOiBiZmllbGRzQGZpZWxkc2VzLm9y
-Zw0KPiBDYzogbGludXgtbmZzQHZnZXIua2VybmVsLm9yZzsgbGludXgtcmRtYUB2Z2VyLmtlcm5l
-bC5vcmc7DQo+IHRvbUBvcGVuZ3JpZGNvbXB1dGluZy5jb20NCj4gU3ViamVjdDogW1BBVENIXSBz
-dmNyZG1hOiBGZW5jZSBMT0NBTF9JTlYgd29yayByZXF1ZXN0cw0KPiANCj4gVGhpcyBhcHBsaWVz
-IG9uIHRvcCBvZjoNCj4gDQo+IAljb21taXQgZTVhMDcwMjE2MzU2ZGJjYjAzNjA3Y2IyNjRjYzMx
-MDRlMTczMzliMw0KPiAJQXV0aG9yOiBTdGV2ZSBXaXNlIDxzd2lzZUBvcGVuZ3JpZGNvbXB1dGlu
-Zy5jb20+DQo+IAlEYXRlOiAgIFdlZCBNYXkgMjggMTU6MTI6MDEgMjAxNCAtMDUwMA0KPiANCj4g
-CSAgICBzdmNyZG1hOiByZWZhY3RvciBtYXJzaGFsbGluZyBsb2dpYw0KPiANCj4gRmVuY2luZyBm
-b3JjZXMgdGhlIGludmFsaWRhdGUgdG8gb25seSBoYXBwZW4gYWZ0ZXIgYWxsIHN1YnNlcXVlbnQg
-c2VuZCB3b3JrDQo+IHJlcXVlc3RzIGhhdmUgYmVlbiBjb21wbGV0ZWQuDQo+IA0KPiBTaWduZWQt
-b2ZmLWJ5OiBTdGV2ZSBXaXNlIDxzd2lzZUBvcGVuZ3JpZGNvbXB1dGluZy5jb20+DQo+IC0tLQ0K
-PiANCj4gIG5ldC9zdW5ycGMveHBydHJkbWEvc3ZjX3JkbWFfcmVjdmZyb20uYyB8ICAgIDIgKy0N
-Cj4gIDEgZmlsZXMgY2hhbmdlZCwgMSBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9ucygtKQ0KPiAN
-Cj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydHJkbWEvc3ZjX3JkbWFfcmVjdmZyb20uYw0K
-PiBiL25ldC9zdW5ycGMveHBydHJkbWEvc3ZjX3JkbWFfcmVjdmZyb20uYw0KPiBpbmRleCA1MmQ5
-ZjJjLi44ZjkyYTYxIDEwMDY0NA0KPiAtLS0gYS9uZXQvc3VucnBjL3hwcnRyZG1hL3N2Y19yZG1h
-X3JlY3Zmcm9tLmMNCj4gKysrIGIvbmV0L3N1bnJwYy94cHJ0cmRtYS9zdmNfcmRtYV9yZWN2ZnJv
-bS5jDQo+IEBAIC0zMzgsNyArMzM4LDcgQEAgc3RhdGljIGludCByZG1hX3JlYWRfY2h1bmtfZnJt
-cihzdHJ1Y3Qgc3ZjeHBydF9yZG1hDQo+ICp4cHJ0LA0KPiAgCQltZW1zZXQoJmludl93ciwgMCwg
-c2l6ZW9mKGludl93cikpOw0KPiAgCQlpbnZfd3Iud3JfaWQgPSAodW5zaWduZWQgbG9uZyljdHh0
-Ow0KPiAgCQlpbnZfd3Iub3Bjb2RlID0gSUJfV1JfTE9DQUxfSU5WOw0KPiAtCQlpbnZfd3Iuc2Vu
-ZF9mbGFncyA9IElCX1NFTkRfU0lHTkFMRUQ7DQo+ICsJCWludl93ci5zZW5kX2ZsYWdzID0gSUJf
-U0VORF9TSUdOQUxFRCB8IElCX1NFTkRfRkVOQ0U7DQo+ICAJCWludl93ci5leC5pbnZhbGlkYXRl
-X3JrZXkgPSBmcm1yLT5tci0+bGtleTsNCj4gIAl9DQo+ICAJY3R4dC0+d3Jfb3AgPSByZWFkX3dy
-Lm9wY29kZTsNCj4gDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5k
-IHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1yZG1hIiBpbiB0aGUNCj4gYm9keSBvZiBhIG1l
-c3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3JlIG1ham9yZG9tbyBpbmZvIGF0
-DQo+IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0K
+Currently, both destroy_revoked_delegation and revoke_delegation
+manipulate the cl_revoked list without any locking aside from the
+client_mutex. Ensure that the clp->cl_lock is held when manipulating it,
+except for the list walking in destroy_client. At that point, the client
+should no longer be in use, and so it should be safe to walk the list
+without any locking. That also means that we don't need to do the
+list_splice_init there either.
+
+Also, the fact that destroy_revoked_delegation and revoke_delegation
+delete dl_recall_lru without any locking makes it difficult to know
+whether they're doing so safely in all cases. Move the list_del_init
+calls into the callers, and add WARN_ONs in the event that these calls
+are passed a delegation that has a non-empty list_head.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 21 ++++++++++++++-------
+ 1 file changed, 14 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9a8f9ab37d19..5194ebb0a56f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -724,7 +724,7 @@ static void unhash_and_destroy_delegation(struct nfs4_delegation *dp)
+ 
+ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+ {
+-	list_del_init(&dp->dl_recall_lru);
++	WARN_ON(!list_empty(&dp->dl_recall_lru));
+ 	nfs4_put_delegation(dp);
+ }
+ 
+@@ -732,11 +732,15 @@ static void revoke_delegation(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 
++	WARN_ON(!list_empty(&dp->dl_recall_lru));
++
+ 	if (clp->cl_minorversion == 0)
+ 		destroy_revoked_delegation(dp);
+ 	else {
+ 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
+-		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
++		spin_lock(&clp->cl_lock);
++		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
++		spin_unlock(&clp->cl_lock);
+ 	}
+ }
+ 
+@@ -1589,9 +1593,9 @@ __destroy_client(struct nfs4_client *clp)
+ 		list_del_init(&dp->dl_recall_lru);
+ 		destroy_delegation(dp);
+ 	}
+-	list_splice_init(&clp->cl_revoked, &reaplist);
+-	while (!list_empty(&reaplist)) {
++	while (!list_empty(&clp->cl_revoked)) {
+ 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
++		list_del_init(&dp->dl_recall_lru);
+ 		destroy_revoked_delegation(dp);
+ 	}
+ 	while (!list_empty(&clp->cl_openowners)) {
+@@ -4170,8 +4174,10 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+-	list_for_each_safe(pos, next, &reaplist) {
+-		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
++	while (!list_empty(&reaplist)) {
++		dp = list_first_entry(&reaplist, struct nfs4_delegation,
++					dl_recall_lru);
++		list_del_init(&dp->dl_recall_lru);
+ 		revoke_delegation(dp);
+ 	}
+ 
+@@ -4534,8 +4540,9 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		ret = nfs_ok;
+ 		goto out;
+ 	case NFS4_REVOKED_DELEG_STID:
+-		spin_unlock(&cl->cl_lock);
+ 		dp = delegstateid(s);
++		list_del_init(&dp->dl_recall_lru);
++		spin_unlock(&cl->cl_lock);
+ 		destroy_revoked_delegation(dp);
+ 		ret = nfs_ok;
+ 		goto out;
+-- 
+1.9.3
+
