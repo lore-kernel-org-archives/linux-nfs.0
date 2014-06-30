@@ -1,32 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:55579 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753176AbaFWRSS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 13:18:18 -0400
-Date: Mon, 23 Jun 2014 10:18:15 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 007/104] NFSd: Add locking to the nfs4_file->fi_fds[]
- array
-Message-ID: <20140623171815.GA2591@infradead.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
- <1403189450-18729-8-git-send-email-jlayton@primarydata.com>
- <20140623160636.GE24193@infradead.org>
- <20140623131431.71d632ff@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140623131431.71d632ff@tlielax.poochiereds.net>
+Received: from mail-qg0-f43.google.com ([209.85.192.43]:35362 "EHLO
+	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751286AbaF3Pu6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:58 -0400
+Received: by mail-qg0-f43.google.com with SMTP id z60so2144484qgd.2
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:57 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 016/114] nfsd: Convert nfsd4_process_open1() to work with lookup_clientid()
+Date: Mon, 30 Jun 2014 11:48:45 -0400
+Message-Id: <1404143423-24381-17-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 23, 2014 at 01:14:31PM -0400, Jeff Layton wrote:
-> I saw your comments and even did some experimentation to that end.
-> After playing around with some patches that tried to use FMODE flags
-> instead, I tossed them out. It may have consolidated the code a bit, but
-> the result was just too difficult to follow. I think it's better to go
-> with clearer code here, even if it's a little more verbose.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-ok..
+...and have alloc_init_open_stateowner just use the cstate->clp pointer
+instead of passing in a clp separately. This allows us to use the
+cached nfs4_client pointer in the cstate instead of having to look it
+up again.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4state.c | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4d162a0e4c6d..199e9d5e23ac 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2773,10 +2773,10 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ }
+ 
+ static struct nfs4_openowner *
+-alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp,
+-			   struct nfsd4_open *open,
++alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 			   struct nfsd4_compound_state *cstate)
+ {
++	struct nfs4_client *clp = cstate->clp;
+ 	struct nfs4_openowner *oo;
+ 
+ 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
+@@ -3065,10 +3065,10 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+ 	oo = find_openstateowner_str(strhashval, open, cstate->minorversion, nn);
+ 	open->op_openowner = oo;
+ 	if (!oo) {
+-		clp = find_confirmed_client(clientid, cstate->minorversion,
+-					    nn);
+-		if (clp == NULL)
+-			return nfserr_expired;
++		status = lookup_clientid(clientid, cstate, nn);
++		if (status)
++			return status;
++		clp = cstate->clp;
+ 		goto new_owner;
+ 	}
+ 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
+@@ -3084,7 +3084,7 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+ 	clp = oo->oo_owner.so_client;
+ 	goto alloc_stateid;
+ new_owner:
+-	oo = alloc_init_open_stateowner(strhashval, clp, open, cstate);
++	oo = alloc_init_open_stateowner(strhashval, open, cstate);
+ 	if (oo == NULL)
+ 		return nfserr_jukebox;
+ 	open->op_openowner = oo;
+-- 
+1.9.3
 
