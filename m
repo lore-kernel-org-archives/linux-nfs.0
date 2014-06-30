@@ -1,245 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:42514 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752817AbaFCRiD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Jun 2014 13:38:03 -0400
-Message-ID: <538E07F0.7030909@netapp.com>
-Date: Tue, 3 Jun 2014 13:37:52 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Shirley Ma <shirley.ma@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        "Chuck Lever" <chuck.lever@oracle.com>,
-        Jeff Becker <jeffrey.c.becker@nasa.gov>,
-        "<yanb@mellanox.com>" <yanb@mellanox.com>, <wendy.cheng@intel.com>,
-        "Coulter, Susan K" <skc@lanl.gov>,
-        Rupert Dance <rsdance@soft-forge.com>,
-        Doug Ledford <dledford@redhat.com>,
-        Devesh Sharma <Devesh.Sharma@Emulex.Com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Steve Dickson <SteveD@redhat.com>,
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:40155 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754038AbaF3Pum (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:50:42 -0400
+Received: by mail-qg0-f53.google.com with SMTP id i50so2128428qgf.40
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:50:41 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: NFSoRDMA developers bi-weekly meeting minutes (5/28)
-References: <5387615E.20206@oracle.com> <53876938.7000704@oracle.com>
-In-Reply-To: <53876938.7000704@oracle.com>
-Content-Type: text/plain; charset="ISO-8859-1"
+Subject: [PATCH v3 006/114] nfsd: Cleanup nfs4svc_encode_compoundres
+Date: Mon, 30 Jun 2014 11:48:35 -0400
+Message-Id: <1404143423-24381-7-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/29/2014 01:07 PM, Shirley Ma wrote:
-> Attendees:
-> 
-> Jeff Beck (NASA)
-> Yan Burman (Mellanox)
-> Wendy Cheng (Intel)
-> Susan Coulter (LANL)
-> Rupert Dance (Soft Forge)
-> Chuck Lever (Oracle)
-> Doug Ledford (RedHat)
-> Shirley Ma (Oracle)
-> Devesh Sharma (Emulex)
-> Anna Schumaker (Net App)
-> Steve Wise (OpenGridComputing, Chelsio)
-> 
-> Moderator:
-> Shirley Ma (Oracle)
-> 
-> NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA development and test effort from different resources to speed up NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools development. Hopefully the quality of NFSoRDMA upstream patches can be improved by being tested by a quorum of HW vendors.
-> 
-> Today's meeting notes:
-> 1. OFED release update from Rupert Dance through email:
-> 
-> a. OFED 3.12 was released yesterday without any patch from Chuck's git tree, one of the reason these patches haven't upstream yet. There were a number of new bugs filed on NFSRDMA (2489 and 2490).
-> http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2489
-> http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2490
-> 
-> b. Jeff Becker has pulled all of the patches from Chuck's git tree and made backports in his local branch of OFED 3.12. He has begun testing and is seeing good results so far.
-> 
-> c. OFED next release will be OFED 3.12-1 and it will be including all these updates along with support for RHEL 7.0 and Intel's OFED MIC.
-> 
-> 2. NFSoRDMA support with soft RoCE and Soft iWARP
-> 
-> There were some discussions regarding whether removing RPCRDMA_REGISTER support (one of Chuck's patchset) would impact any other components in the stack. So far soft RoCE hasn't been upstreamed yet.There was a broad consensus not to support out-of-tree providers unless an issue also affects in-tree providers. NFSoRDMA will follow kernel development policy, all work should be based upon upstream kernel. However Chuck Level will check Soft RoCE plan, Steve Wise will check soft iWARP plan to make sure nothing will be broken in both kernel and OFED release. 
-> 
-> 3. Update on testing NFSoRDMA client patches:
-> 
-> Devesh Sharma, Doug Ledford, Chuck Lever, Steve Wise all have tested Chuck git tree (up to last weeks patchsets) on different platforms with various vendor's HCAs. The test showed the stack pretty reliable for both NFSv3 and NFSv4. However NFSv4.1 hit server crash. (NFSv4.1 hasn't support yet).
-> 
-> Steve Wise's test covers iWARP Chelsio
-> Devesh Sharma's test covers Emulex
-> Chuck Lever/Shirley Ma's test covers Mellanox
-> Doug Ledford's test covers various platforms and combination of HCAs (Interoperability test).
-> Jeff Beck's test covers OFED release (backport)
-> Rupert Dance's (IOL) team test covers various platforms and combination of HCAs as well.
-> 
-> The test coverage should be good enough for NFSoRDMA client patchsets to be merged to upstream by Anna and Trond.
-> 
-> Devesh is looking for performance benchmark tools. IOzone is recommended. Anna is going to send more performance tools.
-> 
-> A place to save test results as scratch sheets has been discussed so it will be easy to track the test history for any regressions. Anna will help to figure it out.
-> 
-> A couple of new bugs have been filed to track existing issues. Devesh had hit a bug in dbench test, which Steve Wise already worked on it.
-> 
-> https://bugzilla.linux-nfs.org/show_bug.cgi?id=255
-> 
-> Klemens Senn has reported a soft lockup in unloading kernel module. Shirley has tried to reproduce this problem with Linux server, Solaris client, it didn't hit any issue. So it's a problem between Linux client and server.
-> 
-> https://bugzilla.linux-nfs.org/show_bug.cgi?id=252
-> 
-> 
-> 4. Steve shared his findings on some bug he has bee working on -- refactoring patchset.
-> 
-> 5. Followups update from last week
-> a. Linux server maintenance is still in unresolved status.
-> 
-> b. NFSoRDMA debugging and diagnosis tools?
-> Yan has made some progress on NFSoRDMA wireshark dissector. Selecting connection is not as simple as TCP, Yan has tried to use QP number/RDMA establish status to build the connection. Chuck suggested to try RPC XID field.
-> 
-> c. NFSoRDMA virtualization validation:
-> Shirley has set up KVM guest with Mellanox Connect2 SRIOV. A panic occurred right away during mount, the panic is different with XEN domU guest.
-> 
-> Next meeting topics proposal:
-> 1. Follow up the work has been discussed from this meeting.
-> 
-> 2. Walk through some of the stories on pivotal, link is as below:
-> https://www.pivotaltracker.com/s/projects/958376
-> 
-> 3. Invite some of the developers to discuss some of their requirements and features.
-> 
-> Meeting time: one hour discussion every other Wed (next meeting will be
-> on 6/11). A reminder will be sent out to both linux-nfs and linux-rdma
-> mailing list:
-> 
-> 6/11/2014
-> @8:00am PST
-> @9:00am MST
-> @10:00am CST
-> @11:00am EST
-> @Bangalore @9:00pm
-> @Israel @6:00pm
-> 
-> Duration: 1 hour
-> 
-> Call-in number:
-> Israel: +972 37219638
-> Bangalore: +91 8039890080 (180030109800)
-> US: 8666824770,  408-7744073
-> Conference Code: 2308833
-> Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
-> 
-> Thanks everyone for joining the call and providing valuable inputs/work to the community to make NFSoRDMA better.
-> 
-> Shirley
-> 
-> 
-> 
-> Attendees:
-> 
-> Jeff Beck (NASA)
-> Yan Burman (Mellanox)
-> Wendy Cheng (Intel)
-> Susan Coulter (LANL)
-> Rupert Dance (Soft Forge)
-> Chuck Lever (Oracle)
-> Doug Ledford (RedHat)
-> Shirley Ma (Oracle)
-> Devesh Sharma (Emulex)
-> Anna Schumaker (Net App)
-> Steve Wise (OpenGridComputing, Chelsio)
-> 
-> Moderator:
-> Shirley Ma (Oracle)
-> 
-> NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA development and test effort from different resources to speed up NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools development. Hopefully the quality of NFSoRDMA upstream patches can be improved by being tested by a quorum of HW vendors.
-> 
-> Today's meeting notes:
-> 1. OFED release update from Rupert Dance through email:
-> 
-> a. OFED 3.12 was released yesterday without any patch from Chuck's git tree, one of the reason these patches haven't upstream yet. There were a number of new bugs filed on NFSRDMA (2489 and 2490).
-> http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2489
-> http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2490
-> 
-> b. Jeff Becker has pulled all of the patches from Chuck's git tree and made backports in his local branch of OFED 3.12. He has begun testing and is seeing good results so far.
-> 
-> c. OFED next release will be OFED 3.12-1 and it will be including all these updates along with support for RHEL 7.0 and Intel's OFED MIC.
-> 
-> 2. NFSoRDMA support with soft RoCE and Soft iWARP
-> 
-> There were some discussions regarding whether removing RPCRDMA_REGISTER support (one of Chuck's patchset) would impact any other components in the stack. So far soft RoCE hasn't been upstreamed yet.There was a broad consensus not to support out-of-tree providers unless an issue also affects in-tree providers. NFSoRDMA will follow kernel development policy, all work should be based upon upstream kernel. However Chuck Level will check Soft RoCE plan, Steve Wise will check soft iWARP plan to make sure nothing will be broken in both kernel and OFED release. 
-> 
-> 3. Update on testing NFSoRDMA client patches:
-> 
-> Devesh Sharma, Doug Ledford, Chuck Lever, Steve Wise all have tested Chuck git tree (up to last weeks patchsets) on different platforms with various vendor's HCAs. The test showed the stack pretty reliable for both NFSv3 and NFSv4. However NFSv4.1 hit server crash. (NFSv4.1 hasn't support yet).
-> 
-> Steve Wise's test covers iWARP Chelsio
-> Devesh Sharma's test covers Emulex
-> Chuck Lever/Shirley Ma's test covers Mellanox
-> Doug Ledford's test covers various platforms and combination of HCAs (Interoperability test).
-> Jeff Beck's test covers OFED release (backport)
-> Rupert Dance's (IOL) team test covers various platforms and combination of HCAs as well.
-> 
-> The test coverage should be good enough for NFSoRDMA client patchsets to be merged to upstream by Anna and Trond.
-> 
-> Devesh is looking for performance benchmark tools. IOzone is recommended. Anna is going to send more performance tools.
-> 
-> A place to save test results as scratch sheets has been discussed so it will be easy to track the test history for any regressions. Anna will help to figure it out.
-> 
-> A couple of new bugs have been filed to track existing issues. Devesh had hit a bug in dbench test, which Steve Wise already worked on it.
-> 
-> https://bugzilla.linux-nfs.org/show_bug.cgi?id=255
-> 
-> Klemens Senn has reported a soft lockup in unloading kernel module. Shirley has tried to reproduce this problem with Linux server, Solaris client, it didn't hit any issue. So it's a problem between Linux client and server.
-> 
-> https://bugzilla.linux-nfs.org/show_bug.cgi?id=252
-> 
-> 
-> 4. Steve shared his findings on some bug he has bee working on -- refactoring patchset.
-> 
-> 5. Followups update from last week
-> a. Linux server maintenance is still in unresolved status.
-> 
-> b. NFSoRDMA debugging and diagnosis tools?
-> Yan has made some progress on NFSoRDMA wireshark dissector. Selecting connection is not as simple as TCP, Yan has tried to use QP number/RDMA establish status to build the connection. Chuck suggested to try RPC XID field.
-> 
-> c. NFSoRDMA virtualization validation:
-> Shirley has set up KVM guest with Mellanox Connect2 SRIOV. A panic occurred right away during mount, the panic is different with XEN domU guest.
-> 
-> Next meeting topics proposal:
-> 1. Follow up the work has been discussed from this meeting.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-I mentioned nfsometer for performance testing during the last meeting.  Anybody interested can check out a copy here: git://git.linux-nfs.org/projects/dros/nfsometer.git
+Move the slot return, put session etc into a helper in fs/nfsd/nfs4state.c
+instead of open coding in nfs4svc_encode_compoundres.
 
-Anna
-> 
-> 2. Walk through some of the stories on pivotal, link is as below:
-> https://www.pivotaltracker.com/s/projects/958376
-> 
-> 3. Invite some of the developers to discuss some of their requirements and features.
-> 
-> Meeting time: one hour discussion every other Wed (next meeting will be
-> on 6/11). A reminder will be sent out to both linux-nfs and linux-rdma
-> mailing list:
-> 
-> 6/11/2014
-> @8:00am PST
-> @9:00am MST
-> @10:00am CST
-> @11:00am EST
-> @Bangalore @9:00pm
-> @Israel @6:00pm
-> 
-> Duration: 1 hour
-> 
-> Call-in number:
-> Israel: +972 37219638
-> Bangalore: +91 8039890080 (180030109800)
-> US: 8666824770,  408-7744073
-> Conference Code: 2308833
-> Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
-> 
-> Thanks everyone for joining the call and providing valuable inputs/work to the community to make NFSoRDMA better.
-> 
-> Shirley
-> 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4state.c | 35 ++++++++++++++++++++++-------------
+ fs/nfsd/nfs4xdr.c   | 15 +--------------
+ fs/nfsd/state.h     |  1 -
+ fs/nfsd/xdr4.h      |  2 +-
+ 4 files changed, 24 insertions(+), 29 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3ce5dc30f767..ade15fcddd08 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -203,18 +203,6 @@ static void put_client_renew_locked(struct nfs4_client *clp)
+ 		renew_client_locked(clp);
+ }
+ 
+-void put_client_renew(struct nfs4_client *clp)
+-{
+-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+-
+-	if (!atomic_dec_and_lock(&clp->cl_refcount, &nn->client_lock))
+-		return;
+-	if (!is_client_expired(clp))
+-		renew_client_locked(clp);
+-	spin_unlock(&nn->client_lock);
+-}
+-
+-
+ static inline u32
+ opaque_hashval(const void *ptr, int nbytes)
+ {
+@@ -1650,7 +1638,7 @@ out_err:
+ /*
+  * Cache a reply. nfsd4_check_resp_size() has bounded the cache size.
+  */
+-void
++static void
+ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ {
+ 	struct xdr_buf *buf = resp->xdr.buf;
+@@ -2422,6 +2410,27 @@ out_put_client:
+ 	goto out_no_session;
+ }
+ 
++void
++nfsd4_sequence_done(struct nfsd4_compoundres *resp)
++{
++	struct nfsd4_compound_state *cs = &resp->cstate;
++
++	if (nfsd4_has_session(cs)) {
++		struct nfs4_client *clp = cs->session->se_client;
++		struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++		if (cs->status != nfserr_replay_cache) {
++			nfsd4_store_cache_entry(resp);
++			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
++		}
++		/* Renew the clientid on success and on replay */
++		spin_lock(&nn->client_lock);
++		nfsd4_put_session(cs->session);
++		put_client_renew_locked(clp);
++		spin_unlock(&nn->client_lock);
++	}
++}
++
+ __be32
+ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
+ {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a1c48b4111d2..1c5e87e660cd 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4006,7 +4006,6 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	/*
+ 	 * All that remains is to write the tag and operation count...
+ 	 */
+-	struct nfsd4_compound_state *cs = &resp->cstate;
+ 	struct xdr_buf *buf = resp->xdr.buf;
+ 
+ 	WARN_ON_ONCE(buf->len != buf->head[0].iov_len + buf->page_len +
+@@ -4020,19 +4019,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	p += XDR_QUADLEN(resp->taglen);
+ 	*p++ = htonl(resp->opcnt);
+ 
+-	if (nfsd4_has_session(cs)) {
+-		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+-		struct nfs4_client *clp = cs->session->se_client;
+-		if (cs->status != nfserr_replay_cache) {
+-			nfsd4_store_cache_entry(resp);
+-			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
+-		}
+-		/* Renew the clientid on success and on replay */
+-		spin_lock(&nn->client_lock);
+-		nfsd4_put_session(cs->session);
+-		spin_unlock(&nn->client_lock);
+-		put_client_renew(clp);
+-	}
++	nfsd4_sequence_done(resp);
+ 	return 1;
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 7d6ba06c1abe..24eec922685c 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -477,7 +477,6 @@ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
+ extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+-extern void put_client_renew(struct nfs4_client *clp);
+ 
+ /* nfs4recover operations */
+ extern int nfsd4_client_tracking_init(struct net *net);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 18cbb6d9c8a9..7d8af164523b 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -574,7 +574,6 @@ extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
+ extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_setclientid_confirm *setclientid_confirm);
+-extern void nfsd4_store_cache_entry(struct nfsd4_compoundres *resp);
+ extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_exchange_id *);
+ extern __be32 nfsd4_backchannel_ctl(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_backchannel_ctl *);
+@@ -585,6 +584,7 @@ extern __be32 nfsd4_create_session(struct svc_rqst *,
+ extern __be32 nfsd4_sequence(struct svc_rqst *,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_sequence *);
++extern void nfsd4_sequence_done(struct nfsd4_compoundres *resp);
+ extern __be32 nfsd4_destroy_session(struct svc_rqst *,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_destroy_session *);
+-- 
+1.9.3
 
