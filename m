@@ -1,32 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:36276 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751760AbaF1LCQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Jun 2014 07:02:16 -0400
-Date: Sat, 28 Jun 2014 04:02:16 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 009/117] nfsd: wait to initialize work struct just
- prior to using it
-Message-ID: <20140628110216.GB10848@infradead.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
- <1403810017-16062-10-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1403810017-16062-10-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:34650 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754260AbaF3Pv6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:58 -0400
+Received: by mail-qg0-f50.google.com with SMTP id j5so2177395qga.9
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:57 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 060/114] nfsd: Keep a reference to the open stateid for the NFSv4.0 replay cache
+Date: Mon, 30 Jun 2014 11:49:29 -0400
+Message-Id: <1404143423-24381-61-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 26, 2014 at 03:11:49PM -0400, Jeff Layton wrote:
-> There's a fair chance we won't ever need this work struct, so we might
-> as well delay initializing it until just before we're going to use it.
-> In a later patch, we'll need to intialize the work with a different
-> function for delegation callbacks. By delaying this, we avoid having
-> to do it twice.
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Looks good,
+Ensure that nfsd4_cstate_assign_replay/nfsd4_cstate_clear_replay take
+a reference to the stateowner when they are using it for NFSv4.0
+open and lock replay caching.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4proc.c  |  5 +----
+ fs/nfsd/nfs4state.c | 26 +++++++++++++++++++++++++-
+ fs/nfsd/xdr4.h      | 26 ++++----------------------
+ 3 files changed, 30 insertions(+), 27 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index fc48d1d51f1d..cdce2f39b09c 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -467,10 +467,7 @@ out:
+ 		fh_put(resfh);
+ 		kfree(resfh);
+ 	}
+-	nfsd4_cleanup_open_state(open, status);
+-	if (open->op_openowner)
+-		nfsd4_cstate_assign_replay(cstate,
+-				&open->op_openowner->oo_owner);
++	nfsd4_cleanup_open_state(cstate, open, status);
+ 	nfsd4_bump_seqid(cstate, status);
+ 	nfs4_unlock_state();
+ 	return status;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d260bb3145ed..98cbe9b7c01e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2918,6 +2918,27 @@ static void init_nfs4_replay(struct nfs4_replay *rp)
+ 	mutex_init(&rp->rp_mutex);
+ }
+ 
++static void nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
++		struct nfs4_stateowner *so)
++{
++	if (!nfsd4_has_session(cstate)) {
++		mutex_lock(&so->so_replay.rp_mutex);
++		cstate->replay_owner = so;
++		atomic_inc(&so->so_count);
++	}
++}
++
++void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
++{
++	struct nfs4_stateowner *so = cstate->replay_owner;
++
++	if (so != NULL) {
++		cstate->replay_owner = NULL;
++		mutex_unlock(&so->so_replay.rp_mutex);
++		nfs4_put_stateowner(so);
++	}
++}
++
+ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj *owner, struct nfs4_client *clp)
+ {
+ 	struct nfs4_stateowner *sop;
+@@ -3808,7 +3829,8 @@ out:
+ 	return status;
+ }
+ 
+-void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
++void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
++			      struct nfsd4_open *open, __be32 status)
+ {
+ 	if (open->op_openowner) {
+ 		struct nfs4_openowner *oo = open->op_openowner;
+@@ -3822,6 +3844,8 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
+ 			} else
+ 				oo->oo_flags &= ~NFS4_OO_NEW;
+ 		}
++		if (open->op_openowner)
++			nfsd4_cstate_assign_replay(cstate, &oo->oo_owner);
+ 	}
+ 	if (open->op_file)
+ 		nfsd4_free_file(open->op_file);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index ec9674a009bd..634e016f50d3 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -74,27 +74,6 @@ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+ 	return cs->slot != NULL;
+ }
+ 
+-static inline void
+-nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
+-				struct nfs4_stateowner *so)
+-{
+-	if (!nfsd4_has_session(cstate)) {
+-		mutex_lock(&so->so_replay.rp_mutex);
+-		cstate->replay_owner = so;
+-	}
+-}
+-
+-static inline void
+-nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
+-{
+-	struct nfs4_stateowner *so = cstate->replay_owner;
+-
+-	if (so != NULL) {
+-		cstate->replay_owner = NULL;
+-		mutex_unlock(&so->so_replay.rp_mutex);
+-	}
+-}
+-
+ struct nfsd4_change_info {
+ 	u32		atomic;
+ 	bool		change_supported;
+@@ -616,7 +595,9 @@ extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
+ 		struct nfsd4_open *open, struct nfsd_net *nn);
+ extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
+ 		struct svc_fh *current_fh, struct nfsd4_open *open);
+-extern void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status);
++extern void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate);
++extern void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
++		struct nfsd4_open *open, __be32 status);
+ extern __be32 nfsd4_open_confirm(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_open_confirm *oc);
+ extern __be32 nfsd4_close(struct svc_rqst *rqstp,
+@@ -647,6 +628,7 @@ extern __be32 nfsd4_test_stateid(struct svc_rqst *rqstp,
+ extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
+ extern void nfsd4_bump_seqid(struct nfsd4_compound_state *, __be32 nfserr);
++
+ #endif
+ 
+ /*
+-- 
+1.9.3
+
