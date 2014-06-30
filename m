@@ -1,171 +1,208 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from vms173017pub.verizon.net ([206.46.173.17]:22219 "EHLO
-	vms173017pub.verizon.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751507AbaFDVgP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Jun 2014 17:36:15 -0400
-Received: from CappsG570 ([unknown] [198.95.226.236])
- by vms173017.mailsrvcs.net
- (Sun Java(tm) System Messaging Server 7u2-7.02 32bit (built Apr 16 2009))
- with ESMTPA id <0N6N00JVLYO9TK50@vms173017.mailsrvcs.net> for
- linux-nfs@vger.kernel.org; Wed, 04 Jun 2014 16:36:11 -0500 (CDT)
-Reply-to: <capps@iozone.org>
-From: "Iozone" <capps@iozone.org>
-To: "'Trond Myklebust'" <trond.myklebust@primarydata.com>
-Cc: "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
-References: <004501cf8013$7a3373c0$6e9a5b40$@iozone.org>
- <005d01cf801f$363aabf0$a2b003d0$@iozone.org>
- <CAHQdGtQ9ceYQJD0eEehLhq1T2KsWRv11hkOVg9=NdpS9h4OJLA@mail.gmail.com>
- <006101cf8038$79c71d90$6d5558b0$@iozone.org>
- <CAHQdGtR6CL-M4gi8qMEoX+E65gA8X2AHA3ya_B__T3KNcCBVSw@mail.gmail.com>
-In-reply-to: <CAHQdGtR6CL-M4gi8qMEoX+E65gA8X2AHA3ya_B__T3KNcCBVSw@mail.gmail.com>
-Subject: RE: FW: Forwarding request at suggestion from support
-Date: Wed, 04 Jun 2014 16:36:05 -0500
-Message-id: <006301cf803c$fe1f2200$fa5d6600$@iozone.org>
-MIME-version: 1.0
-Content-type: text/plain; charset=UTF-8
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:46455 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754602AbaF3PvE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:04 -0400
+Received: by mail-qg0-f50.google.com with SMTP id j5so2101850qga.23
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:03 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 022/114] nfsd: Add a mutex to protect the NFSv4.0 open owner replay cache
+Date: Mon, 30 Jun 2014 11:48:51 -0400
+Message-Id: <1404143423-24381-23-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond,
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-	   I have traces where there are indeed a bunch of async reads issued, and 
-	the replies come back. One with data, and all of the rest with zero bytes
-	transferred, indicating EOF.  This was followed by a bunch more async
-	reads, all of which come back with zero bytes transferred.  It appears 
-	that if the user requested 16MB, and the file was 4k, then there will
-	be 16MB of transfers issued regardless of the fact that all but one
-	are returning zero bytes....  
+We don't want to rely on the client_mutex for protection in the case of
+NFSv4 open owners. Instead, we add a mutex that will only be taken for
+NFSv4.0 state mutating operations, and that will be released once the
+entire compound is done.
 
-	Business case:
-	   This not only could this impact benchmarks... but it also has the potential
- 	of opening a door for a DOS type attack on an NFS server.   All it would take
-	is one small file, and a bunch of clients going after 1GB reads on that file
-	with O_DIRECT, and the poor NFS server is going to get slammed with
-	requests at a phenomenal rate (as the client is issuing these back-to-back
-	async, and the server is responding with back-to-back zero length
- 	transfer replies).  The client burns very little CPU, and the NFS server
-	is buried, doing zero length transfers... pretty much in a very tight loop....
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4proc.c  | 13 +++++--------
+ fs/nfsd/nfs4state.c | 21 ++++++++-------------
+ fs/nfsd/nfs4xdr.c   |  2 --
+ fs/nfsd/state.h     |  1 +
+ fs/nfsd/xdr4.h      | 21 +++++++++++++++++++++
+ 5 files changed, 35 insertions(+), 23 deletions(-)
 
-Thank you,
-Don Capps
-  
-
------Original Message-----
-From: Trond Myklebust [mailto:trond.myklebust@primarydata.com] 
-Sent: Wednesday, June 04, 2014 4:15 PM
-To: capps@iozone.org
-Cc: Linux NFS Mailing List
-Subject: Re: FW: Forwarding request at suggestion from support
-
-On Wed, Jun 4, 2014 at 5:03 PM, Iozone <capps@iozone.org> wrote:
-> Trond,
->
->         Ok... but as the replies are coming back, all but one with EOF and zero bytes
->         transferred, does it still make sense to keep issuing reads that are beyond EOF ?
-
-It depends. The reads should all be sent asynchronously, so it isn't clear to me that the client will see the EOF until all the RPC requests are in flight.
-
-That said, it is true that we do not have any machinery right now to stop further submissions if we see that we have already collected enough information to complete the read() syscall. Are there any good use cases for O_DIRECT that justify adding such machinery? Oracle doesn't seem to need it.
-
-Cheers
-  Trond
-
-> Enjoy,
-> Don Capps
->
-> -----Original Message-----
-> From: Trond Myklebust [mailto:trond.myklebust@primarydata.com]
-> Sent: Wednesday, June 04, 2014 3:42 PM
-> To: capps@iozone.org
-> Cc: Linux NFS Mailing List
-> Subject: Re: FW: Forwarding request at suggestion from support
->
-> Hi Don,
->
-> On Wed, Jun 4, 2014 at 2:02 PM, Iozone <capps@iozone.org> wrote:
->>
->>
->> From: Iozone [mailto:capps@iozone.org]
->> Sent: Wednesday, June 04, 2014 11:39 AM
->> To: linux-nfs@vger.kernel.org
->> Subject: Forwarding request at suggestion from support
->>
->>                 Dear kernel folks,
->>
->>                                 Please take a look at Bugzilla bug:
->>
->> https://bugzilla.redhat.com/show_bug.cgi?id=1104696
->>
->> Description of problem:
->>
->>    Linux NFSv3 clients can issue extra reads beyond EOF.
->>
->> Condition of the test:  (32KB_file is a file that is 32KB in size)
->>           File is being read over an NFSv3 mount.
->>
->>           dd if=/mnt/32KB_file  of=/dev/null iflag=direct bs=1M
->> count=1
->>
->> What one should expect over the wire:
->>           NFSv3_read for 32k, or NFS_read for 1M
->>           NFSv3_read Reply return of 32KB and EOF set.
->>
->> What happens with Linux NFSv3 client:
->>           NFSv3 read for 128k
->>           NFSv3 read for 128k,
->>           NFSv3 read for 128k,
->>           NFSv3 read for 128k,
->>           NFSv3 read for 128k,
->>           NFSv3 read for 128k,
->>           NFSv3 read for 128k,
->>           NFSv3 read for 128k.
->>        followed by:
->>           NFSv3 read reply of 32k,
->>           NFSv3 read reply of 0,
->>           NFSv3 read reply of 0,
->>           NFSv3 read reply of 0,
->>           NFSv3 read reply of 0,
->>           NFSv3 read reply of 0,
->>           NFSv3 read reply of 0,
->>           NFSv3 read reply of 0.
->>
->> So… instead of a single round trip with a short read length returned, 
->> there were 8 async I/O ops sent to the NFS server, and 8 replies from 
->> the NFS server.
->> The client knew the file size before even sending the very first 
->> request, but went ahead and issued an large number of reads that it 
->> should have known were beyond EOF.
->>
->> This client behavior hammers NFS servers with requests that are 
->> guaranteed to always fail, and burn CPU cycles, for operations that 
->> it knew were pointless.
->>
->> While the application is getting correct answers to the API calls, 
->> the poor client and server are beating each other senseless over the wire.
->>
->> NOTE: This only happens if O_DIRECT is being used… (thus the
->> iflag=direct)
->
-> Yes. This behaviour is intentional in the case of O_DIRECT. The reason why we should not change it is that we don't ever want to rely on cached values for the file size when doing uncached I/O.
-> An application such as Oracle may have out-of-band information about writes to the file that were made by another client directly to the server, in which case it would be wrong for the kernel to truncate those reads based on its cached information.
->
-> Cheers
->   Trond
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
->
-
-
-
---
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3c72eef479a3..fc48d1d51f1d 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -468,11 +468,11 @@ out:
+ 		kfree(resfh);
+ 	}
+ 	nfsd4_cleanup_open_state(open, status);
+-	if (open->op_openowner && !nfsd4_has_session(cstate))
+-		cstate->replay_owner = &open->op_openowner->oo_owner;
++	if (open->op_openowner)
++		nfsd4_cstate_assign_replay(cstate,
++				&open->op_openowner->oo_owner);
+ 	nfsd4_bump_seqid(cstate, status);
+-	if (!cstate->replay_owner)
+-		nfs4_unlock_state();
++	nfs4_unlock_state();
+ 	return status;
+ }
+ 
+@@ -1394,10 +1394,7 @@ encode_op:
+ 			args->ops, args->opcnt, resp->opcnt, op->opnum,
+ 			be32_to_cpu(status));
+ 
+-		if (cstate->replay_owner) {
+-			nfs4_unlock_state();
+-			cstate->replay_owner = NULL;
+-		}
++		nfsd4_cstate_clear_replay(cstate);
+ 		/* XXX Ugh, we need to get rid of this kind of special case: */
+ 		if (op->opnum == OP_READ && op->u.read.rd_filp)
+ 			fput(op->u.read.rd_filp);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0721c77a38c9..72f8aeaf44ac 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -885,7 +885,7 @@ void nfsd4_bump_seqid(struct nfsd4_compound_state *cstate, __be32 nfserr)
+ 		return;
+ 
+ 	if (!seqid_mutating_err(ntohl(nfserr))) {
+-		cstate->replay_owner = NULL;
++		nfsd4_cstate_clear_replay(cstate);
+ 		return;
+ 	}
+ 	if (!so)
+@@ -2754,6 +2754,7 @@ static void init_nfs4_replay(struct nfs4_replay *rp)
+ 	rp->rp_status = nfserr_serverfault;
+ 	rp->rp_buflen = 0;
+ 	rp->rp_buf = rp->rp_ibuf;
++	mutex_init(&rp->rp_mutex);
+ }
+ 
+ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj *owner, struct nfs4_client *clp)
+@@ -4072,8 +4073,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 	if (status)
+ 		return status;
+ 	stp = openlockstateid(s);
+-	if (!nfsd4_has_session(cstate))
+-		cstate->replay_owner = stp->st_stateowner;
++	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
+ 
+ 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
+ 	if (!status)
+@@ -4134,8 +4134,7 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	status = nfs_ok;
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+-	if (!cstate->replay_owner)
+-		nfs4_unlock_state();
++	nfs4_unlock_state();
+ 	return status;
+ }
+ 
+@@ -4217,8 +4216,7 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	status = nfs_ok;
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+-	if (!cstate->replay_owner)
+-		nfs4_unlock_state();
++	nfs4_unlock_state();
+ 	return status;
+ }
+ 
+@@ -4273,8 +4271,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfsd4_close_open_stateid(stp);
+ out:
+-	if (!cstate->replay_owner)
+-		nfs4_unlock_state();
++	nfs4_unlock_state();
+ 	return status;
+ }
+ 
+@@ -4668,8 +4665,7 @@ out:
+ 	if (status && new_state)
+ 		release_lockowner_if_empty(lock_sop);
+ 	nfsd4_bump_seqid(cstate, status);
+-	if (!cstate->replay_owner)
+-		nfs4_unlock_state();
++	nfs4_unlock_state();
+ 	if (file_lock)
+ 		locks_free_lock(file_lock);
+ 	if (conflock)
+@@ -4830,8 +4826,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+-	if (!cstate->replay_owner)
+-		nfs4_unlock_state();
++	nfs4_unlock_state();
+ 	if (file_lock)
+ 		locks_free_lock(file_lock);
+ 	return status;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 1c5e87e660cd..a4349619217e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3931,8 +3931,6 @@ status:
+  * 
+  * XDR note: do not encode rp->rp_buflen: the buffer contains the
+  * previously sent already encoded operation.
+- *
+- * called with nfs4_lock_state() held
+  */
+ void
+ nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op)
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 9eb4fe673014..30ad57089896 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -327,6 +327,7 @@ struct nfs4_replay {
+ 	unsigned int		rp_buflen;
+ 	char			*rp_buf;
+ 	struct knfsd_fh		rp_openfh;
++	struct mutex		rp_mutex;
+ 	char			rp_ibuf[NFSD4_REPLAY_ISIZE];
+ };
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 312f6483a48e..ec9674a009bd 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -74,6 +74,27 @@ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+ 	return cs->slot != NULL;
+ }
+ 
++static inline void
++nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
++				struct nfs4_stateowner *so)
++{
++	if (!nfsd4_has_session(cstate)) {
++		mutex_lock(&so->so_replay.rp_mutex);
++		cstate->replay_owner = so;
++	}
++}
++
++static inline void
++nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
++{
++	struct nfs4_stateowner *so = cstate->replay_owner;
++
++	if (so != NULL) {
++		cstate->replay_owner = NULL;
++		mutex_unlock(&so->so_replay.rp_mutex);
++	}
++}
++
+ struct nfsd4_change_info {
+ 	u32		atomic;
+ 	bool		change_supported;
+-- 
+1.9.3
 
