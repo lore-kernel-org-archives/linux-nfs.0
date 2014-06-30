@@ -1,56 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:53168 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751208AbaFZTP1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Jun 2014 15:15:27 -0400
-Received: by mail-qa0-f47.google.com with SMTP id hw13so3141188qab.20
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Jun 2014 12:15:26 -0700 (PDT)
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:50659 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752728AbaF3PwD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:03 -0400
+Received: by mail-qa0-f44.google.com with SMTP id hw13so6594419qab.3
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:03 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Peter Zijlstra <peterz@infradead.org>,
-        Ingo Molnar <mingo@redhat.com>
-Subject: [PATCH v2 074/117] lockdep: add lockdep_assert_not_held
-Date: Thu, 26 Jun 2014 15:12:54 -0400
-Message-Id: <1403810017-16062-75-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 064/114] nfsd: clean up refcounting for lockowners
+Date: Mon, 30 Jun 2014 11:49:33 -0400
+Message-Id: <1404143423-24381-65-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We currently have the ability to call lockdep_assert_held to throw a
-warning when a spinlock isn't held in a codepath. There are also times
-when we'd like to throw a warning when a lock is held (i.e. when there
-is the potential for deadlock with atomic_dec_and_lock or similar).
+Ensure that lockowner references are only held by lockstateids and
+operations that are in-progress. With this, we can get rid of
+release_lockowner_if_empty, which will be racy once we remove
+client_mutex protection.
 
-Cc: Peter Zijlstra <peterz@infradead.org>
-Cc: Ingo Molnar <mingo@redhat.com>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- include/linux/lockdep.h | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/nfsd/nfs4state.c | 29 +++++++----------------------
+ 1 file changed, 7 insertions(+), 22 deletions(-)
 
-diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index 008388f920d7..1e5f1d544029 100644
---- a/include/linux/lockdep.h
-+++ b/include/linux/lockdep.h
-@@ -362,6 +362,8 @@ extern void lockdep_trace_alloc(gfp_t mask);
- 		WARN_ON(debug_locks && !lockdep_is_held(l));	\
- 	} while (0)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9a760aac6ef2..b658fd481c4e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -904,7 +904,7 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	nfs4_put_stid(&stp->st_stid);
+ }
  
-+#define lockdep_assert_not_held(l) WARN_ON(debug_locks && lockdep_is_held(l))
-+
- #define lockdep_recursing(tsk)	((tsk)->lockdep_recursion)
+-static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
++static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
  
- #else /* !CONFIG_LOCKDEP */
-@@ -413,6 +415,8 @@ struct lock_class_key { };
+@@ -928,7 +928,7 @@ static void release_lockowner_stateids(struct nfs4_lockowner *lo)
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		__release_lock_stateid(stp);
++		release_lock_stateid(stp);
+ 	}
+ }
  
- #define lockdep_assert_held(l)			do { (void)(l); } while (0)
+@@ -939,21 +939,6 @@ static void release_lockowner(struct nfs4_lockowner *lo)
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
  
-+#define lockdep_assert_not_held(l)		(void)(l)
-+
- #define lockdep_recursing(tsk)			(0)
+-static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
+-{
+-	if (list_empty(&lo->lo_owner.so_stateids))
+-		release_lockowner(lo);
+-}
+-
+-static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+-{
+-	struct nfs4_lockowner *lo;
+-
+-	lo = lockowner(stp->st_stateowner);
+-	__release_lock_stateid(stp);
+-	release_lockowner_if_empty(lo);
+-}
+-
+ static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
+ 	__releases(&open_stp->st_stateowner->so_client->cl_lock)
+ 	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
+@@ -4273,7 +4258,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
  
- #endif /* !LOCKDEP */
+ 	if (check_for_locks(stp->st_stid.sc_file, lo))
+ 		return nfserr_locks_held;
+-	release_lockowner_if_empty(lo);
++	release_lock_stateid(stp);
+ 	return nfs_ok;
+ }
+ 
+@@ -4883,8 +4868,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
+ 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
+ 		if (lo == NULL)
+ 			return nfserr_jukebox;
+-		/* FIXME: extra reference for new lockowners for the client */
+-		atomic_inc(&lo->lo_owner.so_count);
+ 	} else {
+ 		/* with an existing lockowner, seqids must be the same */
+ 		status = nfserr_bad_seqid;
+@@ -4895,7 +4878,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
+ 
+ 	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
+ 	if (*lst == NULL) {
+-		release_lockowner_if_empty(lo);
+ 		status = nfserr_jukebox;
+ 		goto out;
+ 	}
+@@ -5309,6 +5291,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			continue;
+ 		if (same_owner_str(tmp, owner, clid)) {
+ 			sop = tmp;
++			atomic_inc(&sop->so_count);
+ 			break;
+ 		}
+ 	}
+@@ -5322,8 +5305,10 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	lo = lockowner(sop);
+ 	/* see if there are still any locks associated with it */
+ 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+-		if (check_for_locks(stp->st_stid.sc_file, lo))
++		if (check_for_locks(stp->st_stid.sc_file, lo)) {
++			nfs4_put_stateowner(sop);
+ 			goto out;
++		}
+ 	}
+ 
+ 	status = nfs_ok;
 -- 
 1.9.3
 
