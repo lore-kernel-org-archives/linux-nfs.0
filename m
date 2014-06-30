@@ -1,56 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40031 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751362AbaFDVe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Jun 2014 17:34:57 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/4] nfs4: remove unused CHANGE_SECURITY_LABEL
-Date: Wed,  4 Jun 2014 17:34:55 -0400
-Message-Id: <1401917695-8309-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1401917695-8309-1-git-send-email-bfields@redhat.com>
-References: <1401917695-8309-1-git-send-email-bfields@redhat.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:39005 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751302AbaF3Pwe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:34 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so7123179qcq.20
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:33 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 086/114] nfsd: protect the close_lru list and oo_last_closed_stid with client_lock
+Date: Mon, 30 Jun 2014 11:49:55 -0400
+Message-Id: <1404143423-24381-87-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Currently, it's protected by the client_mutex. Move it so that the list
+and the fields in the openowner are protected by the client_lock.
 
-This constant has the wrong value.  And we don't use it.  And it's been
-removed from the 4.2 spec anyway.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/nfs4proc.c    |    2 +-
- include/linux/nfs4.h |    2 --
- 2 files changed, 1 insertion(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c | 37 ++++++++++++++++++++++++++++++-------
+ 1 file changed, 30 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 397be39..7f55fed 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2750,7 +2750,7 @@ static void nfs4_close_context(struct nfs_open_context *ctx, int is_sync)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b215911cc67c..9a8f9ab37d19 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1059,13 +1059,19 @@ static void unhash_openowner_locked(struct nfs4_openowner *oo)
  
- #define FATTR4_WORD1_NFS40_MASK (2*FATTR4_WORD1_MOUNTED_ON_FILEID - 1UL)
- #define FATTR4_WORD2_NFS41_MASK (2*FATTR4_WORD2_SUPPATTR_EXCLCREAT - 1UL)
--#define FATTR4_WORD2_NFS42_MASK (2*FATTR4_WORD2_CHANGE_SECURITY_LABEL - 1UL)
-+#define FATTR4_WORD2_NFS42_MASK (2*FATTR4_WORD2_SECURITY_LABEL - 1UL)
- 
- static int _nfs4_server_capabilities(struct nfs_server *server, struct nfs_fh *fhandle)
+ static void release_last_closed_stateid(struct nfs4_openowner *oo)
  {
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 12c2cb9..a1e3064 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -399,8 +399,6 @@ enum lock_type4 {
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
- #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
--#define FATTR4_WORD2_CHANGE_SECURITY_LABEL \
--					(1UL << 17)
+-	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++					  nfsd_net_id);
++	struct nfs4_ol_stateid *s;
  
- /* MDS threshold bitmap bits */
- #define THRESHOLD_RD                    (1UL << 0)
++	spin_lock(&nn->client_lock);
++	s = oo->oo_last_closed_stid;
+ 	if (s) {
+ 		list_del_init(&oo->oo_close_lru);
+ 		oo->oo_last_closed_stid = NULL;
+-		put_generic_stateid(s);
+ 	}
++	spin_unlock(&nn->client_lock);
++	if (s)
++		put_generic_stateid(s);
+ }
+ 
+ static void release_openowner(struct nfs4_openowner *oo)
+@@ -3217,6 +3223,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ static void
+ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+ {
++	struct nfs4_ol_stateid *last;
+ 	struct nfs4_openowner *oo = openowner(s->st_stateowner);
+ 	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
+ 						nfsd_net_id);
+@@ -3240,10 +3247,14 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+ 		s->st_stid.sc_file = NULL;
+ 	}
+ 
+-	release_last_closed_stateid(oo);
++	spin_lock(&nn->client_lock);
++	last = oo->oo_last_closed_stid;
+ 	oo->oo_last_closed_stid = s;
+ 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
+ 	oo->oo_time = get_seconds();
++	spin_unlock(&nn->client_lock);
++	if (last)
++		put_generic_stateid(last);
+ }
+ 
+ static int
+@@ -4111,6 +4122,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	struct nfs4_client *clp;
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
++	struct nfs4_ol_stateid *stp;
+ 	struct list_head *pos, *next, reaplist;
+ 	time_t cutoff = get_seconds() - nn->nfsd4_lease;
+ 	time_t t, new_timeo = nn->nfsd4_lease;
+@@ -4162,15 +4174,26 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+ 		revoke_delegation(dp);
+ 	}
+-	list_for_each_safe(pos, next, &nn->close_lru) {
+-		oo = container_of(pos, struct nfs4_openowner, oo_close_lru);
+-		if (time_after((unsigned long)oo->oo_time, (unsigned long)cutoff)) {
++
++	spin_lock(&nn->client_lock);
++	while (!list_empty(&nn->close_lru)) {
++		oo = list_first_entry(&nn->close_lru, struct nfs4_openowner,
++					oo_close_lru);
++		if (time_after((unsigned long)oo->oo_time,
++			       (unsigned long)cutoff)) {
+ 			t = oo->oo_time - cutoff;
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		release_last_closed_stateid(oo);
++		list_del_init(&oo->oo_close_lru);
++		stp = oo->oo_last_closed_stid;
++		oo->oo_last_closed_stid = NULL;
++		spin_unlock(&nn->client_lock);
++		put_generic_stateid(stp);
++		spin_lock(&nn->client_lock);
+ 	}
++	spin_unlock(&nn->client_lock);
++
+ 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ 	nfs4_unlock_state();
+ 	return new_timeo;
 -- 
-1.7.9.5
+1.9.3
 
