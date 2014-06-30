@@ -1,54 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:56958 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753022AbaFHBvM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Jun 2014 21:51:12 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so7205430qgf.21
-        for <linux-nfs@vger.kernel.org>; Sat, 07 Jun 2014 18:51:12 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Sat, 7 Jun 2014 21:51:09 -0400
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:44968 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897AbaF3PvZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:25 -0400
+Received: by mail-qc0-f170.google.com with SMTP id l6so7308892qcy.1
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:24 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: WARN_ON_ONCE pop with tip of your nfsd-next branch
-Message-ID: <20140607215109.3cb5e368@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 037/114] nfsd: Add a struct nfs4_file field to struct nfs4_stid
+Date: Mon, 30 Jun 2014 11:49:06 -0400
+Message-Id: <1404143423-24381-38-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Just a heads up...
+All stateids are associated with a nfs4_file. Let's consolidate.
+Start by replacing delegation->dl_file with the dl_stid.sc_file
 
-Was doing some testing with a pile of patches (mostly v4 state-related)
-on top of your nfsd-next branch, and saw this pop:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 18 +++++++++---------
+ fs/nfsd/state.h     |  2 +-
+ 2 files changed, 10 insertions(+), 10 deletions(-)
 
-[  111.066217] ------------[ cut here ]------------
-[  111.067223] WARNING: CPU: 0 PID: 588 at fs/nfsd/nfs4xdr.c:3941 nfs4svc_encode_compoundres+0x9a/0xb0 [nfsd]()
-[  111.070074] Modules linked in: rpcsec_gss_krb5 snd_hda_codec_generic snd_hda_intel snd_hda_controller snd_hda_codec snd_hwdep snd_seq snd_seq_device snd_pcm ppdev joydev snd_timer microcode serio_raw snd virtio_console virtio_balloon virtio_net pcspkr soundcore parport_pc parport pvpanic nfsd(OE) i2c_piix4 auth_rpcgss nfs_acl lockd sunrpc qxl drm_kms_helper ttm virtio_blk drm virtio_pci virtio_ring i2c_core virtio ata_generic pata_acpi floppy
-[  111.081001] CPU: 0 PID: 588 Comm: nfsd Tainted: G           OE 3.15.0-rc1.jlayton.1+ #2
-[  111.083615] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-[  111.084924]  0000000000000000 00000000051421a7 ffff8800d6c3dcf0 ffffffff817d318e
-[  111.086613]  0000000000000000 ffff8800d6c3dd28 ffffffff810958bd ffff88003602d000
-[  111.088308]  ffff8800d8880000 ffff880118fb4018 ffff880118fb4000 000000000000001c
-[  111.089978] Call Trace:
-[  111.090552]  [<ffffffff817d318e>] dump_stack+0x4d/0x66
-[  111.091652]  [<ffffffff810958bd>] warn_slowpath_common+0x7d/0xa0
-[  111.092927]  [<ffffffff810959ea>] warn_slowpath_null+0x1a/0x20
-[  111.094189]  [<ffffffffa018d91a>] nfs4svc_encode_compoundres+0x9a/0xb0 [nfsd]
-[  111.095565]  [<ffffffffa016cf5f>] nfsd_dispatch+0x14f/0x200 [nfsd]
-[  111.096915]  [<ffffffffa00f2bd0>] svc_process_common+0x480/0x6f0 [sunrpc]
-[  111.098228]  [<ffffffffa00f2f47>] svc_process+0x107/0x170 [sunrpc]
-[  111.099898]  [<ffffffffa016c253>] nfsd+0xd3/0x160 [nfsd]
-[  111.100971]  [<ffffffffa016c180>] ? nfsd_destroy+0x210/0x210 [nfsd]
-[  111.102219]  [<ffffffff810c260f>] kthread+0xff/0x120
-[  111.103185]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
-[  111.104345]  [<ffffffff817e6bfc>] ret_from_fork+0x7c/0xb0
-[  111.105376]  [<ffffffff810c2510>] ? insert_kthread_work+0x80/0x80
-[  111.106476] ---[ end trace 48ac61da47c8e691 ]---
-
-It's possible that it's due to something I broke, but seems more likely
-to be something in your XDR overhaul.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 380abf2258b3..76066ca9219c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -596,6 +596,8 @@ static void remove_stid(struct nfs4_stid *s)
+ 
+ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+ {
++	if (s->sc_file)
++		put_nfs4_file(s->sc_file);
+ 	kmem_cache_free(slab, s);
+ }
+ 
+@@ -603,8 +605,6 @@ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+ 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
+-		if (dp->dl_file)
+-			put_nfs4_file(dp->dl_file);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+ 	}
+@@ -643,7 +643,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ static void
+ unhash_delegation_locked(struct nfs4_delegation *dp)
+ {
+-	struct nfs4_file *fp = dp->dl_file;
++	struct nfs4_file *fp = dp->dl_stid.sc_file;
+ 
+ 	lockdep_assert_held(&state_lock);
+ 
+@@ -3065,8 +3065,8 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
+ 
+ void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
+ {
+-	struct nfs4_client *clp = dp->dl_stid.sc_client;
+-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(dp->dl_stid.sc_client->net,
++					  nfsd_net_id);
+ 
+ 	/*
+ 	 * We can't do this in nfsd_break_deleg_cb because it is
+@@ -3456,14 +3456,14 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+ 	fl->fl_flags = FL_DELEG;
+ 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+ 	fl->fl_end = OFFSET_MAX;
+-	fl->fl_owner = (fl_owner_t)(dp->dl_file);
++	fl->fl_owner = (fl_owner_t)(dp->dl_stid.sc_file);
+ 	fl->fl_pid = current->tgid;
+ 	return fl;
+ }
+ 
+ static int nfs4_setlease(struct nfs4_delegation *dp)
+ {
+-	struct nfs4_file *fp = dp->dl_file;
++	struct nfs4_file *fp = dp->dl_stid.sc_file;
+ 	struct file_lock *fl;
+ 	int status = 0;
+ 
+@@ -3513,7 +3513,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	get_nfs4_file(fp);
+ 	spin_lock(&state_lock);
+ 	spin_lock(&fp->fi_lock);
+-	dp->dl_file = fp;
++	dp->dl_stid.sc_file = fp;
+ 	if (!fp->fi_lease) {
+ 		spin_unlock(&fp->fi_lock);
+ 		spin_unlock(&state_lock);
+@@ -4101,7 +4101,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 		if (status)
+ 			goto out;
+ 		if (filpp) {
+-			file = dp->dl_file->fi_deleg_file;
++			file = dp->dl_stid.sc_file->fi_deleg_file;
+ 			if (!file) {
+ 				WARN_ON_ONCE(1);
+ 				status = nfserr_serverfault;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e1f6b8847670..339f430fd69f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -84,6 +84,7 @@ struct nfs4_stid {
+ 	unsigned char sc_type;
+ 	stateid_t sc_stateid;
+ 	struct nfs4_client *sc_client;
++	struct nfs4_file *sc_file;
+ };
+ 
+ struct nfs4_delegation {
+@@ -91,7 +92,6 @@ struct nfs4_delegation {
+ 	struct list_head	dl_perfile;
+ 	struct list_head	dl_perclnt;
+ 	struct list_head	dl_recall_lru;  /* delegation recalled */
+-	struct nfs4_file	*dl_file;
+ 	u32			dl_type;
+ 	time_t			dl_time;
+ /* For recall: */
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
