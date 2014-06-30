@@ -1,55 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailrelay010.isp.belgacom.be ([195.238.6.177]:7156 "EHLO
-	mailrelay010.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757671AbaFYS0a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Jun 2014 14:26:30 -0400
-From: Fabian Frederick <fabf@skynet.be>
-To: linux-kernel@vger.kernel.org
-Cc: Fabian Frederick <fabf@skynet.be>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] FS/NFS: replace count*size kzalloc by kcalloc
-Date: Wed, 25 Jun 2014 20:26:21 +0200
-Message-Id: <1403720781-19319-1-git-send-email-fabf@skynet.be>
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:64317 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752033AbaF3PwG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:06 -0400
+Received: by mail-qa0-f44.google.com with SMTP id hw13so6594472qab.3
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:06 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 066/114] nfsd: don't allow CLOSE to proceed until refcount on stateid drops
+Date: Mon, 30 Jun 2014 11:49:35 -0400
+Message-Id: <1404143423-24381-67-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-kcalloc manages count*sizeof overflow.
+Once we remove client_mutex protection, it'll be possible to have an
+in-flight operation using an openstateid when a CLOSE call comes in.
+If that happens, we can't just put the sc_file reference and clear its
+pointer without risking an oops.
 
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
+Fix this by ensuring that v4.0 CLOSE operations wait for the refcount
+to drop before proceeding to do so.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/blocklayout/blocklayout.c  | 2 +-
- fs/nfs/filelayout/filelayoutdev.c | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 9b431f4..b74d889 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -1063,7 +1063,7 @@ nfs4_blk_get_deviceinfo(struct nfs_server *server, const struct nfs_fh *fh,
- 		return ERR_PTR(-ENOMEM);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d97f3d3743f3..4d504c83d8d8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -86,6 +86,12 @@ static DEFINE_MUTEX(client_mutex);
+  */
+ static DEFINE_SPINLOCK(state_lock);
+ 
++/*
++ * A waitqueue for all in-progress 4.0 CLOSE operations that are waiting for
++ * the refcount on the open stateid to drop.
++ */
++static DECLARE_WAIT_QUEUE_HEAD(close_wq);
++
+ static struct kmem_cache *openowner_slab;
+ static struct kmem_cache *lockowner_slab;
+ static struct kmem_cache *file_slab;
+@@ -626,8 +632,10 @@ static void nfs4_put_stid(struct nfs4_stid *s)
+ {
+ 	struct nfs4_client *clp = s->sc_client;
+ 
+-	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock))
++	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock)) {
++		wake_up_all(&close_wq);
+ 		return;
++	}
+ 	remove_stid_locked(clp, s);
+ 	spin_unlock(&clp->cl_lock);
+ 	s->sc_free(s);
+@@ -3051,11 +3059,23 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+ 
+ 	dprintk("NFSD: move_to_close_lru nfs4_openowner %p\n", oo);
+ 
++	/*
++	 * We know that we hold one reference via nfsd4_close, and another
++	 * "persistent" reference for the client. If the refcount is higher
++	 * than 2, then there are still calls in progress that are using this
++	 * stateid. We can't put the sc_file reference until they are finished.
++	 * Wait for the refcount to drop to 2. Since it has been unhashed,
++	 * there should be no danger of the refcount going back up again at
++	 * this point.
++	 */
++	wait_event(close_wq, atomic_read(&s->st_stid.sc_count) == 2);
++
+ 	release_all_access(s);
+ 	if (s->st_stid.sc_file) {
+ 		put_nfs4_file(s->st_stid.sc_file);
+ 		s->st_stid.sc_file = NULL;
  	}
- 
--	pages = kzalloc(max_pages * sizeof(struct page *), GFP_NOFS);
-+	pages = kcalloc(max_pages, sizeof(struct page *), GFP_NOFS);
- 	if (pages == NULL) {
- 		kfree(dev);
- 		return ERR_PTR(-ENOMEM);
-diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
-index 44bf014..48f8dcd 100644
---- a/fs/nfs/filelayout/filelayoutdev.c
-+++ b/fs/nfs/filelayout/filelayoutdev.c
-@@ -695,7 +695,7 @@ filelayout_get_device_info(struct inode *inode,
- 	if (pdev == NULL)
- 		return NULL;
- 
--	pages = kzalloc(max_pages * sizeof(struct page *), gfp_flags);
-+	pages = kcalloc(max_pages, sizeof(struct page *), gfp_flags);
- 	if (pages == NULL) {
- 		kfree(pdev);
- 		return NULL;
++
+ 	release_last_closed_stateid(oo);
+ 	oo->oo_last_closed_stid = s;
+ 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
 -- 
-1.9.1
+1.9.3
 
