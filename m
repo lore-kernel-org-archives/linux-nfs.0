@@ -1,49 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:36922 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755806AbaFWQZB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 12:25:01 -0400
-Received: by mail-qc0-f171.google.com with SMTP id w7so6178639qcr.2
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Jun 2014 09:25:00 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 23 Jun 2014 12:24:58 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 005/104] NFSd: Add fine grained protection for the
- nfs4_file->fi_stateids list
-Message-ID: <20140623122458.655c431e@tlielax.poochiereds.net>
-In-Reply-To: <20140623162332.GA22250@infradead.org>
-References: <1403189450-18729-1-git-send-email-jlayton@primarydata.com>
-	<1403189450-18729-6-git-send-email-jlayton@primarydata.com>
-	<20140623160407.GC24193@infradead.org>
-	<20140623122039.78056ec9@tlielax.poochiereds.net>
-	<20140623162332.GA22250@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qa0-f51.google.com ([209.85.216.51]:56736 "EHLO
+	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897AbaF3Pvg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:36 -0400
+Received: by mail-qa0-f51.google.com with SMTP id j7so6678535qaq.10
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:36 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 045/114] nfsd: Convert delegation counter to an atomic_long_t type
+Date: Mon, 30 Jun 2014 11:49:14 -0400
+Message-Id: <1404143423-24381-46-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 23 Jun 2014 09:23:32 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-> On Mon, Jun 23, 2014 at 12:20:39PM -0400, Jeff Layton wrote:
-> > Correct. I'll add that into the desciption if you think it's warranted,
-> > but again that's the case with many of the patches in this series.
-> 
-> It might be fairly obvious in the context of the series, it's not
-> if someone goes back in history with a git-blame.
-> 
-> And it's not a 100% obvious with the series either, at least earlier
-> versions also fixes pre-existing races, although all of that might be
-> upstream now.
-> 
-> So as far as I am concerned a simple one-line blurb mentioning what
-> the new locking is for would be useful to be added to all patches
-> just changing the locking.
+We want to convert to an atomic type so that we don't need to lock
+across the call to alloc_init_deleg(). Then convert to a long type so
+that we match the size of 'max_delegations'.
 
-Fair enough. I'll do that.
+None of this is a problem today, but it will be once we remove
+client_mutex protection.
 
-Thanks,
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 60cc162cc8a5..f5865a8e3081 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -313,7 +313,7 @@ static struct file *find_any_file(struct nfs4_file *f)
+ 	return ret;
+ }
+ 
+-static int num_delegations;
++static atomic_long_t num_delegations;
+ unsigned long max_delegations;
+ 
+ /*
+@@ -504,7 +504,7 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+ static void nfs4_free_deleg(struct nfs4_stid *stid)
+ {
+ 	nfs4_free_stid(deleg_slab, stid);
+-	num_delegations--;
++	atomic_long_dec(&num_delegations);
+ }
+ 
+ /*
+@@ -584,15 +584,17 @@ static struct nfs4_delegation *
+ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
+ {
+ 	struct nfs4_delegation *dp;
++	long n;
+ 
+ 	dprintk("NFSD alloc_init_deleg\n");
+-	if (num_delegations > max_delegations)
+-		return NULL;
++	n = atomic_long_inc_return(&num_delegations);
++	if (n < 0 || n > max_delegations)
++		goto out_dec;
+ 	if (delegation_blocked(&current_fh->fh_handle))
+-		return NULL;
++		goto out_dec;
+ 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
+ 	if (dp == NULL)
+-		return dp;
++		goto out_dec;
+ 
+ 	dp->dl_stid.sc_free = nfs4_free_deleg;
+ 	/*
+@@ -601,13 +603,15 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	 * 0 anyway just for consistency and use 1:
+ 	 */
+ 	dp->dl_stid.sc_stateid.si_generation = 1;
+-	num_delegations++;
+ 	INIT_LIST_HEAD(&dp->dl_perfile);
+ 	INIT_LIST_HEAD(&dp->dl_perclnt);
+ 	INIT_LIST_HEAD(&dp->dl_recall_lru);
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	return dp;
++out_dec:
++	atomic_long_dec(&num_delegations);
++	return NULL;
+ }
+ 
+ static void remove_stid_locked(struct nfs4_client *clp, struct nfs4_stid *s)
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
