@@ -1,59 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:49493 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754624AbaF3PvK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:10 -0400
-Received: by mail-qg0-f50.google.com with SMTP id j5so2125327qga.37
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:09 -0700 (PDT)
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:62032 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754623AbaF3PvH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:07 -0400
+Received: by mail-qc0-f173.google.com with SMTP id l6so7079367qcy.4
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:06 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 026/114] nfsd: remove nfs4_file_put_fd
-Date: Mon, 30 Jun 2014 11:48:55 -0400
-Message-Id: <1404143423-24381-27-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 024/114] nfsd: clean up helper __release_lock_stateid
+Date: Mon, 30 Jun 2014 11:48:53 -0400
+Message-Id: <1404143423-24381-25-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and replace it with a simple swap call.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
+Use filp_close instead of open coding. filp_close does a bit more than
+just release the locks and put the filp. It also calls ->flush and
+dnotify_flush, both of which should be done here anyway.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 13 ++-----------
- 1 file changed, 2 insertions(+), 11 deletions(-)
+ fs/nfsd/nfs4state.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6d8be6c235ca..485a0dc039d5 100644
+index 05f6e1761821..b201f1c4695c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -381,24 +381,15 @@ static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
- 		__nfs4_file_get_access(fp, oflag);
+@@ -800,10 +800,8 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
+ 	file = find_any_file(stp->st_file);
+-	if (file) {
+-		locks_remove_posix(file, (fl_owner_t)lockowner(stp->st_stateowner));
+-		fput(file);
+-	}
++	if (file)
++		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
+ 	close_generic_stateid(stp);
+ 	free_generic_stateid(stp);
  }
- 
--static struct file *nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
--{
--	struct file *filp;
--
--	filp = fp->fi_fds[oflag];
--	fp->fi_fds[oflag] = NULL;
--	return filp;
--}
--
- static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- {
- 	if (atomic_dec_and_lock(&fp->fi_access[oflag], &fp->fi_lock)) {
- 		struct file *f1 = NULL;
- 		struct file *f2 = NULL;
- 
--		f1 = nfs4_file_put_fd(fp, oflag);
-+		swap(f1, fp->fi_fds[oflag]);
- 		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
--			f2 = nfs4_file_put_fd(fp, O_RDWR);
-+			swap(f2, fp->fi_fds[O_RDWR]);
- 		spin_unlock(&fp->fi_lock);
- 		if (f1)
- 			fput(f1);
 -- 
 1.9.3
 
