@@ -1,62 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f181.google.com ([209.85.128.181]:38105 "EHLO
-	mail-ve0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750715AbaFEMi5 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 08:38:57 -0400
-Received: by mail-ve0-f181.google.com with SMTP id pa12so1091346veb.12
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Jun 2014 05:38:56 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <539026DB.30502@cn.fujitsu.com>
-References: <539026DB.30502@cn.fujitsu.com>
-Date: Thu, 5 Jun 2014 08:38:55 -0400
-Message-ID: <CAHQdGtRzw-Aizqd1Q8Y9FAXZgp2jefn115F-ogcPA8VSuqA1Dw@mail.gmail.com>
-Subject: Re: [PATCH]statd: create statdpath dir if specify the
- "--with-statdpath=xx" parameter in configure nfs-utils source code
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Ditang Chen <chendt.fnst@cn.fujitsu.com>
-Cc: Steve Dickson <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:39134 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752643AbaF3PwM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:12 -0400
+Received: by mail-qg0-f53.google.com with SMTP id i50so2178935qgf.12
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:12 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 070/114] nfsd: clean up and reorganize release_lockowner
+Date: Mon, 30 Jun 2014 11:49:39 -0400
+Message-Id: <1404143423-24381-71-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 5, 2014 at 4:14 AM, Ditang Chen <chendt.fnst@cn.fujitsu.com> wrote:
-> When configure the nfs-utils source code with "--with-statdpath=/foo" parameter，
-> #define NSM_DEFAULT_STATEDIR "/foo" will be generated in support/include/config.h file,
-> but Makefile will not create "/foo" dir.
->
-> Signed-off-by: chendt.fnst@cn.fujitsu.com
-> ---
->  Makefile.am | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
->
-> diff --git a/Makefile.am b/Makefile.am
-> index ae7cd16..5c9ef44 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -54,10 +54,10 @@ install-data-hook:
->         touch $(DESTDIR)$(statedir)/xtab; chmod 644 $(DESTDIR)$(statedir)/xtab
->         touch $(DESTDIR)$(statedir)/etab; chmod 644 $(DESTDIR)$(statedir)/etab
->         touch $(DESTDIR)$(statedir)/rmtab; chmod 644 $(DESTDIR)$(statedir)/rmtab
-> -       mkdir -p $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak
->         touch $(DESTDIR)$(statedir)/state
-> -       chmod go-rwx $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
-> -       -chown $(statduser) $(DESTDIR)$(statedir)/sm $(DESTDIR)$(statedir)/sm.bak $(DESTDIR)$(statedir)/state
-> +       mkdir -p $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak
-> +       chmod go-rwx $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
-> +       -chown $(statduser) $(DESTDIR)$(statdpath)/sm $(DESTDIR)$(statdpath)/sm.bak $(DESTDIR)$(statedir)/state
->
+Do more within the main loop, and simplify the function a bit. Also,
+there's no need to take a stateowner reference unless we're going to call
+release_lockowner.
 
-The file 'state' is owned by rpc.statd. Isn't it therefore also
-subject to the --with-statdpath modifier?
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 49 ++++++++++++++++++-------------------------------
+ 1 file changed, 18 insertions(+), 31 deletions(-)
 
-At one point, the Fedora RPM packager even used to put it in
-/var/lib/nfs/statd (as the manpage says it should) although that seems
-to be broken now.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1bd7b2b0a4b1..4f82e502f53a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5359,8 +5359,8 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			struct nfsd4_release_lockowner *rlockowner)
+ {
+ 	clientid_t *clid = &rlockowner->rl_clientid;
+-	struct nfs4_stateowner *sop = NULL, *tmp;
+-	struct nfs4_lockowner *lo;
++	struct nfs4_stateowner *sop;
++	struct nfs4_lockowner *lo = NULL;
+ 	struct nfs4_ol_stateid *stp;
+ 	struct xdr_netobj *owner = &rlockowner->rl_owner;
+ 	unsigned int hashval = ownerstr_hashval(owner);
+@@ -5377,45 +5377,32 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	if (status)
+ 		goto out;
+ 
+-	status = nfserr_locks_held;
+-
+ 	clp = cstate->clp;
+ 	/* Find the matching lock stateowner */
+ 	spin_lock(&clp->cl_lock);
+-	list_for_each_entry(tmp, &clp->cl_ownerstr_hashtbl[hashval],
++	list_for_each_entry(sop, &clp->cl_ownerstr_hashtbl[hashval],
+ 			    so_strhash) {
+-		if (tmp->so_is_open_owner)
+-			continue;
+-		if (same_owner_str(tmp, owner)) {
+-			sop = tmp;
+-			atomic_inc(&sop->so_count);
+-			break;
+-		}
+-	}
+ 
+-	/* No matching owner found, maybe a replay? Just declare victory... */
+-	if (!sop) {
+-		spin_unlock(&clp->cl_lock);
+-		status = nfs_ok;
+-		goto out;
+-	}
++		if (sop->so_is_open_owner || !same_owner_str(sop, owner))
++			continue;
+ 
+-	lo = lockowner(sop);
+-	/* see if there are still any locks associated with it */
+-	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+-		if (check_for_locks(stp->st_stid.sc_file, lo)) {
+-			spin_unlock(&clp->cl_lock);
+-			goto out;
++		/* see if there are still any locks associated with it */
++		lo = lockowner(sop);
++		list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
++			if (check_for_locks(stp->st_stid.sc_file, lo)) {
++				status = nfserr_locks_held;
++				spin_unlock(&clp->cl_lock);
++				goto out;
++			}
+ 		}
++
++		atomic_inc(&sop->so_count);
++		break;
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+-
+-	status = nfs_ok;
+-	sop = NULL;
+-	release_lockowner(lo);
++	if (lo)
++		release_lockowner(lo);
+ out:
+-	if (sop)
+-		nfs4_put_stateowner(sop);
+ 	nfs4_unlock_state();
+ 	return status;
+ }
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
