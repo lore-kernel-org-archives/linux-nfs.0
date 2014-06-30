@@ -1,99 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:56573 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751400AbaFWWkd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Jun 2014 18:40:33 -0400
-Subject: [PATCH v1 11/13] xprtrdma: Clean up rpcrdma_ep_disconnect()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 23 Jun 2014 18:40:31 -0400
-Message-ID: <20140623224031.1634.30045.stgit@manet.1015granger.net>
-In-Reply-To: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:57768 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897AbaF3PvT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:19 -0400
+Received: by mail-qa0-f41.google.com with SMTP id cm18so6615944qab.14
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:19 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 033/114] nfsd: Protect the nfs4_file delegation fields using the fi_lock
+Date: Mon, 30 Jun 2014 11:49:02 -0400
+Message-Id: <1404143423-24381-34-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The return code is used only for dprintk's that are already
-redundant.
+Move more of the delegation fields to be protected by the fi_lock. It's
+more granular than the state_lock and in later patches we'll want to
+be able to rely on it in addition to the state_lock.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Also, the current code in nfs4_setlease calls vfs_setlease and uses the
+client_mutex to ensure that it doesn't disappear before we can hash the
+delegation. With the client_mutex gone, we'll have a potential race
+condition.
+
+It's possible that the delegation could be recalled after we acquire the
+lease but before we ever get around to hashing it. If that happens, then
+we'd have a nfs4_file that *thinks* it has a delegation, when it
+actually has none.
+
+Attempt to acquire a delegation. If that succeeds, take the state_lock
+and recheck to make sure the lease is still there. If it is, then take
+the fi_lock and set up the rest of the delegation fields. This prevents
+the race because the delegation break workqueue job must also take the
+state_lock.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c     |   13 +++----------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 5 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 38 insertions(+), 13 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index f6d280b..2faac49 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -414,7 +414,7 @@ xprt_rdma_close(struct rpc_xprt *xprt)
- 	if (r_xprt->rx_ep.rep_connected > 0)
- 		xprt->reestablish_timeout = 0;
- 	xprt_disconnect_done(xprt);
--	(void) rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
-+	rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
- }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f2ab4b39be22..f14b925f9de0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -614,6 +614,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
  
- static void
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 52f57f7..b6c52c7 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -838,10 +838,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	cancel_delayed_work_sync(&ep->rep_connect_worker);
- 
- 	if (ia->ri_id->qp) {
--		rc = rpcrdma_ep_disconnect(ep, ia);
--		if (rc)
--			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
--				" returned %i\n", __func__, rc);
-+		rpcrdma_ep_disconnect(ep, ia);
- 		rdma_destroy_qp(ia->ri_id);
- 		ia->ri_id->qp = NULL;
- 	}
-@@ -879,10 +876,7 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 		struct rpcrdma_xprt *xprt;
- retry:
- 		dprintk("RPC:       %s: reconnecting...\n", __func__);
--		rc = rpcrdma_ep_disconnect(ep, ia);
--		if (rc && rc != -ENOTCONN)
--			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
--				" status %i\n", __func__, rc);
-+		rpcrdma_ep_disconnect(ep, ia);
- 
- 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
- 		id = rpcrdma_create_id(xprt, ia,
-@@ -988,7 +982,7 @@ out:
-  * This call is not reentrant, and must not be made in parallel
-  * on the same endpoint.
-  */
--int
-+void
- rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
  {
- 	int rc;
-@@ -1004,7 +998,6 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 		dprintk("RPC:       %s: rdma_disconnect %i\n", __func__, rc);
- 		ep->rep_connected = rc;
- 	}
--	return rc;
++	lockdep_assert_held(&state_lock);
++
+ 	if (!fp->fi_lease)
+ 		return;
+ 	if (atomic_dec_and_test(&fp->fi_delegees)) {
+@@ -633,11 +635,10 @@ static void
+ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ {
+ 	lockdep_assert_held(&state_lock);
++	lockdep_assert_held(&fp->fi_lock);
+ 
+ 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+-	spin_lock(&fp->fi_lock);
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+-	spin_unlock(&fp->fi_lock);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
  }
  
- /*
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 7a140fe..4f7de2a 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -343,7 +343,7 @@ int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
- 				struct rpcrdma_create_data_internal *);
- void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
- int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
--int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
-+void rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+@@ -648,17 +649,17 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	struct nfs4_file *fp = dp->dl_file;
  
- int rpcrdma_ep_post(struct rpcrdma_ia *, struct rpcrdma_ep *,
- 				struct rpcrdma_req *);
+ 	spin_lock(&state_lock);
++	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_recall_lru);
+-	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perfile);
+ 	spin_unlock(&fp->fi_lock);
+-	spin_unlock(&state_lock);
+ 	if (fp) {
+ 		nfs4_put_deleg_lease(fp);
+-		put_nfs4_file(fp);
+ 		dp->dl_file = NULL;
+ 	}
++	spin_unlock(&state_lock);
++	put_nfs4_file(fp);
+ }
+ 
+ 
+@@ -3458,7 +3459,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_file *fp = dp->dl_file;
+ 	struct file_lock *fl;
+-	int status;
++	int status = 0;
+ 
+ 	fl = nfs4_alloc_init_lease(dp, NFS4_OPEN_DELEGATE_READ);
+ 	if (!fl)
+@@ -3466,15 +3467,31 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	fl->fl_file = find_readable_file(fp);
+ 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+ 	if (status)
+-		goto out_free;
++		goto out_fput;
++	spin_lock(&state_lock);
++	/* Did the lease get broken before we took the lock? */
++	status = -EAGAIN;
++	if (!file_has_lease(fl->fl_file))
++		goto out_unlock;
++	spin_lock(&fp->fi_lock);
++	/* Race breaker */
++	if (fp->fi_lease) {
++		status = 0;
++		atomic_inc(&fp->fi_delegees);
++		hash_delegation_locked(dp, fp);
++		spin_unlock(&fp->fi_lock);
++		goto out_unlock;
++	}
+ 	fp->fi_lease = fl;
+ 	fp->fi_deleg_file = fl->fl_file;
+ 	atomic_set(&fp->fi_delegees, 1);
+-	spin_lock(&state_lock);
+ 	hash_delegation_locked(dp, fp);
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+-out_free:
++out_unlock:
++	spin_unlock(&state_lock);
++out_fput:
+ 	if (fl->fl_file)
+ 		fput(fl->fl_file);
+ 	locks_free_lock(fl);
+@@ -3483,19 +3500,27 @@ out_free:
+ 
+ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ {
++	int status = 0;
++
+ 	if (fp->fi_had_conflict)
+ 		return -EAGAIN;
+ 	get_nfs4_file(fp);
++	spin_lock(&state_lock);
++	spin_lock(&fp->fi_lock);
+ 	dp->dl_file = fp;
+-	if (!fp->fi_lease)
++	if (!fp->fi_lease) {
++		spin_unlock(&fp->fi_lock);
++		spin_unlock(&state_lock);
+ 		return nfs4_setlease(dp);
+-	spin_lock(&state_lock);
++	}
+ 	atomic_inc(&fp->fi_delegees);
+ 	if (fp->fi_had_conflict) {
+-		spin_unlock(&state_lock);
+-		return -EAGAIN;
++		status = -EAGAIN;
++		goto out_unlock;
+ 	}
+ 	hash_delegation_locked(dp, fp);
++out_unlock:
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+ }
+-- 
+1.9.3
 
