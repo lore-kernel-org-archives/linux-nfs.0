@@ -1,138 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:40787 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753911AbaFIVra (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Jun 2014 17:47:30 -0400
-Received: by mail-ig0-f179.google.com with SMTP id r2so2454213igi.0
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Jun 2014 14:47:29 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH] pnfs: fix lockup caused by pnfs_generic_pg_test
-Date: Mon,  9 Jun 2014 17:47:26 -0400
-Message-Id: <1402350446-2112-1-git-send-email-dros@primarydata.com>
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:37464 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750897AbaF3PvU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:51:20 -0400
+Received: by mail-qg0-f50.google.com with SMTP id j5so2125587qga.37
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:51:20 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 034/114] nfsd: Simplify stateid management
+Date: Mon, 30 Jun 2014 11:49:03 -0400
+Message-Id: <1404143423-24381-35-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-end_offset and req_offset both return u64 - avoid casting to u32
-until it's needed, when it's less than the (u32) size returned by
-nfs_generic_pg_test.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Also, fix the comments in pnfs_generic_pg_test.
+Don't allow stateids to clear the open file pointer until they are
+being destroyed. Also, move to kzalloc and get rid of explicit
+zeroing of fields.
 
-Running the cthon04 special tests caused this lockup in the
-"write/read at 2GB, 4GB edges" test when running against a file layout server:
-
-BUG: soft lockup - CPU#0 stuck for 22s! [bigfile2:823]
-Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs fscache ip6t_REJECT nf_conntrack_ipv6 nf_defrag_ipv6 ip6table_mangle ip6table_filter ip6_tables iptable_nat nf_nat_ipv4 nf_nat iptable_mangle ppdev crc32c_intel aesni_intel aes_x86_64 glue_helper lrw gf128mul ablk_helper cryptd serio_raw e1000 shpchp i2c_piix4 i2c_core parport_pc parport nfsd auth_rpcgss oid_registry exportfs nfs_acl lockd sunrpc btrfs xor zlib_deflate raid6_pq mptspi scsi_transport_spi mptscsih mptbase ata_generic floppy autofs4
-irq event stamp: 205958
-hardirqs last  enabled at (205957): [<ffffffff814a62dc>] restore_args+0x0/0x30
-hardirqs last disabled at (205958): [<ffffffff814ad96a>] apic_timer_interrupt+0x6a/0x80
-softirqs last  enabled at (205956): [<ffffffff8103ffb2>] __do_softirq+0x1ea/0x2ab
-softirqs last disabled at (205951): [<ffffffff8104026d>] irq_exit+0x44/0x9a
-CPU: 0 PID: 823 Comm: bigfile2 Not tainted 3.15.0-rc1-branch-pgio_plus+ #3
-Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
-task: ffff8800792ec480 ti: ffff880078c4e000 task.ti: ffff880078c4e000
-RIP: 0010:[<ffffffffa02ce51f>]  [<ffffffffa02ce51f>] nfs_page_group_unlock+0x3e/0x4b [nfs]
-RSP: 0018:ffff880078c4fab0  EFLAGS: 00000202
-RAX: 0000000000000fff RBX: ffff88006bf83300 RCX: 0000000000000000
-RDX: 0000000000000001 RSI: 0000000000000000 RDI: ffff88006bf83300
-RBP: ffff880078c4fab8 R08: 0000000000000001 R09: 0000000000000000
-R10: ffffffff8249840c R11: 0000000000000000 R12: 0000000000000035
-R13: ffff88007ffc72d8 R14: 0000000000000001 R15: 0000000000000000
-FS:  00007f45f11b7740(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f3a8cb632d0 CR3: 000000007931c000 CR4: 00000000001407f0
-Stack:
- ffff88006bf832c0 ffff880078c4fb00 ffffffffa02cec22 ffff880078c4fad8
- 00000fff810f9d99 ffff880078c4fca0 ffff88006bf832c0 ffff88006bf832c0
- ffff880078c4fca0 ffff880078c4fd60 ffff880078c4fb28 ffffffffa02cee34
-Call Trace:
- [<ffffffffa02cec22>] __nfs_pageio_add_request+0x298/0x34f [nfs]
- [<ffffffffa02cee34>] nfs_pageio_add_request+0x1f/0x42 [nfs]
- [<ffffffffa02d1722>] nfs_do_writepage+0x1b5/0x1e4 [nfs]
- [<ffffffffa02d1764>] nfs_writepages_callback+0x13/0x25 [nfs]
- [<ffffffffa02d1751>] ? nfs_do_writepage+0x1e4/0x1e4 [nfs]
- [<ffffffff810eb32d>] write_cache_pages+0x254/0x37f
- [<ffffffffa02d1751>] ? nfs_do_writepage+0x1e4/0x1e4 [nfs]
- [<ffffffff8149cf9e>] ? printk+0x54/0x56
- [<ffffffff810eacca>] ? __set_page_dirty_nobuffers+0x22/0xe9
- [<ffffffffa016d864>] ? put_rpccred+0x38/0x101 [sunrpc]
- [<ffffffffa02d1ae1>] nfs_writepages+0xb4/0xf8 [nfs]
- [<ffffffff810ec59c>] do_writepages+0x21/0x2f
- [<ffffffff810e36e8>] __filemap_fdatawrite_range+0x55/0x57
- [<ffffffff810e374a>] filemap_write_and_wait_range+0x2d/0x5b
- [<ffffffffa030ba0a>] nfs4_file_fsync+0x3a/0x98 [nfsv4]
- [<ffffffff8114ee3c>] vfs_fsync_range+0x18/0x20
- [<ffffffff810e40c2>] generic_file_aio_write+0xa7/0xbd
- [<ffffffffa02c5c6b>] nfs_file_write+0xf0/0x170 [nfs]
- [<ffffffff81129215>] do_sync_write+0x59/0x78
- [<ffffffff8112956c>] vfs_write+0xab/0x107
- [<ffffffff81129c8b>] SyS_write+0x49/0x7f
- [<ffffffff814acd12>] system_call_fastpath+0x16/0x1b
-
-Reported-by: Anna Schumaker <Anna.Schumaker@netapp.com>
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 32 ++++++++++++++++++--------------
- 1 file changed, 18 insertions(+), 14 deletions(-)
+ fs/nfsd/nfs4state.c | 21 ++++++++++-----------
+ 1 file changed, 10 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 0ecaf6e..059eb58 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1433,33 +1433,37 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
- {
- 	unsigned int size;
--	u64 end;
-+	u64 seg_end, req_start, seg_left;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f14b925f9de0..fdbd209b02a6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -447,7 +447,7 @@ kmem_cache *slab)
+ 	struct nfs4_stid *stid;
+ 	int new_id;
  
- 	size = nfs_generic_pg_test(pgio, prev, req);
- 	if (!size)
- 		return 0;
+-	stid = kmem_cache_alloc(slab, GFP_KERNEL);
++	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
+ 	if (!stid)
+ 		return NULL;
+ 
+@@ -459,11 +459,9 @@ kmem_cache *slab)
+ 	if (new_id < 0)
+ 		goto out_free;
+ 	stid->sc_client = cl;
+-	stid->sc_type = 0;
+ 	stid->sc_stateid.si_opaque.so_id = new_id;
+ 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
+ 	/* Will be incremented before return to client: */
+-	stid->sc_stateid.si_generation = 0;
+ 	atomic_set(&stid->sc_count, 1);
  
  	/*
--	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
--	 * Note that this test makes several assumptions:
--	 * - that the previous nfs_page in the struct nfs_pageio_descriptor
--	 *   is known to lie within the range.
--	 *   - that the nfs_page being tested is known to be contiguous with the
--	 *   previous nfs_page.
--	 *   - Layout ranges are page aligned, so we only have to test the
--	 *   start offset of the request.
-+	 * 'size' contains the number of bytes left in the current page (up
-+	 * to the original size asked for in @req->wb_bytes).
-+	 *
-+	 * Calculate how many bytes are left in the layout segment
-+	 * and if there are less bytes than 'size', return that instead.
- 	 *
- 	 * Please also note that 'end_offset' is actually the offset of the
- 	 * first byte that lies outside the pnfs_layout_range. FIXME?
- 	 *
- 	 */
- 	if (pgio->pg_lseg) {
--		end = end_offset(pgio->pg_lseg->pls_range.offset,
--				 pgio->pg_lseg->pls_range.length);
--		WARN_ON_ONCE(req_offset(req) > end);
--		if (req_offset(req) >= end)
-+		seg_end = end_offset(pgio->pg_lseg->pls_range.offset,
-+				     pgio->pg_lseg->pls_range.length);
-+		req_start = req_offset(req);
-+		WARN_ON_ONCE(req_start > seg_end);
-+		/* start of request is past the last byte of this segment */
-+		if (req_start >= seg_end)
- 			return 0;
--		size = min((unsigned int)(end - req_offset(req)), size);
-+
-+		/* adjust 'size' iff there are fewer bytes left in the
-+		 * segment than what nfs_generic_pg_test returned */
-+		seg_left = seg_end - req_start;
-+		if (seg_left < size)
-+			size = (unsigned int)seg_left;
- 	}
+@@ -582,10 +580,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	INIT_LIST_HEAD(&dp->dl_perfile);
+ 	INIT_LIST_HEAD(&dp->dl_perclnt);
+ 	INIT_LIST_HEAD(&dp->dl_recall_lru);
+-	dp->dl_file = NULL;
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+-	dp->dl_time = 0;
+ 	return dp;
+ }
  
- 	return size;
+@@ -607,6 +603,8 @@ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+ 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
++		if (dp->dl_file)
++			put_nfs4_file(dp->dl_file);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+ 	}
+@@ -654,12 +652,9 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	list_del_init(&dp->dl_recall_lru);
+ 	list_del_init(&dp->dl_perfile);
+ 	spin_unlock(&fp->fi_lock);
+-	if (fp) {
++	if (fp)
+ 		nfs4_put_deleg_lease(fp);
+-		dp->dl_file = NULL;
+-	}
+ 	spin_unlock(&state_lock);
+-	put_nfs4_file(fp);
+ }
+ 
+ 
+@@ -845,13 +840,13 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	release_all_access(stp);
+-	put_nfs4_file(stp->st_file);
+-	stp->st_file = NULL;
+ }
+ 
+ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	remove_stid(&stp->st_stid);
++	if (stp->st_file)
++		put_nfs4_file(stp->st_file);
+ 	nfs4_free_stid(stateid_slab, &stp->st_stid);
+ }
+ 
+@@ -4406,6 +4401,10 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 		if (list_empty(&oo->oo_owner.so_stateids))
+ 			release_openowner(oo);
+ 	} else {
++		if (s->st_file) {
++			put_nfs4_file(s->st_file);
++			s->st_file = NULL;
++		}
+ 		oo->oo_last_closed_stid = s;
+ 		/*
+ 		 * In the 4.0 case we need to keep the owners around a
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
