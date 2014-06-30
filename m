@@ -1,87 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx02.posteo.de ([89.146.194.165]:50455 "EHLO posteo.de"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751286AbaF3Lk4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 30 Jun 2014 07:40:56 -0400
-Message-ID: <53B14CC4.4000803@posteo.de>
-Date: Mon, 30 Jun 2014 13:40:52 +0200
-From: Karl-Philipp Richter <krichter@posteo.de>
-MIME-Version: 1.0
-To: Anna Schumaker <schumaker.anna@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: (Follow) sparse file support (development)
-References: <53B03ED5.6040400@posteo.de> <CAFX2Jfne-eDPBChRmBqp2N08-+i6tYBpSosnudg_J6Yd2dNNcg@mail.gmail.com>
-In-Reply-To: <CAFX2Jfne-eDPBChRmBqp2N08-+i6tYBpSosnudg_J6Yd2dNNcg@mail.gmail.com>
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="upheUEQNIX9RVrGp5S0ms30Uef6eM4B6c"
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:62404 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753645AbaF3Pwn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 11:52:43 -0400
+Received: by mail-qg0-f47.google.com with SMTP id q108so2124803qgd.20
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Jun 2014 08:52:43 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 093/114] nfsd: add a forget_clients "get" routine with proper locking
+Date: Mon, 30 Jun 2014 11:50:02 -0400
+Message-Id: <1404143423-24381-94-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---upheUEQNIX9RVrGp5S0ms30Uef6eM4B6c
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+Add a new "get" routine for forget_clients that relies on the
+client_lock instead of the client_mutex.
 
-Hi Anna,
-Yes you did, thank you! I'd like to recommend you to put this
-information in the wiki, if you don't want to rely on $SEARCH_ENGINE
-finding this thread in the mailing list archives only :)
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/fault_inject.c |  3 +--
+ fs/nfsd/nfs4state.c    | 30 ++++++++++++++++++++++--------
+ fs/nfsd/state.h        |  4 +++-
+ 3 files changed, 26 insertions(+), 11 deletions(-)
 
-Best regards,
-Kalle
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index b1159900d934..a0387fd47e14 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -134,11 +134,10 @@ void nfsd_fault_inject_cleanup(void)
+ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	{
+ 		.file     = "forget_clients",
+-		.get	  = nfsd_inject_get,
++		.get	  = nfsd_inject_print_clients,
+ 		.set_val  = nfsd_inject_set,
+ 		.set_clnt = nfsd_inject_set_client,
+ 		.forget   = nfsd_forget_client,
+-		.print    = nfsd_print_client,
+ 	},
+ 	{
+ 		.file     = "forget_locks",
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4799d6e652d0..ade71f32a070 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5664,6 +5664,28 @@ nfs4_check_open_reclaim(clientid_t *clid,
+ }
+ 
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
++u64
++nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
++{
++	struct nfs4_client *clp;
++	u64 count = 0;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++					  nfsd_net_id);
++	char buf[INET6_ADDRSTRLEN];
++
++	if (!nfsd_netns_ready(nn))
++		return 0;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
++		pr_info("NFS Client: %s\n", buf);
++		++count;
++	}
++	spin_unlock(&nn->client_lock);
++
++	return count;
++}
+ 
+ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ {
+@@ -5679,14 +5701,6 @@ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ 	return 1;
+ }
+ 
+-u64 nfsd_print_client(struct nfs4_client *clp, u64 num)
+-{
+-	char buf[INET6_ADDRSTRLEN];
+-	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
+-	printk(KERN_INFO "NFS Client: %s\n", buf);
+-	return 1;
+-}
+-
+ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ 			     const char *type)
+ {
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 7e395f665b0f..e0bf42051c1f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -466,18 +466,20 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
+ 
+ /* nfs fault injection functions */
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
++struct nfsd_fault_inject_op;
++
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+ u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
+ struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
+ 
++u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
+ u64 nfsd_forget_client(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
+ u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+ u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ 
+-u64 nfsd_print_client(struct nfs4_client *, u64);
+ u64 nfsd_print_client_locks(struct nfs4_client *, u64);
+ u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
+-- 
+1.9.3
 
-Am 30.06.2014 01:39, schrieb Anna Schumaker:
-> Hi Kalle,
->=20
-> Currently you can use SEEK_SET to create sparse files through seeking. =
- NFS
-> v4.2 (currently in development) will add support for an fallocate
-> interface, but that won't be merged into Linux until after the draft is=
-
-> finished.
->=20
-> I hope I answered your question!
->=20
-> Anna
->=20
-> On Sunday, June 29, 2014, Karl-Philipp Richter <krichter@posteo.de> wro=
-te:
->=20
->> Hi together,
->> I had trouble finding a statement in the NFS wiki
->>
->>     http://wiki.linux-nfs.org/wiki/index.php/Main_Page
->>
->> about sparse file support or development plans for it outside of (very=
-
->> very) technical documents which I honestly didn't take the time to
->> understand. Maybe I can get you to give me short statement on this :).=
-
->>
->> Best regards,
->> Kalle Richter
->>
->>
->=20
-
-
---upheUEQNIX9RVrGp5S0ms30Uef6eM4B6c
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
-
-iQEcBAEBAgAGBQJTsUzEAAoJEGadKJ8eJ7ZGBqgH/2ZE+CM8W1E+RofQwsW4/hrg
-WR8EX8WQF/VbT7G4B1qg2JK8KatcuHTeThU94Df2aBs6zMJ8SjeOyCK63cKl8FoI
-O3IXJNGdmwPAZzwukzwdAM0+bw6WOTevFpOlufN55uYGpeCQnkuAc86Js4uy80kZ
-HxuP32BPpPbABJCYW7SGSvyJ7jbSvUNXISiiGT2ilVATdtpq+c/a35ZYtEcCBAL2
-aNJgkSw9NbHxR1alP5vKUFkmYSmtI5nuW7jfE8DsYGRn5YMK/UWJRy5sGGLLAQTg
-pyDWQE9cqKX66mitgJjFG9zIvRzI04iMP24sQOf/VgA80giulioShrJfyMZp250=
-=7HBy
------END PGP SIGNATURE-----
-
---upheUEQNIX9RVrGp5S0ms30Uef6eM4B6c--
