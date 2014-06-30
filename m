@@ -1,26 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from andre.telenet-ops.be ([195.130.132.53]:38211 "EHLO
-	andre.telenet-ops.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751460AbaFEHXN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Jun 2014 03:23:13 -0400
-Message-ID: <53901ADB.9020405@acm.org>
-Date: Thu, 05 Jun 2014 09:23:07 +0200
-From: Bart Van Assche <bvanassche@acm.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:47595 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754174AbaF3SDq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Jun 2014 14:03:46 -0400
+Date: Mon, 30 Jun 2014 11:03:45 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 015/114] nfsd: Allow struct nfsd4_compound_state to
+ cache the nfs4_client
+Message-ID: <20140630180345.GC20028@infradead.org>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+ <1404143423-24381-16-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-To: Steve Wise <swise@opengridcomputing.com>, bfields@fieldses.org
-CC: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
-        tom@opengridcomputing.com
-Subject: Re: [PATCH] svcrdma: Fence LOCAL_INV work requests
-References: <20140602171433.31076.5634.stgit@build.ogc.int>
-In-Reply-To: <20140602171433.31076.5634.stgit@build.ogc.int>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1404143423-24381-16-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/02/14 19:14, Steve Wise wrote:
-> Fencing forces the invalidate to only happen after all subsequent send
-> work requests have been completed.
+On Mon, Jun 30, 2014 at 11:48:44AM -0400, Jeff Layton wrote:
+> We want to use the nfsd4_compound_state to cache the nfs4_client in
+> order to optimise away extra lookups of the clid.
+> 
+> In the v4.0 case, we use this to ensure that we only have to look up the
+> client at most once per compound for each call into lookup_clientid. For
+> v4.1+ we set the pointer in the cstate during SEQUENCE processing so we
+> should never need to do a search for it.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Shouldn't that read "prior" instead of "subsequent" ?
+Looks good,
 
-Bart.
+Reviewed-by: Christoph Hellwig <hch@lst.de>
