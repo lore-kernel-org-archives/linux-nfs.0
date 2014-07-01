@@ -1,39 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:50987 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754274AbaGNJ7s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 05:59:48 -0400
-Date: Mon, 14 Jul 2014 02:59:44 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Kinglong Mee <kinglongmee@gmail.com>,
+Received: from fieldses.org ([174.143.236.118]:56120 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754850AbaGAUYm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Jul 2014 16:24:42 -0400
+Date: Tue, 1 Jul 2014 16:24:40 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Fix bad reserving space for encoding rdattr_error
-Message-ID: <20140714095944.GA25481@infradead.org>
-References: <53B8C3D3.7080201@gmail.com>
- <20140707181556.GC8630@fieldses.org>
- <20140710105451.GA23266@infradead.org>
- <20140711201129.GB11931@fieldses.org>
+Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
+Message-ID: <20140701202440.GG14728@fieldses.org>
+References: <20140630085934.2bf86ba0@tlielax.poochiereds.net>
+ <20140630193237.GA11935@fieldses.org>
+ <20140630162014.20e63e1a@tlielax.poochiereds.net>
+ <CAHQdGtQtHaKx6mEXzO7XndZPo19joccuPa0_z0T_79TiG1434w@mail.gmail.com>
+ <20140630163647.5227ac55@tlielax.poochiereds.net>
+ <20140701101034.520b04bb@tlielax.poochiereds.net>
+ <CAHQdGtQZP8RGqWS0pw-X97D_3GE1tqxaeVMSXgLa+VtaSLae2w@mail.gmail.com>
+ <20140701144631.4bf0e9b5@tlielax.poochiereds.net>
+ <20140701200135.GE14728@fieldses.org>
+ <20140701161317.0761839e@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140711201129.GB11931@fieldses.org>
+In-Reply-To: <20140701161317.0761839e@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 11, 2014 at 04:11:29PM -0400, J. Bruce Fields wrote:
-> > On Mon, Jul 07, 2014 at 02:15:56PM -0400, J. Bruce Fields wrote:
-> > > > -	p = xdr_reserve_space(xdr, 6);
-> > > > +	p = xdr_reserve_space(xdr, 20);
+On Tue, Jul 01, 2014 at 04:13:17PM -0400, Jeff Layton wrote:
+> On Tue, 1 Jul 2014 16:01:35 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Tue, Jul 01, 2014 at 02:46:31PM -0400, Jeff Layton wrote:
+> > > Ok, I haven't tested that yet, but I did put together a f20 machine on
+> > > bare metal to act as a server. Here are some results from a test that
+> > > forks 128 child processes and has each one create and close 1024 files.
+> > > Client is 3.14.8-200.fc20.x86_64 and using NFSv4.1:
+> > > 
+> > > With a stock Fedora kernel on the server running 3.14.8-200.fc20.x86_64:
+> > > 
+> > > $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+> > > 
+> > > real	59m5.022s
+> > > user	0m1.401s
+> > > sys	0m17.561s
+> > > 
+> > > 
+> > > ...with the patched kernel 3.16.0-rc2.jlayton.1+ (basically Bruce's
+> > > for-3.17 branch with the rest of my patches piled on):
+> > > 
+> > > $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+> > > 
+> > > real	4m19.060s
+> > > user	0m1.259s
+> > > sys	0m13.059s
+> > > 
+> > > ...so around a factor of 13x speedup on parallel creates. Again, this
+> > > is not a terribly scientific benchmark, but it does suggest that this
+> > > patchset helps immensely.
 > > 
-> > Can we please convert all these magic numbers to expressions adding up
-> > sizeofs or where that doesn't fit use #defines?
+> > Neat-o.
+> > 
+> > It might also be interesting to compare with NFSv3?
+> > 
+> > I wonder what a first good test of the smp scalability would be.
+> > 
+> > --b.
 > 
-> So, this would be 
+> Yeah, it is neato. And just to be sure that it wasn't some other random
+> change between 3.14 and 3.16, I popped off all of my patches, rebuilt
+> nfsd.ko and reran the test with everything else the same:
 > 
-> 	xdr_reserve_space(xdr, 5 * sizeof(be32));
+> $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
 > 
-> ?  I guess that'd be OK.
+> real	58m50.564s
+> user	0m1.513s
+> sys	0m18.963s
+> 
+> ...so it really does appear that these changes make the difference.
 
-Yes, that makes a lot more sense.  I'm still hoping to make progress
-on my krpcgen one day..
+Yes, and that number sounds about right: that's about 27ms per create,
+which sounds like about the right number for latency of a create on a
+normal hard drive?
+
+(No idea how to think about the patched case.)
+
+--b.
