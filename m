@@ -1,216 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:65489 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932293AbaGUNfS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 09:35:18 -0400
-Received: by mail-qa0-f50.google.com with SMTP id s7so5044268qap.23
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 06:35:17 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 01/10] nfsd: Protect the nfs4_file delegation fields using the fi_lock
-Date: Mon, 21 Jul 2014 09:34:57 -0400
-Message-Id: <1405949706-27757-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
-References: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:54666 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753256AbaGAJsy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 05:48:54 -0400
+Received: by mail-pd0-f176.google.com with SMTP id ft15so9846764pdb.21
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 02:48:53 -0700 (PDT)
+Message-ID: <53B283D2.3040902@gmail.com>
+Date: Tue, 01 Jul 2014 17:48:02 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH] NFSD: Remove iattr parameter from nfsd_symlink()
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move more of the delegation fields to be protected by the fi_lock. It's
-more granular than the state_lock and in later patches we'll want to
-be able to rely on it in addition to the state_lock.
+Commit db2e747b1499 (vfs: remove mode parameter from vfs_symlink())
+have remove mode parameter from vfs_symlink.
+So that, iattr isn't needed by nfsd_symlink now, just remove it.
 
-Also, the current code in nfs4_setlease calls vfs_setlease and uses the
-client_mutex to ensure that it doesn't disappear before we can hash the
-delegation. With the client_mutex gone, we'll have a potential race
-condition.
-
-It's possible that the delegation could be recalled after we acquire the
-lease but before we ever get around to hashing it. If that happens, then
-we'd have a nfs4_file that *thinks* it has a delegation, when it
-actually has none.
-
-Attempt to acquire a delegation. If that succeeds, take the spinlocks
-and then check to see if the file has had a conflict show up since then.
-If it has, then we assume that the lease is no longer valid and that
-we shouldn't hand out a delegation.
-
-There's also one more potential (but very unlikely) problem. If the
-lease is broken before the delegation is hashed, then it could leak.
-In the event that the fi_delegations list is empty, reset the
-fl_break_time to jiffies so that it's cleaned up ASAP by
-the normal lease handling code.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4state.c | 89 ++++++++++++++++++++++++++++++++++++++---------------
- 1 file changed, 65 insertions(+), 24 deletions(-)
+ fs/nfsd/nfs3proc.c | 3 +--
+ fs/nfsd/nfs4proc.c | 3 +--
+ fs/nfsd/nfsproc.c  | 4 +---
+ fs/nfsd/vfs.c      | 3 +--
+ fs/nfsd/vfs.h      | 2 +-
+ 5 files changed, 5 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fd4deb049ddf..b05ac229fff0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -624,6 +624,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
- 
- static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- {
-+	lockdep_assert_held(&state_lock);
-+
- 	if (!fp->fi_lease)
- 		return;
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
-@@ -643,11 +645,10 @@ static void
- hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
- 	lockdep_assert_held(&state_lock);
-+	lockdep_assert_held(&fp->fi_lock);
- 
- 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
--	spin_lock(&fp->fi_lock);
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
--	spin_unlock(&fp->fi_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index f2209aa..6714081 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -281,8 +281,7 @@ nfsd3_proc_symlink(struct svc_rqst *rqstp, struct nfsd3_symlinkargs *argp,
+ 	fh_copy(&resp->dirfh, &argp->ffh);
+ 	fh_init(&resp->fh, NFS3_FHSIZE);
+ 	nfserr = nfsd_symlink(rqstp, &resp->dirfh, argp->fname, argp->flen,
+-						   argp->tname,
+-						   &resp->fh, &argp->attrs);
++						   argp->tname, &resp->fh);
+ 	RETURN_STATUS(nfserr);
  }
  
-@@ -659,17 +660,18 @@ unhash_delegation(struct nfs4_delegation *dp)
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index e3b7cc9..846fd55 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -632,8 +632,7 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	case NF4LNK:
+ 		status = nfsd_symlink(rqstp, &cstate->current_fh,
+ 				      create->cr_name, create->cr_namelen,
+-				      create->cr_data,
+-				      &resfh, &create->cr_iattr);
++				      create->cr_data, &resfh);
+ 		break;
  
- 	spin_lock(&state_lock);
- 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-+	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
- 	list_del_init(&dp->dl_recall_lru);
--	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
--	spin_unlock(&state_lock);
- 	if (fp) {
- 		nfs4_put_deleg_lease(fp);
--		put_nfs4_file(fp);
- 		dp->dl_file = NULL;
- 	}
-+	spin_unlock(&state_lock);
-+	if (fp)
-+		put_nfs4_file(fp);
- }
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-@@ -3143,10 +3145,19 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+ 	case NF4BLK:
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 5343e29..c0fc465 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -407,9 +407,7 @@ nfsd_proc_symlink(struct svc_rqst *rqstp, struct nfsd_symlinkargs *argp,
  	 */
- 	fl->fl_break_time = 0;
+ 	argp->tname[argp->tlen] = '\0';
+ 	nfserr = nfsd_symlink(rqstp, &argp->ffh, argp->fname, argp->flen,
+-						 argp->tname,
+-				 		 &newfh, &argp->attrs);
+-
++						 argp->tname, &newfh);
  
--	fp->fi_had_conflict = true;
- 	spin_lock(&fp->fi_lock);
--	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
--		nfsd_break_one_deleg(dp);
-+	fp->fi_had_conflict = true;
-+	/*
-+	 * If there are no delegations on the list, then we can't count on this
-+	 * lease ever being cleaned up. Set the fl_break_time to jiffies so that
-+	 * time_out_leases will do it ASAP. The fact that fi_had_conflict is now
-+	 * true should keep any new delegations from being hashed.
-+	 */
-+	if (list_empty(&fp->fi_delegations))
-+		fl->fl_break_time = jiffies;
-+	else
-+		list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
-+			nfsd_break_one_deleg(dp);
- 	spin_unlock(&fp->fi_lock);
- }
- 
-@@ -3493,46 +3504,76 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	fh_put(&argp->ffh);
+ 	fh_put(&newfh);
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index b94c9c5..654adad 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -1491,8 +1491,7 @@ __be32
+ nfsd_symlink(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 				char *fname, int flen,
+ 				char *path,
+-				struct svc_fh *resfhp,
+-				struct iattr *iap)
++				struct svc_fh *resfhp)
  {
- 	struct nfs4_file *fp = dp->dl_file;
- 	struct file_lock *fl;
--	int status;
-+	struct file *filp;
-+	int status = 0;
- 
- 	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
- 	if (!fl)
- 		return -ENOMEM;
--	fl->fl_file = find_readable_file(fp);
--	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
--	if (status)
--		goto out_free;
-+	filp = find_readable_file(fp);
-+	if (!filp) {
-+		/* We should always have a readable file here */
-+		WARN_ON_ONCE(1);
-+		return -EBADF;
-+	}
-+	status = vfs_setlease(filp, fl->fl_type, &fl);
-+	if (status) {
-+		locks_free_lock(fl);
-+		goto out_fput;
-+	}
-+	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
-+	/* Did the lease get broken before we took the lock? */
-+	status = -EAGAIN;
-+	if (fp->fi_had_conflict)
-+		goto out_unlock;
-+	/* Race breaker */
-+	if (fp->fi_lease) {
-+		status = 0;
-+		atomic_inc(&fp->fi_delegees);
-+		hash_delegation_locked(dp, fp);
-+		goto out_unlock;
-+	}
- 	fp->fi_lease = fl;
--	fp->fi_deleg_file = fl->fl_file;
-+	fp->fi_deleg_file = filp;
- 	atomic_set(&fp->fi_delegees, 1);
--	spin_lock(&state_lock);
- 	hash_delegation_locked(dp, fp);
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
--out_free:
--	if (fl->fl_file)
--		fput(fl->fl_file);
--	locks_free_lock(fl);
-+out_unlock:
-+	spin_unlock(&fp->fi_lock);
-+	spin_unlock(&state_lock);
-+out_fput:
-+	fput(filp);
- 	return status;
- }
- 
- static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
-+	int status = 0;
-+
- 	if (fp->fi_had_conflict)
- 		return -EAGAIN;
- 	get_nfs4_file(fp);
-+	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
- 	dp->dl_file = fp;
--	if (!fp->fi_lease)
-+	if (!fp->fi_lease) {
-+		spin_unlock(&fp->fi_lock);
-+		spin_unlock(&state_lock);
- 		return nfs4_setlease(dp);
--	spin_lock(&state_lock);
-+	}
- 	atomic_inc(&fp->fi_delegees);
- 	if (fp->fi_had_conflict) {
--		spin_unlock(&state_lock);
--		return -EAGAIN;
-+		status = -EAGAIN;
-+		goto out_unlock;
- 	}
- 	hash_delegation_locked(dp, fp);
-+out_unlock:
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
--	return 0;
-+	return status;
- }
- 
- static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
+ 	struct dentry	*dentry, *dnew;
+ 	__be32		err, cerr;
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index 20e4b66..c2ff3f1 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -86,7 +86,7 @@ __be32		nfsd_readlink(struct svc_rqst *, struct svc_fh *,
+ 				char *, int *);
+ __be32		nfsd_symlink(struct svc_rqst *, struct svc_fh *,
+ 				char *name, int len, char *path,
+-				struct svc_fh *res, struct iattr *);
++				struct svc_fh *res);
+ __be32		nfsd_link(struct svc_rqst *, struct svc_fh *,
+ 				char *, int, struct svc_fh *);
+ __be32		nfsd_rename(struct svc_rqst *,
 -- 
 1.9.3
 
