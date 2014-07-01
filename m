@@ -1,61 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41036 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752103AbaGOPxS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jul 2014 11:53:18 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s6FFrHqk019914
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 11:53:18 -0400
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s6FFrHx7021661
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 11:53:17 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] rpcbind: Remove a strict-aliasing warning
-Date: Tue, 15 Jul 2014 11:53:15 -0400
-Message-Id: <1405439595-5544-1-git-send-email-steved@redhat.com>
+Received: from mail-qg0-f68.google.com ([209.85.192.68]:34190 "EHLO
+	mail-qg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751930AbaGAKlO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 06:41:14 -0400
+Received: by mail-qg0-f68.google.com with SMTP id q107so964646qgd.11
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 03:41:13 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 1 Jul 2014 06:41:11 -0400
+To: Peter Zijlstra <peterz@infradead.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        Ingo Molnar <mingo@redhat.com>
+Subject: Re: [PATCH v3 071/114] lockdep: add lockdep_assert_not_held
+Message-ID: <20140701064111.5fe8e555@f20.localdomain>
+In-Reply-To: <20140701101108.GK3588@twins.programming.kicks-ass.net>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+ <1404143423-24381-72-git-send-email-jlayton@primarydata.com>
+ <20140701100335.GP6758@twins.programming.kicks-ass.net>
+ <20140701101108.GK3588@twins.programming.kicks-ass.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-src/util.c: In function ‘in6_fillscopeid’:
-src/util.c:106:3: warning: dereferencing type-punned pointer will break
-strict-aliasing rules [-Wstrict-aliasing]
-   ifindex = ntohs(*(u_int16_t *)&sin6->sin6_addr.s6_addr[2]);
-   ^
+On Tue, 1 Jul 2014 12:11:08 +0200
+Peter Zijlstra <peterz@infradead.org> wrote:
 
-src/util.c:109:4: warning: dereferencing type-punned pointer will break
-strict-aliasing rules [-Wstrict-aliasing]
-    *(u_int16_t *)&sin6->sin6_addr.s6_addr[2] = 0;
+> On Tue, Jul 01, 2014 at 12:03:35PM +0200, Peter Zijlstra wrote:
+> > On Mon, Jun 30, 2014 at 11:49:40AM -0400, Jeff Layton wrote:
+> > > We currently have the ability to call lockdep_assert_held to throw a
+> > > warning when a spinlock isn't held in a codepath. There are also times
+> > > when we'd like to throw a warning when a lock is held (i.e. when there
+> > > is the potential for deadlock with atomic_dec_and_lock or similar).
+> > 
+> > So I'm not getting it; if there's deadlock potential, lockdep would
+> > already report so, right?
+> > 
+> > That is, lockdep is very good a yelling when you try to acquire a lock
+> > you're already holding.
+> 
+> Ah, I think I see what you're trying to do.
+> 
+> You're wanting to use might_lock() and might_lock_read(). Which are used
+> to make conditional lock acquisitions unconditional, so as to more
+> reliably trigger the deadlock detection.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/util.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+Right -- in the case of something like atomic_dec_and_lock, we only
+take the spinlock if we think the count might go to zero. So, we might
+miss catching some places that could deadlock if the refcounts don't go
+to zero in the testing we're doing.
 
-diff --git a/src/util.c b/src/util.c
-index 9a5fb69..7d56479 100644
---- a/src/util.c
-+++ b/src/util.c
-@@ -101,12 +101,14 @@ static void
- in6_fillscopeid(struct sockaddr_in6 *sin6)
- {
- 	u_int16_t ifindex;
-+	u_int16_t *addr;
- 
-         if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr)) {
--		ifindex = ntohs(*(u_int16_t *)&sin6->sin6_addr.s6_addr[2]);
-+		addr = (u_int16_t *)&sin6->sin6_addr.s6_addr[2];
-+		ifindex = ntohs(*addr);
- 		if (sin6->sin6_scope_id == 0 && ifindex != 0) {
- 			sin6->sin6_scope_id = ifindex;
--			*(u_int16_t *)&sin6->sin6_addr.s6_addr[2] = 0;
-+			*addr = 0;
- 		}
- 	}
- }
+might_lock may be what we need, but I don't see any callers of it, and
+at a quick glance it doesn't appear to be disabled if debug_locks is
+false.
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
