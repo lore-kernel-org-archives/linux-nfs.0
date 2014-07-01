@@ -1,60 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40958 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750988AbaGJUOv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jul 2014 16:14:51 -0400
-Date: Thu, 10 Jul 2014 16:14:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/11] nfsd: deny mode handling overhaul
-Message-ID: <20140710201448.GF26561@fieldses.org>
-References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:52698 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932151AbaGASqf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 14:46:35 -0400
+Received: by mail-qa0-f45.google.com with SMTP id v10so8038296qac.32
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 11:46:34 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 1 Jul 2014 14:46:31 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
+Message-ID: <20140701144631.4bf0e9b5@tlielax.poochiereds.net>
+In-Reply-To: <CAHQdGtQZP8RGqWS0pw-X97D_3GE1tqxaeVMSXgLa+VtaSLae2w@mail.gmail.com>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+	<20140630125142.GA32089@infradead.org>
+	<20140630085934.2bf86ba0@tlielax.poochiereds.net>
+	<20140630193237.GA11935@fieldses.org>
+	<20140630162014.20e63e1a@tlielax.poochiereds.net>
+	<CAHQdGtQtHaKx6mEXzO7XndZPo19joccuPa0_z0T_79TiG1434w@mail.gmail.com>
+	<20140630163647.5227ac55@tlielax.poochiereds.net>
+	<20140701101034.520b04bb@tlielax.poochiereds.net>
+	<CAHQdGtQZP8RGqWS0pw-X97D_3GE1tqxaeVMSXgLa+VtaSLae2w@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 10, 2014 at 02:07:24PM -0400, Jeff Layton wrote:
-> Here is the deny mode handling overhaul broken out into a separate
-> series, as requested by Christoph. I've tried to address most of
-> his review comments, but I may have missed some. Let me know if
-> if I did.
+On Tue, 1 Jul 2014 10:21:40 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-They look fine to me; I'll merge them soon absent any objections from
-Christoph.
+> On Tue, Jul 1, 2014 at 10:10 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> >
+> > Quite right. I changed the program to be run as root and had each child
+> > process do an setfsuid/setfsgid to a different UID/GID combo:
+> >
+> > [jlayton@tlielax lockperf]$ time sudo  ./opentest -n 128 -l 100 /mnt/rawhide/opentest
+> >
+> > real    0m3.448s
+> > user    0m0.078s
+> > sys     0m0.377s
+> > [jlayton@tlielax lockperf]$ time sudo  ./opentest -n 128 -l 100 /mnt/rawhide/opentest
+> >
+> > real    0m3.344s
+> > user    0m0.053s
+> > sys     0m0.374s
+> > [jlayton@tlielax lockperf]$ time sudo  ./opentest -n 128 -l 100 /mnt/rawhide/opentest
+> >
+> > real    0m3.550s
+> > user    0m0.049s
+> > sys     0m0.394s
+> >
+> >
+> > ...so the speedup seems to be quite dramatic, actually -- 3x faster or
+> > so with the patched kernel.
+> >
+> > The underlying filesystem is ext4 here, and the config is a rawhide
+> > debug kernel config. For my next trick, I'll build some non-debug
+> > kernels and replicate the test with them. Stay tuned...
+> 
+> Just for grins, we should probably also try with the 3 client side
+> OPEN parallelisation patches in my 'devel' branch. I'd expect them to
+> give a slight performance improvement with your original test (i.e.
+> the one that doesn't play the UID/GID games)
+> 
 
---b.
 
-> 
-> Part of the client_mutex removal series involves cleaning up the
-> handling of deny modes in the server in order to setting and
-> enforcement atomic.
-> 
-> This does add a new per-nfs4_file spinlock, but in principle it
-> should never be contended while the client_mutex is still wrapped
-> around all of this code.
-> 
-> Jeff Layton (8):
->   nfsd: refactor nfs4_file_get_access and nfs4_file_put_access
->   nfsd: remove nfs4_file_put_fd
->   nfsd: shrink st_access_bmap and st_deny_bmap
->   nfsd: set stateid access and deny bits in nfs4_get_vfs_file
->   nfsd: clean up reset_union_bmap_deny
->   nfsd: always hold the fi_lock when bumping fi_access refcounts
->   nfsd: make deny mode enforcement more efficient and close races in it
->   nfsd: cleanup and rename nfs4_check_open
-> 
-> Trond Myklebust (3):
->   nfsd: Add fine grained protection for the nfs4_file->fi_stateids list
->   nfsd: Add locking to the nfs4_file->fi_fds[] array
->   nfsd: clean up helper __release_lock_stateid
-> 
->  fs/nfsd/nfs4state.c | 437 ++++++++++++++++++++++++++++++++++++++--------------
->  fs/nfsd/state.h     |  32 +---
->  2 files changed, 325 insertions(+), 144 deletions(-)
-> 
-> -- 
-> 1.9.3
-> 
+Ok, I haven't tested that yet, but I did put together a f20 machine on
+bare metal to act as a server. Here are some results from a test that
+forks 128 child processes and has each one create and close 1024 files.
+Client is 3.14.8-200.fc20.x86_64 and using NFSv4.1:
+
+With a stock Fedora kernel on the server running 3.14.8-200.fc20.x86_64:
+
+$ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+
+real	59m5.022s
+user	0m1.401s
+sys	0m17.561s
+
+
+...with the patched kernel 3.16.0-rc2.jlayton.1+ (basically Bruce's
+for-3.17 branch with the rest of my patches piled on):
+
+$ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+
+real	4m19.060s
+user	0m1.259s
+sys	0m13.059s
+
+...so around a factor of 13x speedup on parallel creates. Again, this
+is not a terribly scientific benchmark, but it does suggest that this
+patchset helps immensely.
+
+-- 
+Jeff Layton <jlayton@primarydata.com>
