@@ -1,105 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:57413 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754957AbaGQTMt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 15:12:49 -0400
-Received: by mail-qa0-f44.google.com with SMTP id f12so2167535qad.17
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 12:12:48 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 5/6] nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock
-Date: Thu, 17 Jul 2014 15:12:33 -0400
-Message-Id: <1405624354-22388-6-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
-References: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:55559 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754356AbaGAUNU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 16:13:20 -0400
+Received: by mail-qc0-f181.google.com with SMTP id x13so8832553qcv.40
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 13:13:19 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 1 Jul 2014 16:13:17 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
+Message-ID: <20140701161317.0761839e@tlielax.poochiereds.net>
+In-Reply-To: <20140701200135.GE14728@fieldses.org>
+References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
+	<20140630125142.GA32089@infradead.org>
+	<20140630085934.2bf86ba0@tlielax.poochiereds.net>
+	<20140630193237.GA11935@fieldses.org>
+	<20140630162014.20e63e1a@tlielax.poochiereds.net>
+	<CAHQdGtQtHaKx6mEXzO7XndZPo19joccuPa0_z0T_79TiG1434w@mail.gmail.com>
+	<20140630163647.5227ac55@tlielax.poochiereds.net>
+	<20140701101034.520b04bb@tlielax.poochiereds.net>
+	<CAHQdGtQZP8RGqWS0pw-X97D_3GE1tqxaeVMSXgLa+VtaSLae2w@mail.gmail.com>
+	<20140701144631.4bf0e9b5@tlielax.poochiereds.net>
+	<20140701200135.GE14728@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, both destroy_revoked_delegation and revoke_delegation
-manipulate the cl_revoked list without any locking aside from the
-client_mutex. Ensure that the clp->cl_lock is held when manipulating it,
-except for the list walking in destroy_client. At that point, the client
-should no longer be in use, and so it should be safe to walk the list
-without any locking. That also means that we don't need to do the
-list_splice_init there either.
+On Tue, 1 Jul 2014 16:01:35 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Also, the fact that destroy_revoked_delegation and revoke_delegation
-delete dl_recall_lru without any locking makes it difficult to know
-whether they're doing so safely in all cases. Move the list_del_init
-calls into the callers, and add WARN_ONs in the event that these calls
-are passed a delegation that has a non-empty list_head.
+> On Tue, Jul 01, 2014 at 02:46:31PM -0400, Jeff Layton wrote:
+> > Ok, I haven't tested that yet, but I did put together a f20 machine on
+> > bare metal to act as a server. Here are some results from a test that
+> > forks 128 child processes and has each one create and close 1024 files.
+> > Client is 3.14.8-200.fc20.x86_64 and using NFSv4.1:
+> > 
+> > With a stock Fedora kernel on the server running 3.14.8-200.fc20.x86_64:
+> > 
+> > $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+> > 
+> > real	59m5.022s
+> > user	0m1.401s
+> > sys	0m17.561s
+> > 
+> > 
+> > ...with the patched kernel 3.16.0-rc2.jlayton.1+ (basically Bruce's
+> > for-3.17 branch with the rest of my patches piled on):
+> > 
+> > $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+> > 
+> > real	4m19.060s
+> > user	0m1.259s
+> > sys	0m13.059s
+> > 
+> > ...so around a factor of 13x speedup on parallel creates. Again, this
+> > is not a terribly scientific benchmark, but it does suggest that this
+> > patchset helps immensely.
+> 
+> Neat-o.
+> 
+> It might also be interesting to compare with NFSv3?
+> 
+> I wonder what a first good test of the smp scalability would be.
+> 
+> --b.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+Yeah, it is neato. And just to be sure that it wasn't some other random
+change between 3.14 and 3.16, I popped off all of my patches, rebuilt
+nfsd.ko and reran the test with everything else the same:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4e42c3823a8a..ca8b4d0e712b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -669,7 +669,7 @@ unhash_delegation_locked(struct nfs4_delegation *dp)
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
- {
--	list_del_init(&dp->dl_recall_lru);
-+	WARN_ON(!list_empty(&dp->dl_recall_lru));
- 	nfs4_put_delegation(dp);
- }
- 
-@@ -685,11 +685,15 @@ static void revoke_delegation(struct nfs4_delegation *dp)
- {
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 
-+	WARN_ON(!list_empty(&dp->dl_recall_lru));
-+
- 	if (clp->cl_minorversion == 0)
- 		destroy_revoked_delegation(dp);
- 	else {
- 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
--		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
-+		spin_lock(&clp->cl_lock);
-+		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
-+		spin_unlock(&clp->cl_lock);
- 	}
- }
- 
-@@ -1458,9 +1462,9 @@ destroy_client(struct nfs4_client *clp)
- 		list_del_init(&dp->dl_recall_lru);
- 		nfs4_put_delegation(dp);
- 	}
--	list_splice_init(&clp->cl_revoked, &reaplist);
--	while (!list_empty(&reaplist)) {
-+	while (!list_empty(&clp->cl_revoked)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
- 		destroy_revoked_delegation(dp);
- 	}
- 	while (!list_empty(&clp->cl_openowners)) {
-@@ -3883,8 +3887,10 @@ nfs4_laundromat(struct nfsd_net *nn)
- 		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
--	list_for_each_safe(pos, next, &reaplist) {
--		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
-+	while (!list_empty(&reaplist)) {
-+		dp = list_first_entry(&reaplist, struct nfs4_delegation,
-+					dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
- 		revoke_delegation(dp);
- 	}
- 	list_for_each_safe(pos, next, &nn->close_lru) {
-@@ -4228,6 +4234,9 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		break;
- 	case NFS4_REVOKED_DELEG_STID:
- 		dp = delegstateid(s);
-+		spin_lock(&cl->cl_lock);
-+		list_del_init(&dp->dl_recall_lru);
-+		spin_unlock(&cl->cl_lock);
- 		destroy_revoked_delegation(dp);
- 		ret = nfs_ok;
- 		break;
+$ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+
+real	58m50.564s
+user	0m1.513s
+sys	0m18.963s
+
+...so it really does appear that these changes make the difference.
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
