@@ -1,66 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:50911 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750982AbaGBIkt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 04:40:49 -0400
-Received: by mail-pd0-f173.google.com with SMTP id r10so11588726pdi.32
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Jul 2014 01:40:48 -0700 (PDT)
-Message-ID: <53B3C56F.20406@gmail.com>
-Date: Wed, 02 Jul 2014 16:40:15 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:15958 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756563AbaGAQrX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Jul 2014 12:47:23 -0400
+Date: Tue, 1 Jul 2014 11:46:52 -0500
+From: David Teigland <teigland@redhat.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Joe Perches <joe@perches.com>, Christine Caulfield <ccaulfie@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, cluster-devel@redhat.com,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [RFC PATCH] dlm: Remove unused conf from lm_grant
+Message-ID: <20140701164652.GB32565@redhat.com>
+References: <1404220810.2717.39.camel@joe-AO725>
+ <20140701104313.5317400a@tlielax.poochiereds.net>
 MIME-Version: 1.0
-To: Avi Kivity <avi@cloudius-systems.com>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] nfs: fix nfs4d readlink truncated packet
-References: <1403792592-1517-1-git-send-email-avi@cloudius-systems.com> <53B2999C.6090401@cloudius-systems.com>
-In-Reply-To: <53B2999C.6090401@cloudius-systems.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140701104313.5317400a@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On 7/1/2014 19:21, Avi Kivity wrote:
-> On 06/26/2014 05:23 PM, Avi Kivity wrote:
->> XDR requires 4-byte alignment; nfs4d READLINK reply writes out the padding,
->> but truncates the packet to the padding-less size.
->>
->> Fix by taking the padding into consideration when truncating the packet.
->>
+On Tue, Jul 01, 2014 at 10:43:13AM -0400, Jeff Layton wrote:
+> On Tue, 01 Jul 2014 06:20:10 -0700
+> Joe Perches <joe@perches.com> wrote:
 > 
-> Ping.  I should have mentioned that without this, readlink() returns an I/O error on the client.
-
-Yes, I got
-[root@localhost ~]# ll /mnt/
-ls: cannot read symbolic link /mnt/test: Input/output error
-total 4
--rw-r--r--. 1 root root  0 Jun 14 01:21 123456
-lrwxrwxrwx. 1 root root  6 Jul  2 03:33 test
-drwxr-xr-x. 1 root root  0 Jul  2 23:50 tmp
-drwxr-xr-x. 1 root root 60 Jul  2 23:44 tree
-[root@localhost ~]# 
-
-It's introduced by commit 476a7b1f4b2c (nfsd4: don't treat readlink like a zero-copy operation).
-
+> > While doing a bit of adding argument names to fs.h,
+> > I looked at lm_grant and it seems the 2nd argument
+> > is always NULL.
+> > 
+> > How about removing it?
+> > 
+> > This doesn't apply as it depends on some other patches
+> > but it should be clear enough...
+> > 
 > 
->> Signed-off-by: Avi Kivity <avi@cloudius-systems.com>
->> ---
->>   fs/nfsd/nfs4xdr.c | 2 +-
->>   1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index 83baf2b..cba93ea 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -3267,7 +3267,7 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
->>         wire_count = htonl(maxcount);
->>       write_bytes_to_xdr_buf(xdr->buf, length_offset, &wire_count, 4);
->> -    xdr_truncate_encode(xdr, length_offset + 4 + maxcount);
->> +    xdr_truncate_encode(xdr, length_offset + 4 + ALIGN(maxcount, 4));
+> ACK on the general idea from my standpoint. Anything that simplifies
+> the file locking interfaces is a good thing, particularly the deferred
+> locking code.
 
-NFSD uses (XDR_QUADLEN(maxcount) << 2)) usually.
-Anyway, it's a nice fix.
+Fine with me.  I'd be happy to remove all the deferred locking code from
+dlm; it never really worked.
 
-Reviewed-by: Kinglong Mee <kinglongmee@gmail.com>
-
-thanks,
-Kinglong Mee
+Dave
