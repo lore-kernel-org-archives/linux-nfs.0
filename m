@@ -1,55 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:39162 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751205AbaGJNXm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 09:23:42 -0400
-Received: by mail-qa0-f42.google.com with SMTP id j15so1364736qaq.1
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 06:23:41 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 10 Jul 2014 09:23:37 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 003/114] nfsd: wait to initialize work struct just
- prior to using it
-Message-ID: <20140710092337.3eac8aa0@tlielax.poochiereds.net>
-In-Reply-To: <20140710105343.GB21461@infradead.org>
+Received: from casper.infradead.org ([85.118.1.10]:55043 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757146AbaGALHa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 07:07:30 -0400
+Date: Tue, 1 Jul 2014 13:07:18 +0200
+From: Peter Zijlstra <peterz@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        Ingo Molnar <mingo@redhat.com>
+Subject: Re: [PATCH v3 071/114] lockdep: add lockdep_assert_not_held
+Message-ID: <20140701110718.GT3213@twins.programming.kicks-ass.net>
 References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-	<1404143423-24381-4-git-send-email-jlayton@primarydata.com>
-	<20140708211133.GA26851@fieldses.org>
-	<20140709082121.GA30099@infradead.org>
-	<20140709194114.GC26851@fieldses.org>
-	<20140709163744.1aa6126c@tlielax.poochiereds.net>
-	<20140710105343.GB21461@infradead.org>
+ <1404143423-24381-72-git-send-email-jlayton@primarydata.com>
+ <20140701100335.GP6758@twins.programming.kicks-ass.net>
+ <20140701101108.GK3588@twins.programming.kicks-ass.net>
+ <20140701064111.5fe8e555@f20.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="xt4oM5y0t/70YhQj"
+In-Reply-To: <20140701064111.5fe8e555@f20.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 10 Jul 2014 03:53:43 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
 
-> > Unfortunately there are a few (fairly trivial) merge conflicts later in
-> > the series due to this change. Bruce, do you want me to repost the
-> > whole set, or would you rather just cherry-pick them from my updated
-> > branch?
-> 
-> Can you resend just the whole fi_fds and access/deny mode patches as a
-> series for the next step?  This seems useful and complicated enough to
-> do a standalone review.  I also don't think the additional few spinlocks
-> would have enough performance impact to avoid them until the big client
-> lock is gone, although all those logic changes could probably be done
-> easily enough without the new locking if someone cared enough (I don't).
-> 
+--xt4oM5y0t/70YhQj
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Yes, that sounds reasonable. I'll go ahead and move the patches
-necessary for it to the front of the series and address your comments
-and we can see about getting them merged ahead of the rest.
+On Tue, Jul 01, 2014 at 06:41:11AM -0400, Jeff Layton wrote:
+> Right -- in the case of something like atomic_dec_and_lock, we only
+> take the spinlock if we think the count might go to zero. So, we might
+> miss catching some places that could deadlock if the refcounts don't go
+> to zero in the testing we're doing.
+>=20
+> might_lock may be what we need, but I don't see any callers of it,=20
 
-I agree that the extra spinlocking probably won't matter while the
-client_mutex is in play. If it does, then not needing to walk the whole
-stateids list in order to do deny mode enforcement may help make up for
-it.
+might_fault()
+  might_lock_read(&current->mm->mmap_sem)
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+I'm not sure we have others; but this is the one I remember providing
+this for.
+
+> and
+> at a quick glance it doesn't appear to be disabled if debug_locks is
+> false.
+
+The whole of lockdep gets killed, and that would include the
+lock_acquire/lock_release used to implement these.
+
+--xt4oM5y0t/70YhQj
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAEBAgAGBQJTspZmAAoJEHZH4aRLwOS6UZQP/RuSMlz+dc0I56olTEfxnFKK
+LHKOoo7VEOSFzuHGHZXqqxG8MNSBOVI8C8+bKSl55GpzlaJoQkTr45Afpk0emnE5
++Tpx3ti4xxTYxrgGpYnB33Z9EXww5J81bnu1pHc87x1X2nubnPCTlHE8KM9Q6q2p
+I1R3vR15/gsgkDxCpJtMgAn50HKOMX8yyBqaH9tRQnXxreOFL3npWngAjXqbvj5N
+kfNIwyY7MBBUketsRhVa9XjMjjC6aHTf4nn9vwf6BdAeUqhcxRM1LIwuAq05czmf
+hESXv0xUjsiC1Yhjcr8kBpX+/SMIgOytEkQvV749v6VxtFNaCWiDLHOsY2rAZ7EF
+ys6v+yzD0MXgvSESLFMf4fuEoD7y+4BbhXqnLPeey7Ui3l9FCeUOi1mqB66tbuM6
+IV+9HmGs/lbmXGla80hc0XqOX4pfK56O/MSblBAGo56uIqxeLUrgVROXGatCVDVr
+0cBEoEhBaygmghyc5I0ILos+lAE8X4+IvrfbfVD2Sst/U+RGX6u4xyaSExhkbLiy
+LU++xEzrC6kPGR1Yo8RZZYPV0Z34lE3BKCzyYDRUnEZSivLbaXM+I4RmfXbon0/e
+JJeUvuZ/FNhFnPE14VdDj7Asvt63/JpfzK07JlA4AYHvkJWB03oQFoW91D+eDdyp
+sCMSnJl7U7ZKC5Vb/Ue1
+=J54h
+-----END PGP SIGNATURE-----
+
+--xt4oM5y0t/70YhQj--
