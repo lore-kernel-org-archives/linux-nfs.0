@@ -1,108 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42021 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932180AbaG3SVC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jul 2014 14:21:02 -0400
-Date: Wed, 30 Jul 2014 14:21:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "McEvoy, James" <james.mcevoy@hp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Fernandez, Roselle N" <roselle.fernandez@hp.com>,
-        "Palanisamy, Nandesh" <nandesh.palanisamy@hp.com>
-Subject: Re: NFSv4.1 ACL reference implementation
-Message-ID: <20140730182101.GJ26316@fieldses.org>
-References: <6301806E96421841896741228C6B1A2764A7C51F@G4W3216.americas.hpqcorp.net>
- <20140729210901.GA24471@fieldses.org>
- <6301806E96421841896741228C6B1A2764A7DCF7@G4W3216.americas.hpqcorp.net>
- <20140730180552.GI26316@fieldses.org>
- <6301806E96421841896741228C6B1A2764A7DEB1@G4W3216.americas.hpqcorp.net>
+Received: from mail-qg0-f67.google.com ([209.85.192.67]:37688 "EHLO
+	mail-qg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757761AbaGALKo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 07:10:44 -0400
+Received: by mail-qg0-f67.google.com with SMTP id f51so976105qge.2
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 04:10:43 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 1 Jul 2014 07:10:41 -0400
+To: Peter Zijlstra <peterz@infradead.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org, Ingo Molnar <mingo@redhat.com>
+Subject: Re: [PATCH v3 071/114] lockdep: add lockdep_assert_not_held
+Message-ID: <20140701071041.7cc9f9fa@f20.localdomain>
+In-Reply-To: <20140701110718.GT3213@twins.programming.kicks-ass.net>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+	<1404143423-24381-72-git-send-email-jlayton@primarydata.com>
+	<20140701100335.GP6758@twins.programming.kicks-ass.net>
+	<20140701101108.GK3588@twins.programming.kicks-ass.net>
+	<20140701064111.5fe8e555@f20.localdomain>
+	<20140701110718.GT3213@twins.programming.kicks-ass.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <6301806E96421841896741228C6B1A2764A7DEB1@G4W3216.americas.hpqcorp.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 30, 2014 at 06:15:37PM +0000, McEvoy, James wrote:
+On Tue, 1 Jul 2014 13:07:18 +0200
+Peter Zijlstra <peterz@infradead.org> wrote:
+
+> On Tue, Jul 01, 2014 at 06:41:11AM -0400, Jeff Layton wrote:
+> > Right -- in the case of something like atomic_dec_and_lock, we only
+> > take the spinlock if we think the count might go to zero. So, we might
+> > miss catching some places that could deadlock if the refcounts don't go
+> > to zero in the testing we're doing.
+> > 
+> > might_lock may be what we need, but I don't see any callers of it, 
 > 
+> might_fault()
+>   might_lock_read(&current->mm->mmap_sem)
 > 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > Sent: Wednesday, July 30, 2014 11:06 AM
-> > To: McEvoy, James
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: NFSv4.1 ACL reference implementation
-> > 
-> > On Wed, Jul 30, 2014 at 05:08:25PM +0000, McEvoy, James wrote:
-> > > We are implementing NFSv4.1 ACLs in the filesystem mostly to support
-> > > SMB/CIFS but I am seeing some strange behavior with ACL group
-> > > inheritance on children/grand-children using the nfs4_setfacl and
-> > > nfs4_getfacl on the parent directory.  The problems are mostly with
-> > > inheritance on the @OWNER and @GROUP ACEs...
-> > 
-> > The usual problem is that the umask is applied.
+> I'm not sure we have others; but this is the one I remember providing
+> this for.
 > 
-> Where can I find the proper behavior between umask and inheritance? 
+> > and
+> > at a quick glance it doesn't appear to be disabled if debug_locks is
+> > false.
+> 
+> The whole of lockdep gets killed, and that would include the
+> lock_acquire/lock_release used to implement these.
 
-For "posix" ACLs on local linux filesystems, the umask is just ignored
-in the case where we're creating a new file in a directory with
-default (inheritable) ACLs.
+Ok, good. Let's just drop this patch then and I'll plan to use
+might_lock instead of this call.
 
-In the v4 case that doesn't happen.  I think this probably a bug that
-needs to be fixed, but I'm not sure how.
-
---b.
-
-> > > What I am looking for is a reference that I can use to validate ACL
-> > > inheritance behavior. Is there a distro that has a filesystem which
-> > > supports
-> > > NFSv4 ACLs?  Or ideally an rpm that I could install on a CentOS6 VM.
-> > > I have tried using the richacl mount option on OpenSUSE 13.1 but the
-> > > nfs4_getfacl command returns:
-> > > "Operation to request attribute not supported."
-> > > The fstab entry to mount the filesystem is:
-> > > /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0-0-0-0-part3 \
-> > > 	/home	ext4	acl,richacl,user_xattr 1 2
-> > >
-> > > Do you have any recommendations as to what and how I can install a
-> > > filesystem that supports nfsv4 ACLs?
-> > 
-> > No, they all just do "posix" acls and nfsd tries to translate.
-> > 
-> > But the umask issue is somewhat of a separate issue.
-> > 
-> > --b.
-> > 
-> > >
-> > >   --jim
-> > >
-> > > > -----Original Message-----
-> > > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > > > Sent: Tuesday, July 29, 2014 2:09 PM
-> > > > To: McEvoy, James
-> > > > Cc: linux-nfs@vger.kernel.org
-> > > > Subject: Re: NFSv4.1 ACL reference implementation
-> > > >
-> > > > On Tue, Jul 29, 2014 at 07:18:03PM +0000, McEvoy, James wrote:
-> > > > > Is there a working NFSv4.1 reference implementation available and
-> > > > > are there
-> > > > any instructs on how to build/install it?
-> > > >
-> > > > I don't recall seeing any, no.
-> > > >
-> > > > (Most NFSv4.0 ACL implementations should still be perfectly
-> > > > compliant with the
-> > > > NFSv4.1 spec too as far as I know.  But I don't know of any
-> > > > implementations of the ACL features that are new to RFC 5661.  Is
-> > > > there any particular feature that you're interested in?)
-> > > >
-> > > > --b.
-> > > > --
-> > > > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> > > > in the body of a message to majordomo@vger.kernel.org More majordomo
-> > > > info at http://vger.kernel.org/majordomo-info.html
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of
-> > a message to majordomo@vger.kernel.org More majordomo info at
-> > http://vger.kernel.org/majordomo-info.html
+Thanks!
+-- 
+Jeff Layton <jlayton@primarydata.com>
