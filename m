@@ -1,91 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:50421 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965109AbaGPOcX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:23 -0400
-Received: by mail-qa0-f45.google.com with SMTP id cm18so756284qab.32
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:22 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 07/10] nfsd: Move the delegation reference counter into the struct nfs4_stid
-Date: Wed, 16 Jul 2014 10:32:02 -0400
-Message-Id: <1405521125-2303-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
-References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:45210 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754452AbaGBTpa convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jul 2014 15:45:30 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Chuck Lever'" <chuck.lever@oracle.com>,
+        "'Devesh Sharma'" <Devesh.Sharma@Emulex.Com>
+Cc: <linux-rdma@vger.kernel.org>,
+        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net> <20140623223942.1634.89063.stgit@manet.1015granger.net> <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com> <53B45D7B.4020705@opengridcomputing.com> <C9B761DF-7960-4346-949E-17A9BDD357DB@oracle.com>
+In-Reply-To: <C9B761DF-7960-4346-949E-17A9BDD357DB@oracle.com>
+Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport disconnect
+Date: Wed, 2 Jul 2014 14:46:06 -0500
+Message-ID: <005a01cf962e$43d44300$cb7cc900$@opengridcomputing.com>
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-We will want to add reference counting to the lock stateid and open
-stateids too in later patches.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4state.c | 6 +++---
- fs/nfsd/state.h     | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> Sent: Wednesday, July 02, 2014 2:40 PM
+> To: Steve Wise; Devesh Sharma
+> Cc: linux-rdma@vger.kernel.org; Linux NFS Mailing List
+> Subject: Re: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport disconnect
+> 
+> 
+> On Jul 2, 2014, at 3:28 PM, Steve Wise <swise@opengridcomputing.com> wrote:
+> 
+> > On 7/2/2014 2:06 PM, Devesh Sharma wrote:
+> >> This change is very much prone to generate poll_cq errors because of un-cleaned
+> completions which still
+> >> point to the non-existent QPs. On the new connection when these completions are polled,
+> the poll_cq will
+> >> fail because old QP pointer is already NULL.
+> >> Did anyone hit this situation during their testing?
+> 
+> I tested this aggressively with a fault injector that triggers regular connection
+> disruption.
+> 
+> > Hey Devesh,
+> >
+> > iw_cxgb4 will silently toss CQEs if the QP is not active.
+> 
+> xprtrdma relies on getting a completion (either successful or in error) for every
+> WR it has posted. The goal of this patch is to avoid throwing away queued
+> completions after a transport disconnect so we don't lose track of FRMR rkey
+> updates (FAST_REG_MR and LOCAL_INV completions) and we can capture all RPC
+> replies posted before the connection was lost.
+> 
+> Sounds like we also need to keep the QP around, even in error state, until all
+> known WRs on that QP have completed?
+>
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 91a33f8896dd..c55609a582ad 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -472,6 +472,7 @@ kmem_cache *slab)
- 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
- 	/* Will be incremented before return to client: */
- 	stid->sc_stateid.si_generation = 0;
-+	atomic_set(&stid->sc_count, 1);
+Perhaps.
  
- 	/*
- 	 * It shouldn't be a problem to reuse an opaque stateid value.
-@@ -595,7 +596,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time = 0;
--	atomic_set(&dp->dl_count, 1);
- 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
- 	return dp;
- }
-@@ -615,7 +615,7 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
- void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
--	if (atomic_dec_and_test(&dp->dl_count)) {
-+	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
- 		remove_stid(&dp->dl_stid);
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
-@@ -3119,7 +3119,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
- 	 * lock) we know the server hasn't removed the lease yet, we know
- 	 * it's safe to take a reference.
- 	 */
--	atomic_inc(&dp->dl_count);
-+	atomic_inc(&dp->dl_stid.sc_count);
- 	nfsd4_cb_recall(dp);
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 996d61eeb357..e68a9ae30fd7 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -73,6 +73,7 @@ struct nfsd4_callback {
- };
- 
- struct nfs4_stid {
-+	atomic_t sc_count;
- #define NFS4_OPEN_STID 1
- #define NFS4_LOCK_STID 2
- #define NFS4_DELEG_STID 4
-@@ -91,7 +92,6 @@ struct nfs4_delegation {
- 	struct list_head	dl_perfile;
- 	struct list_head	dl_perclnt;
- 	struct list_head	dl_recall_lru;  /* delegation recalled */
--	atomic_t		dl_count;       /* ref count */
- 	struct nfs4_file	*dl_file;
- 	u32			dl_type;
- 	time_t			dl_time;
--- 
-1.9.3
+> 
+> >
+> >
+> >>> -----Original Message-----
+> >>> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+> >>> owner@vger.kernel.org] On Behalf Of Chuck Lever
+> >>> Sent: Tuesday, June 24, 2014 4:10 AM
+> >>> To: linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+> >>> Subject: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport disconnect
+> >>>
+> >>> CQs are not destroyed until unmount. By draining CQs on transport
+> >>> disconnect, successful completions that can change the r.frmr.state field can
+> >>> be missed.
+> >>>
+> >>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> >>> ---
+> >>>  net/sunrpc/xprtrdma/verbs.c |    5 -----
+> >>>  1 file changed, 5 deletions(-)
+> >>>
+> >>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> >>> index 3c7f904..451e100 100644
+> >>> --- a/net/sunrpc/xprtrdma/verbs.c
+> >>> +++ b/net/sunrpc/xprtrdma/verbs.c
+> >>> @@ -873,9 +873,6 @@ retry:
+> >>>  			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+> >>>  				" status %i\n", __func__, rc);
+> >>>
+> >>> -		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+> >>> -		rpcrdma_clean_cq(ep->rep_attr.send_cq);
+> >>> -
+> >>>  		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+> >>>  		id = rpcrdma_create_id(xprt, ia,
+> >>>  				(struct sockaddr *)&xprt->rx_data.addr);
+> >>> @@ -985,8 +982,6 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep,
+> >>> struct rpcrdma_ia *ia)  {
+> >>>  	int rc;
+> >>>
+> >>> -	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+> >>> -	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+> >>>  	rc = rdma_disconnect(ia->ri_id);
+> >>>  	if (!rc) {
+> >>>  		/* returns without wait if not connected */
+> >>>
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the
+> >>> body of a message to majordomo@vger.kernel.org More majordomo info at
+> >>> http://vger.kernel.org/majordomo-info.html
+> >> N�����r��y���b�X��ǧv�^�)޺{.n�+����{���"��^n�r���z���h����&���G���h�(�階
+> �ݢj"���m�����z�ޖ���f���h���~�mml==
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+
 
