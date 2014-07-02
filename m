@@ -1,58 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:23627 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752021AbaGVV1d convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 17:27:33 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH 1/2] svcrdma: Increase credit limit to 32
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140722203520.GS8438@fieldses.org>
-Date: Tue, 22 Jul 2014 17:27:25 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <39340C1C-072D-4F78-88BE-51C70EC43EA9@oracle.com>
-References: <20140722195840.6011.87861.stgit@klimt.1015granger.net> <20140722200031.6011.28421.stgit@klimt.1015granger.net> <20140722203520.GS8438@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from plane.gmane.org ([80.91.229.3]:42924 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752411AbaGBRnI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jul 2014 13:43:08 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1X2OYi-0000rT-Cf
+	for linux-nfs@vger.kernel.org; Wed, 02 Jul 2014 19:43:04 +0200
+Received: from bitis.umrk.nl ([82.95.126.201])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Jul 2014 19:43:04 +0200
+Received: from jwinius by bitis.umrk.nl with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Jul 2014 19:43:04 +0200
+To: linux-nfs@vger.kernel.org
+From: Jaap Winius <jwinius@umrk.nl>
+Subject: NFSv4 cross-realm support
+Date: Wed, 2 Jul 2014 17:42:51 +0000 (UTC)
+Message-ID: <lp1gar$eb6$1@ger.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi folks,
 
-On Jul 22, 2014, at 4:35 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+Recently I've been working on cross-realm support to give my own MIT 
+Kerberos realm, UMRK.NL, access to the services of a realm that I manage. 
+All systems involved run Debian wheezy. So far, SSH, OpenLDAP, OpenAFS 
+and Dovecot IMAP are all working properly this way, but NFSv4 with 
+sec=krb5i is not; I keep getting "Permission denied" when attempting to 
+read or write to any file or directory that is not globally accessible.
 
-> Could I just get a little more of a changelog?  Why (in one sentence)
-> are we doing this?
+When the log output verbosity for rpc.gssd and rpc.svcgssd is increased 
+about as far as it will go (-vvvvv), little is different when things go 
+wrong, other than this one line produced by rpc.svcgssd on the server:
 
-Apologies, yes, I will resend with an adequate patch description.
+  nss_gss_princ_to_ids: Local-Realm 'UMRK.NL': NOT FOUND
 
-> 
-> --b.
-> 
-> On Tue, Jul 22, 2014 at 04:00:31PM -0400, Chuck Lever wrote:
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> include/linux/sunrpc/svc_rdma.h |    3 +--
->> 1 files changed, 1 insertions(+), 2 deletions(-)
->> 
->> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
->> index 5cf99a0..975da75 100644
->> --- a/include/linux/sunrpc/svc_rdma.h
->> +++ b/include/linux/sunrpc/svc_rdma.h
->> @@ -174,8 +174,7 @@ struct svcxprt_rdma {
->>  * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
->> #define RPCRDMA_ORD             (64/4)
->> #define RPCRDMA_SQ_DEPTH_MULT   8
->> -#define RPCRDMA_MAX_THREADS     16
->> -#define RPCRDMA_MAX_REQUESTS    16
->> +#define RPCRDMA_MAX_REQUESTS    32
->> #define RPCRDMA_MAX_REQ_SIZE    4096
->> 
->> /* svc_rdma_marshal.c */
->> 
+However, even that seems a bit misleading, because the log output for 
+rpc.idmapd (with Verbosity = 5) shows that the user and group IDs for my 
+account are being identified properly.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Should I prepare a bug report for this issue, or does cross-realm support 
+for NFSv4 require something extra?
 
+Thanks,
 
+Jaap
 
