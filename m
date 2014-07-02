@@ -1,143 +1,181 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:37069 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755278AbaGHSFV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:21 -0400
-Received: by mail-qc0-f170.google.com with SMTP id l6so5703861qcy.29
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:21 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 031/100] nfsd: clean up races in lock stateid searching and creation
-Date: Tue,  8 Jul 2014 14:03:19 -0400
-Message-Id: <1404842668-22521-32-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from lgeamrelo02.lge.com ([156.147.1.126]:44534 "EHLO
+	lgeamrelo02.lge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757274AbaGBAMb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 20:12:31 -0400
+From: Minchan Kim <minchan@kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        Mel Gorman <mgorman@suse.de>, Rik van Riel <riel@redhat.com>,
+        Hugh Dickins <hughd@google.com>, Johannes Weiner <hannes@cmpxchg.org>,
+        Michal Hocko <mhocko@suse.cz>, Minchan Kim <minchan@kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v3 2/3] mm: Introduce atomic_remove_mapping
+Date: Wed,  2 Jul 2014 09:13:48 +0900
+Message-Id: <1404260029-11525-3-git-send-email-minchan@kernel.org>
+In-Reply-To: <1404260029-11525-1-git-send-email-minchan@kernel.org>
+References: <1404260029-11525-1-git-send-email-minchan@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Preparation for removal of the client_mutex.
+For release page from atomic context(ie, softirq), locks
+related to the work should be aware of that.
 
-Currently, no lock aside from the client_mutex is held when calling
-find_lock_state. Ensure that the cl_lock is held by adding a lockdep
-assertion.
+There are two locks.
 
-Once we remove the client_mutex, it'll be possible for another thread to
-race in and insert a lock state for the same file after we search but
-before we insert a new one. Ensure that doesn't happen by redoing the
-search after allocating a new stid that we plan to insert. If one is
-found just put the one we just allocated.
+One is mapping->tree_lock and the other is swap_info_struct->lock.
+The mapping->tree_lock is alreay aware of irq so it's no problem
+but swap_info_struct->lock isn't so atomic_remove_mapping uses just
+try_spinlock and if it fails to hold a lock, it just depends on
+a fallback plan which moves the page into LRU's tail and expect page
+freeing in next.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+A change I know is mapping->a_ops->free is called on atomic context
+by this patch. Only user is nfs_readdir_clear_array which is no
+problem when I look at.
+
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Minchan Kim <minchan@kernel.org>
 ---
- fs/nfsd/nfs4state.c | 58 +++++++++++++++++++++++++++++++++++++----------------
- 1 file changed, 41 insertions(+), 17 deletions(-)
+ include/linux/swap.h |  4 ++++
+ mm/swapfile.c        | 11 ++++++++-
+ mm/vmscan.c          | 63 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 77 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 32538c79f9cb..2b8ca8354b95 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4694,16 +4694,14 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	return lo;
+diff --git a/include/linux/swap.h b/include/linux/swap.h
+index 94fd0b23f3f9..5df540205bda 100644
+--- a/include/linux/swap.h
++++ b/include/linux/swap.h
+@@ -336,6 +336,8 @@ extern unsigned long mem_cgroup_shrink_node_zone(struct mem_cgroup *mem,
+ 						unsigned long *nr_scanned);
+ extern unsigned long shrink_all_memory(unsigned long nr_pages);
+ extern int vm_swappiness;
++extern int atomic_remove_mapping(struct address_space *mapping,
++					struct page *page);
+ extern int remove_mapping(struct address_space *mapping, struct page *page);
+ extern unsigned long vm_total_pages;
+ 
+@@ -441,6 +443,7 @@ static inline long get_nr_swap_pages(void)
  }
  
--static struct nfs4_ol_stateid *
--alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
-+static void
-+init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
-+		  struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
+ extern void si_swapinfo(struct sysinfo *);
++extern struct swap_info_struct *swap_info_get(swp_entry_t entry);
+ extern swp_entry_t get_swap_page(void);
+ extern swp_entry_t get_swap_page_of_type(int);
+ extern int add_swap_count_continuation(swp_entry_t, gfp_t);
+@@ -449,6 +452,7 @@ extern int swap_duplicate(swp_entry_t);
+ extern int swapcache_prepare(swp_entry_t);
+ extern void swap_free(swp_entry_t);
+ extern void swapcache_free(swp_entry_t);
++extern void __swapcache_free(swp_entry_t);
+ extern int free_swap_and_cache(swp_entry_t);
+ extern int swap_type_of(dev_t, sector_t, struct block_device **);
+ extern unsigned int count_swap_pages(int, int);
+diff --git a/mm/swapfile.c b/mm/swapfile.c
+index ec2ce926ea5f..d76496a8a104 100644
+--- a/mm/swapfile.c
++++ b/mm/swapfile.c
+@@ -722,7 +722,7 @@ swp_entry_t get_swap_page_of_type(int type)
+ 	return (swp_entry_t) {0};
+ }
+ 
+-static struct swap_info_struct *swap_info_get(swp_entry_t entry)
++struct swap_info_struct *swap_info_get(swp_entry_t entry)
  {
--	struct nfs4_openowner *oo = openowner(open_stp->st_stateowner);
--	struct nfs4_ol_stateid *stp;
- 	struct nfs4_client *clp = lo->lo_owner.so_client;
- 
--	stp = nfs4_alloc_stateid(clp);
--	if (stp == NULL)
--		return NULL;
-+	lockdep_assert_held(&clp->cl_lock);
-+
- 	stp->st_stid.sc_type = NFS4_LOCK_STID;
- 	stp->st_stateowner = &lo->lo_owner;
- 	get_nfs4_file(fp);
-@@ -4712,20 +4710,20 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
--	spin_lock(&oo->oo_owner.so_client->cl_lock);
- 	list_add(&stp->st_locks, &open_stp->st_locks);
- 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
- 	spin_lock(&fp->fi_lock);
- 	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	spin_unlock(&fp->fi_lock);
--	spin_unlock(&oo->oo_owner.so_client->cl_lock);
--	return stp;
+ 	struct swap_info_struct *p;
+ 	unsigned long offset, type;
+@@ -855,6 +855,15 @@ void swapcache_free(swp_entry_t entry)
+ 	}
  }
  
- static struct nfs4_ol_stateid *
- find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
- {
- 	struct nfs4_ol_stateid *lst;
-+	struct nfs4_client *clp = lo->lo_owner.so_client;
-+
-+	lockdep_assert_held(&clp->cl_lock);
- 
- 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
- 		if (lst->st_stid.sc_file == fp)
-@@ -4734,6 +4732,36 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
- 	return NULL;
- }
- 
-+static struct nfs4_ol_stateid *
-+find_or_create_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fi,
-+			    struct nfs4_ol_stateid *ost, bool *new)
++void __swapcache_free(swp_entry_t entry)
 +{
-+	struct nfs4_ol_stateid *lst, *nst = NULL;
-+	struct nfs4_openowner *oo = openowner(ost->st_stateowner);
-+	struct nfs4_client *clp = oo->oo_owner.so_client;
++	struct swap_info_struct *p;
 +
-+	spin_lock(&clp->cl_lock);
-+	lst = find_lock_stateid(lo, fi);
-+	if (lst == NULL) {
-+		spin_unlock(&clp->cl_lock);
-+		nst = nfs4_alloc_stateid(clp);
-+		if (nst == NULL)
-+			return NULL;
-+
-+		spin_lock(&clp->cl_lock);
-+		lst = find_lock_stateid(lo, fi);
-+		if (likely(!lst)) {
-+			init_lock_stateid(nst, lo, fi, ost);
-+			lst = nst;
-+			nst = NULL;
-+			*new = true;
-+		}
-+	}
-+	spin_unlock(&clp->cl_lock);
-+	if (nst)
-+		put_generic_stateid(nst);
-+	return lst;
++	p = swap_info_get(entry);
++	if (p)
++		swap_entry_free(p, entry, SWAP_HAS_CACHE);
 +}
- 
- static int
- check_lock_length(u64 offset, u64 length)
-@@ -4777,14 +4805,10 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
- 			return nfserr_bad_seqid;
- 	}
- 
--	*lst = find_lock_stateid(lo, fi);
-+	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
- 	if (*lst == NULL) {
--		*lst = alloc_init_lock_stateid(lo, fi, ost);
--		if (*lst == NULL) {
--			release_lockowner_if_empty(lo);
--			return nfserr_jukebox;
--		}
--		*new = true;
-+		release_lockowner_if_empty(lo);
-+		return nfserr_jukebox;
- 	}
- 	return nfs_ok;
++
+ /*
+  * How many references to page are currently swapped out?
+  * This does not give an exact answer when swap count is continued,
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 6d24fd63b209..31af369eef24 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -526,6 +526,69 @@ static pageout_t pageout(struct page *page, struct address_space *mapping,
  }
+ 
+ /*
++ * Attempt to detach a locked page from its ->mapping in atomic context.
++ * If it is dirty or if someone else has a ref on the page or couldn't
++ * get necessary locks, abort and return 0.
++ * If it was successfully detached, return 1.
++ * Assumes the caller has a single ref on this page.
++ */
++int atomic_remove_mapping(struct address_space *mapping,
++				struct page *page)
++{
++	BUG_ON(!PageLocked(page));
++	BUG_ON(mapping != page_mapping(page));
++	BUG_ON(!irqs_disabled());
++
++	spin_lock(&mapping->tree_lock);
++
++	/* Look at comment in __remove_mapping */
++	if (!page_freeze_refs(page, 2))
++		goto cannot_free;
++	/* note: atomic_cmpxchg in page_freeze_refs provides the smp_rmb */
++	if (unlikely(PageDirty(page))) {
++		page_unfreeze_refs(page, 2);
++		goto cannot_free;
++	}
++
++	if (PageSwapCache(page)) {
++		swp_entry_t swap = { .val = page_private(page) };
++		struct swap_info_struct *p = swap_info_get(swap);
++
++		if (!p || !spin_trylock(&p->lock)) {
++			page_unfreeze_refs(page, 2);
++			goto cannot_free;
++		}
++
++		mem_cgroup_swapout(page, swap);
++		__delete_from_swap_cache(page);
++		spin_unlock(&mapping->tree_lock);
++		__swapcache_free(swap);
++		spin_unlock(&p->lock);
++	} else {
++		void (*freepage)(struct page *);
++
++		freepage = mapping->a_ops->freepage;
++		__delete_from_page_cache(page, NULL);
++		spin_unlock(&mapping->tree_lock);
++
++		if (freepage != NULL)
++			freepage(page);
++	}
++
++	/*
++	 * Unfreezing the refcount with 1 rather than 2 effectively
++	 * drops the pagecache ref for us without requiring another
++	 * atomic operation.
++	 */
++	page_unfreeze_refs(page, 1);
++	return 1;
++
++cannot_free:
++	spin_unlock(&mapping->tree_lock);
++	return 0;
++}
++
++/*
+  * Same as remove_mapping, but if the page is removed from the mapping, it
+  * gets returned with a refcount of 0.
+  */
 -- 
-1.9.3
+2.0.0
 
