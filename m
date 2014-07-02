@@ -1,31 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:33378 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751341AbaG3VIE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 17:08:04 -0400
-Date: Wed, 30 Jul 2014 14:08:02 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 06/38] nfsd: do filp_close in sc_free callback for
- lock stateids
-Message-ID: <20140730210802.GA5964@infradead.org>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
- <1406684083-19736-7-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1406684083-19736-7-git-send-email-jlayton@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:45941 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754433AbaGBTSd convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 15:18:33 -0400
+Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: NFSoRDMA developers bi-weekly meeting minutes (6/25)
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <53B42F2A.9060205@oracle.com>
+Date: Wed, 2 Jul 2014 15:18:22 -0400
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Rupert Dance <rsdance@soft-forge.com>,
+        Doug Ledford <dledford@redhat.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Steve Dickson <SteveD@redhat.com>
+Message-Id: <86AE8783-CF35-4327-ABB9-940F3CCDBB94@oracle.com>
+References: <53B42F2A.9060205@oracle.com>
+To: Shirley Ma <shirley.ma@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 29, 2014 at 09:34:11PM -0400, Jeff Layton wrote:
-> Releasing locks when we unhash the stateid instead of doing so only when
-> the stateid is actually released will be problematic in later patches
-> when we need to protect the unhashing with spinlocks. Move it into the
-> sc_free operation instead.
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 
-Looks good,
+On Jul 2, 2014, at 12:11 PM, Shirley Ma <shirley.ma@oracle.com> wrote:
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+> 7. Mike reported that NFSoRDMA doesn't show same performance as SMB for fio test.
+
+Shirley, did you mean Mark Lehrer ?
+
+http://marc.info/?l=linux-rdma&m=140260285527831&w=2
+
+> Shirley is able to reproduce it, Steve will ask Chelsio engineer to test it as well.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
