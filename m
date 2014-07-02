@@ -1,150 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47995 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752291AbaGJURH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jul 2014 16:17:07 -0400
-Date: Thu, 10 Jul 2014 16:17:02 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org, tom@ogc.us
-Subject: Re: [PATCH] svcrdma: send_write() must not overflow the device's max
- sge
-Message-ID: <20140710201702.GG26561@fieldses.org>
-References: <20140709184914.22217.59770.stgit@build.ogc.int>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:45256 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756807AbaGBT4S convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Jul 2014 15:56:18 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Devesh Sharma'" <Devesh.Sharma@Emulex.Com>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net> <20140623223942.1634.89063.stgit@manet.1015granger.net> <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com> <53B45D7B.4020705@opengridcomputing.com> <EE7902D3F51F404C82415C4803930ACD3FE0C57A@CMEXMB1.ad.emulex.com> <006001cf962e$e20df020$a629d060$@opengridcomputing.com> <EE7902D3F51F404C82415C4803930ACD3FE0C5AE@CMEXMB1.ad.emulex.com>
+In-Reply-To: <EE7902D3F51F404C82415C4803930ACD3FE0C5AE@CMEXMB1.ad.emulex.com>
+Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport disconnect
+Date: Wed, 2 Jul 2014 14:56:54 -0500
+Message-ID: <006401cf962f$c5ec49e0$51c4dda0$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140709184914.22217.59770.stgit@build.ogc.int>
+Content-Type: text/plain;
+	charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 09, 2014 at 01:49:15PM -0500, Steve Wise wrote:
-> Function send_write() must stop creating sges when it reaches the device
-> max and return the amount sent in the RDMA Write to the caller.
 
-Queueing up for 3.17, thanks.--b.
 
+> -----Original Message-----
+> From: Devesh Sharma [mailto:Devesh.Sharma@Emulex.Com]
+> Sent: Wednesday, July 02, 2014 2:54 PM
+> To: Steve Wise; 'Chuck Lever'; linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+> Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport disconnect
 > 
-> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-> ---
 > 
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c |   39 +++++++++++++--------------------
->  1 files changed, 15 insertions(+), 24 deletions(-)
 > 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> index 49fd21a..9f1b506 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> @@ -192,6 +192,8 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
->  		xdr_sge_no++;
->  		BUG_ON(xdr_sge_no > vec->count);
->  		bc -= sge_bytes;
-> +		if (sge_no == xprt->sc_max_sge)
-> +			break;
->  	}
->  
->  	/* Prepare WRITE WR */
-> @@ -209,7 +211,7 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
->  	atomic_inc(&rdma_stat_write);
->  	if (svc_rdma_send(xprt, &write_wr))
->  		goto err;
-> -	return 0;
-> +	return write_len - bc;
->   err:
->  	svc_rdma_unmap_dma(ctxt);
->  	svc_rdma_put_context(ctxt, 0);
-> @@ -225,7 +227,6 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
->  {
->  	u32 xfer_len = rqstp->rq_res.page_len + rqstp->rq_res.tail[0].iov_len;
->  	int write_len;
-> -	int max_write;
->  	u32 xdr_off;
->  	int chunk_off;
->  	int chunk_no;
-> @@ -239,8 +240,6 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
->  	res_ary = (struct rpcrdma_write_array *)
->  		&rdma_resp->rm_body.rm_chunks[1];
->  
-> -	max_write = xprt->sc_max_sge * PAGE_SIZE;
-> -
->  	/* Write chunks start at the pagelist */
->  	for (xdr_off = rqstp->rq_res.head[0].iov_len, chunk_no = 0;
->  	     xfer_len && chunk_no < arg_ary->wc_nchunks;
-> @@ -260,23 +259,21 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
->  						write_len);
->  		chunk_off = 0;
->  		while (write_len) {
-> -			int this_write;
-> -			this_write = min(write_len, max_write);
->  			ret = send_write(xprt, rqstp,
->  					 ntohl(arg_ch->rs_handle),
->  					 rs_offset + chunk_off,
->  					 xdr_off,
-> -					 this_write,
-> +					 write_len,
->  					 vec);
-> -			if (ret) {
-> +			if (ret <= 0) {
->  				dprintk("svcrdma: RDMA_WRITE failed, ret=%d\n",
->  					ret);
->  				return -EIO;
->  			}
-> -			chunk_off += this_write;
-> -			xdr_off += this_write;
-> -			xfer_len -= this_write;
-> -			write_len -= this_write;
-> +			chunk_off += ret;
-> +			xdr_off += ret;
-> +			xfer_len -= ret;
-> +			write_len -= ret;
->  		}
->  	}
->  	/* Update the req with the number of chunks actually used */
-> @@ -293,7 +290,6 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
->  {
->  	u32 xfer_len = rqstp->rq_res.len;
->  	int write_len;
-> -	int max_write;
->  	u32 xdr_off;
->  	int chunk_no;
->  	int chunk_off;
-> @@ -311,8 +307,6 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
->  	res_ary = (struct rpcrdma_write_array *)
->  		&rdma_resp->rm_body.rm_chunks[2];
->  
-> -	max_write = xprt->sc_max_sge * PAGE_SIZE;
-> -
->  	/* xdr offset starts at RPC message */
->  	nchunks = ntohl(arg_ary->wc_nchunks);
->  	for (xdr_off = 0, chunk_no = 0;
-> @@ -330,24 +324,21 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
->  						write_len);
->  		chunk_off = 0;
->  		while (write_len) {
-> -			int this_write;
-> -
-> -			this_write = min(write_len, max_write);
->  			ret = send_write(xprt, rqstp,
->  					 ntohl(ch->rs_handle),
->  					 rs_offset + chunk_off,
->  					 xdr_off,
-> -					 this_write,
-> +					 write_len,
->  					 vec);
-> -			if (ret) {
-> +			if (ret <= 0) {
->  				dprintk("svcrdma: RDMA_WRITE failed, ret=%d\n",
->  					ret);
->  				return -EIO;
->  			}
-> -			chunk_off += this_write;
-> -			xdr_off += this_write;
-> -			xfer_len -= this_write;
-> -			write_len -= this_write;
-> +			chunk_off += ret;
-> +			xdr_off += ret;
-> +			xfer_len -= ret;
-> +			write_len -= ret;
->  		}
->  	}
->  	/* Update the req with the number of chunks actually used */
+> > -----Original Message-----
+> > From: Steve Wise [mailto:swise@opengridcomputing.com]
+> > Sent: Thursday, July 03, 2014 1:21 AM
+> > To: Devesh Sharma; 'Chuck Lever'; linux-rdma@vger.kernel.org; linux-
+> > nfs@vger.kernel.org
+> > Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
+> > disconnect
+> >
+> >
+> >
+> > > -----Original Message-----
+> > > From: Devesh Sharma [mailto:Devesh.Sharma@Emulex.Com]
+> > > Sent: Wednesday, July 02, 2014 2:43 PM
+> > > To: Steve Wise; Chuck Lever; linux-rdma@vger.kernel.org;
+> > > linux-nfs@vger.kernel.org
+> > > Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
+> > > disconnect
+> > >
+> > > > -----Original Message-----
+> > > > From: Steve Wise [mailto:swise@opengridcomputing.com]
+> > > > Sent: Thursday, July 03, 2014 12:59 AM
+> > > > To: Devesh Sharma; Chuck Lever; linux-rdma@vger.kernel.org; linux-
+> > > > nfs@vger.kernel.org
+> > > > Subject: Re: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
+> > > > disconnect
+> > > >
+> > > > On 7/2/2014 2:06 PM, Devesh Sharma wrote:
+> > > > > This change is very much prone to generate poll_cq errors because
+> > > > > of un-cleaned completions which still point to the non-existent
+> > > > > QPs. On the new connection when these completions are polled, the
+> > > > > poll_cq will fail
+> > > > because old QP pointer is already NULL.
+> > > > > Did anyone hit this situation during their testing?
+> > > >
+> > > > Hey Devesh,
+> > > >
+> > > > iw_cxgb4 will silently toss CQEs if the QP is not active.
+> > >
+> > > Ya, just now checked that in mlx and cxgb4 driver code. On the other
+> > > hand ocrdma is asserting a BUG-ON for such CQEs causing system panic.
+> > > Out of curiosity I am asking, how this change is useful here, is it
+> > > reducing the re-connection time...Anyhow rpcrdma_clean_cq was
+> > > discarding the completions (flush/successful both)
+> > >
+> >
+> > Well, I don't think there is anything restricting an application from destroying
+> > the QP with pending CQEs on its CQs.   So it definitely shouldn't cause a
+> > BUG_ON() I think.   I'll have to read up in the Verbs specs if destroying a QP
+> > kills all the pending CQEs...
 > 
+> Oh confusion...let me clarify: in ocrdma BUG ON is hit in poll_cq() after re-connection happens
+> and cq is polled again.
+> Now the first completion in CQ still points to old QP-ID for which ocrdma does not have valid
+> QP pointer.
+>
+
+Right.  Which means it’s a stale CQE.  I don't think that should cause a BUG_ON. 
+
+ 
+> >
+> >
+> > > >
+> > > >
+> > > > >> -----Original Message-----
+> > > > >> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+> > > > >> owner@vger.kernel.org] On Behalf Of Chuck Lever
+> > > > >> Sent: Tuesday, June 24, 2014 4:10 AM
+> > > > >> To: linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+> > > > >> Subject: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
+> > > > >> disconnect
+> > > > >>
+> > > > >> CQs are not destroyed until unmount. By draining CQs on transport
+> > > > >> disconnect, successful completions that can change the
+> > > > >> r.frmr.state field can be missed.
+> > >
+> > > Still those are missed isn’t it....Since those successful completions
+> > > will still be dropped after re- connection. Am I missing something to
+> > > understanding the motivation...
+> > >
+> > > > >>
+> > > > >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> > > > >> ---
+> > > > >>   net/sunrpc/xprtrdma/verbs.c |    5 -----
+> > > > >>   1 file changed, 5 deletions(-)
+> > > > >>
+> > > > >> diff --git a/net/sunrpc/xprtrdma/verbs.c
+> > > > >> b/net/sunrpc/xprtrdma/verbs.c index 3c7f904..451e100 100644
+> > > > >> --- a/net/sunrpc/xprtrdma/verbs.c
+> > > > >> +++ b/net/sunrpc/xprtrdma/verbs.c
+> > > > >> @@ -873,9 +873,6 @@ retry:
+> > > > >>   			dprintk("RPC:       %s:
+> > rpcrdma_ep_disconnect"
+> > > > >>   				" status %i\n", __func__, rc);
+> > > > >>
+> > > > >> -		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+> > > > >> -		rpcrdma_clean_cq(ep->rep_attr.send_cq);
+> > > > >> -
+> > > > >>   		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+> > > > >>   		id = rpcrdma_create_id(xprt, ia,
+> > > > >>   				(struct sockaddr *)&xprt-
+> > >rx_data.addr);
+> > > > @@ -985,8 +982,6 @@
+> > > > >> rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia
+> > > > >> *ia) {
+> > > > >>   	int rc;
+> > > > >>
+> > > > >> -	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+> > > > >> -	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+> > > > >>   	rc = rdma_disconnect(ia->ri_id);
+> > > > >>   	if (!rc) {
+> > > > >>   		/* returns without wait if not connected */
+> > > > >>
+> > > > >> --
+> > > > >> To unsubscribe from this list: send the line "unsubscribe linux-rdma"
+> > > > >> in the body of a message to majordomo@vger.kernel.org More
+> > > > majordomo
+> > > > >> info at http://vger.kernel.org/majordomo-info.html
+> > > > > N     r  y   b X  ǧv ^ )޺{.n +    {   "  ^n r   z   h    &   G   h 
+> > > > > ( 階 ݢj"   m     z ޖ   f   h   ~ mml==
+> >
+
+
