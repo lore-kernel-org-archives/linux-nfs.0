@@ -1,63 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:62204 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750702AbaG3Bhu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:37:50 -0400
-Received: by mail-qg0-f49.google.com with SMTP id j107so647996qga.22
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:37:49 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH resend] nfsd: print status when nfsd4_open fails to open file it just created
-Date: Tue, 29 Jul 2014 21:37:44 -0400
-Message-Id: <1406684264-19922-1-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405949850-27841-1-git-send-email-jlayton@primarydata.com>
-References: <1405949850-27841-1-git-send-email-jlayton@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:20669 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750920AbaGBQLj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 12:11:39 -0400
+Message-ID: <53B42F2A.9060205@oracle.com>
+Date: Wed, 02 Jul 2014 09:11:22 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
+MIME-Version: 1.0
+To: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Rupert Dance <rsdance@soft-forge.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Doug Ledford <dledford@redhat.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: NFSoRDMA developers bi-weekly meeting minutes (6/25)
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's possible for nfsd to fail opening a file that it has just created.
-When that happens, we throw a WARN but it doesn't include any info about
-the error code. Print the status code to give us a bit more info.
+Sorry for being late, I just found this email wasn't out. Please add what's missing.
 
-Our QA group hit some of these warnings under some very heavy stress
-testing. My suspicion is that they hit the file-max limit, but it's hard
-to know for sure. Go ahead and add a -ENFILE mapping to
-nfserr_serverfault to make the error more distinct (and correct).
+Attendees:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4proc.c | 4 +++-
- fs/nfsd/nfsproc.c  | 1 +
- 2 files changed, 4 insertions(+), 1 deletion(-)
+Rupert Dance (Soft Forge)
+Chuck Lever (Oracle)
+Doug Ledford (RedHat)
+Shirley Ma (Oracle)
+Anna Schumaker (Net App)
+Steve Wise (OpenGridComputing, Chelsio)
+Steve Dickson (RedHat)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 29a617ebe38c..8611585f739d 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -460,7 +460,9 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
- 	 */
- 	status = nfsd4_process_open2(rqstp, resfh, open);
--	WARN_ON(status && open->op_created);
-+	WARN(status && open->op_created,
-+	     "nfsd4_process_open2 failed to open newly-created file! status=%u\n",
-+	     be32_to_cpu(status));
- out:
- 	if (resfh && resfh != &cstate->current_fh) {
- 		fh_dup2(&cstate->current_fh, resfh);
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index b19c7e8bf64c..b8680738f588 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -745,6 +745,7 @@ nfserrno (int errno)
- 		{ nfserr_notsupp, -EOPNOTSUPP },
- 		{ nfserr_toosmall, -ETOOSMALL },
- 		{ nfserr_serverfault, -ESERVERFAULT },
-+		{ nfserr_serverfault, -ENFILE },
- 	};
- 	int	i;
- 
--- 
-1.9.3
+Jeff is busy on OFED stack work, others are on vacation
 
+Moderator:
+Shirley Ma (Oracle)
+
+NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA development and test effort from different resources to speed up NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools development. Hopefully the quality of NFSoRDMA upstream patches can be improved by being tested by a quorum of HW vendors.
+
+Today's meeting notes:
+1. Follow ups from last week:
+Steve has created a test git tree for client and server patches that are heading upstream so interested parties can test out. Here is the link to the git tree for testing:
+
+The branch is named for-test and the repo is at: 
+git://git.linux-nfs.org/projects/swise/linux.git
+
+2. Rupert gave an update for NFSoRDMA patches to be included in the coming OFED-3.12-1 release which is targeted in July. Jeff has ported all patches from upstream tree, UNL is testing these patches to see any regression.
+
+3. Chuck created destructive test patch to inject IB verbs errors randomly in NFSoRDMA. This can easily trigger NFSoRDMA bugs. This approach can simulate cable plug/unplug, rpcrdma connect/reconnect stale resource issue... This patch will benefit developers for testing and debugging. Steven mentioned Chelsio has similar test method in userspace.
+
+4. Discussed about Chuck's most recent xprtrdma patchset to upstream, decided to the reference count to memory window buffer list patch is not needed.
+
+5. Shirley discussed NFSoRDMA performance anaylysis tools to measure CPU, bandwidth, latency, lock, interrupts rate, memory foot print. Suggestion is to use current lock_stat, perf to report/monitor cpu, lock statistics, use nfsstat to report NFS statistics first; Shirley suggested to add more statistics in RDMA operations for performance analysis. Shirley will write some documentation on performance analysis tool.
+
+6. NFSoRDMA virtualization doesn't work. Shirley found that VF FRMR reported port error after a successful post_send on connextX-2. It didn't seem an NFSoRDMA issue. Questions are whether VF FRMR is fully tested. Later Yan confirmed VF FRMR doesn't work for NFSoRDMA on connectX-3 either.
+
+7. Mike reported that NFSoRDMA doesn't show same performance as SMB for fio test. Shirley is able to reproduce it, Steve will ask Chelsio engineer to test it as well.
+
+Meeting time: one hour discussion every other Wed (next meeting will be
+on 7/6). A reminder will be sent out to both linux-nfs and linux-rdma
+mailing list:
+
+6/25/2014
+@8:00am PST (summer time)
+@9:00am MST (summer time)
+@10:00am CST (summer time)
+@11:00am EST (summer time)
+@Bangalore @8:00pm
+@Israel @6:00pm
+
+Duration: 1 hour
+
+Call-in number:
+Israel: +972 37219638
+France 	Colombes +33 1 5760 2222 	+33 176728936
+Bangalore: +91 8039890080 (180030109800)
+US: 8666824770,  408-7744073
+
+Conference Code: 2308833
+Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
+
+Thanks everyone for joining the call and providing valuable inputs/work to the community to make NFSoRDMA better.
