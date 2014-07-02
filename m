@@ -1,115 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:41094 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751708AbaGUDgA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 20 Jul 2014 23:36:00 -0400
-Date: Mon, 21 Jul 2014 13:35:51 +1000
-From: NeilBrown <neilb@suse.de>
-To: Tejun Heo <tj@kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH/RFC] NFS: state manager thread must start running.
-Message-ID: <20140721133551.515f1d26@notabene.brown>
-In-Reply-To: <20140715145111.GA18661@htj.dyndns.org>
-References: <20140715163942.1d94304f@notabene.brown>
-	<20140715074942.GA6166@infradead.org>
-	<20140715181317.2de14c51@notabene.brown>
-	<20140715145111.GA18661@htj.dyndns.org>
+Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:46035 "EHLO
+	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757886AbaGBTxh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 15:53:37 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Steve Wise <swise@opengridcomputing.com>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
+ disconnect
+Date: Wed, 2 Jul 2014 19:53:36 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE0C5AE@CMEXMB1.ad.emulex.com>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+ <20140623223942.1634.89063.stgit@manet.1015granger.net>
+ <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com>
+ <53B45D7B.4020705@opengridcomputing.com>
+ <EE7902D3F51F404C82415C4803930ACD3FE0C57A@CMEXMB1.ad.emulex.com>
+ <006001cf962e$e20df020$a629d060$@opengridcomputing.com>
+In-Reply-To: <006001cf962e$e20df020$a629d060$@opengridcomputing.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/ABzOUlXWN645H/nIBfgf=mh"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/ABzOUlXWN645H/nIBfgf=mh
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Tue, 15 Jul 2014 10:51:11 -0400 Tejun Heo <tj@kernel.org> wrote:
-
-> Hello, Neil.
->=20
-> On Tue, Jul 15, 2014 at 06:13:17PM +1000, NeilBrown wrote:
-> > Could do that (or per-client) but it doesn't really buy us anything doe=
-s it?
->=20
-> It does buy some.
->=20
-> 1. The kworker threads are more likely to be cache-hot than explicit
->    kthreads.
->=20
-> 2. Workqueue is a lot eaiser to get right in terms of synchronization
->    and freezing.
->=20
-> 3. Workqueue mandates well-defined boundaries between separate
->    execution instances which often makes it a lot easier to implement
->    and update kernel-wide features such as like freezer and runtime
->    kernel patching.
->=20
-> > The state manager assumes it is single threads, so it would need to be
-> > a single-threaded workqueue with always at least one thread running.
-> > That is much the same as a kthread.
-> >=20
-> > And then there is that fact that the current code explicitly enabled SI=
-GKILL
-> > and maybe that is important.
->=20
-> If SIGKILL handling is mandatory (really?), kthread_worker can be used
-> for #2 and #3.
->=20
-> Thanks.
->=20
-
-(kthread_worker doesn't seem to be very well documented, but I think I see
-what it does).
-
-The only reason I can think for that SIGKILL might be important is that when
-a server is not responding, a process that it trying to talk to it will only
-give up if it gets a fatal signal.  So if state recovery starts for a server
-that cannot be contacted, the thread doing the recovery will block until the
-server comes back or until it received SIGKILL.
-
-I cannot see anything that would generate such a SIGKILL except the broadca=
-st
-SIGKILL at shutdown.
-So maybe the purpose of=20
-	allow_signal(SIGKILL);
-is to ensure that when the machine is shutdown, the -manager thread actually
-dies.
-But I'm not confident of this explanation.  If this were the issue I would
-expect nfs_umount_begin to be sending SIGKILL too. But it just does
-rpc_killall_tasks- maybe that is enough.  If so, is SIGKILL really needed.
-
-Trond: can you provide some wisdom?  Is SIGKILL important for the manager
-threads?
-If so, would you prefer a thread that uses kthread_worker, or one that works
-more like the current code?
-If not, would you be happy with a fully workqueue based solution?
-
-Thanks,
-NeilBrown
-
-
---Sig_/ABzOUlXWN645H/nIBfgf=mh
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU8yKlznsnt1WYoG5AQI0TBAAtjvmtRYsHSWIbEybLdFxgQiJ0vg23wJt
-KfoI5nKRtO8iqgqOaEg89G9xNhkHMrs5YutWvVG0WzcizafC7SnoVjEOeuLFDt4P
-NCBTIBoqRn3F1jaf/MpZV3ClOgiTOZzT+sebV8fD7LdmGHKhrM4tjCQxhqdy9s9Y
-HZdNba/m+4B6Zmhsypd4Z9Kc28rkSBSgAEhk5BAXe9yE0ear3elAGD/gIQ58BnWv
-1qJyagXaFKwznh/5MQZ5UWYl/0mzCaDZnk8Ki5fzu00rmICSdhK4S89lC+LJNwDd
-+QVgWuHgFvpoOIRny8FkWE5/BplA7SnjS4380MwJo4JFh1MfrSFUlAHyK8HAD0kF
-LE5PxXtrotO+QpDAHMq+6FaQ9TqcGEmOL+9gX0GqTxNB7WQLDsC48qSFhgBJCX48
-IR4mYEnaMx5MLpREDjYfF2ouc3ioK1mY30HgJ1Xm0Uvl5qnybulgghhP6ipO7z3s
-PywZB/glA9YNVZmWNwoskYvcMwBIXTuvswA7OKdu24RkTyxHd+4ys/x6bGBHGput
-Rq52s1lOiAOqt3s5lY7a8Gv1M+rQEFVjIpspEd6AF5uChoNcxQBFQTuGltg3hGK+
-8xfq3qsCFXnLMyVRlhqOX7PM/ARL38NcUI7IGEeOGOwu2pB9qyMfjDC9loGUIjrb
-/Q3hFCFxa0o=
-=Km3s
------END PGP SIGNATURE-----
-
---Sig_/ABzOUlXWN645H/nIBfgf=mh--
+DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogU3RldmUgV2lzZSBbbWFp
+bHRvOnN3aXNlQG9wZW5ncmlkY29tcHV0aW5nLmNvbV0NCj4gU2VudDogVGh1cnNkYXksIEp1bHkg
+MDMsIDIwMTQgMToyMSBBTQ0KPiBUbzogRGV2ZXNoIFNoYXJtYTsgJ0NodWNrIExldmVyJzsgbGlu
+dXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LQ0KPiBuZnNAdmdlci5rZXJuZWwub3JnDQo+
+IFN1YmplY3Q6IFJFOiBbUEFUQ0ggdjEgMDUvMTNdIHhwcnRyZG1hOiBEb24ndCBkcmFpbiBDUXMg
+b24gdHJhbnNwb3J0DQo+IGRpc2Nvbm5lY3QNCj4gDQo+IA0KPiANCj4gPiAtLS0tLU9yaWdpbmFs
+IE1lc3NhZ2UtLS0tLQ0KPiA+IEZyb206IERldmVzaCBTaGFybWEgW21haWx0bzpEZXZlc2guU2hh
+cm1hQEVtdWxleC5Db21dDQo+ID4gU2VudDogV2VkbmVzZGF5LCBKdWx5IDAyLCAyMDE0IDI6NDMg
+UE0NCj4gPiBUbzogU3RldmUgV2lzZTsgQ2h1Y2sgTGV2ZXI7IGxpbnV4LXJkbWFAdmdlci5rZXJu
+ZWwub3JnOw0KPiA+IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBTdWJqZWN0OiBSRTog
+W1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRyYW5zcG9ydA0K
+PiA+IGRpc2Nvbm5lY3QNCj4gPg0KPiA+ID4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4g
+PiA+IEZyb206IFN0ZXZlIFdpc2UgW21haWx0bzpzd2lzZUBvcGVuZ3JpZGNvbXB1dGluZy5jb21d
+DQo+ID4gPiBTZW50OiBUaHVyc2RheSwgSnVseSAwMywgMjAxNCAxMjo1OSBBTQ0KPiA+ID4gVG86
+IERldmVzaCBTaGFybWE7IENodWNrIExldmVyOyBsaW51eC1yZG1hQHZnZXIua2VybmVsLm9yZzsg
+bGludXgtDQo+ID4gPiBuZnNAdmdlci5rZXJuZWwub3JnDQo+ID4gPiBTdWJqZWN0OiBSZTogW1BB
+VENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRyYW5zcG9ydA0KPiA+
+ID4gZGlzY29ubmVjdA0KPiA+ID4NCj4gPiA+IE9uIDcvMi8yMDE0IDI6MDYgUE0sIERldmVzaCBT
+aGFybWEgd3JvdGU6DQo+ID4gPiA+IFRoaXMgY2hhbmdlIGlzIHZlcnkgbXVjaCBwcm9uZSB0byBn
+ZW5lcmF0ZSBwb2xsX2NxIGVycm9ycyBiZWNhdXNlDQo+ID4gPiA+IG9mIHVuLWNsZWFuZWQgY29t
+cGxldGlvbnMgd2hpY2ggc3RpbGwgcG9pbnQgdG8gdGhlIG5vbi1leGlzdGVudA0KPiA+ID4gPiBR
+UHMuIE9uIHRoZSBuZXcgY29ubmVjdGlvbiB3aGVuIHRoZXNlIGNvbXBsZXRpb25zIGFyZSBwb2xs
+ZWQsIHRoZQ0KPiA+ID4gPiBwb2xsX2NxIHdpbGwgZmFpbA0KPiA+ID4gYmVjYXVzZSBvbGQgUVAg
+cG9pbnRlciBpcyBhbHJlYWR5IE5VTEwuDQo+ID4gPiA+IERpZCBhbnlvbmUgaGl0IHRoaXMgc2l0
+dWF0aW9uIGR1cmluZyB0aGVpciB0ZXN0aW5nPw0KPiA+ID4NCj4gPiA+IEhleSBEZXZlc2gsDQo+
+ID4gPg0KPiA+ID4gaXdfY3hnYjQgd2lsbCBzaWxlbnRseSB0b3NzIENRRXMgaWYgdGhlIFFQIGlz
+IG5vdCBhY3RpdmUuDQo+ID4NCj4gPiBZYSwganVzdCBub3cgY2hlY2tlZCB0aGF0IGluIG1seCBh
+bmQgY3hnYjQgZHJpdmVyIGNvZGUuIE9uIHRoZSBvdGhlcg0KPiA+IGhhbmQgb2NyZG1hIGlzIGFz
+c2VydGluZyBhIEJVRy1PTiBmb3Igc3VjaCBDUUVzIGNhdXNpbmcgc3lzdGVtIHBhbmljLg0KPiA+
+IE91dCBvZiBjdXJpb3NpdHkgSSBhbSBhc2tpbmcsIGhvdyB0aGlzIGNoYW5nZSBpcyB1c2VmdWwg
+aGVyZSwgaXMgaXQNCj4gPiByZWR1Y2luZyB0aGUgcmUtY29ubmVjdGlvbiB0aW1lLi4uQW55aG93
+IHJwY3JkbWFfY2xlYW5fY3Egd2FzDQo+ID4gZGlzY2FyZGluZyB0aGUgY29tcGxldGlvbnMgKGZs
+dXNoL3N1Y2Nlc3NmdWwgYm90aCkNCj4gPg0KPiANCj4gV2VsbCwgSSBkb24ndCB0aGluayB0aGVy
+ZSBpcyBhbnl0aGluZyByZXN0cmljdGluZyBhbiBhcHBsaWNhdGlvbiBmcm9tIGRlc3Ryb3lpbmcN
+Cj4gdGhlIFFQIHdpdGggcGVuZGluZyBDUUVzIG9uIGl0cyBDUXMuICAgU28gaXQgZGVmaW5pdGVs
+eSBzaG91bGRuJ3QgY2F1c2UgYQ0KPiBCVUdfT04oKSBJIHRoaW5rLiAgIEknbGwgaGF2ZSB0byBy
+ZWFkIHVwIGluIHRoZSBWZXJicyBzcGVjcyBpZiBkZXN0cm95aW5nIGEgUVANCj4ga2lsbHMgYWxs
+IHRoZSBwZW5kaW5nIENRRXMuLi4NCg0KT2ggY29uZnVzaW9uLi4ubGV0IG1lIGNsYXJpZnk6IGlu
+IG9jcmRtYSBCVUcgT04gaXMgaGl0IGluIHBvbGxfY3EoKSBhZnRlciByZS1jb25uZWN0aW9uIGhh
+cHBlbnMgYW5kIGNxIGlzIHBvbGxlZCBhZ2Fpbi4NCk5vdyB0aGUgZmlyc3QgY29tcGxldGlvbiBp
+biBDUSBzdGlsbCBwb2ludHMgdG8gb2xkIFFQLUlEIGZvciB3aGljaCBvY3JkbWEgZG9lcyBub3Qg
+aGF2ZSB2YWxpZCBRUCBwb2ludGVyLg0KDQo+IA0KPiANCj4gPiA+DQo+ID4gPg0KPiA+ID4gPj4g
+LS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPiA+ID4+IEZyb206IGxpbnV4LXJkbWEtb3du
+ZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtcmRtYS0NCj4gPiA+ID4+IG93bmVyQHZn
+ZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIENodWNrIExldmVyDQo+ID4gPiA+PiBTZW50OiBU
+dWVzZGF5LCBKdW5lIDI0LCAyMDE0IDQ6MTAgQU0NCj4gPiA+ID4+IFRvOiBsaW51eC1yZG1hQHZn
+ZXIua2VybmVsLm9yZzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+ID4gPj4gU3ViamVj
+dDogW1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRyYW5zcG9y
+dA0KPiA+ID4gPj4gZGlzY29ubmVjdA0KPiA+ID4gPj4NCj4gPiA+ID4+IENRcyBhcmUgbm90IGRl
+c3Ryb3llZCB1bnRpbCB1bm1vdW50LiBCeSBkcmFpbmluZyBDUXMgb24gdHJhbnNwb3J0DQo+ID4g
+PiA+PiBkaXNjb25uZWN0LCBzdWNjZXNzZnVsIGNvbXBsZXRpb25zIHRoYXQgY2FuIGNoYW5nZSB0
+aGUNCj4gPiA+ID4+IHIuZnJtci5zdGF0ZSBmaWVsZCBjYW4gYmUgbWlzc2VkLg0KPiA+DQo+ID4g
+U3RpbGwgdGhvc2UgYXJlIG1pc3NlZCBpc27igJl0IGl0Li4uLlNpbmNlIHRob3NlIHN1Y2Nlc3Nm
+dWwgY29tcGxldGlvbnMNCj4gPiB3aWxsIHN0aWxsIGJlIGRyb3BwZWQgYWZ0ZXIgcmUtIGNvbm5l
+Y3Rpb24uIEFtIEkgbWlzc2luZyBzb21ldGhpbmcgdG8NCj4gPiB1bmRlcnN0YW5kaW5nIHRoZSBt
+b3RpdmF0aW9uLi4uDQo+ID4NCj4gPiA+ID4+DQo+ID4gPiA+PiBTaWduZWQtb2ZmLWJ5OiBDaHVj
+ayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gPiA+ID4+IC0tLQ0KPiA+ID4gPj4g
+ICBuZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgfCAgICA1IC0tLS0tDQo+ID4gPiA+PiAgIDEg
+ZmlsZSBjaGFuZ2VkLCA1IGRlbGV0aW9ucygtKQ0KPiA+ID4gPj4NCj4gPiA+ID4+IGRpZmYgLS1n
+aXQgYS9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gPiA+ID4+IGIvbmV0L3N1bnJwYy94
+cHJ0cmRtYS92ZXJicy5jIGluZGV4IDNjN2Y5MDQuLjQ1MWUxMDAgMTAwNjQ0DQo+ID4gPiA+PiAt
+LS0gYS9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gPiA+ID4+ICsrKyBiL25ldC9zdW5y
+cGMveHBydHJkbWEvdmVyYnMuYw0KPiA+ID4gPj4gQEAgLTg3Myw5ICs4NzMsNiBAQCByZXRyeToN
+Cj4gPiA+ID4+ICAgCQkJZHByaW50aygiUlBDOiAgICAgICAlczoNCj4gcnBjcmRtYV9lcF9kaXNj
+b25uZWN0Ig0KPiA+ID4gPj4gICAJCQkJIiBzdGF0dXMgJWlcbiIsIF9fZnVuY19fLCByYyk7DQo+
+ID4gPiA+Pg0KPiA+ID4gPj4gLQkJcnBjcmRtYV9jbGVhbl9jcShlcC0+cmVwX2F0dHIucmVjdl9j
+cSk7DQo+ID4gPiA+PiAtCQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBfYXR0ci5zZW5kX2NxKTsN
+Cj4gPiA+ID4+IC0NCj4gPiA+ID4+ICAgCQl4cHJ0ID0gY29udGFpbmVyX29mKGlhLCBzdHJ1Y3Qg
+cnBjcmRtYV94cHJ0LCByeF9pYSk7DQo+ID4gPiA+PiAgIAkJaWQgPSBycGNyZG1hX2NyZWF0ZV9p
+ZCh4cHJ0LCBpYSwNCj4gPiA+ID4+ICAgCQkJCShzdHJ1Y3Qgc29ja2FkZHIgKikmeHBydC0NCj4g
+PnJ4X2RhdGEuYWRkcik7DQo+ID4gPiBAQCAtOTg1LDggKzk4Miw2IEBADQo+ID4gPiA+PiBycGNy
+ZG1hX2VwX2Rpc2Nvbm5lY3Qoc3RydWN0IHJwY3JkbWFfZXAgKmVwLCBzdHJ1Y3QgcnBjcmRtYV9p
+YQ0KPiA+ID4gPj4gKmlhKSB7DQo+ID4gPiA+PiAgIAlpbnQgcmM7DQo+ID4gPiA+Pg0KPiA+ID4g
+Pj4gLQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBfYXR0ci5yZWN2X2NxKTsNCj4gPiA+ID4+IC0J
+cnBjcmRtYV9jbGVhbl9jcShlcC0+cmVwX2F0dHIuc2VuZF9jcSk7DQo+ID4gPiA+PiAgIAlyYyA9
+IHJkbWFfZGlzY29ubmVjdChpYS0+cmlfaWQpOw0KPiA+ID4gPj4gICAJaWYgKCFyYykgew0KPiA+
+ID4gPj4gICAJCS8qIHJldHVybnMgd2l0aG91dCB3YWl0IGlmIG5vdCBjb25uZWN0ZWQgKi8NCj4g
+PiA+ID4+DQo+ID4gPiA+PiAtLQ0KPiA+ID4gPj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxp
+c3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXJkbWEiDQo+ID4gPiA+PiBpbiB0
+aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3JlDQo+
+ID4gPiBtYWpvcmRvbW8NCj4gPiA+ID4+IGluZm8gYXQgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9t
+YWpvcmRvbW8taW5mby5odG1sDQo+ID4gPiA+IE4gICAgIHIgIHkgICBiIFggIMendiBeICneunsu
+biArICAgIHsgICAiICBebiByICAgeiAaICBoICAgICYgIB4gRyAgIGggAw0KPiA+ID4gPiAoIOma
+jiDdomoiICAaIBttICAgICB6IN6WICAgZiAgIGggICB+IG1tbD09DQo+IA0KDQo=
