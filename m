@@ -1,69 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49512 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750781AbaGJQxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jul 2014 12:53:09 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s6AGr9uI027258
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 12:53:09 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-59-66.rdu2.redhat.com [10.10.59.66])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s6AGr9vm024096
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 12:53:09 -0400
-Message-ID: <53BEC4F4.4050003@RedHat.com>
-Date: Thu, 10 Jul 2014 12:53:08 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:47946 "EHLO
+	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754407AbaGBTst (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 15:48:49 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Steve Wise <swise@opengridcomputing.com>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>
+CC: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
+ disconnect
+Date: Wed, 2 Jul 2014 19:48:47 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE0C594@CMEXMB1.ad.emulex.com>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+ <20140623223942.1634.89063.stgit@manet.1015granger.net>
+ <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com>
+ <53B45D7B.4020705@opengridcomputing.com>
+ <C9B761DF-7960-4346-949E-17A9BDD357DB@oracle.com>
+ <005a01cf962e$43d44300$cb7cc900$@opengridcomputing.com>
+In-Reply-To: <005a01cf962e$43d44300$cb7cc900$@opengridcomputing.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Linux NFS Town Hall  meeting: Tomorrow - Thur 07/10/14
-References: <53BD8F3B.6020908@RedHat.com>
-In-Reply-To: <53BD8F3B.6020908@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FYI... This will be starting up in a few minutes... If interested...
-
-steved.
-
-On 09/07/14 14:51, Steve Dickson wrote:
-> Hello,
-> 
-> We've not had one of these in a while... Let's
-> catch up on who's on first and what is on second! :-) 
->  
-> So the Linux NFS town hall meeting is tomorrow
-> *Thur July 10 at 01:00 pm EST (10:00am PST)*
-> 
-> The usual agenda will apply. The maintainers will give
-> a quick status of what is happening in their worlds.
-> 
-> Next we'll get updates from major contributors on what
-> they have been doing and are planing on doing.
->   
-> Finally, we'll open the floor to questions, comments, 
-> concerns from the community.  
-> 
-> Generally the meeting lasts between 30 to 45 mins, with 
-> a very hard stop at 60mins. 
-> 
-> Please feel to attend and participate!
-> 
-> Time: 10:00 am PST (01:00 pm EST)
-> 
-> The call in numbers are:
-> 
-> U.S. and Canada: (800) 451-8679
-> World wide toll free numbers
->    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-> 
-> Conference code: 564.272.1552
-> 
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogU3RldmUgV2lzZSBbbWFp
+bHRvOnN3aXNlQG9wZW5ncmlkY29tcHV0aW5nLmNvbV0NCj4gU2VudDogVGh1cnNkYXksIEp1bHkg
+MDMsIDIwMTQgMToxNiBBTQ0KPiBUbzogJ0NodWNrIExldmVyJzsgRGV2ZXNoIFNoYXJtYQ0KPiBD
+YzogbGludXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7ICdMaW51eCBORlMgTWFpbGluZyBMaXN0Jw0K
+PiBTdWJqZWN0OiBSRTogW1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1Fz
+IG9uIHRyYW5zcG9ydA0KPiBkaXNjb25uZWN0DQo+IA0KPiANCj4gDQo+ID4gLS0tLS1PcmlnaW5h
+bCBNZXNzYWdlLS0tLS0NCj4gPiBGcm9tOiBDaHVjayBMZXZlciBbbWFpbHRvOmNodWNrLmxldmVy
+QG9yYWNsZS5jb21dDQo+ID4gU2VudDogV2VkbmVzZGF5LCBKdWx5IDAyLCAyMDE0IDI6NDAgUE0N
+Cj4gPiBUbzogU3RldmUgV2lzZTsgRGV2ZXNoIFNoYXJtYQ0KPiA+IENjOiBsaW51eC1yZG1hQHZn
+ZXIua2VybmVsLm9yZzsgTGludXggTkZTIE1haWxpbmcgTGlzdA0KPiA+IFN1YmplY3Q6IFJlOiBb
+UEFUQ0ggdjEgMDUvMTNdIHhwcnRyZG1hOiBEb24ndCBkcmFpbiBDUXMgb24gdHJhbnNwb3J0DQo+
+ID4gZGlzY29ubmVjdA0KPiA+DQo+ID4NCj4gPiBPbiBKdWwgMiwgMjAxNCwgYXQgMzoyOCBQTSwg
+U3RldmUgV2lzZSA8c3dpc2VAb3BlbmdyaWRjb21wdXRpbmcuY29tPg0KPiB3cm90ZToNCj4gPg0K
+PiA+ID4gT24gNy8yLzIwMTQgMjowNiBQTSwgRGV2ZXNoIFNoYXJtYSB3cm90ZToNCj4gPiA+PiBU
+aGlzIGNoYW5nZSBpcyB2ZXJ5IG11Y2ggcHJvbmUgdG8gZ2VuZXJhdGUgcG9sbF9jcSBlcnJvcnMg
+YmVjYXVzZQ0KPiA+ID4+IG9mIHVuLWNsZWFuZWQNCj4gPiBjb21wbGV0aW9ucyB3aGljaCBzdGls
+bA0KPiA+ID4+IHBvaW50IHRvIHRoZSBub24tZXhpc3RlbnQgUVBzLiBPbiB0aGUgbmV3IGNvbm5l
+Y3Rpb24gd2hlbiB0aGVzZQ0KPiA+ID4+IGNvbXBsZXRpb25zIGFyZSBwb2xsZWQsDQo+ID4gdGhl
+IHBvbGxfY3Egd2lsbA0KPiA+ID4+IGZhaWwgYmVjYXVzZSBvbGQgUVAgcG9pbnRlciBpcyBhbHJl
+YWR5IE5VTEwuDQo+ID4gPj4gRGlkIGFueW9uZSBoaXQgdGhpcyBzaXR1YXRpb24gZHVyaW5nIHRo
+ZWlyIHRlc3Rpbmc/DQo+ID4NCj4gPiBJIHRlc3RlZCB0aGlzIGFnZ3Jlc3NpdmVseSB3aXRoIGEg
+ZmF1bHQgaW5qZWN0b3IgdGhhdCB0cmlnZ2VycyByZWd1bGFyDQo+ID4gY29ubmVjdGlvbiBkaXNy
+dXB0aW9uLg0KPiA+DQo+ID4gPiBIZXkgRGV2ZXNoLA0KPiA+ID4NCj4gPiA+IGl3X2N4Z2I0IHdp
+bGwgc2lsZW50bHkgdG9zcyBDUUVzIGlmIHRoZSBRUCBpcyBub3QgYWN0aXZlLg0KPiA+DQo+ID4g
+eHBydHJkbWEgcmVsaWVzIG9uIGdldHRpbmcgYSBjb21wbGV0aW9uIChlaXRoZXIgc3VjY2Vzc2Z1
+bCBvciBpbg0KPiA+IGVycm9yKSBmb3IgZXZlcnkgV1IgaXQgaGFzIHBvc3RlZC4gVGhlIGdvYWwg
+b2YgdGhpcyBwYXRjaCBpcyB0byBhdm9pZA0KPiA+IHRocm93aW5nIGF3YXkgcXVldWVkIGNvbXBs
+ZXRpb25zIGFmdGVyIGEgdHJhbnNwb3J0IGRpc2Nvbm5lY3Qgc28gd2UNCj4gPiBkb24ndCBsb3Nl
+IHRyYWNrIG9mIEZSTVIgcmtleSB1cGRhdGVzIChGQVNUX1JFR19NUiBhbmQgTE9DQUxfSU5WDQo+
+ID4gY29tcGxldGlvbnMpIGFuZCB3ZSBjYW4gY2FwdHVyZSBhbGwgUlBDIHJlcGxpZXMgcG9zdGVk
+IGJlZm9yZSB0aGUNCj4gY29ubmVjdGlvbiB3YXMgbG9zdC4NCj4gPg0KPiA+IFNvdW5kcyBsaWtl
+IHdlIGFsc28gbmVlZCB0byBrZWVwIHRoZSBRUCBhcm91bmQsIGV2ZW4gaW4gZXJyb3Igc3RhdGUs
+DQo+ID4gdW50aWwgYWxsIGtub3duIFdScyBvbiB0aGF0IFFQIGhhdmUgY29tcGxldGVkPw0KPiA+
+DQoNCldoeSBub3QgcG9sbCBhbmQgcHJvY2VzcyBldmVyeSBjb21wbGV0aW9uIGR1cmluZyBycGNy
+ZG1hX2NxX2NsZWFudXAoKS4uLi4NCg0KPiANCj4gUGVyaGFwcy4NCj4gDQo+ID4NCj4gPiA+DQo+
+ID4gPg0KPiA+ID4+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+ID4+PiBGcm9tOiBs
+aW51eC1yZG1hLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LXJkbWEtDQo+ID4g
+Pj4+IG93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIENodWNrIExldmVyDQo+ID4g
+Pj4+IFNlbnQ6IFR1ZXNkYXksIEp1bmUgMjQsIDIwMTQgNDoxMCBBTQ0KPiA+ID4+PiBUbzogbGlu
+dXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiA+
+Pj4gU3ViamVjdDogW1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9u
+IHRyYW5zcG9ydA0KPiA+ID4+PiBkaXNjb25uZWN0DQo+ID4gPj4+DQo+ID4gPj4+IENRcyBhcmUg
+bm90IGRlc3Ryb3llZCB1bnRpbCB1bm1vdW50LiBCeSBkcmFpbmluZyBDUXMgb24gdHJhbnNwb3J0
+DQo+ID4gPj4+IGRpc2Nvbm5lY3QsIHN1Y2Nlc3NmdWwgY29tcGxldGlvbnMgdGhhdCBjYW4gY2hh
+bmdlIHRoZQ0KPiA+ID4+PiByLmZybXIuc3RhdGUgZmllbGQgY2FuIGJlIG1pc3NlZC4NCj4gPiA+
+Pj4NCj4gPiA+Pj4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNs
+ZS5jb20+DQo+ID4gPj4+IC0tLQ0KPiA+ID4+PiAgbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5j
+IHwgICAgNSAtLS0tLQ0KPiA+ID4+PiAgMSBmaWxlIGNoYW5nZWQsIDUgZGVsZXRpb25zKC0pDQo+
+ID4gPj4+DQo+ID4gPj4+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMN
+Cj4gPiA+Pj4gYi9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgaW5kZXggM2M3ZjkwNC4uNDUx
+ZTEwMCAxMDA2NDQNCj4gPiA+Pj4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jDQo+
+ID4gPj4+ICsrKyBiL25ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYw0KPiA+ID4+PiBAQCAtODcz
+LDkgKzg3Myw2IEBAIHJldHJ5Og0KPiA+ID4+PiAgCQkJZHByaW50aygiUlBDOiAgICAgICAlczog
+cnBjcmRtYV9lcF9kaXNjb25uZWN0Ig0KPiA+ID4+PiAgCQkJCSIgc3RhdHVzICVpXG4iLCBfX2Z1
+bmNfXywgcmMpOw0KPiA+ID4+Pg0KPiA+ID4+PiAtCQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBf
+YXR0ci5yZWN2X2NxKTsNCj4gPiA+Pj4gLQkJcnBjcmRtYV9jbGVhbl9jcShlcC0+cmVwX2F0dHIu
+c2VuZF9jcSk7DQo+ID4gPj4+IC0NCj4gPiA+Pj4gIAkJeHBydCA9IGNvbnRhaW5lcl9vZihpYSwg
+c3RydWN0IHJwY3JkbWFfeHBydCwgcnhfaWEpOw0KPiA+ID4+PiAgCQlpZCA9IHJwY3JkbWFfY3Jl
+YXRlX2lkKHhwcnQsIGlhLA0KPiA+ID4+PiAgCQkJCShzdHJ1Y3Qgc29ja2FkZHIgKikmeHBydC0+
+cnhfZGF0YS5hZGRyKTsNCj4gQEAgLTk4NSw4ICs5ODIsNiBAQA0KPiA+ID4+PiBycGNyZG1hX2Vw
+X2Rpc2Nvbm5lY3Qoc3RydWN0IHJwY3JkbWFfZXAgKmVwLCBzdHJ1Y3QgcnBjcmRtYV9pYQ0KPiA+
+ID4+PiAqaWEpICB7DQo+ID4gPj4+ICAJaW50IHJjOw0KPiA+ID4+Pg0KPiA+ID4+PiAtCXJwY3Jk
+bWFfY2xlYW5fY3EoZXAtPnJlcF9hdHRyLnJlY3ZfY3EpOw0KPiA+ID4+PiAtCXJwY3JkbWFfY2xl
+YW5fY3EoZXAtPnJlcF9hdHRyLnNlbmRfY3EpOw0KPiA+ID4+PiAgCXJjID0gcmRtYV9kaXNjb25u
+ZWN0KGlhLT5yaV9pZCk7DQo+ID4gPj4+ICAJaWYgKCFyYykgew0KPiA+ID4+PiAgCQkvKiByZXR1
+cm5zIHdpdGhvdXQgd2FpdCBpZiBub3QgY29ubmVjdGVkICovDQo+ID4gPj4+DQo+ID4gPj4+IC0t
+DQo+ID4gPj4+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1
+bnN1YnNjcmliZQ0KPiA+ID4+PiBsaW51eC1yZG1hIiBpbiB0aGUgYm9keSBvZiBhIG1lc3NhZ2Ug
+dG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+ID4+PiBNb3JlIG1ham9yZG9tbyBpbmZv
+IGF0IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiA+ID4+IE4g
+ICAgIHIgIHkgICBiIFggIMendiBeICneunsubiArICAgIHsgICAiICBebiByICAgeiAaICBoICAg
+ICYgIB4gRw0KPiA+ID4+IGggAygg6ZqODQo+ID4gIN2iaiIgIBogG20gICAgIHog3pYgICBmICAg
+aCAgIH4gbW1sPT0NCj4gPiA+DQo+ID4gPiAtLQ0KPiA+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0
+aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyINCj4gPiA+IGlu
+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnIE1vcmUN
+Cj4gbWFqb3Jkb21vDQo+ID4gPiBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9y
+ZG9tby1pbmZvLmh0bWwNCj4gPg0KPiA+IC0tDQo+ID4gQ2h1Y2sgTGV2ZXINCj4gPiBjaHVja1tk
+b3RdbGV2ZXJbYXRdb3JhY2xlW2RvdF1jb20NCj4gPg0KPiA+DQo+IA0KDQo=
