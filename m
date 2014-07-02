@@ -1,85 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f54.google.com ([209.85.192.54]:47684 "EHLO
-	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753304AbaGHSF5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:57 -0400
-Received: by mail-qg0-f54.google.com with SMTP id q107so5358203qgd.41
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:57 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 060/100] nfsd: close potential race in nfsd4_free_stateid
-Date: Tue,  8 Jul 2014 14:03:48 -0400
-Message-Id: <1404842668-22521-61-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:20120 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757411AbaGBTke convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 15:40:34 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport disconnect
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <53B45D7B.4020705@opengridcomputing.com>
+Date: Wed, 2 Jul 2014 15:40:28 -0400
+Cc: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <C9B761DF-7960-4346-949E-17A9BDD357DB@oracle.com>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net> <20140623223942.1634.89063.stgit@manet.1015granger.net> <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com> <53B45D7B.4020705@opengridcomputing.com>
+To: Steve Wise <swise@opengridcomputing.com>,
+        Devesh Sharma <Devesh.Sharma@Emulex.Com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, it'll be possible for the sc_type of a
-lock stateid to change after it's found and checked, but before we can
-go to destroy it. If that happens, we can end up putting the persistent
-reference to the stateid more than once, and unhash it more than once.
 
-Fix this by unhashing the lock stateid prior to dropping the cl_lock but
-after finding it.
+On Jul 2, 2014, at 3:28 PM, Steve Wise <swise@opengridcomputing.com> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 24 +++++++++---------------
- 1 file changed, 9 insertions(+), 15 deletions(-)
+> On 7/2/2014 2:06 PM, Devesh Sharma wrote:
+>> This change is very much prone to generate poll_cq errors because of un-cleaned completions which still
+>> point to the non-existent QPs. On the new connection when these completions are polled, the poll_cq will
+>> fail because old QP pointer is already NULL.
+>> Did anyone hit this situation during their testing?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ab248ee470dd..cf90c0078503 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4393,17 +4393,6 @@ unlock_state:
- 	return status;
- }
- 
--static __be32
--nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
--{
--	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
--
--	if (check_for_locks(stp->st_stid.sc_file, lo))
--		return nfserr_locks_held;
--	release_lock_stateid(stp);
--	return nfs_ok;
--}
--
- /*
-  * Test if the stateid is valid
-  */
-@@ -4430,6 +4419,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	stateid_t *stateid = &free_stateid->fr_stateid;
- 	struct nfs4_stid *s;
- 	struct nfs4_delegation *dp;
-+	struct nfs4_ol_stateid *stp;
- 	struct nfs4_client *cl = cstate->session->se_client;
- 	__be32 ret = nfserr_bad_stateid;
- 
-@@ -4447,12 +4437,16 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 		if (ret)
- 			break;
--		if (s->sc_type != NFS4_LOCK_STID) {
--			ret = nfserr_locks_held;
-+		stp = openlockstateid(s);
-+		ret = nfserr_locks_held;
-+		if (s->sc_type == NFS4_OPEN_STID ||
-+		    check_for_locks(s->sc_file,
-+				    lockowner(stp->st_stateowner)))
- 			break;
--		}
-+		unhash_lock_stateid(stp);
- 		spin_unlock(&cl->cl_lock);
--		ret = nfsd4_free_lock_stateid(openlockstateid(s));
-+		put_generic_stateid(stp);
-+		ret = nfs_ok;
- 		goto out;
- 	case NFS4_REVOKED_DELEG_STID:
- 		spin_unlock(&cl->cl_lock);
+I tested this aggressively with a fault injector that triggers regular connection
+disruption.
+
+> Hey Devesh,
+> 
+> iw_cxgb4 will silently toss CQEs if the QP is not active.
+
+xprtrdma relies on getting a completion (either successful or in error) for every
+WR it has posted. The goal of this patch is to avoid throwing away queued
+completions after a transport disconnect so we don't lose track of FRMR rkey
+updates (FAST_REG_MR and LOCAL_INV completions) and we can capture all RPC
+replies posted before the connection was lost.
+
+Sounds like we also need to keep the QP around, even in error state, until all
+known WRs on that QP have completed?
+
+
+> 
+> 
+>>> -----Original Message-----
+>>> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+>>> owner@vger.kernel.org] On Behalf Of Chuck Lever
+>>> Sent: Tuesday, June 24, 2014 4:10 AM
+>>> To: linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+>>> Subject: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport disconnect
+>>> 
+>>> CQs are not destroyed until unmount. By draining CQs on transport
+>>> disconnect, successful completions that can change the r.frmr.state field can
+>>> be missed.
+>>> 
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>>  net/sunrpc/xprtrdma/verbs.c |    5 -----
+>>>  1 file changed, 5 deletions(-)
+>>> 
+>>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>>> index 3c7f904..451e100 100644
+>>> --- a/net/sunrpc/xprtrdma/verbs.c
+>>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>>> @@ -873,9 +873,6 @@ retry:
+>>>  			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+>>>  				" status %i\n", __func__, rc);
+>>> 
+>>> -		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+>>> -		rpcrdma_clean_cq(ep->rep_attr.send_cq);
+>>> -
+>>>  		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+>>>  		id = rpcrdma_create_id(xprt, ia,
+>>>  				(struct sockaddr *)&xprt->rx_data.addr);
+>>> @@ -985,8 +982,6 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep,
+>>> struct rpcrdma_ia *ia)  {
+>>>  	int rc;
+>>> 
+>>> -	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+>>> -	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+>>>  	rc = rdma_disconnect(ia->ri_id);
+>>>  	if (!rc) {
+>>>  		/* returns without wait if not connected */
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the
+>>> body of a message to majordomo@vger.kernel.org More majordomo info at
+>>> http://vger.kernel.org/majordomo-info.html
+>> N�����r��y���b�X��ǧv�^�)޺{.n�+����{���"��^n�r���z���h����&���G���h�(�階�ݢj"���m�����z�ޖ���f���h���~�mml==
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.9.3
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
