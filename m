@@ -1,107 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:56768 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751351AbaG3T7a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 15:59:30 -0400
-Message-ID: <53D94EA6.10201@opengridcomputing.com>
-Date: Wed, 30 Jul 2014 14:59:34 -0500
-From: Steve Wise <swise@opengridcomputing.com>
+Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:47345 "EHLO
+	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754452AbaGBTnA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 15:43:00 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Steve Wise <swise@opengridcomputing.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
+ disconnect
+Date: Wed, 2 Jul 2014 19:42:58 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE0C57A@CMEXMB1.ad.emulex.com>
+References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
+ <20140623223942.1634.89063.stgit@manet.1015granger.net>
+ <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com>
+ <53B45D7B.4020705@opengridcomputing.com>
+In-Reply-To: <53B45D7B.4020705@opengridcomputing.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: David Miller <davem@davemloft.net>, himangi774@gmail.com
-CC: trond.myklebust@primarydata.com, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, julia.lawall@lip6.fr
-Subject: Re: [PATCH] svcrdma: delete double assignment
-References: <20140728152938.GA3040@himangi-Dell> <20140729.155050.311148635959938226.davem@davemloft.net>
-In-Reply-To: <20140729.155050.311148635959938226.davem@davemloft.net>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/29/2014 5:50 PM, David Miller wrote:
-> From: Himangi Saraogi <himangi774@gmail.com>
-> Date: Mon, 28 Jul 2014 20:59:38 +0530
->
->> Delete successive assignments to the same location.
->>
->> A simplified version of Coccinelle semantic match that finds this problem is as
->> follows:
->>
->> // <smpl>
->> @@
->> expression i;
->> @@
->>
->> *i = ...;
->>   i = ...;
->> // </smpl>
->>
->> Signed-off-by: Himangi Saraogi <himangi774@gmail.com>
-> I am not so sure about this change either.
->
->> @@ -956,7 +956,6 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
->>   			dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
->>   			goto errout;
->>   		}
->> -		newxprt->sc_max_sge = qp_attr.cap.max_send_sge;
->>   		newxprt->sc_max_sge = qp_attr.cap.max_recv_sge;
->>   		newxprt->sc_sq_depth = qp_attr.cap.max_send_wr;
->>   		newxprt->sc_max_requests = qp_attr.cap.max_recv_wr;
-> ->sc_max_sge is used to limit the number of segments used during sends,
-> currently in this code.  Grep for where it is used.
->
-> Therefore, if anything, the correct thing to do would be to retain the
-> first line rather than the second line.
->
-> Someone who actually works on this code and understands it should
-> really take a close look at this before anyone even thinks about
-> applying this patch.
-
-We should remove that whole block that tries to recover from a 
-rdma_create_qp() failure.   I don't believe we would ever hit it. The 
-value initially stored in sc_max_sge is from the device attribute 
-max_sge returned from ib_query_device() just above the code we're 
-talking about.  If rdma_create_qp() fails, it would not be because the 
-max_send_sge and max_recv_sge values passed in exceed the device's max...
-
-Like this:
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c 
-b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index e7323fb..282a43b 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -942,23 +942,8 @@ static struct svc_xprt *svc_rdma_accept(struct 
-svc_xprt *xprt)
-
-         ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd, &qp_attr);
-         if (ret) {
--               /*
--                * XXX: This is a hack. We need a xx_request_qp interface
--                * that will adjust the qp_attr's with a best-effort
--                * number
--                */
--               qp_attr.cap.max_send_sge -= 2;
--               qp_attr.cap.max_recv_sge -= 2;
--               ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd,
--                                    &qp_attr);
--               if (ret) {
--                       dprintk("svcrdma: failed to create QP, 
-ret=%d\n", ret);
--                       goto errout;
--               }
--               newxprt->sc_max_sge = qp_attr.cap.max_send_sge;
--               newxprt->sc_max_sge = qp_attr.cap.max_recv_sge;
--               newxprt->sc_sq_depth = qp_attr.cap.max_send_wr;
--               newxprt->sc_max_requests = qp_attr.cap.max_recv_wr;
-+               dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
-+               goto errout;
-         }
-         newxprt->sc_qp = newxprt->sc_cm_id->qp;
-
-
-Steve.
-
-
-
-
+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBTdGV2ZSBXaXNlIFttYWlsdG86
+c3dpc2VAb3BlbmdyaWRjb21wdXRpbmcuY29tXQ0KPiBTZW50OiBUaHVyc2RheSwgSnVseSAwMywg
+MjAxNCAxMjo1OSBBTQ0KPiBUbzogRGV2ZXNoIFNoYXJtYTsgQ2h1Y2sgTGV2ZXI7IGxpbnV4LXJk
+bWFAdmdlci5rZXJuZWwub3JnOyBsaW51eC0NCj4gbmZzQHZnZXIua2VybmVsLm9yZw0KPiBTdWJq
+ZWN0OiBSZTogW1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRy
+YW5zcG9ydA0KPiBkaXNjb25uZWN0DQo+IA0KPiBPbiA3LzIvMjAxNCAyOjA2IFBNLCBEZXZlc2gg
+U2hhcm1hIHdyb3RlOg0KPiA+IFRoaXMgY2hhbmdlIGlzIHZlcnkgbXVjaCBwcm9uZSB0byBnZW5l
+cmF0ZSBwb2xsX2NxIGVycm9ycyBiZWNhdXNlIG9mDQo+ID4gdW4tY2xlYW5lZCBjb21wbGV0aW9u
+cyB3aGljaCBzdGlsbCBwb2ludCB0byB0aGUgbm9uLWV4aXN0ZW50IFFQcy4gT24NCj4gPiB0aGUg
+bmV3IGNvbm5lY3Rpb24gd2hlbiB0aGVzZSBjb21wbGV0aW9ucyBhcmUgcG9sbGVkLCB0aGUgcG9s
+bF9jcSB3aWxsIGZhaWwNCj4gYmVjYXVzZSBvbGQgUVAgcG9pbnRlciBpcyBhbHJlYWR5IE5VTEwu
+DQo+ID4gRGlkIGFueW9uZSBoaXQgdGhpcyBzaXR1YXRpb24gZHVyaW5nIHRoZWlyIHRlc3Rpbmc/
+DQo+IA0KPiBIZXkgRGV2ZXNoLA0KPiANCj4gaXdfY3hnYjQgd2lsbCBzaWxlbnRseSB0b3NzIENR
+RXMgaWYgdGhlIFFQIGlzIG5vdCBhY3RpdmUuDQoNCllhLCBqdXN0IG5vdyBjaGVja2VkIHRoYXQg
+aW4gbWx4IGFuZCBjeGdiNCBkcml2ZXIgY29kZS4gT24gdGhlIG90aGVyIGhhbmQgb2NyZG1hIGlz
+IGFzc2VydGluZyBhIEJVRy1PTiBmb3Igc3VjaCBDUUVzIGNhdXNpbmcgc3lzdGVtIHBhbmljLg0K
+T3V0IG9mIGN1cmlvc2l0eSBJIGFtIGFza2luZywgaG93IHRoaXMgY2hhbmdlIGlzIHVzZWZ1bCBo
+ZXJlLCBpcyBpdCByZWR1Y2luZyB0aGUgcmUtY29ubmVjdGlvbiB0aW1lLi4uQW55aG93IHJwY3Jk
+bWFfY2xlYW5fY3Egd2FzIGRpc2NhcmRpbmcgdGhlIGNvbXBsZXRpb25zIChmbHVzaC9zdWNjZXNz
+ZnVsIGJvdGgpDQoNCj4gDQo+IA0KPiA+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+
+PiBGcm9tOiBsaW51eC1yZG1hLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LXJk
+bWEtDQo+ID4+IG93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIENodWNrIExldmVy
+DQo+ID4+IFNlbnQ6IFR1ZXNkYXksIEp1bmUgMjQsIDIwMTQgNDoxMCBBTQ0KPiA+PiBUbzogbGlu
+dXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gPj4g
+U3ViamVjdDogW1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRy
+YW5zcG9ydA0KPiA+PiBkaXNjb25uZWN0DQo+ID4+DQo+ID4+IENRcyBhcmUgbm90IGRlc3Ryb3ll
+ZCB1bnRpbCB1bm1vdW50LiBCeSBkcmFpbmluZyBDUXMgb24gdHJhbnNwb3J0DQo+ID4+IGRpc2Nv
+bm5lY3QsIHN1Y2Nlc3NmdWwgY29tcGxldGlvbnMgdGhhdCBjYW4gY2hhbmdlIHRoZSByLmZybXIu
+c3RhdGUNCj4gPj4gZmllbGQgY2FuIGJlIG1pc3NlZC4NCg0KU3RpbGwgdGhvc2UgYXJlIG1pc3Nl
+ZCBpc27igJl0IGl0Li4uLlNpbmNlIHRob3NlIHN1Y2Nlc3NmdWwgY29tcGxldGlvbnMgd2lsbCBz
+dGlsbCBiZSBkcm9wcGVkIGFmdGVyIHJlLWNvbm5lY3Rpb24uIEFtIEkgbWlzc2luZyBzb21ldGhp
+bmcgdG8gDQp1bmRlcnN0YW5kaW5nIHRoZSBtb3RpdmF0aW9uLi4uDQoNCj4gPj4NCj4gPj4gU2ln
+bmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+ID4+IC0t
+LQ0KPiA+PiAgIG5ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYyB8ICAgIDUgLS0tLS0NCj4gPj4g
+ICAxIGZpbGUgY2hhbmdlZCwgNSBkZWxldGlvbnMoLSkNCj4gPj4NCj4gPj4gZGlmZiAtLWdpdCBh
+L25ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYw0KPiA+PiBiL25ldC9zdW5ycGMveHBydHJkbWEv
+dmVyYnMuYyBpbmRleCAzYzdmOTA0Li40NTFlMTAwIDEwMDY0NA0KPiA+PiAtLS0gYS9uZXQvc3Vu
+cnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gPj4gKysrIGIvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJi
+cy5jDQo+ID4+IEBAIC04NzMsOSArODczLDYgQEAgcmV0cnk6DQo+ID4+ICAgCQkJZHByaW50aygi
+UlBDOiAgICAgICAlczogcnBjcmRtYV9lcF9kaXNjb25uZWN0Ig0KPiA+PiAgIAkJCQkiIHN0YXR1
+cyAlaVxuIiwgX19mdW5jX18sIHJjKTsNCj4gPj4NCj4gPj4gLQkJcnBjcmRtYV9jbGVhbl9jcShl
+cC0+cmVwX2F0dHIucmVjdl9jcSk7DQo+ID4+IC0JCXJwY3JkbWFfY2xlYW5fY3EoZXAtPnJlcF9h
+dHRyLnNlbmRfY3EpOw0KPiA+PiAtDQo+ID4+ICAgCQl4cHJ0ID0gY29udGFpbmVyX29mKGlhLCBz
+dHJ1Y3QgcnBjcmRtYV94cHJ0LCByeF9pYSk7DQo+ID4+ICAgCQlpZCA9IHJwY3JkbWFfY3JlYXRl
+X2lkKHhwcnQsIGlhLA0KPiA+PiAgIAkJCQkoc3RydWN0IHNvY2thZGRyICopJnhwcnQtPnJ4X2Rh
+dGEuYWRkcik7DQo+IEBAIC05ODUsOCArOTgyLDYgQEANCj4gPj4gcnBjcmRtYV9lcF9kaXNjb25u
+ZWN0KHN0cnVjdCBycGNyZG1hX2VwICplcCwgc3RydWN0IHJwY3JkbWFfaWEgKmlhKQ0KPiA+PiB7
+DQo+ID4+ICAgCWludCByYzsNCj4gPj4NCj4gPj4gLQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBf
+YXR0ci5yZWN2X2NxKTsNCj4gPj4gLQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBfYXR0ci5zZW5k
+X2NxKTsNCj4gPj4gICAJcmMgPSByZG1hX2Rpc2Nvbm5lY3QoaWEtPnJpX2lkKTsNCj4gPj4gICAJ
+aWYgKCFyYykgew0KPiA+PiAgIAkJLyogcmV0dXJucyB3aXRob3V0IHdhaXQgaWYgbm90IGNvbm5l
+Y3RlZCAqLw0KPiA+Pg0KPiA+PiAtLQ0KPiA+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlz
+dDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtcmRtYSINCj4gPj4gaW4gdGhlIGJv
+ZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcgTW9yZQ0KPiBtYWpv
+cmRvbW8NCj4gPj4gaW5mbyBhdCBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZv
+Lmh0bWwNCj4gPiBOICAgICByICB5ICAgYiBYICDHp3YgXiAp3rp7Lm4gKyAgICB7ICAgIiAgXm4g
+ciAgIHogGiAgaCAgICAmICAeIEcgICBoIAMNCj4gPiAoIOmajiDdomoiICAaIBttICAgICB6IN6W
+ICAgZiAgIGggICB+IG1tbD09DQoNCg==
