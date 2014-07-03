@@ -1,35 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:43656 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755382AbaGWQNw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 12:13:52 -0400
-Received: by mail-ie0-f176.google.com with SMTP id tr6so1170851ieb.21
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 09:13:51 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:50120 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751196AbaGCUUK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jul 2014 16:20:10 -0400
+Date: Thu, 3 Jul 2014 16:20:09 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: 3.16 nfsd bugfixes
+Message-ID: <20140703202009.GE24322@fieldses.org>
 MIME-Version: 1.0
-Date: Wed, 23 Jul 2014 09:13:51 -0700
-Message-ID: <CAB7xdikp2ab=oqQKz+DVLh0D5G9aB7EMd4XWttLh3qFE8Fp9qA@mail.gmail.com>
-Subject: how to setup pNFS
-From: sheng qiu <herbert1984106@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Please pull nfsd bugfixes from
 
-i am trying to set up pNFS server and client. is there any document
-can help that?
-i tried to follow the
-http://wiki.linux-nfs.org/wiki/index.php/PNFS_Setup_Instructions, but
-i did not have /proc/fs/nfsd/pdfs_dlm_device entry.
+  git://linux-nfs.org/~bfields/linux.git for-3.16
 
-echo "/dev/sdc:192.168.0.1,192.168.0.2" >/proc/fs/nfsd/pnfs_dlm_device
+By coincidence, two NFSv4 symlink bugs, one introduced in the 3.16 xdr
+encoding rewrite, the other a decoding bug that I think we've had since
+the start but that just doesn't trigger very often.
 
+--b.
 
-so i cannot follow the above step.
+----------------------------------------------------------------
+Avi Kivity (1):
+      nfs: fix nfs4d readlink truncated packet
 
+J. Bruce Fields (1):
+      nfsd: fix rare symlink decoding bug
 
-any help?
-
-
-THanks!
+ fs/nfsd/nfs4proc.c |  9 ---------
+ fs/nfsd/nfs4xdr.c  | 15 +++++++++++++--
+ 2 files changed, 13 insertions(+), 11 deletions(-)
