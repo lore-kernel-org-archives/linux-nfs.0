@@ -1,87 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33976 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755152AbaGITlS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jul 2014 15:41:18 -0400
-Date: Wed, 9 Jul 2014 15:41:14 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 003/114] nfsd: wait to initialize work struct just
- prior to using it
-Message-ID: <20140709194114.GC26851@fieldses.org>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
- <1404143423-24381-4-git-send-email-jlayton@primarydata.com>
- <20140708211133.GA26851@fieldses.org>
- <20140709082121.GA30099@infradead.org>
+Received: from mail-db3lp0084.outbound.protection.outlook.com ([213.199.154.84]:54487
+	"EHLO emea01-db3-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750978AbaGCMaj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 08:30:39 -0400
+From: Yan Burman <yanb@mellanox.com>
+To: Shirley Ma <shirley.ma@oracle.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Rupert Dance <rsdance@soft-forge.com>,
+        "Chuck Lever" <chuck.lever@oracle.com>,
+        Doug Ledford <dledford@redhat.com>,
+        "Anna Schumaker" <Anna.Schumaker@netapp.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: RE: NFSoRDMA developers bi-weekly meeting minutes (6/25)
+Date: Thu, 3 Jul 2014 12:14:38 +0000
+Message-ID: <d3d3fd3f6f1c44159f0e6b9d19a622eb@DB4PR05MB461.eurprd05.prod.outlook.com>
+References: <53B42F2A.9060205@oracle.com>
+In-Reply-To: <53B42F2A.9060205@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140709082121.GA30099@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 09, 2014 at 01:21:21AM -0700, Christoph Hellwig wrote:
-> On Tue, Jul 08, 2014 at 05:11:34PM -0400, J. Bruce Fields wrote:
-> > BUG: unable to handle kernel NULL pointer dereference at 0000000000000008
-> > IP: [<ffffffff810890b1>] process_one_work+0x31/0x500
-> > PGD 0 
-> > Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
-> > Modules linked in: nfsd auth_rpcgss oid_registry nfs_acl lockd sunrpc
-> > CPU: 2 PID: 30 Comm: kworker/u8:1 Not tainted 3.16.0-rc2-00023-g30c1d16 #3051
-> > Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> > task: ffff88003d9cc810 ti: ffff88003d9d0000 task.ti: ffff88003d9d0000
-> > RIP: 0010:[<ffffffff810890b1>]  [<ffffffff810890b1>] process_one_work+0x31/0x500
-> > RSP: 0018:ffff88003d9d3d68  EFLAGS: 00010046
-> > RAX: 0000000000000100 RBX: ffff88003d9caf80 RCX: dead000000200200
-> > RDX: 0000000000000100 RSI: ffff880031429b38 RDI: ffff88003d9caf80
-> > RBP: ffff88003d9d3dd8 R08: ffff88003dcb7800 R09: 0000000001c40000
-> > R10: 0000000000000000 R11: 000000000006b5b0 R12: ffff88003dcb7800
-> > R13: 0000000000000000 R14: ffff880031429b38 R15: ffff88003d9caf80
-> > FS:  0000000000000000(0000) GS:ffff88003fb00000(0000) knlGS:0000000000000000
-> > CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> > CR2: 0000000000000138 CR3: 0000000027744000 CR4: 00000000000006e0
-> > Stack:
-> >  000000003d9d3d88 ffff88003dcb7818 ffff88003d9cafb0 ffff88003dcb7800
-> >  ffff88003dcb7800 ffff88003dcb7800 ffff88003dcb7800 ffff88003d9cafb0
-> >  ffff88003d9d3dd8 ffff88003dcb7800 ffff88003dcb7848 ffff88003d9cafb0
-> > Call Trace:
-> >  [<ffffffff81089b9b>] worker_thread+0x11b/0x4f0
-> >  [<ffffffff81089a80>] ? init_pwq+0x190/0x190
-> >  [<ffffffff81090ac4>] kthread+0xe4/0x100
-> >  [<ffffffff810909e0>] ? __init_kthread_worker+0x70/0x70
-> >  [<ffffffff81a4ca2c>] ret_from_fork+0x7c/0xb0
-> >  [<ffffffff810909e0>] ? __init_kthread_worker+0x70/0x70
-> > Code: 48 89 e5 41 57 41 56 49 89 f6 41 55 45 31 ed 41 54 53 48 89 fb 48 83 ec 48 48 8b 06 4c 8b 67 48 48 89 c2 30 d2 a8 04 4c 0f 45 ea <49> 8b 45 08 48 c7 45 b8 00 00 00 00 48 c7 45 c0 00 00 00 00 8b 
-> > RIP  [<ffffffff810890b1>] process_one_work+0x31/0x500
-> >  RSP <ffff88003d9d3d68>
-> > CR2: 0000000000000008
-> > 
-> > and I'm suspicious of this:
-> > 
-> > > @@ -763,6 +764,8 @@ static void do_probe_callback(struct nfs4_client *clp)
-> > >  
-> > >  	cb->cb_ops = &nfsd4_cb_probe_ops;
-> > >  
-> > > +	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
-> > > +
-> > >  	run_nfsd4_cb(cb);
-> > >  }
-> > 
-> > This is called all over the place, possibly multiple times on the same
-> > client, so we're calling INIT_WORK on something that may already be in
-> > use--I doubt that's safe.
-> > 
-> > I'm backing out this patch for now.
+Hi Shirley,
+
+> -----Original Message-----
+> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+> owner@vger.kernel.org] On Behalf Of Shirley Ma
+> Sent: Wednesday, July 02, 2014 19:11
+> To: linux-rdma; Linux NFS Mailing List; Rupert Dance; Chuck Lever; Doug
+> Ledford; Anna Schumaker; Steve Wise; Steve Dickson
+> Subject: NFSoRDMA developers bi-weekly meeting minutes (6/25)
 > 
-> If that's the case all of do_probe_callback seems very fishy to me, as
-> it scrambles all over the callback structure.  I guess we need to move
-> more of it to an init function then, and have different init functions
-> for the different callbacks.
+> 
+> 6. NFSoRDMA virtualization doesn't work. Shirley found that VF FRMR
+> reported port error after a successful post_send on connextX-2. It didn't seem
+> an NFSoRDMA issue. Questions are whether VF FRMR is fully tested. Later Yan
+> confirmed VF FRMR doesn't work for NFSoRDMA on connectX-3 either.
+> 
 
-Taking a look....  It does look fishy, but those fields are constant, so
-I don't see a bug.
+Apparently there has been a misunderstanding. I did not confirm that VF FRMR does not work.
+Actually I use FRMR on VF all the time (not with NFSoRDMA apparently). You can check if FRMR works for you by running krping.
 
-In delegation recall case (nfsd4_cb_recall()) those fields aren't
-constant, but we guarantee it's only called once.
+Regards,
+Yan
 
---b.
