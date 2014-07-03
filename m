@@ -1,125 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtprelay0213.hostedemail.com ([216.40.44.213]:47258 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753526AbaGTSYO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Jul 2014 14:24:14 -0400
-From: Joe Perches <joe@perches.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, David Teigland <teigland@redhat.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Christine Caulfield <ccaulfie@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        cluster-devel@redhat.com, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 7/9] dlm: fs: Remove unused conf from lm_grant
-Date: Sun, 20 Jul 2014 11:23:41 -0700
-Message-Id: <d94a743c6efc52df868b24fcf3aa651e08945c47.1405879494.git.joe@perches.com>
-In-Reply-To: <cover.1405879494.git.joe@perches.com>
-References: <cover.1405879494.git.joe@perches.com>
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:58160 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752275AbaGCWbS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 18:31:18 -0400
+Received: by mail-qc0-f181.google.com with SMTP id x13so849117qcv.12
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Jul 2014 15:31:17 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 3 Jul 2014 18:31:15 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 015/114] nfsd: Allow struct nfsd4_compound_state to
+ cache the nfs4_client
+Message-ID: <20140703183115.397af08e@tlielax.poochiereds.net>
+In-Reply-To: <20140703213526.GG24322@fieldses.org>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+	<1404143423-24381-16-git-send-email-jlayton@primarydata.com>
+	<20140703203259.GF24322@fieldses.org>
+	<20140703213526.GG24322@fieldses.org>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="MP_/iruD5j=mZKYdaAoNrcG09TZ"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This argument is always NULL so don't pass it around.
+--MP_/iruD5j=mZKYdaAoNrcG09TZ
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/dlm/plock.c     |  8 ++++----
- fs/lockd/svclock.c | 12 +++---------
- include/linux/fs.h |  2 +-
- 3 files changed, 8 insertions(+), 14 deletions(-)
+On Thu, 3 Jul 2014 17:35:26 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
-index e59d332..e0ab3a9 100644
---- a/fs/dlm/plock.c
-+++ b/fs/dlm/plock.c
-@@ -30,7 +30,7 @@ struct plock_op {
- 
- struct plock_xop {
- 	struct plock_op xop;
--	int (*callback)(struct file_lock *, struct file_lock *, int);
-+	int (*callback)(struct file_lock *fl, int result);
- 	void *fl;
- 	void *file;
- 	struct file_lock flc;
-@@ -190,7 +190,7 @@ static int dlm_plock_callback(struct plock_op *op)
- 	struct file *file;
- 	struct file_lock *fl;
- 	struct file_lock *flc;
--	int (*notify)(struct file_lock *fl, struct file_lock *cont, int result) = NULL;
-+	int (*notify)(struct file_lock *fl, int result) = NULL;
- 	struct plock_xop *xop = (struct plock_xop *)op;
- 	int rv = 0;
- 
-@@ -209,7 +209,7 @@ static int dlm_plock_callback(struct plock_op *op)
- 	notify = xop->callback;
- 
- 	if (op->info.rv) {
--		notify(fl, NULL, op->info.rv);
-+		notify(fl, op->info.rv);
- 		goto out;
- 	}
- 
-@@ -228,7 +228,7 @@ static int dlm_plock_callback(struct plock_op *op)
- 			  (unsigned long long)op->info.number, file, fl);
- 	}
- 
--	rv = notify(fl, NULL, 0);
-+	rv = notify(fl, 0);
- 	if (rv) {
- 		/* XXX: We need to cancel the fs lock here: */
- 		log_print("dlm_plock_callback: lock granted after lock request "
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index ab798a8..2a61701 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -667,22 +667,16 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_file *file, struct nlm_lock *l
-  * deferred rpc for GETLK and SETLK.
-  */
- static void
--nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
--			     int result)
-+nlmsvc_update_deferred_block(struct nlm_block *block, int result)
- {
- 	block->b_flags |= B_GOT_CALLBACK;
- 	if (result == 0)
- 		block->b_granted = 1;
- 	else
- 		block->b_flags |= B_TIMED_OUT;
--	if (conf) {
--		if (block->b_fl)
--			__locks_copy_lock(block->b_fl, conf);
--	}
- }
- 
--static int nlmsvc_grant_deferred(struct file_lock *fl, struct file_lock *conf,
--					int result)
-+static int nlmsvc_grant_deferred(struct file_lock *fl, int result)
- {
- 	struct nlm_block *block;
- 	int rc = -ENOENT;
-@@ -697,7 +691,7 @@ static int nlmsvc_grant_deferred(struct file_lock *fl, struct file_lock *conf,
- 					rc = -ENOLCK;
- 					break;
- 				}
--				nlmsvc_update_deferred_block(block, conf, result);
-+				nlmsvc_update_deferred_block(block, result);
- 			} else if (result == 0)
- 				block->b_granted = 1;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ede4be8..d083a67 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -842,7 +842,7 @@ struct lock_manager_operations {
- 	int (*lm_compare_owner)(struct file_lock *fl1, struct file_lock *fl2);
- 	unsigned long (*lm_owner_key)(struct file_lock *fl);
- 	void (*lm_notify)(struct file_lock *fl);	/* unblock callback */
--	int (*lm_grant)(struct file_lock *fl, struct file_lock *conf, int result);
-+	int (*lm_grant)(struct file_lock *fl, int result);
- 	void (*lm_break)(struct file_lock *fl);
- 	int (*lm_change)(struct file_lock **fl, int type);
- };
+> On Thu, Jul 03, 2014 at 04:32:59PM -0400, J. Bruce Fields wrote:
+> > On Mon, Jun 30, 2014 at 11:48:44AM -0400, Jeff Layton wrote:
+> > > We want to use the nfsd4_compound_state to cache the nfs4_client in
+> > > order to optimise away extra lookups of the clid.
+> > > 
+> > > In the v4.0 case, we use this to ensure that we only have to look up the
+> > > client at most once per compound for each call into lookup_clientid. For
+> > > v4.1+ we set the pointer in the cstate during SEQUENCE processing so we
+> > > should never need to do a search for it.
+> > 
+> > The connectathon locking test is failing for me in the nfsv4/krb5i case
+> > as of this commit.
+> > 
+> > Which makes no sense to me whatsoever, so it's entirely possible this is
+> > some unrelated problem on my side.  I'll let you know when I've figured
+> > out anything more.
+> 
+> It's intermittent.
+> 
+> I've reproduced it on the previous commit so I know at least that this
+> one isn't at fault.
+> 
+> I doubt it's really dependent on krb5i, at most that's probably just
+> making it more likely to reproduce.
+> 
+> --b.
+
+Bruce,
+
+Does this patch help? I suspect this is where the bug crept in, but I'm
+unclear on why it would be intermittent...
+
+FWIW, this all gets cleaned up in a later patch that changes how the
+refcounting on lock and openowners works.
+
 -- 
-1.8.1.2.459.gbcd45b4.dirty
+Jeff Layton <jlayton@primarydata.com>
 
+--MP_/iruD5j=mZKYdaAoNrcG09TZ
+Content-Type: text/x-patch
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename=0001-nfsd-fix-lock-stateid-cleanup-on-error-in-nfsd4_lock.patch
+
+>From 84884320b983eaeb68c652de8fe4b48aad4052c3 Mon Sep 17 00:00:00 2001
+From: Jeff Layton <jlayton@primarydata.com>
+Date: Thu, 3 Jul 2014 18:20:31 -0400
+Subject: [PATCH] nfsd: fix lock stateid cleanup on error in nfsd4_lock
+
+commit 43a1b041e3b changed nfsd4_lock to call release_lockowner_if_empty
+if the the lock stateid was new and the function was going to return an
+error.
+
+This is wrong. The lockowner will never be empty in that situation since
+it still has the new lock stateid attached to it. Change it to call
+release_lock_stateid instead, which will destroy the lock stateid and
+then release the lockowner if it's empty at that point.
+
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Reported-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a22c73f14a17..b2ea0a06fbf2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4600,7 +4600,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
+ out:
+ 	if (status && new_state)
+-		release_lockowner_if_empty(lock_sop);
++		release_lock_stateid(lock_stp);
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (!cstate->replay_owner)
+ 		nfs4_unlock_state();
+-- 
+1.9.3
+
+
+--MP_/iruD5j=mZKYdaAoNrcG09TZ--
