@@ -1,27 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:57463 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751499AbaGJTTY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 15:19:24 -0400
-Message-ID: <53BEE740.3070404@opengridcomputing.com>
-Date: Thu, 10 Jul 2014 14:19:28 -0500
-From: Steve Wise <swise@opengridcomputing.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 00/21] NFS/RDMA client patches for 3.17
-References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mail-qc0-f172.google.com ([209.85.216.172]:54427 "EHLO
+	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750817AbaGCLy1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 07:54:27 -0400
+Received: by mail-qc0-f172.google.com with SMTP id o8so79428qcw.17
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Jul 2014 04:54:26 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH] nfsd: properly convert return from commit_metadata to __be32
+Date: Thu,  3 Jul 2014 07:54:19 -0400
+Message-Id: <1404388459-32288-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Chuck,
+Commit 2a7420c03e504 (nfsd: Ensure that nfsd_create_setattr commits
+files to stable storage), added a couple of calls to commit_metadata,
+but doesn't convert their return codes to __be32 in the appropriate
+places.
 
-I tested this series and it tested ok for me.  I tested NFS v3 and v4 
-over cxgb4 and mlx4:  cthon, iozone, fio, and xfs.  No regressions seen.
-
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
+ fs/nfsd/vfs.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index e1b792ada45b..f501a9b5c9df 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -463,7 +463,7 @@ out_put_write_access:
+ 	if (size_change)
+ 		put_write_access(inode);
+ 	if (!err)
+-		err = commit_metadata(fhp);
++		err = nfserrno(commit_metadata(fhp));
+ out:
+ 	return err;
+ }
+@@ -1122,7 +1122,7 @@ nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *resfhp,
+ 	if (iap->ia_valid)
+ 		return nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
+ 	/* Callers expect file metadata to be committed here */
+-	return commit_metadata(resfhp);
++	return nfserrno(commit_metadata(resfhp));
+ }
+ 
+ /* HPUX client sometimes creates a file in mode 000, and sets size to 0.
+-- 
+1.9.3
 
