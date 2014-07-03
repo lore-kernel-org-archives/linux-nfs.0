@@ -1,122 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:48823 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754182AbaGINyY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 09:54:24 -0400
-Received: by mail-pa0-f51.google.com with SMTP id hz1so9182866pad.24
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Jul 2014 06:54:24 -0700 (PDT)
-Message-ID: <53BD4988.6020302@gmail.com>
-Date: Wed, 09 Jul 2014 21:54:16 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH] NFSD: Check acl returned from get_acl/posix_acl_from_mode
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:33238 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750758AbaGCFIJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 01:08:09 -0400
+Received: by mail-pd0-f176.google.com with SMTP id ft15so13166993pdb.21
+        for <linux-nfs@vger.kernel.org>; Wed, 02 Jul 2014 22:08:09 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>,
+        Tom Haynes <Thomas.Haynes@primarydata.com>
+Subject: [PATCH 1/2] pnfs/filelayout: fix race between mark_request_commit and scan_commit_lists
+Date: Thu,  3 Jul 2014 13:07:45 +0800
+Message-Id: <1404364066-13031-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 4ac7249ea5 (nfsd: use get_acl and ->set_acl)
-don't check the acl returned from get_acl()/posix_acl_from_mode().
+We need to hold cinfo lock while setting bucket->wlseg and adding req to nwritten
+list at the same time. Otherwise there might be a window where nwritten list
+is empty yet we set bucket->wlseg, in which case ff_layout_scan_ds_commit_list()
+may end up clearing bucket->wlseg incorrectly, casuing client to oops later on.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+This was found when testing flexfile layout but filelayout has the same problem.
+
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
 ---
- fs/nfsd/nfs2acl.c |  8 ++++----
- fs/nfsd/nfs3acl.c |  8 ++++----
- fs/nfsd/nfs4acl.c | 19 +++++++++++++------
- 3 files changed, 21 insertions(+), 14 deletions(-)
+ fs/nfs/filelayout/filelayout.c | 43 ++++++++++++++++++++++++------------------
+ 1 file changed, 25 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index 12b023a..ac54ea6 100644
---- a/fs/nfsd/nfs2acl.c
-+++ b/fs/nfsd/nfs2acl.c
-@@ -54,14 +54,14 @@ static __be32 nfsacld_proc_getacl(struct svc_rqst * rqstp,
- 
- 	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
- 		acl = get_acl(inode, ACL_TYPE_ACCESS);
--		if (IS_ERR(acl)) {
--			nfserr = nfserrno(PTR_ERR(acl));
--			goto fail;
--		}
- 		if (acl == NULL) {
- 			/* Solaris returns the inode's minimum ACL. */
- 			acl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
- 		}
-+		if (IS_ERR(acl)) {
-+			nfserr = nfserrno(PTR_ERR(acl));
-+			goto fail;
-+		}
- 		resp->acl_access = acl;
- 	}
- 	if (resp->mask & (NFS_DFACL|NFS_DFACLCNT)) {
-diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
-index 2a514e2..34cbbab 100644
---- a/fs/nfsd/nfs3acl.c
-+++ b/fs/nfsd/nfs3acl.c
-@@ -47,14 +47,14 @@ static __be32 nfsd3_proc_getacl(struct svc_rqst * rqstp,
- 
- 	if (resp->mask & (NFS_ACL|NFS_ACLCNT)) {
- 		acl = get_acl(inode, ACL_TYPE_ACCESS);
--		if (IS_ERR(acl)) {
--			nfserr = nfserrno(PTR_ERR(acl));
--			goto fail;
--		}
- 		if (acl == NULL) {
- 			/* Solaris returns the inode's minimum ACL. */
- 			acl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
- 		}
-+		if (IS_ERR(acl)) {
-+			nfserr = nfserrno(PTR_ERR(acl));
-+			goto fail;
-+		}
- 		resp->acl_access = acl;
- 	}
- 	if (resp->mask & (NFS_DFACL|NFS_DFACLCNT)) {
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index acf6974..59fd766 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -146,17 +146,23 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry,
- 	int size = 0;
- 
- 	pacl = get_acl(inode, ACL_TYPE_ACCESS);
--	if (!pacl) {
-+	if (!pacl)
- 		pacl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
--		if (IS_ERR(pacl))
--			return PTR_ERR(pacl);
--	}
-+
-+	if (IS_ERR(pacl))
-+		return PTR_ERR(pacl);
-+
- 	/* allocate for worst case: one (deny, allow) pair each: */
- 	size += 2 * pacl->a_count;
- 
- 	if (S_ISDIR(inode->i_mode)) {
- 		flags = NFS4_ACL_DIR;
- 		dpacl = get_acl(inode, ACL_TYPE_DEFAULT);
-+		if (IS_ERR(dpacl)) {
-+			error = PTR_ERR(dpacl);
-+			goto rel_pacl;
-+		}
-+
- 		if (dpacl)
- 			size += 2 * dpacl->a_count;
- 	}
-@@ -173,9 +179,10 @@ nfsd4_get_nfs4_acl(struct svc_rqst *rqstp, struct dentry *dentry,
- 	if (dpacl)
- 		_posix_to_nfsv4_one(dpacl, *acl, flags | NFS4_ACL_TYPE_DEFAULT);
- 
-- out:
--	posix_acl_release(pacl);
-+out:
- 	posix_acl_release(dpacl);
-+rel_pacl:
-+	posix_acl_release(pacl);
- 	return error;
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 504d58a..a928f92 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -1035,18 +1035,22 @@ out:
+ 	pnfs_put_lseg(freeme);
  }
  
+-static struct list_head *
+-filelayout_choose_commit_list(struct nfs_page *req,
+-			      struct pnfs_layout_segment *lseg,
+-			      struct nfs_commit_info *cinfo)
++static void
++filelayout_mark_request_commit(struct nfs_page *req,
++			       struct pnfs_layout_segment *lseg,
++			       struct nfs_commit_info *cinfo)
++
+ {
+ 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+ 	u32 i, j;
+ 	struct list_head *list;
+ 	struct pnfs_commit_bucket *buckets;
+ 
+-	if (fl->commit_through_mds)
+-		return &cinfo->mds->list;
++	if (fl->commit_through_mds) {
++		list = &cinfo->mds->list;
++		spin_lock(cinfo->lock);
++		goto mds_commit;
++	}
+ 
+ 	/* Note that we are calling nfs4_fl_calc_j_index on each page
+ 	 * that ends up being committed to a data server.  An attractive
+@@ -1070,19 +1074,22 @@ filelayout_choose_commit_list(struct nfs_page *req,
+ 	}
+ 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
+ 	cinfo->ds->nwritten++;
+-	spin_unlock(cinfo->lock);
+-	return list;
+-}
+ 
+-static void
+-filelayout_mark_request_commit(struct nfs_page *req,
+-			       struct pnfs_layout_segment *lseg,
+-			       struct nfs_commit_info *cinfo)
+-{
+-	struct list_head *list;
+-
+-	list = filelayout_choose_commit_list(req, lseg, cinfo);
+-	nfs_request_add_commit_list(req, list, cinfo);
++mds_commit:
++	/* nfs_request_add_commit_list(). We need to add req to list without
++	 * dropping cinfo lock.
++	 */
++	set_bit(PG_CLEAN, &(req)->wb_flags);
++	nfs_list_add_request(req, list);
++	cinfo->mds->ncommit++;
++	spin_unlock(cinfo->lock);
++	if (!cinfo->dreq) {
++		inc_zone_page_state(req->wb_page, NR_UNSTABLE_NFS);
++		inc_bdi_stat(page_file_mapping(req->wb_page)->backing_dev_info,
++			     BDI_RECLAIMABLE);
++		__mark_inode_dirty(req->wb_context->dentry->d_inode,
++				   I_DIRTY_DATASYNC);
++	}
+ }
+ 
+ static u32 calc_ds_index_from_commit(struct pnfs_layout_segment *lseg, u32 i)
 -- 
-1.9.3
+1.9.1
 
