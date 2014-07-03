@@ -1,117 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:51339 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755135AbaGUTLk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 15:11:40 -0400
-Received: by mail-ie0-f180.google.com with SMTP id at20so7280590iec.11
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 12:11:39 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] SUNRPC: Enforce an upper limit on the number of cached credentials
-Date: Mon, 21 Jul 2014 15:11:41 -0400
-Message-Id: <1405969902-11477-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:51069 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758548AbaGCPSU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Jul 2014 11:18:20 -0400
+Date: Thu, 3 Jul 2014 11:18:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 015/114] nfsd: Allow struct nfsd4_compound_state to
+ cache the nfs4_client
+Message-ID: <20140703151819.GC24322@fieldses.org>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+ <1404143423-24381-16-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1404143423-24381-16-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In some cases where the credentials are not often reused, we may want
-to limit their total number just in order to make the negative lookups
-in the hash table more manageable.
+On Mon, Jun 30, 2014 at 11:48:44AM -0400, Jeff Layton wrote:
+> @@ -2997,6 +3009,38 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
+>  	return nfserr_bad_seqid;
+>  }
+>  
+> +static __be32 lookup_clientid(clientid_t *clid,
+> +		struct nfsd4_compound_state *cstate,
+> +		struct nfsd_net *nn)
+> +{
+> +	struct nfs4_client *found;
+> +
+> +	if (cstate->clp) {
+> +		found = cstate->clp;
+> +		if (!same_clid(&found->cl_clientid, clid))
+> +			return nfserr_stale_clientid;
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/auth.c | 44 +++++++++++++++++++++++++++++++++++---------
- 1 file changed, 35 insertions(+), 9 deletions(-)
+That's new behavior, isn't it?
 
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 2bc7bb82b162..360decdddc78 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -80,6 +80,10 @@ static struct kernel_param_ops param_ops_hashtbl_sz = {
- module_param_named(auth_hashtable_size, auth_hashbits, hashtbl_sz, 0644);
- MODULE_PARM_DESC(auth_hashtable_size, "RPC credential cache hashtable size");
- 
-+static unsigned long auth_max_cred_cachesize = ULONG_MAX;
-+module_param(auth_max_cred_cachesize, ulong, 0644);
-+MODULE_PARM_DESC(auth_max_cred_cachesize, "RPC credential maximum total cache size");
-+
- static u32
- pseudoflavor_to_flavor(u32 flavor) {
- 	if (flavor > RPC_AUTH_MAXFLAVOR)
-@@ -481,6 +485,20 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
- 	return freed;
- }
- 
-+static unsigned long
-+rpcauth_cache_do_shrink(int nr_to_scan)
-+{
-+	LIST_HEAD(free);
-+	unsigned long freed;
-+
-+	spin_lock(&rpc_credcache_lock);
-+	freed = rpcauth_prune_expired(&free, nr_to_scan);
-+	spin_unlock(&rpc_credcache_lock);
-+	rpcauth_destroy_credlist(&free);
-+
-+	return freed;
-+}
-+
- /*
-  * Run memory cache shrinker.
-  */
-@@ -488,9 +506,6 @@ static unsigned long
- rpcauth_cache_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
- 
- {
--	LIST_HEAD(free);
--	unsigned long freed;
--
- 	if ((sc->gfp_mask & GFP_KERNEL) != GFP_KERNEL)
- 		return SHRINK_STOP;
- 
-@@ -498,12 +513,7 @@ rpcauth_cache_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
- 	if (list_empty(&cred_unused))
- 		return SHRINK_STOP;
- 
--	spin_lock(&rpc_credcache_lock);
--	freed = rpcauth_prune_expired(&free, sc->nr_to_scan);
--	spin_unlock(&rpc_credcache_lock);
--	rpcauth_destroy_credlist(&free);
--
--	return freed;
-+	return rpcauth_cache_do_shrink(sc->nr_to_scan);
- }
- 
- static unsigned long
-@@ -513,6 +523,21 @@ rpcauth_cache_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
- 	return (number_cred_unused / 100) * sysctl_vfs_cache_pressure;
- }
- 
-+static void
-+rpcauth_cache_enforce_limit(void)
-+{
-+	unsigned long diff;
-+	unsigned int nr_to_scan;
-+
-+	if (number_cred_unused <= auth_max_cred_cachesize)
-+		return;
-+	diff = number_cred_unused - auth_max_cred_cachesize;
-+	nr_to_scan = 100;
-+	if (diff < nr_to_scan)
-+		nr_to_scan = diff;
-+	rpcauth_cache_do_shrink(nr_to_scan);
-+}
-+
- /*
-  * Look up a process' credentials in the authentication cache
-  */
-@@ -566,6 +591,7 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
- 	} else
- 		list_add_tail(&new->cr_lru, &free);
- 	spin_unlock(&cache->lock);
-+	rpcauth_cache_enforce_limit();
- found:
- 	if (test_bit(RPCAUTH_CRED_NEW, &cred->cr_flags) &&
- 	    cred->cr_ops->cr_init != NULL &&
--- 
-1.9.3
+But sending a single compound that references multiple clients sounds
+nuts even in the 4.0 case, OK.  Applying.
 
+(And I've merged all but the delegation locking change up through here
+so far.)
+
+--b.
+
+> +		return nfs_ok;
+> +	}
+> +
+> +	if (STALE_CLIENTID(clid, nn))
+> +		return nfserr_stale_clientid;
+> +
+> +	/*
+> +	 * For v4.1+ we get the client in the SEQUENCE op. If we don't have one
+> +	 * cached already then we know this is for is for v4.0 and "sessions"
+> +	 * will be false.
+> +	 */
+> +	WARN_ON_ONCE(cstate->session);
+> +	found = find_confirmed_client(clid, false, nn);
+> +	if (!found)
+> +		return nfserr_expired;
+> +
+> +	/* Cache the nfs4_client in cstate! */
+> +	cstate->clp = found;
+> +	atomic_inc(&found->cl_refcount);
+> +	return nfs_ok;
+> +}
+> +
+>  __be32
+>  nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+>  		    struct nfsd4_open *open, struct nfsd_net *nn)
+> @@ -3509,18 +3553,6 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
+>  		free_generic_stateid(open->op_stp);
+>  }
+>  
+> -static __be32 lookup_clientid(clientid_t *clid, bool session, struct nfsd_net *nn, struct nfs4_client **clp)
+> -{
+> -	struct nfs4_client *found;
+> -
+> -	if (STALE_CLIENTID(clid, nn))
+> -		return nfserr_stale_clientid;
+> -	found = find_confirmed_client(clid, session, nn);
+> -	if (clp)
+> -		*clp = found;
+> -	return found ? nfs_ok : nfserr_expired;
+> -}
+> -
+>  __be32
+>  nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	    clientid_t *clid)
+> @@ -3532,9 +3564,10 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	nfs4_lock_state();
+>  	dprintk("process_renew(%08x/%08x): starting\n", 
+>  			clid->cl_boot, clid->cl_id);
+> -	status = lookup_clientid(clid, cstate->minorversion, nn, &clp);
+> +	status = lookup_clientid(clid, cstate, nn);
+>  	if (status)
+>  		goto out;
+> +	clp = cstate->clp;
+>  	status = nfserr_cb_path_down;
+>  	if (!list_empty(&clp->cl_delegations)
+>  			&& clp->cl_cb_state != NFSD4_CB_UP)
+> @@ -3797,22 +3830,19 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+>  		     stateid_t *stateid, unsigned char typemask,
+>  		     struct nfs4_stid **s, struct nfsd_net *nn)
+>  {
+> -	struct nfs4_client *cl;
+>  	__be32 status;
+> -	bool sessions = cstate->minorversion != 0;
+>  
+>  	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+>  		return nfserr_bad_stateid;
+> -	status = lookup_clientid(&stateid->si_opaque.so_clid, sessions,
+> -							nn, &cl);
+> +	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
+>  	if (status == nfserr_stale_clientid) {
+> -		if (sessions)
+> +		if (cstate->session)
+>  			return nfserr_bad_stateid;
+>  		return nfserr_stale_stateid;
+>  	}
+>  	if (status)
+>  		return status;
+> -	*s = find_stateid_by_type(cl, stateid, typemask);
+> +	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
+>  	if (!*s)
+>  		return nfserr_bad_stateid;
+>  	return nfs_ok;
+> @@ -4662,7 +4692,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	nfs4_lock_state();
+>  
+>  	if (!nfsd4_has_session(cstate)) {
+> -		status = lookup_clientid(&lockt->lt_clientid, false, nn, NULL);
+> +		status = lookup_clientid(&lockt->lt_clientid, cstate, nn);
+>  		if (status)
+>  			goto out;
+>  	}
+> @@ -4831,7 +4861,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+>  
+>  	nfs4_lock_state();
+>  
+> -	status = lookup_clientid(clid, cstate->minorversion, nn, NULL);
+> +	status = lookup_clientid(clid, cstate, nn);
+>  	if (status)
+>  		goto out;
+>  
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 7d8af164523b..312f6483a48e 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -55,6 +55,7 @@ struct nfsd4_compound_state {
+>  	struct svc_fh		current_fh;
+>  	struct svc_fh		save_fh;
+>  	struct nfs4_stateowner	*replay_owner;
+> +	struct nfs4_client	*clp;
+>  	/* For sessions DRC */
+>  	struct nfsd4_session	*session;
+>  	struct nfsd4_slot	*slot;
+> -- 
+> 1.9.3
+> 
