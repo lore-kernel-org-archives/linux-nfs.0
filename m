@@ -1,88 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:27906 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934769AbaGPSWT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 14:22:19 -0400
-Message-ID: <53C6C2D7.2040500@oracle.com>
-Date: Wed, 16 Jul 2014 11:22:15 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
+Received: from mail-vc0-f179.google.com ([209.85.220.179]:41853 "EHLO
+	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752581AbaGCN2t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 09:28:49 -0400
+Received: by mail-vc0-f179.google.com with SMTP id id10so207857vcb.10
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Jul 2014 06:28:49 -0700 (PDT)
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-rdma <linux-rdma@vger.kernel.org>,
+In-Reply-To: <1404388459-32288-1-git-send-email-jlayton@primarydata.com>
+References: <1404388459-32288-1-git-send-email-jlayton@primarydata.com>
+Date: Thu, 3 Jul 2014 09:28:48 -0400
+Message-ID: <CAHQdGtRTYC5_cdva+yT7d4xrcKF6CL7YbY7oY1rnudUPL0VnDw@mail.gmail.com>
+Subject: Re: [PATCH] nfsd: properly convert return from commit_metadata to __be32
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: Bruce Fields <bfields@fieldses.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
-References: <59034BAD-306F-462F-A274-3EB06C0CBE47@oracle.com> <53C69EC3.1010208@oracle.com> <EB581A8B-097E-4C0F-97B3-D04B2B791A69@oracle.com>
-In-Reply-To: <EB581A8B-097E-4C0F-97B3-D04B2B791A69@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 07/16/2014 10:57 AM, Chuck Lever wrote:
-> 
->> On Jul 16, 2014, at 11:48 AM, Shirley Ma <shirley.ma@oracle.com> wrote:
->>
->> These two patches have been significantly reduced interrupt rate by around 4 times.
->>
->>     xprtrdma: Disable completions for FAST_REG_MR Work Requests
->>     xprtrdma: Disable completions for LOCAL_INV Work Requests 
-> 
-> Thanks Shirley!  This is result applies only to FRMR, correct? Also, i'd imagine the savings would be even greater for adapters that have short page list depth?
-
-Yes, only tested FRMR with mlx4. I can hack the code to test short page page list depth to check the savings. When looking the difference between irq and softirq, it is much closer now.
-
-> 
->>
->> Same NFS read/write workload, here are interrupts rate irq/per sec report based upon /proc/interrupts:
->>
->> w/o patches:
->> -----------
->> PCI-MSI-edge mlx4-ib (204):  105176
->> PCI-MSI-edge mlx4-ib (204):  123650
->> PCI-MSI-edge mlx4-ib (204):  123690
->> PCI-MSI-edge mlx4-ib (204):  116554
->> PCI-MSI-edge mlx4-ib (204):  122864
->>
->> And perf stat irq report: 
->> Performance counter stats for 'system wide':
->>
->>         2,131,870      irq:irq_handler_entry                                        [100.00%]
->>         2,131,870      irq:irq_handler_exit                                         [100.00%]
->>           635,587      irq:softirq_entry                                            [100.00%]
->>           635,597      irq:softirq_exit                                             [100.00%]
->>           636,155      irq:softirq_raise
->>
->>      25.422821792 seconds time elapsed
->>
->> w/i patches:
->> -----------
->> PCI-MSI-edge mlx4-ib (204):  31131
->> PCI-MSI-edge mlx4-ib (204):  32958
->> PCI-MSI-edge mlx4-ib (204):  31068
->> PCI-MSI-edge mlx4-ib (204):  30236
->> PCI-MSI-edge mlx4-ib (204):  33041
->>
->> And perf stat irq report:
->>
->> Performance counter stats for 'system wide':
->>
->>           653,548      irq:irq_handler_entry                                        [100.00%]
->>           653,548      irq:irq_handler_exit                                         [100.00%]
->>           568,138      irq:softirq_entry                                            [100.00%]
->>           568,148      irq:softirq_exit                                             [100.00%]
->>           568,690      irq:softirq_raise                                           
->>
->>      21.675597062 seconds time elapsed
->>
->> Shirley
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Thu, Jul 3, 2014 at 7:54 AM, Jeff Layton <jlayton@primarydata.com> wrote:
+> Commit 2a7420c03e504 (nfsd: Ensure that nfsd_create_setattr commits
+> files to stable storage), added a couple of calls to commit_metadata,
+> but doesn't convert their return codes to __be32 in the appropriate
+> places.
+>
+> Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/vfs.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index e1b792ada45b..f501a9b5c9df 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -463,7 +463,7 @@ out_put_write_access:
+>         if (size_change)
+>                 put_write_access(inode);
+>         if (!err)
+> -               err = commit_metadata(fhp);
+> +               err = nfserrno(commit_metadata(fhp));
+>  out:
+>         return err;
+>  }
+> @@ -1122,7 +1122,7 @@ nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *resfhp,
+>         if (iap->ia_valid)
+>                 return nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
+>         /* Callers expect file metadata to be committed here */
+> -       return commit_metadata(resfhp);
+> +       return nfserrno(commit_metadata(resfhp));
+>  }
+>
+>  /* HPUX client sometimes creates a file in mode 000, and sets size to 0.
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> 1.9.3
+>
+
+Doh! Thanks Jeff!...
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
