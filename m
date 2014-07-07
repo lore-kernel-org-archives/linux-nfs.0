@@ -1,59 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:35823 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755614AbaGVOvx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:51:53 -0400
-Subject: [PATCH v4 06/21] xprtrdma: Don't invalidate FRMRs if registration
- fails
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:51:51 -0400
-Message-ID: <20140722145151.6010.49734.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:59377 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751960AbaGGUAT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 16:00:19 -0400
+Received: by mail-qc0-f176.google.com with SMTP id w7so4195913qcr.21
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 13:00:18 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 7 Jul 2014 16:00:17 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH] nfsd: close potential race between delegation break and
+ laundromat
+Message-ID: <20140707160017.6900c4b4@tlielax.poochiereds.net>
+In-Reply-To: <20140707193108.GF8630@fieldses.org>
+References: <1404759818-10350-1-git-send-email-jlayton@primarydata.com>
+	<20140707151450.7abd3db8@tlielax.poochiereds.net>
+	<20140707193108.GF8630@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If FRMR registration fails, it's likely to transition the QP to the
-error state. Or, registration may have failed because the QP is
-_already_ in ERROR.
+On Mon, 7 Jul 2014 15:31:08 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Thus calling rpcrdma_deregister_external() in
-rpcrdma_create_chunks() is useless in FRMR mode: the LOCAL_INVs just
-get flushed.
+> On Mon, Jul 07, 2014 at 03:14:50PM -0400, Jeff Layton wrote:
+> > Sigh...after staring at this patch all day, I think I now see a
+> > potential problem with the fault injection piece.
+> > 
+> > In the "recall" case, we may find a delegation on the cl_delegations
+> > list that has already been recalled. If that's the case, then we
+> > probably should just skip it.
+> > 
+> > I'll fix this patch, retest and resend. Sorry for the noise...
+> 
+> OK, so sounds like the fix isn't a big deal, but it also sounds like the
+> fault injection code has come up as needing special attention a few
+> times during this work now.
+> 
+> Has anyone actually ended up using that code?  Anna?
+> 
+> In retrospect I wonder if it's worth the trouble.  It's very
+> special-purpose stuff and if nobody's using it then maybe we could just
+> remove it....
+> 
+> --b.
 
-It is safe to leave existing registrations: when FRMR registration
-is tried again, rpcrdma_register_frmr_external() checks if each FRMR
-is already/still VALID, and knocks it down first if it is.
+I certainly wouldn't object. Having printks that are triggered by
+reading from a debugfs file is just weird, and there are quite a few
+races and bugs in this code.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
----
- net/sunrpc/xprtrdma/rpc_rdma.c |    8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+I have patches that are basically a rewrite of it, but I left the UI
+the same. It was necessary in order to allow for the changes to the
+locking around this code, but that does mean that it's a larger chunk
+of code than it used to be.
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 54422f7..6166c98 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -271,9 +271,11 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	return (unsigned char *)iptr - (unsigned char *)headerp;
- 
- out:
--	for (pos = 0; nchunks--;)
--		pos += rpcrdma_deregister_external(
--				&req->rl_segments[pos], r_xprt);
-+	if (r_xprt->rx_ia.ri_memreg_strategy != RPCRDMA_FRMR) {
-+		for (pos = 0; nchunks--;)
-+			pos += rpcrdma_deregister_external(
-+					&req->rl_segments[pos], r_xprt);
-+	}
- 	return n;
- }
- 
+That said, we've shipped this code in several releases now so removing
+it without any warning might not be a good idea. What may be best is to
+mark it for deprecation if we don't want to keep it, and take my patches
+that overhaul it in the interim. Then, remove it altogether in 2-3
+releases.
 
+-- 
+Jeff Layton <jlayton@primarydata.com>
