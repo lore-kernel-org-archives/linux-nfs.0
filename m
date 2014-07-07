@@ -1,172 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:55191 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754107AbaG3BfF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:05 -0400
-Received: by mail-qa0-f42.google.com with SMTP id j15so592850qaq.15
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:02 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 09/38] nfsd: ensure atomicity in nfsd4_free_stateid and nfsd4_validate_stateid
-Date: Tue, 29 Jul 2014 21:34:14 -0400
-Message-Id: <1406684083-19736-10-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:55091 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750809AbaGGSif (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Jul 2014 14:38:35 -0400
+Date: Mon, 7 Jul 2014 14:38:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: add a nfserrno mapping for -E2BIG to nfserr_fbig
+Message-ID: <20140707183834.GE8630@fieldses.org>
+References: <1404414954-5227-1-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1404414954-5227-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hold the cl_lock over the bulk of these functions. In addition to
-ensuring that they aren't freed prematurely, this will also help prevent
-a potential race that could be introduced later. Once we remove the
-client_mutex, it'll be possible for FREE_STATEID and CLOSE to race and
-for both to try to put the "persistent" reference to the stateid.
+Thanks, applied.--b.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 71 +++++++++++++++++++++++++++--------------------------
- 1 file changed, 36 insertions(+), 35 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 59d44873b68b..f4c7bf96c9fd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1689,17 +1689,6 @@ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
- }
- 
- static struct nfs4_stid *
--find_stateid(struct nfs4_client *cl, stateid_t *t)
--{
--	struct nfs4_stid *ret;
--
--	spin_lock(&cl->cl_lock);
--	ret = find_stateid_locked(cl, t);
--	spin_unlock(&cl->cl_lock);
--	return ret;
--}
--
--static struct nfs4_stid *
- find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
- {
- 	struct nfs4_stid *s;
-@@ -4098,10 +4087,10 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- {
- 	struct nfs4_stid *s;
- 	struct nfs4_ol_stateid *ols;
--	__be32 status;
-+	__be32 status = nfserr_bad_stateid;
- 
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
--		return nfserr_bad_stateid;
-+		return status;
- 	/* Client debugging aid. */
- 	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
- 		char addr_str[INET6_ADDRSTRLEN];
-@@ -4109,34 +4098,42 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 				 sizeof(addr_str));
- 		pr_warn_ratelimited("NFSD: client %s testing state ID "
- 					"with incorrect client ID\n", addr_str);
--		return nfserr_bad_stateid;
-+		return status;
- 	}
--	s = find_stateid(cl, stateid);
-+	spin_lock(&cl->cl_lock);
-+	s = find_stateid_locked(cl, stateid);
- 	if (!s)
--		return nfserr_bad_stateid;
-+		goto out_unlock;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 	if (status)
--		return status;
-+		goto out_unlock;
- 	switch (s->sc_type) {
- 	case NFS4_DELEG_STID:
--		return nfs_ok;
-+		status = nfs_ok;
-+		break;
- 	case NFS4_REVOKED_DELEG_STID:
--		return nfserr_deleg_revoked;
-+		status = nfserr_deleg_revoked;
-+		break;
- 	case NFS4_OPEN_STID:
- 	case NFS4_LOCK_STID:
- 		ols = openlockstateid(s);
- 		if (ols->st_stateowner->so_is_open_owner
- 	    			&& !(openowner(ols->st_stateowner)->oo_flags
- 						& NFS4_OO_CONFIRMED))
--			return nfserr_bad_stateid;
--		return nfs_ok;
-+			status = nfserr_bad_stateid;
-+		else
-+			status = nfs_ok;
-+		break;
- 	default:
- 		printk("unknown stateid type %x\n", s->sc_type);
- 		/* Fallthrough */
- 	case NFS4_CLOSED_STID:
- 	case NFS4_CLOSED_DELEG_STID:
--		return nfserr_bad_stateid;
-+		status = nfserr_bad_stateid;
- 	}
-+out_unlock:
-+	spin_unlock(&cl->cl_lock);
-+	return status;
- }
- 
- static __be32
-@@ -4287,34 +4284,38 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	__be32 ret = nfserr_bad_stateid;
- 
- 	nfs4_lock_state();
--	s = find_stateid(cl, stateid);
-+	spin_lock(&cl->cl_lock);
-+	s = find_stateid_locked(cl, stateid);
- 	if (!s)
--		goto out;
-+		goto out_unlock;
- 	switch (s->sc_type) {
- 	case NFS4_DELEG_STID:
- 		ret = nfserr_locks_held;
--		goto out;
-+		break;
- 	case NFS4_OPEN_STID:
--	case NFS4_LOCK_STID:
- 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 		if (ret)
--			goto out;
--		if (s->sc_type == NFS4_LOCK_STID)
--			ret = nfsd4_free_lock_stateid(openlockstateid(s));
--		else
--			ret = nfserr_locks_held;
-+			break;
-+		ret = nfserr_locks_held;
- 		break;
-+	case NFS4_LOCK_STID:
-+		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
-+		if (ret)
-+			break;
-+		spin_unlock(&cl->cl_lock);
-+		ret = nfsd4_free_lock_stateid(openlockstateid(s));
-+		goto out;
- 	case NFS4_REVOKED_DELEG_STID:
- 		dp = delegstateid(s);
--		spin_lock(&cl->cl_lock);
- 		list_del_init(&dp->dl_recall_lru);
- 		spin_unlock(&cl->cl_lock);
- 		nfs4_put_stid(s);
- 		ret = nfs_ok;
--		break;
--	default:
--		ret = nfserr_bad_stateid;
-+		goto out;
-+	/* Default falls through and returns nfserr_bad_stateid */
- 	}
-+out_unlock:
-+	spin_unlock(&cl->cl_lock);
- out:
- 	nfs4_unlock_state();
- 	return ret;
--- 
-1.9.3
-
+On Thu, Jul 03, 2014 at 03:15:54PM -0400, Jeff Layton wrote:
+> I saw this pop up with some pynfs testing:
+> 
+>     [  123.609992] nfsd: non-standard errno: -7
+> 
+> ...and -7 is -E2BIG. I think what happened is that XFS returned -E2BIG
+> due to some xattr operations with the ACL10 pynfs TEST (I guess it has
+> limited xattr size?).
+> 
+> Add a better mapping for that error since it's possible that we'll need
+> it. How about we convert it to NFSERR_FBIG? As Bruce points out, they
+> both have "BIG" in the name so it must be good.
+> 
+> Also, turn the printk in this function into a WARN() so that we can get
+> a bit more information about situations that don't have proper mappings.
+> 
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/nfsproc.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+> index eff49552cdc8..b19c7e8bf64c 100644
+> --- a/fs/nfsd/nfsproc.c
+> +++ b/fs/nfsd/nfsproc.c
+> @@ -717,6 +717,7 @@ nfserrno (int errno)
+>  		{ nfserr_noent, -ENOENT },
+>  		{ nfserr_io, -EIO },
+>  		{ nfserr_nxio, -ENXIO },
+> +		{ nfserr_fbig, -E2BIG },
+>  		{ nfserr_acces, -EACCES },
+>  		{ nfserr_exist, -EEXIST },
+>  		{ nfserr_xdev, -EXDEV },
+> @@ -751,7 +752,7 @@ nfserrno (int errno)
+>  		if (nfs_errtbl[i].syserr == errno)
+>  			return nfs_errtbl[i].nfserr;
+>  	}
+> -	printk (KERN_INFO "nfsd: non-standard errno: %d\n", errno);
+> +	WARN(1, "nfsd: non-standard errno: %d\n", errno);
+>  	return nfserr_io;
+>  }
+>  
+> -- 
+> 1.9.3
+> 
