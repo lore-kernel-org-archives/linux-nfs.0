@@ -1,126 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f68.google.com ([209.85.216.68]:60050 "EHLO
-	mail-qa0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751348AbaGQSqp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 14:46:45 -0400
-Received: by mail-qa0-f68.google.com with SMTP id dc16so683629qab.11
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 11:46:44 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 17 Jul 2014 14:46:42 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 04/10] nfsd: Ensure stateids remain unique until they
- are freed
-Message-ID: <20140717144642.5159dea5@tlielax.poochiereds.net>
-In-Reply-To: <20140717184417.GD30442@fieldses.org>
-References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
-	<1405521125-2303-5-git-send-email-jlayton@primarydata.com>
-	<20140717184417.GD30442@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:60606 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751109AbaGGSP5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Jul 2014 14:15:57 -0400
+Date: Mon, 7 Jul 2014 14:15:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: Fix bad reserving space for encoding rdattr_error
+Message-ID: <20140707181556.GC8630@fieldses.org>
+References: <53B8C3D3.7080201@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <53B8C3D3.7080201@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 Jul 2014 14:44:17 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Sun, Jul 06, 2014 at 11:34:43AM +0800, Kinglong Mee wrote:
+> Introduced by commit 561f0ed498 (nfsd4: allow large readdirs).
 
-> On Wed, Jul 16, 2014 at 10:31:59AM -0400, Jeff Layton wrote:
-> > From: Trond Myklebust <trond.myklebust@primarydata.com>
-> > 
-> > Add an extra delegation state to allow the stateid to remain in the idr
-> > tree until the last reference has been released. This will be necessary
-> > to ensure uniqueness once the client_mutex is removed.
-> 
-> Cyclic idr allocation should make reuse extremely unlikely, shouldn't
-> it?
-> 
-> Probably needs to be fixed anyway, applying.
-> 
-> --b.
-> 
+Whoops, thanks.  Queueing up for 3.16.--b.
 
-Yes, for the most part, but reuse is still possible once the counter
-wraps if you had a long-lived stateid (for instance). Not a likely
-problem, but we might as well fix it while we're in here.
- 
-> > 
-> > [jlayton: reset the sc_type under the state_lock in
-> > unhash_delegation]
-> > 
-> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > Reviewed-by: Christoph Hellwig <hch@lst.de>
-> > ---
-> >  fs/nfsd/nfs4state.c | 8 ++++----
-> >  fs/nfsd/state.h     | 1 +
-> >  2 files changed, 5 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 1b01a20827ab..fd4deb049ddf 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -616,6 +616,7 @@ void
-> >  nfs4_put_delegation(struct nfs4_delegation *dp)
-> >  {
-> >  	if (atomic_dec_and_test(&dp->dl_count)) {
-> > +		remove_stid(&dp->dl_stid);
-> >  		nfs4_free_stid(deleg_slab, &dp->dl_stid);
-> >  		num_delegations--;
-> >  	}
-> > @@ -657,6 +658,7 @@ unhash_delegation(struct nfs4_delegation *dp)
-> >  	struct nfs4_file *fp = dp->dl_file;
-> >  
-> >  	spin_lock(&state_lock);
-> > +	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-> >  	list_del_init(&dp->dl_perclnt);
-> >  	list_del_init(&dp->dl_recall_lru);
-> >  	spin_lock(&fp->fi_lock);
-> > @@ -670,19 +672,15 @@ unhash_delegation(struct nfs4_delegation *dp)
-> >  	}
-> >  }
-> >  
-> > -
-> > -
-> >  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-> >  {
-> >  	list_del_init(&dp->dl_recall_lru);
-> > -	remove_stid(&dp->dl_stid);
-> >  	nfs4_put_delegation(dp);
-> >  }
-> >  
-> >  static void destroy_delegation(struct nfs4_delegation *dp)
-> >  {
-> >  	unhash_delegation(dp);
-> > -	remove_stid(&dp->dl_stid);
-> >  	nfs4_put_delegation(dp);
-> >  }
-> >  
-> > @@ -4036,7 +4034,9 @@ static __be32 nfsd4_validate_stateid(struct
-> > nfs4_client *cl, stateid_t *stateid) return nfs_ok;
-> >  	default:
-> >  		printk("unknown stateid type %x\n", s->sc_type);
-> > +		/* Fallthrough */
-> >  	case NFS4_CLOSED_STID:
-> > +	case NFS4_CLOSED_DELEG_STID:
-> >  		return nfserr_bad_stateid;
-> >  	}
-> >  }
-> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> > index 81b7522e3f67..996d61eeb357 100644
-> > --- a/fs/nfsd/state.h
-> > +++ b/fs/nfsd/state.h
-> > @@ -80,6 +80,7 @@ struct nfs4_stid {
-> >  #define NFS4_CLOSED_STID 8
-> >  /* For a deleg stateid kept around only to process free_stateid's:
-> > */ #define NFS4_REVOKED_DELEG_STID 16
-> > +#define NFS4_CLOSED_DELEG_STID 32
-> >  	unsigned char sc_type;
-> >  	stateid_t sc_stateid;
-> >  	struct nfs4_client *sc_client;
-> > -- 
-> > 1.9.3
-> > 
-
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4xdr.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 3540462..5a1d088 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -2646,7 +2646,7 @@ nfsd4_encode_rdattr_error(struct xdr_stream *xdr, __be32 nfserr)
+>  {
+>  	__be32 *p;
+>  
+> -	p = xdr_reserve_space(xdr, 6);
+> +	p = xdr_reserve_space(xdr, 20);
+>  	if (!p)
+>  		return NULL;
+>  	*p++ = htonl(2);
+> -- 
+> 1.9.3
+> 
