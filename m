@@ -1,42 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:59666 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757661AbaGOKhz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 06:37:55 -0400
-Received: by mail-qg0-f53.google.com with SMTP id q107so2383500qgd.26
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 03:37:55 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 0/7] nfsd: more delegation fixes to prepare for client_mutex removal
-Date: Tue, 15 Jul 2014 06:37:42 -0400
-Message-Id: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pd0-f180.google.com ([209.85.192.180]:47637 "EHLO
+	mail-pd0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753219AbaGGON6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 10:13:58 -0400
+Received: by mail-pd0-f180.google.com with SMTP id fp1so5359834pdb.25
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 07:13:57 -0700 (PDT)
+Message-ID: <53BAAAFE.8090403@gmail.com>
+Date: Mon, 07 Jul 2014 22:13:18 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH 3/4 RFC] NFSD: Revert setting op_encode_lockowner_maxsz
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I know that the Christoph mentioned pushing out the open and lock
-stateid changes next, but we need to finish up the delegation changes in
-order to prepare for those. Most of these have been posted before, and
-they should be merged on top of the two lm_break callback patches that I
-posted yesterday.
+Commit 8c7424cff6 (nfsd4: don't try to encode conflicting owner if low on space)
+set op_encode_lockowner_maxsz to zero.
 
-Jeff Layton (4):
-  nfsd: nfs4_alloc_init_lease should take a nfs4_file arg
-  locks: add file_has_lease to prevent delegation break races
-  nfsd: Protect the nfs4_file delegation fields using the fi_lock
-  nfsd: Fix delegation revocation
+When testing nfsd4_lock with conflict lock (has right owner), dmesg gets
+  "[18668.241385] RPC request reserved 88 but used 108"
+because xdr_reserve_space don't return NULL in nfsd4_encode_lock_denied.
 
-Trond Myklebust (3):
-  nfsd: Ensure stateids remain unique until they are freed
-  nfsd: Move the delegation reference counter into the struct nfs4_stid
-  nfsd: Simplify stateid management
+Just revert op_encode_lockowner_maxsz.
 
- fs/locks.c          |  26 ++++++++++
- fs/nfsd/nfs4state.c | 134 +++++++++++++++++++++++++++++++---------------------
- fs/nfsd/state.h     |   3 +-
- include/linux/fs.h  |   6 +++
- 4 files changed, 115 insertions(+), 54 deletions(-)
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4proc.c | 3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 846fd55..6217190 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1422,8 +1422,7 @@ out:
+ #define op_encode_change_info_maxsz	(5)
+ #define nfs4_fattr_bitmap_maxsz		(4)
+ 
+-/* We'll fall back on returning no lockowner if run out of space: */
+-#define op_encode_lockowner_maxsz	(0)
++#define op_encode_lockowner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
+ #define op_encode_lock_denied_maxsz	(8 + op_encode_lockowner_maxsz)
+ 
+ #define nfs4_owner_maxsz		(1 + XDR_QUADLEN(IDMAP_NAMESZ))
 -- 
 1.9.3
 
