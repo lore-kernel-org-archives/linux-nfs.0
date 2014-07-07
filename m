@@ -1,182 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57987 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:41614 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752715AbaGBV5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jul 2014 17:57:36 -0400
-Date: Wed, 2 Jul 2014 17:57:30 -0400
+	id S1751280AbaGGSXl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Jul 2014 14:23:41 -0400
+Date: Mon, 7 Jul 2014 14:23:39 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH] nfsd: add a new /proc/fs/nfsd/max_connections file
-Message-ID: <20140702215730.GH11510@fieldses.org>
-References: <1404331882-8296-1-git-send-email-jlayton@primarydata.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 015/114] nfsd: Allow struct nfsd4_compound_state to
+ cache the nfs4_client
+Message-ID: <20140707182339.GD8630@fieldses.org>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+ <1404143423-24381-16-git-send-email-jlayton@primarydata.com>
+ <20140703203259.GF24322@fieldses.org>
+ <20140703213526.GG24322@fieldses.org>
+ <20140703183115.397af08e@tlielax.poochiereds.net>
+ <20140704081449.276d756d@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1404331882-8296-1-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <20140704081449.276d756d@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 02, 2014 at 04:11:22PM -0400, Jeff Layton wrote:
-> Currently, the maximum number of connections that nfsd will allow
-> is based on the number of threads spawned. While this is fine for a
-> default, there really isn't a clear relationship between the two.
+On Fri, Jul 04, 2014 at 08:14:49AM -0400, Jeff Layton wrote:
+> On Thu, 3 Jul 2014 18:31:15 -0400
+> Jeff Layton <jeff.layton@primarydata.com> wrote:
 > 
-> The number of threads corresponds to the number of concurrent requests
-> that we want to allow the server to process at any given time. The
-> connection limit corresponds to the maximum number of clients that we
-> want to allow the server to handle. These are two entirely different
-> quantities.
+> > On Thu, 3 Jul 2014 17:35:26 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Thu, Jul 03, 2014 at 04:32:59PM -0400, J. Bruce Fields wrote:
+> > > > On Mon, Jun 30, 2014 at 11:48:44AM -0400, Jeff Layton wrote:
+> > > > > We want to use the nfsd4_compound_state to cache the nfs4_client in
+> > > > > order to optimise away extra lookups of the clid.
+> > > > > 
+> > > > > In the v4.0 case, we use this to ensure that we only have to look up the
+> > > > > client at most once per compound for each call into lookup_clientid. For
+> > > > > v4.1+ we set the pointer in the cstate during SEQUENCE processing so we
+> > > > > should never need to do a search for it.
+> > > > 
+> > > > The connectathon locking test is failing for me in the nfsv4/krb5i case
+> > > > as of this commit.
+> > > > 
+> > > > Which makes no sense to me whatsoever, so it's entirely possible this is
+> > > > some unrelated problem on my side.  I'll let you know when I've figured
+> > > > out anything more.
+> > > 
+> > > It's intermittent.
+> > > 
+> > > I've reproduced it on the previous commit so I know at least that this
+> > > one isn't at fault.
+> > > 
+> > > I doubt it's really dependent on krb5i, at most that's probably just
+> > > making it more likely to reproduce.
+> > > 
+> > > --b.
+> > 
+> > Bruce,
+> > 
+> > Does this patch help? I suspect this is where the bug crept in, but I'm
+> > unclear on why it would be intermittent...
+> > 
+> > FWIW, this all gets cleaned up in a later patch that changes how the
+> > refcounting on lock and openowners works.
+> > 
 > 
-> Break the dependency on increasing threads in order to allow for more
-> connections, by adding a new per-net parameter that can be set to a
-> non-zero value. The default is still to base it on the number of threads,
-> so there should be no behavior change for anyone who doesn't use it.
+> I was finally able to reproduce this after a running the cthon lock
+> tests in a loop, with krb5i. With the patch that I sent earlier, I was
+> able to run 100 iterations of it without a failure, so I think that was
+> the bug.
 
-Makes sense to me, applying.
+Thanks!  That seems to be holding up for me too.
 
-(Trivial conflict fixed up due to not having applied all the state
-locking patches yet.)
+I'll continue slowly applying your patches to for-3.17.
 
 --b.
-
-> 
-> Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/netns.h  |  6 ++++++
->  fs/nfsd/nfsctl.c | 42 ++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/nfssvc.c |  5 +++++
->  3 files changed, 53 insertions(+)
-> 
-> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> index 4daa485a4a1d..46680da55cd7 100644
-> --- a/fs/nfsd/netns.h
-> +++ b/fs/nfsd/netns.h
-> @@ -103,6 +103,12 @@ struct nfsd_net {
->  	/* Time of server startup */
->  	struct timeval nfssvc_boot;
->  
-> +	/*
-> +	 * Max number of connections this nfsd container will allow. Defaults
-> +	 * to '0' which is means that it bases this on the number of threads.
-> +	 */
-> +	unsigned int max_connections;
-> +
->  	u32 clientid_counter;
->  
->  	struct svc_serv *nfsd_serv;
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 6a6f65cc8b34..4e042105fb6e 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -39,6 +39,7 @@ enum {
->  	NFSD_Versions,
->  	NFSD_Ports,
->  	NFSD_MaxBlkSize,
-> +	NFSD_MaxConnections,
->  	NFSD_SupportedEnctypes,
->  	/*
->  	 * The below MUST come last.  Otherwise we leave a hole in nfsd_files[]
-> @@ -62,6 +63,7 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size);
->  static ssize_t write_versions(struct file *file, char *buf, size_t size);
->  static ssize_t write_ports(struct file *file, char *buf, size_t size);
->  static ssize_t write_maxblksize(struct file *file, char *buf, size_t size);
-> +static ssize_t write_maxconn(struct file *file, char *buf, size_t size);
->  #ifdef CONFIG_NFSD_V4
->  static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
->  static ssize_t write_gracetime(struct file *file, char *buf, size_t size);
-> @@ -77,6 +79,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
->  	[NFSD_Versions] = write_versions,
->  	[NFSD_Ports] = write_ports,
->  	[NFSD_MaxBlkSize] = write_maxblksize,
-> +	[NFSD_MaxConnections] = write_maxconn,
->  #ifdef CONFIG_NFSD_V4
->  	[NFSD_Leasetime] = write_leasetime,
->  	[NFSD_Gracetime] = write_gracetime,
-> @@ -886,6 +889,44 @@ static ssize_t write_maxblksize(struct file *file, char *buf, size_t size)
->  							nfsd_max_blksize);
->  }
->  
-> +/**
-> + * write_maxconn - Set or report the current max number of connections
-> + *
-> + * Input:
-> + *			buf:		ignored
-> + *			size:		zero
-> + * OR
-> + *
-> + * Input:
-> + * 			buf:		C string containing an unsigned
-> + * 					integer value representing the new
-> + * 					number of max connections
-> + *			size:		non-zero length of C string in @buf
-> + * Output:
-> + *	On success:	passed-in buffer filled with '\n'-terminated C string
-> + *			containing numeric value of max_connections setting
-> + *			for this net namespace;
-> + *			return code is the size in bytes of the string
-> + *	On error:	return code is zero or a negative errno value
-> + */
-> +static ssize_t write_maxconn(struct file *file, char *buf, size_t size)
-> +{
-> +	char *mesg = buf;
-> +	struct net *net = file->f_dentry->d_sb->s_fs_info;
-> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> +	unsigned int maxconn = nn->max_connections;
-> +
-> +	if (size > 0) {
-> +		int rv = get_uint(&mesg, &maxconn);
-> +
-> +		if (rv)
-> +			return rv;
-> +		nn->max_connections = maxconn;
-> +	}
-> +
-> +	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%u\n", maxconn);
-> +}
-> +
->  #ifdef CONFIG_NFSD_V4
->  static ssize_t __nfsd4_write_time(struct file *file, char *buf, size_t size,
->  				  time_t *time, struct nfsd_net *nn)
-> @@ -1061,6 +1102,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
->  		[NFSD_Versions] = {"versions", &transaction_ops, S_IWUSR|S_IRUSR},
->  		[NFSD_Ports] = {"portlist", &transaction_ops, S_IWUSR|S_IRUGO},
->  		[NFSD_MaxBlkSize] = {"max_block_size", &transaction_ops, S_IWUSR|S_IRUGO},
-> +		[NFSD_MaxConnections] = {"max_connections", &transaction_ops, S_IWUSR|S_IRUGO},
->  #if defined(CONFIG_SUNRPC_GSS) || defined(CONFIG_SUNRPC_GSS_MODULE)
->  		[NFSD_SupportedEnctypes] = {"supported_krb5_enctypes", &supported_enctypes_ops, S_IRUGO},
->  #endif /* CONFIG_SUNRPC_GSS or CONFIG_SUNRPC_GSS_MODULE */
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 209474174fe4..5d026dca00ca 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -405,6 +405,7 @@ int nfsd_create_serv(struct net *net)
->  	if (nn->nfsd_serv == NULL)
->  		return -ENOMEM;
->  
-> +	nn->nfsd_serv->sv_maxconn = nn->max_connections;
->  	error = svc_bind(nn->nfsd_serv, net);
->  	if (error < 0) {
->  		svc_destroy(nn->nfsd_serv);
-> @@ -563,6 +564,7 @@ nfsd(void *vrqstp)
->  	struct svc_rqst *rqstp = (struct svc_rqst *) vrqstp;
->  	struct svc_xprt *perm_sock = list_entry(rqstp->rq_server->sv_permsocks.next, typeof(struct svc_xprt), xpt_list);
->  	struct net *net = perm_sock->xpt_net;
-> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->  	int err;
->  
->  	/* Lock module and set up kernel thread */
-> @@ -596,6 +598,9 @@ nfsd(void *vrqstp)
->  	 * The main request loop
->  	 */
->  	for (;;) {
-> +		/* Update sv_maxconn if it has changed */
-> +		rqstp->rq_server->sv_maxconn = nn->max_connections;
-> +
->  		/*
->  		 * Find a socket with data available and call its
->  		 * recvfrom routine.
-> -- 
-> 1.9.3
-> 
