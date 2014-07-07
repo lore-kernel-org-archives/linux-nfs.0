@@ -1,54 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:32805 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933270AbaGWUsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jul 2014 16:48:32 -0400
-Date: Wed, 23 Jul 2014 16:48:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH] nfsd: ensure that st_access_bmap and st_deny_bmap are
- initialized to 0
-Message-ID: <20140723204824.GJ9118@fieldses.org>
-References: <1406137609-24466-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-vc0-f181.google.com ([209.85.220.181]:44942 "EHLO
+	mail-vc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752702AbaGGMgC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 08:36:02 -0400
+Received: by mail-vc0-f181.google.com with SMTP id il7so3764854vcb.26
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 05:36:00 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1406137609-24466-1-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <lp1gar$eb6$1@ger.gmane.org>
+References: <lp1gar$eb6$1@ger.gmane.org>
+Date: Mon, 7 Jul 2014 08:36:00 -0400
+Message-ID: <CAHVgHyVjoVb--cfbaopoUYA4vbDCjufJVng6OM2e82q0yEMthA@mail.gmail.com>
+Subject: Re: NFSv4 cross-realm support
+From: Andy Adamson <androsadamson@gmail.com>
+To: Jaap Winius <jwinius@umrk.nl>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 23, 2014 at 01:46:49PM -0400, Jeff Layton wrote:
-> Open stateids must be initialized with the st_access_bmap and
-> st_deny_bmap set to 0, so that nfs4_get_vfs_file can properly record
-> their state in old_access_bmap and old_deny_bmap.
-> 
-> This bug was introduced in commit baeb4ff0e502 (nfsd: make deny mode
-> enforcement more efficient and close races in it) and was causing the
-> refcounts to end up incorrect when nfs4_get_vfs_file returned an error
-> after bumping the refcounts. This made it impossible to unmount the
-> underlying filesystem after running pynfs tests that involve deny modes.
+Hi
 
-Thanks, applied.--b.
+I have a personal IETF draft that deals with some of the NFSv4 cross
+realm issues. This is a good place to start.
 
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 --
->  1 file changed, 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 72da0d44e66b..ce07e9517a80 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -2968,8 +2968,6 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
->  	stp->st_file = fp;
->  	stp->st_access_bmap = 0;
->  	stp->st_deny_bmap = 0;
-> -	set_access(open->op_share_access, stp);
-> -	set_deny(open->op_share_deny, stp);
->  	stp->st_openstp = NULL;
->  	spin_lock(&fp->fi_lock);
->  	list_add(&stp->st_perfile, &fp->fi_stateids);
-> -- 
-> 1.9.3
-> 
+http://datatracker.ietf.org/doc/draft-adamson-nfsv4-multi-domain-federated-fs-reqs/
+
+
+On Wed, Jul 2, 2014 at 1:42 PM, Jaap Winius <jwinius@umrk.nl> wrote:
+> Hi folks,
+>
+> Recently I've been working on cross-realm support to give my own MIT
+> Kerberos realm, UMRK.NL, access to the services of a realm that I manage.
+> All systems involved run Debian wheezy. So far, SSH, OpenLDAP, OpenAFS
+> and Dovecot IMAP are all working properly this way, but NFSv4 with
+> sec=krb5i is not; I keep getting "Permission denied" when attempting to
+> read or write to any file or directory that is not globally accessible.
+>
+> When the log output verbosity for rpc.gssd and rpc.svcgssd is increased
+> about as far as it will go (-vvvvv), little is different when things go
+> wrong, other than this one line produced by rpc.svcgssd on the server:
+>
+>   nss_gss_princ_to_ids: Local-Realm 'UMRK.NL': NOT FOUND
+>
+> However, even that seems a bit misleading, because the log output for
+> rpc.idmapd (with Verbosity = 5) shows that the user and group IDs for my
+> account are being identified properly.
+>
+> Should I prepare a bug report for this issue, or does cross-realm support
+> for NFSv4 require something extra?
+
+So you are supporting two Kerberos realms under one NFSv4 domain? You
+are using LDAP for id mapping?
+
+Which version of nfs-utils and which client kernel?
+
+e.g.
+
+# rpm -qa | grep nfs-utils
+# uname -a
+
+-->Andy
+
+>
+> Thanks,
+>
+> Jaap
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
