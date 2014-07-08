@@ -1,339 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:56977 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754332AbaG2VZk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:25:40 -0400
-Subject: [PATCH v5 17/21] xprtrdma: Allocate each struct rpcrdma_mw
- separately
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Jul 2014 17:25:38 -0400
-Message-ID: <20140729212538.2812.93044.stgit@manet.1015granger.net>
-In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qg0-f45.google.com ([209.85.192.45]:57919 "EHLO
+	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755337AbaGHSGI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:08 -0400
+Received: by mail-qg0-f45.google.com with SMTP id a108so5327502qge.32
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:08 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 069/100] nfsd: Protect nfsd4_destroy_clientid using client_lock
+Date: Tue,  8 Jul 2014 14:03:57 -0400
+Message-Id: <1404842668-22521-70-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently rpcrdma_buffer_create() allocates struct rpcrdma_mw's as
-a single contiguous area of memory. It amounts to quite a bit of
-memory, and there's no requirement for these to be carved from a
-single piece of contiguous memory.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+...instead of relying on the client_mutex.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |  242 +++++++++++++++++++++++++------------------
- 1 file changed, 143 insertions(+), 99 deletions(-)
+ fs/nfsd/nfs4state.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 817d5ac..a27edde 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1005,9 +1005,91 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	return rc;
- }
- 
--/*
-- * Initialize buffer memory
-- */
-+static int
-+rpcrdma_init_fmrs(struct rpcrdma_ia *ia, struct rpcrdma_buffer *buf)
-+{
-+	int mr_access_flags = IB_ACCESS_REMOTE_WRITE | IB_ACCESS_REMOTE_READ;
-+	struct ib_fmr_attr fmr_attr = {
-+		.max_pages	= RPCRDMA_MAX_DATA_SEGS,
-+		.max_maps	= 1,
-+		.page_shift	= PAGE_SHIFT
-+	};
-+	struct rpcrdma_mw *r;
-+	int i, rc;
-+
-+	i = (buf->rb_max_requests + 1) * RPCRDMA_MAX_SEGS;
-+	dprintk("RPC:       %s: initalizing %d FMRs\n", __func__, i);
-+
-+	while (i--) {
-+		r = kzalloc(sizeof(*r), GFP_KERNEL);
-+		if (r == NULL)
-+			return -ENOMEM;
-+
-+		r->r.fmr = ib_alloc_fmr(ia->ri_pd, mr_access_flags, &fmr_attr);
-+		if (IS_ERR(r->r.fmr)) {
-+			rc = PTR_ERR(r->r.fmr);
-+			dprintk("RPC:       %s: ib_alloc_fmr failed %i\n",
-+				__func__, rc);
-+			goto out_free;
-+		}
-+
-+		list_add(&r->mw_list, &buf->rb_mws);
-+		list_add(&r->mw_all, &buf->rb_all);
-+	}
-+	return 0;
-+
-+out_free:
-+	kfree(r);
-+	return rc;
-+}
-+
-+static int
-+rpcrdma_init_frmrs(struct rpcrdma_ia *ia, struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_frmr *f;
-+	struct rpcrdma_mw *r;
-+	int i, rc;
-+
-+	i = (buf->rb_max_requests + 1) * RPCRDMA_MAX_SEGS;
-+	dprintk("RPC:       %s: initalizing %d FRMRs\n", __func__, i);
-+
-+	while (i--) {
-+		r = kzalloc(sizeof(*r), GFP_KERNEL);
-+		if (r == NULL)
-+			return -ENOMEM;
-+		f = &r->r.frmr;
-+
-+		f->fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
-+						ia->ri_max_frmr_depth);
-+		if (IS_ERR(f->fr_mr)) {
-+			rc = PTR_ERR(f->fr_mr);
-+			dprintk("RPC:       %s: ib_alloc_fast_reg_mr "
-+				"failed %i\n", __func__, rc);
-+			goto out_free;
-+		}
-+
-+		f->fr_pgl = ib_alloc_fast_reg_page_list(ia->ri_id->device,
-+							ia->ri_max_frmr_depth);
-+		if (IS_ERR(f->fr_pgl)) {
-+			rc = PTR_ERR(f->fr_pgl);
-+			dprintk("RPC:       %s: ib_alloc_fast_reg_page_list "
-+				"failed %i\n", __func__, rc);
-+
-+			ib_dereg_mr(f->fr_mr);
-+			goto out_free;
-+		}
-+
-+		list_add(&r->mw_list, &buf->rb_mws);
-+		list_add(&r->mw_all, &buf->rb_all);
-+	}
-+
-+	return 0;
-+
-+out_free:
-+	kfree(r);
-+	return rc;
-+}
-+
- int
- rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	struct rpcrdma_ia *ia, struct rpcrdma_create_data_internal *cdata)
-@@ -1015,7 +1097,6 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	char *p;
- 	size_t len, rlen, wlen;
- 	int i, rc;
--	struct rpcrdma_mw *r;
- 
- 	buf->rb_max_requests = cdata->max_requests;
- 	spin_lock_init(&buf->rb_lock);
-@@ -1026,28 +1107,12 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	 *   2.  arrays of struct rpcrdma_req to fill in pointers
- 	 *   3.  array of struct rpcrdma_rep for replies
- 	 *   4.  padding, if any
--	 *   5.  mw's, fmr's or frmr's, if any
- 	 * Send/recv buffers in req/rep need to be registered
- 	 */
--
- 	len = buf->rb_max_requests *
- 		(sizeof(struct rpcrdma_req *) + sizeof(struct rpcrdma_rep *));
- 	len += cdata->padding;
--	switch (ia->ri_memreg_strategy) {
--	case RPCRDMA_FRMR:
--		len += buf->rb_max_requests * RPCRDMA_MAX_SEGS *
--				sizeof(struct rpcrdma_mw);
--		break;
--	case RPCRDMA_MTHCAFMR:
--		/* TBD we are perhaps overallocating here */
--		len += (buf->rb_max_requests + 1) * RPCRDMA_MAX_SEGS *
--				sizeof(struct rpcrdma_mw);
--		break;
--	default:
--		break;
--	}
- 
--	/* allocate 1, 4 and 5 in one shot */
- 	p = kzalloc(len, GFP_KERNEL);
- 	if (p == NULL) {
- 		dprintk("RPC:       %s: req_t/rep_t/pad kzalloc(%zd) failed\n",
-@@ -1075,53 +1140,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 
- 	INIT_LIST_HEAD(&buf->rb_mws);
- 	INIT_LIST_HEAD(&buf->rb_all);
--	r = (struct rpcrdma_mw *)p;
- 	switch (ia->ri_memreg_strategy) {
- 	case RPCRDMA_FRMR:
--		for (i = buf->rb_max_requests * RPCRDMA_MAX_SEGS; i; i--) {
--			r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
--						ia->ri_max_frmr_depth);
--			if (IS_ERR(r->r.frmr.fr_mr)) {
--				rc = PTR_ERR(r->r.frmr.fr_mr);
--				dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
--					" failed %i\n", __func__, rc);
--				goto out;
--			}
--			r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
--						ia->ri_id->device,
--						ia->ri_max_frmr_depth);
--			if (IS_ERR(r->r.frmr.fr_pgl)) {
--				rc = PTR_ERR(r->r.frmr.fr_pgl);
--				dprintk("RPC:       %s: "
--					"ib_alloc_fast_reg_page_list "
--					"failed %i\n", __func__, rc);
--
--				ib_dereg_mr(r->r.frmr.fr_mr);
--				goto out;
--			}
--			list_add(&r->mw_all, &buf->rb_all);
--			list_add(&r->mw_list, &buf->rb_mws);
--			++r;
--		}
-+		rc = rpcrdma_init_frmrs(ia, buf);
-+		if (rc)
-+			goto out;
- 		break;
- 	case RPCRDMA_MTHCAFMR:
--		/* TBD we are perhaps overallocating here */
--		for (i = (buf->rb_max_requests+1) * RPCRDMA_MAX_SEGS; i; i--) {
--			static struct ib_fmr_attr fa =
--				{ RPCRDMA_MAX_DATA_SEGS, 1, PAGE_SHIFT };
--			r->r.fmr = ib_alloc_fmr(ia->ri_pd,
--				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_REMOTE_READ,
--				&fa);
--			if (IS_ERR(r->r.fmr)) {
--				rc = PTR_ERR(r->r.fmr);
--				dprintk("RPC:       %s: ib_alloc_fmr"
--					" failed %i\n", __func__, rc);
--				goto out;
--			}
--			list_add(&r->mw_all, &buf->rb_all);
--			list_add(&r->mw_list, &buf->rb_mws);
--			++r;
--		}
-+		rc = rpcrdma_init_fmrs(ia, buf);
-+		if (rc)
-+			goto out;
- 		break;
- 	default:
- 		break;
-@@ -1189,24 +1217,57 @@ out:
- 	return rc;
- }
- 
--/*
-- * Unregister and destroy buffer memory. Need to deal with
-- * partial initialization, so it's callable from failed create.
-- * Must be called before destroying endpoint, as registrations
-- * reference it.
-- */
-+static void
-+rpcrdma_destroy_fmrs(struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_mw *r;
-+	int rc;
-+
-+	while (!list_empty(&buf->rb_all)) {
-+		r = list_entry(buf->rb_all.next, struct rpcrdma_mw, mw_all);
-+		list_del(&r->mw_all);
-+		list_del(&r->mw_list);
-+
-+		rc = ib_dealloc_fmr(r->r.fmr);
-+		if (rc)
-+			dprintk("RPC:       %s: ib_dealloc_fmr failed %i\n",
-+				__func__, rc);
-+
-+		kfree(r);
-+	}
-+}
-+
-+static void
-+rpcrdma_destroy_frmrs(struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_mw *r;
-+	int rc;
-+
-+	while (!list_empty(&buf->rb_all)) {
-+		r = list_entry(buf->rb_all.next, struct rpcrdma_mw, mw_all);
-+		list_del(&r->mw_all);
-+		list_del(&r->mw_list);
-+
-+		rc = ib_dereg_mr(r->r.frmr.fr_mr);
-+		if (rc)
-+			dprintk("RPC:       %s: ib_dereg_mr failed %i\n",
-+				__func__, rc);
-+		ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
-+
-+		kfree(r);
-+	}
-+}
-+
- void
- rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 314594a05952..8c3f63f9dd4e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2798,22 +2798,23 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
+ __be32
+ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
  {
--	int rc, i;
- 	struct rpcrdma_ia *ia = rdmab_to_ia(buf);
--	struct rpcrdma_mw *r;
-+	int i;
+-	struct nfs4_client *conf, *unconf, *clp;
++	struct nfs4_client *conf, *unconf;
++	struct nfs4_client *clp = NULL;
+ 	__be32 status = 0;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
  
- 	/* clean up in reverse order from create
- 	 *   1.  recv mr memory (mr free, then kfree)
- 	 *   2.  send mr memory (mr free, then kfree)
--	 *   3.  padding (if any) [moved to rpcrdma_ep_destroy]
--	 *   4.  arrays
-+	 *   3.  MWs
- 	 */
- 	dprintk("RPC:       %s: entering\n", __func__);
+ 	nfs4_lock_state();
++	spin_lock(&nn->client_lock);
+ 	unconf = find_unconfirmed_client(&dc->clientid, true, nn);
+ 	conf = find_confirmed_client(&dc->clientid, true, nn);
+ 	WARN_ON_ONCE(conf && unconf);
  
-@@ -1225,32 +1286,15 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 	if (conf) {
+-		clp = conf;
+-
+ 		if (client_has_state(conf)) {
+ 			status = nfserr_clientid_busy;
+ 			goto out;
  		}
++		clp = conf;
+ 	} else if (unconf)
+ 		clp = unconf;
+ 	else {
+@@ -2821,12 +2822,16 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 		goto out;
  	}
- 
--	while (!list_empty(&buf->rb_mws)) {
--		r = list_entry(buf->rb_mws.next,
--			struct rpcrdma_mw, mw_list);
--		list_del(&r->mw_all);
--		list_del(&r->mw_list);
--		switch (ia->ri_memreg_strategy) {
--		case RPCRDMA_FRMR:
--			rc = ib_dereg_mr(r->r.frmr.fr_mr);
--			if (rc)
--				dprintk("RPC:       %s:"
--					" ib_dereg_mr"
--					" failed %i\n",
--					__func__, rc);
--			ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
--			break;
--		case RPCRDMA_MTHCAFMR:
--			rc = ib_dealloc_fmr(r->r.fmr);
--			if (rc)
--				dprintk("RPC:       %s:"
--					" ib_dealloc_fmr"
--					" failed %i\n",
--					__func__, rc);
--			break;
--		default:
--			break;
--		}
-+	switch (ia->ri_memreg_strategy) {
-+	case RPCRDMA_FRMR:
-+		rpcrdma_destroy_frmrs(buf);
-+		break;
-+	case RPCRDMA_MTHCAFMR:
-+		rpcrdma_destroy_fmrs(buf);
-+		break;
-+	default:
-+		break;
+ 	if (!mach_creds_match(clp, rqstp)) {
++		clp = NULL;
+ 		status = nfserr_wrong_cred;
+ 		goto out;
  	}
+-	expire_client(clp);
++	unhash_client_locked(clp);
+ out:
++	spin_unlock(&nn->client_lock);
+ 	nfs4_unlock_state();
++	if (clp)
++		expire_client(clp);
+ 	return status;
+ }
  
- 	kfree(buf->rb_pool);
+-- 
+1.9.3
 
