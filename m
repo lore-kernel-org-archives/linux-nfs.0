@@ -1,165 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:49425 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758545AbaGOKiG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 06:38:06 -0400
-Received: by mail-qa0-f53.google.com with SMTP id v10so4357678qac.12
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 03:38:05 -0700 (PDT)
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:53958 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755268AbaGHSFP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:15 -0400
+Received: by mail-qg0-f53.google.com with SMTP id i50so5447917qgf.40
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:14 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 7/7] nfsd: Fix delegation revocation
-Date: Tue, 15 Jul 2014 06:37:49 -0400
-Message-Id: <1405420669-4030-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
-References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 028/100] nfsd: Cleanup the freeing of stateids
+Date: Tue,  8 Jul 2014 14:03:16 -0400
+Message-Id: <1404842668-22521-29-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that the delegations cannot be found by the laundromat etc once
-we add them to the various 'revoke' lists.
+Add a ->free() callback to the struct nfs4_stid, so that we can
+release a reference to the stid without caring about the contents.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 45 +++++++++++++++++++++++++--------------------
- 1 file changed, 25 insertions(+), 20 deletions(-)
+ fs/nfsd/nfs4state.c | 62 +++++++++++++++++++++++++++++++++++------------------
+ fs/nfsd/state.h     |  2 ++
+ 2 files changed, 43 insertions(+), 21 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1cfc39b505cc..34235475e8d6 100644
+index f5219f7da276..947cd157ee82 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -650,13 +650,13 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+@@ -71,6 +71,7 @@ static u64 current_sessionid = 1;
+ 
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
++static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
+ 
+ /* Locking: */
+ 
+@@ -473,8 +474,15 @@ static void nfs4_file_put_access(struct nfs4_file *fp, u32 access)
+ 		__nfs4_file_put_access(fp, oflag);
  }
  
--/* Called under the state lock. */
- static void
--unhash_delegation(struct nfs4_delegation *dp)
-+unhash_delegation_locked(struct nfs4_delegation *dp)
- {
- 	struct nfs4_file *fp = dp->dl_file;
- 
--	spin_lock(&state_lock);
-+	lockdep_assert_held(&state_lock);
+-static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
+-kmem_cache *slab)
++static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
++{
++	if (s->sc_file)
++		put_nfs4_file(s->sc_file);
++	kmem_cache_free(slab, s);
++}
 +
- 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
- 	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
-@@ -665,18 +665,19 @@ unhash_delegation(struct nfs4_delegation *dp)
- 	spin_unlock(&fp->fi_lock);
- 	if (fp)
- 		nfs4_put_deleg_lease(fp);
--	spin_unlock(&state_lock);
- }
- 
--static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-+static void unhash_and_destroy_delegation(struct nfs4_delegation *dp)
++static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
++					 struct kmem_cache *slab)
  {
--	list_del_init(&dp->dl_recall_lru);
-+	spin_lock(&state_lock);
-+	unhash_delegation_locked(dp);
-+	spin_unlock(&state_lock);
- 	nfs4_put_delegation(dp);
- }
+ 	struct nfs4_stid *stid;
+ 	int new_id;
+@@ -513,7 +521,22 @@ out_free:
  
--static void destroy_delegation(struct nfs4_delegation *dp)
-+static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
  {
--	unhash_delegation(dp);
-+	list_del_init(&dp->dl_recall_lru);
- 	nfs4_put_delegation(dp);
+-	return openlockstateid(nfs4_alloc_stid(clp, stateid_slab));
++	struct nfs4_stid *stid;
++	struct nfs4_ol_stateid *stp;
++
++	stid = nfs4_alloc_stid(clp, stateid_slab);
++	if (!stid)
++		return NULL;
++
++	stp = openlockstateid(stid);
++	stp->st_stid.sc_free = nfs4_free_generic_stateid;
++	return stp;
++}
++
++static void nfs4_free_deleg(struct nfs4_stid *stid)
++{
++	nfs4_free_stid(deleg_slab, stid);
++	num_delegations--;
  }
  
-@@ -685,11 +686,10 @@ static void revoke_delegation(struct nfs4_delegation *dp)
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 
- 	if (clp->cl_minorversion == 0)
--		destroy_delegation(dp);
-+		destroy_revoked_delegation(dp);
- 	else {
--		unhash_delegation(dp);
- 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
--		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
-+		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
- 	}
+ /*
+@@ -604,6 +627,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
+ 	if (dp == NULL)
+ 		return dp;
++
++	dp->dl_stid.sc_free = nfs4_free_deleg;
+ 	/*
+ 	 * delegation seqid's are never incremented.  The 4.1 special
+ 	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
+@@ -626,32 +651,23 @@ static void remove_stid_locked(struct nfs4_client *clp, struct nfs4_stid *s)
+ 	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
  }
  
-@@ -1446,15 +1446,16 @@ destroy_client(struct nfs4_client *clp)
- 	spin_lock(&state_lock);
- 	while (!list_empty(&clp->cl_delegations)) {
- 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
--		list_del_init(&dp->dl_perclnt);
-+		unhash_delegation_locked(dp);
- 		/* Ensure that deleg break won't try to requeue it */
- 		++dp->dl_time;
--		list_move(&dp->dl_recall_lru, &reaplist);
-+		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
- 	while (!list_empty(&reaplist)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
--		destroy_delegation(dp);
-+		list_del_init(&dp->dl_recall_lru);
-+		nfs4_put_delegation(dp);
- 	}
- 	list_splice_init(&clp->cl_revoked, &reaplist);
- 	while (!list_empty(&reaplist)) {
-@@ -3638,7 +3639,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
- 	return;
- out_free:
--	destroy_delegation(dp);
-+	nfs4_put_delegation(dp);
- out_no_deleg:
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
- 	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
-@@ -3877,7 +3878,8 @@ nfs4_laundromat(struct nfsd_net *nn)
- 			new_timeo = min(new_timeo, t);
- 			break;
- 		}
--		list_move(&dp->dl_recall_lru, &reaplist);
-+		unhash_delegation_locked(dp);
-+		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
-@@ -4509,7 +4511,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (status)
- 		goto out;
+-static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+-{
+-	if (s->sc_file)
+-		put_nfs4_file(s->sc_file);
+-	kmem_cache_free(slab, s);
+-}
+-
+-static bool nfs4_put_stid(struct kmem_cache *slab, struct nfs4_stid *s)
++static void nfs4_put_stid(struct nfs4_stid *s)
+ {
+ 	struct nfs4_client *clp = s->sc_client;
  
--	destroy_delegation(dp);
-+	unhash_and_destroy_delegation(dp);
- out:
- 	nfs4_unlock_state();
+ 	might_lock(&clp->cl_lock);
  
-@@ -5352,7 +5354,8 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
- 			 * don't monkey with it now that we are.
- 			 */
- 			++dp->dl_time;
--			list_move(&dp->dl_recall_lru, victims);
-+			unhash_delegation_locked(dp);
-+			list_add(&dp->dl_recall_lru, victims);
- 		}
- 		if (++count == max)
- 			break;
-@@ -5607,12 +5610,14 @@ nfs4_state_shutdown_net(struct net *net)
- 	spin_lock(&state_lock);
- 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
--		list_move(&dp->dl_recall_lru, &reaplist);
-+		unhash_delegation_locked(dp);
-+		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
--		destroy_delegation(dp);
-+		list_del_init(&dp->dl_recall_lru);
-+		nfs4_put_delegation(dp);
- 	}
+ 	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock))
+-		return false;
++		return;
+ 	remove_stid_locked(clp, s);
+ 	spin_unlock(&clp->cl_lock);
+-	nfs4_free_stid(slab, s);
+-	return true;
++	s->sc_free(s);
+ }
  
- 	nfsd4_client_tracking_exit(net);
+ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+-	if (nfs4_put_stid(deleg_slab, &dp->dl_stid))
+-		num_delegations--;
++	nfs4_put_stid(&dp->dl_stid);
+ }
+ 
+ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+@@ -890,14 +906,17 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	list_del(&stp->st_perstateowner);
+ }
+ 
+-static void close_generic_stateid(struct nfs4_ol_stateid *stp)
++static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
+ {
++	struct nfs4_ol_stateid *stp = openlockstateid(stid);
++
+ 	release_all_access(stp);
++	nfs4_free_stid(stateid_slab, stid);
+ }
+ 
+ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+-	nfs4_put_stid(stateid_slab, &stp->st_stid);
++	nfs4_put_stid(&stp->st_stid);
+ }
+ 
+ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+@@ -910,7 +929,6 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	file = find_any_file(stp->st_stid.sc_file);
+ 	if (file)
+ 		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
+-	close_generic_stateid(stp);
+ 	put_generic_stateid(stp);
+ }
+ 
+@@ -968,7 +986,6 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	unhash_generic_stateid(stp);
+ 	release_open_stateid_locks(stp);
+-	close_generic_stateid(stp);
+ }
+ 
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+@@ -4469,8 +4486,11 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 		oo->oo_last_closed_stid = s;
+ 		/*
+ 		 * In the 4.0 case we need to keep the owners around a
+-		 * little while to handle CLOSE replay.
++		 * little while to handle CLOSE replay. We still do need
++		 * to release any file access that is held by them
++		 * before returning however.
+ 		 */
++		release_all_access(s);
+ 		if (list_empty(&oo->oo_owner.so_stateids))
+ 			move_to_close_lru(oo, clp->net);
+ 	}
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 95d04fae365a..7188dcd45ef7 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -86,6 +86,8 @@ struct nfs4_stid {
+ 	stateid_t sc_stateid;
+ 	struct nfs4_client *sc_client;
+ 	struct nfs4_file *sc_file;
++
++	void (*sc_free)(struct nfs4_stid *);
+ };
+ 
+ struct nfs4_delegation {
 -- 
 1.9.3
 
