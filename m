@@ -1,158 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:64968 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751943AbaGNB54 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:57:56 -0400
-Received: by mail-qa0-f49.google.com with SMTP id dc16so2718543qab.36
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:57:55 -0700 (PDT)
+Received: from mail-qa0-f47.google.com ([209.85.216.47]:42687 "EHLO
+	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755284AbaGHSFV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:21 -0400
+Received: by mail-qa0-f47.google.com with SMTP id hw13so5144842qab.34
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:20 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        Arnd Bergmann <arnd@arndb.de>,
-        Paul McKenney <paulmck@linux.vnet.ibm.com>
-Subject: [PATCH 2/7] sunrpc: fix RCU handling of gc_ctx field
-Date: Sun, 13 Jul 2014 21:57:39 -0400
-Message-Id: <1405303064-9102-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 033/100] nfsd: Slight cleanup of find_stateid()
+Date: Tue,  8 Jul 2014 14:03:21 -0400
+Message-Id: <1404842668-22521-34-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The handling of the gc_ctx pointer only seems to be partially RCU-safe.
-The assignment and freeing are done using RCU, but many places in the
-code seem to dereference that pointer without proper RCU safeguards.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Fix them to use rcu_dereference and to rcu_read_lock/unlock, and to
-properly handle the case where the pointer is NULL.
+In preparation of reference counting.
 
-Cc: Arnd Bergmann <arnd@arndb.de>
-Cc: Paul McKenney <paulmck@linux.vnet.ibm.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 52 ++++++++++++++++++++++++++++--------------
- 1 file changed, 35 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs4state.c | 27 ++++++++++++++++++---------
+ 1 file changed, 18 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 73854314fb85..afb292cd797d 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -183,8 +183,9 @@ gss_cred_get_ctx(struct rpc_cred *cred)
- 	struct gss_cl_ctx *ctx = NULL;
- 
- 	rcu_read_lock();
--	if (gss_cred->gc_ctx)
--		ctx = gss_get_ctx(gss_cred->gc_ctx);
-+	ctx = rcu_dereference(gss_cred->gc_ctx);
-+	if (ctx)
-+		gss_get_ctx(ctx);
- 	rcu_read_unlock();
- 	return ctx;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2c59395c63df..522f0efe47a8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1699,28 +1699,37 @@ static void gen_confirm(struct nfs4_client *clp)
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
  }
-@@ -1207,13 +1208,13 @@ gss_destroying_context(struct rpc_cred *cred)
+ 
+-static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
++static struct nfs4_stid *
++find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
  {
- 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
- 	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
-+	struct gss_cl_ctx *ctx = rcu_dereference_protected(gss_cred->gc_ctx, 1);
- 	struct rpc_task *task;
+ 	struct nfs4_stid *ret;
  
--	if (gss_cred->gc_ctx == NULL ||
--	    test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
-+	if (test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
- 		return 0;
+-	spin_lock(&cl->cl_lock);
+ 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
+-	spin_unlock(&cl->cl_lock);
+ 	if (!ret || !ret->sc_type)
+ 		return NULL;
+ 	return ret;
+ }
  
--	gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
-+	ctx->gc_proc = RPC_GSS_PROC_DESTROY;
- 	cred->cr_ops = &gss_nullops;
- 
- 	/* Take a reference to ensure the cred will be destroyed either
-@@ -1274,7 +1275,7 @@ gss_destroy_nullcred(struct rpc_cred *cred)
- {
- 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
- 	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
--	struct gss_cl_ctx *ctx = gss_cred->gc_ctx;
-+	struct gss_cl_ctx *ctx = rcu_dereference_protected(gss_cred->gc_ctx, 1);
- 
- 	RCU_INIT_POINTER(gss_cred->gc_ctx, NULL);
- 	call_rcu(&cred->cr_rcu, gss_free_cred_callback);
-@@ -1349,20 +1350,30 @@ gss_cred_init(struct rpc_auth *auth, struct rpc_cred *cred)
- static char *
- gss_stringify_acceptor(struct rpc_cred *cred)
- {
--	char *string;
-+	char *string = NULL;
- 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
--	struct xdr_netobj *acceptor = &gss_cred->gc_ctx->gc_acceptor;
-+	struct gss_cl_ctx *ctx;
-+	struct xdr_netobj *acceptor;
++static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
++{
++	struct nfs4_stid *ret;
 +
-+	rcu_read_lock();
-+	ctx = rcu_dereference(gss_cred->gc_ctx);
-+	if (!ctx)
-+		goto out;
++	spin_lock(&cl->cl_lock);
++	ret = find_stateid_locked(cl, t);
++	spin_unlock(&cl->cl_lock);
++	return ret;
++}
 +
-+	acceptor = &ctx->gc_acceptor;
+ static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
+ {
+ 	struct nfs4_stid *s;
  
- 	/* no point if there's no string */
- 	if (!acceptor->len)
+-	s = find_stateid(cl, t);
+-	if (!s)
 -		return NULL;
-+		goto out;
- 
- 	string = kmalloc(acceptor->len + 1, GFP_KERNEL);
- 	if (!string)
--		return string;
-+		goto out;
- 
- 	memcpy(string, acceptor->data, acceptor->len);
- 	string[acceptor->len] = '\0';
-+out:
-+	rcu_read_unlock();
- 	return string;
+-	if (typemask & s->sc_type)
+-		return s;
+-	return NULL;
++	spin_lock(&cl->cl_lock);
++	s = find_stateid_locked(cl, t);
++	if (s != NULL && !(typemask & s->sc_type))
++		s = NULL;
++	spin_unlock(&cl->cl_lock);
++	return s;
  }
  
-@@ -1374,15 +1385,16 @@ static int
- gss_key_timeout(struct rpc_cred *rc)
- {
- 	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
-+	struct gss_cl_ctx *ctx;
- 	unsigned long now = jiffies;
- 	unsigned long expire;
- 
--	if (gss_cred->gc_ctx == NULL)
--		return -EACCES;
--
--	expire = gss_cred->gc_ctx->gc_expiry - (gss_key_expire_timeo * HZ);
--
--	if (time_after(now, expire))
-+	rcu_read_lock();
-+	ctx = rcu_dereference(gss_cred->gc_ctx);
-+	if (ctx)
-+		expire = ctx->gc_expiry - (gss_key_expire_timeo * HZ);
-+	rcu_read_unlock();
-+	if (!ctx || time_after(now, expire))
- 		return -EACCES;
- 	return 0;
- }
-@@ -1391,13 +1403,19 @@ static int
- gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
- {
- 	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
-+	struct gss_cl_ctx *ctx;
- 	int ret;
- 
- 	if (test_bit(RPCAUTH_CRED_NEW, &rc->cr_flags))
- 		goto out;
- 	/* Don't match with creds that have expired. */
--	if (time_after(jiffies, gss_cred->gc_ctx->gc_expiry))
-+	rcu_read_lock();
-+	ctx = rcu_dereference(gss_cred->gc_ctx);
-+	if (!ctx || time_after(jiffies, ctx->gc_expiry)) {
-+		rcu_read_unlock();
- 		return 0;
-+	}
-+	rcu_read_unlock();
- 	if (!test_bit(RPCAUTH_CRED_UPTODATE, &rc->cr_flags))
- 		return 0;
- out:
+ static struct nfs4_client *create_client(struct xdr_netobj name,
 -- 
 1.9.3
 
