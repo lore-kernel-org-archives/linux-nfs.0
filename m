@@ -1,114 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:53395 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755356AbaGHSF4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:56 -0400
-Received: by mail-qa0-f42.google.com with SMTP id dc16so5184754qab.15
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:55 -0700 (PDT)
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:64750 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755296AbaGHSF3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:29 -0400
+Received: by mail-qc0-f181.google.com with SMTP id x13so5660746qcv.40
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:28 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 059/100] nfsd: optimize destroy_lockowner cl_lock thrashing
-Date: Tue,  8 Jul 2014 14:03:47 -0400
-Message-Id: <1404842668-22521-60-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v4 039/100] nfsd: nfsd4_process_open2() must reference the open stateid
+Date: Tue,  8 Jul 2014 14:03:27 -0400
+Message-Id: <1404842668-22521-40-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reduce the cl_lock trashing in destroy_lockowner. Unhash all of the
-lockstateids on the lockowner's list. Put the reference under the lock
-and see if it was the last one. If so, then add it to a private list
-to be destroyed after we drop the lock.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Ensure that nfsd4_process_open2() keeps a reference to the open
+stateid until it is done working with it. Necessary step toward
+client_mutex removal.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 50 +++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 33 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs4state.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 346bdf320a35..ab248ee470dd 100644
+index f825c055e62b..6bd5453f2f76 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -951,14 +951,23 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- 	nfs4_put_stid(&stp->st_stid);
- }
+@@ -3018,6 +3018,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
+ 	struct nfs4_openowner *oo = open->op_openowner;
  
--static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void unhash_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
- 
--	spin_lock(&oo->oo_owner.so_client->cl_lock);
--	list_del(&stp->st_locks);
-+	lockdep_assert_held(&oo->oo_owner.so_client->cl_lock);
-+
-+	list_del_init(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
-+}
-+
-+static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-+{
-+	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
-+
-+	spin_lock(&oo->oo_owner.so_client->cl_lock);
-+	unhash_lock_stateid(stp);
- 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- 	put_generic_stateid(stp);
- }
-@@ -972,30 +981,37 @@ static void unhash_lockowner_locked(struct nfs4_lockowner *lo)
- 	list_del_init(&lo->lo_owner.so_strhash);
- }
- 
--static void release_lockowner_stateids(struct nfs4_lockowner *lo)
-+static void release_lockowner(struct nfs4_lockowner *lo)
- {
- 	struct nfs4_client *clp = lo->lo_owner.so_client;
- 	struct nfs4_ol_stateid *stp;
-+	struct list_head reaplist;
- 
--	lockdep_assert_held(&clp->cl_lock);
-+	INIT_LIST_HEAD(&reaplist);
- 
-+	spin_lock(&clp->cl_lock);
-+	unhash_lockowner_locked(lo);
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		spin_unlock(&clp->cl_lock);
--		release_lock_stateid(stp);
--		spin_lock(&clp->cl_lock);
-+		unhash_lock_stateid(stp);
-+		/*
-+		 * We now know that no new references can be added to the
-+		 * stateid. If ours is the last one, finish the unhashing
-+		 * and put it on the list to be reaped.
-+		 */
-+		if (atomic_dec_and_test(&stp->st_stid.sc_count)) {
-+			remove_stid_locked(clp, &stp->st_stid);
-+			list_add(&stp->st_locks, &reaplist);
-+		}
++	atomic_inc(&stp->st_stid.sc_count);
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_locks);
+ 	stp->st_stateowner = &oo->oo_owner;
+@@ -3391,6 +3392,7 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
+ 			continue;
+ 		if (local->st_stateowner == &oo->oo_owner) {
+ 			ret = local;
++			atomic_inc(&ret->st_stid.sc_count);
+ 			break;
+ 		}
  	}
--}
--
--static void release_lockowner(struct nfs4_lockowner *lo)
--{
--	struct nfs4_client *clp = lo->lo_owner.so_client;
--
--	spin_lock(&clp->cl_lock);
--	unhash_lockowner_locked(lo);
--	release_lockowner_stateids(lo);
- 	spin_unlock(&clp->cl_lock);
-+	while (!list_empty(&reaplist)) {
-+		stp = list_first_entry(&reaplist, struct nfs4_ol_stateid,
-+					st_locks);
-+		list_del(&stp->st_locks);
-+		stp->st_stid.sc_free(&stp->st_stid);
-+	}
- 	nfs4_put_stateowner(&lo->lo_owner);
- }
+@@ -3834,6 +3836,8 @@ out:
+ 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
+ 	if (dp)
+ 		nfs4_put_delegation(dp);
++	if (stp)
++		put_generic_stateid(stp);
  
+ 	return status;
+ }
 -- 
 1.9.3
 
