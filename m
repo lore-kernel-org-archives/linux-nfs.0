@@ -1,84 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:56347 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756681AbaGVUAm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 16:00:42 -0400
-Received: by mail-ie0-f175.google.com with SMTP id x19so139424ier.20
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 13:00:41 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] svcrdma: Add zero padding if the client doesn't send it
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:49397 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755384AbaGHSGD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:03 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so5282532qge.25
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:03 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 16:00:40 -0400
-Message-ID: <20140722200040.6011.86756.stgit@klimt.1015granger.net>
-In-Reply-To: <20140722195840.6011.87861.stgit@klimt.1015granger.net>
-References: <20140722195840.6011.87861.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Subject: [PATCH v4 065/100] nfsd: Don't require client_lock in free_client
+Date: Tue,  8 Jul 2014 14:03:53 -0400
+Message-Id: <1404842668-22521-66-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-See RFC 5666 section 3.7: clients don't have to send zero XDR
-padding.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The struct nfs_client is supposed to be invisible and unreferenced
+before it gets here.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
+ fs/nfsd/nfs4state.c | 13 -------------
+ 1 file changed, 13 deletions(-)
 
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   28 ++++++++++++++++++++++++++++
- 1 files changed, 28 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 8f92a61..e011027 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -43,6 +43,7 @@
- #include <linux/sunrpc/debug.h>
- #include <linux/sunrpc/rpc_rdma.h>
- #include <linux/spinlock.h>
-+#include <linux/highmem.h>
- #include <asm/unaligned.h>
- #include <rdma/ib_verbs.h>
- #include <rdma/rdma_cm.h>
-@@ -435,6 +436,32 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
- 	return ret;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d290dbebafdf..cb319903d93b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1386,9 +1386,6 @@ static void __free_session(struct nfsd4_session *ses)
+ 
+ static void free_session(struct nfsd4_session *ses)
+ {
+-	struct nfsd_net *nn = net_generic(ses->se_client->net, nfsd_net_id);
+-
+-	lockdep_assert_held(&nn->client_lock);
+ 	nfsd4_del_conns(ses);
+ 	nfsd4_put_drc_mem(&ses->se_fchannel);
+ 	__free_session(ses);
+@@ -1538,9 +1535,6 @@ err_no_name:
+ static void
+ free_client(struct nfs4_client *clp)
+ {
+-	struct nfsd_net __maybe_unused *nn = net_generic(clp->net, nfsd_net_id);
+-
+-	lockdep_assert_held(&nn->client_lock);
+ 	while (!list_empty(&clp->cl_sessions)) {
+ 		struct nfsd4_session *ses;
+ 		ses = list_entry(clp->cl_sessions.next, struct nfsd4_session,
+@@ -1599,7 +1593,6 @@ __destroy_client(struct nfs4_client *clp)
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
+ 	struct list_head reaplist;
+-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&state_lock);
+@@ -1629,10 +1622,7 @@ __destroy_client(struct nfs4_client *clp)
+ 	nfsd4_shutdown_callback(clp);
+ 	if (clp->cl_cb_conn.cb_xprt)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+-	spin_lock(&nn->client_lock);
+-	WARN_ON_ONCE(atomic_read(&clp->cl_refcount));
+ 	free_client(clp);
+-	spin_unlock(&nn->client_lock);
  }
  
-+/*
-+ * To avoid a separate RDMA READ just for a handful of zero bytes,
-+ * RFC 5666 section 3.7 allows the client to omit the XDR zero pad
-+ * in chunk lists.
-+ */
-+static void
-+rdma_fix_xdr_pad(struct xdr_buf *buf)
-+{
-+	unsigned int page_len = buf->page_len;
-+	unsigned int size = (XDR_QUADLEN(page_len) << 2) - page_len;
-+	unsigned int offset, pg_no;
-+	char *p;
-+
-+	if (size == 0)
-+		return;
-+
-+	pg_no = page_len >> PAGE_SHIFT;
-+	offset = page_len & ~PAGE_MASK;
-+	p = page_address(buf->pages[pg_no]);
-+	memset(p + offset, 0, size);
-+
-+	buf->page_len += size;
-+	buf->buflen += size;
-+	buf->len += size;
-+}
-+
- static int rdma_read_complete(struct svc_rqst *rqstp,
- 			      struct svc_rdma_op_ctxt *head)
- {
-@@ -449,6 +476,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
- 		rqstp->rq_pages[page_no] = head->pages[page_no];
+ static void
+@@ -1835,7 +1825,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	struct sockaddr *sa = svc_addr(rqstp);
+ 	int ret;
+ 	struct net *net = SVC_NET(rqstp);
+-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
+ 	clp = alloc_client(name);
+ 	if (clp == NULL)
+@@ -1843,9 +1832,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 
+ 	ret = copy_cred(&clp->cl_cred, &rqstp->rq_cred);
+ 	if (ret) {
+-		spin_lock(&nn->client_lock);
+ 		free_client(clp);
+-		spin_unlock(&nn->client_lock);
+ 		return NULL;
  	}
- 	/* Point rq_arg.pages past header */
-+	rdma_fix_xdr_pad(&head->arg);
- 	rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
- 	rqstp->rq_arg.page_len = head->arg.page_len;
- 	rqstp->rq_arg.page_base = head->arg.page_base;
+ 	clp->cl_time = get_seconds();
+-- 
+1.9.3
 
