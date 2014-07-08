@@ -1,33 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:46762 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752903AbaGJMpl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 08:45:41 -0400
-Date: Thu, 10 Jul 2014 05:45:40 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 017/100] nfsd: make deny mode enforcement more
- efficient and close races in it
-Message-ID: <20140710124540.GC30941@infradead.org>
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:54054 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755376AbaGHSGK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:10 -0400
+Received: by mail-qg0-f53.google.com with SMTP id i50so5449159qgf.40
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:09 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 070/100] nfsd: Ensure lookup_clientid() takes client_lock
+Date: Tue,  8 Jul 2014 14:03:58 -0400
+Message-Id: <1404842668-22521-71-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
- <1404842668-22521-18-git-send-email-jlayton@primarydata.com>
- <20140710104927.GC6935@infradead.org>
- <20140710083628.4bec674e@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140710083628.4bec674e@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 10, 2014 at 08:36:28AM -0400, Jeff Layton wrote:
-> Yeah, I considered that, I'll see if that will help things, but it
-> might be best to leave that extra cleanup to a different patchset. This
-> set is all about removing the client_mutex, not so much about cleaning
-> up deny mode handling (even fixing that atomicity is a necessary step).
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-With the extensive changes to that area I would much prefer to get the
-various bits rights before doing the locking instead of going back to
-this later.
+Ensure that the client lookup is done safely under the client_lock, so
+we're not relying on the client_mutex.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 8c3f63f9dd4e..eea6a844e2f2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3467,13 +3467,17 @@ static __be32 lookup_clientid(clientid_t *clid,
+ 	 * will be false.
+ 	 */
+ 	WARN_ON_ONCE(cstate->session);
++	spin_lock(&nn->client_lock);
+ 	found = find_confirmed_client(clid, false, nn);
+-	if (!found)
++	if (!found) {
++		spin_unlock(&nn->client_lock);
+ 		return nfserr_expired;
++	}
++	atomic_inc(&found->cl_refcount);
++	spin_unlock(&nn->client_lock);
+ 
+ 	/* Cache the nfs4_client in cstate! */
+ 	cstate->clp = found;
+-	atomic_inc(&found->cl_refcount);
+ 	return nfs_ok;
+ }
+ 
+-- 
+1.9.3
 
