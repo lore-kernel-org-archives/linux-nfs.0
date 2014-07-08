@@ -1,95 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:42763 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754392AbaG2Uez (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:55 -0400
-Received: by mail-qg0-f51.google.com with SMTP id a108so314566qge.10
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:54 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 17/38] nfsd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
-Date: Tue, 29 Jul 2014 16:34:00 -0400
-Message-Id: <1406666061-14175-18-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:36586 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750867AbaGHM0g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 08:26:36 -0400
+Received: by mail-pa0-f44.google.com with SMTP id rd3so7295480pab.31
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 05:26:35 -0700 (PDT)
+Message-ID: <53BBE35B.6090003@gmail.com>
+Date: Tue, 08 Jul 2014 20:26:03 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        NeilBrown <neilb@suse.de>
+Subject: Re: [PATCH 2/4] NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"
+References: <53BAAAC5.9000106@gmail.com>	<20140707132633.5eb59753@tlielax.poochiereds.net>	<53BB6445.3060508@gmail.com> <20140708070320.1d5646f0@tlielax.poochiereds.net>
+In-Reply-To: <20140708070320.1d5646f0@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On 7/8/2014 19:03, Jeff Layton wrote:
+> On Tue, 08 Jul 2014 11:23:49 +0800
+> Kinglong Mee <kinglongmee@gmail.com> wrote:
+> 
+>> On 7/8/2014 01:26, Jeff Layton wrote:
+>>> On Mon, 07 Jul 2014 22:12:21 +0800
+>>> Kinglong Mee <kinglongmee@gmail.com> wrote:
+>>>
+> -------------------------[snip]------------------------------
+> 
+> [PATCH] NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"
+> 
+> Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
+> fl_lmops field in file_lock for checking nfsd4 lockowner.
+> 
+> But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return of conflicting locks) causes the fl_lmops of conflock for nfsd4_lock always be NULL.
+> 
+> Also, commit 0996905f93 (lockd: posix_test_lock() should not call locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt always be NULL too.
+> 
+> So that, using fl_lmops cannot checking nfsd4 lockowner for it always be NULL.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 34 ++++++++++++++++++++++------------
+>  1 file changed, 22 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index c400ec17915e..00cd7fd17b0f 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4312,18 +4312,29 @@ nfs4_transform_lock_offset(struct file_lock *lock)
+>  		lock->fl_end = OFFSET_MAX;
+>  }
+>  
+> -/* Hack!: For now, we're defining this just so we can use a pointer to it
+> - * as a unique cookie to identify our (NFSv4's) posix locks. */
+> -static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+> -};
+> +static bool
+> +nfs4_verify_lock_stateowner(struct nfs4_lockowner *lo, struct nfs4_client *clp)
+> +{
+> +	struct nfs4_stateowner *local = NULL;
+> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+> +	unsigned int hashval = ownerstr_hashval(clp->cl_clientid.cl_id,
+> +						&lo->lo_owner.so_owner);
 
-Ensure that all the callers put the open stateid after use.
-Necessary step toward client_mutex removal.
+Needs the conflicting client which holds the lock,
+Not the new client which try to locking the file has be locked.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+> +
+> +	list_for_each_entry(local, &nn->ownerstr_hashtbl[hashval], so_strhash) {
+> +		if (local == &lo->lo_owner)
+> +			return true;
+> +	}
+> +
+> +	return false;
+> +}
+>  
+>  static inline void
+> -nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
+> +nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny,
+> +			struct nfs4_client *clp)
+>  {
+> -	struct nfs4_lockowner *lo;
+> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *)fl->fl_owner;
+>  
+> -	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
+> -		lo = (struct nfs4_lockowner *) fl->fl_owner;
+> +	if (nfs4_verify_lock_stateowner(lo, clp)) {
+>  		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
+>  					lo->lo_owner.so_owner.len, GFP_KERNEL);
+>  		if (!deny->ld_owner.data)
+> @@ -4594,7 +4605,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	file_lock->fl_pid = current->tgid;
+>  	file_lock->fl_file = filp;
+>  	file_lock->fl_flags = FL_POSIX;
+> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
+>  	file_lock->fl_start = lock->lk_offset;
+>  	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
+>  	nfs4_transform_lock_offset(file_lock);
+> @@ -4617,7 +4627,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	case (EAGAIN):		/* conflock holds conflicting lock */
+>  		status = nfserr_denied;
+>  		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
+> -		nfs4_set_lock_denied(conflock, &lock->lk_denied);
+> +		nfs4_set_lock_denied(conflock, &lock->lk_denied,
+> +					cstate->clp);
+>  		break;
+>  	case (EDEADLK):
+>  		status = nfserr_deadlock;
+> @@ -4725,7 +4736,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  
+>  	if (file_lock->fl_type != F_UNLCK) {
+>  		status = nfserr_denied;
+> -		nfs4_set_lock_denied(file_lock, &lockt->lt_denied);
+> +		nfs4_set_lock_denied(file_lock, &lockt->lt_denied, cstate->clp);
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5e31bc6a03a6..7fa25be7ef2e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4405,6 +4405,8 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- 						NFS4_OPEN_STID, stpp, nn);
- 	if (status)
- 		return status;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&(*stpp)->st_stid.sc_count);
- 	oo = openowner((*stpp)->st_stateowner);
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
- 		return nfserr_bad_stateid;
-@@ -4509,12 +4511,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	if (!test_access(od->od_share_access, stp)) {
- 		dprintk("NFSD: access not a subset of current bitmap: 0x%hhx, input access=%08x\n",
- 			stp->st_access_bmap, od->od_share_access);
--		goto out;
-+		goto put_stateid;
- 	}
- 	if (!test_deny(od->od_share_deny, stp)) {
- 		dprintk("NFSD: deny not a subset of current bitmap: 0x%hhx, input deny=%08x\n",
- 			stp->st_deny_bmap, od->od_share_deny);
--		goto out;
-+		goto put_stateid;
- 	}
- 	nfs4_stateid_downgrade(stp, od->od_share_access);
- 
-@@ -4523,6 +4525,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&od->od_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 	status = nfs_ok;
-+put_stateid:
-+	nfs4_put_stid(&stp->st_stid);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	if (!cstate->replay_owner)
-@@ -4883,6 +4887,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_openowner *open_sop = NULL;
- 	struct nfs4_lockowner *lock_sop = NULL;
- 	struct nfs4_ol_stateid *lock_stp = NULL;
-+	struct nfs4_ol_stateid *open_stp = NULL;
- 	struct nfs4_file *fp;
- 	struct file *filp = NULL;
- 	struct file_lock *file_lock = NULL;
-@@ -4910,8 +4915,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
- 
- 	if (lock->lk_is_new) {
--		struct nfs4_ol_stateid *open_stp = NULL;
--
- 		if (nfsd4_has_session(cstate))
- 			/* See rfc 5661 18.10.3: given clientid is ignored: */
- 			memcpy(&lock->v.new.clientid,
-@@ -5039,6 +5042,8 @@ out:
- 		fput(filp);
- 	if (lock_stp)
- 		nfs4_put_stid(&lock_stp->st_stid);
-+	if (open_stp)
-+		nfs4_put_stid(&open_stp->st_stid);
- 	if (status && new_state)
- 		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
--- 
-1.9.3
+The clp is the client which try to lock the file here,
+but the file have be locked by other client or server.
 
+With this patch, the hashval is wrong.
+              *correct*                    *this patch*
+clid        conflicting client        new request lock client
+owner      from vfs_lock_file()        from vfs_lock_file()  
+            or vfs_test_lock()           or vfs_test_lock()
+hashval       right hashval           bad hashval (never exist)
+
+With this patch, LOCK/LOCKT compound gets client with all zero, and owner with all zero.
+
+thanks,
+Kinglong Mee
