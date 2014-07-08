@@ -1,106 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:52496 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758266AbaGOKh6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 06:37:58 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so1825260qgf.35
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 03:37:58 -0700 (PDT)
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:37069 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755278AbaGHSFV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:21 -0400
+Received: by mail-qc0-f170.google.com with SMTP id l6so5703861qcy.29
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:21 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 2/7] nfsd: Ensure stateids remain unique until they are freed
-Date: Tue, 15 Jul 2014 06:37:44 -0400
-Message-Id: <1405420669-4030-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
-References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 031/100] nfsd: clean up races in lock stateid searching and creation
+Date: Tue,  8 Jul 2014 14:03:19 -0400
+Message-Id: <1404842668-22521-32-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Preparation for removal of the client_mutex.
 
-Add an extra delegation state to allow the stateid to remain in the idr
-tree until the last reference has been released. This will be necessary
-to ensure uniqueness once the client_mutex is removed.
+Currently, no lock aside from the client_mutex is held when calling
+find_lock_state. Ensure that the cl_lock is held by adding a lockdep
+assertion.
 
-[jlayton: reset the sc_type under the state_lock in unhash_delegation]
+Once we remove the client_mutex, it'll be possible for another thread to
+race in and insert a lock state for the same file after we search but
+before we insert a new one. Ensure that doesn't happen by redoing the
+search after allocating a new stid that we plan to insert. If one is
+found just put the one we just allocated.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 9 ++++-----
- fs/nfsd/state.h     | 1 +
- 2 files changed, 5 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 58 +++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 41 insertions(+), 17 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1b01a20827ab..df3e9ef1fb38 100644
+index 32538c79f9cb..2b8ca8354b95 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -609,6 +609,7 @@ static void remove_stid(struct nfs4_stid *s)
- 
- static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
- {
-+	remove_stid(s);
- 	kmem_cache_free(slab, s);
+@@ -4694,16 +4694,14 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	return lo;
  }
  
-@@ -657,6 +658,7 @@ unhash_delegation(struct nfs4_delegation *dp)
- 	struct nfs4_file *fp = dp->dl_file;
+-static struct nfs4_ol_stateid *
+-alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
++static void
++init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
++		  struct nfs4_file *fp, struct nfs4_ol_stateid *open_stp)
+ {
+-	struct nfs4_openowner *oo = openowner(open_stp->st_stateowner);
+-	struct nfs4_ol_stateid *stp;
+ 	struct nfs4_client *clp = lo->lo_owner.so_client;
  
- 	spin_lock(&state_lock);
-+	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
- 	list_del_init(&dp->dl_perclnt);
- 	list_del_init(&dp->dl_recall_lru);
+-	stp = nfs4_alloc_stateid(clp);
+-	if (stp == NULL)
+-		return NULL;
++	lockdep_assert_held(&clp->cl_lock);
++
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+@@ -4712,20 +4710,20 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
+-	spin_lock(&oo->oo_owner.so_client->cl_lock);
+ 	list_add(&stp->st_locks, &open_stp->st_locks);
+ 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
  	spin_lock(&fp->fi_lock);
-@@ -670,19 +672,15 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	spin_unlock(&fp->fi_lock);
+-	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+-	return stp;
+ }
+ 
+ static struct nfs4_ol_stateid *
+ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
+ {
+ 	struct nfs4_ol_stateid *lst;
++	struct nfs4_client *clp = lo->lo_owner.so_client;
++
++	lockdep_assert_held(&clp->cl_lock);
+ 
+ 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
+ 		if (lst->st_stid.sc_file == fp)
+@@ -4734,6 +4732,36 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
+ 	return NULL;
+ }
+ 
++static struct nfs4_ol_stateid *
++find_or_create_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fi,
++			    struct nfs4_ol_stateid *ost, bool *new)
++{
++	struct nfs4_ol_stateid *lst, *nst = NULL;
++	struct nfs4_openowner *oo = openowner(ost->st_stateowner);
++	struct nfs4_client *clp = oo->oo_owner.so_client;
++
++	spin_lock(&clp->cl_lock);
++	lst = find_lock_stateid(lo, fi);
++	if (lst == NULL) {
++		spin_unlock(&clp->cl_lock);
++		nst = nfs4_alloc_stateid(clp);
++		if (nst == NULL)
++			return NULL;
++
++		spin_lock(&clp->cl_lock);
++		lst = find_lock_stateid(lo, fi);
++		if (likely(!lst)) {
++			init_lock_stateid(nst, lo, fi, ost);
++			lst = nst;
++			nst = NULL;
++			*new = true;
++		}
++	}
++	spin_unlock(&clp->cl_lock);
++	if (nst)
++		put_generic_stateid(nst);
++	return lst;
++}
+ 
+ static int
+ check_lock_length(u64 offset, u64 length)
+@@ -4777,14 +4805,10 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
+ 			return nfserr_bad_seqid;
  	}
- }
  
--
--
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
- {
- 	list_del_init(&dp->dl_recall_lru);
--	remove_stid(&dp->dl_stid);
- 	nfs4_put_delegation(dp);
- }
- 
- static void destroy_delegation(struct nfs4_delegation *dp)
- {
- 	unhash_delegation(dp);
--	remove_stid(&dp->dl_stid);
- 	nfs4_put_delegation(dp);
- }
- 
-@@ -885,7 +883,6 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
- 
- static void free_generic_stateid(struct nfs4_ol_stateid *stp)
- {
--	remove_stid(&stp->st_stid);
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
- 
-@@ -4036,7 +4033,9 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 		return nfs_ok;
- 	default:
- 		printk("unknown stateid type %x\n", s->sc_type);
-+		/* Fallthrough */
- 	case NFS4_CLOSED_STID:
-+	case NFS4_CLOSED_DELEG_STID:
- 		return nfserr_bad_stateid;
+-	*lst = find_lock_stateid(lo, fi);
++	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
+ 	if (*lst == NULL) {
+-		*lst = alloc_init_lock_stateid(lo, fi, ost);
+-		if (*lst == NULL) {
+-			release_lockowner_if_empty(lo);
+-			return nfserr_jukebox;
+-		}
+-		*new = true;
++		release_lockowner_if_empty(lo);
++		return nfserr_jukebox;
  	}
+ 	return nfs_ok;
  }
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 81b7522e3f67..996d61eeb357 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -80,6 +80,7 @@ struct nfs4_stid {
- #define NFS4_CLOSED_STID 8
- /* For a deleg stateid kept around only to process free_stateid's: */
- #define NFS4_REVOKED_DELEG_STID 16
-+#define NFS4_CLOSED_DELEG_STID 32
- 	unsigned char sc_type;
- 	stateid_t sc_stateid;
- 	struct nfs4_client *sc_client;
 -- 
 1.9.3
 
