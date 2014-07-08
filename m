@@ -1,73 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:59553 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751751AbaGVOvK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:51:10 -0400
-Subject: [PATCH v4 01/21] xprtrdma: Fix panic in
- rpcrdma_register_frmr_external()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:51:07 -0400
-Message-ID: <20140722145107.6010.51774.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from cantor2.suse.de ([195.135.220.15]:45112 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752883AbaGHG5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jul 2014 02:57:34 -0400
+Date: Tue, 8 Jul 2014 16:57:27 +1000
+From: NeilBrown <neilb@suse.de>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Chuck Lever <chuck.lever@oracle.com>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Is there a good reason that nfs4_state_manager should use a
+ work_queue?
+Message-ID: <20140708165727.7095e209@notabene.brown>
+In-Reply-To: <20140708064641.GA16497@infradead.org>
+References: <20140708152100.67cd93c7@notabene.brown>
+	<20140708064641.GA16497@infradead.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/aYJOvA2Xu8J+uUEtyJ.DL+W"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-seg1->mr_nsegs is not yet initialized when it is used to unmap
-segments during an error exit. Use the same unmapping logic for
-all error exits.
+--Sig_/aYJOvA2Xu8J+uUEtyJ.DL+W
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-"if (frmr_wr.wr.fast_reg.length < len) {" used to be a BUG_ON check.
-The broken code will never be executed under normal operation.
+On Mon, 7 Jul 2014 23:46:41 -0700 Christoph Hellwig <hch@infradead.org> wro=
+te:
 
-Fixes: c977dea (xprtrdma: Remove BUG_ON() call sites)
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
----
- net/sunrpc/xprtrdma/verbs.c |   12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+> On Tue, Jul 08, 2014 at 03:21:00PM +1000, NeilBrown wrote:
+> >  2/ would it be reasonable to have a single work queue for all nfs clie=
+nts?
+> >     In the worst case this could serialise reclaim across all clients s=
+o we
+> >     wouldn't want any reclaim attempt to block indefinitely.  Is that l=
+ikely
+> >     to be a big problem do you think?
+>=20
+> A workqueue isn't serialized, it has a max_active paramater to control
+> the concurrency of execution.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 13dbd1c..78bd7c6 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1545,9 +1545,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
- 	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
- 	if (frmr_wr.wr.fast_reg.length < len) {
--		while (seg1->mr_nsegs--)
--			rpcrdma_unmap_one(ia, seg++);
--		return -EIO;
-+		rc = -EIO;
-+		goto out_err;
- 	}
- 
- 	/* Bump the key */
-@@ -1565,8 +1564,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
- 			" status %i\n", __func__, rc);
--		while (i--)
--			rpcrdma_unmap_one(ia, --seg);
-+		goto out_err;
- 	} else {
- 		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 		seg1->mr_base = seg1->mr_dma + pageoff;
-@@ -1574,6 +1572,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 		seg1->mr_len = len;
- 	}
- 	*nsegs = i;
-+	return 0;
-+out_err:
-+	while (i--)
-+		rpcrdma_unmap_one(ia, --seg);
- 	return rc;
- }
- 
+True, but if memory is tight it may not be able to create new threads.
+WQ_MEM_RECLAIM guarantees there will be at least one, but worst-case
+that might be all that we have.
 
+Thanks,
+NeilBrown
+
+--Sig_/aYJOvA2Xu8J+uUEtyJ.DL+W
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU7uWWDnsnt1WYoG5AQI20hAAsxauQZjITeHvaFLfnB2OYisQOHIZhcjv
+KBi+g0YQetNX6r3QFZrOiBOrmDge6hE8IpMY5Tt7nzNm50esChhoY8/DiuxjSm2o
+cpYQjJMEpvw9JUAlfHGSQs+BaYOPaDvEoMRlTObPFCQbFkqLGmyvHA5l143fIMS4
+lNR3+dToKrdhXL5BuE9DSMUyKRl0CwFKTg7dvxpgvQ9N4nzmvsRoSH9+lrJ17djI
+g4nZZ8BcDznvyicxiMfb1vzJ5I2E5ppHKk6dW3RZ5KZrZVhdiG7ounUgHXvXS61B
+T0JkS5YQylGpuBreHqCFYvp21UcjNhWQioqxnMrXppXiVf4SGQya1OS1e81rSONU
+xClufjwfw5qkWFETC1BWLXlCNLQVorjIuBrpH6ToFdpBU36RIdB2YomI/gaFFkK0
+YWveqeFkhKJoiRsmuq0a5DpZ7SvSOfn4gW5o0J6Uc/vin7nwW+9Kmq4+pXEaN/oX
+y9P1oNNoA0V96ZwuDnm8wsE+TFs2g3Xz3thlyyViXukbn0ukkS3YM5BOypQ0iefF
+qrtZvaZelm4/iwPGoCuJ7oNdKcwXhuOprVwBkURoAd9nEaaIyvrZdl4KzOimg7Qu
+0nxqHVvaRpSty+9PI7RVeNu2d+dIYTK3saCZ3bTmRLv4Iq6kmZFbLSUtPKBn40Ht
+Qow9xa7F9bA=
+=1x1a
+-----END PGP SIGNATURE-----
+
+--Sig_/aYJOvA2Xu8J+uUEtyJ.DL+W--
