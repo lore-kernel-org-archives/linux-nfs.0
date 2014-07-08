@@ -1,139 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60104 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754684AbaGUVbB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jul 2014 17:31:01 -0400
-Date: Mon, 21 Jul 2014 17:30:56 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v5 03/10] nfsd: simplify stateid allocation and file
- handling
-Message-ID: <20140721213056.GM8438@fieldses.org>
-References: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
- <1405949706-27757-4-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1405949706-27757-4-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:53705 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754474AbaGHSFB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:01 -0400
+Received: by mail-qa0-f52.google.com with SMTP id w8so5110702qac.39
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:01 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 019/100] locks: add file_has_lease to prevent delegation break races
+Date: Tue,  8 Jul 2014 14:03:07 -0400
+Message-Id: <1404842668-22521-20-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 21, 2014 at 09:34:59AM -0400, Jeff Layton wrote:
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> 
-> Don't allow stateids to clear the open file pointer until they are
-> being destroyed. In a later patch we'll want to move the putting of
-> the nfs4_file into generic stateid handling code and this will help
-> facilitate that change.
-> 
-> Also, move to allocating stateids with kzalloc and get rid of the
-> explicit zeroing of fields.
+Once we remove the client_mutex, we'll have a potential race between
+setting a lease on a file and breaking the delegation. We may set the
+lease, but by the time we go to hash it, it may have already been
+broken. Currently, we know that this won't happen as the nfs4_laundromat
+takes the client_mutex, but we want to remove that.
 
-There's a regression here: we end up holding an unnecessary reference to
-the inode a long time just because some client isn't responding to a
-recall.
+As part of that fix, add a function that can tell us whether a
+particular file has a lease set on it. In a later nfsd patch, we'll use
+that to close the potential race window.
 
-When I complained about this before Trond said something about replacing
-fi_inode by a filehandle?  But I can't remember if we've seen code to do
-that.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/locks.c         | 26 ++++++++++++++++++++++++++
+ include/linux/fs.h |  6 ++++++
+ 2 files changed, 32 insertions(+)
 
---b.
+diff --git a/fs/locks.c b/fs/locks.c
+index 717fbc404e6b..005cc86927e3 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1308,6 +1308,32 @@ static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
+ }
+ 
+ /**
++ * file_has_lease - does the given file have a lease set on it?
++ * @file: struct file on which we want to check the lease
++ *
++ * Returns true if a lease was is set on the given file description,
++ * false otherwise.
++ */
++bool
++file_has_lease(struct file *file)
++{
++	bool ret = false;
++	struct inode *inode = file_inode(file);
++	struct file_lock *fl;
++
++	spin_lock(&inode->i_lock);
++	for (fl = inode->i_flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (fl->fl_file == file) {
++			ret = true;
++			break;
++		}
++	}
++	spin_unlock(&inode->i_lock);
++	return ret;
++}
++EXPORT_SYMBOL(file_has_lease);
++
++/**
+  *	__break_lease	-	revoke all outstanding leases on file
+  *	@inode: the inode of the file to return
+  *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e11d60cc867b..7ae6f4869669 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -953,6 +953,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
++extern bool file_has_lease(struct file *file);
+ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **);
+@@ -1064,6 +1065,11 @@ static inline int flock_lock_file_wait(struct file *filp,
+ 	return -ENOLCK;
+ }
+ 
++static inline bool file_has_lease(struct file *file)
++{
++	return false;
++}
++
+ static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	return 0;
+-- 
+1.9.3
 
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfsd/nfs4state.c | 22 ++++++++++------------
->  1 file changed, 10 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a47c97586c76..8ff5c97a2c5a 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -459,7 +459,7 @@ kmem_cache *slab)
->  	struct nfs4_stid *stid;
->  	int new_id;
->  
-> -	stid = kmem_cache_alloc(slab, GFP_KERNEL);
-> +	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
->  	if (!stid)
->  		return NULL;
->  
-> @@ -467,11 +467,9 @@ kmem_cache *slab)
->  	if (new_id < 0)
->  		goto out_free;
->  	stid->sc_client = cl;
-> -	stid->sc_type = 0;
->  	stid->sc_stateid.si_opaque.so_id = new_id;
->  	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
->  	/* Will be incremented before return to client: */
-> -	stid->sc_stateid.si_generation = 0;
->  	atomic_set(&stid->sc_count, 1);
->  
->  	/*
-> @@ -592,10 +590,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
->  	INIT_LIST_HEAD(&dp->dl_perfile);
->  	INIT_LIST_HEAD(&dp->dl_perclnt);
->  	INIT_LIST_HEAD(&dp->dl_recall_lru);
-> -	dp->dl_file = NULL;
->  	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
->  	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
-> -	dp->dl_time = 0;
->  	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
->  	return dp;
->  }
-> @@ -616,6 +612,8 @@ void
->  nfs4_put_delegation(struct nfs4_delegation *dp)
->  {
->  	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
-> +		if (dp->dl_file)
-> +			put_nfs4_file(dp->dl_file);
->  		remove_stid(&dp->dl_stid);
->  		nfs4_free_stid(deleg_slab, &dp->dl_stid);
->  		num_delegations--;
-> @@ -665,13 +663,9 @@ unhash_delegation(struct nfs4_delegation *dp)
->  	list_del_init(&dp->dl_recall_lru);
->  	list_del_init(&dp->dl_perfile);
->  	spin_unlock(&fp->fi_lock);
-> -	if (fp) {
-> +	if (fp)
->  		nfs4_put_deleg_lease(fp);
-> -		dp->dl_file = NULL;
-> -	}
->  	spin_unlock(&state_lock);
-> -	if (fp)
-> -		put_nfs4_file(fp);
->  }
->  
->  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-> @@ -879,12 +873,12 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
->  static void close_generic_stateid(struct nfs4_ol_stateid *stp)
->  {
->  	release_all_access(stp);
-> -	put_nfs4_file(stp->st_file);
-> -	stp->st_file = NULL;
->  }
->  
->  static void free_generic_stateid(struct nfs4_ol_stateid *stp)
->  {
-> +	if (stp->st_file)
-> +		put_nfs4_file(stp->st_file);
->  	remove_stid(&stp->st_stid);
->  	nfs4_free_stid(stateid_slab, &stp->st_stid);
->  }
-> @@ -4462,6 +4456,10 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
->  		if (list_empty(&oo->oo_owner.so_stateids))
->  			release_openowner(oo);
->  	} else {
-> +		if (s->st_file) {
-> +			put_nfs4_file(s->st_file);
-> +			s->st_file = NULL;
-> +		}
->  		oo->oo_last_closed_stid = s;
->  		/*
->  		 * In the 4.0 case we need to keep the owners around a
-> -- 
-> 1.9.3
-> 
