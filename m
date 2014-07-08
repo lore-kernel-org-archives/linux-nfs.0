@@ -1,134 +1,251 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:36586 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750867AbaGHM0g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 08:26:36 -0400
-Received: by mail-pa0-f44.google.com with SMTP id rd3so7295480pab.31
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 05:26:35 -0700 (PDT)
-Message-ID: <53BBE35B.6090003@gmail.com>
-Date: Tue, 08 Jul 2014 20:26:03 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        NeilBrown <neilb@suse.de>
-Subject: Re: [PATCH 2/4] NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"
-References: <53BAAAC5.9000106@gmail.com>	<20140707132633.5eb59753@tlielax.poochiereds.net>	<53BB6445.3060508@gmail.com> <20140708070320.1d5646f0@tlielax.poochiereds.net>
-In-Reply-To: <20140708070320.1d5646f0@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:53621 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755406AbaGHSG1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:27 -0400
+Received: by mail-qc0-f173.google.com with SMTP id l6so5532200qcy.32
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:26 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 083/100] nfsd: add more granular locking to forget_locks fault injector
+Date: Tue,  8 Jul 2014 14:04:11 -0400
+Message-Id: <1404842668-22521-84-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/8/2014 19:03, Jeff Layton wrote:
-> On Tue, 08 Jul 2014 11:23:49 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
->> On 7/8/2014 01:26, Jeff Layton wrote:
->>> On Mon, 07 Jul 2014 22:12:21 +0800
->>> Kinglong Mee <kinglongmee@gmail.com> wrote:
->>>
-> -------------------------[snip]------------------------------
-> 
-> [PATCH] NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"
-> 
-> Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
-> fl_lmops field in file_lock for checking nfsd4 lockowner.
-> 
-> But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return of conflicting locks) causes the fl_lmops of conflock for nfsd4_lock always be NULL.
-> 
-> Also, commit 0996905f93 (lockd: posix_test_lock() should not call locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt always be NULL too.
-> 
-> So that, using fl_lmops cannot checking nfsd4 lockowner for it always be NULL.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 34 ++++++++++++++++++++++------------
->  1 file changed, 22 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index c400ec17915e..00cd7fd17b0f 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4312,18 +4312,29 @@ nfs4_transform_lock_offset(struct file_lock *lock)
->  		lock->fl_end = OFFSET_MAX;
->  }
->  
-> -/* Hack!: For now, we're defining this just so we can use a pointer to it
-> - * as a unique cookie to identify our (NFSv4's) posix locks. */
-> -static const struct lock_manager_operations nfsd_posix_mng_ops  = {
-> -};
-> +static bool
-> +nfs4_verify_lock_stateowner(struct nfs4_lockowner *lo, struct nfs4_client *clp)
-> +{
-> +	struct nfs4_stateowner *local = NULL;
-> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-> +	unsigned int hashval = ownerstr_hashval(clp->cl_clientid.cl_id,
-> +						&lo->lo_owner.so_owner);
+...instead of relying on the client_mutex.
 
-Needs the conflicting client which holds the lock,
-Not the new client which try to locking the file has be locked.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/fault_inject.c |   8 ++-
+ fs/nfsd/nfs4state.c    | 132 +++++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/state.h        |   7 ++-
+ 3 files changed, 131 insertions(+), 16 deletions(-)
 
-> +
-> +	list_for_each_entry(local, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-> +		if (local == &lo->lo_owner)
-> +			return true;
-> +	}
-> +
-> +	return false;
-> +}
->  
->  static inline void
-> -nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
-> +nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny,
-> +			struct nfs4_client *clp)
->  {
-> -	struct nfs4_lockowner *lo;
-> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *)fl->fl_owner;
->  
-> -	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
-> -		lo = (struct nfs4_lockowner *) fl->fl_owner;
-> +	if (nfs4_verify_lock_stateowner(lo, clp)) {
->  		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
->  					lo->lo_owner.so_owner.len, GFP_KERNEL);
->  		if (!deny->ld_owner.data)
-> @@ -4594,7 +4605,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	file_lock->fl_pid = current->tgid;
->  	file_lock->fl_file = filp;
->  	file_lock->fl_flags = FL_POSIX;
-> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
->  	file_lock->fl_start = lock->lk_offset;
->  	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
->  	nfs4_transform_lock_offset(file_lock);
-> @@ -4617,7 +4627,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	case (EAGAIN):		/* conflock holds conflicting lock */
->  		status = nfserr_denied;
->  		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
-> -		nfs4_set_lock_denied(conflock, &lock->lk_denied);
-> +		nfs4_set_lock_denied(conflock, &lock->lk_denied,
-> +					cstate->clp);
->  		break;
->  	case (EDEADLK):
->  		status = nfserr_deadlock;
-> @@ -4725,7 +4736,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  
->  	if (file_lock->fl_type != F_UNLCK) {
->  		status = nfserr_denied;
-> -		nfs4_set_lock_denied(file_lock, &lockt->lt_denied);
-> +		nfs4_set_lock_denied(file_lock, &lockt->lt_denied, cstate->clp);
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 76ecdff37ea2..a444d821d2a5 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -140,11 +140,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	},
+ 	{
+ 		.file     = "forget_locks",
+-		.get	  = nfsd_inject_get,
+-		.set_val  = nfsd_inject_set,
+-		.set_clnt = nfsd_inject_set_client,
+-		.forget   = nfsd_forget_client_locks,
+-		.print    = nfsd_print_client_locks,
++		.get	  = nfsd_inject_print_locks,
++		.set_val  = nfsd_inject_forget_locks,
++		.set_clnt = nfsd_inject_forget_client_locks,
+ 	},
+ 	{
+ 		.file     = "forget_openowners",
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index dbd1f422b3ae..5f781c843523 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5702,6 +5702,12 @@ nfs4_check_open_reclaim(clientid_t *clid,
+ }
+ 
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
++static inline void
++put_client(struct nfs4_client *clp)
++{
++	atomic_dec(&clp->cl_refcount);
++}
++
+ u64
+ nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
+ {
+@@ -5789,6 +5795,22 @@ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ 	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
+ }
+ 
++static void
++nfsd_inject_add_lock_to_list(struct nfs4_ol_stateid *lst,
++			     struct list_head *collect)
++{
++	struct nfs4_client *clp = lst->st_stid.sc_client;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++					  nfsd_net_id);
++
++	if (!collect)
++		return;
++
++	lockdep_assert_held(&nn->client_lock);
++	atomic_inc(&clp->cl_refcount);
++	list_add(&lst->st_locks, collect);
++}
++
+ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 				    struct list_head *collect,
+ 				    void (*func)(struct nfs4_ol_stateid *))
+@@ -5798,6 +5820,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 	struct nfs4_ol_stateid *lst, *lst_next;
+ 	u64 count = 0;
+ 
++	spin_lock(&clp->cl_lock);
+ 	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
+ 		list_for_each_entry_safe(stp, st_next,
+ 				&oop->oo_owner.so_stateids, st_perstateowner) {
+@@ -5805,31 +5828,122 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 					&stp->st_locks, st_locks) {
+ 				if (func) {
+ 					func(lst);
+-					if (collect)
+-						list_add(&lst->st_locks,
+-							 collect);
++					nfsd_inject_add_lock_to_list(lst,
++								collect);
+ 				}
+-				if (++count == max)
+-					return count;
++				++count;
++				/*
++				 * Despite the fact that these functions deal
++				 * with 64-bit integers for "count", we must
++				 * ensure that it doesn't blow up the
++				 * clp->cl_refcount. Throw a warning if we
++				 * start to approach INT_MAX here.
++				 */
++				WARN_ON_ONCE(count == (INT_MAX / 2));
++				if (count == max)
++					goto out;
+ 			}
+ 		}
+ 	}
++out:
++	spin_unlock(&clp->cl_lock);
+ 
+ 	return count;
+ }
+ 
+-u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
++static u64
++nfsd_collect_client_locks(struct nfs4_client *clp, struct list_head *collect,
++			  u64 max)
+ {
+-	return nfsd_foreach_client_lock(clp, max, NULL, release_lock_stateid);
++	return nfsd_foreach_client_lock(clp, max, collect, unhash_lock_stateid);
+ }
+ 
+-u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
++static u64
++nfsd_print_client_locks(struct nfs4_client *clp)
+ {
+-	u64 count = nfsd_foreach_client_lock(clp, max, NULL, NULL);
++	u64 count = nfsd_foreach_client_lock(clp, 0, NULL, NULL);
+ 	nfsd_print_count(clp, count, "locked files");
+ 	return count;
+ }
+ 
++u64
++nfsd_inject_print_locks(struct nfsd_fault_inject_op *op)
++{
++	struct nfs4_client *clp;
++	u64 count = 0;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
++
++	if (!nfsd_netns_ready(nn))
++		return 0;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru)
++		count += nfsd_print_client_locks(clp);
++	spin_unlock(&nn->client_lock);
++
++	return count;
++}
++
++static void
++nfsd_reap_locks(struct list_head *reaplist)
++{
++	struct nfs4_client *clp;
++	struct nfs4_ol_stateid *stp, *next;
++
++	list_for_each_entry_safe(stp, next, reaplist, st_locks) {
++		list_del_init(&stp->st_locks);
++		clp = stp->st_stid.sc_client;
++		put_generic_stateid(stp);
++		put_client(clp);
++	}
++}
++
++u64
++nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *op,
++				struct sockaddr_storage *addr, size_t addr_size)
++{
++	unsigned int count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp)
++		count = nfsd_collect_client_locks(clp, &reaplist, 0);
++	spin_unlock(&nn->client_lock);
++	nfsd_reap_locks(&reaplist);
++	return count;
++}
++
++u64
++nfsd_inject_forget_locks(struct nfsd_fault_inject_op *op, u64 max)
++{
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		count += nfsd_collect_client_locks(clp, &reaplist, max - count);
++		if (max != 0 && count >= max)
++			break;
++	}
++	spin_unlock(&nn->client_lock);
++	nfsd_reap_locks(&reaplist);
++	return count;
++}
++
+ static u64 nfsd_foreach_client_open(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_openowner *))
+ {
+ 	struct nfs4_openowner *oop, *next;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 25b4df7bc57a..5015ad3c9282 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -478,12 +478,15 @@ u64 nfsd_inject_forget_client(struct nfsd_fault_inject_op *,
+ 			      struct sockaddr_storage *, size_t);
+ u64 nfsd_inject_forget_clients(struct nfsd_fault_inject_op *, u64);
+ 
+-u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
++u64 nfsd_inject_print_locks(struct nfsd_fault_inject_op *);
++u64 nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *,
++				    struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_locks(struct nfsd_fault_inject_op *, u64);
++
+ u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+ u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ 
+-u64 nfsd_print_client_locks(struct nfs4_client *, u64);
+ u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+-- 
+1.9.3
 
-The clp is the client which try to lock the file here,
-but the file have be locked by other client or server.
-
-With this patch, the hashval is wrong.
-              *correct*                    *this patch*
-clid        conflicting client        new request lock client
-owner      from vfs_lock_file()        from vfs_lock_file()  
-            or vfs_test_lock()           or vfs_test_lock()
-hashval       right hashval           bad hashval (never exist)
-
-With this patch, LOCK/LOCKT compound gets client with all zero, and owner with all zero.
-
-thanks,
-Kinglong Mee
