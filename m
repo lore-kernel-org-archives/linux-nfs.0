@@ -1,252 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:35462 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934298AbaGPOcQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:16 -0400
-Received: by mail-qc0-f179.google.com with SMTP id r5so812431qcx.38
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:15 -0700 (PDT)
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:38780 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753304AbaGHSFz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:55 -0400
+Received: by mail-qg0-f49.google.com with SMTP id f51so5277255qge.22
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:54 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 02/10] nfsd: Avoid taking state_lock while holding inode lock in nfsd_break_one_deleg
-Date: Wed, 16 Jul 2014 10:31:57 -0400
-Message-Id: <1405521125-2303-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
-References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 058/100] nfsd: add locking to stateowner release
+Date: Tue,  8 Jul 2014 14:03:46 -0400
+Message-Id: <1404842668-22521-59-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-state_lock is a heavily contended global lock. We don't want to grab
-that while simultaneously holding the inode->i_lock.
+Once we remove the client_mutex, we'll need to properly protect
+the stateowner reference counts using the cl_lock.
 
-Add a new per-nfs4_file lock that we can use to protect the
-per-nfs4_file delegation list. Hold that while walking the list in the
-break_deleg callback and queue the workqueue job for each one.
-
-The workqueue job can then take the state_lock and do the list
-manipulations without the i_lock being held prior to starting the
-rpc call.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4callback.c | 25 ++++++++++++++++++----
- fs/nfsd/nfs4state.c    | 58 +++++++++++++++++++++++++++++++++-----------------
- fs/nfsd/state.h        |  4 +++-
- 3 files changed, 62 insertions(+), 25 deletions(-)
+ fs/nfsd/nfs4state.c | 15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 30a71cb46001..a88a93e09d69 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -933,7 +933,7 @@ void nfsd4_shutdown_callback(struct nfs4_client *clp)
- 	set_bit(NFSD4_CLIENT_CB_KILL, &clp->cl_flags);
- 	/*
- 	 * Note this won't actually result in a null callback;
--	 * instead, nfsd4_do_callback_rpc() will detect the killed
-+	 * instead, nfsd4_run_cb_null() will detect the killed
- 	 * client, destroy the rpc client, and stop:
- 	 */
- 	do_probe_callback(clp);
-@@ -1011,10 +1011,9 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
- 		run_nfsd4_cb(cb);
- }
- 
--void
--nfsd4_do_callback_rpc(struct work_struct *w)
-+static void
-+nfsd4_run_callback_rpc(struct nfsd4_callback *cb)
- {
--	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
- 	struct nfs4_client *clp = cb->cb_clp;
- 	struct rpc_clnt *clnt;
- 
-@@ -1032,6 +1031,24 @@ nfsd4_do_callback_rpc(struct work_struct *w)
- 			cb->cb_ops, cb);
- }
- 
-+void
-+nfsd4_run_cb_null(struct work_struct *w)
-+{
-+	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback,
-+							cb_work);
-+	nfsd4_run_callback_rpc(cb);
-+}
-+
-+void
-+nfsd4_run_cb_recall(struct work_struct *w)
-+{
-+	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback,
-+							cb_work);
-+
-+	nfsd4_prepare_cb_recall(cb->cb_op);
-+	nfsd4_run_callback_rpc(cb);
-+}
-+
- void nfsd4_cb_recall(struct nfs4_delegation *dp)
- {
- 	struct nfsd4_callback *cb = &dp->dl_recall;
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 56ea4f12803e..bdf8ac3393bd 100644
+index fb2f3ec0708f..346bdf320a35 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -254,6 +254,8 @@ static void nfsd4_free_file(struct nfs4_file *f)
- static inline void
- put_nfs4_file(struct nfs4_file *fi)
+@@ -3047,9 +3047,14 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
+ 
+ static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
  {
-+	might_lock(&state_lock);
+-	if (!atomic_dec_and_test(&sop->so_count))
++	struct nfs4_client *clp = sop->so_client;
 +
- 	if (atomic_dec_and_lock(&fi->fi_ref, &state_lock)) {
- 		hlist_del(&fi->fi_hash);
- 		spin_unlock(&state_lock);
-@@ -554,6 +556,8 @@ static void block_delegations(struct knfsd_fh *fh)
- 	u32 hash;
- 	struct bloom_pair *bd = &blocked_delegations;
- 
-+	lockdep_assert_held(&state_lock);
++	might_lock(&clp->cl_lock);
 +
- 	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
- 
- 	__set_bit(hash&255, bd->set[bd->new]);
-@@ -592,7 +596,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time = 0;
- 	atomic_set(&dp->dl_count, 1);
--	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_do_callback_rpc);
-+	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
- 	return dp;
++	if (!atomic_dec_and_lock(&sop->so_count, &clp->cl_lock))
+ 		return;
+ 	sop->so_unhash(sop);
++	spin_unlock(&clp->cl_lock);
+ 	sop->so_free(sop);
  }
  
-@@ -640,7 +644,9 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	lockdep_assert_held(&state_lock);
+@@ -3064,11 +3069,7 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
  
- 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
-+	spin_lock(&fp->fi_lock);
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
-+	spin_unlock(&fp->fi_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- }
- 
-@@ -648,14 +654,18 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- static void
- unhash_delegation(struct nfs4_delegation *dp)
+ static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
  {
-+	struct nfs4_file *fp = dp->dl_file;
-+
- 	spin_lock(&state_lock);
- 	list_del_init(&dp->dl_perclnt);
--	list_del_init(&dp->dl_perfile);
- 	list_del_init(&dp->dl_recall_lru);
-+	spin_lock(&fp->fi_lock);
-+	list_del_init(&dp->dl_perfile);
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
--	if (dp->dl_file) {
--		nfs4_put_deleg_lease(dp->dl_file);
--		put_nfs4_file(dp->dl_file);
-+	if (fp) {
-+		nfs4_put_deleg_lease(fp);
-+		put_nfs4_file(fp);
- 		dp->dl_file = NULL;
- 	}
- }
-@@ -1677,7 +1687,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 		spin_unlock(&nn->client_lock);
- 		return NULL;
- 	}
--	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_do_callback_rpc);
-+	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_run_cb_null);
- 	clp->cl_time = get_seconds();
- 	clear_bit(0, &clp->cl_cb_slot_busy);
- 	copy_verf(clp, verf);
-@@ -3079,30 +3089,38 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
- 	return ret;
- }
- 
--static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
-+void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
- {
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
--	lockdep_assert_held(&state_lock);
--	/* We're assuming the state code never drops its reference
--	 * without first removing the lease.  Since we're in this lease
--	 * callback (and since the lease code is serialized by the kernel
--	 * lock) we know the server hasn't removed the lease yet, we know
--	 * it's safe to take a reference: */
--	atomic_inc(&dp->dl_count);
+-	struct nfs4_client *clp = so->so_client;
 -
-+	/*
-+	 * We can't do this in nfsd_break_deleg_cb because it is
-+	 * already holding inode->i_lock
-+	 */
-+	spin_lock(&state_lock);
-+	block_delegations(&dp->dl_fh);
- 	/*
- 	 * If the dl_time != 0, then we know that it has already been
- 	 * queued for a lease break. Don't queue it again.
- 	 */
- 	if (dp->dl_time == 0) {
--		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
- 		dp->dl_time = get_seconds();
-+		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
- 	}
-+	spin_unlock(&state_lock);
-+}
+-	spin_lock(&clp->cl_lock);
+ 	unhash_openowner_locked(openowner(so));
+-	spin_unlock(&clp->cl_lock);
+ }
  
--	block_delegations(&dp->dl_fh);
+ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+@@ -4837,11 +4838,7 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
+ 
+ static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
+ {
+-	struct nfs4_client *clp = sop->so_client;
 -
-+static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
-+{
-+	/*
-+	 * We're assuming the state code never drops its reference
-+	 * without first removing the lease.  Since we're in this lease
-+	 * callback (and since the lease code is serialized by the kernel
-+	 * lock) we know the server hasn't removed the lease yet, we know
-+	 * it's safe to take a reference.
-+	 */
-+	atomic_inc(&dp->dl_count);
- 	nfsd4_cb_recall(dp);
+-	spin_lock(&clp->cl_lock);
+ 	unhash_lockowner_locked(lockowner(sop));
+-	spin_unlock(&clp->cl_lock);
  }
  
-@@ -3127,11 +3145,11 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
- 	 */
- 	fl->fl_break_time = 0;
- 
--	spin_lock(&state_lock);
- 	fp->fi_had_conflict = true;
-+	spin_lock(&fp->fi_lock);
- 	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
- 		nfsd_break_one_deleg(dp);
--	spin_unlock(&state_lock);
-+	spin_unlock(&fp->fi_lock);
- }
- 
- static
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 20857142773f..81b7522e3f67 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -436,7 +436,8 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
- extern __be32 nfs4_check_open_reclaim(clientid_t *clid,
- 		struct nfsd4_compound_state *cstate, struct nfsd_net *nn);
- extern int set_callback_cred(void);
--void nfsd4_do_callback_rpc(struct work_struct *w);
-+void nfsd4_run_cb_null(struct work_struct *w);
-+void nfsd4_run_cb_recall(struct work_struct *w);
- extern void nfsd4_probe_callback(struct nfs4_client *clp);
- extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
- extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
-@@ -444,6 +445,7 @@ extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
- extern int nfsd4_create_callback_queue(void);
- extern void nfsd4_destroy_callback_queue(void);
- extern void nfsd4_shutdown_callback(struct nfs4_client *);
-+extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
- extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- 							struct nfsd_net *nn);
+ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
 -- 
 1.9.3
 
