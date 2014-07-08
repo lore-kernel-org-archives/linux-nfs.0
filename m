@@ -1,101 +1,181 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elasmtp-banded.atl.sa.earthlink.net ([209.86.89.70]:41158 "EHLO
-	elasmtp-banded.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753357AbaGJPVL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 11:21:11 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
-        <linux-nfs@vger.kernel.org>
-References: <1405002343-15802-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1405002343-15802-1-git-send-email-trond.myklebust@primarydata.com>
-Subject: RE: [PATCH] NFSv4: Fix OPEN w/create access mode checking
-Date: Thu, 10 Jul 2014 08:21:08 -0700
-Message-ID: <03ba01cf9c52$93b3d000$bb1b7000$@mindspring.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Received: from mail-qc0-f177.google.com ([209.85.216.177]:53535 "EHLO
+	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753304AbaGHSFt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:49 -0400
+Received: by mail-qc0-f177.google.com with SMTP id r5so5612116qcx.36
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:49 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 054/100] nfsd: Protect adding/removing open state owners using client_lock
+Date: Tue,  8 Jul 2014 14:03:42 -0400
+Message-Id: <1404842668-22521-55-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ok, that should work, though what about the case where cinfo is not atomic?
-Even if the server is able to do an atomic open/create, the cinfo might
-still not be atomic, thus might give a false indication of file create (it
-doesn't look like the client checks for cinfo.atomic.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-The result would be that in a busy directory, you COULD call
-open("some-execute-only-file", O_CREAT | O_RDONLY, 0) to get read access to
-an execute only file...
+Once we remove client mutex protection, we'll need to ensure that
+stateowner lookup and creation are atomic between concurrent compounds.
+Ensure that alloc_init_open_stateowner checks the hashtable under the
+client_lock before adding a new element.
 
-Ganesha for one can't guarantee atomicity (we can't create a file AND get an
-updated cinfo from the kernel in a single operation...). So if a check for
-cinfo.atomic is put in place, the exception would be skipped. (It looks like
-knfsd may also always set cinfo.atomic to false). Currently, it looks like
-the only use of file_created is to set FILE_CREATED, and it looks like the
-only real use of that is to call fsnotify_create, which if that happens to
-be called for a file that actually already existed, would not be horrendous.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 63 +++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 54 insertions(+), 9 deletions(-)
 
-To cut to the chase, this patch should make all of my tests pass (which my
-patch in truth did not do), and also for the cases you suggested is correct,
-suggests this patch is more correct than mine, but might still not be 100%
-correct...
-
-Frank
-
-> POSIX states that open("foo", O_CREAT|O_RDONLY, 000) should succeed if
-> the file "foo" does not already exist. With the current NFS client, it
-will fail
-> with an EACCES error because of the permissions checks in
-> nfs4_opendata_access().
-> 
-> Fix is to turn that test off if the server says that we created the file.
-> 
-> Reported-by: "Frank S. Filz" <ffilzlnx@mindspring.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs4proc.c | 18 +++++++++++++-----
->  1 file changed, 13 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c index
-> d0e0e54fb2b9..70e53a2ac75e 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1954,6 +1954,14 @@ static int _nfs4_recover_proc_open(struct
-> nfs4_opendata *data)
->  	return status;
->  }
-> 
-> +/*
-> + * Additional permission checks in order to distinguish between an
-> + * open for read, and an open for execute. This works around the
-> + * fact that NFSv4 OPEN treats read and execute permissions as being
-> + * the same.
-> + * Note that in the non-execute case, we want to turn off permission
-> + * checking if we just created a new file (POSIX open() semantics).
-> + */
->  static int nfs4_opendata_access(struct rpc_cred *cred,
->  				struct nfs4_opendata *opendata,
->  				struct nfs4_state *state, fmode_t fmode,
-> @@ -1968,14 +1976,14 @@ static int nfs4_opendata_access(struct rpc_cred
-> *cred,
->  		return 0;
-> 
->  	mask = 0;
-> -	/* don't check MAY_WRITE - a newly created file may not have
-> -	 * write mode bits, but POSIX allows the creating process to write.
-> -	 * use openflags to check for exec, because fmode won't
-> -	 * always have FMODE_EXEC set when file open for exec. */
-> +	/*
-> +	 * Use openflags to check for exec, because fmode won't
-> +	 * always have FMODE_EXEC set when file open for exec.
-> +	 */
->  	if (openflags & __FMODE_EXEC) {
->  		/* ONLY check for exec rights */
->  		mask = MAY_EXEC;
-> -	} else if (fmode & FMODE_READ)
-> +	} else if ((fmode & FMODE_READ) && !opendata->file_created)
->  		mask = MAY_READ;
-> 
->  	cache.cred = cred;
-> --
-> 1.9.3
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 296d75d93de4..743a48b6e84a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -72,6 +72,9 @@ static u64 current_sessionid = 1;
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+ static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
++static struct nfs4_openowner *find_openstateowner_str_locked(
++		unsigned int hashval, struct nfsd4_open *open,
++		bool sessions, struct nfsd_net *nn);
+ static void nfs4_put_stateowner(struct nfs4_stateowner *sop);
+ 
+ /* Locking: */
+@@ -1013,8 +1016,13 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ 	put_generic_stateid(stp);
+ }
+ 
+-static void unhash_openowner(struct nfs4_openowner *oo)
++static void unhash_openowner_locked(struct nfs4_openowner *oo)
+ {
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++						nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_del_init(&oo->oo_owner.so_strhash);
+ 	list_del_init(&oo->oo_perclient);
+ }
+@@ -1033,18 +1041,29 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ static void release_openowner_stateids(struct nfs4_openowner *oo)
+ {
+ 	struct nfs4_ol_stateid *stp;
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++						nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
+ 
+ 	while (!list_empty(&oo->oo_owner.so_stateids)) {
+ 		stp = list_first_entry(&oo->oo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
++		spin_unlock(&nn->client_lock);
+ 		release_open_stateid(stp);
++		spin_lock(&nn->client_lock);
+ 	}
+ }
+ 
+ static void release_openowner(struct nfs4_openowner *oo)
+ {
+-	unhash_openowner(oo);
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++						nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	unhash_openowner_locked(oo);
+ 	release_openowner_stateids(oo);
++	spin_unlock(&nn->client_lock);
+ 	release_last_closed_stateid(oo);
+ 	nfs4_put_stateowner(&oo->oo_owner);
+ }
+@@ -3025,8 +3044,11 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
+ {
+ 	struct nfs4_openowner *oo = openowner(so);
++	struct nfsd_net *nn = net_generic(so->so_client->net, nfsd_net_id);
+ 
+-	unhash_openowner(oo);
++	spin_lock(&nn->client_lock);
++	unhash_openowner_locked(oo);
++	spin_unlock(&nn->client_lock);
+ }
+ 
+ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+@@ -3042,7 +3064,8 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 			   struct nfsd4_compound_state *cstate)
+ {
+ 	struct nfs4_client *clp = cstate->clp;
+-	struct nfs4_openowner *oo;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++	struct nfs4_openowner *oo, *ret;
+ 
+ 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
+ 	if (!oo)
+@@ -3057,7 +3080,15 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	oo->oo_time = 0;
+ 	oo->oo_last_closed_stid = NULL;
+ 	INIT_LIST_HEAD(&oo->oo_close_lru);
+-	hash_openowner(oo, clp, strhashval);
++	spin_lock(&nn->client_lock);
++	ret = find_openstateowner_str_locked(strhashval,
++			open, clp->cl_minorversion, nn);
++	if (ret == NULL) {
++		hash_openowner(oo, clp, strhashval);
++		ret = oo;
++	} else
++		nfs4_free_openowner(&oo->oo_owner);
++	spin_unlock(&nn->client_lock);
+ 	return oo;
+ }
+ 
+@@ -3131,13 +3162,15 @@ same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner,
+ }
+ 
+ static struct nfs4_openowner *
+-find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
++find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
+ 			bool sessions, struct nfsd_net *nn)
+ {
+ 	struct nfs4_stateowner *so;
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_client *clp;
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_for_each_entry(so, &nn->ownerstr_hashtbl[hashval], so_strhash) {
+ 		if (!so->so_is_open_owner)
+ 			continue;
+@@ -3145,15 +3178,27 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
+ 			oo = openowner(so);
+ 			clp = oo->oo_owner.so_client;
+ 			if ((bool)clp->cl_minorversion != sessions)
+-				return NULL;
+-			renew_client(oo->oo_owner.so_client);
+-			atomic_inc(&oo->oo_owner.so_count);
++				break;
++			renew_client_locked(clp);
++			atomic_inc(&so->so_count);
+ 			return oo;
+ 		}
+ 	}
+ 	return NULL;
+ }
+ 
++static struct nfs4_openowner *
++find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
++			bool sessions, struct nfsd_net *nn)
++{
++	struct nfs4_openowner *oo;
++
++	spin_lock(&nn->client_lock);
++	oo = find_openstateowner_str_locked(hashval, open, sessions, nn);
++	spin_unlock(&nn->client_lock);
++	return oo;
++}
++
+ /* search file_hashtbl[] for file */
+ static struct nfs4_file *
+ find_file_locked(struct inode *ino)
+-- 
+1.9.3
 
