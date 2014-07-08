@@ -1,171 +1,157 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f65.google.com ([209.85.192.65]:49572 "EHLO
-	mail-qg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752832AbaG2Qlq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 12:41:46 -0400
-Received: by mail-qg0-f65.google.com with SMTP id z60so3515507qgd.4
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 09:41:46 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 29 Jul 2014 12:41:43 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH v6 2/9] nfsd: fully unhash delegations when revoking
- them
-Message-ID: <20140729124143.7e3bae67@tlielax.poochiereds.net>
-In-Reply-To: <20140729145331.GB19210@fieldses.org>
-References: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
-	<1406288067-20663-3-git-send-email-jlayton@primarydata.com>
-	<20140729145331.GB19210@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:62911 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754474AbaGHSE5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:57 -0400
+Received: by mail-qa0-f41.google.com with SMTP id cm18so5341654qab.28
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:57 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 016/100] nfsd: always hold the fi_lock when bumping fi_access refcounts
+Date: Tue,  8 Jul 2014 14:03:04 -0400
+Message-Id: <1404842668-22521-17-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 29 Jul 2014 10:53:31 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Once we remove the client_mutex, there's an unlikely but possible race
+that could occur. It will be possible for nfs4_file_put_access to race
+with nfs4_file_get_access. The refcount will go to zero (briefly) and
+then bumped back to one. If that happens we set ourselves up for a
+use-after-free and the potential for a lock to race onto the i_flock
+list as a filp is being torn down.
 
-> On Fri, Jul 25, 2014 at 07:34:20AM -0400, Jeff Layton wrote:
-> > @@ -698,11 +699,10 @@ static void revoke_delegation(struct nfs4_delegation *dp)
-> >  	struct nfs4_client *clp = dp->dl_stid.sc_client;
-> >  
-> >  	if (clp->cl_minorversion == 0)
-> > -		destroy_delegation(dp);
-> > +		destroy_revoked_delegation(dp);
-> 
-> I don't understand this one--in the NFSv4.0 case, when is the delegation
-> unhashed?
-> 
-> (And, apologies if that's a repeat question.  I remember wondering about
-> this before but can't find mail in the archives....)
-> 
-> --b.
-> 
+Ensure that we can safely bump the refcount on the file by holding the
+fi_lock whenever that's done. The only place it currently isn't is in
+get_lock_access.
 
-It's unhashed by the laundromat (or the fault injection code). The
-deltas that change that are later in this patch, but it doesn't have
-much context so it's a little tricky to spot. Here's the relevant code
-chunk from nfs4_laundromat:
+In order to ensure atomicity with finding the file, add some
+find_*_file_locked calls that can be called while already holding the
+fi_lock and then call get_lock_access to get new access references on
+the nfs4_file.
 
----------------[snip]-----------------
-        spin_lock(&state_lock);
-        list_for_each_safe(pos, next, &nn->del_recall_lru) {
-                dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
-                if (net_generic(dp->dl_stid.sc_client->net, nfsd_net_id) != nn)
-                        continue;
-                if (time_after((unsigned long)dp->dl_time, (unsigned long)cutoff)) {
-                        t = dp->dl_time - cutoff;
-                        new_timeo = min(new_timeo, t);
-                        break;
-                }
-                unhash_delegation_locked(dp);
-                list_add(&dp->dl_recall_lru, &reaplist);
-        }
-        spin_unlock(&state_lock);
-        list_for_each_safe(pos, next, &reaplist) {
-                dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
-                revoke_delegation(dp);
-        }
----------------[snip]-----------------
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 47 +++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 41 insertions(+), 6 deletions(-)
 
-...so the laundromat walks the nn->del_recall_lru list, unhashes any
-delegation that has expired and gathers them up onto the list. Then, it
-calls revoke_delegation on each outside of the lock.
-
-As a side note, that net_generic comparison there looks bogus to me.
-How could you ever end up with an entry from a different namespace on
-this list? I left it in for now since it didn't seem relevant (or
-terribly expensive), but I suspect that it can be removed (or turned
-into a WARN or something).
-
-> >  	else {
-> > -		unhash_delegation(dp);
-> >  		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
-> > -		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
-> > +		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
-> >  	}
-> >  }
-> >  
-> > @@ -1458,15 +1458,14 @@ destroy_client(struct nfs4_client *clp)
-> >  	spin_lock(&state_lock);
-> >  	while (!list_empty(&clp->cl_delegations)) {
-> >  		dp = list_entry(clp->cl_delegations.next, struct
-> > nfs4_delegation, dl_perclnt);
-> > -		list_del_init(&dp->dl_perclnt);
-> > -		/* Ensure that deleg break won't try to requeue it
-> > */
-> > -		++dp->dl_time;
-> > -		list_move(&dp->dl_recall_lru, &reaplist);
-> > +		unhash_delegation_locked(dp);
-> > +		list_add(&dp->dl_recall_lru, &reaplist);
-> >  	}
-> >  	spin_unlock(&state_lock);
-> >  	while (!list_empty(&reaplist)) {
-> >  		dp = list_entry(reaplist.next, struct
-> > nfs4_delegation, dl_recall_lru);
-> > -		destroy_delegation(dp);
-> > +		list_del_init(&dp->dl_recall_lru);
-> > +		nfs4_put_delegation(dp);
-> >  	}
-> >  	list_splice_init(&clp->cl_revoked, &reaplist);
-> >  	while (!list_empty(&reaplist)) {
-> > @@ -3662,7 +3661,7 @@ nfs4_open_delegation(struct net *net, struct
-> > svc_fh *fh, open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
-> >  	return;
-> >  out_free:
-> > -	destroy_delegation(dp);
-> > +	nfs4_put_delegation(dp);
-> >  out_no_deleg:
-> >  	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
-> >  	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
-> > @@ -3900,7 +3899,8 @@ nfs4_laundromat(struct nfsd_net *nn)
-> >  			new_timeo = min(new_timeo, t);
-> >  			break;
-> >  		}
-> > -		list_move(&dp->dl_recall_lru, &reaplist);
-> > +		unhash_delegation_locked(dp);
-> > +		list_add(&dp->dl_recall_lru, &reaplist);
-> >  	}
-> >  	spin_unlock(&state_lock);
-> >  	list_for_each_safe(pos, next, &reaplist) {
-> > @@ -5382,12 +5382,8 @@ static u64 nfsd_find_all_delegations(struct
-> > nfs4_client *clp, u64 max, if (dp->dl_time != 0)
-> >  				continue;
-> >  
-> > -			/*
-> > -			 * Increment dl_time to ensure that
-> > delegation breaks
-> > -			 * don't monkey with it now that we are.
-> > -			 */
-> > -			++dp->dl_time;
-> > -			list_move(&dp->dl_recall_lru, victims);
-> > +			unhash_delegation_locked(dp);
-> > +			list_add(&dp->dl_recall_lru, victims);
-> >  		}
-> >  		if (++count == max)
-> >  			break;
-> > @@ -5642,12 +5638,14 @@ nfs4_state_shutdown_net(struct net *net)
-> >  	spin_lock(&state_lock);
-> >  	list_for_each_safe(pos, next, &nn->del_recall_lru) {
-> >  		dp = list_entry (pos, struct nfs4_delegation,
-> > dl_recall_lru);
-> > -		list_move(&dp->dl_recall_lru, &reaplist);
-> > +		unhash_delegation_locked(dp);
-> > +		list_add(&dp->dl_recall_lru, &reaplist);
-> >  	}
-> >  	spin_unlock(&state_lock);
-> >  	list_for_each_safe(pos, next, &reaplist) {
-> >  		dp = list_entry (pos, struct nfs4_delegation,
-> > dl_recall_lru);
-> > -		destroy_delegation(dp);
-> > +		list_del_init(&dp->dl_recall_lru);
-> > +		nfs4_put_delegation(dp);
-> >  	}
-> >  
-> >  	nfsd4_client_tracking_exit(net);
-> > -- 
-> > 1.9.3
-> > 
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 67d1cb75a667..bd24337a8763 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -277,27 +277,52 @@ static struct file *__nfs4_get_fd(struct nfs4_file *f, int oflag)
+ 	return NULL;
+ }
+ 
+-static struct file *find_writeable_file(struct nfs4_file *f)
++static struct file *
++find_writeable_file_locked(struct nfs4_file *f)
+ {
+ 	struct file *ret;
+ 
+-	spin_lock(&f->fi_lock);
++	lockdep_assert_held(&f->fi_lock);
++
+ 	ret = __nfs4_get_fd(f, O_WRONLY);
+ 	if (!ret)
+ 		ret = __nfs4_get_fd(f, O_RDWR);
+-	spin_unlock(&f->fi_lock);
+ 	return ret;
+ }
+ 
+-static struct file *find_readable_file(struct nfs4_file *f)
++static struct file *
++find_writeable_file(struct nfs4_file *f)
+ {
+ 	struct file *ret;
+ 
+ 	spin_lock(&f->fi_lock);
++	ret = find_writeable_file_locked(f);
++	spin_unlock(&f->fi_lock);
++
++	return ret;
++}
++
++static struct file *find_readable_file_locked(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	lockdep_assert_held(&f->fi_lock);
++
+ 	ret = __nfs4_get_fd(f, O_RDONLY);
+ 	if (!ret)
+ 		ret = __nfs4_get_fd(f, O_RDWR);
++	return ret;
++}
++
++static struct file *
++find_readable_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = find_readable_file_locked(f);
+ 	spin_unlock(&f->fi_lock);
++
+ 	return ret;
+ }
+ 
+@@ -373,6 +398,8 @@ static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+ {
+ 	int oflag = nfs4_access_to_omode(access);
+ 
++	lockdep_assert_held(&fp->fi_lock);
++
+ 	/* Note: relies on NFS4_SHARE_ACCESS_BOTH == READ|WRITE */
+ 	access &= NFS4_SHARE_ACCESS_BOTH;
+ 	if (access == 0)
+@@ -4572,6 +4599,8 @@ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
+ {
+ 	struct nfs4_file *fp = lock_stp->st_file;
+ 
++	lockdep_assert_held(&fp->fi_lock);
++
+ 	if (test_access(access, lock_stp))
+ 		return;
+ 	nfs4_file_get_access(fp, access);
+@@ -4623,6 +4652,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfs4_openowner *open_sop = NULL;
+ 	struct nfs4_lockowner *lock_sop = NULL;
+ 	struct nfs4_ol_stateid *lock_stp;
++	struct nfs4_file *fp;
+ 	struct file *filp = NULL;
+ 	struct file_lock *file_lock = NULL;
+ 	struct file_lock *conflock = NULL;
+@@ -4703,20 +4733,25 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
+ 	}
+ 
++	fp = lock_stp->st_file;
+ 	locks_init_lock(file_lock);
+ 	switch (lock->lk_type) {
+ 		case NFS4_READ_LT:
+ 		case NFS4_READW_LT:
+-			filp = find_readable_file(lock_stp->st_file);
++			spin_lock(&fp->fi_lock);
++			filp = find_readable_file_locked(fp);
+ 			if (filp)
+ 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
++			spin_unlock(&fp->fi_lock);
+ 			file_lock->fl_type = F_RDLCK;
+ 			break;
+ 		case NFS4_WRITE_LT:
+ 		case NFS4_WRITEW_LT:
+-			filp = find_writeable_file(lock_stp->st_file);
++			spin_lock(&fp->fi_lock);
++			filp = find_writeable_file_locked(fp);
+ 			if (filp)
+ 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
++			spin_unlock(&fp->fi_lock);
+ 			file_lock->fl_type = F_WRLCK;
+ 			break;
+ 		default:
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
