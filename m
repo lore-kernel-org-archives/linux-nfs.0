@@ -1,35 +1,176 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:65032 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751362AbaGJRoU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 13:44:20 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 0/2] NFS/RDMA server patches for 3.17
-To: swise@ogc.net
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Thu, 10 Jul 2014 13:44:17 -0400
-Message-ID: <20140710174225.3734.44692.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:39717 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755350AbaGHSFj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:39 -0400
+Received: by mail-qg0-f42.google.com with SMTP id e89so5540340qgf.1
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:38 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 046/100] nfsd: Add reference counting to state owners
+Date: Tue,  8 Jul 2014 14:03:34 -0400
+Message-Id: <1404842668-22521-47-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Can you include these two potential 3.17 candidate patches in
-your testing branch?
+The way stateowners are managed today is somewhat awkward. They need to
+be explicitly destroyed, even though the stateids reference them. This
+will be particularly problematic when we remove the client_mutex.
 
+We may create a new stateowner and attempt to open a file or set a lock,
+and have that fail. In the meantime, another RPC may come in that uses
+that same stateowner and succeed. We can't have the first task tearing
+down the stateowner in that situation.
+
+To fix this, we need to change how stateowners are tracked altogether.
+Refcount them and only destroy them once all stateids that reference
+them have been destroyed. This patch starts by adding the refcounting
+necessary to do that.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
+ fs/nfsd/nfs4state.c | 43 +++++++++++++++++++++++++++++--------------
+ fs/nfsd/state.h     |  3 +++
+ 2 files changed, 32 insertions(+), 14 deletions(-)
 
-Chuck Lever (2):
-      svcrdma: Remove extra writeargs sanity check for NFSv2/3
-      svcrdma: Increase credit limit to 32
-
-
- fs/nfsd/nfs3xdr.c               |   15 +--------------
- fs/nfsd/nfsxdr.c                |   16 +---------------
- include/linux/sunrpc/svc_rdma.h |    3 +--
- 3 files changed, 3 insertions(+), 31 deletions(-)
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9ac1cd37e233..3c998ff64fbb 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -72,6 +72,7 @@ static u64 current_sessionid = 1;
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+ static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
++static void nfs4_put_stateowner(struct nfs4_stateowner *sop);
+ 
+ /* Locking: */
+ 
+@@ -962,16 +963,10 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ 	}
+ }
+ 
+-static void nfs4_free_lockowner(struct nfs4_lockowner *lo)
+-{
+-	kfree(lo->lo_owner.so_owner.data);
+-	kmem_cache_free(lockowner_slab, lo);
+-}
+-
+ static void release_lockowner(struct nfs4_lockowner *lo)
+ {
+ 	unhash_lockowner(lo);
+-	nfs4_free_lockowner(lo);
++	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+ static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
+@@ -1041,18 +1036,12 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	}
+ }
+ 
+-static void nfs4_free_openowner(struct nfs4_openowner *oo)
+-{
+-	kfree(oo->oo_owner.so_owner.data);
+-	kmem_cache_free(openowner_slab, oo);
+-}
+-
+ static void release_openowner(struct nfs4_openowner *oo)
+ {
+ 	unhash_openowner(oo);
+ 	list_del(&oo->oo_close_lru);
+ 	release_last_closed_stateid(oo);
+-	nfs4_free_openowner(oo);
++	nfs4_put_stateowner(&oo->oo_owner);
+ }
+ 
+ static inline int
+@@ -2986,9 +2975,17 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
+ 	INIT_LIST_HEAD(&sop->so_stateids);
+ 	sop->so_client = clp;
+ 	init_nfs4_replay(&sop->so_replay);
++	atomic_set(&sop->so_count, 1);
+ 	return sop;
+ }
+ 
++static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
++{
++	if (!atomic_dec_and_test(&sop->so_count))
++		return;
++	sop->so_free(sop);
++}
++
+ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, unsigned int strhashval)
+ {
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+@@ -2997,6 +2994,14 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ 	list_add(&oo->oo_perclient, &clp->cl_openowners);
+ }
+ 
++static void nfs4_free_openowner(struct nfs4_stateowner *so)
++{
++	struct nfs4_openowner *oo = openowner(so);
++
++	kfree(oo->oo_owner.so_owner.data);
++	kmem_cache_free(openowner_slab, oo);
++}
++
+ static struct nfs4_openowner *
+ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 			   struct nfsd4_compound_state *cstate)
+@@ -3007,6 +3012,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
+ 	if (!oo)
+ 		return NULL;
++	oo->oo_owner.so_free = nfs4_free_openowner;
+ 	oo->oo_owner.so_is_open_owner = 1;
+ 	oo->oo_owner.so_seqid = open->op_seqid;
+ 	oo->oo_flags = NFS4_OO_NEW;
+@@ -4719,6 +4725,14 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
+ 	return NULL;
+ }
+ 
++static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
++{
++	struct nfs4_lockowner *lo = lockowner(sop);
++
++	kfree(lo->lo_owner.so_owner.data);
++	kmem_cache_free(lockowner_slab, lo);
++}
++
+ /*
+  * Alloc a lock owner structure.
+  * Called in nfsd4_lock - therefore, OPEN and OPEN_CONFIRM (if needed) has 
+@@ -4739,6 +4753,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	/* It is the openowner seqid that will be incremented in encode in the
+ 	 * case of new lockowners; so increment the lock seqid manually: */
+ 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid + 1;
++	lo->lo_owner.so_free = nfs4_free_lockowner;
+ 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
+ 	return lo;
+ }
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 7188dcd45ef7..eba7283a2613 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -340,10 +340,13 @@ struct nfs4_stateowner {
+ 	struct nfs4_client *    so_client;
+ 	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
+ 	 * sequence id expected from the client: */
++	atomic_t		so_count;
+ 	u32                     so_seqid;
+ 	struct xdr_netobj       so_owner;     /* open owner name */
+ 	struct nfs4_replay	so_replay;
+ 	bool			so_is_open_owner;
++
++	void (*so_free)(struct nfs4_stateowner *);
+ };
+ 
+ struct nfs4_openowner {
 -- 
-Chuck Lever
+1.9.3
+
