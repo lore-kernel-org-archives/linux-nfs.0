@@ -1,96 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54675 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752321AbaGNFOQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Jul 2014 01:14:16 -0400
-Date: Mon, 14 Jul 2014 15:14:05 +1000
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jeff Layton <jlayton@primarydata.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS: nfs4_lookup_revalidate need to report STALE inodes.
-Message-ID: <20140714151405.2fa06dd7@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/e/C5V4a=/=EDmp=NM6YXdHC"; protocol="application/pgp-signature"
+Received: from mail-qc0-f169.google.com ([209.85.216.169]:40994 "EHLO
+	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755376AbaGHSGP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:15 -0400
+Received: by mail-qc0-f169.google.com with SMTP id i17so1402487qcy.0
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:14 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 074/100] nfsd: move unhash_client_locked call into mark_client_expired_locked
+Date: Tue,  8 Jul 2014 14:04:02 -0400
+Message-Id: <1404842668-22521-75-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/e/C5V4a=/=EDmp=NM6YXdHC
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+All the callers except for the fault injection code call it directly
+afterward, and in the fault injection case it won't hurt to do so
+anyway.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-If an 'open' of a file in an NFSv4 filesystem finds that the dentry is
-in cache, but the inode is stale (on the server), the dentry will not
-be re-validated immediately and may cause ESTALE to be returned to
-user-space.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 06b6e3387ec7..d47359b8a84e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -70,6 +70,7 @@ static u64 current_sessionid = 1;
+ #define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
+ 
+ /* forward declarations */
++static void unhash_client_locked(struct nfs4_client *clp);
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+ static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
+ static struct nfs4_openowner *find_openstateowner_str_locked(
+@@ -137,7 +138,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ {
+ 	if (atomic_read(&clp->cl_refcount))
+ 		return nfserr_jukebox;
+-	clp->cl_time = 0;
++	unhash_client_locked(clp);
+ 	return nfs_ok;
+ }
+ 
+@@ -2474,7 +2475,6 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 			status = mark_client_expired_locked(old);
+ 			if (status)
+ 				goto out_free_conn;
+-			unhash_client_locked(old);
+ 		}
+ 		move_to_confirmed(unconf);
+ 		conf = unconf;
+@@ -3020,7 +3020,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 			status = mark_client_expired_locked(old);
+ 			if (status)
+ 				goto out;
+-			unhash_client_locked(old);
+ 		}
+ 		move_to_confirmed(unconf);
+ 		conf = unconf;
+@@ -4185,7 +4184,6 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 				clp->cl_clientid.cl_id);
+ 			continue;
+ 		}
+-		unhash_client_locked(clp);
+ 		list_add(&clp->cl_lru, &reaplist);
+ 	}
+ 	spin_unlock(&nn->client_lock);
+-- 
+1.9.3
 
-For a non-create 'open', do_last() calls lookup_fast() and on success
-will eventually call may_open() which calls into nfs_permission().
-If nfs_permission() makes the ACCESS call to the server it will get
-NFS4ERR_STALE, resulting in ESTALE from may_open() and thence from
-do_last().
-The retry-on-ESTALE in filename_lookup() will repeat exactly the same
-process because nothing in this path will invalidate the dentry due to
-the inode being stale, so the ESTALE will be returned.
-
-lookup_fast() calls ->d_revalidate(), but for an OPEN on an NFSv4
-filesystem, that will succeed for regular files:
-	/* Let f_op->open() actually open (and revalidate) the file */
-
-Unfortunately in the case of a STALE inode, f_op->open() never gets
-called.  If we teach nfs4_lookup_revalidate() to report a failure on
-NFS_STALE() inodes, then the dentry will be invalidated and a full
-lookup will be attempted.  The ESTALE errors go away.
-
-
-While I think this fix is correct, I'm not convinced that it is
-sufficient, particularly if lookupcache=3Dnone.
-The current code will fail an "open" is nfs_permission() fails,
-without having performed a LOOKUP. i.e. it will use the cache.
-nfs_lookup_revalidate will force a lookup before the permission check
-if NFS_MOUNT_LOOKUP_CACHE_NONE, but nfs4_lookup_revalidate will not.
-
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 4a3d4ef76127..4f7414afca27 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1563,6 +1563,8 @@ static int nfs4_lookup_revalidate(struct dentry *dent=
-ry, unsigned int flags)
- 	/* We cannot do exclusive creation on a positive dentry */
- 	if (flags & LOOKUP_EXCL)
- 		goto no_open_dput;
-+	if (NFS_STALE(inode))
-+		goto no_open_dput;
-=20
- 	/* Let f_op->open() actually open (and revalidate) the file */
- 	ret =3D 1;
-
---Sig_/e/C5V4a=/=EDmp=NM6YXdHC
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU8NnHTnsnt1WYoG5AQKJBQ/+NUp4m25EO7JlQf2Kd8v74KRI9kuXWwsI
-mvzD/OvkUa98qN3ZoA6Na/5MQ5dh4sOpPThRQt1U4JiTQEh3z7FnHnhXloWzV29K
-FwRGlKfAjeObLncMYgMakow5w74imZCiSEXvGa12+BZrCryhcZY3PN3JRIA/5vFy
-zA/K9PxKyJHJDgPiDKKCR9Jx7IC9GX9e0rEP6/5a8ucutImtDtR2bEQl3nzM4XZs
-VDz+0eE8qCOaFJehAgz0b5KiqU8lD9iHPrtEGceLI/u/JiednS2z0mbR0OcbEy80
-/0expffjXvmavzUt5P+kVGbZ+SYOO86sGR+F3IwHVN7evgljp58T2DEGj6GmQSzw
-D+CRr+0GpLqwVz6rrkANJGXOssdk4agSLZ7TeuVcbfZKSIs3ierwkMTZ3mq3GTKa
-D9bpnlacREslaLST7mGpVVsKK1LrHLyUHx5WOsFG1XY5jDC8ltjqOStSWzcQnr31
-aaYxsdAihC5pgWKSsjxK9pRuzCgMXg15GAdzfXCi0/UW7XpF0Lm4siOiAifIcpjZ
-Q+uINssZstOOpiYwsVxgPUK+gPFq/N8Q9B1ojlnEa/7gyi+m+DhhypXXqRynmTpQ
-DsK3G4JtkZRm4eLcKEUD70u7nOxMU8zZPIV7rt3Guqq1JVD7tF+ZHZ4l83r2Mnhh
-hXFCInYgcbQ=
-=SwuZ
------END PGP SIGNATURE-----
-
---Sig_/e/C5V4a=/=EDmp=NM6YXdHC--
