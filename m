@@ -1,79 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:47190 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754971AbaGUPDV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:21 -0400
-Received: by mail-qc0-f171.google.com with SMTP id i17so5710915qcy.16
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:21 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 15/40] nfsd: nfsd4_process_open2() must reference the delegation stateid
-Date: Mon, 21 Jul 2014 11:02:27 -0400
-Message-Id: <1405954972-28904-16-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from plane.gmane.org ([80.91.229.3]:44976 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751874AbaGHBdY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Jul 2014 21:33:24 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1X4KHb-0001SP-6a
+	for linux-nfs@vger.kernel.org; Tue, 08 Jul 2014 03:33:23 +0200
+Received: from bitis.umrk.nl ([82.95.126.201])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 03:33:23 +0200
+Received: from jwinius by bitis.umrk.nl with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 03:33:23 +0200
+To: linux-nfs@vger.kernel.org
+From: Jaap Winius <jwinius@umrk.nl>
+Subject: Re: NFSv4 cross-realm support
+Date: Tue, 8 Jul 2014 01:33:10 +0000 (UTC)
+Message-ID: <lpfhom$qku$1@ger.gmane.org>
+References: <lp1gar$eb6$1@ger.gmane.org>
+	<CAHVgHyVjoVb--cfbaopoUYA4vbDCjufJVng6OM2e82q0yEMthA@mail.gmail.com>
+	<lpehhl$o74$1@ger.gmane.org>
+	<CAHVgHyWU9B+VE=_qTEG2TVOyMHijzVTA0a2rVb_7hrjsKf7Jfw@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Mon, 07 Jul 2014 17:24:52 -0400, Andy Adamson wrote:
 
-Ensure that nfsd4_process_open2() keeps a reference to the delegation
-stateid until it is done working with it. Necessary step toward
-client_mutex removal.
+> I have never used the olcAuthzRegexp. Is this used to map potentially
+> multiple principal@REALM names to the same UID name/number?
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+Correct. AFAIK MIT Kerberos doesn't issue tickets containing additional 
+authorization data, so my site stores it in an OpenLDAP DIT. Moreover, 
+when OpenLDAP is used as a backend for MIT Kerberos, it does a much 
+better job at database synchronization than kprop. olcAuthzRegexp is a 
+regular expression that maps GSSAPI-format user names to LDAP names. For 
+example:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6587230ab4a2..2eaaceef11e8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3343,6 +3343,8 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
- 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
- 	if (!ret)
- 		return NULL;
-+	/* FIXME: move into find_stateid_by_type */
-+	atomic_inc(&ret->sc_count);
- 	return delegstateid(ret);
- }
- 
-@@ -3358,14 +3360,18 @@ nfs4_check_deleg(struct nfs4_client *cl, struct nfsd4_open *open,
- {
- 	int flags;
- 	__be32 status = nfserr_bad_stateid;
-+	struct nfs4_delegation *deleg;
- 
--	*dp = find_deleg_stateid(cl, &open->op_delegate_stateid);
--	if (*dp == NULL)
-+	deleg = find_deleg_stateid(cl, &open->op_delegate_stateid);
-+	if (deleg == NULL)
- 		goto out;
- 	flags = share_access_to_flags(open->op_share_access);
--	status = nfs4_check_delegmode(*dp, flags);
--	if (status)
--		*dp = NULL;
-+	status = nfs4_check_delegmode(deleg, flags);
-+	if (status) {
-+		nfs4_put_delegation(deleg);
-+		goto out;
-+	}
-+	*dp = deleg;
- out:
- 	if (!nfsd4_is_deleg_cur(open))
- 		return nfs_ok;
-@@ -3846,6 +3852,8 @@ out:
- 	if (!(open->op_openowner->oo_flags & NFS4_OO_CONFIRMED) &&
- 	    !nfsd4_has_session(&resp->cstate))
- 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
-+	if (dp)
-+		nfs4_put_delegation(dp);
- 
- 	return status;
- }
--- 
-1.9.3
+  olcAuthzRegexp: uid=([^,]+),cn=example.com,cn=gssapi,cn=auth
+    uid=$1,ou=people,dc=example,dc=com
+
+This works great for same-realm authentication, mapping bob@EXAMPLE.COM 
+to the corresponding LDAP entry in ou=people where his account metadata 
+is stored, containing UID, GID, shell and home directory information.
+
+See http://www.rjsystems.nl/en/2100-d6-kerberos-openldap-provider.php for 
+a more complete explanation.
+
+For a cross-realm situation, that regex can be modified to map accounts 
+from another trusted realm to an account with the same name in the local 
+realm. However, in a bit of a twist, a foreign account, bob@EXAMPLE.NET, 
+will start out with a slightly different GSSAPI format:
+
+  uid=bob@example.net,cn=example.com,cn=gssapi,cn=auth
+
+The aforementioned olcAuthzRegexp maps it to:
+
+  uid=bob@example.net,ou=people,dc=example,dc=com
+
+As a result, Bob's LDAP entry is not found, even though he is allowed to 
+browse the local DIT (that just works). So, to make sure it works for 
+users in the foreign realm, like Bob, who also happen to have a matching 
+account in the local realm, I modified the regex to look like this:
+
+  uid=([^,@]+)(@example.net)*,cn=example.com,cn=gssapi,cn=auth
+
+That's one problem solved. Now what I need is for NFS to play nice. IMO, 
+rpc.svcgssd should simply ask the local KDC if the foreign realm is to be 
+trusted. Apparently, that's the way OpenLDAP, SSH and Dovecot IMAP do it, 
+but that's not happening at the moment. So is this a bug, or what?
 
