@@ -1,245 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:35026 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751027AbaGOOUt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:20:49 -0400
-Subject: [PATCH v3 04/21] xprtrdma: Update rkeys after transport reconnect
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 15 Jul 2014 10:20:47 -0400
-Message-ID: <20140715142047.8908.10517.stgit@manet.1015granger.net>
-In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
-References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from cantor2.suse.de ([195.135.220.15]:44294 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751852AbaGHFVG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jul 2014 01:21:06 -0400
+Date: Tue, 8 Jul 2014 15:21:00 +1000
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Is there a good reason that nfs4_state_manager should use a
+ work_queue?
+Message-ID: <20140708152100.67cd93c7@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/tvEz=9YlWOvQP0/p=Q4cSjb"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Various reports of:
+--Sig_/tvEz=9YlWOvQP0/p=Q4cSjb
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-  rpcrdma_qp_async_error_upcall: QP error 3 on device mlx4_0
-		ep ffff8800bfd3e848
 
-Ensure that rkeys in already-marshalled RPC/RDMA headers are
-refreshed after the QP has been replaced by a reconnect.
+Hi,
+ I came a across a machine recently which has multiple threads blocked in
+ nfs_writedata_alloc().  They were waiting for mempool_alloc to provide an
+ allocation but it never did.
+ Memory was tight and all the pre-allocations were in use by pending reques=
+ts.
+ These requests were queued on "NFS client" which means they were waiting f=
+or
+ the state manager to do something.
+ But there was no state manager.  Presumably kthread_run failed when it tri=
+ed
+ to allocate some memory.
+ I cannot see anything that would retry the attempt to start the thread, and
+ even if there was, we probably need to complete some NFS writes before more
+ memory comes available.
 
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=249
-Suggested-by: Selvin Xavier <Selvin.Xavier@Emulex.Com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
----
- net/sunrpc/xprtrdma/rpc_rdma.c  |   75 ++++++++++++++++++++-------------------
- net/sunrpc/xprtrdma/transport.c |   11 +++---
- net/sunrpc/xprtrdma/xprt_rdma.h |   10 +++++
- 3 files changed, 54 insertions(+), 42 deletions(-)
+ In this particular case the main problem was quite separate.  Too many lar=
+ge
+ processes and not enough swap space, and the OOM killer missed its target.
+ So even if NFS had worked perfectly the machine would still have locked up.
+ But it does suggest that there is a weakness here.
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 693966d..54422f7 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -53,14 +53,6 @@
- # define RPCDBG_FACILITY	RPCDBG_TRANS
- #endif
- 
--enum rpcrdma_chunktype {
--	rpcrdma_noch = 0,
--	rpcrdma_readch,
--	rpcrdma_areadch,
--	rpcrdma_writech,
--	rpcrdma_replych
--};
--
- #ifdef RPC_DEBUG
- static const char transfertypes[][12] = {
- 	"pure inline",	/* no chunks */
-@@ -286,6 +278,28 @@ out:
- }
- 
- /*
-+ * Marshal chunks. This routine returns the header length
-+ * consumed by marshaling.
-+ *
-+ * Returns positive RPC/RDMA header size, or negative errno.
-+ */
-+
-+ssize_t
-+rpcrdma_marshal_chunks(struct rpc_rqst *rqst, ssize_t result)
-+{
-+	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
-+	struct rpcrdma_msg *headerp = (struct rpcrdma_msg *)req->rl_base;
-+
-+	if (req->rl_rtype != rpcrdma_noch)
-+		result = rpcrdma_create_chunks(rqst, &rqst->rq_snd_buf,
-+					       headerp, req->rl_rtype);
-+	else if (req->rl_wtype != rpcrdma_noch)
-+		result = rpcrdma_create_chunks(rqst, &rqst->rq_rcv_buf,
-+					       headerp, req->rl_wtype);
-+	return result;
-+}
-+
-+/*
-  * Copy write data inline.
-  * This function is used for "small" requests. Data which is passed
-  * to RPC via iovecs (or page list) is copied directly into the
-@@ -377,7 +391,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	char *base;
- 	size_t rpclen, padlen;
- 	ssize_t hdrlen;
--	enum rpcrdma_chunktype rtype, wtype;
- 	struct rpcrdma_msg *headerp;
- 
- 	/*
-@@ -415,13 +428,13 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	 * into pages; otherwise use reply chunks.
- 	 */
- 	if (rqst->rq_rcv_buf.buflen <= RPCRDMA_INLINE_READ_THRESHOLD(rqst))
--		wtype = rpcrdma_noch;
-+		req->rl_wtype = rpcrdma_noch;
- 	else if (rqst->rq_rcv_buf.page_len == 0)
--		wtype = rpcrdma_replych;
-+		req->rl_wtype = rpcrdma_replych;
- 	else if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
--		wtype = rpcrdma_writech;
-+		req->rl_wtype = rpcrdma_writech;
- 	else
--		wtype = rpcrdma_replych;
-+		req->rl_wtype = rpcrdma_replych;
- 
- 	/*
- 	 * Chunks needed for arguments?
-@@ -438,16 +451,16 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	 * TBD check NFSv4 setacl
- 	 */
- 	if (rqst->rq_snd_buf.len <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst))
--		rtype = rpcrdma_noch;
-+		req->rl_rtype = rpcrdma_noch;
- 	else if (rqst->rq_snd_buf.page_len == 0)
--		rtype = rpcrdma_areadch;
-+		req->rl_rtype = rpcrdma_areadch;
- 	else
--		rtype = rpcrdma_readch;
-+		req->rl_rtype = rpcrdma_readch;
- 
- 	/* The following simplification is not true forever */
--	if (rtype != rpcrdma_noch && wtype == rpcrdma_replych)
--		wtype = rpcrdma_noch;
--	if (rtype != rpcrdma_noch && wtype != rpcrdma_noch) {
-+	if (req->rl_rtype != rpcrdma_noch && req->rl_wtype == rpcrdma_replych)
-+		req->rl_wtype = rpcrdma_noch;
-+	if (req->rl_rtype != rpcrdma_noch && req->rl_wtype != rpcrdma_noch) {
- 		dprintk("RPC:       %s: cannot marshal multiple chunk lists\n",
- 			__func__);
- 		return -EIO;
-@@ -461,7 +474,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	 * When padding is in use and applies to the transfer, insert
- 	 * it and change the message type.
- 	 */
--	if (rtype == rpcrdma_noch) {
-+	if (req->rl_rtype == rpcrdma_noch) {
- 
- 		padlen = rpcrdma_inline_pullup(rqst,
- 						RPCRDMA_INLINE_PAD_VALUE(rqst));
-@@ -476,7 +489,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 			headerp->rm_body.rm_padded.rm_pempty[1] = xdr_zero;
- 			headerp->rm_body.rm_padded.rm_pempty[2] = xdr_zero;
- 			hdrlen += 2 * sizeof(u32); /* extra words in padhdr */
--			if (wtype != rpcrdma_noch) {
-+			if (req->rl_wtype != rpcrdma_noch) {
- 				dprintk("RPC:       %s: invalid chunk list\n",
- 					__func__);
- 				return -EIO;
-@@ -497,30 +510,18 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 			 * on receive. Therefore, we request a reply chunk
- 			 * for non-writes wherever feasible and efficient.
- 			 */
--			if (wtype == rpcrdma_noch)
--				wtype = rpcrdma_replych;
-+			if (req->rl_wtype == rpcrdma_noch)
-+				req->rl_wtype = rpcrdma_replych;
- 		}
- 	}
- 
--	/*
--	 * Marshal chunks. This routine will return the header length
--	 * consumed by marshaling.
--	 */
--	if (rtype != rpcrdma_noch) {
--		hdrlen = rpcrdma_create_chunks(rqst,
--					&rqst->rq_snd_buf, headerp, rtype);
--		wtype = rtype;	/* simplify dprintk */
--
--	} else if (wtype != rpcrdma_noch) {
--		hdrlen = rpcrdma_create_chunks(rqst,
--					&rqst->rq_rcv_buf, headerp, wtype);
--	}
-+	hdrlen = rpcrdma_marshal_chunks(rqst, hdrlen);
- 	if (hdrlen < 0)
- 		return hdrlen;
- 
- 	dprintk("RPC:       %s: %s: hdrlen %zd rpclen %zd padlen %zd"
- 		" headerp 0x%p base 0x%p lkey 0x%x\n",
--		__func__, transfertypes[wtype], hdrlen, rpclen, padlen,
-+		__func__, transfertypes[req->rl_wtype], hdrlen, rpclen, padlen,
- 		headerp, base, req->rl_iov.lkey);
- 
- 	/*
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 4185102..f6d280b 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -597,13 +597,14 @@ xprt_rdma_send_request(struct rpc_task *task)
- 	struct rpc_xprt *xprt = rqst->rq_xprt;
- 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
--	int rc;
-+	int rc = 0;
- 
--	if (req->rl_niovs == 0) {
-+	if (req->rl_niovs == 0)
- 		rc = rpcrdma_marshal_req(rqst);
--		if (rc < 0)
--			goto failed_marshal;
--	}
-+	else if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
-+		rc = rpcrdma_marshal_chunks(rqst, 0);
-+	if (rc < 0)
-+		goto failed_marshal;
- 
- 	if (req->rl_reply == NULL) 		/* e.g. reconnection */
- 		rpcrdma_recv_buffer_get(req);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index f3d86b2..c270e59 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -99,6 +99,14 @@ struct rpcrdma_ep {
- #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
- #define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
- 
-+enum rpcrdma_chunktype {
-+	rpcrdma_noch = 0,
-+	rpcrdma_readch,
-+	rpcrdma_areadch,
-+	rpcrdma_writech,
-+	rpcrdma_replych
-+};
-+
- /*
-  * struct rpcrdma_rep -- this structure encapsulates state required to recv
-  * and complete a reply, asychronously. It needs several pieces of
-@@ -192,6 +200,7 @@ struct rpcrdma_req {
- 	unsigned int	rl_niovs;	/* 0, 2 or 4 */
- 	unsigned int	rl_nchunks;	/* non-zero if chunks */
- 	unsigned int	rl_connect_cookie;	/* retry detection */
-+	enum rpcrdma_chunktype	rl_rtype, rl_wtype;
- 	struct rpcrdma_buffer *rl_buffer; /* home base for this structure */
- 	struct rpcrdma_rep	*rl_reply;/* holder for reply buffer */
- 	struct rpcrdma_mr_seg rl_segments[RPCRDMA_MAX_SEGS];/* chunk segments */
-@@ -347,6 +356,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
- /*
-  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
-  */
-+ssize_t rpcrdma_marshal_chunks(struct rpc_rqst *, ssize_t);
- int rpcrdma_marshal_req(struct rpc_rqst *);
- size_t rpcrdma_max_payload(struct rpcrdma_xprt *);
- 
+ As kthread_create used GFP_KERNEL to allocate a thread, and as writes can
+ block waiting for the thread to be created, there appears to be room for a
+ deadlock.
 
+ My thought is that this could be fixed by using a WQ_MEM_RECLAIM work queu=
+e.
+ The WQ_MEM_RECLAIM flag ensures there is always at least one thread running
+ so no allocation is needed.  Before diving in and trying to implement this=
+ I
+ thought it would be safest to ask as there are two issues that I'm not
+ certain of.
+
+ 1/ nfs4_run_state_manager() explicitly allows SIGKILL.  Why is this?
+    Is there some situation where it might be appropriate to kill the manag=
+er
+    thread?
+
+ 2/ would it be reasonable to have a single work queue for all nfs clients?
+    In the worst case this could serialise reclaim across all clients so we
+    wouldn't want any reclaim attempt to block indefinitely.  Is that likely
+    to be a big problem do you think?
+
+Thanks for any hints or suggestions,
+
+NeilBrown
+
+--Sig_/tvEz=9YlWOvQP0/p=Q4cSjb
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU7t/vDnsnt1WYoG5AQJpgRAAu1YkhynsjxztYuMNJmPdS81uo5AKyLsP
+HFY/ldoSvAhqIu17lUYEdybWehAVjeDvAQw1IlaRrwVqM23GdLi1oHmDp4UYTfZ+
+KFQWPmo7aLFA+lBbIUQfT7tBwQNoyL40Vx8nJ6p1sXihq8GAlWgU4mGWohVOdz0Z
+GeAtM6Km+DTQzE4A0nqHbMxeBuHzHaRyzKQh0171BwV074oaaXaES8zq3ncQ932A
+AOI/O34J+emuVZyuZRBvujZnAeTSwT9l3l3hz7v1wnxqZyXgxviUfz1MCzcZiDBW
+Rali8Sn/Wo3ZreCPS27QDrcNdroLIx0LjZc4dpiVKyLLcePbfEWfvevlfH3soX+R
+BWN3mFVyviwSQtmZ1+Q2bvQrgsrp0Rfs73Zcx7L3pO8uVTejOYioQuNYQAEL955r
++9/2eyiJ3bW4Lt7o60PZmWeeaHDPhQ2pt4AJoIT/K/FHIcIbdmkP1UuoMyUpgI9c
+fWvJojqD5k+Ck3JDrg8fpYBYkA/K5JI9vh2cfkWC+YmPRX01j2Ie9qUn4qsf2xvN
+QPHb/6vclgttKFEms6gAHiOX94qsX/ZCuWUg6CwFALseoA+cOYs/bHvwiUAfmQQM
+OM036Z6JXRswfkFM4HrzyIZl4W6Lo58S8DXp35o/qy+GcXYM26SGx9QY0I5vY6cQ
+FZXr4TgnnPs=
+=ohDq
+-----END PGP SIGNATURE-----
+
+--Sig_/tvEz=9YlWOvQP0/p=Q4cSjb--
