@@ -1,67 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:58025 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757786AbaGCPiF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 11:38:05 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so382732qcx.27
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jul 2014 08:38:03 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 3 Jul 2014 11:37:59 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org,
-        Tom Haynes <thomas.haynes@primarydata.com>
-Subject: Re: [PATCH v3 015/114] nfsd: Allow struct nfsd4_compound_state to
- cache the nfs4_client
-Message-ID: <20140703113759.66042474@tlielax.poochiereds.net>
-In-Reply-To: <20140703153208.GD24322@fieldses.org>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-	<1404143423-24381-16-git-send-email-jlayton@primarydata.com>
-	<20140703151819.GC24322@fieldses.org>
-	<20140703112050.61c1561d@tlielax.poochiereds.net>
-	<20140703153208.GD24322@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:62663 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754289AbaGHSFI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:08 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so5281478qge.25
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:07 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 024/100] nfsd: Add reference counting to the lock and open stateids
+Date: Tue,  8 Jul 2014 14:03:12 -0400
+Message-Id: <1404842668-22521-25-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 3 Jul 2014 11:32:08 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-> On Thu, Jul 03, 2014 at 11:20:50AM -0400, Jeff Layton wrote:
-> > On Thu, 3 Jul 2014 11:18:19 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Mon, Jun 30, 2014 at 11:48:44AM -0400, Jeff Layton wrote:
-> > > > @@ -2997,6 +3009,38 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
-> > > >  	return nfserr_bad_seqid;
-> > > >  }
-> > > >  
-> > > > +static __be32 lookup_clientid(clientid_t *clid,
-> > > > +		struct nfsd4_compound_state *cstate,
-> > > > +		struct nfsd_net *nn)
-> > > > +{
-> > > > +	struct nfs4_client *found;
-> > > > +
-> > > > +	if (cstate->clp) {
-> > > > +		found = cstate->clp;
-> > > > +		if (!same_clid(&found->cl_clientid, clid))
-> > > > +			return nfserr_stale_clientid;
-> > > 
-> > > That's new behavior, isn't it?
-> > > 
-> > 
-> > Yeah, I suppose it is, but it's hard to understand a valid use-case for
-> > sending multiple ops in a compound with different clientids. Certainly
-> > no well-behaved client would do that, would it? (Hmm, that might be an
-> > interesting pynfs test, come to think of it).
-> 
-> We could ask for a clarification in 3530bis if there's not already
-> something there that clearly forbids this, but I'm not sure if it's even
-> worth it.
-> 
+When we remove the client_mutex, we'll need to be able to ensure that
+these objects aren't destroyed while we're not holding locks.
 
-I'm not inclined to pursue it, unless Tom thinks it's worthwhile. Tom,
-do you happen to care?
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4669328003f3..251c735eedc0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -886,8 +886,10 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	release_all_access(stp);
+ }
+ 
+-static void free_generic_stateid(struct nfs4_ol_stateid *stp)
++static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
++	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
++		return;
+ 	if (stp->st_file)
+ 		put_nfs4_file(stp->st_file);
+ 	nfs4_free_stid(stateid_slab, &stp->st_stid);
+@@ -904,7 +906,7 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	if (file)
+ 		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
+ 	close_generic_stateid(stp);
+-	free_generic_stateid(stp);
++	put_generic_stateid(stp);
+ }
+ 
+ static void unhash_lockowner(struct nfs4_lockowner *lo)
+@@ -967,7 +969,7 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	unhash_open_stateid(stp);
+-	free_generic_stateid(stp);
++	put_generic_stateid(stp);
+ }
+ 
+ static void unhash_openowner(struct nfs4_openowner *oo)
+@@ -988,7 +990,7 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+ 
+ 	if (s) {
+-		free_generic_stateid(s);
++		put_generic_stateid(s);
+ 		oo->oo_last_closed_stid = NULL;
+ 	}
+ }
+@@ -3798,7 +3800,7 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
+ 	if (open->op_file)
+ 		nfsd4_free_file(open->op_file);
+ 	if (open->op_stp)
+-		free_generic_stateid(open->op_stp);
++		put_generic_stateid(open->op_stp);
+ }
+ 
+ __be32
+@@ -4449,9 +4451,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 	unhash_open_stateid(s);
+ 
+ 	if (clp->cl_minorversion) {
+-		free_generic_stateid(s);
+ 		if (list_empty(&oo->oo_owner.so_stateids))
+ 			release_openowner(oo);
++		put_generic_stateid(s);
+ 	} else {
+ 		if (s->st_file) {
+ 			put_nfs4_file(s->st_file);
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
