@@ -1,59 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33024 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754710AbaGKTRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jul 2014 15:17:50 -0400
-Date: Fri, 11 Jul 2014 15:17:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Fix bad checking of space for padding in splice
- read
-Message-ID: <20140711191747.GF9775@fieldses.org>
-References: <53BD48DF.2050506@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53BD48DF.2050506@gmail.com>
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:45076 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755356AbaGHSFo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:44 -0400
+Received: by mail-qg0-f42.google.com with SMTP id e89so5540459qgf.1
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:43 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 050/100] nfsd: Make lock stateid take a reference to the lockowner
+Date: Tue,  8 Jul 2014 14:03:38 -0400
+Message-Id: <1404842668-22521-51-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 09, 2014 at 09:51:27PM +0800, Kinglong Mee wrote:
-> Fix commit dc97618ddd (nfsd4: separate splice and readv cases).
-> xdr->end and xdr->p are type of __be32 *, so padding needs one here.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-I agree with the patch, but not the changelog.
+A necessary step toward client_mutex removal.
 
-The problem here is that xdr->p isn't that those are __be32 *'s, but
-that xdr->p has already advanced past the eof and the count, right?
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-Applying with an updated changelog.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a008dd08ee77..078ca6a6a132 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -919,6 +919,8 @@ static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
+ 	struct nfs4_ol_stateid *stp = openlockstateid(stid);
+ 
+ 	release_all_access(stp);
++	if (stp->st_stateowner && stid->sc_type == NFS4_LOCK_STID)
++		nfs4_put_stateowner(stp->st_stateowner);
+ 	nfs4_free_stid(stateid_slab, stid);
+ }
+ 
+@@ -4817,6 +4819,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
+ 	atomic_inc(&stp->st_stid.sc_count);
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+ 	stp->st_stateowner = &lo->lo_owner;
++	atomic_inc(&lo->lo_owner.so_count);
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
+ 	stp->st_stid.sc_free = nfs4_free_lock_stateid;
+-- 
+1.9.3
 
---b.
-
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 7 ++-----
->  1 file changed, 2 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 523c666..8a2fbb2 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3067,11 +3067,8 @@ static __be32 nfsd4_encode_splice_read(
->  	__be32 nfserr;
->  	__be32 *p = xdr->p - 2;
->  
-> -	/*
-> -	 * Don't inline pages unless we know there's room for eof,
-> -	 * count, and possible padding:
-> -	 */
-> -	if (xdr->end - xdr->p < 3)
-> +	/* Make sure there will be room for padding if needed */
-> +	if (xdr->end - xdr->p < 1)
->  		return nfserr_resource;
->  
->  	nfserr = nfsd_splice_read(read->rd_rqstp, file,
-> -- 
-> 1.9.3
-> 
