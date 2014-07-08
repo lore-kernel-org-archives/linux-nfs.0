@@ -1,96 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:42676 "EHLO
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:45132 "EHLO
 	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752191AbaG3Bev (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:34:51 -0400
-Received: by mail-qg0-f51.google.com with SMTP id a108so654645qge.24
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:34:50 -0700 (PDT)
+	with ESMTP id S1754474AbaGHSEk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:40 -0400
+Received: by mail-qg0-f51.google.com with SMTP id z60so5476520qgd.10
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:39 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 01/38] nfsd: Add reference counting to the lock and open stateids
-Date: Tue, 29 Jul 2014 21:34:06 -0400
-Message-Id: <1406684083-19736-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 003/100] nfsd: Ensure stateids remain unique until they are freed
+Date: Tue,  8 Jul 2014 14:02:51 -0400
+Message-Id: <1404842668-22521-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-When we remove the client_mutex, we'll need to be able to ensure that
-these objects aren't destroyed while we're not holding locks.
+Add an extra delegation state to allow the stateid to remain in the idr
+tree until the last reference has been released. This will be necessary
+to ensure uniqueness once the client_mutex is removed.
+
+[jlayton: reset the sc_type under the state_lock in unhash_delegation]
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 14 ++++++++------
- 1 file changed, 8 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4state.c | 9 ++++-----
+ fs/nfsd/state.h     | 1 +
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b0f83beeca75..3b0836db8553 100644
+index 8aa57265fb08..15d59e063885 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -890,8 +890,10 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
- 	release_all_access(stp);
- }
+@@ -496,6 +496,7 @@ static void remove_stid(struct nfs4_stid *s)
  
--static void free_generic_stateid(struct nfs4_ol_stateid *stp)
-+static void put_ol_stateid(struct nfs4_ol_stateid *stp)
+ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
  {
-+	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
-+		return;
- 	if (stp->st_file)
- 		put_nfs4_file(stp->st_file);
- 	remove_stid(&stp->st_stid);
-@@ -909,7 +911,7 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
- 	if (file)
- 		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
- 	close_generic_stateid(stp);
--	free_generic_stateid(stp);
-+	put_ol_stateid(stp);
++	remove_stid(s);
+ 	kmem_cache_free(slab, s);
  }
  
- static void unhash_lockowner(struct nfs4_lockowner *lo)
-@@ -972,7 +974,7 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
- static void release_open_stateid(struct nfs4_ol_stateid *stp)
+@@ -540,6 +541,7 @@ static void
+ unhash_delegation(struct nfs4_delegation *dp)
  {
- 	unhash_open_stateid(stp);
--	free_generic_stateid(stp);
-+	put_ol_stateid(stp);
- }
- 
- static void unhash_openowner(struct nfs4_openowner *oo)
-@@ -993,7 +995,7 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
- 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
- 
- 	if (s) {
--		free_generic_stateid(s);
-+		put_ol_stateid(s);
- 		oo->oo_last_closed_stid = NULL;
+ 	spin_lock(&state_lock);
++	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_perfile);
+ 	list_del_init(&dp->dl_recall_lru);
+@@ -551,19 +553,15 @@ unhash_delegation(struct nfs4_delegation *dp)
  	}
  }
-@@ -3818,7 +3820,7 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
- 	if (open->op_file)
- 		nfsd4_free_file(open->op_file);
- 	if (open->op_stp)
--		free_generic_stateid(open->op_stp);
-+		put_ol_stateid(open->op_stp);
+ 
+-
+-
+ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+ {
+ 	list_del_init(&dp->dl_recall_lru);
+-	remove_stid(&dp->dl_stid);
+ 	nfs4_put_delegation(dp);
  }
  
- __be32
-@@ -4477,9 +4479,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 	unhash_open_stateid(s);
+ static void destroy_delegation(struct nfs4_delegation *dp)
+ {
+ 	unhash_delegation(dp);
+-	remove_stid(&dp->dl_stid);
+ 	nfs4_put_delegation(dp);
+ }
  
- 	if (clp->cl_minorversion) {
--		free_generic_stateid(s);
- 		if (list_empty(&oo->oo_owner.so_stateids))
- 			release_openowner(oo);
-+		put_ol_stateid(s);
- 	} else {
- 		if (s->st_file) {
- 			put_nfs4_file(s->st_file);
+@@ -720,7 +718,6 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ 
+ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+-	remove_stid(&stp->st_stid);
+ 	nfs4_free_stid(stateid_slab, &stp->st_stid);
+ }
+ 
+@@ -3814,7 +3811,9 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 		return nfs_ok;
+ 	default:
+ 		printk("unknown stateid type %x\n", s->sc_type);
++		/* Fallthrough */
+ 	case NFS4_CLOSED_STID:
++	case NFS4_CLOSED_DELEG_STID:
+ 		return nfserr_bad_stateid;
+ 	}
+ }
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 82d8f0aa072e..0776e7c4c10a 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -80,6 +80,7 @@ struct nfs4_stid {
+ #define NFS4_CLOSED_STID 8
+ /* For a deleg stateid kept around only to process free_stateid's: */
+ #define NFS4_REVOKED_DELEG_STID 16
++#define NFS4_CLOSED_DELEG_STID 32
+ 	unsigned char sc_type;
+ 	stateid_t sc_stateid;
+ 	struct nfs4_client *sc_client;
 -- 
 1.9.3
 
