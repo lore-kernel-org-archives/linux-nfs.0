@@ -1,131 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55295 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753090AbaGUVJF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jul 2014 17:09:05 -0400
-Date: Mon, 21 Jul 2014 17:09:05 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:38505 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754474AbaGHSEw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:52 -0400
+Received: by mail-qg0-f46.google.com with SMTP id q107so5257474qgd.5
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:51 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] SUNRPC: Enforce an upper limit on the number of
- cached credentials
-Message-ID: <20140721210905.GK8438@fieldses.org>
-References: <1405969902-11477-1-git-send-email-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1405969902-11477-1-git-send-email-trond.myklebust@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH v4 012/100] nfsd: remove nfs4_file_put_fd
+Date: Tue,  8 Jul 2014 14:03:00 -0400
+Message-Id: <1404842668-22521-13-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 21, 2014 at 03:11:41PM -0400, Trond Myklebust wrote:
-> In some cases where the credentials are not often reused, we may want
-> to limit their total number just in order to make the negative lookups
-> in the hash table more manageable.
+...and replace it with a simple swap call.
 
-Out of curiosity--how would somebody know that might need to set this?
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 13 ++-----------
+ 1 file changed, 2 insertions(+), 11 deletions(-)
 
---b.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2c49cd909115..478f8f6d797e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -385,15 +385,6 @@ static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+ 		__nfs4_file_get_access(fp, oflag);
+ }
+ 
+-static struct file *nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
+-{
+-	struct file *filp;
+-
+-	filp = fp->fi_fds[oflag];
+-	fp->fi_fds[oflag] = NULL;
+-	return filp;
+-}
+-
+ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+ {
+ 	might_lock(&fp->fi_lock);
+@@ -402,9 +393,9 @@ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+ 		struct file *f1 = NULL;
+ 		struct file *f2 = NULL;
+ 
+-		f1 = nfs4_file_put_fd(fp, oflag);
++		swap(f1, fp->fi_fds[oflag]);
+ 		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
+-			f2 = nfs4_file_put_fd(fp, O_RDWR);
++			swap(f2, fp->fi_fds[O_RDWR]);
+ 		spin_unlock(&fp->fi_lock);
+ 		if (f1)
+ 			fput(f1);
+-- 
+1.9.3
 
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  net/sunrpc/auth.c | 44 +++++++++++++++++++++++++++++++++++---------
->  1 file changed, 35 insertions(+), 9 deletions(-)
-> 
-> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-> index 2bc7bb82b162..360decdddc78 100644
-> --- a/net/sunrpc/auth.c
-> +++ b/net/sunrpc/auth.c
-> @@ -80,6 +80,10 @@ static struct kernel_param_ops param_ops_hashtbl_sz = {
->  module_param_named(auth_hashtable_size, auth_hashbits, hashtbl_sz, 0644);
->  MODULE_PARM_DESC(auth_hashtable_size, "RPC credential cache hashtable size");
->  
-> +static unsigned long auth_max_cred_cachesize = ULONG_MAX;
-> +module_param(auth_max_cred_cachesize, ulong, 0644);
-> +MODULE_PARM_DESC(auth_max_cred_cachesize, "RPC credential maximum total cache size");
-> +
->  static u32
->  pseudoflavor_to_flavor(u32 flavor) {
->  	if (flavor > RPC_AUTH_MAXFLAVOR)
-> @@ -481,6 +485,20 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
->  	return freed;
->  }
->  
-> +static unsigned long
-> +rpcauth_cache_do_shrink(int nr_to_scan)
-> +{
-> +	LIST_HEAD(free);
-> +	unsigned long freed;
-> +
-> +	spin_lock(&rpc_credcache_lock);
-> +	freed = rpcauth_prune_expired(&free, nr_to_scan);
-> +	spin_unlock(&rpc_credcache_lock);
-> +	rpcauth_destroy_credlist(&free);
-> +
-> +	return freed;
-> +}
-> +
->  /*
->   * Run memory cache shrinker.
->   */
-> @@ -488,9 +506,6 @@ static unsigned long
->  rpcauth_cache_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
->  
->  {
-> -	LIST_HEAD(free);
-> -	unsigned long freed;
-> -
->  	if ((sc->gfp_mask & GFP_KERNEL) != GFP_KERNEL)
->  		return SHRINK_STOP;
->  
-> @@ -498,12 +513,7 @@ rpcauth_cache_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
->  	if (list_empty(&cred_unused))
->  		return SHRINK_STOP;
->  
-> -	spin_lock(&rpc_credcache_lock);
-> -	freed = rpcauth_prune_expired(&free, sc->nr_to_scan);
-> -	spin_unlock(&rpc_credcache_lock);
-> -	rpcauth_destroy_credlist(&free);
-> -
-> -	return freed;
-> +	return rpcauth_cache_do_shrink(sc->nr_to_scan);
->  }
->  
->  static unsigned long
-> @@ -513,6 +523,21 @@ rpcauth_cache_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
->  	return (number_cred_unused / 100) * sysctl_vfs_cache_pressure;
->  }
->  
-> +static void
-> +rpcauth_cache_enforce_limit(void)
-> +{
-> +	unsigned long diff;
-> +	unsigned int nr_to_scan;
-> +
-> +	if (number_cred_unused <= auth_max_cred_cachesize)
-> +		return;
-> +	diff = number_cred_unused - auth_max_cred_cachesize;
-> +	nr_to_scan = 100;
-> +	if (diff < nr_to_scan)
-> +		nr_to_scan = diff;
-> +	rpcauth_cache_do_shrink(nr_to_scan);
-> +}
-> +
->  /*
->   * Look up a process' credentials in the authentication cache
->   */
-> @@ -566,6 +591,7 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
->  	} else
->  		list_add_tail(&new->cr_lru, &free);
->  	spin_unlock(&cache->lock);
-> +	rpcauth_cache_enforce_limit();
->  found:
->  	if (test_bit(RPCAUTH_CRED_NEW, &cred->cr_flags) &&
->  	    cred->cr_ops->cr_init != NULL &&
-> -- 
-> 1.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
