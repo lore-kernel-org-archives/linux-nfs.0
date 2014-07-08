@@ -1,111 +1,378 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:57812 "EHLO
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:51398 "EHLO
 	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761707AbaGRPOD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 11:14:03 -0400
-Received: by mail-qa0-f42.google.com with SMTP id j15so3194783qaq.1
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 08:14:02 -0700 (PDT)
+	with ESMTP id S1755406AbaGHSGb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:31 -0400
+Received: by mail-qa0-f42.google.com with SMTP id dc16so5247762qab.1
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:31 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
-Subject: [PATCH v4 10/10] nfsd: give block_delegation and delegation_blocked its own spinlock
-Date: Fri, 18 Jul 2014 11:13:36 -0400
-Message-Id: <1405696416-32585-11-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
-References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 086/100] nfsd: remove old fault injection infrastructure
+Date: Tue,  8 Jul 2014 14:04:14 -0400
+Message-Id: <1404842668-22521-87-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The state lock can be fairly heavily contended, and there's no reason
-that nfs4_file lookups and delegation_blocked should be mutually
-exclusive.  Let's give the new block_delegation code its own spinlock.
-It does mean that we'll need to take a different lock in the delegation
-break code, but that's not generally as critical to performance.
+Remove the old nfsd_for_n_state function and move nfsd_find_client
+higher up into the file to get rid of forward declaration. Remove
+the struct nfsd_fault_inject_op arguments from the operations as
+they are no longer needed by any of them.
 
-Cc: Neil Brown <neilb@suse.de>
+Finally, remove the old "standard" get and set routines, which
+also eliminates the client_mutex from this code.
+
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 25 +++++++++++++------------
- 1 file changed, 13 insertions(+), 12 deletions(-)
+ fs/nfsd/fault_inject.c | 51 ++++-------------------------
+ fs/nfsd/nfs4state.c    | 87 +++++++++++++++++++-------------------------------
+ fs/nfsd/state.h        | 45 +++++++++++---------------
+ 3 files changed, 57 insertions(+), 126 deletions(-)
 
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 2479dba71c3c..c16bf5af6831 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -17,52 +17,13 @@
+ 
+ struct nfsd_fault_inject_op {
+ 	char *file;
+-	u64 (*get)(struct nfsd_fault_inject_op *);
+-	u64 (*set_val)(struct nfsd_fault_inject_op *, u64);
+-	u64 (*set_clnt)(struct nfsd_fault_inject_op *,
+-			struct sockaddr_storage *, size_t);
+-	u64 (*forget)(struct nfs4_client *, u64);
+-	u64 (*print)(struct nfs4_client *, u64);
++	u64 (*get)(void);
++	u64 (*set_val)(u64);
++	u64 (*set_clnt)(struct sockaddr_storage *, size_t);
+ };
+ 
+ static struct dentry *debug_dir;
+ 
+-static u64 nfsd_inject_set(struct nfsd_fault_inject_op *op, u64 val)
+-{
+-	u64 count;
+-
+-	nfs4_lock_state();
+-	count = nfsd_for_n_state(val, op->forget);
+-	nfs4_unlock_state();
+-	return count;
+-}
+-
+-static u64 nfsd_inject_set_client(struct nfsd_fault_inject_op *op,
+-				   struct sockaddr_storage *addr,
+-				   size_t addr_size)
+-{
+-	struct nfs4_client *clp;
+-	u64 count = 0;
+-
+-	nfs4_lock_state();
+-	clp = nfsd_find_client(addr, addr_size);
+-	if (clp)
+-		count = op->forget(clp, 0);
+-	nfs4_unlock_state();
+-	return count;
+-}
+-
+-static u64 nfsd_inject_get(struct nfsd_fault_inject_op *op)
+-{
+-	u64 count;
+-
+-	nfs4_lock_state();
+-	count = nfsd_for_n_state(0, op->print);
+-	nfs4_unlock_state();
+-
+-	return count;
+-}
+-
+ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+ 				 size_t len, loff_t *ppos)
+ {
+@@ -73,7 +34,7 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
+ 	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
+ 
+ 	if (!pos)
+-		val = op->get(op);
++		val = op->get();
+ 	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
+ 
+ 	return simple_read_from_buffer(buf, len, ppos, read_buf, size);
+@@ -103,7 +64,7 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 
+ 	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
+ 	if (size > 0) {
+-		val = op->set_clnt(op, &sa, size);
++		val = op->set_clnt(&sa, size);
+ 		if (val)
+ 			pr_info("NFSD [%s]: Client %s had %llu state object(s)\n",
+ 				op->file, write_buf, val);
+@@ -114,7 +75,7 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
+ 		else
+ 			pr_info("NFSD Fault Injection: %s (n = %llu)",
+ 				op->file, val);
+-		val = op->set_val(op, val);
++		val = op->set_val(val);
+ 		pr_info("NFSD: %s: found %llu", op->file, val);
+ 	}
+ 	return len; /* on success, claim we got the whole input */
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a2c6c85adfc7..952def00363b 100644
+index f1bd137c3851..6342fb55ced4 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -506,10 +506,11 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
-  * Each filter is 256 bits.  We hash the filehandle to 32bit and use the
-  * low 3 bytes as hash-table indices.
-  *
-- * 'state_lock', which is always held when block_delegations() is called,
-- * is used to manage concurrent access.  Testing does not need the lock
-- * except when swapping the two filters.
-+ * 'blocked_delegations_lock', which is always held when block_delegations()
-+ * is called, is used to manage concurrent access.  Testing does not need the
-+ * lock except when swapping the two filters.
-  */
-+static DEFINE_SPINLOCK(blocked_delegations_lock);
- static struct bloom_pair {
- 	int	entries, old_entries;
- 	time_t	swap_time;
-@@ -525,7 +526,7 @@ static int delegation_blocked(struct knfsd_fh *fh)
- 	if (bd->entries == 0)
- 		return 0;
- 	if (seconds_since_boot() - bd->swap_time > 30) {
--		spin_lock(&state_lock);
-+		spin_lock(&blocked_delegations_lock);
- 		if (seconds_since_boot() - bd->swap_time > 30) {
- 			bd->entries -= bd->old_entries;
- 			bd->old_entries = bd->entries;
-@@ -534,7 +535,7 @@ static int delegation_blocked(struct knfsd_fh *fh)
- 			bd->new = 1-bd->new;
- 			bd->swap_time = seconds_since_boot();
- 		}
--		spin_unlock(&state_lock);
-+		spin_unlock(&blocked_delegations_lock);
- 	}
- 	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
- 	if (test_bit(hash&255, bd->set[0]) &&
-@@ -555,16 +556,16 @@ static void block_delegations(struct knfsd_fh *fh)
- 	u32 hash;
- 	struct bloom_pair *bd = &blocked_delegations;
- 
--	lockdep_assert_held(&state_lock);
--
- 	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
- 
- 	__set_bit(hash&255, bd->set[bd->new]);
- 	__set_bit((hash>>8)&255, bd->set[bd->new]);
- 	__set_bit((hash>>16)&255, bd->set[bd->new]);
-+	spin_lock(&blocked_delegations_lock);
- 	if (bd->entries == 0)
- 		bd->swap_time = seconds_since_boot();
- 	bd->entries += 1;
-+	spin_unlock(&blocked_delegations_lock);
+@@ -5708,8 +5708,25 @@ put_client(struct nfs4_client *clp)
+ 	atomic_dec(&clp->cl_refcount);
  }
  
- static struct nfs4_delegation *
-@@ -3097,16 +3098,16 @@ void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
--	/*
--	 * We can't do this in nfsd_break_deleg_cb because it is
--	 * already holding inode->i_lock
--	 */
--	spin_lock(&state_lock);
- 	block_delegations(&dp->dl_fh);
++static struct nfs4_client *
++nfsd_find_client(struct sockaddr_storage *addr, size_t addr_size)
++{
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++					  nfsd_net_id);
 +
- 	/*
-+	 * We can't do this in nfsd_break_deleg_cb because it is
-+	 * already holding inode->i_lock.
-+	 *
- 	 * If the dl_time != 0, then we know that it has already been
- 	 * queued for a lease break. Don't queue it again.
- 	 */
-+	spin_lock(&state_lock);
- 	if (dp->dl_time == 0) {
- 		dp->dl_time = get_seconds();
- 		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
++	if (!nfsd_netns_ready(nn))
++		return NULL;
++
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		if (memcmp(&clp->cl_addr, addr, addr_size) == 0)
++			return clp;
++	}
++	return NULL;
++}
++
+ u64
+-nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
++nfsd_inject_print_clients(void)
+ {
+ 	struct nfs4_client *clp;
+ 	u64 count = 0;
+@@ -5732,8 +5749,7 @@ nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
+ }
+ 
+ u64
+-nfsd_inject_forget_client(struct nfsd_fault_inject_op *op,
+-			  struct sockaddr_storage *addr, size_t addr_size)
++nfsd_inject_forget_client(struct sockaddr_storage *addr, size_t addr_size)
+ {
+ 	u64 count = 0;
+ 	struct nfs4_client *clp;
+@@ -5760,7 +5776,7 @@ nfsd_inject_forget_client(struct nfsd_fault_inject_op *op,
+ }
+ 
+ u64
+-nfsd_inject_forget_clients(struct nfsd_fault_inject_op *op, u64 max)
++nfsd_inject_forget_clients(u64 max)
+ {
+ 	u64 count = 0;
+ 	struct nfs4_client *clp, *next;
+@@ -5867,7 +5883,7 @@ nfsd_print_client_locks(struct nfs4_client *clp)
+ }
+ 
+ u64
+-nfsd_inject_print_locks(struct nfsd_fault_inject_op *op)
++nfsd_inject_print_locks(void)
+ {
+ 	struct nfs4_client *clp;
+ 	u64 count = 0;
+@@ -5900,8 +5916,7 @@ nfsd_reap_locks(struct list_head *reaplist)
+ }
+ 
+ u64
+-nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *op,
+-				struct sockaddr_storage *addr, size_t addr_size)
++nfsd_inject_forget_client_locks(struct sockaddr_storage *addr, size_t addr_size)
+ {
+ 	unsigned int count = 0;
+ 	struct nfs4_client *clp;
+@@ -5922,7 +5937,7 @@ nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *op,
+ }
+ 
+ u64
+-nfsd_inject_forget_locks(struct nfsd_fault_inject_op *op, u64 max)
++nfsd_inject_forget_locks(u64 max)
+ {
+ 	u64 count = 0;
+ 	struct nfs4_client *clp;
+@@ -5999,7 +6014,7 @@ nfsd_collect_client_openowners(struct nfs4_client *clp,
+ }
+ 
+ u64
+-nfsd_inject_print_openowners(struct nfsd_fault_inject_op *op)
++nfsd_inject_print_openowners(void)
+ {
+ 	struct nfs4_client *clp;
+ 	u64 count = 0;
+@@ -6032,8 +6047,8 @@ nfsd_reap_openowners(struct list_head *reaplist)
+ }
+ 
+ u64
+-nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *op,
+-				struct sockaddr_storage *addr, size_t addr_size)
++nfsd_inject_forget_client_openowners(struct sockaddr_storage *addr,
++				     size_t addr_size)
+ {
+ 	unsigned int count = 0;
+ 	struct nfs4_client *clp;
+@@ -6054,7 +6069,7 @@ nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *op,
+ }
+ 
+ u64
+-nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *op, u64 max)
++nfsd_inject_forget_openowners(u64 max)
+ {
+ 	u64 count = 0;
+ 	struct nfs4_client *clp;
+@@ -6133,7 +6148,7 @@ nfsd_print_client_delegations(struct nfs4_client *clp)
+ }
+ 
+ u64
+-nfsd_inject_print_delegations(struct nfsd_fault_inject_op *op)
++nfsd_inject_print_delegations(void)
+ {
+ 	struct nfs4_client *clp;
+ 	u64 count = 0;
+@@ -6166,8 +6181,8 @@ nfsd_forget_delegations(struct list_head *reaplist)
+ }
+ 
+ u64
+-nfsd_inject_forget_client_delegations(struct nfsd_fault_inject_op *op,
+-				struct sockaddr_storage *addr, size_t addr_size)
++nfsd_inject_forget_client_delegations(struct sockaddr_storage *addr,
++				      size_t addr_size)
+ {
+ 	u64 count = 0;
+ 	struct nfs4_client *clp;
+@@ -6189,7 +6204,7 @@ nfsd_inject_forget_client_delegations(struct nfsd_fault_inject_op *op,
+ }
+ 
+ u64
+-nfsd_inject_forget_delegations(struct nfsd_fault_inject_op *op, u64 max)
++nfsd_inject_forget_delegations(u64 max)
+ {
+ 	u64 count = 0;
+ 	struct nfs4_client *clp;
+@@ -6235,8 +6250,7 @@ nfsd_recall_delegations(struct list_head *reaplist)
+ }
+ 
+ u64
+-nfsd_inject_recall_client_delegations(struct nfsd_fault_inject_op *op,
+-				      struct sockaddr_storage *addr,
++nfsd_inject_recall_client_delegations(struct sockaddr_storage *addr,
+ 				      size_t addr_size)
+ {
+ 	u64 count = 0;
+@@ -6259,7 +6273,7 @@ nfsd_inject_recall_client_delegations(struct nfsd_fault_inject_op *op,
+ }
+ 
+ u64
+-nfsd_inject_recall_delegations(struct nfsd_fault_inject_op *op, u64 max)
++nfsd_inject_recall_delegations(u64 max)
+ {
+ 	u64 count = 0;
+ 	struct nfs4_client *clp, *next;
+@@ -6280,41 +6294,6 @@ nfsd_inject_recall_delegations(struct nfsd_fault_inject_op *op, u64 max)
+ 	nfsd_recall_delegations(&reaplist);
+ 	return count;
+ }
+-
+-u64 nfsd_for_n_state(u64 max, u64 (*func)(struct nfs4_client *, u64))
+-{
+-	struct nfs4_client *clp, *next;
+-	u64 count = 0;
+-	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
+-						nfsd_net_id);
+-
+-	if (!nfsd_netns_ready(nn))
+-		return 0;
+-
+-	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
+-		count += func(clp, max - count);
+-		if ((max != 0) && (count >= max))
+-			break;
+-	}
+-
+-	return count;
+-}
+-
+-struct nfs4_client *nfsd_find_client(struct sockaddr_storage *addr, size_t addr_size)
+-{
+-	struct nfs4_client *clp;
+-	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns, nfsd_net_id);
+-
+-	if (!nfsd_netns_ready(nn))
+-		return NULL;
+-
+-	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
+-		if (memcmp(&clp->cl_addr, addr, addr_size) == 0)
+-			return clp;
+-	}
+-	return NULL;
+-}
+-
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
+ 
+ /*
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 9bdf6807d063..c39ff5e1509f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -466,35 +466,26 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
+ 
+ /* nfs fault injection functions */
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
+-struct nfsd_fault_inject_op;
+-
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+-u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
+-struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
+-
+-u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
+-u64 nfsd_inject_forget_client(struct nfsd_fault_inject_op *,
+-			      struct sockaddr_storage *, size_t);
+-u64 nfsd_inject_forget_clients(struct nfsd_fault_inject_op *, u64);
+-
+-u64 nfsd_inject_print_locks(struct nfsd_fault_inject_op *);
+-u64 nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *,
+-				    struct sockaddr_storage *, size_t);
+-u64 nfsd_inject_forget_locks(struct nfsd_fault_inject_op *, u64);
+-
+-u64 nfsd_inject_print_openowners(struct nfsd_fault_inject_op *);
+-u64 nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *,
+-					 struct sockaddr_storage *, size_t);
+-u64 nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *, u64);
+-
+-u64 nfsd_inject_print_delegations(struct nfsd_fault_inject_op *);
+-u64 nfsd_inject_forget_client_delegations(struct nfsd_fault_inject_op *,
+-					  struct sockaddr_storage *, size_t);
+-u64 nfsd_inject_forget_delegations(struct nfsd_fault_inject_op *, u64);
+-u64 nfsd_inject_recall_client_delegations(struct nfsd_fault_inject_op *,
+-					  struct sockaddr_storage *, size_t);
+-u64 nfsd_inject_recall_delegations(struct nfsd_fault_inject_op *, u64);
++
++u64 nfsd_inject_print_clients(void);
++u64 nfsd_inject_forget_client(struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_clients(u64);
++
++u64 nfsd_inject_print_locks(void);
++u64 nfsd_inject_forget_client_locks(struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_locks(u64);
++
++u64 nfsd_inject_print_openowners(void);
++u64 nfsd_inject_forget_client_openowners(struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_openowners(u64);
++
++u64 nfsd_inject_print_delegations(void);
++u64 nfsd_inject_forget_client_delegations(struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_delegations(u64);
++u64 nfsd_inject_recall_client_delegations(struct sockaddr_storage *, size_t);
++u64 nfsd_inject_recall_delegations(u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+ static inline int nfsd_fault_inject_init(void) { return 0; }
+ static inline void nfsd_fault_inject_cleanup(void) {}
 -- 
 1.9.3
 
