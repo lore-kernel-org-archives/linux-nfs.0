@@ -1,182 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53415 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751661AbaGNBbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 13 Jul 2014 21:31:11 -0400
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Mon, 14 Jul 2014 11:28:20 +1000
-Subject: [PATCH 2/7] NFS: prepare for RCU-walk support but pushing tests
- later in code.
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:53209 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755439AbaGHSGr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:47 -0400
+Received: by mail-qc0-f173.google.com with SMTP id l6so5532580qcy.32
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:47 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <20140714012820.12562.1238.stgit@notabene.brown>
-In-Reply-To: <20140714011630.12562.1940.stgit@notabene.brown>
-References: <20140714011630.12562.1940.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Subject: [PATCH v4 098/100] nfsd: remove nfs4_lock_state: nfs4_state_shutdown_net
+Date: Tue,  8 Jul 2014 14:04:26 -0400
+Message-Id: <1404842668-22521-99-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_lookup_revalidate, nfs4_lookup_revalidate, and nfs_permission
-all need to understand and handle RCU-walk for NFS to gain the
-benefits of RCU-walk for cached information.
-
-Currently these functions all immediately return -ECHILD
-if the relevant flag (LOOKUP_RCU or MAY_NOT_BLOCK) is set.
-
-This patch pushes those tests later in the code so that we only abort
-immediately before we enter rcu-unsafe code.  As subsequent patches
-make that rcu-unsafe code rcu-safe, several of these new tests will
-disappear.
-
-With this patch there are several paths through the code which will no
-longer return -ECHILD during an RCU-walk.  However these are mostly
-error paths or other uninteresting cases.
-
-A noteworthy change in nfs_lookup_revalidate is that we don't take
-(or put) the reference to ->d_parent when LOOKUP_RCU is set.
-Rather we rcu_dereference ->d_parent, and check that ->d_inode
-is not NULL.  We also check that ->d_parent hasn't changed after
-all the tests.
-
-In nfs4_lookup_revalidate we simply avoid testing LOOKUP_RCU on the
-path that only calls nfs_lookup_revalidate() as that function
-already performs the required test.
-
-
-
-Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/dir.c |   45 +++++++++++++++++++++++++++++++++------------
- 1 file changed, 33 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs4state.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index c5a4a89637fb..3c2b36acf291 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1088,21 +1088,30 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	struct nfs4_label *label = NULL;
- 	int error;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 34496bb3badc..4a5bcf256a1d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6390,7 +6390,6 @@ nfs4_state_shutdown_net(struct net *net)
+ 	cancel_delayed_work_sync(&nn->laundromat_work);
+ 	locks_end_grace(&nn->nfsd4_manager);
  
--	if (flags & LOOKUP_RCU)
--		return -ECHILD;
--
--	parent = dget_parent(dentry);
--	dir = parent->d_inode;
-+	if (flags & LOOKUP_RCU) {
-+		parent = rcu_dereference(dentry->d_parent);
-+		dir = ACCESS_ONCE(parent->d_inode);
-+		if (!dir)
-+			return -ECHILD;
-+	} else {
-+		parent = dget_parent(dentry);
-+		dir = parent->d_inode;
-+	}
- 	nfs_inc_stats(dir, NFSIOS_DENTRYREVALIDATE);
- 	inode = dentry->d_inode;
+-	nfs4_lock_state();
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+@@ -6407,7 +6406,6 @@ nfs4_state_shutdown_net(struct net *net)
  
- 	if (!inode) {
-+		if (flags & LOOKUP_RCU)
-+			return -ECHILD;
-+
- 		if (nfs_neg_need_reval(dir, dentry, flags))
- 			goto out_bad;
- 		goto out_valid_noent;
- 	}
+ 	nfsd4_client_tracking_exit(net);
+ 	nfs4_state_destroy_net(net);
+-	nfs4_unlock_state();
+ }
  
- 	if (is_bad_inode(inode)) {
-+		if (flags & LOOKUP_RCU)
-+			return -ECHILD;
- 		dfprintk(LOOKUPCACHE, "%s: %pd2 has dud inode\n",
- 				__func__, dentry);
- 		goto out_bad;
-@@ -1111,6 +1120,9 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	if (NFS_PROTO(dir)->have_delegation(inode, FMODE_READ))
- 		goto out_set_verifier;
- 
-+	if (flags & LOOKUP_RCU)
-+		return -ECHILD;
-+
- 	/* Force a full look up iff the parent directory has changed */
- 	if (!nfs_is_exclusive_create(dir, flags) && nfs_check_verifier(dir, dentry)) {
- 		if (nfs_lookup_verify_inode(inode, flags))
-@@ -1153,13 +1165,18 @@ out_set_verifier:
- 	/* Success: notify readdir to use READDIRPLUS */
- 	nfs_advise_use_readdirplus(dir);
-  out_valid_noent:
--	dput(parent);
-+	if (flags & LOOKUP_RCU) {
-+		if (parent != rcu_dereference(dentry->d_parent))
-+			return -ECHILD;
-+	} else
-+		dput(parent);
- 	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is valid\n",
- 			__func__, dentry);
- 	return 1;
- out_zap_parent:
- 	nfs_zap_caches(dir);
-  out_bad:
-+	WARN_ON(flags & LOOKUP_RCU);
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
- 	nfs4_label_free(label);
-@@ -1185,6 +1202,7 @@ out_zap_parent:
- 			__func__, dentry);
- 	return 0;
- out_error:
-+	WARN_ON(flags & LOOKUP_RCU);
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
- 	nfs4_label_free(label);
-@@ -1532,9 +1550,6 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 	struct inode *inode;
- 	int ret = 0;
- 
--	if (flags & LOOKUP_RCU)
--		return -ECHILD;
--
- 	if (!(flags & LOOKUP_OPEN) || (flags & LOOKUP_DIRECTORY))
- 		goto no_open;
- 	if (d_mountpoint(dentry))
-@@ -1551,6 +1566,9 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 		struct dentry *parent;
- 		struct inode *dir;
- 
-+		if (flags & LOOKUP_RCU)
-+			return -ECHILD;
-+
- 		parent = dget_parent(dentry);
- 		dir = parent->d_inode;
- 		if (!nfs_neg_need_reval(dir, dentry, flags))
-@@ -2320,9 +2338,6 @@ int nfs_permission(struct inode *inode, int mask)
- 	struct rpc_cred *cred;
- 	int res = 0;
- 
--	if (mask & MAY_NOT_BLOCK)
--		return -ECHILD;
--
- 	nfs_inc_stats(inode, NFSIOS_VFSACCESS);
- 
- 	if ((mask & (MAY_READ | MAY_WRITE | MAY_EXEC)) == 0)
-@@ -2349,6 +2364,9 @@ force_lookup:
- 	if (!NFS_PROTO(inode)->access)
- 		goto out_notsup;
- 
-+	if (mask & MAY_NOT_BLOCK)
-+		return -ECHILD;
-+
- 	cred = rpc_lookup_cred();
- 	if (!IS_ERR(cred)) {
- 		res = nfs_do_access(inode, cred, mask);
-@@ -2363,6 +2381,9 @@ out:
- 		inode->i_sb->s_id, inode->i_ino, mask, res);
- 	return res;
- out_notsup:
-+	if (mask & MAY_NOT_BLOCK)
-+		return -ECHILD;
-+
- 	res = nfs_revalidate_inode(NFS_SERVER(inode), inode);
- 	if (res == 0)
- 		res = generic_permission(inode, mask);
-
+ void
+-- 
+1.9.3
 
