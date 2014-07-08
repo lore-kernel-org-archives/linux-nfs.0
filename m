@@ -1,97 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from gw-1.arm.linux.org.uk ([78.32.30.217]:53925 "EHLO
-	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751921AbaGZQVx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jul 2014 12:21:53 -0400
-Date: Sat, 26 Jul 2014 17:21:43 +0100
-From: Russell King - ARM Linux <linux@arm.linux.org.uk>
-To: Christoph Hellwig <hch@lst.de>, trond.myklebust@primarydata.com
-Cc: linux-kernel@vger.kernel.org, linux-arm-kernel@lists.infradead.org,
-        linux-nfs@vger.kernel.org, stable@vger.kernel.org
-Subject: [BUG] nfs3_list_one_acl oops
-Message-ID: <20140726162143.GB20396@n2100.arm.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:39740 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753304AbaGHSFk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:40 -0400
+Received: by mail-qc0-f174.google.com with SMTP id x13so5548196qcv.33
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:39 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 047/100] nfsd: Keep a reference to the open stateid for the NFSv4.0 replay cache
+Date: Tue,  8 Jul 2014 14:03:35 -0400
+Message-Id: <1404842668-22521-48-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Today, I got a nice oops while trying to update my initramfs:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Alignment trap: not handling instruction e1901f9f at [<c020b8ec>]
-Unhandled fault: alignment exception (0x001) at 0xffffffa1
-Internal error: : 1 [#1] SMP ARM
-Modules linked in: bnep rfcomm bluetooth nfsd exportfs hid_cypress brcmfmac brcmutil snd_soc_fsl_spdif imx_pcm_dma imx2_wdt imx_thermal imx_sdma snd_soc_imx_spdif
-CPU: 2 PID: 1704 Comm: cp Not tainted 3.16.0-rc6+ #1281
-task: e9be5580 ti: e3ce6000 task.ti: e3ce6000
-PC is at nfs3_list_one_acl+0x38/0xa0
-LR is at get_acl+0x4c/0x60
-pc : [<c020b8f0>]    lr : [<c0144774>]    psr: a00d0013
-sp : e3ce7f08  ip : e3ce7ee8  fp : e3ce7f2c
-r10: 00000000  r9 : e3ce6000  r8 : 00000000
-r7 : 00000000  r6 : c06d728c  r5 : 00000000  r4 : e3ce7f3c
-r3 : 00000000  r2 : e3ce7ea4  r1 : 00003fe7  r0 : ffffffa1
-Flags: NzCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
-Control: 10c5387d  Table: 33dec04a  DAC: 00000015
-Process cp (pid: 1704, stack limit = 0xe3ce6248)
-Stack: (0xe3ce7f08 to 0xe3ce8000)
-7f00:                   00000000 e3ce7f3c 00000000 e9ff3858 00000000 00000000
-7f20: e3ce7f5c e3ce7f30 c020c0f8 c020b8c4 00000000 e3ce7f3c 00000000 00000000
-7f40: 00000000 c020c0b4 00000000 e8c05198 e3ce7f84 e3ce7f60 c011a0d0 c020c0c0
-7f60: e3d04600 e3d04600 00000000 00000000 c000ec04 00000000 e3ce7fa4 e3ce7f88
-7f80: c011aed8 c011a07c 00008000 be9995a8 b6f756db 000000ea 00000000 e3ce7fa8
-7fa0: c000ea80 c011aeb0 00008000 be9995a8 00000003 00000000 00000000 00022150
-7fc0: 00008000 be9995a8 b6f756db 000000ea be9994d8 b6f10d99 00000003 be9995a8
-7fe0: be9993a0 be999390 b6f105db b6ea8ca0 800d0010 00000003 6f74616c 69662d72
-Backtrace: 
-[<c020b8b8>] (nfs3_list_one_acl) from [<c020c0f8>] (nfs3_listxattr+0x44/0x80)
-[<c020c0b4>] (nfs3_listxattr) from [<c011a0d0>] (listxattr+0x60/0x11c)
-[<c011a070>] (listxattr) from [<c011aed8>] (SyS_flistxattr+0x34/0x58)
-[<c011aea4>] (SyS_flistxattr) from [<c000ea80>] (ret_fast_syscall+0x0/0x30)
-Code: 0a000016 f57ff05b f590f000 e1901f9f (e2411001) 
----[ end trace 05ecbdab16531f0b ]---
+Ensure that nfsd4_cstate_assign_replay/nfsd4_cstate_clear_replay take
+a reference to the stateowner when they are using it for NFSv4.0
+open and lock replay caching.
 
-The problem is that get_acl() does *not* return NULL on error, it returns
-an error code.  Hence this:
-
-+	acl = get_acl(inode, type);
-+	if (!acl)
-+		return 0;
-
-introduced by 74adf83f5d77 ("nfs: only show Posix ACLs in listxattr if
-actually present") ends up breaking when get_acl() fails (as is the case
-if NFS is used against a server with ACL support disabled.)
-
-The original commit was marked for stable, which means that this brokenness
-is going to spread to all stable kernels.
-
-Fixes: 74adf83f5d77 ("nfs: only show Posix ACLs in listxattr if actually present")
-Signed-off-by: Russell King <rmk+kernel@arm.linux.org.uk>
-Cc: <stable@vger.kernel.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
+ fs/nfsd/nfs4proc.c  |  5 +----
+ fs/nfsd/nfs4state.c | 26 +++++++++++++++++++++++++-
+ fs/nfsd/xdr4.h      | 26 ++++----------------------
+ 3 files changed, 30 insertions(+), 27 deletions(-)
 
-I've included <stable@vger.kernel.org> in the Cc list so they can hold off
-spreading the broken patch further into stable trees until this issue is
-resolved.
-
- fs/nfs/nfs3acl.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index 8f854dde4150..ada8c66aa9e5 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -256,7 +256,7 @@ nfs3_list_one_acl(struct inode *inode, int type, const char *name, void *data,
- 	char *p = data + *result;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 5004245e9958..c53757ec6580 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -467,10 +467,7 @@ out:
+ 		fh_put(resfh);
+ 		kfree(resfh);
+ 	}
+-	nfsd4_cleanup_open_state(open, status);
+-	if (open->op_openowner)
+-		nfsd4_cstate_assign_replay(cstate,
+-				&open->op_openowner->oo_owner);
++	nfsd4_cleanup_open_state(cstate, open, status);
+ 	nfsd4_bump_seqid(cstate, status);
+ 	nfs4_unlock_state();
+ 	return status;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3c998ff64fbb..654362f688dc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2957,6 +2957,27 @@ static void init_nfs4_replay(struct nfs4_replay *rp)
+ 	mutex_init(&rp->rp_mutex);
+ }
  
- 	acl = get_acl(inode, type);
--	if (!acl)
-+	if (IS_ERR(acl))
- 		return 0;
++static void nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
++		struct nfs4_stateowner *so)
++{
++	if (!nfsd4_has_session(cstate)) {
++		mutex_lock(&so->so_replay.rp_mutex);
++		cstate->replay_owner = so;
++		atomic_inc(&so->so_count);
++	}
++}
++
++void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
++{
++	struct nfs4_stateowner *so = cstate->replay_owner;
++
++	if (so != NULL) {
++		cstate->replay_owner = NULL;
++		mutex_unlock(&so->so_replay.rp_mutex);
++		nfs4_put_stateowner(so);
++	}
++}
++
+ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj *owner, struct nfs4_client *clp)
+ {
+ 	struct nfs4_stateowner *sop;
+@@ -3850,7 +3871,8 @@ out:
+ 	return status;
+ }
  
- 	posix_acl_release(acl);
-
-
+-void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
++void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
++			      struct nfsd4_open *open, __be32 status)
+ {
+ 	if (open->op_openowner) {
+ 		struct nfs4_openowner *oo = open->op_openowner;
+@@ -3864,6 +3886,8 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
+ 			} else
+ 				oo->oo_flags &= ~NFS4_OO_NEW;
+ 		}
++		if (open->op_openowner)
++			nfsd4_cstate_assign_replay(cstate, &oo->oo_owner);
+ 	}
+ 	if (open->op_file)
+ 		nfsd4_free_file(open->op_file);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 7442dc7efd31..465e7799742a 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -74,27 +74,6 @@ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
+ 	return cs->slot != NULL;
+ }
+ 
+-static inline void
+-nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
+-				struct nfs4_stateowner *so)
+-{
+-	if (!nfsd4_has_session(cstate)) {
+-		mutex_lock(&so->so_replay.rp_mutex);
+-		cstate->replay_owner = so;
+-	}
+-}
+-
+-static inline void
+-nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
+-{
+-	struct nfs4_stateowner *so = cstate->replay_owner;
+-
+-	if (so != NULL) {
+-		cstate->replay_owner = NULL;
+-		mutex_unlock(&so->so_replay.rp_mutex);
+-	}
+-}
+-
+ struct nfsd4_change_info {
+ 	u32		atomic;
+ 	bool		change_supported;
+@@ -620,7 +599,9 @@ extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
+ 		struct nfsd4_open *open, struct nfsd_net *nn);
+ extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
+ 		struct svc_fh *current_fh, struct nfsd4_open *open);
+-extern void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status);
++extern void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate);
++extern void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
++		struct nfsd4_open *open, __be32 status);
+ extern __be32 nfsd4_open_confirm(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_open_confirm *oc);
+ extern __be32 nfsd4_close(struct svc_rqst *rqstp,
+@@ -651,6 +632,7 @@ extern __be32 nfsd4_test_stateid(struct svc_rqst *rqstp,
+ extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
+ extern void nfsd4_bump_seqid(struct nfsd4_compound_state *, __be32 nfserr);
++
+ #endif
+ 
+ /*
 -- 
-FTTC broadband for 0.8mile line: currently at 9.5Mbps down 400kbps up
-according to speedtest.net.
+1.9.3
+
