@@ -1,52 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:42924 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752411AbaGBRnI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Jul 2014 13:43:08 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1X2OYi-0000rT-Cf
-	for linux-nfs@vger.kernel.org; Wed, 02 Jul 2014 19:43:04 +0200
-Received: from bitis.umrk.nl ([82.95.126.201])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Jul 2014 19:43:04 +0200
-Received: from jwinius by bitis.umrk.nl with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Jul 2014 19:43:04 +0200
-To: linux-nfs@vger.kernel.org
-From: Jaap Winius <jwinius@umrk.nl>
-Subject: NFSv4 cross-realm support
-Date: Wed, 2 Jul 2014 17:42:51 +0000 (UTC)
-Message-ID: <lp1gar$eb6$1@ger.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:38172 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752540AbaGHDrD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 23:47:03 -0400
+Received: by mail-pd0-f174.google.com with SMTP id y10so6461825pdj.33
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 20:47:00 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH 2/2] nfs: check hostname in nfs_get_client
+Date: Tue,  8 Jul 2014 11:45:48 +0800
+Message-Id: <1404791148-10202-2-git-send-email-tao.peng@primarydata.com>
+In-Reply-To: <1404791148-10202-1-git-send-email-tao.peng@primarydata.com>
+References: <1404791148-10202-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
+We reference cl_hostname in many places. Add a check to make
+sure it exists.
 
-Recently I've been working on cross-realm support to give my own MIT 
-Kerberos realm, UMRK.NL, access to the services of a realm that I manage. 
-All systems involved run Debian wheezy. So far, SSH, OpenLDAP, OpenAFS 
-and Dovecot IMAP are all working properly this way, but NFSv4 with 
-sec=krb5i is not; I keep getting "Permission denied" when attempting to 
-read or write to any file or directory that is not globally accessible.
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+---
+ fs/nfs/client.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-When the log output verbosity for rpc.gssd and rpc.svcgssd is increased 
-about as far as it will go (-vvvvv), little is different when things go 
-wrong, other than this one line produced by rpc.svcgssd on the server:
-
-  nss_gss_princ_to_ids: Local-Realm 'UMRK.NL': NOT FOUND
-
-However, even that seems a bit misleading, because the log output for 
-rpc.idmapd (with Verbosity = 5) shows that the user and group IDs for my 
-account are being identified properly.
-
-Should I prepare a bug report for this issue, or does cross-realm support 
-for NFSv4 require something extra?
-
-Thanks,
-
-Jaap
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 1d09289..b213ee8 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -482,8 +482,13 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
+ 	const struct nfs_rpc_ops *rpc_ops = cl_init->nfs_mod->rpc_ops;
+ 
++	if (cl_init->hostname == NULL) {
++		WARN_ON(1);
++		return NULL;
++	}
++
+ 	dprintk("--> nfs_get_client(%s,v%u)\n",
+-		cl_init->hostname ?: "", rpc_ops->version);
++		cl_init->hostname, rpc_ops->version);
+ 
+ 	/* see if the client already exists */
+ 	do {
+@@ -510,7 +515,7 @@ nfs_get_client(const struct nfs_client_initdata *cl_init,
+ 	} while (!IS_ERR(new));
+ 
+ 	dprintk("<-- nfs_get_client() Failed to find %s (%ld)\n",
+-		cl_init->hostname ?: "", PTR_ERR(new));
++		cl_init->hostname, PTR_ERR(new));
+ 	return new;
+ }
+ EXPORT_SYMBOL_GPL(nfs_get_client);
+-- 
+1.9.1
 
