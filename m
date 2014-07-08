@@ -1,82 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:63770 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754113AbaGKOU5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 10:20:57 -0400
-Received: by mail-ig0-f174.google.com with SMTP id c1so4305107igq.13
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2014 07:20:56 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 5/5] nfs: handle multiple reqs in nfs_wb_page_cancel
-Date: Fri, 11 Jul 2014 10:20:49 -0400
-Message-Id: <1405088449-11268-6-git-send-email-dros@primarydata.com>
-In-Reply-To: <1405088449-11268-1-git-send-email-dros@primarydata.com>
-References: <1405088449-11268-1-git-send-email-dros@primarydata.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:34243 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755293AbaGHSFf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:35 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so5551859qcx.27
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:34 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 043/100] nfsd: Migrate the stateid reference into nfs4_preprocess_seqid_op
+Date: Tue,  8 Jul 2014 14:03:31 -0400
+Message-Id: <1404842668-22521-44-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use nfs_lock_and_join_requests to merge all subrequests into the head request -
-this cancels and dereferences all subrequests.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Allow nfs4_preprocess_seqid_op to take the stateid reference, instead
+of having all the callers do so.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/write.c | 41 +++++++++++++++++++++--------------------
- 1 file changed, 21 insertions(+), 20 deletions(-)
+ fs/nfsd/nfs4state.c | 26 +++++++++++---------------
+ 1 file changed, 11 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 4dab432..dac9b31c 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1784,27 +1784,28 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
- 	struct nfs_page *req;
- 	int ret = 0;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fa6a060b0b14..437b52b81215 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4383,8 +4383,11 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
  
--	for (;;) {
--		wait_on_page_writeback(page);
--		req = nfs_page_find_head_request(page);
--		if (req == NULL)
--			break;
--		if (nfs_lock_request(req)) {
--			nfs_clear_request_commit(req);
--			nfs_inode_remove_request(req);
--			/*
--			 * In case nfs_inode_remove_request has marked the
--			 * page as being dirty
--			 */
--			cancel_dirty_page(page, PAGE_CACHE_SIZE);
--			nfs_unlock_and_release_request(req);
--			break;
--		}
--		ret = nfs_wait_on_request(req);
--		nfs_release_request(req);
--		if (ret < 0)
--			break;
-+	wait_on_page_writeback(page);
-+
-+	/* blocking call to cancel all requests and join to a single (head)
-+	 * request */
-+	req = nfs_lock_and_join_requests(page, false);
-+
-+	if (IS_ERR(req)) {
-+		ret = PTR_ERR(req);
-+	} else if (req) {
-+		/* all requests from this page have been cancelled by
-+		 * nfs_lock_and_join_requests, so just remove the head
-+		 * request from the inode / page_private pointer and
-+		 * release it */
-+		nfs_inode_remove_request(req);
-+		/*
-+		 * In case nfs_inode_remove_request has marked the
-+		 * page as being dirty
-+		 */
-+		cancel_dirty_page(page, PAGE_CACHE_SIZE);
-+		nfs_unlock_and_release_request(req);
- 	}
-+
- 	return ret;
+ 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
+-	if (!status)
++	if (!status) {
++		/* FIXME: move into find_stateid_by_type */
++		atomic_inc(&stp->st_stid.sc_count);
+ 		*stpp = stp;
++	}
+ 	return status;
  }
  
+@@ -4393,16 +4396,18 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
+ {
+ 	__be32 status;
+ 	struct nfs4_openowner *oo;
++	struct nfs4_ol_stateid *stp;
+ 
+ 	status = nfs4_preprocess_seqid_op(cstate, seqid, stateid,
+-						NFS4_OPEN_STID, stpp, nn);
++						NFS4_OPEN_STID, &stp, nn);
+ 	if (status)
+ 		return status;
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&(*stpp)->st_stid.sc_count);
+-	oo = openowner((*stpp)->st_stateowner);
+-	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
++	oo = openowner(stp->st_stateowner);
++	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
++		put_generic_stateid(stp);
+ 		return nfserr_bad_stateid;
++	}
++	*stpp = stp;
+ 	return nfs_ok;
+ }
+ 
+@@ -4429,8 +4434,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					NFS4_OPEN_STID, &stp, nn);
+ 	if (status)
+ 		goto out;
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&stp->st_stid.sc_count);
+ 	oo = openowner(stp->st_stateowner);
+ 	status = nfserr_bad_stateid;
+ 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
+@@ -4578,8 +4581,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (status)
+ 		goto out; 
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&stp->st_stid.sc_count);
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ 
+@@ -4926,9 +4927,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 				       lock->lk_old_lock_seqid,
+ 				       &lock->lk_old_lock_stateid,
+ 				       NFS4_LOCK_STID, &lock_stp, nn);
+-		/* FIXME: move into nfs4_preprocess_seqid_op */
+-		if (!status)
+-			atomic_inc(&lock_stp->st_stid.sc_count);
+ 	}
+ 	if (status)
+ 		goto out;
+@@ -5156,8 +5154,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					&stp, nn);
+ 	if (status)
+ 		goto out;
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&stp->st_stid.sc_count);
+ 	filp = find_any_file(stp->st_stid.sc_file);
+ 	if (!filp) {
+ 		status = nfserr_lock_range;
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
