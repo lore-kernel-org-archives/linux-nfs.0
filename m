@@ -1,206 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:35771 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755376AbaGHSF6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:58 -0400
-Received: by mail-qg0-f50.google.com with SMTP id j5so5431658qga.9
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:58 -0700 (PDT)
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:40281 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755348AbaGHSFn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:43 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so5625170qcq.34
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:42 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 061/100] nfsd: reduce cl_lock thrashing in release_openowner
-Date: Tue,  8 Jul 2014 14:03:49 -0400
-Message-Id: <1404842668-22521-62-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH v4 049/100] nfsd: add an operation for unhashing a stateowner
+Date: Tue,  8 Jul 2014 14:03:37 -0400
+Message-Id: <1404842668-22521-50-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Releasing an openowner is a bit inefficient as it can potentially thrash
-the cl_lock if you have a lot of stateids attached to it. Once we remove
-the client_mutex, it'll also potentially be dangerous to do this.
-
-Add some functions to make it easier to defer the part of putting a
-generic stateid reference that needs to be done outside the cl_lock while
-doing the parts that must be done while holding it under a single lock.
-
-First we unhash each open stateid. Then we call
-put_generic_stateid_locked which will put the reference to an
-nfs4_ol_stateid. If it turns out to be the last reference, it'll go
-ahead and remove the stid from the IDR tree and put it onto the reaplist
-using the st_locks list_head.
-
-Then, after dropping the lock we'll call free_ol_stateid_reaplist to
-walk the list of stateids that are fully unhashed and ready to be freed,
-and free each of them. This function can sleep, so it must be done
-outside any spinlocks.
+Allow stateowners to be unhashed and destroyed when the last reference
+is put. The unhashing must be idempotent. In a future patch, we'll add
+some locking around it, but for now it's only protected by the
+client_mutex.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 95 +++++++++++++++++++++++++++++++++++------------------
- 1 file changed, 63 insertions(+), 32 deletions(-)
+ fs/nfsd/nfs4state.c | 45 +++++++++++++++++++++++++++++++++++----------
+ fs/nfsd/state.h     |  1 +
+ 2 files changed, 36 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cf90c0078503..da8e2ad8dd8e 100644
+index dec8a2551806..a008dd08ee77 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -951,6 +951,30 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- 	nfs4_put_stid(&stp->st_stid);
- }
+@@ -953,9 +953,13 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
  
-+/*
-+ * Put the persistent reference to an already unhashed generic stateid, while
-+ * holding the cl_lock. If it's the last reference, then put it onto the
-+ * reaplist for later destruction.
-+ */
-+static void put_generic_stateid_locked(struct nfs4_ol_stateid *stp,
-+				       struct list_head *reaplist)
-+{
-+	struct nfs4_stid *s = &stp->st_stid;
-+	struct nfs4_client *clp = s->sc_client;
-+
-+	lockdep_assert_held(&clp->cl_lock);
-+
-+	WARN_ON_ONCE(!list_empty(&stp->st_locks));
-+
-+	if (!atomic_dec_and_test(&s->sc_count)) {
-+		wake_up_all(&close_wq);
-+		return;
-+	}
-+
-+	remove_stid_locked(clp, s);
-+	list_add(&stp->st_locks, reaplist);
+ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ {
++	list_del_init(&lo->lo_owner.so_strhash);
 +}
 +
- static void unhash_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
-@@ -981,6 +1005,25 @@ static void unhash_lockowner_locked(struct nfs4_lockowner *lo)
- 	list_del_init(&lo->lo_owner.so_strhash);
- }
- 
-+/*
-+ * Free a list of generic stateids that were collected earlier after being
-+ * fully unhashed.
-+ */
-+static void
-+free_ol_stateid_reaplist(struct list_head *reaplist)
++static void release_lockowner_stateids(struct nfs4_lockowner *lo)
 +{
-+	struct nfs4_ol_stateid *stp;
-+
-+	might_sleep();
-+
-+	while (!list_empty(reaplist)) {
-+		stp = list_first_entry(reaplist, struct nfs4_ol_stateid,
-+				       st_locks);
-+		list_del(&stp->st_locks);
-+		stp->st_stid.sc_free(&stp->st_stid);
-+	}
-+}
-+
- static void release_lockowner(struct nfs4_lockowner *lo)
- {
- 	struct nfs4_client *clp = lo->lo_owner.so_client;
-@@ -995,23 +1038,10 @@ static void release_lockowner(struct nfs4_lockowner *lo)
+ 	struct nfs4_ol_stateid *stp;
+ 
+-	list_del(&lo->lo_owner.so_strhash);
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
  		stp = list_first_entry(&lo->lo_owner.so_stateids,
  				struct nfs4_ol_stateid, st_perstateowner);
- 		unhash_lock_stateid(stp);
--		/*
--		 * We now know that no new references can be added to the
--		 * stateid. If ours is the last one, finish the unhashing
--		 * and put it on the list to be reaped.
--		 */
--		if (atomic_dec_and_test(&stp->st_stid.sc_count)) {
--			remove_stid_locked(clp, &stp->st_stid);
--			list_add(&stp->st_locks, &reaplist);
--		}
-+		put_generic_stateid_locked(stp, &reaplist);
- 	}
- 	spin_unlock(&clp->cl_lock);
--	while (!list_empty(&reaplist)) {
--		stp = list_first_entry(&reaplist, struct nfs4_ol_stateid,
--					st_locks);
--		list_del(&stp->st_locks);
--		stp->st_stid.sc_free(&stp->st_stid);
--	}
-+	free_ol_stateid_reaplist(&reaplist);
+@@ -966,6 +970,7 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ static void release_lockowner(struct nfs4_lockowner *lo)
+ {
+ 	unhash_lockowner(lo);
++	release_lockowner_stateids(lo);
  	nfs4_put_stateowner(&lo->lo_owner);
  }
  
-@@ -1032,16 +1062,21 @@ static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
+@@ -1015,15 +1020,8 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
  
- static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ static void unhash_openowner(struct nfs4_openowner *oo)
  {
--	spin_lock(&stp->st_stateowner->so_client->cl_lock);
-+	lockdep_assert_held(&stp->st_stid.sc_client->cl_lock);
-+
- 	unhash_generic_stateid(stp);
- 	release_open_stateid_locks(stp);
--	spin_unlock(&stp->st_stateowner->so_client->cl_lock);
- }
- 
- static void release_open_stateid(struct nfs4_ol_stateid *stp)
- {
-+	LIST_HEAD(reaplist);
-+
-+	spin_lock(&stp->st_stid.sc_client->cl_lock);
- 	unhash_open_stateid(stp);
--	put_generic_stateid(stp);
-+	put_generic_stateid_locked(stp, &reaplist);
-+	spin_unlock(&stp->st_stid.sc_client->cl_lock);
-+	free_ol_stateid_reaplist(&reaplist);
- }
- 
- static void unhash_openowner_locked(struct nfs4_openowner *oo)
-@@ -1065,30 +1100,24 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
- 	}
- }
- 
--static void release_openowner_stateids(struct nfs4_openowner *oo)
-+static void release_openowner(struct nfs4_openowner *oo)
- {
- 	struct nfs4_ol_stateid *stp;
- 	struct nfs4_client *clp = oo->oo_owner.so_client;
-+	struct list_head reaplist;
- 
--	lockdep_assert_held(&clp->cl_lock);
-+	INIT_LIST_HEAD(&reaplist);
- 
-+	spin_lock(&clp->cl_lock);
-+	unhash_openowner_locked(oo);
- 	while (!list_empty(&oo->oo_owner.so_stateids)) {
- 		stp = list_first_entry(&oo->oo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		spin_unlock(&clp->cl_lock);
+-	struct nfs4_ol_stateid *stp;
+-
+-	list_del(&oo->oo_owner.so_strhash);
+-	list_del(&oo->oo_perclient);
+-	while (!list_empty(&oo->oo_owner.so_stateids)) {
+-		stp = list_first_entry(&oo->oo_owner.so_stateids,
+-				struct nfs4_ol_stateid, st_perstateowner);
 -		release_open_stateid(stp);
--		spin_lock(&clp->cl_lock);
-+		unhash_open_stateid(stp);
-+		put_generic_stateid_locked(stp, &reaplist);
+-	}
++	list_del_init(&oo->oo_owner.so_strhash);
++	list_del_init(&oo->oo_perclient);
+ }
+ 
+ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+@@ -1036,9 +1034,21 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
  	}
--}
--
--static void release_openowner(struct nfs4_openowner *oo)
--{
--	struct nfs4_client *clp = oo->oo_owner.so_client;
--
--	spin_lock(&clp->cl_lock);
--	unhash_openowner_locked(oo);
--	release_openowner_stateids(oo);
- 	spin_unlock(&clp->cl_lock);
-+	free_ol_stateid_reaplist(&reaplist);
+ }
+ 
++static void release_openowner_stateids(struct nfs4_openowner *oo)
++{
++	struct nfs4_ol_stateid *stp;
++
++	while (!list_empty(&oo->oo_owner.so_stateids)) {
++		stp = list_first_entry(&oo->oo_owner.so_stateids,
++				struct nfs4_ol_stateid, st_perstateowner);
++		release_open_stateid(stp);
++	}
++}
++
+ static void release_openowner(struct nfs4_openowner *oo)
+ {
+ 	unhash_openowner(oo);
++	release_openowner_stateids(oo);
+ 	list_del(&oo->oo_close_lru);
  	release_last_closed_stateid(oo);
  	nfs4_put_stateowner(&oo->oo_owner);
+@@ -3004,6 +3014,7 @@ static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
+ {
+ 	if (!atomic_dec_and_test(&sop->so_count))
+ 		return;
++	sop->so_unhash(sop);
+ 	sop->so_free(sop);
  }
-@@ -4666,7 +4695,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 	struct nfs4_client *clp = s->st_stid.sc_client;
  
- 	s->st_stid.sc_type = NFS4_CLOSED_STID;
-+	spin_lock(&clp->cl_lock);
- 	unhash_open_stateid(s);
-+	spin_unlock(&clp->cl_lock);
+@@ -3015,6 +3026,13 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ 	list_add(&oo->oo_perclient, &clp->cl_openowners);
+ }
  
- 	if (clp->cl_minorversion)
- 		put_generic_stateid(s);
++static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
++{
++	struct nfs4_openowner *oo = openowner(so);
++
++	unhash_openowner(oo);
++}
++
+ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+ {
+ 	struct nfs4_openowner *oo = openowner(so);
+@@ -3034,6 +3052,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	if (!oo)
+ 		return NULL;
+ 	oo->oo_owner.so_free = nfs4_free_openowner;
++	oo->oo_owner.so_unhash = nfs4_unhash_openowner;
+ 	oo->oo_owner.so_is_open_owner = 1;
+ 	oo->oo_owner.so_seqid = open->op_seqid;
+ 	oo->oo_flags = NFS4_OO_NEW;
+@@ -4750,6 +4769,11 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
+ 	return NULL;
+ }
+ 
++static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
++{
++	unhash_lockowner(lockowner(sop));
++}
++
+ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
+ {
+ 	struct nfs4_lockowner *lo = lockowner(sop);
+@@ -4777,6 +4801,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	lo->lo_owner.so_is_open_owner = 0;
+ 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
+ 	lo->lo_owner.so_free = nfs4_free_lockowner;
++	lo->lo_owner.so_unhash = nfs4_unhash_lockowner;
+ 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
+ 	return lo;
+ }
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index eba7283a2613..f6639fb5a56f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -347,6 +347,7 @@ struct nfs4_stateowner {
+ 	bool			so_is_open_owner;
+ 
+ 	void (*so_free)(struct nfs4_stateowner *);
++	void (*so_unhash)(struct nfs4_stateowner *);
+ };
+ 
+ struct nfs4_openowner {
 -- 
 1.9.3
 
