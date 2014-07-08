@@ -1,28 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:48608 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751021AbaGJLSY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 07:18:24 -0400
-Date: Thu, 10 Jul 2014 04:18:23 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 002/100] nfsd: reduce some spinlocking in
- put_client_renew
-Message-ID: <20140710111823.GA10893@infradead.org>
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:37123 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755367AbaGHSFx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:53 -0400
+Received: by mail-qg0-f41.google.com with SMTP id i50so5647880qgf.0
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:53 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 057/100] nfsd: clean up and reorganize release_lockowner
+Date: Tue,  8 Jul 2014 14:03:45 -0400
+Message-Id: <1404842668-22521-58-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
- <1404842668-22521-3-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1404842668-22521-3-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 08, 2014 at 02:02:50PM -0400, Jeff Layton wrote:
-> No need to take the lock unless the count goes to 0.
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Do more within the main loop, and simplify the function a bit. Also,
+there's no need to take a stateowner reference unless we're going to call
+release_lockowner.
 
-Looks good,
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 49 ++++++++++++++++++-------------------------------
+ 1 file changed, 18 insertions(+), 31 deletions(-)
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 93d526bca290..fb2f3ec0708f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5403,8 +5403,8 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			struct nfsd4_release_lockowner *rlockowner)
+ {
+ 	clientid_t *clid = &rlockowner->rl_clientid;
+-	struct nfs4_stateowner *sop = NULL, *tmp;
+-	struct nfs4_lockowner *lo;
++	struct nfs4_stateowner *sop;
++	struct nfs4_lockowner *lo = NULL;
+ 	struct nfs4_ol_stateid *stp;
+ 	struct xdr_netobj *owner = &rlockowner->rl_owner;
+ 	unsigned int hashval = ownerstr_hashval(owner);
+@@ -5421,45 +5421,32 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	if (status)
+ 		goto out;
+ 
+-	status = nfserr_locks_held;
+-
+ 	clp = cstate->clp;
+ 	/* Find the matching lock stateowner */
+ 	spin_lock(&clp->cl_lock);
+-	list_for_each_entry(tmp, &clp->cl_ownerstr_hashtbl[hashval],
++	list_for_each_entry(sop, &clp->cl_ownerstr_hashtbl[hashval],
+ 			    so_strhash) {
+-		if (tmp->so_is_open_owner)
+-			continue;
+-		if (same_owner_str(tmp, owner)) {
+-			sop = tmp;
+-			atomic_inc(&sop->so_count);
+-			break;
+-		}
+-	}
+ 
+-	/* No matching owner found, maybe a replay? Just declare victory... */
+-	if (!sop) {
+-		spin_unlock(&clp->cl_lock);
+-		status = nfs_ok;
+-		goto out;
+-	}
++		if (sop->so_is_open_owner || !same_owner_str(sop, owner))
++			continue;
+ 
+-	lo = lockowner(sop);
+-	/* see if there are still any locks associated with it */
+-	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+-		if (check_for_locks(stp->st_stid.sc_file, lo)) {
+-			spin_unlock(&clp->cl_lock);
+-			goto out;
++		/* see if there are still any locks associated with it */
++		lo = lockowner(sop);
++		list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
++			if (check_for_locks(stp->st_stid.sc_file, lo)) {
++				status = nfserr_locks_held;
++				spin_unlock(&clp->cl_lock);
++				goto out;
++			}
+ 		}
++
++		atomic_inc(&sop->so_count);
++		break;
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+-
+-	status = nfs_ok;
+-	sop = NULL;
+-	release_lockowner(lo);
++	if (lo)
++		release_lockowner(lo);
+ out:
+-	if (sop)
+-		nfs4_put_stateowner(sop);
+ 	nfs4_unlock_state();
+ 	return status;
+ }
+-- 
+1.9.3
+
