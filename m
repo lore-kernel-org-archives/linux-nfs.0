@@ -1,88 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:43124 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751601AbaGOOWW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:22:22 -0400
-Subject: [PATCH v3 15/21] xprtrdma: Disable completions for LOCAL_INV Work
- Requests
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 15 Jul 2014 10:22:20 -0400
-Message-ID: <20140715142220.8908.44603.stgit@manet.1015granger.net>
-In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
-References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:43945 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752540AbaGHDqq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 23:46:46 -0400
+Received: by mail-pa0-f51.google.com with SMTP id hz1so6594360pad.10
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 20:46:46 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH 1/2] nfsv4: set hostname when creating nfsv4 ds connection
+Date: Tue,  8 Jul 2014 11:45:47 +0800
+Message-Id: <1404791148-10202-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of relying on a completion to change the state of an FRMR
-to FRMR_IS_INVALID, set it in advance. If an error occurs, a completion
-will fire anyway and mark the FRMR FRMR_IS_STALE.
+We reference cl_hostname in many places for debugging purpose.
+So make it useful by setting hostname when calling nfs_get_client.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+ fs/nfs/nfs4client.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index b36a5dd..fa5199d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -154,12 +154,8 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- 
- 	if (wc->wr_id == 0ULL)
- 		return;
--	if (wc->status != IB_WC_SUCCESS) {
-+	if (wc->status != IB_WC_SUCCESS)
- 		frmr->r.frmr.fr_state = FRMR_IS_STALE;
--		return;
--	}
--
--	frmr->r.frmr.fr_state = FRMR_IS_INVALID;
- }
- 
- static int
-@@ -1369,12 +1365,11 @@ rpcrdma_retry_local_inv(struct rpcrdma_mw *r, struct rpcrdma_ia *ia)
- 	dprintk("RPC:       %s: FRMR %p is stale\n", __func__, r);
- 
- 	/* When this FRMR is re-inserted into rb_mws, it is no longer stale */
--	r->r.frmr.fr_state = FRMR_IS_VALID;
-+	r->r.frmr.fr_state = FRMR_IS_INVALID;
- 
- 	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
- 	invalidate_wr.wr_id = (unsigned long)(void *)r;
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.send_flags = IB_SEND_SIGNALED;
- 	invalidate_wr.ex.invalidate_rkey = r->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
-@@ -1773,10 +1768,11 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 	struct ib_send_wr invalidate_wr, *bad_wr;
- 	int rc;
- 
-+	seg1->mr_chunk.rl_mw->r.frmr.fr_state = FRMR_IS_INVALID;
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 9940037..ff8cba2 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -856,6 +856,11 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_client* mds_clp,
+ 	};
+ 	struct rpc_timeout ds_timeout;
+ 	struct nfs_client *clp;
++	char buf[INET6_ADDRSTRLEN + 1];
 +
- 	memset(&invalidate_wr, 0, sizeof invalidate_wr);
- 	invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.send_flags = IB_SEND_SIGNALED;
- 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
++	if (rpc_ntop(ds_addr, buf, sizeof(buf)) <= 0)
++		return ERR_PTR(-EINVAL);
++	cl_init.hostname = buf;
  
-@@ -1785,9 +1781,12 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 		rpcrdma_unmap_one(ia, seg++);
- 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
- 	read_unlock(&ia->ri_qplock);
--	if (rc)
-+	if (rc) {
-+		/* Force rpcrdma_buffer_get() to retry */
-+		seg1->mr_chunk.rl_mw->r.frmr.fr_state = FRMR_IS_STALE;
- 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
- 			" status %i\n", __func__, rc);
-+	}
- 	return rc;
- }
- 
+ 	/*
+ 	 * Set an authflavor equual to the MDS value. Use the MDS nfs_client
+-- 
+1.9.1
 
