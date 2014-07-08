@@ -1,112 +1,279 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:37352 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759947AbaGYLev (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jul 2014 07:34:51 -0400
-Received: by mail-qa0-f50.google.com with SMTP id s7so4355520qap.37
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Jul 2014 04:34:51 -0700 (PDT)
+Received: from mail-qc0-f177.google.com ([209.85.216.177]:63393 "EHLO
+	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754474AbaGHSEs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:48 -0400
+Received: by mail-qc0-f177.google.com with SMTP id r5so5497798qcx.22
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:48 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v6 7/9] nfsd: clean up nfs4_set_delegation
-Date: Fri, 25 Jul 2014 07:34:25 -0400
-Message-Id: <1406288067-20663-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
-References: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 009/100] nfsd: Add locking to the nfs4_file->fi_fds[] array
+Date: Tue,  8 Jul 2014 14:02:57 -0400
+Message-Id: <1404842668-22521-10-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the alloc_init_deleg call into nfs4_set_delegation and change the
-function to return a pointer to the delegation or an IS_ERR return. This
-allows us to skip allocating a delegation if the file has already
-experienced a lease conflict.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Preparation for removal of the client_mutex, which currently protects
+this array.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 34 ++++++++++++++++++++++------------
- 1 file changed, 22 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs4state.c | 107 ++++++++++++++++++++++++++++++++++++++++++++--------
+ fs/nfsd/state.h     |  26 -------------
+ 2 files changed, 91 insertions(+), 42 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 24065e1b2bb2..85d7ac664691 100644
+index ff7d74e0e39e..0b42bd47a7d6 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3552,12 +3552,20 @@ out_fput:
+@@ -270,6 +270,52 @@ get_nfs4_file(struct nfs4_file *fi)
+ 	atomic_inc(&fi->fi_ref);
+ }
+ 
++static struct file *__nfs4_get_fd(struct nfs4_file *f, int oflag)
++{
++	if (f->fi_fds[oflag])
++		return get_file(f->fi_fds[oflag]);
++	return NULL;
++}
++
++static struct file *find_writeable_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_WRONLY);
++	if (!ret)
++		ret = __nfs4_get_fd(f, O_RDWR);
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
++static struct file *find_readable_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_RDONLY);
++	if (!ret)
++		ret = __nfs4_get_fd(f, O_RDWR);
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
++static struct file *find_any_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_RDWR);
++	if (!ret) {
++		ret = __nfs4_get_fd(f, O_WRONLY);
++		if (!ret)
++			ret = __nfs4_get_fd(f, O_RDONLY);
++	}
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
+ static int num_delegations;
+ unsigned long max_delegations;
+ 
+@@ -318,20 +364,31 @@ static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
+ 		__nfs4_file_get_access(fp, oflag);
+ }
+ 
+-static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
++static struct file *nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
+ {
+-	if (fp->fi_fds[oflag]) {
+-		fput(fp->fi_fds[oflag]);
+-		fp->fi_fds[oflag] = NULL;
+-	}
++	struct file *filp;
++
++	filp = fp->fi_fds[oflag];
++	fp->fi_fds[oflag] = NULL;
++	return filp;
+ }
+ 
+ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+ {
+-	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
+-		nfs4_file_put_fd(fp, oflag);
++	might_lock(&fp->fi_lock);
++
++	if (atomic_dec_and_lock(&fp->fi_access[oflag], &fp->fi_lock)) {
++		struct file *f1 = NULL;
++		struct file *f2 = NULL;
++
++		f1 = nfs4_file_put_fd(fp, oflag);
+ 		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
+-			nfs4_file_put_fd(fp, O_RDWR);
++			f2 = nfs4_file_put_fd(fp, O_RDWR);
++		spin_unlock(&fp->fi_lock);
++		if (f1)
++			fput(f1);
++		if (f2)
++			fput(f2);
+ 	}
+ }
+ 
+@@ -748,8 +805,10 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
+ 	file = find_any_file(stp->st_file);
+-	if (file)
++	if (file) {
+ 		locks_remove_posix(file, (fl_owner_t)lockowner(stp->st_stateowner));
++		fput(file);
++	}
+ 	close_generic_stateid(stp);
+ 	free_generic_stateid(stp);
+ }
+@@ -3228,17 +3287,27 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 		struct svc_fh *cur_fh, struct nfsd4_open *open)
+ {
++	struct file *filp = NULL;
+ 	__be32 status;
+ 	int oflag = nfs4_access_to_omode(open->op_share_access);
+ 	int access = nfs4_access_to_access(open->op_share_access);
+ 
++	spin_lock(&fp->fi_lock);
+ 	if (!fp->fi_fds[oflag]) {
+-		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
+-			&fp->fi_fds[oflag]);
++		spin_unlock(&fp->fi_lock);
++		status = nfsd_open(rqstp, cur_fh, S_IFREG, access, &filp);
+ 		if (status)
+ 			goto out;
++		spin_lock(&fp->fi_lock);
++		if (!fp->fi_fds[oflag]) {
++			fp->fi_fds[oflag] = filp;
++			filp = NULL;
++		}
+ 	}
+ 	nfs4_file_get_access(fp, oflag);
++	spin_unlock(&fp->fi_lock);
++	if (filp)
++		fput(filp);
+ 
+ 	status = nfsd4_truncate(rqstp, cur_fh, open);
+ 	if (status)
+@@ -3323,13 +3392,15 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	if (status)
+ 		goto out_free;
+ 	fp->fi_lease = fl;
+-	fp->fi_deleg_file = get_file(fl->fl_file);
++	fp->fi_deleg_file = fl->fl_file;
+ 	atomic_set(&fp->fi_delegees, 1);
+ 	spin_lock(&state_lock);
+ 	hash_delegation_locked(dp, fp);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+ out_free:
++	if (fl->fl_file)
++		fput(fl->fl_file);
+ 	locks_free_lock(fl);
  	return status;
  }
- 
--static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
-+static struct nfs4_delegation *
-+nfs4_set_delegation(struct nfs4_client *clp, struct svc_fh *fh,
-+		    struct nfs4_file *fp)
- {
--	int status = 0;
-+	int status;
-+	struct nfs4_delegation *dp;
- 
- 	if (fp->fi_had_conflict)
--		return -EAGAIN;
-+		return ERR_PTR(-EAGAIN);
-+
-+	dp = alloc_init_deleg(clp, fh);
-+	if (!dp)
-+		return ERR_PTR(-ENOMEM);
-+
- 	get_nfs4_file(fp);
- 	spin_lock(&state_lock);
- 	spin_lock(&fp->fi_lock);
-@@ -3565,7 +3573,8 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	if (!fp->fi_lease) {
- 		spin_unlock(&fp->fi_lock);
- 		spin_unlock(&state_lock);
--		return nfs4_setlease(dp);
-+		status = nfs4_setlease(dp);
-+		goto out;
+@@ -3929,6 +4000,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 				status = nfserr_serverfault;
+ 				goto out;
+ 			}
++			get_file(file);
+ 		}
+ 		break;
+ 	case NFS4_OPEN_STID:
+@@ -3956,7 +4028,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
  	}
- 	atomic_inc(&fp->fi_delegees);
- 	if (fp->fi_had_conflict) {
-@@ -3573,10 +3582,16 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 		goto out_unlock;
+ 	status = nfs_ok;
+ 	if (file)
+-		*filpp = get_file(file);
++		*filpp = file;
+ out:
+ 	nfs4_unlock_state();
+ 	return status;
+@@ -4673,6 +4745,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		break;
  	}
- 	hash_delegation_locked(dp, fp);
-+	status = 0;
- out_unlock:
- 	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
--	return status;
-+out:
-+	if (status) {
-+		nfs4_put_delegation(dp);
-+		return ERR_PTR(status);
-+	}
-+	return dp;
+ out:
++	if (filp)
++		fput(filp);
+ 	if (status && new_state)
+ 		release_lock_stateid(lock_stp);
+ 	nfsd4_bump_seqid(cstate, status);
+@@ -4812,7 +4886,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!file_lock) {
+ 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+ 		status = nfserr_jukebox;
+-		goto out;
++		goto fput;
+ 	}
+ 	locks_init_lock(file_lock);
+ 	file_lock->fl_type = F_UNLCK;
+@@ -4834,7 +4908,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+-
++fput:
++	fput(filp);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+ 	nfs4_unlock_state();
+@@ -4844,7 +4919,7 @@ out:
+ 
+ out_nfserr:
+ 	status = nfserrno(err);
+-	goto out;
++	goto fput;
  }
  
- static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
-@@ -3650,12 +3665,9 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
- 		default:
- 			goto out_no_deleg;
- 	}
--	dp = alloc_init_deleg(clp, fh);
--	if (dp == NULL)
-+	dp = nfs4_set_delegation(clp, fh, stp->st_file);
-+	if (IS_ERR(dp))
- 		goto out_no_deleg;
--	status = nfs4_set_delegation(dp, stp->st_file);
--	if (status)
--		goto out_free;
+ /*
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e8c059d2826e..2ce1d8f583e1 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -400,32 +400,6 @@ struct nfs4_file {
+ 	bool			fi_had_conflict;
+ };
  
- 	memcpy(&open->op_delegate_stateid, &dp->dl_stid.sc_stateid, sizeof(dp->dl_stid.sc_stateid));
- 
-@@ -3663,8 +3675,6 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
- 		STATEID_VAL(&dp->dl_stid.sc_stateid));
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
- 	return;
--out_free:
--	nfs4_put_delegation(dp);
- out_no_deleg:
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
- 	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
+-/* XXX: for first cut may fall back on returning file that doesn't work
+- * at all? */
+-static inline struct file *find_writeable_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_WRONLY])
+-		return f->fi_fds[O_WRONLY];
+-	return f->fi_fds[O_RDWR];
+-}
+-
+-static inline struct file *find_readable_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_RDONLY])
+-		return f->fi_fds[O_RDONLY];
+-	return f->fi_fds[O_RDWR];
+-}
+-
+-static inline struct file *find_any_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_RDWR])
+-		return f->fi_fds[O_RDWR];
+-	else if (f->fi_fds[O_WRONLY])
+-		return f->fi_fds[O_WRONLY];
+-	else
+-		return f->fi_fds[O_RDONLY];
+-}
+-
+ /* "ol" stands for "Open or Lock".  Better suggestions welcome. */
+ struct nfs4_ol_stateid {
+ 	struct nfs4_stid    st_stid; /* must be first field */
 -- 
 1.9.3
 
