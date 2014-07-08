@@ -1,79 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:56376 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754363AbaG2Uet (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:49 -0400
-Received: by mail-qg0-f46.google.com with SMTP id z60so303109qgd.19
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:49 -0700 (PDT)
+Received: from mail-qa0-f43.google.com ([209.85.216.43]:34747 "EHLO
+	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754474AbaGHSFA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:00 -0400
+Received: by mail-qa0-f43.google.com with SMTP id k15so5277061qaq.30
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:59 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 13/38] nfsd: nfsd4_process_open2() must reference the delegation stateid
-Date: Tue, 29 Jul 2014 16:33:56 -0400
-Message-Id: <1406666061-14175-14-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 018/100] nfsd: cleanup and rename nfs4_check_open
+Date: Tue,  8 Jul 2014 14:03:06 -0400
+Message-Id: <1404842668-22521-19-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Rename it to better describe what it does, and have it just return the
+stateid instead of a __be32 (which is now always nfs_ok). Also, do the
+search for an existing stateid after the delegation check, to reduce
+cleanup if the delegation check returns error.
 
-Ensure that nfsd4_process_open2() keeps a reference to the delegation
-stateid until it is done working with it. Necessary step toward
-client_mutex removal.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ddb6706e2046..2020303fd100 100644
+index 6afeb7d39f9d..16282f1bf2ea 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3325,6 +3325,8 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
- 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
- 	if (!ret)
- 		return NULL;
-+	/* FIXME: move into find_stateid_by_type */
-+	atomic_inc(&ret->sc_count);
- 	return delegstateid(ret);
+@@ -3326,10 +3326,10 @@ out:
+ 	return nfs_ok;
  }
  
-@@ -3340,14 +3342,18 @@ nfs4_check_deleg(struct nfs4_client *cl, struct nfsd4_open *open,
+-static __be32
+-nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_stateid **stpp)
++static struct nfs4_ol_stateid *
++nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
  {
- 	int flags;
- 	__be32 status = nfserr_bad_stateid;
-+	struct nfs4_delegation *deleg;
+-	struct nfs4_ol_stateid *local;
++	struct nfs4_ol_stateid *local, *ret = NULL;
+ 	struct nfs4_openowner *oo = open->op_openowner;
  
--	*dp = find_deleg_stateid(cl, &open->op_delegate_stateid);
--	if (*dp == NULL)
-+	deleg = find_deleg_stateid(cl, &open->op_delegate_stateid);
-+	if (deleg == NULL)
- 		goto out;
- 	flags = share_access_to_flags(open->op_share_access);
--	status = nfs4_check_delegmode(*dp, flags);
--	if (status)
--		*dp = NULL;
-+	status = nfs4_check_delegmode(deleg, flags);
-+	if (status) {
-+		nfs4_put_stid(&deleg->dl_stid);
-+		goto out;
-+	}
-+	*dp = deleg;
- out:
- 	if (!nfsd4_is_deleg_cur(open))
- 		return nfs_ok;
-@@ -3828,6 +3834,8 @@ out:
- 	if (!(open->op_openowner->oo_flags & NFS4_OO_CONFIRMED) &&
- 	    !nfsd4_has_session(&resp->cstate))
- 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
-+	if (dp)
-+		nfs4_put_stid(&dp->dl_stid);
- 
- 	return status;
+ 	spin_lock(&fp->fi_lock);
+@@ -3337,14 +3337,13 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
+ 		/* ignore lock owners */
+ 		if (local->st_stateowner->so_is_open_owner == 0)
+ 			continue;
+-		/* remember if we have seen this open owner */
+ 		if (local->st_stateowner == &oo->oo_owner) {
+-			*stpp = local;
++			ret = local;
+ 			break;
+ 		}
+ 	}
+ 	spin_unlock(&fp->fi_lock);
+-	return nfs_ok;
++	return ret;
  }
+ 
+ static inline int nfs4_access_to_access(u32 nfs4_access)
+@@ -3687,12 +3686,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	 */
+ 	fp = find_or_add_file(ino, open->op_file);
+ 	if (fp != open->op_file) {
+-		status = nfs4_check_open(fp, open, &stp);
+-		if (status)
+-			goto out;
+ 		status = nfs4_check_deleg(cl, open, &dp);
+ 		if (status)
+ 			goto out;
++		stp = nfsd4_find_existing_open(fp, open);
+ 	} else {
+ 		open->op_file = NULL;
+ 		status = nfserr_bad_stateid;
 -- 
 1.9.3
 
