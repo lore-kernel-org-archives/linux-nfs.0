@@ -1,85 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:53605 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754330AbaG2VZb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:25:31 -0400
-Subject: [PATCH v5 16/21] xprtrdma: Rename frmr_wr
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Jul 2014 17:25:29 -0400
-Message-ID: <20140729212529.2812.90342.stgit@manet.1015granger.net>
-In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:50014 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755284AbaGHSFX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:23 -0400
+Received: by mail-qa0-f44.google.com with SMTP id hw13so5221966qab.31
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:23 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 035/100] nfsd: Add reference counting to lock stateids
+Date: Tue,  8 Jul 2014 14:03:23 -0400
+Message-Id: <1404842668-22521-36-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Name frmr_wr after the opcode of the Work Request,
-consistent with the send and local invalidation paths.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+Ensure that nfsd4_lock() references the lock stateid while it is
+manipulating it. Not currently necessary, but will be once the
+client_mutex is removed.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   26 +++++++++++++-------------
- 1 file changed, 13 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4state.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 750fdf9..817d5ac 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1684,7 +1684,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	struct rpcrdma_mw *mw = seg1->mr_chunk.rl_mw;
- 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
- 	struct ib_mr *mr = frmr->fr_mr;
--	struct ib_send_wr frmr_wr, *bad_wr;
-+	struct ib_send_wr fastreg_wr, *bad_wr;
- 	u8 key;
- 	int len, pageoff;
- 	int i, rc;
-@@ -1718,15 +1718,15 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6c2735231ca1..619dbec92b50 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4718,6 +4718,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
  
- 	frmr->fr_state = FRMR_IS_VALID;
+ 	lockdep_assert_held(&clp->cl_lock);
  
--	memset(&frmr_wr, 0, sizeof frmr_wr);
--	frmr_wr.wr_id = (unsigned long)(void *)mw;
--	frmr_wr.opcode = IB_WR_FAST_REG_MR;
--	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
--	frmr_wr.wr.fast_reg.page_list = frmr->fr_pgl;
--	frmr_wr.wr.fast_reg.page_list_len = page_no;
--	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
--	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
--	if (frmr_wr.wr.fast_reg.length < len) {
-+	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
-+	fastreg_wr.wr_id = (unsigned long)(void *)mw;
-+	fastreg_wr.opcode = IB_WR_FAST_REG_MR;
-+	fastreg_wr.wr.fast_reg.iova_start = seg1->mr_dma;
-+	fastreg_wr.wr.fast_reg.page_list = frmr->fr_pgl;
-+	fastreg_wr.wr.fast_reg.page_list_len = page_no;
-+	fastreg_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
-+	fastreg_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
-+	if (fastreg_wr.wr.fast_reg.length < len) {
- 		rc = -EIO;
- 		goto out_err;
++	atomic_inc(&stp->st_stid.sc_count);
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+@@ -4742,8 +4743,10 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
+ 	lockdep_assert_held(&clp->cl_lock);
+ 
+ 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
+-		if (lst->st_stid.sc_file == fp)
++		if (lst->st_stid.sc_file == fp) {
++			atomic_inc(&lst->st_stid.sc_count);
+ 			return lst;
++		}
  	}
-@@ -1735,13 +1735,13 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	key = (u8)(mr->rkey & 0x000000FF);
- 	ib_update_fast_reg_key(mr, ++key);
- 
--	frmr_wr.wr.fast_reg.access_flags = (writing ?
-+	fastreg_wr.wr.fast_reg.access_flags = (writing ?
- 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
- 				IB_ACCESS_REMOTE_READ);
--	frmr_wr.wr.fast_reg.rkey = mr->rkey;
-+	fastreg_wr.wr.fast_reg.rkey = mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
--	rc = ib_post_send(ia->ri_id->qp, &frmr_wr, &bad_wr);
-+	rc = ib_post_send(ia->ri_id->qp, &fastreg_wr, &bad_wr);
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
- 			" status %i\n", __func__, rc);
+ 	return NULL;
+ }
+@@ -4838,7 +4841,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	struct nfs4_openowner *open_sop = NULL;
+ 	struct nfs4_lockowner *lock_sop = NULL;
+-	struct nfs4_ol_stateid *lock_stp;
++	struct nfs4_ol_stateid *lock_stp = NULL;
+ 	struct nfs4_file *fp;
+ 	struct file *filp = NULL;
+ 	struct file_lock *file_lock = NULL;
+@@ -4892,11 +4895,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			goto out;
+ 		status = lookup_or_create_lock_state(cstate, open_stp, lock,
+ 							&lock_stp, &new_state);
+-	} else
++	} else {
+ 		status = nfs4_preprocess_seqid_op(cstate,
+ 				       lock->lk_old_lock_seqid,
+ 				       &lock->lk_old_lock_stateid,
+ 				       NFS4_LOCK_STID, &lock_stp, nn);
++		/* FIXME: move into nfs4_preprocess_seqid_op */
++		if (!status)
++			atomic_inc(&lock_stp->st_stid.sc_count);
++	}
+ 	if (status)
+ 		goto out;
+ 	lock_sop = lockowner(lock_stp->st_stateowner);
+@@ -4989,6 +4996,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out:
+ 	if (filp)
+ 		fput(filp);
++	if (lock_stp)
++		put_generic_stateid(lock_stp);
+ 	if (status && new_state)
+ 		release_lock_stateid(lock_stp);
+ 	nfsd4_bump_seqid(cstate, status);
+-- 
+1.9.3
 
