@@ -1,88 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60229 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751212AbaG2TAD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jul 2014 15:00:03 -0400
-Date: Tue, 29 Jul 2014 14:59:57 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH v6 0/9] nfsd: more delegation fixes to prepare for
- client_mutex removal
-Message-ID: <20140729185957.GB21091@fieldses.org>
-References: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f50.google.com ([209.85.216.50]:60073 "EHLO
+	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755376AbaGHSGX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:23 -0400
+Received: by mail-qa0-f50.google.com with SMTP id m5so5149523qaj.9
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:22 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 080/100] nfsd: add a forget_client set_clnt routine
+Date: Tue,  8 Jul 2014 14:04:08 -0400
+Message-Id: <1404842668-22521-81-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-OK, these look good to me, thanks!  Applied.--b.
+...that relies on the client_lock instead of client_mutex.
 
-On Fri, Jul 25, 2014 at 07:34:18AM -0400, Jeff Layton wrote:
-> v6:
-> - rebase on top of patches that change how struct nfs4_file is hashed
-> 
-> - add patch to remove the dl_fh field from struct nfs4_delegation
-> 
-> - fix a bug in forget_delegations fault injector
-> 
-> - update some changelogs to be more descriptive
-> 
-> v5:
-> - fix spinlocking in block_delegations. Lock should be held around all
->   of the set_bit calls so we don't race with the swap of the two
->   fields.
-> 
-> - eliminate destroy_revoked_delegation (just use nfs4_put_delegation)
-> 
-> - eliminate unneeded NULL pointer check in nfs4_setlease
-> 
-> v4:
-> - close more potential races in setlease code, and fix some bugs in
->   error handling in that code.
-> 
-> - clean up delegation setting functions, eliminating unused arguments
->   and avoiding allocations when there has already been a delegation
->   break
-> 
-> - add separate spinlock for block_delegations/delegation_blocked code
-> 
-> v3:
-> - use alternate method for checking for delegation break races after
->   getting a lease (just check fi_had_conflict instead)
-> 
-> - drop file_has_lease patch -- no longer needed
-> 
-> - move cl_revoked handling patch into this set. It means altering a
->   few of the later patches, but it keeps the set more topically
->   coherent
-> 
-> v2:
-> - move remove_stid call from nfs4_free_stid and into callers
-> 
-> Hopefully this series won't need much introduction now. This is the
-> delegation rework to prepare for client_mutex removal, now rebased on
-> top of the changes to nfs4_file hashing.
-> 
-> Jeff Layton (7):
->   nfsd: fully unhash delegations when revoking them
->   nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock
->   nfsd: drop unused stp arg to alloc_init_deleg
->   nfsd: clean up arguments to nfs4_open_delegation
->   nfsd: clean up nfs4_set_delegation
->   nfsd: give block_delegation and delegation_blocked its own spinlock
->   nfsd: remove dl_fh field from struct nfs4_delegation
-> 
-> Trond Myklebust (2):
->   nfsd: simplify stateid allocation and file handling
->   nfsd: Convert delegation counter to an atomic_long_t type
-> 
->  fs/nfsd/nfs4callback.c |   2 +-
->  fs/nfsd/nfs4state.c    | 180 +++++++++++++++++++++++++++----------------------
->  fs/nfsd/state.h        |   1 -
->  3 files changed, 99 insertions(+), 84 deletions(-)
-> 
-> -- 
-> 1.9.3
-> 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/fault_inject.c |  2 +-
+ fs/nfsd/nfs4state.c    | 28 ++++++++++++++++++++++++++++
+ fs/nfsd/state.h        |  3 +++
+ 3 files changed, 32 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index a0387fd47e14..5f3ead0c72fb 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -136,7 +136,7 @@ static struct nfsd_fault_inject_op inject_ops[] = {
+ 		.file     = "forget_clients",
+ 		.get	  = nfsd_inject_print_clients,
+ 		.set_val  = nfsd_inject_set,
+-		.set_clnt = nfsd_inject_set_client,
++		.set_clnt = nfsd_inject_forget_client,
+ 		.forget   = nfsd_forget_client,
+ 	},
+ 	{
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e929e6f51788..62ac78b28efc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5739,6 +5739,34 @@ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ 	return 1;
+ }
+ 
++u64
++nfsd_inject_forget_client(struct nfsd_fault_inject_op *op,
++			  struct sockaddr_storage *addr, size_t addr_size)
++{
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++					  nfsd_net_id);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp) {
++		if (mark_client_expired_locked(clp) == nfs_ok)
++			++count;
++		else
++			clp = NULL;
++	}
++	spin_unlock(&nn->client_lock);
++
++	if (clp)
++		expire_client(clp);
++
++	return count;
++}
++
+ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ 			     const char *type)
+ {
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index e0bf42051c1f..ead0fe9027fb 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -475,6 +475,9 @@ struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
+ 
+ u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
+ u64 nfsd_forget_client(struct nfs4_client *, u64);
++u64 nfsd_inject_forget_client(struct nfsd_fault_inject_op *,
++			      struct sockaddr_storage *, size_t);
++
+ u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
+ u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+-- 
+1.9.3
+
