@@ -1,79 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:36117 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754663AbaG3BfK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:10 -0400
-Received: by mail-qg0-f42.google.com with SMTP id j5so678171qga.1
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:09 -0700 (PDT)
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:55436 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755359AbaGHSFp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:45 -0400
+Received: by mail-qg0-f41.google.com with SMTP id i50so5647674qgf.0
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:45 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 13/38] nfsd: nfsd4_process_open2() must reference the delegation stateid
-Date: Tue, 29 Jul 2014 21:34:18 -0400
-Message-Id: <1406684083-19736-14-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 051/100] nfsd: clean up refcounting for lockowners
+Date: Tue,  8 Jul 2014 14:03:39 -0400
+Message-Id: <1404842668-22521-52-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Ensure that lockowner references are only held by lockstateids and
+operations that are in-progress. With this, we can get rid of
+release_lockowner_if_empty, which will be racy once we remove
+client_mutex protection.
 
-Ensure that nfsd4_process_open2() keeps a reference to the delegation
-stateid until it is done working with it. Necessary step toward
-client_mutex removal.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 29 +++++++----------------------
+ 1 file changed, 7 insertions(+), 22 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2df6af93120e..5cb6305036cd 100644
+index 078ca6a6a132..591f127939a8 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3325,6 +3325,8 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
- 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
- 	if (!ret)
- 		return NULL;
-+	/* FIXME: move into find_stateid_by_type */
-+	atomic_inc(&ret->sc_count);
- 	return delegstateid(ret);
+@@ -941,7 +941,7 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	nfs4_put_stid(&stp->st_stid);
  }
  
-@@ -3340,14 +3342,18 @@ nfs4_check_deleg(struct nfs4_client *cl, struct nfsd4_open *open,
+-static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
++static void release_lock_stateid(struct nfs4_ol_stateid *stp)
  {
- 	int flags;
- 	__be32 status = nfserr_bad_stateid;
-+	struct nfs4_delegation *deleg;
+ 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
  
--	*dp = find_deleg_stateid(cl, &open->op_delegate_stateid);
--	if (*dp == NULL)
-+	deleg = find_deleg_stateid(cl, &open->op_delegate_stateid);
-+	if (deleg == NULL)
- 		goto out;
- 	flags = share_access_to_flags(open->op_share_access);
--	status = nfs4_check_delegmode(*dp, flags);
--	if (status)
--		*dp = NULL;
-+	status = nfs4_check_delegmode(deleg, flags);
-+	if (status) {
-+		nfs4_put_stid(&deleg->dl_stid);
-+		goto out;
-+	}
-+	*dp = deleg;
- out:
- 	if (!nfsd4_is_deleg_cur(open))
- 		return nfs_ok;
-@@ -3828,6 +3834,8 @@ out:
- 	if (!(open->op_openowner->oo_flags & NFS4_OO_CONFIRMED) &&
- 	    !nfsd4_has_session(&resp->cstate))
- 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
-+	if (dp)
-+		nfs4_put_stid(&dp->dl_stid);
- 
- 	return status;
+@@ -965,7 +965,7 @@ static void release_lockowner_stateids(struct nfs4_lockowner *lo)
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		__release_lock_stateid(stp);
++		release_lock_stateid(stp);
+ 	}
  }
+ 
+@@ -976,21 +976,6 @@ static void release_lockowner(struct nfs4_lockowner *lo)
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+-static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
+-{
+-	if (list_empty(&lo->lo_owner.so_stateids))
+-		release_lockowner(lo);
+-}
+-
+-static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+-{
+-	struct nfs4_lockowner *lo;
+-
+-	lo = lockowner(stp->st_stateowner);
+-	__release_lock_stateid(stp);
+-	release_lockowner_if_empty(lo);
+-}
+-
+ static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
+ 	__releases(&open_stp->st_stateowner->so_client->cl_lock)
+ 	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
+@@ -4315,7 +4300,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+ 
+ 	if (check_for_locks(stp->st_stid.sc_file, lo))
+ 		return nfserr_locks_held;
+-	release_lockowner_if_empty(lo);
++	release_lock_stateid(stp);
+ 	return nfs_ok;
+ }
+ 
+@@ -4921,8 +4906,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
+ 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
+ 		if (lo == NULL)
+ 			return nfserr_jukebox;
+-		/* FIXME: extra reference for new lockowners for the client */
+-		atomic_inc(&lo->lo_owner.so_count);
+ 	} else {
+ 		/* with an existing lockowner, seqids must be the same */
+ 		status = nfserr_bad_seqid;
+@@ -4933,7 +4916,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
+ 
+ 	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
+ 	if (*lst == NULL) {
+-		release_lockowner_if_empty(lo);
+ 		status = nfserr_jukebox;
+ 		goto out;
+ 	}
+@@ -5353,6 +5335,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			continue;
+ 		if (same_owner_str(tmp, owner, clid)) {
+ 			sop = tmp;
++			atomic_inc(&sop->so_count);
+ 			break;
+ 		}
+ 	}
+@@ -5366,8 +5349,10 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	lo = lockowner(sop);
+ 	/* see if there are still any locks associated with it */
+ 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+-		if (check_for_locks(stp->st_stid.sc_file, lo))
++		if (check_for_locks(stp->st_stid.sc_file, lo)) {
++			nfs4_put_stateowner(sop);
+ 			goto out;
++		}
+ 	}
+ 
+ 	status = nfs_ok;
 -- 
 1.9.3
 
