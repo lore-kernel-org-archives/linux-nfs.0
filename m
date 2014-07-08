@@ -1,111 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f179.google.com ([209.85.128.179]:55716 "EHLO
-	mail-ve0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754578AbaGHTBN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 15:01:13 -0400
-Received: by mail-ve0-f179.google.com with SMTP id sa20so6061349veb.24
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 12:01:12 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAHQdGtSgH1tz7cFtLthOvkrvH_RdybA2ezsCq1Y3z_xVoB8k5w@mail.gmail.com>
-References: <1403082423-13131-1-git-send-email-hch@lst.de>
-	<CAHQdGtSBN4_MPVUWZ1dhOAXyp9w++YGYLP9fmYNq5RPqzrDwPA@mail.gmail.com>
-	<20140618130022.GA32043@lst.de>
-	<1404833238.7837.5.camel@niobium.home.fifi.org>
-	<CAHQdGtSgH1tz7cFtLthOvkrvH_RdybA2ezsCq1Y3z_xVoB8k5w@mail.gmail.com>
-Date: Tue, 8 Jul 2014 15:01:12 -0400
-Message-ID: <CAHQdGtStu0XT2veR7j0aZQfnvRep0pfpjQVtBEzACw4AVnDHuQ@mail.gmail.com>
-Subject: Re: [PATCH] nfs: only show Posix ACLs in listxattr if actually present
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Philippe Troin <phil@fifi.org>
-Cc: Christoph Hellwig <hch@lst.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:50721 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755400AbaGHSGT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:19 -0400
+Received: by mail-qg0-f51.google.com with SMTP id z60so5478759qgd.10
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:18 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 077/100] nfsd: protect clid and verifier generation with client_lock
+Date: Tue,  8 Jul 2014 14:04:05 -0400
+Message-Id: <1404842668-22521-78-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Another gmail vs. vger.kernel.org mailing list battle lost. Resending...
+The clid counter is a global counter currently. Move it to be a per-net
+property so that it can be properly protected by the nn->client_lock
+instead of relying on the client_mutex.
 
-On Tue, Jul 8, 2014 at 2:59 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
->
->
->
-> On Tue, Jul 8, 2014 at 11:27 AM, Philippe Troin <phil@fifi.org> wrote:
->>
->> Hi Chris & Trond,
->>
->> On Wed, 2014-06-18 at 15:00 +0200, Christoph Hellwig wrote:
->> > On Wed, Jun 18, 2014 at 07:35:27AM -0400, Trond Myklebust wrote:
->> > > Hi Christoph,
->> > >
->> > > On Wed, Jun 18, 2014 at 5:07 AM, Christoph Hellwig <hch@lst.de> wrote:
->> > > > The big ACL switched nfs to use generic_listxattr, which calls all
->> > > > existing
->> > > > ->list handlers.  Add a custom .listxattr implementation that only
->> > > > lists
->> > > > the ACLs if they actually are present on the given inode.
->> > > >
->> > > > Signed-off-by: Christoph Hellwig <hch@lst.de>
->> > > > Reported-by: Philippe Troin <phil@fifi.org>
->> > > > Tested-by: Philippe Troin <phil@fifi.org>
->> > > > ---
->> > > >  fs/nfs/nfs3acl.c  |   43
->> > > > +++++++++++++++++++++++++++++++++++++++++++
->> > > >  fs/nfs/nfs3proc.c |    4 ++--
->> > > >  2 files changed, 45 insertions(+), 2 deletions(-)
->> > > >
->> > > > diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
->> > > > index 871d6ed..8f854dd 100644
->> > > > --- a/fs/nfs/nfs3acl.c
->> > > > +++ b/fs/nfs/nfs3acl.c
->> > > > @@ -247,3 +247,46 @@ const struct xattr_handler
->> > > > *nfs3_xattr_handlers[] = {
->> > > >         &posix_acl_default_xattr_handler,
->> > > >         NULL,
->> > > >  };
->> > > > +
->> > > > +static int
->> > > > +nfs3_list_one_acl(struct inode *inode, int type, const char *name,
->> > > > void *data,
->> > > > +               size_t size, ssize_t *result)
->> > >
->> > > Why do you make 'result' a pointer to ssize_t rather than a size_t
->> > > here?
->> >
->> > Because ->listxattr returns a ssize_t, and it points to the variable
->> > used
->> > as return value of nfs3_listxattr.
->>
->> Have these two patches been merged or at least been queued for inclusion
->> into mainline?
->
->
-> I believe that the final version of Christoph's patch contained both of his
-> former patches, so there should be just one to merge, right?
->
->>
->> I have just checked 3.15.3, and the patches do not seem to be included
->> there.  I haven't tested that specific kernel revision yet though.
->
->
-> I've applied the patch to my linux-next branch with a Cc: stable >= 3.14.
-> I'll push it to Linus once it has soaked a few days.
->
-> Cheers
->   Trond
-> --
->
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
+The verifier generator is also potentially racy if there are two
+simultaneous callers. Generate the verifier when we generate the clid
+value, so it's also created under the client_lock. With this, there's
+no need to keep two counters as they'd always be in sync anyway, so
+just use the clientid_counter for both.
 
+As Trond points out, what would be best is to eventually move this
+code to use IDR instead of the hash tables. That would also help ensure
+uniqueness, but that's probably best done as a separate project.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/netns.h     |  6 +++---
+ fs/nfsd/nfs4state.c | 21 +++++++++------------
+ 2 files changed, 12 insertions(+), 15 deletions(-)
 
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index e1f479c162b5..3831ef6e5c75 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -92,9 +92,7 @@ struct nfsd_net {
+ 	bool nfsd_net_up;
+ 	bool lockd_up;
+ 
+-	/*
+-	 * Time of server startup
+-	 */
++	/* Time of server startup */
+ 	struct timeval nfssvc_boot;
+ 
+ 	/*
+@@ -103,6 +101,8 @@ struct nfsd_net {
+ 	 */
+ 	unsigned int max_connections;
+ 
++	u32 clientid_counter;
++
+ 	struct svc_serv *nfsd_serv;
+ };
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4aa8f51f7dda..fc2abf9428af 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1787,28 +1787,26 @@ static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
+ 	return 0 == strcmp(cl->cl_cred.cr_principal, cr->cr_principal);
+ }
+ 
+-static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
+-{
+-	static u32 current_clientid = 1;
+-
+-	clp->cl_clientid.cl_boot = nn->boot_time;
+-	clp->cl_clientid.cl_id = current_clientid++; 
+-}
+-
+-static void gen_confirm(struct nfs4_client *clp)
++static void gen_confirm(struct nfs4_client *clp, struct nfsd_net *nn)
+ {
+ 	__be32 verf[2];
+-	static u32 i;
+ 
+ 	/*
+ 	 * This is opaque to client, so no need to byte-swap. Use
+ 	 * __force to keep sparse happy
+ 	 */
+ 	verf[0] = (__force __be32)get_seconds();
+-	verf[1] = (__force __be32)i++;
++	verf[1] = (__force __be32)nn->clientid_counter;
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ }
+ 
++static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
++{
++	clp->cl_clientid.cl_boot = nn->boot_time;
++	clp->cl_clientid.cl_id = nn->clientid_counter++;
++	gen_confirm(clp, nn);
++}
++
+ static struct nfs4_stid *
+ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ {
+@@ -1857,7 +1855,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+ 	copy_verf(clp, verf);
+ 	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
+-	gen_confirm(clp);
+ 	clp->cl_cb_session = NULL;
+ 	clp->net = net;
+ 	return clp;
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
