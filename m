@@ -1,45 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f178.google.com ([209.85.220.178]:50564 "EHLO
-	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752397AbaGQFAJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 01:00:09 -0400
-Received: by mail-vc0-f178.google.com with SMTP id la4so3540091vcb.23
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 22:00:08 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140716193838.GD2397@fieldses.org>
-References: <20140716193838.GD2397@fieldses.org>
-Date: Wed, 16 Jul 2014 22:00:08 -0700
-Message-ID: <CAHQdGtRUq0zVB-QM+Z9WpsOTa=py0Ba+YKghZwmr5rbD3RdBeA@mail.gmail.com>
-Subject: Re: invalidating cache on chmod
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:47684 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753304AbaGHSF5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:57 -0400
+Received: by mail-qg0-f54.google.com with SMTP id q107so5358203qgd.41
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:57 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 060/100] nfsd: close potential race in nfsd4_free_stateid
+Date: Tue,  8 Jul 2014 14:03:48 -0400
+Message-Id: <1404842668-22521-61-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 16, 2014 at 12:38 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> As of (a backport of) 3a1556e8662 "NFSv2/v3: Simulate the change
-> attribute" we have a user complaining about chmod on the client
-> invalidating data caches.  (They have some sort of pipeline running on
-> the client where output from one stage is has ownership and permissions,
-> but not data, change before being used as input to the next.)
->
-> Looks like that's expected?
+Once we remove the client_mutex, it'll be possible for the sc_type of a
+lock stateid to change after it's found and checked, but before we can
+go to destroy it. If that happens, we can end up putting the persistent
+reference to the stateid more than once, and unhash it more than once.
 
-Yes, that's expected. There is a tradeoff here: we could either use
-the ctime, in which case there is the problem of false negative cache
-revalidations (in cases such as the above), or we could use the mtime,
-which has a problem of false positive cache revalidations (after an
-application deliberately sets the mtime value).
+Fix this by unhashing the lock stateid prior to dropping the cl_lock but
+after finding it.
 
-The choice fell on ctime because that's what was being used for NFSv4
-and, because false positive revalidations can lead to data corruption,
-whereas false negatives do not.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 24 +++++++++---------------
+ 1 file changed, 9 insertions(+), 15 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ab248ee470dd..cf90c0078503 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4393,17 +4393,6 @@ unlock_state:
+ 	return status;
+ }
+ 
+-static __be32
+-nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+-{
+-	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
+-
+-	if (check_for_locks(stp->st_stid.sc_file, lo))
+-		return nfserr_locks_held;
+-	release_lock_stateid(stp);
+-	return nfs_ok;
+-}
+-
+ /*
+  * Test if the stateid is valid
+  */
+@@ -4430,6 +4419,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	stateid_t *stateid = &free_stateid->fr_stateid;
+ 	struct nfs4_stid *s;
+ 	struct nfs4_delegation *dp;
++	struct nfs4_ol_stateid *stp;
+ 	struct nfs4_client *cl = cstate->session->se_client;
+ 	__be32 ret = nfserr_bad_stateid;
+ 
+@@ -4447,12 +4437,16 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 		if (ret)
+ 			break;
+-		if (s->sc_type != NFS4_LOCK_STID) {
+-			ret = nfserr_locks_held;
++		stp = openlockstateid(s);
++		ret = nfserr_locks_held;
++		if (s->sc_type == NFS4_OPEN_STID ||
++		    check_for_locks(s->sc_file,
++				    lockowner(stp->st_stateowner)))
+ 			break;
+-		}
++		unhash_lock_stateid(stp);
+ 		spin_unlock(&cl->cl_lock);
+-		ret = nfsd4_free_lock_stateid(openlockstateid(s));
++		put_generic_stateid(stp);
++		ret = nfs_ok;
+ 		goto out;
+ 	case NFS4_REVOKED_DELEG_STID:
+ 		spin_unlock(&cl->cl_lock);
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
