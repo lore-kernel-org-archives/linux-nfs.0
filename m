@@ -1,109 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:58960 "EHLO mx2.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933025AbaGWSxX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jul 2014 14:53:23 -0400
-Message-ID: <53D004A0.7030803@Netapp.com>
-Date: Wed, 23 Jul 2014 14:53:20 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 00/21] NFS/RDMA client patches for 3.17
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="ISO-8859-1"
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:37214 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753304AbaGHSGA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:00 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so5572923qcq.20
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:59 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 062/100] nfsd: don't thrash the cl_lock while freeing an open stateid
+Date: Tue,  8 Jul 2014 14:03:50 -0400
+Message-Id: <1404842668-22521-63-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've applied these changes and pushed them out in my nfs-rdma branch.  I'm planning to send a pull request to Trond on Friday so these changes can spend some time in linux-next before the next merge window opens.
+When we remove the client_mutex, we'll have a potential race between
+FREE_STATEID and CLOSE.
 
-Anna
+The root of the problem is that we are walking the st_locks list,
+dropping the spinlock and then trying to release the persistent
+reference to the lockstateid. In between, a FREE_STATEID call can come
+along and take the lock, find the stateid and then try to put the
+reference. That leads to a double put.
 
-On 07/22/2014 10:50 AM, Chuck Lever wrote:
-> The main purpose of this series is to address connection drop
-> recovery issues by fixing FRMR re-use to make it less likely the
-> client will deadlock due to a memory management operation error.
-> Some clean-ups and other fixes are present as well.
-> 
-> Anna, v4 of this series should be ready for merging.
-> 
-> See topic branch nfs-rdma-for-3.17 in
-> 
-> git://git.linux-nfs.org/projects/cel/cel-2.6.git
-> 
-> I tested with NFSv3 and NFSv4 on all three supported memory
-> registration modes. Used cthon04, iozone, and dbench with both
-> Solaris and Linux NFS/RDMA servers. Used xfstests with Linux.
-> 
-> v4:
-> 
-> - Rebased on v3.16-rc6
-> 
-> - Add Tested-by: from Shirley Ma and Devesh Sharma
-> 
-> 
-> v3:
-> Only two substantive changes:
-> 
-> - Patch 08/21 now uses generic IB helpers for managing FRMR
->  rkeys
-> 
-> - Add Tested-by: from Steve Wise
-> 
-> 
-> v2:
-> Many patches from v1 have been written or replaced.
-> 
-> The MW ref counting approach in v1 is abandoned. Instead, I've
-> eliminated signaling FAST_REG_MR and LOCAL_INV, and added
-> appropriate recovery mechanisms after a transport reconnect that
-> should prevent rkey dis-synchrony entirely.
-> 
-> A couple of optimizations have been added, including:
-> 
-> - Allocating each MW separately rather than carving each out of a
->  large piece of contiguous memory
-> 
-> - Now that the receive CQ upcall handler dequeues a bundle of CQEs
->  at once, fire off the reply handler tasklet just once per upcall
->  to reduce context switches and how often hard IRQs are disabled
-> 
-> ---
-> 
-> Chuck Lever (21):
->       xprtrdma: Fix panic in rpcrdma_register_frmr_external()
->       xprtrdma: Protect ia->ri_id when unmapping/invalidating MRs
->       xprtrdma: Limit data payload size for ALLPHYSICAL
->       xprtrdma: Update rkeys after transport reconnect
->       xprtrdma: On disconnect, don't ignore pending CQEs
->       xprtrdma: Don't invalidate FRMRs if registration fails
->       xprtrdma: Unclutter struct rpcrdma_mr_seg
->       xprtrdma: Back off rkey when FAST_REG_MR fails
->       xprtrdma: Chain together all MWs in same buffer pool
->       xprtrdma: Properly handle exhaustion of the rb_mws list
->       xprtrdma: Reset FRMRs when FAST_REG_MR is flushed by a disconnect
->       xprtrdma: Reset FRMRs after a flushed LOCAL_INV Work Request
->       xprtrdma: Don't post a LOCAL_INV in rpcrdma_register_frmr_external()
->       xprtrdma: Disable completions for FAST_REG_MR Work Requests
->       xprtrdma: Disable completions for LOCAL_INV Work Requests
->       xprtrdma: Rename frmr_wr
->       xprtrdma: Allocate each struct rpcrdma_mw separately
->       xprtrdma: Schedule reply tasklet once per upcall
->       xprtrdma: Make rpcrdma_ep_disconnect() return void
->       xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
->       xprtrdma: Handle additional connection events
-> 
-> 
->  include/linux/sunrpc/xprtrdma.h |    2 
->  include/rdma/ib_verbs.h         |   11 +
->  net/sunrpc/xprtrdma/rpc_rdma.c  |   83 ++--
->  net/sunrpc/xprtrdma/transport.c |   17 +
->  net/sunrpc/xprtrdma/verbs.c     |  744 ++++++++++++++++++++++++++-------------
->  net/sunrpc/xprtrdma/xprt_rdma.h |   61 +++
->  6 files changed, 615 insertions(+), 303 deletions(-)
-> 
-> --
-> Chuck Lever
-> 
+Fix this by not releasing the cl_lock in order to release each lock
+stateid. Use put_generic_stateid_locked to unhash them and gather them
+onto a list, and free_ol_stateid_reaplist to free any that end up on the
+list.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 34 +++++++++++++++++++---------------
+ 1 file changed, 19 insertions(+), 15 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index da8e2ad8dd8e..58448637dd44 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1045,27 +1045,26 @@ static void release_lockowner(struct nfs4_lockowner *lo)
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+-static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
+-	__releases(&open_stp->st_stateowner->so_client->cl_lock)
+-	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
++static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp,
++				       struct list_head *reaplist)
+ {
+ 	struct nfs4_ol_stateid *stp;
+ 
+ 	while (!list_empty(&open_stp->st_locks)) {
+ 		stp = list_entry(open_stp->st_locks.next,
+ 				struct nfs4_ol_stateid, st_locks);
+-		spin_unlock(&open_stp->st_stateowner->so_client->cl_lock);
+-		release_lock_stateid(stp);
+-		spin_lock(&open_stp->st_stateowner->so_client->cl_lock);
++		unhash_lock_stateid(stp);
++		put_generic_stateid_locked(stp, reaplist);
+ 	}
+ }
+ 
+-static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
++static void unhash_open_stateid(struct nfs4_ol_stateid *stp,
++				struct list_head *reaplist)
+ {
+ 	lockdep_assert_held(&stp->st_stid.sc_client->cl_lock);
+ 
+ 	unhash_generic_stateid(stp);
+-	release_open_stateid_locks(stp);
++	release_open_stateid_locks(stp, reaplist);
+ }
+ 
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+@@ -1073,7 +1072,7 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ 	LIST_HEAD(reaplist);
+ 
+ 	spin_lock(&stp->st_stid.sc_client->cl_lock);
+-	unhash_open_stateid(stp);
++	unhash_open_stateid(stp, &reaplist);
+ 	put_generic_stateid_locked(stp, &reaplist);
+ 	spin_unlock(&stp->st_stid.sc_client->cl_lock);
+ 	free_ol_stateid_reaplist(&reaplist);
+@@ -1113,7 +1112,7 @@ static void release_openowner(struct nfs4_openowner *oo)
+ 	while (!list_empty(&oo->oo_owner.so_stateids)) {
+ 		stp = list_first_entry(&oo->oo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		unhash_open_stateid(stp);
++		unhash_open_stateid(stp, &reaplist);
+ 		put_generic_stateid_locked(stp, &reaplist);
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+@@ -4693,16 +4692,21 @@ out:
+ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ {
+ 	struct nfs4_client *clp = s->st_stid.sc_client;
++	LIST_HEAD(reaplist);
+ 
+ 	s->st_stid.sc_type = NFS4_CLOSED_STID;
+ 	spin_lock(&clp->cl_lock);
+-	unhash_open_stateid(s);
+-	spin_unlock(&clp->cl_lock);
++	unhash_open_stateid(s, &reaplist);
+ 
+-	if (clp->cl_minorversion)
+-		put_generic_stateid(s);
+-	else
++	if (clp->cl_minorversion) {
++		put_generic_stateid_locked(s, &reaplist);
++		spin_unlock(&clp->cl_lock);
++		free_ol_stateid_reaplist(&reaplist);
++	} else {
++		spin_unlock(&clp->cl_lock);
++		free_ol_stateid_reaplist(&reaplist);
+ 		move_to_close_lru(s, clp->net);
++	}
+ }
+ 
+ /*
+-- 
+1.9.3
 
