@@ -1,32 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.19]:55367 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755186AbaGSJ1w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 19 Jul 2014 05:27:52 -0400
-Message-ID: <53CA3A0E.4040400@gmx.de>
-Date: Sat, 19 Jul 2014 11:27:42 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-MIME-Version: 1.0
-To: Kinglong Mee <kinglongmee@gmail.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: fuzz tested user mode linux crashed in NFS code path
-References: <53C10EAA.2000802@gmx.de>	<53C12A93.3040803@gmail.com>	<20140716185724.GC2397@fieldses.org>	<20140717202721.GG30442@fieldses.org>	<53C949DC.5060008@gmx.de>	<53C9505D.80601@gmx.de> <CAB6yy37-_aC83yS5JaaAbX4-qKWko-pjqSRaipZ3reVnMD=aAg@mail.gmail.com>
-In-Reply-To: <CAB6yy37-_aC83yS5JaaAbX4-qKWko-pjqSRaipZ3reVnMD=aAg@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:37078 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755376AbaGHSGB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:01 -0400
+Received: by mail-qa0-f53.google.com with SMTP id j15so5173037qaq.40
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:00 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 063/100] nfsd: Ensure struct nfs4_client is unhashed before we try to destroy it
+Date: Tue,  8 Jul 2014 14:03:51 -0400
+Message-Id: <1404842668-22521-64-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/19/2014 05:23 AM, Kinglong Mee wrote:
-> Lock file success, nfsd will copy stateid to the union, but the value
-> also influence denied.
-> If on x86_64 platform, only influence the len in xdr_netobj,
-> but on i686 platform, will influence the len and the data in xdr_netobj.
-> So, the problem only appears on i686 platform.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-OT, but wouldn't this be a good example for the coverity people to check for it too ?
+When we remove the client_mutex protection, we will need to ensure
+that it can't be found by other threads while we're destroying it.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 43 +++++++++++++++++++++++++++++++++----------
+ 1 file changed, 33 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 58448637dd44..5770ac55dcea 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1560,12 +1560,23 @@ free_client(struct nfs4_client *clp)
+ }
+ 
+ /* must be called under the client_lock */
+-static inline void
++static void
+ unhash_client_locked(struct nfs4_client *clp)
+ {
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct nfsd4_session *ses;
+ 
+-	list_del(&clp->cl_lru);
++	/* Mark the client as expired! */
++	clp->cl_time = 0;
++	/* Make it invisible */
++	if (!list_empty(&clp->cl_idhash)) {
++		list_del_init(&clp->cl_idhash);
++		if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
++			rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
++		else
++			rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
++	}
++	list_del_init(&clp->cl_lru);
+ 	spin_lock(&clp->cl_lock);
+ 	list_for_each_entry(ses, &clp->cl_sessions, se_perclnt)
+ 		list_del_init(&ses->se_hash);
+@@ -1573,7 +1584,17 @@ unhash_client_locked(struct nfs4_client *clp)
+ }
+ 
+ static void
+-destroy_client(struct nfs4_client *clp)
++unhash_client(struct nfs4_client *clp)
++{
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	unhash_client_locked(clp);
++	spin_unlock(&nn->client_lock);
++}
++
++static void
++__destroy_client(struct nfs4_client *clp)
+ {
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
+@@ -1608,22 +1629,24 @@ destroy_client(struct nfs4_client *clp)
+ 	nfsd4_shutdown_callback(clp);
+ 	if (clp->cl_cb_conn.cb_xprt)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+-	list_del(&clp->cl_idhash);
+-	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
+-		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
+-	else
+-		rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
+ 	spin_lock(&nn->client_lock);
+-	unhash_client_locked(clp);
+ 	WARN_ON_ONCE(atomic_read(&clp->cl_refcount));
+ 	free_client(clp);
+ 	spin_unlock(&nn->client_lock);
+ }
+ 
++static void
++destroy_client(struct nfs4_client *clp)
++{
++	unhash_client(clp);
++	__destroy_client(clp);
++}
++
+ static void expire_client(struct nfs4_client *clp)
+ {
++	unhash_client(clp);
+ 	nfsd4_client_record_remove(clp);
+-	destroy_client(clp);
++	__destroy_client(clp);
+ }
+ 
+ static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
 -- 
-Toralf
+1.9.3
 
