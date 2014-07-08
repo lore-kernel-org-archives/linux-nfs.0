@@ -1,278 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37610 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751708AbaGUVFi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jul 2014 17:05:38 -0400
-Date: Mon, 21 Jul 2014 17:05:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 01/10] nfsd: Protect the nfs4_file delegation fields
- using the fi_lock
-Message-ID: <20140721210531.GJ8438@fieldses.org>
-References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
- <1405696416-32585-2-git-send-email-jlayton@primarydata.com>
- <20140718162825.GA8811@fieldses.org>
- <20140718133140.6a26ea4d@f20.localdomain>
- <20140718174957.GA12801@fieldses.org>
- <20140718150404.3d1e094c@tlielax.poochiereds.net>
- <20140718192149.GC12801@fieldses.org>
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:54142 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751170AbaGHDX4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 23:23:56 -0400
+Received: by mail-pa0-f52.google.com with SMTP id eu11so6517057pac.39
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 20:23:56 -0700 (PDT)
+Message-ID: <53BB6445.3060508@gmail.com>
+Date: Tue, 08 Jul 2014 11:23:49 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140718192149.GC12801@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        NeilBrown <neilb@suse.de>, jlayton@redhat.com
+Subject: Re: [PATCH 2/4] NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"
+References: <53BAAAC5.9000106@gmail.com> <20140707132633.5eb59753@tlielax.poochiereds.net>
+In-Reply-To: <20140707132633.5eb59753@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 18, 2014 at 03:21:49PM -0400, J. Bruce Fields wrote:
-> On Fri, Jul 18, 2014 at 03:04:04PM -0400, Jeff Layton wrote:
-> > On Fri, 18 Jul 2014 13:49:57 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Fri, Jul 18, 2014 at 01:31:40PM -0400, Jeff Layton wrote:
-> > > > On Fri, 18 Jul 2014 12:28:25 -0400
-> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > 
-> > > > > On Fri, Jul 18, 2014 at 11:13:27AM -0400, Jeff Layton wrote:
-> > > > > > Move more of the delegation fields to be protected by the fi_lock. It's
-> > > > > > more granular than the state_lock and in later patches we'll want to
-> > > > > > be able to rely on it in addition to the state_lock.
-> > > > > > 
-> > > > > > Also, the current code in nfs4_setlease calls vfs_setlease and uses the
-> > > > > > client_mutex to ensure that it doesn't disappear before we can hash the
-> > > > > > delegation. With the client_mutex gone, we'll have a potential race
-> > > > > > condition.
-> > > > > > 
-> > > > > > It's possible that the delegation could be recalled after we acquire the
-> > > > > > lease but before we ever get around to hashing it. If that happens, then
-> > > > > > we'd have a nfs4_file that *thinks* it has a delegation, when it
-> > > > > > actually has none.
-> > > > > 
-> > > > > I understand now, thanks: so the lease break code walks the list of
-> > > > > delegations associated with the file, finds none, and issues no recall,
-> > > > > but the open code continues merrily on and returns a delegation, with
-> > > > > the result that we return the client a delegation that will never be
-> > > > > recalled.
-> > > > > 
-> > > > > That could be worded more carefully, and would be worth a separate patch
-> > > > > (since the bug predates the new locking).
-> > > > > 
-> > > > 
-> > > > Yes, that's basically correct. I'd have to think about how to fix that
-> > > > with the current code. It's probably doable if you think it's
-> > > > worthwhile, but I'll need to rebase this set on top of it.
-> > > 
-> > > Well, I was wondering if this patch could just be split in two, no need
-> > > to backport further than that.
-> > > 
-> > 
-> > Erm, now that I've looked, I don't think it'll be that easy. The key
-> > here is to ensure that fi_had_conflict is set while holding the
-> > fi_lock. The trick here is that we need to take it in nfs4_setlease as
-> > well, and check the flag before hashing the delegation without dropping
-> > the fi_lock.
+On 7/8/2014 01:26, Jeff Layton wrote:
+> On Mon, 07 Jul 2014 22:12:21 +0800
+> Kinglong Mee <kinglongmee@gmail.com> wrote:
 > 
-> OK, I'll live.  For the sake of anyone that actually runs across that
-> bug I'll update the summary and changelog to emphasize the bugfix over
-> the locking change.
+>> Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
+>> fl_lmops field in file_lock for checking nfsd4 lockowner.
+>>
+>> But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return of conflicting locks) causes the fl_lmops of conflock for nfsd4_lock always be NULL.
+>>
+>> Also, commit 0996905f93 (lockd: posix_test_lock() should not call locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt always be NULL too.
+>>
+>> So that, using fl_lmops cannot checking nfsd4 lockowner for it always be NULL.
+>>
+>> This patch save the strhashval in nfs4_lockowner for searching lockownerlike before.
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfsd/nfs4state.c | 35 +++++++++++++++++++++++------------
+>>  fs/nfsd/state.h     |  1 +
+>>  2 files changed, 24 insertions(+), 12 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 9b9474c..1b5afc1 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -4282,18 +4282,30 @@ nfs4_transform_lock_offset(struct file_lock *lock)
+>>  		lock->fl_end = OFFSET_MAX;
+>>  }
+>>  
+>> -/* Hack!: For now, we're defining this just so we can use a pointer to it
+>> - * as a unique cookie to identify our (NFSv4's) posix locks. */
+>> -static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+>> -};
+>> +static bool
+>> +nfs4_verify_lock_stateowner(struct nfs4_lockowner *lo, struct nfsd_net *nn)
+>> +{
+>> +	struct nfs4_stateowner *local = NULL;
+>> +	unsigned hashval = lo->lo_hashval;
+>> +
+>> +	if (hashval >= OWNER_HASH_SIZE)
+>> +		return false;
+>> +
+>> +	list_for_each_entry(local, &nn->ownerstr_hashtbl[hashval], so_strhash) {
+>> +		if (local == &lo->lo_owner)
+>> +			return true;
+>> +	}
+>> +
+>> +	return false;
+>> +}
+>>  
+>>  static inline void
+>> -nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
+>> +nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny,
+>> +			struct nfsd_net *nn)
+>>  {
+>> -	struct nfs4_lockowner *lo;
+>> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
+>>  
+>> -	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
+>> -		lo = (struct nfs4_lockowner *) fl->fl_owner;
+>> +	if (nfs4_verify_lock_stateowner(lo, nn)) {
+>>  		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
+>>  					lo->lo_owner.so_owner.len, GFP_KERNEL);
+>>  		if (!deny->ld_owner.data)
+>> @@ -4350,6 +4362,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+>>  	if (!lo)
+>>  		return NULL;
+>>  	INIT_LIST_HEAD(&lo->lo_owner.so_stateids);
+>> +	lo->lo_hashval = strhashval;
+>>  	lo->lo_owner.so_is_open_owner = 0;
+>>  	/* It is the openowner seqid that will be incremented in encode in the
+>>  	 * case of new lockowners; so increment the lock seqid manually: */
+>> @@ -4564,7 +4577,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>  	file_lock->fl_pid = current->tgid;
+>>  	file_lock->fl_file = filp;
+>>  	file_lock->fl_flags = FL_POSIX;
+>> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
+>>  	file_lock->fl_start = lock->lk_offset;
+>>  	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
+>>  	nfs4_transform_lock_offset(file_lock);
+>> @@ -4587,7 +4599,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>  	case (EAGAIN):		/* conflock holds conflicting lock */
+>>  		status = nfserr_denied;
+>>  		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
+>> -		nfs4_set_lock_denied(conflock, &lock->lk_denied);
+>> +		nfs4_set_lock_denied(conflock, &lock->lk_denied, nn);
+>>  		break;
+>>  	case (EDEADLK):
+>>  		status = nfserr_deadlock;
+>> @@ -4695,7 +4707,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>  
+>>  	if (file_lock->fl_type != F_UNLCK) {
+>>  		status = nfserr_denied;
+>> -		nfs4_set_lock_denied(file_lock, &lockt->lt_denied);
+>> +		nfs4_set_lock_denied(file_lock, &lockt->lt_denied, nn);
+>>  	}
+>>  out:
+>>  	nfs4_unlock_state();
+>> @@ -4746,7 +4758,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>  	file_lock->fl_pid = current->tgid;
+>>  	file_lock->fl_file = filp;
+>>  	file_lock->fl_flags = FL_POSIX;
+>> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
+>>  	file_lock->fl_start = locku->lu_offset;
+>>  
+>>  	file_lock->fl_end = last_byte_offset(locku->lu_offset,
+>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+>> index 1848fed..9ecae58 100644
+>> --- a/fs/nfsd/state.h
+>> +++ b/fs/nfsd/state.h
+>> @@ -362,6 +362,7 @@ struct nfs4_openowner {
+>>  
+>>  struct nfs4_lockowner {
+>>  	struct nfs4_stateowner	lo_owner; /* must be first element */
+>> +	unsigned int		lo_hashval;
+> 
+> Actually, I have another comment here too. I'm not sure there's a lot
+> of value in tracking the lo_hashval here. Why not just recompute it in
+> nfs4_verify_lock_stateowner?
 
-So, intending to apply as follows.
+No, ownerstr_hashval() needs a client which holds the conflicting lock,
+in nfsd4_lock/nfsd4_lockt cannot know the client from vfs_lock_file()
+ or vfs_test_lock().
 
---b.
+> 
+> You'd need to pass down a pointer to the nfs4_client in order to do so,
+> but you could do that instead of passing down 'nn' and then just call
+> net_generic on clp->net where you needed it.
 
-commit 417c6629b2d81d5a18d29c4bbb6a9a4c64282a36
-Author: Jeff Layton <jlayton@primarydata.com>
-Date:   Mon Jul 21 09:34:57 2014 -0400
+I find patch "[PATCH v3 069/114] nfsd: Move the open owner hash table into struct nfs4_client"
+have remove the client argument from ownerstr_hashval().
 
-    nfsd: fix race that grants unrecallable delegation
-    
-    If nfs4_setlease succesfully acquires a new delegation, then another
-    task breaks the delegation before we reach hash_delegation_locked, then
-    the breaking task will see an empty fi_delegations list and do nothing.
-    The client will receive an open reply incorrectly granting a delegation
-    and will never receive a recall.
-    
-    Move more of the delegation fields to be protected by the fi_lock. It's
-    more granular than the state_lock and in later patches we'll want to
-    be able to rely on it in addition to the state_lock.
-    
-    Attempt to acquire a delegation. If that succeeds, take the spinlocks
-    and then check to see if the file has had a conflict show up since then.
-    If it has, then we assume that the lease is no longer valid and that
-    we shouldn't hand out a delegation.
-    
-    There's also one more potential (but very unlikely) problem. If the
-    lease is broken before the delegation is hashed, then it could leak.
-    In the event that the fi_delegations list is empty, reset the
-    fl_break_time to jiffies so that it's cleaned up ASAP by
-    the normal lease handling code.
-    
-    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-    Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-    Reviewed-by: Christoph Hellwig <hch@lst.de>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+So, the lo_hashval isn't needed after that patch.
+After Bruce merging that patch, I will resend a new patch recomputing
+the hash value instead recording in lo_hashval.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 10cdb67..cc477dd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -624,6 +624,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
- 
- static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- {
-+	lockdep_assert_held(&state_lock);
-+
- 	if (!fp->fi_lease)
- 		return;
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
-@@ -643,11 +645,10 @@ static void
- hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
- 	lockdep_assert_held(&state_lock);
-+	lockdep_assert_held(&fp->fi_lock);
- 
- 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
--	spin_lock(&fp->fi_lock);
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
--	spin_unlock(&fp->fi_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- }
- 
-@@ -659,17 +660,18 @@ unhash_delegation(struct nfs4_delegation *dp)
- 
- 	spin_lock(&state_lock);
- 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-+	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
- 	list_del_init(&dp->dl_recall_lru);
--	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
--	spin_unlock(&state_lock);
- 	if (fp) {
- 		nfs4_put_deleg_lease(fp);
--		put_nfs4_file(fp);
- 		dp->dl_file = NULL;
- 	}
-+	spin_unlock(&state_lock);
-+	if (fp)
-+		put_nfs4_file(fp);
- }
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-@@ -3141,10 +3143,19 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
- 	 */
- 	fl->fl_break_time = 0;
- 
--	fp->fi_had_conflict = true;
- 	spin_lock(&fp->fi_lock);
--	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
--		nfsd_break_one_deleg(dp);
-+	fp->fi_had_conflict = true;
-+	/*
-+	 * If there are no delegations on the list, then we can't count on this
-+	 * lease ever being cleaned up. Set the fl_break_time to jiffies so that
-+	 * time_out_leases will do it ASAP. The fact that fi_had_conflict is now
-+	 * true should keep any new delegations from being hashed.
-+	 */
-+	if (list_empty(&fp->fi_delegations))
-+		fl->fl_break_time = jiffies;
-+	else
-+		list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
-+			nfsd_break_one_deleg(dp);
- 	spin_unlock(&fp->fi_lock);
- }
- 
-@@ -3491,46 +3502,77 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- {
- 	struct nfs4_file *fp = dp->dl_file;
- 	struct file_lock *fl;
--	int status;
-+	struct file *filp;
-+	int status = 0;
- 
- 	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
- 	if (!fl)
- 		return -ENOMEM;
--	fl->fl_file = find_readable_file(fp);
--	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
--	if (status)
--		goto out_free;
-+	filp = find_readable_file(fp);
-+	if (!filp) {
-+		/* We should always have a readable file here */
-+		WARN_ON_ONCE(1);
-+		return -EBADF;
-+	}
-+	fl->fl_file = filp;
-+	status = vfs_setlease(filp, fl->fl_type, &fl);
-+	if (status) {
-+		locks_free_lock(fl);
-+		goto out_fput;
-+	}
-+	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
-+	/* Did the lease get broken before we took the lock? */
-+	status = -EAGAIN;
-+	if (fp->fi_had_conflict)
-+		goto out_unlock;
-+	/* Race breaker */
-+	if (fp->fi_lease) {
-+		status = 0;
-+		atomic_inc(&fp->fi_delegees);
-+		hash_delegation_locked(dp, fp);
-+		goto out_unlock;
-+	}
- 	fp->fi_lease = fl;
--	fp->fi_deleg_file = fl->fl_file;
-+	fp->fi_deleg_file = filp;
- 	atomic_set(&fp->fi_delegees, 1);
--	spin_lock(&state_lock);
- 	hash_delegation_locked(dp, fp);
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
--out_free:
--	if (fl->fl_file)
--		fput(fl->fl_file);
--	locks_free_lock(fl);
-+out_unlock:
-+	spin_unlock(&fp->fi_lock);
-+	spin_unlock(&state_lock);
-+out_fput:
-+	fput(filp);
- 	return status;
- }
- 
- static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
-+	int status = 0;
-+
- 	if (fp->fi_had_conflict)
- 		return -EAGAIN;
- 	get_nfs4_file(fp);
-+	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
- 	dp->dl_file = fp;
--	if (!fp->fi_lease)
-+	if (!fp->fi_lease) {
-+		spin_unlock(&fp->fi_lock);
-+		spin_unlock(&state_lock);
- 		return nfs4_setlease(dp);
--	spin_lock(&state_lock);
-+	}
- 	atomic_inc(&fp->fi_delegees);
- 	if (fp->fi_had_conflict) {
--		spin_unlock(&state_lock);
--		return -EAGAIN;
-+		status = -EAGAIN;
-+		goto out_unlock;
- 	}
- 	hash_delegation_locked(dp, fp);
-+out_unlock:
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
--	return 0;
-+	return status;
- }
- 
- static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
+thanks,
+Kinglong Mee
