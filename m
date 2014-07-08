@@ -1,35 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53158 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753177AbaGMLAt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 07:00:49 -0400
-Date: Sun, 13 Jul 2014 04:00:47 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-qg0-f45.google.com ([209.85.192.45]:52814 "EHLO
+	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754460AbaGHSFQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:16 -0400
+Received: by mail-qg0-f45.google.com with SMTP id a108so5326421qge.32
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:15 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: nfsd4_locku / nfs4_free_lock_stateid question
-Message-ID: <20140713110047.GA28727@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Subject: [PATCH v4 029/100] nfsd: do filp_close in sc_free callback for lock stateids
+Date: Tue,  8 Jul 2014 14:03:17 -0400
+Message-Id: <1404842668-22521-30-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff,
+Releasing locks when we unhash the stateid instead of doing so only when
+the stateid is actually released is problematic and will complicate some
+later changes.
 
-while reviewing some of your patches I've started wondering about
-some v4 locking code.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
 
-In nfsd4_locku we're doing a call to find_any_file to grab a file
-structure for the lock stateid, which nfs4_free_lock_stateid tries to
-close. But what guarantees that we're actually getting the same file
-descriptor back?
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 947cd157ee82..e3ca5bcd1c3f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -914,6 +914,18 @@ static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
+ 	nfs4_free_stid(stateid_slab, stid);
+ }
+ 
++static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
++{
++	struct nfs4_ol_stateid *stp = openlockstateid(stid);
++	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
++	struct file *file;
++
++	file = find_any_file(stp->st_stid.sc_file);
++	if (file)
++		filp_close(file, (fl_owner_t)lo);
++	nfs4_free_generic_stateid(stid);
++}
++
+ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	nfs4_put_stid(&stp->st_stid);
+@@ -921,14 +933,9 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ 
+ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+-	struct file *file;
+-
+ 	list_del(&stp->st_locks);
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
+-	file = find_any_file(stp->st_stid.sc_file);
+-	if (file)
+-		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
+ 	put_generic_stateid(stp);
+ }
+ 
+@@ -4687,6 +4694,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
++	stp->st_stid.sc_free = nfs4_free_lock_stateid;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
+-- 
+1.9.3
 
-The nfs4_file is shared by and stateid that access a given inode,
-so the first call to find_any_file might return the read/only file
-structure because that's the only one available so far, while
-by the time we unlock we might have a read/write and/or write-only file
-available as well, which find_any_file will return.
-
-It seems like the lock stateid needs a pointer to the actual file
-locked, and keep a reference to it independent of the nfs4_file, or am I
-missing something?
