@@ -1,171 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:42103 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755337AbaGHSGG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:06 -0400
-Received: by mail-qa0-f45.google.com with SMTP id s7so1182941qap.18
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:05 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 067/100] nfsd: Protect unconfirmed client creation using client_lock
-Date: Tue,  8 Jul 2014 14:03:55 -0400
-Message-Id: <1404842668-22521-68-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:49387 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751190AbaGHOr6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Jul 2014 10:47:58 -0400
+Date: Tue, 8 Jul 2014 10:47:57 -0400
+To: Cedric Blancher <cedric.blancher@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4 delegations criteria? Fwd: Tuning Linux NFSv4 for high
+ latency connections?
+Message-ID: <20140708144757.GA23212@fieldses.org>
+References: <CALXu0UeS=8tCj13a6O=W8wVr8Ke+CLpd6fUNqB35dYB2kj4hmw@mail.gmail.com>
+ <CALXu0Uf9XOoZk8LQPcktWr=i6SAe903O0eLQYiLTFNWx=vxY=g@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CALXu0Uf9XOoZk8LQPcktWr=i6SAe903O0eLQYiLTFNWx=vxY=g@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Mon, Jul 07, 2014 at 06:24:41PM +0200, Cedric Blancher wrote:
+> Anyone?
+> 
+> Ced
+> 
+> On 23 April 2014 23:03, Cedric Blancher <cedric.blancher@gmail.com> wrote:
+> > What are the criteria for grating a file delegation in NFSv4?
 
-...instead of relying on the client_mutex.
+They're generally implementation-specific.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 33 ++++++++++++++++++++++-----------
- 1 file changed, 22 insertions(+), 11 deletions(-)
+> > Are file
+> > delegations retained even if a process closes a file and the next
+> > process in the chain opens it again (e.g. in a shell script)?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9e18276877d7..f27e714bd6b6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1895,7 +1895,7 @@ add_to_unconfirmed(struct nfs4_client *clp)
- 	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
- 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
- 	list_add(&clp->cl_idhash, &nn->unconf_id_hashtbl[idhashval]);
--	renew_client(clp);
-+	renew_client_locked(clp);
- }
- 
- static void
-@@ -1909,7 +1909,7 @@ move_to_confirmed(struct nfs4_client *clp)
- 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
- 	add_clp_to_name_tree(clp, &nn->conf_name_tree);
- 	set_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
--	renew_client(clp);
-+	renew_client_locked(clp);
- }
- 
- static struct nfs4_client *
-@@ -1922,7 +1922,7 @@ find_client_in_id_table(struct list_head *tbl, clientid_t *clid, bool sessions)
- 		if (same_clid(&clp->cl_clientid, clid)) {
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
--			renew_client(clp);
-+			renew_client_locked(clp);
- 			return clp;
- 		}
- 	}
-@@ -2124,7 +2124,8 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 		  struct nfsd4_compound_state *cstate,
- 		  struct nfsd4_exchange_id *exid)
- {
--	struct nfs4_client *unconf, *conf, *new;
-+	struct nfs4_client *conf, *new;
-+	struct nfs4_client *unconf = NULL;
- 	__be32 status;
- 	char			addr_str[INET6_ADDRSTRLEN];
- 	nfs4_verifier		verf = exid->verifier;
-@@ -2159,6 +2160,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 
- 	/* Cases below refer to rfc 5661 section 18.35.4: */
- 	nfs4_lock_state();
-+	spin_lock(&nn->client_lock);
- 	conf = find_confirmed_client_by_name(&exid->clname, nn);
- 	if (conf) {
- 		bool creds_match = same_creds(&conf->cl_cred, &rqstp->rq_cred);
-@@ -2190,7 +2192,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 				status = nfserr_clid_inuse;
- 				goto out;
- 			}
--			expire_client(conf);
- 			goto out_new;
- 		}
- 		if (verfs_match) { /* case 2 */
-@@ -2198,6 +2199,7 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 			goto out_copy;
- 		}
- 		/* case 5, client reboot */
-+		conf = NULL;
- 		goto out_new;
- 	}
- 
-@@ -2208,17 +2210,18 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 
- 	unconf  = find_unconfirmed_client_by_name(&exid->clname, nn);
- 	if (unconf) /* case 4, possible retry or client restart */
--		expire_client(unconf);
-+		unhash_client_locked(unconf);
- 
- 	/* case 1 (normal case) */
- out_new:
-+	if (conf)
-+		unhash_client_locked(conf);
- 	new->cl_minorversion = cstate->minorversion;
- 	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
- 
- 	gen_clid(new, nn);
- 	add_to_unconfirmed(new);
--	conf = new;
--	new = NULL;
-+	swap(new, conf);
- out_copy:
- 	exid->clientid.cl_boot = conf->cl_clientid.cl_boot;
- 	exid->clientid.cl_id = conf->cl_clientid.cl_id;
-@@ -2231,9 +2234,12 @@ out_copy:
- 	status = nfs_ok;
- 
- out:
-+	spin_unlock(&nn->client_lock);
- 	nfs4_unlock_state();
- 	if (new)
--		free_client(new);
-+		expire_client(new);
-+	if (unconf)
-+		expire_client(unconf);
- 	return status;
- }
- 
-@@ -2872,7 +2878,8 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	struct xdr_netobj 	clname = setclid->se_name;
- 	nfs4_verifier		clverifier = setclid->se_verf;
--	struct nfs4_client	*conf, *unconf, *new;
-+	struct nfs4_client	*conf, *new;
-+	struct nfs4_client	*unconf = NULL;
- 	__be32 			status;
- 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
-@@ -2881,6 +2888,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_jukebox;
- 	/* Cases below refer to rfc 3530 section 14.2.33: */
- 	nfs4_lock_state();
-+	spin_lock(&nn->client_lock);
- 	conf = find_confirmed_client_by_name(&clname, nn);
- 	if (conf) {
- 		/* case 0: */
-@@ -2898,7 +2906,7 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 	unconf = find_unconfirmed_client_by_name(&clname, nn);
- 	if (unconf)
--		expire_client(unconf);
-+		unhash_client_locked(unconf);
- 	if (conf && same_verf(&conf->cl_verifier, &clverifier))
- 		/* case 1: probable callback update */
- 		copy_clid(new, conf);
-@@ -2913,9 +2921,12 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	new = NULL;
- 	status = nfs_ok;
- out:
-+	spin_unlock(&nn->client_lock);
- 	nfs4_unlock_state();
- 	if (new)
- 		free_client(new);
-+	if (unconf)
-+		expire_client(unconf);
- 	return status;
- }
- 
--- 
-1.9.3
+Yes, they can be.
 
+> >
+> > Ced
+> >
+> > PS: Who again grants NFSv4 delegations? Server or client?
+
+The server.
+
+> > Do
+> > delegations work when data are appended at the end of a file?
+
+The holder of a write delegation can append, yes.
+
+The rfc's (3530 and 5661) have some more details.
+
+I suspect the Solaris server supports write delegations.  The Linux
+server doesn't.
+
+Hard to tell the reason for the performance difference you describe,
+though, you'd probably need to gather some statistics.
+
+--b.
+
+> >
+> > ---------- Forwarded message ----------
+> > From: Cedric Blancher <cedric.blancher@gmail.com>
+> > Date: 23 April 2014 20:01
+> > Subject: Tuning Linux NFSv4 for high latency connections?
+> > To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+> >
+> >
+> > Are there any options to improve the Linux NFSv4 performance over a
+> > high latency connection?
+> >
+> > We currently use Solaris/Illumos as NFSv4 server and client over a
+> > cross continental Internet connection. Latency is terrible (~220ms)
+> > but the counter this by running work in parallel so the latency is
+> > mostly mitigated.
+> >
+> > We now wish to migrate (short: Away from Oracle because support is
+> > basically unbearable) to Linux (tested SuSE 13.1 and current Fedora)
+> > and build times are 17 times (!!!) SLOWER than on Solaris/Illumos.
+> >
+> > Are there any tunables besides actimeo=300?
+> >
+> > Ced
+> > --
+> > Cedric Blancher <cedric.blancher@gmail.com>
+> > Institute Pasteur
+> >
+> >
+> > --
+> > Cedric Blancher <cedric.blancher@gmail.com>
+> > Institute Pasteur
+> 
+> 
+> 
+> -- 
+> Cedric Blancher <cedric.blancher@gmail.com>
+> Institute Pasteur
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
