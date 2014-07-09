@@ -1,34 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:55205 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753037AbaGKHq6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 03:46:58 -0400
-Date: Fri, 11 Jul 2014 00:46:56 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@primarydata.com>, hch@infradead.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/11] nfsd: deny mode handling overhaul
-Message-ID: <20140711074656.GA17661@infradead.org>
-References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
- <20140710201448.GF26561@fieldses.org>
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:40633 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755765AbaGIQ6s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:58:48 -0400
+Subject: [PATCH v2 16/21] xprtrdma: Rename frmr_wr
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 09 Jul 2014 12:58:46 -0400
+Message-ID: <20140709165846.3496.13596.stgit@manet.1015granger.net>
+In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140710201448.GF26561@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 10, 2014 at 04:14:48PM -0400, J. Bruce Fields wrote:
-> On Thu, Jul 10, 2014 at 02:07:24PM -0400, Jeff Layton wrote:
-> > Here is the deny mode handling overhaul broken out into a separate
-> > series, as requested by Christoph. I've tried to address most of
-> > his review comments, but I may have missed some. Let me know if
-> > if I did.
-> 
-> They look fine to me; I'll merge them soon absent any objections from
-> Christoph.
+Clean up: Name frmr_wr after the opcode of the Work Request,
+consistent with the send and local invalidation paths.
 
-The whole series looks good, although I've not tested it yet, just the
-original full series.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |   26 +++++++++++++-------------
+ 1 file changed, 13 insertions(+), 13 deletions(-)
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 8eef343..d0a893d 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1701,7 +1701,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	struct rpcrdma_mr_seg *seg1 = seg;
+ 	struct rpcrdma_mw *mw = seg1->mr_chunk.rl_mw;
+ 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
+-	struct ib_send_wr frmr_wr, *bad_wr;
++	struct ib_send_wr fastreg_wr, *bad_wr;
+ 	int len, pageoff;
+ 	int i, rc;
+ 	int seg_len;
+@@ -1734,26 +1734,26 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 
+ 	frmr->fr_state = FRMR_IS_VALID;
+ 
+-	memset(&frmr_wr, 0, sizeof frmr_wr);
+-	frmr_wr.wr_id = (unsigned long)(void *)mw;
+-	frmr_wr.opcode = IB_WR_FAST_REG_MR;
+-	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
+-	frmr_wr.wr.fast_reg.page_list = frmr->fr_pgl;
+-	frmr_wr.wr.fast_reg.page_list_len = page_no;
+-	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
+-	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
+-	if (frmr_wr.wr.fast_reg.length < len) {
++	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
++	fastreg_wr.wr_id = (unsigned long)(void *)mw;
++	fastreg_wr.opcode = IB_WR_FAST_REG_MR;
++	fastreg_wr.wr.fast_reg.iova_start = seg1->mr_dma;
++	fastreg_wr.wr.fast_reg.page_list = frmr->fr_pgl;
++	fastreg_wr.wr.fast_reg.page_list_len = page_no;
++	fastreg_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
++	fastreg_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
++	if (fastreg_wr.wr.fast_reg.length < len) {
+ 		rc = -EIO;
+ 		goto out_err;
+ 	}
+-	frmr_wr.wr.fast_reg.access_flags = (writing ?
++	fastreg_wr.wr.fast_reg.access_flags = (writing ?
+ 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+ 				IB_ACCESS_REMOTE_READ);
+ 	rpcrdma_increment_frmr_rkey(mw);
+-	frmr_wr.wr.fast_reg.rkey = frmr->fr_mr->rkey;
++	fastreg_wr.wr.fast_reg.rkey = frmr->fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
+-	rc = ib_post_send(ia->ri_id->qp, &frmr_wr, &bad_wr);
++	rc = ib_post_send(ia->ri_id->qp, &fastreg_wr, &bad_wr);
+ 	if (rc) {
+ 		dprintk("RPC:       %s: failed ib_post_send for register,"
+ 			" status %i\n", __func__, rc);
+
