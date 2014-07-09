@@ -1,87 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elasmtp-masked.atl.sa.earthlink.net ([209.86.89.68]:45965 "EHLO
-	elasmtp-masked.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751371AbaGATKv convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Jul 2014 15:10:51 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Trond Myklebust'" <trond.myklebust@primarydata.com>
-Cc: "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
-References: <029301cf90c0$4fabe660$ef03b320$@mindspring.com>	<CAHQdGtSdQ3keA2UgiAbtWWUMvheWQ8oanpAt_evAY2DSkr+y+Q@mail.gmail.com>	<029c01cf90c4$ebae6b60$c30b4220$@mindspring.com> <CAHQdGtRxORG5kn-9D1Bp7WZ80yF6jGL_M8yT+0KeJ7x-jyVojg@mail.gmail.com>
-In-Reply-To: <CAHQdGtRxORG5kn-9D1Bp7WZ80yF6jGL_M8yT+0KeJ7x-jyVojg@mail.gmail.com>
-Subject: RE: Execute only permission issue with client
-Date: Tue, 1 Jul 2014 12:10:45 -0700
-Message-ID: <012801cf9560$29ede7d0$7dc9b770$@mindspring.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:57887 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751271AbaGIIVX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 04:21:23 -0400
+Date: Wed, 9 Jul 2014 01:21:21 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 003/114] nfsd: wait to initialize work struct just
+ prior to using it
+Message-ID: <20140709082121.GA30099@infradead.org>
+References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
+ <1404143423-24381-4-git-send-email-jlayton@primarydata.com>
+ <20140708211133.GA26851@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140708211133.GA26851@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ok, got another question related...
-
-I am running a test that does make the following system call:
-
-open("/mnt/foo", O_CREAT | O_TRUNC | O_RDWR, 0);
-
-This fails (at least when run from my Fedora 20 client, against either Ganesha OR knfsd).
-
-When I look at a wireshark trace, I see that the sequence of ops in the COMPOUND is:
-
-OPEN, ACCESS
-
-I would expect the ACCESS to fail since the created file has mode 000.
-
-Has this been resolved differently in a more recent kernel?
-
-Thanks
-
-Frank
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of Trond Myklebust
-> Sent: Wednesday, June 25, 2014 3:34 PM
-> To: Frank Filz
-> Cc: Linux NFS Mailing List
-> Subject: Re: Execute only permission issue with client
+On Tue, Jul 08, 2014 at 05:11:34PM -0400, J. Bruce Fields wrote:
+> BUG: unable to handle kernel NULL pointer dereference at 0000000000000008
+> IP: [<ffffffff810890b1>] process_one_work+0x31/0x500
+> PGD 0 
+> Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
+> Modules linked in: nfsd auth_rpcgss oid_registry nfs_acl lockd sunrpc
+> CPU: 2 PID: 30 Comm: kworker/u8:1 Not tainted 3.16.0-rc2-00023-g30c1d16 #3051
+> Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+> task: ffff88003d9cc810 ti: ffff88003d9d0000 task.ti: ffff88003d9d0000
+> RIP: 0010:[<ffffffff810890b1>]  [<ffffffff810890b1>] process_one_work+0x31/0x500
+> RSP: 0018:ffff88003d9d3d68  EFLAGS: 00010046
+> RAX: 0000000000000100 RBX: ffff88003d9caf80 RCX: dead000000200200
+> RDX: 0000000000000100 RSI: ffff880031429b38 RDI: ffff88003d9caf80
+> RBP: ffff88003d9d3dd8 R08: ffff88003dcb7800 R09: 0000000001c40000
+> R10: 0000000000000000 R11: 000000000006b5b0 R12: ffff88003dcb7800
+> R13: 0000000000000000 R14: ffff880031429b38 R15: ffff88003d9caf80
+> FS:  0000000000000000(0000) GS:ffff88003fb00000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> CR2: 0000000000000138 CR3: 0000000027744000 CR4: 00000000000006e0
+> Stack:
+>  000000003d9d3d88 ffff88003dcb7818 ffff88003d9cafb0 ffff88003dcb7800
+>  ffff88003dcb7800 ffff88003dcb7800 ffff88003dcb7800 ffff88003d9cafb0
+>  ffff88003d9d3dd8 ffff88003dcb7800 ffff88003dcb7848 ffff88003d9cafb0
+> Call Trace:
+>  [<ffffffff81089b9b>] worker_thread+0x11b/0x4f0
+>  [<ffffffff81089a80>] ? init_pwq+0x190/0x190
+>  [<ffffffff81090ac4>] kthread+0xe4/0x100
+>  [<ffffffff810909e0>] ? __init_kthread_worker+0x70/0x70
+>  [<ffffffff81a4ca2c>] ret_from_fork+0x7c/0xb0
+>  [<ffffffff810909e0>] ? __init_kthread_worker+0x70/0x70
+> Code: 48 89 e5 41 57 41 56 49 89 f6 41 55 45 31 ed 41 54 53 48 89 fb 48 83 ec 48 48 8b 06 4c 8b 67 48 48 89 c2 30 d2 a8 04 4c 0f 45 ea <49> 8b 45 08 48 c7 45 b8 00 00 00 00 48 c7 45 c0 00 00 00 00 8b 
+> RIP  [<ffffffff810890b1>] process_one_work+0x31/0x500
+>  RSP <ffff88003d9d3d68>
+> CR2: 0000000000000008
 > 
-> On Wed, Jun 25, 2014 at 6:29 PM, Frank Filz <ffilzlnx@mindspring.com>
-> wrote:
-> >> On Wed, Jun 25, 2014 at 5:56 PM, Frank Filz <ffilzlnx@mindspring.com>
-> >> wrote:
-> >> > Back a year ago or so, I ran the following test against Ganesha:
-> >> >
-> >> > http://www.tuxera.com/community/posix-test-suite/
-> >> >
-> >> > On NFS v4, one of the issues it tripped over was execute only files.
-> >> > Apparently the Linux v4 client doesn't make ACCESS calls in
-> >> > conjunction with an open system call, with the result that you can
-> >> > open an execute only file (per RFC 3530bis, the server is allowing
-> >> > such to allow clients to execute executables).
-> >>
-> >> That information is outdated. A wireshark dump should show that
-> >> recent Linux kernels include an ACCESS operation as part of the
-> >> open() COMPOUND and that it uses that information to distinguish
-> >> between executable and read access permissions.
-> >
-> > Oh, cool, do you know when that went in? I'll go look and see if I can find
-> it...
-> >
+> and I'm suspicious of this:
 > 
-> It should be a feature of Linux 3.7 (Dec 2012) and newer kernels.
+> > @@ -763,6 +764,8 @@ static void do_probe_callback(struct nfs4_client *clp)
+> >  
+> >  	cb->cb_ops = &nfsd4_cb_probe_ops;
+> >  
+> > +	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
+> > +
+> >  	run_nfsd4_cb(cb);
+> >  }
 > 
-> Cheers
->   Trond
+> This is called all over the place, possibly multiple times on the same
+> client, so we're calling INIT_WORK on something that may already be in
+> use--I doubt that's safe.
 > 
-> --
-> Trond Myklebust
-> 
-> Linux NFS client maintainer, PrimaryData
-> 
-> trond.myklebust@primarydata.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the
-> body of a message to majordomo@vger.kernel.org More majordomo info at
-> http://vger.kernel.org/majordomo-info.html
+> I'm backing out this patch for now.
+
+If that's the case all of do_probe_callback seems very fishy to me, as
+it scrambles all over the callback structure.  I guess we need to move
+more of it to an init function then, and have different init functions
+for the different callbacks.
 
