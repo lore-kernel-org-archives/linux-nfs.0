@@ -1,28 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.19]:54618 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755894AbaGRQuk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Jul 2014 12:50:40 -0400
-Message-ID: <53C9505D.80601@gmx.de>
-Date: Fri, 18 Jul 2014 18:50:37 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:34867 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756416AbaGIQ4l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:56:41 -0400
+Subject: [PATCH v2 01/21] xprtrdma: Fix panic in
+ rpcrdma_register_frmr_external()
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 09 Jul 2014 12:56:39 -0400
+Message-ID: <20140709165639.3496.6466.stgit@manet.1015granger.net>
+In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Kinglong Mee <kinglongmee@gmail.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: fuzz tested user mode linux crashed in NFS code path
-References: <53C10EAA.2000802@gmx.de> <53C12A93.3040803@gmail.com> <20140716185724.GC2397@fieldses.org> <20140717202721.GG30442@fieldses.org> <53C949DC.5060008@gmx.de>
-In-Reply-To: <53C949DC.5060008@gmx.de>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/18/2014 06:22 PM, Toralf Förster wrote:
-> I can now try with kzalloc, but due to the nature of this issue I think, that the absence of this crash - even after 2-3 hours - doesn't mean by 100%, that kzalloc fixed it, or ?
+seg1->mr_nsegs is not yet initialized when it is used to unmap
+segments during an error exit. Use the same unmapping logic for
+all error exits.
 
-Well, next crash (with kzalloc patch) happened after 20 minutes ...
+"if (frmr_wr.wr.fast_reg.length < len) {" used to be a BUG_ON check.
+The broken code will never be executed under normal operation.
 
+Fixes: c977dea (xprtrdma: Remove BUG_ON() call sites)
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |   12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
--- 
-Toralf
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 13dbd1c..78bd7c6 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1545,9 +1545,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
+ 	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
+ 	if (frmr_wr.wr.fast_reg.length < len) {
+-		while (seg1->mr_nsegs--)
+-			rpcrdma_unmap_one(ia, seg++);
+-		return -EIO;
++		rc = -EIO;
++		goto out_err;
+ 	}
+ 
+ 	/* Bump the key */
+@@ -1565,8 +1564,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	if (rc) {
+ 		dprintk("RPC:       %s: failed ib_post_send for register,"
+ 			" status %i\n", __func__, rc);
+-		while (i--)
+-			rpcrdma_unmap_one(ia, --seg);
++		goto out_err;
+ 	} else {
+ 		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 		seg1->mr_base = seg1->mr_dma + pageoff;
+@@ -1574,6 +1572,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 		seg1->mr_len = len;
+ 	}
+ 	*nsegs = i;
++	return 0;
++out_err:
++	while (i--)
++		rpcrdma_unmap_one(ia, --seg);
+ 	return rc;
+ }
+ 
 
