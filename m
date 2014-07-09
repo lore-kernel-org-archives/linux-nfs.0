@@ -1,57 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f172.google.com ([209.85.128.172]:33760 "EHLO
-	mail-ve0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754356AbaGAUNk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 16:13:40 -0400
-Received: by mail-ve0-f172.google.com with SMTP id jz11so10204937veb.17
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 13:13:39 -0700 (PDT)
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:59360 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754666AbaGIQ7Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:59:25 -0400
+Subject: [PATCH v2 20/21] xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION
+ macro
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 09 Jul 2014 12:59:23 -0400
+Message-ID: <20140709165923.3496.48126.stgit@manet.1015granger.net>
+In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <012801cf9560$29ede7d0$7dc9b770$@mindspring.com>
-References: <029301cf90c0$4fabe660$ef03b320$@mindspring.com>
-	<CAHQdGtSdQ3keA2UgiAbtWWUMvheWQ8oanpAt_evAY2DSkr+y+Q@mail.gmail.com>
-	<029c01cf90c4$ebae6b60$c30b4220$@mindspring.com>
-	<CAHQdGtRxORG5kn-9D1Bp7WZ80yF6jGL_M8yT+0KeJ7x-jyVojg@mail.gmail.com>
-	<012801cf9560$29ede7d0$7dc9b770$@mindspring.com>
-Date: Tue, 1 Jul 2014 16:13:39 -0400
-Message-ID: <CAHQdGtSMEGvsKt-k+LJM9w-PNu6dTOQABocX-u=10Uyj1tehwg@mail.gmail.com>
-Subject: Re: Execute only permission issue with client
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 1, 2014 at 3:10 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
-> Ok, got another question related...
->
-> I am running a test that does make the following system call:
->
-> open("/mnt/foo", O_CREAT | O_TRUNC | O_RDWR, 0);
->
-> This fails (at least when run from my Fedora 20 client, against either Ganesha OR knfsd).
+Clean up.
 
-The test fails, or the open() fails?
+RPCRDMA_PERSISTENT_REGISTRATION was a compile-time switch between
+RPCRDMA_REGISTER mode and RPCRDMA_ALLPHYSICAL mode.  Since
+RPCRDMA_REGISTER has been removed, there's no need for the extra
+conditional compilation.
 
-> When I look at a wireshark trace, I see that the sequence of ops in the COMPOUND is:
->
-> OPEN, ACCESS
->
-> I would expect the ACCESS to fail since the created file has mode 000.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ include/linux/sunrpc/xprtrdma.h |    2 --
+ net/sunrpc/xprtrdma/verbs.c     |   13 -------------
+ 2 files changed, 15 deletions(-)
 
-According to POSIX, the above open() system call should succeed if a
-file /mnt/foo already exists and that file's ACL/mode is compatible
-with the requested O_RDWR access pattern. The open() should also
-succeed if a file /mnt/foo does not exist, and your process has valid
-file create permissions for the directory /mnt (it will create a file
-/mnt/foo with the mode bits set to 0).
+diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
+index c2f04e1..64a0a0a 100644
+--- a/include/linux/sunrpc/xprtrdma.h
++++ b/include/linux/sunrpc/xprtrdma.h
+@@ -62,8 +62,6 @@
+ #define RPCRDMA_INLINE_PAD_THRESH  (512)/* payload threshold to pad (bytes) */
+ 
+ /* memory registration strategies */
+-#define RPCRDMA_PERSISTENT_REGISTRATION (1)
+-
+ enum rpcrdma_memreg {
+ 	RPCRDMA_BOUNCEBUFFERS = 0,
+ 	RPCRDMA_REGISTER,
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index da4bbf3..bc0909a 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -561,12 +561,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		if (!ia->ri_id->device->alloc_fmr) {
+ 			dprintk("RPC:       %s: MTHCAFMR registration "
+ 				"not supported by HCA\n", __func__);
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+-#else
+-			rc = -ENOMEM;
+-			goto out2;
+-#endif
+ 		}
+ 	}
+ 
+@@ -581,20 +576,16 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	switch (memreg) {
+ 	case RPCRDMA_FRMR:
+ 		break;
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 	case RPCRDMA_ALLPHYSICAL:
+ 		mem_priv = IB_ACCESS_LOCAL_WRITE |
+ 				IB_ACCESS_REMOTE_WRITE |
+ 				IB_ACCESS_REMOTE_READ;
+ 		goto register_setup;
+-#endif
+ 	case RPCRDMA_MTHCAFMR:
+ 		if (ia->ri_have_dma_lkey)
+ 			break;
+ 		mem_priv = IB_ACCESS_LOCAL_WRITE;
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 	register_setup:
+-#endif
+ 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
+ 		if (IS_ERR(ia->ri_bind_mem)) {
+ 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
+@@ -1914,7 +1905,6 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 
+ 	switch (ia->ri_memreg_strategy) {
+ 
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 	case RPCRDMA_ALLPHYSICAL:
+ 		rpcrdma_map_one(ia, seg, writing);
+ 		seg->mr_rkey = ia->ri_bind_mem->rkey;
+@@ -1922,7 +1912,6 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 		seg->mr_nsegs = 1;
+ 		nsegs = 1;
+ 		break;
+-#endif
+ 
+ 	/* Registration using frmr registration */
+ 	case RPCRDMA_FRMR:
+@@ -1952,13 +1941,11 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 
+ 	switch (ia->ri_memreg_strategy) {
+ 
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 	case RPCRDMA_ALLPHYSICAL:
+ 		read_lock(&ia->ri_qplock);
+ 		rpcrdma_unmap_one(ia, seg);
+ 		read_unlock(&ia->ri_qplock);
+ 		break;
+-#endif
+ 
+ 	case RPCRDMA_FRMR:
+ 		rc = rpcrdma_deregister_frmr_external(seg, ia, r_xprt);
 
-In both cases, the result should be a valid file descriptor that can
-be used for reading and writing.
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
