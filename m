@@ -1,53 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:52466 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965616AbaGPSJo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 14:09:44 -0400
-Date: Wed, 16 Jul 2014 11:09:43 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 06/10] nfsd: Protect the nfs4_file delegation fields
- using the fi_lock
-Message-ID: <20140716180943.GA6920@infradead.org>
-References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
- <1405521125-2303-7-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:41737 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754667AbaGIKcD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 06:32:03 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so6384752qcq.20
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Jul 2014 03:32:02 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 9 Jul 2014 06:32:00 -0400
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] gssd: Error out when rpc_pipefs directory is empty
+Message-ID: <20140709063200.6add2dce@tlielax.poochiereds.net>
+In-Reply-To: <1404830019-4299-1-git-send-email-steved@redhat.com>
+References: <1404830019-4299-1-git-send-email-steved@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1405521125-2303-7-git-send-email-jlayton@primarydata.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->  	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-> +	spin_lock(&fp->fi_lock);
->  	list_del_init(&dp->dl_perclnt);
->  	list_del_init(&dp->dl_recall_lru);
-> -	spin_lock(&fp->fi_lock);
->  	list_del_init(&dp->dl_perfile);
->  	spin_unlock(&fp->fi_lock);
-> -	spin_unlock(&state_lock);
->  	if (fp) {
->  		nfs4_put_deleg_lease(fp);
-> -		put_nfs4_file(fp);
->  		dp->dl_file = NULL;
+On Tue,  8 Jul 2014 10:33:39 -0400
+Steve Dickson <steved@redhat.com> wrote:
+
+> When there is no kernel modules loaded the rpc_pipefs
+> directory is empty, which cause rpc.gssd to silently
+> exit.
+> 
+> This patch adds a check to see if the topdirs_list
+> is empty. If so error out without dropping a core.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/gssd/gssd_main_loop.c | 11 ++++++++---
+>  1 file changed, 8 insertions(+), 3 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+> index 9970028..6946ab6 100644
+> --- a/utils/gssd/gssd_main_loop.c
+> +++ b/utils/gssd/gssd_main_loop.c
+> @@ -173,6 +173,10 @@ topdirs_init_list(void)
+>  		if (ret)
+>  			goto out_err;
 >  	}
-> +	spin_unlock(&state_lock);
-> +	put_nfs4_file(fp);
->  }
+> +	if (TAILQ_EMPTY(&topdirs_list)) {
+> +		printerr(0, "ERROR: rpc_pipefs directory '%s' is empty!\n", pipefs_dir);
+> +		return -1;
+> +	}
+>  	closedir(pipedir);
+>  	return 0;
+>  out_err:
+> @@ -233,9 +237,10 @@ gssd_run()
+>  	sigaddset(&set, DNOTIFY_SIGNAL);
+>  	sigprocmask(SIG_UNBLOCK, &set, NULL);
+>  
+> -	if (topdirs_init_list() != 0)
+> -		return;
+> -
+> +	if (topdirs_init_list() != 0) {
+> +		/* Error msg is already printed */
+> +		exit(1);
+> +	}
+>  	init_client_list();
+>  
+>  	printerr(1, "beginning poll\n");
 
-Unless I've missed something put_nfs4_file does not handle a NULL
-pointer argument in the current tree, so this needs a NULL check
-for fp.
+Does it drop a core now? It looks sort of like it would just exit(1)
+silently.
 
-> +	spin_lock(&state_lock);
-> +	/* Did the lease get broken before we took the lock? */
-> +	status = -EAGAIN;
-> +	if (!file_has_lease(fl->fl_file))
-> +		goto out_unlock;
+In any case, this patch is certainly better than crashing, but gssd
+looks sort of like it's doing the wrong thing here. Should it not just
+wait idly for directories to show up instead of exiting if none are
+present?
 
-So if the delegation we just tried to add got broken, but someone else
-managed to add one this would also return true.  But could that happen
-either in real life or in theory?  Shouldn't we instead have an
-atomic flag on the delegation that it got broken which we could check
-here?
+Also, because topdir_init_list is run only once, it looks like gssd
+doesn't properly handle the case where there may be some directories in
+rpc_pipefs when gssd starts, but then others show up later. Any that
+show up after gssd is started are just ignored currently, right? That
+seems like a subtle source of bugs if you just happen to start gssd a
+little early.
 
+-- 
+Jeff Layton <jlayton@primarydata.com>
