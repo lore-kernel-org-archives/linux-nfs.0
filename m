@@ -1,240 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f65.google.com ([209.85.216.65]:42615 "EHLO
-	mail-qa0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751329AbaGRL1z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 07:27:55 -0400
-Received: by mail-qa0-f65.google.com with SMTP id k15so922737qaq.8
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 04:27:51 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 18 Jul 2014 07:27:40 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/6] nfsd: Protect the nfs4_file delegation fields using
- the fi_lock
-Message-ID: <20140718072740.33aeb9d2@f20.localdomain>
-In-Reply-To: <20140717200244.GE30442@fieldses.org>
-References: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
- <1405624354-22388-2-git-send-email-jlayton@primarydata.com>
- <20140717200244.GE30442@fieldses.org>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:55728 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754252AbaGITv5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 15:51:57 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: <linux-rdma@vger.kernel.org>
+Cc: <linux-nfs@vger.kernel.org>, "'Shirley Ma'" <shirley.ma@oracle.com>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>,
+        "'Veeresh U. Kokatnur'" <veereshuk@chelsio.com>,
+        "'Indranil Choudhury'" <indranil@chelsio.com>
+Subject: NFSRDMA test branch update
+Date: Wed, 9 Jul 2014 14:52:00 -0500
+Message-ID: <00be01cf9baf$3f68f960$be3aec20$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 Jul 2014 16:02:44 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Hey all,
 
-> On Thu, Jul 17, 2014 at 03:12:29PM -0400, Jeff Layton wrote:
-> > Move more of the delegation fields to be protected by the fi_lock. It's
-> > more granular than the state_lock and in later patches we'll want to
-> > be able to rely on it in addition to the state_lock.
-> > 
-> > Also, the current code in nfs4_setlease calls vfs_setlease and uses the
-> > client_mutex to ensure that it doesn't disappear before we can hash the
-> > delegation. With the client_mutex gone, we'll have a potential race
-> > condition.
-> > 
-> > It's possible that the delegation could be recalled after we acquire the
-> > lease but before we ever get around to hashing it.
-> 
-> Do you mean "recalled" or returned?  The recall code doesn't currently
-> take the state lock anyway.
-> 
+I've updated the for-test branch of git://git.linux-nfs.org/projects/swise/linux.git.  It
+is based on tag v3.16-rc4 and has these additional patches:
 
-Sorry, I meant "broken".
+Chuck Lever (21):
+      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
+      xprtrdma: Protect ia->ri_id when unmapping/invalidating MRs
+      xprtrdma: Limit data payload size for ALLPHYSICAL
+      xprtrdma: Update rkeys after transport reconnect
+      xprtrdma: On disconnect, don't ignore pending CQEs
+      xprtrdma: Don't invalidate FRMRs if registration fails
+      xprtrdma: Unclutter struct rpcrdma_mr_seg
+      xprtrdma: Back off rkey when FAST_REG_MR fails
+      xprtrdma: Chain together all MWs in same buffer pool
+      xprtrdma: Properly handle exhaustion of the rb_mws list
+      xprtrdma: Reset FRMRs when FAST_REG_MR is flushed by a disconnect
+      xprtrdma: Reset FRMRs after a flushed LOCAL_INV Work Request
+      xprtrdma: Don't post a LOCAL_INV in rpcrdma_register_frmr_external()
+      xprtrdma: Disable completions for FAST_REG_MR Work Requests
+      xprtrdma: Disable completions for LOCAL_INV Work Requests
+      xprtrdma: Rename frmr_wr
+      xprtrdma: Allocate each struct rpcrdma_mw separately
+      xprtrdma: Schedule reply tasklet once per upcall
+      xprtrdma: Make rpcrdma_ep_disconnect() return void
+      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
+      xprtrdma: Handle additional connection events
 
-> > If that happens, then
-> > we'd have a nfs4_file that *thinks* it has a delegation, when it
-> > actually has none.
-> > 
-> > Attempt to acquire a delegation. If that succeeds, take the spinlocks
-> > and then check to see if the file has had a conflict show up since then.
-> > If it has, then we assume that the lease is no longer valid and that
-> > we shouldn't hand out a delegation.
-> 
-> What's the worst that could happen here?  Maybe we could very rarely
-> send the recall before we send the open reply granting the delegation?
-> A client can probably actually handle that (it's possible those could
-> get reordered for reasons out of our control).
-> 
-> --b.
-> 
+Hariprasad S (2):
+      iw_cxgb4: Fix skb_leak in reject_cr
+      iw_cxgb4: clean up connection on arp error
 
-We could leak the lease we've just acquired. It's an unlikely race, but
-the potential problem is this:
+Jan Beulich (1):
+      x86-64: fix vDSO build
 
-Suppose we have two callers into nfs4_setlease, nearly simultaneously.
-One calls vfs_setlease and gets a lease and hashes its delegation. That
-lease is broken and is eventually cleaned up. Now the fi_had_confict
-flag is true.
-
-The second now calls vfs_setlease and also gets a lease. It then checks
-fi_had_conflict, finds it to be true and doesn't hash its delegation.
-Eventually, that lease gets broken. The lm_break callback will set the
-dl_time to 0 to ensure that time_out_leases won't clean it up, and
-it'll just hang out there forever since nothing else would.
-
-One possible fix would be to have the lm_break op set the dl_time to a
-near-immediate value if there's nothing on the fi_delegations list. Then
-we could just not hash the delegation if fl_had_conflict was true and
-assume that time_out_leases will take care of it.
-
-Bruce, can you hold off on merging these just yet? I'd like to do one
-more respin to see if we can address that problem too. I also rolled up
-a few other cleanups last night in this area.
-
-Thanks,
-Jeff
-
-> > 
-> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 54 +++++++++++++++++++++++++++++++++++++++--------------
-> >  1 file changed, 40 insertions(+), 14 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index fd4deb049ddf..9bc896720db3 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -624,6 +624,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
-> >  
-> >  static void nfs4_put_deleg_lease(struct nfs4_file *fp)
-> >  {
-> > +	lockdep_assert_held(&state_lock);
-> > +
-> >  	if (!fp->fi_lease)
-> >  		return;
-> >  	if (atomic_dec_and_test(&fp->fi_delegees)) {
-> > @@ -643,11 +645,10 @@ static void
-> >  hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
-> >  {
-> >  	lockdep_assert_held(&state_lock);
-> > +	lockdep_assert_held(&fp->fi_lock);
-> >  
-> >  	dp->dl_stid.sc_type = NFS4_DELEG_STID;
-> > -	spin_lock(&fp->fi_lock);
-> >  	list_add(&dp->dl_perfile, &fp->fi_delegations);
-> > -	spin_unlock(&fp->fi_lock);
-> >  	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
-> >  }
-> >  
-> > @@ -659,17 +660,18 @@ unhash_delegation(struct nfs4_delegation *dp)
-> >  
-> >  	spin_lock(&state_lock);
-> >  	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-> > +	spin_lock(&fp->fi_lock);
-> >  	list_del_init(&dp->dl_perclnt);
-> >  	list_del_init(&dp->dl_recall_lru);
-> > -	spin_lock(&fp->fi_lock);
-> >  	list_del_init(&dp->dl_perfile);
-> >  	spin_unlock(&fp->fi_lock);
-> > -	spin_unlock(&state_lock);
-> >  	if (fp) {
-> >  		nfs4_put_deleg_lease(fp);
-> > -		put_nfs4_file(fp);
-> >  		dp->dl_file = NULL;
-> >  	}
-> > +	spin_unlock(&state_lock);
-> > +	if (fp)
-> > +		put_nfs4_file(fp);
-> >  }
-> >  
-> >  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-> > @@ -3143,8 +3145,8 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
-> >  	 */
-> >  	fl->fl_break_time = 0;
-> >  
-> > -	fp->fi_had_conflict = true;
-> >  	spin_lock(&fp->fi_lock);
-> > +	fp->fi_had_conflict = true;
-> >  	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
-> >  		nfsd_break_one_deleg(dp);
-> >  	spin_unlock(&fp->fi_lock);
-> > @@ -3493,7 +3495,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
-> >  {
-> >  	struct nfs4_file *fp = dp->dl_file;
-> >  	struct file_lock *fl;
-> > -	int status;
-> > +	int status = 0;
-> >  
-> >  	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
-> >  	if (!fl)
-> > @@ -3501,15 +3503,31 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
-> >  	fl->fl_file = find_readable_file(fp);
-> >  	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
-> >  	if (status)
-> > -		goto out_free;
-> > +		goto out_fput;
-> > +	spin_lock(&state_lock);
-> > +	spin_lock(&fp->fi_lock);
-> > +	/* Did the lease get broken before we took the lock? */
-> > +	status = -EAGAIN;
-> > +	if (fp->fi_had_conflict)
-> > +		goto out_unlock;
-> > +	/* Race breaker */
-> > +	if (fp->fi_lease) {
-> > +		status = 0;
-> > +		atomic_inc(&fp->fi_delegees);
-> > +		hash_delegation_locked(dp, fp);
-> > +		goto out_unlock;
-> > +	}
-> >  	fp->fi_lease = fl;
-> >  	fp->fi_deleg_file = fl->fl_file;
-> >  	atomic_set(&fp->fi_delegees, 1);
-> > -	spin_lock(&state_lock);
-> >  	hash_delegation_locked(dp, fp);
-> > +	spin_unlock(&fp->fi_lock);
-> >  	spin_unlock(&state_lock);
-> >  	return 0;
-> > -out_free:
-> > +out_unlock:
-> > +	spin_unlock(&fp->fi_lock);
-> > +	spin_unlock(&state_lock);
-> > +out_fput:
-> >  	if (fl->fl_file)
-> >  		fput(fl->fl_file);
-> >  	locks_free_lock(fl);
-> > @@ -3518,19 +3536,27 @@ out_free:
-> >  
-> >  static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
-> >  {
-> > +	int status = 0;
-> > +
-> >  	if (fp->fi_had_conflict)
-> >  		return -EAGAIN;
-> >  	get_nfs4_file(fp);
-> > +	spin_lock(&state_lock);
-> > +	spin_lock(&fp->fi_lock);
-> >  	dp->dl_file = fp;
-> > -	if (!fp->fi_lease)
-> > +	if (!fp->fi_lease) {
-> > +		spin_unlock(&fp->fi_lock);
-> > +		spin_unlock(&state_lock);
-> >  		return nfs4_setlease(dp);
-> > -	spin_lock(&state_lock);
-> > +	}
-> >  	atomic_inc(&fp->fi_delegees);
-> >  	if (fp->fi_had_conflict) {
-> > -		spin_unlock(&state_lock);
-> > -		return -EAGAIN;
-> > +		status = -EAGAIN;
-> > +		goto out_unlock;
-> >  	}
-> >  	hash_delegation_locked(dp, fp);
-> > +out_unlock:
-> > +	spin_unlock(&fp->fi_lock);
-> >  	spin_unlock(&state_lock);
-> >  	return 0;
-> >  }
-> > -- 
-> > 1.9.3
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Steve Wise (3):
+      iw_cxgb4: call iwpm_init() only once
+      iw_cxgb4: initialize the device status page
+      svcrdma: send_write() must not overflow the device's max sge
 
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+Cheers,
+
+Steve.
+
