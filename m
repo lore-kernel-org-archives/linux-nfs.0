@@ -1,279 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:63393 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754474AbaGHSEs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:48 -0400
-Received: by mail-qc0-f177.google.com with SMTP id r5so5497798qcx.22
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:48 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 009/100] nfsd: Add locking to the nfs4_file->fi_fds[] array
-Date: Tue,  8 Jul 2014 14:02:57 -0400
-Message-Id: <1404842668-22521-10-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:46687 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755839AbaGIV2R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 17:28:17 -0400
+Message-ID: <53BDB3EE.8060509@oracle.com>
+Date: Wed, 09 Jul 2014 14:28:14 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 05/21] xprtrdma: On disconnect, don't ignore pending
+ CQEs
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net> <20140709165713.3496.64777.stgit@manet.1015granger.net>
+In-Reply-To: <20140709165713.3496.64777.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Should all rdma_clean_cq be replaced by flush_cqs? The outstanding CQEs should be processed in any context. 
 
-Preparation for removal of the client_mutex, which currently protects
-this array.
+Shirley
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 107 ++++++++++++++++++++++++++++++++++++++++++++--------
- fs/nfsd/state.h     |  26 -------------
- 2 files changed, 91 insertions(+), 42 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ff7d74e0e39e..0b42bd47a7d6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -270,6 +270,52 @@ get_nfs4_file(struct nfs4_file *fi)
- 	atomic_inc(&fi->fi_ref);
- }
- 
-+static struct file *__nfs4_get_fd(struct nfs4_file *f, int oflag)
-+{
-+	if (f->fi_fds[oflag])
-+		return get_file(f->fi_fds[oflag]);
-+	return NULL;
-+}
-+
-+static struct file *find_writeable_file(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	spin_lock(&f->fi_lock);
-+	ret = __nfs4_get_fd(f, O_WRONLY);
-+	if (!ret)
-+		ret = __nfs4_get_fd(f, O_RDWR);
-+	spin_unlock(&f->fi_lock);
-+	return ret;
-+}
-+
-+static struct file *find_readable_file(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	spin_lock(&f->fi_lock);
-+	ret = __nfs4_get_fd(f, O_RDONLY);
-+	if (!ret)
-+		ret = __nfs4_get_fd(f, O_RDWR);
-+	spin_unlock(&f->fi_lock);
-+	return ret;
-+}
-+
-+static struct file *find_any_file(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	spin_lock(&f->fi_lock);
-+	ret = __nfs4_get_fd(f, O_RDWR);
-+	if (!ret) {
-+		ret = __nfs4_get_fd(f, O_WRONLY);
-+		if (!ret)
-+			ret = __nfs4_get_fd(f, O_RDONLY);
-+	}
-+	spin_unlock(&f->fi_lock);
-+	return ret;
-+}
-+
- static int num_delegations;
- unsigned long max_delegations;
- 
-@@ -318,20 +364,31 @@ static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
- 		__nfs4_file_get_access(fp, oflag);
- }
- 
--static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
-+static struct file *nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
- {
--	if (fp->fi_fds[oflag]) {
--		fput(fp->fi_fds[oflag]);
--		fp->fi_fds[oflag] = NULL;
--	}
-+	struct file *filp;
-+
-+	filp = fp->fi_fds[oflag];
-+	fp->fi_fds[oflag] = NULL;
-+	return filp;
- }
- 
- static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- {
--	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
--		nfs4_file_put_fd(fp, oflag);
-+	might_lock(&fp->fi_lock);
-+
-+	if (atomic_dec_and_lock(&fp->fi_access[oflag], &fp->fi_lock)) {
-+		struct file *f1 = NULL;
-+		struct file *f2 = NULL;
-+
-+		f1 = nfs4_file_put_fd(fp, oflag);
- 		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
--			nfs4_file_put_fd(fp, O_RDWR);
-+			f2 = nfs4_file_put_fd(fp, O_RDWR);
-+		spin_unlock(&fp->fi_lock);
-+		if (f1)
-+			fput(f1);
-+		if (f2)
-+			fput(f2);
- 	}
- }
- 
-@@ -748,8 +805,10 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
- 	file = find_any_file(stp->st_file);
--	if (file)
-+	if (file) {
- 		locks_remove_posix(file, (fl_owner_t)lockowner(stp->st_stateowner));
-+		fput(file);
-+	}
- 	close_generic_stateid(stp);
- 	free_generic_stateid(stp);
- }
-@@ -3228,17 +3287,27 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
- static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 		struct svc_fh *cur_fh, struct nfsd4_open *open)
- {
-+	struct file *filp = NULL;
- 	__be32 status;
- 	int oflag = nfs4_access_to_omode(open->op_share_access);
- 	int access = nfs4_access_to_access(open->op_share_access);
- 
-+	spin_lock(&fp->fi_lock);
- 	if (!fp->fi_fds[oflag]) {
--		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
--			&fp->fi_fds[oflag]);
-+		spin_unlock(&fp->fi_lock);
-+		status = nfsd_open(rqstp, cur_fh, S_IFREG, access, &filp);
- 		if (status)
- 			goto out;
-+		spin_lock(&fp->fi_lock);
-+		if (!fp->fi_fds[oflag]) {
-+			fp->fi_fds[oflag] = filp;
-+			filp = NULL;
-+		}
- 	}
- 	nfs4_file_get_access(fp, oflag);
-+	spin_unlock(&fp->fi_lock);
-+	if (filp)
-+		fput(filp);
- 
- 	status = nfsd4_truncate(rqstp, cur_fh, open);
- 	if (status)
-@@ -3323,13 +3392,15 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	if (status)
- 		goto out_free;
- 	fp->fi_lease = fl;
--	fp->fi_deleg_file = get_file(fl->fl_file);
-+	fp->fi_deleg_file = fl->fl_file;
- 	atomic_set(&fp->fi_delegees, 1);
- 	spin_lock(&state_lock);
- 	hash_delegation_locked(dp, fp);
- 	spin_unlock(&state_lock);
- 	return 0;
- out_free:
-+	if (fl->fl_file)
-+		fput(fl->fl_file);
- 	locks_free_lock(fl);
- 	return status;
- }
-@@ -3929,6 +4000,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 				status = nfserr_serverfault;
- 				goto out;
- 			}
-+			get_file(file);
- 		}
- 		break;
- 	case NFS4_OPEN_STID:
-@@ -3956,7 +4028,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 	}
- 	status = nfs_ok;
- 	if (file)
--		*filpp = get_file(file);
-+		*filpp = file;
- out:
- 	nfs4_unlock_state();
- 	return status;
-@@ -4673,6 +4745,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		break;
- 	}
- out:
-+	if (filp)
-+		fput(filp);
- 	if (status && new_state)
- 		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
-@@ -4812,7 +4886,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (!file_lock) {
- 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
- 		status = nfserr_jukebox;
--		goto out;
-+		goto fput;
- 	}
- 	locks_init_lock(file_lock);
- 	file_lock->fl_type = F_UNLCK;
-@@ -4834,7 +4908,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
--
-+fput:
-+	fput(filp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
-@@ -4844,7 +4919,7 @@ out:
- 
- out_nfserr:
- 	status = nfserrno(err);
--	goto out;
-+	goto fput;
- }
- 
- /*
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e8c059d2826e..2ce1d8f583e1 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -400,32 +400,6 @@ struct nfs4_file {
- 	bool			fi_had_conflict;
- };
- 
--/* XXX: for first cut may fall back on returning file that doesn't work
-- * at all? */
--static inline struct file *find_writeable_file(struct nfs4_file *f)
--{
--	if (f->fi_fds[O_WRONLY])
--		return f->fi_fds[O_WRONLY];
--	return f->fi_fds[O_RDWR];
--}
--
--static inline struct file *find_readable_file(struct nfs4_file *f)
--{
--	if (f->fi_fds[O_RDONLY])
--		return f->fi_fds[O_RDONLY];
--	return f->fi_fds[O_RDWR];
--}
--
--static inline struct file *find_any_file(struct nfs4_file *f)
--{
--	if (f->fi_fds[O_RDWR])
--		return f->fi_fds[O_RDWR];
--	else if (f->fi_fds[O_WRONLY])
--		return f->fi_fds[O_WRONLY];
--	else
--		return f->fi_fds[O_RDONLY];
--}
--
- /* "ol" stands for "Open or Lock".  Better suggestions welcome. */
- struct nfs4_ol_stateid {
- 	struct nfs4_stid    st_stid; /* must be first field */
--- 
-1.9.3
-
+On 07/09/2014 09:57 AM, Chuck Lever wrote:
+> xprtrdma is currently throwing away queued completions during
+> a reconnect. RPC replies posted just before connection loss, or
+> successful completions that change the state of an FRMR, can be
+> missed.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/verbs.c |   14 +++++++++-----
+>  1 file changed, 9 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 0d5187d..7fd457e 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -310,6 +310,13 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+>  	rpcrdma_recvcq_poll(cq, ep);
+>  }
+>  
+> +static void
+> +rpcrdma_flush_cqs(struct rpcrdma_ep *ep)
+> +{
+> +	rpcrdma_recvcq_upcall(ep->rep_attr.recv_cq, ep);
+> +	rpcrdma_sendcq_upcall(ep->rep_attr.send_cq, ep);
+> +}
+> +
+>  #ifdef RPC_DEBUG
+>  static const char * const conn[] = {
+>  	"address resolved",
+> @@ -872,9 +879,7 @@ retry:
+>  		if (rc && rc != -ENOTCONN)
+>  			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+>  				" status %i\n", __func__, rc);
+> -
+> -		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+> -		rpcrdma_clean_cq(ep->rep_attr.send_cq);
+> +		rpcrdma_flush_cqs(ep);
+>  
+>  		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+>  		id = rpcrdma_create_id(xprt, ia,
+> @@ -985,8 +990,7 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+>  {
+>  	int rc;
+>  
+> -	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+> -	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+> +	rpcrdma_flush_cqs(ep);
+>  	rc = rdma_disconnect(ia->ri_id);
+>  	if (!rc) {
+>  		/* returns without wait if not connected */
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
