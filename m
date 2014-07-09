@@ -1,170 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:55722 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965097AbaGPOcW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:22 -0400
-Received: by mail-qg0-f49.google.com with SMTP id j107so686365qga.22
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:21 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 06/10] nfsd: Protect the nfs4_file delegation fields using the fi_lock
-Date: Wed, 16 Jul 2014 10:32:01 -0400
-Message-Id: <1405521125-2303-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
-References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:50989 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751217AbaGIVjm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 17:39:42 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH v2 05/21] xprtrdma: On disconnect, don't ignore pending CQEs
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <53BDB3EE.8060509@oracle.com>
+Date: Wed, 9 Jul 2014 17:39:32 -0400
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <8831FD31-A62F-4DE1-84A4-4C71C5C1985D@oracle.com>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net> <20140709165713.3496.64777.stgit@manet.1015granger.net> <53BDB3EE.8060509@oracle.com>
+To: Shirley Ma <shirley.ma@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move more of the delegation fields to be protected by the fi_lock. It's
-more granular than the state_lock and in later patches we'll want to
-be able to rely on it in addition to the state_lock.
+Hi Shirley-
 
-Also, the current code in nfs4_setlease calls vfs_setlease and uses the
-client_mutex to ensure that it doesn't disappear before we can hash the
-delegation. With the client_mutex gone, we'll have a potential race
-condition.
+On Jul 9, 2014, at 5:28 PM, Shirley Ma <shirley.ma@oracle.com> wrote:
 
-It's possible that the delegation could be recalled after we acquire the
-lease but before we ever get around to hashing it. If that happens, then
-we'd have a nfs4_file that *thinks* it has a delegation, when it
-actually has none.
+> Should all rdma_clean_cq be replaced by flush_cqs? The outstanding CQEs should be processed in any context.
 
-Attempt to acquire a delegation. If that succeeds, take the state_lock
-and recheck to make sure the lease is still there. If it is, then take
-the fi_lock and set up the rest of the delegation fields. This prevents
-the race because the delegation break workqueue job must also take the
-state_lock.
+The only other context is when the transport is being destroyed (ie,
+at umount time).
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 38 insertions(+), 13 deletions(-)
+Send CQEs don’t matter at that point: the FRMRs are going to get
+deregistered no matter what state they are in.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fd4deb049ddf..91a33f8896dd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -624,6 +624,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
- 
- static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- {
-+	lockdep_assert_held(&state_lock);
-+
- 	if (!fp->fi_lease)
- 		return;
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
-@@ -643,11 +645,10 @@ static void
- hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
- 	lockdep_assert_held(&state_lock);
-+	lockdep_assert_held(&fp->fi_lock);
- 
- 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
--	spin_lock(&fp->fi_lock);
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
--	spin_unlock(&fp->fi_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- }
- 
-@@ -659,17 +660,17 @@ unhash_delegation(struct nfs4_delegation *dp)
- 
- 	spin_lock(&state_lock);
- 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-+	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
- 	list_del_init(&dp->dl_recall_lru);
--	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
--	spin_unlock(&state_lock);
- 	if (fp) {
- 		nfs4_put_deleg_lease(fp);
--		put_nfs4_file(fp);
- 		dp->dl_file = NULL;
- 	}
-+	spin_unlock(&state_lock);
-+	put_nfs4_file(fp);
- }
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-@@ -3493,7 +3494,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- {
- 	struct nfs4_file *fp = dp->dl_file;
- 	struct file_lock *fl;
--	int status;
-+	int status = 0;
- 
- 	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
- 	if (!fl)
-@@ -3501,15 +3502,31 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	fl->fl_file = find_readable_file(fp);
- 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
- 	if (status)
--		goto out_free;
-+		goto out_fput;
-+	spin_lock(&state_lock);
-+	/* Did the lease get broken before we took the lock? */
-+	status = -EAGAIN;
-+	if (!file_has_lease(fl->fl_file))
-+		goto out_unlock;
-+	spin_lock(&fp->fi_lock);
-+	/* Race breaker */
-+	if (fp->fi_lease) {
-+		status = 0;
-+		atomic_inc(&fp->fi_delegees);
-+		hash_delegation_locked(dp, fp);
-+		spin_unlock(&fp->fi_lock);
-+		goto out_unlock;
-+	}
- 	fp->fi_lease = fl;
- 	fp->fi_deleg_file = fl->fl_file;
- 	atomic_set(&fp->fi_delegees, 1);
--	spin_lock(&state_lock);
- 	hash_delegation_locked(dp, fp);
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
--out_free:
-+out_unlock:
-+	spin_unlock(&state_lock);
-+out_fput:
- 	if (fl->fl_file)
- 		fput(fl->fl_file);
- 	locks_free_lock(fl);
-@@ -3518,19 +3535,27 @@ out_free:
- 
- static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
-+	int status = 0;
-+
- 	if (fp->fi_had_conflict)
- 		return -EAGAIN;
- 	get_nfs4_file(fp);
-+	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
- 	dp->dl_file = fp;
--	if (!fp->fi_lease)
-+	if (!fp->fi_lease) {
-+		spin_unlock(&fp->fi_lock);
-+		spin_unlock(&state_lock);
- 		return nfs4_setlease(dp);
--	spin_lock(&state_lock);
-+	}
- 	atomic_inc(&fp->fi_delegees);
- 	if (fp->fi_had_conflict) {
--		spin_unlock(&state_lock);
--		return -EAGAIN;
-+		status = -EAGAIN;
-+		goto out_unlock;
- 	}
- 	hash_delegation_locked(dp, fp);
-+out_unlock:
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
- }
--- 
-1.9.3
+The RPC client waits for all remaining RPCs to complete before it 
+attempts to destroy the transport, so there shouldn’t be any receive
+CQEs at that point either.
+
+> Shirley
+> 
+> On 07/09/2014 09:57 AM, Chuck Lever wrote:
+>> xprtrdma is currently throwing away queued completions during
+>> a reconnect. RPC replies posted just before connection loss, or
+>> successful completions that change the state of an FRMR, can be
+>> missed.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> net/sunrpc/xprtrdma/verbs.c |   14 +++++++++-----
+>> 1 file changed, 9 insertions(+), 5 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index 0d5187d..7fd457e 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -310,6 +310,13 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+>> 	rpcrdma_recvcq_poll(cq, ep);
+>> }
+>> 
+>> +static void
+>> +rpcrdma_flush_cqs(struct rpcrdma_ep *ep)
+>> +{
+>> +	rpcrdma_recvcq_upcall(ep->rep_attr.recv_cq, ep);
+>> +	rpcrdma_sendcq_upcall(ep->rep_attr.send_cq, ep);
+>> +}
+>> +
+>> #ifdef RPC_DEBUG
+>> static const char * const conn[] = {
+>> 	"address resolved",
+>> @@ -872,9 +879,7 @@ retry:
+>> 		if (rc && rc != -ENOTCONN)
+>> 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+>> 				" status %i\n", __func__, rc);
+>> -
+>> -		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+>> -		rpcrdma_clean_cq(ep->rep_attr.send_cq);
+>> +		rpcrdma_flush_cqs(ep);
+>> 
+>> 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+>> 		id = rpcrdma_create_id(xprt, ia,
+>> @@ -985,8 +990,7 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+>> {
+>> 	int rc;
+>> 
+>> -	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+>> -	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+>> +	rpcrdma_flush_cqs(ep);
+>> 	rc = rdma_disconnect(ia->ri_id);
+>> 	if (!rc) {
+>> 		/* returns without wait if not connected */
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
