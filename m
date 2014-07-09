@@ -1,81 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:58825 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754396AbaG2UfW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:35:22 -0400
-Received: by mail-qg0-f51.google.com with SMTP id a108so315361qge.10
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:35:22 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 35/38] nfsd: close potential race in nfsd4_free_stateid
-Date: Tue, 29 Jul 2014 16:34:18 -0400
-Message-Id: <1406666061-14175-36-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:35083 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756016AbaGIQ4u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:56:50 -0400
+Subject: [PATCH v2 02/21] xprtrdma: Protect ia->ri_id when
+ unmapping/invalidating MRs
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 09 Jul 2014 12:56:47 -0400
+Message-ID: <20140709165647.3496.64053.stgit@manet.1015granger.net>
+In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, it'll be possible for the sc_type of a
-lock stateid to change after it's found and checked, but before we can
-go to destroy it. If that happens, we can end up putting the persistent
-reference to the stateid more than once, and unhash it more than once.
+Ensure ia->ri_id remains valid while invoking dma_unmap_page() or
+posting LOCAL_INV during a transport reconnect. Otherwise,
+ia->ri_id->device or ia->ri_id->qp is NULL, which triggers a panic.
 
-Fix this by unhashing the lock stateid prior to dropping the cl_lock but
-after finding it.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=259
+Fixes: ec62f40 'xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting'
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 21 +++++++++------------
- 1 file changed, 9 insertions(+), 12 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |   23 +++++++++++++++++------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 18 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9358cbe2283d..9c7dcbb68094 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4397,17 +4397,6 @@ unlock_state:
- 	return status;
- }
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 78bd7c6..cab742d 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -613,6 +613,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	/* Else will do memory reg/dereg for each chunk */
+ 	ia->ri_memreg_strategy = memreg;
  
--static __be32
--nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
--{
--	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
++	rwlock_init(&ia->ri_qplock);
+ 	return 0;
+ out2:
+ 	rdma_destroy_id(ia->ri_id);
+@@ -859,7 +860,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ int
+ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ {
+-	struct rdma_cm_id *id;
++	struct rdma_cm_id *id, *old;
+ 	int rc = 0;
+ 	int retry_count = 0;
+ 
+@@ -905,9 +906,14 @@ retry:
+ 			rc = -ENETUNREACH;
+ 			goto out;
+ 		}
+-		rdma_destroy_qp(ia->ri_id);
+-		rdma_destroy_id(ia->ri_id);
++
++		write_lock(&ia->ri_qplock);
++		old = ia->ri_id;
+ 		ia->ri_id = id;
++		write_unlock(&ia->ri_qplock);
++
++		rdma_destroy_qp(old);
++		rdma_destroy_id(old);
+ 	} else {
+ 		dprintk("RPC:       %s: connecting...\n", __func__);
+ 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+@@ -1587,9 +1593,6 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	struct ib_send_wr invalidate_wr, *bad_wr;
+ 	int rc;
+ 
+-	while (seg1->mr_nsegs--)
+-		rpcrdma_unmap_one(ia, seg++);
 -
--	if (check_for_locks(stp->st_stid.sc_file, lo))
--		return nfserr_locks_held;
--	release_lock_stateid(stp);
--	return nfs_ok;
--}
--
- /*
-  * Test if the stateid is valid
+ 	memset(&invalidate_wr, 0, sizeof invalidate_wr);
+ 	invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
+ 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
+@@ -1597,7 +1600,11 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
++	read_lock(&ia->ri_qplock);
++	while (seg1->mr_nsegs--)
++		rpcrdma_unmap_one(ia, seg++);
+ 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
++	read_unlock(&ia->ri_qplock);
+ 	if (rc)
+ 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+ 			" status %i\n", __func__, rc);
+@@ -1658,8 +1665,10 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
+ 
+ 	list_add(&seg1->mr_chunk.rl_mw->r.fmr->list, &l);
+ 	rc = ib_unmap_fmr(&l);
++	read_lock(&ia->ri_qplock);
+ 	while (seg1->mr_nsegs--)
+ 		rpcrdma_unmap_one(ia, seg++);
++	read_unlock(&ia->ri_qplock);
+ 	if (rc)
+ 		dprintk("RPC:       %s: failed ib_unmap_fmr,"
+ 			" status %i\n", __func__, rc);
+@@ -1715,7 +1724,9 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 
+ #if RPCRDMA_PERSISTENT_REGISTRATION
+ 	case RPCRDMA_ALLPHYSICAL:
++		read_lock(&ia->ri_qplock);
+ 		rpcrdma_unmap_one(ia, seg);
++		read_unlock(&ia->ri_qplock);
+ 		break;
+ #endif
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 89e7cd4..97ca516 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -59,6 +59,7 @@
+  * Interface Adapter -- one per transport instance
   */
-@@ -4434,6 +4423,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	stateid_t *stateid = &free_stateid->fr_stateid;
- 	struct nfs4_stid *s;
- 	struct nfs4_delegation *dp;
-+	struct nfs4_ol_stateid *stp;
- 	struct nfs4_client *cl = cstate->session->se_client;
- 	__be32 ret = nfserr_bad_stateid;
- 
-@@ -4456,8 +4446,15 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 		if (ret)
- 			break;
-+		stp = openlockstateid(s);
-+		ret = nfserr_locks_held;
-+		if (check_for_locks(stp->st_stid.sc_file,
-+				    lockowner(stp->st_stateowner)))
-+			break;
-+		unhash_lock_stateid(stp);
- 		spin_unlock(&cl->cl_lock);
--		ret = nfsd4_free_lock_stateid(openlockstateid(s));
-+		nfs4_put_stid(s);
-+		ret = nfs_ok;
- 		goto out;
- 	case NFS4_REVOKED_DELEG_STID:
- 		dp = delegstateid(s);
--- 
-1.9.3
+ struct rpcrdma_ia {
++	rwlock_t		ri_qplock;
+ 	struct rdma_cm_id 	*ri_id;
+ 	struct ib_pd		*ri_pd;
+ 	struct ib_mr		*ri_bind_mem;
 
