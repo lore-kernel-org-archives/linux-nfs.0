@@ -1,124 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:40276 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932489AbaGUPD5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:57 -0400
-Received: by mail-qa0-f51.google.com with SMTP id k15so5133244qaq.24
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:56 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 40/40] nfsd: don't thrash the cl_lock while freeing an open stateid
-Date: Mon, 21 Jul 2014 11:02:52 -0400
-Message-Id: <1405954972-28904-41-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:47882 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755181AbaGIQ56 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:57:58 -0400
+Subject: [PATCH v2 10/21] xprtrdma: Properly handle exhaustion of the rb_mws
+ list
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 09 Jul 2014 12:57:55 -0400
+Message-ID: <20140709165755.3496.28980.stgit@manet.1015granger.net>
+In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we remove the client_mutex, we'll have a potential race between
-FREE_STATEID and CLOSE.
+If the rb_mws list is exhausted, clean up and return NULL so that
+call_allocate() will delay and try again.
 
-The root of the problem is that we are walking the st_locks list,
-dropping the spinlock and then trying to release the persistent
-reference to the lockstateid. In between, a FREE_STATEID call can come
-along and take the lock, find the stateid and then try to put the
-reference. That leads to a double put.
-
-Fix this by not releasing the cl_lock in order to release each lock
-stateid. Use put_generic_stateid_locked to unhash them and gather them
-onto a list, and free_ol_stateid_reaplist to free any that end up on the
-list.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 34 +++++++++++++++++++---------------
- 1 file changed, 19 insertions(+), 15 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |  103 ++++++++++++++++++++++++++++++-------------
+ 1 file changed, 71 insertions(+), 32 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 918c09b45843..21bd52714c09 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1038,27 +1038,26 @@ static void release_lockowner(struct nfs4_lockowner *lo)
- 	nfs4_put_stateowner(&lo->lo_owner);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index aa14a36..5796e09 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1256,6 +1256,67 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 	kfree(buf->rb_pool);
  }
  
--static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
--	__releases(&open_stp->st_stateowner->so_client->cl_lock)
--	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
-+static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp,
-+				       struct list_head *reaplist)
- {
- 	struct nfs4_ol_stateid *stp;
- 
- 	while (!list_empty(&open_stp->st_locks)) {
- 		stp = list_entry(open_stp->st_locks.next,
- 				struct nfs4_ol_stateid, st_locks);
--		spin_unlock(&open_stp->st_stateowner->so_client->cl_lock);
--		release_lock_stateid(stp);
--		spin_lock(&open_stp->st_stateowner->so_client->cl_lock);
-+		unhash_lock_stateid(stp);
-+		put_generic_stateid_locked(stp, reaplist);
- 	}
- }
- 
--static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
-+static void unhash_open_stateid(struct nfs4_ol_stateid *stp,
-+				struct list_head *reaplist)
- {
- 	lockdep_assert_held(&stp->st_stid.sc_client->cl_lock);
- 
- 	unhash_generic_stateid(stp);
--	release_open_stateid_locks(stp);
-+	release_open_stateid_locks(stp, reaplist);
- }
- 
- static void release_open_stateid(struct nfs4_ol_stateid *stp)
-@@ -1066,7 +1065,7 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
- 	LIST_HEAD(reaplist);
- 
- 	spin_lock(&stp->st_stid.sc_client->cl_lock);
--	unhash_open_stateid(stp);
-+	unhash_open_stateid(stp, &reaplist);
- 	put_generic_stateid_locked(stp, &reaplist);
- 	spin_unlock(&stp->st_stid.sc_client->cl_lock);
- 	free_ol_stateid_reaplist(&reaplist);
-@@ -1106,7 +1105,7 @@ static void release_openowner(struct nfs4_openowner *oo)
- 	while (!list_empty(&oo->oo_owner.so_stateids)) {
- 		stp = list_first_entry(&oo->oo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		unhash_open_stateid(stp);
-+		unhash_open_stateid(stp, &reaplist);
- 		put_generic_stateid_locked(stp, &reaplist);
- 	}
- 	spin_unlock(&clp->cl_lock);
-@@ -4717,16 +4716,21 @@ out:
- static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- {
- 	struct nfs4_client *clp = s->st_stid.sc_client;
-+	LIST_HEAD(reaplist);
- 
- 	s->st_stid.sc_type = NFS4_CLOSED_STID;
- 	spin_lock(&clp->cl_lock);
--	unhash_open_stateid(s);
--	spin_unlock(&clp->cl_lock);
-+	unhash_open_stateid(s, &reaplist);
- 
--	if (clp->cl_minorversion)
--		put_generic_stateid(s);
--	else
-+	if (clp->cl_minorversion) {
-+		put_generic_stateid_locked(s, &reaplist);
-+		spin_unlock(&clp->cl_lock);
-+		free_ol_stateid_reaplist(&reaplist);
-+	} else {
-+		spin_unlock(&clp->cl_lock);
-+		free_ol_stateid_reaplist(&reaplist);
- 		move_to_close_lru(s, clp->net);
++/* "*mw" can be NULL when rpcrdma_buffer_get_mrs() fails, leaving
++ * some req segments uninitialized.
++ */
++static void
++rpcrdma_buffer_put_mr(struct rpcrdma_mw **mw, struct rpcrdma_buffer *buf)
++{
++	if (*mw) {
++		list_add_tail(&(*mw)->mw_list, &buf->rb_mws);
++		*mw = NULL;
 +	}
- }
- 
++}
++
++/* Cycle mw's back in reverse order, and "spin" them.
++ * This delays and scrambles reuse as much as possible.
++ */
++static void
++rpcrdma_buffer_put_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
++{
++	struct rpcrdma_mr_seg *seg = req->rl_segments;
++	struct rpcrdma_mr_seg *seg1 = seg;
++	int i;
++
++	for (i = 1, seg++; i < RPCRDMA_MAX_SEGS; seg++, i++)
++		rpcrdma_buffer_put_mr(&seg->mr_chunk.rl_mw, buf);
++	rpcrdma_buffer_put_mr(&seg1->mr_chunk.rl_mw, buf);
++}
++
++static void
++rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
++{
++	buf->rb_send_bufs[--buf->rb_send_index] = req;
++	req->rl_niovs = 0;
++	if (req->rl_reply) {
++		buf->rb_recv_bufs[--buf->rb_recv_index] = req->rl_reply;
++		req->rl_reply->rr_func = NULL;
++		req->rl_reply = NULL;
++	}
++}
++
++static struct rpcrdma_req *
++rpcrdma_buffer_get_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
++{
++	struct rpcrdma_mw *r;
++	int i;
++
++	i = RPCRDMA_MAX_SEGS - 1;
++	while (!list_empty(&buf->rb_mws)) {
++		r = list_entry(buf->rb_mws.next,
++			       struct rpcrdma_mw, mw_list);
++		list_del(&r->mw_list);
++		req->rl_segments[i].mr_chunk.rl_mw = r;
++		if (unlikely(i-- == 0))
++			return req;	/* Success */
++	}
++
++	/* Not enough entries on rb_mws for this req */
++	rpcrdma_buffer_put_sendbuf(req, buf);
++	rpcrdma_buffer_put_mrs(req, buf);
++	return NULL;
++}
++
  /*
--- 
-1.9.3
+  * Get a set of request/reply buffers.
+  *
+@@ -1268,10 +1329,9 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ struct rpcrdma_req *
+ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
+ {
++	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
+ 	struct rpcrdma_req *req;
+ 	unsigned long flags;
+-	int i;
+-	struct rpcrdma_mw *r;
+ 
+ 	spin_lock_irqsave(&buffers->rb_lock, flags);
+ 	if (buffers->rb_send_index == buffers->rb_max_requests) {
+@@ -1291,14 +1351,13 @@ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
+ 		buffers->rb_recv_bufs[buffers->rb_recv_index++] = NULL;
+ 	}
+ 	buffers->rb_send_bufs[buffers->rb_send_index++] = NULL;
+-	if (!list_empty(&buffers->rb_mws)) {
+-		i = RPCRDMA_MAX_SEGS - 1;
+-		do {
+-			r = list_entry(buffers->rb_mws.next,
+-					struct rpcrdma_mw, mw_list);
+-			list_del(&r->mw_list);
+-			req->rl_segments[i].mr_chunk.rl_mw = r;
+-		} while (--i >= 0);
++	switch (ia->ri_memreg_strategy) {
++	case RPCRDMA_FRMR:
++	case RPCRDMA_MTHCAFMR:
++		req = rpcrdma_buffer_get_mrs(req, buffers);
++		break;
++	default:
++		break;
+ 	}
+ 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
+ 	return req;
+@@ -1313,34 +1372,14 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
+ {
+ 	struct rpcrdma_buffer *buffers = req->rl_buffer;
+ 	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
+-	int i;
+ 	unsigned long flags;
+ 
+ 	spin_lock_irqsave(&buffers->rb_lock, flags);
+-	buffers->rb_send_bufs[--buffers->rb_send_index] = req;
+-	req->rl_niovs = 0;
+-	if (req->rl_reply) {
+-		buffers->rb_recv_bufs[--buffers->rb_recv_index] = req->rl_reply;
+-		req->rl_reply->rr_func = NULL;
+-		req->rl_reply = NULL;
+-	}
++	rpcrdma_buffer_put_sendbuf(req, buffers);
+ 	switch (ia->ri_memreg_strategy) {
+ 	case RPCRDMA_FRMR:
+ 	case RPCRDMA_MTHCAFMR:
+-		/*
+-		 * Cycle mw's back in reverse order, and "spin" them.
+-		 * This delays and scrambles reuse as much as possible.
+-		 */
+-		i = 1;
+-		do {
+-			struct rpcrdma_mw **mw;
+-			mw = &req->rl_segments[i].mr_chunk.rl_mw;
+-			list_add_tail(&(*mw)->mw_list, &buffers->rb_mws);
+-			*mw = NULL;
+-		} while (++i < RPCRDMA_MAX_SEGS);
+-		list_add_tail(&req->rl_segments[0].mr_chunk.rl_mw->mw_list,
+-					&buffers->rb_mws);
+-		req->rl_segments[0].mr_chunk.rl_mw = NULL;
++		rpcrdma_buffer_put_mrs(req, buffers);
+ 		break;
+ 	default:
+ 		break;
 
