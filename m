@@ -1,62 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:44766 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932208AbaGORb2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 13:31:28 -0400
-Received: by mail-qc0-f171.google.com with SMTP id i17so2731905qcy.16
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 10:31:28 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 15 Jul 2014 13:31:23 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/7] locks: add file_has_lease to prevent delegation
- break races
-Message-ID: <20140715133123.5dcb3d6c@tlielax.poochiereds.net>
-In-Reply-To: <20140715171752.GA12059@infradead.org>
-References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
-	<1405420669-4030-4-git-send-email-jlayton@primarydata.com>
-	<20140715171752.GA12059@infradead.org>
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:57080 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755765AbaGIQ6k (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:58:40 -0400
+Subject: [PATCH v2 15/21] xprtrdma: Disable completions for LOCAL_INV Work
+ Requests
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 09 Jul 2014 12:58:38 -0400
+Message-ID: <20140709165838.3496.17169.stgit@manet.1015granger.net>
+In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 15 Jul 2014 10:17:52 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+Instead of relying on a completion to change the state of an FRMR
+to FRMR_IS_INVALID, set it in advance. If an error occurs, a completion
+will fire anyway and mark the FRMR FRMR_IS_STALE.
 
-> On Tue, Jul 15, 2014 at 06:37:45AM -0400, Jeff Layton wrote:
-> > Once we remove the client_mutex, we'll have a potential race between
-> > setting a lease on a file and breaking the delegation. We may set the
-> > lease, but by the time we go to hash it, it may have already been
-> > broken. Currently, we know that this won't happen as the nfs4_laundromat
-> > takes the client_mutex, but we want to remove that.
-> > 
-> > As part of that fix, add a function that can tell us whether a
-> > particular file has a lease set on it. In a later nfsd patch, we'll use
-> > that to close the potential race window.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> 
-> Looks reasonable, I don't really understand why we can drop out of the
-> loop when finding the first non-lease, but other code in locks.c also
-> does this, so I assume it is intentional.
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |   17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
-It is intentional. The i_flock list is ordered. See the comments over
-the struct file_lock definition. Took me a while to understand that too
-(which is why I added the comment a few months ago).
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index e83eda6..8eef343 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -154,12 +154,8 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+ 
+ 	if (wc->wr_id == 0ULL)
+ 		return;
+-	if (wc->status != IB_WC_SUCCESS) {
++	if (wc->status != IB_WC_SUCCESS)
+ 		frmr->r.frmr.fr_state = FRMR_IS_STALE;
+-		return;
+-	}
+-
+-	frmr->r.frmr.fr_state = FRMR_IS_INVALID;
+ }
+ 
+ static int
+@@ -1369,12 +1365,11 @@ rpcrdma_retry_local_inv(struct rpcrdma_mw *r, struct rpcrdma_ia *ia)
+ 	dprintk("RPC:       %s: FRMR %p is stale\n", __func__, r);
+ 
+ 	/* When this FRMR is re-inserted into rb_mws, it is no longer stale */
+-	r->r.frmr.fr_state = FRMR_IS_VALID;
++	r->r.frmr.fr_state = FRMR_IS_INVALID;
+ 
+ 	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
+ 	invalidate_wr.wr_id = (unsigned long)(void *)r;
+ 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
+-	invalidate_wr.send_flags = IB_SEND_SIGNALED;
+ 	invalidate_wr.ex.invalidate_rkey = r->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
+@@ -1787,10 +1782,11 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	struct ib_send_wr invalidate_wr, *bad_wr;
+ 	int rc;
+ 
++	seg1->mr_chunk.rl_mw->r.frmr.fr_state = FRMR_IS_INVALID;
++
+ 	memset(&invalidate_wr, 0, sizeof invalidate_wr);
+ 	invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
+ 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
+-	invalidate_wr.send_flags = IB_SEND_SIGNALED;
+ 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
+@@ -1799,9 +1795,12 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+ 		rpcrdma_unmap_one(ia, seg++);
+ 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+ 	read_unlock(&ia->ri_qplock);
+-	if (rc)
++	if (rc) {
++		/* Force rpcrdma_buffer_get() to retry */
++		seg1->mr_chunk.rl_mw->r.frmr.fr_state = FRMR_IS_STALE;
+ 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+ 			" status %i\n", __func__, rc);
++	}
+ 	return rc;
+ }
+ 
 
-> The only real question I have is why this is in locks.c, while
-> check_for_locks that does the equivalent for real file locks is
-> implemented in the nfsd code.  But I think it's better to have these
-> sorts of interfaces in locks.c and check_for_locks should move there
-> eventually.
-> 
-
-Agreed, though I'll defer that until after this series is merged.
-
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-
-Thanks!
--- 
-Jeff Layton <jlayton@primarydata.com>
