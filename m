@@ -1,81 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f43.google.com ([209.85.192.43]:44835 "EHLO
-	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757574AbaGPKzx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 06:55:53 -0400
-Received: by mail-qg0-f43.google.com with SMTP id a108so564749qge.2
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 03:55:53 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: davem@davemloft.net
-Cc: kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org,
-        kaber@trash.net, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2] net: clean up some sparse endianness warnings in ipv6.h
-Date: Wed, 16 Jul 2014 06:55:46 -0400
-Message-Id: <1405508146-13004-1-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405340746-10678-1-git-send-email-jlayton@primarydata.com>
-References: <1405340746-10678-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:3598 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755106AbaGISVu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Jul 2014 14:21:50 -0400
+Message-ID: <53BD8836.9080806@RedHat.com>
+Date: Wed, 09 Jul 2014 14:21:42 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] gssd: Error out when rpc_pipefs directory is empty
+References: <1404830019-4299-1-git-send-email-steved@redhat.com> <20140709063200.6add2dce@tlielax.poochiereds.net>
+In-Reply-To: <20140709063200.6add2dce@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-sparse is throwing warnings when building sunrpc modules due to some
-endianness shenanigans in ipv6.h. Specifically:
+Hey Jeff,
 
-  CHECK   net/sunrpc/addr.c
-include/net/ipv6.h:573:17: warning: restricted __be64 degrades to integer
-include/net/ipv6.h:577:34: warning: restricted __be32 degrades to integer
-include/net/ipv6.h:573:17: warning: restricted __be64 degrades to integer
-include/net/ipv6.h:577:34: warning: restricted __be32 degrades to integer
+On 07/09/2014 06:32 AM, Jeff Layton wrote:
+> On Tue,  8 Jul 2014 10:33:39 -0400
+> Steve Dickson <steved@redhat.com> wrote:
+> 
+>> When there is no kernel modules loaded the rpc_pipefs
+>> directory is empty, which cause rpc.gssd to silently
+>> exit.
+>>
+>> This patch adds a check to see if the topdirs_list
+>> is empty. If so error out without dropping a core.
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  utils/gssd/gssd_main_loop.c | 11 ++++++++---
+>>  1 file changed, 8 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+>> index 9970028..6946ab6 100644
+>> --- a/utils/gssd/gssd_main_loop.c
+>> +++ b/utils/gssd/gssd_main_loop.c
+>> @@ -173,6 +173,10 @@ topdirs_init_list(void)
+>>  		if (ret)
+>>  			goto out_err;
+>>  	}
+>> +	if (TAILQ_EMPTY(&topdirs_list)) {
+>> +		printerr(0, "ERROR: rpc_pipefs directory '%s' is empty!\n", pipefs_dir);
+>> +		return -1;
+>> +	}
+>>  	closedir(pipedir);
+>>  	return 0;
+>>  out_err:
+>> @@ -233,9 +237,10 @@ gssd_run()
+>>  	sigaddset(&set, DNOTIFY_SIGNAL);
+>>  	sigprocmask(SIG_UNBLOCK, &set, NULL);
+>>  
+>> -	if (topdirs_init_list() != 0)
+>> -		return;
+>> -
+>> +	if (topdirs_init_list() != 0) {
+>> +		/* Error msg is already printed */
+>> +		exit(1);
+>> +	}
+>>  	init_client_list();
+>>  
+>>  	printerr(1, "beginning poll\n");
+> 
+> Does it drop a core now? It looks sort of like it would just exit(1)
+> silently.
+No. But whenever gssd_run() returns, in main, abort() is called,
+which is probably a bit brain dead... but it is what it is... 
 
-Sprinkle some endianness fixups to silence them. These should all get
-fixed up at compile time, so I don't think this will add any extra work
-to be done at runtime.
+> 
+> In any case, this patch is certainly better than crashing, but gssd
+> looks sort of like it's doing the wrong thing here. Should it not just
+> wait idly for directories to show up instead of exiting if none are
+> present?
+The purpose/cope of this patch is to stop gssd from silently exiting
+which the patch does... 
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- include/net/ipv6.h | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+The question of whether gssd should or should not be exiting is
+a different problem... a problem this patch is not trying to solve.
 
-diff --git a/include/net/ipv6.h b/include/net/ipv6.h
-index 574337fe72dd..0535da61fe0b 100644
---- a/include/net/ipv6.h
-+++ b/include/net/ipv6.h
-@@ -557,24 +557,29 @@ static inline u32 __ipv6_addr_jhash(const struct in6_addr *a, const u32 initval)
- static inline bool ipv6_addr_loopback(const struct in6_addr *a)
- {
- #if defined(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS) && BITS_PER_LONG == 64
--	const unsigned long *ul = (const unsigned long *)a;
-+	const __be64 *be = (const __be64 *)a;
- 
--	return (ul[0] | (ul[1] ^ cpu_to_be64(1))) == 0UL;
-+	return (be[0] | (be[1] ^ cpu_to_be64(1))) == 0UL;
- #else
- 	return (a->s6_addr32[0] | a->s6_addr32[1] |
--		a->s6_addr32[2] | (a->s6_addr32[3] ^ htonl(1))) == 0;
-+		a->s6_addr32[2] | (a->s6_addr32[3] ^ cpu_to_be32(1))) == 0;
- #endif
- }
- 
-+/*
-+ * Note that we must __force cast these to unsigned long to make sparse happy,
-+ * since all of the endian-annotated types are fixed size regardless of arch.
-+ */
- static inline bool ipv6_addr_v4mapped(const struct in6_addr *a)
- {
- 	return (
- #if defined(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS) && BITS_PER_LONG == 64
--		*(__be64 *)a |
-+		*(unsigned long *)a |
- #else
--		(a->s6_addr32[0] | a->s6_addr32[1]) |
-+		(__force unsigned long)(a->s6_addr32[0] | a->s6_addr32[1]) |
- #endif
--		(a->s6_addr32[2] ^ htonl(0x0000ffff))) == 0UL;
-+		(__force unsigned long)(a->s6_addr32[2] ^
-+					cpu_to_be32(0x0000ffff))) == 0UL;
- }
- 
- /*
--- 
-1.9.3
+I tend to agree with you, that gssd probably should just hang out
+but in what scenario is gssd start and none of the kernel modules
+are loaded... Its not a normal one...
 
+> 
+> Also, because topdir_init_list is run only once, it looks like gssd
+> doesn't properly handle the case where there may be some directories in
+> rpc_pipefs when gssd starts, but then others show up later. Any that
+> show up after gssd is started are just ignored currently, right? That
+> seems like a subtle source of bugs if you just happen to start gssd a
+> little early.
+> 
+Again all this patch does is document the exit... Not processing late
+showing up directories would be a problem.... but as always....
+patches are welcomed!! ;-) 
+
+steved.
