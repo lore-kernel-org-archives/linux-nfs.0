@@ -1,115 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:46508 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754416AbaG2UfV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:35:21 -0400
-Received: by mail-qg0-f44.google.com with SMTP id e89so307762qgf.17
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:35:20 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 34/38] nfsd: optimize destroy_lockowner cl_lock thrashing
-Date: Tue, 29 Jul 2014 16:34:17 -0400
-Message-Id: <1406666061-14175-35-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pd0-f175.google.com ([209.85.192.175]:47852 "EHLO
+	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753076AbaGINv6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 09:51:58 -0400
+Received: by mail-pd0-f175.google.com with SMTP id v10so8935917pde.6
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Jul 2014 06:51:58 -0700 (PDT)
+Message-ID: <53BD48DF.2050506@gmail.com>
+Date: Wed, 09 Jul 2014 21:51:27 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH] NFSD: Fix bad checking of space for padding in splice read
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reduce the cl_lock trashing in destroy_lockowner. Unhash all of the
-lockstateids on the lockowner's list. Put the reference under the lock
-and see if it was the last one. If so, then add it to a private list
-to be destroyed after we drop the lock.
+Fix commit dc97618ddd (nfsd4: separate splice and readv cases).
+xdr->end and xdr->p are type of __be32 *, so padding needs one here.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 34 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs4xdr.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9b342e164407..9358cbe2283d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -983,14 +983,23 @@ static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
- 	nfs4_free_ol_stateid(stid);
- }
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 523c666..8a2fbb2 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3067,11 +3067,8 @@ static __be32 nfsd4_encode_splice_read(
+ 	__be32 nfserr;
+ 	__be32 *p = xdr->p - 2;
  
--static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void unhash_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+-	/*
+-	 * Don't inline pages unless we know there's room for eof,
+-	 * count, and possible padding:
+-	 */
+-	if (xdr->end - xdr->p < 3)
++	/* Make sure there will be room for padding if needed */
++	if (xdr->end - xdr->p < 1)
+ 		return nfserr_resource;
  
--	spin_lock(&oo->oo_owner.so_client->cl_lock);
--	list_del(&stp->st_locks);
-+	lockdep_assert_held(&oo->oo_owner.so_client->cl_lock);
-+
-+	list_del_init(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
-+}
-+
-+static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-+{
-+	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
-+
-+	spin_lock(&oo->oo_owner.so_client->cl_lock);
-+	unhash_lock_stateid(stp);
- 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- 	nfs4_put_stid(&stp->st_stid);
- }
-@@ -1004,30 +1013,38 @@ static void unhash_lockowner_locked(struct nfs4_lockowner *lo)
- 	list_del_init(&lo->lo_owner.so_strhash);
- }
- 
--static void release_lockowner_stateids(struct nfs4_lockowner *lo)
-+static void release_lockowner(struct nfs4_lockowner *lo)
- {
- 	struct nfs4_client *clp = lo->lo_owner.so_client;
- 	struct nfs4_ol_stateid *stp;
-+	struct list_head reaplist;
- 
--	lockdep_assert_held(&clp->cl_lock);
-+	INIT_LIST_HEAD(&reaplist);
- 
-+	spin_lock(&clp->cl_lock);
-+	unhash_lockowner_locked(lo);
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		spin_unlock(&clp->cl_lock);
--		release_lock_stateid(stp);
--		spin_lock(&clp->cl_lock);
-+		unhash_lock_stateid(stp);
-+		/*
-+		 * We now know that no new references can be added to the
-+		 * stateid. If ours is the last one, finish the unhashing
-+		 * and put it on the list to be reaped.
-+		 */
-+		if (atomic_dec_and_test(&stp->st_stid.sc_count)) {
-+			idr_remove(&clp->cl_stateids,
-+				stp->st_stid.sc_stateid.si_opaque.so_id);
-+			list_add(&stp->st_locks, &reaplist);
-+		}
- 	}
--}
--
--static void release_lockowner(struct nfs4_lockowner *lo)
--{
--	struct nfs4_client *clp = lo->lo_owner.so_client;
--
--	spin_lock(&clp->cl_lock);
--	unhash_lockowner_locked(lo);
--	release_lockowner_stateids(lo);
- 	spin_unlock(&clp->cl_lock);
-+	while (!list_empty(&reaplist)) {
-+		stp = list_first_entry(&reaplist, struct nfs4_ol_stateid,
-+					st_locks);
-+		list_del(&stp->st_locks);
-+		stp->st_stid.sc_free(&stp->st_stid);
-+	}
- 	nfs4_put_stateowner(&lo->lo_owner);
- }
- 
+ 	nfserr = nfsd_splice_read(read->rd_rqstp, file,
 -- 
 1.9.3
 
