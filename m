@@ -1,122 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f169.google.com ([209.85.220.169]:48752 "EHLO
-	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751676AbaG0QGl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jul 2014 12:06:41 -0400
-Received: by mail-vc0-f169.google.com with SMTP id le20so1218468vcb.0
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Jul 2014 09:06:40 -0700 (PDT)
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:47750 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756579AbaGIQ5l (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:57:41 -0400
+Subject: [PATCH v2 08/21] xprtrdma: Back off rkey when FAST_REG_MR fails
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 09 Jul 2014 12:57:39 -0400
+Message-ID: <20140709165739.3496.39485.stgit@manet.1015granger.net>
+In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <53D4CAA7.2000005@gmx.de>
-References: <53D4CAA7.2000005@gmx.de>
-Date: Sun, 27 Jul 2014 12:06:40 -0400
-Message-ID: <CAHQdGtRqeQXEP1+VV5UUYSdobwNjWNt8y11HC_Zb891A+t9FFQ@mail.gmail.com>
-Subject: Re: fuzz testing a 32 bit UML guest with NFSv4 gave: BUG kmalloc-256
- (Not tainted): Redzone overwritten
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: =?UTF-8?Q?Toralf_F=C3=B6rster?= <toralf.foerster@gmx.de>,
-        Weston Andros Adamson <weston.adamson@primarydata.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jul 27, 2014 at 5:47 AM, Toralf Förster <toralf.foerster@gmx.de> wrote:
-> with current git kernel version 3.16.0-rc6-00139-g9c55021 I got today from the syslog :
->
->
-> Jul 26 23:40:18 trinity kernel: NFSD: unable to generate recoverydir name (-2).
-> Jul 26 23:40:18 trinity kernel: NFSD: disabling legacy clientid tracking. Reboot recovery will not function correctly!
-> Jul 26 23:40:22 trinity kernel: VFS: Warning: trinity-c1 using old stat() call. Recompile your binary.
-> Jul 26 23:40:23 trinity kernel: warning: process `trinity-c1' used the deprecated sysctl system call with
-> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
-> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c1 using old stat() call. Recompile your binary.
-> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
-> Jul 26 23:40:23 trinity kernel: trinity-c0 (1704) uses deprecated remap_file_pages() syscall. See Documentation/vm/remap_file_pages.txt.
-> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
-> Jul 26 23:40:25 trinity kernel: =============================================================================
-> Jul 26 23:40:25 trinity kernel: BUG kmalloc-256 (Not tainted): Redzone overwritten
-> Jul 26 23:40:25 trinity kernel: -----------------------------------------------------------------------------
-> Jul 26 23:40:25 trinity kernel:
-> Jul 26 23:40:25 trinity kernel: Disabling lock debugging due to kernel taint
-> Jul 26 23:40:25 trinity kernel: INFO: 0x82f0e230-0x82f0e233. First byte 0xa0 instead of 0xcc
-> Jul 26 23:40:25 trinity kernel: INFO: Allocated in nfs_generic_pgio+0x86/0x2d0 age=0 cpu=0 pid=1705
-> Jul 26 23:40:25 trinity kernel: INFO: Freed in nfs_pgio_data_release+0x33/0x70 age=0 cpu=0 pid=610
-> Jul 26 23:40:25 trinity kernel: INFO: Slab 0x0b7228c0 objects=13 used=2 fp=0x82f0e000 flags=0x0080
-> Jul 26 23:40:25 trinity kernel: INFO: Object 0x82f0e130 @offset=304 fp=0x82f0e000
-> Jul 26 23:40:25 trinity kernel:
-> Jul 26 23:40:25 trinity kernel: Bytes b4 82f0e120: a9 06 00 00 52 cf ff ff 5a 5a 5a 5a 5a 5a 5a 5a  ....R...ZZZZZZZZ
-> Jul 26 23:40:25 trinity kernel: Object 82f0e130: e0 d3 6b 0b 80 e3 6b 0b a0 e3 6b 0b c0 e3 6b 0b  ..k...k...k...k.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e140: e0 e3 6b 0b 80 13 6c 0b a0 13 6c 0b c0 13 6c 0b  ..k...l...l...l.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e150: e0 13 6c 0b 00 12 6c 0b 20 12 6c 0b 40 12 6c 0b  ..l...l. .l.@.l.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e160: 60 12 6c 0b 80 12 6c 0b a0 12 6c 0b c0 12 6c 0b  `.l...l...l...l.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e170: e0 12 6c 0b 00 10 6c 0b 20 10 6c 0b 40 10 6c 0b  ..l...l. .l.@.l.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e180: 60 10 6c 0b 80 10 6c 0b a0 10 6c 0b c0 10 6c 0b  `.l...l...l...l.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e190: e0 10 6c 0b 00 11 6c 0b 20 11 6c 0b 40 11 6c 0b  ..l...l. .l.@.l.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e1a0: 60 11 6c 0b 80 11 6c 0b a0 11 6c 0b 20 a4 70 0b  `.l...l...l. .p.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e1b0: a0 ca 6f 0b c0 ca 6f 0b e0 ca 6f 0b 00 cb 6f 0b  ..o...o...o...o.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e1c0: 20 cb 6f 0b 40 cb 6f 0b 60 cb 6f 0b 80 cb 6f 0b   .o.@.o.`.o...o.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e1d0: a0 cb 6f 0b c0 cb 6f 0b e0 cb 6f 0b 00 cc 6f 0b  ..o...o...o...o.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e1e0: 20 cc 6f 0b 40 cc 6f 0b 60 cc 6f 0b 80 cc 6f 0b   .o.@.o.`.o...o.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e1f0: a0 cc 6f 0b c0 cc 6f 0b e0 cc 6f 0b 00 cd 6f 0b  ..o...o...o...o.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e200: 20 cd 6f 0b 40 cd 6f 0b 60 cd 6f 0b 80 cd 6f 0b   .o.@.o.`.o...o.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e210: a0 cd 6f 0b c0 cd 6f 0b e0 cd 6f 0b 00 ce 6f 0b  ..o...o...o...o.
-> Jul 26 23:40:25 trinity kernel: Object 82f0e220: 20 ce 6f 0b 40 ce 6f 0b 60 ce 6f 0b 80 ce 6f 0b   .o.@.o.`.o...o.
-> Jul 26 23:40:25 trinity kernel: Redzone 82f0e230: a0 ce 6f 0b                                      ..o.
-> Jul 26 23:40:25 trinity kernel: Padding 82f0e258: 5a 5a 5a 5a 5a 5a 5a 5a                          ZZZZZZZZ
-> Jul 26 23:40:25 trinity kernel: CPU: 0 PID: 610 Comm: kworker/0:2 Tainted: G    B         3.16.0-rc6-00139-g9c55021 #85
-> Jul 26 23:40:25 trinity kernel: Workqueue: nfsiod rpc_async_release
-> Jul 26 23:40:25 trinity kernel: Stack:
-> Jul 26 23:40:25 trinity kernel: 085a296b 085a296b 00000003 086c8547 85449c00 00000128 0b7228c0 8572fd68
-> Jul 26 23:40:25 trinity kernel: 084e6736 00000000 8572fd3c 8572fda0 080ff083 085b1a4f 085b1a63 00000001
-> Jul 26 23:40:25 trinity kernel: 00000010 00000001 82f0e258 00000008 00000001 82f0e130 82f0e230 0b7228c0
-> Jul 26 23:40:25 trinity kernel: Call Trace:
-> Jul 26 23:40:25 trinity kernel: [<084e6736>] dump_stack+0x26/0x28
-> Jul 26 23:40:25 trinity kernel: [<080ff083>] print_trailer+0x1e3/0x1f0
-> Jul 26 23:40:25 trinity kernel: [<080ff989>] check_bytes_and_report+0xa9/0x100
-> Jul 26 23:40:25 trinity kernel: [<080ffa2c>] check_object+0x4c/0x210
-> Jul 26 23:40:25 trinity kernel: [<084e4599>] free_debug_processing+0xab/0x238
-> Jul 26 23:40:25 trinity kernel: [<0846870e>] ? rpc_wake_up_first+0x16e/0x190
-> Jul 26 23:40:25 trinity kernel: [<08496b55>] ? __gettimeofday+0x15/0x30
-> Jul 26 23:40:25 trinity kernel: [<084e475f>] __slab_free+0x39/0x223
-> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
-> Jul 26 23:40:25 trinity kernel: [<0808119c>] ? __local_bh_enable_ip+0x1c/0xa0
-> Jul 26 23:40:25 trinity kernel: [<08090293>] ? insert_work+0x73/0x90
-> Jul 26 23:40:25 trinity kernel: [<080729be>] ? set_signals+0x1e/0x40
-> Jul 26 23:40:25 trinity kernel: [<08101201>] kfree+0x111/0x150
-> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
-> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
-> Jul 26 23:40:25 trinity kernel: [<081e1d33>] nfs_pgio_data_release+0x33/0x70
-> Jul 26 23:40:25 trinity kernel: [<081e1d93>] nfs_pgio_release+0x23/0x30
-> Jul 26 23:40:25 trinity kernel: [<08467c80>] rpc_free_task+0x20/0x60
-> Jul 26 23:40:25 trinity kernel: [<08467cce>] rpc_async_release+0xe/0x10
-> Jul 26 23:40:25 trinity kernel: [<08090d11>] process_one_work+0x1a1/0x310
-> Jul 26 23:40:25 trinity kernel: [<084e7e65>] ? schedule+0x55/0x60
-> Jul 26 23:40:25 trinity kernel: [<0809116a>] worker_thread+0x2ea/0x530
-> Jul 26 23:40:25 trinity kernel: [<080729be>] ? set_signals+0x1e/0x40
-> Jul 26 23:40:25 trinity kernel: [<084e7e65>] ? schedule+0x55/0x60
-> Jul 26 23:40:25 trinity kernel: [<08090e80>] ? worker_thread+0x0/0x530
-> Jul 26 23:40:25 trinity kernel: [<08096806>] kthread+0xd6/0xe0
-> Jul 26 23:40:25 trinity kernel: [<0809dd7d>] ? finish_task_switch.isra.56+0x1d/0x70
-> Jul 26 23:40:25 trinity kernel: [<0806064b>] new_thread_handler+0x6b/0x90
-> Jul 26 23:40:25 trinity kernel:
-> Jul 26 23:40:25 trinity kernel: FIX kmalloc-256: Restoring 0x82f0e230-0x82f0e233=0xcc
-> Jul 26 23:40:25 trinity kernel:
-> Jul 26 23:40:26 trinity trinity: Detected kernel tainting. Last seed was 412561049
->
+If posting a FAST_REG_MR Work Reqeust fails, revert the rkey update
+to avoid subsequent IB_WC_MW_BIND_ERR completions.
 
-Hi Dros,
+Suggested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |   27 ++++++++++++++++++++-------
+ 1 file changed, 20 insertions(+), 7 deletions(-)
 
-It looks to me as if we're overflowing the page array by 1 page
-pointer. Do you agree?
-Do we perhaps have to look again at the way we're calculating the array length?
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index ce847d2..14d24ec 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1487,6 +1487,24 @@ rpcrdma_unmap_one(struct rpcrdma_ia *ia, struct rpcrdma_mr_seg *seg)
+ 				seg->mr_dma, seg->mr_dmalen, seg->mr_dir);
+ }
+ 
++static void
++rpcrdma_increment_frmr_rkey(struct rpcrdma_mw *mw)
++{
++	struct ib_mr *mr = mw->r.frmr.fr_mr;
++	u8 key = mr->rkey & 0x000000FF;
++
++	ib_update_fast_reg_key(mr, ++key);
++}
++
++static void
++rpcrdma_decrement_frmr_rkey(struct rpcrdma_mw *mw)
++{
++	struct ib_mr *mr = mw->r.frmr.fr_mr;
++	u8 key = mr->rkey & 0x000000FF;
++
++	ib_update_fast_reg_key(mr, --key);
++}
++
+ static int
+ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 			int *nsegs, int writing, struct rpcrdma_ia *ia,
+@@ -1496,8 +1514,6 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	struct rpcrdma_mw *mw = seg1->mr_chunk.rl_mw;
+ 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
+ 	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
+-
+-	u8 key;
+ 	int len, pageoff;
+ 	int i, rc;
+ 	int seg_len;
+@@ -1557,14 +1573,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 		rc = -EIO;
+ 		goto out_err;
+ 	}
+-
+-	/* Bump the key */
+-	key = (u8)(frmr->fr_mr->rkey & 0x000000FF);
+-	ib_update_fast_reg_key(frmr->fr_mr, ++key);
+-
+ 	frmr_wr.wr.fast_reg.access_flags = (writing ?
+ 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+ 				IB_ACCESS_REMOTE_READ);
++	rpcrdma_increment_frmr_rkey(mw);
+ 	frmr_wr.wr.fast_reg.rkey = frmr->fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
+@@ -1573,6 +1585,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	if (rc) {
+ 		dprintk("RPC:       %s: failed ib_post_send for register,"
+ 			" status %i\n", __func__, rc);
++		rpcrdma_decrement_frmr_rkey(seg1->mr_chunk.rl_mw);
+ 		goto out_err;
+ 	} else {
+ 		seg1->mr_rkey = frmr->fr_mr->rkey;
 
-
-Cheers
-  Trond
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
