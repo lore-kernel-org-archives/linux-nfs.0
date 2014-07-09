@@ -1,82 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48000 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755314AbaGaBae (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jul 2014 21:30:34 -0400
-Date: Thu, 31 Jul 2014 11:30:22 +1000
-From: NeilBrown <neilb@suse.de>
-To: Natanael Copa <natanael.copa@gmail.com>
-Cc: linux-nfs@vger.kernel.org, Natanael Copa <ncopa@alpinelinux.org>
-Subject: Re: [PATCH 04/11] exportfs: define _GNU_SOURCE for stat64
-Message-ID: <20140731113022.22afdefc@notabene.brown>
-In-Reply-To: <1406719399-1735-5-git-send-email-ncopa@alpinelinux.org>
-References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
-	<1406719399-1735-5-git-send-email-ncopa@alpinelinux.org>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:55623 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751778AbaGIStP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 14:49:15 -0400
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH] svcrdma: send_write() must not overflow the device's max sge
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org, tom@ogc.us
+Date: Wed, 09 Jul 2014 13:49:15 -0500
+Message-ID: <20140709184914.22217.59770.stgit@build.ogc.int>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/mJGz+m/rcgHK6ygCdy8Cmi5"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/mJGz+m/rcgHK6ygCdy8Cmi5
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Function send_write() must stop creating sges when it reaches the device
+max and return the amount sent in the RDMA Write to the caller.
 
-On Wed, 30 Jul 2014 13:23:12 +0200 Natanael Copa <natanael.copa@gmail.com>
-wrote:
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+---
 
-> Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
-> ---
->  utils/exportfs/exportfs.c | 4 ++++
->  1 file changed, 4 insertions(+)
->=20
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index bf07555..7ab93d1 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -12,6 +12,10 @@
->  #include <config.h>
->  #endif
-> =20
-> +#ifndef _GNU_SOURCE
-> +#define _GNU_SOURCE
-> +#endif
-> +
->  #include <sys/types.h>
->  #include <sys/stat.h>
->  #include <sys/vfs.h>
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |   39 +++++++++++++--------------------
+ 1 files changed, 15 insertions(+), 24 deletions(-)
 
-These all look really sensible!
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 49fd21a..9f1b506 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -192,6 +192,8 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+ 		xdr_sge_no++;
+ 		BUG_ON(xdr_sge_no > vec->count);
+ 		bc -= sge_bytes;
++		if (sge_no == xprt->sc_max_sge)
++			break;
+ 	}
+ 
+ 	/* Prepare WRITE WR */
+@@ -209,7 +211,7 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+ 	atomic_inc(&rdma_stat_write);
+ 	if (svc_rdma_send(xprt, &write_wr))
+ 		goto err;
+-	return 0;
++	return write_len - bc;
+  err:
+ 	svc_rdma_unmap_dma(ctxt);
+ 	svc_rdma_put_context(ctxt, 0);
+@@ -225,7 +227,6 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+ {
+ 	u32 xfer_len = rqstp->rq_res.page_len + rqstp->rq_res.tail[0].iov_len;
+ 	int write_len;
+-	int max_write;
+ 	u32 xdr_off;
+ 	int chunk_off;
+ 	int chunk_no;
+@@ -239,8 +240,6 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+ 	res_ary = (struct rpcrdma_write_array *)
+ 		&rdma_resp->rm_body.rm_chunks[1];
+ 
+-	max_write = xprt->sc_max_sge * PAGE_SIZE;
+-
+ 	/* Write chunks start at the pagelist */
+ 	for (xdr_off = rqstp->rq_res.head[0].iov_len, chunk_no = 0;
+ 	     xfer_len && chunk_no < arg_ary->wc_nchunks;
+@@ -260,23 +259,21 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+ 						write_len);
+ 		chunk_off = 0;
+ 		while (write_len) {
+-			int this_write;
+-			this_write = min(write_len, max_write);
+ 			ret = send_write(xprt, rqstp,
+ 					 ntohl(arg_ch->rs_handle),
+ 					 rs_offset + chunk_off,
+ 					 xdr_off,
+-					 this_write,
++					 write_len,
+ 					 vec);
+-			if (ret) {
++			if (ret <= 0) {
+ 				dprintk("svcrdma: RDMA_WRITE failed, ret=%d\n",
+ 					ret);
+ 				return -EIO;
+ 			}
+-			chunk_off += this_write;
+-			xdr_off += this_write;
+-			xfer_len -= this_write;
+-			write_len -= this_write;
++			chunk_off += ret;
++			xdr_off += ret;
++			xfer_len -= ret;
++			write_len -= ret;
+ 		}
+ 	}
+ 	/* Update the req with the number of chunks actually used */
+@@ -293,7 +290,6 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
+ {
+ 	u32 xfer_len = rqstp->rq_res.len;
+ 	int write_len;
+-	int max_write;
+ 	u32 xdr_off;
+ 	int chunk_no;
+ 	int chunk_off;
+@@ -311,8 +307,6 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
+ 	res_ary = (struct rpcrdma_write_array *)
+ 		&rdma_resp->rm_body.rm_chunks[2];
+ 
+-	max_write = xprt->sc_max_sge * PAGE_SIZE;
+-
+ 	/* xdr offset starts at RPC message */
+ 	nchunks = ntohl(arg_ary->wc_nchunks);
+ 	for (xdr_off = 0, chunk_no = 0;
+@@ -330,24 +324,21 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
+ 						write_len);
+ 		chunk_off = 0;
+ 		while (write_len) {
+-			int this_write;
+-
+-			this_write = min(write_len, max_write);
+ 			ret = send_write(xprt, rqstp,
+ 					 ntohl(ch->rs_handle),
+ 					 rs_offset + chunk_off,
+ 					 xdr_off,
+-					 this_write,
++					 write_len,
+ 					 vec);
+-			if (ret) {
++			if (ret <= 0) {
+ 				dprintk("svcrdma: RDMA_WRITE failed, ret=%d\n",
+ 					ret);
+ 				return -EIO;
+ 			}
+-			chunk_off += this_write;
+-			xdr_off += this_write;
+-			xfer_len -= this_write;
+-			write_len -= this_write;
++			chunk_off += ret;
++			xdr_off += ret;
++			xfer_len -= ret;
++			write_len -= ret;
+ 		}
+ 	}
+ 	/* Update the req with the number of chunks actually used */
 
-One small suggestion: it would be really nice to see a comment in the code
-explaining why _GNU_SOURCE is needed.  I suspect such comments get out of
-date quickly, so maybe it wouldn't end up be all that useful.  But having a
-comment is still, in my opinion, more useful than not.
-
-Thanks,
-NeilBrown
-
-
---Sig_/mJGz+m/rcgHK6ygCdy8Cmi5
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU9mcLjnsnt1WYoG5AQJb8BAAh4jKNg0A+ic9BgQRNpHVShW7L0Waoji0
-8zH4EvB9Trlubko71KL/5WzPkIJtmuaNRan5B46qThkzvtHOdpDj9vofyzI2oWOa
-2oyyzmKNOUlHlsdwxiiXWrFOMXEAgiu/ls/T1pIJ1BU1858SBdJDl0Ixc3MamZRb
-siXd8v5dbtr5+qmBkWt5dJO6BlNimKWLqcOFdU+HKvEzrhrKZMmu894vs6QM5ds9
-OoeEyx6Y/D5oct3JA0f4fdRpgXf3TGWryG8KgeaxsPNE1uZoLLeWTP011JwMOJgN
-SANHOlKZkL6VMN2OKP8/HwDV0C1oDG/YokTQ4ASkPNhozHKYSafb0mkkTQw3g+ph
-xJHSf4yE0vzRctiKua6lz1goALoW68UOjhV8bRVp2UhpV3O8kdnBQXA+ylPXie9o
-fh2TntlHv3o823K9Tf6puW4JAgWXMlUaBWPo1rRxMno1mvExqWEwK43gjGFtXRl+
-uAudWnFIEEPRKKKRNmVxliTVMreyz03RMHG03jnKq8jTDvIO1Iog+kyK97YnrnSj
-/+Za6d9Nm0lbCcIFHUOTqGAlEW5nTztLxTbMm5uqIx6PUQKwNsi3ZvzUQrT+N1Fo
-SvmB7AU2J6AYjSU/Cy0iatKPE15m565Bw24O1+A3YjAbFdJ62YFW2In9Fw151+Gt
-1xej1X2zqGE=
-=/vu6
------END PGP SIGNATURE-----
-
---Sig_/mJGz+m/rcgHK6ygCdy8Cmi5--
