@@ -1,121 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:55436 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755359AbaGHSFp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:45 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so5647674qgf.0
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:45 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 051/100] nfsd: clean up refcounting for lockowners
-Date: Tue,  8 Jul 2014 14:03:39 -0400
-Message-Id: <1404842668-22521-52-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:39755 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751542AbaGIQ7I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:59:08 -0400
+Subject: [PATCH v2 18/21] xprtrdma: Schedule reply tasklet once per upcall
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 09 Jul 2014 12:59:03 -0400
+Message-ID: <20140709165903.3496.30848.stgit@manet.1015granger.net>
+In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that lockowner references are only held by lockstateids and
-operations that are in-progress. With this, we can get rid of
-release_lockowner_if_empty, which will be racy once we remove
-client_mutex protection.
+Minor optimization: grab rpcrdma_tk_lock_g and disable hard IRQs
+just once after clearing the receive completion queue.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 29 +++++++----------------------
- 1 file changed, 7 insertions(+), 22 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   31 +++++++++++++++----------------
+ 1 file changed, 15 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 078ca6a6a132..591f127939a8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -941,7 +941,7 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- 	nfs4_put_stid(&stp->st_stid);
- }
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 7c49a55..a8a86a0 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -105,17 +105,6 @@ rpcrdma_run_tasklet(unsigned long data)
  
--static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ static DECLARE_TASKLET(rpcrdma_tasklet_g, rpcrdma_run_tasklet, 0UL);
+ 
+-static inline void
+-rpcrdma_schedule_tasklet(struct rpcrdma_rep *rep)
+-{
+-	unsigned long flags;
+-
+-	spin_lock_irqsave(&rpcrdma_tk_lock_g, flags);
+-	list_add_tail(&rep->rr_list, &rpcrdma_tasklets_g);
+-	spin_unlock_irqrestore(&rpcrdma_tk_lock_g, flags);
+-	tasklet_schedule(&rpcrdma_tasklet_g);
+-}
+-
+ static void
+ rpcrdma_qp_async_error_upcall(struct ib_event *event, void *context)
  {
- 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
- 
-@@ -965,7 +965,7 @@ static void release_lockowner_stateids(struct nfs4_lockowner *lo)
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		__release_lock_stateid(stp);
-+		release_lock_stateid(stp);
- 	}
+@@ -214,7 +203,7 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
  }
  
-@@ -976,21 +976,6 @@ static void release_lockowner(struct nfs4_lockowner *lo)
- 	nfs4_put_stateowner(&lo->lo_owner);
+ static void
+-rpcrdma_recvcq_process_wc(struct ib_wc *wc)
++rpcrdma_recvcq_process_wc(struct ib_wc *wc, struct list_head *sched_list)
+ {
+ 	struct rpcrdma_rep *rep =
+ 			(struct rpcrdma_rep *)(unsigned long)wc->wr_id;
+@@ -245,28 +234,38 @@ rpcrdma_recvcq_process_wc(struct ib_wc *wc)
+ 	}
+ 
+ out_schedule:
+-	rpcrdma_schedule_tasklet(rep);
++	list_add_tail(&rep->rr_list, sched_list);
  }
  
--static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
--{
--	if (list_empty(&lo->lo_owner.so_stateids))
--		release_lockowner(lo);
--}
--
--static void release_lock_stateid(struct nfs4_ol_stateid *stp)
--{
--	struct nfs4_lockowner *lo;
--
--	lo = lockowner(stp->st_stateowner);
--	__release_lock_stateid(stp);
--	release_lockowner_if_empty(lo);
--}
--
- static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
- 	__releases(&open_stp->st_stateowner->so_client->cl_lock)
- 	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
-@@ -4315,7 +4300,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+ static int
+ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ {
++	struct list_head sched_list;
+ 	struct ib_wc *wcs;
+ 	int budget, count, rc;
++	unsigned long flags;
  
- 	if (check_for_locks(stp->st_stid.sc_file, lo))
- 		return nfserr_locks_held;
--	release_lockowner_if_empty(lo);
-+	release_lock_stateid(stp);
- 	return nfs_ok;
++	INIT_LIST_HEAD(&sched_list);
+ 	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
+ 	do {
+ 		wcs = ep->rep_recv_wcs;
+ 
+ 		rc = ib_poll_cq(cq, RPCRDMA_POLLSIZE, wcs);
+ 		if (rc <= 0)
+-			return rc;
++			goto out_schedule;
+ 
+ 		count = rc;
+ 		while (count-- > 0)
+-			rpcrdma_recvcq_process_wc(wcs++);
++			rpcrdma_recvcq_process_wc(wcs++, &sched_list);
+ 	} while (rc == RPCRDMA_POLLSIZE && --budget);
+-	return 0;
++	rc = 0;
++
++out_schedule:
++	spin_lock_irqsave(&rpcrdma_tk_lock_g, flags);
++	list_splice_tail(&sched_list, &rpcrdma_tasklets_g);
++	spin_unlock_irqrestore(&rpcrdma_tk_lock_g, flags);
++	tasklet_schedule(&rpcrdma_tasklet_g);
++	return rc;
  }
  
-@@ -4921,8 +4906,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
- 		if (lo == NULL)
- 			return nfserr_jukebox;
--		/* FIXME: extra reference for new lockowners for the client */
--		atomic_inc(&lo->lo_owner.so_count);
- 	} else {
- 		/* with an existing lockowner, seqids must be the same */
- 		status = nfserr_bad_seqid;
-@@ -4933,7 +4916,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 
- 	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
- 	if (*lst == NULL) {
--		release_lockowner_if_empty(lo);
- 		status = nfserr_jukebox;
- 		goto out;
- 	}
-@@ -5353,6 +5335,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			continue;
- 		if (same_owner_str(tmp, owner, clid)) {
- 			sop = tmp;
-+			atomic_inc(&sop->so_count);
- 			break;
- 		}
- 	}
-@@ -5366,8 +5349,10 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	lo = lockowner(sop);
- 	/* see if there are still any locks associated with it */
- 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
--		if (check_for_locks(stp->st_stid.sc_file, lo))
-+		if (check_for_locks(stp->st_stid.sc_file, lo)) {
-+			nfs4_put_stateowner(sop);
- 			goto out;
-+		}
- 	}
- 
- 	status = nfs_ok;
--- 
-1.9.3
+ /*
 
