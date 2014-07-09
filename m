@@ -1,143 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:42265 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752119AbaGAOnR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 10:43:17 -0400
-Received: by mail-qc0-f179.google.com with SMTP id x3so8626374qcv.10
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 07:43:17 -0700 (PDT)
-Date: Tue, 1 Jul 2014 10:43:13 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Joe Perches <joe@perches.com>
-Cc: Christine Caulfield <ccaulfie@redhat.com>,
-        David Teigland <teigland@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, cluster-devel@redhat.com,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [RFC PATCH] dlm: Remove unused conf from lm_grant
-Message-ID: <20140701104313.5317400a@tlielax.poochiereds.net>
-In-Reply-To: <1404220810.2717.39.camel@joe-AO725>
-References: <1404220810.2717.39.camel@joe-AO725>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:61540 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756044AbaGIQ6O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:58:14 -0400
+Subject: [PATCH v2 12/21] xprtrdma: Reset FRMRs after a flushed LOCAL_INV
+ Work Request
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 09 Jul 2014 12:58:12 -0400
+Message-ID: <20140709165812.3496.93326.stgit@manet.1015granger.net>
+In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 01 Jul 2014 06:20:10 -0700
-Joe Perches <joe@perches.com> wrote:
+When a LOCAL_INV Work Request is flushed, it leaves an FRMR in the
+VALID state. This FRMR can be returned by rpcrdma_buffer_get(), and
+must be knocked down in rpcrdma_register_frmr_external() before it
+can be re-used.
 
-> While doing a bit of adding argument names to fs.h,
-> I looked at lm_grant and it seems the 2nd argument
-> is always NULL.
-> 
-> How about removing it?
-> 
-> This doesn't apply as it depends on some other patches
-> but it should be clear enough...
-> 
+Instead, capture these in rpcrdma_buffer_get(), and reset them.
 
-ACK on the general idea from my standpoint. Anything that simplifies
-the file locking interfaces is a good thing, particularly the deferred
-locking code.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |   94 ++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 92 insertions(+), 2 deletions(-)
 
-> ---
->  fs/dlm/plock.c     |  8 ++++----
->  fs/lockd/svclock.c | 12 +++---------
->  include/linux/fs.h |  2 +-
->  3 files changed, 8 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
-> index e59d332..e0ab3a9 100644
-> --- a/fs/dlm/plock.c
-> +++ b/fs/dlm/plock.c
-> @@ -30,7 +30,7 @@ struct plock_op {
->  
->  struct plock_xop {
->  	struct plock_op xop;
-> -	int (*callback)(struct file_lock *, struct file_lock *, int);
-> +	int (*callback)(struct file_lock *fl, int result);
->  	void *fl;
->  	void *file;
->  	struct file_lock flc;
-> @@ -190,7 +190,7 @@ static int dlm_plock_callback(struct plock_op *op)
->  	struct file *file;
->  	struct file_lock *fl;
->  	struct file_lock *flc;
-> -	int (*notify)(struct file_lock *fl, struct file_lock *cont, int result) = NULL;
-> +	int (*notify)(struct file_lock *fl, int result) = NULL;
->  	struct plock_xop *xop = (struct plock_xop *)op;
->  	int rv = 0;
->  
-> @@ -209,7 +209,7 @@ static int dlm_plock_callback(struct plock_op *op)
->  	notify = xop->callback;
->  
->  	if (op->info.rv) {
-> -		notify(fl, NULL, op->info.rv);
-> +		notify(fl, op->info.rv);
->  		goto out;
->  	}
->  
-> @@ -228,7 +228,7 @@ static int dlm_plock_callback(struct plock_op *op)
->  			  (unsigned long long)op->info.number, file, fl);
->  	}
->  
-> -	rv = notify(fl, NULL, 0);
-> +	rv = notify(fl, 0);
->  	if (rv) {
->  		/* XXX: We need to cancel the fs lock here: */
->  		log_print("dlm_plock_callback: lock granted after lock request "
-> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> index ab798a8..2a61701 100644
-> --- a/fs/lockd/svclock.c
-> +++ b/fs/lockd/svclock.c
-> @@ -667,22 +667,16 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_file *file, struct nlm_lock *l
->   * deferred rpc for GETLK and SETLK.
->   */
->  static void
-> -nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
-> -			     int result)
-> +nlmsvc_update_deferred_block(struct nlm_block *block, int result)
->  {
->  	block->b_flags |= B_GOT_CALLBACK;
->  	if (result == 0)
->  		block->b_granted = 1;
->  	else
->  		block->b_flags |= B_TIMED_OUT;
-> -	if (conf) {
-> -		if (block->b_fl)
-> -			__locks_copy_lock(block->b_fl, conf);
-> -	}
->  }
->  
-> -static int nlmsvc_grant_deferred(struct file_lock *fl, struct file_lock *conf,
-> -					int result)
-> +static int nlmsvc_grant_deferred(struct file_lock *fl, int result)
->  {
->  	struct nlm_block *block;
->  	int rc = -ENOENT;
-> @@ -697,7 +691,7 @@ static int nlmsvc_grant_deferred(struct file_lock *fl, struct file_lock *conf,
->  					rc = -ENOLCK;
->  					break;
->  				}
-> -				nlmsvc_update_deferred_block(block, conf, result);
-> +				nlmsvc_update_deferred_block(block, result);
->  			} else if (result == 0)
->  				block->b_granted = 1;
->  
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 36b8648..6150125 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -842,7 +842,7 @@ struct lock_manager_operations {
->  	int (*lm_compare_owner)(struct file_lock *fl1, struct file_lock *fl2);
->  	unsigned long (*lm_owner_key)(struct file_lock *fl);
->  	void (*lm_notify)(struct file_lock *fl);	/* unblock callback */
-> -	int (*lm_grant)(struct file_lock *fl, struct file_lock *conf, int result);
-> +	int (*lm_grant)(struct file_lock *fl, int result);
->  	void (*lm_break)(struct file_lock *fl);
->  	int (*lm_change)(struct file_lock **fl, int type);
->  };
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 56b7979..877c928 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1358,8 +1358,91 @@ rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
+ 	}
+ }
+ 
++/* rpcrdma_unmap_one() was already done by rpcrdma_deregister_frmr_external().
++ * Redo only the ib_post_send().
++ */
++static void
++rpcrdma_retry_local_inv(struct rpcrdma_mw *r, struct rpcrdma_ia *ia)
++{
++	struct rpcrdma_xprt *r_xprt =
++				container_of(ia, struct rpcrdma_xprt, rx_ia);
++	struct ib_send_wr invalidate_wr, *bad_wr;
++	int rc;
++
++	dprintk("RPC:       %s: FRMR %p is stale\n", __func__, r);
++
++	/* When this FRMR is re-inserted into rb_mws, it is no longer stale */
++	r->r.frmr.fr_state = FRMR_IS_VALID;
++
++	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
++	invalidate_wr.wr_id = (unsigned long)(void *)r;
++	invalidate_wr.opcode = IB_WR_LOCAL_INV;
++	invalidate_wr.send_flags = IB_SEND_SIGNALED;
++	invalidate_wr.ex.invalidate_rkey = r->r.frmr.fr_mr->rkey;
++	DECR_CQCOUNT(&r_xprt->rx_ep);
++
++	dprintk("RPC:       %s: frmr %p invalidating rkey %08x\n",
++		__func__, r, r->r.frmr.fr_mr->rkey);
++
++	read_lock(&ia->ri_qplock);
++	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
++	read_unlock(&ia->ri_qplock);
++	if (rc) {
++		/* Force rpcrdma_buffer_get() to retry */
++		r->r.frmr.fr_state = FRMR_IS_STALE;
++		dprintk("RPC:       %s: ib_post_send failed, %i\n",
++			__func__, rc);
++	}
++}
++
++static void
++rpcrdma_retry_flushed_linv(struct list_head *stale,
++			   struct rpcrdma_buffer *buf)
++{
++	struct rpcrdma_ia *ia = rdmab_to_ia(buf);
++	struct list_head *pos;
++	struct rpcrdma_mw *r;
++	unsigned long flags;
++
++	list_for_each(pos, stale) {
++		r = list_entry(pos, struct rpcrdma_mw, mw_list);
++		rpcrdma_retry_local_inv(r, ia);
++	}
++
++	spin_lock_irqsave(&buf->rb_lock, flags);
++	list_splice_tail(stale, &buf->rb_mws);
++	spin_unlock_irqrestore(&buf->rb_lock, flags);
++}
++
+ static struct rpcrdma_req *
+-rpcrdma_buffer_get_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
++rpcrdma_buffer_get_frmrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf,
++			 struct list_head *stale)
++{
++	struct rpcrdma_mw *r;
++	int i;
++
++	i = RPCRDMA_MAX_SEGS - 1;
++	while (!list_empty(&buf->rb_mws)) {
++		r = list_entry(buf->rb_mws.next,
++			       struct rpcrdma_mw, mw_list);
++		list_del(&r->mw_list);
++		if (r->r.frmr.fr_state == FRMR_IS_STALE) {
++			list_add(&r->mw_list, stale);
++			continue;
++		}
++		req->rl_segments[i].mr_chunk.rl_mw = r;
++		if (unlikely(i-- == 0))
++			return req;	/* Success */
++	}
++
++	/* Not enough entries on rb_mws for this req */
++	rpcrdma_buffer_put_sendbuf(req, buf);
++	rpcrdma_buffer_put_mrs(req, buf);
++	return NULL;
++}
++
++static struct rpcrdma_req *
++rpcrdma_buffer_get_fmrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
+ {
+ 	struct rpcrdma_mw *r;
+ 	int i;
+@@ -1393,6 +1476,7 @@ struct rpcrdma_req *
+ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
+ {
+ 	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
++	struct list_head stale;
+ 	struct rpcrdma_req *req;
+ 	unsigned long flags;
+ 
+@@ -1414,15 +1498,21 @@ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
+ 		buffers->rb_recv_bufs[buffers->rb_recv_index++] = NULL;
+ 	}
+ 	buffers->rb_send_bufs[buffers->rb_send_index++] = NULL;
++
++	INIT_LIST_HEAD(&stale);
+ 	switch (ia->ri_memreg_strategy) {
+ 	case RPCRDMA_FRMR:
++		req = rpcrdma_buffer_get_frmrs(req, buffers, &stale);
++		break;
+ 	case RPCRDMA_MTHCAFMR:
+-		req = rpcrdma_buffer_get_mrs(req, buffers);
++		req = rpcrdma_buffer_get_fmrs(req, buffers);
+ 		break;
+ 	default:
+ 		break;
+ 	}
+ 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
++	if (!list_empty(&stale))
++		rpcrdma_retry_flushed_linv(&stale, buffers);
+ 	return req;
+ }
+ 
 
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
