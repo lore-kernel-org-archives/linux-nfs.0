@@ -1,102 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57996 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:49512 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933381AbaGQPNh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jul 2014 11:13:37 -0400
-Date: Thu, 17 Jul 2014 11:13:37 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: handle failure to find backchannel
-Message-ID: <20140717151337.GA20073@fieldses.org>
-References: <20140711211609.GA13656@fieldses.org>
- <53C13FE9.3080503@gmail.com>
- <20140716220526.GG2397@fieldses.org>
- <53C7CE7D.9070904@gmail.com>
+	id S1750781AbaGJQxJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jul 2014 12:53:09 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s6AGr9uI027258
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 12:53:09 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-59-66.rdu2.redhat.com [10.10.59.66])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s6AGr9vm024096
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 12:53:09 -0400
+Message-ID: <53BEC4F4.4050003@RedHat.com>
+Date: Thu, 10 Jul 2014 12:53:08 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53C7CE7D.9070904@gmail.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Linux NFS Town Hall  meeting: Tomorrow - Thur 07/10/14
+References: <53BD8F3B.6020908@RedHat.com>
+In-Reply-To: <53BD8F3B.6020908@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 17, 2014 at 09:24:13PM +0800, Kinglong Mee wrote:
-> On 7/17/2014 06:05, J. Bruce Fields wrote:
-> > On Sat, Jul 12, 2014 at 10:02:17PM +0800, Kinglong Mee wrote:
-> >> On 7/12/2014 05:16, J. Bruce Fields wrote:
-> >>> The local variable "ses" will be left NULL here in the case we fail to
-> >>> find a connection.  Spotted by a coverity scan.
-> >>>     
-> >>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> >>>
-> >>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> >>> index 2c73cae9899d..fe22cd5c42d3 100644
-> >>> --- a/fs/nfsd/nfs4callback.c
-> >>> +++ b/fs/nfsd/nfs4callback.c
-> >>> @@ -1001,14 +1001,18 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
-> >>>  	}
-> >>>  	spin_unlock(&clp->cl_lock);
-> >>>  
-> >>> +	if (!c)
-> >>> +		goto out_no_connection;
-> >>
-> >> Setting err to -EINVAL maybe better.
-> >> Otherwise, nfsd4_mark_cb_down will be called with err == 0.
-> >>
-> >>>  	err = setup_callback_client(clp, &conn, ses);
-> >>
-> >> setup_callback_client also return -EINVAL when ses == NULL with conn.cb_xprt == NULL.
-> > 
-> > Thanks, yes, after looking over this carefully I don't believe we can
-> > call setup_callback_client with ses NULL but conn->cb_xprt non-NULL, so
-> > this is just a false positive from coverity.
-> 
-> ses and conn->cb_xprt will be set in the same condition before
-> calling setup_callback_client,
-> 
->  996         c = __nfsd4_find_backchannel(clp);
->  997         if (c) {
->  998                 svc_xprt_get(c->cn_xprt);
->  999                 conn.cb_xprt = c->cn_xprt;
-> 1000                 ses = c->cn_session;
-> 1001         }
-> 1002         spin_unlock(&clp->cl_lock);
-> 1003
-> 1004         err = setup_callback_client(clp, &conn, ses);
-> 
-> ses and conn->cb_xprt will be NULL or non-NULL in the same time,
-> so that, call setup_calback_client with ses NULL but conn->cb_xprt non-NULL will not appear.
+FYI... This will be starting up in a few minutes... If interested...
 
-Agreed but you also need to check what happens in the case where c is
-NULL.
+steved.
 
-This is much more confusing than necessary.  But I'm inclined to hold
-off on any cleanup here while jlayton's patches are still pending.
-
---b.
-
+On 09/07/14 14:51, Steve Dickson wrote:
+> Hello,
 > 
-> thanks,
-> Kinglong Mee
+> We've not had one of these in a while... Let's
+> catch up on who's on first and what is on second! :-) 
+>  
+> So the Linux NFS town hall meeting is tomorrow
+> *Thur July 10 at 01:00 pm EST (10:00am PST)*
 > 
-> >>> -	if (err) {
-> >>> -		nfsd4_mark_cb_down(clp, err);
-> >>> -		return;
-> >>> -	}
-> >>> +	if (err)
-> >>> +		goto out_no_connection;
-> >>>  	/* Yay, the callback channel's back! Restart any callbacks: */
-> >>>  	list_for_each_entry(cb, &clp->cl_callbacks, cb_per_client)
-> >>>  		run_nfsd4_cb(cb);
-> >>> +	return;
-> >>> +out_no_connection:
-> >>> +	nfsd4_mark_cb_down(clp, err);
-> >>> +	return;
-> >>>  }
-> >>>  
-> >>>  static void nfsd4_do_callback_rpc(struct work_struct *w)
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>
-> > 
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
+> 
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
+> 
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
+> 
+> Please feel to attend and participate!
+> 
+> Time: 10:00 am PST (01:00 pm EST)
+> 
+> The call in numbers are:
+> 
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+> 
+> Conference code: 564.272.1552
+> 
+> 
+> steved.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
