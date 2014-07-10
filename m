@@ -1,107 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:46057 "EHLO
-	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754391AbaGBT4P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 15:56:15 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Steve Wise <swise@opengridcomputing.com>,
-        "'Chuck Lever'" <chuck.lever@oracle.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
- disconnect
-Date: Wed, 2 Jul 2014 19:56:13 +0000
-Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE0C5BF@CMEXMB1.ad.emulex.com>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
- <20140623223942.1634.89063.stgit@manet.1015granger.net>
- <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com>
- <53B45D7B.4020705@opengridcomputing.com>
- <EE7902D3F51F404C82415C4803930ACD3FE0C57A@CMEXMB1.ad.emulex.com>
- <006001cf962e$e20df020$a629d060$@opengridcomputing.com>
-In-Reply-To: <006001cf962e$e20df020$a629d060$@opengridcomputing.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-vc0-f169.google.com ([209.85.220.169]:39399 "EHLO
+	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750733AbaGJEca convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 00:32:30 -0400
+Received: by mail-vc0-f169.google.com with SMTP id la4so9662711vcb.0
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Jul 2014 21:32:29 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <037801cf9bf7$1c039d20$540ad760$@mindspring.com>
+References: <1404942892-18323-1-git-send-email-ffilzlnx@mindspring.com>
+	<CAHQdGtSUwScEdUeKT1w+-ynqNz-e1=YvDBtdu_k=_6yndFZSVQ@mail.gmail.com>
+	<033801cf9bc7$0d7ee190$287ca4b0$@mindspring.com>
+	<CAHQdGtQjCYV2jE7FGu-J+02xp25uaUUVv8uzcs5sfbKXBbVk6A@mail.gmail.com>
+	<CAHQdGtTkTh4MQJk6bec46OjsyZHnEGGws3b_2HA+kszzOHM-pw@mail.gmail.com>
+	<037801cf9bf7$1c039d20$540ad760$@mindspring.com>
+Date: Thu, 10 Jul 2014 00:32:29 -0400
+Message-ID: <CAHQdGtSmEO8pyw+1FMmQcRgHwRufedzLRwonksueWcFSf4cm8A@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Fix permission checking by NFS client for open-create
+ with mode 000
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogU3RldmUgV2lzZSBbbWFp
-bHRvOnN3aXNlQG9wZW5ncmlkY29tcHV0aW5nLmNvbV0NCj4gU2VudDogVGh1cnNkYXksIEp1bHkg
-MDMsIDIwMTQgMToyMSBBTQ0KPiBUbzogRGV2ZXNoIFNoYXJtYTsgJ0NodWNrIExldmVyJzsgbGlu
-dXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LQ0KPiBuZnNAdmdlci5rZXJuZWwub3JnDQo+
-IFN1YmplY3Q6IFJFOiBbUEFUQ0ggdjEgMDUvMTNdIHhwcnRyZG1hOiBEb24ndCBkcmFpbiBDUXMg
-b24gdHJhbnNwb3J0DQo+IGRpc2Nvbm5lY3QNCj4gDQo+IA0KPiANCj4gPiAtLS0tLU9yaWdpbmFs
-IE1lc3NhZ2UtLS0tLQ0KPiA+IEZyb206IERldmVzaCBTaGFybWEgW21haWx0bzpEZXZlc2guU2hh
-cm1hQEVtdWxleC5Db21dDQo+ID4gU2VudDogV2VkbmVzZGF5LCBKdWx5IDAyLCAyMDE0IDI6NDMg
-UE0NCj4gPiBUbzogU3RldmUgV2lzZTsgQ2h1Y2sgTGV2ZXI7IGxpbnV4LXJkbWFAdmdlci5rZXJu
-ZWwub3JnOw0KPiA+IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBTdWJqZWN0OiBSRTog
-W1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRyYW5zcG9ydA0K
-PiA+IGRpc2Nvbm5lY3QNCj4gPg0KPiA+ID4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4g
-PiA+IEZyb206IFN0ZXZlIFdpc2UgW21haWx0bzpzd2lzZUBvcGVuZ3JpZGNvbXB1dGluZy5jb21d
-DQo+ID4gPiBTZW50OiBUaHVyc2RheSwgSnVseSAwMywgMjAxNCAxMjo1OSBBTQ0KPiA+ID4gVG86
-IERldmVzaCBTaGFybWE7IENodWNrIExldmVyOyBsaW51eC1yZG1hQHZnZXIua2VybmVsLm9yZzsg
-bGludXgtDQo+ID4gPiBuZnNAdmdlci5rZXJuZWwub3JnDQo+ID4gPiBTdWJqZWN0OiBSZTogW1BB
-VENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRyYW5zcG9ydA0KPiA+
-ID4gZGlzY29ubmVjdA0KPiA+ID4NCj4gPiA+IE9uIDcvMi8yMDE0IDI6MDYgUE0sIERldmVzaCBT
-aGFybWEgd3JvdGU6DQo+ID4gPiA+IFRoaXMgY2hhbmdlIGlzIHZlcnkgbXVjaCBwcm9uZSB0byBn
-ZW5lcmF0ZSBwb2xsX2NxIGVycm9ycyBiZWNhdXNlDQo+ID4gPiA+IG9mIHVuLWNsZWFuZWQgY29t
-cGxldGlvbnMgd2hpY2ggc3RpbGwgcG9pbnQgdG8gdGhlIG5vbi1leGlzdGVudA0KPiA+ID4gPiBR
-UHMuIE9uIHRoZSBuZXcgY29ubmVjdGlvbiB3aGVuIHRoZXNlIGNvbXBsZXRpb25zIGFyZSBwb2xs
-ZWQsIHRoZQ0KPiA+ID4gPiBwb2xsX2NxIHdpbGwgZmFpbA0KPiA+ID4gYmVjYXVzZSBvbGQgUVAg
-cG9pbnRlciBpcyBhbHJlYWR5IE5VTEwuDQo+ID4gPiA+IERpZCBhbnlvbmUgaGl0IHRoaXMgc2l0
-dWF0aW9uIGR1cmluZyB0aGVpciB0ZXN0aW5nPw0KPiA+ID4NCj4gPiA+IEhleSBEZXZlc2gsDQo+
-ID4gPg0KPiA+ID4gaXdfY3hnYjQgd2lsbCBzaWxlbnRseSB0b3NzIENRRXMgaWYgdGhlIFFQIGlz
-IG5vdCBhY3RpdmUuDQo+ID4NCj4gPiBZYSwganVzdCBub3cgY2hlY2tlZCB0aGF0IGluIG1seCBh
-bmQgY3hnYjQgZHJpdmVyIGNvZGUuIE9uIHRoZSBvdGhlcg0KPiA+IGhhbmQgb2NyZG1hIGlzIGFz
-c2VydGluZyBhIEJVRy1PTiBmb3Igc3VjaCBDUUVzIGNhdXNpbmcgc3lzdGVtIHBhbmljLg0KPiA+
-IE91dCBvZiBjdXJpb3NpdHkgSSBhbSBhc2tpbmcsIGhvdyB0aGlzIGNoYW5nZSBpcyB1c2VmdWwg
-aGVyZSwgaXMgaXQNCj4gPiByZWR1Y2luZyB0aGUgcmUtY29ubmVjdGlvbiB0aW1lLi4uQW55aG93
-IHJwY3JkbWFfY2xlYW5fY3Egd2FzDQo+ID4gZGlzY2FyZGluZyB0aGUgY29tcGxldGlvbnMgKGZs
-dXNoL3N1Y2Nlc3NmdWwgYm90aCkNCj4gPg0KPiANCj4gV2VsbCwgSSBkb24ndCB0aGluayB0aGVy
-ZSBpcyBhbnl0aGluZyByZXN0cmljdGluZyBhbiBhcHBsaWNhdGlvbiBmcm9tIGRlc3Ryb3lpbmcN
-Cj4gdGhlIFFQIHdpdGggcGVuZGluZyBDUUVzIG9uIGl0cyBDUXMuICAgU28gaXQgZGVmaW5pdGVs
-eSBzaG91bGRuJ3QgY2F1c2UgYQ0KPiBCVUdfT04oKSBJIHRoaW5rLiAgIEknbGwgaGF2ZSB0byBy
-ZWFkIHVwIGluIHRoZSBWZXJicyBzcGVjcyBpZiBkZXN0cm95aW5nIGEgUVANCj4ga2lsbHMgYWxs
-IHRoZSBwZW5kaW5nIENRRXMuLi4NCg0KSSB3aWxsIGRvdWJsZSBjaGVjayBvY3JkbWFfZGVzdHJv
-eV9xcCBjb2RlLg0KDQo+IA0KPiANCj4gPiA+DQo+ID4gPg0KPiA+ID4gPj4gLS0tLS1PcmlnaW5h
-bCBNZXNzYWdlLS0tLS0NCj4gPiA+ID4+IEZyb206IGxpbnV4LXJkbWEtb3duZXJAdmdlci5rZXJu
-ZWwub3JnIFttYWlsdG86bGludXgtcmRtYS0NCj4gPiA+ID4+IG93bmVyQHZnZXIua2VybmVsLm9y
-Z10gT24gQmVoYWxmIE9mIENodWNrIExldmVyDQo+ID4gPiA+PiBTZW50OiBUdWVzZGF5LCBKdW5l
-IDI0LCAyMDE0IDQ6MTAgQU0NCj4gPiA+ID4+IFRvOiBsaW51eC1yZG1hQHZnZXIua2VybmVsLm9y
-ZzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+ID4gPj4gU3ViamVjdDogW1BBVENIIHYx
-IDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRyYW5zcG9ydA0KPiA+ID4gPj4g
-ZGlzY29ubmVjdA0KPiA+ID4gPj4NCj4gPiA+ID4+IENRcyBhcmUgbm90IGRlc3Ryb3llZCB1bnRp
-bCB1bm1vdW50LiBCeSBkcmFpbmluZyBDUXMgb24gdHJhbnNwb3J0DQo+ID4gPiA+PiBkaXNjb25u
-ZWN0LCBzdWNjZXNzZnVsIGNvbXBsZXRpb25zIHRoYXQgY2FuIGNoYW5nZSB0aGUNCj4gPiA+ID4+
-IHIuZnJtci5zdGF0ZSBmaWVsZCBjYW4gYmUgbWlzc2VkLg0KPiA+DQo+ID4gU3RpbGwgdGhvc2Ug
-YXJlIG1pc3NlZCBpc27igJl0IGl0Li4uLlNpbmNlIHRob3NlIHN1Y2Nlc3NmdWwgY29tcGxldGlv
-bnMNCj4gPiB3aWxsIHN0aWxsIGJlIGRyb3BwZWQgYWZ0ZXIgcmUtIGNvbm5lY3Rpb24uIEFtIEkg
-bWlzc2luZyBzb21ldGhpbmcgdG8NCj4gPiB1bmRlcnN0YW5kaW5nIHRoZSBtb3RpdmF0aW9uLi4u
-DQo+ID4NCj4gPiA+ID4+DQo+ID4gPiA+PiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1
-Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gPiA+ID4+IC0tLQ0KPiA+ID4gPj4gICBuZXQvc3VucnBj
-L3hwcnRyZG1hL3ZlcmJzLmMgfCAgICA1IC0tLS0tDQo+ID4gPiA+PiAgIDEgZmlsZSBjaGFuZ2Vk
-LCA1IGRlbGV0aW9ucygtKQ0KPiA+ID4gPj4NCj4gPiA+ID4+IGRpZmYgLS1naXQgYS9uZXQvc3Vu
-cnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gPiA+ID4+IGIvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJi
-cy5jIGluZGV4IDNjN2Y5MDQuLjQ1MWUxMDAgMTAwNjQ0DQo+ID4gPiA+PiAtLS0gYS9uZXQvc3Vu
-cnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gPiA+ID4+ICsrKyBiL25ldC9zdW5ycGMveHBydHJkbWEv
-dmVyYnMuYw0KPiA+ID4gPj4gQEAgLTg3Myw5ICs4NzMsNiBAQCByZXRyeToNCj4gPiA+ID4+ICAg
-CQkJZHByaW50aygiUlBDOiAgICAgICAlczoNCj4gcnBjcmRtYV9lcF9kaXNjb25uZWN0Ig0KPiA+
-ID4gPj4gICAJCQkJIiBzdGF0dXMgJWlcbiIsIF9fZnVuY19fLCByYyk7DQo+ID4gPiA+Pg0KPiA+
-ID4gPj4gLQkJcnBjcmRtYV9jbGVhbl9jcShlcC0+cmVwX2F0dHIucmVjdl9jcSk7DQo+ID4gPiA+
-PiAtCQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBfYXR0ci5zZW5kX2NxKTsNCj4gPiA+ID4+IC0N
-Cj4gPiA+ID4+ICAgCQl4cHJ0ID0gY29udGFpbmVyX29mKGlhLCBzdHJ1Y3QgcnBjcmRtYV94cHJ0
-LCByeF9pYSk7DQo+ID4gPiA+PiAgIAkJaWQgPSBycGNyZG1hX2NyZWF0ZV9pZCh4cHJ0LCBpYSwN
-Cj4gPiA+ID4+ICAgCQkJCShzdHJ1Y3Qgc29ja2FkZHIgKikmeHBydC0NCj4gPnJ4X2RhdGEuYWRk
-cik7DQo+ID4gPiBAQCAtOTg1LDggKzk4Miw2IEBADQo+ID4gPiA+PiBycGNyZG1hX2VwX2Rpc2Nv
-bm5lY3Qoc3RydWN0IHJwY3JkbWFfZXAgKmVwLCBzdHJ1Y3QgcnBjcmRtYV9pYQ0KPiA+ID4gPj4g
-KmlhKSB7DQo+ID4gPiA+PiAgIAlpbnQgcmM7DQo+ID4gPiA+Pg0KPiA+ID4gPj4gLQlycGNyZG1h
-X2NsZWFuX2NxKGVwLT5yZXBfYXR0ci5yZWN2X2NxKTsNCj4gPiA+ID4+IC0JcnBjcmRtYV9jbGVh
-bl9jcShlcC0+cmVwX2F0dHIuc2VuZF9jcSk7DQo+ID4gPiA+PiAgIAlyYyA9IHJkbWFfZGlzY29u
-bmVjdChpYS0+cmlfaWQpOw0KPiA+ID4gPj4gICAJaWYgKCFyYykgew0KPiA+ID4gPj4gICAJCS8q
-IHJldHVybnMgd2l0aG91dCB3YWl0IGlmIG5vdCBjb25uZWN0ZWQgKi8NCj4gPiA+ID4+DQo+ID4g
-PiA+PiAtLQ0KPiA+ID4gPj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhl
-IGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXJkbWEiDQo+ID4gPiA+PiBpbiB0aGUgYm9keSBvZiBh
-IG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3JlDQo+ID4gPiBtYWpvcmRv
-bW8NCj4gPiA+ID4+IGluZm8gYXQgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5m
-by5odG1sDQo+ID4gPiA+IE4gICAgIHIgIHkgICBiIFggIMendiBeICneunsubiArICAgIHsgICAi
-ICBebiByICAgeiAaICBoICAgICYgIB4gRyAgIGggAw0KPiA+ID4gPiAoIOmajiDdomoiICAaIBtt
-ICAgICB6IN6WICAgZiAgIGggICB+IG1tbD09DQo+IA0KDQo=
+On Thu, Jul 10, 2014 at 12:26 AM, Frank Filz <ffilzlnx@mindspring.com> wrote:
+>> On Wed, Jul 9, 2014 at 7:06 PM, Trond Myklebust
+>> <trond.myklebust@primarydata.com> wrote:
+>> > On Wed, Jul 9, 2014 at 6:42 PM, Frank Filz <ffilzlnx@mindspring.com>
+>> wrote:
+>> >>> On Wed, Jul 9, 2014 at 5:54 PM, Frank S. Filz
+>> >>> <ffilzlnx@mindspring.com>
+>> >>> wrote:
+>> >>> > From: "Frank S. Filz" <ffilzlnx@mindspring.com>
+>> >>> >
+>> >>> > The NFS v4 client sends a COMPOUND with an OPEN and an ACCESS.
+>> >>> >
+>> >>> > The ACCESS is required to verify an open for read is actually
+>> >>> > allowed because RFC 3530 indicates OPEN for read only must succeed
+>> >>> > for an execute only file.
+>> >>> >
+>> >>> > The old code expected to have read access if the requested access
+>> >>> > was O_RDWR.
+>> >>> >
+>> >>> > We can expect the OPEN to properly permission check as long as the
+>> >>> > open is O_WRONLY or O_RDWR.
+>> >>> >
+>> >>> > Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
+>> >>> > ---
+>> >>> >  fs/nfs/nfs4proc.c | 25 ++++++++++++++++++++-----
+>> >>> >  1 file changed, 20 insertions(+), 5 deletions(-)
+>> >>> >
+>> >>> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c index
+>> >>> > 4bf3d97..9742054 100644
+>> >>> > --- a/fs/nfs/nfs4proc.c
+>> >>> > +++ b/fs/nfs/nfs4proc.c
+>> >>> > @@ -1966,15 +1966,30 @@ static int nfs4_opendata_access(struct
+>> >>> rpc_cred *cred,
+>> >>> >                 return 0;
+>> >>> >
+>> >>> >         mask = 0;
+>> >>> > -       /* don't check MAY_WRITE - a newly created file may not have
+>> >>> > -        * write mode bits, but POSIX allows the creating process to write.
+>> >>> > -        * use openflags to check for exec, because fmode won't
+>> >>> > -        * always have FMODE_EXEC set when file open for exec. */
+>> >>> > +       /* Don't trust the permission check on OPEN if open for exec or
+>> for
+>> >>> > +        * read only. Since FMODE_EXEC doesn't go across the wire, the
+>> server
+>> >>> > +        * has no way to distinguish between an open to read an
+>> >>> > + executable
+>> >>> file
+>> >>> > +        * and an open to read a readable file. Write access is properly
+>> checked
+>> >>> > +        * and permission SHOULD always be granted if the file was
+>> >>> > + created as
+>> >>> a
+>> >>> > +        * result of this OPEN, no matter what mode the file was created
+>> with.
+>> >>> > +        *
+>> >>> > +        * NOTE: If the case of a OPEN CREATE READ-ONLY with a
+>> >>> > + mode that
+>> >>> does
+>> >>> > +        *       not allow read access, this test will produce an incorrect
+>> >>> > +        *       EACCES error.
+>> >>> > +        */
+>> >>> >         if (openflags & __FMODE_EXEC) {
+>> >>> >                 /* ONLY check for exec rights */
+>> >>> >                 mask = MAY_EXEC;
+>> >>> > -       } else if (fmode & FMODE_READ)
+>> >>> > +       } else if (!(fmode & FMODE_WRITE)) {
+>> >>> > +               /* In case the file was execute only, check for read permission
+>> >>> > +                * ONLY if write access was not requested. It is expected that
+>> >>> > +                * an OPEN for write will fail if the file is execute only.
+>> >>> > +                * Note that if the file was newly created, the fmode SHOULD
+>> >>> > +                * include FMODE_WRITE, especially if the file will be created
+>> >>> > +                * with a restrictive mode.
+>> >>> > +                */
+>> >>> >                 mask = MAY_READ;
+>> >>> > +       }
+>> >>>
+>> >>> This looks wrong. AFAICS it will allow you to open an existing file
+>> >>> which has - wx permissions (i.e. no read permissions) for O_RDWR.
+>> >>> That should not be permitted under POSIX rules.
+>> >>
+>> >> The server permission checks the OPEN, this only affects the subsequent
+>> ACCESS.
+>> >>
+>> >> The server will fail the OPEN with NFS4_ERR_ACCESS if the open is for
+>> read/write and the file has write-execute permission.
+>> >
+>> > RFC3530bis draft 33 (6.2.1.3.1.  Discussion of Mask Attributes) states
+>> > that for both the OPEN and the READ operations, "Servers SHOULD allow
+>> > a user the ability to read the data of the file when only the
+>> > ACE4_EXECUTE access mask bit is allowed". RFC5561 has the same
+>> > language.
+>>
+>> Oops. Sorry, the correct sub-sub-sub-sub-....paragraph is this one:
+>>
+>>          Permission to execute a file.
+>>
+>>          Servers SHOULD allow a user the ability to read the data of the
+>>          file when only the ACE4_EXECUTE access mask bit is allowed.
+>>          This is because there is no way to execute a file without
+>>          reading the contents.  Though a server may treat ACE4_EXECUTE
+>>          and ACE4_READ_DATA bits identically when deciding to permit a
+>>          READ operation, it SHOULD still allow the two bits to be set
+>>          independently in ACLs, and MUST distinguish between them when
+>>          replying to ACCESS operations.  In particular, servers SHOULD
+>>          NOT silently turn on one of the two bits when the other is set,
+>>          as that would make it impossible for the client to correctly
+>>          enforce the distinction between read and execute permissions.
+>>
+>>
+>> > To me that translates as saying that the server SHOULD accept an
+>> > OPEN(SHARE_ACCESS_READ|SHARE_ACCESS_WRITE) request in the above
+>> > situation.
+>>
+>> Same conclusion, though....
+>
+> When I read that paragraph, my interpretation is that OPEN (and READ) should be permission checked normally, however, if ONLY execute permission is granted, and the OPEN is read only (and READ of course is read only) then permission would be granted for the purpose of execution. But if any other combination of bits was allowed, then the paragraph doesn't apply. Thus an OPEN SHARE_ACCESS_READ | SHARE_ACCESS_WRITE must fail since write access was not granted (if it was, the exception doesn't apply to my reading).
+>
+
+Where does that paragraph say anything about SHARE_WRITE, or even
+mention the word "only"?
+
+All it says is that as far as the OPEN and READ operations are
+concerned, ACE4_EXECUTE == ACE4_READ_DATA, whereas for the ACCESS
+operation, they differ.
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
