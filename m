@@ -1,65 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:55728 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754252AbaGITv5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 15:51:57 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: <linux-rdma@vger.kernel.org>
-Cc: <linux-nfs@vger.kernel.org>, "'Shirley Ma'" <shirley.ma@oracle.com>,
-        "'Chuck Lever'" <chuck.lever@oracle.com>,
-        "'Veeresh U. Kokatnur'" <veereshuk@chelsio.com>,
-        "'Indranil Choudhury'" <indranil@chelsio.com>
-Subject: NFSRDMA test branch update
-Date: Wed, 9 Jul 2014 14:52:00 -0500
-Message-ID: <00be01cf9baf$3f68f960$be3aec20$@opengridcomputing.com>
+Received: from mail-qc0-f196.google.com ([209.85.216.196]:47911 "EHLO
+	mail-qc0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753625AbaGJNPu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 09:15:50 -0400
+Received: by mail-qc0-f196.google.com with SMTP id i17so1163724qcy.3
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 06:15:49 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 10 Jul 2014 09:15:43 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 012/100] nfsd: remove nfs4_file_put_fd
+Message-ID: <20140710091543.62a543a6@tlielax.poochiereds.net>
+In-Reply-To: <20140710120522.GA1197@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+	<1404842668-22521-13-git-send-email-jlayton@primarydata.com>
+	<20140710080336.GB6226@infradead.org>
+	<20140710074952.20e97f70@tlielax.poochiereds.net>
+	<20140710120522.GA1197@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey all,
+On Thu, 10 Jul 2014 05:05:22 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-I've updated the for-test branch of git://git.linux-nfs.org/projects/swise/linux.git.  It
-is based on tag v3.16-rc4 and has these additional patches:
+> On Thu, Jul 10, 2014 at 07:49:52AM -0400, Jeff Layton wrote:
+> > 
+> > AFAIU, the fi_access counters tell us when we're able to zero out the
+> > fi_fds slot. fput returns void so we don't have a way to know whether
+> > we're putting the last reference to a file or not. Without that,
+> > find_*_file become quite problematic -- how would we know whether the
+> > pointers they return are still good?
+> 
+> Oh right, that's defintively a good reason to keep the counters.
+> 
+> > > Note that the comment explaining fi_access also seems wrong, as it
+> > > suggest contributing 0-4 to the counts, but at best we increment each
+> > > one by 1 in a single operation.
+> > > 
+> > 
+> > Right, we only increment by one for each operation, but open stateids
+> > can be upgraded and downgraded. If we do:
+> > 
+> > OPEN for NFS4_SHARE_ACCESS_READ
+> > OPEN for NFS4_SHARE_ACCESS_WRITE
+> > OPEN for NFS4_SHARE_ACCESS_BOTH
+> > 
+> > ...then we will have incremented the fi_access counts by a total of 4.
+> > 
+> > The big pain in the ass with this code is explained in the comment over
+> > bmap_to_share_mode. We have to keep track of what share bits have been
+> > previously used in order to comply with the RFC, so you can easily end
+> > up with "extra" references.
+> 
+> I've read both the comment, and the section in the RFC, but I still
+> don't understand how they explain this convoluted code.
+> 
+> Assume we'd have three members in fi_access instead, indexed by
+> (oflags & (O_RDONLY|O_WRONLY|O_RDWR):
+> 
+> static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+> {
+> 	int oflags = nfs4_access_to_omode(access);
+> 
+> 	WARN_ON_ONCE(fp->fi_fds[oflag] == NULL);
+> 	atomic_inc(&fp->fi_access[oflag]);
+> }
+> 
+> static void nfs4_file_put_access(struct nfs4_file *fp, u32 access)
+> {
+> 	int oflags = nfs4_access_to_omode(access);
+> 
+> 	if (atomic_dec_and_test(&fp->fi_access[oflag]))
+> 		nfs4_file_put_fd(fp, oflag);
+> }
+> 
+> nfsd4_open_downgrade would become a little more complicated because it
+> would have to check if an FD for the downgraded access is around before
+> dropping the reference to the r/w one it currently holds. And as far as
+> I can tell O_RDWR to O_RDONLY or O_WRONLY is the only possible case for
+> it, feel free to correct me.
+> 
+> Or we could simply not bother with downgrading the underlying file here
+> at all, just like it's done for the case where only a O_RDWR file is
+> open in the current code, which probably is a fairly common case.
 
-Chuck Lever (21):
-      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
-      xprtrdma: Protect ia->ri_id when unmapping/invalidating MRs
-      xprtrdma: Limit data payload size for ALLPHYSICAL
-      xprtrdma: Update rkeys after transport reconnect
-      xprtrdma: On disconnect, don't ignore pending CQEs
-      xprtrdma: Don't invalidate FRMRs if registration fails
-      xprtrdma: Unclutter struct rpcrdma_mr_seg
-      xprtrdma: Back off rkey when FAST_REG_MR fails
-      xprtrdma: Chain together all MWs in same buffer pool
-      xprtrdma: Properly handle exhaustion of the rb_mws list
-      xprtrdma: Reset FRMRs when FAST_REG_MR is flushed by a disconnect
-      xprtrdma: Reset FRMRs after a flushed LOCAL_INV Work Request
-      xprtrdma: Don't post a LOCAL_INV in rpcrdma_register_frmr_external()
-      xprtrdma: Disable completions for FAST_REG_MR Work Requests
-      xprtrdma: Disable completions for LOCAL_INV Work Requests
-      xprtrdma: Rename frmr_wr
-      xprtrdma: Allocate each struct rpcrdma_mw separately
-      xprtrdma: Schedule reply tasklet once per upcall
-      xprtrdma: Make rpcrdma_ep_disconnect() return void
-      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
-      xprtrdma: Handle additional connection events
+That sounds like it would work, but will it really improve this code?
+I'm not convinced.
 
-Hariprasad S (2):
-      iw_cxgb4: Fix skb_leak in reject_cr
-      iw_cxgb4: clean up connection on arp error
+Having to check whether you actually have the fd before dropping its
+refcount sounds "fiddly". You'd need to do the check and put under the
+fi_lock in order to not open up new races.
 
-Jan Beulich (1):
-      x86-64: fix vDSO build
+So, we'd either lose the benefit of using atomics for fi_access, or
+have to have a whole separate nfs4_file_put_access_locked codepath that
+can be done while already holding the lock.
 
-Steve Wise (3):
-      iw_cxgb4: call iwpm_init() only once
-      iw_cxgb4: initialize the device status page
-      svcrdma: send_write() must not overflow the device's max sge
+That doesn't sound to me like it's really an improvement on this code.
 
-
-Cheers,
-
-Steve.
-
+-- 
+Jeff Layton <jlayton@primarydata.com>
