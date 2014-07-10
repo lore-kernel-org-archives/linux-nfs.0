@@ -1,70 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail2.candelatech.com ([208.74.158.173]:53815 "EHLO
-	mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750709AbaGaTwz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2014 15:52:55 -0400
-Received: from [192.168.100.236] (firewall.candelatech.com [70.89.124.249])
-	(using TLSv1 with cipher DHE-RSA-CAMELLIA256-SHA (256/256 bits))
-	(No client certificate requested)
-	by mail2.candelatech.com (Postfix) with ESMTPSA id 1CB6740AB5B
-	for <linux-nfs@vger.kernel.org>; Thu, 31 Jul 2014 12:52:55 -0700 (PDT)
-Message-ID: <53DA9E96.8080100@candelatech.com>
-Date: Thu, 31 Jul 2014 12:52:54 -0700
-From: Ben Greear <greearb@candelatech.com>
+Received: from mail-vc0-f178.google.com ([209.85.220.178]:62265 "EHLO
+	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752808AbaGJUIc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 16:08:32 -0400
+Received: by mail-vc0-f178.google.com with SMTP id ij19so211249vcb.9
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 13:08:31 -0700 (PDT)
 MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Killing process in D state on mount to dead NFS server.
-References: <53DA8443.407@candelatech.com> <20140731194936.GB29395@us.ibm.com>
-In-Reply-To: <20140731194936.GB29395@us.ibm.com>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <1FAA3C78-BBFA-4186-A25A-0D4E97609934@netapp.com>
+References: <1FAA3C78-BBFA-4186-A25A-0D4E97609934@netapp.com>
+Date: Thu, 10 Jul 2014 16:08:31 -0400
+Message-ID: <CAHQdGtReiO9yzXG3_WKk9YJJBAmbT+YO+WtuWXabkCtDm76o-Q@mail.gmail.com>
+Subject: Re: rpciod/1: page allocation failure. order:2, mode:0x20'
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/31/2014 12:49 PM, Malahal Naineni wrote:
-> Ben Greear [greearb@candelatech.com] wrote:
->> So, this has been asked all over the interweb for years and years, but
->> the best answer I can find is to reboot the system or create a fake NFS
->> server somewhere with the same IP as the gone-away NFS server.
->>
->> The problem is:
->>
->> I have some mounts to an NFS server that no longer exists (crashed/powered down).
->>
->> I have some processes stuck trying to write to files open on these mounts.
->>
->> I want to kill the process and unmount.
->>
->> umount -l will make the mount go a way, sort of.  But process is still hung.
->> umount -f complains:
->>   umount2:  Device or resource busy
->>   umount.nfs: /mnt/foo: device is busy
->>
->> kill -9 does not work on process.
->>
->>
->> Aside from bringing a fake NFS server back up on the same IP, is there any
->> other way to get these mounts unmounted and the processes killed without
->> rebooting?
-> 
-> You don't need a fake NFS server, you just need a fake or real server
-> with that IP address.  A popular way is to alias that IP on the NFS
-> client itself.
-> 
-> See the second popular answer below:
-> http://stackoverflow.com/questions/40317/force-unmount-of-nfs-mounted-directory
+On Thu, Jul 10, 2014 at 4:01 PM, Adamson, Andy
+<William.Adamson@netapp.com> wrote:
+> Hi
+>
+> A customer of ours, running a 2.6.32-431.5.1.el6.x86_64 kernel NFS client, is hittng the "rpciod/1: page allocation failure. order:2, mode:0x20", but only with NFSv3 hard mounts (not soft mounts), and not with NFSv4 (same application, same client hardware). Has anyone hit this issue with RHEL6.5?  Any ideas on why NFSv3 would trigger this error and not NFSv4?
+>
+> I see in Red Hat Bugzilla 767127 - swapper: page allocation failure. order:1, mode:0x20 (edit) that a similar issue was solved by setting vm.zone_reclaim_mode = 1 which used to be the default.  Adjusting the vm.min_free_kbytes higher may also help.  Any side effects or issues with these settings?
+>
+> Any info appreciated
 
-In my case, routing is set up so that the NFS traffic always exits the system, so
-doing a local IP that matches the server is not an option.  It also seems like a
-horrible hack that should have a better solution :P
-
-Thanks,
-Ben
-
-> 
-> Regards, Malahal.
-
+Where are we doing an order 2 allocation in the NFS/RPC code? Our aim
+has always been to do nothing larger than an order 0 allocation.
 
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
