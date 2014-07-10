@@ -1,95 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:61470 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932332AbaGUPD1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:27 -0400
-Received: by mail-qc0-f171.google.com with SMTP id i17so5711068qcy.16
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:26 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 19/40] nfsd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
-Date: Mon, 21 Jul 2014 11:02:31 -0400
-Message-Id: <1405954972-28904-20-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:48837 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750988AbaGJMFY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 08:05:24 -0400
+Date: Thu, 10 Jul 2014 05:05:22 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 012/100] nfsd: remove nfs4_file_put_fd
+Message-ID: <20140710120522.GA1197@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+ <1404842668-22521-13-git-send-email-jlayton@primarydata.com>
+ <20140710080336.GB6226@infradead.org>
+ <20140710074952.20e97f70@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140710074952.20e97f70@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, Jul 10, 2014 at 07:49:52AM -0400, Jeff Layton wrote:
+> 
+> AFAIU, the fi_access counters tell us when we're able to zero out the
+> fi_fds slot. fput returns void so we don't have a way to know whether
+> we're putting the last reference to a file or not. Without that,
+> find_*_file become quite problematic -- how would we know whether the
+> pointers they return are still good?
 
-Ensure that all the callers put the open stateid after use.
-Necessary step toward client_mutex removal.
+Oh right, that's defintively a good reason to keep the counters.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+> > Note that the comment explaining fi_access also seems wrong, as it
+> > suggest contributing 0-4 to the counts, but at best we increment each
+> > one by 1 in a single operation.
+> > 
+> 
+> Right, we only increment by one for each operation, but open stateids
+> can be upgraded and downgraded. If we do:
+> 
+> OPEN for NFS4_SHARE_ACCESS_READ
+> OPEN for NFS4_SHARE_ACCESS_WRITE
+> OPEN for NFS4_SHARE_ACCESS_BOTH
+> 
+> ...then we will have incremented the fi_access counts by a total of 4.
+> 
+> The big pain in the ass with this code is explained in the comment over
+> bmap_to_share_mode. We have to keep track of what share bits have been
+> previously used in order to comply with the RFC, so you can easily end
+> up with "extra" references.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1e95727e5f01..f9a3fcd4e217 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4422,6 +4422,8 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- 						NFS4_OPEN_STID, stpp, nn);
- 	if (status)
- 		return status;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&(*stpp)->st_stid.sc_count);
- 	oo = openowner((*stpp)->st_stateowner);
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
- 		return nfserr_bad_stateid;
-@@ -4526,12 +4528,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	if (!test_access(od->od_share_access, stp)) {
- 		dprintk("NFSD: access not a subset of current bitmap: 0x%hhx, input access=%08x\n",
- 			stp->st_access_bmap, od->od_share_access);
--		goto out;
-+		goto put_stateid;
- 	}
- 	if (!test_deny(od->od_share_deny, stp)) {
- 		dprintk("NFSD: deny not a subset of current bitmap: 0x%hhx, input deny=%08x\n",
- 			stp->st_deny_bmap, od->od_share_deny);
--		goto out;
-+		goto put_stateid;
- 	}
- 	nfs4_stateid_downgrade(stp, od->od_share_access);
- 
-@@ -4540,6 +4542,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&od->od_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 	status = nfs_ok;
-+put_stateid:
-+	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	if (!cstate->replay_owner)
-@@ -4892,6 +4896,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_openowner *open_sop = NULL;
- 	struct nfs4_lockowner *lock_sop = NULL;
- 	struct nfs4_ol_stateid *lock_stp = NULL;
-+	struct nfs4_ol_stateid *open_stp = NULL;
- 	struct nfs4_file *fp;
- 	struct file *filp = NULL;
- 	struct file_lock *file_lock = NULL;
-@@ -4919,8 +4924,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
- 
- 	if (lock->lk_is_new) {
--		struct nfs4_ol_stateid *open_stp = NULL;
--
- 		if (nfsd4_has_session(cstate))
- 			/* See rfc 5661 18.10.3: given clientid is ignored: */
- 			memcpy(&lock->v.new.clientid,
-@@ -5048,6 +5051,8 @@ out:
- 		fput(filp);
- 	if (lock_stp)
- 		put_generic_stateid(lock_stp);
-+	if (open_stp)
-+		put_generic_stateid(open_stp);
- 	if (status && new_state)
- 		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
--- 
-1.9.3
+I've read both the comment, and the section in the RFC, but I still
+don't understand how they explain this convoluted code.
 
+Assume we'd have three members in fi_access instead, indexed by
+(oflags & (O_RDONLY|O_WRONLY|O_RDWR):
+
+static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+{
+	int oflags = nfs4_access_to_omode(access);
+
+	WARN_ON_ONCE(fp->fi_fds[oflag] == NULL);
+	atomic_inc(&fp->fi_access[oflag]);
+}
+
+static void nfs4_file_put_access(struct nfs4_file *fp, u32 access)
+{
+	int oflags = nfs4_access_to_omode(access);
+
+	if (atomic_dec_and_test(&fp->fi_access[oflag]))
+		nfs4_file_put_fd(fp, oflag);
+}
+
+nfsd4_open_downgrade would become a little more complicated because it
+would have to check if an FD for the downgraded access is around before
+dropping the reference to the r/w one it currently holds. And as far as
+I can tell O_RDWR to O_RDONLY or O_WRONLY is the only possible case for
+it, feel free to correct me.
+
+Or we could simply not bother with downgrading the underlying file here
+at all, just like it's done for the case where only a O_RDWR file is
+open in the current code, which probably is a fairly common case.
