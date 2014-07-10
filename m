@@ -1,104 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:59076 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754363AbaG2Uej (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:39 -0400
-Received: by mail-qg0-f49.google.com with SMTP id j107so306309qga.8
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:38 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 06/38] nfsd: do filp_close in sc_free callback for lock stateids
-Date: Tue, 29 Jul 2014 16:33:49 -0400
-Message-Id: <1406666061-14175-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:42938 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751095AbaGJH7V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 03:59:21 -0400
+Date: Thu, 10 Jul 2014 00:59:20 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 011/100] nfsd: refactor nfs4_file_get_access and
+ nfs4_file_put_access
+Message-ID: <20140710075920.GA6226@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+ <1404842668-22521-12-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1404842668-22521-12-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Releasing locks when we unhash the stateid instead of doing so only when
-the stateid is actually released will be problematic in later patches
-when we need to protect the unhashing with spinlocks. Move it into the
-sc_free operation instead.
+> +static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+>  {
+> +	int oflag = nfs4_access_to_omode(access);
+> +
+> +	/* Note: relies on NFS4_SHARE_ACCESS_BOTH == READ|WRITE */
+> +	access &= NFS4_SHARE_ACCESS_BOTH;
+> +	if (access == 0)
+> +		return;
+> +
+>  	if (oflag == O_RDWR) {
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 26 ++++++++++++++++++--------
- 1 file changed, 18 insertions(+), 8 deletions(-)
+This fragment looks odd to me in several ways.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e45a45d12954..a99c054da4a6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -502,7 +502,7 @@ out_free:
- 	return NULL;
- }
- 
--static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
-+static struct nfs4_ol_stateid * nfs4_alloc_open_stateid(struct nfs4_client *clp)
- {
- 	struct nfs4_stid *stid;
- 	struct nfs4_ol_stateid *stp;
-@@ -907,16 +907,23 @@ static void nfs4_free_ol_stateid(struct nfs4_stid *stid)
- 	kmem_cache_free(stateid_slab, stid);
- }
- 
--static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
- {
-+	struct nfs4_ol_stateid *stp = openlockstateid(stid);
-+	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
- 	struct file *file;
- 
-+	file = find_any_file(stp->st_stid.sc_file);
-+	if (file)
-+		filp_close(file, (fl_owner_t)lo);
-+	nfs4_free_ol_stateid(stid);
-+}
-+
-+static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
-+{
- 	list_del(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
--	file = find_any_file(stp->st_stid.sc_file);
--	if (file)
--		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
- 	nfs4_put_stid(&stp->st_stid);
- }
- 
-@@ -3287,7 +3294,7 @@ new_owner:
- 		return nfserr_jukebox;
- 	open->op_openowner = oo;
- alloc_stateid:
--	open->op_stp = nfs4_alloc_stateid(clp);
-+	open->op_stp = nfs4_alloc_open_stateid(clp);
- 	if (!open->op_stp)
- 		return nfserr_jukebox;
- 	return nfs_ok;
-@@ -4703,17 +4710,20 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp,
- 		struct inode *inode,
- 		struct nfs4_ol_stateid *open_stp)
- {
-+	struct nfs4_stid *s;
- 	struct nfs4_ol_stateid *stp;
- 	struct nfs4_client *clp = lo->lo_owner.so_client;
- 
--	stp = nfs4_alloc_stateid(clp);
--	if (stp == NULL)
-+	s = nfs4_alloc_stid(clp, stateid_slab);
-+	if (s == NULL)
- 		return NULL;
-+	stp = openlockstateid(s);
- 	stp->st_stid.sc_type = NFS4_LOCK_STID;
- 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
- 	stp->st_stateowner = &lo->lo_owner;
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
-+	stp->st_stid.sc_free = nfs4_free_lock_stateid;
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
--- 
-1.9.3
+For one NFS4_SHARE_ACCESS_BOTH isn't == READ|WRITE, although reading it
+again I suspect this supposed to mean
+NFS4_SHARE_ACCESS_READ|NFS4_SHARE_ACCESS_WRITE.  Second why to the &=
+on access if it's not used except for the test, or for that matter
+why don't we do the check on the oflag?
 
+I can see two sensible ways to do this:
+
+a)
+
+static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+{
+	int oflag = nfs4_access_to_omode(access);
+
+	if (oflag == O_RDWR) {
+		__nfs4_file_get_access(fp, O_RDONLY);
+		__nfs4_file_get_access(fp, O_WRONLY);
+	} else if (oflag == O_RDONLY || oflag == O_RDONLY)
+		__nfs4_file_get_access(fp, oflag);
+	}
+}
+
+Or even better just avoid the nfs4_file_get_access call altogether:
+
+static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
+{
+	WARN_ON_ONCE(access & ~NFS4_SHARE_ACCESS_BOTH);
+
+	if (access & NFS4_SHARE_ACCESS_WRITE)
+		__nfs4_file_get_access(fp, O_WRONLY);
+	if (access & NFS4_SHARE_ACCESS_READ)
+		__nfs4_file_get_access(fp, O_RDONLY);
+}
+
+Same for the put side.
+
+
+Btw, what is the story about the third fd in fi_fds? Seems like
+nfs4_get_vfs_file can put a file pointer in there, but
+nfs4_file_get_access never grabs a reference to it.
