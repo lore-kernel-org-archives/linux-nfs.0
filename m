@@ -1,121 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:41029 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754936AbaGUPDl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:41 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so5425344qgf.21
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:40 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 29/40] nfsd: clean up refcounting for lockowners
-Date: Mon, 21 Jul 2014 11:02:41 -0400
-Message-Id: <1405954972-28904-30-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:44273 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751747AbaGJIEI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 04:04:08 -0400
+Date: Thu, 10 Jul 2014 01:04:07 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 013/100] nfsd: shrink st_access_bmap and st_deny_bmap
+Message-ID: <20140710080407.GC6226@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+ <1404842668-22521-14-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1404842668-22521-14-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that lockowner references are only held by lockstateids and
-operations that are in-progress. With this, we can get rid of
-release_lockowner_if_empty, which will be racy once we remove
-client_mutex protection.
+On Tue, Jul 08, 2014 at 02:03:01PM -0400, Jeff Layton wrote:
+> We never use anything above bit #3, so an unsigned long for each is
+> wasteful. Shrink them to a char each, and add some WARN_ON_ONCE calls if
+> we try to set or clear bits that would go outside those sizes.
+> 
+> Note too that because atomic bitops work on unsigned longs, we have to
+> abandon their use here. That shouldn't be a problem though since we
+> don't really care about the atomicity in this code anyway. Using them
+> was just a convenient way to flip bits.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 29 +++++++----------------------
- 1 file changed, 7 insertions(+), 22 deletions(-)
+Looks good,
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 348a8b20e546..5df3577d62bf 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -934,7 +934,7 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- 	nfs4_put_stid(&stp->st_stid);
- }
- 
--static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void release_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
- 
-@@ -958,7 +958,7 @@ static void release_lockowner_stateids(struct nfs4_lockowner *lo)
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		__release_lock_stateid(stp);
-+		release_lock_stateid(stp);
- 	}
- }
- 
-@@ -969,21 +969,6 @@ static void release_lockowner(struct nfs4_lockowner *lo)
- 	nfs4_put_stateowner(&lo->lo_owner);
- }
- 
--static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
--{
--	if (list_empty(&lo->lo_owner.so_stateids))
--		release_lockowner(lo);
--}
--
--static void release_lock_stateid(struct nfs4_ol_stateid *stp)
--{
--	struct nfs4_lockowner *lo;
--
--	lo = lockowner(stp->st_stateowner);
--	__release_lock_stateid(stp);
--	release_lockowner_if_empty(lo);
--}
--
- static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
- 	__releases(&open_stp->st_stateowner->so_client->cl_lock)
- 	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
-@@ -4338,7 +4323,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
- 
- 	if (check_for_locks(stp->st_stid.sc_file, lo))
- 		return nfserr_locks_held;
--	release_lockowner_if_empty(lo);
-+	release_lock_stateid(stp);
- 	return nfs_ok;
- }
- 
-@@ -4945,8 +4930,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
- 		if (lo == NULL)
- 			return nfserr_jukebox;
--		/* FIXME: extra reference for new lockowners for the client */
--		atomic_inc(&lo->lo_owner.so_count);
- 	} else {
- 		/* with an existing lockowner, seqids must be the same */
- 		status = nfserr_bad_seqid;
-@@ -4957,7 +4940,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 
- 	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
- 	if (*lst == NULL) {
--		release_lockowner_if_empty(lo);
- 		status = nfserr_jukebox;
- 		goto out;
- 	}
-@@ -5377,6 +5359,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			continue;
- 		if (same_owner_str(tmp, owner, clid)) {
- 			sop = tmp;
-+			atomic_inc(&sop->so_count);
- 			break;
- 		}
- 	}
-@@ -5390,8 +5373,10 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	lo = lockowner(sop);
- 	/* see if there are still any locks associated with it */
- 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
--		if (check_for_locks(stp->st_stid.sc_file, lo))
-+		if (check_for_locks(stp->st_stid.sc_file, lo)) {
-+			nfs4_put_stateowner(sop);
- 			goto out;
-+		}
- 	}
- 
- 	status = nfs_ok;
--- 
-1.9.3
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
