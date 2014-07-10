@@ -1,40 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:48684 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750737AbaGUWy1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 18:54:27 -0400
-Received: by mail-ie0-f173.google.com with SMTP id tr6so7336098ieb.4
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 15:54:26 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] knfsd: nfs4_check_fh - make it actually check the filehandle
-Date: Mon, 21 Jul 2014 18:54:30 -0400
-Message-Id: <1405983271-61861-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1405983271-61861-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1405983271-61861-1-git-send-email-trond.myklebust@primarydata.com>
- <1405983271-61861-2-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:34426 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751117AbaGJRo3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 13:44:29 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] svcrdma: Increase credit limit to 32
+To: swise@ogc.net
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Thu, 10 Jul 2014 13:44:26 -0400
+Message-ID: <20140710174426.3734.33938.stgit@klimt.1015granger.net>
+In-Reply-To: <20140710174225.3734.44692.stgit@klimt.1015granger.net>
+References: <20140710174225.3734.44692.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e9519db4927..2b2cd6814615 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3958,7 +3958,7 @@ laundromat_main(struct work_struct *laundry)
+ include/linux/sunrpc/svc_rdma.h |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 5cf99a0..975da75 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -174,8 +174,7 @@ struct svcxprt_rdma {
+  * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
+ #define RPCRDMA_ORD             (64/4)
+ #define RPCRDMA_SQ_DEPTH_MULT   8
+-#define RPCRDMA_MAX_THREADS     16
+-#define RPCRDMA_MAX_REQUESTS    16
++#define RPCRDMA_MAX_REQUESTS    32
+ #define RPCRDMA_MAX_REQ_SIZE    4096
  
- static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
- {
--	if (fhp->fh_dentry->d_inode != stp->st_stid.sc_file->fi_inode)
-+	if (!nfsd_fh_match(&fhp->fh_handle, &stp->st_stid.sc_file->fi_fhandle))
- 		return nfserr_bad_stateid;
- 	return nfs_ok;
- }
--- 
-1.9.3
+ /* svc_rdma_marshal.c */
 
