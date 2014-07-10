@@ -1,91 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:49156 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754347AbaG2Uea (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:30 -0400
-Received: by mail-qg0-f45.google.com with SMTP id f51so293152qge.18
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:29 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 00/38] nfsd: stateid and stateowner refcounting overhaul
-Date: Tue, 29 Jul 2014 16:33:43 -0400
-Message-Id: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:51883 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751025AbaGJLXn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 07:23:43 -0400
+Date: Thu, 10 Jul 2014 04:23:42 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 003/100] nfsd: Ensure stateids remain unique until
+ they are freed
+Message-ID: <20140710112342.GB10893@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+ <1404842668-22521-4-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1404842668-22521-4-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-- rename functions from *_generic_stateid to *_ol_stateid
-- eliminate some nfs4_put_* wrappers around nfs4_put_stid
-- clean up lock stateid allocation and initialization
-- reorder patches to reduce churn
-- handle open/lock stateids individually in nfsd4_free_stateid
-- add ops struct for stateowners
-- combine v4.0 replay cache patches
+On Tue, Jul 08, 2014 at 02:02:51PM -0400, Jeff Layton wrote:
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> 
+> Add an extra delegation state to allow the stateid to remain in the idr
+> tree until the last reference has been released. This will be necessary
+> to ensure uniqueness once the client_mutex is removed.
+> 
+> [jlayton: reset the sc_type under the state_lock in unhash_delegation]
 
-Here is the next swath of patches for the nfsd client_mutex removal
-series. The main focus of this series is to add refcounting to open and
-lock stateids and to use those to drive their management and eventual
-destruction. Additionally, we add refcounting to the open and lock
-stateowners and use that refcount to manage their lifecycle as well.
+I'd be tempted to instead have a closed flag, there's plenty of space in
+the hole after sc_type anyway.
 
-Most of the new locking here is superfluous until we remove the
-client_mutex. This series should apply cleanly to Bruce's for-3.17
-branch now that the delegation patches have been merged.
+The rationale for that is that a stateid really shouldn't change the
+type during it's life time, and callers that specify the type to look
+up shouldn't bother with looking up different types due to this either.
 
-Jeff Layton (20):
-  nfsd: Cleanup the freeing of stateids
-  nfsd4: use cl_lock to synchronize all stateid idr calls
-  nfsd: do filp_close in sc_free callback for lock stateids
-  nfsd: Add locking to protect the state owner lists
-  nfsd: clean up races in lock stateid searching and creation
-  nfsd: ensure atomicity in nfsd4_free_stateid and
-    nfsd4_validate_stateid
-  nfsd: Add reference counting to state owners
-  nfsd: Add a mutex to protect the NFSv4.0 open owner replay cache
-  nfsd: clean up lockowner refcounting when finding them
-  nfsd: add an operation for unhashing a stateowner
-  nfsd: clean up refcounting for lockowners
-  nfsd: make openstateids hold references to their openowners
-  nfsd: don't allow CLOSE to proceed until refcount on stateid drops
-  nfsd: clean up and reorganize release_lockowner
-  nfsd: add locking to stateowner release
-  nfsd: optimize destroy_lockowner cl_lock thrashing
-  nfsd: close potential race in nfsd4_free_stateid
-  nfsd: reduce cl_lock thrashing in release_openowner
-  nfsd: don't thrash the cl_lock while freeing an open stateid
-  nfsd: rename unhash_generic_stateid to unhash_ol_stateid
+NFS4_REVOKED_DELEG_STID would also be replaced by a revoked flag, which
+makes much more sene to start with as well.
 
-Trond Myklebust (18):
-  nfsd: Add reference counting to the lock and open stateids
-  nfsd: Add a struct nfs4_file field to struct nfs4_stid
-  nfsd: Replace nfs4_ol_stateid->st_file with the st_stid.sc_file
-  nfsd: Add reference counting to lock stateids
-  nfsd: nfsd4_locku() must reference the lock stateid
-  nfsd: Ensure that nfs4_open_delegation() references the delegation
-    stateid
-  nfsd: nfsd4_process_open2() must reference the delegation stateid
-  nfsd: nfsd4_process_open2() must reference the open stateid
-  nfsd: Prepare nfsd4_close() for open stateid referencing
-  nfsd: nfsd4_open_confirm() must reference the open stateid
-  nfsd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
-  nfsd: Migrate the stateid reference into nfs4_preprocess_seqid_op
-  nfsd: Migrate the stateid reference into nfs4_lookup_stateid()
-  nfsd: Migrate the stateid reference into nfs4_find_stateid_by_type()
-  nfsd: Make lock stateid take a reference to the lockowner
-  nfsd: Protect adding/removing open state owners using client_lock
-  nfsd: Protect adding/removing lock owners using client_lock
-  nfsd: Move the open owner hash table into struct nfs4_client
-
- fs/nfsd/netns.h        |    1 -
- fs/nfsd/nfs4callback.c |    4 +-
- fs/nfsd/nfs4proc.c     |   12 +-
- fs/nfsd/nfs4state.c    | 1014 +++++++++++++++++++++++++++++++-----------------
- fs/nfsd/nfs4xdr.c      |    2 -
- fs/nfsd/state.h        |   32 +-
- fs/nfsd/xdr4.h         |    5 +-
- 7 files changed, 695 insertions(+), 375 deletions(-)
-
--- 
-1.9.3
+Btw, do you also plan to keep open stateids as NFS4_CLOSED_STID for
+4.1+?  In that case the comment there would need an update.  What about
+lock stateids?
 
