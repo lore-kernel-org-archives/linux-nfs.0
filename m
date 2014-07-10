@@ -1,81 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:63499 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754725AbaG3Bfd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:33 -0400
-Received: by mail-qa0-f51.google.com with SMTP id k15so611053qaq.10
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:32 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 28/38] nfsd: don't allow CLOSE to proceed until refcount on stateid drops
-Date: Tue, 29 Jul 2014 21:34:33 -0400
-Message-Id: <1406684083-19736-29-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Received: from elasmtp-galgo.atl.sa.earthlink.net ([209.86.89.61]:52358 "EHLO
+	elasmtp-galgo.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750733AbaGJE00 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jul 2014 00:26:26 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Trond Myklebust'" <trond.myklebust@primarydata.com>
+Cc: "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>,
+        "'Linux Kernel mailing list'" <linux-kernel@vger.kernel.org>
+References: <1404942892-18323-1-git-send-email-ffilzlnx@mindspring.com>	<CAHQdGtSUwScEdUeKT1w+-ynqNz-e1=YvDBtdu_k=_6yndFZSVQ@mail.gmail.com>	<033801cf9bc7$0d7ee190$287ca4b0$@mindspring.com>	<CAHQdGtQjCYV2jE7FGu-J+02xp25uaUUVv8uzcs5sfbKXBbVk6A@mail.gmail.com> <CAHQdGtTkTh4MQJk6bec46OjsyZHnEGGws3b_2HA+kszzOHM-pw@mail.gmail.com>
+In-Reply-To: <CAHQdGtTkTh4MQJk6bec46OjsyZHnEGGws3b_2HA+kszzOHM-pw@mail.gmail.com>
+Subject: RE: [PATCH 1/1] Fix permission checking by NFS client for open-create with mode 000
+Date: Wed, 9 Jul 2014 21:26:23 -0700
+Message-ID: <037801cf9bf7$1c039d20$540ad760$@mindspring.com>
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove client_mutex protection, it'll be possible to have an
-in-flight operation using an openstateid when a CLOSE call comes in.
-If that happens, we can't just put the sc_file reference and clear its
-pointer without risking an oops.
+> On Wed, Jul 9, 2014 at 7:06 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+> > On Wed, Jul 9, 2014 at 6:42 PM, Frank Filz <ffilzlnx@mindspring.com>
+> wrote:
+> >>> On Wed, Jul 9, 2014 at 5:54 PM, Frank S. Filz
+> >>> <ffilzlnx@mindspring.com>
+> >>> wrote:
+> >>> > From: "Frank S. Filz" <ffilzlnx@mindspring.com>
+> >>> >
+> >>> > The NFS v4 client sends a COMPOUND with an OPEN and an ACCESS.
+> >>> >
+> >>> > The ACCESS is required to verify an open for read is actually
+> >>> > allowed because RFC 3530 indicates OPEN for read only must succeed
+> >>> > for an execute only file.
+> >>> >
+> >>> > The old code expected to have read access if the requested access
+> >>> > was O_RDWR.
+> >>> >
+> >>> > We can expect the OPEN to properly permission check as long as the
+> >>> > open is O_WRONLY or O_RDWR.
+> >>> >
+> >>> > Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
+> >>> > ---
+> >>> >  fs/nfs/nfs4proc.c | 25 ++++++++++++++++++++-----
+> >>> >  1 file changed, 20 insertions(+), 5 deletions(-)
+> >>> >
+> >>> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c index
+> >>> > 4bf3d97..9742054 100644
+> >>> > --- a/fs/nfs/nfs4proc.c
+> >>> > +++ b/fs/nfs/nfs4proc.c
+> >>> > @@ -1966,15 +1966,30 @@ static int nfs4_opendata_access(struct
+> >>> rpc_cred *cred,
+> >>> >                 return 0;
+> >>> >
+> >>> >         mask = 0;
+> >>> > -       /* don't check MAY_WRITE - a newly created file may not have
+> >>> > -        * write mode bits, but POSIX allows the creating process to write.
+> >>> > -        * use openflags to check for exec, because fmode won't
+> >>> > -        * always have FMODE_EXEC set when file open for exec. */
+> >>> > +       /* Don't trust the permission check on OPEN if open for exec or
+> for
+> >>> > +        * read only. Since FMODE_EXEC doesn't go across the wire, the
+> server
+> >>> > +        * has no way to distinguish between an open to read an
+> >>> > + executable
+> >>> file
+> >>> > +        * and an open to read a readable file. Write access is properly
+> checked
+> >>> > +        * and permission SHOULD always be granted if the file was
+> >>> > + created as
+> >>> a
+> >>> > +        * result of this OPEN, no matter what mode the file was created
+> with.
+> >>> > +        *
+> >>> > +        * NOTE: If the case of a OPEN CREATE READ-ONLY with a
+> >>> > + mode that
+> >>> does
+> >>> > +        *       not allow read access, this test will produce an incorrect
+> >>> > +        *       EACCES error.
+> >>> > +        */
+> >>> >         if (openflags & __FMODE_EXEC) {
+> >>> >                 /* ONLY check for exec rights */
+> >>> >                 mask = MAY_EXEC;
+> >>> > -       } else if (fmode & FMODE_READ)
+> >>> > +       } else if (!(fmode & FMODE_WRITE)) {
+> >>> > +               /* In case the file was execute only, check for read permission
+> >>> > +                * ONLY if write access was not requested. It is expected that
+> >>> > +                * an OPEN for write will fail if the file is execute only.
+> >>> > +                * Note that if the file was newly created, the fmode SHOULD
+> >>> > +                * include FMODE_WRITE, especially if the file will be created
+> >>> > +                * with a restrictive mode.
+> >>> > +                */
+> >>> >                 mask = MAY_READ;
+> >>> > +       }
+> >>>
+> >>> This looks wrong. AFAICS it will allow you to open an existing file
+> >>> which has - wx permissions (i.e. no read permissions) for O_RDWR.
+> >>> That should not be permitted under POSIX rules.
+> >>
+> >> The server permission checks the OPEN, this only affects the subsequent
+> ACCESS.
+> >>
+> >> The server will fail the OPEN with NFS4_ERR_ACCESS if the open is for
+> read/write and the file has write-execute permission.
+> >
+> > RFC3530bis draft 33 (6.2.1.3.1.  Discussion of Mask Attributes) states
+> > that for both the OPEN and the READ operations, "Servers SHOULD allow
+> > a user the ability to read the data of the file when only the
+> > ACE4_EXECUTE access mask bit is allowed". RFC5561 has the same
+> > language.
+> 
+> Oops. Sorry, the correct sub-sub-sub-sub-....paragraph is this one:
+> 
+>          Permission to execute a file.
+> 
+>          Servers SHOULD allow a user the ability to read the data of the
+>          file when only the ACE4_EXECUTE access mask bit is allowed.
+>          This is because there is no way to execute a file without
+>          reading the contents.  Though a server may treat ACE4_EXECUTE
+>          and ACE4_READ_DATA bits identically when deciding to permit a
+>          READ operation, it SHOULD still allow the two bits to be set
+>          independently in ACLs, and MUST distinguish between them when
+>          replying to ACCESS operations.  In particular, servers SHOULD
+>          NOT silently turn on one of the two bits when the other is set,
+>          as that would make it impossible for the client to correctly
+>          enforce the distinction between read and execute permissions.
+> 
+> 
+> > To me that translates as saying that the server SHOULD accept an
+> > OPEN(SHARE_ACCESS_READ|SHARE_ACCESS_WRITE) request in the above
+> > situation.
+> 
+> Same conclusion, though....
 
-Fix this by ensuring that v4.0 CLOSE operations wait for the refcount
-to drop before proceeding to do so.
+When I read that paragraph, my interpretation is that OPEN (and READ) should be permission checked normally, however, if ONLY execute permission is granted, and the OPEN is read only (and READ of course is read only) then permission would be granted for the purpose of execution. But if any other combination of bits was allowed, then the paragraph doesn't apply. Thus an OPEN SHARE_ACCESS_READ | SHARE_ACCESS_WRITE must fail since write access was not granted (if it was, the exception doesn't apply to my reading).
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 21 ++++++++++++++++++++-
- 1 file changed, 20 insertions(+), 1 deletion(-)
+The trouble is if we require the ACCESS to always be used to distinguish read from execute, we have no way of allowing an open("foo", O_CREAT, 0) system call.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b61319401826..6d26d26751f5 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -85,6 +85,12 @@ static DEFINE_MUTEX(client_mutex);
-  */
- static DEFINE_SPINLOCK(state_lock);
- 
-+/*
-+ * A waitqueue for all in-progress 4.0 CLOSE operations that are waiting for
-+ * the refcount on the open stateid to drop.
-+ */
-+static DECLARE_WAIT_QUEUE_HEAD(close_wq);
-+
- static struct kmem_cache *openowner_slab;
- static struct kmem_cache *lockowner_slab;
- static struct kmem_cache *file_slab;
-@@ -640,8 +646,10 @@ nfs4_put_stid(struct nfs4_stid *s)
- 
- 	might_lock(&clp->cl_lock);
- 
--	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock))
-+	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock)) {
-+		wake_up_all(&close_wq);
- 		return;
-+	}
- 	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
- 	spin_unlock(&clp->cl_lock);
- 	s->sc_free(s);
-@@ -3070,6 +3078,17 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- 
- 	dprintk("NFSD: move_to_close_lru nfs4_openowner %p\n", oo);
- 
-+	/*
-+	 * We know that we hold one reference via nfsd4_close, and another
-+	 * "persistent" reference for the client. If the refcount is higher
-+	 * than 2, then there are still calls in progress that are using this
-+	 * stateid. We can't put the sc_file reference until they are finished.
-+	 * Wait for the refcount to drop to 2. Since it has been unhashed,
-+	 * there should be no danger of the refcount going back up again at
-+	 * this point.
-+	 */
-+	wait_event(close_wq, atomic_read(&s->st_stid.sc_count) == 2);
-+
- 	release_all_access(s);
- 	if (s->st_stid.sc_file) {
- 		put_nfs4_file(s->st_stid.sc_file);
--- 
-1.9.3
+It's a real shame we don't have a SHARE_ACCESS_EXECUTE so we wouldn't have to have the exception for OPEN...
+
+Another option would be to have some hint that the OPEN was responsible for creating the file (in which case the ACCESS results could be ignored), but that's more protocol wishful thinking (and not so easy for the server to implement).
+
+Frank
+
 
