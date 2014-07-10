@@ -1,94 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:53483 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756262AbaGIQ5t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:57:49 -0400
-Subject: [PATCH v2 09/21] xprtrdma: Chain together all MWs in same buffer
- pool
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Jul 2014 12:57:47 -0400
-Message-ID: <20140709165747.3496.70681.stgit@manet.1015granger.net>
-In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+Received: from bombadil.infradead.org ([198.137.202.9]:46762 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752903AbaGJMpl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 08:45:41 -0400
+Date: Thu, 10 Jul 2014 05:45:40 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 017/100] nfsd: make deny mode enforcement more
+ efficient and close races in it
+Message-ID: <20140710124540.GC30941@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+ <1404842668-22521-18-git-send-email-jlayton@primarydata.com>
+ <20140710104927.GC6935@infradead.org>
+ <20140710083628.4bec674e@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140710083628.4bec674e@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-During connection loss recovery, need to visit every MW in a
-buffer pool. Any MW that is in use by an RPC will not be on the
-rb_mws list.
+On Thu, Jul 10, 2014 at 08:36:28AM -0400, Jeff Layton wrote:
+> Yeah, I considered that, I'll see if that will help things, but it
+> might be best to leave that extra cleanup to a different patchset. This
+> set is all about removing the client_mutex, not so much about cleaning
+> up deny mode handling (even fixing that atomicity is a necessary step).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/verbs.c     |    4 ++++
- net/sunrpc/xprtrdma/xprt_rdma.h |    4 +++-
- 2 files changed, 7 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 14d24ec..aa14a36 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1074,6 +1074,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	p += cdata->padding;
- 
- 	INIT_LIST_HEAD(&buf->rb_mws);
-+	INIT_LIST_HEAD(&buf->rb_all);
- 	r = (struct rpcrdma_mw *)p;
- 	switch (ia->ri_memreg_strategy) {
- 	case RPCRDMA_FRMR:
-@@ -1098,6 +1099,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 				ib_dereg_mr(r->r.frmr.fr_mr);
- 				goto out;
- 			}
-+			list_add(&r->mw_all, &buf->rb_all);
- 			list_add(&r->mw_list, &buf->rb_mws);
- 			++r;
- 		}
-@@ -1116,6 +1118,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 					" failed %i\n", __func__, rc);
- 				goto out;
- 			}
-+			list_add(&r->mw_all, &buf->rb_all);
- 			list_add(&r->mw_list, &buf->rb_mws);
- 			++r;
- 		}
-@@ -1225,6 +1228,7 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 	while (!list_empty(&buf->rb_mws)) {
- 		r = list_entry(buf->rb_mws.next,
- 			struct rpcrdma_mw, mw_list);
-+		list_del(&r->mw_all);
- 		list_del(&r->mw_list);
- 		switch (ia->ri_memreg_strategy) {
- 		case RPCRDMA_FRMR:
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 84c3455..c1d8652 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -151,7 +151,7 @@ struct rpcrdma_rep {
-  * An external memory region is any buffer or page that is registered
-  * on the fly (ie, not pre-registered).
-  *
-- * Each rpcrdma_buffer has a list of these anchored in rb_mws. During
-+ * Each rpcrdma_buffer has a list of free MWs anchored in rb_mws. During
-  * call_allocate, rpcrdma_buffer_get() assigns one to each segment in
-  * an rpcrdma_req. Then rpcrdma_register_external() grabs these to keep
-  * track of registration metadata while each RPC is pending.
-@@ -175,6 +175,7 @@ struct rpcrdma_mw {
- 		struct rpcrdma_frmr	frmr;
- 	} r;
- 	struct list_head	mw_list;
-+	struct list_head	mw_all;
- };
- 
- /*
-@@ -246,6 +247,7 @@ struct rpcrdma_buffer {
- 	atomic_t	rb_credits;	/* most recent server credits */
- 	int		rb_max_requests;/* client max requests */
- 	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
-+	struct list_head rb_all;
- 	int		rb_send_index;
- 	struct rpcrdma_req	**rb_send_bufs;
- 	int		rb_recv_index;
+With the extensive changes to that area I would much prefer to get the
+various bits rights before doing the locking instead of going back to
+this later.
 
