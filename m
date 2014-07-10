@@ -1,310 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:65445 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751021AbaGJSHr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 14:07:47 -0400
-Received: by mail-qc0-f176.google.com with SMTP id w7so8137698qcr.7
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 11:07:46 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 02/11] nfsd: Add locking to the nfs4_file->fi_fds[] array
-Date: Thu, 10 Jul 2014 14:07:26 -0400
-Message-Id: <1405015655-12469-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
-References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:24528 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751624AbaGJUT1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 16:19:27 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: rpciod/1: page allocation failure. order:2, mode:0x20'
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <69B70372-AC71-46EE-B555-E418124A3348@netapp.com>
+Date: Thu, 10 Jul 2014 16:19:21 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F678054E-DF3E-433C-AB86-CFF61A715E49@oracle.com>
+References: <1FAA3C78-BBFA-4186-A25A-0D4E97609934@netapp.com> <CAHQdGtReiO9yzXG3_WKk9YJJBAmbT+YO+WtuWXabkCtDm76o-Q@mail.gmail.com> <69B70372-AC71-46EE-B555-E418124A3348@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Preparation for removal of the client_mutex, which currently protects
-this array. While we don't actually need the find_*_file_locked variants
-just yet, a later patch will. So go ahead and add them now to reduce
-future churn in this code.
+On Jul 10, 2014, at 4:17 PM, Adamson, Andy <William.Adamson@netapp.com> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4state.c | 134 +++++++++++++++++++++++++++++++++++++++++++++-------
- fs/nfsd/state.h     |  26 ----------
- 2 files changed, 118 insertions(+), 42 deletions(-)
+> 
+> On Jul 10, 2014, at 4:08 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+>> On Thu, Jul 10, 2014 at 4:01 PM, Adamson, Andy
+>> <William.Adamson@netapp.com> wrote:
+>>> Hi
+>>> 
+>>> A customer of ours, running a 2.6.32-431.5.1.el6.x86_64 kernel NFS client, is hittng the "rpciod/1: page allocation failure. order:2, mode:0x20", but only with NFSv3 hard mounts (not soft mounts), and not with NFSv4 (same application, same client hardware). Has anyone hit this issue with RHEL6.5?  Any ideas on why NFSv3 would trigger this error and not NFSv4?
+>>> 
+>>> I see in Red Hat Bugzilla 767127 - swapper: page allocation failure. order:1, mode:0x20 (edit) that a similar issue was solved by setting vm.zone_reclaim_mode = 1 which used to be the default.  Adjusting the vm.min_free_kbytes higher may also help.  Any side effects or issues with these settings?
+>>> 
+>>> Any info appreciated
+>> 
+>> Where are we doing an order 2 allocation in the NFS/RPC code? Our aim
+>> has always been to do nothing larger than an order 0 allocation.
+> 
+> I don’t yet have the Call trace triggered by the allocation failure, but I think it’s in the tcp layer. I’ll confirm.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index cfb10d060c83..314dc8061461 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -268,6 +268,79 @@ get_nfs4_file(struct nfs4_file *fi)
- 	atomic_inc(&fi->fi_ref);
- }
- 
-+static struct file *
-+__nfs4_get_fd(struct nfs4_file *f, int oflag)
-+{
-+	if (f->fi_fds[oflag])
-+		return get_file(f->fi_fds[oflag]);
-+	return NULL;
-+}
-+
-+static struct file *
-+find_writeable_file_locked(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	lockdep_assert_held(&f->fi_lock);
-+
-+	ret = __nfs4_get_fd(f, O_WRONLY);
-+	if (!ret)
-+		ret = __nfs4_get_fd(f, O_RDWR);
-+	return ret;
-+}
-+
-+static struct file *
-+find_writeable_file(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	spin_lock(&f->fi_lock);
-+	ret = find_writeable_file_locked(f);
-+	spin_unlock(&f->fi_lock);
-+
-+	return ret;
-+}
-+
-+static struct file *find_readable_file_locked(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	lockdep_assert_held(&f->fi_lock);
-+
-+	ret = __nfs4_get_fd(f, O_RDONLY);
-+	if (!ret)
-+		ret = __nfs4_get_fd(f, O_RDWR);
-+	return ret;
-+}
-+
-+static struct file *
-+find_readable_file(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	spin_lock(&f->fi_lock);
-+	ret = find_readable_file_locked(f);
-+	spin_unlock(&f->fi_lock);
-+
-+	return ret;
-+}
-+
-+static struct file *
-+find_any_file(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	spin_lock(&f->fi_lock);
-+	ret = __nfs4_get_fd(f, O_RDWR);
-+	if (!ret) {
-+		ret = __nfs4_get_fd(f, O_WRONLY);
-+		if (!ret)
-+			ret = __nfs4_get_fd(f, O_RDONLY);
-+	}
-+	spin_unlock(&f->fi_lock);
-+	return ret;
-+}
-+
- static int num_delegations;
- unsigned long max_delegations;
- 
-@@ -316,20 +389,31 @@ static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
- 		__nfs4_file_get_access(fp, oflag);
- }
- 
--static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
-+static struct file *nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
- {
--	if (fp->fi_fds[oflag]) {
--		fput(fp->fi_fds[oflag]);
--		fp->fi_fds[oflag] = NULL;
--	}
-+	struct file *filp;
-+
-+	filp = fp->fi_fds[oflag];
-+	fp->fi_fds[oflag] = NULL;
-+	return filp;
- }
- 
- static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- {
--	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
--		nfs4_file_put_fd(fp, oflag);
-+	might_lock(&fp->fi_lock);
-+
-+	if (atomic_dec_and_lock(&fp->fi_access[oflag], &fp->fi_lock)) {
-+		struct file *f1 = NULL;
-+		struct file *f2 = NULL;
-+
-+		f1 = nfs4_file_put_fd(fp, oflag);
- 		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
--			nfs4_file_put_fd(fp, O_RDWR);
-+			f2 = nfs4_file_put_fd(fp, O_RDWR);
-+		spin_unlock(&fp->fi_lock);
-+		if (f1)
-+			fput(f1);
-+		if (f2)
-+			fput(f2);
- 	}
- }
- 
-@@ -737,8 +821,10 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
- 	file = find_any_file(stp->st_file);
--	if (file)
-+	if (file) {
- 		locks_remove_posix(file, (fl_owner_t)lockowner(stp->st_stateowner));
-+		fput(file);
-+	}
- 	close_generic_stateid(stp);
- 	free_generic_stateid(stp);
- }
-@@ -3206,17 +3292,27 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
- static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 		struct svc_fh *cur_fh, struct nfsd4_open *open)
- {
-+	struct file *filp = NULL;
- 	__be32 status;
- 	int oflag = nfs4_access_to_omode(open->op_share_access);
- 	int access = nfs4_access_to_access(open->op_share_access);
- 
-+	spin_lock(&fp->fi_lock);
- 	if (!fp->fi_fds[oflag]) {
--		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
--			&fp->fi_fds[oflag]);
-+		spin_unlock(&fp->fi_lock);
-+		status = nfsd_open(rqstp, cur_fh, S_IFREG, access, &filp);
- 		if (status)
- 			goto out;
-+		spin_lock(&fp->fi_lock);
-+		if (!fp->fi_fds[oflag]) {
-+			fp->fi_fds[oflag] = filp;
-+			filp = NULL;
-+		}
- 	}
- 	nfs4_file_get_access(fp, oflag);
-+	spin_unlock(&fp->fi_lock);
-+	if (filp)
-+		fput(filp);
- 
- 	status = nfsd4_truncate(rqstp, cur_fh, open);
- 	if (status)
-@@ -3301,13 +3397,15 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	if (status)
- 		goto out_free;
- 	fp->fi_lease = fl;
--	fp->fi_deleg_file = get_file(fl->fl_file);
-+	fp->fi_deleg_file = fl->fl_file;
- 	atomic_set(&fp->fi_delegees, 1);
- 	spin_lock(&state_lock);
- 	hash_delegation_locked(dp, fp);
- 	spin_unlock(&state_lock);
- 	return 0;
- out_free:
-+	if (fl->fl_file)
-+		fput(fl->fl_file);
- 	locks_free_lock(fl);
- 	return status;
- }
-@@ -3905,6 +4003,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 				status = nfserr_serverfault;
- 				goto out;
- 			}
-+			get_file(file);
- 		}
- 		break;
- 	case NFS4_OPEN_STID:
-@@ -3932,7 +4031,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 	}
- 	status = nfs_ok;
- 	if (file)
--		*filpp = get_file(file);
-+		*filpp = file;
- out:
- 	nfs4_unlock_state();
- 	return status;
-@@ -4653,6 +4752,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		break;
- 	}
- out:
-+	if (filp)
-+		fput(filp);
- 	if (status && new_state)
- 		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
-@@ -4793,7 +4894,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (!file_lock) {
- 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
- 		status = nfserr_jukebox;
--		goto out;
-+		goto fput;
- 	}
- 	locks_init_lock(file_lock);
- 	file_lock->fl_type = F_UNLCK;
-@@ -4815,7 +4916,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
--
-+fput:
-+	fput(filp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	if (!cstate->replay_owner)
-@@ -4826,7 +4928,7 @@ out:
- 
- out_nfserr:
- 	status = nfserrno(err);
--	goto out;
-+	goto fput;
- }
- 
- /*
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 04737b3ed363..9f1159d5de56 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -398,32 +398,6 @@ struct nfs4_file {
- 	bool			fi_had_conflict;
- };
- 
--/* XXX: for first cut may fall back on returning file that doesn't work
-- * at all? */
--static inline struct file *find_writeable_file(struct nfs4_file *f)
--{
--	if (f->fi_fds[O_WRONLY])
--		return f->fi_fds[O_WRONLY];
--	return f->fi_fds[O_RDWR];
--}
--
--static inline struct file *find_readable_file(struct nfs4_file *f)
--{
--	if (f->fi_fds[O_RDONLY])
--		return f->fi_fds[O_RDONLY];
--	return f->fi_fds[O_RDWR];
--}
--
--static inline struct file *find_any_file(struct nfs4_file *f)
--{
--	if (f->fi_fds[O_RDWR])
--		return f->fi_fds[O_RDWR];
--	else if (f->fi_fds[O_WRONLY])
--		return f->fi_fds[O_WRONLY];
--	else
--		return f->fi_fds[O_RDONLY];
--}
--
- /* "ol" stands for "Open or Lock".  Better suggestions welcome. */
- struct nfs4_ol_stateid {
- 	struct nfs4_stid    st_stid; /* must be first field */
--- 
-1.9.3
+If the underlying network doesn’t support ->sendpages(), the TCP layer
+would have to allocate a large buffer and copy the RPC payload into
+the buffer.
+
+IPoIB has this issue, for example.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
