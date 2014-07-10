@@ -1,118 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:60656 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755376AbaGHSGM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:12 -0400
-Received: by mail-qa0-f47.google.com with SMTP id hw13so5101107qab.20
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:12 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 072/100] nfsd: protect the close_lru list and oo_last_closed_stid with client_lock
-Date: Tue,  8 Jul 2014 14:04:00 -0400
-Message-Id: <1404842668-22521-73-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:44044 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751853AbaGJMTO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 08:19:14 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so264838qge.25
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 05:19:13 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 10 Jul 2014 08:19:12 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 015/100] nfsd: clean up reset_union_bmap_deny
+Message-ID: <20140710081912.4af7c35b@tlielax.poochiereds.net>
+In-Reply-To: <20140710103100.GA6935@infradead.org>
 References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+	<1404842668-22521-16-git-send-email-jlayton@primarydata.com>
+	<20140710103100.GA6935@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, it's protected by the client_mutex. Move it so that the list
-and the fields in the openowner are protected by the client_lock.
+On Thu, 10 Jul 2014 03:31:00 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 37 ++++++++++++++++++++++++++++++-------
- 1 file changed, 30 insertions(+), 7 deletions(-)
+> >  static void
+> > -reset_union_bmap_deny(unsigned long deny, struct nfs4_ol_stateid *stp)
+> > +reset_union_bmap_deny(u32 deny, struct nfs4_ol_stateid *stp)
+> >  {
+> >  	int i;
+> > -	for (i = 0; i < 4; i++) {
+> > +
+> > +	for (i = 1; i < 4; i++) {
+> >  		if ((i & deny) != i)
+> >  			clear_deny(i, stp);
+> >  	}
+> 
+> 
+> Couldn't this simply be written as:
+> 
+> 	stp->st_deny_bmap &= ~deny;
+> 
+> and inlined into the caller?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index da2410f392b4..3ef8d9a577ae 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1090,13 +1090,19 @@ static void unhash_openowner_locked(struct nfs4_openowner *oo)
- 
- static void release_last_closed_stateid(struct nfs4_openowner *oo)
- {
--	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
-+	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-+					  nfsd_net_id);
-+	struct nfs4_ol_stateid *s;
- 
-+	spin_lock(&nn->client_lock);
-+	s = oo->oo_last_closed_stid;
- 	if (s) {
- 		list_del_init(&oo->oo_close_lru);
- 		oo->oo_last_closed_stid = NULL;
--		put_generic_stateid(s);
- 	}
-+	spin_unlock(&nn->client_lock);
-+	if (s)
-+		put_generic_stateid(s);
- }
- 
- static void release_openowner(struct nfs4_openowner *oo)
-@@ -3250,6 +3256,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- static void
- move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- {
-+	struct nfs4_ol_stateid *last;
- 	struct nfs4_openowner *oo = openowner(s->st_stateowner);
- 	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
- 						nfsd_net_id);
-@@ -3273,10 +3280,14 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- 		s->st_stid.sc_file = NULL;
- 	}
- 
--	release_last_closed_stateid(oo);
-+	spin_lock(&nn->client_lock);
-+	last = oo->oo_last_closed_stid;
- 	oo->oo_last_closed_stid = s;
- 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
- 	oo->oo_time = get_seconds();
-+	spin_unlock(&nn->client_lock);
-+	if (last)
-+		put_generic_stateid(last);
- }
- 
- static int
-@@ -4147,6 +4158,7 @@ nfs4_laundromat(struct nfsd_net *nn)
- 	struct nfs4_client *clp;
- 	struct nfs4_openowner *oo;
- 	struct nfs4_delegation *dp;
-+	struct nfs4_ol_stateid *stp;
- 	struct list_head *pos, *next, reaplist;
- 	time_t cutoff = get_seconds() - nn->nfsd4_lease;
- 	time_t t, new_timeo = nn->nfsd4_lease;
-@@ -4198,15 +4210,26 @@ nfs4_laundromat(struct nfsd_net *nn)
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
- 		revoke_delegation(dp);
- 	}
--	list_for_each_safe(pos, next, &nn->close_lru) {
--		oo = container_of(pos, struct nfs4_openowner, oo_close_lru);
--		if (time_after((unsigned long)oo->oo_time, (unsigned long)cutoff)) {
-+
-+	spin_lock(&nn->client_lock);
-+	while (!list_empty(&nn->close_lru)) {
-+		oo = list_first_entry(&nn->close_lru, struct nfs4_openowner,
-+					oo_close_lru);
-+		if (time_after((unsigned long)oo->oo_time,
-+			       (unsigned long)cutoff)) {
- 			t = oo->oo_time - cutoff;
- 			new_timeo = min(new_timeo, t);
- 			break;
- 		}
--		release_last_closed_stateid(oo);
-+		list_del_init(&oo->oo_close_lru);
-+		stp = oo->oo_last_closed_stid;
-+		oo->oo_last_closed_stid = NULL;
-+		spin_unlock(&nn->client_lock);
-+		put_generic_stateid(stp);
-+		spin_lock(&nn->client_lock);
- 	}
-+	spin_unlock(&nn->client_lock);
-+
- 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
- 	nfs4_unlock_state();
- 	return new_timeo;
+No, the st_deny_bmap does not hold the NFS_SHARE_DENY_* bits
+themselves. It sets a bit for each NFS_SHARE_DENY_* mode that the
+stateid has used. The difference is subtle, but significant.
+
+The rationale for that is in the comments above bmap_to_share_mode.
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
