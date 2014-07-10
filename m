@@ -1,80 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:39603 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754671AbaG3M1z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:27:55 -0400
-Received: by mail-qa0-f46.google.com with SMTP id v10so1182695qac.19
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:27:54 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 07/37] nfsd: Protect nfsd4_destroy_clientid using client_lock
-Date: Wed, 30 Jul 2014 08:27:08 -0400
-Message-Id: <1406723258-8512-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
-References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:36818 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750989AbaGJLfX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 07:35:23 -0400
+Date: Thu, 10 Jul 2014 04:35:23 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 011/100] nfsd: refactor nfs4_file_get_access and
+ nfs4_file_put_access
+Message-ID: <20140710113523.GA17814@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+ <1404842668-22521-12-git-send-email-jlayton@primarydata.com>
+ <20140710075920.GA6226@infradead.org>
+ <20140710073214.5621293f@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140710073214.5621293f@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, Jul 10, 2014 at 07:32:14AM -0400, Jeff Layton wrote:
+> So, you're correct that we never take an fi_access reference for O_RDWR,
+> which is why the array doesn't have a slot for it:
+> 
+>         atomic_t                fi_access[2];
+> 
+> ...it's tracked by the union of the O_RDONLY and O_WRONLY counters.
 
-...instead of relying on the client_mutex.
+Which will be racy as long we try to use an atomic_t and not a proper
+lock over access to all of fi_access.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 52a4677f6f35..68383b09c7dc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2826,22 +2826,23 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
- __be32
- nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
- {
--	struct nfs4_client *conf, *unconf, *clp;
-+	struct nfs4_client *conf, *unconf;
-+	struct nfs4_client *clp = NULL;
- 	__be32 status = 0;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	nfs4_lock_state();
-+	spin_lock(&nn->client_lock);
- 	unconf = find_unconfirmed_client(&dc->clientid, true, nn);
- 	conf = find_confirmed_client(&dc->clientid, true, nn);
- 	WARN_ON_ONCE(conf && unconf);
- 
- 	if (conf) {
--		clp = conf;
--
- 		if (client_has_state(conf)) {
- 			status = nfserr_clientid_busy;
- 			goto out;
- 		}
-+		clp = conf;
- 	} else if (unconf)
- 		clp = unconf;
- 	else {
-@@ -2849,12 +2850,16 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 		goto out;
- 	}
- 	if (!mach_creds_match(clp, rqstp)) {
-+		clp = NULL;
- 		status = nfserr_wrong_cred;
- 		goto out;
- 	}
--	expire_client(clp);
-+	unhash_client_locked(clp);
- out:
-+	spin_unlock(&nn->client_lock);
- 	nfs4_unlock_state();
-+	if (clp)
-+		expire_client(clp);
- 	return status;
- }
- 
--- 
-1.9.3
+I'm still trying to understand why we even need fi_access and can't just
+use the file references directly, though.
 
