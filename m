@@ -1,174 +1,310 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:61097 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754204AbaG2VYj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:24:39 -0400
-Subject: [PATCH v5 10/21] xprtrdma: Properly handle exhaustion of the rb_mws
- list
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Jul 2014 17:24:36 -0400
-Message-ID: <20140729212436.2812.36339.stgit@manet.1015granger.net>
-In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:65445 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751021AbaGJSHr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 14:07:47 -0400
+Received: by mail-qc0-f176.google.com with SMTP id w7so8137698qcr.7
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 11:07:46 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 02/11] nfsd: Add locking to the nfs4_file->fi_fds[] array
+Date: Thu, 10 Jul 2014 14:07:26 -0400
+Message-Id: <1405015655-12469-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the rb_mws list is exhausted, clean up and return NULL so that
-call_allocate() will delay and try again.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+Preparation for removal of the client_mutex, which currently protects
+this array. While we don't actually need the find_*_file_locked variants
+just yet, a later patch will. So go ahead and add them now to reduce
+future churn in this code.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sunrpc/xprtrdma/verbs.c |  103 ++++++++++++++++++++++++++++++-------------
- 1 file changed, 71 insertions(+), 32 deletions(-)
+ fs/nfsd/nfs4state.c | 134 +++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/state.h     |  26 ----------
+ 2 files changed, 118 insertions(+), 42 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index dd43796..addda7f 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1256,6 +1256,67 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 	kfree(buf->rb_pool);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cfb10d060c83..314dc8061461 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -268,6 +268,79 @@ get_nfs4_file(struct nfs4_file *fi)
+ 	atomic_inc(&fi->fi_ref);
  }
  
-+/* "*mw" can be NULL when rpcrdma_buffer_get_mrs() fails, leaving
-+ * some req segments uninitialized.
-+ */
-+static void
-+rpcrdma_buffer_put_mr(struct rpcrdma_mw **mw, struct rpcrdma_buffer *buf)
++static struct file *
++__nfs4_get_fd(struct nfs4_file *f, int oflag)
 +{
-+	if (*mw) {
-+		list_add_tail(&(*mw)->mw_list, &buf->rb_mws);
-+		*mw = NULL;
-+	}
-+}
-+
-+/* Cycle mw's back in reverse order, and "spin" them.
-+ * This delays and scrambles reuse as much as possible.
-+ */
-+static void
-+rpcrdma_buffer_put_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_mr_seg *seg = req->rl_segments;
-+	struct rpcrdma_mr_seg *seg1 = seg;
-+	int i;
-+
-+	for (i = 1, seg++; i < RPCRDMA_MAX_SEGS; seg++, i++)
-+		rpcrdma_buffer_put_mr(&seg->mr_chunk.rl_mw, buf);
-+	rpcrdma_buffer_put_mr(&seg1->mr_chunk.rl_mw, buf);
-+}
-+
-+static void
-+rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
-+{
-+	buf->rb_send_bufs[--buf->rb_send_index] = req;
-+	req->rl_niovs = 0;
-+	if (req->rl_reply) {
-+		buf->rb_recv_bufs[--buf->rb_recv_index] = req->rl_reply;
-+		req->rl_reply->rr_func = NULL;
-+		req->rl_reply = NULL;
-+	}
-+}
-+
-+static struct rpcrdma_req *
-+rpcrdma_buffer_get_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_mw *r;
-+	int i;
-+
-+	i = RPCRDMA_MAX_SEGS - 1;
-+	while (!list_empty(&buf->rb_mws)) {
-+		r = list_entry(buf->rb_mws.next,
-+			       struct rpcrdma_mw, mw_list);
-+		list_del(&r->mw_list);
-+		req->rl_segments[i].mr_chunk.rl_mw = r;
-+		if (unlikely(i-- == 0))
-+			return req;	/* Success */
-+	}
-+
-+	/* Not enough entries on rb_mws for this req */
-+	rpcrdma_buffer_put_sendbuf(req, buf);
-+	rpcrdma_buffer_put_mrs(req, buf);
++	if (f->fi_fds[oflag])
++		return get_file(f->fi_fds[oflag]);
 +	return NULL;
 +}
 +
- /*
-  * Get a set of request/reply buffers.
-  *
-@@ -1268,10 +1329,9 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- struct rpcrdma_req *
- rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
- {
-+	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
- 	struct rpcrdma_req *req;
- 	unsigned long flags;
--	int i;
--	struct rpcrdma_mw *r;
++static struct file *
++find_writeable_file_locked(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	lockdep_assert_held(&f->fi_lock);
++
++	ret = __nfs4_get_fd(f, O_WRONLY);
++	if (!ret)
++		ret = __nfs4_get_fd(f, O_RDWR);
++	return ret;
++}
++
++static struct file *
++find_writeable_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = find_writeable_file_locked(f);
++	spin_unlock(&f->fi_lock);
++
++	return ret;
++}
++
++static struct file *find_readable_file_locked(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	lockdep_assert_held(&f->fi_lock);
++
++	ret = __nfs4_get_fd(f, O_RDONLY);
++	if (!ret)
++		ret = __nfs4_get_fd(f, O_RDWR);
++	return ret;
++}
++
++static struct file *
++find_readable_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = find_readable_file_locked(f);
++	spin_unlock(&f->fi_lock);
++
++	return ret;
++}
++
++static struct file *
++find_any_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_RDWR);
++	if (!ret) {
++		ret = __nfs4_get_fd(f, O_WRONLY);
++		if (!ret)
++			ret = __nfs4_get_fd(f, O_RDONLY);
++	}
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
+ static int num_delegations;
+ unsigned long max_delegations;
  
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
- 	if (buffers->rb_send_index == buffers->rb_max_requests) {
-@@ -1291,14 +1351,13 @@ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
- 		buffers->rb_recv_bufs[buffers->rb_recv_index++] = NULL;
- 	}
- 	buffers->rb_send_bufs[buffers->rb_send_index++] = NULL;
--	if (!list_empty(&buffers->rb_mws)) {
--		i = RPCRDMA_MAX_SEGS - 1;
--		do {
--			r = list_entry(buffers->rb_mws.next,
--					struct rpcrdma_mw, mw_list);
--			list_del(&r->mw_list);
--			req->rl_segments[i].mr_chunk.rl_mw = r;
--		} while (--i >= 0);
-+	switch (ia->ri_memreg_strategy) {
-+	case RPCRDMA_FRMR:
-+	case RPCRDMA_MTHCAFMR:
-+		req = rpcrdma_buffer_get_mrs(req, buffers);
-+		break;
-+	default:
-+		break;
- 	}
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
- 	return req;
-@@ -1313,34 +1372,14 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
- {
- 	struct rpcrdma_buffer *buffers = req->rl_buffer;
- 	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
--	int i;
- 	unsigned long flags;
+@@ -316,20 +389,31 @@ static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
+ 		__nfs4_file_get_access(fp, oflag);
+ }
  
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
--	buffers->rb_send_bufs[--buffers->rb_send_index] = req;
--	req->rl_niovs = 0;
--	if (req->rl_reply) {
--		buffers->rb_recv_bufs[--buffers->rb_recv_index] = req->rl_reply;
--		req->rl_reply->rr_func = NULL;
--		req->rl_reply = NULL;
+-static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
++static struct file *nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
+ {
+-	if (fp->fi_fds[oflag]) {
+-		fput(fp->fi_fds[oflag]);
+-		fp->fi_fds[oflag] = NULL;
 -	}
-+	rpcrdma_buffer_put_sendbuf(req, buffers);
- 	switch (ia->ri_memreg_strategy) {
- 	case RPCRDMA_FRMR:
- 	case RPCRDMA_MTHCAFMR:
--		/*
--		 * Cycle mw's back in reverse order, and "spin" them.
--		 * This delays and scrambles reuse as much as possible.
--		 */
--		i = 1;
--		do {
--			struct rpcrdma_mw **mw;
--			mw = &req->rl_segments[i].mr_chunk.rl_mw;
--			list_add_tail(&(*mw)->mw_list, &buffers->rb_mws);
--			*mw = NULL;
--		} while (++i < RPCRDMA_MAX_SEGS);
--		list_add_tail(&req->rl_segments[0].mr_chunk.rl_mw->mw_list,
--					&buffers->rb_mws);
--		req->rl_segments[0].mr_chunk.rl_mw = NULL;
-+		rpcrdma_buffer_put_mrs(req, buffers);
++	struct file *filp;
++
++	filp = fp->fi_fds[oflag];
++	fp->fi_fds[oflag] = NULL;
++	return filp;
+ }
+ 
+ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+ {
+-	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
+-		nfs4_file_put_fd(fp, oflag);
++	might_lock(&fp->fi_lock);
++
++	if (atomic_dec_and_lock(&fp->fi_access[oflag], &fp->fi_lock)) {
++		struct file *f1 = NULL;
++		struct file *f2 = NULL;
++
++		f1 = nfs4_file_put_fd(fp, oflag);
+ 		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
+-			nfs4_file_put_fd(fp, O_RDWR);
++			f2 = nfs4_file_put_fd(fp, O_RDWR);
++		spin_unlock(&fp->fi_lock);
++		if (f1)
++			fput(f1);
++		if (f2)
++			fput(f2);
+ 	}
+ }
+ 
+@@ -737,8 +821,10 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
+ 	file = find_any_file(stp->st_file);
+-	if (file)
++	if (file) {
+ 		locks_remove_posix(file, (fl_owner_t)lockowner(stp->st_stateowner));
++		fput(file);
++	}
+ 	close_generic_stateid(stp);
+ 	free_generic_stateid(stp);
+ }
+@@ -3206,17 +3292,27 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 		struct svc_fh *cur_fh, struct nfsd4_open *open)
+ {
++	struct file *filp = NULL;
+ 	__be32 status;
+ 	int oflag = nfs4_access_to_omode(open->op_share_access);
+ 	int access = nfs4_access_to_access(open->op_share_access);
+ 
++	spin_lock(&fp->fi_lock);
+ 	if (!fp->fi_fds[oflag]) {
+-		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
+-			&fp->fi_fds[oflag]);
++		spin_unlock(&fp->fi_lock);
++		status = nfsd_open(rqstp, cur_fh, S_IFREG, access, &filp);
+ 		if (status)
+ 			goto out;
++		spin_lock(&fp->fi_lock);
++		if (!fp->fi_fds[oflag]) {
++			fp->fi_fds[oflag] = filp;
++			filp = NULL;
++		}
+ 	}
+ 	nfs4_file_get_access(fp, oflag);
++	spin_unlock(&fp->fi_lock);
++	if (filp)
++		fput(filp);
+ 
+ 	status = nfsd4_truncate(rqstp, cur_fh, open);
+ 	if (status)
+@@ -3301,13 +3397,15 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	if (status)
+ 		goto out_free;
+ 	fp->fi_lease = fl;
+-	fp->fi_deleg_file = get_file(fl->fl_file);
++	fp->fi_deleg_file = fl->fl_file;
+ 	atomic_set(&fp->fi_delegees, 1);
+ 	spin_lock(&state_lock);
+ 	hash_delegation_locked(dp, fp);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+ out_free:
++	if (fl->fl_file)
++		fput(fl->fl_file);
+ 	locks_free_lock(fl);
+ 	return status;
+ }
+@@ -3905,6 +4003,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 				status = nfserr_serverfault;
+ 				goto out;
+ 			}
++			get_file(file);
+ 		}
  		break;
- 	default:
+ 	case NFS4_OPEN_STID:
+@@ -3932,7 +4031,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 	}
+ 	status = nfs_ok;
+ 	if (file)
+-		*filpp = get_file(file);
++		*filpp = file;
+ out:
+ 	nfs4_unlock_state();
+ 	return status;
+@@ -4653,6 +4752,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
  		break;
+ 	}
+ out:
++	if (filp)
++		fput(filp);
+ 	if (status && new_state)
+ 		release_lock_stateid(lock_stp);
+ 	nfsd4_bump_seqid(cstate, status);
+@@ -4793,7 +4894,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!file_lock) {
+ 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+ 		status = nfserr_jukebox;
+-		goto out;
++		goto fput;
+ 	}
+ 	locks_init_lock(file_lock);
+ 	file_lock->fl_type = F_UNLCK;
+@@ -4815,7 +4916,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+-
++fput:
++	fput(filp);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (!cstate->replay_owner)
+@@ -4826,7 +4928,7 @@ out:
+ 
+ out_nfserr:
+ 	status = nfserrno(err);
+-	goto out;
++	goto fput;
+ }
+ 
+ /*
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 04737b3ed363..9f1159d5de56 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -398,32 +398,6 @@ struct nfs4_file {
+ 	bool			fi_had_conflict;
+ };
+ 
+-/* XXX: for first cut may fall back on returning file that doesn't work
+- * at all? */
+-static inline struct file *find_writeable_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_WRONLY])
+-		return f->fi_fds[O_WRONLY];
+-	return f->fi_fds[O_RDWR];
+-}
+-
+-static inline struct file *find_readable_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_RDONLY])
+-		return f->fi_fds[O_RDONLY];
+-	return f->fi_fds[O_RDWR];
+-}
+-
+-static inline struct file *find_any_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_RDWR])
+-		return f->fi_fds[O_RDWR];
+-	else if (f->fi_fds[O_WRONLY])
+-		return f->fi_fds[O_WRONLY];
+-	else
+-		return f->fi_fds[O_RDONLY];
+-}
+-
+ /* "ol" stands for "Open or Lock".  Better suggestions welcome. */
+ struct nfs4_ol_stateid {
+ 	struct nfs4_stid    st_stid; /* must be first field */
+-- 
+1.9.3
 
