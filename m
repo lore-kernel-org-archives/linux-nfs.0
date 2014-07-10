@@ -1,57 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f68.google.com ([209.85.192.68]:34190 "EHLO
-	mail-qg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751930AbaGAKlO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 06:41:14 -0400
-Received: by mail-qg0-f68.google.com with SMTP id q107so964646qgd.11
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 03:41:13 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 1 Jul 2014 06:41:11 -0400
-To: Peter Zijlstra <peterz@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        Ingo Molnar <mingo@redhat.com>
-Subject: Re: [PATCH v3 071/114] lockdep: add lockdep_assert_not_held
-Message-ID: <20140701064111.5fe8e555@f20.localdomain>
-In-Reply-To: <20140701101108.GK3588@twins.programming.kicks-ass.net>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
- <1404143423-24381-72-git-send-email-jlayton@primarydata.com>
- <20140701100335.GP6758@twins.programming.kicks-ass.net>
- <20140701101108.GK3588@twins.programming.kicks-ass.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:36889 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751361AbaGJSHx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 14:07:53 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so8120810qcq.20
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 11:07:52 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 06/11] nfsd: shrink st_access_bmap and st_deny_bmap
+Date: Thu, 10 Jul 2014 14:07:30 -0400
+Message-Id: <1405015655-12469-7-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 1 Jul 2014 12:11:08 +0200
-Peter Zijlstra <peterz@infradead.org> wrote:
+We never use anything above bit #3, so an unsigned long for each is
+wasteful. Shrink them to a char each, and add some WARN_ON_ONCE calls if
+we try to set or clear bits that would go outside those sizes.
 
-> On Tue, Jul 01, 2014 at 12:03:35PM +0200, Peter Zijlstra wrote:
-> > On Mon, Jun 30, 2014 at 11:49:40AM -0400, Jeff Layton wrote:
-> > > We currently have the ability to call lockdep_assert_held to throw a
-> > > warning when a spinlock isn't held in a codepath. There are also times
-> > > when we'd like to throw a warning when a lock is held (i.e. when there
-> > > is the potential for deadlock with atomic_dec_and_lock or similar).
-> > 
-> > So I'm not getting it; if there's deadlock potential, lockdep would
-> > already report so, right?
-> > 
-> > That is, lockdep is very good a yelling when you try to acquire a lock
-> > you're already holding.
-> 
-> Ah, I think I see what you're trying to do.
-> 
-> You're wanting to use might_lock() and might_lock_read(). Which are used
-> to make conditional lock acquisitions unconditional, so as to more
-> reliably trigger the deadlock detection.
+Note too that because atomic bitops work on unsigned longs, we have to
+abandon their use here. That shouldn't be a problem though since we
+don't really care about the atomicity in this code anyway. Using them
+was just a convenient way to flip bits.
 
-Right -- in the case of something like atomic_dec_and_lock, we only
-take the spinlock if we think the count might go to zero. So, we might
-miss catching some places that could deadlock if the refcounts don't go
-to zero in the testing we're doing.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4state.c | 38 +++++++++++++++++++++++++++-----------
+ fs/nfsd/state.h     |  4 ++--
+ 2 files changed, 29 insertions(+), 13 deletions(-)
 
-might_lock may be what we need, but I don't see any callers of it, and
-at a quick glance it doesn't appear to be disabled if debug_locks is
-false.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c02bad6d7e90..f7f11631c26c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -721,42 +721,58 @@ test_share(struct nfs4_ol_stateid *stp, struct nfsd4_open *open) {
+ static inline void
+ set_access(u32 access, struct nfs4_ol_stateid *stp)
+ {
+-	__set_bit(access, &stp->st_access_bmap);
++	unsigned char mask = 1 << access;
++
++	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
++	stp->st_access_bmap |= mask;
+ }
+ 
+ /* clear share access for a given stateid */
+ static inline void
+ clear_access(u32 access, struct nfs4_ol_stateid *stp)
+ {
+-	__clear_bit(access, &stp->st_access_bmap);
++	unsigned char mask = 1 << access;
++
++	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
++	stp->st_access_bmap &= ~mask;
+ }
+ 
+ /* test whether a given stateid has access */
+ static inline bool
+ test_access(u32 access, struct nfs4_ol_stateid *stp)
+ {
+-	return test_bit(access, &stp->st_access_bmap);
++	unsigned char mask = 1 << access;
++
++	return (bool)(stp->st_access_bmap & mask);
+ }
+ 
+ /* set share deny for a given stateid */
+ static inline void
+-set_deny(u32 access, struct nfs4_ol_stateid *stp)
++set_deny(u32 deny, struct nfs4_ol_stateid *stp)
+ {
+-	__set_bit(access, &stp->st_deny_bmap);
++	unsigned char mask = 1 << deny;
++
++	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
++	stp->st_deny_bmap |= mask;
+ }
+ 
+ /* clear share deny for a given stateid */
+ static inline void
+-clear_deny(u32 access, struct nfs4_ol_stateid *stp)
++clear_deny(u32 deny, struct nfs4_ol_stateid *stp)
+ {
+-	__clear_bit(access, &stp->st_deny_bmap);
++	unsigned char mask = 1 << deny;
++
++	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
++	stp->st_deny_bmap &= ~mask;
+ }
+ 
+ /* test whether a given stateid is denying specific access */
+ static inline bool
+-test_deny(u32 access, struct nfs4_ol_stateid *stp)
++test_deny(u32 deny, struct nfs4_ol_stateid *stp)
+ {
+-	return test_bit(access, &stp->st_deny_bmap);
++	unsigned char mask = 1 << deny;
++
++	return (bool)(stp->st_deny_bmap & mask);
+ }
+ 
+ static int nfs4_access_to_omode(u32 access)
+@@ -4282,12 +4298,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 		goto out; 
+ 	status = nfserr_inval;
+ 	if (!test_access(od->od_share_access, stp)) {
+-		dprintk("NFSD: access not a subset current bitmap: 0x%lx, input access=%08x\n",
++		dprintk("NFSD: access not a subset of current bitmap: 0x%hhx, input access=%08x\n",
+ 			stp->st_access_bmap, od->od_share_access);
+ 		goto out;
+ 	}
+ 	if (!test_deny(od->od_share_deny, stp)) {
+-		dprintk("NFSD:deny not a subset current bitmap: 0x%lx, input deny=%08x\n",
++		dprintk("NFSD: deny not a subset of current bitmap: 0x%hhx, input deny=%08x\n",
+ 			stp->st_deny_bmap, od->od_share_deny);
+ 		goto out;
+ 	}
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 9f1159d5de56..72aee4b4f1ae 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -406,8 +406,8 @@ struct nfs4_ol_stateid {
+ 	struct list_head              st_locks;
+ 	struct nfs4_stateowner      * st_stateowner;
+ 	struct nfs4_file            * st_file;
+-	unsigned long                 st_access_bmap;
+-	unsigned long                 st_deny_bmap;
++	unsigned char                 st_access_bmap;
++	unsigned char                 st_deny_bmap;
+ 	struct nfs4_ol_stateid         * st_openstp;
+ };
+ 
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
