@@ -1,322 +1,181 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:38222 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752191AbaG3Bew (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:34:52 -0400
-Received: by mail-qg0-f45.google.com with SMTP id f51so641930qge.4
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:34:52 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 02/38] nfsd: Cleanup the freeing of stateids
-Date: Tue, 29 Jul 2014 21:34:07 -0400
-Message-Id: <1406684083-19736-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:38274 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751021AbaGJSTp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jul 2014 14:19:45 -0400
+Date: Thu, 10 Jul 2014 14:19:44 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: swise@ogc.net, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Subject: Re: [PATCH 2/2] svcrdma: Remove extra writeargs sanity check for
+ NFSv2/3
+Message-ID: <20140710181944.GB26561@fieldses.org>
+References: <20140710174225.3734.44692.stgit@klimt.1015granger.net>
+ <20140710174435.3734.69638.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140710174435.3734.69638.stgit@klimt.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a ->free() callback to the struct nfs4_stid, so that we can
-release a reference to the stid without caring about the contents.
+On Thu, Jul 10, 2014 at 01:44:35PM -0400, Chuck Lever wrote:
+> The server should comply with RFC 5667,
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4callback.c |   2 +-
- fs/nfsd/nfs4state.c    | 105 ++++++++++++++++++++++++++-----------------------
- fs/nfsd/state.h        |   3 +-
- 3 files changed, 58 insertions(+), 52 deletions(-)
+Where's the relevant language?  (I took a quick look but didn't see it.)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index e9813389687b..8574c708cf8c 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -905,7 +905,7 @@ static void nfsd4_cb_recall_release(void *calldata)
- 		spin_lock(&clp->cl_lock);
- 		list_del(&cb->cb_per_client);
- 		spin_unlock(&clp->cl_lock);
--		nfs4_put_delegation(dp);
-+		nfs4_put_stid(&dp->dl_stid);
- 	}
- }
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3b0836db8553..60ab22b6e099 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -71,6 +71,7 @@ static u64 current_sessionid = 1;
- 
- /* forward declarations */
- static bool check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner);
-+static void nfs4_free_ol_stateid(struct nfs4_stid *stid);
- 
- /* Locking: */
- 
-@@ -463,8 +464,8 @@ static void nfs4_file_put_access(struct nfs4_file *fp, u32 access)
- 		__nfs4_file_put_access(fp, O_RDONLY);
- }
- 
--static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
--kmem_cache *slab)
-+static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
-+					 struct kmem_cache *slab)
- {
- 	struct idr *stateids = &cl->cl_stateids;
- 	struct nfs4_stid *stid;
-@@ -500,7 +501,26 @@ out_free:
- 
- static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
- {
--	return openlockstateid(nfs4_alloc_stid(clp, stateid_slab));
-+	struct nfs4_stid *stid;
-+	struct nfs4_ol_stateid *stp;
-+
-+	stid = nfs4_alloc_stid(clp, stateid_slab);
-+	if (!stid)
-+		return NULL;
-+
-+	stp = openlockstateid(stid);
-+	stp->st_stid.sc_free = nfs4_free_ol_stateid;
-+	return stp;
-+}
-+
-+static void nfs4_free_deleg(struct nfs4_stid *stid)
-+{
-+	struct nfs4_delegation *dp = delegstateid(stid);
-+
-+	if (dp->dl_file)
-+		put_nfs4_file(dp->dl_file);
-+	kmem_cache_free(deleg_slab, stid);
-+	atomic_long_dec(&num_delegations);
- }
- 
- /*
-@@ -594,6 +614,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct svc_fh *current_fh)
- 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
- 	if (dp == NULL)
- 		goto out_dec;
-+
-+	dp->dl_stid.sc_free = nfs4_free_deleg;
- 	/*
- 	 * delegation seqid's are never incremented.  The 4.1 special
- 	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
-@@ -611,28 +633,15 @@ out_dec:
- 	return NULL;
- }
- 
--static void remove_stid(struct nfs4_stid *s)
--{
--	struct idr *stateids = &s->sc_client->cl_stateids;
--
--	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
--}
--
--static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
--{
--	kmem_cache_free(slab, s);
--}
--
- void
--nfs4_put_delegation(struct nfs4_delegation *dp)
-+nfs4_put_stid(struct nfs4_stid *s)
- {
--	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
--		if (dp->dl_file)
--			put_nfs4_file(dp->dl_file);
--		remove_stid(&dp->dl_stid);
--		nfs4_free_stid(deleg_slab, &dp->dl_stid);
--		atomic_long_dec(&num_delegations);
--	}
-+	struct nfs4_client *clp = s->sc_client;
-+
-+	if (!atomic_dec_and_test(&s->sc_count))
-+		return;
-+	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
-+	s->sc_free(s);
- }
- 
- static void nfs4_put_deleg_lease(struct nfs4_file *fp)
-@@ -689,7 +698,7 @@ static void destroy_delegation(struct nfs4_delegation *dp)
- 	spin_lock(&state_lock);
- 	unhash_delegation_locked(dp);
- 	spin_unlock(&state_lock);
--	nfs4_put_delegation(dp);
-+	nfs4_put_stid(&dp->dl_stid);
- }
- 
- static void revoke_delegation(struct nfs4_delegation *dp)
-@@ -699,7 +708,7 @@ static void revoke_delegation(struct nfs4_delegation *dp)
- 	WARN_ON(!list_empty(&dp->dl_recall_lru));
- 
- 	if (clp->cl_minorversion == 0)
--		nfs4_put_delegation(dp);
-+		nfs4_put_stid(&dp->dl_stid);
- 	else {
- 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
- 		spin_lock(&clp->cl_lock);
-@@ -885,19 +894,14 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- 	list_del(&stp->st_perstateowner);
- }
- 
--static void close_generic_stateid(struct nfs4_ol_stateid *stp)
-+static void nfs4_free_ol_stateid(struct nfs4_stid *stid)
- {
--	release_all_access(stp);
--}
-+	struct nfs4_ol_stateid *stp = openlockstateid(stid);
- 
--static void put_ol_stateid(struct nfs4_ol_stateid *stp)
--{
--	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
--		return;
-+	release_all_access(stp);
- 	if (stp->st_file)
- 		put_nfs4_file(stp->st_file);
--	remove_stid(&stp->st_stid);
--	nfs4_free_stid(stateid_slab, &stp->st_stid);
-+	kmem_cache_free(stateid_slab, stid);
- }
- 
- static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
-@@ -910,8 +914,7 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
- 	file = find_any_file(stp->st_file);
- 	if (file)
- 		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
--	close_generic_stateid(stp);
--	put_ol_stateid(stp);
-+	nfs4_put_stid(&stp->st_stid);
- }
- 
- static void unhash_lockowner(struct nfs4_lockowner *lo)
-@@ -968,13 +971,12 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
- {
- 	unhash_generic_stateid(stp);
- 	release_open_stateid_locks(stp);
--	close_generic_stateid(stp);
- }
- 
- static void release_open_stateid(struct nfs4_ol_stateid *stp)
- {
- 	unhash_open_stateid(stp);
--	put_ol_stateid(stp);
-+	nfs4_put_stid(&stp->st_stid);
- }
- 
- static void unhash_openowner(struct nfs4_openowner *oo)
-@@ -995,7 +997,7 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
- 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
- 
- 	if (s) {
--		put_ol_stateid(s);
-+		nfs4_put_stid(&s->st_stid);
- 		oo->oo_last_closed_stid = NULL;
- 	}
- }
-@@ -1469,12 +1471,12 @@ destroy_client(struct nfs4_client *clp)
- 	while (!list_empty(&reaplist)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
- 		list_del_init(&dp->dl_recall_lru);
--		nfs4_put_delegation(dp);
-+		nfs4_put_stid(&dp->dl_stid);
- 	}
- 	while (!list_empty(&clp->cl_revoked)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
- 		list_del_init(&dp->dl_recall_lru);
--		nfs4_put_delegation(dp);
-+		nfs4_put_stid(&dp->dl_stid);
- 	}
- 	while (!list_empty(&clp->cl_openowners)) {
- 		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
-@@ -3590,7 +3592,7 @@ out_unlock:
- 	spin_unlock(&state_lock);
- out:
- 	if (status) {
--		nfs4_put_delegation(dp);
-+		nfs4_put_stid(&dp->dl_stid);
- 		return ERR_PTR(status);
- 	}
- 	return dp;
-@@ -3820,7 +3822,7 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
- 	if (open->op_file)
- 		nfsd4_free_file(open->op_file);
- 	if (open->op_stp)
--		put_ol_stateid(open->op_stp);
-+		nfs4_put_stid(&open->op_stp->st_stid);
- }
- 
- __be32
-@@ -4268,7 +4270,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		spin_lock(&cl->cl_lock);
- 		list_del_init(&dp->dl_recall_lru);
- 		spin_unlock(&cl->cl_lock);
--		nfs4_put_delegation(dp);
-+		nfs4_put_stid(s);
- 		ret = nfs_ok;
- 		break;
- 	default:
-@@ -4481,17 +4483,20 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 	if (clp->cl_minorversion) {
- 		if (list_empty(&oo->oo_owner.so_stateids))
- 			release_openowner(oo);
--		put_ol_stateid(s);
-+		nfs4_put_stid(&s->st_stid);
- 	} else {
-+		/*
-+		 * In the 4.0 case we need to keep the owners around a
-+		 * little while to handle CLOSE replay. We still do need
-+		 * to release any file access that is held by them
-+		 * before returning however.
-+		 */
-+		release_all_access(s);
- 		if (s->st_file) {
- 			put_nfs4_file(s->st_file);
- 			s->st_file = NULL;
- 		}
- 		oo->oo_last_closed_stid = s;
--		/*
--		 * In the 4.0 case we need to keep the owners around a
--		 * little while to handle CLOSE replay.
--		 */
- 		if (list_empty(&oo->oo_owner.so_stateids))
- 			move_to_close_lru(oo, clp->net);
- 	}
-@@ -5667,7 +5672,7 @@ nfs4_state_shutdown_net(struct net *net)
- 	list_for_each_safe(pos, next, &reaplist) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
- 		list_del_init(&dp->dl_recall_lru);
--		nfs4_put_delegation(dp);
-+		nfs4_put_stid(&dp->dl_stid);
- 	}
- 
- 	nfsd4_client_tracking_exit(net);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 39747736e83b..32c466265ac1 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -85,6 +85,7 @@ struct nfs4_stid {
- 	unsigned char sc_type;
- 	stateid_t sc_stateid;
- 	struct nfs4_client *sc_client;
-+	void (*sc_free)(struct nfs4_stid *);
- };
- 
- struct nfs4_delegation {
-@@ -429,6 +430,7 @@ extern __be32 nfs4_preprocess_stateid_op(struct net *net,
- 		stateid_t *stateid, int flags, struct file **filp);
- extern void nfs4_lock_state(void);
- extern void nfs4_unlock_state(void);
-+void nfs4_put_stid(struct nfs4_stid *s);
- void nfs4_remove_reclaim_record(struct nfs4_client_reclaim *, struct nfsd_net *);
- extern void nfs4_release_reclaim(struct nfsd_net *);
- extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
-@@ -446,7 +448,6 @@ extern int nfsd4_create_callback_queue(void);
- extern void nfsd4_destroy_callback_queue(void);
- extern void nfsd4_shutdown_callback(struct nfs4_client *);
- extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
--extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- 							struct nfsd_net *nn);
- extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
--- 
-1.9.3
+> and handle WRITE payloads
+> that may not have a zero pad on the end (XDR length round-up).
+> 
+> Fixes: f34b9568 (The NFSv2/NFSv3 server does not handle zero...)
+> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  fs/nfsd/nfs3xdr.c |   15 +--------------
+>  fs/nfsd/nfsxdr.c  |   16 +---------------
+>  2 files changed, 2 insertions(+), 29 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index e6c01e8..6074f6a 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -361,7 +361,7 @@ int
+>  nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+>  					struct nfsd3_writeargs *args)
+>  {
+> -	unsigned int len, v, hdr, dlen;
+> +	unsigned int len, v, hdr;
+>  	u32 max_blocksize = svc_max_payload(rqstp);
+>  
+>  	p = decode_fh(p, &args->fh);
+> @@ -383,19 +383,6 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+>  	 * bytes.
+>  	 */
+>  	hdr = (void*)p - rqstp->rq_arg.head[0].iov_base;
+> -	dlen = rqstp->rq_arg.head[0].iov_len + rqstp->rq_arg.page_len
+> -		- hdr;
+> -	/*
+> -	 * Round the length of the data which was specified up to
+> -	 * the next multiple of XDR units and then compare that
+> -	 * against the length which was actually received.
+> -	 * Note that when RPCSEC/GSS (for example) is used, the
+> -	 * data buffer can be padded so dlen might be larger
+> -	 * than required.  It must never be smaller.
+> -	 */
+> -	if (dlen < XDR_QUADLEN(len)*4)
+> -		return 0;
+> -
+>  	if (args->count > max_blocksize) {
+>  		args->count = max_blocksize;
+>  		len = args->len = max_blocksize;
+And then:
+}
+        rqstp->rq_vec[0].iov_base = (void*)p;
+        rqstp->rq_vec[0].iov_len = rqstp->rq_arg.head[0].iov_len - hdr;
+        v = 0;
+        while (len > rqstp->rq_vec[v].iov_len) {
+                len -= rqstp->rq_vec[v].iov_len;
+                v++;
+                rqstp->rq_vec[v].iov_base = page_address(rqstp->rq_pages[v]);
+                rqstp->rq_vec[v].iov_len = PAGE_SIZE;
+        }
+        rqstp->rq_vec[v].iov_len = len;
+        args->vlen = v + 1;
+        return 1;
 
+So if len is allowed to be larger than the available space, then the rq_vec
+will get filled with data beyond the end of the client's request.
+
+I believe the max_blocksize check will at least ensure that rq_pages[v]
+is always still a valid page, so we shouldn't crash.  But it could
+contain random data, and writing that data to a file could disclose
+information we don't mean to.
+
+Am I missing something?  The v2 case looks similar.
+
+So I think you just want to drop the round-up of len, not the whole
+check.
+
+--b.
+
+
+> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+> index 1ac306b..1f5347e 100644
+> --- a/fs/nfsd/nfsxdr.c
+> +++ b/fs/nfsd/nfsxdr.c
+> @@ -280,7 +280,7 @@ int
+>  nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+>  					struct nfsd_writeargs *args)
+>  {
+> -	unsigned int len, hdr, dlen;
+> +	unsigned int len, hdr;
+>  	int v;
+>  
+>  	p = decode_fh(p, &args->fh);
+> @@ -302,20 +302,6 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+>  	 * bytes.
+>  	 */
+>  	hdr = (void*)p - rqstp->rq_arg.head[0].iov_base;
+> -	dlen = rqstp->rq_arg.head[0].iov_len + rqstp->rq_arg.page_len
+> -		- hdr;
+> -
+> -	/*
+> -	 * Round the length of the data which was specified up to
+> -	 * the next multiple of XDR units and then compare that
+> -	 * against the length which was actually received.
+> -	 * Note that when RPCSEC/GSS (for example) is used, the
+> -	 * data buffer can be padded so dlen might be larger
+> -	 * than required.  It must never be smaller.
+> -	 */
+> -	if (dlen < XDR_QUADLEN(len)*4)
+> -		return 0;
+> -
+>  	rqstp->rq_vec[0].iov_base = (void*)p;
+>  	rqstp->rq_vec[0].iov_len = rqstp->rq_arg.head[0].iov_len - hdr;
+>  	v = 0;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+:set 
+
+> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+> index 1ac306b..1f5347e 100644
+> --- a/fs/nfsd/nfsxdr.c
+> +++ b/fs/nfsd/nfsxdr.c
+> @@ -280,7 +280,7 @@ int
+>  nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+>  					struct nfsd_writeargs *args)
+>  {
+> -	unsigned int len, hdr, dlen;
+> +	unsigned int len, hdr;
+>  	int v;
+>  
+>  	p = decode_fh(p, &args->fh);
+> @@ -302,20 +302,6 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+>  	 * bytes.
+>  	 */
+>  	hdr = (void*)p - rqstp->rq_arg.head[0].iov_base;
+> -	dlen = rqstp->rq_arg.head[0].iov_len + rqstp->rq_arg.page_len
+> -		- hdr;
+> -
+> -	/*
+> -	 * Round the length of the data which was specified up to
+> -	 * the next multiple of XDR units and then compare that
+> -	 * against the length which was actually received.
+> -	 * Note that when RPCSEC/GSS (for example) is used, the
+> -	 * data buffer can be padded so dlen might be larger
+> -	 * than required.  It must never be smaller.
+> -	 */
+> -	if (dlen < XDR_QUADLEN(len)*4)
+> -		return 0;
+> -
+>  	rqstp->rq_vec[0].iov_base = (void*)p;
+>  	rqstp->rq_vec[0].iov_len = rqstp->rq_arg.head[0].iov_len - hdr;
+>  	v = 0;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
