@@ -1,95 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:62869 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758739AbaGPKwg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 06:52:36 -0400
-Received: by mail-qg0-f42.google.com with SMTP id j5so566786qga.15
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 03:52:36 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/5] sunrpc: remove "ec" argument from encrypt_v2 operation
-Date: Wed, 16 Jul 2014 06:52:22 -0400
-Message-Id: <1405507942-12256-6-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405507942-12256-1-git-send-email-jlayton@primarydata.com>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
- <1405507942-12256-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f48.google.com ([209.85.216.48]:61003 "EHLO
+	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753499AbaGJPFK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 11:05:10 -0400
+Received: by mail-qa0-f48.google.com with SMTP id x12so6986198qac.21
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 08:05:10 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 10 Jul 2014 11:05:08 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 014/100] nfsd: set stateid access and deny bits in
+ nfs4_get_vfs_file
+Message-ID: <20140710110508.569885db@tlielax.poochiereds.net>
+In-Reply-To: <20140710083406.GA1805@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+	<1404842668-22521-15-git-send-email-jlayton@primarydata.com>
+	<20140710083406.GA1805@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's always 0.
+On Thu, 10 Jul 2014 01:34:06 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- include/linux/sunrpc/gss_krb5.h       | 4 ++--
- net/sunrpc/auth_gss/gss_krb5_crypto.c | 9 ++-------
- net/sunrpc/auth_gss/gss_krb5_wrap.c   | 2 +-
- 3 files changed, 5 insertions(+), 10 deletions(-)
+> > @@ -3343,20 +3347,15 @@ out:
+> >  static __be32
+> >  nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
+> >  {
+> > -	u32 op_share_access = open->op_share_access;
+> >  	__be32 status;
+> >  
+> > -	if (!test_access(op_share_access, stp))
+> > -		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, open);
+> > +	if (!test_access(open->op_share_access, stp))
+> > +		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
+> >  	else
+> >  		status = nfsd4_truncate(rqstp, cur_fh, open);
+> >  
+> >  	if (status)
+> >  		return status;
+> > -
+> > -	/* remember the open */
+> > -	set_access(op_share_access, stp);
+> > -	set_deny(open->op_share_deny, stp);
+> >  	return nfs_ok;
+> 
+> This function is trivial enough now to be merged into the only caller,
+> especially as that open actually has another call to nfs4_get_vfs_file
+> right next to it in another branch.
+> 
 
-diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index 5af2931cf58d..df02a4188487 100644
---- a/include/linux/sunrpc/gss_krb5.h
-+++ b/include/linux/sunrpc/gss_krb5.h
-@@ -81,7 +81,7 @@ struct gss_krb5_enctype {
- 		       struct xdr_netobj *in,
- 		       struct xdr_netobj *out);	/* complete key generation */
- 	u32 (*encrypt_v2) (struct krb5_ctx *kctx, u32 offset,
--			   struct xdr_buf *buf, int ec,
-+			   struct xdr_buf *buf,
- 			   struct page **pages); /* v2 encryption function */
- 	u32 (*decrypt_v2) (struct krb5_ctx *kctx, u32 offset,
- 			   struct xdr_buf *buf, u32 *headskip,
-@@ -310,7 +310,7 @@ gss_krb5_aes_make_key(const struct gss_krb5_enctype *gk5e,
- 
- u32
- gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
--		     struct xdr_buf *buf, int ec,
-+		     struct xdr_buf *buf,
- 		     struct page **pages);
- 
- u32
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 0f43e894bc0a..f5ed9f6ece06 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -641,7 +641,7 @@ out:
- 
- u32
- gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
--		     struct xdr_buf *buf, int ec, struct page **pages)
-+		     struct xdr_buf *buf, struct page **pages)
- {
- 	u32 err;
- 	struct xdr_netobj hmac;
-@@ -684,13 +684,8 @@ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
- 		ecptr = buf->tail[0].iov_base;
- 	}
- 
--	memset(ecptr, 'X', ec);
--	buf->tail[0].iov_len += ec;
--	buf->len += ec;
--
- 	/* copy plaintext gss token header after filler (if any) */
--	memcpy(ecptr + ec, buf->head[0].iov_base + offset,
--						GSS_KRB5_TOK_HDR_LEN);
-+	memcpy(ecptr, buf->head[0].iov_base + offset, GSS_KRB5_TOK_HDR_LEN);
- 	buf->tail[0].iov_len += GSS_KRB5_TOK_HDR_LEN;
- 	buf->len += GSS_KRB5_TOK_HDR_LEN;
- 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index 88cd24aacddc..4b614c604fe0 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -483,7 +483,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
- 	*be64ptr = cpu_to_be64(kctx->seq_send64++);
- 	spin_unlock(&krb5_seq_lock);
- 
--	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, 0, pages);
-+	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, pages);
- 	if (err)
- 		return err;
- 
+Yes, but in two patches (nfsd: make deny mode enforcement more
+efficient and close races in it) we add some complexity back in here
+and at that point I think we'll want this in a separate function. So I
+think we shouldn't fold that into the caller since it'll just increase
+the churn.
+
+> 
+> >  	} else {
+> > -		status = nfs4_get_vfs_file(rqstp, fp, current_fh, open);
+> > -		if (status)
+> > -			goto out;
+> >  		stp = open->op_stp;
+> >  		open->op_stp = NULL;
+> >  		init_open_stateid(stp, fp, open);
+> > +		status = nfs4_get_vfs_file(rqstp, fp, current_fh, stp, open);
+> > +		if (status) {
+> > +			release_open_stateid(stp);
+> > +			goto out;
+> > +		}
+> 
+> I can't find a place where we set the access bits before here.
+> 
+
+Correct, we don't. That's not a problem though, AFAICT.
+
+The idea here is to go ahead and hash the stateid and then try to get
+the access to the file. If that fails, we unhash it and free the
+stateid.
+
+In a later patch we'll need to do that anyway to ensure that the
+fi_deny_mode is properly handled if it needs to be recalculated while
+we're trying to get a new filp for the file.
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
