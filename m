@@ -1,90 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:61435 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755717AbaGVOwy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:52:54 -0400
-Subject: [PATCH v4 13/21] xprtrdma: Don't post a LOCAL_INV in
- rpcrdma_register_frmr_external()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:52:51 -0400
-Message-ID: <20140722145251.6010.90052.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from cantor2.suse.de ([195.135.220.15]:56867 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750702AbaGJFLS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jul 2014 01:11:18 -0400
+Date: Thu, 10 Jul 2014 15:11:12 +1000
+From: NeilBrown <neilb@suse.de>
+To: Nathan Shearer <mail@nathanshearer.ca>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: umount -f stalls forever
+Message-ID: <20140710151112.7710bb7b@notabene.brown>
+In-Reply-To: <53BDA2C7.4030007@nathanshearer.ca>
+References: <53BDA2C7.4030007@nathanshearer.ca>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/Z9XLYwSFP15WBzk8k4Nt3kg"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Any FRMR arriving in rpcrdma_register_frmr_external() is now
-guaranteed to be either invalid, or to be targeted by a queued
-LOCAL_INV that will invalidate it before the adapter processes
-the FAST_REG_MR being built here.
+--Sig_/Z9XLYwSFP15WBzk8k4Nt3kg
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-The problem with current arrangement of chaining a LOCAL_INV to the
-FAST_REG_MR is that if the transport is not connected, the LOCAL_INV
-is flushed and the FAST_REG_MR is flushed. This leaves the FRMR
-valid with the old rkey. But rpcrdma_register_frmr_external() has
-already bumped the in-memory rkey.
+On Wed, 09 Jul 2014 14:15:03 -0600 Nathan Shearer <mail@nathanshearer.ca>
+wrote:
 
-Next time through rpcrdma_register_frmr_external(), a LOCAL_INV and
-FAST_REG_MR is attempted again because the FRMR is still valid. But
-the rkey no longer matches the hardware's rkey, and a memory
-management operation error occurs.
+> When I have an nfs share that is mounted with the hard option (either
+> explicitly or implicitly since hard is on by default), and the nfs
+> server becomes unresponsive for any reason, it often causes the entire
+> OS to hang on many operations. In some cases I cannot even reboot a
+> server depending on what the nfs share was used for.
+>=20
+> I relaize that this was probably done intentionally to prevent data
+> loss. However, when I am cleaning up a disaster and I actually do want
+> to "umount -f" a stalled nfs share and data loss es acceptable, then I
+> expect that command to return and the share to be unmounted. From a
+> usability perspective, stalling forever when I am explicitly forcing an
+> action is not right.
+>=20
+> There is a workaround: and that is to assign the IP of the nfs server to
+> my system then issue umount -f, however that hardly the best way since I
+> am changing my network topology to unmount an offline filesystem. In
+> some situations adding an IP to an interface is not possilble, and if
+> the system is a remote system it could lead to more problems since it is
+> mostly unresponsive.
+>=20
+> It would be greatly appreciated if a patch could be introduced that
+> allows "umount -f" to actually work without making any other changes to
+> a running system. The man page for umount even states that the -f
+> argument can be used to unmount an unreachable nfs share -- but it
+> almost never works.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
----
- net/sunrpc/xprtrdma/verbs.c |   21 ++-------------------
- 1 file changed, 2 insertions(+), 19 deletions(-)
+Hi Nathan,
+ you don't say what kernel you are running....
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 24168e8..8429869 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1692,7 +1692,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	struct rpcrdma_mw *mw = seg1->mr_chunk.rl_mw;
- 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
- 	struct ib_mr *mr = frmr->fr_mr;
--	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
-+	struct ib_send_wr frmr_wr, *bad_wr;
- 	int len, pageoff;
- 	int i, rc;
- 	int seg_len;
-@@ -1724,22 +1724,6 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
- 		__func__, mw, i);
- 
--	if (unlikely(frmr->fr_state != FRMR_IS_INVALID)) {
--		dprintk("RPC:       %s: frmr %x left valid, posting invalidate.\n",
--			__func__, mr->rkey);
--		/* Invalidate before using. */
--		memset(&invalidate_wr, 0, sizeof invalidate_wr);
--		invalidate_wr.wr_id = (unsigned long)(void *)mw;
--		invalidate_wr.next = &frmr_wr;
--		invalidate_wr.opcode = IB_WR_LOCAL_INV;
--		invalidate_wr.send_flags = IB_SEND_SIGNALED;
--		invalidate_wr.ex.invalidate_rkey = mr->rkey;
--		DECR_CQCOUNT(&r_xprt->rx_ep);
--		post_wr = &invalidate_wr;
--	} else
--		post_wr = &frmr_wr;
--
--	/* Prepare FRMR WR */
- 	memset(&frmr_wr, 0, sizeof frmr_wr);
- 	frmr_wr.wr_id = (unsigned long)(void *)mw;
- 	frmr_wr.opcode = IB_WR_FAST_REG_MR;
-@@ -1761,8 +1745,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	frmr_wr.wr.fast_reg.rkey = mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
--	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
--
-+	rc = ib_post_send(ia->ri_id->qp, &frmr_wr, &bad_wr);
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
- 			" status %i\n", __func__, rc);
+ A change was made in Linux 3.12 (8033426e6bdb2690d302872ac1e1fadaec1a5581)
+ which may address the problem you have.
+ So if you are using a kernel older than that, try a newer kernel.
+ This may not make "umount -f" work, but it should stop it from hanging.
+ To make it work you might need to kill all the processes using the mount
+ point first.
 
+ Also, "umount -l" might be a suitable answer to your problems.
+
+NeilBrown
+
+--Sig_/Z9XLYwSFP15WBzk8k4Nt3kg
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU74gcDnsnt1WYoG5AQI7bw//aGQ47g4bStBCW1OJmBuWhRzKTa7W9VBb
+P7kUA3NSVdpWyCwyAoAdk18I4zrOEhNNPNm0apY4sLDyGVGlVOi9WCVhedQF3qs4
+rZYY0dqfD2ErpCr6kmpJKUdNKWAtsNLSNUtV+KqDkZ++exVIiSwstD7yfKPKmhey
+0bQP7tuWn2Do97pogAiZ7pr89RJKBi9Om6h5rmRf6V5mT+uXyyK5BMcX7Nf+VOyN
+ay2OYtuBNT9TnFXYyKvwXz+kCrFTI0hx7QtDm+EIkOYw1v23v9DhqsKP5SS+e4+M
+ceOUQLa88+orE1BHEAubchnfK2gUdaFoENPKsbwSebrVcMnZg+ZL4ieO74ikmpJo
+ghLo6fAZ1tI8PhFr+wT1vlYLpafeCyd3uRQRfD7w6q0Az/gjl9qJEqPQs32t+YRl
+uTACqg1oY4Q8C/ygxMmIjt70jeuRuehfNvbAWVP0R0WBf2qrIgpyW/L5KjTOtczL
+iAKOKzla/64pw8nz6kea6e0sMBD8wwXjCEAE/uYnBExTYF96hpMSCVrvo2ZNCz5U
+/RaZrOK+Qumub0/r8ODmEh6rTtgRN1Rye6hkcpnV3NIYpszxBHIW8P8RiBWO8LnJ
+ls1c7hE6a1ZuH2HktzmusiTwr2FCvczsH+SV27wNsoZWdDTN6IEAdJ38sNiG5XNw
+OzpMy12b/UA=
+=Lc9Z
+-----END PGP SIGNATURE-----
+
+--Sig_/Z9XLYwSFP15WBzk8k4Nt3kg--
