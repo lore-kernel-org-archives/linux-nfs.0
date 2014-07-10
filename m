@@ -1,108 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:60381 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751516AbaGJSH5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 14:07:57 -0400
-Received: by mail-qg0-f42.google.com with SMTP id e89so8012629qgf.15
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 11:07:57 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 09/11] nfsd: always hold the fi_lock when bumping fi_access refcounts
-Date: Thu, 10 Jul 2014 14:07:33 -0400
-Message-Id: <1405015655-12469-10-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
-References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-vc0-f175.google.com ([209.85.220.175]:33322 "EHLO
+	mail-vc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752263AbaGJMmU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 08:42:20 -0400
+Received: by mail-vc0-f175.google.com with SMTP id hy4so10314949vcb.20
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 05:42:19 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <037d01cf9bfe$e411e450$ac35acf0$@mindspring.com>
+References: <1404942892-18323-1-git-send-email-ffilzlnx@mindspring.com>
+	<CAHQdGtSUwScEdUeKT1w+-ynqNz-e1=YvDBtdu_k=_6yndFZSVQ@mail.gmail.com>
+	<033801cf9bc7$0d7ee190$287ca4b0$@mindspring.com>
+	<CAHQdGtQjCYV2jE7FGu-J+02xp25uaUUVv8uzcs5sfbKXBbVk6A@mail.gmail.com>
+	<CAHQdGtTkTh4MQJk6bec46OjsyZHnEGGws3b_2HA+kszzOHM-pw@mail.gmail.com>
+	<037801cf9bf7$1c039d20$540ad760$@mindspring.com>
+	<CAHQdGtSmEO8pyw+1FMmQcRgHwRufedzLRwonksueWcFSf4cm8A@mail.gmail.com>
+	<037d01cf9bfe$e411e450$ac35acf0$@mindspring.com>
+Date: Thu, 10 Jul 2014 08:42:19 -0400
+Message-ID: <CAHQdGtRk+MLLV=v5oyzqvhUYhrv9sV+AW9Fh0QY8vK=5EKriPA@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Fix permission checking by NFS client for open-create
+ with mode 000
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, there's an unlikely but possible race
-that could occur. It will be possible for nfs4_file_put_access to race
-with nfs4_file_get_access. The refcount will go to zero (briefly) and
-then bumped back to one. If that happens we set ourselves up for a
-use-after-free and the potential for a lock to race onto the i_flock
-list as a filp is being torn down.
+>> >> Oops. Sorry, the correct sub-sub-sub-sub-....paragraph is this one:
+>> >>
+>> >>          Permission to execute a file.
+>> >>
+>> >>          Servers SHOULD allow a user the ability to read the data of the
+>> >>          file when only the ACE4_EXECUTE access mask bit is allowed.
+>> >>          This is because there is no way to execute a file without
+>> >>          reading the contents.  Though a server may treat ACE4_EXECUTE
+>> >>          and ACE4_READ_DATA bits identically when deciding to permit a
+>> >>          READ operation, it SHOULD still allow the two bits to be set
+>> >>          independently in ACLs, and MUST distinguish between them when
+>> >>          replying to ACCESS operations.  In particular, servers SHOULD
+>> >>          NOT silently turn on one of the two bits when the other is set,
+>> >>          as that would make it impossible for the client to correctly
+>> >>          enforce the distinction between read and execute permissions.
+>> >>
+>> >>
+>> >> > To me that translates as saying that the server SHOULD accept an
+>> >> > OPEN(SHARE_ACCESS_READ|SHARE_ACCESS_WRITE) request in the
+>> above
+>> >> > situation.
+>> >>
+>> >> Same conclusion, though....
+>> >
+>> > When I read that paragraph, my interpretation is that OPEN (and READ)
+>> should be permission checked normally, however, if ONLY execute
+>> permission is granted, and the OPEN is read only (and READ of course is read
+>> only) then permission would be granted for the purpose of execution. But if
+>> any other combination of bits was allowed, then the paragraph doesn't
+>> apply. Thus an OPEN SHARE_ACCESS_READ | SHARE_ACCESS_WRITE must
+>> fail since write access was not granted (if it was, the exception doesn't apply
+>> to my reading).
+>> >
+>>
+>> Where does that paragraph say anything about SHARE_WRITE, or even
+>> mention the word "only"?
+>>
+>> All it says is that as far as the OPEN and READ operations are concerned,
+>> ACE4_EXECUTE == ACE4_READ_DATA, whereas for the ACCESS operation,
+>> they differ.
+>
+> I'm reading the "only" in the first sentence:
+>
+> "Servers SHOULD allow a user the ability to read the data of the file when only the ACE4_EXECUTE access mask bit is allowed."
 
-Ensure that we can safely bump the refcount on the file by holding the
-fi_lock whenever that's done. The only place it currently isn't is in
-get_lock_access.
+How does that support your assertion that setting a SHARE_BOTH mode
+turns off the exception? There is no mention of share modes there. All
+it says is that you should grant read permissions when the execute bit
+is set in the ACL.
 
-In order to ensure atomicity with finding the file, use the
-find_*_file_locked variants and then call get_lock_access to get new
-access references on the nfs4_file under the same lock.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 16 ++++++++++++++--
- 1 file changed, 14 insertions(+), 2 deletions(-)
+> But to entertain the idea that I'm reading too much into that sentence, let's go back to the situation:
+>
+> File does not already exist
+> Application on client makes an open("/nfs4mnt/foo", O_CREAT | O_RDWR, 0) system call
+>
+> What can we do between the server and client to assure success of that call. It works on local filesystems. It works over NFS v3. But it fails, at least with the Linux NFS v4 client.
+>
+> With the Linux NFS v4 client, the following does succeed (because actual read access was granted):
+>
+> open("/nfs4mnt/foo", O_CREAT | O_RDWR, 0400)
+>
+> And the client can write to the file.
+>
+> On the other hand, going back to my interpretation of the sentence, that is indeed the interpretation the Linux knfsd server is taking, because my little test case works as I expect it with the changes I proposed, in that and open("/nfs4mnt/foo", O_RDWR) fails even if the file has -wx------ permissions (and looking at wireshark traces, I see that indeed the OPEN fails if read permission is not granted, but execute permission is granted and write access was requested.
+>
+> Ok, here is the relevant code from fs/nfsd/vfs.c:
+>
+>         /* Allow read access to binaries even when mode 111 */
+>         if (err == -EACCES && S_ISREG(inode->i_mode) &&
+>              (acc == (NFSD_MAY_READ | NFSD_MAY_OWNER_OVERRIDE) ||
+>               acc == (NFSD_MAY_READ | NFSD_MAY_READ_IF_EXEC)))
+>                 err = inode_permission(inode, MAY_EXEC);
+>
+> So if the caller had requested write access, it does not check for MAY_EXEC.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5f7294712ad4..8f320f2f8b84 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -377,6 +377,8 @@ static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
- static void
- __nfs4_file_get_access(struct nfs4_file *fp, u32 access)
- {
-+	lockdep_assert_held(&fp->fi_lock);
-+
- 	if (access & NFS4_SHARE_ACCESS_WRITE)
- 		atomic_inc(&fp->fi_access[O_WRONLY]);
- 	if (access & NFS4_SHARE_ACCESS_READ)
-@@ -386,6 +388,8 @@ __nfs4_file_get_access(struct nfs4_file *fp, u32 access)
- static __be32
- nfs4_file_get_access(struct nfs4_file *fp, u32 access)
- {
-+	lockdep_assert_held(&fp->fi_lock);
-+
- 	/* Does this access mode make sense? */
- 	if (access & ~NFS4_SHARE_ACCESS_BOTH)
- 		return nfserr_inval;
-@@ -4572,6 +4576,8 @@ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- {
- 	struct nfs4_file *fp = lock_stp->st_file;
- 
-+	lockdep_assert_held(&fp->fi_lock);
-+
- 	if (test_access(access, lock_stp))
- 		return;
- 	__nfs4_file_get_access(fp, access);
-@@ -4623,6 +4629,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_openowner *open_sop = NULL;
- 	struct nfs4_lockowner *lock_sop = NULL;
- 	struct nfs4_ol_stateid *lock_stp;
-+	struct nfs4_file *fp;
- 	struct file *filp = NULL;
- 	struct file_lock *file_lock = NULL;
- 	struct file_lock *conflock = NULL;
-@@ -4703,20 +4710,25 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out;
- 	}
- 
-+	fp = lock_stp->st_file;
- 	locks_init_lock(file_lock);
- 	switch (lock->lk_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
--			filp = find_readable_file(lock_stp->st_file);
-+			spin_lock(&fp->fi_lock);
-+			filp = find_readable_file_locked(fp);
- 			if (filp)
- 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
-+			spin_unlock(&fp->fi_lock);
- 			file_lock->fl_type = F_RDLCK;
- 			break;
- 		case NFS4_WRITE_LT:
- 		case NFS4_WRITEW_LT:
--			filp = find_writeable_file(lock_stp->st_file);
-+			spin_lock(&fp->fi_lock);
-+			filp = find_writeable_file_locked(fp);
- 			if (filp)
- 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
-+			spin_unlock(&fp->fi_lock);
- 			file_lock->fl_type = F_WRLCK;
- 			break;
- 		default:
+That's example code from one server implementation. It's not from
+authoritative source.
+
+
+Frank, the bottom line is that I'm not going to accept that patch as
+it stands, because it is wrong.
+The right fix here seems rather to be to put in an exception if the
+data->file_created flag is set. I'll write a patch.
+
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
