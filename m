@@ -1,67 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:5901 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751355AbaGaUyO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 Jul 2014 16:54:14 -0400
-Message-ID: <53DAACF2.7040307@Netapp.com>
-Date: Thu, 31 Jul 2014 16:54:10 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-rdma <linux-rdma@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client RDMA changes for 3.17
-Content-Type: text/plain; charset="utf-8"
+Received: from e28smtp02.in.ibm.com ([122.248.162.2]:49024 "EHLO
+	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752336AbaGJPxh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 11:53:37 -0400
+Received: from /spool/local
+	by e28smtp02.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <srimalik@in.ibm.com>;
+	Thu, 10 Jul 2014 21:23:34 +0530
+Received: from d28relay03.in.ibm.com (d28relay03.in.ibm.com [9.184.220.60])
+	by d28dlp01.in.ibm.com (Postfix) with ESMTP id BD23BE004B
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 21:24:58 +0530 (IST)
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay03.in.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s6AFt3tY5505438
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 21:25:03 +0530
+Received: from d28av01.in.ibm.com (localhost [127.0.0.1])
+	by d28av01.in.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id s6AFrUhQ022893
+	for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 21:23:30 +0530
+From: Srikrishan Malik <srimalik@in.ibm.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, Srikrishan Malik <srimalik@in.ibm.com>
+Subject: [PATCH] Use original reserved port setting for reconnect.
+Date: Thu, 10 Jul 2014 21:22:06 +0530
+Message-Id: <1405007526-2234-1-git-send-email-srimalik@in.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Trond,
+Signed-off-by: Srikrishan Malik <srimalik@in.ibm.com>
+---
+Reconnect ignores the "--secure" arg after connection reset.                  
+If the export is secure then OPs after reconnect fail with NFS4ERR_ACCESS.
+ nfs4.0/lib/rpc/rpc.py |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-The following changes since commit 9a3c4145af32125c5ee39c0272662b47307a8323:
+diff --git a/nfs4.0/lib/rpc/rpc.py b/nfs4.0/lib/rpc/rpc.py
+index 8b39df4..5ef2e3e 100644
+--- a/nfs4.0/lib/rpc/rpc.py
++++ b/nfs4.0/lib/rpc/rpc.py
+@@ -305,7 +305,8 @@ class RPCClient(object):
+         self.lock.acquire()
+         self._socket[t].close()
+         out = self._socket[t] = socket.socket(self.af, socket.SOCK_STREAM)
+-        # out.bind
++        if self.uselowport:
++            self.bindsocket(out)
+         out.connect((self.remotehost, self.remoteport))
+         out.settimeout(self.timeout)
+         self.lock.release()
+-- 
+1.7.1
 
-  Linux 3.16-rc6 (2014-07-20 21:04:16 -0700)
-
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/anna/nfs-rdma.git nfs-rdma
-
-for you to fetch changes up to 8079fb785e34de6dff34bd846b8b79c212861edf:
-
-  xprtrdma: Handle additional connection events (2014-07-31 16:22:59 -0400)
-
-Thanks!
-Anna
-
-----------------------------------------------------------------
-Chuck Lever (21):
-      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
-      xprtrdma: Protect ia->ri_id when unmapping/invalidating MRs
-      xprtrdma: Limit data payload size for ALLPHYSICAL
-      xprtrdma: Update rkeys after transport reconnect
-      xprtrdma: On disconnect, don't ignore pending CQEs
-      xprtrdma: Don't invalidate FRMRs if registration fails
-      xprtrdma: Unclutter struct rpcrdma_mr_seg
-      xprtrdma: Back off rkey when FAST_REG_MR fails
-      xprtrdma: Chain together all MWs in same buffer pool
-      xprtrdma: Properly handle exhaustion of the rb_mws list
-      xprtrdma: Reset FRMRs when FAST_REG_MR is flushed by a disconnect
-      xprtrdma: Reset FRMRs after a flushed LOCAL_INV Work Request
-      xprtrdma: Don't post a LOCAL_INV in rpcrdma_register_frmr_external()
-      xprtrdma: Disable completions for FAST_REG_MR Work Requests
-      xprtrdma: Disable completions for LOCAL_INV Work Requests
-      xprtrdma: Rename frmr_wr
-      xprtrdma: Allocate each struct rpcrdma_mw separately
-      xprtrdma: Schedule reply tasklet once per upcall
-      xprtrdma: Make rpcrdma_ep_disconnect() return void
-      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
-      xprtrdma: Handle additional connection events
-
-Yan Burman (1):
-      xprtrdma: Fix DMA-API-DEBUG warning by checking dma_map result
-
- include/linux/sunrpc/xprtrdma.h |   2 -
- net/sunrpc/xprtrdma/rpc_rdma.c  |  83 +++++------
- net/sunrpc/xprtrdma/transport.c |  17 ++-
- net/sunrpc/xprtrdma/verbs.c     | 739 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------------------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |  61 ++++++--
- 5 files changed, 604 insertions(+), 298 deletions(-)
