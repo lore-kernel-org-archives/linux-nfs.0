@@ -1,69 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:45075 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750782AbaGaLen (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2014 07:34:43 -0400
-Received: by mail-qg0-f50.google.com with SMTP id q108so3569824qgd.9
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Jul 2014 04:34:43 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 31 Jul 2014 07:34:41 -0400
-To: NeilBrown <neilb@suse.de>
-Cc: Natanael Copa <natanael.copa@gmail.com>, linux-nfs@vger.kernel.org,
-        Natanael Copa <ncopa@alpinelinux.org>
-Subject: Re: [PATCH 04/11] exportfs: define _GNU_SOURCE for stat64
-Message-ID: <20140731073441.7e354359@tlielax.poochiereds.net>
-In-Reply-To: <20140731113022.22afdefc@notabene.brown>
-References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
-	<1406719399-1735-5-git-send-email-ncopa@alpinelinux.org>
-	<20140731113022.22afdefc@notabene.brown>
+Received: from bombadil.infradead.org ([198.137.202.9]:54264 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753436AbaGJNBG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 09:01:06 -0400
+Date: Thu, 10 Jul 2014 06:01:05 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 011/100] nfsd: refactor nfs4_file_get_access and
+ nfs4_file_put_access
+Message-ID: <20140710130105.GA14741@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+ <1404842668-22521-12-git-send-email-jlayton@primarydata.com>
+ <20140710075920.GA6226@infradead.org>
+ <20140710073214.5621293f@tlielax.poochiereds.net>
+ <20140710113523.GA17814@infradead.org>
+ <20140710084922.6899fdf2@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140710084922.6899fdf2@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 31 Jul 2014 11:30:22 +1000
-NeilBrown <neilb@suse.de> wrote:
+On Thu, Jul 10, 2014 at 08:49:22AM -0400, Jeff Layton wrote:
+> gets are always done with the lock held. puts do an atomic_dec_and_lock
+> or are done with the lock held. I don't see how that's racy...
 
-> On Wed, 30 Jul 2014 13:23:12 +0200 Natanael Copa <natanael.copa@gmail.com>
-> wrote:
-> 
-> > Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
-> > ---
-> >  utils/exportfs/exportfs.c | 4 ++++
-> >  1 file changed, 4 insertions(+)
-> > 
-> > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> > index bf07555..7ab93d1 100644
-> > --- a/utils/exportfs/exportfs.c
-> > +++ b/utils/exportfs/exportfs.c
-> > @@ -12,6 +12,10 @@
-> >  #include <config.h>
-> >  #endif
-> >  
-> > +#ifndef _GNU_SOURCE
-> > +#define _GNU_SOURCE
-> > +#endif
-> > +
-> >  #include <sys/types.h>
-> >  #include <sys/stat.h>
-> >  #include <sys/vfs.h>
-> 
-> These all look really sensible!
-> 
-> One small suggestion: it would be really nice to see a comment in the code
-> explaining why _GNU_SOURCE is needed.  I suspect such comments get out of
-> date quickly, so maybe it wouldn't end up be all that useful.  But having a
-> comment is still, in my opinion, more useful than not.
-> 
-> Thanks,
-> NeilBrown
-> 
+Yeah, as long as the atomic_read for the other fd is done under the lock
+it should be fine in the end.
 
-Agreed, they all look pretty sensible. That said, I think the supposed
-best way to enable _GNU_SOURCE on autoconf projects is to use
-AC_USE_SYSTEM_EXTENSIONS:
-
-    https://www.gnu.org/software/autoconf/manual/autoconf-2.64/html_node/Posix-Variants.html
-
--- 
-Jeff Layton <jlayton@primarydata.com>
