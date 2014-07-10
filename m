@@ -1,88 +1,198 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56120 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754850AbaGAUYm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Jul 2014 16:24:42 -0400
-Date: Tue, 1 Jul 2014 16:24:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
-Message-ID: <20140701202440.GG14728@fieldses.org>
-References: <20140630085934.2bf86ba0@tlielax.poochiereds.net>
- <20140630193237.GA11935@fieldses.org>
- <20140630162014.20e63e1a@tlielax.poochiereds.net>
- <CAHQdGtQtHaKx6mEXzO7XndZPo19joccuPa0_z0T_79TiG1434w@mail.gmail.com>
- <20140630163647.5227ac55@tlielax.poochiereds.net>
- <20140701101034.520b04bb@tlielax.poochiereds.net>
- <CAHQdGtQZP8RGqWS0pw-X97D_3GE1tqxaeVMSXgLa+VtaSLae2w@mail.gmail.com>
- <20140701144631.4bf0e9b5@tlielax.poochiereds.net>
- <20140701200135.GE14728@fieldses.org>
- <20140701161317.0761839e@tlielax.poochiereds.net>
+Received: from mail-qa0-f67.google.com ([209.85.216.67]:43396 "EHLO
+	mail-qa0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750791AbaGJQeF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 12:34:05 -0400
+Received: by mail-qa0-f67.google.com with SMTP id v10so519993qac.6
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 09:34:04 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 10 Jul 2014 12:34:02 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 001/100] nfsd: close potential race between
+ delegation break and laundromat
+Message-ID: <20140710123402.23a33daf@tlielax.poochiereds.net>
+In-Reply-To: <20140710121625.69c8c08f@tlielax.poochiereds.net>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+	<1404842668-22521-2-git-send-email-jlayton@primarydata.com>
+	<20140710155905.GF26851@fieldses.org>
+	<20140710121625.69c8c08f@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140701161317.0761839e@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 01, 2014 at 04:13:17PM -0400, Jeff Layton wrote:
-> On Tue, 1 Jul 2014 16:01:35 -0400
+On Thu, 10 Jul 2014 12:16:25 -0400
+Jeff Layton <jlayton@primarydata.com> wrote:
+
+> On Thu, 10 Jul 2014 11:59:05 -0400
 > "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> > On Tue, Jul 01, 2014 at 02:46:31PM -0400, Jeff Layton wrote:
-> > > Ok, I haven't tested that yet, but I did put together a f20 machine on
-> > > bare metal to act as a server. Here are some results from a test that
-> > > forks 128 child processes and has each one create and close 1024 files.
-> > > Client is 3.14.8-200.fc20.x86_64 and using NFSv4.1:
+> > On Tue, Jul 08, 2014 at 02:02:49PM -0400, Jeff Layton wrote:
+> > > Bruce says:
 > > > 
-> > > With a stock Fedora kernel on the server running 3.14.8-200.fc20.x86_64:
+> > >     There's also a preexisting expire_client/laundromat vs break race:
 > > > 
-> > > $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+> > >     - expire_client/laundromat adds a delegation to its local
+> > >       reaplist using the same dl_recall_lru field that a delegation
+> > >       uses to track its position on the recall lru and drops the
+> > >       state lock.
 > > > 
-> > > real	59m5.022s
-> > > user	0m1.401s
-> > > sys	0m17.561s
+> > >     - a concurrent break_lease adds the delegation to the lru.
 > > > 
+> > >     - expire/client/laundromat then walks it reaplist and sees the
+> > >       lru head as just another delegation on the list....
 > > > 
-> > > ...with the patched kernel 3.16.0-rc2.jlayton.1+ (basically Bruce's
-> > > for-3.17 branch with the rest of my patches piled on):
+> > > Fix this race by checking the dl_time under the state_lock. If we find
+> > > that it's not 0, then we know that it has already been queued to the LRU
+> > > list and that we shouldn't queue it again.
 > > > 
-> > > $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+> > > In the case of destroy_client, we must also ensure that we don't hit
+> > > similar races by ensuring that we don't move any delegations to the
+> > > reaplist with a dl_time of 0. Just bump the dl_time by one before we
+> > > drop the state_lock. We're destroying the delegations anyway, so a 1s
+> > > difference there won't matter.
 > > > 
-> > > real	4m19.060s
-> > > user	0m1.259s
-> > > sys	0m13.059s
+> > > The fault injection code also requires a bit of surgery here:
 > > > 
-> > > ...so around a factor of 13x speedup on parallel creates. Again, this
-> > > is not a terribly scientific benchmark, but it does suggest that this
-> > > patchset helps immensely.
+> > > First, in the case of nfsd_forget_client_delegations, we must prevent
+> > > the same sort of race vs. the delegation break callback. For that, we
+> > > just increment the dl_time to ensure that a delegation callback can't
+> > > race in while we're working on it.
+> > > 
+> > > We can't do that for nfsd_recall_client_delegations, as we need to have
+> > > it actually queue the delegation, and that won't happen if we increment
+> > > the dl_time. The state lock is held over that function, so we don't need
+> > > to worry about these sorts of races there.
+> > > 
+> > > There is one other potential bug nfsd_recall_client_delegations though.
+> > > Entries on the victims list are not dequeued before calling
+> > > nfsd_break_one_deleg. That's a potential list corruptor, so ensure that
+> > > we do that there.
+> > > 
+> > > Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
+> > > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > > ---
+> > >  fs/nfsd/nfs4state.c | 40 +++++++++++++++++++++++++++++++++-------
+> > >  1 file changed, 33 insertions(+), 7 deletions(-)
+> > > 
+> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > > index 763aeeb67ccf..633b34fd6c92 100644
+> > > --- a/fs/nfsd/nfs4state.c
+> > > +++ b/fs/nfsd/nfs4state.c
+> > > @@ -1287,6 +1287,8 @@ destroy_client(struct nfs4_client *clp)
+> > >  	while (!list_empty(&clp->cl_delegations)) {
+> > >  		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
+> > >  		list_del_init(&dp->dl_perclnt);
+> > > +		/* Ensure that deleg break won't try to requeue it */
+> > > +		++dp->dl_time;
+> > >  		list_move(&dp->dl_recall_lru, &reaplist);
+> > >  	}
+> > >  	spin_unlock(&state_lock);
+> > > @@ -2933,10 +2935,14 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+> > >  	 * it's safe to take a reference: */
+> > >  	atomic_inc(&dp->dl_count);
+> > >  
+> > > -	list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+> > > -
+> > > -	/* Only place dl_time is set; protected by i_lock: */
+> > > -	dp->dl_time = get_seconds();
+> > > +	/*
+> > > +	 * If the dl_time != 0, then we know that it has already been
+> > > +	 * queued for a lease break. Don't queue it again.
+> > > +	 */
+> > > +	if (dp->dl_time == 0) {
 > > 
-> > Neat-o.
+> > Any reason not to just make that
 > > 
-> > It might also be interesting to compare with NFSv3?
+> > 	if (dp->dl_time)
+> > 		return;
 > > 
-> > I wonder what a first good test of the smp scalability would be.
+> > ?
+> > 
+> > I don't know if it matters right now, but it might also be useful to
+> > know that no more work will get queued once dl_time is set.
 > > 
 > > --b.
+> > 
 > 
-> Yeah, it is neato. And just to be sure that it wasn't some other random
-> change between 3.14 and 3.16, I popped off all of my patches, rebuilt
-> nfsd.ko and reran the test with everything else the same:
+> No, that makes a lot of sense. I'll respin and do that instead...
 > 
-> $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
 > 
-> real	58m50.564s
-> user	0m1.513s
-> sys	0m18.963s
-> 
-> ...so it really does appear that these changes make the difference.
 
-Yes, and that number sounds about right: that's about 27ms per create,
-which sounds like about the right number for latency of a create on a
-normal hard drive?
+Actually, now that I look, there are a few reasons not to do that...
 
-(No idea how to think about the patched case.)
+First, we want to ensure that block_delegations gets called even if the
+dl_time is non-zero. So fine, we can move that up above the dl_time
+check...
 
---b.
+Second, it'll complicate patch #4 in this series. We have to take a
+reference to the delegation in the delegation break. The dl_time though
+must be checked while holding the state_lock. So, if the dl_time ends
+up being non-zero at that point, we'll have to put the client reference
+and take care not to do the actual recall job. It's doable, but it'll
+make the code more complex. I'm not sure that's worth the extra
+complexity...
+
+> > > +		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+> > > +		dp->dl_time = get_seconds();
+> > > +	}
+> > >  
+> > >  	block_delegations(&dp->dl_fh);
+> > >  
+> > > @@ -5081,8 +5087,23 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+> > >  
+> > >  	lockdep_assert_held(&state_lock);
+> > >  	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
+> > > -		if (victims)
+> > > +		if (victims) {
+> > > +			/*
+> > > +			 * It's not safe to mess with delegations that have a
+> > > +			 * non-zero dl_time. They might have already been broken
+> > > +			 * and could be processed by the laundromat outside of
+> > > +			 * the state_lock. Just leave them be.
+> > > +			 */
+> > > +			if (dp->dl_time != 0)
+> > > +				continue;
+> > > +
+> > > +			/*
+> > > +			 * Increment dl_time to ensure that delegation breaks
+> > > +			 * don't monkey with it now that we are.
+> > > +			 */
+> > > +			++dp->dl_time;
+> > >  			list_move(&dp->dl_recall_lru, victims);
+> > > +		}
+> > >  		if (++count == max)
+> > >  			break;
+> > >  	}
+> > > @@ -5107,14 +5128,19 @@ u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
+> > >  
+> > >  u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
+> > >  {
+> > > -	struct nfs4_delegation *dp, *next;
+> > > +	struct nfs4_delegation *dp;
+> > >  	LIST_HEAD(victims);
+> > >  	u64 count;
+> > >  
+> > >  	spin_lock(&state_lock);
+> > >  	count = nfsd_find_all_delegations(clp, max, &victims);
+> > > -	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
+> > > +	while (!list_empty(&victims)) {
+> > > +		dp = list_first_entry(&victims, struct nfs4_delegation,
+> > > +					dl_recall_lru);
+> > > +		list_del_init(&dp->dl_recall_lru);
+> > > +		dp->dl_time = 0;
+> > >  		nfsd_break_one_deleg(dp);
+> > > +	}
+> > >  	spin_unlock(&state_lock);
+> > >  
+> > >  	return count;
+> > > -- 
+> > > 1.9.3
+> > > 
+> 
+> 
+
+
+-- 
+Jeff Layton <jlayton@primarydata.com>
