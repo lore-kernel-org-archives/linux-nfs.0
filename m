@@ -1,69 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:50175 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754313AbaG2VZO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:25:14 -0400
-Subject: [PATCH v5 14/21] xprtrdma: Disable completions for FAST_REG_MR Work
- Requests
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Jul 2014 17:25:12 -0400
-Message-ID: <20140729212511.2812.86477.stgit@manet.1015granger.net>
-In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:33108 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751652AbaGJSIB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 14:08:01 -0400
+Received: by mail-qa0-f52.google.com with SMTP id j15so1038459qaq.11
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 11:07:59 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 11/11] nfsd: cleanup and rename nfs4_check_open
+Date: Thu, 10 Jul 2014 14:07:35 -0400
+Message-Id: <1405015655-12469-12-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of relying on a completion to change the state of an FRMR
-to FRMR_IS_VALID, set it in advance. If an error occurs, a completion
-will fire anyway and mark the FRMR FRMR_IS_STALE.
+Rename it to better describe what it does, and have it just return the
+stateid instead of a __be32 (which is now always nfs_ok). Also, do the
+search for an existing stateid after the delegation check, to reduce
+cleanup if the delegation check returns error.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sunrpc/xprtrdma/verbs.c |    9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 15 ++++++---------
+ 1 file changed, 6 insertions(+), 9 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 8da9a35..65302e8 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -159,10 +159,7 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- 		return;
- 	}
- 
--	if (wc->opcode == IB_WC_FAST_REG_MR)
--		frmr->r.frmr.fr_state = FRMR_IS_VALID;
--	else if (wc->opcode == IB_WC_LOCAL_INV)
--		frmr->r.frmr.fr_state = FRMR_IS_INVALID;
-+	frmr->r.frmr.fr_state = FRMR_IS_INVALID;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index da88b31c0afe..225f98c7d00d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3297,10 +3297,10 @@ out:
+ 	return nfs_ok;
  }
  
- static int
-@@ -1724,10 +1721,11 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
- 		__func__, mw, i);
+-static __be32
+-nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_stateid **stpp)
++static struct nfs4_ol_stateid *
++nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
+ {
+-	struct nfs4_ol_stateid *local;
++	struct nfs4_ol_stateid *local, *ret = NULL;
+ 	struct nfs4_openowner *oo = open->op_openowner;
  
-+	frmr->fr_state = FRMR_IS_VALID;
-+
- 	memset(&frmr_wr, 0, sizeof frmr_wr);
- 	frmr_wr.wr_id = (unsigned long)(void *)mw;
- 	frmr_wr.opcode = IB_WR_FAST_REG_MR;
--	frmr_wr.send_flags = IB_SEND_SIGNALED;
- 	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
- 	frmr_wr.wr.fast_reg.page_list = frmr->fr_pgl;
- 	frmr_wr.wr.fast_reg.page_list_len = page_no;
-@@ -1763,6 +1761,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	*nsegs = i;
- 	return 0;
- out_err:
-+	frmr->fr_state = FRMR_IS_INVALID;
- 	while (i--)
- 		rpcrdma_unmap_one(ia, --seg);
- 	return rc;
+ 	spin_lock(&fp->fi_lock);
+@@ -3308,14 +3308,13 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
+ 		/* ignore lock owners */
+ 		if (local->st_stateowner->so_is_open_owner == 0)
+ 			continue;
+-		/* remember if we have seen this open owner */
+ 		if (local->st_stateowner == &oo->oo_owner) {
+-			*stpp = local;
++			ret = local;
+ 			break;
+ 		}
+ 	}
+ 	spin_unlock(&fp->fi_lock);
+-	return nfs_ok;
++	return ret;
+ }
+ 
+ static inline int nfs4_access_to_access(u32 nfs4_access)
+@@ -3658,12 +3657,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 	 */
+ 	fp = find_or_add_file(ino, open->op_file);
+ 	if (fp != open->op_file) {
+-		status = nfs4_check_open(fp, open, &stp);
+-		if (status)
+-			goto out;
+ 		status = nfs4_check_deleg(cl, open, &dp);
+ 		if (status)
+ 			goto out;
++		stp = nfsd4_find_existing_open(fp, open);
+ 	} else {
+ 		open->op_file = NULL;
+ 		status = nfserr_bad_stateid;
+-- 
+1.9.3
 
