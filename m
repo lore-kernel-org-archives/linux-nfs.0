@@ -1,41 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f175.google.com ([209.85.217.175]:41955 "EHLO
-	mail-lb0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752645AbaG3LXc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 07:23:32 -0400
-Received: by mail-lb0-f175.google.com with SMTP id 10so769800lbg.34
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 04:23:31 -0700 (PDT)
-From: Natanael Copa <natanael.copa@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Natanael Copa <ncopa@alpinelinux.org>
-Subject: [PATCH 04/11] exportfs: define _GNU_SOURCE for stat64
-Date: Wed, 30 Jul 2014 13:23:12 +0200
-Message-Id: <1406719399-1735-5-git-send-email-ncopa@alpinelinux.org>
-In-Reply-To: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
-References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:48608 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751021AbaGJLSY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 07:18:24 -0400
+Date: Thu, 10 Jul 2014 04:18:23 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 002/100] nfsd: reduce some spinlocking in
+ put_client_renew
+Message-ID: <20140710111823.GA10893@infradead.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+ <1404842668-22521-3-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1404842668-22521-3-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
----
- utils/exportfs/exportfs.c | 4 ++++
- 1 file changed, 4 insertions(+)
+On Tue, Jul 08, 2014 at 02:02:50PM -0400, Jeff Layton wrote:
+> No need to take the lock unless the count goes to 0.
+> 
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index bf07555..7ab93d1 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -12,6 +12,10 @@
- #include <config.h>
- #endif
- 
-+#ifndef _GNU_SOURCE
-+#define _GNU_SOURCE
-+#endif
-+
- #include <sys/types.h>
- #include <sys/stat.h>
- #include <sys/vfs.h>
--- 
-2.0.3
+Looks good,
 
+Reviewed-by: Christoph Hellwig <hch@lst.de>
