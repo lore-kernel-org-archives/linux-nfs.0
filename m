@@ -1,64 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:35549 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753347AbaGOOYU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:24:20 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:54933 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751921AbaGJP7H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 10 Jul 2014 11:59:07 -0400
+Date: Thu, 10 Jul 2014 11:59:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 001/100] nfsd: close potential race between delegation
+ break and laundromat
+Message-ID: <20140710155905.GF26851@fieldses.org>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+ <1404842668-22521-2-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Subject: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
-Message-Id: <59034BAD-306F-462F-A274-3EB06C0CBE47@oracle.com>
-Date: Tue, 15 Jul 2014 10:24:16 -0400
-To: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+In-Reply-To: <1404842668-22521-2-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The main purpose of this series is to address connection drop
-recovery issues by fixing FRMR re-use to make it less likely the
-client will deadlock due to a memory management operation error.
+On Tue, Jul 08, 2014 at 02:02:49PM -0400, Jeff Layton wrote:
+> Bruce says:
+> 
+>     There's also a preexisting expire_client/laundromat vs break race:
+> 
+>     - expire_client/laundromat adds a delegation to its local
+>       reaplist using the same dl_recall_lru field that a delegation
+>       uses to track its position on the recall lru and drops the
+>       state lock.
+> 
+>     - a concurrent break_lease adds the delegation to the lru.
+> 
+>     - expire/client/laundromat then walks it reaplist and sees the
+>       lru head as just another delegation on the list....
+> 
+> Fix this race by checking the dl_time under the state_lock. If we find
+> that it's not 0, then we know that it has already been queued to the LRU
+> list and that we shouldn't queue it again.
+> 
+> In the case of destroy_client, we must also ensure that we don't hit
+> similar races by ensuring that we don't move any delegations to the
+> reaplist with a dl_time of 0. Just bump the dl_time by one before we
+> drop the state_lock. We're destroying the delegations anyway, so a 1s
+> difference there won't matter.
+> 
+> The fault injection code also requires a bit of surgery here:
+> 
+> First, in the case of nfsd_forget_client_delegations, we must prevent
+> the same sort of race vs. the delegation break callback. For that, we
+> just increment the dl_time to ensure that a delegation callback can't
+> race in while we're working on it.
+> 
+> We can't do that for nfsd_recall_client_delegations, as we need to have
+> it actually queue the delegation, and that won't happen if we increment
+> the dl_time. The state lock is held over that function, so we don't need
+> to worry about these sorts of races there.
+> 
+> There is one other potential bug nfsd_recall_client_delegations though.
+> Entries on the victims list are not dequeued before calling
+> nfsd_break_one_deleg. That's a potential list corruptor, so ensure that
+> we do that there.
+> 
+> Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 40 +++++++++++++++++++++++++++++++++-------
+>  1 file changed, 33 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 763aeeb67ccf..633b34fd6c92 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1287,6 +1287,8 @@ destroy_client(struct nfs4_client *clp)
+>  	while (!list_empty(&clp->cl_delegations)) {
+>  		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
+>  		list_del_init(&dp->dl_perclnt);
+> +		/* Ensure that deleg break won't try to requeue it */
+> +		++dp->dl_time;
+>  		list_move(&dp->dl_recall_lru, &reaplist);
+>  	}
+>  	spin_unlock(&state_lock);
+> @@ -2933,10 +2935,14 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+>  	 * it's safe to take a reference: */
+>  	atomic_inc(&dp->dl_count);
+>  
+> -	list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+> -
+> -	/* Only place dl_time is set; protected by i_lock: */
+> -	dp->dl_time = get_seconds();
+> +	/*
+> +	 * If the dl_time != 0, then we know that it has already been
+> +	 * queued for a lease break. Don't queue it again.
+> +	 */
+> +	if (dp->dl_time == 0) {
 
-Some clean-ups and other fixes are present as well.
+Any reason not to just make that
 
-See topic branch nfs-rdma-for-3.17 in
+	if (dp->dl_time)
+		return;
 
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
+?
 
-I tested with NFSv3 and NFSv4 on all three supported memory
-registration modes. Used cthon04, iozone, and dbench with both
-Solaris and Linux NFS/RDMA servers. Used xfstests with Linux.
+I don't know if it matters right now, but it might also be useful to
+know that no more work will get queued once dl_time is set.
 
-v3:
-Only two substantive changes:
+--b.
 
-- Patch 08/21 now uses generic IB helpers for managing FRMR
-  rkeys
-
-- Add Tested-by: from Steve Wise
-
-
-v2:
-Many patches from v1 have been written or replaced.
-
-The MW ref counting approach in v1 is abandoned. Instead, I've
-eliminated signaling FAST_REG_MR and LOCAL_INV, and added
-appropriate recovery mechanisms after a transport reconnect that
-should prevent rkey dis-synchrony entirely.
-
-A couple of optimizations have been added, including:
-
-- Allocating each MW separately rather than carving each out of a
-  large piece of contiguous memory
-
-- Now that the receive CQ upcall handler dequeues a bundle of CQEs
-  at once, fire off the reply handler tasklet just once per upcall
-  to reduce context switches and how often hard IRQs are disabled
-
-Jury is still out on the latter.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> +		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+> +		dp->dl_time = get_seconds();
+> +	}
+>  
+>  	block_delegations(&dp->dl_fh);
+>  
+> @@ -5081,8 +5087,23 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+>  
+>  	lockdep_assert_held(&state_lock);
+>  	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
+> -		if (victims)
+> +		if (victims) {
+> +			/*
+> +			 * It's not safe to mess with delegations that have a
+> +			 * non-zero dl_time. They might have already been broken
+> +			 * and could be processed by the laundromat outside of
+> +			 * the state_lock. Just leave them be.
+> +			 */
+> +			if (dp->dl_time != 0)
+> +				continue;
+> +
+> +			/*
+> +			 * Increment dl_time to ensure that delegation breaks
+> +			 * don't monkey with it now that we are.
+> +			 */
+> +			++dp->dl_time;
+>  			list_move(&dp->dl_recall_lru, victims);
+> +		}
+>  		if (++count == max)
+>  			break;
+>  	}
+> @@ -5107,14 +5128,19 @@ u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
+>  
+>  u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
+>  {
+> -	struct nfs4_delegation *dp, *next;
+> +	struct nfs4_delegation *dp;
+>  	LIST_HEAD(victims);
+>  	u64 count;
+>  
+>  	spin_lock(&state_lock);
+>  	count = nfsd_find_all_delegations(clp, max, &victims);
+> -	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
+> +	while (!list_empty(&victims)) {
+> +		dp = list_first_entry(&victims, struct nfs4_delegation,
+> +					dl_recall_lru);
+> +		list_del_init(&dp->dl_recall_lru);
+> +		dp->dl_time = 0;
+>  		nfsd_break_one_deleg(dp);
+> +	}
+>  	spin_unlock(&state_lock);
+>  
+>  	return count;
+> -- 
+> 1.9.3
+> 
