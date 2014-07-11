@@ -1,72 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f181.google.com ([209.85.220.181]:44942 "EHLO
-	mail-vc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752702AbaGGMgC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 08:36:02 -0400
-Received: by mail-vc0-f181.google.com with SMTP id il7so3764854vcb.26
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 05:36:00 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:49459 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752137AbaGKWUI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jul 2014 18:20:08 -0400
+Date: Fri, 11 Jul 2014 18:20:07 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Malahal Naineni <malahal@us.ibm.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] Open files with OPEN4_SHARE_DENY_NONE for DELEG5 test
+Message-ID: <20140711222007.GD13656@fieldses.org>
+References: <1403542662-8450-1-git-send-email-malahal@us.ibm.com>
+ <1403542662-8450-2-git-send-email-malahal@us.ibm.com>
 MIME-Version: 1.0
-In-Reply-To: <lp1gar$eb6$1@ger.gmane.org>
-References: <lp1gar$eb6$1@ger.gmane.org>
-Date: Mon, 7 Jul 2014 08:36:00 -0400
-Message-ID: <CAHVgHyVjoVb--cfbaopoUYA4vbDCjufJVng6OM2e82q0yEMthA@mail.gmail.com>
-Subject: Re: NFSv4 cross-realm support
-From: Andy Adamson <androsadamson@gmail.com>
-To: Jaap Winius <jwinius@umrk.nl>
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1403542662-8450-2-git-send-email-malahal@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
+Thanks, applying both.
 
-I have a personal IETF draft that deals with some of the NFSv4 cross
-realm issues. This is a good place to start.
+On Mon, Jun 23, 2014 at 11:57:42AM -0500, Malahal Naineni wrote:
+> DELEG5 test, while getting the READ delegation, uses
+> OPEN4_SHARE_DENY_WRITE as that is the default.
 
-http://datatracker.ietf.org/doc/draft-adamson-nfsv4-multi-domain-federated-fs-reqs/
+That's a really dumb default, by the way, we should fix it to default to
+DENY_NONE.
 
+--b.
 
-On Wed, Jul 2, 2014 at 1:42 PM, Jaap Winius <jwinius@umrk.nl> wrote:
-> Hi folks,
->
-> Recently I've been working on cross-realm support to give my own MIT
-> Kerberos realm, UMRK.NL, access to the services of a realm that I manage.
-> All systems involved run Debian wheezy. So far, SSH, OpenLDAP, OpenAFS
-> and Dovecot IMAP are all working properly this way, but NFSv4 with
-> sec=krb5i is not; I keep getting "Permission denied" when attempting to
-> read or write to any file or directory that is not globally accessible.
->
-> When the log output verbosity for rpc.gssd and rpc.svcgssd is increased
-> about as far as it will go (-vvvvv), little is different when things go
-> wrong, other than this one line produced by rpc.svcgssd on the server:
->
->   nss_gss_princ_to_ids: Local-Realm 'UMRK.NL': NOT FOUND
->
-> However, even that seems a bit misleading, because the log output for
-> rpc.idmapd (with Verbosity = 5) shows that the user and group IDs for my
-> account are being identified properly.
->
-> Should I prepare a bug report for this issue, or does cross-realm support
-> for NFSv4 require something extra?
-
-So you are supporting two Kerberos realms under one NFSv4 domain? You
-are using LDAP for id mapping?
-
-Which version of nfs-utils and which client kernel?
-
-e.g.
-
-# rpm -qa | grep nfs-utils
-# uname -a
-
--->Andy
-
->
-> Thanks,
->
-> Jaap
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Pass
+> OPEN4_SHARE_DENY_NONE explicitly as that is assumed
+> in the test.
+> 
+> Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
+> ---
+>  nfs4.0/servertests/st_delegation.py | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/nfs4.0/servertests/st_delegation.py b/nfs4.0/servertests/st_delegation.py
+> index 4da3a7a..eaff326 100644
+> --- a/nfs4.0/servertests/st_delegation.py
+> +++ b/nfs4.0/servertests/st_delegation.py
+> @@ -249,6 +249,7 @@ def testManyReaddeleg(t, env, funct=_recall, response=NFS4_OK):
+>              
+>          # Get a read delegation
+>          res = c.open_file(t.code, access=OPEN4_SHARE_ACCESS_READ,
+> +                          deny=OPEN4_SHARE_DENY_NONE,
+>                            set_recall=True,
+>                            recall_funct=funct, recall_return=response)
+>          fh, stateid = c.confirm(t.code, res)
+> -- 
+> 1.8.3.1
+> 
