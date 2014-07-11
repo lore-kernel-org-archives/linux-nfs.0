@@ -1,93 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:41197 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751962AbaGNB6C (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:58:02 -0400
-Received: by mail-qg0-f44.google.com with SMTP id j107so2941699qga.31
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:58:01 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 7/7] sunrpc: remove "ec" argument from encrypt_v2 operation
-Date: Sun, 13 Jul 2014 21:57:44 -0400
-Message-Id: <1405303064-9102-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:55205 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753037AbaGKHq6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 03:46:58 -0400
+Date: Fri, 11 Jul 2014 00:46:56 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@primarydata.com>, hch@infradead.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/11] nfsd: deny mode handling overhaul
+Message-ID: <20140711074656.GA17661@infradead.org>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+ <20140710201448.GF26561@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140710201448.GF26561@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's always 0.
+On Thu, Jul 10, 2014 at 04:14:48PM -0400, J. Bruce Fields wrote:
+> On Thu, Jul 10, 2014 at 02:07:24PM -0400, Jeff Layton wrote:
+> > Here is the deny mode handling overhaul broken out into a separate
+> > series, as requested by Christoph. I've tried to address most of
+> > his review comments, but I may have missed some. Let me know if
+> > if I did.
+> 
+> They look fine to me; I'll merge them soon absent any objections from
+> Christoph.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- include/linux/sunrpc/gss_krb5.h       | 4 ++--
- net/sunrpc/auth_gss/gss_krb5_crypto.c | 9 ++-------
- net/sunrpc/auth_gss/gss_krb5_wrap.c   | 2 +-
- 3 files changed, 5 insertions(+), 10 deletions(-)
+The whole series looks good, although I've not tested it yet, just the
+original full series.
 
-diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
-index 5af2931cf58d..df02a4188487 100644
---- a/include/linux/sunrpc/gss_krb5.h
-+++ b/include/linux/sunrpc/gss_krb5.h
-@@ -81,7 +81,7 @@ struct gss_krb5_enctype {
- 		       struct xdr_netobj *in,
- 		       struct xdr_netobj *out);	/* complete key generation */
- 	u32 (*encrypt_v2) (struct krb5_ctx *kctx, u32 offset,
--			   struct xdr_buf *buf, int ec,
-+			   struct xdr_buf *buf,
- 			   struct page **pages); /* v2 encryption function */
- 	u32 (*decrypt_v2) (struct krb5_ctx *kctx, u32 offset,
- 			   struct xdr_buf *buf, u32 *headskip,
-@@ -310,7 +310,7 @@ gss_krb5_aes_make_key(const struct gss_krb5_enctype *gk5e,
- 
- u32
- gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
--		     struct xdr_buf *buf, int ec,
-+		     struct xdr_buf *buf,
- 		     struct page **pages);
- 
- u32
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 0f43e894bc0a..f5ed9f6ece06 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -641,7 +641,7 @@ out:
- 
- u32
- gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
--		     struct xdr_buf *buf, int ec, struct page **pages)
-+		     struct xdr_buf *buf, struct page **pages)
- {
- 	u32 err;
- 	struct xdr_netobj hmac;
-@@ -684,13 +684,8 @@ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
- 		ecptr = buf->tail[0].iov_base;
- 	}
- 
--	memset(ecptr, 'X', ec);
--	buf->tail[0].iov_len += ec;
--	buf->len += ec;
--
- 	/* copy plaintext gss token header after filler (if any) */
--	memcpy(ecptr + ec, buf->head[0].iov_base + offset,
--						GSS_KRB5_TOK_HDR_LEN);
-+	memcpy(ecptr, buf->head[0].iov_base + offset, GSS_KRB5_TOK_HDR_LEN);
- 	buf->tail[0].iov_len += GSS_KRB5_TOK_HDR_LEN;
- 	buf->len += GSS_KRB5_TOK_HDR_LEN;
- 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index c5cc0270a334..ccc10321d87d 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -477,7 +477,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
- 	*be64ptr = cpu_to_be64(kctx->seq_send64++);
- 	spin_unlock(&krb5_seq_lock);
- 
--	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, 0, pages);
-+	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, pages);
- 	if (err)
- 		return err;
- 
--- 
-1.9.3
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
