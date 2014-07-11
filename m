@@ -1,69 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:50883 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755338AbaGHSFh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:37 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so5502373qgf.14
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:37 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 045/100] nfsd: Migrate the stateid reference into nfs4_find_stateid_by_type()
-Date: Tue,  8 Jul 2014 14:03:33 -0400
-Message-Id: <1404842668-22521-46-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:37380 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751048AbaGKUqU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 16:46:20 -0400
+MIME-Version: 1.0
+In-Reply-To: <20140711202044.GD11931@fieldses.org>
+References: <1404942892-18323-1-git-send-email-ffilzlnx@mindspring.com>
+	<CAHQdGtSUwScEdUeKT1w+-ynqNz-e1=YvDBtdu_k=_6yndFZSVQ@mail.gmail.com>
+	<033801cf9bc7$0d7ee190$287ca4b0$@mindspring.com>
+	<CAHQdGtQjCYV2jE7FGu-J+02xp25uaUUVv8uzcs5sfbKXBbVk6A@mail.gmail.com>
+	<CAHQdGtTkTh4MQJk6bec46OjsyZHnEGGws3b_2HA+kszzOHM-pw@mail.gmail.com>
+	<20140711202044.GD11931@fieldses.org>
+Date: Fri, 11 Jul 2014 16:46:19 -0400
+Message-ID: <CAABAsM7hA2sXNdge+SZxyVoMx8Vp-jXeiEZw1hW4RmNWgsDWfQ@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Fix permission checking by NFS client for open-create
+ with mode 000
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Frank Filz <ffilzlnx@mindspring.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Fri, Jul 11, 2014 at 4:20 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Wed, Jul 09, 2014 at 07:12:09PM -0400, Trond Myklebust wrote:
+> > Oops. Sorry, the correct sub-sub-sub-sub-....paragraph is this one:
+> >
+> >          Permission to execute a file.
+> >
+> >          Servers SHOULD allow a user the ability to read the data of the
+> >          file when only the ACE4_EXECUTE access mask bit is allowed.
+> >          This is because there is no way to execute a file without
+> >          reading the contents.  Though a server may treat ACE4_EXECUTE
+> >          and ACE4_READ_DATA bits identically when deciding to permit a
+> >          READ operation, it SHOULD still allow the two bits to be set
+> >          independently in ACLs, and MUST distinguish between them when
+> >          replying to ACCESS operations.  In particular, servers SHOULD
+> >          NOT silently turn on one of the two bits when the other is set,
+> >          as that would make it impossible for the client to correctly
+> >          enforce the distinction between read and execute permissions.
+> >
+> >
+> > > To me that translates as saying that the server SHOULD accept an
+> > > OPEN(SHARE_ACCESS_READ|SHARE_ACCESS_WRITE) request in the above
+> > > situation.
+> >
+> > Same conclusion, though....
+>
+> Are we sure that's not just a spec bug?
+>
+> Allowing OPEN(BOTH) on a -wx file seems like a pretty weird result.
 
-Allow nfs4_find_stateid_by_type to take the stateid reference, while
-still holding the &cl->cl_lock. Necessary step toward client_mutex
-removal.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6c8633870e9f..9ac1cd37e233 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1717,8 +1717,12 @@ static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t
- 
- 	spin_lock(&cl->cl_lock);
- 	s = find_stateid_locked(cl, t);
--	if (s != NULL && !(typemask & s->sc_type))
--		s = NULL;
-+	if (s != NULL) {
-+		if (typemask & s->sc_type)
-+			atomic_inc(&s->sc_count);
-+		else
-+			s = NULL;
-+	}
- 	spin_unlock(&cl->cl_lock);
- 	return s;
- }
-@@ -3341,8 +3345,6 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
- 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
- 	if (!ret)
- 		return NULL;
--	/* FIXME: move into find_stateid_by_type */
--	atomic_inc(&ret->sc_count);
- 	return delegstateid(ret);
- }
- 
-@@ -4166,8 +4168,6 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
- 	if (!*s)
- 		return nfserr_bad_stateid;
--	/* FIXME: move into find_stateid_by_type */
--	atomic_inc(&(*s)->sc_count);
- 	return nfs_ok;
- }
- 
--- 
-1.9.3
-
+Sure, but you can do OPEN(SHARE_ACCESS_READ) and
+OPEN(SHARE_ACCESS_WRITE) separately and end up with a stateid that
+allows both reading and writing. What does preventing
+OPEN(SHARE_ACCESS_BOTH) gain you in this context.?
