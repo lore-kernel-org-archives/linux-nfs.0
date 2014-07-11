@@ -1,68 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f45.google.com ([209.85.220.45]:40918 "EHLO
-	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751776AbaGLOCo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Jul 2014 10:02:44 -0400
-Received: by mail-pa0-f45.google.com with SMTP id rd3so2972321pab.18
-        for <linux-nfs@vger.kernel.org>; Sat, 12 Jul 2014 07:02:44 -0700 (PDT)
-Message-ID: <53C13FE9.3080503@gmail.com>
-Date: Sat, 12 Jul 2014 22:02:17 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:33027 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751095AbaGKTTD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jul 2014 15:19:03 -0400
+Date: Fri, 11 Jul 2014 15:19:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: Fix bad checking of space for padding in splice
+ read
+Message-ID: <20140711191903.GG9775@fieldses.org>
+References: <53BD48DF.2050506@gmail.com>
+ <20140711191747.GF9775@fieldses.org>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        kinglongmee@gmail.com
-Subject: Re: [PATCH] nfsd4: handle failure to find backchannel
-References: <20140711211609.GA13656@fieldses.org>
-In-Reply-To: <20140711211609.GA13656@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140711191747.GF9775@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/12/2014 05:16, J. Bruce Fields wrote:
-> The local variable "ses" will be left NULL here in the case we fail to
-> find a connection.  Spotted by a coverity scan.
->     
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+On Fri, Jul 11, 2014 at 03:17:47PM -0400, J. Bruce Fields wrote:
+> On Wed, Jul 09, 2014 at 09:51:27PM +0800, Kinglong Mee wrote:
+> > Fix commit dc97618ddd (nfsd4: separate splice and readv cases).
+> > xdr->end and xdr->p are type of __be32 *, so padding needs one here.
 > 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 2c73cae9899d..fe22cd5c42d3 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -1001,14 +1001,18 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
->  	}
->  	spin_unlock(&clp->cl_lock);
->  
-> +	if (!c)
-> +		goto out_no_connection;
-
-Setting err to -EINVAL maybe better.
-Otherwise, nfsd4_mark_cb_down will be called with err == 0.
-
->  	err = setup_callback_client(clp, &conn, ses);
-
-setup_callback_client also return -EINVAL when ses == NULL with conn.cb_xprt == NULL.
-
-thanks,
-Kinglong Mee
-
-> -	if (err) {
-> -		nfsd4_mark_cb_down(clp, err);
-> -		return;
-> -	}
-> +	if (err)
-> +		goto out_no_connection;
->  	/* Yay, the callback channel's back! Restart any callbacks: */
->  	list_for_each_entry(cb, &clp->cl_callbacks, cb_per_client)
->  		run_nfsd4_cb(cb);
-> +	return;
-> +out_no_connection:
-> +	nfsd4_mark_cb_down(clp, err);
-> +	return;
->  }
->  
->  static void nfsd4_do_callback_rpc(struct work_struct *w)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I agree with the patch, but not the changelog.
 > 
+> The problem here is that xdr->p isn't that those are __be32 *'s, but
+> that xdr->p has already advanced past the eof and the count, right?
+> 
+> Applying with an updated changelog.
+
+(And applying for 3.17 (not 3.16) as this looks hard to hit.)
+
+--b.
+
+
+> 
+> --b.
+> 
+> > 
+> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > ---
+> >  fs/nfsd/nfs4xdr.c | 7 ++-----
+> >  1 file changed, 2 insertions(+), 5 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > index 523c666..8a2fbb2 100644
+> > --- a/fs/nfsd/nfs4xdr.c
+> > +++ b/fs/nfsd/nfs4xdr.c
+> > @@ -3067,11 +3067,8 @@ static __be32 nfsd4_encode_splice_read(
+> >  	__be32 nfserr;
+> >  	__be32 *p = xdr->p - 2;
+> >  
+> > -	/*
+> > -	 * Don't inline pages unless we know there's room for eof,
+> > -	 * count, and possible padding:
+> > -	 */
+> > -	if (xdr->end - xdr->p < 3)
+> > +	/* Make sure there will be room for padding if needed */
+> > +	if (xdr->end - xdr->p < 1)
+> >  		return nfserr_resource;
+> >  
+> >  	nfserr = nfsd_splice_read(read->rd_rqstp, file,
+> > -- 
+> > 1.9.3
+> > 
