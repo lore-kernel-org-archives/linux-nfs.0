@@ -1,121 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:63562 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755402AbaGHSGZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:25 -0400
-Received: by mail-qa0-f49.google.com with SMTP id w8so5025061qac.8
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:24 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 081/100] nfsd: add nfsd_inject_forget_clients
-Date: Tue,  8 Jul 2014 14:04:09 -0400
-Message-Id: <1404842668-22521-82-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:46269 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751314AbaGKSHi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 14:07:38 -0400
+Received: by mail-qc0-f171.google.com with SMTP id w7so1334918qcr.16
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2014 11:07:37 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 11 Jul 2014 14:07:35 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Frank Filz <ffilzlnx@mindspring.com>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Bruce Fields <bfields@fieldses.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/11] nfsd: make deny mode enforcement more efficient
+ and close races in it
+Message-ID: <20140711140735.2d94e698@tlielax.poochiereds.net>
+In-Reply-To: <CAHQdGtTUz7hCsowAEi7gpDk+d2J0NPNHJJVhy5hFmq6pQKg=CQ@mail.gmail.com>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+	<1405015655-12469-11-git-send-email-jlayton@primarydata.com>
+	<03f901cf9d2d$f23c21f0$d6b465d0$@mindspring.com>
+	<20140711134820.66d53162@tlielax.poochiereds.net>
+	<03fc01cf9d31$719fcc50$54df64f0$@mindspring.com>
+	<CAHQdGtTUz7hCsowAEi7gpDk+d2J0NPNHJJVhy5hFmq6pQKg=CQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...which uses the client_lock for protection instead of client_mutex.
-Also remove nfsd_forget_client as there are no more callers.
+On Fri, 11 Jul 2014 14:00:43 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/fault_inject.c |  3 +--
- fs/nfsd/nfs4state.c    | 42 ++++++++++++++++++++++++++++--------------
- fs/nfsd/state.h        |  2 +-
- 3 files changed, 30 insertions(+), 17 deletions(-)
+> On Fri, Jul 11, 2014 at 1:56 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
+> >> On Fri, 11 Jul 2014 10:31:26 -0700
+> >> "Frank Filz" <ffilzlnx@mindspring.com> wrote:
+> >>
+> >> > > The current enforcement of deny modes is both inefficient and
+> >> > > scattered across several places, which makes it hard to guarantee
+> >> > > atomicity. The inefficiency is a problem now, and the lack of
+> >> > > atomicity will mean races
+> >> > once
+> >> > > the client_mutex is removed.
+> >> > >
+> >> > > First, we address the inefficiency. We have to track deny modes on a
+> >> > > per- stateid basis to ensure that open downgrades are sane, but when
+> >> > > the server goes to enforce them it has to walk the entire list of
+> >> > > stateids and check against each one.
+> >> > >
+> >> > > Instead of doing that, maintain a per-nfs4_file deny mode. When a
+> >> > > file is opened, we simply set any deny bits in that mode that were
+> >> > > specified in
+> >> > the
+> >> > > OPEN call. We can then use that unified deny mode to do a simple
+> >> > > check to see whether there are any conflicts without needing to walk
+> >> > > the entire stateid list.
+> >> > >
+> >> > > The only time we'll need to walk the entire list of stateids is when
+> >> > > a
+> >> > stateid
+> >> > > that has a deny mode on it is being released, or one is having its
+> >> > > deny
+> >> > mode
+> >> > > downgraded. In that case, we must walk the entire list and
+> >> > > recalculate the fi_share_deny field. Since deny modes are pretty
+> >> > > rare today, this should
+> >> > be
+> >> > > very rare under normal workloads.
+> >> >
+> >> > What we do in Ganesha to avoid walking the list of stateids on release
+> >> > is maintain the effective deny (and access) mode not at bits, but as a
+> >> > counter for each bit. Thus, to remove a SHARE_ACCESS_READ |
+> >> > SHARE_DENY_WRITE, you decrement the counts for access_read and
+> >> deny_write.
+> >> >
+> >> > Frank
+> >> >
+> >> >
+> >>
+> >> Sure, that's another possibility that I considered, but I didn't want to
+> > be
+> >> bothered with having to add counters for deny modes. In practice there are
+> >> *no* clients that use them (aside from pynfs and maybe the semi-mythical
+> >> Windows v4.1 client).
+> 
+> You don't need counters for deny modes. There can only be 1 of each,
+> since any deny mode has to be part of an OPEN that has at least one
+> non-zero share access mode. So a single bit for each  should be fine.
+> 
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index 5f3ead0c72fb..76ecdff37ea2 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -135,9 +135,8 @@ static struct nfsd_fault_inject_op inject_ops[] = {
- 	{
- 		.file     = "forget_clients",
- 		.get	  = nfsd_inject_print_clients,
--		.set_val  = nfsd_inject_set,
-+		.set_val  = nfsd_inject_forget_clients,
- 		.set_clnt = nfsd_inject_forget_client,
--		.forget   = nfsd_forget_client,
- 	},
- 	{
- 		.file     = "forget_locks",
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 62ac78b28efc..92c12dbcd7df 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5725,20 +5725,6 @@ nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
- 	return count;
- }
- 
--u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
--{
--	__be32 ret;
--	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
--
--	spin_lock(&nn->client_lock);
--	ret = mark_client_expired_locked(clp);
--	spin_unlock(&nn->client_lock);
--	if (ret != nfs_ok)
--		return 0;
--	expire_client(clp);
--	return 1;
--}
--
- u64
- nfsd_inject_forget_client(struct nfsd_fault_inject_op *op,
- 			  struct sockaddr_storage *addr, size_t addr_size)
-@@ -5767,6 +5753,34 @@ nfsd_inject_forget_client(struct nfsd_fault_inject_op *op,
- 	return count;
- }
- 
-+u64
-+nfsd_inject_forget_clients(struct nfsd_fault_inject_op *op, u64 max)
-+{
-+	u64 count = 0;
-+	struct nfs4_client *clp, *next;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+	LIST_HEAD(reaplist);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return count;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry_safe(clp, next, &nn->client_lru, cl_lru) {
-+		if (mark_client_expired_locked(clp) == nfs_ok) {
-+			list_add(&clp->cl_lru, &reaplist);
-+			if (max != 0 && ++count >= max)
-+				break;
-+		}
-+	}
-+	spin_unlock(&nn->client_lock);
-+
-+	list_for_each_entry_safe(clp, next, &reaplist, cl_lru)
-+		expire_client(clp);
-+
-+	return count;
-+}
-+
- static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
- 			     const char *type)
- {
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index ead0fe9027fb..25b4df7bc57a 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -474,9 +474,9 @@ u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
- struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
- 
- u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
--u64 nfsd_forget_client(struct nfs4_client *, u64);
- u64 nfsd_inject_forget_client(struct nfsd_fault_inject_op *,
- 			      struct sockaddr_storage *, size_t);
-+u64 nfsd_inject_forget_clients(struct nfsd_fault_inject_op *, u64);
- 
- u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
- u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+I'm not sure that's 100% true.
+
+I see no reason that you can't have several clients open the same file
+with (e.g.) ACCESS_READ and DENY_WRITE. You wouldn't want to lift the
+DENY_WRITE on the file until all of those clients have closed the file
+(or downgraded to remove the DENY_WRITE access).
+
+So, I think you do need a little more than just a single set of bits on
+the file. You either need to use per-file counters for them there
+(which it sounds like ganesha does) or track them on a per-stateid
+basis (like knfsd does).
+
+> >>
+> >> With this scheme, deny mode enforcement is pretty darned efficient,
+> >> particularly in the common case where there are no deny modes to enforce.
+> >>
+> >> Any penalty for the use of deny modes is generally paid during the CLOSE
+> > or
+> >> OPEN_DOWNGRADE on behalf of the client that's using them.
+> >> Any RPC from a client that's not won't need to do any extra work (aside
+> > from
+> >> maybe spinning on the fi_lock while another client is having to
+> > recalculate the
+> >> fi_share_deny).
+> >
+> > Good point.
+> >
+> > Whatever happened to Pavel Shilovsky's O_DENY patch set? I was looking
+> > forward to that for allowing Ganesha and Samba share reservations to more
+> > fully interact with each other...
+> >
+> > Frank
+> >
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
+> 
+
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
