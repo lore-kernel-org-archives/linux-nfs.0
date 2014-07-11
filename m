@@ -1,49 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:39771 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932239AbaGWQ4P convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 12:56:15 -0400
-Received: by mail-ie0-f181.google.com with SMTP id rp18so1215069iec.40
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 09:56:14 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:40400 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750918AbaGKVQJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jul 2014 17:16:09 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1X5iAr-0003a3-DX
+	for linux-nfs@vger.kernel.org; Fri, 11 Jul 2014 17:16:09 -0400
+Date: Fri, 11 Jul 2014 17:16:09 -0400
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd4: handle failure to find backchannel
+Message-ID: <20140711211609.GA13656@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <20140723185419.7a947ada@harpe.intellique.com>
-References: <CAB7xdikp2ab=oqQKz+DVLh0D5G9aB7EMd4XWttLh3qFE8Fp9qA@mail.gmail.com>
-	<20140723185419.7a947ada@harpe.intellique.com>
-Date: Wed, 23 Jul 2014 09:56:14 -0700
-Message-ID: <CAB7xdiku-fviN-oNUJt=Rstr5rWL3ac+anHUEipeyMKySMv4jg@mail.gmail.com>
-Subject: Re: how to setup pNFS
-From: sheng qiu <herbert1984106@gmail.com>
-To: Emmanuel Florac <eflorac@intellique.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Emmanuel,
+The local variable "ses" will be left NULL here in the case we fail to
+find a connection.  Spotted by a coverity scan.
+    
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-thanks for reply.
-
-yes, i compiled the pNFS kernel and boot from that kernel.
-
-Thanks!
-
-On Wed, Jul 23, 2014 at 9:54 AM, Emmanuel Florac <eflorac@intellique.com> wrote:
-> Le Wed, 23 Jul 2014 09:13:51 -0700
-> sheng qiu <herbert1984106@gmail.com> écrivait:
->
->> i am trying to set up pNFS server and client. is there any document
->> can help that?
->> i tried to follow the
->> http://wiki.linux-nfs.org/wiki/index.php/PNFS_Setup_Instructions, but
->> i did not have /proc/fs/nfsd/pdfs_dlm_device entry.
->
-> Did you compile the pNFS kernel? Then did you reboot using that kernel?
-> This is step 0 in the instructions.
->
-> --
-> ------------------------------------------------------------------------
-> Emmanuel Florac     |   Direction technique
->                     |   Intellique
->                     |   <eflorac@intellique.com>
->                     |   +33 1 78 94 84 02
-> ------------------------------------------------------------------------
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 2c73cae9899d..fe22cd5c42d3 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1001,14 +1001,18 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+ 
++	if (!c)
++		goto out_no_connection;
+ 	err = setup_callback_client(clp, &conn, ses);
+-	if (err) {
+-		nfsd4_mark_cb_down(clp, err);
+-		return;
+-	}
++	if (err)
++		goto out_no_connection;
+ 	/* Yay, the callback channel's back! Restart any callbacks: */
+ 	list_for_each_entry(cb, &clp->cl_callbacks, cb_per_client)
+ 		run_nfsd4_cb(cb);
++	return;
++out_no_connection:
++	nfsd4_mark_cb_down(clp, err);
++	return;
+ }
+ 
+ static void nfsd4_do_callback_rpc(struct work_struct *w)
