@@ -1,45 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:40358 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933336AbaGWURw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 16:17:52 -0400
-Received: by mail-qg0-f47.google.com with SMTP id i50so2106248qgf.34
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 13:17:51 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        hch@infradead.org
-Subject: [PATCH v2 3/4] nfsd: nfs4_check_fh - make it actually check the filehandle
-Date: Wed, 23 Jul 2014 16:17:40 -0400
-Message-Id: <1406146661-9794-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406146661-9794-1-git-send-email-jlayton@primarydata.com>
-References: <1406146661-9794-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:50833 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755138AbaGKULd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jul 2014 16:11:33 -0400
+Date: Fri, 11 Jul 2014 16:11:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: Fix bad reserving space for encoding rdattr_error
+Message-ID: <20140711201129.GB11931@fieldses.org>
+References: <53B8C3D3.7080201@gmail.com>
+ <20140707181556.GC8630@fieldses.org>
+ <20140710105451.GA23266@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140710105451.GA23266@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, Jul 10, 2014 at 03:54:51AM -0700, Christoph Hellwig wrote:
+> On Mon, Jul 07, 2014 at 02:15:56PM -0400, J. Bruce Fields wrote:
+> > > -	p = xdr_reserve_space(xdr, 6);
+> > > +	p = xdr_reserve_space(xdr, 20);
+> 
+> Can we please convert all these magic numbers to expressions adding up
+> sizeofs or where that doesn't fit use #defines?
 
-...instead of just checking the inode that corresponds to it.
+So, this would be 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+	xdr_reserve_space(xdr, 5 * sizeof(be32));
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ab96718df3cc..6ced8d566c0b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3951,7 +3951,7 @@ laundromat_main(struct work_struct *laundry)
- 
- static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
- {
--	if (fhp->fh_dentry->d_inode != stp->st_file->fi_inode)
-+	if (!nfsd_fh_match(&fhp->fh_handle, &stp->st_file->fi_fhandle))
- 		return nfserr_bad_stateid;
- 	return nfs_ok;
- }
--- 
-1.9.3
+?  I guess that'd be OK.
 
+--b.
