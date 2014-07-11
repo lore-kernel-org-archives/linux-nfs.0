@@ -1,76 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:37234 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753115AbaGUVVs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 17:21:48 -0400
-From: Kamal Mostafa <kamal@canonical.com>
-To: Mateusz Guzik <mguzik@redhat.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Kamal Mostafa <kamal@canonical.com>, kernel-team@lists.ubuntu.com
-Subject: [3.8.y.z extended stable] Patch "NFS: populate ->net in mount data when remounting" has been added to staging queue
-Date: Mon, 21 Jul 2014 14:21:44 -0700
-Message-Id: <1405977704-2628-1-git-send-email-kamal@canonical.com>
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:63770 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754113AbaGKOU5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 10:20:57 -0400
+Received: by mail-ig0-f174.google.com with SMTP id c1so4305107igq.13
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2014 07:20:56 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 5/5] nfs: handle multiple reqs in nfs_wb_page_cancel
+Date: Fri, 11 Jul 2014 10:20:49 -0400
+Message-Id: <1405088449-11268-6-git-send-email-dros@primarydata.com>
+In-Reply-To: <1405088449-11268-1-git-send-email-dros@primarydata.com>
+References: <1405088449-11268-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a note to let you know that I have just added a patch titled
+Use nfs_lock_and_join_requests to merge all subrequests into the head request -
+this cancels and dereferences all subrequests.
 
-    NFS: populate ->net in mount data when remounting
-
-to the linux-3.8.y-queue branch of the 3.8.y.z extended stable tree 
-which can be found at:
-
- http://kernel.ubuntu.com/git?p=ubuntu/linux.git;a=shortlog;h=refs/heads/linux-3.8.y-queue
-
-This patch is scheduled to be released in version 3.8.13.27.
-
-If you, or anyone else, feels it should not be added to this tree, please 
-reply to this email.
-
-For more information about the 3.8.y.z tree, see
-https://wiki.ubuntu.com/Kernel/Dev/ExtendedStable
-
-Thanks.
--Kamal
-
-------
-
->From e6468e9aa021873e938ae5b44c09b873e42bee91 Mon Sep 17 00:00:00 2001
-From: Mateusz Guzik <mguzik@redhat.com>
-Date: Tue, 10 Jun 2014 12:44:12 +0200
-Subject: NFS: populate ->net in mount data when remounting
-
-commit a914722f333b3359d2f4f12919380a334176bb89 upstream.
-
-Otherwise the kernel oopses when remounting with IPv6 server because
-net is dereferenced in dev_get_by_name.
-
-Use net ns of current thread so that dev_get_by_name does not operate on
-foreign ns. Changing the address is prohibited anyway so this should not
-affect anything.
-
-Signed-off-by: Mateusz Guzik <mguzik@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfs/super.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfs/write.c | 41 +++++++++++++++++++++--------------------
+ 1 file changed, 21 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index b056b16..f4d000a 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2167,6 +2167,7 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
- 	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
- 	data->nfs_server.port = nfss->port;
- 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
-+	data->net = current->nsproxy->net_ns;
- 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
- 		data->nfs_server.addrlen);
-
---
-1.9.1
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4dab432..dac9b31c 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1784,27 +1784,28 @@ int nfs_wb_page_cancel(struct inode *inode, struct page *page)
+ 	struct nfs_page *req;
+ 	int ret = 0;
+ 
+-	for (;;) {
+-		wait_on_page_writeback(page);
+-		req = nfs_page_find_head_request(page);
+-		if (req == NULL)
+-			break;
+-		if (nfs_lock_request(req)) {
+-			nfs_clear_request_commit(req);
+-			nfs_inode_remove_request(req);
+-			/*
+-			 * In case nfs_inode_remove_request has marked the
+-			 * page as being dirty
+-			 */
+-			cancel_dirty_page(page, PAGE_CACHE_SIZE);
+-			nfs_unlock_and_release_request(req);
+-			break;
+-		}
+-		ret = nfs_wait_on_request(req);
+-		nfs_release_request(req);
+-		if (ret < 0)
+-			break;
++	wait_on_page_writeback(page);
++
++	/* blocking call to cancel all requests and join to a single (head)
++	 * request */
++	req = nfs_lock_and_join_requests(page, false);
++
++	if (IS_ERR(req)) {
++		ret = PTR_ERR(req);
++	} else if (req) {
++		/* all requests from this page have been cancelled by
++		 * nfs_lock_and_join_requests, so just remove the head
++		 * request from the inode / page_private pointer and
++		 * release it */
++		nfs_inode_remove_request(req);
++		/*
++		 * In case nfs_inode_remove_request has marked the
++		 * page as being dirty
++		 */
++		cancel_dirty_page(page, PAGE_CACHE_SIZE);
++		nfs_unlock_and_release_request(req);
+ 	}
++
+ 	return ret;
+ }
+ 
+-- 
+1.8.5.2 (Apple Git-48)
 
