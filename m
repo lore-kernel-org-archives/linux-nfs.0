@@ -1,212 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f54.google.com ([209.85.192.54]:56618 "EHLO
-	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755217AbaGUPDn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:43 -0400
-Received: by mail-qg0-f54.google.com with SMTP id z60so5396673qgd.13
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:42 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 30/40] nfsd: make openstateids hold references to their openowners
-Date: Mon, 21 Jul 2014 11:02:42 -0400
-Message-Id: <1405954972-28904-31-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:51172 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754113AbaGKOUx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 10:20:53 -0400
+Received: by mail-ie0-f170.google.com with SMTP id lx4so956780iec.1
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2014 07:20:53 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 1/5] nfs: mark nfs_page reqs with flag for extra ref
+Date: Fri, 11 Jul 2014 10:20:45 -0400
+Message-Id: <1405088449-11268-2-git-send-email-dros@primarydata.com>
+In-Reply-To: <1405088449-11268-1-git-send-email-dros@primarydata.com>
+References: <1405088449-11268-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change it so that only openstateids hold persistent references to
-openowners. References can still be held by compounds in progress.
+Change the use of PG_INODE_REF - set it when taking extra reference on
+subrequests and take care to only release once for each request.
 
-With this, we can get rid of NFS4_OO_NEW. It's possible that we
-will create a new openowner in the process of doing the open, but
-something later fails. In the meantime, another task could find
-that openowner and start using it on a successful open. If that
-occurs we don't necessarily want to tear it down, just put the
-reference that the failing compound holds.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 71 +++++++++++++++++++++++------------------------------
- fs/nfsd/state.h     |  1 -
- 2 files changed, 31 insertions(+), 41 deletions(-)
+ fs/nfs/pagelist.c | 4 +++-
+ fs/nfs/write.c    | 8 ++++++--
+ 2 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5df3577d62bf..60727b26e2d7 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -912,7 +912,7 @@ static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
- 	struct nfs4_ol_stateid *stp = openlockstateid(stid);
- 
- 	release_all_access(stp);
--	if (stp->st_stateowner && stid->sc_type == NFS4_LOCK_STID)
-+	if (stp->st_stateowner)
- 		nfs4_put_stateowner(stp->st_stateowner);
- 	nfs4_free_stid(stateid_slab, stid);
- }
-@@ -1009,8 +1009,9 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
- 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
- 
- 	if (s) {
--		put_generic_stateid(s);
-+		list_del_init(&oo->oo_close_lru);
- 		oo->oo_last_closed_stid = NULL;
-+		put_generic_stateid(s);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 6e2c0bc..50e10bb 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -251,8 +251,10 @@ nfs_page_group_init(struct nfs_page *req, struct nfs_page *prev)
+ 		/* grab extra ref if head request has extra ref from
+ 		 * the write/commit path to handle handoff between write
+ 		 * and commit lists */
+-		if (test_bit(PG_INODE_REF, &prev->wb_head->wb_flags))
++		if (test_bit(PG_INODE_REF, &prev->wb_head->wb_flags)) {
++			set_bit(PG_INODE_REF, &req->wb_flags);
+ 			kref_get(&req->wb_kref);
++		}
  	}
  }
  
-@@ -1029,7 +1030,6 @@ static void release_openowner(struct nfs4_openowner *oo)
- {
- 	unhash_openowner(oo);
- 	release_openowner_stateids(oo);
--	list_del(&oo->oo_close_lru);
- 	release_last_closed_stateid(oo);
- 	nfs4_put_stateowner(&oo->oo_owner);
- }
-@@ -1504,6 +1504,7 @@ destroy_client(struct nfs4_client *clp)
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 8534ee5..827b57b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -448,7 +448,9 @@ static void nfs_inode_add_request(struct inode *inode, struct nfs_page *req)
+ 		set_page_private(req->wb_page, (unsigned long)req);
  	}
- 	while (!list_empty(&clp->cl_openowners)) {
- 		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
-+		atomic_inc(&oo->oo_owner.so_count);
- 		release_openowner(oo);
- 	}
- 	nfsd4_shutdown_callback(clp);
-@@ -3036,7 +3037,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- 	oo->oo_owner.so_unhash = nfs4_unhash_openowner;
- 	oo->oo_owner.so_is_open_owner = 1;
- 	oo->oo_owner.so_seqid = open->op_seqid;
--	oo->oo_flags = NFS4_OO_NEW;
-+	oo->oo_flags = 0;
- 	if (nfsd4_has_session(cstate))
- 		oo->oo_flags |= NFS4_OO_CONFIRMED;
- 	oo->oo_time = 0;
-@@ -3053,6 +3054,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_locks);
- 	stp->st_stateowner = &oo->oo_owner;
-+	atomic_inc(&stp->st_stateowner->so_count);
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
- 	stp->st_access_bmap = 0;
-@@ -3068,13 +3070,27 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ 	nfsi->npages++;
+-	set_bit(PG_INODE_REF, &req->wb_flags);
++	/* this a head request for a page group - mark it as having an
++	 * extra reference so sub groups can follow suit */
++	WARN_ON(test_and_set_bit(PG_INODE_REF, &req->wb_flags));
+ 	kref_get(&req->wb_kref);
+ 	spin_unlock(&inode->i_lock);
  }
- 
-+/*
-+ * In the 4.0 case we need to keep the owners around a little while to handle
-+ * CLOSE replay. We still do need to release any file access that is held by
-+ * them before returning however.
-+ */
- static void
--move_to_close_lru(struct nfs4_openowner *oo, struct net *net)
-+move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- {
--	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+	struct nfs4_openowner *oo = openowner(s->st_stateowner);
-+	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
-+						nfsd_net_id);
- 
- 	dprintk("NFSD: move_to_close_lru nfs4_openowner %p\n", oo);
- 
-+	release_all_access(s);
-+	if (s->st_stid.sc_file) {
-+		put_nfs4_file(s->st_stid.sc_file);
-+		s->st_stid.sc_file = NULL;
-+	}
-+	release_last_closed_stateid(oo);
-+	oo->oo_last_closed_stid = s;
- 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
- 	oo->oo_time = get_seconds();
- }
-@@ -3105,6 +3121,7 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
- 			if ((bool)clp->cl_minorversion != sessions)
- 				return NULL;
- 			renew_client(oo->oo_owner.so_client);
-+			atomic_inc(&oo->oo_owner.so_count);
- 			return oo;
- 		}
+@@ -474,7 +476,9 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ 		nfsi->npages--;
+ 		spin_unlock(&inode->i_lock);
  	}
-@@ -3902,19 +3919,10 @@ void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
- 			      struct nfsd4_open *open, __be32 status)
- {
- 	if (open->op_openowner) {
--		struct nfs4_openowner *oo = open->op_openowner;
--
--		if (!list_empty(&oo->oo_owner.so_stateids))
--			list_del_init(&oo->oo_close_lru);
--		if (oo->oo_flags & NFS4_OO_NEW) {
--			if (status) {
--				release_openowner(oo);
--				open->op_openowner = NULL;
--			} else
--				oo->oo_flags &= ~NFS4_OO_NEW;
--		}
--		if (open->op_openowner)
--			nfsd4_cstate_assign_replay(cstate, &oo->oo_owner);
-+		struct nfs4_stateowner *so = &open->op_openowner->oo_owner;
+-	nfs_release_request(req);
 +
-+		nfsd4_cstate_assign_replay(cstate, so);
-+		nfs4_put_stateowner(so);
- 	}
- 	if (open->op_file)
- 		nfsd4_free_file(open->op_file);
-@@ -4030,7 +4038,7 @@ nfs4_laundromat(struct nfsd_net *nn)
- 			new_timeo = min(new_timeo, t);
- 			break;
- 		}
--		release_openowner(oo);
-+		release_last_closed_stateid(oo);
- 	}
- 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
- 	nfs4_unlock_state();
-@@ -4594,31 +4602,14 @@ out:
- static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- {
- 	struct nfs4_client *clp = s->st_stid.sc_client;
--	struct nfs4_openowner *oo = openowner(s->st_stateowner);
- 
- 	s->st_stid.sc_type = NFS4_CLOSED_STID;
- 	unhash_open_stateid(s);
- 
--	if (clp->cl_minorversion) {
--		if (list_empty(&oo->oo_owner.so_stateids))
--			release_openowner(oo);
-+	if (clp->cl_minorversion)
- 		put_generic_stateid(s);
--	} else {
--		if (s->st_stid.sc_file) {
--			put_nfs4_file(s->st_stid.sc_file);
--			s->st_stid.sc_file = NULL;
--		}
--		oo->oo_last_closed_stid = s;
--		/*
--		 * In the 4.0 case we need to keep the owners around a
--		 * little while to handle CLOSE replay. We still do need
--		 * to release any file access that is held by them
--		 * before returning however.
--		 */
--		release_all_access(s);
--		if (list_empty(&oo->oo_owner.so_stateids))
--			move_to_close_lru(oo, clp->net);
--	}
-+	else
-+		move_to_close_lru(s, clp->net);
++	if (test_and_clear_bit(PG_INODE_REF, &req->wb_flags))
++		nfs_release_request(req);
  }
  
- /*
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index f011a76b7196..785a82ef2196 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -364,7 +364,6 @@ struct nfs4_openowner {
- 	struct nfs4_ol_stateid *oo_last_closed_stid;
- 	time_t			oo_time; /* time of placement on so_close_lru */
- #define NFS4_OO_CONFIRMED   1
--#define NFS4_OO_NEW         4
- 	unsigned char		oo_flags;
- };
- 
+ static void
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
