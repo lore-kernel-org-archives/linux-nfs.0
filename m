@@ -1,157 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:63755 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751015AbaGGTDt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 15:03:49 -0400
-Received: by mail-qa0-f42.google.com with SMTP id dc16so3955194qab.15
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 12:03:48 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: close potential race between delegation break and laundromat
-Date: Mon,  7 Jul 2014 15:03:38 -0400
-Message-Id: <1404759818-10350-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:50836 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751014AbaGKUPE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Jul 2014 16:15:04 -0400
+Date: Fri, 11 Jul 2014 16:15:03 -0400
+To: Harald Dunkel <harald.dunkel@aixigo.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFS service inside a container
+Message-ID: <20140711201503.GC11931@fieldses.org>
+References: <539B0683.3020605@aixigo.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <539B0683.3020605@aixigo.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce says:
+On Fri, Jun 13, 2014 at 04:11:15PM +0200, Harald Dunkel wrote:
+> Hi folks,
+> 
+> I would like to run an NFServer inside a container. The idea
+> is to mirror the whole NFS service container to a fallback
+> host using drbd, and to provide preconfigured NFS containers
+> to whoever needs it.
+> 
+> Unfortunately the kernel (3.14 of Debian Jessie, backported to
+> Wheezy) did not share my enthusiasm:
+> 
+> Jun 13 15:33:55 srvl011a kernel: [  725.372466] WARNING: CPU: 6 PID: 11134 at /build/linux-v1L7fI/linux-3.14.4/fs/nfsd/nfs4recover.c:1195 nfsd4_umh_cltrack_init+0x42/0x50 [nfsd]()
+> Jun 13 15:33:55 srvl011a kernel: [  725.372468] NFSD: attempt to initialize umh client tracking in a container!
+> Jun 13 15:33:55 srvl011a kernel: [  725.376800] Modules linked in: veth sha256_ssse3 sha256_generic hmac drbd lru_cache libcrc32c nfsd auth_rpcgss oid_registry nfs_acl nfs lockd fscache sunrpc bonding bridge stp llc dm_crypt ioatdma radeon iTCO_wdt iTCO_vendor_support i5400_edac lpc_ich mfd_core rng_core ttm edac_core i2c_i801 i5k_amb coretemp drm_kms_helper psmouse shpchp serio_raw joydev pcspkr evdev drm parport_pc parport processor button kvm tpm_tis tpm thermal_sys ext4 crc16 mbcache jbd2 crc32c btrfs xor raid6_pq dm_mod hid_generic usbhid hid sd_mod crct10dif_generic crc_t10dif crct10dif_common sg sr_mod cdrom ata_generic ehci_pci ata_piix uhci_hcd ehci_hcd libata usbcore e1000e usb_common igb i2c_algo_bit i2c_core dca ptp pps_core 3w_9xxx scsi_mod
+> Jun 13 15:33:55 srvl011a kernel: [  725.376868] CPU: 6 PID: 11134 Comm: rpc.nfsd Tainted: G        W I  3.14-0.bpo.1-amd64 #1 Debian 3.14.4-1~bpo70+1
+> Jun 13 15:33:55 srvl011a kernel: [  725.376870] Hardware name: Supermicro X7DW3/X7DWN+, BIOS  1.2 11/04/2008
+> Jun 13 15:33:55 srvl011a kernel: [  725.376872]  0000000000000000 ffffffffa0740758 ffffffff814eb7c7 ffff8810278cbd78
+> Jun 13 15:33:55 srvl011a kernel: [  725.376875]  ffffffff81064cc7 ffff880fecbeac00 ffff880febfc0100 ffff880febfc0100
+> Jun 13 15:33:55 srvl011a kernel: [  725.376878]  ffff880fecbeac00 0000000000000000 ffffffff81064db5 ffffffffa0740710
+> Jun 13 15:33:55 srvl011a kernel: [  725.376881] Call Trace:
+> Jun 13 15:33:55 srvl011a kernel: [  725.376889]  [<ffffffff814eb7c7>] ? dump_stack+0x41/0x51
+> Jun 13 15:33:55 srvl011a kernel: [  725.376894]  [<ffffffff81064cc7>] ? warn_slowpath_common+0x87/0xc0
+> Jun 13 15:33:55 srvl011a kernel: [  725.376896]  [<ffffffff81064db5>] ? warn_slowpath_fmt+0x45/0x50
+> Jun 13 15:33:55 srvl011a kernel: [  725.376902]  [<ffffffffa073a652>] ? nfsd4_umh_cltrack_init+0x42/0x50 [nfsd]
+> Jun 13 15:33:55 srvl011a kernel: [  725.376907]  [<ffffffffa073b5b1>] ? nfsd4_client_tracking_init+0x91/0x130 [nfsd]
+> Jun 13 15:33:55 srvl011a kernel: [  725.376914]  [<ffffffffa073590d>] ? nfs4_state_start_net+0x27d/0x320 [nfsd]
+> Jun 13 15:33:55 srvl011a kernel: [  725.376919]  [<ffffffffa070fae3>] ? nfsd_svc+0x1b3/0x360 [nfsd]
+> Jun 13 15:33:55 srvl011a kernel: [  725.376924]  [<ffffffffa07108b0>] ? write_filehandle+0x230/0x230 [nfsd]
+> Jun 13 15:33:55 srvl011a kernel: [  725.376927]  [<ffffffff812a008b>] ? simple_strtoull+0x2b/0x50
+> Jun 13 15:33:55 srvl011a kernel: [  725.376932]  [<ffffffffa07108b0>] ? write_filehandle+0x230/0x230 [nfsd]
+> Jun 13 15:33:55 srvl011a kernel: [  725.376936]  [<ffffffffa0710925>] ? write_threads+0x75/0xc0 [nfsd]
+> Jun 13 15:33:55 srvl011a kernel: [  725.376941]  [<ffffffff81131fa9>] ? __get_free_pages+0x9/0x50
+> Jun 13 15:33:55 srvl011a kernel: [  725.376946]  [<ffffffff811bd061>] ? simple_transaction_get+0xc1/0xe0
+> Jun 13 15:33:55 srvl011a kernel: [  725.376951]  [<ffffffffa07108b0>] ? write_filehandle+0x230/0x230 [nfsd]
+> Jun 13 15:33:55 srvl011a kernel: [  725.376955]  [<ffffffffa0710116>] ? nfsctl_transaction_write+0x56/0x80 [nfsd]
+> Jun 13 15:33:55 srvl011a kernel: [  725.376959]  [<ffffffff81198026>] ? vfs_write+0xc6/0x1f0
+> Jun 13 15:33:55 srvl011a kernel: [  725.376962]  [<ffffffff8119851b>] ? SyS_write+0x4b/0xb0
+> Jun 13 15:33:55 srvl011a kernel: [  725.376965]  [<ffffffff814f9779>] ? system_call_fastpath+0x16/0x1b
+> Jun 13 15:33:55 srvl011a kernel: [  725.376967] ---[ end trace a408a046f76bfc25 ]---
+> Jun 13 15:33:55 srvl011a kernel: [  725.377001] ------------[ cut here ]------------
+> 
+> 
+> I have found a thread on lkml about this (http://lkml.org/lkml/2013/3/1/78),
+> but it seems there was no conclusion.
+> 
+> Is this something that could be supported?
 
-    There's also a preexisting expire_client/laundromat vs break race:
+Yeah, we should really get that fixed.  It can probably be worked around
+by reverting to the old reboot recovery method.
 
-    - expire_client/laundromat adds a delegation to its local
-      reaplist using the same dl_recall_lru field that a delegation
-      uses to track its position on the recall lru and drops the
-      state lock.
-
-    - a concurrent break_lease adds the delegation to the lru.
-
-    - expire/client/laundromat then walks it reaplist and sees the
-      lru head as just another delegation on the list....
-
-Fix this race by checking the dl_time under the state_lock. If we find
-that it's not 0, then we know that it has already been queued to the
-LRU list and that we shouldn't queue it again.
-
-In the case of destroy_client, we also have some similar races there.
-Just bump the dl_time by one before we drop the state_lock. We're
-destroying the delegations anyway, so a 1s difference there won't
-matter.
-
-The fault injection code also requires a bit of surgery here:
-
-First, in the case of nfsd_forget_client_delegations, we must prevent
-the same sort of race vs. the delegation break callback. For that, we
-just increment the dl_time to ensure that a delegation callback can't
-race in while we're working on it.
-
-We can't do that for nfsd_recall_client_delegations, as we need to have
-it actually queue the delegation, and that won't happen if we increment
-the dl_time. The state lock is held over that function, so we don't need
-to worry about these sorts of races there.
-
-There is one other potential bug nfsd_recall_client_delegations though.
-Entries on the victims list are not dequeued before calling
-nfsd_break_one_deleg. That's a potential list corruptor, so ensure that
-we do that there.
-
-Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 34 +++++++++++++++++++++++-----------
- 1 file changed, 23 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c400ec17915e..2a7d7176ed30 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1287,6 +1287,7 @@ destroy_client(struct nfs4_client *clp)
- 	while (!list_empty(&clp->cl_delegations)) {
- 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
- 		list_del_init(&dp->dl_perclnt);
-+		++dp->dl_time;
- 		list_move(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
-@@ -2933,10 +2934,14 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
- 	 * it's safe to take a reference: */
- 	atomic_inc(&dp->dl_count);
- 
--	list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
--
--	/* Only place dl_time is set; protected by i_lock: */
--	dp->dl_time = get_seconds();
-+	/*
-+	 * If the dl_time != 0, then we know that it has already been
-+	 * queued for a lease break. Don't queue it again.
-+	 */
-+	if (dp->dl_time == 0) {
-+		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
-+		dp->dl_time = get_seconds();
-+	}
- 
- 	block_delegations(&dp->dl_fh);
- 
-@@ -5069,15 +5074,18 @@ u64 nfsd_print_client_openowners(struct nfs4_client *clp, u64 max)
- }
- 
- static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
--				     struct list_head *victims)
-+				     struct list_head *victims, bool revoke)
- {
- 	struct nfs4_delegation *dp, *next;
- 	u64 count = 0;
- 
- 	lockdep_assert_held(&state_lock);
- 	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
--		if (victims)
-+		if (victims) {
-+			if (revoke)
-+				++dp->dl_time;
- 			list_move(&dp->dl_recall_lru, victims);
-+		}
- 		if (++count == max)
- 			break;
- 	}
-@@ -5091,7 +5099,7 @@ u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
- 	u64 count;
- 
- 	spin_lock(&state_lock);
--	count = nfsd_find_all_delegations(clp, max, &victims);
-+	count = nfsd_find_all_delegations(clp, max, &victims, true);
- 	spin_unlock(&state_lock);
- 
- 	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
-@@ -5102,14 +5110,18 @@ u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
- 
- u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
- {
--	struct nfs4_delegation *dp, *next;
-+	struct nfs4_delegation *dp;
- 	LIST_HEAD(victims);
- 	u64 count;
- 
- 	spin_lock(&state_lock);
--	count = nfsd_find_all_delegations(clp, max, &victims);
--	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
-+	count = nfsd_find_all_delegations(clp, max, &victims, false);
-+	while (!list_empty(&victims)) {
-+		dp = list_first_entry(&victims, struct nfs4_delegation,
-+					dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
- 		nfsd_break_one_deleg(dp);
-+	}
- 	spin_unlock(&state_lock);
- 
- 	return count;
-@@ -5120,7 +5132,7 @@ u64 nfsd_print_client_delegations(struct nfs4_client *clp, u64 max)
- 	u64 count = 0;
- 
- 	spin_lock(&state_lock);
--	count = nfsd_find_all_delegations(clp, max, NULL);
-+	count = nfsd_find_all_delegations(clp, max, NULL, false);
- 	spin_unlock(&state_lock);
- 
- 	nfsd_print_count(clp, count, "delegations");
--- 
-1.9.3
-
+--b.
