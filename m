@@ -1,128 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:43185 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752073AbaG2VX2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:23:28 -0400
-Subject: [PATCH v5 02/21] xprtrdma: Protect ia->ri_id when
- unmapping/invalidating MRs
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Jul 2014 17:23:25 -0400
-Message-ID: <20140729212325.2812.51392.stgit@manet.1015granger.net>
-In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
+Received: from elasmtp-scoter.atl.sa.earthlink.net ([209.86.89.67]:41868 "EHLO
+	elasmtp-scoter.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754409AbaGKR4f (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 13:56:35 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Jeff Layton'" <jeff.layton@primarydata.com>
+Cc: <bfields@fieldses.org>, <hch@infradead.org>, <linux-nfs@vger.kernel.org>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>	<1405015655-12469-11-git-send-email-jlayton@primarydata.com>	<03f901cf9d2d$f23c21f0$d6b465d0$@mindspring.com> <20140711134820.66d53162@tlielax.poochiereds.net>
+In-Reply-To: <20140711134820.66d53162@tlielax.poochiereds.net>
+Subject: RE: [PATCH 10/11] nfsd: make deny mode enforcement more efficient and close races in it
+Date: Fri, 11 Jul 2014 10:56:28 -0700
+Message-ID: <03fc01cf9d31$719fcc50$54df64f0$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure ia->ri_id remains valid while invoking dma_unmap_page() or
-posting LOCAL_INV during a transport reconnect. Otherwise,
-ia->ri_id->device or ia->ri_id->qp is NULL, which triggers a panic.
+> On Fri, 11 Jul 2014 10:31:26 -0700
+> "Frank Filz" <ffilzlnx@mindspring.com> wrote:
+> 
+> > > The current enforcement of deny modes is both inefficient and
+> > > scattered across several places, which makes it hard to guarantee
+> > > atomicity. The inefficiency is a problem now, and the lack of
+> > > atomicity will mean races
+> > once
+> > > the client_mutex is removed.
+> > >
+> > > First, we address the inefficiency. We have to track deny modes on a
+> > > per- stateid basis to ensure that open downgrades are sane, but when
+> > > the server goes to enforce them it has to walk the entire list of
+> > > stateids and check against each one.
+> > >
+> > > Instead of doing that, maintain a per-nfs4_file deny mode. When a
+> > > file is opened, we simply set any deny bits in that mode that were
+> > > specified in
+> > the
+> > > OPEN call. We can then use that unified deny mode to do a simple
+> > > check to see whether there are any conflicts without needing to walk
+> > > the entire stateid list.
+> > >
+> > > The only time we'll need to walk the entire list of stateids is when
+> > > a
+> > stateid
+> > > that has a deny mode on it is being released, or one is having its
+> > > deny
+> > mode
+> > > downgraded. In that case, we must walk the entire list and
+> > > recalculate the fi_share_deny field. Since deny modes are pretty
+> > > rare today, this should
+> > be
+> > > very rare under normal workloads.
+> >
+> > What we do in Ganesha to avoid walking the list of stateids on release
+> > is maintain the effective deny (and access) mode not at bits, but as a
+> > counter for each bit. Thus, to remove a SHARE_ACCESS_READ |
+> > SHARE_DENY_WRITE, you decrement the counts for access_read and
+> deny_write.
+> >
+> > Frank
+> >
+> >
+> 
+> Sure, that's another possibility that I considered, but I didn't want to
+be
+> bothered with having to add counters for deny modes. In practice there are
+> *no* clients that use them (aside from pynfs and maybe the semi-mythical
+> Windows v4.1 client).
+> 
+> With this scheme, deny mode enforcement is pretty darned efficient,
+> particularly in the common case where there are no deny modes to enforce.
+> 
+> Any penalty for the use of deny modes is generally paid during the CLOSE
+or
+> OPEN_DOWNGRADE on behalf of the client that's using them.
+> Any RPC from a client that's not won't need to do any extra work (aside
+from
+> maybe spinning on the fi_lock while another client is having to
+recalculate the
+> fi_share_deny).
 
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=259
-Fixes: ec62f40 'xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting'
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
----
- net/sunrpc/xprtrdma/verbs.c     |   23 +++++++++++++++++------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 2 files changed, 18 insertions(+), 6 deletions(-)
+Good point.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 78bd7c6..cab742d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -613,6 +613,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	/* Else will do memory reg/dereg for each chunk */
- 	ia->ri_memreg_strategy = memreg;
- 
-+	rwlock_init(&ia->ri_qplock);
- 	return 0;
- out2:
- 	rdma_destroy_id(ia->ri_id);
-@@ -859,7 +860,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- int
- rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
--	struct rdma_cm_id *id;
-+	struct rdma_cm_id *id, *old;
- 	int rc = 0;
- 	int retry_count = 0;
- 
-@@ -905,9 +906,14 @@ retry:
- 			rc = -ENETUNREACH;
- 			goto out;
- 		}
--		rdma_destroy_qp(ia->ri_id);
--		rdma_destroy_id(ia->ri_id);
-+
-+		write_lock(&ia->ri_qplock);
-+		old = ia->ri_id;
- 		ia->ri_id = id;
-+		write_unlock(&ia->ri_qplock);
-+
-+		rdma_destroy_qp(old);
-+		rdma_destroy_id(old);
- 	} else {
- 		dprintk("RPC:       %s: connecting...\n", __func__);
- 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
-@@ -1587,9 +1593,6 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 	struct ib_send_wr invalidate_wr, *bad_wr;
- 	int rc;
- 
--	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
--
- 	memset(&invalidate_wr, 0, sizeof invalidate_wr);
- 	invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
-@@ -1597,7 +1600,11 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
-+	read_lock(&ia->ri_qplock);
-+	while (seg1->mr_nsegs--)
-+		rpcrdma_unmap_one(ia, seg++);
- 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
-+	read_unlock(&ia->ri_qplock);
- 	if (rc)
- 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
- 			" status %i\n", __func__, rc);
-@@ -1658,8 +1665,10 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
- 
- 	list_add(&seg1->mr_chunk.rl_mw->r.fmr->list, &l);
- 	rc = ib_unmap_fmr(&l);
-+	read_lock(&ia->ri_qplock);
- 	while (seg1->mr_nsegs--)
- 		rpcrdma_unmap_one(ia, seg++);
-+	read_unlock(&ia->ri_qplock);
- 	if (rc)
- 		dprintk("RPC:       %s: failed ib_unmap_fmr,"
- 			" status %i\n", __func__, rc);
-@@ -1715,7 +1724,9 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 
- #if RPCRDMA_PERSISTENT_REGISTRATION
- 	case RPCRDMA_ALLPHYSICAL:
-+		read_lock(&ia->ri_qplock);
- 		rpcrdma_unmap_one(ia, seg);
-+		read_unlock(&ia->ri_qplock);
- 		break;
- #endif
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 89e7cd4..97ca516 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -59,6 +59,7 @@
-  * Interface Adapter -- one per transport instance
-  */
- struct rpcrdma_ia {
-+	rwlock_t		ri_qplock;
- 	struct rdma_cm_id 	*ri_id;
- 	struct ib_pd		*ri_pd;
- 	struct ib_mr		*ri_bind_mem;
+Whatever happened to Pavel Shilovsky's O_DENY patch set? I was looking
+forward to that for allowing Ganesha and Samba share reservations to more
+fully interact with each other...
+
+Frank
+
 
