@@ -1,58 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:35064 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753244AbaG3M2C (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:02 -0400
-Received: by mail-qa0-f42.google.com with SMTP id j15so1178979qaq.29
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:01 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 12/37] nfsd: don't destroy client if mark_client_expired_locked fails
-Date: Wed, 30 Jul 2014 08:27:13 -0400
-Message-Id: <1406723258-8512-13-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
-References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:62992 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932076AbaGKRs0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 13:48:26 -0400
+Received: by mail-qa0-f52.google.com with SMTP id j15so1114322qaq.25
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2014 10:48:25 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 11 Jul 2014 13:48:20 -0400
+To: "Frank Filz" <ffilzlnx@mindspring.com>
+Cc: <bfields@fieldses.org>, <hch@infradead.org>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 10/11] nfsd: make deny mode enforcement more efficient
+ and close races in it
+Message-ID: <20140711134820.66d53162@tlielax.poochiereds.net>
+In-Reply-To: <03f901cf9d2d$f23c21f0$d6b465d0$@mindspring.com>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+	<1405015655-12469-11-git-send-email-jlayton@primarydata.com>
+	<03f901cf9d2d$f23c21f0$d6b465d0$@mindspring.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If it fails, it means that the client is in use and so destroying it
-would be bad. Currently, the client_mutex prevents this from happening
-but once we remove it, we won't be able to do this.
+On Fri, 11 Jul 2014 10:31:26 -0700
+"Frank Filz" <ffilzlnx@mindspring.com> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+> > The current enforcement of deny modes is both inefficient and scattered
+> > across several places, which makes it hard to guarantee atomicity. The
+> > inefficiency is a problem now, and the lack of atomicity will mean races
+> once
+> > the client_mutex is removed.
+> > 
+> > First, we address the inefficiency. We have to track deny modes on a per-
+> > stateid basis to ensure that open downgrades are sane, but when the server
+> > goes to enforce them it has to walk the entire list of stateids and check
+> > against each one.
+> > 
+> > Instead of doing that, maintain a per-nfs4_file deny mode. When a file is
+> > opened, we simply set any deny bits in that mode that were specified in
+> the
+> > OPEN call. We can then use that unified deny mode to do a simple check to
+> > see whether there are any conflicts without needing to walk the entire
+> > stateid list.
+> > 
+> > The only time we'll need to walk the entire list of stateids is when a
+> stateid
+> > that has a deny mode on it is being released, or one is having its deny
+> mode
+> > downgraded. In that case, we must walk the entire list and recalculate the
+> > fi_share_deny field. Since deny modes are pretty rare today, this should
+> be
+> > very rare under normal workloads.
+> 
+> What we do in Ganesha to avoid walking the list of stateids on release is
+> maintain the effective deny (and access) mode not at bits, but as a counter
+> for each bit. Thus, to remove a SHARE_ACCESS_READ | SHARE_DENY_WRITE, you
+> decrement the counts for access_read and deny_write.
+> 
+> Frank
+> 
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 56999cbe84a7..43e66fc1b90d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2496,8 +2496,10 @@ nfsd4_create_session(struct svc_rqst *rqstp,
- 		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
- 		if (old) {
- 			status = mark_client_expired_locked(old);
--			if (status)
-+			if (status) {
-+				old = NULL;
- 				goto out_free_conn;
-+			}
- 		}
- 		move_to_confirmed(unconf);
- 		conf = unconf;
-@@ -3041,8 +3043,10 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 		old = find_confirmed_client_by_name(&unconf->cl_name, nn);
- 		if (old) {
- 			status = mark_client_expired_locked(old);
--			if (status)
-+			if (status) {
-+				old = NULL;
- 				goto out;
-+			}
- 		}
- 		move_to_confirmed(unconf);
- 		conf = unconf;
+Sure, that's another possibility that I considered, but I didn't want
+to be bothered with having to add counters for deny modes. In practice
+there are *no* clients that use them (aside from pynfs and maybe the
+semi-mythical Windows v4.1 client).
+
+With this scheme, deny mode enforcement is pretty darned efficient,
+particularly in the common case where there are no deny modes to
+enforce.
+
+Any penalty for the use of deny modes is generally paid during the
+CLOSE or OPEN_DOWNGRADE on behalf of the client that's using them.
+Any RPC from a client that's not won't need to do any extra work
+(aside from maybe spinning on the fi_lock while another client is
+having to recalculate the fi_share_deny).
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
