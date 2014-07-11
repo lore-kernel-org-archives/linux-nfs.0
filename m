@@ -1,57 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:32775 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753225AbaG3M2T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:19 -0400
-Received: by mail-qg0-f44.google.com with SMTP id e89so1304120qgf.17
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:18 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 24/37] nfsd: Remove nfs4_lock_state(): nfs4_preprocess_stateid_op()
-Date: Wed, 30 Jul 2014 08:27:25 -0400
-Message-Id: <1406723258-8512-25-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
-References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:48271 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753421AbaGKPm3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 11:42:29 -0400
+Received: by mail-qc0-f175.google.com with SMTP id i8so1129630qcq.20
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2014 08:42:29 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 11 Jul 2014 11:42:27 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/11] nfsd: deny mode handling overhaul
+Message-ID: <20140711114227.2902a15e@tlielax.poochiereds.net>
+In-Reply-To: <20140711143128.GA7305@fieldses.org>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+	<20140710201448.GF26561@fieldses.org>
+	<20140711074656.GA17661@infradead.org>
+	<20140711143128.GA7305@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Fri, 11 Jul 2014 10:31:28 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+> On Fri, Jul 11, 2014 at 12:46:56AM -0700, Christoph Hellwig wrote:
+> > On Thu, Jul 10, 2014 at 04:14:48PM -0400, J. Bruce Fields wrote:
+> > > On Thu, Jul 10, 2014 at 02:07:24PM -0400, Jeff Layton wrote:
+> > > > Here is the deny mode handling overhaul broken out into a separate
+> > > > series, as requested by Christoph. I've tried to address most of
+> > > > his review comments, but I may have missed some. Let me know if
+> > > > if I did.
+> > > 
+> > > They look fine to me; I'll merge them soon absent any objections from
+> > > Christoph.
+> > 
+> > The whole series looks good, although I've not tested it yet, just the
+> > original full series.
+> > 
+> > Reviewed-by: Christoph Hellwig <hch@lst.de>
+> 
+> Thanks!
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index baf83cf96b26..9013a30874e3 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4461,13 +4461,11 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
- 		return check_special_stateids(net, current_fh, stateid, flags);
- 
--	nfs4_lock_state();
--
- 	status = nfsd4_lookup_stateid(cstate, stateid,
- 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
- 				&s, nn);
- 	if (status)
--		goto unlock_state;
-+		return status;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
- 	if (status)
- 		goto out;
-@@ -4517,8 +4515,6 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 		*filpp = file;
- out:
- 	nfs4_put_stid(s);
--unlock_state:
--	nfs4_unlock_state();
- 	return status;
- }
- 
+Yes, thanks to both of you. The review and merging are much
+appreciated. Only 89 patches to go once these go in!
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
