@@ -1,109 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:34243 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755293AbaGHSFf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:35 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so5551859qcx.27
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:34 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 043/100] nfsd: Migrate the stateid reference into nfs4_preprocess_seqid_op
-Date: Tue,  8 Jul 2014 14:03:31 -0400
-Message-Id: <1404842668-22521-44-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from elasmtp-junco.atl.sa.earthlink.net ([209.86.89.63]:41084 "EHLO
+	elasmtp-junco.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751520AbaGKRbf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 13:31:35 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Jeff Layton'" <jlayton@primarydata.com>, <bfields@fieldses.org>
+Cc: <hch@infradead.org>, <linux-nfs@vger.kernel.org>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com> <1405015655-12469-11-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405015655-12469-11-git-send-email-jlayton@primarydata.com>
+Subject: RE: [PATCH 10/11] nfsd: make deny mode enforcement more efficient and close races in it
+Date: Fri, 11 Jul 2014 10:31:26 -0700
+Message-ID: <03f901cf9d2d$f23c21f0$d6b465d0$@mindspring.com>
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+> The current enforcement of deny modes is both inefficient and scattered
+> across several places, which makes it hard to guarantee atomicity. The
+> inefficiency is a problem now, and the lack of atomicity will mean races
+once
+> the client_mutex is removed.
+> 
+> First, we address the inefficiency. We have to track deny modes on a per-
+> stateid basis to ensure that open downgrades are sane, but when the server
+> goes to enforce them it has to walk the entire list of stateids and check
+> against each one.
+> 
+> Instead of doing that, maintain a per-nfs4_file deny mode. When a file is
+> opened, we simply set any deny bits in that mode that were specified in
+the
+> OPEN call. We can then use that unified deny mode to do a simple check to
+> see whether there are any conflicts without needing to walk the entire
+> stateid list.
+> 
+> The only time we'll need to walk the entire list of stateids is when a
+stateid
+> that has a deny mode on it is being released, or one is having its deny
+mode
+> downgraded. In that case, we must walk the entire list and recalculate the
+> fi_share_deny field. Since deny modes are pretty rare today, this should
+be
+> very rare under normal workloads.
 
-Allow nfs4_preprocess_seqid_op to take the stateid reference, instead
-of having all the callers do so.
+What we do in Ganesha to avoid walking the list of stateids on release is
+maintain the effective deny (and access) mode not at bits, but as a counter
+for each bit. Thus, to remove a SHARE_ACCESS_READ | SHARE_DENY_WRITE, you
+decrement the counts for access_read and deny_write.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 26 +++++++++++---------------
- 1 file changed, 11 insertions(+), 15 deletions(-)
+Frank
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fa6a060b0b14..437b52b81215 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4383,8 +4383,11 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
- 
- 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
--	if (!status)
-+	if (!status) {
-+		/* FIXME: move into find_stateid_by_type */
-+		atomic_inc(&stp->st_stid.sc_count);
- 		*stpp = stp;
-+	}
- 	return status;
- }
- 
-@@ -4393,16 +4396,18 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- {
- 	__be32 status;
- 	struct nfs4_openowner *oo;
-+	struct nfs4_ol_stateid *stp;
- 
- 	status = nfs4_preprocess_seqid_op(cstate, seqid, stateid,
--						NFS4_OPEN_STID, stpp, nn);
-+						NFS4_OPEN_STID, &stp, nn);
- 	if (status)
- 		return status;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&(*stpp)->st_stid.sc_count);
--	oo = openowner((*stpp)->st_stateowner);
--	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
-+	oo = openowner(stp->st_stateowner);
-+	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
-+		put_generic_stateid(stp);
- 		return nfserr_bad_stateid;
-+	}
-+	*stpp = stp;
- 	return nfs_ok;
- }
- 
-@@ -4429,8 +4434,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					NFS4_OPEN_STID, &stp, nn);
- 	if (status)
- 		goto out;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	oo = openowner(stp->st_stateowner);
- 	status = nfserr_bad_stateid;
- 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
-@@ -4578,8 +4581,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_bump_seqid(cstate, status);
- 	if (status)
- 		goto out; 
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
-@@ -4926,9 +4927,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 				       lock->lk_old_lock_seqid,
- 				       &lock->lk_old_lock_stateid,
- 				       NFS4_LOCK_STID, &lock_stp, nn);
--		/* FIXME: move into nfs4_preprocess_seqid_op */
--		if (!status)
--			atomic_inc(&lock_stp->st_stid.sc_count);
- 	}
- 	if (status)
- 		goto out;
-@@ -5156,8 +5154,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
--- 
-1.9.3
 
