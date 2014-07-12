@@ -1,160 +1,372 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:62456 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754474AbaGHSEv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:51 -0400
-Received: by mail-qg0-f45.google.com with SMTP id a108so5325912qge.32
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:50 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:62234 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750892AbaGLVjQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Jul 2014 17:39:16 -0400
+Received: by mail-qc0-f179.google.com with SMTP id r5so1475157qcx.10
+        for <linux-nfs@vger.kernel.org>; Sat, 12 Jul 2014 14:39:16 -0700 (PDT)
+Message-ID: <1405201152.5022.0.camel@leira.trondhjem.org>
+Subject: Re: [PATCH 4/5] nfs: handle multiple reqs in nfs_page_async_flush
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Weston Andros Adamson <dros@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 011/100] nfsd: refactor nfs4_file_get_access and nfs4_file_put_access
-Date: Tue,  8 Jul 2014 14:02:59 -0400
-Message-Id: <1404842668-22521-12-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Date: Sat, 12 Jul 2014 17:39:12 -0400
+In-Reply-To: <1405088449-11268-5-git-send-email-dros@primarydata.com>
+References: <1405088449-11268-1-git-send-email-dros@primarydata.com>
+	 <1405088449-11268-5-git-send-email-dros@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Have them take NFS4_SHARE_ACCESS_* flags instead of an open mode. This
-spares the callers from having to convert it themselves.
+On Fri, 2014-07-11 at 10:20 -0400, Weston Andros Adamson wrote:
+> Change nfs_find_and_lock_request so nfs_page_async_flush can handle multiple
+> requests in a page. There is only one request for a page the first time
+> nfs_page_async_flush is called, but if a write or commit fails, async_flush
+> is called again and there may be multiple requests associated with the page.
+> The solution is to merge all the requests in a page group into a single
+> request before calling nfs_pageio_add_request.
+> 
+> Rename nfs_find_and_lock_request to nfs_lock_and_join_requests and
+> change it to first lock all requests for the page, then cancel and merge
+> all subrequests into the head request.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> ---
+>  fs/nfs/internal.h |   1 +
+>  fs/nfs/pagelist.c |   4 +-
+>  fs/nfs/write.c    | 254 +++++++++++++++++++++++++++++++++++++++++++++++++-----
+>  3 files changed, 234 insertions(+), 25 deletions(-)
+> 
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index da36257..2f19e83 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -244,6 +244,7 @@ void nfs_pgio_data_destroy(struct nfs_pgio_header *);
+>  int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
+>  int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_header *,
+>  		      const struct rpc_call_ops *, int, int);
+> +void nfs_free_request(struct nfs_page *req);
+>  
+>  static inline void nfs_iocounter_init(struct nfs_io_counter *c)
+>  {
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index 8b074da..a22c130 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -29,8 +29,6 @@
+>  static struct kmem_cache *nfs_page_cachep;
+>  static const struct rpc_call_ops nfs_pgio_common_ops;
+>  
+> -static void nfs_free_request(struct nfs_page *);
+> -
+>  static bool nfs_pgarray_set(struct nfs_page_array *p, unsigned int pagecount)
+>  {
+>  	p->npages = pagecount;
+> @@ -406,7 +404,7 @@ static void nfs_clear_request(struct nfs_page *req)
+>   *
+>   * Note: Should never be called with the spinlock held!
+>   */
+> -static void nfs_free_request(struct nfs_page *req)
+> +void nfs_free_request(struct nfs_page *req)
+>  {
+>  	WARN_ON_ONCE(req->wb_this_page != req);
+>  
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 2e2b9f1..4dab432 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -46,6 +46,7 @@ static const struct rpc_call_ops nfs_commit_ops;
+>  static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
+>  static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
+>  static const struct nfs_rw_ops nfs_rw_write_ops;
+> +static void nfs_clear_request_commit(struct nfs_page *req);
+>  
+>  static struct kmem_cache *nfs_wdata_cachep;
+>  static mempool_t *nfs_wdata_mempool;
+> @@ -289,36 +290,245 @@ static void nfs_end_page_writeback(struct nfs_page *req)
+>  		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
+>  }
+>  
+> -static struct nfs_page *nfs_find_and_lock_request(struct page *page, bool nonblock)
+> +
+> +/* nfs_page_group_clear_bits
+> + *   @req - an nfs request
+> + * clears all page group related bits from @req
+> + */
+> +static void
+> +nfs_page_group_clear_bits(struct nfs_page *req)
+> +{
+> +	clear_bit(PG_TEARDOWN, &req->wb_flags);
+> +	clear_bit(PG_UNLOCKPAGE, &req->wb_flags);
+> +	clear_bit(PG_UPTODATE, &req->wb_flags);
+> +	clear_bit(PG_WB_END, &req->wb_flags);
+> +	clear_bit(PG_REMOVE, &req->wb_flags);
+> +}
+> +
+> +
+> +/*
+> + * nfs_unroll_locks_and_wait -  unlock all newly locked reqs and wait on @req
+> + *
+> + * this is a helper function for nfs_lock_and_join_requests
+> + *
+> + * @inode - inode associated with request page group, must be holding inode lock
+> + * @head  - head request of page group, must be holding head lock
+> + * @req   - request that couldn't lock and needs to wait on the req bit lock
+> + * @nonblock - if true, don't actually wait
+> + *
+> + * NOTE: this must be called holding page_group bit lock and inode spin lock
+> + *       and BOTH will be released before returning.
+> + *
+> + * returns 0 on success, < 0 on error.
+> + */
+> +static int
+> +nfs_unroll_locks_and_wait(struct inode *inode, struct nfs_page *head,
+> +			  struct nfs_page *req, bool nonblock)
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 59 ++++++++++++++++++++++++++++++++---------------------
- 1 file changed, 36 insertions(+), 23 deletions(-)
+Added a "__releases(&inode->i_lock)" in order to keep sparse happy.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 775267ed186a..2c49cd909115 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -341,6 +341,20 @@ static unsigned int ownerstr_hashval(u32 clientid, struct xdr_netobj *ownername)
- #define FILE_HASH_BITS                   8
- #define FILE_HASH_SIZE                  (1 << FILE_HASH_BITS)
- 
-+static int nfs4_access_to_omode(u32 access)
-+{
-+	switch (access & NFS4_SHARE_ACCESS_BOTH) {
-+	case NFS4_SHARE_ACCESS_READ:
-+		return O_RDONLY;
-+	case NFS4_SHARE_ACCESS_WRITE:
-+		return O_WRONLY;
-+	case NFS4_SHARE_ACCESS_BOTH:
-+		return O_RDWR;
-+	}
-+	WARN_ON_ONCE(1);
-+	return O_RDONLY;
-+}
-+
- static unsigned int file_hashval(struct inode *ino)
- {
- 	/* XXX: why are we hashing on inode pointer, anyway? */
-@@ -355,8 +369,15 @@ static void __nfs4_file_get_access(struct nfs4_file *fp, int oflag)
- 	atomic_inc(&fp->fi_access[oflag]);
- }
- 
--static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
-+static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
- {
-+	int oflag = nfs4_access_to_omode(access);
-+
-+	/* Note: relies on NFS4_SHARE_ACCESS_BOTH == READ|WRITE */
-+	access &= NFS4_SHARE_ACCESS_BOTH;
-+	if (access == 0)
-+		return;
-+
- 	if (oflag == O_RDWR) {
- 		__nfs4_file_get_access(fp, O_RDONLY);
- 		__nfs4_file_get_access(fp, O_WRONLY);
-@@ -392,8 +413,16 @@ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- 	}
- }
- 
--static void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
-+static void nfs4_file_put_access(struct nfs4_file *fp, u32 access)
- {
-+	int oflag;
-+
-+	/* Note: relies on NFS4_SHARE_ACCESS_BOTH == READ|WRITE */
-+	access &= NFS4_SHARE_ACCESS_BOTH;
-+	if (!access)
-+		return;
-+
-+	oflag = nfs4_access_to_omode(access);
- 	if (oflag == O_RDWR) {
- 		__nfs4_file_put_access(fp, O_RDONLY);
- 		__nfs4_file_put_access(fp, O_WRONLY);
-@@ -747,20 +776,6 @@ test_deny(u32 access, struct nfs4_ol_stateid *stp)
- 	return test_bit(access, &stp->st_deny_bmap);
- }
- 
--static int nfs4_access_to_omode(u32 access)
--{
--	switch (access & NFS4_SHARE_ACCESS_BOTH) {
--	case NFS4_SHARE_ACCESS_READ:
--		return O_RDONLY;
--	case NFS4_SHARE_ACCESS_WRITE:
--		return O_WRONLY;
--	case NFS4_SHARE_ACCESS_BOTH:
--		return O_RDWR;
--	}
--	WARN_ON_ONCE(1);
--	return O_RDONLY;
--}
--
- /* release all access and file references for a given stateid */
- static void
- release_all_access(struct nfs4_ol_stateid *stp)
-@@ -769,8 +784,7 @@ release_all_access(struct nfs4_ol_stateid *stp)
- 
- 	for (i = 1; i < 4; i++) {
- 		if (test_access(i, stp))
--			nfs4_file_put_access(stp->st_file,
--					     nfs4_access_to_omode(i));
-+			nfs4_file_put_access(stp->st_file, i);
- 		clear_access(i, stp);
- 	}
- }
-@@ -3302,7 +3316,7 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 			filp = NULL;
- 		}
- 	}
--	nfs4_file_get_access(fp, oflag);
-+	nfs4_file_get_access(fp, open->op_share_access);
- 	spin_unlock(&fp->fi_lock);
- 	if (filp)
- 		fput(filp);
-@@ -3314,7 +3328,7 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 	return nfs_ok;
- 
- out_put_access:
--	nfs4_file_put_access(fp, oflag);
-+	nfs4_file_put_access(fp, open->op_share_access);
- out:
- 	return status;
- }
-@@ -4223,7 +4237,7 @@ static inline void nfs4_stateid_downgrade_bit(struct nfs4_ol_stateid *stp, u32 a
- {
- 	if (!test_access(access, stp))
- 		return;
--	nfs4_file_put_access(stp->st_file, nfs4_access_to_omode(access));
-+	nfs4_file_put_access(stp->st_file, access);
- 	clear_access(access, stp);
- }
- 
-@@ -4548,11 +4562,10 @@ check_lock_length(u64 offset, u64 length)
- static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- {
- 	struct nfs4_file *fp = lock_stp->st_file;
--	int oflag = nfs4_access_to_omode(access);
- 
- 	if (test_access(access, lock_stp))
- 		return;
--	nfs4_file_get_access(fp, oflag);
-+	nfs4_file_get_access(fp, access);
- 	set_access(access, lock_stp);
- }
- 
+> +{
+> +	struct nfs_page *tmp;
+> +	int ret;
+> +
+> +	/* relinquish all the locks successfully grabbed this run */
+> +	for (tmp = head ; tmp != req; tmp = tmp->wb_this_page)
+> +		nfs_unlock_request(tmp);
+> +
+> +	WARN_ON_ONCE(test_bit(PG_TEARDOWN, &req->wb_flags));
+> +
+> +	/* grab a ref on the request that will be waited on */
+> +	kref_get(&req->wb_kref);
+> +
+> +	nfs_page_group_unlock(head);
+> +	spin_unlock(&inode->i_lock);
+> +
+> +	/* release ref from nfs_page_find_head_request_locked */
+> +	nfs_release_request(head);
+> +
+> +	if (!nonblock)
+> +		ret = nfs_wait_on_request(req);
+> +	else
+> +		ret = -EAGAIN;
+> +	nfs_release_request(req);
+> +
+> +	return ret;
+> +}
+> +
+> +/*
+> + * nfs_destroy_unlinked_subrequests - destroy recently unlinked subrequests
+> + *
+> + * @destroy_list - request list (using wb_this_page) terminated by @old_head
+> + * @old_head - the old head of the list
+> + *
+> + * All subrequests must be locked and removed from all lists, so at this point
+> + * they are only "active" in this function, and possibly in nfs_wait_on_request
+> + * with a reference held by some other context.
+> + */
+> +static void
+> +nfs_destroy_unlinked_subrequests(struct nfs_page *destroy_list,
+> +				 struct nfs_page *old_head)
+> +{
+> +	while (destroy_list) {
+> +		struct nfs_page *subreq = destroy_list;
+> +
+> +		destroy_list = (subreq->wb_this_page == old_head) ?
+> +				   NULL : subreq->wb_this_page;
+> +
+> +		WARN_ON_ONCE(old_head != subreq->wb_head);
+> +
+> +		/* make sure old group is not used */
+> +		subreq->wb_head = subreq;
+> +		subreq->wb_this_page = subreq;
+> +
+> +		nfs_clear_request_commit(subreq);
+> +
+> +		/* subreq is now totally disconnected from page group or any
+> +		 * write / commit lists. last chance to wake any waiters */
+> +		nfs_unlock_request(subreq);
+> +
+> +		if (!test_bit(PG_TEARDOWN, &subreq->wb_flags)) {
+> +			/* release ref on old head request */
+> +			nfs_release_request(old_head);
+> +
+> +			nfs_page_group_clear_bits(subreq);
+> +
+> +			/* release the PG_INODE_REF reference */
+> +			if (test_and_clear_bit(PG_INODE_REF, &subreq->wb_flags))
+> +				nfs_release_request(subreq);
+> +			else
+> +				WARN_ON_ONCE(1);
+> +		} else {
+> +			WARN_ON_ONCE(test_bit(PG_CLEAN, &subreq->wb_flags));
+> +			/* zombie requests have already released the last
+> +			 * reference and were waiting on the rest of the
+> +			 * group to complete. Since it's no longer part of a
+> +			 * group, simply free the request */
+> +			nfs_page_group_clear_bits(subreq);
+> +			nfs_free_request(subreq);
+> +		}
+> +	}
+> +}
+> +
+> +/*
+> + * nfs_lock_and_join_requests - join all subreqs to the head req and return
+> + *                              a locked reference, cancelling any pending
+> + *                              operations for this page.
+> + *
+> + * @page - the page used to lookup the "page group" of nfs_page structures
+> + * @nonblock - if true, don't block waiting for request locks
+> + *
+> + * This function joins all sub requests to the head request by first
+> + * locking all requests in the group, cancelling any pending operations
+> + * and finally updating the head request to cover the whole range covered by
+> + * the (former) group.  All subrequests are removed from any write or commit
+> + * lists, unlinked from the group and destroyed.
+> + *
+> + * Returns a locked, referenced pointer to the head request - which after
+> + * this call is guaranteed to be the only request associated with the page.
+> + * Returns NULL if no requests are found for @page, or a ERR_PTR if an
+> + * error was encountered.
+> + */
+> +static struct nfs_page *
+> +nfs_lock_and_join_requests(struct page *page, bool nonblock)
+>  {
+>  	struct inode *inode = page_file_mapping(page)->host;
+> -	struct nfs_page *req;
+> +	struct nfs_page *head, *subreq;
+> +	struct nfs_page *destroy_list = NULL;
+> +	unsigned int total_bytes;
+>  	int ret;
+>  
+> +try_again:
+> +	total_bytes = 0;
+> +
+> +	WARN_ON_ONCE(destroy_list);
+> +
+>  	spin_lock(&inode->i_lock);
+> -	for (;;) {
+> -		req = nfs_page_find_head_request_locked(NFS_I(inode), page);
+> -		if (req == NULL)
+> -			break;
+> -		if (nfs_lock_request(req))
+> -			break;
+> -		/* Note: If we hold the page lock, as is the case in nfs_writepage,
+> -		 *	 then the call to nfs_lock_request() will always
+> -		 *	 succeed provided that someone hasn't already marked the
+> -		 *	 request as dirty (in which case we don't care).
+> -		 */
+> +
+> +	/*
+> +	 * A reference is taken only on the head request which acts as a
+> +	 * reference to the whole page group - the group will not be destroyed
+> +	 * until the head reference is released.
+> +	 */
+> +	head = nfs_page_find_head_request_locked(NFS_I(inode), page);
+> +
+> +	if (!head) {
+>  		spin_unlock(&inode->i_lock);
+> -		if (!nonblock)
+> -			ret = nfs_wait_on_request(req);
+> -		else
+> -			ret = -EAGAIN;
+> -		nfs_release_request(req);
+> -		if (ret != 0)
+> +		return NULL;
+> +	}
+> +
+> +	/* lock each request in the page group */
+> +	nfs_page_group_lock(head);
+> +	subreq = head;
+> +	do {
+> +		/*
+> +		 * Subrequests are always contiguous, non overlapping
+> +		 * and in order. If not, it's a programming error.
+> +		 */
+> +		WARN_ON_ONCE(subreq->wb_offset !=
+> +		     (head->wb_offset + total_bytes));
+> +
+> +		/* keep track of how many bytes this group covers */
+> +		total_bytes += subreq->wb_bytes;
+> +
+> +		if (!nfs_lock_request(subreq)) {
+> +			/* releases page group bit lock and
+> +			 * inode spin lock and all references */
+> +			ret = nfs_unroll_locks_and_wait(inode, head,
+> +				subreq, nonblock);
+> +
+> +			if (ret == 0)
+> +				goto try_again;
+> +
+>  			return ERR_PTR(ret);
+> -		spin_lock(&inode->i_lock);
+> +		}
+> +
+> +		subreq = subreq->wb_this_page;
+> +	} while (subreq != head);
+> +
+> +	/* Now that all requests are locked, make sure they aren't on any list.
+> +	 * Commit list removal accounting is done after locks are dropped */
+> +	subreq = head;
+> +	do {
+> +		nfs_list_remove_request(subreq);
+> +		subreq = subreq->wb_this_page;
+> +	} while (subreq != head);
+> +
+> +	/* unlink subrequests from head, destroy them later */
+> +	if (head->wb_this_page != head) {
+> +		/* destroy list will be terminated by head */
+> +		destroy_list = head->wb_this_page;
+> +		head->wb_this_page = head;
+> +
+> +		/* change head request to cover whole range that
+> +		 * the former page group covered */
+> +		head->wb_bytes = total_bytes;
+>  	}
+> +
+> +	/*
+> +	 * prepare head request to be added to new pgio descriptor
+> +	 */
+> +	nfs_page_group_clear_bits(head);
+> +
+> +	/*
+> +	 * some part of the group was still on the inode list - otherwise
+> +	 * the group wouldn't be involved in async write.
+> +	 * grab a reference for the head request, iff it needs one.
+> +	 */
+> +	if (!test_and_set_bit(PG_INODE_REF, &head->wb_flags))
+> +		kref_get(&head->wb_kref);
+> +
+> +	nfs_page_group_unlock(head);
+> +
+> +	/* drop lock to clear_request_commit the head req and clean up
+> +	 * requests on destroy list */
+>  	spin_unlock(&inode->i_lock);
+> -	return req;
+> +
+> +	nfs_destroy_unlinked_subrequests(destroy_list, head);
+> +
+> +	/* clean up commit list state */
+> +	nfs_clear_request_commit(head);
+> +
+> +	/* still holds ref on head from nfs_page_find_head_request_locked
+> +	 * and still has lock on head from lock loop */
+> +	return head;
+>  }
+>  
+>  /*
+> @@ -331,7 +541,7 @@ static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+>  	struct nfs_page *req;
+>  	int ret = 0;
+>  
+> -	req = nfs_find_and_lock_request(page, nonblock);
+> +	req = nfs_lock_and_join_requests(page, nonblock);
+>  	if (!req)
+>  		goto out;
+>  	ret = PTR_ERR(req);
+
 -- 
-1.9.3
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
 
