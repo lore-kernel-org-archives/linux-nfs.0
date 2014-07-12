@@ -1,101 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:46660 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753155AbaGOOWs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:22:48 -0400
-Subject: [PATCH v3 18/21] xprtrdma: Schedule reply tasklet once per upcall
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 15 Jul 2014 10:22:46 -0400
-Message-ID: <20140715142246.8908.98458.stgit@manet.1015granger.net>
-In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
-References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:50976 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750900AbaGLMbs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Jul 2014 08:31:48 -0400
+Received: by mail-pa0-f52.google.com with SMTP id eu11so2883023pac.25
+        for <linux-nfs@vger.kernel.org>; Sat, 12 Jul 2014 05:31:48 -0700 (PDT)
+Message-ID: <53C12A93.3040803@gmail.com>
+Date: Sat, 12 Jul 2014 20:31:15 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: fuzz tested user mode linux crashed in NFS code path
+References: <53C10EAA.2000802@gmx.de>
+In-Reply-To: <53C10EAA.2000802@gmx.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Minor optimization: grab rpcrdma_tk_lock_g and disable hard IRQs
-just once after clearing the receive completion queue.
+I think it is caused by kfree an uninitialized address.
+Can you test with the patch listed in following url,
+I have send some days before ?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
----
- net/sunrpc/xprtrdma/verbs.c |   31 +++++++++++++++----------------
- 1 file changed, 15 insertions(+), 16 deletions(-)
+"[PATCH 1/4] NFSD: Fix memory leak in encoding denied lock"
+http://www.spinics.net/lists/linux-nfs/msg44719.html
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index f7691be..3563467 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -105,17 +105,6 @@ rpcrdma_run_tasklet(unsigned long data)
- 
- static DECLARE_TASKLET(rpcrdma_tasklet_g, rpcrdma_run_tasklet, 0UL);
- 
--static inline void
--rpcrdma_schedule_tasklet(struct rpcrdma_rep *rep)
--{
--	unsigned long flags;
--
--	spin_lock_irqsave(&rpcrdma_tk_lock_g, flags);
--	list_add_tail(&rep->rr_list, &rpcrdma_tasklets_g);
--	spin_unlock_irqrestore(&rpcrdma_tk_lock_g, flags);
--	tasklet_schedule(&rpcrdma_tasklet_g);
--}
--
- static void
- rpcrdma_qp_async_error_upcall(struct ib_event *event, void *context)
- {
-@@ -214,7 +203,7 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
- }
- 
- static void
--rpcrdma_recvcq_process_wc(struct ib_wc *wc)
-+rpcrdma_recvcq_process_wc(struct ib_wc *wc, struct list_head *sched_list)
- {
- 	struct rpcrdma_rep *rep =
- 			(struct rpcrdma_rep *)(unsigned long)wc->wr_id;
-@@ -245,28 +234,38 @@ rpcrdma_recvcq_process_wc(struct ib_wc *wc)
- 	}
- 
- out_schedule:
--	rpcrdma_schedule_tasklet(rep);
-+	list_add_tail(&rep->rr_list, sched_list);
- }
- 
- static int
- rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
- {
-+	struct list_head sched_list;
- 	struct ib_wc *wcs;
- 	int budget, count, rc;
-+	unsigned long flags;
- 
-+	INIT_LIST_HEAD(&sched_list);
- 	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
- 	do {
- 		wcs = ep->rep_recv_wcs;
- 
- 		rc = ib_poll_cq(cq, RPCRDMA_POLLSIZE, wcs);
- 		if (rc <= 0)
--			return rc;
-+			goto out_schedule;
- 
- 		count = rc;
- 		while (count-- > 0)
--			rpcrdma_recvcq_process_wc(wcs++);
-+			rpcrdma_recvcq_process_wc(wcs++, &sched_list);
- 	} while (rc == RPCRDMA_POLLSIZE && --budget);
--	return 0;
-+	rc = 0;
-+
-+out_schedule:
-+	spin_lock_irqsave(&rpcrdma_tk_lock_g, flags);
-+	list_splice_tail(&sched_list, &rpcrdma_tasklets_g);
-+	spin_unlock_irqrestore(&rpcrdma_tk_lock_g, flags);
-+	tasklet_schedule(&rpcrdma_tasklet_g);
-+	return rc;
- }
- 
- /*
+thanks,
+Kinglong Mee
 
+On 7/12/2014 18:32, Toralf Förster wrote:
+> A fuzz-tested a x86 32 bit user user mode linux guest using guest kernel v3.16-rc4-142-g47ea8dd 
+> with trinity using NFSv4 victim files (both NFS server and NFS client run within the same UML).
+> 
+> The guest crashed :
+> 
+> Kernel panic - not syncing: BUG!
+> CPU: 0 PID: 1395 Comm: nfsd Tainted: G    B         3.16.0-rc4-00142-g47ea8dd-dirty #68
+> Stack:
+>  0859f770 0859f770 00000003 086c8547 00000000 858742a0 0cacd700 85447e1c
+>  084e3dd2 00000000 85447df0 85447e44 084e0408 085ab1c4 08700980 0859c46a
+>  85447e50 00000000 00000000 858742a0 0cacd700 85447e74 080ffc70 0859c46a
+> Call Trace:
+>  [<084e3dd2>] dump_stack+0x26/0x28
+>  [<084e0408>] panic+0x7a/0x194
+>  [<080ffc70>] kfree+0x80/0x150
+>  [<0822ba2e>] ? nfsd4_encode_stateid+0x3e/0x60
+>  [<0822c0ab>] nfsd4_encode_lock+0x4b/0x60
+>  [<08233aa3>] nfsd4_encode_operation+0xd3/0x1d0
+>  [<0822afcf>] nfsd4_proc_compound+0x4bf/0x670
+>  [<0809b999>] ? groups_alloc+0x39/0xe0
+>  [<08219aba>] nfsd_dispatch+0xda/0x200
+>  [<0846868f>] svc_process_common+0x31f/0x610
+>  [<08469b4b>] svc_process+0x10b/0x140
+>  [<0809d270>] ? default_wake_function+0x0/0x20
+>  [<08219360>] ? nfsd+0x0/0x140
+>  [<08219442>] nfsd+0xe2/0x140
+>  [<08095806>] kthread+0xd6/0xe0
+>  [<0809c60d>] ? finish_task_switch.isra.56+0x1d/0x70
+>  [<0805f64b>] new_thread_handler+0x6b/0x90
+> 
+> 
+> FWIW "dirty" cames from 1 patch from Richard Weinberger for arch/um/kernel/tlb.c and arch/um/os-Linux/skas/process.c
+> 
+> 
+> The back trace of the core file gives:
+> 
+> 
+> Thread 1 (LWP 12687):
+> #0  0xb7797aec in __kernel_vsyscall ()
+> #1  0x08484e15 in kill () at ../sysdeps/unix/syscall-template.S:81
+> #2  0x0807253d in uml_abort () at arch/um/os-Linux/util.c:93
+> #3  0x08072885 in os_dump_core () at arch/um/os-Linux/util.c:148
+> #4  0x0806241d in panic_exit (self=0x86c95c0 <panic_exit_notifier>, unused1=0, unused2=0x8700980 <buf.19753>) at arch/um/kernel/um_arch.c:240
+> #5  0x08099706 in notifier_call_chain (nl=0x0, val=2235858240, v=0x6, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
+> #6  0x08099863 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:183
+> #7  atomic_notifier_call_chain (nh=0x8700944 <panic_notifier_list>, val=0, v=0x8700980 <buf.19753>) at kernel/notifier.c:193
+> #8  0x084e0424 in panic (fmt=0x0) at kernel/panic.c:133
+> #9  0x080ffc70 in kfree (x=0x194) at mm/slub.c:3380
+> #10 0x0822c0ab in nfsd4_encode_lock (resp=0x85871030, nfserr=0, lock=0x858742a0) at fs/nfsd/nfs4xdr.c:2910
+> #11 0x08233aa3 in nfsd4_encode_operation (resp=0x85871030, op=0x85874280) at fs/nfsd/nfs4xdr.c:3889
+> #12 0x0822afcf in nfsd4_proc_compound (rqstp=0x858750f0, args=0x85447d40, resp=0x85871030) at fs/nfsd/nfs4proc.c:1386
+> #13 0x08219aba in nfsd_dispatch (rqstp=0x858750f0, statp=0x832c1018) at fs/nfsd/nfssvc.c:686
+> #14 0x0846868f in svc_process_common (rqstp=0x858750f0, argv=0x85447d40, resv=0x8587526c) at net/sunrpc/svc.c:1206
+> #15 0x08469b4b in svc_process (rqstp=0x858750f0) at net/sunrpc/svc.c:1331
+> #16 0x08219442 in nfsd (vrqstp=0x858750f0) at fs/nfsd/nfssvc.c:609
+> #17 0x08095806 in kthread (_create=0x85377eb0) at kernel/kthread.c:207
+> #18 0x0805f64b in new_thread_handler () at arch/um/kernel/process.c:129
+> #19 0x00000000 in ?? ()
+> 
+> 
+> 
