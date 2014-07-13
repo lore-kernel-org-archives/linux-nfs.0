@@ -1,54 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:65473 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932584AbaGWSds (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jul 2014 14:33:48 -0400
-Date: Wed, 23 Jul 2014 13:33:32 -0500
-From: David Teigland <teigland@redhat.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Joe Perches <joe@perches.com>, Andrew Morton <akpm@linux-foundation.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>,
-        Christine Caulfield <ccaulfie@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        cluster-devel@redhat.com, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 9/9] fs: dlm: lockd: Convert int result to unsigned char
- type
-Message-ID: <20140723183332.GA21992@redhat.com>
-References: <cover.1405879494.git.joe@perches.com>
- <65b9ba0dba9c79a938267d5bed7ed0a8211e89ed.1405879494.git.joe@perches.com>
- <20140723141139.2cf90cb0@tlielax.poochiereds.net>
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:58021 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751082AbaGMMFo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 08:05:44 -0400
+Received: by mail-qg0-f42.google.com with SMTP id e89so2532134qgf.29
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 05:05:43 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sun, 13 Jul 2014 08:05:41 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsd4_locku / nfs4_free_lock_stateid question
+Message-ID: <20140713080541.30ecbb51@tlielax.poochiereds.net>
+In-Reply-To: <20140713110047.GA28727@infradead.org>
+References: <20140713110047.GA28727@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140723141139.2cf90cb0@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 23, 2014 at 02:11:39PM -0400, Jeff Layton wrote:
-> On Sun, 20 Jul 2014 11:23:43 -0700
-> Joe Perches <joe@perches.com> wrote:
+On Sun, 13 Jul 2014 04:00:47 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
+
+> Hi Jeff,
 > 
-> > op->info.rv is an s32, but it's only used as a u8.
-> > 
+> while reviewing some of your patches I've started wondering about
+> some v4 locking code.
 > 
-> I don't understand this patch. info.rv is s32 (and I assume that "rv"
-> stands for "return value"). What I don't get is why you think it's just
-> used as a u8. It seems to be used more like a bool than anything else,
+> In nfsd4_locku we're doing a call to find_any_file to grab a file
+> structure for the lock stateid, which nfs4_free_lock_stateid tries to
+> close. But what guarantees that we're actually getting the same file
+> descriptor back?
+> 
+> The nfs4_file is shared by and stateid that access a given inode,
+> so the first call to find_any_file might return the read/only file
+> structure because that's the only one available so far, while
+> by the time we unlock we might have a read/write and/or write-only file
+> available as well, which find_any_file will return.
+> 
+> It seems like the lock stateid needs a pointer to the actual file
+> locked, and keep a reference to it independent of the nfs4_file, or am I
+> missing something?
 
-Thank you, Jeff.
+It is weird, but I don't think it really matters as the filp is only
+really used as a way to get to the inode -- it really doesn't matter
+which struct file we use there. find_any_file will both take a
+reference to and return the file, which is then eventually fput in
+filp_close, so there should be no refcount leak or anything.
 
-        /* info.rv from userspace is 1 for conflict, 0 for no-conflict,
-           -ENOENT if there are no locks on the file */
+The weirdness all comes from the vfs-layer file locking interfaces,
+many of which take a struct file argument when they really would be
+fine with a struct inode. Maybe one of these days we can get around to
+cleaning that up.
 
-        rv = op->info.rv;
-
-> and I'm not sure that "type" is really a good description for it. Maybe
-> it should be a "bool" and named "conflict", given the comments in
-> dlm_posix_get ?
-
-type is not a good name.
-
-Sorry Joe, I'm not a fan of your patches.
-
-Dave
+-- 
+Jeff Layton <jlayton@primarydata.com>
