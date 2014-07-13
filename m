@@ -1,94 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:33238 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752191AbaG3Bet (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:34:49 -0400
-Received: by mail-qg0-f46.google.com with SMTP id z60so636676qgd.5
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:34:49 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 00/38] nfsd: stateid and stateowner refcounting overhaul
-Date: Tue, 29 Jul 2014 21:34:05 -0400
-Message-Id: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:54679 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751533AbaGMNus (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 09:50:48 -0400
+Received: by mail-qg0-f48.google.com with SMTP id q108so2492300qgd.7
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 06:50:47 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sun, 13 Jul 2014 09:50:45 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: nfsd4_locku / nfs4_free_lock_stateid question
+Message-ID: <20140713095045.2d179659@tlielax.poochiereds.net>
+In-Reply-To: <20140713121919.GA6456@infradead.org>
+References: <20140713110047.GA28727@infradead.org>
+	<20140713080541.30ecbb51@tlielax.poochiereds.net>
+	<20140713121919.GA6456@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v3:
-- fix intermediate regression in nfsd4_close_open_stateid
+On Sun, 13 Jul 2014 05:19:19 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-v2:
-- rename functions from *_generic_stateid to *_ol_stateid
-- eliminate some nfs4_put_* wrappers around nfs4_put_stid
-- clean up lock stateid allocation and initialization
-- reorder patches to reduce churn
-- handle open/lock stateids individually in nfsd4_free_stateid
-- add ops struct for stateowners
-- combine v4.0 replay cache patches
+> On Sun, Jul 13, 2014 at 08:05:41AM -0400, Jeff Layton wrote:
+> > It is weird, but I don't think it really matters as the filp is only
+> > really used as a way to get to the inode -- it really doesn't matter
+> > which struct file we use there. find_any_file will both take a
+> > reference to and return the file, which is then eventually fput in
+> > filp_close, so there should be no refcount leak or anything.
+> > 
+> > The weirdness all comes from the vfs-layer file locking interfaces,
+> > many of which take a struct file argument when they really would be
+> > fine with a struct inode. Maybe one of these days we can get around to
+> > cleaning that up.
+> 
+> If filesystems get the file passed we should assume that they actually
+> use it.  In fact AFS does, but it's not NFS exportable at the moment,
+> and ceph does in a debug printk.  I'd be much happier to waste a pointer
+> in the lock stateid to avoid this inconsistant interface.  And it would
+> allow to kill find_any_fileas well..
+> 
 
-Here is the next swath of patches for the nfsd client_mutex removal
-series. The main focus of this series is to add refcounting to open and
-lock stateids and to use those to drive their management and eventual
-destruction. Additionally, we add refcounting to the open and lock
-stateowners and use that refcount to manage their lifecycle as well.
-
-Most of the new locking here is superfluous until we remove the
-client_mutex. This series should apply cleanly to Bruce's for-3.17
-branch now that the delegation patches have been merged.
-
-Jeff Layton (20):
-  nfsd: Cleanup the freeing of stateids
-  nfsd4: use cl_lock to synchronize all stateid idr calls
-  nfsd: do filp_close in sc_free callback for lock stateids
-  nfsd: Add locking to protect the state owner lists
-  nfsd: clean up races in lock stateid searching and creation
-  nfsd: ensure atomicity in nfsd4_free_stateid and
-    nfsd4_validate_stateid
-  nfsd: Add reference counting to state owners
-  nfsd: Add a mutex to protect the NFSv4.0 open owner replay cache
-  nfsd: clean up lockowner refcounting when finding them
-  nfsd: add an operation for unhashing a stateowner
-  nfsd: clean up refcounting for lockowners
-  nfsd: make openstateids hold references to their openowners
-  nfsd: don't allow CLOSE to proceed until refcount on stateid drops
-  nfsd: clean up and reorganize release_lockowner
-  nfsd: add locking to stateowner release
-  nfsd: optimize destroy_lockowner cl_lock thrashing
-  nfsd: close potential race in nfsd4_free_stateid
-  nfsd: reduce cl_lock thrashing in release_openowner
-  nfsd: don't thrash the cl_lock while freeing an open stateid
-  nfsd: rename unhash_generic_stateid to unhash_ol_stateid
-
-Trond Myklebust (18):
-  nfsd: Add reference counting to the lock and open stateids
-  nfsd: Add a struct nfs4_file field to struct nfs4_stid
-  nfsd: Replace nfs4_ol_stateid->st_file with the st_stid.sc_file
-  nfsd: Add reference counting to lock stateids
-  nfsd: nfsd4_locku() must reference the lock stateid
-  nfsd: Ensure that nfs4_open_delegation() references the delegation
-    stateid
-  nfsd: nfsd4_process_open2() must reference the delegation stateid
-  nfsd: nfsd4_process_open2() must reference the open stateid
-  nfsd: Prepare nfsd4_close() for open stateid referencing
-  nfsd: nfsd4_open_confirm() must reference the open stateid
-  nfsd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
-  nfsd: Migrate the stateid reference into nfs4_preprocess_seqid_op
-  nfsd: Migrate the stateid reference into nfs4_lookup_stateid()
-  nfsd: Migrate the stateid reference into nfs4_find_stateid_by_type()
-  nfsd: Make lock stateid take a reference to the lockowner
-  nfsd: Protect adding/removing open state owners using client_lock
-  nfsd: Protect adding/removing lock owners using client_lock
-  nfsd: Move the open owner hash table into struct nfs4_client
-
- fs/nfsd/netns.h        |    1 -
- fs/nfsd/nfs4callback.c |    4 +-
- fs/nfsd/nfs4proc.c     |   12 +-
- fs/nfsd/nfs4state.c    | 1014 +++++++++++++++++++++++++++++++-----------------
- fs/nfsd/nfs4xdr.c      |    2 -
- fs/nfsd/state.h        |   32 +-
- fs/nfsd/xdr4.h         |    5 +-
- 7 files changed, 695 insertions(+), 375 deletions(-)
+Fair enough -- that would be cleaner. I'll look into changing that as
+well while I'm in here.
 
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
