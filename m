@@ -1,71 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f173.google.com ([209.85.128.173]:62673 "EHLO
-	mail-ve0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758239AbaGAOVl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 10:21:41 -0400
-Received: by mail-ve0-f173.google.com with SMTP id db11so9795002veb.32
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 07:21:40 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140701101034.520b04bb@tlielax.poochiereds.net>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-	<20140630125142.GA32089@infradead.org>
-	<20140630085934.2bf86ba0@tlielax.poochiereds.net>
-	<20140630193237.GA11935@fieldses.org>
-	<20140630162014.20e63e1a@tlielax.poochiereds.net>
-	<CAHQdGtQtHaKx6mEXzO7XndZPo19joccuPa0_z0T_79TiG1434w@mail.gmail.com>
-	<20140630163647.5227ac55@tlielax.poochiereds.net>
-	<20140701101034.520b04bb@tlielax.poochiereds.net>
-Date: Tue, 1 Jul 2014 10:21:40 -0400
-Message-ID: <CAHQdGtQZP8RGqWS0pw-X97D_3GE1tqxaeVMSXgLa+VtaSLae2w@mail.gmail.com>
-Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>,
+Received: from bombadil.infradead.org ([198.137.202.9]:50987 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754274AbaGNJ7s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 05:59:48 -0400
+Date: Mon, 14 Jul 2014 02:59:44 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Kinglong Mee <kinglongmee@gmail.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Subject: Re: [PATCH] nfsd: Fix bad reserving space for encoding rdattr_error
+Message-ID: <20140714095944.GA25481@infradead.org>
+References: <53B8C3D3.7080201@gmail.com>
+ <20140707181556.GC8630@fieldses.org>
+ <20140710105451.GA23266@infradead.org>
+ <20140711201129.GB11931@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140711201129.GB11931@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 1, 2014 at 10:10 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
->
-> Quite right. I changed the program to be run as root and had each child
-> process do an setfsuid/setfsgid to a different UID/GID combo:
->
-> [jlayton@tlielax lockperf]$ time sudo  ./opentest -n 128 -l 100 /mnt/rawhide/opentest
->
-> real    0m3.448s
-> user    0m0.078s
-> sys     0m0.377s
-> [jlayton@tlielax lockperf]$ time sudo  ./opentest -n 128 -l 100 /mnt/rawhide/opentest
->
-> real    0m3.344s
-> user    0m0.053s
-> sys     0m0.374s
-> [jlayton@tlielax lockperf]$ time sudo  ./opentest -n 128 -l 100 /mnt/rawhide/opentest
->
-> real    0m3.550s
-> user    0m0.049s
-> sys     0m0.394s
->
->
-> ...so the speedup seems to be quite dramatic, actually -- 3x faster or
-> so with the patched kernel.
->
-> The underlying filesystem is ext4 here, and the config is a rawhide
-> debug kernel config. For my next trick, I'll build some non-debug
-> kernels and replicate the test with them. Stay tuned...
+On Fri, Jul 11, 2014 at 04:11:29PM -0400, J. Bruce Fields wrote:
+> > On Mon, Jul 07, 2014 at 02:15:56PM -0400, J. Bruce Fields wrote:
+> > > > -	p = xdr_reserve_space(xdr, 6);
+> > > > +	p = xdr_reserve_space(xdr, 20);
+> > 
+> > Can we please convert all these magic numbers to expressions adding up
+> > sizeofs or where that doesn't fit use #defines?
+> 
+> So, this would be 
+> 
+> 	xdr_reserve_space(xdr, 5 * sizeof(be32));
+> 
+> ?  I guess that'd be OK.
 
-Just for grins, we should probably also try with the 3 client side
-OPEN parallelisation patches in my 'devel' branch. I'd expect them to
-give a slight performance improvement with your original test (i.e.
-the one that doesn't play the UID/GID games)
-
-Cheers
-  Trond
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Yes, that makes a lot more sense.  I'm still hoping to make progress
+on my krpcgen one day..
