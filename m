@@ -1,121 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:53011 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754412AbaG2UfJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:35:09 -0400
-Received: by mail-qa0-f41.google.com with SMTP id j7so276750qaq.14
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:35:08 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 26/38] nfsd: clean up refcounting for lockowners
-Date: Tue, 29 Jul 2014 16:34:09 -0400
-Message-Id: <1406666061-14175-27-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f51.google.com ([209.85.216.51]:43481 "EHLO
+	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750925AbaGNGoX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 02:44:23 -0400
+Received: by mail-qa0-f51.google.com with SMTP id k15so2885131qaq.24
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 23:44:22 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140710175136.GA26561@fieldses.org>
+References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
+	<20140710175136.GA26561@fieldses.org>
+Date: Mon, 14 Jul 2014 08:44:22 +0200
+Message-ID: <CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
+Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
+From: Andreas Fenkart <afenkart@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: rond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, Daniel Mack <zonque@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that lockowner references are only held by lockstateids and
-operations that are in-progress. With this, we can get rid of
-release_lockowner_if_empty, which will be racy once we remove
-client_mutex protection.
+2014-07-10 19:51 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+> On Mon, Jun 23, 2014 at 12:07:22PM +0200, Andreas Fenkart wrote:
+>> Found regression introduced by this patch
+>>
+>> 311324ad NFS: Be more aggressive in using readdirplus for 'ls -l' situations"
+>>
+>> # cd /bin
+>> -sh: cd: /bin: Not a directory
+>> root@192:/# pwd
+>> /
+>> root@192:/# ls /bin
+>> ls: /bin
+>> root@192:/# ls -l /bin/sh
+>> lrwxrwxrwx    1 root     root             9 Jun 16 13:59 /bin/sh -> /bin/bash
+>>
+>> the mount options of the client, an embedded system, mounting nfsroot:
+>> nfs(rw,relatime,vers=2,rsize=4096,wsize=4096,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=192.168.xx.xx,mountvers=1,mountproto=udp,local_lock=all,addr=192.168.xx.xx)
+>> vers: 3.16.0-rc1
+>>
+>> the server exports:
+>> /exports/rootfs 192.168.xx.xx(rw,no_root_squash,subtree_check)
+>> vers: 3.14-1-amd64 #1 SMP Debian 3.14.4-1 (2014-05-13) x86_64 GNU/Linux
+>>
+>> reverting above patch, dir listing with 'ls /' works again
+>
+> Is this still happening?
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 29 +++++++----------------------
- 1 file changed, 7 insertions(+), 22 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 00cb44fa07bd..549218087595 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -933,7 +933,7 @@ static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
- 	nfs4_free_ol_stateid(stid);
- }
- 
--static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
-+static void release_lock_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
- 
-@@ -957,7 +957,7 @@ static void release_lockowner_stateids(struct nfs4_lockowner *lo)
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
--		__release_lock_stateid(stp);
-+		release_lock_stateid(stp);
- 	}
- }
- 
-@@ -968,21 +968,6 @@ static void release_lockowner(struct nfs4_lockowner *lo)
- 	nfs4_put_stateowner(&lo->lo_owner);
- }
- 
--static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
--{
--	if (list_empty(&lo->lo_owner.so_stateids))
--		release_lockowner(lo);
--}
--
--static void release_lock_stateid(struct nfs4_ol_stateid *stp)
--{
--	struct nfs4_lockowner *lo;
--
--	lo = lockowner(stp->st_stateowner);
--	__release_lock_stateid(stp);
--	release_lockowner_if_empty(lo);
--}
--
- static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
- 	__releases(&open_stp->st_stateowner->so_client->cl_lock)
- 	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
-@@ -4323,7 +4308,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
- 
- 	if (check_for_locks(stp->st_stid.sc_file, lo))
- 		return nfserr_locks_held;
--	release_lockowner_if_empty(lo);
-+	release_lock_stateid(stp);
- 	return nfs_ok;
- }
- 
-@@ -4938,8 +4923,6 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
- 		if (lo == NULL)
- 			return nfserr_jukebox;
--		/* FIXME: extra reference for new lockowners for the client */
--		atomic_inc(&lo->lo_owner.so_count);
- 	} else {
- 		/* with an existing lockowner, seqids must be the same */
- 		status = nfserr_bad_seqid;
-@@ -4950,7 +4933,6 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 
- 	*lst = find_or_create_lock_stateid(lo, fi, inode, ost, new);
- 	if (*lst == NULL) {
--		release_lockowner_if_empty(lo);
- 		status = nfserr_jukebox;
- 		goto out;
- 	}
-@@ -5379,6 +5361,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			continue;
- 		if (same_owner_str(tmp, owner, clid)) {
- 			sop = tmp;
-+			atomic_inc(&sop->so_count);
- 			break;
- 		}
- 	}
-@@ -5392,8 +5375,10 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	lo = lockowner(sop);
- 	/* see if there are still any locks associated with it */
- 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
--		if (check_for_locks(stp->st_stid.sc_file, lo))
-+		if (check_for_locks(stp->st_stid.sc_file, lo)) {
-+			nfs4_put_stateowner(sop);
- 			goto out;
-+		}
- 	}
- 
- 	status = nfs_ok;
--- 
-1.9.3
-
+yes it is, I just reverted the aforementioned commit.
