@@ -1,43 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:51883 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751025AbaGJLXn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 07:23:43 -0400
-Date: Thu, 10 Jul 2014 04:23:42 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-qa0-f47.google.com ([209.85.216.47]:54379 "EHLO
+	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751943AbaGNB5x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:57:53 -0400
+Received: by mail-qa0-f47.google.com with SMTP id i13so2719733qae.6
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:57:52 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 003/100] nfsd: Ensure stateids remain unique until
- they are freed
-Message-ID: <20140710112342.GB10893@infradead.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
- <1404842668-22521-4-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1404842668-22521-4-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH 0/7] sunrpc: sparse warning cleanups
+Date: Sun, 13 Jul 2014 21:57:37 -0400
+Message-Id: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 08, 2014 at 02:02:51PM -0400, Jeff Layton wrote:
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> 
-> Add an extra delegation state to allow the stateid to remain in the idr
-> tree until the last reference has been released. This will be necessary
-> to ensure uniqueness once the client_mutex is removed.
-> 
-> [jlayton: reset the sc_type under the state_lock in unhash_delegation]
+This fixes up all of the sparse warnings that I see when building
+net/sunrpc. The only real substantive change is the second patch which
+should fix the RCU handling for the gc_ctx field. That looks quite wrong
+right now, though it may be that the refcounting and lifecycle of the
+thing helps paper over it today.
 
-I'd be tempted to instead have a closed flag, there's plenty of space in
-the hole after sc_type anyway.
+There are still a few warnings that come from generic ipv6.h inlines.
+I'll send a separate patch to the netdev folks to address those.
 
-The rationale for that is that a stateid really shouldn't change the
-type during it's life time, and callers that specify the type to look
-up shouldn't bother with looking up different types due to this either.
+Trond, if these look OK then they should probably go via your tree as it
+looks like you've already merged the gc_acceptor patches.
 
-NFS4_REVOKED_DELEG_STID would also be replaced by a revoked flag, which
-makes much more sene to start with as well.
+Jeff Layton (7):
+  sunrpc: remove __rcu annotation from struct gss_cl_ctx->gc_gss_ctx
+  sunrpc: fix RCU handling of gc_ctx field
+  sunrpc: clean up endianness warnings in setup_token
+  sunrpc: xdr_get_next_encode_buffer can be static
+  sunrpc: clean up sparse endianness warnings in gss_krb5_seal.c
+  sunrpc: clean up sparse endianness warnings in gss_krb5_wrap.c
+  sunrpc: remove "ec" argument from encrypt_v2 operation
 
-Btw, do you also plan to keep open stateids as NFS4_CLOSED_STID for
-4.1+?  In that case the comment there would need an update.  What about
-lock stateids?
+ include/linux/sunrpc/auth_gss.h       |  2 +-
+ include/linux/sunrpc/gss_krb5.h       |  4 +--
+ net/sunrpc/auth_gss/auth_gss.c        | 52 +++++++++++++++++++++++------------
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |  9 ++----
+ net/sunrpc/auth_gss/gss_krb5_seal.c   | 16 +++++------
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   | 10 +++----
+ net/sunrpc/xdr.c                      |  3 +-
+ 7 files changed, 55 insertions(+), 41 deletions(-)
+
+-- 
+1.9.3
 
