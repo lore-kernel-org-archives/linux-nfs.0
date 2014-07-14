@@ -1,110 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:46035 "EHLO
-	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757886AbaGBTxh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 15:53:37 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Steve Wise <swise@opengridcomputing.com>,
-        "'Chuck Lever'" <chuck.lever@oracle.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
- disconnect
-Date: Wed, 2 Jul 2014 19:53:36 +0000
-Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE0C5AE@CMEXMB1.ad.emulex.com>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
- <20140623223942.1634.89063.stgit@manet.1015granger.net>
- <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com>
- <53B45D7B.4020705@opengridcomputing.com>
- <EE7902D3F51F404C82415C4803930ACD3FE0C57A@CMEXMB1.ad.emulex.com>
- <006001cf962e$e20df020$a629d060$@opengridcomputing.com>
-In-Reply-To: <006001cf962e$e20df020$a629d060$@opengridcomputing.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:63972 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754800AbaGNNNt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 09:13:49 -0400
+Received: by mail-qa0-f42.google.com with SMTP id j15so3274026qaq.29
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Jul 2014 06:13:49 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] nfsd: eliminate nfsd4_init_callback
+Date: Mon, 14 Jul 2014 09:13:41 -0400
+Message-Id: <1405343622-14385-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405343622-14385-1-git-send-email-jlayton@primarydata.com>
+References: <1405343622-14385-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogU3RldmUgV2lzZSBbbWFp
-bHRvOnN3aXNlQG9wZW5ncmlkY29tcHV0aW5nLmNvbV0NCj4gU2VudDogVGh1cnNkYXksIEp1bHkg
-MDMsIDIwMTQgMToyMSBBTQ0KPiBUbzogRGV2ZXNoIFNoYXJtYTsgJ0NodWNrIExldmVyJzsgbGlu
-dXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LQ0KPiBuZnNAdmdlci5rZXJuZWwub3JnDQo+
-IFN1YmplY3Q6IFJFOiBbUEFUQ0ggdjEgMDUvMTNdIHhwcnRyZG1hOiBEb24ndCBkcmFpbiBDUXMg
-b24gdHJhbnNwb3J0DQo+IGRpc2Nvbm5lY3QNCj4gDQo+IA0KPiANCj4gPiAtLS0tLU9yaWdpbmFs
-IE1lc3NhZ2UtLS0tLQ0KPiA+IEZyb206IERldmVzaCBTaGFybWEgW21haWx0bzpEZXZlc2guU2hh
-cm1hQEVtdWxleC5Db21dDQo+ID4gU2VudDogV2VkbmVzZGF5LCBKdWx5IDAyLCAyMDE0IDI6NDMg
-UE0NCj4gPiBUbzogU3RldmUgV2lzZTsgQ2h1Y2sgTGV2ZXI7IGxpbnV4LXJkbWFAdmdlci5rZXJu
-ZWwub3JnOw0KPiA+IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBTdWJqZWN0OiBSRTog
-W1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRyYW5zcG9ydA0K
-PiA+IGRpc2Nvbm5lY3QNCj4gPg0KPiA+ID4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4g
-PiA+IEZyb206IFN0ZXZlIFdpc2UgW21haWx0bzpzd2lzZUBvcGVuZ3JpZGNvbXB1dGluZy5jb21d
-DQo+ID4gPiBTZW50OiBUaHVyc2RheSwgSnVseSAwMywgMjAxNCAxMjo1OSBBTQ0KPiA+ID4gVG86
-IERldmVzaCBTaGFybWE7IENodWNrIExldmVyOyBsaW51eC1yZG1hQHZnZXIua2VybmVsLm9yZzsg
-bGludXgtDQo+ID4gPiBuZnNAdmdlci5rZXJuZWwub3JnDQo+ID4gPiBTdWJqZWN0OiBSZTogW1BB
-VENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRyYW5zcG9ydA0KPiA+
-ID4gZGlzY29ubmVjdA0KPiA+ID4NCj4gPiA+IE9uIDcvMi8yMDE0IDI6MDYgUE0sIERldmVzaCBT
-aGFybWEgd3JvdGU6DQo+ID4gPiA+IFRoaXMgY2hhbmdlIGlzIHZlcnkgbXVjaCBwcm9uZSB0byBn
-ZW5lcmF0ZSBwb2xsX2NxIGVycm9ycyBiZWNhdXNlDQo+ID4gPiA+IG9mIHVuLWNsZWFuZWQgY29t
-cGxldGlvbnMgd2hpY2ggc3RpbGwgcG9pbnQgdG8gdGhlIG5vbi1leGlzdGVudA0KPiA+ID4gPiBR
-UHMuIE9uIHRoZSBuZXcgY29ubmVjdGlvbiB3aGVuIHRoZXNlIGNvbXBsZXRpb25zIGFyZSBwb2xs
-ZWQsIHRoZQ0KPiA+ID4gPiBwb2xsX2NxIHdpbGwgZmFpbA0KPiA+ID4gYmVjYXVzZSBvbGQgUVAg
-cG9pbnRlciBpcyBhbHJlYWR5IE5VTEwuDQo+ID4gPiA+IERpZCBhbnlvbmUgaGl0IHRoaXMgc2l0
-dWF0aW9uIGR1cmluZyB0aGVpciB0ZXN0aW5nPw0KPiA+ID4NCj4gPiA+IEhleSBEZXZlc2gsDQo+
-ID4gPg0KPiA+ID4gaXdfY3hnYjQgd2lsbCBzaWxlbnRseSB0b3NzIENRRXMgaWYgdGhlIFFQIGlz
-IG5vdCBhY3RpdmUuDQo+ID4NCj4gPiBZYSwganVzdCBub3cgY2hlY2tlZCB0aGF0IGluIG1seCBh
-bmQgY3hnYjQgZHJpdmVyIGNvZGUuIE9uIHRoZSBvdGhlcg0KPiA+IGhhbmQgb2NyZG1hIGlzIGFz
-c2VydGluZyBhIEJVRy1PTiBmb3Igc3VjaCBDUUVzIGNhdXNpbmcgc3lzdGVtIHBhbmljLg0KPiA+
-IE91dCBvZiBjdXJpb3NpdHkgSSBhbSBhc2tpbmcsIGhvdyB0aGlzIGNoYW5nZSBpcyB1c2VmdWwg
-aGVyZSwgaXMgaXQNCj4gPiByZWR1Y2luZyB0aGUgcmUtY29ubmVjdGlvbiB0aW1lLi4uQW55aG93
-IHJwY3JkbWFfY2xlYW5fY3Egd2FzDQo+ID4gZGlzY2FyZGluZyB0aGUgY29tcGxldGlvbnMgKGZs
-dXNoL3N1Y2Nlc3NmdWwgYm90aCkNCj4gPg0KPiANCj4gV2VsbCwgSSBkb24ndCB0aGluayB0aGVy
-ZSBpcyBhbnl0aGluZyByZXN0cmljdGluZyBhbiBhcHBsaWNhdGlvbiBmcm9tIGRlc3Ryb3lpbmcN
-Cj4gdGhlIFFQIHdpdGggcGVuZGluZyBDUUVzIG9uIGl0cyBDUXMuICAgU28gaXQgZGVmaW5pdGVs
-eSBzaG91bGRuJ3QgY2F1c2UgYQ0KPiBCVUdfT04oKSBJIHRoaW5rLiAgIEknbGwgaGF2ZSB0byBy
-ZWFkIHVwIGluIHRoZSBWZXJicyBzcGVjcyBpZiBkZXN0cm95aW5nIGEgUVANCj4ga2lsbHMgYWxs
-IHRoZSBwZW5kaW5nIENRRXMuLi4NCg0KT2ggY29uZnVzaW9uLi4ubGV0IG1lIGNsYXJpZnk6IGlu
-IG9jcmRtYSBCVUcgT04gaXMgaGl0IGluIHBvbGxfY3EoKSBhZnRlciByZS1jb25uZWN0aW9uIGhh
-cHBlbnMgYW5kIGNxIGlzIHBvbGxlZCBhZ2Fpbi4NCk5vdyB0aGUgZmlyc3QgY29tcGxldGlvbiBp
-biBDUSBzdGlsbCBwb2ludHMgdG8gb2xkIFFQLUlEIGZvciB3aGljaCBvY3JkbWEgZG9lcyBub3Qg
-aGF2ZSB2YWxpZCBRUCBwb2ludGVyLg0KDQo+IA0KPiANCj4gPiA+DQo+ID4gPg0KPiA+ID4gPj4g
-LS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gPiA+ID4+IEZyb206IGxpbnV4LXJkbWEtb3du
-ZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGludXgtcmRtYS0NCj4gPiA+ID4+IG93bmVyQHZn
-ZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIENodWNrIExldmVyDQo+ID4gPiA+PiBTZW50OiBU
-dWVzZGF5LCBKdW5lIDI0LCAyMDE0IDQ6MTAgQU0NCj4gPiA+ID4+IFRvOiBsaW51eC1yZG1hQHZn
-ZXIua2VybmVsLm9yZzsgbGludXgtbmZzQHZnZXIua2VybmVsLm9yZw0KPiA+ID4gPj4gU3ViamVj
-dDogW1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9uIHRyYW5zcG9y
-dA0KPiA+ID4gPj4gZGlzY29ubmVjdA0KPiA+ID4gPj4NCj4gPiA+ID4+IENRcyBhcmUgbm90IGRl
-c3Ryb3llZCB1bnRpbCB1bm1vdW50LiBCeSBkcmFpbmluZyBDUXMgb24gdHJhbnNwb3J0DQo+ID4g
-PiA+PiBkaXNjb25uZWN0LCBzdWNjZXNzZnVsIGNvbXBsZXRpb25zIHRoYXQgY2FuIGNoYW5nZSB0
-aGUNCj4gPiA+ID4+IHIuZnJtci5zdGF0ZSBmaWVsZCBjYW4gYmUgbWlzc2VkLg0KPiA+DQo+ID4g
-U3RpbGwgdGhvc2UgYXJlIG1pc3NlZCBpc27igJl0IGl0Li4uLlNpbmNlIHRob3NlIHN1Y2Nlc3Nm
-dWwgY29tcGxldGlvbnMNCj4gPiB3aWxsIHN0aWxsIGJlIGRyb3BwZWQgYWZ0ZXIgcmUtIGNvbm5l
-Y3Rpb24uIEFtIEkgbWlzc2luZyBzb21ldGhpbmcgdG8NCj4gPiB1bmRlcnN0YW5kaW5nIHRoZSBt
-b3RpdmF0aW9uLi4uDQo+ID4NCj4gPiA+ID4+DQo+ID4gPiA+PiBTaWduZWQtb2ZmLWJ5OiBDaHVj
-ayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gPiA+ID4+IC0tLQ0KPiA+ID4gPj4g
-ICBuZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgfCAgICA1IC0tLS0tDQo+ID4gPiA+PiAgIDEg
-ZmlsZSBjaGFuZ2VkLCA1IGRlbGV0aW9ucygtKQ0KPiA+ID4gPj4NCj4gPiA+ID4+IGRpZmYgLS1n
-aXQgYS9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gPiA+ID4+IGIvbmV0L3N1bnJwYy94
-cHJ0cmRtYS92ZXJicy5jIGluZGV4IDNjN2Y5MDQuLjQ1MWUxMDAgMTAwNjQ0DQo+ID4gPiA+PiAt
-LS0gYS9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gPiA+ID4+ICsrKyBiL25ldC9zdW5y
-cGMveHBydHJkbWEvdmVyYnMuYw0KPiA+ID4gPj4gQEAgLTg3Myw5ICs4NzMsNiBAQCByZXRyeToN
-Cj4gPiA+ID4+ICAgCQkJZHByaW50aygiUlBDOiAgICAgICAlczoNCj4gcnBjcmRtYV9lcF9kaXNj
-b25uZWN0Ig0KPiA+ID4gPj4gICAJCQkJIiBzdGF0dXMgJWlcbiIsIF9fZnVuY19fLCByYyk7DQo+
-ID4gPiA+Pg0KPiA+ID4gPj4gLQkJcnBjcmRtYV9jbGVhbl9jcShlcC0+cmVwX2F0dHIucmVjdl9j
-cSk7DQo+ID4gPiA+PiAtCQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBfYXR0ci5zZW5kX2NxKTsN
-Cj4gPiA+ID4+IC0NCj4gPiA+ID4+ICAgCQl4cHJ0ID0gY29udGFpbmVyX29mKGlhLCBzdHJ1Y3Qg
-cnBjcmRtYV94cHJ0LCByeF9pYSk7DQo+ID4gPiA+PiAgIAkJaWQgPSBycGNyZG1hX2NyZWF0ZV9p
-ZCh4cHJ0LCBpYSwNCj4gPiA+ID4+ICAgCQkJCShzdHJ1Y3Qgc29ja2FkZHIgKikmeHBydC0NCj4g
-PnJ4X2RhdGEuYWRkcik7DQo+ID4gPiBAQCAtOTg1LDggKzk4Miw2IEBADQo+ID4gPiA+PiBycGNy
-ZG1hX2VwX2Rpc2Nvbm5lY3Qoc3RydWN0IHJwY3JkbWFfZXAgKmVwLCBzdHJ1Y3QgcnBjcmRtYV9p
-YQ0KPiA+ID4gPj4gKmlhKSB7DQo+ID4gPiA+PiAgIAlpbnQgcmM7DQo+ID4gPiA+Pg0KPiA+ID4g
-Pj4gLQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBfYXR0ci5yZWN2X2NxKTsNCj4gPiA+ID4+IC0J
-cnBjcmRtYV9jbGVhbl9jcShlcC0+cmVwX2F0dHIuc2VuZF9jcSk7DQo+ID4gPiA+PiAgIAlyYyA9
-IHJkbWFfZGlzY29ubmVjdChpYS0+cmlfaWQpOw0KPiA+ID4gPj4gICAJaWYgKCFyYykgew0KPiA+
-ID4gPj4gICAJCS8qIHJldHVybnMgd2l0aG91dCB3YWl0IGlmIG5vdCBjb25uZWN0ZWQgKi8NCj4g
-PiA+ID4+DQo+ID4gPiA+PiAtLQ0KPiA+ID4gPj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxp
-c3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXJkbWEiDQo+ID4gPiA+PiBpbiB0
-aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZyBNb3JlDQo+
-ID4gPiBtYWpvcmRvbW8NCj4gPiA+ID4+IGluZm8gYXQgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9t
-YWpvcmRvbW8taW5mby5odG1sDQo+ID4gPiA+IE4gICAgIHIgIHkgICBiIFggIMendiBeICneunsu
-biArICAgIHsgICAiICBebiByICAgeiAaICBoICAgICYgIB4gRyAgIGggAw0KPiA+ID4gPiAoIOma
-jiDdomoiICAaIBttICAgICB6IN6WICAgZiAgIGggICB+IG1tbD09DQo+IA0KDQo=
+It's just an obfuscated INIT_WORK call. Just make the work_func_t a
+non-static symbol and use a normal INIT_WORK call.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4callback.c | 8 ++------
+ fs/nfsd/nfs4state.c    | 4 ++--
+ fs/nfsd/state.h        | 2 +-
+ 3 files changed, 5 insertions(+), 9 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 2c73cae9899d..30a71cb46001 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1011,7 +1011,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 		run_nfsd4_cb(cb);
+ }
+ 
+-static void nfsd4_do_callback_rpc(struct work_struct *w)
++void
++nfsd4_do_callback_rpc(struct work_struct *w)
+ {
+ 	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
+ 	struct nfs4_client *clp = cb->cb_clp;
+@@ -1031,11 +1032,6 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
+ 			cb->cb_ops, cb);
+ }
+ 
+-void nfsd4_init_callback(struct nfsd4_callback *cb)
+-{
+-	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
+-}
+-
+ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfsd4_callback *cb = &dp->dl_recall;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 225f98c7d00d..56ea4f12803e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -592,7 +592,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+ 	atomic_set(&dp->dl_count, 1);
+-	nfsd4_init_callback(&dp->dl_recall);
++	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_do_callback_rpc);
+ 	return dp;
+ }
+ 
+@@ -1677,7 +1677,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 		spin_unlock(&nn->client_lock);
+ 		return NULL;
+ 	}
+-	nfsd4_init_callback(&clp->cl_cb_null);
++	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_do_callback_rpc);
+ 	clp->cl_time = get_seconds();
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+ 	copy_verf(clp, verf);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 015b972da8ba..20857142773f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -436,7 +436,7 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
+ extern __be32 nfs4_check_open_reclaim(clientid_t *clid,
+ 		struct nfsd4_compound_state *cstate, struct nfsd_net *nn);
+ extern int set_callback_cred(void);
+-extern void nfsd4_init_callback(struct nfsd4_callback *);
++void nfsd4_do_callback_rpc(struct work_struct *w);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+ extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
+ extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
+-- 
+1.9.3
+
