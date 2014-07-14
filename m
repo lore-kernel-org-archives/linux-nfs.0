@@ -1,62 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f48.google.com ([209.85.215.48]:47908 "EHLO
-	mail-la0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752650AbaG3LXh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 07:23:37 -0400
-Received: by mail-la0-f48.google.com with SMTP id gl10so772569lab.35
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 04:23:36 -0700 (PDT)
-From: Natanael Copa <natanael.copa@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Natanael Copa <ncopa@alpinelinux.org>
-Subject: [PATCH 10/11] exportfs: fix test of NULL pointer in host_pton()
-Date: Wed, 30 Jul 2014 13:23:18 +0200
-Message-Id: <1406719399-1735-11-git-send-email-ncopa@alpinelinux.org>
-In-Reply-To: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
-References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
+Received: from fieldses.org ([174.143.236.118]:42791 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754218AbaGNNiU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Jul 2014 09:38:20 -0400
+Date: Mon, 14 Jul 2014 09:38:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/11] nfsd: deny mode handling overhaul
+Message-ID: <20140714133810.GC17956@fieldses.org>
+References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+ <20140710201448.GF26561@fieldses.org>
+ <20140711074656.GA17661@infradead.org>
+ <20140711143128.GA7305@fieldses.org>
+ <20140711114227.2902a15e@tlielax.poochiereds.net>
+ <20140713114244.GA30809@infradead.org>
+ <20140713075250.18677c29@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140713075250.18677c29@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-should fix https://bugzilla.redhat.com/show_bug.cgi?id=1083018
+On Sun, Jul 13, 2014 at 07:52:50AM -0400, Jeff Layton wrote:
+> On Sun, 13 Jul 2014 04:42:44 -0700
+> Christoph Hellwig <hch@infradead.org> wrote:
+> 
+> > On Fri, Jul 11, 2014 at 11:42:27AM -0400, Jeff Layton wrote:
+> > > Yes, thanks to both of you. The review and merging are much
+> > > appreciated. Only 89 patches to go once these go in!
+> > 
+> > Might help if we can get them into slighly smaller reviewable chunks,
+> > e.g. the next batch might be the stateid refcounting and everything
+> > around it, deferring the various client and session related bits and the
+> > fault injection changes for now.
+> 
+> That should be doable as long as we're ok with adding in superfluous
+> spinlocking until the client_mutex is removed.
 
-Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
----
- support/export/hostname.c | 12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+It means that an attempt to bisect any race introduced by the series
+will land on the one patch that drops the state lock.
 
-diff --git a/support/export/hostname.c b/support/export/hostname.c
-index ad595d1..d9153e1 100644
---- a/support/export/hostname.c
-+++ b/support/export/hostname.c
-@@ -115,6 +115,11 @@ host_pton(const char *paddr)
- 	 * have a real AF_INET presentation address, before invoking
- 	 * getaddrinfo(3) to generate the full addrinfo list.
- 	 */
-+	if (paddr == NULL) {
-+		xlog(D_GENERAL, "%s: passed a NULL presentation address",
-+			__func__);
-+		return NULL;
-+	}
- 	inet4 = 1;
- 	if (inet_pton(AF_INET, paddr, &sin.sin_addr) == 0)
- 		inet4 = 0;
-@@ -123,15 +128,12 @@ host_pton(const char *paddr)
- 	switch (error) {
- 	case 0:
- 		if (!inet4 && ai->ai_addr->sa_family == AF_INET) {
-+			xlog(D_GENERAL, "%s: failed to convert %s",
-+					__func__, paddr);
- 			freeaddrinfo(ai);
- 			break;
- 		}
- 		return ai;
--	case EAI_NONAME:
--		if (paddr == NULL)
--			xlog(D_GENERAL, "%s: passed a NULL presentation address",
--				__func__);
--		break;
- 	case EAI_SYSTEM:
- 		xlog(D_GENERAL, "%s: failed to convert %s: (%d) %m",
- 				__func__, paddr, errno);
--- 
-2.0.3
+But maybe that's the best we can do.
 
+--b.
+
+> I'll work on breaking
+> out the next set. It might be a few days as I'm still looking at
+> whether it's feasible to not alter the sc_type like the code does today.
