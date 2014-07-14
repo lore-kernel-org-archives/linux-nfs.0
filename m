@@ -1,69 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:34867 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756416AbaGIQ4l (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:56:41 -0400
-Subject: [PATCH v2 01/21] xprtrdma: Fix panic in
- rpcrdma_register_frmr_external()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Jul 2014 12:56:39 -0400
-Message-ID: <20140709165639.3496.6466.stgit@manet.1015granger.net>
-In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qg0-f43.google.com ([209.85.192.43]:48779 "EHLO
+	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754539AbaGNMZx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 08:25:53 -0400
+Received: by mail-qg0-f43.google.com with SMTP id a108so3192225qge.2
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Jul 2014 05:25:52 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: davem@davemloft.net
+Cc: kuznet@ms2.inr.ac.ru, jmorris@namei.org, yoshfuji@linux-ipv6.org,
+        kaber@trash.net, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH] net: clean up some sparse endianness warnings in ipv6.h
+Date: Mon, 14 Jul 2014 08:25:46 -0400
+Message-Id: <1405340746-10678-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-seg1->mr_nsegs is not yet initialized when it is used to unmap
-segments during an error exit. Use the same unmapping logic for
-all error exits.
+sparse is throwing warnings when building sunrpc modules due to some
+endianness shenanigans in ipv6.h. Sprinkle some endianness fixups to
+silence them. These should all get fixed up at compile time, so I don't
+think this will add any extra work to be done at runtime.
 
-"if (frmr_wr.wr.fast_reg.length < len) {" used to be a BUG_ON check.
-The broken code will never be executed under normal operation.
-
-Fixes: c977dea (xprtrdma: Remove BUG_ON() call sites)
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   12 +++++++-----
- 1 file changed, 7 insertions(+), 5 deletions(-)
+ include/net/ipv6.h | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 13dbd1c..78bd7c6 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1545,9 +1545,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
- 	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
- 	if (frmr_wr.wr.fast_reg.length < len) {
--		while (seg1->mr_nsegs--)
--			rpcrdma_unmap_one(ia, seg++);
--		return -EIO;
-+		rc = -EIO;
-+		goto out_err;
- 	}
+diff --git a/include/net/ipv6.h b/include/net/ipv6.h
+index 574337fe72dd..5ed2c24fe950 100644
+--- a/include/net/ipv6.h
++++ b/include/net/ipv6.h
+@@ -557,9 +557,9 @@ static inline u32 __ipv6_addr_jhash(const struct in6_addr *a, const u32 initval)
+ static inline bool ipv6_addr_loopback(const struct in6_addr *a)
+ {
+ #if defined(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS) && BITS_PER_LONG == 64
+-	const unsigned long *ul = (const unsigned long *)a;
++	const __be64 *be = (const __be64 *)a;
  
- 	/* Bump the key */
-@@ -1565,8 +1564,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
- 			" status %i\n", __func__, rc);
--		while (i--)
--			rpcrdma_unmap_one(ia, --seg);
-+		goto out_err;
- 	} else {
- 		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 		seg1->mr_base = seg1->mr_dma + pageoff;
-@@ -1574,6 +1572,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 		seg1->mr_len = len;
- 	}
- 	*nsegs = i;
-+	return 0;
-+out_err:
-+	while (i--)
-+		rpcrdma_unmap_one(ia, --seg);
- 	return rc;
+-	return (ul[0] | (ul[1] ^ cpu_to_be64(1))) == 0UL;
++	return (be[0] | (be[1] ^ cpu_to_be64(1))) == cpu_to_be64(0UL);
+ #else
+ 	return (a->s6_addr32[0] | a->s6_addr32[1] |
+ 		a->s6_addr32[2] | (a->s6_addr32[3] ^ htonl(1))) == 0;
+@@ -570,11 +570,11 @@ static inline bool ipv6_addr_v4mapped(const struct in6_addr *a)
+ {
+ 	return (
+ #if defined(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS) && BITS_PER_LONG == 64
+-		*(__be64 *)a |
++		(*(__be64 *)a != cpu_to_be64(0)) |
+ #else
+-		(a->s6_addr32[0] | a->s6_addr32[1]) |
++		((a->s6_addr32[0] | a->s6_addr32[1]) != cpu_to_be32(0)) |
+ #endif
+-		(a->s6_addr32[2] ^ htonl(0x0000ffff))) == 0UL;
++		((a->s6_addr32[2] ^ htonl(0x0000ffff)) == cpu_to_be32(0)));
  }
  
+ /*
+-- 
+1.9.3
 
