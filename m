@@ -1,156 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:56030 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751053AbaGJKt2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 06:49:28 -0400
-Date: Thu, 10 Jul 2014 03:49:27 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:56901 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751943AbaGNB6B (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:58:01 -0400
+Received: by mail-qa0-f52.google.com with SMTP id j15so2751333qaq.11
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:58:00 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 017/100] nfsd: make deny mode enforcement more
- efficient and close races in it
-Message-ID: <20140710104927.GC6935@infradead.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
- <1404842668-22521-18-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1404842668-22521-18-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH 6/7] sunrpc: clean up sparse endianness warnings in gss_krb5_wrap.c
+Date: Sun, 13 Jul 2014 21:57:43 -0400
+Message-Id: <1405303064-9102-7-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> +__nfs4_file_get_access(struct nfs4_file *fp, u32 access)
->  {
-> -	WARN_ON_ONCE(!(fp->fi_fds[oflag] || fp->fi_fds[O_RDWR]));
-> -	atomic_inc(&fp->fi_access[oflag]);
-> +	int oflag = nfs4_access_to_omode(access);
-> +
-> +	if (oflag == O_RDWR) {
-> +		atomic_inc(&fp->fi_access[O_RDONLY]);
-> +		atomic_inc(&fp->fi_access[O_WRONLY]);
-> +	} else
-> +		atomic_inc(&fp->fi_access[oflag]);
->  }
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ net/sunrpc/auth_gss/gss_krb5_wrap.c | 10 +++++-----
+ 1 file changed, 5 insertions(+), 5 deletions(-)
 
-Miught be worth to simply kill the old, simple
-__nfs4_file_get_access/__nfs4_file_put_access helper that just wrap
-the atomic ops in your earlier patch instead of reshuffling everything
-here again.
-
-> +nfs4_file_get_access(struct nfs4_file *fp, u32 access)
->  {
->  	lockdep_assert_held(&fp->fi_lock);
->  
->  	/* Note: relies on NFS4_SHARE_ACCESS_BOTH == READ|WRITE */
->  	access &= NFS4_SHARE_ACCESS_BOTH;
-> +
-> +	/* Does this access mask make sense? */
->  	if (access == 0)
-> +		return nfserr_inval;
->  
-> +	/* Does it conflict with a deny mode already set? */
-> +	if ((access & fp->fi_share_deny) != 0)
-> +		return nfserr_share_denied;
-> +
-> +	__nfs4_file_get_access(fp, access);
-> +	return nfs_ok;
-
-Why bother clearing out the inval bits from access?  Just do a:
-
-	if (access & ~NFS4_SHARE_ACCESS_BOTH)
-		return nfserr_inval;
-
-also that check doesn't really belong in here, might be better to add it
-to the initial nfs4_file_get_access refactor.
-
-> +static __be32 nfs4_file_check_deny(struct nfs4_file *fp, u32 deny)
-> +{
-> +	/* Common case is that there is no deny mode. */
-> +	deny &= NFS4_SHARE_DENY_BOTH;
-> +	if (deny) {
-
-No need to reject invalid ones here unlike the access case?  Any reason
-to handle them differently?
-
-Otherwise again no need to clear them out, that just makes the code
-harder to read.
-
-> +		/* Note: relies on NFS4_SHARE_DENY_BOTH == READ|WRITE */
-
-READ should be NFS4_SHARE_DENY_READ and same for write I guess?  I don't
-really think you need these comments anyway, as this is part of the
-protocol.
-
->  
-> +/*
-> + * A stateid that had a deny mode associated with it is being released
-> + * or downgraded. Recalculate the deny mode on the file.
-> + */
-> +static void
-> +recalculate_deny_mode(struct nfs4_file *fp)
-> +{
-> +	struct nfs4_ol_stateid *stp;
-> +
-> +	spin_lock(&fp->fi_lock);
-> +	fp->fi_share_deny = 0;
-> +	list_for_each_entry(stp, &fp->fi_stateids, st_perfile)
-> +		fp->fi_share_deny |= bmap_to_share_mode(stp->st_deny_bmap);
-
-Seems like bmap_to_share_mode is superflous with your change of
-st_deny_bmap to a char, this could become:
-
-		fp->fi_share_deny |= stp->st_deny_bmap;
-
->  /* release all access and file references for a given stateid */
->  static void
->  release_all_access(struct nfs4_ol_stateid *stp)
->  {
->  	int i;
-> +	struct nfs4_file *fp = stp->st_file;
-> +
-> +	if (fp && stp->st_deny_bmap != 0)
-> +		recalculate_deny_mode(fp);
-
-Can fp be zero here?
-
-> +out_put_access:
-> +	stp->st_access_bmap = old_access_bmap;
-> +	nfs4_file_put_access(fp, open->op_share_access);
-> +	reset_union_bmap_deny(bmap_to_share_mode(old_deny_bmap), stp);
-
-Instead of setting stp->st_access_bmap to the old bmap and then passing
-it to reset_union_bmap_deny just pass the bitmap there directly?  Or
-just kill reset_union_bmap_denyand inline it given how simple it should have
-become with my previous comments addressed.
-
-
->  static __be32
->  nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
->  {
->  	__be32 status;
-> +	unsigned char old_deny_bmap;
->  
->  	if (!test_access(open->op_share_access, stp))
-> +		return nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
->  
-> +	/* test and set deny mode */
-> +	spin_lock(&fp->fi_lock);
-> +	status = nfs4_file_check_deny(fp, open->op_share_deny);
-> +	if (status == nfs_ok) {
-> +		old_deny_bmap = stp->st_deny_bmap;
-> +		set_deny(open->op_share_deny, stp);
-
-Maybe set_deny should return the old bitmap given that quite a few
-callers care?  Maybe the set_deny should even move into
-nfs4_file_check_deny which could return the old one, making it an check
-and set operation.
-
-> @@ -4603,7 +4673,7 @@ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
->  
->  	if (test_access(access, lock_stp))
->  		return;
-> -	nfs4_file_get_access(fp, access);
-> +	__nfs4_file_get_access(fp, access);
->  	set_access(access, lock_stp);
-
-Why do we not bother with checking the deny mode here?
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index 42560e55d978..c5cc0270a334 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -201,9 +201,9 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
+ 
+ 	msg_start = ptr + GSS_KRB5_TOK_HDR_LEN + kctx->gk5e->cksumlength;
+ 
+-	*(__be16 *)(ptr + 2) = cpu_to_le16(kctx->gk5e->signalg);
++	*(__be16 *)(ptr + 2) = (__force __be16)cpu_to_le16(kctx->gk5e->signalg);
+ 	memset(ptr + 4, 0xff, 4);
+-	*(__be16 *)(ptr + 4) = cpu_to_le16(kctx->gk5e->sealalg);
++	*(__be16 *)(ptr + 4) = (__force __be16)cpu_to_le16(kctx->gk5e->sealalg);
+ 
+ 	gss_krb5_make_confounder(msg_start, conflen);
+ 
+@@ -438,7 +438,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+ 	u8		*ptr, *plainhdr;
+ 	s32		now;
+ 	u8		flags = 0x00;
+-	__be16		*be16ptr, ec = 0;
++	__be16		*be16ptr;
+ 	__be64		*be64ptr;
+ 	u32		err;
+ 
+@@ -468,7 +468,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+ 	be16ptr = (__be16 *)ptr;
+ 
+ 	blocksize = crypto_blkcipher_blocksize(kctx->acceptor_enc);
+-	*be16ptr++ = cpu_to_be16(ec);
++	*be16ptr++ = cpu_to_be16(0);
+ 	/* "inner" token header always uses 0 for RRC */
+ 	*be16ptr++ = cpu_to_be16(0);
+ 
+@@ -477,7 +477,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+ 	*be64ptr = cpu_to_be64(kctx->seq_send64++);
+ 	spin_unlock(&krb5_seq_lock);
+ 
+-	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, ec, pages);
++	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, 0, pages);
+ 	if (err)
+ 		return err;
+ 
+-- 
+1.9.3
 
