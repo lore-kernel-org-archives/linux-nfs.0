@@ -1,95 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:46867 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754491AbaG3BfQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:16 -0400
-Received: by mail-qg0-f42.google.com with SMTP id j5so678264qga.1
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:15 -0700 (PDT)
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:41197 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751962AbaGNB6C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:58:02 -0400
+Received: by mail-qg0-f44.google.com with SMTP id j107so2941699qga.31
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:58:01 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 17/38] nfsd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
-Date: Tue, 29 Jul 2014 21:34:22 -0400
-Message-Id: <1406684083-19736-18-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 7/7] sunrpc: remove "ec" argument from encrypt_v2 operation
+Date: Sun, 13 Jul 2014 21:57:44 -0400
+Message-Id: <1405303064-9102-8-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+It's always 0.
 
-Ensure that all the callers put the open stateid after use.
-Necessary step toward client_mutex removal.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/gss_krb5.h       | 4 ++--
+ net/sunrpc/auth_gss/gss_krb5_crypto.c | 9 ++-------
+ net/sunrpc/auth_gss/gss_krb5_wrap.c   | 2 +-
+ 3 files changed, 5 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8e18ca49555f..a777666044f1 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4405,6 +4405,8 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- 						NFS4_OPEN_STID, stpp, nn);
- 	if (status)
- 		return status;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&(*stpp)->st_stid.sc_count);
- 	oo = openowner((*stpp)->st_stateowner);
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
- 		return nfserr_bad_stateid;
-@@ -4509,12 +4511,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	if (!test_access(od->od_share_access, stp)) {
- 		dprintk("NFSD: access not a subset of current bitmap: 0x%hhx, input access=%08x\n",
- 			stp->st_access_bmap, od->od_share_access);
--		goto out;
-+		goto put_stateid;
- 	}
- 	if (!test_deny(od->od_share_deny, stp)) {
- 		dprintk("NFSD: deny not a subset of current bitmap: 0x%hhx, input deny=%08x\n",
- 			stp->st_deny_bmap, od->od_share_deny);
--		goto out;
-+		goto put_stateid;
- 	}
- 	nfs4_stateid_downgrade(stp, od->od_share_access);
+diff --git a/include/linux/sunrpc/gss_krb5.h b/include/linux/sunrpc/gss_krb5.h
+index 5af2931cf58d..df02a4188487 100644
+--- a/include/linux/sunrpc/gss_krb5.h
++++ b/include/linux/sunrpc/gss_krb5.h
+@@ -81,7 +81,7 @@ struct gss_krb5_enctype {
+ 		       struct xdr_netobj *in,
+ 		       struct xdr_netobj *out);	/* complete key generation */
+ 	u32 (*encrypt_v2) (struct krb5_ctx *kctx, u32 offset,
+-			   struct xdr_buf *buf, int ec,
++			   struct xdr_buf *buf,
+ 			   struct page **pages); /* v2 encryption function */
+ 	u32 (*decrypt_v2) (struct krb5_ctx *kctx, u32 offset,
+ 			   struct xdr_buf *buf, u32 *headskip,
+@@ -310,7 +310,7 @@ gss_krb5_aes_make_key(const struct gss_krb5_enctype *gk5e,
  
-@@ -4523,6 +4525,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&od->od_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 	status = nfs_ok;
-+put_stateid:
-+	nfs4_put_stid(&stp->st_stid);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	if (!cstate->replay_owner)
-@@ -4883,6 +4887,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_openowner *open_sop = NULL;
- 	struct nfs4_lockowner *lock_sop = NULL;
- 	struct nfs4_ol_stateid *lock_stp = NULL;
-+	struct nfs4_ol_stateid *open_stp = NULL;
- 	struct nfs4_file *fp;
- 	struct file *filp = NULL;
- 	struct file_lock *file_lock = NULL;
-@@ -4910,8 +4915,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
+ u32
+ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
+-		     struct xdr_buf *buf, int ec,
++		     struct xdr_buf *buf,
+ 		     struct page **pages);
  
- 	if (lock->lk_is_new) {
--		struct nfs4_ol_stateid *open_stp = NULL;
+ u32
+diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+index 0f43e894bc0a..f5ed9f6ece06 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -641,7 +641,7 @@ out:
+ 
+ u32
+ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
+-		     struct xdr_buf *buf, int ec, struct page **pages)
++		     struct xdr_buf *buf, struct page **pages)
+ {
+ 	u32 err;
+ 	struct xdr_netobj hmac;
+@@ -684,13 +684,8 @@ gss_krb5_aes_encrypt(struct krb5_ctx *kctx, u32 offset,
+ 		ecptr = buf->tail[0].iov_base;
+ 	}
+ 
+-	memset(ecptr, 'X', ec);
+-	buf->tail[0].iov_len += ec;
+-	buf->len += ec;
 -
- 		if (nfsd4_has_session(cstate))
- 			/* See rfc 5661 18.10.3: given clientid is ignored: */
- 			memcpy(&lock->v.new.clientid,
-@@ -5039,6 +5042,8 @@ out:
- 		fput(filp);
- 	if (lock_stp)
- 		nfs4_put_stid(&lock_stp->st_stid);
-+	if (open_stp)
-+		nfs4_put_stid(&open_stp->st_stid);
- 	if (status && new_state)
- 		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
+ 	/* copy plaintext gss token header after filler (if any) */
+-	memcpy(ecptr + ec, buf->head[0].iov_base + offset,
+-						GSS_KRB5_TOK_HDR_LEN);
++	memcpy(ecptr, buf->head[0].iov_base + offset, GSS_KRB5_TOK_HDR_LEN);
+ 	buf->tail[0].iov_len += GSS_KRB5_TOK_HDR_LEN;
+ 	buf->len += GSS_KRB5_TOK_HDR_LEN;
+ 
+diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+index c5cc0270a334..ccc10321d87d 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
++++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
+@@ -477,7 +477,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
+ 	*be64ptr = cpu_to_be64(kctx->seq_send64++);
+ 	spin_unlock(&krb5_seq_lock);
+ 
+-	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, 0, pages);
++	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, pages);
+ 	if (err)
+ 		return err;
+ 
 -- 
 1.9.3
 
