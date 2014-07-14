@@ -1,118 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7103 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756558AbaGITHl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jul 2014 15:07:41 -0400
-Message-ID: <53BD92F4.4010906@RedHat.com>
-Date: Wed, 09 Jul 2014 15:07:32 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] gssd: Error out when rpc_pipefs directory is empty
-References: <1404830019-4299-1-git-send-email-steved@redhat.com>	<20140709063200.6add2dce@tlielax.poochiereds.net>	<53BD8836.9080806@RedHat.com> <20140709144122.4729279e@tlielax.poochiereds.net>
-In-Reply-To: <20140709144122.4729279e@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:33562 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751943AbaGNB57 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:57:59 -0400
+Received: by mail-qg0-f50.google.com with SMTP id j5so2895633qga.9
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:57:59 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 5/7] sunrpc: clean up sparse endianness warnings in gss_krb5_seal.c
+Date: Sun, 13 Jul 2014 21:57:42 -0400
+Message-Id: <1405303064-9102-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+KG2_TOK_MIC is a "palindrome" so byte swapping is a no-op here.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ net/sunrpc/auth_gss/gss_krb5_seal.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-On 07/09/2014 02:41 PM, Jeff Layton wrote:
-> On Wed, 09 Jul 2014 14:21:42 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> Hey Jeff,
->>
->> On 07/09/2014 06:32 AM, Jeff Layton wrote:
->>> On Tue,  8 Jul 2014 10:33:39 -0400
->>> Steve Dickson <steved@redhat.com> wrote:
->>>
->>>> When there is no kernel modules loaded the rpc_pipefs
->>>> directory is empty, which cause rpc.gssd to silently
->>>> exit.
->>>>
->>>> This patch adds a check to see if the topdirs_list
->>>> is empty. If so error out without dropping a core.
->>>>
->>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>> ---
->>>>  utils/gssd/gssd_main_loop.c | 11 ++++++++---
->>>>  1 file changed, 8 insertions(+), 3 deletions(-)
->>>>
->>>> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
->>>> index 9970028..6946ab6 100644
->>>> --- a/utils/gssd/gssd_main_loop.c
->>>> +++ b/utils/gssd/gssd_main_loop.c
->>>> @@ -173,6 +173,10 @@ topdirs_init_list(void)
->>>>  		if (ret)
->>>>  			goto out_err;
->>>>  	}
->>>> +	if (TAILQ_EMPTY(&topdirs_list)) {
->>>> +		printerr(0, "ERROR: rpc_pipefs directory '%s' is empty!\n", pipefs_dir);
->>>> +		return -1;
->>>> +	}
->>>>  	closedir(pipedir);
->>>>  	return 0;
->>>>  out_err:
->>>> @@ -233,9 +237,10 @@ gssd_run()
->>>>  	sigaddset(&set, DNOTIFY_SIGNAL);
->>>>  	sigprocmask(SIG_UNBLOCK, &set, NULL);
->>>>  
->>>> -	if (topdirs_init_list() != 0)
->>>> -		return;
->>>> -
->>>> +	if (topdirs_init_list() != 0) {
->>>> +		/* Error msg is already printed */
->>>> +		exit(1);
->>>> +	}
->>>>  	init_client_list();
->>>>  
->>>>  	printerr(1, "beginning poll\n");
->>>
->>> Does it drop a core now? It looks sort of like it would just exit(1)
->>> silently.
->> No. But whenever gssd_run() returns, in main, abort() is called,
->> which is probably a bit brain dead... but it is what it is... 
->>
->>>
->>> In any case, this patch is certainly better than crashing, but gssd
->>> looks sort of like it's doing the wrong thing here. Should it not just
->>> wait idly for directories to show up instead of exiting if none are
->>> present?
->> The purpose/cope of this patch is to stop gssd from silently exiting
->> which the patch does... 
->>
->> The question of whether gssd should or should not be exiting is
->> a different problem... a problem this patch is not trying to solve.
->>
->> I tend to agree with you, that gssd probably should just hang out
->> but in what scenario is gssd start and none of the kernel modules
->> are loaded... Its not a normal one...
->>
->>>
->>> Also, because topdir_init_list is run only once, it looks like gssd
->>> doesn't properly handle the case where there may be some directories in
->>> rpc_pipefs when gssd starts, but then others show up later. Any that
->>> show up after gssd is started are just ignored currently, right? That
->>> seems like a subtle source of bugs if you just happen to start gssd a
->>> little early.
->>>
->> Again all this patch does is document the exit... Not processing late
->> showing up directories would be a problem.... but as always....
->> patches are welcomed!! ;-) 
->>
-> 
-> Fair enough. I don't forsee myself having much time for this anytime
-> soon, so the best we can do is probably make note of it until someone
-> else has the time and desire to fix it.
-> 
-> It's always hard to predict the order that things will be started,
-> particularly now that we have a trend toward more parallel startup with
-> systemd. Having daemons that are robust enough to deal with it when
-> things are not well-ordered is certainly ideal.
-
-I can't agree with you more!!! 
-
-steved.
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index 94ad57ff7169..3cf49ea54ca9 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -106,13 +106,13 @@ setup_token_v2(struct krb5_ctx *ctx, struct xdr_netobj *token)
+ 	 * just start the token */
+ 	krb5_hdr = ptr = (__be16 *)token->data;
+ 
+-	*ptr++ = KG2_TOK_MIC;
++	*ptr++ = cpu_to_be16(KG2_TOK_MIC);
+ 	p = (u8 *)ptr;
+ 	*p++ = flags;
+ 	*p++ = 0xff;
+ 	ptr = (__be16 *)p;
+-	*ptr++ = 0xffff;
+-	*ptr++ = 0xffff;
++	*ptr++ = cpu_to_be16(0xffff);
++	*ptr++ = cpu_to_be16(0xffff);
+ 
+ 	token->len = GSS_KRB5_TOK_HDR_LEN + ctx->gk5e->cksumlength;
+ 	return krb5_hdr;
+@@ -181,7 +181,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	spin_lock(&krb5_seq_lock);
+ 	seq_send = ctx->seq_send64++;
+ 	spin_unlock(&krb5_seq_lock);
+-	*((u64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
++	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
+ 
+ 	if (ctx->initiate) {
+ 		cksumkey = ctx->initiator_sign;
+-- 
+1.9.3
 
