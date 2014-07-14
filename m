@@ -1,79 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f66.google.com ([209.85.192.66]:34346 "EHLO
-	mail-qg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030643AbaGRSqX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 14:46:23 -0400
-Received: by mail-qg0-f66.google.com with SMTP id a108so914825qge.5
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 11:46:20 -0700 (PDT)
+Received: from mail-qa0-f50.google.com ([209.85.216.50]:33137 "EHLO
+	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755690AbaGNQpy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 12:45:54 -0400
+Received: by mail-qa0-f50.google.com with SMTP id s7so1737792qap.37
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Jul 2014 09:45:53 -0700 (PDT)
 From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 18 Jul 2014 14:46:16 -0400
+Date: Mon, 14 Jul 2014 12:45:51 -0400
 To: Christoph Hellwig <hch@infradead.org>
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 01/10] nfsd: Protect the nfs4_file delegation fields
- using the fi_lock
-Message-ID: <20140718144616.0bc1d806@tlielax.poochiereds.net>
-In-Reply-To: <20140718155402.GA23745@infradead.org>
-References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
-	<1405696416-32585-2-git-send-email-jlayton@primarydata.com>
-	<20140718155402.GA23745@infradead.org>
+Subject: Re: [PATCH v4 003/100] nfsd: Ensure stateids remain unique until
+ they are freed
+Message-ID: <20140714124551.391363a1@tlielax.poochiereds.net>
+In-Reply-To: <20140710084300.3ef4d466@tlielax.poochiereds.net>
+References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+	<1404842668-22521-4-git-send-email-jlayton@primarydata.com>
+	<20140710112342.GB10893@infradead.org>
+	<20140710084300.3ef4d466@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 18 Jul 2014 08:54:02 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+On Thu, 10 Jul 2014 08:43:00 -0400
+Jeff Layton <jlayton@primarydata.com> wrote:
 
-> > +out_unlock:
-> > +	spin_unlock(&fp->fi_lock);
-> > +	spin_unlock(&state_lock);
-> > +out_fput:
-> > +	if (filp)
-> > +		fput(filp);
+> On Thu, 10 Jul 2014 04:23:42 -0700
+> Christoph Hellwig <hch@infradead.org> wrote:
 > 
-> I don't think fput can be NULL here.
+> > On Tue, Jul 08, 2014 at 02:02:51PM -0400, Jeff Layton wrote:
+> > > From: Trond Myklebust <trond.myklebust@primarydata.com>
+> > > 
+> > > Add an extra delegation state to allow the stateid to remain in the idr
+> > > tree until the last reference has been released. This will be necessary
+> > > to ensure uniqueness once the client_mutex is removed.
+> > > 
+> > > [jlayton: reset the sc_type under the state_lock in unhash_delegation]
+> > 
+> > I'd be tempted to instead have a closed flag, there's plenty of space in
+> > the hole after sc_type anyway.
+> > 
+
+I've been looking at this and I don't really see much in the way of
+benefit from changing to a set of flags for that sort of thing. I don't
+think it will materially improve the code.
+
+Currently, we only rarely search for these "secondary" stateid types
+(only in nfsd4_close), and if we add in a set of flags then we have to
+worry about checking them in places where we're searching for "base"
+stateid types today.
+
+> > The rationale for that is that a stateid really shouldn't change the
+> > type during it's life time, and callers that specify the type to look
+> > up shouldn't bother with looking up different types due to this either.
+> > 
+
+This rationale seems somewhat backward. If we do this, callers that are
+currently looking up a specific type of stateid will now have to also
+check these flags in order to see if it's in the state that it expects,
+which is a more common case than the one where we search for a
+"secondary" sc_type.
+
+> > NFS4_REVOKED_DELEG_STID would also be replaced by a revoked flag, which
+> > makes much more sene to start with as well.
+> >
+
+There's also unhash_stid() in the current code which sets the sc_type
+of a lock stateid to 0 in order to make it unfindable. I think we're
+better served by simply using the sc_type for this.
+
+> 
+> That sort of change will ripple throughout the set. Your point about
+> not changing the sc_type is valid though. I'll see whether it's
+> doable.
+> 
+> > Btw, do you also plan to keep open stateids as NFS4_CLOSED_STID for
+> > 4.1+?  In that case the comment there would need an update.  What
+> > about lock stateids?
+> > 
+> 
+> No. For v4.1+ we have no need to keep stateids around that are closed.
+> They are released as soon as the close occurs. The only reason to keep
+> them around is for v4.0 replays.
 > 
 
-Correct. I'll fix that...
 
-> >  static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
-> >  {
-> > +	int status = 0;
-> > +
-> >  	if (fp->fi_had_conflict)
-> >  		return -EAGAIN;
-> >  	get_nfs4_file(fp);
-> > +	spin_lock(&state_lock);
-> > +	spin_lock(&fp->fi_lock);
-> >  	dp->dl_file = fp;
-> > +	if (!fp->fi_lease) {
-> > +		spin_unlock(&fp->fi_lock);
-> > +		spin_unlock(&state_lock);
-> >  		return nfs4_setlease(dp);
-> > +	}
-> >  	atomic_inc(&fp->fi_delegees);
-> >  	if (fp->fi_had_conflict) {
-> > +		status = -EAGAIN;
-> > +		goto out_unlock;
-> >  	}
-> >  	hash_delegation_locked(dp, fp);
-> > +out_unlock:
-> > +	spin_unlock(&fp->fi_lock);
-> >  	spin_unlock(&state_lock);
-> > +	return status;
-> 
-> I have to admit that I didn't have time to go through all the
-> surrounding code yet, but is there error handling correct here,
-> i.e. no need to rop the file reference and cleanup dp->dl_file for any
-> error or race case?
-> 
-
-No, we take a reference to the nfs4_file and then immediately set
-dl_file. At that point, once we put the delegation's final reference it
-will put the file reference.
-
-So, I *think* the error handling is now correct, but please do sanity
-check me on this if you're able.
 
 -- 
 Jeff Layton <jlayton@primarydata.com>
