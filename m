@@ -1,70 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:46803 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754744AbaGKOUy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 10:20:54 -0400
-Received: by mail-ig0-f176.google.com with SMTP id r10so4306167igi.3
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2014 07:20:54 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:64968 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751943AbaGNB54 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:57:56 -0400
+Received: by mail-qa0-f49.google.com with SMTP id dc16so2718543qab.36
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:57:55 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
 To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 2/5] nfs: nfs_page should take a ref on the head req
-Date: Fri, 11 Jul 2014 10:20:46 -0400
-Message-Id: <1405088449-11268-3-git-send-email-dros@primarydata.com>
-In-Reply-To: <1405088449-11268-1-git-send-email-dros@primarydata.com>
-References: <1405088449-11268-1-git-send-email-dros@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        Arnd Bergmann <arnd@arndb.de>,
+        Paul McKenney <paulmck@linux.vnet.ibm.com>
+Subject: [PATCH 2/7] sunrpc: fix RCU handling of gc_ctx field
+Date: Sun, 13 Jul 2014 21:57:39 -0400
+Message-Id: <1405303064-9102-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_pages that aren't the the head of a group must take a reference on the
-head as long as ->wb_head is set to it. This stops the head from hitting
-a refcount of 0 while there is still an active nfs_page for the page group.
+The handling of the gc_ctx pointer only seems to be partially RCU-safe.
+The assignment and freeing are done using RCU, but many places in the
+code seem to dereference that pointer without proper RCU safeguards.
 
-This avoids kref warnings in the writeback code when the page group head
-is found and referenced.
+Fix them to use rcu_dereference and to rcu_read_lock/unlock, and to
+properly handle the case where the pointer is NULL.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Cc: Arnd Bergmann <arnd@arndb.de>
+Cc: Paul McKenney <paulmck@linux.vnet.ibm.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/pagelist.c | 10 ++++++++++
- 1 file changed, 10 insertions(+)
+ net/sunrpc/auth_gss/auth_gss.c | 52 ++++++++++++++++++++++++++++--------------
+ 1 file changed, 35 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 50e10bb..8b074da 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -239,15 +239,21 @@ nfs_page_group_init(struct nfs_page *req, struct nfs_page *prev)
- 	WARN_ON_ONCE(prev == req);
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 73854314fb85..afb292cd797d 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -183,8 +183,9 @@ gss_cred_get_ctx(struct rpc_cred *cred)
+ 	struct gss_cl_ctx *ctx = NULL;
  
- 	if (!prev) {
-+		/* a head request */
- 		req->wb_head = req;
- 		req->wb_this_page = req;
- 	} else {
-+		/* a subrequest */
- 		WARN_ON_ONCE(prev->wb_this_page != prev->wb_head);
- 		WARN_ON_ONCE(!test_bit(PG_HEADLOCK, &prev->wb_head->wb_flags));
- 		req->wb_head = prev->wb_head;
- 		req->wb_this_page = prev->wb_this_page;
- 		prev->wb_this_page = req;
+ 	rcu_read_lock();
+-	if (gss_cred->gc_ctx)
+-		ctx = gss_get_ctx(gss_cred->gc_ctx);
++	ctx = rcu_dereference(gss_cred->gc_ctx);
++	if (ctx)
++		gss_get_ctx(ctx);
+ 	rcu_read_unlock();
+ 	return ctx;
+ }
+@@ -1207,13 +1208,13 @@ gss_destroying_context(struct rpc_cred *cred)
+ {
+ 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
+ 	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
++	struct gss_cl_ctx *ctx = rcu_dereference_protected(gss_cred->gc_ctx, 1);
+ 	struct rpc_task *task;
  
-+		/* All subrequests take a ref on the head request until
-+		 * nfs_page_group_destroy is called */
-+		kref_get(&req->wb_head->wb_kref);
+-	if (gss_cred->gc_ctx == NULL ||
+-	    test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
++	if (test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
+ 		return 0;
+ 
+-	gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
++	ctx->gc_proc = RPC_GSS_PROC_DESTROY;
+ 	cred->cr_ops = &gss_nullops;
+ 
+ 	/* Take a reference to ensure the cred will be destroyed either
+@@ -1274,7 +1275,7 @@ gss_destroy_nullcred(struct rpc_cred *cred)
+ {
+ 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
+ 	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
+-	struct gss_cl_ctx *ctx = gss_cred->gc_ctx;
++	struct gss_cl_ctx *ctx = rcu_dereference_protected(gss_cred->gc_ctx, 1);
+ 
+ 	RCU_INIT_POINTER(gss_cred->gc_ctx, NULL);
+ 	call_rcu(&cred->cr_rcu, gss_free_cred_callback);
+@@ -1349,20 +1350,30 @@ gss_cred_init(struct rpc_auth *auth, struct rpc_cred *cred)
+ static char *
+ gss_stringify_acceptor(struct rpc_cred *cred)
+ {
+-	char *string;
++	char *string = NULL;
+ 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
+-	struct xdr_netobj *acceptor = &gss_cred->gc_ctx->gc_acceptor;
++	struct gss_cl_ctx *ctx;
++	struct xdr_netobj *acceptor;
 +
- 		/* grab extra ref if head request has extra ref from
- 		 * the write/commit path to handle handoff between write
- 		 * and commit lists */
-@@ -271,6 +277,10 @@ nfs_page_group_destroy(struct kref *kref)
- 	struct nfs_page *req = container_of(kref, struct nfs_page, wb_kref);
- 	struct nfs_page *tmp, *next;
- 
-+	/* subrequests must release the ref on the head request */
-+	if (req->wb_head != req)
-+		nfs_release_request(req->wb_head);
++	rcu_read_lock();
++	ctx = rcu_dereference(gss_cred->gc_ctx);
++	if (!ctx)
++		goto out;
 +
- 	if (!nfs_page_group_sync_on_bit(req, PG_TEARDOWN))
- 		return;
++	acceptor = &ctx->gc_acceptor;
  
+ 	/* no point if there's no string */
+ 	if (!acceptor->len)
+-		return NULL;
++		goto out;
+ 
+ 	string = kmalloc(acceptor->len + 1, GFP_KERNEL);
+ 	if (!string)
+-		return string;
++		goto out;
+ 
+ 	memcpy(string, acceptor->data, acceptor->len);
+ 	string[acceptor->len] = '\0';
++out:
++	rcu_read_unlock();
+ 	return string;
+ }
+ 
+@@ -1374,15 +1385,16 @@ static int
+ gss_key_timeout(struct rpc_cred *rc)
+ {
+ 	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
++	struct gss_cl_ctx *ctx;
+ 	unsigned long now = jiffies;
+ 	unsigned long expire;
+ 
+-	if (gss_cred->gc_ctx == NULL)
+-		return -EACCES;
+-
+-	expire = gss_cred->gc_ctx->gc_expiry - (gss_key_expire_timeo * HZ);
+-
+-	if (time_after(now, expire))
++	rcu_read_lock();
++	ctx = rcu_dereference(gss_cred->gc_ctx);
++	if (ctx)
++		expire = ctx->gc_expiry - (gss_key_expire_timeo * HZ);
++	rcu_read_unlock();
++	if (!ctx || time_after(now, expire))
+ 		return -EACCES;
+ 	return 0;
+ }
+@@ -1391,13 +1403,19 @@ static int
+ gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
+ {
+ 	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
++	struct gss_cl_ctx *ctx;
+ 	int ret;
+ 
+ 	if (test_bit(RPCAUTH_CRED_NEW, &rc->cr_flags))
+ 		goto out;
+ 	/* Don't match with creds that have expired. */
+-	if (time_after(jiffies, gss_cred->gc_ctx->gc_expiry))
++	rcu_read_lock();
++	ctx = rcu_dereference(gss_cred->gc_ctx);
++	if (!ctx || time_after(jiffies, ctx->gc_expiry)) {
++		rcu_read_unlock();
+ 		return 0;
++	}
++	rcu_read_unlock();
+ 	if (!test_bit(RPCAUTH_CRED_UPTODATE, &rc->cr_flags))
+ 		return 0;
+ out:
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
