@@ -1,223 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:42640 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755397AbaGHSG2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:28 -0400
-Received: by mail-qg0-f47.google.com with SMTP id q108so5361587qgd.20
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:28 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 084/100] nfsd: add more granular locking to forget_openowners fault injector
-Date: Tue,  8 Jul 2014 14:04:12 -0400
-Message-Id: <1404842668-22521-85-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:56989 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754847AbaGNNAb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 09:00:31 -0400
+Received: by mail-qa0-f52.google.com with SMTP id j15so3124298qaq.25
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Jul 2014 06:00:31 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 14 Jul 2014 09:00:28 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: nfs4_lookup_revalidate need to report STALE
+ inodes.
+Message-ID: <20140714090028.6f04fd2c@tlielax.poochiereds.net>
+In-Reply-To: <20140714223513.47807c98@notabene.brown>
+References: <20140714151405.2fa06dd7@notabene.brown>
+	<20140714081455.69f55224@tlielax.poochiereds.net>
+	<20140714223513.47807c98@notabene.brown>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/7oYy9cPls=.whDZ5dBL2yPt"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...instead of relying on the client_mutex.
+--Sig_/7oYy9cPls=.whDZ5dBL2yPt
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Also, fix up the printk output that is generated when the file is read.
-It currently says that it's reporting the number of open files, but
-it's actually reporting the number of openowners.
+On Mon, 14 Jul 2014 22:35:13 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/fault_inject.c |   8 ++--
- fs/nfsd/nfs4state.c    | 122 +++++++++++++++++++++++++++++++++++++++++++++----
- fs/nfsd/state.h        |   7 ++-
- 3 files changed, 122 insertions(+), 15 deletions(-)
+> On Mon, 14 Jul 2014 08:14:55 -0400 Jeff Layton <jeff.layton@primarydata.c=
+om>
+> wrote:
+>=20
+> > On Mon, 14 Jul 2014 15:14:05 +1000
+> > NeilBrown <neilb@suse.de> wrote:
+> >=20
+> > >=20
+> > > If an 'open' of a file in an NFSv4 filesystem finds that the dentry is
+> > > in cache, but the inode is stale (on the server), the dentry will not
+> > > be re-validated immediately and may cause ESTALE to be returned to
+> > > user-space.
+> > >=20
+> > > For a non-create 'open', do_last() calls lookup_fast() and on success
+> > > will eventually call may_open() which calls into nfs_permission().
+> > > If nfs_permission() makes the ACCESS call to the server it will get
+> > > NFS4ERR_STALE, resulting in ESTALE from may_open() and thence from
+> > > do_last().
+> > > The retry-on-ESTALE in filename_lookup() will repeat exactly the same
+> > > process because nothing in this path will invalidate the dentry due to
+> > > the inode being stale, so the ESTALE will be returned.
+> > >=20
+> > > lookup_fast() calls ->d_revalidate(), but for an OPEN on an NFSv4
+> > > filesystem, that will succeed for regular files:
+> > > 	/* Let f_op->open() actually open (and revalidate) the file */
+> > >=20
+> > > Unfortunately in the case of a STALE inode, f_op->open() never gets
+> > > called.  If we teach nfs4_lookup_revalidate() to report a failure on
+> > > NFS_STALE() inodes, then the dentry will be invalidated and a full
+> > > lookup will be attempted.  The ESTALE errors go away.
+> > >=20
+> > >=20
+> > > While I think this fix is correct, I'm not convinced that it is
+> > > sufficient, particularly if lookupcache=3Dnone.
+> > > The current code will fail an "open" is nfs_permission() fails,
+> > > without having performed a LOOKUP. i.e. it will use the cache.
+> > > nfs_lookup_revalidate will force a lookup before the permission check
+> > > if NFS_MOUNT_LOOKUP_CACHE_NONE, but nfs4_lookup_revalidate will not.
+> > >=20
+> >=20
+> > This patch should make the code fall through to nfs_lookup_revalidate,
+> > which would then force the lookup, right?
+>=20
+> Yes ... though maybe that's not what I really want to do.  I really wante=
+d to
+> just return '0', though I would need to check that is right in all cases.
+>=20
+> >=20
+> > Also, I'm a little unclear...
+> >=20
+> > Why would may_open fail with ESTALE after the v4 OPEN succeeds? The
+> > OPEN should be returning a filehandle and attributes for the inode
+> > actually opened. It seems like we ought to be doing any permission
+> > checks vs. that inode, not anything we had in cache. Presumably the
+> > server is then holding it open so it shouldn't be stale.
+>=20
+> may_open is called *before* and v4 OPEN.
+>=20
+> In do_last, if the inode is already in cache, then
+>   lookup_fast is called, which calls d_revalidate
+>   then may_open (calls ->permission)
+>   then finish_open which calls f_op->open
+>=20
+> Yes, we should be doing permission checking against whatever 'open' finds.
+> But the VFS is structured to the the permission check after d_revalidate =
+and
+> before ->open.  So maybe d_revalidate needs to do the NFS open??
+>=20
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index a444d821d2a5..d4472cd19807 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -146,11 +146,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
- 	},
- 	{
- 		.file     = "forget_openowners",
--		.get	  = nfsd_inject_get,
--		.set_val  = nfsd_inject_set,
--		.set_clnt = nfsd_inject_set_client,
--		.forget   = nfsd_forget_client_openowners,
--		.print    = nfsd_print_client_openowners,
-+		.get	  = nfsd_inject_print_openowners,
-+		.set_val  = nfsd_inject_forget_openowners,
-+		.set_clnt = nfsd_inject_forget_client_openowners,
- 	},
- 	{
- 		.file     = "forget_delegations",
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5f781c843523..017201d02c46 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5944,30 +5944,136 @@ nfsd_inject_forget_locks(struct nfsd_fault_inject_op *op, u64 max)
- 	return count;
- }
- 
--static u64 nfsd_foreach_client_open(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_openowner *))
-+static u64
-+nfsd_foreach_client_openowner(struct nfs4_client *clp, u64 max,
-+			      struct list_head *collect,
-+			      void (*func)(struct nfs4_openowner *))
- {
- 	struct nfs4_openowner *oop, *next;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
- 	u64 count = 0;
- 
-+	lockdep_assert_held(&nn->client_lock);
-+
-+	spin_lock(&clp->cl_lock);
- 	list_for_each_entry_safe(oop, next, &clp->cl_openowners, oo_perclient) {
--		if (func)
-+		if (func) {
- 			func(oop);
--		if (++count == max)
-+			if (collect) {
-+				atomic_inc(&clp->cl_refcount);
-+				list_add(&oop->oo_perclient, collect);
-+			}
-+		}
-+		++count;
-+		/*
-+		 * Despite the fact that these functions deal with
-+		 * 64-bit integers for "count", we must ensure that
-+		 * it doesn't blow up the clp->cl_refcount. Throw a
-+		 * warning if we start to approach INT_MAX here.
-+		 */
-+		WARN_ON_ONCE(count == (INT_MAX / 2));
-+		if (count == max)
- 			break;
- 	}
-+	spin_unlock(&clp->cl_lock);
-+
-+	return count;
-+}
- 
-+static u64
-+nfsd_print_client_openowners(struct nfs4_client *clp)
-+{
-+	u64 count = nfsd_foreach_client_openowner(clp, 0, NULL, NULL);
-+
-+	nfsd_print_count(clp, count, "openowners");
- 	return count;
- }
- 
--u64 nfsd_forget_client_openowners(struct nfs4_client *clp, u64 max)
-+static u64
-+nfsd_collect_client_openowners(struct nfs4_client *clp,
-+			       struct list_head *collect, u64 max)
- {
--	return nfsd_foreach_client_open(clp, max, release_openowner);
-+	return nfsd_foreach_client_openowner(clp, max, collect,
-+						unhash_openowner_locked);
- }
- 
--u64 nfsd_print_client_openowners(struct nfs4_client *clp, u64 max)
-+u64
-+nfsd_inject_print_openowners(struct nfsd_fault_inject_op *op)
- {
--	u64 count = nfsd_foreach_client_open(clp, max, NULL);
--	nfsd_print_count(clp, count, "open files");
-+	struct nfs4_client *clp;
-+	u64 count = 0;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return 0;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry(clp, &nn->client_lru, cl_lru)
-+		count += nfsd_print_client_openowners(clp);
-+	spin_unlock(&nn->client_lock);
-+
-+	return count;
-+}
-+
-+static void
-+nfsd_reap_openowners(struct list_head *reaplist)
-+{
-+	struct nfs4_client *clp;
-+	struct nfs4_openowner *oop, *next;
-+
-+	list_for_each_entry_safe(oop, next, reaplist, oo_perclient) {
-+		list_del_init(&oop->oo_perclient);
-+		clp = oop->oo_owner.so_client;
-+		release_openowner(oop);
-+		put_client(clp);
-+	}
-+}
-+
-+u64
-+nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *op,
-+				struct sockaddr_storage *addr, size_t addr_size)
-+{
-+	unsigned int count = 0;
-+	struct nfs4_client *clp;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+	LIST_HEAD(reaplist);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return count;
-+
-+	spin_lock(&nn->client_lock);
-+	clp = nfsd_find_client(addr, addr_size);
-+	if (clp)
-+		count = nfsd_collect_client_openowners(clp, &reaplist, 0);
-+	spin_unlock(&nn->client_lock);
-+	nfsd_reap_openowners(&reaplist);
-+	return count;
-+}
-+
-+u64
-+nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *op, u64 max)
-+{
-+	u64 count = 0;
-+	struct nfs4_client *clp;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+						nfsd_net_id);
-+	LIST_HEAD(reaplist);
-+
-+	if (!nfsd_netns_ready(nn))
-+		return count;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
-+		count += nfsd_collect_client_openowners(clp, &reaplist,
-+							max - count);
-+		if (max != 0 && count >= max)
-+			break;
-+	}
-+	spin_unlock(&nn->client_lock);
-+	nfsd_reap_openowners(&reaplist);
- 	return count;
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 5015ad3c9282..36651017697b 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -483,11 +483,14 @@ u64 nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *,
- 				    struct sockaddr_storage *, size_t);
- u64 nfsd_inject_forget_locks(struct nfsd_fault_inject_op *, u64);
- 
--u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
-+u64 nfsd_inject_print_openowners(struct nfsd_fault_inject_op *);
-+u64 nfsd_inject_forget_client_openowners(struct nfsd_fault_inject_op *,
-+					 struct sockaddr_storage *, size_t);
-+u64 nfsd_inject_forget_openowners(struct nfsd_fault_inject_op *, u64);
-+
- u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
- u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
- 
--u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
- #else /* CONFIG_NFSD_FAULT_INJECTION */
- static inline int nfsd_fault_inject_init(void) { return 0; }
--- 
-1.9.3
+Ok, I see. Ugh, having the revalidate do the open sounds...messy.
 
+A simpler fix might be to fix it so that an -ESTALE return from
+may_open triggers a retry. Something like this maybe (probably
+whitespace damaged, so just for discussion purposes):
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 985c6f368485..c1657deea52c 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3045,8 +3045,13 @@ finish_open:
+        }
+ finish_open_created:
+        error =3D may_open(&nd->path, acc_mode, open_flag);
+-       if (error)
++       if (error) {
++               if (error =3D=3D -ESTALE)
++                       goto stale_open;
+                goto out;
++       }
+        file->f_path.mnt =3D nd->path.mnt;
+        error =3D finish_open(file, nd->path.dentry, NULL, opened);
+        if (error) {
+
+
+...though might need to convert the ESTALE to EOPENSTALE there too, not
+sure...
+
+>=20
+> >=20
+> > Are we not properly updating the dcache (and attrcache) after the
+> > OPEN reply?
+>=20
+> I think so, yes.  But in the problem case, we don't even send an OPEN
+> request.
+>=20
+>=20
+> >=20
+> > >=20
+> > > Signed-off-by: NeilBrown <neilb@suse.de>
+> > >=20
+> > > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> > > index 4a3d4ef76127..4f7414afca27 100644
+> > > --- a/fs/nfs/dir.c
+> > > +++ b/fs/nfs/dir.c
+> > > @@ -1563,6 +1563,8 @@ static int nfs4_lookup_revalidate(struct
+> > > dentry *dentry, unsigned int flags) /* We cannot do exclusive
+> > > creation on a positive dentry */ if (flags & LOOKUP_EXCL)
+> > >  		goto no_open_dput;
+> > > +	if (NFS_STALE(inode))
+> > > +		goto no_open_dput;
+> > > =20
+> > >  	/* Let f_op->open() actually open (and revalidate) the
+> > > file */ ret =3D 1;
+> >=20
+> > Looks legit to me too, but it seems like the inode could go stale
+> > w/o us knowing after this point.
+> >=20
+> > Acked-by: Jeff Layton <jlayton@primarydata.com>
+>=20
+> Thanks,
+> NeilBrown
+
+
+--=20
+Jeff Layton <jlayton@primarydata.com>
+
+--Sig_/7oYy9cPls=.whDZ5dBL2yPt
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBAgAGBQJTw9RsAAoJEAAOaEEZVoIVy1IQANCseB2MkPJepgXQeZM0wbVV
+c0+NosubW3qULc5hDgjWmoTBZMhtgGiwXn6k5hRRTf47g4DOqoJzIgXFxBHL+zlY
+BTJWLm2E2IZmYHLhDd5+BdkgnJrYXDD06u/QMXzOACQDRevdKryRiXwuzC/ziOnE
+gIxsjAQjIRo6c1MUHe3RAvYn7vnvJiGJTQo2fjIkcAmiqlfW9kjdr5qexf30lWoE
+2rPqjNB4ar6nUHk9fQwIGWo1WNrXkNvuSkb/mfmEVmCPyRTKaD1SELobH4jmVaNF
+hVw7o5e4mVWl2aMHsOlQJ/bUjfgFotzxfoPG389WR2qSWfRWE5OZUFSXNf0x7nkh
+y0MegqlF3Dj9YEMyLtciiCoB3qbGC8Kp6qCfJ7THkApBSY2V+InGN8nKvWtWebQB
+ocpb9Bku5GHA9IUWpKyvNddwnnuoX5wrjcZjgPz8aBKCsUNxnGdR+flJz7+xLDqC
+KrM/u4qD4lt4g1M0WKtBRpZht6mIwTCfg8/fnqC9SEWXQf0ywOkgf2ocCWSLqgsc
+fwstywZTV73+zYsXdJmNo4Esbo0oYpaDYb9miZb06t8qfNU/ma5usgarDFfC7FDv
+E3mAXMao6vpvH5d0eH+PsNnrF+Ubt9G/M2pj5hdS+CLrRNXdY8AVRAs/f4YjHbaS
+y0eztc6e8XZa3/QJECuS
+=RkPl
+-----END PGP SIGNATURE-----
+
+--Sig_/7oYy9cPls=.whDZ5dBL2yPt--
