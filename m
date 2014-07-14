@@ -1,240 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:39279 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754405AbaG2UfD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:35:03 -0400
-Received: by mail-qg0-f53.google.com with SMTP id q107so315037qgd.12
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:35:02 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 22/38] nfsd: Add a mutex to protect the NFSv4.0 open owner replay cache
-Date: Tue, 29 Jul 2014 16:34:05 -0400
-Message-Id: <1406666061-14175-23-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:36713 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755615AbaGNPCF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 11:02:05 -0400
+Received: by mail-qg0-f50.google.com with SMTP id j5so3464594qga.23
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Jul 2014 08:02:04 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 14 Jul 2014 11:02:02 -0400
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: trond.myklebust@primarydata.com, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org, Paul McKenney <paulmck@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/7] sunrpc: remove __rcu annotation from struct
+ gss_cl_ctx->gc_gss_ctx
+Message-ID: <20140714110202.4e311df2@tlielax.poochiereds.net>
+In-Reply-To: <6702571.1HVrh55XfQ@wuerfel>
+References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+	<1405303064-9102-2-git-send-email-jlayton@primarydata.com>
+	<6702571.1HVrh55XfQ@wuerfel>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We don't want to rely on the client_mutex for protection in the case of
-NFSv4 open owners. Instead, we add a mutex that will only be taken for
-NFSv4.0 state mutating operations, and that will be released once the
-entire compound is done.
+On Mon, 14 Jul 2014 16:23:53 +0200
+Arnd Bergmann <arnd@arndb.de> wrote:
 
-Also, ensure that nfsd4_cstate_assign_replay/nfsd4_cstate_clear_replay
-take a reference to the stateowner when they are using it for NFSv4.0
-open and lock replay caching.
+> On Sunday 13 July 2014 21:57:38 Jeff Layton wrote:
+> > 
+> > Commit 5b22216e11f7 (nfs: __rcu annotations) added a __rcu annotation to
+> > the gc_gss_ctx field. I see no rationale for adding that though, as that
+> > field does not seem to be managed via RCU at all.
+> > 
+> > Cc: Arnd Bergmann <arnd@arndb.de>
+> > Cc: Paul McKenney <paulmck@linux.vnet.ibm.com>
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> 
+> Unfortunately, it's been too long ago for me to remember what led to me
+> adding it. I also don't see a reason for it in today's code, but I don't
+> know if the code has changed, if I made a mistake then, or if it's actually
+> needed for some reason I don't see.
+> 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4proc.c  | 12 +++---------
- fs/nfsd/nfs4state.c | 47 +++++++++++++++++++++++++++++++++--------------
- fs/nfsd/nfs4xdr.c   |  2 --
- fs/nfsd/state.h     |  1 +
- fs/nfsd/xdr4.h      |  5 ++++-
- 5 files changed, 41 insertions(+), 26 deletions(-)
+Darn, I was hoping you would remember... ;)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 8611585f739d..29cf395b694e 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -469,12 +469,9 @@ out:
- 		fh_put(resfh);
- 		kfree(resfh);
- 	}
--	nfsd4_cleanup_open_state(open, status);
--	if (open->op_openowner && !nfsd4_has_session(cstate))
--		cstate->replay_owner = &open->op_openowner->oo_owner;
-+	nfsd4_cleanup_open_state(cstate, open, status);
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -1395,10 +1392,7 @@ encode_op:
- 			args->ops, args->opcnt, resp->opcnt, op->opnum,
- 			be32_to_cpu(status));
- 
--		if (cstate->replay_owner) {
--			nfs4_unlock_state();
--			cstate->replay_owner = NULL;
--		}
-+		nfsd4_cstate_clear_replay(cstate);
- 		/* XXX Ugh, we need to get rid of this kind of special case: */
- 		if (op->opnum == OP_READ && op->u.read.rd_filp)
- 			fput(op->u.read.rd_filp);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a57b90a9ffd6..ec93f27fe64f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1069,7 +1069,7 @@ void nfsd4_bump_seqid(struct nfsd4_compound_state *cstate, __be32 nfserr)
- 		return;
- 
- 	if (!seqid_mutating_err(ntohl(nfserr))) {
--		cstate->replay_owner = NULL;
-+		nfsd4_cstate_clear_replay(cstate);
- 		return;
- 	}
- 	if (!so)
-@@ -2940,6 +2940,28 @@ static void init_nfs4_replay(struct nfs4_replay *rp)
- 	rp->rp_status = nfserr_serverfault;
- 	rp->rp_buflen = 0;
- 	rp->rp_buf = rp->rp_ibuf;
-+	mutex_init(&rp->rp_mutex);
-+}
-+
-+static void nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
-+		struct nfs4_stateowner *so)
-+{
-+	if (!nfsd4_has_session(cstate)) {
-+		mutex_lock(&so->so_replay.rp_mutex);
-+		cstate->replay_owner = so;
-+		atomic_inc(&so->so_count);
-+	}
-+}
-+
-+void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
-+{
-+	struct nfs4_stateowner *so = cstate->replay_owner;
-+
-+	if (so != NULL) {
-+		cstate->replay_owner = NULL;
-+		mutex_unlock(&so->so_replay.rp_mutex);
-+		nfs4_put_stateowner(so);
-+	}
- }
- 
- static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj *owner, struct nfs4_client *clp)
-@@ -3855,7 +3877,8 @@ out:
- 	return status;
- }
- 
--void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
-+void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
-+			      struct nfsd4_open *open, __be32 status)
- {
- 	if (open->op_openowner) {
- 		struct nfs4_openowner *oo = open->op_openowner;
-@@ -3869,6 +3892,8 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
- 			} else
- 				oo->oo_flags &= ~NFS4_OO_NEW;
- 		}
-+		if (open->op_openowner)
-+			nfsd4_cstate_assign_replay(cstate, &oo->oo_owner);
- 	}
- 	if (open->op_file)
- 		nfsd4_free_file(open->op_file);
-@@ -4399,8 +4424,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 	if (status)
- 		return status;
- 	stp = openlockstateid(s);
--	if (!nfsd4_has_session(cstate))
--		cstate->replay_owner = stp->st_stateowner;
-+	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
- 
- 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
- 	if (!status)
-@@ -4469,8 +4493,7 @@ put_stateid:
- 	nfs4_put_stid(&stp->st_stid);
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -4544,8 +4567,7 @@ put_stateid:
- 	nfs4_put_stid(&stp->st_stid);
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -4610,8 +4632,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	/* put reference from nfs4_preprocess_seqid_op */
- 	nfs4_put_stid(&stp->st_stid);
- out:
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -5071,8 +5092,7 @@ out:
- 	if (status && new_state)
- 		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	if (conflock)
-@@ -5236,8 +5256,7 @@ put_stateid:
- 	nfs4_put_stid(&stp->st_stid);
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	return status;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 628b430e743e..72a2a82e11a4 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3925,8 +3925,6 @@ status:
-  * 
-  * XDR note: do not encode rp->rp_buflen: the buffer contains the
-  * previously sent already encoded operation.
-- *
-- * called with nfs4_lock_state() held
-  */
- void
- nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op)
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index dc725deb4aa8..9cba295812f6 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -328,6 +328,7 @@ struct nfs4_replay {
- 	unsigned int		rp_buflen;
- 	char			*rp_buf;
- 	struct knfsd_fh		rp_openfh;
-+	struct mutex		rp_mutex;
- 	char			rp_ibuf[NFSD4_REPLAY_ISIZE];
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 5abf6c942ddf..465e7799742a 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -599,7 +599,9 @@ extern __be32 nfsd4_process_open1(struct nfsd4_compound_state *,
- 		struct nfsd4_open *open, struct nfsd_net *nn);
- extern __be32 nfsd4_process_open2(struct svc_rqst *rqstp,
- 		struct svc_fh *current_fh, struct nfsd4_open *open);
--extern void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status);
-+extern void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate);
-+extern void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
-+		struct nfsd4_open *open, __be32 status);
- extern __be32 nfsd4_open_confirm(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_open_confirm *oc);
- extern __be32 nfsd4_close(struct svc_rqst *rqstp,
-@@ -630,6 +632,7 @@ extern __be32 nfsd4_test_stateid(struct svc_rqst *rqstp,
- extern __be32 nfsd4_free_stateid(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *, struct nfsd4_free_stateid *free_stateid);
- extern void nfsd4_bump_seqid(struct nfsd4_compound_state *, __be32 nfserr);
-+
- #endif
- 
- /*
+I don't think the code that manipulates this field has changed
+substantially since then, but I'm far from certain either. This field
+does live in a structure that is RCU managed, so maybe that was part of
+the rationale?
+
+In any case, we're just removing the annotation here so this shouldn't
+materially harm anything, AFAICT.
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
