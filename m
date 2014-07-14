@@ -1,124 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58438 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754349AbaGOPJw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jul 2014 11:09:52 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 14/15] svc_dg: Convert fprintf calls to LIBTIRPC_DEBUG() calls
-Date: Tue, 15 Jul 2014 11:09:33 -0400
-Message-Id: <1405436974-4161-15-git-send-email-steved@redhat.com>
-In-Reply-To: <1405436974-4161-1-git-send-email-steved@redhat.com>
-References: <1405436974-4161-1-git-send-email-steved@redhat.com>
+Received: from mail-vc0-f175.google.com ([209.85.220.175]:55096 "EHLO
+	mail-vc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751962AbaGNCAO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 22:00:14 -0400
+Received: by mail-vc0-f175.google.com with SMTP id hu12so891235vcb.20
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 19:00:13 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140714011630.12562.1940.stgit@notabene.brown>
+References: <20140714011630.12562.1940.stgit@notabene.brown>
+Date: Sun, 13 Jul 2014 22:00:12 -0400
+Message-ID: <CAHQdGtS2XW=GeyxHddKKAb9a2tucO9kzxatPJ78qpMiDiOagiQ@mail.gmail.com>
+Subject: Re: [PATCH 0/7] Add RCU-walk support to NFS.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/svc_dg.c | 51 +++++++++++++++++++++++----------------------------
- 1 file changed, 23 insertions(+), 28 deletions(-)
+On Sun, Jul 13, 2014 at 9:28 PM, NeilBrown <neilb@suse.de> wrote:
+> NFS current abort and attempt at filename lookup in RCU mode.
+> This can have serious performance impact on a highly parallel load.
+>
+> The "Makefile" below generates just such a load.  On a 40-core
+> machine "make -j 40" is about 6 times as fast at "make -j 5"
+> when a local filesystem is used (e.g. XFS), but as much as half
+> as fast when NFS is used.
+> With this patch set, "make -j 40" is about 3 times as fast as
+> "make -j 5" on NFS, and "perf" data doesn't show spinlocks to be a big
+> problem any more.
+>
+> This is a re-submission with a few small improvements of a patch set
+> posted in March.  Since then I have recieved confirmation that it
+> definitely fixes the problem, when combined with a patch set which
+> enhances autofs4 in a similar way.  So it has had quite a bit of
+> testing.
 
-diff --git a/src/svc_dg.c b/src/svc_dg.c
-index 6e00191..f8255cc 100644
---- a/src/svc_dg.c
-+++ b/src/svc_dg.c
-@@ -49,13 +49,11 @@
- #include <stdio.h>
- #include <stdlib.h>
- #include <string.h>
--#ifdef RPC_CACHE_DEBUG
- #include <netconfig.h>
--#include <netdir.h>
--#endif
- #include <err.h>
- 
- #include "rpc_com.h"
-+#include "debug.h"
- 
- #define	su_data(xprt)	((struct svc_dg_data *)(xprt->xp_p2))
- #define	rpc_buffer(xprt) ((xprt)->xp_p1)
-@@ -506,10 +504,8 @@ cache_set(xprt, replylen)
- 	struct cl_cache *uc = (struct cl_cache *) su->su_cache;
- 	u_int loc;
- 	char *newbuf;
--#ifdef RPC_CACHE_DEBUG
- 	struct netconfig *nconf;
- 	char *uaddr;
--#endif
- 
- 	mutex_lock(&dupreq_lock);
- 	/*
-@@ -549,17 +545,17 @@ cache_set(xprt, replylen)
- 	/*
- 	 * Store it away
- 	 */
--#ifdef RPC_CACHE_DEBUG
--	if (nconf = getnetconfigent(xprt->xp_netid)) {
--		uaddr = taddr2uaddr(nconf, &xprt->xp_rtaddr);
--		freenetconfigent(nconf);
--		printf(
--	"cache set for xid= %x prog=%d vers=%d proc=%d for rmtaddr=%s\n",
--			su->su_xid, uc->uc_prog, uc->uc_vers,
--			uc->uc_proc, uaddr);
--		free(uaddr);
-+	if (libtirpc_debug_level > 3) {
-+		if ((nconf = getnetconfigent(xprt->xp_netid))) {
-+			uaddr = taddr2uaddr(nconf, &xprt->xp_rtaddr);
-+			freenetconfigent(nconf);
-+			LIBTIRPC_DEBUG(4,
-+				("cache set for xid= %x prog=%d vers=%d proc=%d for rmtaddr=%s\n",
-+				su->su_xid, uc->uc_prog, uc->uc_vers,
-+				uc->uc_proc, uaddr));
-+			free(uaddr);
-+		}
- 	}
--#endif
- 	victim->cache_replylen = replylen;
- 	victim->cache_reply = rpc_buffer(xprt);
- 	rpc_buffer(xprt) = newbuf;
-@@ -596,10 +592,8 @@ cache_get(xprt, msg, replyp, replylenp)
- 	cache_ptr ent;
- 	struct svc_dg_data *su = su_data(xprt);
- 	struct cl_cache *uc = (struct cl_cache *) su->su_cache;
--#ifdef RPC_CACHE_DEBUG
- 	struct netconfig *nconf;
- 	char *uaddr;
--#endif
- 
- 	mutex_lock(&dupreq_lock);
- 	loc = CACHE_LOC(xprt, su->su_xid);
-@@ -611,18 +605,19 @@ cache_get(xprt, msg, replyp, replylenp)
- 			ent->cache_addr.len == xprt->xp_rtaddr.len &&
- 			(memcmp(ent->cache_addr.buf, xprt->xp_rtaddr.buf,
- 				xprt->xp_rtaddr.len) == 0)) {
--#ifdef RPC_CACHE_DEBUG
--			if (nconf = getnetconfigent(xprt->xp_netid)) {
--				uaddr = taddr2uaddr(nconf, &xprt->xp_rtaddr);
--				freenetconfigent(nconf);
--				printf(
--	"cache entry found for xid=%x prog=%d vers=%d proc=%d for rmtaddr=%s\n",
--					su->su_xid, msg->rm_call.cb_prog,
--					msg->rm_call.cb_vers,
--					msg->rm_call.cb_proc, uaddr);
--				free(uaddr);
-+			if (libtirpc_debug_level > 3) {
-+				if ((nconf = getnetconfigent(xprt->xp_netid))) {
-+					uaddr = taddr2uaddr(nconf, &xprt->xp_rtaddr);
-+					freenetconfigent(nconf);
-+					LIBTIRPC_DEBUG(4,
-+						("cache entry found for xid=%x prog=%d" 
-+						"vers=%d proc=%d for rmtaddr=%s\n",
-+						su->su_xid, msg->rm_call.cb_prog,
-+						msg->rm_call.cb_vers,
-+						msg->rm_call.cb_proc, uaddr));
-+					free(uaddr);
-+				}
- 			}
--#endif
- 			*replyp = ent->cache_reply;
- 			*replylenp = ent->cache_replylen;
- 			mutex_unlock(&dupreq_lock);
+Hi Neil,
+
+What kind of tests have you personally (or SuSE if relevant) performed?
+Have you run this under NFSometer in order to check for regressions,
+and if so on what workloads?
+
+The above are not requirements in order to get the patches into
+mainline, I'm just curious.
+
+Cheers
+  Trond
+
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
