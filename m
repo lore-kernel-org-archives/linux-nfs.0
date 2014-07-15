@@ -1,165 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:63711 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754741AbaG3Bf0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:26 -0400
-Received: by mail-qa0-f50.google.com with SMTP id s7so579920qap.37
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:26 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:55278 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750722AbaGOOLi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:11:38 -0400
+Received: by mail-ig0-f173.google.com with SMTP id h18so2950634igc.6
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 07:11:37 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] svcrdma: Add zero padding if the client doesn't send it
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 24/38] nfsd: add an operation for unhashing a stateowner
-Date: Tue, 29 Jul 2014 21:34:29 -0400
-Message-Id: <1406684083-19736-25-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 15 Jul 2014 10:11:34 -0400
+Message-ID: <20140715140417.23046.27242.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow stateowners to be unhashed and destroyed when the last reference
-is put. The unhashing must be idempotent. In a future patch, we'll add
-some locking around it, but for now it's only protected by the
-client_mutex.
+See RFC 5666 section 3.7: clients don't have to send zero XDR
+padding.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++++++++++++++------------
- fs/nfsd/state.h     |  1 +
- 2 files changed, 38 insertions(+), 12 deletions(-)
+Hi Bruce-
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index eaa5f9ebf444..906c8604de30 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -894,6 +894,7 @@ static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
- {
- 	if (!atomic_dec_and_test(&sop->so_count))
- 		return;
-+	sop->so_ops->so_unhash(sop);
- 	kfree(sop->so_owner.data);
- 	sop->so_ops->so_free(sop);
+This is an alternative solution to changing the sanity check in the
+XDR WRITE decoder. It adjusts the incoming xdr_buf to include a zero
+pad just after the transport has received each RPC request.
+
+Thoughts?
+
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   30 ++++++++++++++++++++++++++++++
+ 1 files changed, 30 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 8f92a61..9a3465d 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -43,6 +43,7 @@
+ #include <linux/sunrpc/debug.h>
+ #include <linux/sunrpc/rpc_rdma.h>
+ #include <linux/spinlock.h>
++#include <linux/highmem.h>
+ #include <asm/unaligned.h>
+ #include <rdma/ib_verbs.h>
+ #include <rdma/rdma_cm.h>
+@@ -435,6 +436,34 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+ 	return ret;
  }
-@@ -944,9 +945,13 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
  
- static void unhash_lockowner(struct nfs4_lockowner *lo)
- {
-+	list_del_init(&lo->lo_owner.so_strhash);
++/*
++ * To avoid a separate RDMA READ just for a handful of zero bytes,
++ * RFC 5666 section 3.7 allows the client to omit the XDR zero pad
++ * in chunk lists.
++ */
++static void
++rdma_fix_xdr_pad(struct xdr_buf *buf)
++{
++	unsigned int page_len = buf->page_len;
++	unsigned int size = (XDR_QUADLEN(page_len) << 2) - page_len;
++ 	unsigned int offset, pg_no;
++	char *p;
++
++	if (size == 0)
++		return;
++
++	offset = page_len & ~PAGE_MASK;
++	pg_no = page_len >> PAGE_SHIFT;
++
++	p = kmap_atomic(buf->pages[pg_no]);
++	memset(p + offset, 0, size);
++	kunmap_atomic(p);
++
++	buf->page_len += size;
++	buf->buflen += size;
++	buf->len += size;
 +}
 +
-+static void release_lockowner_stateids(struct nfs4_lockowner *lo)
-+{
- 	struct nfs4_ol_stateid *stp;
- 
--	list_del(&lo->lo_owner.so_strhash);
- 	while (!list_empty(&lo->lo_owner.so_stateids)) {
- 		stp = list_first_entry(&lo->lo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
-@@ -957,6 +962,7 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
- static void release_lockowner(struct nfs4_lockowner *lo)
+ static int rdma_read_complete(struct svc_rqst *rqstp,
+ 			      struct svc_rdma_op_ctxt *head)
  {
- 	unhash_lockowner(lo);
-+	release_lockowner_stateids(lo);
- 	nfs4_put_stateowner(&lo->lo_owner);
- }
- 
-@@ -1006,15 +1012,8 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
- 
- static void unhash_openowner(struct nfs4_openowner *oo)
- {
--	struct nfs4_ol_stateid *stp;
--
--	list_del(&oo->oo_owner.so_strhash);
--	list_del(&oo->oo_perclient);
--	while (!list_empty(&oo->oo_owner.so_stateids)) {
--		stp = list_first_entry(&oo->oo_owner.so_stateids,
--				struct nfs4_ol_stateid, st_perstateowner);
--		release_open_stateid(stp);
--	}
-+	list_del_init(&oo->oo_owner.so_strhash);
-+	list_del_init(&oo->oo_perclient);
- }
- 
- static void release_last_closed_stateid(struct nfs4_openowner *oo)
-@@ -1027,9 +1026,21 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+@@ -449,6 +478,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+ 		rqstp->rq_pages[page_no] = head->pages[page_no];
  	}
- }
- 
-+static void release_openowner_stateids(struct nfs4_openowner *oo)
-+{
-+	struct nfs4_ol_stateid *stp;
-+
-+	while (!list_empty(&oo->oo_owner.so_stateids)) {
-+		stp = list_first_entry(&oo->oo_owner.so_stateids,
-+				struct nfs4_ol_stateid, st_perstateowner);
-+		release_open_stateid(stp);
-+	}
-+}
-+
- static void release_openowner(struct nfs4_openowner *oo)
- {
- 	unhash_openowner(oo);
-+	release_openowner_stateids(oo);
- 	list_del(&oo->oo_close_lru);
- 	release_last_closed_stateid(oo);
- 	nfs4_put_stateowner(&oo->oo_owner);
-@@ -2994,6 +3005,13 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
- 	list_add(&oo->oo_perclient, &clp->cl_openowners);
- }
- 
-+static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
-+{
-+	struct nfs4_openowner *oo = openowner(so);
-+
-+	unhash_openowner(oo);
-+}
-+
- static void nfs4_free_openowner(struct nfs4_stateowner *so)
- {
- 	struct nfs4_openowner *oo = openowner(so);
-@@ -3002,7 +3020,8 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
- }
- 
- static const struct nfs4_stateowner_operations openowner_ops = {
--	.so_free = nfs4_free_openowner,
-+	.so_unhash =	nfs4_unhash_openowner,
-+	.so_free =	nfs4_free_openowner,
- };
- 
- static struct nfs4_openowner *
-@@ -4760,6 +4779,11 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
- 	return NULL;
- }
- 
-+static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
-+{
-+	unhash_lockowner(lockowner(sop));
-+}
-+
- static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
- {
- 	struct nfs4_lockowner *lo = lockowner(sop);
-@@ -4768,7 +4792,8 @@ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
- }
- 
- static const struct nfs4_stateowner_operations lockowner_ops = {
--	.so_free = nfs4_free_lockowner,
-+	.so_unhash =	nfs4_unhash_lockowner,
-+	.so_free =	nfs4_free_lockowner,
- };
- 
- /*
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 9cba295812f6..232246039db0 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -335,6 +335,7 @@ struct nfs4_replay {
- struct nfs4_stateowner;
- 
- struct nfs4_stateowner_operations {
-+	void (*so_unhash)(struct nfs4_stateowner *);
- 	void (*so_free)(struct nfs4_stateowner *);
- };
- 
--- 
-1.9.3
+ 	/* Point rq_arg.pages past header */
++	rdma_fix_xdr_pad(&head->arg);
+ 	rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
+ 	rqstp->rq_arg.page_len = head->arg.page_len;
+ 	rqstp->rq_arg.page_base = head->arg.page_base;
 
