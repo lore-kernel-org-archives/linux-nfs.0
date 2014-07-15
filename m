@@ -1,43 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:57431 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752172AbaGJTAo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 15:00:44 -0400
-Message-ID: <53BEE2E0.2080908@opengridcomputing.com>
-Date: Thu, 10 Jul 2014 14:00:48 -0500
-From: Steve Wise <swise@opengridcomputing.com>
+Received: from mail-vc0-f172.google.com ([209.85.220.172]:48316 "EHLO
+	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758149AbaGOXym (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 19:54:42 -0400
+Received: by mail-vc0-f172.google.com with SMTP id im17so263531vcb.17
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 16:54:41 -0700 (PDT)
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>, swise@ogc.net
-CC: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 0/2] NFS/RDMA server patches for 3.17
-References: <20140710174225.3734.44692.stgit@klimt.1015granger.net>
-In-Reply-To: <20140710174225.3734.44692.stgit@klimt.1015granger.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+In-Reply-To: <CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
+References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
+	<20140710175136.GA26561@fieldses.org>
+	<CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
+Date: Tue, 15 Jul 2014 16:54:40 -0700
+Message-ID: <CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
+Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Andreas Fenkart <afenkart@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Daniel Mack <zonque@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Done!
+On Sun, Jul 13, 2014 at 11:44 PM, Andreas Fenkart <afenkart@gmail.com> wrote:
+> 2014-07-10 19:51 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+>> On Mon, Jun 23, 2014 at 12:07:22PM +0200, Andreas Fenkart wrote:
+>>> Found regression introduced by this patch
+>>>
+>>> 311324ad NFS: Be more aggressive in using readdirplus for 'ls -l' situations"
+>>>
+>>> # cd /bin
+>>> -sh: cd: /bin: Not a directory
+>>> root@192:/# pwd
+>>> /
+>>> root@192:/# ls /bin
+>>> ls: /bin
+>>> root@192:/# ls -l /bin/sh
+>>> lrwxrwxrwx    1 root     root             9 Jun 16 13:59 /bin/sh -> /bin/bash
+>>>
+>>> the mount options of the client, an embedded system, mounting nfsroot:
+>>> nfs(rw,relatime,vers=2,rsize=4096,wsize=4096,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=192.168.xx.xx,mountvers=1,mountproto=udp,local_lock=all,addr=192.168.xx.xx)
+>>> vers: 3.16.0-rc1
+>>>
+>>> the server exports:
+>>> /exports/rootfs 192.168.xx.xx(rw,no_root_squash,subtree_check)
+>>> vers: 3.14-1-amd64 #1 SMP Debian 3.14.4-1 (2014-05-13) x86_64 GNU/Linux
+>>>
+>>> reverting above patch, dir listing with 'ls /' works again
+>>
+>> Is this still happening?
+>
+> yes it is, I just reverted the aforementioned commit.
 
-(my email is swise@opengridcomputing.com)
+Can you reapply, and then do an "ls /" while recording the traffic to
+the NFS server using wireshark, and then send us the resulting dump?
 
-Steve.
+If the client is on an embedded system which can't run wireshark, then
+it is fine to record it on the server, but please use something like
 
-On 7/10/2014 12:44 PM, Chuck Lever wrote:
-> Hi Steve-
->
-> Can you include these two potential 3.17 candidate patches in
-> your testing branch?
->
-> ---
->
-> Chuck Lever (2):
->        svcrdma: Remove extra writeargs sanity check for NFSv2/3
->        svcrdma: Increase credit limit to 32
->
->
->   fs/nfsd/nfs3xdr.c               |   15 +--------------
->   fs/nfsd/nfsxdr.c                |   16 +---------------
->   include/linux/sunrpc/svc_rdma.h |    3 +--
->   3 files changed, 3 insertions(+), 31 deletions(-)
->
+'tshark -w /var/tmp/dump.out host <client-ip>'
 
+Cheers
+  Trond
+
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
