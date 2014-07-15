@@ -1,136 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f177.google.com ([209.85.192.177]:53185 "EHLO
-	mail-pd0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753219AbaGGOND (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 10:13:03 -0400
-Received: by mail-pd0-f177.google.com with SMTP id y10so5420498pdj.36
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 07:13:02 -0700 (PDT)
-Message-ID: <53BAAAC5.9000106@gmail.com>
-Date: Mon, 07 Jul 2014 22:12:21 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com,
-        NeilBrown <neilb@suse.de>, jlayton@redhat.com
-Subject: [PATCH 2/4] NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:51587 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757661AbaGOKh5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 06:37:57 -0400
+Received: by mail-qa0-f42.google.com with SMTP id j15so4468084qaq.1
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 03:37:56 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 1/7] nfsd: nfs4_alloc_init_lease should take a nfs4_file arg
+Date: Tue, 15 Jul 2014 06:37:43 -0400
+Message-Id: <1405420669-4030-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
-fl_lmops field in file_lock for checking nfsd4 lockowner.
+No need to pass the delegation pointer in here as it's only used to get
+the nfs4_file pointer.
 
-But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return of conflicting locks) causes the fl_lmops of conflock for nfsd4_lock always be NULL.
-
-Also, commit 0996905f93 (lockd: posix_test_lock() should not call locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt always be NULL too.
-
-So that, using fl_lmops cannot checking nfsd4 lockowner for it always be NULL.
-
-This patch save the strhashval in nfs4_lockowner for searching lockownerlike before.
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 35 +++++++++++++++++++++++------------
- fs/nfsd/state.h     |  1 +
- 2 files changed, 24 insertions(+), 12 deletions(-)
+ fs/nfsd/nfs4state.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9b9474c..1b5afc1 100644
+index bdf8ac3393bd..1b01a20827ab 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4282,18 +4282,30 @@ nfs4_transform_lock_offset(struct file_lock *lock)
- 		lock->fl_end = OFFSET_MAX;
+@@ -3474,7 +3474,7 @@ static bool nfsd4_cb_channel_good(struct nfs4_client *clp)
+ 	return clp->cl_minorversion && clp->cl_cb_state == NFSD4_CB_UNKNOWN;
  }
  
--/* Hack!: For now, we're defining this just so we can use a pointer to it
-- * as a unique cookie to identify our (NFSv4's) posix locks. */
--static const struct lock_manager_operations nfsd_posix_mng_ops  = {
--};
-+static bool
-+nfs4_verify_lock_stateowner(struct nfs4_lockowner *lo, struct nfsd_net *nn)
-+{
-+	struct nfs4_stateowner *local = NULL;
-+	unsigned hashval = lo->lo_hashval;
-+
-+	if (hashval >= OWNER_HASH_SIZE)
-+		return false;
-+
-+	list_for_each_entry(local, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-+		if (local == &lo->lo_owner)
-+			return true;
-+	}
-+
-+	return false;
-+}
- 
- static inline void
--nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
-+nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny,
-+			struct nfsd_net *nn)
+-static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int flag)
++static struct file_lock *nfs4_alloc_init_lease(struct nfs4_file *fp, int flag)
  {
--	struct nfs4_lockowner *lo;
-+	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
+ 	struct file_lock *fl;
  
--	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
--		lo = (struct nfs4_lockowner *) fl->fl_owner;
-+	if (nfs4_verify_lock_stateowner(lo, nn)) {
- 		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
- 					lo->lo_owner.so_owner.len, GFP_KERNEL);
- 		if (!deny->ld_owner.data)
-@@ -4350,6 +4362,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	if (!lo)
- 		return NULL;
- 	INIT_LIST_HEAD(&lo->lo_owner.so_stateids);
-+	lo->lo_hashval = strhashval;
- 	lo->lo_owner.so_is_open_owner = 0;
- 	/* It is the openowner seqid that will be incremented in encode in the
- 	 * case of new lockowners; so increment the lock seqid manually: */
-@@ -4564,7 +4577,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	file_lock->fl_pid = current->tgid;
- 	file_lock->fl_file = filp;
- 	file_lock->fl_flags = FL_POSIX;
--	file_lock->fl_lmops = &nfsd_posix_mng_ops;
- 	file_lock->fl_start = lock->lk_offset;
- 	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
- 	nfs4_transform_lock_offset(file_lock);
-@@ -4587,7 +4599,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	case (EAGAIN):		/* conflock holds conflicting lock */
- 		status = nfserr_denied;
- 		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
--		nfs4_set_lock_denied(conflock, &lock->lk_denied);
-+		nfs4_set_lock_denied(conflock, &lock->lk_denied, nn);
- 		break;
- 	case (EDEADLK):
- 		status = nfserr_deadlock;
-@@ -4695,7 +4707,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+@@ -3486,7 +3486,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+ 	fl->fl_flags = FL_DELEG;
+ 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+ 	fl->fl_end = OFFSET_MAX;
+-	fl->fl_owner = (fl_owner_t)(dp->dl_file);
++	fl->fl_owner = (fl_owner_t)fp;
+ 	fl->fl_pid = current->tgid;
+ 	return fl;
+ }
+@@ -3497,7 +3497,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	struct file_lock *fl;
+ 	int status;
  
- 	if (file_lock->fl_type != F_UNLCK) {
- 		status = nfserr_denied;
--		nfs4_set_lock_denied(file_lock, &lockt->lt_denied);
-+		nfs4_set_lock_denied(file_lock, &lockt->lt_denied, nn);
- 	}
- out:
- 	nfs4_unlock_state();
-@@ -4746,7 +4758,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	file_lock->fl_pid = current->tgid;
- 	file_lock->fl_file = filp;
- 	file_lock->fl_flags = FL_POSIX;
--	file_lock->fl_lmops = &nfsd_posix_mng_ops;
- 	file_lock->fl_start = locku->lu_offset;
- 
- 	file_lock->fl_end = last_byte_offset(locku->lu_offset,
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 1848fed..9ecae58 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -362,6 +362,7 @@ struct nfs4_openowner {
- 
- struct nfs4_lockowner {
- 	struct nfs4_stateowner	lo_owner; /* must be first element */
-+	unsigned int		lo_hashval;
- };
- 
- static inline struct nfs4_openowner * openowner(struct nfs4_stateowner *so)
+-	fl = nfs4_alloc_init_lease(dp, NFS4_OPEN_DELEGATE_READ);
++	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
+ 	if (!fl)
+ 		return -ENOMEM;
+ 	fl->fl_file = find_readable_file(fp);
 -- 
 1.9.3
 
