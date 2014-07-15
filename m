@@ -1,172 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:59480 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754363AbaG2Ueo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:44 -0400
-Received: by mail-qg0-f44.google.com with SMTP id e89so306708qgf.17
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:43 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v2 09/38] nfsd: ensure atomicity in nfsd4_free_stateid and nfsd4_validate_stateid
-Date: Tue, 29 Jul 2014 16:33:52 -0400
-Message-Id: <1406666061-14175-10-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:33494 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751527AbaGOOVt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:21:49 -0400
+Subject: [PATCH v3 11/21] xprtrdma: Reset FRMRs when FAST_REG_MR is flushed
+ by a disconnect
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 15 Jul 2014 10:21:46 -0400
+Message-ID: <20140715142146.8908.9010.stgit@manet.1015granger.net>
+In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hold the cl_lock over the bulk of these functions. In addition to
-ensuring that they aren't freed prematurely, this will also help prevent
-a potential race that could be introduced later. Once we remove the
-client_mutex, it'll be possible for FREE_STATEID and CLOSE to race and
-for both to try to put the "persistent" reference to the stateid.
+FAST_REG_MR Work Requests update a Memory Region's rkey. Rkey's are
+used to block unwanted access to the memory controlled by an MR. The
+rkey is passed to the receiver (the NFS server, in our case), and is
+also used by xprtrdma to invalidate the MR when the RPC is complete.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+When a FAST_REG_MR Work Request is flushed after a transport
+disconnect, xprtrdma cannot tell whether the WR actually hit the
+adapter or not. So it is indeterminant at that point whether the
+existing rkey is still valid.
+
+After the transport connection is re-established, the next
+FAST_REG_MR or LOCAL_INV Work Request against that MR can sometimes
+fail because the rkey value does not match what xprtrdma expects.
+
+The only reliable way to recover in this case is to deregister and
+register the MR before it is used again. These operations can be
+done only in a process context, so handle it in the transport
+connect worker.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- fs/nfsd/nfs4state.c | 71 +++++++++++++++++++++++++++--------------------------
- 1 file changed, 36 insertions(+), 35 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |   67 ++++++++++++++++++++++++++++++++++++++-
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 66 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 36231704e76a..6da8d6b9a45c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1689,17 +1689,6 @@ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index cdea6ff..39b31c8 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -61,6 +61,8 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
+ 
++static void rpcrdma_reset_frmrs(struct rpcrdma_ia *);
++
+ /*
+  * internal functions
+  */
+@@ -152,8 +154,10 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+ 
+ 	if (wc->wr_id == 0ULL)
+ 		return;
+-	if (wc->status != IB_WC_SUCCESS)
++	if (wc->status != IB_WC_SUCCESS) {
++		frmr->r.frmr.fr_state = FRMR_IS_STALE;
+ 		return;
++	}
+ 
+ 	if (wc->opcode == IB_WC_FAST_REG_MR)
+ 		frmr->r.frmr.fr_state = FRMR_IS_VALID;
+@@ -881,6 +885,9 @@ retry:
+ 				" status %i\n", __func__, rc);
+ 		rpcrdma_flush_cqs(ep);
+ 
++		if (ia->ri_memreg_strategy == RPCRDMA_FRMR)
++			rpcrdma_reset_frmrs(ia);
++
+ 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+ 		id = rpcrdma_create_id(xprt, ia,
+ 				(struct sockaddr *)&xprt->rx_data.addr);
+@@ -1256,6 +1263,62 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 	kfree(buf->rb_pool);
  }
  
- static struct nfs4_stid *
--find_stateid(struct nfs4_client *cl, stateid_t *t)
--{
--	struct nfs4_stid *ret;
--
--	spin_lock(&cl->cl_lock);
--	ret = find_stateid_locked(cl, t);
--	spin_unlock(&cl->cl_lock);
--	return ret;
--}
--
--static struct nfs4_stid *
- find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
- {
- 	struct nfs4_stid *s;
-@@ -4098,10 +4087,10 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- {
- 	struct nfs4_stid *s;
- 	struct nfs4_ol_stateid *ols;
--	__be32 status;
-+	__be32 status = nfserr_bad_stateid;
++/* After a disconnect, a flushed FAST_REG_MR can leave an FRMR in
++ * an unusable state. Find FRMRs in this state and dereg / reg
++ * each.  FRMRs that are VALID and attached to an rpcrdma_req are
++ * also torn down.
++ *
++ * This gives all in-use FRMRs a fresh rkey and leaves them INVALID.
++ *
++ * This is invoked only in the transport connect worker in order
++ * to serialize with rpcrdma_register_frmr_external().
++ */
++static void
++rpcrdma_reset_frmrs(struct rpcrdma_ia *ia)
++{
++	struct rpcrdma_xprt *r_xprt =
++				container_of(ia, struct rpcrdma_xprt, rx_ia);
++	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
++	struct list_head *pos;
++	struct rpcrdma_mw *r;
++	int rc;
++
++	list_for_each(pos, &buf->rb_all) {
++		r = list_entry(pos, struct rpcrdma_mw, mw_all);
++
++		if (r->r.frmr.fr_state == FRMR_IS_INVALID)
++			continue;
++
++		rc = ib_dereg_mr(r->r.frmr.fr_mr);
++		if (rc)
++			dprintk("RPC:       %s: ib_dereg_mr failed %i\n",
++				__func__, rc);
++		ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
++
++		r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
++					ia->ri_max_frmr_depth);
++		if (IS_ERR(r->r.frmr.fr_mr)) {
++			rc = PTR_ERR(r->r.frmr.fr_mr);
++			dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
++				" failed %i\n", __func__, rc);
++			continue;
++		}
++		r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
++					ia->ri_id->device,
++					ia->ri_max_frmr_depth);
++		if (IS_ERR(r->r.frmr.fr_pgl)) {
++			rc = PTR_ERR(r->r.frmr.fr_pgl);
++			dprintk("RPC:       %s: "
++				"ib_alloc_fast_reg_page_list "
++				"failed %i\n", __func__, rc);
++
++			ib_dereg_mr(r->r.frmr.fr_mr);
++			continue;
++		}
++		r->r.frmr.fr_state = FRMR_IS_INVALID;
++	}
++}
++
+ /* "*mw" can be NULL when rpcrdma_buffer_get_mrs() fails, leaving
+  * some req segments uninitialized.
+  */
+@@ -1571,7 +1634,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
+ 		__func__, mw, i);
  
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
--		return nfserr_bad_stateid;
-+		return status;
- 	/* Client debugging aid. */
- 	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
- 		char addr_str[INET6_ADDRSTRLEN];
-@@ -4109,34 +4098,42 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 				 sizeof(addr_str));
- 		pr_warn_ratelimited("NFSD: client %s testing state ID "
- 					"with incorrect client ID\n", addr_str);
--		return nfserr_bad_stateid;
-+		return status;
- 	}
--	s = find_stateid(cl, stateid);
-+	spin_lock(&cl->cl_lock);
-+	s = find_stateid_locked(cl, stateid);
- 	if (!s)
--		return nfserr_bad_stateid;
-+		goto out_unlock;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 	if (status)
--		return status;
-+		goto out_unlock;
- 	switch (s->sc_type) {
- 	case NFS4_DELEG_STID:
--		return nfs_ok;
-+		status = nfs_ok;
-+		break;
- 	case NFS4_REVOKED_DELEG_STID:
--		return nfserr_deleg_revoked;
-+		status = nfserr_deleg_revoked;
-+		break;
- 	case NFS4_OPEN_STID:
- 	case NFS4_LOCK_STID:
- 		ols = openlockstateid(s);
- 		if (ols->st_stateowner->so_is_open_owner
- 	    			&& !(openowner(ols->st_stateowner)->oo_flags
- 						& NFS4_OO_CONFIRMED))
--			return nfserr_bad_stateid;
--		return nfs_ok;
-+			status = nfserr_bad_stateid;
-+		else
-+			status = nfs_ok;
-+		break;
- 	default:
- 		printk("unknown stateid type %x\n", s->sc_type);
- 		/* Fallthrough */
- 	case NFS4_CLOSED_STID:
- 	case NFS4_CLOSED_DELEG_STID:
--		return nfserr_bad_stateid;
-+		status = nfserr_bad_stateid;
- 	}
-+out_unlock:
-+	spin_unlock(&cl->cl_lock);
-+	return status;
- }
+-	if (unlikely(frmr->fr_state == FRMR_IS_VALID)) {
++	if (unlikely(frmr->fr_state != FRMR_IS_INVALID)) {
+ 		dprintk("RPC:       %s: frmr %x left valid, posting invalidate.\n",
+ 			__func__, mr->rkey);
+ 		/* Invalidate before using. */
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index c1d8652..1ee6db3 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -161,6 +161,7 @@ struct rpcrdma_rep {
+ enum rpcrdma_frmr_state {
+ 	FRMR_IS_INVALID,	/* ready to be used */
+ 	FRMR_IS_VALID,		/* in use */
++	FRMR_IS_STALE,		/* failed completion */
+ };
  
- static __be32
-@@ -4287,34 +4284,38 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	__be32 ret = nfserr_bad_stateid;
- 
- 	nfs4_lock_state();
--	s = find_stateid(cl, stateid);
-+	spin_lock(&cl->cl_lock);
-+	s = find_stateid_locked(cl, stateid);
- 	if (!s)
--		goto out;
-+		goto out_unlock;
- 	switch (s->sc_type) {
- 	case NFS4_DELEG_STID:
- 		ret = nfserr_locks_held;
--		goto out;
-+		break;
- 	case NFS4_OPEN_STID:
--	case NFS4_LOCK_STID:
- 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 		if (ret)
--			goto out;
--		if (s->sc_type == NFS4_LOCK_STID)
--			ret = nfsd4_free_lock_stateid(openlockstateid(s));
--		else
--			ret = nfserr_locks_held;
-+			break;
-+		ret = nfserr_locks_held;
- 		break;
-+	case NFS4_LOCK_STID:
-+		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
-+		if (ret)
-+			break;
-+		spin_unlock(&cl->cl_lock);
-+		ret = nfsd4_free_lock_stateid(openlockstateid(s));
-+		goto out;
- 	case NFS4_REVOKED_DELEG_STID:
- 		dp = delegstateid(s);
--		spin_lock(&cl->cl_lock);
- 		list_del_init(&dp->dl_recall_lru);
- 		spin_unlock(&cl->cl_lock);
- 		nfs4_put_stid(s);
- 		ret = nfs_ok;
--		break;
--	default:
--		ret = nfserr_bad_stateid;
-+		goto out;
-+	/* Default falls through and returns nfserr_bad_stateid */
- 	}
-+out_unlock:
-+	spin_unlock(&cl->cl_lock);
- out:
- 	nfs4_unlock_state();
- 	return ret;
--- 
-1.9.3
+ struct rpcrdma_frmr {
 
