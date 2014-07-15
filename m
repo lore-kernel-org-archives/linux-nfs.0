@@ -1,44 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:52047 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753420AbaGJNVD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 09:21:03 -0400
-Received: by mail-qg0-f53.google.com with SMTP id i50so7526788qgf.26
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 06:21:02 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 10 Jul 2014 09:21:01 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 015/100] nfsd: clean up reset_union_bmap_deny
-Message-ID: <20140710092101.28558ab4@tlielax.poochiereds.net>
-In-Reply-To: <20140710131650.GA6806@infradead.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-	<1404842668-22521-16-git-send-email-jlayton@primarydata.com>
-	<20140710103100.GA6935@infradead.org>
-	<20140710081912.4af7c35b@tlielax.poochiereds.net>
-	<20140710131650.GA6806@infradead.org>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:44372 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751601AbaGOOWO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:22:14 -0400
+Subject: [PATCH v3 14/21] xprtrdma: Disable completions for FAST_REG_MR Work
+ Requests
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 15 Jul 2014 10:22:12 -0400
+Message-ID: <20140715142212.8908.73331.stgit@manet.1015granger.net>
+In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 10 Jul 2014 06:16:50 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+Instead of relying on a completion to change the state of an FRMR
+to FRMR_IS_VALID, set it in advance. If an error occurs, a completion
+will fire anyway and mark the FRMR FRMR_IS_STALE.
 
-> Ok, feel free do drop my comments re the access/deny bitmap.  I don't
-> really think this is worth it to avoid the small false positive to
-> allow downgrading if a different open owner had a r/o or w/o open, but
-> it's probably indeed way to much churn for this series to do anything
-> about it.
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |    9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
 
-Ok, thanks.
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 8429869..b36a5dd 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -159,10 +159,7 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+ 		return;
+ 	}
+ 
+-	if (wc->opcode == IB_WC_FAST_REG_MR)
+-		frmr->r.frmr.fr_state = FRMR_IS_VALID;
+-	else if (wc->opcode == IB_WC_LOCAL_INV)
+-		frmr->r.frmr.fr_state = FRMR_IS_INVALID;
++	frmr->r.frmr.fr_state = FRMR_IS_INVALID;
+ }
+ 
+ static int
+@@ -1724,10 +1721,11 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
+ 		__func__, mw, i);
+ 
++	frmr->fr_state = FRMR_IS_VALID;
++
+ 	memset(&frmr_wr, 0, sizeof frmr_wr);
+ 	frmr_wr.wr_id = (unsigned long)(void *)mw;
+ 	frmr_wr.opcode = IB_WR_FAST_REG_MR;
+-	frmr_wr.send_flags = IB_SEND_SIGNALED;
+ 	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
+ 	frmr_wr.wr.fast_reg.page_list = frmr->fr_pgl;
+ 	frmr_wr.wr.fast_reg.page_list_len = page_no;
+@@ -1761,6 +1759,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	*nsegs = i;
+ 	return 0;
+ out_err:
++	frmr->fr_state = FRMR_IS_INVALID;
+ 	while (i--)
+ 		rpcrdma_unmap_one(ia, --seg);
+ 	return rc;
 
-I agree that having to track this is a little ridiculous. No real client
-really cares about that, but there are some pynfs tests that will fail
-if we remove it altogether. I broke it a couple of years ago and Bruce
-dinged me on it, so I'm inclined not to change it here.
-
--- 
-Jeff Layton <jlayton@primarydata.com>
