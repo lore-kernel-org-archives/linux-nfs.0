@@ -1,60 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:58768 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755249AbaGUPDS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:18 -0400
-Received: by mail-qg0-f47.google.com with SMTP id i50so5461840qgf.6
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:17 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 13/40] nfsd: nfsd4_locku() must reference the lock stateid
-Date: Mon, 21 Jul 2014 11:02:25 -0400
-Message-Id: <1405954972-28904-14-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:38974 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752462AbaGOOXO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:23:14 -0400
+Subject: [PATCH v3 21/21] xprtrdma: Handle additional connection events
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 15 Jul 2014 10:23:12 -0400
+Message-ID: <20140715142311.8908.23658.stgit@manet.1015granger.net>
+In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Commit 38ca83a5 added RDMA_CM_EVENT_TIMEWAIT_EXIT. But that status
+is relevant only for consumers that re-use their QPs on new
+connections. xprtrdma creates a fresh QP on reconnection, so that
+event should be explicitly ignored.
 
-Ensure that nfsd4_locku() keeps a reference to the lock stateid
-until it is done working with it. Necessary step toward client_mutex
-removal.
+Squelch the alarming "unexpected CM event" message.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- fs/nfsd/nfs4state.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/verbs.c |   25 ++++++++++++++-----------
+ 1 file changed, 14 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9a2f1ccb7502..0720e0888753 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5156,10 +5156,12 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&stp->st_stid.sc_count);
- 	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
--		goto out;
-+		goto put_stateid;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 721a6fd..6ead5df 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -326,8 +326,16 @@ static const char * const conn[] = {
+ 	"rejected",
+ 	"established",
+ 	"disconnected",
+-	"device removal"
++	"device removal",
++	"multicast join",
++	"multicast error",
++	"address change",
++	"timewait exit",
+ };
++
++#define CONNECTION_MSG(status)						\
++	((status) < ARRAY_SIZE(conn) ?					\
++		conn[(status)] : "unrecognized connection error")
+ #endif
+ 
+ static int
+@@ -385,23 +393,18 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
+ 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
+ 		connstate = -ENODEV;
+ connected:
+-		dprintk("RPC:       %s: %s: %pI4:%u (ep 0x%p event 0x%x)\n",
+-			__func__,
+-			(event->event <= 11) ? conn[event->event] :
+-						"unknown connection error",
+-			&addr->sin_addr.s_addr,
+-			ntohs(addr->sin_port),
+-			ep, event->event);
+ 		atomic_set(&rpcx_to_rdmax(ep->rep_xprt)->rx_buf.rb_credits, 1);
+ 		dprintk("RPC:       %s: %sconnected\n",
+ 					__func__, connstate > 0 ? "" : "dis");
+ 		ep->rep_connected = connstate;
+ 		ep->rep_func(ep);
+ 		wake_up_all(&ep->rep_connect_wait);
+-		break;
++		/*FALLTHROUGH*/
+ 	default:
+-		dprintk("RPC:       %s: unexpected CM event %d\n",
+-			__func__, event->event);
++		dprintk("RPC:       %s: %pI4:%u (ep 0x%p): %s\n",
++			__func__, &addr->sin_addr.s_addr,
++			ntohs(addr->sin_port), ep,
++			CONNECTION_MSG(event->event));
+ 		break;
  	}
- 	file_lock = locks_alloc_lock();
- 	if (!file_lock) {
-@@ -5189,6 +5191,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- fput:
- 	fput(filp);
-+put_stateid:
-+	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	if (!cstate->replay_owner)
--- 
-1.9.3
+ 
 
