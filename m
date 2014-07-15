@@ -1,197 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56647 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21617 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753313AbaGOPJr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jul 2014 11:09:47 -0400
+	id S1752519AbaGOPJp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 11:09:45 -0400
 From: Steve Dickson <steved@redhat.com>
 To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 06/15] libtirpc_debug: Converted the rest of the #ifdef DEBUGs
-Date: Tue, 15 Jul 2014 11:09:25 -0400
-Message-Id: <1405436974-4161-7-git-send-email-steved@redhat.com>
-In-Reply-To: <1405436974-4161-1-git-send-email-steved@redhat.com>
-References: <1405436974-4161-1-git-send-email-steved@redhat.com>
+Subject: [PATCH 00/15] libtirpc: New Debugging Interface
+Date: Tue, 15 Jul 2014 11:09:19 -0400
+Message-Id: <1405436974-4161-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace the rest of the fprintf(stderr) surrounded
-by #ifdef DEBUGS with the LIBTIRPC_DEBUG() macro
+It was brought to my attention there is large
+amount of debugging in libtirpc but the library 
+had to be recompiled to access it. 
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/auth_gss.c     | 18 ++++++------------
- src/getpublickey.c | 13 ++++++-------
- src/netnamer.c     | 20 ++++++++------------
- src/svc_auth_gss.c |  2 --
- 4 files changed, 20 insertions(+), 33 deletions(-)
+With the precedence being set with the old librpcsecgss
+and libnfsidmap where debugging can be set by the
+application, I thought it would be a good idea to
+build a similar interface in libtirpc. 
 
-diff --git a/src/auth_gss.c b/src/auth_gss.c
-index 76bab66..e636e7e 100644
---- a/src/auth_gss.c
-+++ b/src/auth_gss.c
-@@ -49,6 +49,8 @@
- #include <netinet/in.h>
- #include <gssapi/gssapi.h>
- 
-+#include "debug.h"
-+
- static void	authgss_nextverf(AUTH *);
- static bool_t	authgss_marshal(AUTH *, XDR *);
- static bool_t	authgss_refresh(AUTH *, void *);
-@@ -164,9 +166,7 @@ authgss_create(CLIENT *clnt, gss_name_t name, struct rpc_gss_sec *sec)
- 		free(auth);
- 		return (NULL);
- 	}
--#ifdef DEBUG
--	fprintf(stderr, "authgss_create: name is %p\n", name);
--#endif
-+	LIBTIRPC_DEBUG(2, ("authgss_create: name is %p\n", name));
- 	if (name != GSS_C_NO_NAME) {
- 		if (gss_duplicate_name(&min_stat, name, &gd->name)
- 						!= GSS_S_COMPLETE) {
-@@ -179,9 +179,7 @@ authgss_create(CLIENT *clnt, gss_name_t name, struct rpc_gss_sec *sec)
- 	else
- 		gd->name = name;
- 
--#ifdef DEBUG
--	fprintf(stderr, "authgss_create: gd->name is %p\n", gd->name);
--#endif
-+	LIBTIRPC_DEBUG(2, ("authgss_create: gd->name is %p\n", gd->name));
- 	gd->clnt = clnt;
- 	gd->ctx = GSS_C_NO_CONTEXT;
- 	gd->sec = *sec;
-@@ -234,9 +232,7 @@ authgss_create_default(CLIENT *clnt, char *service, struct rpc_gss_sec *sec)
- 	auth = authgss_create(clnt, name, sec);
- 
- 	if (name != GSS_C_NO_NAME) {
--#ifdef DEBUG
--	fprintf(stderr, "authgss_create_default: freeing name %p\n", name);
--#endif
-+		LIBTIRPC_DEBUG(1, ("authgss_create_default: freeing name %p\n", name));
-  		gss_release_name(&min_stat, &name);
- 	}
- 
-@@ -627,9 +623,7 @@ authgss_destroy(AUTH *auth)
- 
- 	authgss_destroy_context(auth);
- 
--#ifdef DEBUG
--	fprintf(stderr, "authgss_destroy: freeing name %p\n", gd->name);
--#endif
-+	LIBTIRPC_DEBUG(2, ("authgss_destroy: freeing name %p\n", gd->name));
- 	if (gd->name != GSS_C_NO_NAME)
- 		gss_release_name(&min_stat, &gd->name);
- 
-diff --git a/src/getpublickey.c b/src/getpublickey.c
-index 332c725..85935d8 100644
---- a/src/getpublickey.c
-+++ b/src/getpublickey.c
-@@ -46,6 +46,8 @@
- #include <string.h>
- #include <stdlib.h>
- 
-+#include "debug.h"
-+
- #define PKFILE "/etc/publickey"
- 
- /*
-@@ -120,9 +122,8 @@ getpublicandprivatekey(key, ret)
- 			lookup = NULL;
- 			err = yp_match(domain, PKMAP, key, strlen(key), &lookup, &len);
- 			if (err) {
--#ifdef DEBUG
--				fprintf(stderr, "match failed error %d\n", err);
--#endif
-+				LIBTIRPC_DEBUG(1, 
-+					("getpublicandprivatekey: match failed error %d\n", err));
- 				continue;
- 			}
- 			lookup[len] = 0;
-@@ -131,10 +132,8 @@ getpublicandprivatekey(key, ret)
- 			free(lookup);
- 			return (2);
- #else /* YP */
--#ifdef DEBUG
--			fprintf(stderr,
--"Bad record in %s '+' -- NIS not supported in this library copy\n", PKFILE);
--#endif /* DEBUG */
-+			LIBTIRPC_DEBUG(1, 
-+("Bad record in %s '+' -- NIS not supported in this library copy\n", PKFILE));
- 			continue;
- #endif /* YP */
- 		} else {
-diff --git a/src/netnamer.c b/src/netnamer.c
-index 9b3b7dc..7da2f0d 100644
---- a/src/netnamer.c
-+++ b/src/netnamer.c
-@@ -47,6 +47,8 @@
- #include <stdlib.h>
- #include <unistd.h>
- 
-+#include "debug.h"
-+
- static char    *OPSYS = "unix";
- static char    *NETID = "netid.byname";
- static char    *NETIDFILE = "/etc/netid";
-@@ -159,10 +161,8 @@ _getgroups(uname, groups)
- 		for (i = 0; grp->gr_mem[i]; i++)
- 			if (!strcmp(grp->gr_mem[i], uname)) {
- 				if (ngroups == NGROUPS) {
--#ifdef DEBUG
--					fprintf(stderr,
--				"initgroups: %s is in too many groups\n", uname);
--#endif
-+					LIBTIRPC_DEBUG(1,
-+				("_getgroups: %s is in too many groups\n", uname));
- 					goto toomany;
- 				}
- 				/* filter out duplicate group entries */
-@@ -279,9 +279,7 @@ getnetid(key, ret)
- 			err = yp_match(domain, NETID, key,
- 				strlen(key), &lookup, &len);
- 			if (err) {
--#ifdef DEBUG
--				fprintf(stderr, "match failed error %d\n", err);
--#endif
-+				LIBTIRPC_DEBUG(1, ("getnetid: match failed error %d\n", err));
- 				continue;
- 			}
- 			lookup[len] = 0;
-@@ -291,11 +289,9 @@ getnetid(key, ret)
- 				fclose(fd);
- 			return (2);
- #else	/* YP */
--#ifdef DEBUG
--			fprintf(stderr,
--"Bad record in %s '+' -- NIS not supported in this library copy\n",
--				NETIDFILE);
--#endif
-+			LIBTIRPC_DEBUG(1,
-+("Bad record in %s '+' -- NIS not supported in this library copy\n",
-+				NETIDFILE));
- 			continue;
- #endif	/* YP */
- 		} else {
-diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
-index a032dd6..155c8de 100644
---- a/src/svc_auth_gss.c
-+++ b/src/svc_auth_gss.c
-@@ -248,7 +248,6 @@ svcauth_gss_accept_sec_context(struct svc_req *rqst,
- 				maj_stat, min_stat);
- 			return (FALSE);
- 		}
--#ifdef DEBUG
- #ifdef HAVE_KRB5
- 		{
- 			gss_buffer_desc mechname;
-@@ -269,7 +268,6 @@ svcauth_gss_accept_sec_context(struct svc_req *rqst,
- 			      gd->cname.length, (char *)gd->cname.value,
- 			      gd->sec.qop, gd->sec.svc);
- #endif
--#endif /* DEBUG */
- 		seq = htonl(gr->gr_win);
- 		seqbuf.value = &seq;
- 		seqbuf.length = sizeof(seq);
+A lot of these changes is in code that's not use or
+even compiled but there is now one unified interface
+we can build on.
+
+The first patch defines the interface so I will not
+repeat it here, but the interface is modeled after
+a simplify xlog, used by a number of daemons.  The
+interface can log messages to strderr or syslog but 
+not both. Trying to keep it as simple as possible.
+
+The debugging levels are broken down by:
+
+level 1 - only error messages 
+level 2 - "I get here" type of messages
+level 3 - "I got this value" type of messages
+level 4 - hex dumps and other wordy messages
+
+
+Steve Dickson (15):
+  libtirpc: New configurable debugging routines
+  gss_log: Convert existing gss debugging routines
+  gss_log: Removed DEBUG defines
+  gss_log_status: reformat output to use one line.
+  git_log_status: Add function name to status message
+  libtirpc_debug: Converted the rest of the #ifdef DEBUGs
+  gss_log: Replace gss_log_debug with LIBTIRPC_DEBUG macros
+  print_rpc_gss_sec: Make sure logging to stderr is enabled.
+  Clean up: Remove newlines from a couple debugging calls.
+  svcauth_des: Convert local debug() calls to LIBTIRPC_DEBUG() calls
+  key_call: Convert local debug() calls to LIBTIRPC_DEBUG() calls
+  clnt_bcast: Convert local debug() calls to LIBTIRPC_DEBUG() calls
+  rpcb_clnt: Convert fprintf calls to LIBTIRPC_DEBUG() calls
+  svc_dg: Convert fprintf calls to LIBTIRPC_DEBUG() calls
+  auth_des: Converted some of the debugging syslog calls to
+    LIBTIRPC_DEBUG() calls
+
+ src/Makefile.am    |  4 +--
+ src/auth_des.c     | 11 ++++----
+ src/auth_gss.c     | 45 ++++++++++++++------------------
+ src/authgss_prot.c | 76 +++++++++++++++++++++---------------------------------
+ src/clnt_bcast.c   | 36 ++++++++------------------
+ src/debug.c        | 64 +++++++++++++++++++++++++++++++++++++++++++++
+ src/debug.h        | 49 +++++++++++++++++++++++++++++++++++
+ src/getpublickey.c | 13 +++++-----
+ src/key_call.c     | 21 ++++++---------
+ src/netnamer.c     | 20 ++++++--------
+ src/rpcb_clnt.c    | 65 +++++++++++++++-------------------------------
+ src/svc_auth_des.c | 32 +++++++++++------------
+ src/svc_auth_gss.c | 29 +++++++++++++--------
+ src/svc_dg.c       | 51 +++++++++++++++++-------------------
+ 14 files changed, 282 insertions(+), 234 deletions(-)
+ create mode 100644 src/debug.c
+ create mode 100644 src/debug.h
+
 -- 
 1.9.3
 
