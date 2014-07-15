@@ -1,62 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f180.google.com ([209.85.216.180]:46240 "EHLO
-	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755123AbaGUPDW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:22 -0400
-Received: by mail-qc0-f180.google.com with SMTP id l6so5627847qcy.39
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:22 -0700 (PDT)
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:56435 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758190AbaGOKiA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 06:38:00 -0400
+Received: by mail-qg0-f47.google.com with SMTP id i50so1841257qgf.34
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 03:37:59 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 16/40] nfsd: nfsd4_process_open2() must reference the open stateid
-Date: Mon, 21 Jul 2014 11:02:28 -0400
-Message-Id: <1405954972-28904-17-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 3/7] locks: add file_has_lease to prevent delegation break races
+Date: Tue, 15 Jul 2014 06:37:45 -0400
+Message-Id: <1405420669-4030-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Once we remove the client_mutex, we'll have a potential race between
+setting a lease on a file and breaking the delegation. We may set the
+lease, but by the time we go to hash it, it may have already been
+broken. Currently, we know that this won't happen as the nfs4_laundromat
+takes the client_mutex, but we want to remove that.
 
-Ensure that nfsd4_process_open2() keeps a reference to the open
-stateid until it is done working with it. Necessary step toward
-client_mutex removal.
+As part of that fix, add a function that can tell us whether a
+particular file has a lease set on it. In a later nfsd patch, we'll use
+that to close the potential race window.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ fs/locks.c         | 26 ++++++++++++++++++++++++++
+ include/linux/fs.h |  6 ++++++
+ 2 files changed, 32 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2eaaceef11e8..1022d11031f0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3011,6 +3011,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
- 	struct nfs4_openowner *oo = open->op_openowner;
- 
-+	atomic_inc(&stp->st_stid.sc_count);
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_locks);
- 	stp->st_stateowner = &oo->oo_owner;
-@@ -3394,6 +3395,7 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
- 			continue;
- 		if (local->st_stateowner == &oo->oo_owner) {
- 			ret = local;
-+			atomic_inc(&ret->st_stid.sc_count);
- 			break;
- 		}
- 	}
-@@ -3854,6 +3856,8 @@ out:
- 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
- 	if (dp)
- 		nfs4_put_delegation(dp);
-+	if (stp)
-+		put_generic_stateid(stp);
- 
- 	return status;
+diff --git a/fs/locks.c b/fs/locks.c
+index 717fbc404e6b..005cc86927e3 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1308,6 +1308,32 @@ static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
  }
+ 
+ /**
++ * file_has_lease - does the given file have a lease set on it?
++ * @file: struct file on which we want to check the lease
++ *
++ * Returns true if a lease was is set on the given file description,
++ * false otherwise.
++ */
++bool
++file_has_lease(struct file *file)
++{
++	bool ret = false;
++	struct inode *inode = file_inode(file);
++	struct file_lock *fl;
++
++	spin_lock(&inode->i_lock);
++	for (fl = inode->i_flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (fl->fl_file == file) {
++			ret = true;
++			break;
++		}
++	}
++	spin_unlock(&inode->i_lock);
++	return ret;
++}
++EXPORT_SYMBOL(file_has_lease);
++
++/**
+  *	__break_lease	-	revoke all outstanding leases on file
+  *	@inode: the inode of the file to return
+  *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e11d60cc867b..7ae6f4869669 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -953,6 +953,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
++extern bool file_has_lease(struct file *file);
+ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **);
+@@ -1064,6 +1065,11 @@ static inline int flock_lock_file_wait(struct file *filp,
+ 	return -ENOLCK;
+ }
+ 
++static inline bool file_has_lease(struct file *file)
++{
++	return false;
++}
++
+ static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	return 0;
 -- 
 1.9.3
 
