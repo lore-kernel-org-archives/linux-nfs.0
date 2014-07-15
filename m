@@ -1,135 +1,245 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:46269 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751314AbaGKSHi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 14:07:38 -0400
-Received: by mail-qc0-f171.google.com with SMTP id w7so1334918qcr.16
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2014 11:07:37 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 11 Jul 2014 14:07:35 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Frank Filz <ffilzlnx@mindspring.com>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 10/11] nfsd: make deny mode enforcement more efficient
- and close races in it
-Message-ID: <20140711140735.2d94e698@tlielax.poochiereds.net>
-In-Reply-To: <CAHQdGtTUz7hCsowAEi7gpDk+d2J0NPNHJJVhy5hFmq6pQKg=CQ@mail.gmail.com>
-References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
-	<1405015655-12469-11-git-send-email-jlayton@primarydata.com>
-	<03f901cf9d2d$f23c21f0$d6b465d0$@mindspring.com>
-	<20140711134820.66d53162@tlielax.poochiereds.net>
-	<03fc01cf9d31$719fcc50$54df64f0$@mindspring.com>
-	<CAHQdGtTUz7hCsowAEi7gpDk+d2J0NPNHJJVhy5hFmq6pQKg=CQ@mail.gmail.com>
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:35026 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751027AbaGOOUt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:20:49 -0400
+Subject: [PATCH v3 04/21] xprtrdma: Update rkeys after transport reconnect
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 15 Jul 2014 10:20:47 -0400
+Message-ID: <20140715142047.8908.10517.stgit@manet.1015granger.net>
+In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 11 Jul 2014 14:00:43 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Various reports of:
 
-> On Fri, Jul 11, 2014 at 1:56 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
-> >> On Fri, 11 Jul 2014 10:31:26 -0700
-> >> "Frank Filz" <ffilzlnx@mindspring.com> wrote:
-> >>
-> >> > > The current enforcement of deny modes is both inefficient and
-> >> > > scattered across several places, which makes it hard to guarantee
-> >> > > atomicity. The inefficiency is a problem now, and the lack of
-> >> > > atomicity will mean races
-> >> > once
-> >> > > the client_mutex is removed.
-> >> > >
-> >> > > First, we address the inefficiency. We have to track deny modes on a
-> >> > > per- stateid basis to ensure that open downgrades are sane, but when
-> >> > > the server goes to enforce them it has to walk the entire list of
-> >> > > stateids and check against each one.
-> >> > >
-> >> > > Instead of doing that, maintain a per-nfs4_file deny mode. When a
-> >> > > file is opened, we simply set any deny bits in that mode that were
-> >> > > specified in
-> >> > the
-> >> > > OPEN call. We can then use that unified deny mode to do a simple
-> >> > > check to see whether there are any conflicts without needing to walk
-> >> > > the entire stateid list.
-> >> > >
-> >> > > The only time we'll need to walk the entire list of stateids is when
-> >> > > a
-> >> > stateid
-> >> > > that has a deny mode on it is being released, or one is having its
-> >> > > deny
-> >> > mode
-> >> > > downgraded. In that case, we must walk the entire list and
-> >> > > recalculate the fi_share_deny field. Since deny modes are pretty
-> >> > > rare today, this should
-> >> > be
-> >> > > very rare under normal workloads.
-> >> >
-> >> > What we do in Ganesha to avoid walking the list of stateids on release
-> >> > is maintain the effective deny (and access) mode not at bits, but as a
-> >> > counter for each bit. Thus, to remove a SHARE_ACCESS_READ |
-> >> > SHARE_DENY_WRITE, you decrement the counts for access_read and
-> >> deny_write.
-> >> >
-> >> > Frank
-> >> >
-> >> >
-> >>
-> >> Sure, that's another possibility that I considered, but I didn't want to
-> > be
-> >> bothered with having to add counters for deny modes. In practice there are
-> >> *no* clients that use them (aside from pynfs and maybe the semi-mythical
-> >> Windows v4.1 client).
-> 
-> You don't need counters for deny modes. There can only be 1 of each,
-> since any deny mode has to be part of an OPEN that has at least one
-> non-zero share access mode. So a single bit for each  should be fine.
-> 
+  rpcrdma_qp_async_error_upcall: QP error 3 on device mlx4_0
+		ep ffff8800bfd3e848
 
-I'm not sure that's 100% true.
+Ensure that rkeys in already-marshalled RPC/RDMA headers are
+refreshed after the QP has been replaced by a reconnect.
 
-I see no reason that you can't have several clients open the same file
-with (e.g.) ACCESS_READ and DENY_WRITE. You wouldn't want to lift the
-DENY_WRITE on the file until all of those clients have closed the file
-(or downgraded to remove the DENY_WRITE access).
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=249
+Suggested-by: Selvin Xavier <Selvin.Xavier@Emulex.Com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+---
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   75 ++++++++++++++++++++-------------------
+ net/sunrpc/xprtrdma/transport.c |   11 +++---
+ net/sunrpc/xprtrdma/xprt_rdma.h |   10 +++++
+ 3 files changed, 54 insertions(+), 42 deletions(-)
 
-So, I think you do need a little more than just a single set of bits on
-the file. You either need to use per-file counters for them there
-(which it sounds like ganesha does) or track them on a per-stateid
-basis (like knfsd does).
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 693966d..54422f7 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -53,14 +53,6 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
+ 
+-enum rpcrdma_chunktype {
+-	rpcrdma_noch = 0,
+-	rpcrdma_readch,
+-	rpcrdma_areadch,
+-	rpcrdma_writech,
+-	rpcrdma_replych
+-};
+-
+ #ifdef RPC_DEBUG
+ static const char transfertypes[][12] = {
+ 	"pure inline",	/* no chunks */
+@@ -286,6 +278,28 @@ out:
+ }
+ 
+ /*
++ * Marshal chunks. This routine returns the header length
++ * consumed by marshaling.
++ *
++ * Returns positive RPC/RDMA header size, or negative errno.
++ */
++
++ssize_t
++rpcrdma_marshal_chunks(struct rpc_rqst *rqst, ssize_t result)
++{
++	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
++	struct rpcrdma_msg *headerp = (struct rpcrdma_msg *)req->rl_base;
++
++	if (req->rl_rtype != rpcrdma_noch)
++		result = rpcrdma_create_chunks(rqst, &rqst->rq_snd_buf,
++					       headerp, req->rl_rtype);
++	else if (req->rl_wtype != rpcrdma_noch)
++		result = rpcrdma_create_chunks(rqst, &rqst->rq_rcv_buf,
++					       headerp, req->rl_wtype);
++	return result;
++}
++
++/*
+  * Copy write data inline.
+  * This function is used for "small" requests. Data which is passed
+  * to RPC via iovecs (or page list) is copied directly into the
+@@ -377,7 +391,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	char *base;
+ 	size_t rpclen, padlen;
+ 	ssize_t hdrlen;
+-	enum rpcrdma_chunktype rtype, wtype;
+ 	struct rpcrdma_msg *headerp;
+ 
+ 	/*
+@@ -415,13 +428,13 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 * into pages; otherwise use reply chunks.
+ 	 */
+ 	if (rqst->rq_rcv_buf.buflen <= RPCRDMA_INLINE_READ_THRESHOLD(rqst))
+-		wtype = rpcrdma_noch;
++		req->rl_wtype = rpcrdma_noch;
+ 	else if (rqst->rq_rcv_buf.page_len == 0)
+-		wtype = rpcrdma_replych;
++		req->rl_wtype = rpcrdma_replych;
+ 	else if (rqst->rq_rcv_buf.flags & XDRBUF_READ)
+-		wtype = rpcrdma_writech;
++		req->rl_wtype = rpcrdma_writech;
+ 	else
+-		wtype = rpcrdma_replych;
++		req->rl_wtype = rpcrdma_replych;
+ 
+ 	/*
+ 	 * Chunks needed for arguments?
+@@ -438,16 +451,16 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 * TBD check NFSv4 setacl
+ 	 */
+ 	if (rqst->rq_snd_buf.len <= RPCRDMA_INLINE_WRITE_THRESHOLD(rqst))
+-		rtype = rpcrdma_noch;
++		req->rl_rtype = rpcrdma_noch;
+ 	else if (rqst->rq_snd_buf.page_len == 0)
+-		rtype = rpcrdma_areadch;
++		req->rl_rtype = rpcrdma_areadch;
+ 	else
+-		rtype = rpcrdma_readch;
++		req->rl_rtype = rpcrdma_readch;
+ 
+ 	/* The following simplification is not true forever */
+-	if (rtype != rpcrdma_noch && wtype == rpcrdma_replych)
+-		wtype = rpcrdma_noch;
+-	if (rtype != rpcrdma_noch && wtype != rpcrdma_noch) {
++	if (req->rl_rtype != rpcrdma_noch && req->rl_wtype == rpcrdma_replych)
++		req->rl_wtype = rpcrdma_noch;
++	if (req->rl_rtype != rpcrdma_noch && req->rl_wtype != rpcrdma_noch) {
+ 		dprintk("RPC:       %s: cannot marshal multiple chunk lists\n",
+ 			__func__);
+ 		return -EIO;
+@@ -461,7 +474,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	 * When padding is in use and applies to the transfer, insert
+ 	 * it and change the message type.
+ 	 */
+-	if (rtype == rpcrdma_noch) {
++	if (req->rl_rtype == rpcrdma_noch) {
+ 
+ 		padlen = rpcrdma_inline_pullup(rqst,
+ 						RPCRDMA_INLINE_PAD_VALUE(rqst));
+@@ -476,7 +489,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 			headerp->rm_body.rm_padded.rm_pempty[1] = xdr_zero;
+ 			headerp->rm_body.rm_padded.rm_pempty[2] = xdr_zero;
+ 			hdrlen += 2 * sizeof(u32); /* extra words in padhdr */
+-			if (wtype != rpcrdma_noch) {
++			if (req->rl_wtype != rpcrdma_noch) {
+ 				dprintk("RPC:       %s: invalid chunk list\n",
+ 					__func__);
+ 				return -EIO;
+@@ -497,30 +510,18 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 			 * on receive. Therefore, we request a reply chunk
+ 			 * for non-writes wherever feasible and efficient.
+ 			 */
+-			if (wtype == rpcrdma_noch)
+-				wtype = rpcrdma_replych;
++			if (req->rl_wtype == rpcrdma_noch)
++				req->rl_wtype = rpcrdma_replych;
+ 		}
+ 	}
+ 
+-	/*
+-	 * Marshal chunks. This routine will return the header length
+-	 * consumed by marshaling.
+-	 */
+-	if (rtype != rpcrdma_noch) {
+-		hdrlen = rpcrdma_create_chunks(rqst,
+-					&rqst->rq_snd_buf, headerp, rtype);
+-		wtype = rtype;	/* simplify dprintk */
+-
+-	} else if (wtype != rpcrdma_noch) {
+-		hdrlen = rpcrdma_create_chunks(rqst,
+-					&rqst->rq_rcv_buf, headerp, wtype);
+-	}
++	hdrlen = rpcrdma_marshal_chunks(rqst, hdrlen);
+ 	if (hdrlen < 0)
+ 		return hdrlen;
+ 
+ 	dprintk("RPC:       %s: %s: hdrlen %zd rpclen %zd padlen %zd"
+ 		" headerp 0x%p base 0x%p lkey 0x%x\n",
+-		__func__, transfertypes[wtype], hdrlen, rpclen, padlen,
++		__func__, transfertypes[req->rl_wtype], hdrlen, rpclen, padlen,
+ 		headerp, base, req->rl_iov.lkey);
+ 
+ 	/*
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 4185102..f6d280b 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -597,13 +597,14 @@ xprt_rdma_send_request(struct rpc_task *task)
+ 	struct rpc_xprt *xprt = rqst->rq_xprt;
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+-	int rc;
++	int rc = 0;
+ 
+-	if (req->rl_niovs == 0) {
++	if (req->rl_niovs == 0)
+ 		rc = rpcrdma_marshal_req(rqst);
+-		if (rc < 0)
+-			goto failed_marshal;
+-	}
++	else if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
++		rc = rpcrdma_marshal_chunks(rqst, 0);
++	if (rc < 0)
++		goto failed_marshal;
+ 
+ 	if (req->rl_reply == NULL) 		/* e.g. reconnection */
+ 		rpcrdma_recv_buffer_get(req);
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index f3d86b2..c270e59 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -99,6 +99,14 @@ struct rpcrdma_ep {
+ #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+ #define DECR_CQCOUNT(ep) atomic_sub_return(1, &(ep)->rep_cqcount)
+ 
++enum rpcrdma_chunktype {
++	rpcrdma_noch = 0,
++	rpcrdma_readch,
++	rpcrdma_areadch,
++	rpcrdma_writech,
++	rpcrdma_replych
++};
++
+ /*
+  * struct rpcrdma_rep -- this structure encapsulates state required to recv
+  * and complete a reply, asychronously. It needs several pieces of
+@@ -192,6 +200,7 @@ struct rpcrdma_req {
+ 	unsigned int	rl_niovs;	/* 0, 2 or 4 */
+ 	unsigned int	rl_nchunks;	/* non-zero if chunks */
+ 	unsigned int	rl_connect_cookie;	/* retry detection */
++	enum rpcrdma_chunktype	rl_rtype, rl_wtype;
+ 	struct rpcrdma_buffer *rl_buffer; /* home base for this structure */
+ 	struct rpcrdma_rep	*rl_reply;/* holder for reply buffer */
+ 	struct rpcrdma_mr_seg rl_segments[RPCRDMA_MAX_SEGS];/* chunk segments */
+@@ -347,6 +356,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+ /*
+  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
+  */
++ssize_t rpcrdma_marshal_chunks(struct rpc_rqst *, ssize_t);
+ int rpcrdma_marshal_req(struct rpc_rqst *);
+ size_t rpcrdma_max_payload(struct rpcrdma_xprt *);
+ 
 
-> >>
-> >> With this scheme, deny mode enforcement is pretty darned efficient,
-> >> particularly in the common case where there are no deny modes to enforce.
-> >>
-> >> Any penalty for the use of deny modes is generally paid during the CLOSE
-> > or
-> >> OPEN_DOWNGRADE on behalf of the client that's using them.
-> >> Any RPC from a client that's not won't need to do any extra work (aside
-> > from
-> >> maybe spinning on the fi_lock while another client is having to
-> > recalculate the
-> >> fi_share_deny).
-> >
-> > Good point.
-> >
-> > Whatever happened to Pavel Shilovsky's O_DENY patch set? I was looking
-> > forward to that for allowing Ganesha and Samba share reservations to more
-> > fully interact with each other...
-> >
-> > Frank
-> >
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> 
-
-
--- 
-Jeff Layton <jlayton@primarydata.com>
