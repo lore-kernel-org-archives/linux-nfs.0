@@ -1,121 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:59674 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761887AbaGRPNt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 11:13:49 -0400
-Received: by mail-qa0-f54.google.com with SMTP id k15so3115272qaq.13
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 08:13:48 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v4 03/10] nfsd: simplify stateid allocation and file handling
-Date: Fri, 18 Jul 2014 11:13:29 -0400
-Message-Id: <1405696416-32585-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
-References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:32695 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753990AbaGOPJs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 11:09:48 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 08/15] print_rpc_gss_sec: Make sure logging to stderr is enabled.
+Date: Tue, 15 Jul 2014 11:09:27 -0400
+Message-Id: <1405436974-4161-9-git-send-email-steved@redhat.com>
+In-Reply-To: <1405436974-4161-1-git-send-email-steved@redhat.com>
+References: <1405436974-4161-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+It does not make sense to try an covert this routine to
+used the new debugging macro. So just insure the correct
+debugging level and logging to stderr is enabled.
 
-Don't allow stateids to clear the open file pointer until they are
-being destroyed. In a later patch we'll want to move the putting of
-the nfs4_file into generic stateid handling code.
-
-Also, move to kzalloc and get rid of explicit zeroing of fields.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 22 ++++++++++------------
- 1 file changed, 10 insertions(+), 12 deletions(-)
+ src/auth_gss.c     | 3 +++
+ src/authgss_prot.c | 2 +-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 49a734cd2f20..60ae21abce00 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -459,7 +459,7 @@ kmem_cache *slab)
- 	struct nfs4_stid *stid;
- 	int new_id;
+diff --git a/src/auth_gss.c b/src/auth_gss.c
+index e636e7e..d8d5a72 100644
+--- a/src/auth_gss.c
++++ b/src/auth_gss.c
+@@ -88,6 +88,9 @@ print_rpc_gss_sec(struct rpc_gss_sec *ptr)
+ int i;
+ char *p;
  
--	stid = kmem_cache_alloc(slab, GFP_KERNEL);
-+	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
- 	if (!stid)
- 		return NULL;
++	if (libtirpc_debug_level < 4 || log_stderr == 0)
++		return;
++
+ 	gss_log_debug("rpc_gss_sec:");
+ 	if(ptr->mech == NULL)
+ 		gss_log_debug("NULL gss_OID mech");
+diff --git a/src/authgss_prot.c b/src/authgss_prot.c
+index 6dc4af6..669eab7 100644
+--- a/src/authgss_prot.c
++++ b/src/authgss_prot.c
+@@ -338,7 +338,7 @@ gss_log_hexdump(const u_char *buf, int len, int offset)
+ 	u_int i, j, jm;
+ 	int c;
  
-@@ -467,11 +467,9 @@ kmem_cache *slab)
- 	if (new_id < 0)
- 		goto out_free;
- 	stid->sc_client = cl;
--	stid->sc_type = 0;
- 	stid->sc_stateid.si_opaque.so_id = new_id;
- 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
- 	/* Will be incremented before return to client: */
--	stid->sc_stateid.si_generation = 0;
- 	atomic_set(&stid->sc_count, 1);
+-	if (libtirpc_debug_level < 3 || log_stderr == 0)
++	if (libtirpc_debug_level < 4 || log_stderr == 0)
+ 		return;
  
- 	/*
-@@ -592,10 +590,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	INIT_LIST_HEAD(&dp->dl_perfile);
- 	INIT_LIST_HEAD(&dp->dl_perclnt);
- 	INIT_LIST_HEAD(&dp->dl_recall_lru);
--	dp->dl_file = NULL;
- 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
--	dp->dl_time = 0;
- 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
- 	return dp;
- }
-@@ -616,6 +612,8 @@ void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
- 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
-+		if (dp->dl_file)
-+			put_nfs4_file(dp->dl_file);
- 		remove_stid(&dp->dl_stid);
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
-@@ -665,13 +663,9 @@ unhash_delegation(struct nfs4_delegation *dp)
- 	list_del_init(&dp->dl_recall_lru);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
--	if (fp) {
-+	if (fp)
- 		nfs4_put_deleg_lease(fp);
--		dp->dl_file = NULL;
--	}
- 	spin_unlock(&state_lock);
--	if (fp)
--		put_nfs4_file(fp);
- }
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-@@ -879,12 +873,12 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- static void close_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	release_all_access(stp);
--	put_nfs4_file(stp->st_file);
--	stp->st_file = NULL;
- }
- 
- static void free_generic_stateid(struct nfs4_ol_stateid *stp)
- {
-+	if (stp->st_file)
-+		put_nfs4_file(stp->st_file);
- 	remove_stid(&stp->st_stid);
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
-@@ -4463,6 +4457,10 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 		if (list_empty(&oo->oo_owner.so_stateids))
- 			release_openowner(oo);
- 	} else {
-+		if (s->st_file) {
-+			put_nfs4_file(s->st_file);
-+			s->st_file = NULL;
-+		}
- 		oo->oo_last_closed_stid = s;
- 		/*
- 		 * In the 4.0 case we need to keep the owners around a
+ 	fprintf(stderr, "\n");
 -- 
 1.9.3
 
