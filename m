@@ -1,98 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:55448 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753974AbaGVOwL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:52:11 -0400
-Subject: [PATCH v4 08/21] xprtrdma: Back off rkey when FAST_REG_MR fails
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:52:08 -0400
-Message-ID: <20140722145208.6010.76678.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:49425 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758545AbaGOKiG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 06:38:06 -0400
+Received: by mail-qa0-f53.google.com with SMTP id v10so4357678qac.12
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 03:38:05 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 7/7] nfsd: Fix delegation revocation
+Date: Tue, 15 Jul 2014 06:37:49 -0400
+Message-Id: <1405420669-4030-8-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If posting a FAST_REG_MR Work Reqeust fails, revert the rkey update
-to avoid subsequent IB_WC_MW_BIND_ERR completions.
+Ensure that the delegations cannot be found by the laundromat etc once
+we add them to the various 'revoke' lists.
 
-Suggested-by: Steve Wise <swise@opengridcomputing.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- include/rdma/ib_verbs.h     |   11 +++++++++++
- net/sunrpc/xprtrdma/verbs.c |   12 +++++-------
- 2 files changed, 16 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4state.c | 45 +++++++++++++++++++++++++--------------------
+ 1 file changed, 25 insertions(+), 20 deletions(-)
 
-diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-index 7ccef34..c5c7ec6 100644
---- a/include/rdma/ib_verbs.h
-+++ b/include/rdma/ib_verbs.h
-@@ -2479,6 +2479,17 @@ static inline u32 ib_inc_rkey(u32 rkey)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1cfc39b505cc..34235475e8d6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -650,13 +650,13 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
  }
  
- /**
-+ * ib_dec_rkey - decrements the key portion of the given rkey. Can be used
-+ * when recovering from a local immediate error.
-+ * @rkey - the rkey to decrement.
-+ */
-+static inline u32 ib_dec_rkey(u32 rkey)
-+{
-+	const u32 mask = 0x000000ff;
-+	return ((rkey - 1) & mask) | (rkey & ~mask);
-+}
+-/* Called under the state lock. */
+ static void
+-unhash_delegation(struct nfs4_delegation *dp)
++unhash_delegation_locked(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_file *fp = dp->dl_file;
+ 
+-	spin_lock(&state_lock);
++	lockdep_assert_held(&state_lock);
 +
-+/**
-  * ib_alloc_mw - Allocates a memory window.
-  * @pd: The protection domain associated with the memory window.
-  * @type: The type of the memory window (1 or 2).
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 8bb7945..394b13f 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1497,13 +1497,12 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
- 	struct ib_mr *mr = frmr->fr_mr;
- 	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
--
--	u8 key;
- 	int len, pageoff;
- 	int i, rc;
- 	int seg_len;
- 	u64 pa;
- 	int page_no;
-+	u32 rkey;
+ 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+ 	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+@@ -665,18 +665,19 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	spin_unlock(&fp->fi_lock);
+ 	if (fp)
+ 		nfs4_put_deleg_lease(fp);
+-	spin_unlock(&state_lock);
+ }
  
- 	pageoff = offset_in_page(seg1->mr_offset);
- 	seg1->mr_offset -= pageoff;	/* start of page */
-@@ -1558,14 +1557,11 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 		rc = -EIO;
- 		goto out_err;
+-static void destroy_revoked_delegation(struct nfs4_delegation *dp)
++static void unhash_and_destroy_delegation(struct nfs4_delegation *dp)
+ {
+-	list_del_init(&dp->dl_recall_lru);
++	spin_lock(&state_lock);
++	unhash_delegation_locked(dp);
++	spin_unlock(&state_lock);
+ 	nfs4_put_delegation(dp);
+ }
+ 
+-static void destroy_delegation(struct nfs4_delegation *dp)
++static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+ {
+-	unhash_delegation(dp);
++	list_del_init(&dp->dl_recall_lru);
+ 	nfs4_put_delegation(dp);
+ }
+ 
+@@ -685,11 +686,10 @@ static void revoke_delegation(struct nfs4_delegation *dp)
+ 	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 
+ 	if (clp->cl_minorversion == 0)
+-		destroy_delegation(dp);
++		destroy_revoked_delegation(dp);
+ 	else {
+-		unhash_delegation(dp);
+ 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
+-		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
++		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
  	}
--
--	/* Bump the key */
--	key = (u8)(mr->rkey & 0x000000FF);
--	ib_update_fast_reg_key(mr, ++key);
--
- 	frmr_wr.wr.fast_reg.access_flags = (writing ?
- 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
- 				IB_ACCESS_REMOTE_READ);
-+	rkey = ib_inc_rkey(mr->rkey);
-+	ib_update_fast_reg_key(mr, rkey);
- 	frmr_wr.wr.fast_reg.rkey = mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ }
  
-@@ -1574,6 +1570,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
- 			" status %i\n", __func__, rc);
-+		rkey = ib_dec_rkey(mr->rkey);
-+		ib_update_fast_reg_key(mr, rkey);
- 		goto out_err;
- 	} else {
- 		seg1->mr_rkey = mr->rkey;
+@@ -1446,15 +1446,16 @@ destroy_client(struct nfs4_client *clp)
+ 	spin_lock(&state_lock);
+ 	while (!list_empty(&clp->cl_delegations)) {
+ 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
+-		list_del_init(&dp->dl_perclnt);
++		unhash_delegation_locked(dp);
+ 		/* Ensure that deleg break won't try to requeue it */
+ 		++dp->dl_time;
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	while (!list_empty(&reaplist)) {
+ 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+-		destroy_delegation(dp);
++		list_del_init(&dp->dl_recall_lru);
++		nfs4_put_delegation(dp);
+ 	}
+ 	list_splice_init(&clp->cl_revoked, &reaplist);
+ 	while (!list_empty(&reaplist)) {
+@@ -3638,7 +3639,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
+ 	return;
+ out_free:
+-	destroy_delegation(dp);
++	nfs4_put_delegation(dp);
+ out_no_deleg:
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
+ 	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
+@@ -3877,7 +3878,8 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		unhash_delegation_locked(dp);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+@@ -4509,7 +4511,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		goto out;
+ 
+-	destroy_delegation(dp);
++	unhash_and_destroy_delegation(dp);
+ out:
+ 	nfs4_unlock_state();
+ 
+@@ -5352,7 +5354,8 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+ 			 * don't monkey with it now that we are.
+ 			 */
+ 			++dp->dl_time;
+-			list_move(&dp->dl_recall_lru, victims);
++			unhash_delegation_locked(dp);
++			list_add(&dp->dl_recall_lru, victims);
+ 		}
+ 		if (++count == max)
+ 			break;
+@@ -5607,12 +5610,14 @@ nfs4_state_shutdown_net(struct net *net)
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		unhash_delegation_locked(dp);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		destroy_delegation(dp);
++		list_del_init(&dp->dl_recall_lru);
++		nfs4_put_delegation(dp);
+ 	}
+ 
+ 	nfsd4_client_tracking_exit(net);
+-- 
+1.9.3
 
