@@ -1,44 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f46.google.com ([209.85.215.46]:46272 "EHLO
-	mail-la0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750732AbaGZL7o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Jul 2014 07:59:44 -0400
-From: Andrey Utkin <andrey.krieger.utkin@gmail.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        kernel-janitors@vger.kernel.org,
-        Andrey Utkin <andrey.krieger.utkin@gmail.com>
-Subject: [PATCH] nfs3_list_one_acl(): check get_acl() result with IS_ERR_OR_NULL
-Date: Sat, 26 Jul 2014 14:58:01 +0300
-Message-Id: <1406375881-18837-1-git-send-email-andrey.krieger.utkin@gmail.com>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:40524 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755233AbaGORzK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 13:55:10 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v2 2/2] svcrdma: Add zero padding if the client doesn't send it
+To: swise@opengridcomputing.com
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Tue, 15 Jul 2014 13:55:08 -0400
+Message-ID: <20140715175508.3448.95150.stgit@klimt.1015granger.net>
+In-Reply-To: <20140715175144.3448.48674.stgit@klimt.1015granger.net>
+References: <20140715175144.3448.48674.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There was a check for result being not NULL. But get_acl() may return
-NULL, or ERR_PTR, or actual pointer.
-The purpose of the function where current change is done is to "list
-ACLs only when they are available", so any error condition of get_acl()
-mustn't be elevated, and returning 0 there is still valid.
+See RFC 5666 section 3.7: clients don't have to send zero XDR
+padding.
 
-Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=81111
-Signed-off-by: Andrey Utkin <andrey.krieger.utkin@gmail.com>
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs3acl.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-index 8f854dd..d0fec26 100644
---- a/fs/nfs/nfs3acl.c
-+++ b/fs/nfs/nfs3acl.c
-@@ -256,7 +256,7 @@ nfs3_list_one_acl(struct inode *inode, int type, const char *name, void *data,
- 	char *p = data + *result;
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   28 ++++++++++++++++++++++++++++
+ 1 files changed, 28 insertions(+), 0 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 8f92a61..3a45bf4 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -43,6 +43,7 @@
+ #include <linux/sunrpc/debug.h>
+ #include <linux/sunrpc/rpc_rdma.h>
+ #include <linux/spinlock.h>
++#include <linux/highmem.h>
+ #include <asm/unaligned.h>
+ #include <rdma/ib_verbs.h>
+ #include <rdma/rdma_cm.h>
+@@ -435,6 +436,32 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+ 	return ret;
+ }
  
- 	acl = get_acl(inode, type);
--	if (!acl)
-+	if (IS_ERR_OR_NULL(acl))
- 		return 0;
- 
- 	posix_acl_release(acl);
--- 
-2.0.0
++/*
++ * To avoid a separate RDMA READ just for a handful of zero bytes,
++ * RFC 5666 section 3.7 allows the client to omit the XDR zero pad
++ * in chunk lists.
++ */
++static void
++rdma_fix_xdr_pad(struct xdr_buf *buf)
++{
++	unsigned int page_len = buf->page_len;
++	unsigned int size = (XDR_QUADLEN(page_len) << 2) - page_len;
++ 	unsigned int offset, pg_no;
++	char *p;
++
++	if (size == 0)
++		return;
++
++	pg_no = page_len >> PAGE_SHIFT;
++	offset = page_len & ~PAGE_MASK;
++	p = page_address(buf->pages[pg_no]);
++	memset(p + offset, 0, size);
++
++	buf->page_len += size;
++	buf->buflen += size;
++	buf->len += size;
++}
++
+ static int rdma_read_complete(struct svc_rqst *rqstp,
+ 			      struct svc_rdma_op_ctxt *head)
+ {
+@@ -449,6 +476,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+ 		rqstp->rq_pages[page_no] = head->pages[page_no];
+ 	}
+ 	/* Point rq_arg.pages past header */
++	rdma_fix_xdr_pad(&head->arg);
+ 	rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
+ 	rqstp->rq_arg.page_len = head->arg.page_len;
+ 	rqstp->rq_arg.page_base = head->arg.page_base;
 
