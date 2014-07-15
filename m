@@ -1,120 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:64110 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754957AbaGQTMq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 15:12:46 -0400
-Received: by mail-qc0-f173.google.com with SMTP id c9so2481513qcz.18
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 12:12:45 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/6] nfsd: simplify stateid allocation and file handling
-Date: Thu, 17 Jul 2014 15:12:31 -0400
-Message-Id: <1405624354-22388-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
-References: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:29532 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754008AbaGOPJu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 11:09:50 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 12/15] clnt_bcast: Convert local debug() calls to LIBTIRPC_DEBUG() calls
+Date: Tue, 15 Jul 2014 11:09:31 -0400
+Message-Id: <1405436974-4161-13-git-send-email-steved@redhat.com>
+In-Reply-To: <1405436974-4161-1-git-send-email-steved@redhat.com>
+References: <1405436974-4161-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-
-Don't allow stateids to clear the open file pointer until they are
-being destroyed. In a later patch we'll want to move the putting of
-the nfs4_file into generic stateid handling code.
-
-Also, move to kzalloc and get rid of explicit zeroing of fields.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 22 ++++++++++------------
- 1 file changed, 10 insertions(+), 12 deletions(-)
+ src/clnt_bcast.c | 36 +++++++++++-------------------------
+ 1 file changed, 11 insertions(+), 25 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d88a33fa8e8f..c06a08711e7f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -459,7 +459,7 @@ kmem_cache *slab)
- 	struct nfs4_stid *stid;
- 	int new_id;
+diff --git a/src/clnt_bcast.c b/src/clnt_bcast.c
+index 1055545..373d8a5 100644
+--- a/src/clnt_bcast.c
++++ b/src/clnt_bcast.c
+@@ -55,9 +55,7 @@
+ #endif				/* PORTMAP */
+ #include <rpc/nettype.h>
+ #include <arpa/inet.h>
+-#ifdef RPC_DEBUG
+ #include <stdio.h>
+-#endif
+ #include <errno.h>
+ #include <stdlib.h>
+ #include <unistd.h>
+@@ -66,6 +64,7 @@
+ #include <string.h>
  
--	stid = kmem_cache_alloc(slab, GFP_KERNEL);
-+	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
- 	if (!stid)
- 		return NULL;
+ #include "rpc_com.h"
++#include "debug.h"
  
-@@ -467,11 +467,9 @@ kmem_cache *slab)
- 	if (new_id < 0)
- 		goto out_free;
- 	stid->sc_client = cl;
--	stid->sc_type = 0;
- 	stid->sc_stateid.si_opaque.so_id = new_id;
- 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
- 	/* Will be incremented before return to client: */
--	stid->sc_stateid.si_generation = 0;
- 	atomic_set(&stid->sc_count, 1);
- 
- 	/*
-@@ -592,10 +590,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	INIT_LIST_HEAD(&dp->dl_perfile);
- 	INIT_LIST_HEAD(&dp->dl_perclnt);
- 	INIT_LIST_HEAD(&dp->dl_recall_lru);
--	dp->dl_file = NULL;
- 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
--	dp->dl_time = 0;
- 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
- 	return dp;
- }
-@@ -616,6 +612,8 @@ void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
- 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
-+		if (dp->dl_file)
-+			put_nfs4_file(dp->dl_file);
- 		remove_stid(&dp->dl_stid);
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
-@@ -665,13 +663,9 @@ unhash_delegation(struct nfs4_delegation *dp)
- 	list_del_init(&dp->dl_recall_lru);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
--	if (fp) {
-+	if (fp)
- 		nfs4_put_deleg_lease(fp);
--		dp->dl_file = NULL;
--	}
- 	spin_unlock(&state_lock);
--	if (fp)
--		put_nfs4_file(fp);
- }
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-@@ -879,12 +873,12 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- static void close_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	release_all_access(stp);
--	put_nfs4_file(stp->st_file);
--	stp->st_file = NULL;
- }
- 
- static void free_generic_stateid(struct nfs4_ol_stateid *stp)
- {
-+	if (stp->st_file)
-+		put_nfs4_file(stp->st_file);
- 	remove_stid(&stp->st_stid);
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
-@@ -4447,6 +4441,10 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 		if (list_empty(&oo->oo_owner.so_stateids))
- 			release_openowner(oo);
- 	} else {
-+		if (s->st_file) {
-+			put_nfs4_file(s->st_file);
-+			s->st_file = NULL;
-+		}
- 		oo->oo_last_closed_stid = s;
- 		/*
- 		 * In the 4.0 case we need to keep the owners around a
+ #define	MAXBCAST 20	/* Max no of broadcasting transports */
+ #define	INITTIME 4000	/* Time to wait initially */
+@@ -454,20 +453,15 @@ rpc_broadcast_exp(prog, vers, proc, xargs, argsp, xresults, resultsp,
+ 					    outlen, 0, (struct sockaddr*)addr,
+ 					    (size_t)fdlist[i].asize) !=
+ 					    outlen) {
+-#ifdef RPC_DEBUG
+-						perror("sendto");
+-#endif
+-						warnx("clnt_bcast: cannot send"
+-						      "broadcast packet");
++						LIBTIRPC_DEBUG(1, 
++							("rpc_broadcast_exp: sendto failed: errno %d", errno));
++						warnx("rpc_broadcast_exp: cannot send broadcast packet");
+ 						stat = RPC_CANTSEND;
+ 						continue;
+ 					};
+-#ifdef RPC_DEBUG
+ 				if (!__rpc_lowvers)
+-					fprintf(stderr, "Broadcast packet sent "
+-						"for %s\n",
+-						 fdlist[i].nconf->nc_netid);
+-#endif
++					LIBTIRPC_DEBUG(3, ("rpc_broadcast_exp: Broadcast packet sent for %s\n",
++						 fdlist[i].nconf->nc_netid));
+ #ifdef PORTMAP
+ 				/*
+ 				 * Send the version 2 packet also
+@@ -485,11 +479,8 @@ rpc_broadcast_exp(prog, vers, proc, xargs, argsp, xresults, resultsp,
+ 						continue;
+ 					}
+ 				}
+-#ifdef RPC_DEBUG
+-				fprintf(stderr, "PMAP Broadcast packet "
+-					"sent for %s\n",
+-					fdlist[i].nconf->nc_netid);
+-#endif
++				LIBTIRPC_DEBUG(3, ("rpc_broadcast_exp: PMAP Broadcast packet sent for %s\n",
++					fdlist[i].nconf->nc_netid));
+ #endif				/* PORTMAP */
+ 			}
+ 			/* End for sending all packets on this transport */
+@@ -532,10 +523,8 @@ rpc_broadcast_exp(prog, vers, proc, xargs, argsp, xresults, resultsp,
+ 				continue;
+ 			} else
+ 				fds_found++;
+-#ifdef RPC_DEBUG
+-			fprintf(stderr, "response for %s\n",
+-				fdlist[i].nconf->nc_netid);
+-#endif
++			LIBTIRPC_DEBUG(3, ("rpc_broadcast_exp: response for %s\n", 
++				fdlist[i].nconf->nc_netid));
+ 		try_again:
+ 			inlen = recvfrom(fdlist[i].fd, inbuf, fdlist[i].dsize,
+ 			    0, (struct sockaddr *)(void *)&fdlist[i].raddr,
+@@ -596,10 +585,7 @@ rpc_broadcast_exp(prog, vers, proc, xargs, argsp, xresults, resultsp,
+ 						    &taddr, fdlist[i].nconf);
+ 					} else {
+ #endif				/* PORTMAP */
+-#ifdef RPC_DEBUG
+-						fprintf(stderr, "uaddr %s\n",
+-						    uaddrp);
+-#endif
++						LIBTIRPC_DEBUG(3, ("rpc_broadcast_exp: uaddr %s\n", uaddrp));
+ 						np = uaddr2taddr(
+ 						    fdlist[i].nconf, uaddrp);
+ 						done = (*eachresult)(resultsp,
 -- 
 1.9.3
 
