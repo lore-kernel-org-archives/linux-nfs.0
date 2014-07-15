@@ -1,131 +1,198 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:29371 "EHLO mx1.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57058 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751175AbaGWNoO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jul 2014 09:44:14 -0400
-Message-ID: <53CFBC2B.5070607@netapp.com>
-Date: Wed, 23 Jul 2014 09:44:11 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 08/21] xprtrdma: Back off rkey when FAST_REG_MR fails
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net> <20140722145208.6010.76678.stgit@manet.1015granger.net> <53CEC375.3010408@netapp.com> <A86981DE-2BD5-4763-81E7-C4A675245AA6@oracle.com>
-In-Reply-To: <A86981DE-2BD5-4763-81E7-C4A675245AA6@oracle.com>
-Content-Type: text/plain; charset="ISO-8859-1"
+	id S1753322AbaGOPJp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 11:09:45 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 01/15] libtirpc: New configurable debugging routines
+Date: Tue, 15 Jul 2014 11:09:20 -0400
+Message-Id: <1405436974-4161-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1405436974-4161-1-git-send-email-steved@redhat.com>
+References: <1405436974-4161-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/22/2014 05:18 PM, Chuck Lever wrote:
-> 
-> On Jul 22, 2014, at 4:03 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
-> 
->> On 07/22/2014 10:52 AM, Chuck Lever wrote:
->>> If posting a FAST_REG_MR Work Reqeust fails, revert the rkey update
->>> to avoid subsequent IB_WC_MW_BIND_ERR completions.
->>>
->>> Suggested-by: Steve Wise <swise@opengridcomputing.com>
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> Tested-by: Shirley Ma <shirley.ma@oracle.com>
->>> Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
->>> ---
->>> include/rdma/ib_verbs.h     |   11 +++++++++++
->>> net/sunrpc/xprtrdma/verbs.c |   12 +++++-------
->>> 2 files changed, 16 insertions(+), 7 deletions(-)
->>>
->>> diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
->>> index 7ccef34..c5c7ec6 100644
->>> --- a/include/rdma/ib_verbs.h
->>> +++ b/include/rdma/ib_verbs.h
->>> @@ -2479,6 +2479,17 @@ static inline u32 ib_inc_rkey(u32 rkey)
->>> }
->>>
->>> /**
->>> + * ib_dec_rkey - decrements the key portion of the given rkey. Can be used
->>> + * when recovering from a local immediate error.
->>> + * @rkey - the rkey to decrement.
->>> + */
->>> +static inline u32 ib_dec_rkey(u32 rkey)
->>> +{
->>> +	const u32 mask = 0x000000ff;
->>> +	return ((rkey - 1) & mask) | (rkey & ~mask);
->>
->> ib_inc_rkey() uses the same mask, and ib_update_fast_reg_key() uses !mask.  I think this should be a #define constant, rather than hardcoded in four places.
-> 
-> Such a clean up is not related to the change in this patch.
-> 
-> However, it could go as a separate patch, sent from someone
-> who can test the other current users of ib_inc_rkey() and
-> ib_update_fast_reg_key().
+This patch added new configurable debugging interface that
+will allow existing debugging statements to be enabled
+and disabled by the calling application.
 
-I agree with separate patch sometime in the future.  Is it appropriate to add ib_dec_rkey() through the NFS tree, or is there an Infiniband tree that this should go through instead?
+    libtirpc_set_debug(char *name, int level, int use_stderr)
 
-Anna
+       * This is called by the application to set the debugging level.
+         If use_stderr is set, all message will go to stderr,
+         otherwise syslog() will be used.
 
-> 
-> 
->> Anna
->>
->>
->>> +}
->>> +
->>> +/**
->>>  * ib_alloc_mw - Allocates a memory window.
->>>  * @pd: The protection domain associated with the memory window.
->>>  * @type: The type of the memory window (1 or 2).
->>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
->>> index 8bb7945..394b13f 100644
->>> --- a/net/sunrpc/xprtrdma/verbs.c
->>> +++ b/net/sunrpc/xprtrdma/verbs.c
->>> @@ -1497,13 +1497,12 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->>> 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
->>> 	struct ib_mr *mr = frmr->fr_mr;
->>> 	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
->>> -
->>> -	u8 key;
->>> 	int len, pageoff;
->>> 	int i, rc;
->>> 	int seg_len;
->>> 	u64 pa;
->>> 	int page_no;
->>> +	u32 rkey;
->>>
->>> 	pageoff = offset_in_page(seg1->mr_offset);
->>> 	seg1->mr_offset -= pageoff;	/* start of page */
->>> @@ -1558,14 +1557,11 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->>> 		rc = -EIO;
->>> 		goto out_err;
->>> 	}
->>> -
->>> -	/* Bump the key */
->>> -	key = (u8)(mr->rkey & 0x000000FF);
->>> -	ib_update_fast_reg_key(mr, ++key);
->>> -
->>> 	frmr_wr.wr.fast_reg.access_flags = (writing ?
->>> 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
->>> 				IB_ACCESS_REMOTE_READ);
->>> +	rkey = ib_inc_rkey(mr->rkey);
->>> +	ib_update_fast_reg_key(mr, rkey);
->>> 	frmr_wr.wr.fast_reg.rkey = mr->rkey;
->>> 	DECR_CQCOUNT(&r_xprt->rx_ep);
->>>
->>> @@ -1574,6 +1570,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->>> 	if (rc) {
->>> 		dprintk("RPC:       %s: failed ib_post_send for register,"
->>> 			" status %i\n", __func__, rc);
->>> +		rkey = ib_dec_rkey(mr->rkey);
->>> +		ib_update_fast_reg_key(mr, rkey);
->>> 		goto out_err;
->>> 	} else {
->>> 		seg1->mr_rkey = mr->rkey;
->>>
->>
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+    LIBTIRPC_DEBUG(level, msg)
+        * This is the macro called by functions within the library.
+
+    libtirpc_log_dbg(char *fmt, ...)
+        * This is the routine the LIBTIRPC_DEBUG macro uses to
+          log the messages and can be called directly by internal
+          routines
+
+    vlibtirpc_log_dbg(int level, const char *fmt, va_list args)
+        * This routine is used by existing debugging routines
+          that already obtained their arguments using
+          stdarg(3) macros.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ src/Makefile.am |  4 ++--
+ src/debug.c     | 64 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ src/debug.h     | 49 +++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 115 insertions(+), 2 deletions(-)
+ create mode 100644 src/debug.c
+ create mode 100644 src/debug.h
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 3029b78..de57c8f 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -5,7 +5,7 @@
+ ## program built.  We also don't bother trying to assemble code, or
+ ## anything like that.
+ 
+-noinst_HEADERS = rpc_com.h
++noinst_HEADERS = rpc_com.h debug.h
+ 
+ AM_CPPFLAGS = -I$(top_srcdir)/tirpc -DPORTMAP -DINET6 \
+ 		-D_GNU_SOURCE -Wall -pipe  
+@@ -51,7 +51,7 @@ libtirpc_la_SOURCES = auth_none.c auth_unix.c authunix_prot.c bindresvport.c cln
+         rpc_callmsg.c rpc_generic.c rpc_soc.c rpcb_clnt.c rpcb_prot.c \
+         rpcb_st_xdr.c svc.c svc_auth.c svc_dg.c svc_auth_unix.c svc_auth_none.c \
+         svc_generic.c svc_raw.c svc_run.c svc_simple.c svc_vc.c getpeereid.c \
+-        auth_time.c auth_des.c authdes_prot.c
++        auth_time.c auth_des.c authdes_prot.c debug.c
+ 
+ ## XDR
+ libtirpc_la_SOURCES += xdr.c xdr_rec.c xdr_array.c xdr_float.c xdr_mem.c xdr_reference.c xdr_stdio.c
+diff --git a/src/debug.c b/src/debug.c
+new file mode 100644
+index 0000000..3a9862e
+--- /dev/null
++++ b/src/debug.c
+@@ -0,0 +1,64 @@
++/*
++ * debug.c -- debugging routines for libtirpc
++ *
++ * Copyright (C) 2014  Red Hat, Steve Dickson <steved@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++#include <sys/types.h>
++#include <stdio.h>
++#include <stdarg.h>
++#include <unistd.h>
++#include <syslog.h>
++#include <string.h>
++
++#include "debug.h"
++
++/* library global debug level */
++int libtirpc_debug_level = 3;
++int  log_stderr = 1; /* log to stderr instead of systlog */
++
++/*
++ * Set the debug level for the entire library.
++ * Different area will used the value to determin
++ * the verbosity of the debugging output.
++ */
++void
++libtirpc_set_debug(char *name, int level, int use_stderr)
++{
++	if (level < 0)
++		level = 0;
++
++	log_stderr = use_stderr;
++	if (!use_stderr)
++		openlog(name, LOG_PID, LOG_DAEMON);
++
++	LIBTIRPC_DEBUG(1, ("libtirpc: debug level %d", level));
++}
++
++void
++libtirpc_log_dbg(char *fmt, ...)
++{
++	va_list args;
++
++	va_start(args, fmt);
++	if (log_stderr) {
++		vfprintf(stderr, fmt, args);
++		fprintf(stderr, "\n");
++	} else
++		vsyslog(LOG_NOTICE, fmt, args);
++	va_end(args);
++}
+diff --git a/src/debug.h b/src/debug.h
+new file mode 100644
+index 0000000..afc8d57
+--- /dev/null
++++ b/src/debug.h
+@@ -0,0 +1,49 @@
++/*
++ * debug.h -- debugging routines for libtirpc
++ *
++ * Copyright (C) 2014  Red Hat, Steve Dickson <steved@redhat.com>
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public License
++ * as published by the Free Software Foundation; either version 2
++ * of the License, or (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * along with this program; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin Street, Fifth Floor,
++ * Boston, MA 02110-1301, USA.
++ */
++
++#ifndef _DEBUG_H
++#define _DEBUG_H
++#include <syslog.h>
++
++extern int libtirpc_debug_level;
++extern int  log_stderr;
++
++void    libtirpc_log_dbg(char *format, ...);
++void 	libtirpc_set_debug(char *name, int level, int use_stderr);
++
++#define LIBTIRPC_DEBUG(level, msg) \
++	do { \
++		if (level <= libtirpc_debug_level) \
++			libtirpc_log_dbg msg; \
++	} while (0)
++
++static inline void 
++vlibtirpc_log_dbg(int level, const char *fmt, va_list args)
++{
++	if (level <= libtirpc_debug_level) {
++		if (log_stderr) {
++			vfprintf(stderr, fmt, args);
++			fprintf(stderr, "\n");
++		} else
++			vsyslog(LOG_NOTICE, fmt, args);
++	}
++}
++#endif /* _DEBUG_H */
+-- 
+1.9.3
 
