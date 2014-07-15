@@ -1,57 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:8067 "EHLO
-	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756658AbaGBTGD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 15:06:03 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
- disconnect
-Date: Wed, 2 Jul 2014 19:06:00 +0000
-Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
- <20140623223942.1634.89063.stgit@manet.1015granger.net>
-In-Reply-To: <20140623223942.1634.89063.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from bombadil.infradead.org ([198.137.202.9]:42232 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753787AbaGORRy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 13:17:54 -0400
+Date: Tue, 15 Jul 2014 10:17:52 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH 3/7] locks: add file_has_lease to prevent delegation
+ break races
+Message-ID: <20140715171752.GA12059@infradead.org>
+References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+ <1405420669-4030-4-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1405420669-4030-4-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VGhpcyBjaGFuZ2UgaXMgdmVyeSBtdWNoIHByb25lIHRvIGdlbmVyYXRlIHBvbGxfY3EgZXJyb3Jz
-IGJlY2F1c2Ugb2YgdW4tY2xlYW5lZCBjb21wbGV0aW9ucyB3aGljaCBzdGlsbA0KcG9pbnQgdG8g
-dGhlIG5vbi1leGlzdGVudCBRUHMuIE9uIHRoZSBuZXcgY29ubmVjdGlvbiB3aGVuIHRoZXNlIGNv
-bXBsZXRpb25zIGFyZSBwb2xsZWQsIHRoZSBwb2xsX2NxIHdpbGwNCmZhaWwgYmVjYXVzZSBvbGQg
-UVAgcG9pbnRlciBpcyBhbHJlYWR5IE5VTEwuIA0KRGlkIGFueW9uZSBoaXQgdGhpcyBzaXR1YXRp
-b24gZHVyaW5nIHRoZWlyIHRlc3Rpbmc/DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0N
-Cj4gRnJvbTogbGludXgtcmRtYS1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1y
-ZG1hLQ0KPiBvd25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBDaHVjayBMZXZlcg0K
-PiBTZW50OiBUdWVzZGF5LCBKdW5lIDI0LCAyMDE0IDQ6MTAgQU0NCj4gVG86IGxpbnV4LXJkbWFA
-dmdlci5rZXJuZWwub3JnOyBsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnDQo+IFN1YmplY3Q6IFtQ
-QVRDSCB2MSAwNS8xM10geHBydHJkbWE6IERvbid0IGRyYWluIENRcyBvbiB0cmFuc3BvcnQgZGlz
-Y29ubmVjdA0KPiANCj4gQ1FzIGFyZSBub3QgZGVzdHJveWVkIHVudGlsIHVubW91bnQuIEJ5IGRy
-YWluaW5nIENRcyBvbiB0cmFuc3BvcnQNCj4gZGlzY29ubmVjdCwgc3VjY2Vzc2Z1bCBjb21wbGV0
-aW9ucyB0aGF0IGNhbiBjaGFuZ2UgdGhlIHIuZnJtci5zdGF0ZSBmaWVsZCBjYW4NCj4gYmUgbWlz
-c2VkLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNs
-ZS5jb20+DQo+IC0tLQ0KPiAgbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jIHwgICAgNSAtLS0t
-LQ0KPiAgMSBmaWxlIGNoYW5nZWQsIDUgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEv
-bmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jIGIvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5j
-DQo+IGluZGV4IDNjN2Y5MDQuLjQ1MWUxMDAgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBy
-dHJkbWEvdmVyYnMuYw0KPiArKysgYi9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMNCj4gQEAg
-LTg3Myw5ICs4NzMsNiBAQCByZXRyeToNCj4gIAkJCWRwcmludGsoIlJQQzogICAgICAgJXM6IHJw
-Y3JkbWFfZXBfZGlzY29ubmVjdCINCj4gIAkJCQkiIHN0YXR1cyAlaVxuIiwgX19mdW5jX18sIHJj
-KTsNCj4gDQo+IC0JCXJwY3JkbWFfY2xlYW5fY3EoZXAtPnJlcF9hdHRyLnJlY3ZfY3EpOw0KPiAt
-CQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBfYXR0ci5zZW5kX2NxKTsNCj4gLQ0KPiAgCQl4cHJ0
-ID0gY29udGFpbmVyX29mKGlhLCBzdHJ1Y3QgcnBjcmRtYV94cHJ0LCByeF9pYSk7DQo+ICAJCWlk
-ID0gcnBjcmRtYV9jcmVhdGVfaWQoeHBydCwgaWEsDQo+ICAJCQkJKHN0cnVjdCBzb2NrYWRkciAq
-KSZ4cHJ0LT5yeF9kYXRhLmFkZHIpOw0KPiBAQCAtOTg1LDggKzk4Miw2IEBAIHJwY3JkbWFfZXBf
-ZGlzY29ubmVjdChzdHJ1Y3QgcnBjcmRtYV9lcCAqZXAsDQo+IHN0cnVjdCBycGNyZG1hX2lhICpp
-YSkgIHsNCj4gIAlpbnQgcmM7DQo+IA0KPiAtCXJwY3JkbWFfY2xlYW5fY3EoZXAtPnJlcF9hdHRy
-LnJlY3ZfY3EpOw0KPiAtCXJwY3JkbWFfY2xlYW5fY3EoZXAtPnJlcF9hdHRyLnNlbmRfY3EpOw0K
-PiAgCXJjID0gcmRtYV9kaXNjb25uZWN0KGlhLT5yaV9pZCk7DQo+ICAJaWYgKCFyYykgew0KPiAg
-CQkvKiByZXR1cm5zIHdpdGhvdXQgd2FpdCBpZiBub3QgY29ubmVjdGVkICovDQo+IA0KPiAtLQ0K
-PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3Jp
-YmUgbGludXgtcmRtYSIgaW4gdGhlDQo+IGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2
-Z2VyLmtlcm5lbC5vcmcgTW9yZSBtYWpvcmRvbW8gaW5mbyBhdA0KPiBodHRwOi8vdmdlci5rZXJu
-ZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg==
+On Tue, Jul 15, 2014 at 06:37:45AM -0400, Jeff Layton wrote:
+> Once we remove the client_mutex, we'll have a potential race between
+> setting a lease on a file and breaking the delegation. We may set the
+> lease, but by the time we go to hash it, it may have already been
+> broken. Currently, we know that this won't happen as the nfs4_laundromat
+> takes the client_mutex, but we want to remove that.
+> 
+> As part of that fix, add a function that can tell us whether a
+> particular file has a lease set on it. In a later nfsd patch, we'll use
+> that to close the potential race window.
+> 
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+
+Looks reasonable, I don't really understand why we can drop out of the
+loop when finding the first non-lease, but other code in locks.c also
+does this, so I assume it is intentional.
+
+The only real question I have is why this is in locks.c, while
+check_for_locks that does the equivalent for real file locks is
+implemented in the nfsd code.  But I think it's better to have these
+sorts of interfaces in locks.c and check_for_locks should move there
+eventually.
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
