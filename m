@@ -1,55 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.kundenserver.de ([212.227.126.130]:60309 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754847AbaGNP31 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 11:29:27 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: trond.myklebust@primarydata.com, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org, Paul McKenney <paulmck@linux.vnet.ibm.com>
-Subject: Re: [PATCH 1/7] sunrpc: remove __rcu annotation from struct gss_cl_ctx->gc_gss_ctx
-Date: Mon, 14 Jul 2014 17:29:16 +0200
-Message-ID: <25661493.tnN6lHRVBE@wuerfel>
-In-Reply-To: <20140714110202.4e311df2@tlielax.poochiereds.net>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com> <6702571.1HVrh55XfQ@wuerfel> <20140714110202.4e311df2@tlielax.poochiereds.net>
+Received: from mx1.redhat.com ([209.132.183.28]:41036 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752103AbaGOPxS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 11:53:18 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s6FFrHqk019914
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 11:53:18 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s6FFrHx7021661
+	for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 11:53:17 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] rpcbind: Remove a strict-aliasing warning
+Date: Tue, 15 Jul 2014 11:53:15 -0400
+Message-Id: <1405439595-5544-1-git-send-email-steved@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Monday 14 July 2014 11:02:02 Jeff Layton wrote:
-> On Mon, 14 Jul 2014 16:23:53 +0200
-> Arnd Bergmann <arnd@arndb.de> wrote:
-> 
-> > On Sunday 13 July 2014 21:57:38 Jeff Layton wrote:
-> > > 
-> > > Commit 5b22216e11f7 (nfs: __rcu annotations) added a __rcu annotation to
-> > > the gc_gss_ctx field. I see no rationale for adding that though, as that
-> > > field does not seem to be managed via RCU at all.
-> > > 
-> > > Cc: Arnd Bergmann <arnd@arndb.de>
-> > > Cc: Paul McKenney <paulmck@linux.vnet.ibm.com>
-> > > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > 
-> > Unfortunately, it's been too long ago for me to remember what led to me
-> > adding it. I also don't see a reason for it in today's code, but I don't
-> > know if the code has changed, if I made a mistake then, or if it's actually
-> > needed for some reason I don't see.
-> > 
-> 
-> Darn, I was hoping you would remember... 
-> 
-> I don't think the code that manipulates this field has changed
-> substantially since then, but I'm far from certain either. This field
-> does live in a structure that is RCU managed, so maybe that was part of
-> the rationale?
-> 
-> In any case, we're just removing the annotation here so this shouldn't
-> materially harm anything, AFAICT.
-> 
+src/util.c: In function ‘in6_fillscopeid’:
+src/util.c:106:3: warning: dereferencing type-punned pointer will break
+strict-aliasing rules [-Wstrict-aliasing]
+   ifindex = ntohs(*(u_int16_t *)&sin6->sin6_addr.s6_addr[2]);
+   ^
 
-All the annotations I did were the results of building with sparse and
-looking at the warnings. If you see fewer warnings after your patch
-than before, than it's moving into the right direction ;-)
+src/util.c:109:4: warning: dereferencing type-punned pointer will break
+strict-aliasing rules [-Wstrict-aliasing]
+    *(u_int16_t *)&sin6->sin6_addr.s6_addr[2] = 0;
 
-	Arnd
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ src/util.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/src/util.c b/src/util.c
+index 9a5fb69..7d56479 100644
+--- a/src/util.c
++++ b/src/util.c
+@@ -101,12 +101,14 @@ static void
+ in6_fillscopeid(struct sockaddr_in6 *sin6)
+ {
+ 	u_int16_t ifindex;
++	u_int16_t *addr;
+ 
+         if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr)) {
+-		ifindex = ntohs(*(u_int16_t *)&sin6->sin6_addr.s6_addr[2]);
++		addr = (u_int16_t *)&sin6->sin6_addr.s6_addr[2];
++		ifindex = ntohs(*addr);
+ 		if (sin6->sin6_scope_id == 0 && ifindex != 0) {
+ 			sin6->sin6_scope_id = ifindex;
+-			*(u_int16_t *)&sin6->sin6_addr.s6_addr[2] = 0;
++			*addr = 0;
+ 		}
+ 	}
+ }
+-- 
+1.9.3
+
