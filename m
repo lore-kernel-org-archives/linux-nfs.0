@@ -1,75 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50535 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:60248 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753333AbaG3SFw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jul 2014 14:05:52 -0400
-Date: Wed, 30 Jul 2014 14:05:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "McEvoy, James" <james.mcevoy@hp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4.1 ACL reference implementation
-Message-ID: <20140730180552.GI26316@fieldses.org>
-References: <6301806E96421841896741228C6B1A2764A7C51F@G4W3216.americas.hpqcorp.net>
- <20140729210901.GA24471@fieldses.org>
- <6301806E96421841896741228C6B1A2764A7DCF7@G4W3216.americas.hpqcorp.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <6301806E96421841896741228C6B1A2764A7DCF7@G4W3216.americas.hpqcorp.net>
+	id S1753313AbaGOPJv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 11:09:51 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 11/15] key_call: Convert local debug() calls to LIBTIRPC_DEBUG() calls
+Date: Tue, 15 Jul 2014 11:09:30 -0400
+Message-Id: <1405436974-4161-12-git-send-email-steved@redhat.com>
+In-Reply-To: <1405436974-4161-1-git-send-email-steved@redhat.com>
+References: <1405436974-4161-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 30, 2014 at 05:08:25PM +0000, McEvoy, James wrote:
-> We are implementing NFSv4.1 ACLs in the filesystem mostly to support 
-> SMB/CIFS but I am seeing some strange behavior with ACL group 
-> inheritance on children/grand-children using the nfs4_setfacl and 
-> nfs4_getfacl on the parent directory.  The problems are mostly with 
-> inheritance on the @OWNER and @GROUP ACEs... 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ src/key_call.c | 21 ++++++++-------------
+ 1 file changed, 8 insertions(+), 13 deletions(-)
 
-The usual problem is that the umask is applied.
+diff --git a/src/key_call.c b/src/key_call.c
+index 906b2f6..8b9f388 100644
+--- a/src/key_call.c
++++ b/src/key_call.c
+@@ -59,16 +59,11 @@
+ #include <sys/wait.h>
+ #include <sys/fcntl.h>
+ 
++#include "dump.h"
+ 
+ #define	KEY_TIMEOUT	5	/* per-try timeout in seconds */
+ #define	KEY_NRETRY	12	/* number of retries */
+ 
+-#ifdef DEBUG
+-#define	debug(msg)	(void) fprintf(stderr, "%s\n", msg);
+-#else
+-#define	debug(msg)
+-#endif /* DEBUG */
+-
+ /*
+  * Hack to allow the keyserver to use AUTH_DES (for authenticated
+  * NIS+ calls, for example).  The only functions that get called
+@@ -96,7 +91,7 @@ key_setsecret(secretkey)
+ 		return (-1);
+ 	}
+ 	if (status != KEY_SUCCESS) {
+-		debug("set status is nonzero");
++		LIBTIRPC_DEBUG(1, ("key_setsecret: set status is nonzero"));
+ 		return (-1);
+ 	}
+ 	return (0);
+@@ -144,7 +139,7 @@ key_encryptsession_pk(remotename, remotekey, deskey)
+ 		return (-1);
+ 	}
+ 	if (res.status != KEY_SUCCESS) {
+-		debug("encrypt status is nonzero");
++		LIBTIRPC_DEBUG(1, ("key_encryptsession_pk: encrypt status is nonzero"));
+ 		return (-1);
+ 	}
+ 	*deskey = res.cryptkeyres_u.deskey;
+@@ -168,7 +163,7 @@ key_decryptsession_pk(remotename, remotekey, deskey)
+ 		return (-1);
+ 	}
+ 	if (res.status != KEY_SUCCESS) {
+-		debug("decrypt status is nonzero");
++		LIBTIRPC_DEBUG(1, ("key_decryptsession_pk: decrypt status is nonzero"));
+ 		return (-1);
+ 	}
+ 	*deskey = res.cryptkeyres_u.deskey;
+@@ -190,7 +185,7 @@ key_encryptsession(remotename, deskey)
+ 		return (-1);
+ 	}
+ 	if (res.status != KEY_SUCCESS) {
+-		debug("encrypt status is nonzero");
++		LIBTIRPC_DEBUG(1, ("key_encryptsession: encrypt status is nonzero"));
+ 		return (-1);
+ 	}
+ 	*deskey = res.cryptkeyres_u.deskey;
+@@ -212,7 +207,7 @@ key_decryptsession(remotename, deskey)
+ 		return (-1);
+ 	}
+ 	if (res.status != KEY_SUCCESS) {
+-		debug("decrypt status is nonzero");
++		LIBTIRPC_DEBUG(1, ("key_decryptsession: decrypt status is nonzero"));
+ 		return (-1);
+ 	}
+ 	*deskey = res.cryptkeyres_u.deskey;
+@@ -243,7 +238,7 @@ struct key_netstarg *arg;
+ 	}
+ 
+ 	if (status != KEY_SUCCESS) {
+-		debug("key_setnet status is nonzero");
++		LIBTIRPC_DEBUG(1, ("key_setnet: key_setnet status is nonzero"));
+ 		return (-1);
+ 	}
+ 	return (1);
+@@ -262,7 +257,7 @@ key_get_conv(pkey, deskey)
+ 		return (-1);
+ 	}
+ 	if (res.status != KEY_SUCCESS) {
+-		debug("get_conv status is nonzero");
++		LIBTIRPC_DEBUG(1, ("key_get_conv: get_conv status is nonzero"));
+ 		return (-1);
+ 	}
+ 	*deskey = res.cryptkeyres_u.deskey;
+-- 
+1.9.3
 
-> What I am looking for is a reference that I can use to validate ACL 
-> inheritance behavior. Is there a distro that has a filesystem which supports 
-> NFSv4 ACLs?  Or ideally an rpm that I could install on a CentOS6 VM.
-> I have tried using the richacl mount option on OpenSUSE 13.1 but the 
-> nfs4_getfacl command returns: 
-> "Operation to request attribute not supported." 
-> The fstab entry to mount the filesystem is:
-> /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0-0-0-0-part3 \
-> 	/home	ext4	acl,richacl,user_xattr 1 2
-> 
-> Do you have any recommendations as to what and how I can install 
-> a filesystem that supports nfsv4 ACLs?
-
-No, they all just do "posix" acls and nfsd tries to translate.
-
-But the umask issue is somewhat of a separate issue.
-
---b.
-
-> 
->   --jim
-> 
-> > -----Original Message-----
-> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-> > Sent: Tuesday, July 29, 2014 2:09 PM
-> > To: McEvoy, James
-> > Cc: linux-nfs@vger.kernel.org
-> > Subject: Re: NFSv4.1 ACL reference implementation
-> > 
-> > On Tue, Jul 29, 2014 at 07:18:03PM +0000, McEvoy, James wrote:
-> > > Is there a working NFSv4.1 reference implementation available and are there
-> > any instructs on how to build/install it?
-> > 
-> > I don't recall seeing any, no.
-> > 
-> > (Most NFSv4.0 ACL implementations should still be perfectly compliant with the
-> > NFSv4.1 spec too as far as I know.  But I don't know of any implementations of
-> > the ACL features that are new to RFC 5661.  Is there any particular feature that
-> > you're interested in?)
-> > 
-> > --b.
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of
-> > a message to majordomo@vger.kernel.org More majordomo info at
-> > http://vger.kernel.org/majordomo-info.html
