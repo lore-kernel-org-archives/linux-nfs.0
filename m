@@ -1,58 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:54396 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933831AbaGOVfd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 17:35:33 -0400
-From: Kamal Mostafa <kamal@canonical.com>
-To: linux-kernel@vger.kernel.org, stable@vger.kernel.org,
-        kernel-team@lists.ubuntu.com
-Cc: Mateusz Guzik <mguzik@redhat.com>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Kamal Mostafa <kamal@canonical.com>
-Subject: [PATCH 3.13 118/198] NFS: populate ->net in mount data when remounting
-Date: Tue, 15 Jul 2014 14:29:48 -0700
-Message-Id: <1405459868-15089-119-git-send-email-kamal@canonical.com>
-In-Reply-To: <1405459868-15089-1-git-send-email-kamal@canonical.com>
-References: <1405459868-15089-1-git-send-email-kamal@canonical.com>
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:45263 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752024AbaGOOVc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:21:32 -0400
+Subject: [PATCH v3 09/21] xprtrdma: Chain together all MWs in same buffer
+ pool
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 15 Jul 2014 10:21:30 -0400
+Message-ID: <20140715142130.8908.83907.stgit@manet.1015granger.net>
+In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-3.13.11.5 -stable review patch.  If anyone has any objections, please let me know.
+During connection loss recovery, need to visit every MW in a
+buffer pool. Any MW that is in use by an RPC will not be on the
+rb_mws list.
 
-------------------
-
-From: Mateusz Guzik <mguzik@redhat.com>
-
-commit a914722f333b3359d2f4f12919380a334176bb89 upstream.
-
-Otherwise the kernel oopses when remounting with IPv6 server because
-net is dereferenced in dev_get_by_name.
-
-Use net ns of current thread so that dev_get_by_name does not operate on
-foreign ns. Changing the address is prohibited anyway so this should not
-affect anything.
-
-Signed-off-by: Mateusz Guzik <mguzik@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- fs/nfs/super.c | 1 +
- 1 file changed, 1 insertion(+)
+ net/sunrpc/xprtrdma/verbs.c     |    4 ++++
+ net/sunrpc/xprtrdma/xprt_rdma.h |    4 +++-
+ 2 files changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 910ed90..05c3a6e 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2246,6 +2246,7 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
- 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
- 	data->version = nfsvers;
- 	data->minorversion = nfss->nfs_client->cl_minorversion;
-+	data->net = current->nsproxy->net_ns;
- 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
- 		data->nfs_server.addrlen);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 394b13f..abac484 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1074,6 +1074,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	p += cdata->padding;
  
--- 
-1.9.1
+ 	INIT_LIST_HEAD(&buf->rb_mws);
++	INIT_LIST_HEAD(&buf->rb_all);
+ 	r = (struct rpcrdma_mw *)p;
+ 	switch (ia->ri_memreg_strategy) {
+ 	case RPCRDMA_FRMR:
+@@ -1098,6 +1099,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 				ib_dereg_mr(r->r.frmr.fr_mr);
+ 				goto out;
+ 			}
++			list_add(&r->mw_all, &buf->rb_all);
+ 			list_add(&r->mw_list, &buf->rb_mws);
+ 			++r;
+ 		}
+@@ -1116,6 +1118,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 					" failed %i\n", __func__, rc);
+ 				goto out;
+ 			}
++			list_add(&r->mw_all, &buf->rb_all);
+ 			list_add(&r->mw_list, &buf->rb_mws);
+ 			++r;
+ 		}
+@@ -1225,6 +1228,7 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 	while (!list_empty(&buf->rb_mws)) {
+ 		r = list_entry(buf->rb_mws.next,
+ 			struct rpcrdma_mw, mw_list);
++		list_del(&r->mw_all);
+ 		list_del(&r->mw_list);
+ 		switch (ia->ri_memreg_strategy) {
+ 		case RPCRDMA_FRMR:
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 84c3455..c1d8652 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -151,7 +151,7 @@ struct rpcrdma_rep {
+  * An external memory region is any buffer or page that is registered
+  * on the fly (ie, not pre-registered).
+  *
+- * Each rpcrdma_buffer has a list of these anchored in rb_mws. During
++ * Each rpcrdma_buffer has a list of free MWs anchored in rb_mws. During
+  * call_allocate, rpcrdma_buffer_get() assigns one to each segment in
+  * an rpcrdma_req. Then rpcrdma_register_external() grabs these to keep
+  * track of registration metadata while each RPC is pending.
+@@ -175,6 +175,7 @@ struct rpcrdma_mw {
+ 		struct rpcrdma_frmr	frmr;
+ 	} r;
+ 	struct list_head	mw_list;
++	struct list_head	mw_all;
+ };
+ 
+ /*
+@@ -246,6 +247,7 @@ struct rpcrdma_buffer {
+ 	atomic_t	rb_credits;	/* most recent server credits */
+ 	int		rb_max_requests;/* client max requests */
+ 	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
++	struct list_head rb_all;
+ 	int		rb_send_index;
+ 	struct rpcrdma_req	**rb_send_bufs;
+ 	int		rb_recv_index;
 
