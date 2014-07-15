@@ -1,234 +1,233 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:38984 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752518AbaGUPDG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:06 -0400
-Received: by mail-qg0-f41.google.com with SMTP id q107so5472109qgd.14
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:04 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 04/40] nfsd: Replace nfs4_ol_stateid->st_file with the st_stid.sc_file
-Date: Mon, 21 Jul 2014 11:02:16 -0400
-Message-Id: <1405954972-28904-5-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:45915 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757689AbaGOGjw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 02:39:52 -0400
+Date: Tue, 15 Jul 2014 16:39:42 +1000
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH/RFC] NFS: state manager thread must start running.
+Message-ID: <20140715163942.1d94304f@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/n/3z/JKWxxEe7LXEIQYwD8_"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+--Sig_/n/3z/JKWxxEe7LXEIQYwD8_
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 48 ++++++++++++++++++++++++------------------------
- fs/nfsd/state.h     |  1 -
- 2 files changed, 24 insertions(+), 25 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 55cb95154731..076de12c3fa6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -848,7 +848,7 @@ reset_union_bmap_deny(u32 deny, struct nfs4_ol_stateid *stp)
- 
- 	/* Recalculate per-file deny mode if there was a change */
- 	if (change)
--		recalculate_deny_mode(stp->st_file);
-+		recalculate_deny_mode(stp->st_stid.sc_file);
- }
- 
- /* release all access and file references for a given stateid */
-@@ -856,21 +856,21 @@ static void
- release_all_access(struct nfs4_ol_stateid *stp)
+
+If the server restarts at an awkward time it is possible for write
+requests to block waiting for the state manager to run.
+If the state manager isn't already running a new thread will
+need to be started which requires a GFP_KERNEL allocation
+(for do_fork).
+
+If memory is short, that GFP_KERNEL allocation could block on the
+writes going out via NFS, resulting in a deadlock.
+
+The easiest solution is to keep the manager thread running
+always.
+
+In this patch the manager thread no longer holds a reference on the
+client. Instead nfs4_shutdown_client() signals the thread to
+shutdown and waits for it to do so using a completion.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+--
+I suggested in an earlier email that it might be possible to use a
+work-queue for this.  I concluded that it wasn't a good idea.
+If a server was down, the manager cold block indefinitely.
+If memory was tight and only one workqueue thread was active,
+this would block other NFS mounts.
+
+It is unfortunate that the task comm[] array only allow 16 chars.
+A non-trivial IPv6 address doesn't fit in that at ALL.
+I wonder if there is a better way to manage that.
+
+NeilBrown
+
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index ba2affa51941..0b7bc4da4035 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -432,6 +432,8 @@ extern void nfs4_schedule_lease_recovery(struct nfs_cli=
+ent *);
+ extern int nfs4_wait_clnt_recover(struct nfs_client *clp);
+ extern int nfs4_client_recover_expired_lease(struct nfs_client *clp);
+ extern void nfs4_schedule_state_manager(struct nfs_client *);
++extern int nfs4_start_state_manager(struct nfs_client *);
++extern void nfs4_shutdown_state_manager(struct nfs_client *);
+ extern void nfs4_schedule_path_down_recovery(struct nfs_client *clp);
+ extern int nfs4_schedule_stateid_recovery(const struct nfs_server *, struc=
+t nfs4_state *);
+ extern int nfs4_schedule_migration_recovery(const struct nfs_server *);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index aa9ef4876046..24c80a52e633 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -219,6 +219,8 @@ static void nfs4_shutdown_client(struct nfs_client *clp)
  {
- 	int i;
--	struct nfs4_file *fp = stp->st_file;
-+	struct nfs4_file *fp = stp->st_stid.sc_file;
- 
- 	if (fp && stp->st_deny_bmap != 0)
- 		recalculate_deny_mode(fp);
- 
- 	for (i = 1; i < 4; i++) {
- 		if (test_access(i, stp))
--			nfs4_file_put_access(stp->st_file, i);
-+			nfs4_file_put_access(stp->st_stid.sc_file, i);
- 		clear_access(i, stp);
+ 	if (__test_and_clear_bit(NFS_CS_RENEWD, &clp->cl_res_state))
+ 		nfs4_kill_renewd(clp);
++	if (__test_and_clear_bit(NFS_CS_MANAGER, &clp->cl_res_state))
++		nfs4_shutdown_state_manager(clp);
+ 	clp->cl_mvops->shutdown_client(clp);
+ 	nfs4_destroy_callback(clp);
+ 	if (__test_and_clear_bit(NFS_CS_IDMAP, &clp->cl_res_state))
+@@ -401,6 +403,11 @@ struct nfs_client *nfs4_init_client(struct nfs_client =
+*clp,
  	}
- }
- 
- static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- {
--	struct nfs4_file *fp = stp->st_file;
-+	struct nfs4_file *fp = stp->st_stid.sc_file;
- 
- 	spin_lock(&fp->fi_lock);
- 	list_del(&stp->st_perfile);
-@@ -887,8 +887,6 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
- 		return;
--	if (stp->st_file)
--		put_nfs4_file(stp->st_file);
- 	remove_stid(&stp->st_stid);
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
-@@ -900,7 +898,7 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
- 	list_del(&stp->st_locks);
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
--	file = find_any_file(stp->st_file);
-+	file = find_any_file(stp->st_stid.sc_file);
- 	if (file)
- 		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
- 	close_generic_stateid(stp);
-@@ -2976,7 +2974,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
- 	stp->st_stateowner = &oo->oo_owner;
- 	get_nfs4_file(fp);
--	stp->st_file = fp;
-+	stp->st_stid.sc_file = fp;
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = 0;
- 	set_access(open->op_share_access, stp);
-@@ -3671,7 +3669,7 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
- 		default:
- 			goto out_no_deleg;
- 	}
--	dp = nfs4_set_delegation(clp, fh, stp->st_file);
-+	dp = nfs4_set_delegation(clp, fh, stp->st_stid.sc_file);
- 	if (IS_ERR(dp))
- 		goto out_no_deleg;
- 
-@@ -3962,7 +3960,7 @@ laundromat_main(struct work_struct *laundry)
- 
- static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
- {
--	if (fhp->fh_dentry->d_inode != stp->st_file->fi_inode)
-+	if (fhp->fh_dentry->d_inode != stp->st_stid.sc_file->fi_inode)
- 		return nfserr_bad_stateid;
- 	return nfs_ok;
- }
-@@ -4192,10 +4190,12 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 		if (status)
- 			goto out;
- 		if (filpp) {
-+			struct nfs4_file *fp = stp->st_stid.sc_file;
+ 	__set_bit(NFS_CS_IDMAP, &clp->cl_res_state);
+=20
++	error =3D nfs4_start_state_manager(clp);
++	if (error < 0)
++		goto error;
++	__set_bit(NFS_CS_MANAGER, &clp->cl_res_state);
 +
- 			if (flags & RD_STATE)
--				file = find_readable_file(stp->st_file);
-+				file = find_readable_file(fp);
- 			else
--				file = find_writeable_file(stp->st_file);
-+				file = find_writeable_file(fp);
- 		}
- 		break;
- 	default:
-@@ -4215,7 +4215,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	error =3D nfs4_init_client_minor_version(clp);
+ 	if (error < 0)
+ 		goto error;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 848f6853c59e..fbcc01f6193d 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1150,15 +1150,12 @@ static void nfs4_clear_state_manager_bit(struct nfs=
+_client *clp)
+ /*
+  * Schedule the nfs_client asynchronous state management routine
+  */
+-void nfs4_schedule_state_manager(struct nfs_client *clp)
++int nfs4_start_state_manager(struct nfs_client *clp)
  {
- 	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
- 
--	if (check_for_locks(stp->st_file, lo))
-+	if (check_for_locks(stp->st_stid.sc_file, lo))
- 		return nfserr_locks_held;
- 	release_lockowner_if_empty(lo);
- 	return nfs_ok;
-@@ -4406,7 +4406,7 @@ static inline void nfs4_stateid_downgrade_bit(struct nfs4_ol_stateid *stp, u32 a
- {
- 	if (!test_access(access, stp))
- 		return;
--	nfs4_file_put_access(stp->st_file, access);
-+	nfs4_file_put_access(stp->st_stid.sc_file, access);
- 	clear_access(access, stp);
+ 	struct task_struct *task;
+ 	char buf[INET6_ADDRSTRLEN + sizeof("-manager") + 1];
+=20
+-	if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) !=3D 0)
+-		return;
+ 	__module_get(THIS_MODULE);
+-	atomic_inc(&clp->cl_count);
+=20
+ 	/* The rcu_read_lock() is not strictly necessary, as the state
+ 	 * manager is the only thread that ever changes the rpc_xprt
+@@ -1171,10 +1168,28 @@ void nfs4_schedule_state_manager(struct nfs_client =
+*clp)
+ 	if (IS_ERR(task)) {
+ 		printk(KERN_ERR "%s: kthread_run: %ld\n",
+ 			__func__, PTR_ERR(task));
+-		nfs4_clear_state_manager_bit(clp);
+-		nfs_put_client(clp);
+ 		module_put(THIS_MODULE);
++		return PTR_ERR(task);
+ 	}
++	return 0;
++}
++
++void nfs4_schedule_state_manager(struct nfs_client *clp)
++{
++	if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) !=3D 0)
++		return;
++	smp_mb__after_atomic();
++	wake_up_bit(&clp->cl_state, NFS4CLNT_MANAGER_RUNNING);
++}
++
++void nfs4_shutdown_state_manager(struct nfs_client *clp)
++{
++	DECLARE_COMPLETION_ONSTACK(done);
++
++	clp->cl_manager_done =3D &done;
++	nfs4_schedule_state_manager(clp);
++	wait_for_completion(&done);
++	clp->cl_manager_done =3D NULL;
  }
- 
-@@ -4488,9 +4488,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 			release_openowner(oo);
- 		put_generic_stateid(s);
- 	} else {
--		if (s->st_file) {
--			put_nfs4_file(s->st_file);
--			s->st_file = NULL;
-+		if (s->st_stid.sc_file) {
-+			put_nfs4_file(s->st_stid.sc_file);
-+			s->st_stid.sc_file = NULL;
- 		}
- 		oo->oo_last_closed_stid = s;
- 		/*
-@@ -4693,7 +4693,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
- 	stp->st_stateowner = &lo->lo_owner;
- 	get_nfs4_file(fp);
--	stp->st_file = fp;
-+	stp->st_stid.sc_file = fp;
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
-@@ -4710,7 +4710,7 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
- 	struct nfs4_ol_stateid *lst;
- 
- 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
--		if (lst->st_file == fp)
-+		if (lst->st_stid.sc_file == fp)
- 			return lst;
- 	}
- 	return NULL;
-@@ -4726,7 +4726,7 @@ check_lock_length(u64 offset, u64 length)
- 
- static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- {
--	struct nfs4_file *fp = lock_stp->st_file;
-+	struct nfs4_file *fp = lock_stp->st_stid.sc_file;
- 
- 	lockdep_assert_held(&fp->fi_lock);
- 
-@@ -4738,7 +4738,7 @@ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- 
- static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, struct nfs4_ol_stateid *ost, struct nfsd4_lock *lock, struct nfs4_ol_stateid **lst, bool *new)
- {
--	struct nfs4_file *fi = ost->st_file;
-+	struct nfs4_file *fi = ost->st_stid.sc_file;
- 	struct nfs4_openowner *oo = openowner(ost->st_stateowner);
- 	struct nfs4_client *cl = oo->oo_owner.so_client;
- 	struct nfs4_lockowner *lo;
-@@ -4862,7 +4862,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out;
- 	}
- 
--	fp = lock_stp->st_file;
-+	fp = lock_stp->st_stid.sc_file;
- 	locks_init_lock(file_lock);
- 	switch (lock->lk_type) {
- 		case NFS4_READ_LT:
-@@ -5062,7 +5062,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
--	filp = find_any_file(stp->st_file);
-+	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
- 		goto out;
-@@ -5176,7 +5176,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	lo = lockowner(sop);
- 	/* see if there are still any locks associated with it */
- 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
--		if (check_for_locks(stp->st_file, lo))
-+		if (check_for_locks(stp->st_stid.sc_file, lo))
- 			goto out;
- 	}
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index b14bb7407448..1be148ec9440 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -407,7 +407,6 @@ struct nfs4_ol_stateid {
- 	struct list_head              st_perstateowner;
- 	struct list_head              st_locks;
- 	struct nfs4_stateowner      * st_stateowner;
--	struct nfs4_file            * st_file;
- 	unsigned char                 st_access_bmap;
- 	unsigned char                 st_deny_bmap;
- 	struct nfs4_ol_stateid         * st_openstp;
--- 
-1.9.3
+=20
+ /*
+@@ -2328,7 +2343,6 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 	int status =3D 0;
+ 	const char *section =3D "", *section_sep =3D "";
+=20
+-	/* Ensure exclusive access to NFSv4 state */
+ 	do {
+ 		if (test_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state)) {
+ 			section =3D "purge state";
+@@ -2426,9 +2440,8 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 		/* Did we race with an attempt to give us more work? */
+ 		if (clp->cl_state =3D=3D 0)
+ 			break;
+-		if (test_and_set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) !=3D 0)
+-			break;
+-	} while (atomic_read(&clp->cl_count) > 1);
++		set_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state);
++	} while (atomic_read(&clp->cl_count) > 0);
+ 	return;
+ out_error:
+ 	if (strlen(section))
+@@ -2446,8 +2459,16 @@ static int nfs4_run_state_manager(void *ptr)
+ 	struct nfs_client *clp =3D ptr;
+=20
+ 	allow_signal(SIGKILL);
+-	nfs4_state_manager(clp);
+-	nfs_put_client(clp);
++	while (!clp->cl_manager_done) {
++		if (signal_pending(current))
++			flush_signals(current);
++		wait_event_interruptible(
++			*bit_waitqueue(&clp->cl_state,
++				       NFS4CLNT_MANAGER_RUNNING),
++			test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state));
++		nfs4_state_manager(clp);
++	}
++	complete(clp->cl_manager_done);
+ 	module_put_and_exit(0);
+ 	return 0;
+ }
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 1150ea41b626..ee7483022c46 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -36,6 +36,7 @@ struct nfs_client {
+ #define NFS_CS_RENEWD		3		/* - renewd started */
+ #define NFS_CS_STOP_RENEW	4		/* no more state to renew */
+ #define NFS_CS_CHECK_LEASE_TIME	5		/* need to check lease time */
++#define NFS_CS_MANAGER		6		/* NFSv4 manager thread running */
+ 	unsigned long		cl_flags;	/* behavior switches */
+ #define NFS_CS_NORESVPORT	0		/* - use ephemeral src port */
+ #define NFS_CS_DISCRTRY		1		/* - disconnect on RPC retry */
+@@ -69,6 +70,7 @@ struct nfs_client {
+ 	struct delayed_work	cl_renewd;
+=20
+ 	struct rpc_wait_queue	cl_rpcwaitq;
++	struct completion	*cl_manager_done;
+=20
+ 	/* idmapper */
+ 	struct idmap *		cl_idmap;
 
+--Sig_/n/3z/JKWxxEe7LXEIQYwD8_
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU8TMrjnsnt1WYoG5AQI/eg//XizRjq32DGwMrhQo6V9yuOn/NfXKxoHT
+e30/FCMcKnFIdUhYPe+23AukVYtzlmVsdyFYoGYea5Tb7N16+TMn8le+linkxlLs
+kbBmg2ZEJW3Wmv5oftxsRWFQOJKovP67M3bIib6S/NCBHLTkvtYTp8qdJRbSo8xu
+qT7hRKwu+yeWOfcFkU0zPKEOvykeEGzNNAlri0hl0kAhuvMEZjwkUT1p9Nx4OFvf
++qL1NGhKOcL6Go15CAHNhTY9IwzwQ6KnHVARqppzkpa28cRiPAcave0wCosZslmo
+4hvChOSJU+ORa1vV4D3cTe4zhrHhCf7LFwaoxOoBCq/hOgdLqGAuNYQZzJCE/MqD
+03DO3DEnWpFf3fSTLT+804iktMOIVjWWWC1EBTaPr/q+80tnLx1a1txGW2d256lr
+X17wAVqpOBG3G1QjGQ37s+EkOFHdkfS5EYYlxhdIhAgzpu+Dh3E/FlH/wvJkd3KD
+fpg/Mllf6/bt6eHLNMjAsc0nJWqlFXepeAnSTINBpmexUzFeYn/2lvkB7+77tyUu
+qSXjJLAYvnp77UlFoOfRrfwCCjqeqnSAARrCDODduzhSfZ5uH5njuroSHmlId1Cs
+pYErJ/JNDQXs8T/8I+JGPLvje6bY4Ks9QuLnU+s+keghyC5aGflvvOlGZZIe+es1
+ZgWYsdgiRl8=
+=NQfs
+-----END PGP SIGNATURE-----
+
+--Sig_/n/3z/JKWxxEe7LXEIQYwD8_--
