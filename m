@@ -1,110 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:55965 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932332AbaGUPD2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:28 -0400
-Received: by mail-qg0-f49.google.com with SMTP id j107so5349524qga.8
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:27 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 20/40] nfsd: Migrate the stateid reference into nfs4_preprocess_seqid_op
-Date: Mon, 21 Jul 2014 11:02:32 -0400
-Message-Id: <1405954972-28904-21-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:33788 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751601AbaGOO2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 10:28:32 -0400
+Date: Tue, 15 Jul 2014 10:28:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrdma: Add zero padding if the client doesn't send it
+Message-ID: <20140715142831.GH17956@fieldses.org>
+References: <20140715140417.23046.27242.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140715140417.23046.27242.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Tue, Jul 15, 2014 at 10:11:34AM -0400, Chuck Lever wrote:
+> See RFC 5666 section 3.7: clients don't have to send zero XDR
+> padding.
+> 
+> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> Hi Bruce-
+> 
+> This is an alternative solution to changing the sanity check in the
+> XDR WRITE decoder. It adjusts the incoming xdr_buf to include a zero
+> pad just after the transport has received each RPC request.
+> 
+> Thoughts?
 
-Allow nfs4_preprocess_seqid_op to take the stateid reference, instead
-of having all the callers do so.
+That looks pretty simple.  So if this works then I think I'd be happier
+doing this than worrying about other spots like the drc code where we
+might have missed an assumption.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 26 +++++++++++---------------
- 1 file changed, 11 insertions(+), 15 deletions(-)
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   30 ++++++++++++++++++++++++++++++
+>  1 files changed, 30 insertions(+), 0 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> index 8f92a61..9a3465d 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> @@ -43,6 +43,7 @@
+>  #include <linux/sunrpc/debug.h>
+>  #include <linux/sunrpc/rpc_rdma.h>
+>  #include <linux/spinlock.h>
+> +#include <linux/highmem.h>
+>  #include <asm/unaligned.h>
+>  #include <rdma/ib_verbs.h>
+>  #include <rdma/rdma_cm.h>
+> @@ -435,6 +436,34 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+>  	return ret;
+>  }
+>  
+> +/*
+> + * To avoid a separate RDMA READ just for a handful of zero bytes,
+> + * RFC 5666 section 3.7 allows the client to omit the XDR zero pad
+> + * in chunk lists.
+> + */
+> +static void
+> +rdma_fix_xdr_pad(struct xdr_buf *buf)
+> +{
+> +	unsigned int page_len = buf->page_len;
+> +	unsigned int size = (XDR_QUADLEN(page_len) << 2) - page_len;
+> + 	unsigned int offset, pg_no;
+> +	char *p;
+> +
+> +	if (size == 0)
+> +		return;
+> +
+> +	offset = page_len & ~PAGE_MASK;
+> +	pg_no = page_len >> PAGE_SHIFT;
+> +
+> +	p = kmap_atomic(buf->pages[pg_no]);
+> +	memset(p + offset, 0, size);
+> +	kunmap_atomic(p);
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f9a3fcd4e217..a0e0882edd2b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4407,8 +4407,11 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 		cstate->replay_owner = stp->st_stateowner;
- 
- 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
--	if (!status)
-+	if (!status) {
-+		/* FIXME: move into find_stateid_by_type */
-+		atomic_inc(&stp->st_stid.sc_count);
- 		*stpp = stp;
-+	}
- 	return status;
- }
- 
-@@ -4417,16 +4420,18 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- {
- 	__be32 status;
- 	struct nfs4_openowner *oo;
-+	struct nfs4_ol_stateid *stp;
- 
- 	status = nfs4_preprocess_seqid_op(cstate, seqid, stateid,
--						NFS4_OPEN_STID, stpp, nn);
-+						NFS4_OPEN_STID, &stp, nn);
- 	if (status)
- 		return status;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&(*stpp)->st_stid.sc_count);
--	oo = openowner((*stpp)->st_stateowner);
--	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
-+	oo = openowner(stp->st_stateowner);
-+	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
-+		put_generic_stateid(stp);
- 		return nfserr_bad_stateid;
-+	}
-+	*stpp = stp;
- 	return nfs_ok;
- }
- 
-@@ -4453,8 +4458,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					NFS4_OPEN_STID, &stp, nn);
- 	if (status)
- 		goto out;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	oo = openowner(stp->st_stateowner);
- 	status = nfserr_bad_stateid;
- 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
-@@ -4604,8 +4607,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_bump_seqid(cstate, status);
- 	if (status)
- 		goto out; 
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
-@@ -4953,9 +4954,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 				       lock->lk_old_lock_seqid,
- 				       &lock->lk_old_lock_stateid,
- 				       NFS4_LOCK_STID, &lock_stp, nn);
--		/* FIXME: move into nfs4_preprocess_seqid_op */
--		if (!status)
--			atomic_inc(&lock_stp->st_stid.sc_count);
- 	}
- 	if (status)
- 		goto out;
-@@ -5184,8 +5182,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
--- 
-1.9.3
+If these are pages alloc'd by svc_recv() with alloc_page(GFP_KERNEL)
+then the kmap/kunmap shouldn't be necessary.
 
+--b.
+
+> +
+> +	buf->page_len += size;
+> +	buf->buflen += size;
+> +	buf->len += size;
+> +}
+> +
+>  static int rdma_read_complete(struct svc_rqst *rqstp,
+>  			      struct svc_rdma_op_ctxt *head)
+>  {
+> @@ -449,6 +478,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+>  		rqstp->rq_pages[page_no] = head->pages[page_no];
+>  	}
+>  	/* Point rq_arg.pages past header */
+> +	rdma_fix_xdr_pad(&head->arg);
+>  	rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
+>  	rqstp->rq_arg.page_len = head->arg.page_len;
+>  	rqstp->rq_arg.page_base = head->arg.page_base;
+> 
