@@ -1,99 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:48294 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965097AbaGPOcU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:20 -0400
-Received: by mail-qa0-f47.google.com with SMTP id i13so763110qae.34
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:19 -0700 (PDT)
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:42369 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751166AbaGOQ7m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 12:59:42 -0400
+Received: by mail-qc0-f171.google.com with SMTP id i17so2686873qcy.16
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 09:59:42 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 05/10] locks: add file_has_lease to prevent delegation break races
-Date: Wed, 16 Jul 2014 10:32:00 -0400
-Message-Id: <1405521125-2303-6-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
-References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] nfsd: silence sparse warning about accessing credentials
+Date: Tue, 15 Jul 2014 12:59:36 -0400
+Message-Id: <1405443576-28348-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, we'll have a potential race between
-setting a lease on a file and breaking the delegation. We may set the
-lease, but by the time we go to hash it, it may have already been
-broken. Currently, we know that this won't happen as the nfs4_laundromat
-takes the client_mutex, but we want to remove that.
+sparse says:
 
-As part of that fix, add a function that can tell us whether a
-particular file has a lease set on it. In a later nfsd patch, we'll use
-that to close the potential race window.
+    fs/nfsd/auth.c:31:38: warning: incorrect type in argument 1 (different address spaces)
+    fs/nfsd/auth.c:31:38:    expected struct cred const *cred
+    fs/nfsd/auth.c:31:38:    got struct cred const [noderef] <asn:4>*real_cred
+
+Add a new accessor for the ->real_cred and use that to fetch the
+pointer. Accessing current->real_cred directly is actually quite safe
+since we know that they can't go away so this is mostly a cosmetic fixup
+to silence sparse.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/locks.c         | 26 ++++++++++++++++++++++++++
- include/linux/fs.h |  6 ++++++
- 2 files changed, 32 insertions(+)
+ fs/nfsd/auth.c       | 2 +-
+ include/linux/cred.h | 9 +++++++++
+ 2 files changed, 10 insertions(+), 1 deletion(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 717fbc404e6b..005cc86927e3 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1308,6 +1308,32 @@ static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
- }
+diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
+index 72f44823adbb..9d46a0bdd9f9 100644
+--- a/fs/nfsd/auth.c
++++ b/fs/nfsd/auth.c
+@@ -28,7 +28,7 @@ int nfsd_setuser(struct svc_rqst *rqstp, struct svc_export *exp)
+ 	validate_process_creds();
+ 
+ 	/* discard any old override before preparing the new set */
+-	revert_creds(get_cred(current->real_cred));
++	revert_creds(get_cred(current_real_cred()));
+ 	new = prepare_creds();
+ 	if (!new)
+ 		return -ENOMEM;
+diff --git a/include/linux/cred.h b/include/linux/cred.h
+index f61d6c8f5ef3..b2d0820837c4 100644
+--- a/include/linux/cred.h
++++ b/include/linux/cred.h
+@@ -259,6 +259,15 @@ static inline void put_cred(const struct cred *_cred)
+ 	rcu_dereference_protected(current->cred, 1)
  
  /**
-+ * file_has_lease - does the given file have a lease set on it?
-+ * @file: struct file on which we want to check the lease
++ * current_real_cred - Access the current task's objective credentials
 + *
-+ * Returns true if a lease was is set on the given file description,
-+ * false otherwise.
++ * Access the objective credentials of the current task.  RCU-safe,
++ * since nobody else can modify it.
 + */
-+bool
-+file_has_lease(struct file *file)
-+{
-+	bool ret = false;
-+	struct inode *inode = file_inode(file);
-+	struct file_lock *fl;
-+
-+	spin_lock(&inode->i_lock);
-+	for (fl = inode->i_flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
-+		if (fl->fl_file == file) {
-+			ret = true;
-+			break;
-+		}
-+	}
-+	spin_unlock(&inode->i_lock);
-+	return ret;
-+}
-+EXPORT_SYMBOL(file_has_lease);
++#define current_real_cred() \
++	rcu_dereference_protected(current->real_cred, 1)
 +
 +/**
-  *	__break_lease	-	revoke all outstanding leases on file
-  *	@inode: the inode of the file to return
-  *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e11d60cc867b..7ae6f4869669 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -953,6 +953,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
- extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
- extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
- extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
-+extern bool file_has_lease(struct file *file);
- extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
- extern void lease_get_mtime(struct inode *, struct timespec *time);
- extern int generic_setlease(struct file *, long, struct file_lock **);
-@@ -1064,6 +1065,11 @@ static inline int flock_lock_file_wait(struct file *filp,
- 	return -ENOLCK;
- }
- 
-+static inline bool file_has_lease(struct file *file)
-+{
-+	return false;
-+}
-+
- static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- {
- 	return 0;
+  * __task_cred - Access a task's objective credentials
+  * @task: The task to query
+  *
 -- 
 1.9.3
 
