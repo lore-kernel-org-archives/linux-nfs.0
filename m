@@ -1,181 +1,211 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from lgeamrelo02.lge.com ([156.147.1.126]:44534 "EHLO
-	lgeamrelo02.lge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757274AbaGBAMb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 20:12:31 -0400
-From: Minchan Kim <minchan@kernel.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        Mel Gorman <mgorman@suse.de>, Rik van Riel <riel@redhat.com>,
-        Hugh Dickins <hughd@google.com>, Johannes Weiner <hannes@cmpxchg.org>,
-        Michal Hocko <mhocko@suse.cz>, Minchan Kim <minchan@kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/3] mm: Introduce atomic_remove_mapping
-Date: Wed,  2 Jul 2014 09:13:48 +0900
-Message-Id: <1404260029-11525-3-git-send-email-minchan@kernel.org>
-In-Reply-To: <1404260029-11525-1-git-send-email-minchan@kernel.org>
-References: <1404260029-11525-1-git-send-email-minchan@kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:28756 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753513AbaGOPJr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 11:09:47 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 05/15] git_log_status: Add function names to status message
+Date: Tue, 15 Jul 2014 11:09:24 -0400
+Message-Id: <1405436974-4161-6-git-send-email-steved@redhat.com>
+In-Reply-To: <1405436974-4161-1-git-send-email-steved@redhat.com>
+References: <1405436974-4161-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For release page from atomic context(ie, softirq), locks
-related to the work should be aware of that.
+Added the calling function name to the status message to
+identify where the message is coming from.
 
-There are two locks.
-
-One is mapping->tree_lock and the other is swap_info_struct->lock.
-The mapping->tree_lock is alreay aware of irq so it's no problem
-but swap_info_struct->lock isn't so atomic_remove_mapping uses just
-try_spinlock and if it fails to hold a lock, it just depends on
-a fallback plan which moves the page into LRU's tail and expect page
-freeing in next.
-
-A change I know is mapping->a_ops->free is called on atomic context
-by this patch. Only user is nfs_readdir_clear_array which is no
-problem when I look at.
-
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Signed-off-by: Minchan Kim <minchan@kernel.org>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- include/linux/swap.h |  4 ++++
- mm/swapfile.c        | 11 ++++++++-
- mm/vmscan.c          | 63 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 77 insertions(+), 1 deletion(-)
+ src/auth_gss.c     | 15 ++++++++++-----
+ src/authgss_prot.c |  9 ++++++---
+ src/svc_auth_gss.c | 27 ++++++++++++++++++---------
+ 3 files changed, 34 insertions(+), 17 deletions(-)
 
-diff --git a/include/linux/swap.h b/include/linux/swap.h
-index 94fd0b23f3f9..5df540205bda 100644
---- a/include/linux/swap.h
-+++ b/include/linux/swap.h
-@@ -336,6 +336,8 @@ extern unsigned long mem_cgroup_shrink_node_zone(struct mem_cgroup *mem,
- 						unsigned long *nr_scanned);
- extern unsigned long shrink_all_memory(unsigned long nr_pages);
- extern int vm_swappiness;
-+extern int atomic_remove_mapping(struct address_space *mapping,
-+					struct page *page);
- extern int remove_mapping(struct address_space *mapping, struct page *page);
- extern unsigned long vm_total_pages;
+diff --git a/src/auth_gss.c b/src/auth_gss.c
+index e36f5d9..76bab66 100644
+--- a/src/auth_gss.c
++++ b/src/auth_gss.c
+@@ -225,7 +225,8 @@ authgss_create_default(CLIENT *clnt, char *service, struct rpc_gss_sec *sec)
+ 		&name);
  
-@@ -441,6 +443,7 @@ static inline long get_nr_swap_pages(void)
- }
- 
- extern void si_swapinfo(struct sysinfo *);
-+extern struct swap_info_struct *swap_info_get(swp_entry_t entry);
- extern swp_entry_t get_swap_page(void);
- extern swp_entry_t get_swap_page_of_type(int);
- extern int add_swap_count_continuation(swp_entry_t, gfp_t);
-@@ -449,6 +452,7 @@ extern int swap_duplicate(swp_entry_t);
- extern int swapcache_prepare(swp_entry_t);
- extern void swap_free(swp_entry_t);
- extern void swapcache_free(swp_entry_t);
-+extern void __swapcache_free(swp_entry_t);
- extern int free_swap_and_cache(swp_entry_t);
- extern int swap_type_of(dev_t, sector_t, struct block_device **);
- extern unsigned int count_swap_pages(int, int);
-diff --git a/mm/swapfile.c b/mm/swapfile.c
-index ec2ce926ea5f..d76496a8a104 100644
---- a/mm/swapfile.c
-+++ b/mm/swapfile.c
-@@ -722,7 +722,7 @@ swp_entry_t get_swap_page_of_type(int type)
- 	return (swp_entry_t) {0};
- }
- 
--static struct swap_info_struct *swap_info_get(swp_entry_t entry)
-+struct swap_info_struct *swap_info_get(swp_entry_t entry)
- {
- 	struct swap_info_struct *p;
- 	unsigned long offset, type;
-@@ -855,6 +855,15 @@ void swapcache_free(swp_entry_t entry)
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		gss_log_status("gss_import_name", maj_stat, min_stat);
++		gss_log_status("authgss_create_default: gss_import_name", 
++			maj_stat, min_stat);
+ 		rpc_createerr.cf_stat = RPC_AUTHERROR;
+ 		return (NULL);
  	}
- }
+@@ -344,7 +345,8 @@ authgss_marshal(AUTH *auth, XDR *xdrs)
+ 			    &rpcbuf, &checksum);
  
-+void __swapcache_free(swp_entry_t entry)
-+{
-+	struct swap_info_struct *p;
-+
-+	p = swap_info_get(entry);
-+	if (p)
-+		swap_entry_free(p, entry, SWAP_HAS_CACHE);
-+}
-+
- /*
-  * How many references to page are currently swapped out?
-  * This does not give an exact answer when swap count is continued,
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 6d24fd63b209..31af369eef24 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -526,6 +526,69 @@ static pageout_t pageout(struct page *page, struct address_space *mapping,
- }
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		gss_log_status("gss_get_mic", maj_stat, min_stat);
++		gss_log_status("authgss_marshal: gss_get_mic", 
++			maj_stat, min_stat);
+ 		if (maj_stat == GSS_S_CONTEXT_EXPIRED) {
+ 			gd->established = FALSE;
+ 			authgss_destroy_context(auth);
+@@ -406,7 +408,8 @@ authgss_validate(AUTH *auth, struct opaque_auth *verf)
+ 				  &checksum, &qop_state);
  
- /*
-+ * Attempt to detach a locked page from its ->mapping in atomic context.
-+ * If it is dirty or if someone else has a ref on the page or couldn't
-+ * get necessary locks, abort and return 0.
-+ * If it was successfully detached, return 1.
-+ * Assumes the caller has a single ref on this page.
-+ */
-+int atomic_remove_mapping(struct address_space *mapping,
-+				struct page *page)
-+{
-+	BUG_ON(!PageLocked(page));
-+	BUG_ON(mapping != page_mapping(page));
-+	BUG_ON(!irqs_disabled());
-+
-+	spin_lock(&mapping->tree_lock);
-+
-+	/* Look at comment in __remove_mapping */
-+	if (!page_freeze_refs(page, 2))
-+		goto cannot_free;
-+	/* note: atomic_cmpxchg in page_freeze_refs provides the smp_rmb */
-+	if (unlikely(PageDirty(page))) {
-+		page_unfreeze_refs(page, 2);
-+		goto cannot_free;
-+	}
-+
-+	if (PageSwapCache(page)) {
-+		swp_entry_t swap = { .val = page_private(page) };
-+		struct swap_info_struct *p = swap_info_get(swap);
-+
-+		if (!p || !spin_trylock(&p->lock)) {
-+			page_unfreeze_refs(page, 2);
-+			goto cannot_free;
-+		}
-+
-+		mem_cgroup_swapout(page, swap);
-+		__delete_from_swap_cache(page);
-+		spin_unlock(&mapping->tree_lock);
-+		__swapcache_free(swap);
-+		spin_unlock(&p->lock);
-+	} else {
-+		void (*freepage)(struct page *);
-+
-+		freepage = mapping->a_ops->freepage;
-+		__delete_from_page_cache(page, NULL);
-+		spin_unlock(&mapping->tree_lock);
-+
-+		if (freepage != NULL)
-+			freepage(page);
-+	}
-+
-+	/*
-+	 * Unfreezing the refcount with 1 rather than 2 effectively
-+	 * drops the pagecache ref for us without requiring another
-+	 * atomic operation.
-+	 */
-+	page_unfreeze_refs(page, 1);
-+	return 1;
-+
-+cannot_free:
-+	spin_unlock(&mapping->tree_lock);
-+	return 0;
-+}
-+
-+/*
-  * Same as remove_mapping, but if the page is removed from the mapping, it
-  * gets returned with a refcount of 0.
-  */
+ 	if (maj_stat != GSS_S_COMPLETE || qop_state != gd->sec.qop) {
+-		gss_log_status("gss_verify_mic", maj_stat, min_stat);
++		gss_log_status("authgss_validate: gss_verify_mic", 
++			maj_stat, min_stat);
+ 		if (maj_stat == GSS_S_CONTEXT_EXPIRED) {
+ 			gd->established = FALSE;
+ 			authgss_destroy_context(auth);
+@@ -464,7 +467,8 @@ authgss_refresh(AUTH *auth, void *dummy)
+ 		}
+ 		if (maj_stat != GSS_S_COMPLETE &&
+ 		    maj_stat != GSS_S_CONTINUE_NEEDED) {
+-			gss_log_status("gss_init_sec_context", maj_stat, min_stat);
++			gss_log_status("authgss_refresh: gss_init_sec_context", 
++				maj_stat, min_stat);
+ 			break;
+ 		}
+ 		if (send_token.length != 0) {
+@@ -521,7 +525,8 @@ authgss_refresh(AUTH *auth, void *dummy)
+ 
+ 			if (maj_stat != GSS_S_COMPLETE
+ 					|| qop_state != gd->sec.qop) {
+-				gss_log_status("gss_verify_mic", maj_stat, min_stat);
++				gss_log_status("authgss_refresh: gss_verify_mic", 
++					maj_stat, min_stat);
+ 				if (maj_stat == GSS_S_CONTEXT_EXPIRED) {
+ 					gd->established = FALSE;
+ 					authgss_destroy_context(auth);
+diff --git a/src/authgss_prot.c b/src/authgss_prot.c
+index f233c24..7f4a019 100644
+--- a/src/authgss_prot.c
++++ b/src/authgss_prot.c
+@@ -192,7 +192,8 @@ xdr_rpc_gss_wrap_data(XDR *xdrs, xdrproc_t xdr_func, caddr_t xdr_ptr,
+ 		maj_stat = gss_wrap(&min_stat, ctx, TRUE, qop, &databuf,
+ 				    &conf_state, &wrapbuf);
+ 		if (maj_stat != GSS_S_COMPLETE) {
+-			gss_log_status("gss_wrap", maj_stat, min_stat);
++			gss_log_status("xdr_rpc_gss_wrap_data: gss_wrap", 
++				maj_stat, min_stat);
+ 			return (FALSE);
+ 		}
+ 		/* Marshal databody_priv. */
+@@ -241,7 +242,8 @@ xdr_rpc_gss_unwrap_data(XDR *xdrs, xdrproc_t xdr_func, caddr_t xdr_ptr,
+ 
+ 		if (maj_stat != GSS_S_COMPLETE || qop_state != qop) {
+ 			gss_release_buffer(&min_stat, &databuf);
+-			gss_log_status("gss_verify_mic", maj_stat, min_stat);
++			gss_log_status("xdr_rpc_gss_unwrap_data: gss_verify_mic", 
++				maj_stat, min_stat);
+ 			return (FALSE);
+ 		}
+ 	}
+@@ -261,7 +263,8 @@ xdr_rpc_gss_unwrap_data(XDR *xdrs, xdrproc_t xdr_func, caddr_t xdr_ptr,
+ 		if (maj_stat != GSS_S_COMPLETE || qop_state != qop ||
+ 			conf_state != TRUE) {
+ 			gss_release_buffer(&min_stat, &databuf);
+-			gss_log_status("gss_unwrap", maj_stat, min_stat);
++			gss_log_status("xdr_rpc_gss_unwrap_data: gss_unwrap", 
++				maj_stat, min_stat);
+ 			return (FALSE);
+ 		}
+ 	}
+diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
+index 26c1065..a032dd6 100644
+--- a/src/svc_auth_gss.c
++++ b/src/svc_auth_gss.c
+@@ -93,7 +93,8 @@ svcauth_gss_set_svc_name(gss_name_t name)
+ 		maj_stat = gss_release_name(&min_stat, &_svcauth_gss_name);
+ 
+ 		if (maj_stat != GSS_S_COMPLETE) {
+-			gss_log_status("gss_release_name", maj_stat, min_stat);
++			gss_log_status("svcauth_gss_set_svc_name: gss_release_name", 
++				maj_stat, min_stat);
+ 			return (FALSE);
+ 		}
+ 		_svcauth_gss_name = NULL;
+@@ -101,7 +102,8 @@ svcauth_gss_set_svc_name(gss_name_t name)
+ 	maj_stat = gss_duplicate_name(&min_stat, name, &_svcauth_gss_name);
+ 
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		gss_log_status("gss_duplicate_name", maj_stat, min_stat);
++		gss_log_status("svcauth_gss_set_svc_name: gss_duplicate_name", 
++			maj_stat, min_stat);
+ 		return (FALSE);
+ 	}
+ 
+@@ -124,7 +126,8 @@ svcauth_gss_import_name(char *service)
+ 				   (gss_OID)GSS_C_NT_HOSTBASED_SERVICE, &name);
+ 
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		gss_log_status("gss_import_name", maj_stat, min_stat);
++		gss_log_status("svcauth_gss_import_name: gss_import_name", 
++			maj_stat, min_stat);
+ 		return (FALSE);
+ 	}
+ 	if (svcauth_gss_set_svc_name(name) != TRUE) {
+@@ -146,7 +149,8 @@ svcauth_gss_acquire_cred(void)
+ 				    &_svcauth_gss_creds, NULL, NULL);
+ 
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		gss_log_status("gss_acquire_cred", maj_stat, min_stat);
++		gss_log_status("svcauth_gss_acquire_cred: gss_acquire_cred", 
++			maj_stat, min_stat);
+ 		return (FALSE);
+ 	}
+ 	return (TRUE);
+@@ -162,7 +166,8 @@ svcauth_gss_release_cred(void)
+ 	maj_stat = gss_release_cred(&min_stat, &_svcauth_gss_creds);
+ 
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		gss_log_status("gss_release_cred", maj_stat, min_stat);
++		gss_log_status("svcauth_gss_release_cred: gss_release_cred", 
++			maj_stat, min_stat);
+ 		return (FALSE);
+ 	}
+ 
+@@ -208,7 +213,8 @@ svcauth_gss_accept_sec_context(struct svc_req *rqst,
+ 
+ 	if (gr->gr_major != GSS_S_COMPLETE &&
+ 	    gr->gr_major != GSS_S_CONTINUE_NEEDED) {
+-		gss_log_status("accept_sec_context", gr->gr_major, gr->gr_minor);
++		gss_log_status("svcauth_gss_accept_sec_context: accept_sec_context",
++			gr->gr_major, gr->gr_minor);
+ 		gd->ctx = GSS_C_NO_CONTEXT;
+ 		gss_release_buffer(&min_stat, &gr->gr_token);
+ 		return (FALSE);
+@@ -238,7 +244,8 @@ svcauth_gss_accept_sec_context(struct svc_req *rqst,
+ 		maj_stat = gss_display_name(&min_stat, gd->client_name,
+ 					    &gd->cname, &gd->sec.mech);
+ 		if (maj_stat != GSS_S_COMPLETE) {
+-			gss_log_status("display_name", maj_stat, min_stat);
++			gss_log_status("svcauth_gss_accept_sec_context: display_name", 
++				maj_stat, min_stat);
+ 			return (FALSE);
+ 		}
+ #ifdef DEBUG
+@@ -326,7 +333,8 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
+ 	free(rpchdr);
+ 
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		gss_log_status("gss_verify_mic", maj_stat, min_stat);
++		gss_log_status("svcauth_gss_validate: gss_verify_mic", 
++			maj_stat, min_stat);
+ 		return (FALSE);
+ 	}
+ 	return (TRUE);
+@@ -353,7 +361,8 @@ svcauth_gss_nextverf(struct svc_req *rqst, u_int num)
+ 			       &signbuf, &checksum);
+ 
+ 	if (maj_stat != GSS_S_COMPLETE) {
+-		gss_log_status("gss_get_mic", maj_stat, min_stat);
++		gss_log_status("svcauth_gss_nextverf: gss_get_mic", 
++			maj_stat, min_stat);
+ 		return (FALSE);
+ 	}
+ 	rqst->rq_xprt->xp_verf.oa_flavor = RPCSEC_GSS;
 -- 
-2.0.0
+1.9.3
 
