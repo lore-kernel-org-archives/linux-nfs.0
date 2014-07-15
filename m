@@ -1,56 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:32974 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934414AbaGPOcN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:13 -0400
-Received: by mail-qg0-f51.google.com with SMTP id a108so788113qge.38
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:12 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/8] nfsd: more delegation fixes to prepare for client_mutex removal
-Date: Wed, 16 Jul 2014 10:31:55 -0400
-Message-Id: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:54556 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753787AbaGORRl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 13:17:41 -0400
+Received: by mail-qc0-f170.google.com with SMTP id c9so5393899qcz.29
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 10:17:40 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 15 Jul 2014 13:17:39 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: trond.myklebust@primarydata.com, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/7] sunrpc: xdr_get_next_encode_buffer can be static
+Message-ID: <20140715131739.7ac1a1f2@tlielax.poochiereds.net>
+In-Reply-To: <20140715170248.GA7767@infradead.org>
+References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+	<1405303064-9102-5-git-send-email-jlayton@primarydata.com>
+	<20140715170248.GA7767@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here's a respin of the delegation fixes that I sent yesterday. The main
-change is to move the remove_stid calls into the caller in the second
-patch instead of keeping it in nfs4_free_stid, per Christoph's
-suggestion.
+On Tue, 15 Jul 2014 10:02:48 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Unfortunately, that causes a pile of merge conflicts in the later
-patches, so I need to resend the whole set.
+> Trond just sent a patch for this as well..
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 
-I also include the patch that converts the num_delegations counter to an
-atomic_long_t, as I missed that in the earlier series.
+Ok, cool. I'll drop this one then.
 
-There is one more patch that fixes up handling of the cl_revoked list
-that comes later, but it can't easily be moved here as it depends on
-some locking changes that come later.
-
-Jeff Layton (6):
-  nfsd: eliminate nfsd4_init_callback
-  nfsd: Avoid taking state_lock while holding inode lock in
-    nfsd_break_one_deleg
-  nfsd: nfs4_alloc_init_lease should take a nfs4_file arg
-  locks: add file_has_lease to prevent delegation break races
-  nfsd: Protect the nfs4_file delegation fields using the fi_lock
-  nfsd: Fix delegation revocation
-
-Trond Myklebust (4):
-  nfsd: Ensure stateids remain unique until they are freed
-  nfsd: Move the delegation reference counter into the struct nfs4_stid
-  nfsd: Simplify stateid management
-  nfsd: Convert delegation counter to an atomic_long_t type
-
- fs/locks.c             |  26 +++++++
- fs/nfsd/nfs4callback.c |  23 ++++--
- fs/nfsd/nfs4state.c    | 197 +++++++++++++++++++++++++++++++------------------
- fs/nfsd/state.h        |   7 +-
- include/linux/fs.h     |   6 ++
- 5 files changed, 179 insertions(+), 80 deletions(-)
-
+Thanks,
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
