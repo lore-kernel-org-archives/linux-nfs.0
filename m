@@ -1,96 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47887 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757032AbaGWO7T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Jul 2014 10:59:19 -0400
-Date: Wed, 23 Jul 2014 10:59:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: fuzz tested user mode linux crashed in NFS code path
-Message-ID: <20140723145917.GV8438@fieldses.org>
-References: <53C10EAA.2000802@gmx.de>
- <53C12A93.3040803@gmail.com>
- <20140716185724.GC2397@fieldses.org>
- <20140717202721.GG30442@fieldses.org>
- <53C949DC.5060008@gmx.de>
- <53C9505D.80601@gmx.de>
- <CAB6yy37-_aC83yS5JaaAbX4-qKWko-pjqSRaipZ3reVnMD=aAg@mail.gmail.com>
- <20140721155543.GD8438@fieldses.org>
- <53CF4263.9070506@gmail.com>
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:44063 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752024AbaGOOVY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:21:24 -0400
+Subject: [PATCH v3 08/21] xprtrdma: Back off rkey when FAST_REG_MR fails
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 15 Jul 2014 10:21:21 -0400
+Message-ID: <20140715142121.8908.39182.stgit@manet.1015granger.net>
+In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <53CF4263.9070506@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 23, 2014 at 01:04:35PM +0800, Kinglong Mee wrote:
-> On 7/21/2014 23:55, J. Bruce Fields wrote:
-> > On Sat, Jul 19, 2014 at 11:23:59AM +0800, Kinglong Mee wrote:
-> >> On Sat, Jul 19, 2014 at 12:50 AM, Toralf Förster <toralf.foerster@gmx.de> wrote:
-> >>> On 07/18/2014 06:22 PM, Toralf Förster wrote:
-> >>>> I can now try with kzalloc, but due to the nature of this issue I think, that the absence of this crash - even after 2-3 hours - doesn't mean by 100%, that kzalloc fixed it, or ?
-> >>>
-> >>> Well, next crash (with kzalloc patch) happened after 20 minutes ...
-> >>
-> >> Maybe I have found the problem.
-> >> The stateid and denied are defined as an union as,
-> >> fs/nfsd/xdr4.h
-> >> 145 struct nfsd4_lock_denied {
-> >> 146         clientid_t      ld_clientid;
-> >> 147         struct xdr_netobj       ld_owner;
-> >> 148         u64             ld_start;
-> >> 149         u64             ld_length;
-> >> 150         u32             ld_type;
-> >> 151 };
-> >> 152
-> >> 153 struct nfsd4_lock {
-> >> ... ...
-> >> 174         /* response */
-> >> 175         union {
-> >> 176                 struct {
-> >> 177                         stateid_t               stateid;
-> >> 178                 } ok;
-> >> 179                 struct nfsd4_lock_denied        denied;
-> >> 180         } u;
-> >>
-> >>  30 struct xdr_netobj {
-> >>  31         unsigned int            len;
-> >>  32         u8 *                    data;
-> >>  33 };
-> >>
-> >> sizeof(stateid_t) = 16, sizeof(clientid_t) = 8,
-> >> sizeof(struct xdr_netobj) = 16, (on x86_x64 platform),
-> >> sizeof(struct xdr_netobj) = 8,  (on i686 platform)
-> >>
-> >> Lock file success, nfsd will copy stateid to the union, but the value
-> >> also influence denied.
-> >> If on x86_64 platform, only influence the len in xdr_netobj,
-> >> but on i686 platform, will influence the len and the data in xdr_netobj.
-> >> So, the problem only appears on i686 platform.
-> > 
-> > Oh, great catch, thanks.  Sounds like that would explain all of Toralf's
-> > results.
-> > 
-> > I'll include this explanation with your original patch and submit it for
-> > 3.16.
-> 
-> I saw the patch in your git-tree, there is one fault about the comments.
-> 
-> > (Note that lock->lk_denied.ld_owner.data appears it should be zero here,
-> > until you notice that it's one arm of a union the other arm of which is
-> > written to in the succesful case by the
-> > 
-> > memcpy(&oc->oc_resp_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
-> > 
-> > in nfsd4_open_confirm(). 
-> 
-> It's, 
->  memcpy(&lock->lk_resp_stateid, &lock_stp->st_stid.sc_stateid,
->                                 sizeof(stateid_t));
-> in nfsd4_lock().
+If posting a FAST_REG_MR Work Reqeust fails, revert the rkey update
+to avoid subsequent IB_WC_MW_BIND_ERR completions.
 
-Thanks, fixed!
+Suggested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ include/rdma/ib_verbs.h     |   11 +++++++++++
+ net/sunrpc/xprtrdma/verbs.c |   12 +++++-------
+ 2 files changed, 16 insertions(+), 7 deletions(-)
 
---b.
+diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
+index 7ccef34..c5c7ec6 100644
+--- a/include/rdma/ib_verbs.h
++++ b/include/rdma/ib_verbs.h
+@@ -2479,6 +2479,17 @@ static inline u32 ib_inc_rkey(u32 rkey)
+ }
+ 
+ /**
++ * ib_dec_rkey - decrements the key portion of the given rkey. Can be used
++ * when recovering from a local immediate error.
++ * @rkey - the rkey to decrement.
++ */
++static inline u32 ib_dec_rkey(u32 rkey)
++{
++	const u32 mask = 0x000000ff;
++	return ((rkey - 1) & mask) | (rkey & ~mask);
++}
++
++/**
+  * ib_alloc_mw - Allocates a memory window.
+  * @pd: The protection domain associated with the memory window.
+  * @type: The type of the memory window (1 or 2).
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 8bb7945..394b13f 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1497,13 +1497,12 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
+ 	struct ib_mr *mr = frmr->fr_mr;
+ 	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
+-
+-	u8 key;
+ 	int len, pageoff;
+ 	int i, rc;
+ 	int seg_len;
+ 	u64 pa;
+ 	int page_no;
++	u32 rkey;
+ 
+ 	pageoff = offset_in_page(seg1->mr_offset);
+ 	seg1->mr_offset -= pageoff;	/* start of page */
+@@ -1558,14 +1557,11 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 		rc = -EIO;
+ 		goto out_err;
+ 	}
+-
+-	/* Bump the key */
+-	key = (u8)(mr->rkey & 0x000000FF);
+-	ib_update_fast_reg_key(mr, ++key);
+-
+ 	frmr_wr.wr.fast_reg.access_flags = (writing ?
+ 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+ 				IB_ACCESS_REMOTE_READ);
++	rkey = ib_inc_rkey(mr->rkey);
++	ib_update_fast_reg_key(mr, rkey);
+ 	frmr_wr.wr.fast_reg.rkey = mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
+@@ -1574,6 +1570,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	if (rc) {
+ 		dprintk("RPC:       %s: failed ib_post_send for register,"
+ 			" status %i\n", __func__, rc);
++		rkey = ib_dec_rkey(mr->rkey);
++		ib_update_fast_reg_key(mr, rkey);
+ 		goto out_err;
+ 	} else {
+ 		seg1->mr_rkey = mr->rkey;
+
