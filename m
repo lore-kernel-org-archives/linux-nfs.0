@@ -1,82 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:44390 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751478AbaGYLel (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jul 2014 07:34:41 -0400
-Received: by mail-qg0-f49.google.com with SMTP id j107so4822745qga.8
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Jul 2014 04:34:40 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v6 0/9] nfsd: more delegation fixes to prepare for client_mutex removal
-Date: Fri, 25 Jul 2014 07:34:18 -0400
-Message-Id: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:62944 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753619AbaGOOvO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:51:14 -0400
+Received: by mail-qc0-f173.google.com with SMTP id c9so5065432qcz.32
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 07:51:14 -0700 (PDT)
+Date: Tue, 15 Jul 2014 10:51:11 -0400
+From: Tejun Heo <tj@kernel.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC] NFS: state manager thread must start running.
+Message-ID: <20140715145111.GA18661@htj.dyndns.org>
+References: <20140715163942.1d94304f@notabene.brown>
+ <20140715074942.GA6166@infradead.org>
+ <20140715181317.2de14c51@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140715181317.2de14c51@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v6:
-- rebase on top of patches that change how struct nfs4_file is hashed
+Hello, Neil.
 
-- add patch to remove the dl_fh field from struct nfs4_delegation
+On Tue, Jul 15, 2014 at 06:13:17PM +1000, NeilBrown wrote:
+> Could do that (or per-client) but it doesn't really buy us anything does it?
 
-- fix a bug in forget_delegations fault injector
+It does buy some.
 
-- update some changelogs to be more descriptive
+1. The kworker threads are more likely to be cache-hot than explicit
+   kthreads.
 
-v5:
-- fix spinlocking in block_delegations. Lock should be held around all
-  of the set_bit calls so we don't race with the swap of the two
-  fields.
+2. Workqueue is a lot eaiser to get right in terms of synchronization
+   and freezing.
 
-- eliminate destroy_revoked_delegation (just use nfs4_put_delegation)
+3. Workqueue mandates well-defined boundaries between separate
+   execution instances which often makes it a lot easier to implement
+   and update kernel-wide features such as like freezer and runtime
+   kernel patching.
 
-- eliminate unneeded NULL pointer check in nfs4_setlease
+> The state manager assumes it is single threads, so it would need to be
+> a single-threaded workqueue with always at least one thread running.
+> That is much the same as a kthread.
+> 
+> And then there is that fact that the current code explicitly enabled SIGKILL
+> and maybe that is important.
 
-v4:
-- close more potential races in setlease code, and fix some bugs in
-  error handling in that code.
+If SIGKILL handling is mandatory (really?), kthread_worker can be used
+for #2 and #3.
 
-- clean up delegation setting functions, eliminating unused arguments
-  and avoiding allocations when there has already been a delegation
-  break
-
-- add separate spinlock for block_delegations/delegation_blocked code
-
-v3:
-- use alternate method for checking for delegation break races after
-  getting a lease (just check fi_had_conflict instead)
-
-- drop file_has_lease patch -- no longer needed
-
-- move cl_revoked handling patch into this set. It means altering a
-  few of the later patches, but it keeps the set more topically
-  coherent
-
-v2:
-- move remove_stid call from nfs4_free_stid and into callers
-
-Hopefully this series won't need much introduction now. This is the
-delegation rework to prepare for client_mutex removal, now rebased on
-top of the changes to nfs4_file hashing.
-
-Jeff Layton (7):
-  nfsd: fully unhash delegations when revoking them
-  nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock
-  nfsd: drop unused stp arg to alloc_init_deleg
-  nfsd: clean up arguments to nfs4_open_delegation
-  nfsd: clean up nfs4_set_delegation
-  nfsd: give block_delegation and delegation_blocked its own spinlock
-  nfsd: remove dl_fh field from struct nfs4_delegation
-
-Trond Myklebust (2):
-  nfsd: simplify stateid allocation and file handling
-  nfsd: Convert delegation counter to an atomic_long_t type
-
- fs/nfsd/nfs4callback.c |   2 +-
- fs/nfsd/nfs4state.c    | 180 +++++++++++++++++++++++++++----------------------
- fs/nfsd/state.h        |   1 -
- 3 files changed, 99 insertions(+), 84 deletions(-)
+Thanks.
 
 -- 
-1.9.3
-
+tejun
