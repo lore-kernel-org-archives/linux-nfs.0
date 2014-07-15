@@ -1,39 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:45331 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:38524 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752374AbaGJMnG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 08:43:06 -0400
-Date: Thu, 10 Jul 2014 05:43:05 -0700
+	with ESMTP id S1753322AbaGORPt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 13:15:49 -0400
+Date: Tue, 15 Jul 2014 10:15:47 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 015/100] nfsd: clean up reset_union_bmap_deny
-Message-ID: <20140710124305.GA30941@infradead.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
- <1404842668-22521-16-git-send-email-jlayton@primarydata.com>
- <20140710103100.GA6935@infradead.org>
- <20140710081912.4af7c35b@tlielax.poochiereds.net>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH 2/7] nfsd: Ensure stateids remain unique until they are
+ freed
+Message-ID: <20140715171547.GA5269@infradead.org>
+References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+ <1405420669-4030-3-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140710081912.4af7c35b@tlielax.poochiereds.net>
+In-Reply-To: <1405420669-4030-3-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 10, 2014 at 08:19:12AM -0400, Jeff Layton wrote:
+On Tue, Jul 15, 2014 at 06:37:44AM -0400, Jeff Layton wrote:
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
 > 
-> No, the st_deny_bmap does not hold the NFS_SHARE_DENY_* bits
-> themselves. It sets a bit for each NFS_SHARE_DENY_* mode that the
-> stateid has used. The difference is subtle, but significant.
+> Add an extra delegation state to allow the stateid to remain in the idr
+> tree until the last reference has been released. This will be necessary
+> to ensure uniqueness once the client_mutex is removed.
 > 
-> The rationale for that is in the comments above bmap_to_share_mode.
+> [jlayton: reset the sc_type under the state_lock in unhash_delegation]
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 9 ++++-----
+>  fs/nfsd/state.h     | 1 +
+>  2 files changed, 5 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 1b01a20827ab..df3e9ef1fb38 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -609,6 +609,7 @@ static void remove_stid(struct nfs4_stid *s)
+>  
+>  static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+>  {
+> +	remove_stid(s);
+>  	kmem_cache_free(slab, s);
+>  }
 
-Oh, the dangers of the bitshift index access helper confusing the
-reader.
+Might make sense to just keep it in the caller.  In your big series
+remove_stid_locked ends up there again anyway, and it avoids some churn
+in this series that made me investiage how you keep open and lock
+stateids hashed longer in this patch (you don't of course..).
 
-But I think this is only really nessecary because of the odd fi_access
-semantics, and if we sort that out as suggested by me earlier we can
-get rid of this confusion as the access/deny checks don't really care
-about the additional both bit, and once the the O_RDWR file has it's own
-proper refconting there shouldn't be any need to treat it special.
+Otherwise looks good,
 
+Reviewed-by: Christoph Hellwig <hch@lst.de>
