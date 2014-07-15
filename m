@@ -1,73 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:38780 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753304AbaGHSFz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:55 -0400
-Received: by mail-qg0-f49.google.com with SMTP id f51so5277255qge.22
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:54 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 058/100] nfsd: add locking to stateowner release
-Date: Tue,  8 Jul 2014 14:03:46 -0400
-Message-Id: <1404842668-22521-59-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail.aixigo.de ([80.149.209.52]:61503 "EHLO mail.aixigo.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754086AbaGOH4j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Jul 2014 03:56:39 -0400
+Message-ID: <53C4DEB2.9060307@aixigo.de>
+Date: Tue, 15 Jul 2014 09:56:34 +0200
+From: Harald Dunkel <harald.dunkel@aixigo.de>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFS service inside a container
+References: <539B0683.3020605@aixigo.de> <20140711201503.GC11931@fieldses.org> <53C4DC6C.1050108@aixigo.de>
+In-Reply-To: <53C4DC6C.1050108@aixigo.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, we'll need to properly protect
-the stateowner reference counts using the cl_lock.
+On 07/15/14 09:46, Harald Dunkel wrote:
+> On 07/11/14 22:15, J. Bruce Fields wrote:
+>>
+>> Yeah, we should really get that fixed.  It can probably be worked around
+>> by reverting to the old reboot recovery method.
+>>
+> 
+> I would be highly interested. Is the old method still in the kernel
+> sources, maybe supported by a config option?
+> 
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 15 ++++++---------
- 1 file changed, 6 insertions(+), 9 deletions(-)
+PS: Should I create a bug report?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fb2f3ec0708f..346bdf320a35 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3047,9 +3047,14 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
- 
- static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
- {
--	if (!atomic_dec_and_test(&sop->so_count))
-+	struct nfs4_client *clp = sop->so_client;
-+
-+	might_lock(&clp->cl_lock);
-+
-+	if (!atomic_dec_and_lock(&sop->so_count, &clp->cl_lock))
- 		return;
- 	sop->so_unhash(sop);
-+	spin_unlock(&clp->cl_lock);
- 	sop->so_free(sop);
- }
- 
-@@ -3064,11 +3069,7 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
- 
- static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
- {
--	struct nfs4_client *clp = so->so_client;
--
--	spin_lock(&clp->cl_lock);
- 	unhash_openowner_locked(openowner(so));
--	spin_unlock(&clp->cl_lock);
- }
- 
- static void nfs4_free_openowner(struct nfs4_stateowner *so)
-@@ -4837,11 +4838,7 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
- 
- static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
- {
--	struct nfs4_client *clp = sop->so_client;
--
--	spin_lock(&clp->cl_lock);
- 	unhash_lockowner_locked(lockowner(sop));
--	spin_unlock(&clp->cl_lock);
- }
- 
- static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
--- 
-1.9.3
+
+Regards
+Harri
 
