@@ -1,110 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f45.google.com ([209.85.220.45]:51127 "EHLO
-	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752554AbaGRACH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 20:02:07 -0400
-Received: by mail-pa0-f45.google.com with SMTP id eu11so4269022pac.18
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 17:02:06 -0700 (PDT)
-Message-ID: <53C863F4.8090408@gmail.com>
-Date: Fri, 18 Jul 2014 08:01:56 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: handle failure to find backchannel
-References: <20140711211609.GA13656@fieldses.org> <53C13FE9.3080503@gmail.com> <20140716220526.GG2397@fieldses.org> <53C7CE7D.9070904@gmail.com> <20140717151337.GA20073@fieldses.org>
-In-Reply-To: <20140717151337.GA20073@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:55722 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965097AbaGPOcW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:22 -0400
+Received: by mail-qg0-f49.google.com with SMTP id j107so686365qga.22
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:21 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 06/10] nfsd: Protect the nfs4_file delegation fields using the fi_lock
+Date: Wed, 16 Jul 2014 10:32:01 -0400
+Message-Id: <1405521125-2303-7-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/17/2014 23:13, J. Bruce Fields wrote:
-> On Thu, Jul 17, 2014 at 09:24:13PM +0800, Kinglong Mee wrote:
->> On 7/17/2014 06:05, J. Bruce Fields wrote:
->>> On Sat, Jul 12, 2014 at 10:02:17PM +0800, Kinglong Mee wrote:
->>>> On 7/12/2014 05:16, J. Bruce Fields wrote:
->>>>> The local variable "ses" will be left NULL here in the case we fail to
->>>>> find a connection.  Spotted by a coverity scan.
->>>>>     
->>>>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>>>>
->>>>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
->>>>> index 2c73cae9899d..fe22cd5c42d3 100644
->>>>> --- a/fs/nfsd/nfs4callback.c
->>>>> +++ b/fs/nfsd/nfs4callback.c
->>>>> @@ -1001,14 +1001,18 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
->>>>>  	}
->>>>>  	spin_unlock(&clp->cl_lock);
->>>>>  
->>>>> +	if (!c)
->>>>> +		goto out_no_connection;
->>>>
->>>> Setting err to -EINVAL maybe better.
->>>> Otherwise, nfsd4_mark_cb_down will be called with err == 0.
->>>>
->>>>>  	err = setup_callback_client(clp, &conn, ses);
->>>>
->>>> setup_callback_client also return -EINVAL when ses == NULL with conn.cb_xprt == NULL.
->>>
->>> Thanks, yes, after looking over this carefully I don't believe we can
->>> call setup_callback_client with ses NULL but conn->cb_xprt non-NULL, so
->>> this is just a false positive from coverity.
->>
->> ses and conn->cb_xprt will be set in the same condition before
->> calling setup_callback_client,
->>
->>  996         c = __nfsd4_find_backchannel(clp);
->>  997         if (c) {
->>  998                 svc_xprt_get(c->cn_xprt);
->>  999                 conn.cb_xprt = c->cn_xprt;
->> 1000                 ses = c->cn_session;
->> 1001         }
->> 1002         spin_unlock(&clp->cl_lock);
->> 1003
->> 1004         err = setup_callback_client(clp, &conn, ses);
->>
->> ses and conn->cb_xprt will be NULL or non-NULL in the same time,
->> so that, call setup_calback_client with ses NULL but conn->cb_xprt non-NULL will not appear.
-> 
-> Agreed but you also need to check what happens in the case where c is
-> NULL.
-> 
-> This is much more confusing than necessary.  But I'm inclined to hold
-> off on any cleanup here while jlayton's patches are still pending.
+Move more of the delegation fields to be protected by the fi_lock. It's
+more granular than the state_lock and in later patches we'll want to
+be able to rely on it in addition to the state_lock.
 
-Got it.
-I also have some cleanup, will send after jlayton's patches merged.
+Also, the current code in nfs4_setlease calls vfs_setlease and uses the
+client_mutex to ensure that it doesn't disappear before we can hash the
+delegation. With the client_mutex gone, we'll have a potential race
+condition.
 
-thanks,
-Kinglong Mee
+It's possible that the delegation could be recalled after we acquire the
+lease but before we ever get around to hashing it. If that happens, then
+we'd have a nfs4_file that *thinks* it has a delegation, when it
+actually has none.
 
-> 
-> --b.
-> 
->>
->> thanks,
->> Kinglong Mee
->>
->>>>> -	if (err) {
->>>>> -		nfsd4_mark_cb_down(clp, err);
->>>>> -		return;
->>>>> -	}
->>>>> +	if (err)
->>>>> +		goto out_no_connection;
->>>>>  	/* Yay, the callback channel's back! Restart any callbacks: */
->>>>>  	list_for_each_entry(cb, &clp->cl_callbacks, cb_per_client)
->>>>>  		run_nfsd4_cb(cb);
->>>>> +	return;
->>>>> +out_no_connection:
->>>>> +	nfsd4_mark_cb_down(clp, err);
->>>>> +	return;
->>>>>  }
->>>>>  
->>>>>  static void nfsd4_do_callback_rpc(struct work_struct *w)
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>
->>>
-> 
+Attempt to acquire a delegation. If that succeeds, take the state_lock
+and recheck to make sure the lease is still there. If it is, then take
+the fi_lock and set up the rest of the delegation fields. This prevents
+the race because the delegation break workqueue job must also take the
+state_lock.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++++++++-------------
+ 1 file changed, 38 insertions(+), 13 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fd4deb049ddf..91a33f8896dd 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -624,6 +624,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
+ 
+ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+ {
++	lockdep_assert_held(&state_lock);
++
+ 	if (!fp->fi_lease)
+ 		return;
+ 	if (atomic_dec_and_test(&fp->fi_delegees)) {
+@@ -643,11 +645,10 @@ static void
+ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ {
+ 	lockdep_assert_held(&state_lock);
++	lockdep_assert_held(&fp->fi_lock);
+ 
+ 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+-	spin_lock(&fp->fi_lock);
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+-	spin_unlock(&fp->fi_lock);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ }
+ 
+@@ -659,17 +660,17 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 
+ 	spin_lock(&state_lock);
+ 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
++	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_recall_lru);
+-	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perfile);
+ 	spin_unlock(&fp->fi_lock);
+-	spin_unlock(&state_lock);
+ 	if (fp) {
+ 		nfs4_put_deleg_lease(fp);
+-		put_nfs4_file(fp);
+ 		dp->dl_file = NULL;
+ 	}
++	spin_unlock(&state_lock);
++	put_nfs4_file(fp);
+ }
+ 
+ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+@@ -3493,7 +3494,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_file *fp = dp->dl_file;
+ 	struct file_lock *fl;
+-	int status;
++	int status = 0;
+ 
+ 	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
+ 	if (!fl)
+@@ -3501,15 +3502,31 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	fl->fl_file = find_readable_file(fp);
+ 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+ 	if (status)
+-		goto out_free;
++		goto out_fput;
++	spin_lock(&state_lock);
++	/* Did the lease get broken before we took the lock? */
++	status = -EAGAIN;
++	if (!file_has_lease(fl->fl_file))
++		goto out_unlock;
++	spin_lock(&fp->fi_lock);
++	/* Race breaker */
++	if (fp->fi_lease) {
++		status = 0;
++		atomic_inc(&fp->fi_delegees);
++		hash_delegation_locked(dp, fp);
++		spin_unlock(&fp->fi_lock);
++		goto out_unlock;
++	}
+ 	fp->fi_lease = fl;
+ 	fp->fi_deleg_file = fl->fl_file;
+ 	atomic_set(&fp->fi_delegees, 1);
+-	spin_lock(&state_lock);
+ 	hash_delegation_locked(dp, fp);
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+-out_free:
++out_unlock:
++	spin_unlock(&state_lock);
++out_fput:
+ 	if (fl->fl_file)
+ 		fput(fl->fl_file);
+ 	locks_free_lock(fl);
+@@ -3518,19 +3535,27 @@ out_free:
+ 
+ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ {
++	int status = 0;
++
+ 	if (fp->fi_had_conflict)
+ 		return -EAGAIN;
+ 	get_nfs4_file(fp);
++	spin_lock(&state_lock);
++	spin_lock(&fp->fi_lock);
+ 	dp->dl_file = fp;
+-	if (!fp->fi_lease)
++	if (!fp->fi_lease) {
++		spin_unlock(&fp->fi_lock);
++		spin_unlock(&state_lock);
+ 		return nfs4_setlease(dp);
+-	spin_lock(&state_lock);
++	}
+ 	atomic_inc(&fp->fi_delegees);
+ 	if (fp->fi_had_conflict) {
+-		spin_unlock(&state_lock);
+-		return -EAGAIN;
++		status = -EAGAIN;
++		goto out_unlock;
+ 	}
+ 	hash_delegation_locked(dp, fp);
++out_unlock:
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+ }
+-- 
+1.9.3
+
