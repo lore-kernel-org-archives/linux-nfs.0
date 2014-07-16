@@ -1,36 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50833 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755138AbaGKULd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Jul 2014 16:11:33 -0400
-Date: Fri, 11 Jul 2014 16:11:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Fix bad reserving space for encoding rdattr_error
-Message-ID: <20140711201129.GB11931@fieldses.org>
-References: <53B8C3D3.7080201@gmail.com>
- <20140707181556.GC8630@fieldses.org>
- <20140710105451.GA23266@infradead.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:60544 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933927AbaGPO33 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:29:29 -0400
+Date: Wed, 16 Jul 2014 07:29:28 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/7] nfsd: Ensure stateids remain unique until they are
+ freed
+Message-ID: <20140716142928.GA9671@infradead.org>
+References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+ <1405420669-4030-3-git-send-email-jlayton@primarydata.com>
+ <20140715171547.GA5269@infradead.org>
+ <20140716081738.05ce6d92@tlielax.poochiereds.net>
+ <20140716134945.GA11961@infradead.org>
+ <20140716102824.27eeb209@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140710105451.GA23266@infradead.org>
+In-Reply-To: <20140716102824.27eeb209@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 10, 2014 at 03:54:51AM -0700, Christoph Hellwig wrote:
-> On Mon, Jul 07, 2014 at 02:15:56PM -0400, J. Bruce Fields wrote:
-> > > -	p = xdr_reserve_space(xdr, 6);
-> > > +	p = xdr_reserve_space(xdr, 20);
-> 
-> Can we please convert all these magic numbers to expressions adding up
-> sizeofs or where that doesn't fit use #defines?
+On Wed, Jul 16, 2014 at 10:28:24AM -0400, Jeff Layton wrote:
+> Unfortunately, that creates a pile of merge conflicts in the later
+> patches. I'll just go ahead and change that and resend all of the
+> delegation patches that Bruce hasn't merged yet. Stay tuned...
 
-So, this would be 
+Just keep it as is if it's too painful.  This isn't really something
+that matters too much in the end.
 
-	xdr_reserve_space(xdr, 5 * sizeof(be32));
-
-?  I guess that'd be OK.
-
---b.
