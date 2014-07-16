@@ -1,50 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:42901 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751943AbaGNB55 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:57:57 -0400
-Received: by mail-qa0-f42.google.com with SMTP id j15so2784427qaq.29
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:57:56 -0700 (PDT)
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:62950 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965109AbaGPOc0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:26 -0400
+Received: by mail-qg0-f53.google.com with SMTP id q107so790525qgd.40
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:25 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/7] sunrpc: clean up endianness warnings in setup_token
-Date: Sun, 13 Jul 2014 21:57:40 -0400
-Message-Id: <1405303064-9102-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 09/10] nfsd: Fix delegation revocation
+Date: Wed, 16 Jul 2014 10:32:04 -0400
+Message-Id: <1405521125-2303-10-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is safe since KG_TOK_MIC_MSG and SEAL_ALG_NONE are both endian
-palindromes. I'm also making the assumption that the signalg field
-really should be in little-endian. That looks odd, but looking at the
-spec I guess it's correct.
+Ensure that the delegations cannot be found by the laundromat etc once
+we add them to the various 'revoke' lists.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/auth_gss/gss_krb5_seal.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4state.c | 45 +++++++++++++++++++++++++--------------------
+ 1 file changed, 25 insertions(+), 20 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
-index 62ae3273186c..94ad57ff7169 100644
---- a/net/sunrpc/auth_gss/gss_krb5_seal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
-@@ -83,10 +83,10 @@ setup_token(struct krb5_ctx *ctx, struct xdr_netobj *token)
- 
- 	/* ptr now at start of header described in rfc 1964, section 1.2.1: */
- 	krb5_hdr = ptr;
--	*ptr++ = KG_TOK_MIC_MSG;
--	*ptr++ = cpu_to_le16(ctx->gk5e->signalg);
--	*ptr++ = SEAL_ALG_NONE;
--	*ptr++ = 0xffff;
-+	*ptr++ = cpu_to_be16(KG_TOK_MIC_MSG);
-+	*ptr++ = (__force __be16)cpu_to_le16(ctx->gk5e->signalg);
-+	*ptr++ = cpu_to_be16(SEAL_ALG_NONE);
-+	*ptr++ = cpu_to_be16(0xffff);
- 
- 	return (char *)krb5_hdr;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index cb8e49375d1d..0329e363ac73 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -650,13 +650,13 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
  }
+ 
+-/* Called under the state lock. */
+ static void
+-unhash_delegation(struct nfs4_delegation *dp)
++unhash_delegation_locked(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_file *fp = dp->dl_file;
+ 
+-	spin_lock(&state_lock);
++	lockdep_assert_held(&state_lock);
++
+ 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+ 	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+@@ -665,18 +665,19 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	spin_unlock(&fp->fi_lock);
+ 	if (fp)
+ 		nfs4_put_deleg_lease(fp);
+-	spin_unlock(&state_lock);
+ }
+ 
+-static void destroy_revoked_delegation(struct nfs4_delegation *dp)
++static void unhash_and_destroy_delegation(struct nfs4_delegation *dp)
+ {
+-	list_del_init(&dp->dl_recall_lru);
++	spin_lock(&state_lock);
++	unhash_delegation_locked(dp);
++	spin_unlock(&state_lock);
+ 	nfs4_put_delegation(dp);
+ }
+ 
+-static void destroy_delegation(struct nfs4_delegation *dp)
++static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+ {
+-	unhash_delegation(dp);
++	list_del_init(&dp->dl_recall_lru);
+ 	nfs4_put_delegation(dp);
+ }
+ 
+@@ -685,11 +686,10 @@ static void revoke_delegation(struct nfs4_delegation *dp)
+ 	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 
+ 	if (clp->cl_minorversion == 0)
+-		destroy_delegation(dp);
++		destroy_revoked_delegation(dp);
+ 	else {
+-		unhash_delegation(dp);
+ 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
+-		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
++		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
+ 	}
+ }
+ 
+@@ -1447,15 +1447,16 @@ destroy_client(struct nfs4_client *clp)
+ 	spin_lock(&state_lock);
+ 	while (!list_empty(&clp->cl_delegations)) {
+ 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
+-		list_del_init(&dp->dl_perclnt);
++		unhash_delegation_locked(dp);
+ 		/* Ensure that deleg break won't try to requeue it */
+ 		++dp->dl_time;
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	while (!list_empty(&reaplist)) {
+ 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+-		destroy_delegation(dp);
++		list_del_init(&dp->dl_recall_lru);
++		nfs4_put_delegation(dp);
+ 	}
+ 	list_splice_init(&clp->cl_revoked, &reaplist);
+ 	while (!list_empty(&reaplist)) {
+@@ -3639,7 +3640,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
+ 	return;
+ out_free:
+-	destroy_delegation(dp);
++	nfs4_put_delegation(dp);
+ out_no_deleg:
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
+ 	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
+@@ -3878,7 +3879,8 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		unhash_delegation_locked(dp);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+@@ -4510,7 +4512,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		goto out;
+ 
+-	destroy_delegation(dp);
++	unhash_and_destroy_delegation(dp);
+ out:
+ 	nfs4_unlock_state();
+ 
+@@ -5353,7 +5355,8 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+ 			 * don't monkey with it now that we are.
+ 			 */
+ 			++dp->dl_time;
+-			list_move(&dp->dl_recall_lru, victims);
++			unhash_delegation_locked(dp);
++			list_add(&dp->dl_recall_lru, victims);
+ 		}
+ 		if (++count == max)
+ 			break;
+@@ -5608,12 +5611,14 @@ nfs4_state_shutdown_net(struct net *net)
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		unhash_delegation_locked(dp);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		destroy_delegation(dp);
++		list_del_init(&dp->dl_recall_lru);
++		nfs4_put_delegation(dp);
+ 	}
+ 
+ 	nfsd4_client_tracking_exit(net);
 -- 
 1.9.3
 
