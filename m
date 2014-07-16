@@ -1,57 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.linuxfoundation.org ([140.211.169.12]:57089 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760559AbaGDWQd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Jul 2014 18:16:33 -0400
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To: linux-kernel@vger.kernel.org
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>, stable@vger.kernel.org,
-        Mateusz Guzik <mguzik@redhat.com>, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 3.15 39/66] NFS: populate ->net in mount data when remounting
-Date: Fri,  4 Jul 2014 15:14:38 -0700
-Message-Id: <20140704221424.589638402@linuxfoundation.org>
-In-Reply-To: <20140704221422.813435485@linuxfoundation.org>
-References: <20140704221422.813435485@linuxfoundation.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:46438 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965109AbaGPOcY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:24 -0400
+Received: by mail-qa0-f49.google.com with SMTP id dc16so748691qab.22
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:24 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 08/10] nfsd: Simplify stateid management
+Date: Wed, 16 Jul 2014 10:32:03 -0400
+Message-Id: <1405521125-2303-9-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-3.15-stable review patch.  If anyone has any objections, please let me know.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-------------------
+Don't allow stateids to clear the open file pointer until they are
+being destroyed. Also, move to kzalloc and get rid of explicit
+zeroing of fields.
 
-From: Mateusz Guzik <mguzik@redhat.com>
-
-commit a914722f333b3359d2f4f12919380a334176bb89 upstream.
-
-Otherwise the kernel oopses when remounting with IPv6 server because
-net is dereferenced in dev_get_by_name.
-
-Use net ns of current thread so that dev_get_by_name does not operate on
-foreign ns. Changing the address is prohibited anyway so this should not
-affect anything.
-
-Signed-off-by: Mateusz Guzik <mguzik@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-
 ---
- fs/nfs/super.c |    1 +
- 1 file changed, 1 insertion(+)
+ fs/nfsd/nfs4state.c | 21 ++++++++++-----------
+ 1 file changed, 10 insertions(+), 11 deletions(-)
 
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2248,6 +2248,7 @@ nfs_remount(struct super_block *sb, int
- 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
- 	data->version = nfsvers;
- 	data->minorversion = nfss->nfs_client->cl_minorversion;
-+	data->net = current->nsproxy->net_ns;
- 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
- 		data->nfs_server.addrlen);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c55609a582ad..cb8e49375d1d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -459,7 +459,7 @@ kmem_cache *slab)
+ 	struct nfs4_stid *stid;
+ 	int new_id;
  
-
+-	stid = kmem_cache_alloc(slab, GFP_KERNEL);
++	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
+ 	if (!stid)
+ 		return NULL;
+ 
+@@ -467,11 +467,9 @@ kmem_cache *slab)
+ 	if (new_id < 0)
+ 		goto out_free;
+ 	stid->sc_client = cl;
+-	stid->sc_type = 0;
+ 	stid->sc_stateid.si_opaque.so_id = new_id;
+ 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
+ 	/* Will be incremented before return to client: */
+-	stid->sc_stateid.si_generation = 0;
+ 	atomic_set(&stid->sc_count, 1);
+ 
+ 	/*
+@@ -592,10 +590,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	INIT_LIST_HEAD(&dp->dl_perfile);
+ 	INIT_LIST_HEAD(&dp->dl_perclnt);
+ 	INIT_LIST_HEAD(&dp->dl_recall_lru);
+-	dp->dl_file = NULL;
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+-	dp->dl_time = 0;
+ 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
+ 	return dp;
+ }
+@@ -616,6 +612,8 @@ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+ 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
++		if (dp->dl_file)
++			put_nfs4_file(dp->dl_file);
+ 		remove_stid(&dp->dl_stid);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+@@ -665,12 +663,9 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	list_del_init(&dp->dl_recall_lru);
+ 	list_del_init(&dp->dl_perfile);
+ 	spin_unlock(&fp->fi_lock);
+-	if (fp) {
++	if (fp)
+ 		nfs4_put_deleg_lease(fp);
+-		dp->dl_file = NULL;
+-	}
+ 	spin_unlock(&state_lock);
+-	put_nfs4_file(fp);
+ }
+ 
+ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+@@ -878,12 +873,12 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	release_all_access(stp);
+-	put_nfs4_file(stp->st_file);
+-	stp->st_file = NULL;
+ }
+ 
+ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
++	if (stp->st_file)
++		put_nfs4_file(stp->st_file);
+ 	remove_stid(&stp->st_stid);
+ 	nfs4_free_stid(stateid_slab, &stp->st_stid);
+ }
+@@ -4446,6 +4441,10 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 		if (list_empty(&oo->oo_owner.so_stateids))
+ 			release_openowner(oo);
+ 	} else {
++		if (s->st_file) {
++			put_nfs4_file(s->st_file);
++			s->st_file = NULL;
++		}
+ 		oo->oo_last_closed_stid = s;
+ 		/*
+ 		 * In the 4.0 case we need to keep the owners around a
+-- 
+1.9.3
 
