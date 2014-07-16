@@ -1,104 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:38023 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755103AbaGVOxq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:53:46 -0400
-Subject: [PATCH v4 19/21] xprtrdma: Make rpcrdma_ep_disconnect() return void
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:53:44 -0400
-Message-ID: <20140722145344.6010.33311.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
+Received: from mail-qc0-f172.google.com ([209.85.216.172]:35684 "EHLO
+	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752536AbaGPIVs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 04:21:48 -0400
+Received: by mail-qc0-f172.google.com with SMTP id l6so462447qcy.3
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 01:21:48 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
+References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
+	<20140710175136.GA26561@fieldses.org>
+	<CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
+	<CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
+Date: Wed, 16 Jul 2014 10:21:47 +0200
+Message-ID: <CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
+Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
+From: Andreas Fenkart <afenkart@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Daniel Mack <zonque@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: The return code is used only for dprintk's that are
-already redundant.
+2014-07-16 1:54 GMT+02:00 Trond Myklebust <trond.myklebust@primarydata.com>:
+> On Sun, Jul 13, 2014 at 11:44 PM, Andreas Fenkart <afenkart@gmail.com> wrote:
+>> 2014-07-10 19:51 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+>>> On Mon, Jun 23, 2014 at 12:07:22PM +0200, Andreas Fenkart wrote:
+>>>> Found regression introduced by this patch
+>>>>
+>>>> 311324ad NFS: Be more aggressive in using readdirplus for 'ls -l' situations"
+>>>>
+>>>> # cd /bin
+>>>> -sh: cd: /bin: Not a directory
+>>>> root@192:/# pwd
+>>>> /
+>>>> root@192:/# ls /bin
+>>>> ls: /bin
+>>>> root@192:/# ls -l /bin/sh
+>>>> lrwxrwxrwx    1 root     root             9 Jun 16 13:59 /bin/sh -> /bin/bash
+>>>>
+>>>> the mount options of the client, an embedded system, mounting nfsroot:
+>>>> nfs(rw,relatime,vers=2,rsize=4096,wsize=4096,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=192.168.xx.xx,mountvers=1,mountproto=udp,local_lock=all,addr=192.168.xx.xx)
+>>>> vers: 3.16.0-rc1
+>>>>
+>>>> the server exports:
+>>>> /exports/rootfs 192.168.xx.xx(rw,no_root_squash,subtree_check)
+>>>> vers: 3.14-1-amd64 #1 SMP Debian 3.14.4-1 (2014-05-13) x86_64 GNU/Linux
+>>>>
+>>>> reverting above patch, dir listing with 'ls /' works again
+>>>
+>>> Is this still happening?
+>>
+>> yes it is, I just reverted the aforementioned commit.
+>
+> Can you reapply, and then do an "ls /" while recording the traffic to
+> the NFS server using wireshark, and then send us the resulting dump?
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
----
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c     |   14 ++++----------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 6 insertions(+), 12 deletions(-)
+http://www.pcapr.net/view/afenkart/2014/6/3/1/nfs-client.dump.html
+you have to create a login... simple. Or did you mean attach to email?
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index f6d280b..2faac49 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -414,7 +414,7 @@ xprt_rdma_close(struct rpc_xprt *xprt)
- 	if (r_xprt->rx_ep.rep_connected > 0)
- 		xprt->reestablish_timeout = 0;
- 	xprt_disconnect_done(xprt);
--	(void) rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
-+	rpcrdma_ep_disconnect(&r_xprt->rx_ep, &r_xprt->rx_ia);
- }
- 
- static void
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 3563467..e62b1fe 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -830,10 +830,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	cancel_delayed_work_sync(&ep->rep_connect_worker);
- 
- 	if (ia->ri_id->qp) {
--		rc = rpcrdma_ep_disconnect(ep, ia);
--		if (rc)
--			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
--				" returned %i\n", __func__, rc);
-+		rpcrdma_ep_disconnect(ep, ia);
- 		rdma_destroy_qp(ia->ri_id);
- 		ia->ri_id->qp = NULL;
- 	}
-@@ -871,10 +868,8 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 		struct rpcrdma_xprt *xprt;
- retry:
- 		dprintk("RPC:       %s: reconnecting...\n", __func__);
--		rc = rpcrdma_ep_disconnect(ep, ia);
--		if (rc && rc != -ENOTCONN)
--			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
--				" status %i\n", __func__, rc);
-+
-+		rpcrdma_ep_disconnect(ep, ia);
- 		rpcrdma_flush_cqs(ep);
- 
- 		if (ia->ri_memreg_strategy == RPCRDMA_FRMR)
-@@ -984,7 +979,7 @@ out:
-  * This call is not reentrant, and must not be made in parallel
-  * on the same endpoint.
-  */
--int
-+void
- rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
- 	int rc;
-@@ -1001,7 +996,6 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 		dprintk("RPC:       %s: rdma_disconnect %i\n", __func__, rc);
- 		ep->rep_connected = rc;
- 	}
--	return rc;
- }
- 
- static int
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 1ee6db3..c419498 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -341,7 +341,7 @@ int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
- 				struct rpcrdma_create_data_internal *);
- void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
- int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
--int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
-+void rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
- 
- int rpcrdma_ep_post(struct rpcrdma_ia *, struct rpcrdma_ep *,
- 				struct rpcrdma_req *);
+> If the client is on an embedded system which can't run wireshark, then
+> it is fine to record it on the server, but please use something like
+>
+> 'tshark -w /var/tmp/dump.out host <client-ip>'
 
+captured on embedded system:
+tcpdump -w /tmp/nfs-client.dump
+
+>
+> Cheers
+>   Trond
+
+thanks, sincerely
+Andreas
