@@ -1,88 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45201 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752519AbaGOPJq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jul 2014 11:09:46 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 03/15] gss_log: Removed DEBUG defines
-Date: Tue, 15 Jul 2014 11:09:22 -0400
-Message-Id: <1405436974-4161-4-git-send-email-steved@redhat.com>
-In-Reply-To: <1405436974-4161-1-git-send-email-steved@redhat.com>
-References: <1405436974-4161-1-git-send-email-steved@redhat.com>
+Received: from mail-vc0-f172.google.com ([209.85.220.172]:58239 "EHLO
+	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934096AbaGPOrO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:47:14 -0400
+Received: by mail-vc0-f172.google.com with SMTP id im17so1887677vcb.3
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:47:13 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
+References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
+	<20140710175136.GA26561@fieldses.org>
+	<CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
+	<CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
+	<CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
+Date: Wed, 16 Jul 2014 07:47:13 -0700
+Message-ID: <CAHQdGtS_O3i6fBhW7vTurL=Y7cKmoeGjTXiEMU5mbb3tR3-LjA@mail.gmail.com>
+Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Andreas Fenkart <afenkart@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Daniel Mack <zonque@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Enable the gss_log_XXX routines by removing the
-ifdef DEBUGs that surround them.
+On Wed, Jul 16, 2014 at 1:21 AM, Andreas Fenkart <afenkart@gmail.com> wrote:
+> 2014-07-16 1:54 GMT+02:00 Trond Myklebust <trond.myklebust@primarydata.com>:
+>> On Sun, Jul 13, 2014 at 11:44 PM, Andreas Fenkart <afenkart@gmail.com> wrote:
+>>> 2014-07-10 19:51 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+>>>> On Mon, Jun 23, 2014 at 12:07:22PM +0200, Andreas Fenkart wrote:
+>>>>> Found regression introduced by this patch
+>>>>>
+>>>>> 311324ad NFS: Be more aggressive in using readdirplus for 'ls -l' situations"
+>>>>>
+>>>>> # cd /bin
+>>>>> -sh: cd: /bin: Not a directory
+>>>>> root@192:/# pwd
+>>>>> /
+>>>>> root@192:/# ls /bin
+>>>>> ls: /bin
+>>>>> root@192:/# ls -l /bin/sh
+>>>>> lrwxrwxrwx    1 root     root             9 Jun 16 13:59 /bin/sh -> /bin/bash
+>>>>>
+>>>>> the mount options of the client, an embedded system, mounting nfsroot:
+>>>>> nfs(rw,relatime,vers=2,rsize=4096,wsize=4096,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=192.168.xx.xx,mountvers=1,mountproto=udp,local_lock=all,addr=192.168.xx.xx)
+>>>>> vers: 3.16.0-rc1
+>>>>>
+>>>>> the server exports:
+>>>>> /exports/rootfs 192.168.xx.xx(rw,no_root_squash,subtree_check)
+>>>>> vers: 3.14-1-amd64 #1 SMP Debian 3.14.4-1 (2014-05-13) x86_64 GNU/Linux
+>>>>>
+>>>>> reverting above patch, dir listing with 'ls /' works again
+>>>>
+>>>> Is this still happening?
+>>>
+>>> yes it is, I just reverted the aforementioned commit.
+>>
+>> Can you reapply, and then do an "ls /" while recording the traffic to
+>> the NFS server using wireshark, and then send us the resulting dump?
+>
+> http://www.pcapr.net/view/afenkart/2014/6/3/1/nfs-client.dump.html
+> you have to create a login... simple. Or did you mean attach to email?
+>
+>> If the client is on an embedded system which can't run wireshark, then
+>> it is fine to record it on the server, but please use something like
+>>
+>> 'tshark -w /var/tmp/dump.out host <client-ip>'
+>
+> captured on embedded system:
+> tcpdump -w /tmp/nfs-client.dump
+>
+>>
+>> Cheers
+>>   Trond
+>
+> thanks, sincerely
+> Andreas
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/auth_gss.c | 9 +--------
- 1 file changed, 1 insertion(+), 8 deletions(-)
+That unfortunately only shows a few READ requests, probably because
+the readdirs etc are cached. Could you try again with a directory that
+is not in cache and/or try "echo 3 >/proc/sys/vm/drop_caches" before
+retrying the 'ls /'?
 
-diff --git a/src/auth_gss.c b/src/auth_gss.c
-index fd6191b..e36f5d9 100644
---- a/src/auth_gss.c
-+++ b/src/auth_gss.c
-@@ -78,7 +78,6 @@ static struct auth_ops authgss_ops = {
- 	authgss_unwrap
- };
- 
--#ifdef DEBUG
- 
- /* useful as i add more mechanisms */
- void
-@@ -126,7 +125,6 @@ char *p;
- 	fprintf(stderr, "     service: %d\n", ptr->svc);
- 	fprintf(stderr, "     cred: %p\n", ptr->cred);
- }
--#endif /*DEBUG*/
- 
- struct rpc_gss_data {
- 	bool_t			 established;	/* context established */
-@@ -406,6 +404,7 @@ authgss_validate(AUTH *auth, struct opaque_auth *verf)
- 
- 	maj_stat = gss_verify_mic(&min_stat, gd->ctx, &signbuf,
- 				  &checksum, &qop_state);
-+
- 	if (maj_stat != GSS_S_COMPLETE || qop_state != gd->sec.qop) {
- 		gss_log_status("gss_verify_mic", maj_stat, min_stat);
- 		if (maj_stat == GSS_S_CONTEXT_EXPIRED) {
-@@ -436,19 +435,15 @@ authgss_refresh(AUTH *auth, void *dummy)
- 	memset(&gr, 0, sizeof(gr));
- 	recv_tokenp = GSS_C_NO_BUFFER;
- 
--#ifdef DEBUG
- 	print_rpc_gss_sec(&gd->sec);
--#endif /*DEBUG*/
- 
- 	for (;;) {
--#ifdef DEBUG
- 		/* print the token we just received */
- 		if (recv_tokenp != GSS_C_NO_BUFFER) {
- 			gss_log_debug("The token we just received (length %d):",
- 				  recv_tokenp->length);
- 			gss_log_hexdump(recv_tokenp->value, recv_tokenp->length, 0);
- 		}
--#endif
- 		maj_stat = gss_init_sec_context(&min_stat,
- 						gd->sec.cred,
- 						&gd->ctx,
-@@ -475,12 +470,10 @@ authgss_refresh(AUTH *auth, void *dummy)
- 		if (send_token.length != 0) {
- 			memset(&gr, 0, sizeof(gr));
- 
--#ifdef DEBUG
- 			/* print the token we are about to send */
- 			gss_log_debug("The token being sent (length %d):",
- 				  send_token.length);
- 			gss_log_hexdump(send_token.value, send_token.length, 0);
--#endif
- 
- 			call_stat = clnt_call(gd->clnt, NULLPROC,
- 					      (xdrproc_t)xdr_rpc_gss_init_args,
+Note: I am a little surprised that there are no GETATTRs in that dump.
+Even if the readdir is cached, the client is supposed to revalidate
+the directory.
+
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
