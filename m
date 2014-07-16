@@ -1,69 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:36343 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758158AbaGOK3D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 06:29:03 -0400
-Received: by mail-qc0-f181.google.com with SMTP id w7so1798487qcr.26
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 03:29:01 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
+Received: from fieldses.org ([174.143.236.118]:53130 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750876AbaGPU6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jul 2014 16:58:47 -0400
+Date: Wed, 16 Jul 2014 16:58:46 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: silence sparse warning about accessing credentials
-Date: Tue, 15 Jul 2014 06:28:54 -0400
-Message-Id: <1405420134-3736-1-git-send-email-jlayton@primarydata.com>
+Subject: Re: [PATCH] SUNRPC: xdr_get_next_encode_buffer should be declared
+ static
+Message-ID: <20140716205846.GE2397@fieldses.org>
+References: <1405202462-50244-1-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1405202462-50244-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-sparse says:
+On Sat, Jul 12, 2014 at 06:01:02PM -0400, Trond Myklebust wrote:
+> Quell another sparse warning.
 
-    fs/nfsd/auth.c:31:38: warning: incorrect type in argument 1 (different address spaces)
-    fs/nfsd/auth.c:31:38:    expected struct cred const *cred
-    fs/nfsd/auth.c:31:38:    got struct cred const [noderef] <asn:4>*real_cred
+I think jlayton sent you the same fix with his set of sunrpc sparse
+fixes--could you just take that instead?
 
-Add a new accessor for the ->real_cred and use that to fetch the
-pointer. Accessing current->real_cred directly is actually quite safe
-since we know that they can't go away so this is mostly a cosmetic fixup
-to silence sparse.
+(Or I can take this if you still want, I don't really care.)
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/auth.c       | 2 +-
- include/linux/cred.h | 9 +++++++++
- 2 files changed, 10 insertions(+), 1 deletion(-)
+--b.
 
-diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
-index 72f44823adbb..9d46a0bdd9f9 100644
---- a/fs/nfsd/auth.c
-+++ b/fs/nfsd/auth.c
-@@ -28,7 +28,7 @@ int nfsd_setuser(struct svc_rqst *rqstp, struct svc_export *exp)
- 	validate_process_creds();
- 
- 	/* discard any old override before preparing the new set */
--	revert_creds(get_cred(current->real_cred));
-+	revert_creds(get_cred(current_real_cred()));
- 	new = prepare_creds();
- 	if (!new)
- 		return -ENOMEM;
-diff --git a/include/linux/cred.h b/include/linux/cred.h
-index f61d6c8f5ef3..b2d0820837c4 100644
---- a/include/linux/cred.h
-+++ b/include/linux/cred.h
-@@ -259,6 +259,15 @@ static inline void put_cred(const struct cred *_cred)
- 	rcu_dereference_protected(current->cred, 1)
- 
- /**
-+ * current_real_cred - Access the current task's objective credentials
-+ *
-+ * Access the objective credentials of the current task.  RCU-safe,
-+ * since nobody else can modify it.
-+ */
-+#define current_real_cred() \
-+	rcu_dereference_protected(current->real_cred, 1)
-+
-+/**
-  * __task_cred - Access a task's objective credentials
-  * @task: The task to query
-  *
--- 
-1.9.3
-
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/xdr.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+> index 23fb4e75e245..290af97bf6f9 100644
+> --- a/net/sunrpc/xdr.c
+> +++ b/net/sunrpc/xdr.c
+> @@ -509,7 +509,8 @@ void xdr_commit_encode(struct xdr_stream *xdr)
+>  }
+>  EXPORT_SYMBOL_GPL(xdr_commit_encode);
+>  
+> -__be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr, size_t nbytes)
+> +static __be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr,
+> +		size_t nbytes)
+>  {
+>  	static __be32 *p;
+>  	int space_left;
+> -- 
+> 1.9.3
+> 
