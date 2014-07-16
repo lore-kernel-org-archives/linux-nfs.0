@@ -1,119 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:44052 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751886AbaGKSAo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Jul 2014 14:00:44 -0400
-Received: by mail-vc0-f174.google.com with SMTP id hy4so2757041vcb.33
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Jul 2014 11:00:43 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <03fc01cf9d31$719fcc50$54df64f0$@mindspring.com>
-References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
-	<1405015655-12469-11-git-send-email-jlayton@primarydata.com>
-	<03f901cf9d2d$f23c21f0$d6b465d0$@mindspring.com>
-	<20140711134820.66d53162@tlielax.poochiereds.net>
-	<03fc01cf9d31$719fcc50$54df64f0$@mindspring.com>
-Date: Fri, 11 Jul 2014 14:00:43 -0400
-Message-ID: <CAHQdGtTUz7hCsowAEi7gpDk+d2J0NPNHJJVhy5hFmq6pQKg=CQ@mail.gmail.com>
-Subject: Re: [PATCH 10/11] nfsd: make deny mode enforcement more efficient and
- close races in it
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qa0-f47.google.com ([209.85.216.47]:48294 "EHLO
+	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965097AbaGPOcU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:20 -0400
+Received: by mail-qa0-f47.google.com with SMTP id i13so763110qae.34
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:19 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 05/10] locks: add file_has_lease to prevent delegation break races
+Date: Wed, 16 Jul 2014 10:32:00 -0400
+Message-Id: <1405521125-2303-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 11, 2014 at 1:56 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->> On Fri, 11 Jul 2014 10:31:26 -0700
->> "Frank Filz" <ffilzlnx@mindspring.com> wrote:
->>
->> > > The current enforcement of deny modes is both inefficient and
->> > > scattered across several places, which makes it hard to guarantee
->> > > atomicity. The inefficiency is a problem now, and the lack of
->> > > atomicity will mean races
->> > once
->> > > the client_mutex is removed.
->> > >
->> > > First, we address the inefficiency. We have to track deny modes on a
->> > > per- stateid basis to ensure that open downgrades are sane, but when
->> > > the server goes to enforce them it has to walk the entire list of
->> > > stateids and check against each one.
->> > >
->> > > Instead of doing that, maintain a per-nfs4_file deny mode. When a
->> > > file is opened, we simply set any deny bits in that mode that were
->> > > specified in
->> > the
->> > > OPEN call. We can then use that unified deny mode to do a simple
->> > > check to see whether there are any conflicts without needing to walk
->> > > the entire stateid list.
->> > >
->> > > The only time we'll need to walk the entire list of stateids is when
->> > > a
->> > stateid
->> > > that has a deny mode on it is being released, or one is having its
->> > > deny
->> > mode
->> > > downgraded. In that case, we must walk the entire list and
->> > > recalculate the fi_share_deny field. Since deny modes are pretty
->> > > rare today, this should
->> > be
->> > > very rare under normal workloads.
->> >
->> > What we do in Ganesha to avoid walking the list of stateids on release
->> > is maintain the effective deny (and access) mode not at bits, but as a
->> > counter for each bit. Thus, to remove a SHARE_ACCESS_READ |
->> > SHARE_DENY_WRITE, you decrement the counts for access_read and
->> deny_write.
->> >
->> > Frank
->> >
->> >
->>
->> Sure, that's another possibility that I considered, but I didn't want to
-> be
->> bothered with having to add counters for deny modes. In practice there are
->> *no* clients that use them (aside from pynfs and maybe the semi-mythical
->> Windows v4.1 client).
+Once we remove the client_mutex, we'll have a potential race between
+setting a lease on a file and breaking the delegation. We may set the
+lease, but by the time we go to hash it, it may have already been
+broken. Currently, we know that this won't happen as the nfs4_laundromat
+takes the client_mutex, but we want to remove that.
 
-You don't need counters for deny modes. There can only be 1 of each,
-since any deny mode has to be part of an OPEN that has at least one
-non-zero share access mode. So a single bit for each  should be fine.
+As part of that fix, add a function that can tell us whether a
+particular file has a lease set on it. In a later nfsd patch, we'll use
+that to close the potential race window.
 
->>
->> With this scheme, deny mode enforcement is pretty darned efficient,
->> particularly in the common case where there are no deny modes to enforce.
->>
->> Any penalty for the use of deny modes is generally paid during the CLOSE
-> or
->> OPEN_DOWNGRADE on behalf of the client that's using them.
->> Any RPC from a client that's not won't need to do any extra work (aside
-> from
->> maybe spinning on the fi_lock while another client is having to
-> recalculate the
->> fi_share_deny).
->
-> Good point.
->
-> Whatever happened to Pavel Shilovsky's O_DENY patch set? I was looking
-> forward to that for allowing Ganesha and Samba share reservations to more
-> fully interact with each other...
->
-> Frank
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/locks.c         | 26 ++++++++++++++++++++++++++
+ include/linux/fs.h |  6 ++++++
+ 2 files changed, 32 insertions(+)
 
-
-
+diff --git a/fs/locks.c b/fs/locks.c
+index 717fbc404e6b..005cc86927e3 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1308,6 +1308,32 @@ static bool leases_conflict(struct file_lock *lease, struct file_lock *breaker)
+ }
+ 
+ /**
++ * file_has_lease - does the given file have a lease set on it?
++ * @file: struct file on which we want to check the lease
++ *
++ * Returns true if a lease was is set on the given file description,
++ * false otherwise.
++ */
++bool
++file_has_lease(struct file *file)
++{
++	bool ret = false;
++	struct inode *inode = file_inode(file);
++	struct file_lock *fl;
++
++	spin_lock(&inode->i_lock);
++	for (fl = inode->i_flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
++		if (fl->fl_file == file) {
++			ret = true;
++			break;
++		}
++	}
++	spin_unlock(&inode->i_lock);
++	return ret;
++}
++EXPORT_SYMBOL(file_has_lease);
++
++/**
+  *	__break_lease	-	revoke all outstanding leases on file
+  *	@inode: the inode of the file to return
+  *	@mode: O_RDONLY: break only write leases; O_WRONLY or O_RDWR:
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e11d60cc867b..7ae6f4869669 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -953,6 +953,7 @@ extern int vfs_test_lock(struct file *, struct file_lock *);
+ extern int vfs_lock_file(struct file *, unsigned int, struct file_lock *, struct file_lock *);
+ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
+ extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
++extern bool file_has_lease(struct file *file);
+ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **);
+@@ -1064,6 +1065,11 @@ static inline int flock_lock_file_wait(struct file *filp,
+ 	return -ENOLCK;
+ }
+ 
++static inline bool file_has_lease(struct file *file)
++{
++	return false;
++}
++
+ static inline int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ {
+ 	return 0;
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
