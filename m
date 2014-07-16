@@ -1,140 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:44506 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751127AbaGBB3O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Jul 2014 21:29:14 -0400
-Date: Wed, 2 Jul 2014 11:28:58 +1000
-From: NeilBrown <neilb@suse.de>
-To: Ingo Molnar <mingo@kernel.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Oleg Nesterov <oleg@redhat.com>,
-        David Howells <dhowells@redhat.com>,
-        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>, Roland McGrath <roland@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action
- functions.
-Message-ID: <20140702112858.12c8a504@notabene.brown>
-In-Reply-To: <20140606060419.GA3737@gmail.com>
-References: <20140501123738.3e64b2d2@notabene.brown>
-	<20140522090502.GB30094@gmail.com>
-	<20140522195056.445f2dcb@notabene.brown>
-	<20140605124509.GA1975@gmail.com>
-	<20140606102303.09ef9fb3@notabene.brown>
-	<20140606060419.GA3737@gmail.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/=QYeP+QY288.xRlZtBKJOUE"; protocol="application/pgp-signature"
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:56029 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751573AbaGPTif (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 15:38:35 -0400
+Received: by mail-ig0-f179.google.com with SMTP id h18so1384377igc.6
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 12:38:34 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] svcrdma: Select NFSv4.1 backchannel transport based on
+	forward channel
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 16 Jul 2014 15:38:32 -0400
+Message-ID: <20140716193542.7847.95868.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/=QYeP+QY288.xRlZtBKJOUE
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+The current code always selects XPRT_TRANSPORT_BC_TCP for the back
+channel, even when the forward channel was not TCP (eg, RDMA). When
+a 4.1 mount is attempted with RDMA, the server panics in the TCP BC
+code when trying to send CB_NULL.
 
-On Fri, 6 Jun 2014 08:04:19 +0200 Ingo Molnar <mingo@kernel.org> wrote:
+Instead, construct the transport protocol number from the forward
+channel transport or'd with XPRT_TRANSPORT_BC. Transports that do
+not support bi-directional RPC will not have registered a "BC"
+transport, causing create_backchannel_client() to fail immediately.
 
->=20
-> * NeilBrown <neilb@suse.de> wrote:
->=20
-> > On Thu, 5 Jun 2014 14:45:09 +0200 Ingo Molnar <mingo@kernel.org> wrote:
-> >=20
-> > >=20
-> > > * NeilBrown <neilb@suse.de> wrote:
-> > >=20
-> > > > On Thu, 22 May 2014 11:05:02 +0200 Ingo Molnar <mingo@kernel.org> w=
-rote:
-> > > >=20
-> > > > >=20
-> > > > > * NeilBrown <neilb@suse.de> wrote:
-> > > > >=20
-> > > > > > [[ get_maintainer.pl suggested 61 email address for this patch.
-> > > > > >    I've trimmed that list somewhat.  Hope I didn't miss anyone
-> > > > > >    important...
-> > > > > >    I'm hoping it will go in through the scheduler tree, but wou=
-ld
-> > > > > >    particularly like an Acked-by for the fscache parts.  Other =
-acks
-> > > > > >    welcome.
-> > > > > > ]]
-> > > > > >=20
-> > > > > > The current "wait_on_bit" interface requires an 'action' functi=
-on
-> > > > > > to be provided which does the actual waiting.
-> > > > > > There are over 20 such functions, many of them identical.
-> > > > > > Most cases can be satisfied by one of just two functions, one
-> > > > > > which uses io_schedule() and one which just uses schedule().
-> > > > > >=20
-> > > > > > So:
-> > > > > >  Rename wait_on_bit and        wait_on_bit_lock to
-> > > > > >         wait_on_bit_action and wait_on_bit_lock_action
-> > > > > >  to make it explicit that they need an action function.
-> > > > > >=20
-> > > > > >  Introduce new wait_on_bit{,_lock} and wait_on_bit{,_lock}_io
-> > > > > >  which are *not* given an action function but implicitly use
-> > > > > >  a standard one.
-> > > > > >  The decision to error-out if a signal is pending is now made
-> > > > > >  based on the 'mode' argument rather than being encoded in the =
-action
-> > > > > >  function.
-> > > > >=20
-> > > > > this patch fails to build on x86-32 allyesconfigs.
-> > > >=20
-> > > > Could you share the build errors?
-> > >=20
-> > > Sure, find it attached below.
-> >=20
-> > Thanks.
-> >=20
-> > It looks like this is a wait_on_bit usage that was added after I create=
-d the
-> > patch.
-> >=20
-> > How about you drop my patch for now, we wait for -rc1 to come out, then=
- I
-> > submit a new version against -rc1 and we get that into -rc2.
-> > That should minimise such conflicts.
-> >=20
-> > Does that work for you?
->=20
-> Sure, that sounds like a good approach, if Linus doesn't object.
->=20
+Fixes: https://bugzilla.linux-nfs.org/show_bug.cgi?id=265
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+Hi Bruce-
 
-Hi Ingo,
- I re-posted these patches based on -rc2 (I missed -rc1, it was too fast) a=
-nd
- have not heard anything over a week later.  Did I misunderstand?  Did you
- want me to send them direct to Linus?
- Or are you on a summer break and I should just be patient?
-
-Thanks,
-NeilBrown
+What do you think of this approach?
 
 
---Sig_/=QYeP+QY288.xRlZtBKJOUE
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+ fs/nfsd/nfs4callback.c                   |    3 ++-
+ include/linux/sunrpc/svc_xprt.h          |    1 +
+ net/sunrpc/svcsock.c                     |    2 ++
+ net/sunrpc/xprt.c                        |    2 +-
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 +
+ 5 files changed, 7 insertions(+), 2 deletions(-)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 2c73cae..0f23ad0 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -689,7 +689,8 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		clp->cl_cb_session = ses;
+ 		args.bc_xprt = conn->cb_xprt;
+ 		args.prognumber = clp->cl_cb_session->se_cb_prog;
+-		args.protocol = XPRT_TRANSPORT_BC_TCP;
++		args.protocol = conn->cb_xprt->xpt_class->xcl_ident |
++				XPRT_TRANSPORT_BC;
+ 		args.authflavor = ses->se_cb_sec.flavor;
+ 	}
+ 	/* Create RPC client */
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 7235040..5d9d6f8 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -33,6 +33,7 @@ struct svc_xprt_class {
+ 	struct svc_xprt_ops	*xcl_ops;
+ 	struct list_head	xcl_list;
+ 	u32			xcl_max_payload;
++	int			xcl_ident;
+ };
+ 
+ /*
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index b507cd3..b2437ee 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -692,6 +692,7 @@ static struct svc_xprt_class svc_udp_class = {
+ 	.xcl_owner = THIS_MODULE,
+ 	.xcl_ops = &svc_udp_ops,
+ 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
++	.xcl_ident = XPRT_TRANSPORT_UDP,
+ };
+ 
+ static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+@@ -1292,6 +1293,7 @@ static struct svc_xprt_class svc_tcp_class = {
+ 	.xcl_owner = THIS_MODULE,
+ 	.xcl_ops = &svc_tcp_ops,
+ 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
++	.xcl_ident = XPRT_TRANSPORT_TCP,
+ };
+ 
+ void svc_init_xprt_sock(void)
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index c3b2b33..51c6316 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1306,7 +1306,7 @@ struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
+ 		}
+ 	}
+ 	spin_unlock(&xprt_list_lock);
+-	printk(KERN_ERR "RPC: transport (%d) not supported\n", args->ident);
++	dprintk("RPC: transport (%d) not supported\n", args->ident);
+ 	return ERR_PTR(-EIO);
+ 
+ found:
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index e7323fb..06a5d92 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -92,6 +92,7 @@ struct svc_xprt_class svc_rdma_class = {
+ 	.xcl_owner = THIS_MODULE,
+ 	.xcl_ops = &svc_rdma_ops,
+ 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
++	.xcl_ident = XPRT_TRANSPORT_RDMA,
+ };
+ 
+ struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
 
-iQIVAwUBU7NgWjnsnt1WYoG5AQII1w//VComARvqt3VvWrvmnDLA0VuceV4ZipH/
-bJ/z5WegEkvgo3YXg6TuiU5149NOrCV3ccqGyQAqzOamXzUbFIMYxQbSMNPpNcAq
-aOj24ngtnFlRttn6x4KiyF3iZCj553+nazZ423XBCn74K8doav66M/iuHu1KDzuu
-oV9zgkzwefx3+/bfsX4SIoHelgjM2b5oiIiAYbvlF35dJgHDfHWYERbURCegbb4l
-jNSCdyu7hYQ9hv0JZUGHjziG4WAf4eEJMXOnOHtcz6Ud/pnCc1IhJGJjyDUImPXp
-VPYo+C8T/zd6+OnAgxQ0xZhDLMw8BS8xfc9U8/BvypxeVoDVPYfBDwL0WsdyVrfj
-3O5+8p3Tlh78AhXAuU5IoXD0X5ADvObXrAqoPa3N1ZmzbdKDy23WPqsC0nIOw6p1
-LIviOly29b9/DZLr+fUZ6Q3fKvY4QKVM3Y301oEHpFOwdhDl0gUJ+rk2602Oj56f
-N+lJLkUYsfeFs+RcU7elzNM+RYXHCUuVk8Jf5sRek7D8jq86+y4W/nRZ+h4G6vmt
-KRnS+ZP7tfD+hfH6nc2gg1ntKBz5siYkQNumgei2w8mgwFymA7Q932qhfL3lI3vJ
-UbqMTlHq3vujWJ6bNPxpwC8GzCToce6ufjS4Yx2oI+AK6SrGP5yKZazQymDtxtuR
-ONcujyX/idg=
-=bvEK
------END PGP SIGNATURE-----
-
---Sig_/=QYeP+QY288.xRlZtBKJOUE--
