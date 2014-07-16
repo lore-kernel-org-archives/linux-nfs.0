@@ -1,220 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f179.google.com ([209.85.217.179]:50660 "EHLO
-	mail-lb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752609AbaG3LXd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 07:23:33 -0400
-Received: by mail-lb0-f179.google.com with SMTP id v6so740534lbi.24
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 04:23:30 -0700 (PDT)
-From: Natanael Copa <natanael.copa@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Natanael Copa <ncopa@alpinelinux.org>
-Subject: [PATCH 03/11] replace __attribute_malloc__ with the more portable __attribute__((__malloc__))
-Date: Wed, 30 Jul 2014 13:23:11 +0200
-Message-Id: <1406719399-1735-4-git-send-email-ncopa@alpinelinux.org>
-In-Reply-To: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
-References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:47185 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S965094AbaGPOcT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:19 -0400
+Received: by mail-qa0-f53.google.com with SMTP id v10so748130qac.40
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:18 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 04/10] nfsd: Ensure stateids remain unique until they are freed
+Date: Wed, 16 Jul 2014 10:31:59 -0400
+Message-Id: <1405521125-2303-5-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
----
- support/export/hostname.c  | 14 +++++++-------
- support/include/exportfs.h | 10 +++++-----
- support/nfs/svc_create.c   |  2 +-
- utils/statd/hostname.c     |  6 +++---
- utils/statd/sm-notify.c    |  8 ++++----
- utils/statd/statd.h        |  2 +-
- 6 files changed, 21 insertions(+), 21 deletions(-)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-diff --git a/support/export/hostname.c b/support/export/hostname.c
-index 3e949a1..ad595d1 100644
---- a/support/export/hostname.c
-+++ b/support/export/hostname.c
-@@ -91,7 +91,7 @@ host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
-  * Returns address info structure, or NULL if an error occurs.  Caller
-  * must free the returned structure with freeaddrinfo(3).
-  */
--__attribute_malloc__
-+__attribute__((__malloc__))
- struct addrinfo *
- host_pton(const char *paddr)
+Add an extra delegation state to allow the stateid to remain in the idr
+tree until the last reference has been released. This will be necessary
+to ensure uniqueness once the client_mutex is removed.
+
+[jlayton: reset the sc_type under the state_lock in unhash_delegation]
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4state.c | 8 ++++----
+ fs/nfsd/state.h     | 1 +
+ 2 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1b01a20827ab..fd4deb049ddf 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -616,6 +616,7 @@ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
  {
-@@ -153,7 +153,7 @@ host_pton(const char *paddr)
-  * if no information is available for @hostname.  Caller must free the
-  * returned structure with freeaddrinfo(3).
-  */
--__attribute_malloc__
-+__attribute__((__malloc__))
- struct addrinfo *
- host_addrinfo(const char *hostname)
- {
-@@ -199,7 +199,7 @@ host_addrinfo(const char *hostname)
-  * the string.
-  */
- #ifdef HAVE_GETNAMEINFO
--__attribute_malloc__
-+__attribute__((__malloc__))
- char *
- host_canonname(const struct sockaddr *sap)
- {
-@@ -234,7 +234,7 @@ host_canonname(const struct sockaddr *sap)
- 	return strdup(buf);
- }
- #else	/* !HAVE_GETNAMEINFO */
--__attribute_malloc__
-+__attribute__((__malloc__))
- char *
- host_canonname(const struct sockaddr *sap)
- {
-@@ -266,7 +266,7 @@ host_canonname(const struct sockaddr *sap)
-  *
-  * Caller must free the returned structure with freeaddrinfo(3).
-  */
--__attribute_malloc__
-+__attribute__((__malloc__))
- struct addrinfo *
- host_reliable_addrinfo(const struct sockaddr *sap)
- {
-@@ -313,7 +313,7 @@ out_free_hostname:
-  * Caller must free the returned structure with freeaddrinfo(3).
-  */
- #ifdef HAVE_GETNAMEINFO
--__attribute_malloc__
-+__attribute__((__malloc__))
- struct addrinfo *
- host_numeric_addrinfo(const struct sockaddr *sap)
- {
-@@ -361,7 +361,7 @@ host_numeric_addrinfo(const struct sockaddr *sap)
- 	return ai;
- }
- #else	/* !HAVE_GETNAMEINFO */
--__attribute_malloc__
-+__attribute__((__malloc__))
- struct addrinfo *
- host_numeric_addrinfo(const struct sockaddr *sap)
- {
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index 97b2327..9021fae 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -156,15 +156,15 @@ int				secinfo_addflavor(struct flav_info *, struct exportent *);
+ 	if (atomic_dec_and_test(&dp->dl_count)) {
++		remove_stid(&dp->dl_stid);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+ 	}
+@@ -657,6 +658,7 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	struct nfs4_file *fp = dp->dl_file;
  
- char *				host_ntop(const struct sockaddr *sap,
- 						char *buf, const size_t buflen);
--__attribute_malloc__
-+__attribute__((__malloc__))
- struct addrinfo *		host_pton(const char *paddr);
--__attribute_malloc__
-+__attribute__((__malloc__))
- struct addrinfo *		host_addrinfo(const char *hostname);
--__attribute_malloc__
-+__attribute__((__malloc__))
- char *				host_canonname(const struct sockaddr *sap);
--__attribute_malloc__
-+__attribute__((__malloc__))
- struct addrinfo *		host_reliable_addrinfo(const struct sockaddr *sap);
--__attribute_malloc__
-+__attribute__((__malloc__))
- struct addrinfo *		host_numeric_addrinfo(const struct sockaddr *sap);
- 
- int				rmtab_read(void);
-diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
-index 6b9e85b..a706f87 100644
---- a/support/nfs/svc_create.c
-+++ b/support/nfs/svc_create.c
-@@ -113,7 +113,7 @@ svc_create_find_xprt(const struct sockaddr *bindaddr, const struct netconfig *nc
-  *
-  * Otherwise NULL is returned if an error occurs.
-  */
--__attribute_malloc__
-+__attribute__((__malloc__))
- static struct addrinfo *
- svc_create_bindaddr(struct netconfig *nconf, const uint16_t port)
- {
-diff --git a/utils/statd/hostname.c b/utils/statd/hostname.c
-index 746ecc7..c61087c 100644
---- a/utils/statd/hostname.c
-+++ b/utils/statd/hostname.c
-@@ -105,7 +105,7 @@ statd_present_address(const struct sockaddr *sap, char *buf, const size_t buflen
-  * Look up the hostname; report exceptional errors.  Caller must
-  * call freeaddrinfo(3) if a valid addrinfo is returned.
-  */
--__attribute_malloc__
-+__attribute__((__malloc__))
- static struct addrinfo *
- get_addrinfo(const char *hostname, const struct addrinfo *hint)
- {
-@@ -184,7 +184,7 @@ get_nameinfo(const struct sockaddr *sap,
-  * We won't monitor peers that don't have a reverse map.  The canonical
-  * name gives us a key for our monitor list.
-  */
--__attribute_malloc__
-+__attribute__((__malloc__))
- char *
- statd_canonical_name(const char *hostname)
- {
-@@ -234,7 +234,7 @@ statd_canonical_name(const char *hostname)
-  * NULL if some error occurs.  Caller must free the returned
-  * list with freeaddrinfo(3).
-  */
--__attribute_malloc__
-+__attribute__((__malloc__))
- static struct addrinfo *
- statd_canonical_list(const char *hostname)
- {
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 9dbe5d9..5994b2f 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -74,7 +74,7 @@ static int		record_pid(void);
- 
- static struct nsm_host *	hosts = NULL;
- 
--__attribute_malloc__
-+__attribute__((__malloc__))
- static struct addrinfo *
- smn_lookup(const char *name)
- {
-@@ -149,7 +149,7 @@ smn_get_hostname(const struct sockaddr *sap,
-  * if the canonical name doesn't exist or cannot be determined.
-  * The caller must free the result with free(3).
-  */
--__attribute_malloc__
-+__attribute__((__malloc__))
- static char *
- smn_verify_my_name(const char *name)
- {
-@@ -189,7 +189,7 @@ smn_verify_my_name(const char *name)
- 	return retval;
+ 	spin_lock(&state_lock);
++	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_recall_lru);
+ 	spin_lock(&fp->fi_lock);
+@@ -670,19 +672,15 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	}
  }
  
--__attribute_malloc__
-+__attribute__((__malloc__))
- static struct nsm_host *
- smn_alloc_host(const char *hostname, const char *mon_name,
- 		const char *my_name, const time_t timestamp)
-@@ -343,7 +343,7 @@ static int smn_socket(void)
-  * If admin specified a source address or srcport, then convert those
-  * to a sockaddr and return it.   Otherwise, return an ANYADDR address.
-  */
--__attribute_malloc__
-+__attribute__((__malloc__))
- static struct addrinfo *
- smn_bind_address(const char *srcaddr, const char *srcport)
+-
+-
+ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
  {
-diff --git a/utils/statd/statd.h b/utils/statd/statd.h
-index e89e666..a1d8035 100644
---- a/utils/statd/statd.h
-+++ b/utils/statd/statd.h
-@@ -25,7 +25,7 @@
- extern _Bool	statd_matchhostname(const char *hostname1, const char *hostname2);
- extern _Bool	statd_present_address(const struct sockaddr *sap, char *buf,
- 					const size_t buflen);
--__attribute_malloc__
-+__attribute__((__malloc__))
- extern char *	statd_canonical_name(const char *hostname);
+ 	list_del_init(&dp->dl_recall_lru);
+-	remove_stid(&dp->dl_stid);
+ 	nfs4_put_delegation(dp);
+ }
  
- extern void	my_svc_run(void);
+ static void destroy_delegation(struct nfs4_delegation *dp)
+ {
+ 	unhash_delegation(dp);
+-	remove_stid(&dp->dl_stid);
+ 	nfs4_put_delegation(dp);
+ }
+ 
+@@ -4036,7 +4034,9 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 		return nfs_ok;
+ 	default:
+ 		printk("unknown stateid type %x\n", s->sc_type);
++		/* Fallthrough */
+ 	case NFS4_CLOSED_STID:
++	case NFS4_CLOSED_DELEG_STID:
+ 		return nfserr_bad_stateid;
+ 	}
+ }
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 81b7522e3f67..996d61eeb357 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -80,6 +80,7 @@ struct nfs4_stid {
+ #define NFS4_CLOSED_STID 8
+ /* For a deleg stateid kept around only to process free_stateid's: */
+ #define NFS4_REVOKED_DELEG_STID 16
++#define NFS4_CLOSED_DELEG_STID 32
+ 	unsigned char sc_type;
+ 	stateid_t sc_stateid;
+ 	struct nfs4_client *sc_client;
 -- 
-2.0.3
+1.9.3
 
