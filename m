@@ -1,163 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:49071 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756369AbaGIQ6G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:58:06 -0400
-Subject: [PATCH v2 11/21] xprtrdma: Reset FRMRs when FAST_REG_MR is flushed
- by a disconnect
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Jul 2014 12:58:04 -0400
-Message-ID: <20140709165804.3496.28204.stgit@manet.1015granger.net>
-In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:52420 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758739AbaGPKwe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 06:52:34 -0400
+Received: by mail-qa0-f53.google.com with SMTP id v10so530402qac.26
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 03:52:33 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: bfields@fieldses.org, hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 3/5] sunrpc: clean up sparse endianness warnings in gss_krb5_seal.c
+Date: Wed, 16 Jul 2014 06:52:20 -0400
+Message-Id: <1405507942-12256-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405507942-12256-1-git-send-email-jlayton@primarydata.com>
+References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+ <1405507942-12256-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FAST_REG_MR Work Requests update a Memory Region's rkey. Rkey's are
-used to block unwanted access to the memory controlled by an MR. The
-rkey is passed to the receiver (the NFS server, in our case), and is
-also used by xprtrdma to invalidate the MR when the RPC is complete.
+Use u16 pointer in setup_token and setup_token_v2. None of the fields
+are actually handled as __be16, so this simplifies the code a bit. Also
+get rid of some unneeded pointer increments.
 
-When a FAST_REG_MR Work Request is flushed after a transport
-disconnect, xprtrdma cannot tell whether the WR actually hit the
-adapter or not. So it is indeterminant at that point whether the
-existing rkey is still valid.
-
-After the transport connection is re-established, the next
-FAST_REG_MR or LOCAL_INV Work Request against that MR can sometimes
-fail because the rkey value does not match what xprtrdma expects.
-
-The only reliable way to recover in this case is to deregister and
-register the MR before it is used again. These operations can be
-done only in a process context, so handle it in the transport
-connect worker.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c     |   67 ++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 2 files changed, 66 insertions(+), 2 deletions(-)
+ net/sunrpc/auth_gss/gss_krb5_seal.c | 28 +++++++++++++++++-----------
+ 1 file changed, 17 insertions(+), 11 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 5796e09..56b7979 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -61,6 +61,8 @@
- # define RPCDBG_FACILITY	RPCDBG_TRANS
- #endif
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index 62ae3273186c..42768e5c3994 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -70,31 +70,37 @@
  
-+static void rpcrdma_reset_frmrs(struct rpcrdma_ia *);
-+
- /*
-  * internal functions
-  */
-@@ -152,8 +154,10 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+ DEFINE_SPINLOCK(krb5_seq_lock);
  
- 	if (wc->wr_id == 0ULL)
- 		return;
--	if (wc->status != IB_WC_SUCCESS)
-+	if (wc->status != IB_WC_SUCCESS) {
-+		frmr->r.frmr.fr_state = FRMR_IS_STALE;
- 		return;
-+	}
+-static char *
++static void *
+ setup_token(struct krb5_ctx *ctx, struct xdr_netobj *token)
+ {
+-	__be16 *ptr, *krb5_hdr;
++	u16 *ptr;
++	void *krb5_hdr;
+ 	int body_size = GSS_KRB5_TOK_HDR_LEN + ctx->gk5e->cksumlength;
  
- 	if (wc->opcode == IB_WC_FAST_REG_MR)
- 		frmr->r.frmr.fr_state = FRMR_IS_VALID;
-@@ -881,6 +885,9 @@ retry:
- 				" status %i\n", __func__, rc);
- 		rpcrdma_flush_cqs(ep);
+ 	token->len = g_token_size(&ctx->mech_used, body_size);
  
-+		if (ia->ri_memreg_strategy == RPCRDMA_FRMR)
-+			rpcrdma_reset_frmrs(ia);
-+
- 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
- 		id = rpcrdma_create_id(xprt, ia,
- 				(struct sockaddr *)&xprt->rx_data.addr);
-@@ -1256,6 +1263,62 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 	kfree(buf->rb_pool);
+-	ptr = (__be16 *)token->data;
++	ptr = (u16 *)token->data;
+ 	g_make_token_header(&ctx->mech_used, body_size, (unsigned char **)&ptr);
+ 
+ 	/* ptr now at start of header described in rfc 1964, section 1.2.1: */
+ 	krb5_hdr = ptr;
+ 	*ptr++ = KG_TOK_MIC_MSG;
+-	*ptr++ = cpu_to_le16(ctx->gk5e->signalg);
++	/*
++	 * signalg is stored as if it were converted from LE to host endian, even
++	 * though it's an opaque pair of bytes according to the RFC.
++	 */
++	*ptr++ = (__force u16)cpu_to_le16(ctx->gk5e->signalg);
+ 	*ptr++ = SEAL_ALG_NONE;
+-	*ptr++ = 0xffff;
++	*ptr = 0xffff;
+ 
+-	return (char *)krb5_hdr;
++	return krb5_hdr;
  }
  
-+/* After a disconnect, a flushed FAST_REG_MR can leave an FRMR in
-+ * an unusable state. Find FRMRs in this state and dereg / reg
-+ * each.  FRMRs that are VALID and attached to an rpcrdma_req are
-+ * also torn down.
-+ *
-+ * This gives all in-use FRMRs a fresh rkey and leaves them INVALID.
-+ *
-+ * This is invoked only in the transport connect worker in order
-+ * to serialize with rpcrdma_register_frmr_external().
-+ */
-+static void
-+rpcrdma_reset_frmrs(struct rpcrdma_ia *ia)
-+{
-+	struct rpcrdma_xprt *r_xprt =
-+				container_of(ia, struct rpcrdma_xprt, rx_ia);
-+	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
-+	struct list_head *pos;
-+	struct rpcrdma_mw *r;
-+	int rc;
-+
-+	list_for_each(pos, &buf->rb_all) {
-+		r = list_entry(pos, struct rpcrdma_mw, mw_all);
-+
-+		if (r->r.frmr.fr_state == FRMR_IS_INVALID)
-+			continue;
-+
-+		rc = ib_dereg_mr(r->r.frmr.fr_mr);
-+		if (rc)
-+			dprintk("RPC:       %s: ib_dereg_mr failed %i\n",
-+				__func__, rc);
-+		ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
-+
-+		r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
-+					ia->ri_max_frmr_depth);
-+		if (IS_ERR(r->r.frmr.fr_mr)) {
-+			rc = PTR_ERR(r->r.frmr.fr_mr);
-+			dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
-+				" failed %i\n", __func__, rc);
-+			continue;
-+		}
-+		r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
-+					ia->ri_id->device,
-+					ia->ri_max_frmr_depth);
-+		if (IS_ERR(r->r.frmr.fr_pgl)) {
-+			rc = PTR_ERR(r->r.frmr.fr_pgl);
-+			dprintk("RPC:       %s: "
-+				"ib_alloc_fast_reg_page_list "
-+				"failed %i\n", __func__, rc);
-+
-+			ib_dereg_mr(r->r.frmr.fr_mr);
-+			continue;
-+		}
-+		r->r.frmr.fr_state = FRMR_IS_INVALID;
-+	}
-+}
-+
- /* "*mw" can be NULL when rpcrdma_buffer_get_mrs() fails, leaving
-  * some req segments uninitialized.
-  */
-@@ -1587,7 +1650,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
- 		__func__, mw, i);
+ static void *
+ setup_token_v2(struct krb5_ctx *ctx, struct xdr_netobj *token)
+ {
+-	__be16 *ptr, *krb5_hdr;
++	u16 *ptr;
++	void *krb5_hdr;
+ 	u8 *p, flags = 0x00;
  
--	if (unlikely(frmr->fr_state == FRMR_IS_VALID)) {
-+	if (unlikely(frmr->fr_state != FRMR_IS_INVALID)) {
- 		dprintk("RPC:       %s: frmr %x left valid, posting invalidate.\n",
- 			__func__, frmr->fr_mr->rkey);
- 		/* Invalidate before using. */
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c1d8652..1ee6db3 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -161,6 +161,7 @@ struct rpcrdma_rep {
- enum rpcrdma_frmr_state {
- 	FRMR_IS_INVALID,	/* ready to be used */
- 	FRMR_IS_VALID,		/* in use */
-+	FRMR_IS_STALE,		/* failed completion */
- };
+ 	if ((ctx->flags & KRB5_CTX_FLAG_INITIATOR) == 0)
+@@ -104,15 +110,15 @@ setup_token_v2(struct krb5_ctx *ctx, struct xdr_netobj *token)
  
- struct rpcrdma_frmr {
+ 	/* Per rfc 4121, sec 4.2.6.1, there is no header,
+ 	 * just start the token */
+-	krb5_hdr = ptr = (__be16 *)token->data;
++	krb5_hdr = ptr = (u16 *)token->data;
+ 
+ 	*ptr++ = KG2_TOK_MIC;
+ 	p = (u8 *)ptr;
+ 	*p++ = flags;
+ 	*p++ = 0xff;
+-	ptr = (__be16 *)p;
+-	*ptr++ = 0xffff;
++	ptr = (u16 *)p;
+ 	*ptr++ = 0xffff;
++	*ptr = 0xffff;
+ 
+ 	token->len = GSS_KRB5_TOK_HDR_LEN + ctx->gk5e->cksumlength;
+ 	return krb5_hdr;
+@@ -181,7 +187,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	spin_lock(&krb5_seq_lock);
+ 	seq_send = ctx->seq_send64++;
+ 	spin_unlock(&krb5_seq_lock);
+-	*((u64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
++	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
+ 
+ 	if (ctx->initiate) {
+ 		cksumkey = ctx->initiator_sign;
+-- 
+1.9.3
 
