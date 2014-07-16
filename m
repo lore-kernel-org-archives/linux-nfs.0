@@ -1,92 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f182.google.com ([209.85.220.182]:49775 "EHLO
-	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751234AbaG2TwQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 15:52:16 -0400
-Received: by mail-vc0-f182.google.com with SMTP id hy4so283152vcb.41
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 12:52:15 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:60333 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751122AbaGPWF1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Jul 2014 18:05:27 -0400
+Date: Wed, 16 Jul 2014 18:05:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: handle failure to find backchannel
+Message-ID: <20140716220526.GG2397@fieldses.org>
+References: <20140711211609.GA13656@fieldses.org>
+ <53C13FE9.3080503@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <53D7EA62.3070204@RedHat.com>
-References: <53D7EA62.3070204@RedHat.com>
-Date: Tue, 29 Jul 2014 15:52:15 -0400
-Message-ID: <CAHQdGtQ2DU4GnMXy=n9JQzUhGkEC=+UEM8NVm=MviBt0+RJzBA@mail.gmail.com>
-Subject: Re: nfs4_state_manager() vs. nfs_server_remove_lists()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <53C13FE9.3080503@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 29, 2014 at 2:39 PM, Steve Dickson <SteveD@redhat.com> wrote:
-> Hello,
->
-> I've been seeing a panic where nfs4_state_manager()
-> ends up processing an v3 nfs client pointer.
->
-> The panic happens at the top of nfs4_state_manager()
-> because clp->cl_mvops == NULL;
->
-> Looking at the pointer (via crash) it becomes obvious
-> it is  a V3 client point (AKA rpc_ops = nfs_v3_clientop)
->
-> Now the reason we are in the state manager code is a NFSv4
-> mount doing server discovery so it is waking the client list
-> in nfs41_walk_client_list()
->
-> Now looking at the at the entire stack with crash, the
-> only time that v3 client pointer appears is after
-> nfs41_walk_client_list() has been called so I'm 99%
-> sure the pointer is coming from the cl_share_link list.
->
-> So the question is how is that v3 client pointer on that
-> list, in non NFS_CS_READY state.
->
-> Well, simultaneously a V3 mount is happening. In nfs_fs_mount_common()
-> it notices there is already a existing supper block sit decides to
-> free its server pointer so nfs_server_remove_lists() is called.
->
-> What  nfs_server_remove_lists() and nfs41_walk_client_list()
-> have in common is the nfs_client_lock spin lock.
->
-> Also the client pointer in the server pointer being freed is
-> in a non NFS_CS_READY state
->
-> To answer the question, the v3 client pointer, in a non
-> NFS_CS_READY state, is found by nfs41_walk_client_list()
-> because it beat nfs_server_remove_lists() to the
-> nfs_client_lock spin lock.
->
-> nfs41_walk_client_list() finds the uninitialized client
-> pointer nfs_server_remove_lists() is trying to free and
-> processes it and then fall over...
->
-> Note this was very hard to reproduce since a very large client
-> (many cores) is needed and a very fast server and a few
-> hours...
->
-> Question, since both v3 and v4 clients are on the cl_share_link
-> list should there be a check in nfs41_walk_client_list() to
-> process only v4 clients?
->
+On Sat, Jul 12, 2014 at 10:02:17PM +0800, Kinglong Mee wrote:
+> On 7/12/2014 05:16, J. Bruce Fields wrote:
+> > The local variable "ses" will be left NULL here in the case we fail to
+> > find a connection.  Spotted by a coverity scan.
+> >     
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> > index 2c73cae9899d..fe22cd5c42d3 100644
+> > --- a/fs/nfsd/nfs4callback.c
+> > +++ b/fs/nfsd/nfs4callback.c
+> > @@ -1001,14 +1001,18 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+> >  	}
+> >  	spin_unlock(&clp->cl_lock);
+> >  
+> > +	if (!c)
+> > +		goto out_no_connection;
+> 
+> Setting err to -EINVAL maybe better.
+> Otherwise, nfsd4_mark_cb_down will be called with err == 0.
+> 
+> >  	err = setup_callback_client(clp, &conn, ses);
+> 
+> setup_callback_client also return -EINVAL when ses == NULL with conn.cb_xprt == NULL.
 
-Hi Steve,
+Thanks, yes, after looking over this carefully I don't believe we can
+call setup_callback_client with ses NULL but conn->cb_xprt non-NULL, so
+this is just a false positive from coverity.
 
-Let's just move up the test for "pos->rpc_ops != new->rpc_ops",
-"pos->cl_minorversion != new->cl_minorversion" and "pos->cl_proto !=
-new->cl_proto" so that they all happen before we try to test the value
-of cl_cons_state.
-As far as I can tell, all those values are guaranteed to be set as
-part of the struct nfs_client allocators, before we ever put the
-result on the cl_share_link list.
+Thanks for the review!
 
-Cheers
-  Trond
+--b.
 
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+> 
+> thanks,
+> Kinglong Mee
+> 
+> > -	if (err) {
+> > -		nfsd4_mark_cb_down(clp, err);
+> > -		return;
+> > -	}
+> > +	if (err)
+> > +		goto out_no_connection;
+> >  	/* Yay, the callback channel's back! Restart any callbacks: */
+> >  	list_for_each_entry(cb, &clp->cl_callbacks, cb_per_client)
+> >  		run_nfsd4_cb(cb);
+> > +	return;
+> > +out_no_connection:
+> > +	nfsd4_mark_cb_down(clp, err);
+> > +	return;
+> >  }
+> >  
+> >  static void nfsd4_do_callback_rpc(struct work_struct *w)
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
