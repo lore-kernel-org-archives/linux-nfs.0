@@ -1,50 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:57835 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751290AbaG0NXG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jul 2014 09:23:06 -0400
-Date: Sun, 27 Jul 2014 06:23:05 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 02/40] nfsd: Add reference counting to the lock and open
- stateids
-Message-ID: <20140727132305.GD32153@infradead.org>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
- <1405954972-28904-3-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:56722 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934272AbaGPOdp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:33:45 -0400
+Received: by mail-qa0-f41.google.com with SMTP id j7so781254qaq.0
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:33:44 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 16 Jul 2014 10:33:43 -0400
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/8] nfsd: more delegation fixes to prepare for
+ client_mutex removal
+Message-ID: <20140716103343.76205f59@tlielax.poochiereds.net>
+In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1405954972-28904-3-git-send-email-jlayton@primarydata.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 21, 2014 at 11:02:14AM -0400, Jeff Layton wrote:
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> 
-> When we remove the client_mutex, we'll need to be able to ensure that
-> these objects aren't destroyed while we're not holding locks.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 14 ++++++++------
->  1 file changed, 8 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 3e55df0d7504..76d28be3ef41 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -883,8 +883,10 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
->  	release_all_access(stp);
->  }
->  
-> -static void free_generic_stateid(struct nfs4_ol_stateid *stp)
-> +static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+On Wed, 16 Jul 2014 10:31:55 -0400
+Jeff Layton <jlayton@primarydata.com> wrote:
 
-Can you please call this put_ol_stateid while you're at it?  And throw
-in a patch to rename the other two generic_stateid names when you touch
-them or at the end of the series?
+> Here's a respin of the delegation fixes that I sent yesterday. The main
+> change is to move the remove_stid calls into the caller in the second
+> patch instead of keeping it in nfs4_free_stid, per Christoph's
+> suggestion.
+> 
+> Unfortunately, that causes a pile of merge conflicts in the later
+> patches, so I need to resend the whole set.
+> 
+> I also include the patch that converts the num_delegations counter to an
+> atomic_long_t, as I missed that in the earlier series.
+> 
+> There is one more patch that fixes up handling of the cl_revoked list
+> that comes later, but it can't easily be moved here as it depends on
+> some locking changes that come later.
+> 
+> Jeff Layton (6):
+>   nfsd: eliminate nfsd4_init_callback
+>   nfsd: Avoid taking state_lock while holding inode lock in
+>     nfsd_break_one_deleg
+>   nfsd: nfs4_alloc_init_lease should take a nfs4_file arg
+>   locks: add file_has_lease to prevent delegation break races
+>   nfsd: Protect the nfs4_file delegation fields using the fi_lock
+>   nfsd: Fix delegation revocation
+> 
+> Trond Myklebust (4):
+>   nfsd: Ensure stateids remain unique until they are freed
+>   nfsd: Move the delegation reference counter into the struct nfs4_stid
+>   nfsd: Simplify stateid management
+>   nfsd: Convert delegation counter to an atomic_long_t type
+> 
+>  fs/locks.c             |  26 +++++++
+>  fs/nfsd/nfs4callback.c |  23 ++++--
+>  fs/nfsd/nfs4state.c    | 197 +++++++++++++++++++++++++++++++------------------
+>  fs/nfsd/state.h        |   7 +-
+>  include/linux/fs.h     |   6 ++
+>  5 files changed, 179 insertions(+), 80 deletions(-)
+> 
 
-Otherwise looks good to me,
+Sorry...obviously the subject here should have read "0/10" and not "0/8".
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+-- 
+Jeff Layton <jlayton@primarydata.com>
