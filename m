@@ -1,51 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:62630 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757113AbaGVVsG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 17:48:06 -0400
-Received: by mail-ig0-f176.google.com with SMTP id hn18so4536484igb.15
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 14:48:05 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] svcrdma: Double the default credit limit
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:32974 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934414AbaGPOcN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:13 -0400
+Received: by mail-qg0-f51.google.com with SMTP id a108so788113qge.38
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:12 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 17:48:04 -0400
-Message-ID: <20140722214804.3398.34829.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/8] nfsd: more delegation fixes to prepare for client_mutex removal
+Date: Wed, 16 Jul 2014 10:31:55 -0400
+Message-Id: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The RDMA credit limit controls how many concurrent RPCs are allowed
-per connection.
+Here's a respin of the delegation fixes that I sent yesterday. The main
+change is to move the remove_stid calls into the caller in the second
+patch instead of keeping it in nfs4_free_stid, per Christoph's
+suggestion.
 
-An NFS/RDMA client and server exchange their credit limits in the
-RPC/RDMA headers. The Linux client and the Solaris client and server
-allow 32 credits. The Linux server allows only 16, which limits its
-performance.
+Unfortunately, that causes a pile of merge conflicts in the later
+patches, so I need to resend the whole set.
 
-Set the server's default credit limit to 32, like the other well-
-known implementations, so the out-of-the-shrinkwrap performance of
-the Linux server is better.
+I also include the patch that converts the num_delegations counter to an
+atomic_long_t, as I missed that in the earlier series.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+There is one more patch that fixes up handling of the cl_revoked list
+that comes later, but it can't easily be moved here as it depends on
+some locking changes that come later.
 
- include/linux/sunrpc/svc_rdma.h |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+Jeff Layton (6):
+  nfsd: eliminate nfsd4_init_callback
+  nfsd: Avoid taking state_lock while holding inode lock in
+    nfsd_break_one_deleg
+  nfsd: nfs4_alloc_init_lease should take a nfs4_file arg
+  locks: add file_has_lease to prevent delegation break races
+  nfsd: Protect the nfs4_file delegation fields using the fi_lock
+  nfsd: Fix delegation revocation
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 5cf99a0..975da75 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -174,8 +174,7 @@ struct svcxprt_rdma {
-  * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
- #define RPCRDMA_ORD             (64/4)
- #define RPCRDMA_SQ_DEPTH_MULT   8
--#define RPCRDMA_MAX_THREADS     16
--#define RPCRDMA_MAX_REQUESTS    16
-+#define RPCRDMA_MAX_REQUESTS    32
- #define RPCRDMA_MAX_REQ_SIZE    4096
- 
- /* svc_rdma_marshal.c */
+Trond Myklebust (4):
+  nfsd: Ensure stateids remain unique until they are freed
+  nfsd: Move the delegation reference counter into the struct nfs4_stid
+  nfsd: Simplify stateid management
+  nfsd: Convert delegation counter to an atomic_long_t type
+
+ fs/locks.c             |  26 +++++++
+ fs/nfsd/nfs4callback.c |  23 ++++--
+ fs/nfsd/nfs4state.c    | 197 +++++++++++++++++++++++++++++++------------------
+ fs/nfsd/state.h        |   7 +-
+ include/linux/fs.h     |   6 ++
+ 5 files changed, 179 insertions(+), 80 deletions(-)
+
+-- 
+1.9.3
 
