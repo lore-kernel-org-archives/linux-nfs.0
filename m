@@ -1,73 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13103 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755152AbaGITLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Jul 2014 15:11:11 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s69JBAZi000551
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 9 Jul 2014 15:11:10 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-58-240.rdu2.redhat.com [10.10.58.240])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s69JB3hO001905
-	for <linux-nfs@vger.kernel.org>; Wed, 9 Jul 2014 15:11:08 -0400
-Message-ID: <53BD93C5.6020806@RedHat.com>
-Date: Wed, 09 Jul 2014 15:11:01 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] gssd: Error out when rpc_pipefs directory is empty
-References: <1404830019-4299-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1404830019-4299-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:34369 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758739AbaGPKwc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 06:52:32 -0400
+Received: by mail-qc0-f171.google.com with SMTP id i17so581129qcy.30
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 03:52:32 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: bfields@fieldses.org, hch@infradead.org, linux-nfs@vger.kernel.org,
+        Arnd Bergmann <arnd@arndb.de>,
+        Paul McKenney <paulmck@linux.vnet.ibm.com>
+Subject: [PATCH v2 2/5] sunrpc: fix RCU handling of gc_ctx field
+Date: Wed, 16 Jul 2014 06:52:19 -0400
+Message-Id: <1405507942-12256-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405507942-12256-1-git-send-email-jlayton@primarydata.com>
+References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+ <1405507942-12256-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The handling of the gc_ctx pointer only seems to be partially RCU-safe.
+The assignment and freeing are done using RCU, but many places in the
+code seem to dereference that pointer without proper RCU safeguards.
 
+Fix them to use rcu_dereference and to rcu_read_lock/unlock, and to
+properly handle the case where the pointer is NULL.
 
-On 07/08/2014 10:33 AM, Steve Dickson wrote:
-> When there is no kernel modules loaded the rpc_pipefs
-> directory is empty, which cause rpc.gssd to silently
-> exit.
-> 
-> This patch adds a check to see if the topdirs_list
-> is empty. If so error out without dropping a core.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... 
+Cc: Arnd Bergmann <arnd@arndb.de>
+Cc: Paul McKenney <paulmck@linux.vnet.ibm.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ net/sunrpc/auth_gss/auth_gss.c | 52 ++++++++++++++++++++++++++++--------------
+ 1 file changed, 35 insertions(+), 17 deletions(-)
 
-steved.
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 73854314fb85..afb292cd797d 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -183,8 +183,9 @@ gss_cred_get_ctx(struct rpc_cred *cred)
+ 	struct gss_cl_ctx *ctx = NULL;
+ 
+ 	rcu_read_lock();
+-	if (gss_cred->gc_ctx)
+-		ctx = gss_get_ctx(gss_cred->gc_ctx);
++	ctx = rcu_dereference(gss_cred->gc_ctx);
++	if (ctx)
++		gss_get_ctx(ctx);
+ 	rcu_read_unlock();
+ 	return ctx;
+ }
+@@ -1207,13 +1208,13 @@ gss_destroying_context(struct rpc_cred *cred)
+ {
+ 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
+ 	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
++	struct gss_cl_ctx *ctx = rcu_dereference_protected(gss_cred->gc_ctx, 1);
+ 	struct rpc_task *task;
+ 
+-	if (gss_cred->gc_ctx == NULL ||
+-	    test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
++	if (test_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags) == 0)
+ 		return 0;
+ 
+-	gss_cred->gc_ctx->gc_proc = RPC_GSS_PROC_DESTROY;
++	ctx->gc_proc = RPC_GSS_PROC_DESTROY;
+ 	cred->cr_ops = &gss_nullops;
+ 
+ 	/* Take a reference to ensure the cred will be destroyed either
+@@ -1274,7 +1275,7 @@ gss_destroy_nullcred(struct rpc_cred *cred)
+ {
+ 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
+ 	struct gss_auth *gss_auth = container_of(cred->cr_auth, struct gss_auth, rpc_auth);
+-	struct gss_cl_ctx *ctx = gss_cred->gc_ctx;
++	struct gss_cl_ctx *ctx = rcu_dereference_protected(gss_cred->gc_ctx, 1);
+ 
+ 	RCU_INIT_POINTER(gss_cred->gc_ctx, NULL);
+ 	call_rcu(&cred->cr_rcu, gss_free_cred_callback);
+@@ -1349,20 +1350,30 @@ gss_cred_init(struct rpc_auth *auth, struct rpc_cred *cred)
+ static char *
+ gss_stringify_acceptor(struct rpc_cred *cred)
+ {
+-	char *string;
++	char *string = NULL;
+ 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
+-	struct xdr_netobj *acceptor = &gss_cred->gc_ctx->gc_acceptor;
++	struct gss_cl_ctx *ctx;
++	struct xdr_netobj *acceptor;
++
++	rcu_read_lock();
++	ctx = rcu_dereference(gss_cred->gc_ctx);
++	if (!ctx)
++		goto out;
++
++	acceptor = &ctx->gc_acceptor;
+ 
+ 	/* no point if there's no string */
+ 	if (!acceptor->len)
+-		return NULL;
++		goto out;
+ 
+ 	string = kmalloc(acceptor->len + 1, GFP_KERNEL);
+ 	if (!string)
+-		return string;
++		goto out;
+ 
+ 	memcpy(string, acceptor->data, acceptor->len);
+ 	string[acceptor->len] = '\0';
++out:
++	rcu_read_unlock();
+ 	return string;
+ }
+ 
+@@ -1374,15 +1385,16 @@ static int
+ gss_key_timeout(struct rpc_cred *rc)
+ {
+ 	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
++	struct gss_cl_ctx *ctx;
+ 	unsigned long now = jiffies;
+ 	unsigned long expire;
+ 
+-	if (gss_cred->gc_ctx == NULL)
+-		return -EACCES;
+-
+-	expire = gss_cred->gc_ctx->gc_expiry - (gss_key_expire_timeo * HZ);
+-
+-	if (time_after(now, expire))
++	rcu_read_lock();
++	ctx = rcu_dereference(gss_cred->gc_ctx);
++	if (ctx)
++		expire = ctx->gc_expiry - (gss_key_expire_timeo * HZ);
++	rcu_read_unlock();
++	if (!ctx || time_after(now, expire))
+ 		return -EACCES;
+ 	return 0;
+ }
+@@ -1391,13 +1403,19 @@ static int
+ gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
+ {
+ 	struct gss_cred *gss_cred = container_of(rc, struct gss_cred, gc_base);
++	struct gss_cl_ctx *ctx;
+ 	int ret;
+ 
+ 	if (test_bit(RPCAUTH_CRED_NEW, &rc->cr_flags))
+ 		goto out;
+ 	/* Don't match with creds that have expired. */
+-	if (time_after(jiffies, gss_cred->gc_ctx->gc_expiry))
++	rcu_read_lock();
++	ctx = rcu_dereference(gss_cred->gc_ctx);
++	if (!ctx || time_after(jiffies, ctx->gc_expiry)) {
++		rcu_read_unlock();
+ 		return 0;
++	}
++	rcu_read_unlock();
+ 	if (!test_bit(RPCAUTH_CRED_UPTODATE, &rc->cr_flags))
+ 		return 0;
+ out:
+-- 
+1.9.3
 
-> ---
->  utils/gssd/gssd_main_loop.c | 11 ++++++++---
->  1 file changed, 8 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
-> index 9970028..6946ab6 100644
-> --- a/utils/gssd/gssd_main_loop.c
-> +++ b/utils/gssd/gssd_main_loop.c
-> @@ -173,6 +173,10 @@ topdirs_init_list(void)
->  		if (ret)
->  			goto out_err;
->  	}
-> +	if (TAILQ_EMPTY(&topdirs_list)) {
-> +		printerr(0, "ERROR: rpc_pipefs directory '%s' is empty!\n", pipefs_dir);
-> +		return -1;
-> +	}
->  	closedir(pipedir);
->  	return 0;
->  out_err:
-> @@ -233,9 +237,10 @@ gssd_run()
->  	sigaddset(&set, DNOTIFY_SIGNAL);
->  	sigprocmask(SIG_UNBLOCK, &set, NULL);
->  
-> -	if (topdirs_init_list() != 0)
-> -		return;
-> -
-> +	if (topdirs_init_list() != 0) {
-> +		/* Error msg is already printed */
-> +		exit(1);
-> +	}
->  	init_client_list();
->  
->  	printerr(1, "beginning poll\n");
-> 
