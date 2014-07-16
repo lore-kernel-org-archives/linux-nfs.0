@@ -1,85 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:57836 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754353AbaG2V0P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:26:15 -0400
-Subject: [PATCH v5 21/21] xprtrdma: Handle additional connection events
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Jul 2014 17:26:12 -0400
-Message-ID: <20140729212612.2812.48389.stgit@manet.1015granger.net>
-In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:62694 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933927AbaGPO21 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:28:27 -0400
+Received: by mail-qa0-f41.google.com with SMTP id j7so774532qaq.0
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:28:26 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 16 Jul 2014 10:28:24 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/7] nfsd: Ensure stateids remain unique until they are
+ freed
+Message-ID: <20140716102824.27eeb209@tlielax.poochiereds.net>
+In-Reply-To: <20140716134945.GA11961@infradead.org>
+References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+	<1405420669-4030-3-git-send-email-jlayton@primarydata.com>
+	<20140715171547.GA5269@infradead.org>
+	<20140716081738.05ce6d92@tlielax.poochiereds.net>
+	<20140716134945.GA11961@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 38ca83a5 added RDMA_CM_EVENT_TIMEWAIT_EXIT. But that status
-is relevant only for consumers that re-use their QPs on new
-connections. xprtrdma creates a fresh QP on reconnection, so that
-event should be explicitly ignored.
+On Wed, 16 Jul 2014 06:49:45 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Squelch the alarming "unexpected CM event" message.
+> On Wed, Jul 16, 2014 at 08:17:38AM -0400, Jeff Layton wrote:
+> > The problem with keeping them in the caller is that it defeats the main
+> > purpose of the patch. The idea here is to make sure that we keep the
+> > stateids in the IDR tree for as long as possible to help ensure
+> > uniqueness. If we keep it in the caller, we're still removing the stateids
+> > from the IDR hash earlier than we should, and that's a larger potential
+> > for collisions.
+> 
+> I don't understand how that has anything to do with doing the call
+> in either nfs4_free_stid or it's two caller.  For the open and lock
+> stateids nothing changes in either case, and for delegations we
+> move from destroy_(revoked_)delegation to the final put in
+> nfs4_put_delegation for both variants.  While I'd normally prefer
+> what you do in the patch it just seems like churn with the further
+> changes.
+> 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
----
- net/sunrpc/xprtrdma/verbs.c |   25 ++++++++++++++-----------
- 1 file changed, 14 insertions(+), 11 deletions(-)
+Ahh ok. I misunderstood what you were suggesting. Moving it into the
+actual callers of nfs4_free_stid is fine.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 699e62d..0b2e255 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -326,8 +326,16 @@ static const char * const conn[] = {
- 	"rejected",
- 	"established",
- 	"disconnected",
--	"device removal"
-+	"device removal",
-+	"multicast join",
-+	"multicast error",
-+	"address change",
-+	"timewait exit",
- };
-+
-+#define CONNECTION_MSG(status)						\
-+	((status) < ARRAY_SIZE(conn) ?					\
-+		conn[(status)] : "unrecognized connection error")
- #endif
- 
- static int
-@@ -385,23 +393,18 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
- 		connstate = -ENODEV;
- connected:
--		dprintk("RPC:       %s: %s: %pI4:%u (ep 0x%p event 0x%x)\n",
--			__func__,
--			(event->event <= 11) ? conn[event->event] :
--						"unknown connection error",
--			&addr->sin_addr.s_addr,
--			ntohs(addr->sin_port),
--			ep, event->event);
- 		atomic_set(&rpcx_to_rdmax(ep->rep_xprt)->rx_buf.rb_credits, 1);
- 		dprintk("RPC:       %s: %sconnected\n",
- 					__func__, connstate > 0 ? "" : "dis");
- 		ep->rep_connected = connstate;
- 		ep->rep_func(ep);
- 		wake_up_all(&ep->rep_connect_wait);
--		break;
-+		/*FALLTHROUGH*/
- 	default:
--		dprintk("RPC:       %s: unexpected CM event %d\n",
--			__func__, event->event);
-+		dprintk("RPC:       %s: %pI4:%u (ep 0x%p): %s\n",
-+			__func__, &addr->sin_addr.s_addr,
-+			ntohs(addr->sin_port), ep,
-+			CONNECTION_MSG(event->event));
- 		break;
- 	}
- 
+Unfortunately, that creates a pile of merge conflicts in the later
+patches. I'll just go ahead and change that and resend all of the
+delegation patches that Bruce hasn't merged yet. Stay tuned...
 
+-- 
+Jeff Layton <jlayton@primarydata.com>
