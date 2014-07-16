@@ -1,56 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9126 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753109AbaGARWd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Jul 2014 13:22:33 -0400
-Date: Tue, 1 Jul 2014 12:22:13 -0500
-From: David Teigland <teigland@redhat.com>
-To: Bob Peterson <rpeterso@redhat.com>
-Cc: Jeff Layton <jlayton@poochiereds.net>, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-kernel@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-fsdevel@vger.kernel.org, Joe Perches <joe@perches.com>
-Subject: Re: [Cluster-devel] [RFC PATCH] dlm: Remove unused conf from lm_grant
-Message-ID: <20140701172213.GD32565@redhat.com>
-References: <1404220810.2717.39.camel@joe-AO725>
- <20140701104313.5317400a@tlielax.poochiereds.net>
- <20140701164652.GB32565@redhat.com>
- <1781051691.1348978.1404234992108.JavaMail.zimbra@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1781051691.1348978.1404234992108.JavaMail.zimbra@redhat.com>
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:57534 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934298AbaGPOcO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:14 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so792145qge.39
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:13 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 01/10] nfsd: eliminate nfsd4_init_callback
+Date: Wed, 16 Jul 2014 10:31:56 -0400
+Message-Id: <1405521125-2303-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 01, 2014 at 01:16:32PM -0400, Bob Peterson wrote:
-> ----- Original Message -----
-> > On Tue, Jul 01, 2014 at 10:43:13AM -0400, Jeff Layton wrote:
-> > > On Tue, 01 Jul 2014 06:20:10 -0700
-> > > Joe Perches <joe@perches.com> wrote:
-> > > 
-> > > > While doing a bit of adding argument names to fs.h,
-> > > > I looked at lm_grant and it seems the 2nd argument
-> > > > is always NULL.
-> > > > 
-> > > > How about removing it?
-> > > > 
-> > > > This doesn't apply as it depends on some other patches
-> > > > but it should be clear enough...
-> > > > 
-> > > 
-> > > ACK on the general idea from my standpoint. Anything that simplifies
-> > > the file locking interfaces is a good thing, particularly the deferred
-> > > locking code.
-> > 
-> > Fine with me.  I'd be happy to remove all the deferred locking code from
-> > dlm; it never really worked.
+It's just an obfuscated INIT_WORK call. Just make the work_func_t a
+non-static symbol and use a normal INIT_WORK call.
 
-> GFS2 uses deferred locks, at the very least in its direct_io path
-> (gfs2_direct_IO in aops.c). So AFAIK we can't remove THAT without a certain
-> amount of pain. Steve is on vacation / holiday this week, but he will
-> be back on Thursday and Friday (which is a holiday).
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4callback.c | 8 ++------
+ fs/nfsd/nfs4state.c    | 4 ++--
+ fs/nfsd/state.h        | 2 +-
+ 3 files changed, 5 insertions(+), 9 deletions(-)
 
-This is about deferred file locks from NFS, not gfs2's "deferred" lock mode.
-Dave
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 2c73cae9899d..30a71cb46001 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -1011,7 +1011,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 		run_nfsd4_cb(cb);
+ }
+ 
+-static void nfsd4_do_callback_rpc(struct work_struct *w)
++void
++nfsd4_do_callback_rpc(struct work_struct *w)
+ {
+ 	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
+ 	struct nfs4_client *clp = cb->cb_clp;
+@@ -1031,11 +1032,6 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
+ 			cb->cb_ops, cb);
+ }
+ 
+-void nfsd4_init_callback(struct nfsd4_callback *cb)
+-{
+-	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
+-}
+-
+ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ {
+ 	struct nfsd4_callback *cb = &dp->dl_recall;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 225f98c7d00d..56ea4f12803e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -592,7 +592,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+ 	atomic_set(&dp->dl_count, 1);
+-	nfsd4_init_callback(&dp->dl_recall);
++	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_do_callback_rpc);
+ 	return dp;
+ }
+ 
+@@ -1677,7 +1677,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 		spin_unlock(&nn->client_lock);
+ 		return NULL;
+ 	}
+-	nfsd4_init_callback(&clp->cl_cb_null);
++	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_do_callback_rpc);
+ 	clp->cl_time = get_seconds();
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+ 	copy_verf(clp, verf);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 015b972da8ba..20857142773f 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -436,7 +436,7 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
+ extern __be32 nfs4_check_open_reclaim(clientid_t *clid,
+ 		struct nfsd4_compound_state *cstate, struct nfsd_net *nn);
+ extern int set_callback_cred(void);
+-extern void nfsd4_init_callback(struct nfsd4_callback *);
++void nfsd4_do_callback_rpc(struct work_struct *w);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+ extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
+ extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
+-- 
+1.9.3
 
