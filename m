@@ -1,59 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:53078 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755288AbaGHSFZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:25 -0400
-Received: by mail-qa0-f51.google.com with SMTP id j7so5041117qaq.38
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:24 -0700 (PDT)
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:43544 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754905AbaGQTMp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 15:12:45 -0400
+Received: by mail-qc0-f176.google.com with SMTP id i17so2511549qcy.35
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 12:12:44 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 036/100] nfsd: nfsd4_locku() must reference the lock stateid
-Date: Tue,  8 Jul 2014 14:03:24 -0400
-Message-Id: <1404842668-22521-37-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/6] nfsd: Move the delegation reference counter into the struct nfs4_stid
+Date: Thu, 17 Jul 2014 15:12:30 -0400
+Message-Id: <1405624354-22388-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
+References: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Ensure that nfsd4_locku() keeps a reference to the lock stateid
-until it is done working with it. Necessary step toward client_mutex
-removal.
+We will want to add reference counting to the lock stateid and open
+stateids too in later patches.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 6 +++---
+ fs/nfsd/state.h     | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 619dbec92b50..a3cff312d9c2 100644
+index 9bc896720db3..d88a33fa8e8f 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5128,10 +5128,12 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&stp->st_stid.sc_count);
- 	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
--		goto out;
-+		goto put_stateid;
- 	}
- 	file_lock = locks_alloc_lock();
- 	if (!file_lock) {
-@@ -5161,6 +5163,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- fput:
- 	fput(filp);
-+put_stateid:
-+	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
+@@ -472,6 +472,7 @@ kmem_cache *slab)
+ 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
+ 	/* Will be incremented before return to client: */
+ 	stid->sc_stateid.si_generation = 0;
++	atomic_set(&stid->sc_count, 1);
+ 
+ 	/*
+ 	 * It shouldn't be a problem to reuse an opaque stateid value.
+@@ -595,7 +596,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+-	atomic_set(&dp->dl_count, 1);
+ 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
+ 	return dp;
+ }
+@@ -615,7 +615,7 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+-	if (atomic_dec_and_test(&dp->dl_count)) {
++	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
+ 		remove_stid(&dp->dl_stid);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+@@ -3120,7 +3120,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+ 	 * lock) we know the server hasn't removed the lease yet, we know
+ 	 * it's safe to take a reference.
+ 	 */
+-	atomic_inc(&dp->dl_count);
++	atomic_inc(&dp->dl_stid.sc_count);
+ 	nfsd4_cb_recall(dp);
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 996d61eeb357..e68a9ae30fd7 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -73,6 +73,7 @@ struct nfsd4_callback {
+ };
+ 
+ struct nfs4_stid {
++	atomic_t sc_count;
+ #define NFS4_OPEN_STID 1
+ #define NFS4_LOCK_STID 2
+ #define NFS4_DELEG_STID 4
+@@ -91,7 +92,6 @@ struct nfs4_delegation {
+ 	struct list_head	dl_perfile;
+ 	struct list_head	dl_perclnt;
+ 	struct list_head	dl_recall_lru;  /* delegation recalled */
+-	atomic_t		dl_count;       /* ref count */
+ 	struct nfs4_file	*dl_file;
+ 	u32			dl_type;
+ 	time_t			dl_time;
 -- 
 1.9.3
 
