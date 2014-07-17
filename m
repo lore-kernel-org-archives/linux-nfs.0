@@ -1,113 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:59360 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754666AbaGIQ7Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:59:25 -0400
-Subject: [PATCH v2 20/21] xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION
- macro
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Jul 2014 12:59:23 -0400
-Message-ID: <20140709165923.3496.48126.stgit@manet.1015granger.net>
-In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+Received: from mout.gmx.net ([212.227.15.15]:62774 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751084AbaGQUdM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jul 2014 16:33:12 -0400
+Message-ID: <53C83305.7030407@gmx.de>
+Date: Thu, 17 Jul 2014 22:33:09 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Kinglong Mee <kinglongmee@gmail.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: fuzz tested user mode linux crashed in NFS code path
+References: <53C10EAA.2000802@gmx.de> <53C12A93.3040803@gmail.com> <20140716185724.GC2397@fieldses.org> <20140717202721.GG30442@fieldses.org>
+In-Reply-To: <20140717202721.GG30442@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up.
+On 07/17/2014 10:27 PM, J. Bruce Fields wrote:
+> On Wed, Jul 16, 2014 at 02:57:24PM -0400, J. Bruce Fields wrote:
+>> On Sat, Jul 12, 2014 at 08:31:15PM +0800, Kinglong Mee wrote:
+>>> I think it is caused by kfree an uninitialized address.
+>>> Can you test with the patch listed in following url,
+>>> I have send some days before ?
+>>>
+>>> "[PATCH 1/4] NFSD: Fix memory leak in encoding denied lock"
+>>> http://www.spinics.net/lists/linux-nfs/msg44719.html
+>>
+>> I have this queued for 3.17, but if it causes a crash then it should go
+>> to 3.16 now.
+>>
+>> However, I'm confused: the only explicit initialization of lk_denied is
+>> in the case vfs_lock_file() returns -EAGAIN.  Our usual tests (cthon,
+>> pynfs) do lots of succesful locks, so should have hit this before.
+>>
+>> OK, I see: this memory zeroed by a memset in svc_process_common():
+>>
+>> 	memset(rqstp->rq_argp, 0, procp->pc_argsize);
+>>
+>> *But* in the case of the NFSv4 compound operation, we only have enough
+>> space in rq_argp for 8 operations, anything more is allocated in
+>> fs/nfsd/nfs4xdr.c:nfsd4_decode_compound:
+>>
+>> 	if (argp->opcnt > ARRAY_SIZE(argp->iops)) {
+>> 		argp->ops = kmalloc(argp->opcnt * sizeof(*argp->ops), GFP_KERNEL);
+>> 		...
+>>
+>> So, perhaps we got a compound with more than 8 operations, with the LOCK
+>> operation in the 9th or later position?
+>>
+>> But the Linux NFS client doesn't do that, so I don't understand how
+>> Toralf hit this.
+>>
+>> Am I missing anything here?
+>>
+>> Toralf, is that crash reproduceable?  If so, does replacing the above
+>> kmalloc by a kcalloc also fix it?
+> 
+> Sorry, that should be kzalloc.  We should probably fix that regardless.
+> 
+> But I still don't understand how you hit this case....
+> 
+> --b.
+> 
+> commit 5d6031ca742f
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Thu Jul 17 16:20:39 2014 -0400
+> 
+>     nfsd4: zero op arguments beyond the 8th compound op
+>     
+>     The first 8 ops of the compound are zeroed since they're a part of the
+>     argument that's zeroed by the
+>     
+>     	memset(rqstp->rq_argp, 0, procp->pc_argsize);
+>     
+>     in svc_process_common().  But we handle larger compounds by allocating
+>     the memory on the fly in nfsd4_decode_compound().  Other than code
+>     recently fixed by 01529e3f8179 "NFSD: Fix memory leak in encoding denied
+>     lock", I don't know of any examples of code depending on this
+>     initialization. But it definitely seems possible, and I'd rather be
+>     safe.
+>     
+>     Compounds this long are unusual so I'm much more worried about failure
+>     in this poorly tested cases than about an insignificant performance hit.
+>     
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 01023a595163..628b430e743e 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1635,7 +1635,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>  		goto xdr_error;
+>  
+>  	if (argp->opcnt > ARRAY_SIZE(argp->iops)) {
+> -		argp->ops = kmalloc(argp->opcnt * sizeof(*argp->ops), GFP_KERNEL);
+> +		argp->ops = kzalloc(argp->opcnt * sizeof(*argp->ops), GFP_KERNEL);
+>  		if (!argp->ops) {
+>  			argp->ops = argp->iops;
+>  			dprintk("nfsd: couldn't allocate room for COMPOUND\n");
+> 
+I'm trying to reproduce it, but due to the nature of fuzz testing ...
 
-RPCRDMA_PERSISTENT_REGISTRATION was a compile-time switch between
-RPCRDMA_REGISTER mode and RPCRDMA_ALLPHYSICAL mode.  Since
-RPCRDMA_REGISTER has been removed, there's no need for the extra
-conditional compilation.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/xprtrdma.h |    2 --
- net/sunrpc/xprtrdma/verbs.c     |   13 -------------
- 2 files changed, 15 deletions(-)
-
-diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
-index c2f04e1..64a0a0a 100644
---- a/include/linux/sunrpc/xprtrdma.h
-+++ b/include/linux/sunrpc/xprtrdma.h
-@@ -62,8 +62,6 @@
- #define RPCRDMA_INLINE_PAD_THRESH  (512)/* payload threshold to pad (bytes) */
- 
- /* memory registration strategies */
--#define RPCRDMA_PERSISTENT_REGISTRATION (1)
--
- enum rpcrdma_memreg {
- 	RPCRDMA_BOUNCEBUFFERS = 0,
- 	RPCRDMA_REGISTER,
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index da4bbf3..bc0909a 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -561,12 +561,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		if (!ia->ri_id->device->alloc_fmr) {
- 			dprintk("RPC:       %s: MTHCAFMR registration "
- 				"not supported by HCA\n", __func__);
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 			memreg = RPCRDMA_ALLPHYSICAL;
--#else
--			rc = -ENOMEM;
--			goto out2;
--#endif
- 		}
- 	}
- 
-@@ -581,20 +576,16 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	switch (memreg) {
- 	case RPCRDMA_FRMR:
- 		break;
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 	case RPCRDMA_ALLPHYSICAL:
- 		mem_priv = IB_ACCESS_LOCAL_WRITE |
- 				IB_ACCESS_REMOTE_WRITE |
- 				IB_ACCESS_REMOTE_READ;
- 		goto register_setup;
--#endif
- 	case RPCRDMA_MTHCAFMR:
- 		if (ia->ri_have_dma_lkey)
- 			break;
- 		mem_priv = IB_ACCESS_LOCAL_WRITE;
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 	register_setup:
--#endif
- 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
- 		if (IS_ERR(ia->ri_bind_mem)) {
- 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
-@@ -1914,7 +1905,6 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 
- 	switch (ia->ri_memreg_strategy) {
- 
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 	case RPCRDMA_ALLPHYSICAL:
- 		rpcrdma_map_one(ia, seg, writing);
- 		seg->mr_rkey = ia->ri_bind_mem->rkey;
-@@ -1922,7 +1912,6 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 		seg->mr_nsegs = 1;
- 		nsegs = 1;
- 		break;
--#endif
- 
- 	/* Registration using frmr registration */
- 	case RPCRDMA_FRMR:
-@@ -1952,13 +1941,11 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 
- 	switch (ia->ri_memreg_strategy) {
- 
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 	case RPCRDMA_ALLPHYSICAL:
- 		read_lock(&ia->ri_qplock);
- 		rpcrdma_unmap_one(ia, seg);
- 		read_unlock(&ia->ri_qplock);
- 		break;
--#endif
- 
- 	case RPCRDMA_FRMR:
- 		rc = rpcrdma_deregister_frmr_external(seg, ia, r_xprt);
+-- 
+Toralf
 
