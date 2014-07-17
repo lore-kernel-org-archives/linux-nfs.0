@@ -1,87 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:54564 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753407AbaG3M1p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:27:45 -0400
-Received: by mail-qg0-f46.google.com with SMTP id z60so1273565qgd.33
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:27:44 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 00/37] nfsd: remaining client_mutex removal patches
-Date: Wed, 30 Jul 2014 08:27:01 -0400
-Message-Id: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:57453 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751348AbaGQSgW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jul 2014 14:36:22 -0400
+Date: Thu, 17 Jul 2014 14:36:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrdma: Select NFSv4.1 backchannel transport based on
+ forward channel
+Message-ID: <20140717183621.GA30442@fieldses.org>
+References: <20140716193542.7847.95868.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140716193542.7847.95868.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is the remainder of the client_mutex removal patches,
-which should be merged after the stateid and stateowner refcounting
-overhaul. The main focus of this part is to ensure that the nfs4_client
-refcounting is up to snuff and then to remove the client_mutex.
+On Wed, Jul 16, 2014 at 03:38:32PM -0400, Chuck Lever wrote:
+> The current code always selects XPRT_TRANSPORT_BC_TCP for the back
+> channel, even when the forward channel was not TCP (eg, RDMA). When
+> a 4.1 mount is attempted with RDMA, the server panics in the TCP BC
+> code when trying to send CB_NULL.
+> 
+> Instead, construct the transport protocol number from the forward
+> channel transport or'd with XPRT_TRANSPORT_BC. Transports that do
+> not support bi-directional RPC will not have registered a "BC"
+> transport, causing create_backchannel_client() to fail immediately.
+> 
+> Fixes: https://bugzilla.linux-nfs.org/show_bug.cgi?id=265
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> Hi Bruce-
+> 
+> What do you think of this approach?
 
-There's also a series in here that basically rewrites the fault
-injection code. That rewrite has some significant holes in it (note the
-WARN_ONs when the client refcount goes too high), but it should keep it
-limping along for now.
+OK by me.  (So clients use a separate tcp connection for the
+backchannel?)
 
-FWIW, I think we should probably go ahead and mark the fault injection
-code deprecated in the upcoming merge window and then plan to remove
-it in 2-3 releases.
+--b.
 
-Jeff Layton (19):
-  nfsd: Protect session creation and client confirm using client_lock
-  nfsd: protect the close_lru list and oo_last_closed_stid with
-    client_lock
-  nfsd: move unhash_client_locked call into mark_client_expired_locked
-  nfsd: don't destroy client if mark_client_expired_locked fails
-  nfsd: don't destroy clients that are busy
-  nfsd: protect clid and verifier generation with client_lock
-  nfsd: abstract out the get and set routines into the fault injection
-    ops
-  nfsd: add a forget_clients "get" routine with proper locking
-  nfsd: add a forget_client set_clnt routine
-  nfsd: add nfsd_inject_forget_clients
-  nfsd: add a list_head arg to nfsd_foreach_client_lock
-  nfsd: add more granular locking to forget_locks fault injector
-  nfsd: add more granular locking to forget_openowners fault injector
-  nfsd: add more granular locking to *_delegations fault injectors
-  nfsd: remove old fault injection infrastructure
-  nfsd: remove nfs4_lock_state: nfs4_laundromat
-  nfsd: remove nfs4_lock_state: nfs4_state_shutdown_net
-  nfsd: remove the client_mutex and the nfs4_lock/unlock_state wrappers
-  nfsd: add some comments to the nfsd4 object definitions
-
-Trond Myklebust (18):
-  nfsd: Ensure struct nfs4_client is unhashed before we try to destroy
-    it
-  nfsd: Ensure that the laundromat unhashes the client before releasing
-    locks
-  nfsd: Don't require client_lock in free_client
-  nfsd: Move create_client() call outside the lock
-  nfsd: Protect unconfirmed client creation using client_lock
-  nfsd: Protect nfsd4_destroy_clientid using client_lock
-  nfsd: Ensure lookup_clientid() takes client_lock
-  nfsd: Add lockdep assertions to document the nfs4_client/session
-    locking
-  nfsd: Remove nfs4_lock_state(): nfs4_preprocess_stateid_op()
-  nfsd: Remove nfs4_lock_state(): nfsd4_test_stateid/nfsd4_free_stateid
-  nfsd: Remove nfs4_lock_state(): nfsd4_release_lockowner
-  nfsd: Remove nfs4_lock_state(): nfsd4_lock/locku/lockt()
-  nfsd: Remove nfs4_lock_state(): nfsd4_open_downgrade + nfsd4_close
-  nfsd: Remove nfs4_lock_state(): nfsd4_delegreturn()
-  nfsd: Remove nfs4_lock_state(): nfsd4_open and nfsd4_open_confirm
-  nfsd: Remove nfs4_lock_state(): exchange_id, create/destroy_session()
-  nfsd: Remove nfs4_lock_state(): setclientid, setclientid_confirm,
-    renew
-  nfsd: Remove nfs4_lock_state(): reclaim_complete()
-
- fs/nfsd/fault_inject.c | 130 +++----
- fs/nfsd/netns.h        |  14 +-
- fs/nfsd/nfs4proc.c     |   3 -
- fs/nfsd/nfs4state.c    | 922 +++++++++++++++++++++++++++++++++++--------------
- fs/nfsd/state.h        | 122 +++++--
- 5 files changed, 836 insertions(+), 355 deletions(-)
-
--- 
-1.9.3
-
+> 
+> 
+>  fs/nfsd/nfs4callback.c                   |    3 ++-
+>  include/linux/sunrpc/svc_xprt.h          |    1 +
+>  net/sunrpc/svcsock.c                     |    2 ++
+>  net/sunrpc/xprt.c                        |    2 +-
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 +
+>  5 files changed, 7 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 2c73cae..0f23ad0 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -689,7 +689,8 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+>  		clp->cl_cb_session = ses;
+>  		args.bc_xprt = conn->cb_xprt;
+>  		args.prognumber = clp->cl_cb_session->se_cb_prog;
+> -		args.protocol = XPRT_TRANSPORT_BC_TCP;
+> +		args.protocol = conn->cb_xprt->xpt_class->xcl_ident |
+> +				XPRT_TRANSPORT_BC;
+>  		args.authflavor = ses->se_cb_sec.flavor;
+>  	}
+>  	/* Create RPC client */
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> index 7235040..5d9d6f8 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -33,6 +33,7 @@ struct svc_xprt_class {
+>  	struct svc_xprt_ops	*xcl_ops;
+>  	struct list_head	xcl_list;
+>  	u32			xcl_max_payload;
+> +	int			xcl_ident;
+>  };
+>  
+>  /*
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index b507cd3..b2437ee 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -692,6 +692,7 @@ static struct svc_xprt_class svc_udp_class = {
+>  	.xcl_owner = THIS_MODULE,
+>  	.xcl_ops = &svc_udp_ops,
+>  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
+> +	.xcl_ident = XPRT_TRANSPORT_UDP,
+>  };
+>  
+>  static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+> @@ -1292,6 +1293,7 @@ static struct svc_xprt_class svc_tcp_class = {
+>  	.xcl_owner = THIS_MODULE,
+>  	.xcl_ops = &svc_tcp_ops,
+>  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+> +	.xcl_ident = XPRT_TRANSPORT_TCP,
+>  };
+>  
+>  void svc_init_xprt_sock(void)
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index c3b2b33..51c6316 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -1306,7 +1306,7 @@ struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
+>  		}
+>  	}
+>  	spin_unlock(&xprt_list_lock);
+> -	printk(KERN_ERR "RPC: transport (%d) not supported\n", args->ident);
+> +	dprintk("RPC: transport (%d) not supported\n", args->ident);
+>  	return ERR_PTR(-EIO);
+>  
+>  found:
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index e7323fb..06a5d92 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -92,6 +92,7 @@ struct svc_xprt_class svc_rdma_class = {
+>  	.xcl_owner = THIS_MODULE,
+>  	.xcl_ops = &svc_rdma_ops,
+>  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+> +	.xcl_ident = XPRT_TRANSPORT_RDMA,
+>  };
+>  
+>  struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+> 
