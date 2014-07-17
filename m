@@ -1,367 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:48196 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751459AbaGJSH6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 14:07:58 -0400
-Received: by mail-qg0-f52.google.com with SMTP id f51so742261qge.11
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 11:07:57 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 10/11] nfsd: make deny mode enforcement more efficient and close races in it
-Date: Thu, 10 Jul 2014 14:07:34 -0400
-Message-Id: <1405015655-12469-11-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
-References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:30542 "EHLO
+	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932139AbaGQOM4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 10:12:56 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Devesh Sharma <Devesh.Sharma@Emulex.Com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
+Date: Thu, 17 Jul 2014 14:12:31 +0000
+Message-ID: <3cf9f937-4c1c-4a39-9fb8-aca5eea15880@CMEXHTCAS2.ad.emulex.com>
+References: <59034BAD-306F-462F-A274-3EB06C0CBE47@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FE10DE1@CMEXMB1.ad.emulex.com>
+In-Reply-To: <EE7902D3F51F404C82415C4803930ACD3FE10DE1@CMEXMB1.ad.emulex.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current enforcement of deny modes is both inefficient and scattered
-across several places, which makes it hard to guarantee atomicity. The
-inefficiency is a problem now, and the lack of atomicity will mean races
-once the client_mutex is removed.
+Hi Chuck,
 
-First, we address the inefficiency. We have to track deny modes on a
-per-stateid basis to ensure that open downgrades are sane, but when the
-server goes to enforce them it has to walk the entire list of stateids
-and check against each one.
+Tested the cable pull also. V3 is passing the cable pull test also. I have tried following tests:
 
-Instead of doing that, maintain a per-nfs4_file deny mode. When a file
-is opened, we simply set any deny bits in that mode that were specified
-in the OPEN call. We can then use that unified deny mode to do a simple
-check to see whether there are any conflicts without needing to walk the
-entire stateid list.
+Run iozone on nfs-rdma mount.
+Bring down the link from switch (to simulate cable pull).
+Wait for 10 secs.
+Bring back the link.
+This test passes, iozone resumes traffic.
 
-The only time we'll need to walk the entire list of stateids is when a
-stateid that has a deny mode on it is being released, or one is having
-its deny mode downgraded. In that case, we must walk the entire list and
-recalculate the fi_share_deny field. Since deny modes are pretty rare
-today, this should be very rare under normal workloads.
+Run iozone on nfs-rdma mount.
+Bring down the link from switch (to simulate cable pull).
+Wait for 70 secs.
+Bring back the link.
+This test passes, iozone resumes traffic.
 
-To address the potential for races once the client_mutex is removed,
-protect fi_share_deny with the fi_lock. In nfs4_get_vfs_file, check to
-make sure that any deny mode we want to apply won't conflict with
-existing access. If that's ok, then have nfs4_file_get_access check that
-new access to the file won't conflict with existing deny modes.
-
-If that also passes, then get file access references, set the correct
-access and deny bits in the stateid, and update the fi_share_deny field.
-If opening the file or truncating it fails, then unwind the whole mess
-and return the appropriate error.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 182 +++++++++++++++++++++++++++++++++++-----------------
- fs/nfsd/state.h     |   1 +
- 2 files changed, 125 insertions(+), 58 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8f320f2f8b84..da88b31c0afe 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -394,10 +394,33 @@ nfs4_file_get_access(struct nfs4_file *fp, u32 access)
- 	if (access & ~NFS4_SHARE_ACCESS_BOTH)
- 		return nfserr_inval;
- 
-+	/* Does it conflict with a deny mode already set? */
-+	if ((access & fp->fi_share_deny) != 0)
-+		return nfserr_share_denied;
-+
- 	__nfs4_file_get_access(fp, access);
- 	return nfs_ok;
- }
- 
-+static __be32 nfs4_file_check_deny(struct nfs4_file *fp, u32 deny)
-+{
-+	/* Common case is that there is no deny mode. */
-+	if (deny) {
-+		/* Does this deny mode make sense? */
-+		if (deny & ~NFS4_SHARE_DENY_BOTH)
-+			return nfserr_inval;
-+
-+		if ((deny & NFS4_SHARE_DENY_READ) &&
-+		    atomic_read(&fp->fi_access[O_RDONLY]))
-+			return nfserr_share_denied;
-+
-+		if ((deny & NFS4_SHARE_DENY_WRITE) &&
-+		    atomic_read(&fp->fi_access[O_WRONLY]))
-+			return nfserr_share_denied;
-+	}
-+	return nfs_ok;
-+}
-+
- static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- {
- 	might_lock(&fp->fi_lock);
-@@ -710,17 +733,6 @@ bmap_to_share_mode(unsigned long bmap) {
- 	return access;
- }
- 
--static bool
--test_share(struct nfs4_ol_stateid *stp, struct nfsd4_open *open) {
--	unsigned int access, deny;
--
--	access = bmap_to_share_mode(stp->st_access_bmap);
--	deny = bmap_to_share_mode(stp->st_deny_bmap);
--	if ((access & open->op_share_deny) || (deny & open->op_share_access))
--		return false;
--	return true;
--}
--
- /* set share access for a given stateid */
- static inline void
- set_access(u32 access, struct nfs4_ol_stateid *stp)
-@@ -793,11 +805,49 @@ static int nfs4_access_to_omode(u32 access)
- 	return O_RDONLY;
- }
- 
-+/*
-+ * A stateid that had a deny mode associated with it is being released
-+ * or downgraded. Recalculate the deny mode on the file.
-+ */
-+static void
-+recalculate_deny_mode(struct nfs4_file *fp)
-+{
-+	struct nfs4_ol_stateid *stp;
-+
-+	spin_lock(&fp->fi_lock);
-+	fp->fi_share_deny = 0;
-+	list_for_each_entry(stp, &fp->fi_stateids, st_perfile)
-+		fp->fi_share_deny |= bmap_to_share_mode(stp->st_deny_bmap);
-+	spin_unlock(&fp->fi_lock);
-+}
-+
-+static void
-+reset_union_bmap_deny(u32 deny, struct nfs4_ol_stateid *stp)
-+{
-+	int i;
-+	bool change = false;
-+
-+	for (i = 1; i < 4; i++) {
-+		if ((i & deny) != i) {
-+			change = true;
-+			clear_deny(i, stp);
-+		}
-+	}
-+
-+	/* Recalculate per-file deny mode if there was a change */
-+	if (change)
-+		recalculate_deny_mode(stp->st_file);
-+}
-+
- /* release all access and file references for a given stateid */
- static void
- release_all_access(struct nfs4_ol_stateid *stp)
- {
- 	int i;
-+	struct nfs4_file *fp = stp->st_file;
-+
-+	if (fp && stp->st_deny_bmap != 0)
-+		recalculate_deny_mode(fp);
- 
- 	for (i = 1; i < 4; i++) {
- 		if (test_access(i, stp))
-@@ -2787,6 +2837,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
- 	fp->fi_inode = ino;
- 	fp->fi_had_conflict = false;
- 	fp->fi_lease = NULL;
-+	fp->fi_share_deny = 0;
- 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
- 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
- 	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
-@@ -3014,22 +3065,15 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
- {
- 	struct inode *ino = current_fh->fh_dentry->d_inode;
- 	struct nfs4_file *fp;
--	struct nfs4_ol_stateid *stp;
--	__be32 ret;
-+	__be32 ret = nfs_ok;
- 
- 	fp = find_file(ino);
- 	if (!fp)
--		return nfs_ok;
--	ret = nfserr_locked;
--	/* Search for conflicting share reservations */
-+		return ret;
-+	/* Check for conflicting share reservations */
- 	spin_lock(&fp->fi_lock);
--	list_for_each_entry(stp, &fp->fi_stateids, st_perfile) {
--		if (test_deny(deny_type, stp) ||
--		    test_deny(NFS4_SHARE_DENY_BOTH, stp))
--			goto out;
--	}
--	ret = nfs_ok;
--out:
-+	if (fp->fi_share_deny & deny_type)
-+		ret = nfserr_locked;
- 	spin_unlock(&fp->fi_lock);
- 	put_nfs4_file(fp);
- 	return ret;
-@@ -3265,12 +3309,9 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
- 		if (local->st_stateowner->so_is_open_owner == 0)
- 			continue;
- 		/* remember if we have seen this open owner */
--		if (local->st_stateowner == &oo->oo_owner)
-+		if (local->st_stateowner == &oo->oo_owner) {
- 			*stpp = local;
--		/* check for conflicting share reservations */
--		if (!test_share(local, open)) {
--			spin_unlock(&fp->fi_lock);
--			return nfserr_share_denied;
-+			break;
- 		}
- 	}
- 	spin_unlock(&fp->fi_lock);
-@@ -3311,56 +3352,91 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 	__be32 status;
- 	int oflag = nfs4_access_to_omode(open->op_share_access);
- 	int access = nfs4_access_to_access(open->op_share_access);
-+	unsigned char old_access_bmap, old_deny_bmap;
- 
- 	spin_lock(&fp->fi_lock);
-+
-+	/*
-+	 * Are we trying to set a deny mode that would conflict with
-+	 * current access?
-+	 */
-+	status = nfs4_file_check_deny(fp, open->op_share_deny);
-+	if (status != nfs_ok) {
-+		spin_unlock(&fp->fi_lock);
-+		goto out;
-+	}
-+
-+	/* set access to the file */
-+	status = nfs4_file_get_access(fp, open->op_share_access);
-+	if (status != nfs_ok) {
-+		spin_unlock(&fp->fi_lock);
-+		goto out;
-+	}
-+
-+	/* Set access bits in stateid */
-+	old_access_bmap = stp->st_access_bmap;
-+	set_access(open->op_share_access, stp);
-+
-+	/* Set new deny mask */
-+	old_deny_bmap = stp->st_deny_bmap;
-+	set_deny(open->op_share_deny, stp);
-+	fp->fi_share_deny |= (open->op_share_deny & NFS4_SHARE_DENY_BOTH);
-+
- 	if (!fp->fi_fds[oflag]) {
- 		spin_unlock(&fp->fi_lock);
- 		status = nfsd_open(rqstp, cur_fh, S_IFREG, access, &filp);
- 		if (status)
--			goto out;
-+			goto out_put_access;
- 		spin_lock(&fp->fi_lock);
- 		if (!fp->fi_fds[oflag]) {
- 			fp->fi_fds[oflag] = filp;
- 			filp = NULL;
- 		}
- 	}
--	status = nfs4_file_get_access(fp, open->op_share_access);
- 	spin_unlock(&fp->fi_lock);
- 	if (filp)
- 		fput(filp);
--	if (status)
--		goto out_put_access;
- 
- 	status = nfsd4_truncate(rqstp, cur_fh, open);
- 	if (status)
- 		goto out_put_access;
--
--	/* Set access and deny bits in stateid */
--	set_access(open->op_share_access, stp);
--	set_deny(open->op_share_deny, stp);
--	return nfs_ok;
--
--out_put_access:
--	nfs4_file_put_access(fp, open->op_share_access);
- out:
- 	return status;
-+out_put_access:
-+	stp->st_access_bmap = old_access_bmap;
-+	nfs4_file_put_access(fp, open->op_share_access);
-+	reset_union_bmap_deny(bmap_to_share_mode(old_deny_bmap), stp);
-+	goto out;
- }
- 
- static __be32
- nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
- {
- 	__be32 status;
-+	unsigned char old_deny_bmap;
- 
- 	if (!test_access(open->op_share_access, stp))
--		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
--	else
--		status = nfsd4_truncate(rqstp, cur_fh, open);
-+		return nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
- 
--	if (status)
-+	/* test and set deny mode */
-+	spin_lock(&fp->fi_lock);
-+	status = nfs4_file_check_deny(fp, open->op_share_deny);
-+	if (status == nfs_ok) {
-+		old_deny_bmap = stp->st_deny_bmap;
-+		set_deny(open->op_share_deny, stp);
-+		fp->fi_share_deny |=
-+				(open->op_share_deny & NFS4_SHARE_DENY_BOTH);
-+	}
-+	spin_unlock(&fp->fi_lock);
-+
-+	if (status != nfs_ok)
- 		return status;
--	return nfs_ok;
--}
- 
-+	status = nfsd4_truncate(rqstp, cur_fh, open);
-+	if (status != nfs_ok)
-+		reset_union_bmap_deny(old_deny_bmap, stp);
-+	return status;
-+}
- 
- static void
- nfs4_set_claim_prev(struct nfsd4_open *open, bool has_session)
-@@ -3582,7 +3658,8 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	 */
- 	fp = find_or_add_file(ino, open->op_file);
- 	if (fp != open->op_file) {
--		if ((status = nfs4_check_open(fp, open, &stp)))
-+		status = nfs4_check_open(fp, open, &stp);
-+		if (status)
- 			goto out;
- 		status = nfs4_check_deleg(cl, open, &dp);
- 		if (status)
-@@ -4269,17 +4346,6 @@ static inline void nfs4_stateid_downgrade(struct nfs4_ol_stateid *stp, u32 to_ac
- 	}
- }
- 
--static void
--reset_union_bmap_deny(u32 deny, struct nfs4_ol_stateid *stp)
--{
--	int i;
--
--	for (i = 1; i < 4; i++) {
--		if ((i & deny) != i)
--			clear_deny(i, stp);
--	}
--}
--
- __be32
- nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 		     struct nfsd4_compound_state *cstate,
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 72aee4b4f1ae..015b972da8ba 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -391,6 +391,7 @@ struct nfs4_file {
- 	 *   + 1 to both of the above if NFS4_SHARE_ACCESS_BOTH is set.
- 	 */
- 	atomic_t		fi_access[2];
-+	u32			fi_share_deny;
- 	struct file		*fi_deleg_file;
- 	struct file_lock	*fi_lease;
- 	atomic_t		fi_delegees;
--- 
-1.9.3
-
+> -----Original Message-----
+> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+> owner@vger.kernel.org] On Behalf Of Devesh Sharma
+> Sent: Thursday, July 17, 2014 10:37 AM
+> To: Chuck Lever; linux-rdma; Linux NFS Mailing List
+> Subject: RE: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
+> 
+> Hi Chuck,
+> 
+> 
+> Tested v3 with  ocrdma (linux-3.16-rc5 inbox`ed ocrdma). Both Cthon and
+> iozone passes with and regressions. I will perform cable pull test as well and
+> get back to you.
+> 
+> -Regards
+>  Devesh
+> 
+> > -----Original Message-----
+> > From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+> > owner@vger.kernel.org] On Behalf Of Chuck Lever
+> > Sent: Tuesday, July 15, 2014 7:54 PM
+> > To: linux-rdma; Linux NFS Mailing List
+> > Subject: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
+> >
+> > The main purpose of this series is to address connection drop recovery
+> > issues by fixing FRMR re-use to make it less likely the client will
+> > deadlock due to a memory management operation error.
+> >
+> > Some clean-ups and other fixes are present as well.
+> >
+> > See topic branch nfs-rdma-for-3.17 in
+> >
+> > git://git.linux-nfs.org/projects/cel/cel-2.6.git
+> >
+> > I tested with NFSv3 and NFSv4 on all three supported memory
+> > registration modes. Used cthon04, iozone, and dbench with both Solaris
+> > and Linux NFS/RDMA servers. Used xfstests with Linux.
+> >
+> > v3:
+> > Only two substantive changes:
+> >
+> > - Patch 08/21 now uses generic IB helpers for managing FRMR
+> >   rkeys
+> >
+> > - Add Tested-by: from Steve Wise
+> >
+> >
+> > v2:
+> > Many patches from v1 have been written or replaced.
+> >
+> > The MW ref counting approach in v1 is abandoned. Instead, I've
+> > eliminated signaling FAST_REG_MR and LOCAL_INV, and added
+> appropriate
+> > recovery mechanisms after a transport reconnect that should prevent
+> > rkey dis- synchrony entirely.
+> >
+> > A couple of optimizations have been added, including:
+> >
+> > - Allocating each MW separately rather than carving each out of a
+> >   large piece of contiguous memory
+> >
+> > - Now that the receive CQ upcall handler dequeues a bundle of CQEs
+> >   at once, fire off the reply handler tasklet just once per upcall
+> >   to reduce context switches and how often hard IRQs are disabled
+> >
+> > Jury is still out on the latter.
+> >
+> > --
+> > Chuck Lever
+> > chuck[dot]lever[at]oracle[dot]com
+> >
+> >
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-rdma"
+> > in the body of a message to majordomo@vger.kernel.org More
+> majordomo
+> > info at http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the
+> body of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
