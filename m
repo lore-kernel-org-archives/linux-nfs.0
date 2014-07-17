@@ -1,116 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:54912 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756551AbaGIQ47 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:56:59 -0400
-Subject: [PATCH v2 03/21] xprtrdma: Limit data payload size for ALLPHYSICAL
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Jul 2014 12:56:56 -0400
-Message-ID: <20140709165656.3496.36586.stgit@manet.1015granger.net>
-In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:56983 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754957AbaGQTMs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 15:12:48 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so2427606qge.11
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 12:12:47 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 4/6] nfsd: Fix delegation revocation
+Date: Thu, 17 Jul 2014 15:12:32 -0400
+Message-Id: <1405624354-22388-5-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
+References: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the client uses physical memory registration, each page in the
-payload gets its own array entry in the RPC/RDMA header's chunk list.
+Ensure that the delegations cannot be found by the laundromat etc once
+we add them to the various 'revoke' lists.
 
-Therefore, don't advertise a maximum payload size that would require
-more array entries than can fit in the RPC buffer where RPC/RDMA
-headers are built.
-
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=248
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sunrpc/xprtrdma/transport.c |    4 +++-
- net/sunrpc/xprtrdma/verbs.c     |   41 +++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 3 files changed, 45 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 37 +++++++++++++++++++++----------------
+ 1 file changed, 21 insertions(+), 16 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 66f91f0..4185102 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -296,7 +296,6 @@ xprt_setup_rdma(struct xprt_create *args)
- 
- 	xprt->resvport = 0;		/* privileged port not needed */
- 	xprt->tsh_size = 0;		/* RPC-RDMA handles framing */
--	xprt->max_payload = RPCRDMA_MAX_DATA_SEGS * PAGE_SIZE;
- 	xprt->ops = &xprt_rdma_procs;
- 
- 	/*
-@@ -382,6 +381,9 @@ xprt_setup_rdma(struct xprt_create *args)
- 	new_ep->rep_xprt = xprt;
- 
- 	xprt_rdma_format_addresses(xprt);
-+	xprt->max_payload = rpcrdma_max_payload(new_xprt);
-+	dprintk("RPC:       %s: transport data payload maximum: %zu bytes\n",
-+		__func__, xprt->max_payload);
- 
- 	if (!try_module_get(THIS_MODULE))
- 		goto out4;
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index cab742d..0d5187d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1822,3 +1822,44 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
- 			rc);
- 	return rc;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c06a08711e7f..4e42c3823a8a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -650,13 +650,13 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
  }
-+
-+/* Physical mapping means one Read/Write list entry per-page.
-+ * All list entries must fit within an inline buffer
-+ *
-+ * NB: The server must return a Write list for NFS READ,
-+ *     which has the same constraint. Factor in the inline
-+ *     rsize as well.
-+ */
-+static size_t
-+rpcrdma_physical_max_payload(struct rpcrdma_xprt *r_xprt)
-+{
-+	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
-+	unsigned int inline_size, pages;
-+
-+	inline_size = min_t(unsigned int,
-+			    cdata->inline_wsize, cdata->inline_rsize);
-+	inline_size -= RPCRDMA_HDRLEN_MIN;
-+	pages = inline_size / sizeof(struct rpcrdma_segment);
-+	return pages << PAGE_SHIFT;
-+}
-+
-+static size_t
-+rpcrdma_mr_max_payload(struct rpcrdma_xprt *r_xprt)
-+{
-+	return RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT;
-+}
-+
-+size_t
-+rpcrdma_max_payload(struct rpcrdma_xprt *r_xprt)
-+{
-+	size_t result;
-+
-+	switch (r_xprt->rx_ia.ri_memreg_strategy) {
-+	case RPCRDMA_ALLPHYSICAL:
-+		result = rpcrdma_physical_max_payload(r_xprt);
-+		break;
-+	default:
-+		result = rpcrdma_mr_max_payload(r_xprt);
-+	}
-+	return result;
-+}
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 97ca516..f3d86b2 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -348,6 +348,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *);
-  * RPC/RDMA protocol calls - xprtrdma/rpc_rdma.c
-  */
- int rpcrdma_marshal_req(struct rpc_rqst *);
-+size_t rpcrdma_max_payload(struct rpcrdma_xprt *);
  
- /* Temporary NFS request map cache. Created in svc_rdma.c  */
- extern struct kmem_cache *svc_rdma_map_cachep;
+-/* Called under the state lock. */
+ static void
+-unhash_delegation(struct nfs4_delegation *dp)
++unhash_delegation_locked(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_file *fp = dp->dl_file;
+ 
+-	spin_lock(&state_lock);
++	lockdep_assert_held(&state_lock);
++
+ 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+ 	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+@@ -665,7 +665,6 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 	spin_unlock(&fp->fi_lock);
+ 	if (fp)
+ 		nfs4_put_deleg_lease(fp);
+-	spin_unlock(&state_lock);
+ }
+ 
+ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+@@ -676,7 +675,9 @@ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+ 
+ static void destroy_delegation(struct nfs4_delegation *dp)
+ {
+-	unhash_delegation(dp);
++	spin_lock(&state_lock);
++	unhash_delegation_locked(dp);
++	spin_unlock(&state_lock);
+ 	nfs4_put_delegation(dp);
+ }
+ 
+@@ -685,11 +686,10 @@ static void revoke_delegation(struct nfs4_delegation *dp)
+ 	struct nfs4_client *clp = dp->dl_stid.sc_client;
+ 
+ 	if (clp->cl_minorversion == 0)
+-		destroy_delegation(dp);
++		destroy_revoked_delegation(dp);
+ 	else {
+-		unhash_delegation(dp);
+ 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
+-		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
++		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
+ 	}
+ }
+ 
+@@ -1447,15 +1447,16 @@ destroy_client(struct nfs4_client *clp)
+ 	spin_lock(&state_lock);
+ 	while (!list_empty(&clp->cl_delegations)) {
+ 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
+-		list_del_init(&dp->dl_perclnt);
++		unhash_delegation_locked(dp);
+ 		/* Ensure that deleg break won't try to requeue it */
+ 		++dp->dl_time;
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	while (!list_empty(&reaplist)) {
+ 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+-		destroy_delegation(dp);
++		list_del_init(&dp->dl_recall_lru);
++		nfs4_put_delegation(dp);
+ 	}
+ 	list_splice_init(&clp->cl_revoked, &reaplist);
+ 	while (!list_empty(&reaplist)) {
+@@ -3639,7 +3640,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
+ 	return;
+ out_free:
+-	destroy_delegation(dp);
++	nfs4_put_delegation(dp);
+ out_no_deleg:
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
+ 	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
+@@ -3878,7 +3879,8 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		unhash_delegation_locked(dp);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+@@ -5353,7 +5355,8 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+ 			 * don't monkey with it now that we are.
+ 			 */
+ 			++dp->dl_time;
+-			list_move(&dp->dl_recall_lru, victims);
++			unhash_delegation_locked(dp);
++			list_add(&dp->dl_recall_lru, victims);
+ 		}
+ 		if (++count == max)
+ 			break;
+@@ -5608,12 +5611,14 @@ nfs4_state_shutdown_net(struct net *net)
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		list_move(&dp->dl_recall_lru, &reaplist);
++		unhash_delegation_locked(dp);
++		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+-		destroy_delegation(dp);
++		list_del_init(&dp->dl_recall_lru);
++		nfs4_put_delegation(dp);
+ 	}
+ 
+ 	nfsd4_client_tracking_exit(net);
+-- 
+1.9.3
 
