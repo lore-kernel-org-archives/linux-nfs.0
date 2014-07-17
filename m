@@ -1,92 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:53843 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755249AbaGUPDR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:17 -0400
-Received: by mail-qc0-f173.google.com with SMTP id c9so5605772qcz.4
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:16 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 12/40] nfsd: Add reference counting to lock stateids
-Date: Mon, 21 Jul 2014 11:02:24 -0400
-Message-Id: <1405954972-28904-13-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:57456 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751348AbaGQShm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jul 2014 14:37:42 -0400
+Date: Thu, 17 Jul 2014 14:37:41 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] svcrdma: Select NFSv4.1 backchannel transport based on
+ forward channel
+Message-ID: <20140717183741.GB30442@fieldses.org>
+References: <20140716193542.7847.95868.stgit@klimt.1015granger.net>
+ <20140717183621.GA30442@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140717183621.GA30442@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, Jul 17, 2014 at 02:36:21PM -0400, J. Bruce Fields wrote:
+> On Wed, Jul 16, 2014 at 03:38:32PM -0400, Chuck Lever wrote:
+> > The current code always selects XPRT_TRANSPORT_BC_TCP for the back
+> > channel, even when the forward channel was not TCP (eg, RDMA). When
+> > a 4.1 mount is attempted with RDMA, the server panics in the TCP BC
+> > code when trying to send CB_NULL.
+> > 
+> > Instead, construct the transport protocol number from the forward
+> > channel transport or'd with XPRT_TRANSPORT_BC. Transports that do
+> > not support bi-directional RPC will not have registered a "BC"
+> > transport, causing create_backchannel_client() to fail immediately.
+> > 
+> > Fixes: https://bugzilla.linux-nfs.org/show_bug.cgi?id=265
+> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> > ---
+> > Hi Bruce-
+> > 
+> > What do you think of this approach?
+> 
+> OK by me.
 
-Ensure that nfsd4_lock() references the lock stateid while it is
-manipulating it. Not currently necessary, but will be once the
-client_mutex is removed.
+(Applying for 3.17 unless you tell me otherwise.)
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 15 ++++++++++++---
- 1 file changed, 12 insertions(+), 3 deletions(-)
+--b.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 70119d2a69fd..9a2f1ccb7502 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4745,6 +4745,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
- 
- 	lockdep_assert_held(&clp->cl_lock);
- 
-+	atomic_inc(&stp->st_stid.sc_count);
- 	stp->st_stid.sc_type = NFS4_LOCK_STID;
- 	stp->st_stateowner = &lo->lo_owner;
- 	get_nfs4_file(fp);
-@@ -4769,8 +4770,10 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
- 	lockdep_assert_held(&clp->cl_lock);
- 
- 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
--		if (lst->st_stid.sc_file == fp)
-+		if (lst->st_stid.sc_file == fp) {
-+			atomic_inc(&lst->st_stid.sc_count);
- 			return lst;
-+		}
- 	}
- 	return NULL;
- }
-@@ -4865,7 +4868,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- {
- 	struct nfs4_openowner *open_sop = NULL;
- 	struct nfs4_lockowner *lock_sop = NULL;
--	struct nfs4_ol_stateid *lock_stp;
-+	struct nfs4_ol_stateid *lock_stp = NULL;
- 	struct nfs4_file *fp;
- 	struct file *filp = NULL;
- 	struct file_lock *file_lock = NULL;
-@@ -4919,11 +4922,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 			goto out;
- 		status = lookup_or_create_lock_state(cstate, open_stp, lock,
- 							&lock_stp, &new_state);
--	} else
-+	} else {
- 		status = nfs4_preprocess_seqid_op(cstate,
- 				       lock->lk_old_lock_seqid,
- 				       &lock->lk_old_lock_stateid,
- 				       NFS4_LOCK_STID, &lock_stp, nn);
-+		/* FIXME: move into nfs4_preprocess_seqid_op */
-+		if (!status)
-+			atomic_inc(&lock_stp->st_stid.sc_count);
-+	}
- 	if (status)
- 		goto out;
- 	lock_sop = lockowner(lock_stp->st_stateowner);
-@@ -5016,6 +5023,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- out:
- 	if (filp)
- 		fput(filp);
-+	if (lock_stp)
-+		put_generic_stateid(lock_stp);
- 	if (status && new_state)
- 		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
--- 
-1.9.3
-
+> (So clients use a separate tcp connection for the
+> backchannel?)
+> 
+> --b.
+> 
+> > 
+> > 
+> >  fs/nfsd/nfs4callback.c                   |    3 ++-
+> >  include/linux/sunrpc/svc_xprt.h          |    1 +
+> >  net/sunrpc/svcsock.c                     |    2 ++
+> >  net/sunrpc/xprt.c                        |    2 +-
+> >  net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 +
+> >  5 files changed, 7 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> > index 2c73cae..0f23ad0 100644
+> > --- a/fs/nfsd/nfs4callback.c
+> > +++ b/fs/nfsd/nfs4callback.c
+> > @@ -689,7 +689,8 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+> >  		clp->cl_cb_session = ses;
+> >  		args.bc_xprt = conn->cb_xprt;
+> >  		args.prognumber = clp->cl_cb_session->se_cb_prog;
+> > -		args.protocol = XPRT_TRANSPORT_BC_TCP;
+> > +		args.protocol = conn->cb_xprt->xpt_class->xcl_ident |
+> > +				XPRT_TRANSPORT_BC;
+> >  		args.authflavor = ses->se_cb_sec.flavor;
+> >  	}
+> >  	/* Create RPC client */
+> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> > index 7235040..5d9d6f8 100644
+> > --- a/include/linux/sunrpc/svc_xprt.h
+> > +++ b/include/linux/sunrpc/svc_xprt.h
+> > @@ -33,6 +33,7 @@ struct svc_xprt_class {
+> >  	struct svc_xprt_ops	*xcl_ops;
+> >  	struct list_head	xcl_list;
+> >  	u32			xcl_max_payload;
+> > +	int			xcl_ident;
+> >  };
+> >  
+> >  /*
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index b507cd3..b2437ee 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -692,6 +692,7 @@ static struct svc_xprt_class svc_udp_class = {
+> >  	.xcl_owner = THIS_MODULE,
+> >  	.xcl_ops = &svc_udp_ops,
+> >  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_UDP,
+> > +	.xcl_ident = XPRT_TRANSPORT_UDP,
+> >  };
+> >  
+> >  static void svc_udp_init(struct svc_sock *svsk, struct svc_serv *serv)
+> > @@ -1292,6 +1293,7 @@ static struct svc_xprt_class svc_tcp_class = {
+> >  	.xcl_owner = THIS_MODULE,
+> >  	.xcl_ops = &svc_tcp_ops,
+> >  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+> > +	.xcl_ident = XPRT_TRANSPORT_TCP,
+> >  };
+> >  
+> >  void svc_init_xprt_sock(void)
+> > diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> > index c3b2b33..51c6316 100644
+> > --- a/net/sunrpc/xprt.c
+> > +++ b/net/sunrpc/xprt.c
+> > @@ -1306,7 +1306,7 @@ struct rpc_xprt *xprt_create_transport(struct xprt_create *args)
+> >  		}
+> >  	}
+> >  	spin_unlock(&xprt_list_lock);
+> > -	printk(KERN_ERR "RPC: transport (%d) not supported\n", args->ident);
+> > +	dprintk("RPC: transport (%d) not supported\n", args->ident);
+> >  	return ERR_PTR(-EIO);
+> >  
+> >  found:
+> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > index e7323fb..06a5d92 100644
+> > --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > @@ -92,6 +92,7 @@ struct svc_xprt_class svc_rdma_class = {
+> >  	.xcl_owner = THIS_MODULE,
+> >  	.xcl_ops = &svc_rdma_ops,
+> >  	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+> > +	.xcl_ident = XPRT_TRANSPORT_RDMA,
+> >  };
+> >  
+> >  struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *xprt)
+> > 
