@@ -1,174 +1,196 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:63137 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753766AbaGVOw2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:52:28 -0400
-Subject: [PATCH v4 10/21] xprtrdma: Properly handle exhaustion of the rb_mws
- list
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:52:25 -0400
-Message-ID: <20140722145225.6010.88602.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:39823 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752604AbaGQUCt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jul 2014 16:02:49 -0400
+Date: Thu, 17 Jul 2014 16:02:44 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/6] nfsd: Protect the nfs4_file delegation fields using
+ the fi_lock
+Message-ID: <20140717200244.GE30442@fieldses.org>
+References: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
+ <1405624354-22388-2-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1405624354-22388-2-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the rb_mws list is exhausted, clean up and return NULL so that
-call_allocate() will delay and try again.
+On Thu, Jul 17, 2014 at 03:12:29PM -0400, Jeff Layton wrote:
+> Move more of the delegation fields to be protected by the fi_lock. It's
+> more granular than the state_lock and in later patches we'll want to
+> be able to rely on it in addition to the state_lock.
+> 
+> Also, the current code in nfs4_setlease calls vfs_setlease and uses the
+> client_mutex to ensure that it doesn't disappear before we can hash the
+> delegation. With the client_mutex gone, we'll have a potential race
+> condition.
+> 
+> It's possible that the delegation could be recalled after we acquire the
+> lease but before we ever get around to hashing it.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
----
- net/sunrpc/xprtrdma/verbs.c |  103 ++++++++++++++++++++++++++++++-------------
- 1 file changed, 71 insertions(+), 32 deletions(-)
+Do you mean "recalled" or returned?  The recall code doesn't currently
+take the state lock anyway.
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index abac484..cdea6ff 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1256,6 +1256,67 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 	kfree(buf->rb_pool);
- }
- 
-+/* "*mw" can be NULL when rpcrdma_buffer_get_mrs() fails, leaving
-+ * some req segments uninitialized.
-+ */
-+static void
-+rpcrdma_buffer_put_mr(struct rpcrdma_mw **mw, struct rpcrdma_buffer *buf)
-+{
-+	if (*mw) {
-+		list_add_tail(&(*mw)->mw_list, &buf->rb_mws);
-+		*mw = NULL;
-+	}
-+}
-+
-+/* Cycle mw's back in reverse order, and "spin" them.
-+ * This delays and scrambles reuse as much as possible.
-+ */
-+static void
-+rpcrdma_buffer_put_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_mr_seg *seg = req->rl_segments;
-+	struct rpcrdma_mr_seg *seg1 = seg;
-+	int i;
-+
-+	for (i = 1, seg++; i < RPCRDMA_MAX_SEGS; seg++, i++)
-+		rpcrdma_buffer_put_mr(&seg->mr_chunk.rl_mw, buf);
-+	rpcrdma_buffer_put_mr(&seg1->mr_chunk.rl_mw, buf);
-+}
-+
-+static void
-+rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
-+{
-+	buf->rb_send_bufs[--buf->rb_send_index] = req;
-+	req->rl_niovs = 0;
-+	if (req->rl_reply) {
-+		buf->rb_recv_bufs[--buf->rb_recv_index] = req->rl_reply;
-+		req->rl_reply->rr_func = NULL;
-+		req->rl_reply = NULL;
-+	}
-+}
-+
-+static struct rpcrdma_req *
-+rpcrdma_buffer_get_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_mw *r;
-+	int i;
-+
-+	i = RPCRDMA_MAX_SEGS - 1;
-+	while (!list_empty(&buf->rb_mws)) {
-+		r = list_entry(buf->rb_mws.next,
-+			       struct rpcrdma_mw, mw_list);
-+		list_del(&r->mw_list);
-+		req->rl_segments[i].mr_chunk.rl_mw = r;
-+		if (unlikely(i-- == 0))
-+			return req;	/* Success */
-+	}
-+
-+	/* Not enough entries on rb_mws for this req */
-+	rpcrdma_buffer_put_sendbuf(req, buf);
-+	rpcrdma_buffer_put_mrs(req, buf);
-+	return NULL;
-+}
-+
- /*
-  * Get a set of request/reply buffers.
-  *
-@@ -1268,10 +1329,9 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- struct rpcrdma_req *
- rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
- {
-+	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
- 	struct rpcrdma_req *req;
- 	unsigned long flags;
--	int i;
--	struct rpcrdma_mw *r;
- 
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
- 	if (buffers->rb_send_index == buffers->rb_max_requests) {
-@@ -1291,14 +1351,13 @@ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
- 		buffers->rb_recv_bufs[buffers->rb_recv_index++] = NULL;
- 	}
- 	buffers->rb_send_bufs[buffers->rb_send_index++] = NULL;
--	if (!list_empty(&buffers->rb_mws)) {
--		i = RPCRDMA_MAX_SEGS - 1;
--		do {
--			r = list_entry(buffers->rb_mws.next,
--					struct rpcrdma_mw, mw_list);
--			list_del(&r->mw_list);
--			req->rl_segments[i].mr_chunk.rl_mw = r;
--		} while (--i >= 0);
-+	switch (ia->ri_memreg_strategy) {
-+	case RPCRDMA_FRMR:
-+	case RPCRDMA_MTHCAFMR:
-+		req = rpcrdma_buffer_get_mrs(req, buffers);
-+		break;
-+	default:
-+		break;
- 	}
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
- 	return req;
-@@ -1313,34 +1372,14 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
- {
- 	struct rpcrdma_buffer *buffers = req->rl_buffer;
- 	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
--	int i;
- 	unsigned long flags;
- 
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
--	buffers->rb_send_bufs[--buffers->rb_send_index] = req;
--	req->rl_niovs = 0;
--	if (req->rl_reply) {
--		buffers->rb_recv_bufs[--buffers->rb_recv_index] = req->rl_reply;
--		req->rl_reply->rr_func = NULL;
--		req->rl_reply = NULL;
--	}
-+	rpcrdma_buffer_put_sendbuf(req, buffers);
- 	switch (ia->ri_memreg_strategy) {
- 	case RPCRDMA_FRMR:
- 	case RPCRDMA_MTHCAFMR:
--		/*
--		 * Cycle mw's back in reverse order, and "spin" them.
--		 * This delays and scrambles reuse as much as possible.
--		 */
--		i = 1;
--		do {
--			struct rpcrdma_mw **mw;
--			mw = &req->rl_segments[i].mr_chunk.rl_mw;
--			list_add_tail(&(*mw)->mw_list, &buffers->rb_mws);
--			*mw = NULL;
--		} while (++i < RPCRDMA_MAX_SEGS);
--		list_add_tail(&req->rl_segments[0].mr_chunk.rl_mw->mw_list,
--					&buffers->rb_mws);
--		req->rl_segments[0].mr_chunk.rl_mw = NULL;
-+		rpcrdma_buffer_put_mrs(req, buffers);
- 		break;
- 	default:
- 		break;
+> If that happens, then
+> we'd have a nfs4_file that *thinks* it has a delegation, when it
+> actually has none.
+> 
+> Attempt to acquire a delegation. If that succeeds, take the spinlocks
+> and then check to see if the file has had a conflict show up since then.
+> If it has, then we assume that the lease is no longer valid and that
+> we shouldn't hand out a delegation.
 
+What's the worst that could happen here?  Maybe we could very rarely
+send the recall before we send the open reply granting the delegation?
+A client can probably actually handle that (it's possible those could
+get reordered for reasons out of our control).
+
+--b.
+
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 54 +++++++++++++++++++++++++++++++++++++++--------------
+>  1 file changed, 40 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index fd4deb049ddf..9bc896720db3 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -624,6 +624,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
+>  
+>  static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+>  {
+> +	lockdep_assert_held(&state_lock);
+> +
+>  	if (!fp->fi_lease)
+>  		return;
+>  	if (atomic_dec_and_test(&fp->fi_delegees)) {
+> @@ -643,11 +645,10 @@ static void
+>  hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+>  {
+>  	lockdep_assert_held(&state_lock);
+> +	lockdep_assert_held(&fp->fi_lock);
+>  
+>  	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+> -	spin_lock(&fp->fi_lock);
+>  	list_add(&dp->dl_perfile, &fp->fi_delegations);
+> -	spin_unlock(&fp->fi_lock);
+>  	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+>  }
+>  
+> @@ -659,17 +660,18 @@ unhash_delegation(struct nfs4_delegation *dp)
+>  
+>  	spin_lock(&state_lock);
+>  	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+> +	spin_lock(&fp->fi_lock);
+>  	list_del_init(&dp->dl_perclnt);
+>  	list_del_init(&dp->dl_recall_lru);
+> -	spin_lock(&fp->fi_lock);
+>  	list_del_init(&dp->dl_perfile);
+>  	spin_unlock(&fp->fi_lock);
+> -	spin_unlock(&state_lock);
+>  	if (fp) {
+>  		nfs4_put_deleg_lease(fp);
+> -		put_nfs4_file(fp);
+>  		dp->dl_file = NULL;
+>  	}
+> +	spin_unlock(&state_lock);
+> +	if (fp)
+> +		put_nfs4_file(fp);
+>  }
+>  
+>  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+> @@ -3143,8 +3145,8 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+>  	 */
+>  	fl->fl_break_time = 0;
+>  
+> -	fp->fi_had_conflict = true;
+>  	spin_lock(&fp->fi_lock);
+> +	fp->fi_had_conflict = true;
+>  	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
+>  		nfsd_break_one_deleg(dp);
+>  	spin_unlock(&fp->fi_lock);
+> @@ -3493,7 +3495,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+>  {
+>  	struct nfs4_file *fp = dp->dl_file;
+>  	struct file_lock *fl;
+> -	int status;
+> +	int status = 0;
+>  
+>  	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
+>  	if (!fl)
+> @@ -3501,15 +3503,31 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+>  	fl->fl_file = find_readable_file(fp);
+>  	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+>  	if (status)
+> -		goto out_free;
+> +		goto out_fput;
+> +	spin_lock(&state_lock);
+> +	spin_lock(&fp->fi_lock);
+> +	/* Did the lease get broken before we took the lock? */
+> +	status = -EAGAIN;
+> +	if (fp->fi_had_conflict)
+> +		goto out_unlock;
+> +	/* Race breaker */
+> +	if (fp->fi_lease) {
+> +		status = 0;
+> +		atomic_inc(&fp->fi_delegees);
+> +		hash_delegation_locked(dp, fp);
+> +		goto out_unlock;
+> +	}
+>  	fp->fi_lease = fl;
+>  	fp->fi_deleg_file = fl->fl_file;
+>  	atomic_set(&fp->fi_delegees, 1);
+> -	spin_lock(&state_lock);
+>  	hash_delegation_locked(dp, fp);
+> +	spin_unlock(&fp->fi_lock);
+>  	spin_unlock(&state_lock);
+>  	return 0;
+> -out_free:
+> +out_unlock:
+> +	spin_unlock(&fp->fi_lock);
+> +	spin_unlock(&state_lock);
+> +out_fput:
+>  	if (fl->fl_file)
+>  		fput(fl->fl_file);
+>  	locks_free_lock(fl);
+> @@ -3518,19 +3536,27 @@ out_free:
+>  
+>  static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+>  {
+> +	int status = 0;
+> +
+>  	if (fp->fi_had_conflict)
+>  		return -EAGAIN;
+>  	get_nfs4_file(fp);
+> +	spin_lock(&state_lock);
+> +	spin_lock(&fp->fi_lock);
+>  	dp->dl_file = fp;
+> -	if (!fp->fi_lease)
+> +	if (!fp->fi_lease) {
+> +		spin_unlock(&fp->fi_lock);
+> +		spin_unlock(&state_lock);
+>  		return nfs4_setlease(dp);
+> -	spin_lock(&state_lock);
+> +	}
+>  	atomic_inc(&fp->fi_delegees);
+>  	if (fp->fi_had_conflict) {
+> -		spin_unlock(&state_lock);
+> -		return -EAGAIN;
+> +		status = -EAGAIN;
+> +		goto out_unlock;
+>  	}
+>  	hash_delegation_locked(dp, fp);
+> +out_unlock:
+> +	spin_unlock(&fp->fi_lock);
+>  	spin_unlock(&state_lock);
+>  	return 0;
+>  }
+> -- 
+> 1.9.3
+> 
