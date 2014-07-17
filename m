@@ -1,98 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:56082 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753974AbaGVOwT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:52:19 -0400
-Subject: [PATCH v4 09/21] xprtrdma: Chain together all MWs in same buffer
- pool
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:52:17 -0400
-Message-ID: <20140722145217.6010.92419.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:20336 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755648AbaGQJ60 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Jul 2014 05:58:26 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s6H9wQVO016941
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 05:58:26 -0400
+From: Slavek Kabrda <bkabrda@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Slavek Kabrda <bkabrda@redhat.com>
+Subject: [PATCH] Fix Python 3 compatibility of mountstats and nfs-iostat
+Date: Thu, 17 Jul 2014 11:57:32 +0200
+Message-Id: <1405591052-17456-1-git-send-email-bkabrda@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-During connection loss recovery, need to visit every MW in a
-buffer pool. Any MW that is in use by an RPC will not be on the
-rb_mws list.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+Signed-off-by: Slavek Kabrda <bkabrda@redhat.com>
 ---
- net/sunrpc/xprtrdma/verbs.c     |    4 ++++
- net/sunrpc/xprtrdma/xprt_rdma.h |    4 +++-
- 2 files changed, 7 insertions(+), 1 deletion(-)
+ tools/mountstats/mountstats.py | 2 +-
+ tools/nfs-iostat/nfs-iostat.py | 3 ++-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 394b13f..abac484 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1074,6 +1074,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	p += cdata->padding;
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index e46105d..1fb3e2f 100644
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -371,7 +371,7 @@ def parse_stats_file(filename):
+     ms_dict = dict()
+     key = ''
  
- 	INIT_LIST_HEAD(&buf->rb_mws);
-+	INIT_LIST_HEAD(&buf->rb_all);
- 	r = (struct rpcrdma_mw *)p;
- 	switch (ia->ri_memreg_strategy) {
- 	case RPCRDMA_FRMR:
-@@ -1098,6 +1099,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 				ib_dereg_mr(r->r.frmr.fr_mr);
- 				goto out;
- 			}
-+			list_add(&r->mw_all, &buf->rb_all);
- 			list_add(&r->mw_list, &buf->rb_mws);
- 			++r;
- 		}
-@@ -1116,6 +1118,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 					" failed %i\n", __func__, rc);
- 				goto out;
- 			}
-+			list_add(&r->mw_all, &buf->rb_all);
- 			list_add(&r->mw_list, &buf->rb_mws);
- 			++r;
- 		}
-@@ -1225,6 +1228,7 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 	while (!list_empty(&buf->rb_mws)) {
- 		r = list_entry(buf->rb_mws.next,
- 			struct rpcrdma_mw, mw_list);
-+		list_del(&r->mw_all);
- 		list_del(&r->mw_list);
- 		switch (ia->ri_memreg_strategy) {
- 		case RPCRDMA_FRMR:
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 84c3455..c1d8652 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -151,7 +151,7 @@ struct rpcrdma_rep {
-  * An external memory region is any buffer or page that is registered
-  * on the fly (ie, not pre-registered).
-  *
-- * Each rpcrdma_buffer has a list of these anchored in rb_mws. During
-+ * Each rpcrdma_buffer has a list of free MWs anchored in rb_mws. During
-  * call_allocate, rpcrdma_buffer_get() assigns one to each segment in
-  * an rpcrdma_req. Then rpcrdma_register_external() grabs these to keep
-  * track of registration metadata while each RPC is pending.
-@@ -175,6 +175,7 @@ struct rpcrdma_mw {
- 		struct rpcrdma_frmr	frmr;
- 	} r;
- 	struct list_head	mw_list;
-+	struct list_head	mw_all;
- };
+-    f = file(filename)
++    f = open(filename)
+     for line in f.readlines():
+         words = line.split()
+         if len(words) == 0:
+diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+index b324cd8..61d15a5 100644
+--- a/tools/nfs-iostat/nfs-iostat.py
++++ b/tools/nfs-iostat/nfs-iostat.py
+@@ -213,7 +213,8 @@ class DeviceData:
+         # the reference to them.  so we build new lists here
+         # for the result object.
+         for op in result.__rpc_data['ops']:
+-            result.__rpc_data[op] = map(difference, self.__rpc_data[op], old_stats.__rpc_data[op])
++            result.__rpc_data[op] = list(map(
++                difference, self.__rpc_data[op], old_stats.__rpc_data[op]))
  
- /*
-@@ -246,6 +247,7 @@ struct rpcrdma_buffer {
- 	atomic_t	rb_credits;	/* most recent server credits */
- 	int		rb_max_requests;/* client max requests */
- 	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
-+	struct list_head rb_all;
- 	int		rb_send_index;
- 	struct rpcrdma_req	**rb_send_bufs;
- 	int		rb_recv_index;
+         # update the remaining keys we care about
+         result.__rpc_data['rpcsends'] -= old_stats.__rpc_data['rpcsends']
+-- 
+2.0.1
 
