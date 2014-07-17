@@ -1,78 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:40633 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755765AbaGIQ6s (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 12:58:48 -0400
-Subject: [PATCH v2 16/21] xprtrdma: Rename frmr_wr
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 09 Jul 2014 12:58:46 -0400
-Message-ID: <20140709165846.3496.13596.stgit@manet.1015granger.net>
-In-Reply-To: <20140709163326.3496.37893.stgit@manet.1015granger.net>
-References: <20140709163326.3496.37893.stgit@manet.1015granger.net>
+Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:40328 "EHLO
+	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932405AbaGQOV1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 10:21:27 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
+Date: Thu, 17 Jul 2014 14:21:14 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE1107E@CMEXMB1.ad.emulex.com>
+References: <59034BAD-306F-462F-A274-3EB06C0CBE47@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FE10DE1@CMEXMB1.ad.emulex.com>
+ <3cf9f937-4c1c-4a39-9fb8-aca5eea15880@CMEXHTCAS2.ad.emulex.com>
+ <5DD61444-DCBF-40B7-B246-6CAD450E7047@oracle.com>
+In-Reply-To: <5DD61444-DCBF-40B7-B246-6CAD450E7047@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Name frmr_wr after the opcode of the Work Request,
-consistent with the send and local invalidation paths.
+Yes, kindly do it. However, I have tested this only with ocrdma
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/verbs.c |   26 +++++++++++++-------------
- 1 file changed, 13 insertions(+), 13 deletions(-)
+-Regards
+ Devesh
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 8eef343..d0a893d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1701,7 +1701,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	struct rpcrdma_mr_seg *seg1 = seg;
- 	struct rpcrdma_mw *mw = seg1->mr_chunk.rl_mw;
- 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
--	struct ib_send_wr frmr_wr, *bad_wr;
-+	struct ib_send_wr fastreg_wr, *bad_wr;
- 	int len, pageoff;
- 	int i, rc;
- 	int seg_len;
-@@ -1734,26 +1734,26 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 
- 	frmr->fr_state = FRMR_IS_VALID;
- 
--	memset(&frmr_wr, 0, sizeof frmr_wr);
--	frmr_wr.wr_id = (unsigned long)(void *)mw;
--	frmr_wr.opcode = IB_WR_FAST_REG_MR;
--	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
--	frmr_wr.wr.fast_reg.page_list = frmr->fr_pgl;
--	frmr_wr.wr.fast_reg.page_list_len = page_no;
--	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
--	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
--	if (frmr_wr.wr.fast_reg.length < len) {
-+	memset(&fastreg_wr, 0, sizeof(fastreg_wr));
-+	fastreg_wr.wr_id = (unsigned long)(void *)mw;
-+	fastreg_wr.opcode = IB_WR_FAST_REG_MR;
-+	fastreg_wr.wr.fast_reg.iova_start = seg1->mr_dma;
-+	fastreg_wr.wr.fast_reg.page_list = frmr->fr_pgl;
-+	fastreg_wr.wr.fast_reg.page_list_len = page_no;
-+	fastreg_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
-+	fastreg_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
-+	if (fastreg_wr.wr.fast_reg.length < len) {
- 		rc = -EIO;
- 		goto out_err;
- 	}
--	frmr_wr.wr.fast_reg.access_flags = (writing ?
-+	fastreg_wr.wr.fast_reg.access_flags = (writing ?
- 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
- 				IB_ACCESS_REMOTE_READ);
- 	rpcrdma_increment_frmr_rkey(mw);
--	frmr_wr.wr.fast_reg.rkey = frmr->fr_mr->rkey;
-+	fastreg_wr.wr.fast_reg.rkey = frmr->fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
--	rc = ib_post_send(ia->ri_id->qp, &frmr_wr, &bad_wr);
-+	rc = ib_post_send(ia->ri_id->qp, &fastreg_wr, &bad_wr);
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
- 			" status %i\n", __func__, rc);
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> Sent: Thursday, July 17, 2014 7:46 PM
+> To: Devesh Sharma
+> Cc: linux-rdma; Linux NFS Mailing List
+> Subject: Re: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
+> 
+> 
+> On Jul 17, 2014, at 10:12 AM, Devesh Sharma
+> <Devesh.Sharma@Emulex.Com> wrote:
+> 
+> > Hi Chuck,
+> >
+> > Tested the cable pull also. V3 is passing the cable pull test also. I have tried
+> following tests:
+> >
+> > Run iozone on nfs-rdma mount.
+> > Bring down the link from switch (to simulate cable pull).
+> > Wait for 10 secs.
+> > Bring back the link.
+> > This test passes, iozone resumes traffic.
+> >
+> > Run iozone on nfs-rdma mount.
+> > Bring down the link from switch (to simulate cable pull).
+> > Wait for 70 secs.
+> > Bring back the link.
+> > This test passes, iozone resumes traffic.
+> 
+> Thanks Devesh!
+> 
+> May I add "Tested-by: Devesh Sharma <devesh.sharma@emulex.com>" ?
+> 
+> >
+> >> -----Original Message-----
+> >> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+> >> owner@vger.kernel.org] On Behalf Of Devesh Sharma
+> >> Sent: Thursday, July 17, 2014 10:37 AM
+> >> To: Chuck Lever; linux-rdma; Linux NFS Mailing List
+> >> Subject: RE: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
+> >>
+> >> Hi Chuck,
+> >>
+> >>
+> >> Tested v3 with  ocrdma (linux-3.16-rc5 inbox`ed ocrdma). Both Cthon
+> >> and iozone passes with and regressions. I will perform cable pull
+> >> test as well and get back to you.
+> >>
+> >> -Regards
+> >> Devesh
+> >>
+> >>> -----Original Message-----
+> >>> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+> >>> owner@vger.kernel.org] On Behalf Of Chuck Lever
+> >>> Sent: Tuesday, July 15, 2014 7:54 PM
+> >>> To: linux-rdma; Linux NFS Mailing List
+> >>> Subject: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
+> >>>
+> >>> The main purpose of this series is to address connection drop
+> >>> recovery issues by fixing FRMR re-use to make it less likely the
+> >>> client will deadlock due to a memory management operation error.
+> >>>
+> >>> Some clean-ups and other fixes are present as well.
+> >>>
+> >>> See topic branch nfs-rdma-for-3.17 in
+> >>>
+> >>> git://git.linux-nfs.org/projects/cel/cel-2.6.git
+> >>>
+> >>> I tested with NFSv3 and NFSv4 on all three supported memory
+> >>> registration modes. Used cthon04, iozone, and dbench with both
+> >>> Solaris and Linux NFS/RDMA servers. Used xfstests with Linux.
+> >>>
+> >>> v3:
+> >>> Only two substantive changes:
+> >>>
+> >>> - Patch 08/21 now uses generic IB helpers for managing FRMR  rkeys
+> >>>
+> >>> - Add Tested-by: from Steve Wise
+> >>>
+> >>>
+> >>> v2:
+> >>> Many patches from v1 have been written or replaced.
+> >>>
+> >>> The MW ref counting approach in v1 is abandoned. Instead, I've
+> >>> eliminated signaling FAST_REG_MR and LOCAL_INV, and added
+> >> appropriate
+> >>> recovery mechanisms after a transport reconnect that should prevent
+> >>> rkey dis- synchrony entirely.
+> >>>
+> >>> A couple of optimizations have been added, including:
+> >>>
+> >>> - Allocating each MW separately rather than carving each out of a
+> >>> large piece of contiguous memory
+> >>>
+> >>> - Now that the receive CQ upcall handler dequeues a bundle of CQEs
+> >>> at once, fire off the reply handler tasklet just once per upcall  to
+> >>> reduce context switches and how often hard IRQs are disabled
+> >>>
+> >>> Jury is still out on the latter.
+> >>>
+> >>> --
+> >>> Chuck Lever
+> >>> chuck[dot]lever[at]oracle[dot]com
+> >>>
+> >>>
+> >>>
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-rdma"
+> >>> in the body of a message to majordomo@vger.kernel.org More
+> >> majordomo
+> >>> info at http://vger.kernel.org/majordomo-info.html
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-rdma"
+> >> in the body of a message to majordomo@vger.kernel.org More
+> majordomo
+> >> info at http://vger.kernel.org/majordomo-info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> > in the body of a message to majordomo@vger.kernel.org More
+> majordomo
+> > info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
 
