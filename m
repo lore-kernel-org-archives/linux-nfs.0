@@ -1,157 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:62911 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754474AbaGHSE5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:57 -0400
-Received: by mail-qa0-f41.google.com with SMTP id cm18so5341654qab.28
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:57 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 016/100] nfsd: always hold the fi_lock when bumping fi_access refcounts
-Date: Tue,  8 Jul 2014 14:03:04 -0400
-Message-Id: <1404842668-22521-17-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f68.google.com ([209.85.216.68]:60050 "EHLO
+	mail-qa0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751348AbaGQSqp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 14:46:45 -0400
+Received: by mail-qa0-f68.google.com with SMTP id dc16so683629qab.11
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 11:46:44 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 17 Jul 2014 14:46:42 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 04/10] nfsd: Ensure stateids remain unique until they
+ are freed
+Message-ID: <20140717144642.5159dea5@tlielax.poochiereds.net>
+In-Reply-To: <20140717184417.GD30442@fieldses.org>
+References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+	<1405521125-2303-5-git-send-email-jlayton@primarydata.com>
+	<20140717184417.GD30442@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once we remove the client_mutex, there's an unlikely but possible race
-that could occur. It will be possible for nfs4_file_put_access to race
-with nfs4_file_get_access. The refcount will go to zero (briefly) and
-then bumped back to one. If that happens we set ourselves up for a
-use-after-free and the potential for a lock to race onto the i_flock
-list as a filp is being torn down.
+On Thu, 17 Jul 2014 14:44:17 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Ensure that we can safely bump the refcount on the file by holding the
-fi_lock whenever that's done. The only place it currently isn't is in
-get_lock_access.
+> On Wed, Jul 16, 2014 at 10:31:59AM -0400, Jeff Layton wrote:
+> > From: Trond Myklebust <trond.myklebust@primarydata.com>
+> > 
+> > Add an extra delegation state to allow the stateid to remain in the idr
+> > tree until the last reference has been released. This will be necessary
+> > to ensure uniqueness once the client_mutex is removed.
+> 
+> Cyclic idr allocation should make reuse extremely unlikely, shouldn't
+> it?
+> 
+> Probably needs to be fixed anyway, applying.
+> 
+> --b.
+> 
 
-In order to ensure atomicity with finding the file, add some
-find_*_file_locked calls that can be called while already holding the
-fi_lock and then call get_lock_access to get new access references on
-the nfs4_file.
+Yes, for the most part, but reuse is still possible once the counter
+wraps if you had a long-lived stateid (for instance). Not a likely
+problem, but we might as well fix it while we're in here.
+ 
+> > 
+> > [jlayton: reset the sc_type under the state_lock in
+> > unhash_delegation]
+> > 
+> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > Reviewed-by: Christoph Hellwig <hch@lst.de>
+> > ---
+> >  fs/nfsd/nfs4state.c | 8 ++++----
+> >  fs/nfsd/state.h     | 1 +
+> >  2 files changed, 5 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 1b01a20827ab..fd4deb049ddf 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -616,6 +616,7 @@ void
+> >  nfs4_put_delegation(struct nfs4_delegation *dp)
+> >  {
+> >  	if (atomic_dec_and_test(&dp->dl_count)) {
+> > +		remove_stid(&dp->dl_stid);
+> >  		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+> >  		num_delegations--;
+> >  	}
+> > @@ -657,6 +658,7 @@ unhash_delegation(struct nfs4_delegation *dp)
+> >  	struct nfs4_file *fp = dp->dl_file;
+> >  
+> >  	spin_lock(&state_lock);
+> > +	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+> >  	list_del_init(&dp->dl_perclnt);
+> >  	list_del_init(&dp->dl_recall_lru);
+> >  	spin_lock(&fp->fi_lock);
+> > @@ -670,19 +672,15 @@ unhash_delegation(struct nfs4_delegation *dp)
+> >  	}
+> >  }
+> >  
+> > -
+> > -
+> >  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+> >  {
+> >  	list_del_init(&dp->dl_recall_lru);
+> > -	remove_stid(&dp->dl_stid);
+> >  	nfs4_put_delegation(dp);
+> >  }
+> >  
+> >  static void destroy_delegation(struct nfs4_delegation *dp)
+> >  {
+> >  	unhash_delegation(dp);
+> > -	remove_stid(&dp->dl_stid);
+> >  	nfs4_put_delegation(dp);
+> >  }
+> >  
+> > @@ -4036,7 +4034,9 @@ static __be32 nfsd4_validate_stateid(struct
+> > nfs4_client *cl, stateid_t *stateid) return nfs_ok;
+> >  	default:
+> >  		printk("unknown stateid type %x\n", s->sc_type);
+> > +		/* Fallthrough */
+> >  	case NFS4_CLOSED_STID:
+> > +	case NFS4_CLOSED_DELEG_STID:
+> >  		return nfserr_bad_stateid;
+> >  	}
+> >  }
+> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> > index 81b7522e3f67..996d61eeb357 100644
+> > --- a/fs/nfsd/state.h
+> > +++ b/fs/nfsd/state.h
+> > @@ -80,6 +80,7 @@ struct nfs4_stid {
+> >  #define NFS4_CLOSED_STID 8
+> >  /* For a deleg stateid kept around only to process free_stateid's:
+> > */ #define NFS4_REVOKED_DELEG_STID 16
+> > +#define NFS4_CLOSED_DELEG_STID 32
+> >  	unsigned char sc_type;
+> >  	stateid_t sc_stateid;
+> >  	struct nfs4_client *sc_client;
+> > -- 
+> > 1.9.3
+> > 
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 47 +++++++++++++++++++++++++++++++++++++++++------
- 1 file changed, 41 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 67d1cb75a667..bd24337a8763 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -277,27 +277,52 @@ static struct file *__nfs4_get_fd(struct nfs4_file *f, int oflag)
- 	return NULL;
- }
- 
--static struct file *find_writeable_file(struct nfs4_file *f)
-+static struct file *
-+find_writeable_file_locked(struct nfs4_file *f)
- {
- 	struct file *ret;
- 
--	spin_lock(&f->fi_lock);
-+	lockdep_assert_held(&f->fi_lock);
-+
- 	ret = __nfs4_get_fd(f, O_WRONLY);
- 	if (!ret)
- 		ret = __nfs4_get_fd(f, O_RDWR);
--	spin_unlock(&f->fi_lock);
- 	return ret;
- }
- 
--static struct file *find_readable_file(struct nfs4_file *f)
-+static struct file *
-+find_writeable_file(struct nfs4_file *f)
- {
- 	struct file *ret;
- 
- 	spin_lock(&f->fi_lock);
-+	ret = find_writeable_file_locked(f);
-+	spin_unlock(&f->fi_lock);
-+
-+	return ret;
-+}
-+
-+static struct file *find_readable_file_locked(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	lockdep_assert_held(&f->fi_lock);
-+
- 	ret = __nfs4_get_fd(f, O_RDONLY);
- 	if (!ret)
- 		ret = __nfs4_get_fd(f, O_RDWR);
-+	return ret;
-+}
-+
-+static struct file *
-+find_readable_file(struct nfs4_file *f)
-+{
-+	struct file *ret;
-+
-+	spin_lock(&f->fi_lock);
-+	ret = find_readable_file_locked(f);
- 	spin_unlock(&f->fi_lock);
-+
- 	return ret;
- }
- 
-@@ -373,6 +398,8 @@ static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
- {
- 	int oflag = nfs4_access_to_omode(access);
- 
-+	lockdep_assert_held(&fp->fi_lock);
-+
- 	/* Note: relies on NFS4_SHARE_ACCESS_BOTH == READ|WRITE */
- 	access &= NFS4_SHARE_ACCESS_BOTH;
- 	if (access == 0)
-@@ -4572,6 +4599,8 @@ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- {
- 	struct nfs4_file *fp = lock_stp->st_file;
- 
-+	lockdep_assert_held(&fp->fi_lock);
-+
- 	if (test_access(access, lock_stp))
- 		return;
- 	nfs4_file_get_access(fp, access);
-@@ -4623,6 +4652,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_openowner *open_sop = NULL;
- 	struct nfs4_lockowner *lock_sop = NULL;
- 	struct nfs4_ol_stateid *lock_stp;
-+	struct nfs4_file *fp;
- 	struct file *filp = NULL;
- 	struct file_lock *file_lock = NULL;
- 	struct file_lock *conflock = NULL;
-@@ -4703,20 +4733,25 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		goto out;
- 	}
- 
-+	fp = lock_stp->st_file;
- 	locks_init_lock(file_lock);
- 	switch (lock->lk_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
--			filp = find_readable_file(lock_stp->st_file);
-+			spin_lock(&fp->fi_lock);
-+			filp = find_readable_file_locked(fp);
- 			if (filp)
- 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
-+			spin_unlock(&fp->fi_lock);
- 			file_lock->fl_type = F_RDLCK;
- 			break;
- 		case NFS4_WRITE_LT:
- 		case NFS4_WRITEW_LT:
--			filp = find_writeable_file(lock_stp->st_file);
-+			spin_lock(&fp->fi_lock);
-+			filp = find_writeable_file_locked(fp);
- 			if (filp)
- 				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_WRITE);
-+			spin_unlock(&fp->fi_lock);
- 			file_lock->fl_type = F_WRLCK;
- 			break;
- 		default:
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
