@@ -1,76 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:59057 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750769AbaGaM4e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2014 08:56:34 -0400
-Received: by mail-pd0-f172.google.com with SMTP id ft15so3452786pdb.3
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Jul 2014 05:56:34 -0700 (PDT)
-Message-ID: <53DA3CED.3060105@gmail.com>
-Date: Thu, 31 Jul 2014 20:56:13 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:54283 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932865AbaGQOzg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 10:55:36 -0400
+Date: Thu, 17 Jul 2014 07:55:34 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 06/10] nfsd: Protect the nfs4_file delegation fields
+ using the fi_lock
+Message-ID: <20140717145534.GA21127@infradead.org>
+References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+ <1405521125-2303-7-git-send-email-jlayton@primarydata.com>
+ <20140716180943.GA6920@infradead.org>
+ <20140716150401.00757454@tlielax.poochiereds.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: Re: [PATCH] NFSD: Decrease nfsd_users in nfsd_startup_generic fail
-References: <53D8F26D.8070304@gmail.com> <20140730141648.GE26316@fieldses.org>
-In-Reply-To: <20140730141648.GE26316@fieldses.org>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140716150401.00757454@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/30/2014 22:16, J. Bruce Fields wrote:
-> Thanks!
+On Wed, Jul 16, 2014 at 03:04:01PM -0400, Jeff Layton wrote:
+> Hmm...maybe. It's a very unlikely race though, and I think the same
+> sort of race exists today. In fact, it's worse today since we don't do
+> any checking of the validity of the lease after acquiring it now.
 > 
-> On Wed, Jul 30, 2014 at 09:26:05PM +0800, Kinglong Mee wrote:
->> If nfsd_startup_generic fail, nfsd_users isn't decreased right now.
+> The flag sounds like a good idea, but the code is structured completely
+> wrong for it currently. The delegation is only hashed after we get a
+> lease, so the lease break wouldn't find anything to set a flag on.
 > 
-> Looks like that should only fail in out of memory cases?
-
-Yes, it is.
-I found this problem through reviewing code.
-
+> Quite frankly, I _really_ do not want to have to rework the locking in
+> the delegation code yet again. I think this scheme is an improvement
+> over what we have now, even if it's not 100% perfect.
 > 
->> NFSD restarts will return 0 at the first nfsd_users checking,
->> after that, nfs4_state_start_net() will meet a bad laundry_wq
->> (I meet NULL), after nfsd4_grace timeout, the kernel will crash.
-> 
-> So this was introduced with 4539f14981ce02d48b212786a41c8bcfb62851b4
-> "nfsd: replace boolean nfsd_up flag by users counter".
+> Once we get the scalability set done, I'd like to go back and overhaul
+> the delegation code. There are a lot of ugly warts here, but fixing
+> them is really a separate project in its own right.
 
-Yes, I forget adding it.
+But in the old code we had the client lock over all of this, right?
 
-thanks,
-Kinglong Mee
-
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  fs/nfsd/nfssvc.c | 5 ++++-
->>  1 file changed, 4 insertions(+), 1 deletion(-)
->>
->> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->> index 5d026dc..752d56b 100644
->> --- a/fs/nfsd/nfssvc.c
->> +++ b/fs/nfsd/nfssvc.c
->> @@ -221,7 +221,8 @@ static int nfsd_startup_generic(int nrservs)
->>  	 */
->>  	ret = nfsd_racache_init(2*nrservs);
->>  	if (ret)
->> -		return ret;
->> +		goto dec_users;
->> +
->>  	ret = nfs4_state_start();
->>  	if (ret)
->>  		goto out_racache;
->> @@ -229,6 +230,8 @@ static int nfsd_startup_generic(int nrservs)
->>  
->>  out_racache:
->>  	nfsd_racache_shutdown();
->> +dec_users:
->> +	nfsd_users--;
->>  	return ret;
->>  }
->>  
->> -- 
->> 1.9.3
->>
-> 
+Anyway, if Bruce and you are fine with this I'm not going to block it,
+although it seems a little incomplete to me.
