@@ -1,143 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:55623 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751778AbaGIStP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 14:49:15 -0400
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH] svcrdma: send_write() must not overflow the device's max sge
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:43792 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761887AbaGRPNv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 11:13:51 -0400
+Received: by mail-qa0-f44.google.com with SMTP id f12so3033423qad.17
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 08:13:50 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org, tom@ogc.us
-Date: Wed, 09 Jul 2014 13:49:15 -0500
-Message-ID: <20140709184914.22217.59770.stgit@build.ogc.int>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v4 05/10] nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock
+Date: Fri, 18 Jul 2014 11:13:31 -0400
+Message-Id: <1405696416-32585-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Function send_write() must stop creating sges when it reaches the device
-max and return the amount sent in the RDMA Write to the caller.
+Currently, both destroy_revoked_delegation and revoke_delegation
+manipulate the cl_revoked list without any locking aside from the
+client_mutex. Ensure that the clp->cl_lock is held when manipulating it,
+except for the list walking in destroy_client. At that point, the client
+should no longer be in use, and so it should be safe to walk the list
+without any locking. That also means that we don't need to do the
+list_splice_init there either.
 
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+Also, the fact that destroy_revoked_delegation and revoke_delegation
+delete dl_recall_lru without any locking makes it difficult to know
+whether they're doing so safely in all cases. Move the list_del_init
+calls into the callers, and add WARN_ONs in the event that these calls
+are passed a delegation that has a non-empty list_head.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
+ fs/nfsd/nfs4state.c | 21 +++++++++++++++------
+ 1 file changed, 15 insertions(+), 6 deletions(-)
 
- net/sunrpc/xprtrdma/svc_rdma_sendto.c |   39 +++++++++++++--------------------
- 1 files changed, 15 insertions(+), 24 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 49fd21a..9f1b506 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -192,6 +192,8 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
- 		xdr_sge_no++;
- 		BUG_ON(xdr_sge_no > vec->count);
- 		bc -= sge_bytes;
-+		if (sge_no == xprt->sc_max_sge)
-+			break;
- 	}
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7c5233427c9b..d11b298e625e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -669,7 +669,7 @@ unhash_delegation_locked(struct nfs4_delegation *dp)
  
- 	/* Prepare WRITE WR */
-@@ -209,7 +211,7 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
- 	atomic_inc(&rdma_stat_write);
- 	if (svc_rdma_send(xprt, &write_wr))
- 		goto err;
--	return 0;
-+	return write_len - bc;
-  err:
- 	svc_rdma_unmap_dma(ctxt);
- 	svc_rdma_put_context(ctxt, 0);
-@@ -225,7 +227,6 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
  {
- 	u32 xfer_len = rqstp->rq_res.page_len + rqstp->rq_res.tail[0].iov_len;
- 	int write_len;
--	int max_write;
- 	u32 xdr_off;
- 	int chunk_off;
- 	int chunk_no;
-@@ -239,8 +240,6 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
- 	res_ary = (struct rpcrdma_write_array *)
- 		&rdma_resp->rm_body.rm_chunks[1];
+-	list_del_init(&dp->dl_recall_lru);
++	WARN_ON(!list_empty(&dp->dl_recall_lru));
+ 	nfs4_put_delegation(dp);
+ }
  
--	max_write = xprt->sc_max_sge * PAGE_SIZE;
--
- 	/* Write chunks start at the pagelist */
- 	for (xdr_off = rqstp->rq_res.head[0].iov_len, chunk_no = 0;
- 	     xfer_len && chunk_no < arg_ary->wc_nchunks;
-@@ -260,23 +259,21 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
- 						write_len);
- 		chunk_off = 0;
- 		while (write_len) {
--			int this_write;
--			this_write = min(write_len, max_write);
- 			ret = send_write(xprt, rqstp,
- 					 ntohl(arg_ch->rs_handle),
- 					 rs_offset + chunk_off,
- 					 xdr_off,
--					 this_write,
-+					 write_len,
- 					 vec);
--			if (ret) {
-+			if (ret <= 0) {
- 				dprintk("svcrdma: RDMA_WRITE failed, ret=%d\n",
- 					ret);
- 				return -EIO;
- 			}
--			chunk_off += this_write;
--			xdr_off += this_write;
--			xfer_len -= this_write;
--			write_len -= this_write;
-+			chunk_off += ret;
-+			xdr_off += ret;
-+			xfer_len -= ret;
-+			write_len -= ret;
- 		}
- 	}
- 	/* Update the req with the number of chunks actually used */
-@@ -293,7 +290,6 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
+@@ -685,11 +685,15 @@ static void revoke_delegation(struct nfs4_delegation *dp)
  {
- 	u32 xfer_len = rqstp->rq_res.len;
- 	int write_len;
--	int max_write;
- 	u32 xdr_off;
- 	int chunk_no;
- 	int chunk_off;
-@@ -311,8 +307,6 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
- 	res_ary = (struct rpcrdma_write_array *)
- 		&rdma_resp->rm_body.rm_chunks[2];
+ 	struct nfs4_client *clp = dp->dl_stid.sc_client;
  
--	max_write = xprt->sc_max_sge * PAGE_SIZE;
--
- 	/* xdr offset starts at RPC message */
- 	nchunks = ntohl(arg_ary->wc_nchunks);
- 	for (xdr_off = 0, chunk_no = 0;
-@@ -330,24 +324,21 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
- 						write_len);
- 		chunk_off = 0;
- 		while (write_len) {
--			int this_write;
--
--			this_write = min(write_len, max_write);
- 			ret = send_write(xprt, rqstp,
- 					 ntohl(ch->rs_handle),
- 					 rs_offset + chunk_off,
- 					 xdr_off,
--					 this_write,
-+					 write_len,
- 					 vec);
--			if (ret) {
-+			if (ret <= 0) {
- 				dprintk("svcrdma: RDMA_WRITE failed, ret=%d\n",
- 					ret);
- 				return -EIO;
- 			}
--			chunk_off += this_write;
--			xdr_off += this_write;
--			xfer_len -= this_write;
--			write_len -= this_write;
-+			chunk_off += ret;
-+			xdr_off += ret;
-+			xfer_len -= ret;
-+			write_len -= ret;
- 		}
++	WARN_ON(!list_empty(&dp->dl_recall_lru));
++
+ 	if (clp->cl_minorversion == 0)
+ 		destroy_revoked_delegation(dp);
+ 	else {
+ 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
+-		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
++		spin_lock(&clp->cl_lock);
++		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
++		spin_unlock(&clp->cl_lock);
  	}
- 	/* Update the req with the number of chunks actually used */
+ }
+ 
+@@ -1458,9 +1462,9 @@ destroy_client(struct nfs4_client *clp)
+ 		list_del_init(&dp->dl_recall_lru);
+ 		nfs4_put_delegation(dp);
+ 	}
+-	list_splice_init(&clp->cl_revoked, &reaplist);
+-	while (!list_empty(&reaplist)) {
++	while (!list_empty(&clp->cl_revoked)) {
+ 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
++		list_del_init(&dp->dl_recall_lru);
+ 		destroy_revoked_delegation(dp);
+ 	}
+ 	while (!list_empty(&clp->cl_openowners)) {
+@@ -3899,8 +3903,10 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		list_add(&dp->dl_recall_lru, &reaplist);
+ 	}
+ 	spin_unlock(&state_lock);
+-	list_for_each_safe(pos, next, &reaplist) {
+-		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
++	while (!list_empty(&reaplist)) {
++		dp = list_first_entry(&reaplist, struct nfs4_delegation,
++					dl_recall_lru);
++		list_del_init(&dp->dl_recall_lru);
+ 		revoke_delegation(dp);
+ 	}
+ 	list_for_each_safe(pos, next, &nn->close_lru) {
+@@ -4244,6 +4250,9 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		break;
+ 	case NFS4_REVOKED_DELEG_STID:
+ 		dp = delegstateid(s);
++		spin_lock(&cl->cl_lock);
++		list_del_init(&dp->dl_recall_lru);
++		spin_unlock(&cl->cl_lock);
+ 		destroy_revoked_delegation(dp);
+ 		ret = nfs_ok;
+ 		break;
+-- 
+1.9.3
 
