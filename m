@@ -1,61 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:54466 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755388AbaGHSGS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:18 -0400
-Received: by mail-qg0-f42.google.com with SMTP id e89so5471072qgf.15
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:17 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 076/100] nfsd: don't destroy clients that are busy
-Date: Tue,  8 Jul 2014 14:04:04 -0400
-Message-Id: <1404842668-22521-77-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mout.gmx.net ([212.227.15.19]:54618 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755894AbaGRQuk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jul 2014 12:50:40 -0400
+Message-ID: <53C9505D.80601@gmx.de>
+Date: Fri, 18 Jul 2014 18:50:37 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Kinglong Mee <kinglongmee@gmail.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: fuzz tested user mode linux crashed in NFS code path
+References: <53C10EAA.2000802@gmx.de> <53C12A93.3040803@gmail.com> <20140716185724.GC2397@fieldses.org> <20140717202721.GG30442@fieldses.org> <53C949DC.5060008@gmx.de>
+In-Reply-To: <53C949DC.5060008@gmx.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's possible that we'll have an in-progress call on some of the clients
-while a rogue EXCHANGE_ID or DESTROY_CLIENTID call comes in. Be sure to
-try and mark the client expired first, so that the refcount is
-respected.
+On 07/18/2014 06:22 PM, Toralf Förster wrote:
+> I can now try with kzalloc, but due to the nature of this issue I think, that the absence of this crash - even after 2-3 hours - doesn't mean by 100%, that kzalloc fixed it, or ?
 
-This will only be a problem once the client_mutex is removed.
+Well, next crash (with kzalloc patch) happened after 20 minutes ...
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 10 ++++++++--
- 1 file changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d11906845398..4aa8f51f7dda 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2240,8 +2240,11 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
- 
- 	/* case 1 (normal case) */
- out_new:
--	if (conf)
--		unhash_client_locked(conf);
-+	if (conf) {
-+		status = mark_client_expired_locked(conf);
-+		if (status)
-+			goto out;
-+	}
- 	new->cl_minorversion = cstate->minorversion;
- 	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
- 
-@@ -2854,6 +2857,9 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 			status = nfserr_clientid_busy;
- 			goto out;
- 		}
-+		status = mark_client_expired_locked(conf);
-+		if (status)
-+			goto out;
- 		clp = conf;
- 	} else if (unconf)
- 		clp = unconf;
 -- 
-1.9.3
+Toralf
 
