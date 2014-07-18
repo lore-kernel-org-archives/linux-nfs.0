@@ -1,207 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:38646 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754474AbaGHSEr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:47 -0400
-Received: by mail-qg0-f52.google.com with SMTP id f51so5396152qge.39
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:46 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-qc0-f196.google.com ([209.85.216.196]:48459 "EHLO
+	mail-qc0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754053AbaGRAV1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 20:21:27 -0400
+Received: by mail-qc0-f196.google.com with SMTP id m20so894837qcx.11
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 17:21:26 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 17 Jul 2014 20:21:24 -0400
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 008/100] nfsd: Add a mutex to protect the NFSv4.0 open owner replay cache
-Date: Tue,  8 Jul 2014 14:02:56 -0400
-Message-Id: <1404842668-22521-9-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/6] nfsd: Protect the nfs4_file delegation fields using
+ the fi_lock
+Message-ID: <20140717202124.777567da@tlielax.poochiereds.net>
+In-Reply-To: <1405624354-22388-2-git-send-email-jlayton@primarydata.com>
+References: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
+	<1405624354-22388-2-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, 17 Jul 2014 15:12:29 -0400
+Jeff Layton <jlayton@primarydata.com> wrote:
 
-We don't want to rely on the client_mutex for protection in the case of
-NFSv4 open owners. Instead, we add a mutex that will only be taken for
-NFSv4.0 state mutating operations, and that will be released once the
-entire compound is done.
+> Move more of the delegation fields to be protected by the fi_lock. It's
+> more granular than the state_lock and in later patches we'll want to
+> be able to rely on it in addition to the state_lock.
+> 
+> Also, the current code in nfs4_setlease calls vfs_setlease and uses the
+> client_mutex to ensure that it doesn't disappear before we can hash the
+> delegation. With the client_mutex gone, we'll have a potential race
+> condition.
+> 
+> It's possible that the delegation could be recalled after we acquire the
+> lease but before we ever get around to hashing it. If that happens, then
+> we'd have a nfs4_file that *thinks* it has a delegation, when it
+> actually has none.
+> 
+> Attempt to acquire a delegation. If that succeeds, take the spinlocks
+> and then check to see if the file has had a conflict show up since then.
+> If it has, then we assume that the lease is no longer valid and that
+> we shouldn't hand out a delegation.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 54 +++++++++++++++++++++++++++++++++++++++--------------
+>  1 file changed, 40 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index fd4deb049ddf..9bc896720db3 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -624,6 +624,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
+>  
+>  static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+>  {
+> +	lockdep_assert_held(&state_lock);
+> +
+>  	if (!fp->fi_lease)
+>  		return;
+>  	if (atomic_dec_and_test(&fp->fi_delegees)) {
+> @@ -643,11 +645,10 @@ static void
+>  hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+>  {
+>  	lockdep_assert_held(&state_lock);
+> +	lockdep_assert_held(&fp->fi_lock);
+>  
+>  	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+> -	spin_lock(&fp->fi_lock);
+>  	list_add(&dp->dl_perfile, &fp->fi_delegations);
+> -	spin_unlock(&fp->fi_lock);
+>  	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+>  }
+>  
+> @@ -659,17 +660,18 @@ unhash_delegation(struct nfs4_delegation *dp)
+>  
+>  	spin_lock(&state_lock);
+>  	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+> +	spin_lock(&fp->fi_lock);
+>  	list_del_init(&dp->dl_perclnt);
+>  	list_del_init(&dp->dl_recall_lru);
+> -	spin_lock(&fp->fi_lock);
+>  	list_del_init(&dp->dl_perfile);
+>  	spin_unlock(&fp->fi_lock);
+> -	spin_unlock(&state_lock);
+>  	if (fp) {
+>  		nfs4_put_deleg_lease(fp);
+> -		put_nfs4_file(fp);
+>  		dp->dl_file = NULL;
+>  	}
+> +	spin_unlock(&state_lock);
+> +	if (fp)
+> +		put_nfs4_file(fp);
+>  }
+>  
+>  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+> @@ -3143,8 +3145,8 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+>  	 */
+>  	fl->fl_break_time = 0;
+>  
+> -	fp->fi_had_conflict = true;
+>  	spin_lock(&fp->fi_lock);
+> +	fp->fi_had_conflict = true;
+>  	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
+>  		nfsd_break_one_deleg(dp);
+>  	spin_unlock(&fp->fi_lock);
+> @@ -3493,7 +3495,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+>  {
+>  	struct nfs4_file *fp = dp->dl_file;
+>  	struct file_lock *fl;
+> -	int status;
+> +	int status = 0;
+>  
+>  	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
+>  	if (!fl)
+> @@ -3501,15 +3503,31 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+>  	fl->fl_file = find_readable_file(fp);
+>  	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+>  	if (status)
+> -		goto out_free;
+> +		goto out_fput;
+> +	spin_lock(&state_lock);
+> +	spin_lock(&fp->fi_lock);
+> +	/* Did the lease get broken before we took the lock? */
+> +	status = -EAGAIN;
+> +	if (fp->fi_had_conflict)
+> +		goto out_unlock;
+> +	/* Race breaker */
+> +	if (fp->fi_lease) {
+> +		status = 0;
+> +		atomic_inc(&fp->fi_delegees);
+> +		hash_delegation_locked(dp, fp);
+> +		goto out_unlock;
+> +	}
+>  	fp->fi_lease = fl;
+>  	fp->fi_deleg_file = fl->fl_file;
+>  	atomic_set(&fp->fi_delegees, 1);
+> -	spin_lock(&state_lock);
+>  	hash_delegation_locked(dp, fp);
+> +	spin_unlock(&fp->fi_lock);
+>  	spin_unlock(&state_lock);
+>  	return 0;
+> -out_free:
+> +out_unlock:
+> +	spin_unlock(&fp->fi_lock);
+> +	spin_unlock(&state_lock);
+> +out_fput:
+>  	if (fl->fl_file)
+>  		fput(fl->fl_file);
+>  	locks_free_lock(fl);
+> @@ -3518,19 +3536,27 @@ out_free:
+>  
+>  static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+>  {
+> +	int status = 0;
+> +
+>  	if (fp->fi_had_conflict)
+>  		return -EAGAIN;
+>  	get_nfs4_file(fp);
+> +	spin_lock(&state_lock);
+> +	spin_lock(&fp->fi_lock);
+>  	dp->dl_file = fp;
+> -	if (!fp->fi_lease)
+> +	if (!fp->fi_lease) {
+> +		spin_unlock(&fp->fi_lock);
+> +		spin_unlock(&state_lock);
+>  		return nfs4_setlease(dp);
+> -	spin_lock(&state_lock);
+> +	}
+>  	atomic_inc(&fp->fi_delegees);
+>  	if (fp->fi_had_conflict) {
+> -		spin_unlock(&state_lock);
+> -		return -EAGAIN;
+> +		status = -EAGAIN;
+> +		goto out_unlock;
+>  	}
+>  	hash_delegation_locked(dp, fp);
+> +out_unlock:
+> +	spin_unlock(&fp->fi_lock);
+>  	spin_unlock(&state_lock);
+>  	return 0;
+>  }
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4proc.c  | 13 +++++--------
- fs/nfsd/nfs4state.c | 21 ++++++++-------------
- fs/nfsd/nfs4xdr.c   |  2 --
- fs/nfsd/state.h     |  1 +
- fs/nfsd/xdr4.h      | 21 +++++++++++++++++++++
- 5 files changed, 35 insertions(+), 23 deletions(-)
+Oops. Stupid mistake that I just noticed. That return 0 above should be
+"return status". Will fix...
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 29a617ebe38c..5004245e9958 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -468,11 +468,11 @@ out:
- 		kfree(resfh);
- 	}
- 	nfsd4_cleanup_open_state(open, status);
--	if (open->op_openowner && !nfsd4_has_session(cstate))
--		cstate->replay_owner = &open->op_openowner->oo_owner;
-+	if (open->op_openowner)
-+		nfsd4_cstate_assign_replay(cstate,
-+				&open->op_openowner->oo_owner);
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -1393,10 +1393,7 @@ encode_op:
- 			args->ops, args->opcnt, resp->opcnt, op->opnum,
- 			be32_to_cpu(status));
- 
--		if (cstate->replay_owner) {
--			nfs4_unlock_state();
--			cstate->replay_owner = NULL;
--		}
-+		nfsd4_cstate_clear_replay(cstate);
- 		/* XXX Ugh, we need to get rid of this kind of special case: */
- 		if (op->opnum == OP_READ && op->u.read.rd_filp)
- 			fput(op->u.read.rd_filp);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index c5818e02bc6a..ff7d74e0e39e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -888,7 +888,7 @@ void nfsd4_bump_seqid(struct nfsd4_compound_state *cstate, __be32 nfserr)
- 		return;
- 
- 	if (!seqid_mutating_err(ntohl(nfserr))) {
--		cstate->replay_owner = NULL;
-+		nfsd4_cstate_clear_replay(cstate);
- 		return;
- 	}
- 	if (!so)
-@@ -2759,6 +2759,7 @@ static void init_nfs4_replay(struct nfs4_replay *rp)
- 	rp->rp_status = nfserr_serverfault;
- 	rp->rp_buflen = 0;
- 	rp->rp_buf = rp->rp_ibuf;
-+	mutex_init(&rp->rp_mutex);
- }
- 
- static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj *owner, struct nfs4_client *clp)
-@@ -4083,8 +4084,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 	if (status)
- 		return status;
- 	stp = openlockstateid(s);
--	if (!nfsd4_has_session(cstate))
--		cstate->replay_owner = stp->st_stateowner;
-+	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
- 
- 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
- 	if (!status)
-@@ -4145,8 +4145,7 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	status = nfs_ok;
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -4228,8 +4227,7 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	status = nfs_ok;
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -4284,8 +4282,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- 	nfsd4_close_open_stateid(stp);
- out:
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -4679,8 +4676,7 @@ out:
- 	if (status && new_state)
- 		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	if (conflock)
-@@ -4841,8 +4837,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	if (!cstate->replay_owner)
--		nfs4_unlock_state();
-+	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	return status;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 21ffb9b9b768..b1eabebf6e19 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3926,8 +3926,6 @@ status:
-  * 
-  * XDR note: do not encode rp->rp_buflen: the buffer contains the
-  * previously sent already encoded operation.
-- *
-- * called with nfs4_lock_state() held
-  */
- void
- nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op)
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 39ac3ac07219..e8c059d2826e 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -328,6 +328,7 @@ struct nfs4_replay {
- 	unsigned int		rp_buflen;
- 	char			*rp_buf;
- 	struct knfsd_fh		rp_openfh;
-+	struct mutex		rp_mutex;
- 	char			rp_ibuf[NFSD4_REPLAY_ISIZE];
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 5abf6c942ddf..7442dc7efd31 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -74,6 +74,27 @@ static inline bool nfsd4_has_session(struct nfsd4_compound_state *cs)
- 	return cs->slot != NULL;
- }
- 
-+static inline void
-+nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
-+				struct nfs4_stateowner *so)
-+{
-+	if (!nfsd4_has_session(cstate)) {
-+		mutex_lock(&so->so_replay.rp_mutex);
-+		cstate->replay_owner = so;
-+	}
-+}
-+
-+static inline void
-+nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
-+{
-+	struct nfs4_stateowner *so = cstate->replay_owner;
-+
-+	if (so != NULL) {
-+		cstate->replay_owner = NULL;
-+		mutex_unlock(&so->so_replay.rp_mutex);
-+	}
-+}
-+
- struct nfsd4_change_info {
- 	u32		atomic;
- 	bool		change_supported;
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
