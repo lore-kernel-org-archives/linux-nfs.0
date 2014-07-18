@@ -1,237 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elasmtp-banded.atl.sa.earthlink.net ([209.86.89.70]:34550 "EHLO
-	elasmtp-banded.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751169AbaGIVzN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 17:55:13 -0400
-From: "Frank S. Filz" <ffilzlnx@mindspring.com>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "Frank S. Filz" <ffilzlnx@mindspring.com>
-Subject: Re: [PATCH 1/1] Fix permission checking by NFS client for open-create with mode 000
-Date: Wed,  9 Jul 2014 17:55:04 -0400
-Message-Id: <1404942904-18361-1-git-send-email-ffilzlnx@mindspring.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:26656 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754906AbaGRT1T convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 15:27:19 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH] svcrdma: Select NFSv4.1 backchannel transport based on forward channel
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20140718191256.GB12801@fieldses.org>
+Date: Fri, 18 Jul 2014 15:27:10 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F69F9045-6ECC-4210-837C-2837AF37D7ED@oracle.com>
+References: <20140716193542.7847.95868.stgit@klimt.1015granger.net> <20140717183621.GA30442@fieldses.org> <9D651FDC-7C11-476A-AE50-746E6E37B3E2@oracle.com> <99240537-8EC8-4ED3-8574-B95AC8A42F56@oracle.com> <20140718191256.GB12801@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Frank S. Filz" <ffilzlnx@mindspring.com>
 
-I used the following program to test the patch:
+On Jul 18, 2014, at 3:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-It does report 4 failures, as expected, when the file does not already exist:
+> On Fri, Jul 18, 2014 at 02:47:41PM -0400, Chuck Lever wrote:
+>> 
+>> On Jul 17, 2014, at 2:59 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> 
+>>> On Jul 17, 2014, at 2:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>> 
+>>>> On Wed, Jul 16, 2014 at 03:38:32PM -0400, Chuck Lever wrote:
+>>>>> The current code always selects XPRT_TRANSPORT_BC_TCP for the back
+>>>>> channel, even when the forward channel was not TCP (eg, RDMA). When
+>>>>> a 4.1 mount is attempted with RDMA, the server panics in the TCP BC
+>>>>> code when trying to send CB_NULL.
+>>>>> 
+>>>>> Instead, construct the transport protocol number from the forward
+>>>>> channel transport or'd with XPRT_TRANSPORT_BC. Transports that do
+>>>>> not support bi-directional RPC will not have registered a "BC"
+>>>>> transport, causing create_backchannel_client() to fail immediately.
+>>>>> 
+>>>>> Fixes: https://bugzilla.linux-nfs.org/show_bug.cgi?id=265
+>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>> ---
+>>>>> Hi Bruce-
+>>>>> 
+>>>>> What do you think of this approach?
+>>>> 
+>>>> OK by me.  (So clients use a separate tcp connection for the
+>>>> backchannel?)
+>>> 
+>>> Right.
+>>> 
+>>> The current plan is that, for NFSv4.1 over RDMA, the Linux client will
+>>> create an additional TCP connection and bind it to the same session as
+>>> the RDMA transport.
+>>> 
+>>> The TCP connection will be used solely for callback operations.  The
+>>> forward channel on that connection will not be used, except for
+>>> BIND_CONN_TO_SESSION operations.
+>> 
+>> Hi Bruce, pursuant to this goal, I’m trying to understand commit
+>> 14a24e99, especially the interior comment:
+>> 
+>> 3114 /* Should we give out recallable state?: */
+>> 3115 static bool nfsd4_cb_channel_good(struct nfs4_client *clp)
+>> 3116 {
+>> 3117         if (clp->cl_cb_state == NFSD4_CB_UP)
+>> 3118                 return true;
+>> 3119         /*
+>> 3120          * In the sessions case, since we don't have to establish a
+>> 3121          * separate connection for callbacks, we assume it's OK
+>> 3122          * until we hear otherwise:
+>> 3123          */
+>> 3124         return clp->cl_minorversion && clp->cl_cb_state == NFSD4_CB_UNKNOWN;
+>> 3125 }
+>> 
+>> I wonder if that’s a valid assumption?
+>> 
+>> A separate virtual connection _does_ have to be established. If the
+>> client sent a CREATE_SESSION operation with the SESSION4_BACK_CHAN flag
+>> set, the server must verify that the client has an active bi-directional
+>> RPC service on the transport.
+> 
+> If the client sets the BACK_CHAN flag, that means it wants that
+> connection to be used as a back channel.
+> 
+> So in the RDMA case it sounds like the client needs to clear that flag
+> on the create session.
 
-	open("foo", O_CREAT | O_TRUNC | O_RDONLY, 000);
-	open("foo", O_CREAT | O_TRUNC | O_RDONLY, 111);
-	open("foo", O_CREAT | O_TRUNC | O_RDONLY, 222);
-	open("foo", O_CREAT | O_TRUNC | O_RDONLY, 333);
+Right.
 
-These will not fail on a local filesystem.
+> Either that or send the original CREATE_SESSION over the connection you
+> want used for the backchannel, then send a BIND_CONNECTION_TO_SESSION
+> over the RDMA connection.
+> 
+> That said, if the server knows there's no connection at all that's
+> available for the backchannel, then yes I agree that it should be
+> setting the PATH_DOWN flag:
 
----
-#include <stdio.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <strings.h>
-#include <string.h>
+I’m trying a fix that sets cl_cb_state = NFSD4_CB_DOWN in
+init_session() if SESSION4_BACK_CHAN is clear.
 
-static inline int expect(int required, int actual)
-{
-	return (actual & required) == required;
-}
+>From the looks of it, the server is architected to support one and
+only one session per client ID. Is that correct? Thus it expects
+just one CREATE_SESSION operation per EXCHANGE_ID. Does the server
+enforce this?
 
-void check_one(char *name, int flags, int required, int mode)
-{
-	int fd, rc, access = flags & O_ACCMODE;
-	char flags_s[1024], open_s[1024];
-	int expected = expect(required, mode);
+Seems like cl_cb_state really should be a per-session thing for
+NFSv4.1.
 
-	sprintf(flags_s, "%s%s%s",
-		flags & O_CREAT ? "O_CREAT | " : "",
-		flags & O_TRUNC ? "O_TRUNC | " : "",
-		access == O_RDONLY ? "O_RDONLY" :
-		access == O_WRONLY ? "O_WRONLY" :
-		access == O_RDWR ? "O_RDWR" :
-		"UNKNOWN");
+And, while we’re at it, the server should assert
+SEQ4_STATUS_CB_PATH_DOWN_SESSION as well as SEQ4_STATUS_CB_PATH_DOWN.
 
-	if (flags & O_CREAT) {
-		strcat(flags_s, ",");
-		sprintf(open_s, "EXISTS: open(%s, %-29s %03o)",
-			name, flags_s, mode);
-		fd = open(name, flags, mode);
-	} else {
-		sprintf(open_s, "EXISTS: open(%s, %-29s)    ",
-			name, flags_s);
-		fd = open(name, flags);
-	}
+> 
+>> Otherwise it can hand out recallable state
+>> to a client with no callback service. Is that always safe?
+>> 
+>> Or, if the client sent a CREATE_SESSION operation with the
+>> SESSION4_BACK_CHAN flag cleared, then either the client intends not to
+>> set up a backchannel, or it intends to establish a separate transport
+>> for the backchannel. There is no backchannel in that case until the
+>> client establishes it.
+>> 
+>> Right now, if the client does not set SESSION4_BACK_CHAN, the server
+>> never asserts SEQ4_STATUS_CB_PATH_DOWN, even though there is no
+>> backchannel. That seems like a (minor, perhaps) bug.
+> 
+> Yes, agreed, I'll take a look--how are you reproducing?
 
-	if (fd == -1) {
-		rc = errno;
+Prototype Linux client that doesn’t set SESSION4_BACK_CHAN when it does
+CREATE_SESSION. Preparing it for RDMA support.
 
-		if (expected || (rc != EACCES))
-			printf("FAIL - %s - Error %s (%d)\n",
-			       open_s,
-			       strerror(rc), rc);
-		else
-			printf("PASS - %s - Expected Error %s (%d)\n",
-			       open_s,
-			       strerror(rc), rc);
+You could code a pyNFS test.
 
-		return;
-	}
+> The
+> nfsd4_probe_callback() should result in NFSD4_CB_DOWN getting set as
+> soon as the workqueue process it.
 
-	if (!expected) {
-		printf("FAIL - %s - Unexpected Success\n",
-		       open_s);
-	} else {
-		printf("PASS - %s - Success\n",
-		       open_s);
-	}
+Clearing SESSION4_BACK_CHAN squelches nfsd4_probe_callback(), so
+the server never checks in this case.
 
-	rc = close(fd);
+> In theory there's a race there (I
+> should fix that) in practice I'd normally expect that to run before we
+> process a SEQUENCE request on the new session.
 
-	if (rc == -1) {
-		printf("Error %s (%d) closing %s\n",
-		       strerror(errno), errno, name);
-		return;
-	}
-}
+>> Do you remember what this commit was trying to fix?
+> 
+> It's not a bugfix, just a minor optimization.  We could revert it if
+> need be.
+
+NP, I just don’t see how it helps to make that assumption, plus it
+doesn’t seem entirely safe.
+
+My initial question was "why does alloc_client() initialize cl_cb_state
+to NFSD4_CB_UNKNOWN instead of NFSD4_CB_DOWN?”
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-int check_create(char *name, int access, int mode)
-{
-	int fd, rc, len, flags = access | O_CREAT | O_TRUNC;
-	char flags_s[1024], open_s[1024];
-	char buffer_w[1024], buffer_r[1024];
 
-	sprintf(buffer_w,"File: %s\n", name);
-
-	/* Make sure file is unlinked */
-	rc = unlink(name);
-	if (rc == -1) {
-		rc = errno;
-		if (rc != ENOENT) {
-			printf("FAIL - Error %s (%d) unlinking %s\n",
-			       strerror(errno), errno, name);
-			return 0;
-		}
-	}
-
-	sprintf(flags_s, "O_CREAT | O_TRUNC | %s,",
-		access == O_RDONLY ? "O_RDONLY" :
-		access == O_WRONLY ? "O_WRONLY" :
-		access == O_RDWR ? "O_RDWR" :
-		"UNKNOWN");
-
-	/* Now do the open and create */
-	sprintf(open_s, "CREATE: open(%s, %-29s %03o)",
-		name, flags_s, mode);
-	fd = open(name, flags, mode);
-
-	if (fd == -1) {
-		printf("FAIL - %s - Error %s (%d)\n",
-		       open_s,
-		       strerror(errno), errno);
-		return 0;
-	}
-
-	if (access == O_RDONLY)
-		goto close_it;
-
-	len = strlen(buffer_w);
-
-	rc = write(fd, buffer_w, len);
-
-	if (rc == -1) {
-		printf("FAIL - Error %s (%d) writing %s\n",
-		       strerror(errno), errno, name);
-		return 0;
-	}
-
-	if (access == O_WRONLY)
-		goto close_it;
-
-	rc = lseek(fd, 0, SEEK_SET);
-
-	if (rc == -1) {
-		printf("FAIL - Error %s (%d) seeking %s\n",
-		       strerror(errno), errno, name);
-		return 0;
-	}
-
-	rc = read(fd, buffer_r, len);
-
-	if (rc == -1) {
-		printf("FAIL - Error %s (%d) reading %s\n",
-		       strerror(errno), errno, name);
-		return 0;
-	}
-
-	buffer_r[rc] = '\0';
-
-	if (rc != len) {
-		printf("FAIL - Mismatch only read %d bytes from %s = %s\n",
-		       rc, name, buffer_r);
-	}
-
-close_it:
-
-	rc = close(fd);
-
-	if (rc == -1) {
-		printf("FAIL - Error %s (%d) closing %s\n",
-		       strerror(errno), errno, name);
-		return 0;
-	}
-
-	printf("PASS - %s - Success\n",
-	       open_s);
-
-	return 1;
-}
-
-void test_one(char *base, int mode)
-{
-	char name[1024];
-	int rc;
-
-	sprintf(name, "%s.%03o", base, mode);
-
-	(void) check_create(name, O_RDONLY, mode);
-	(void) check_create(name, O_WRONLY, mode);
-	rc =   check_create(name, O_RDWR, mode);
-
-	if (rc == 0) {
-		printf("FAIL - can't continue with mode %03o\n");
-		return;
-	}
-
-	/* Now try to open the file in various modes */
-	check_one(name, O_RDONLY, S_IRUSR, mode);
-	check_one(name, O_WRONLY, S_IWUSR, mode);
-	check_one(name, O_RDWR, S_IRUSR | S_IWUSR, mode);
-	check_one(name, O_CREAT | O_WRONLY, S_IWUSR, mode);
-	check_one(name, O_CREAT | O_RDONLY, S_IRUSR, mode);
-	check_one(name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR, mode);
-}
-
-int main(int argc, char **argv)
-{
-	int i;
-	char *name;
-	int mode;
-
-	if (argc > 1) {
-		name = argv[1];
-	} else {
-		printf("usage %s {file-name}\n",
-		       argv[0]);
-		return 1;
-	}
-
-	for (i = 0; i <= 7; i++) {
-		mode = i * S_IXUSR + i * S_IXGRP + i * S_IXOTH;
-		test_one(name, mode);
-	}
-	return 0;
-}
