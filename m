@@ -1,56 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:42646 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752809AbaGOOVG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:21:06 -0400
-Subject: [PATCH v3 06/21] xprtrdma: Don't invalidate FRMRs if registration
- fails
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 15 Jul 2014 10:21:04 -0400
-Message-ID: <20140715142104.8908.98112.stgit@manet.1015granger.net>
-In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
-References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qg0-f43.google.com ([209.85.192.43]:48118 "EHLO
+	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761835AbaGRPNw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 11:13:52 -0400
+Received: by mail-qg0-f43.google.com with SMTP id a108so3267939qge.2
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 08:13:52 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v4 06/10] nfsd: Convert delegation counter to an atomic_long_t type
+Date: Fri, 18 Jul 2014 11:13:32 -0400
+Message-Id: <1405696416-32585-7-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If FRMR registration fails, it's likely to transition the QP to the
-error state. Or, registration may have failed because the QP is
-_already_ in ERROR.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Thus calling rpcrdma_deregister_external() in
-rpcrdma_create_chunks() is useless in FRMR mode: the LOCAL_INVs just
-get flushed.
+We want to convert to an atomic type so that we don't need to lock
+across the call to alloc_init_deleg(). Then convert to a long type so
+that we match the size of 'max_delegations'.
 
-It is safe to leave existing registrations: when FRMR registration
-is tried again, rpcrdma_register_frmr_external() checks if each FRMR
-is already/still VALID, and knocks it down first if it is.
+None of this is a problem today, but it will be once we remove
+client_mutex protection.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |    8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 54422f7..6166c98 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -271,9 +271,11 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	return (unsigned char *)iptr - (unsigned char *)headerp;
- 
- out:
--	for (pos = 0; nchunks--;)
--		pos += rpcrdma_deregister_external(
--				&req->rl_segments[pos], r_xprt);
-+	if (r_xprt->rx_ia.ri_memreg_strategy != RPCRDMA_FRMR) {
-+		for (pos = 0; nchunks--;)
-+			pos += rpcrdma_deregister_external(
-+					&req->rl_segments[pos], r_xprt);
-+	}
- 	return n;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d11b298e625e..40def186ee50 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -343,7 +343,7 @@ find_any_file(struct nfs4_file *f)
+ 	return ret;
  }
  
+-static int num_delegations;
++static atomic_long_t num_delegations;
+ unsigned long max_delegations;
+ 
+ /*
+@@ -571,22 +571,23 @@ static struct nfs4_delegation *
+ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
+ {
+ 	struct nfs4_delegation *dp;
++	long n;
+ 
+ 	dprintk("NFSD alloc_init_deleg\n");
+-	if (num_delegations > max_delegations)
+-		return NULL;
++	n = atomic_long_inc_return(&num_delegations);
++	if (n < 0 || n > max_delegations)
++		goto out_dec;
+ 	if (delegation_blocked(&current_fh->fh_handle))
+-		return NULL;
++		goto out_dec;
+ 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
+ 	if (dp == NULL)
+-		return dp;
++		goto out_dec;
+ 	/*
+ 	 * delegation seqid's are never incremented.  The 4.1 special
+ 	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
+ 	 * 0 anyway just for consistency and use 1:
+ 	 */
+ 	dp->dl_stid.sc_stateid.si_generation = 1;
+-	num_delegations++;
+ 	INIT_LIST_HEAD(&dp->dl_perfile);
+ 	INIT_LIST_HEAD(&dp->dl_perclnt);
+ 	INIT_LIST_HEAD(&dp->dl_recall_lru);
+@@ -594,6 +595,9 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
+ 	return dp;
++out_dec:
++	atomic_long_dec(&num_delegations);
++	return NULL;
+ }
+ 
+ static void remove_stid(struct nfs4_stid *s)
+@@ -616,7 +620,7 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
+ 			put_nfs4_file(dp->dl_file);
+ 		remove_stid(&dp->dl_stid);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+-		num_delegations--;
++		atomic_long_dec(&num_delegations);
+ 	}
+ }
+ 
+-- 
+1.9.3
 
