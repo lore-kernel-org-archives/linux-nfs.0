@@ -1,98 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:42336 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751856AbaGJRoh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 13:44:37 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] svcrdma: Remove extra writeargs sanity check for NFSv2/3
-To: swise@ogc.net
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Thu, 10 Jul 2014 13:44:35 -0400
-Message-ID: <20140710174435.3734.69638.stgit@klimt.1015granger.net>
-In-Reply-To: <20140710174225.3734.44692.stgit@klimt.1015granger.net>
-References: <20140710174225.3734.44692.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:36235 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761786AbaGRPNs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 11:13:48 -0400
+Received: by mail-qg0-f54.google.com with SMTP id z60so3241699qgd.41
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 08:13:46 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v4 02/10] nfsd: Move the delegation reference counter into the struct nfs4_stid
+Date: Fri, 18 Jul 2014 11:13:28 -0400
+Message-Id: <1405696416-32585-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The server should comply with RFC 5667, and handle WRITE payloads
-that may not have a zero pad on the end (XDR length round-up).
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Fixes: f34b9568 (The NFSv2/NFSv3 server does not handle zero...)
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+We will want to add reference counting to the lock stateid and open
+stateids too in later patches.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
+ fs/nfsd/nfs4state.c | 6 +++---
+ fs/nfsd/state.h     | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
- fs/nfsd/nfs3xdr.c |   15 +--------------
- fs/nfsd/nfsxdr.c  |   16 +---------------
- 2 files changed, 2 insertions(+), 29 deletions(-)
-
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index e6c01e8..6074f6a 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -361,7 +361,7 @@ int
- nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
- 					struct nfsd3_writeargs *args)
- {
--	unsigned int len, v, hdr, dlen;
-+	unsigned int len, v, hdr;
- 	u32 max_blocksize = svc_max_payload(rqstp);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9ab067e85b51..49a734cd2f20 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -472,6 +472,7 @@ kmem_cache *slab)
+ 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
+ 	/* Will be incremented before return to client: */
+ 	stid->sc_stateid.si_generation = 0;
++	atomic_set(&stid->sc_count, 1);
  
- 	p = decode_fh(p, &args->fh);
-@@ -383,19 +383,6 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
- 	 * bytes.
- 	 */
- 	hdr = (void*)p - rqstp->rq_arg.head[0].iov_base;
--	dlen = rqstp->rq_arg.head[0].iov_len + rqstp->rq_arg.page_len
--		- hdr;
--	/*
--	 * Round the length of the data which was specified up to
--	 * the next multiple of XDR units and then compare that
--	 * against the length which was actually received.
--	 * Note that when RPCSEC/GSS (for example) is used, the
--	 * data buffer can be padded so dlen might be larger
--	 * than required.  It must never be smaller.
--	 */
--	if (dlen < XDR_QUADLEN(len)*4)
--		return 0;
--
- 	if (args->count > max_blocksize) {
- 		args->count = max_blocksize;
- 		len = args->len = max_blocksize;
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 1ac306b..1f5347e 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -280,7 +280,7 @@ int
- nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
- 					struct nfsd_writeargs *args)
+ 	/*
+ 	 * It shouldn't be a problem to reuse an opaque stateid value.
+@@ -595,7 +596,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+-	atomic_set(&dp->dl_count, 1);
+ 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
+ 	return dp;
+ }
+@@ -615,7 +615,7 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
  {
--	unsigned int len, hdr, dlen;
-+	unsigned int len, hdr;
- 	int v;
- 
- 	p = decode_fh(p, &args->fh);
-@@ -302,20 +302,6 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
- 	 * bytes.
+-	if (atomic_dec_and_test(&dp->dl_count)) {
++	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
+ 		remove_stid(&dp->dl_stid);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+@@ -3120,7 +3120,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+ 	 * lock) we know the server hasn't removed the lease yet, we know
+ 	 * it's safe to take a reference.
  	 */
- 	hdr = (void*)p - rqstp->rq_arg.head[0].iov_base;
--	dlen = rqstp->rq_arg.head[0].iov_len + rqstp->rq_arg.page_len
--		- hdr;
--
--	/*
--	 * Round the length of the data which was specified up to
--	 * the next multiple of XDR units and then compare that
--	 * against the length which was actually received.
--	 * Note that when RPCSEC/GSS (for example) is used, the
--	 * data buffer can be padded so dlen might be larger
--	 * than required.  It must never be smaller.
--	 */
--	if (dlen < XDR_QUADLEN(len)*4)
--		return 0;
--
- 	rqstp->rq_vec[0].iov_base = (void*)p;
- 	rqstp->rq_vec[0].iov_len = rqstp->rq_arg.head[0].iov_len - hdr;
- 	v = 0;
+-	atomic_inc(&dp->dl_count);
++	atomic_inc(&dp->dl_stid.sc_count);
+ 	nfsd4_cb_recall(dp);
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 996d61eeb357..e68a9ae30fd7 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -73,6 +73,7 @@ struct nfsd4_callback {
+ };
+ 
+ struct nfs4_stid {
++	atomic_t sc_count;
+ #define NFS4_OPEN_STID 1
+ #define NFS4_LOCK_STID 2
+ #define NFS4_DELEG_STID 4
+@@ -91,7 +92,6 @@ struct nfs4_delegation {
+ 	struct list_head	dl_perfile;
+ 	struct list_head	dl_perclnt;
+ 	struct list_head	dl_recall_lru;  /* delegation recalled */
+-	atomic_t		dl_count;       /* ref count */
+ 	struct nfs4_file	*dl_file;
+ 	u32			dl_type;
+ 	time_t			dl_time;
+-- 
+1.9.3
 
