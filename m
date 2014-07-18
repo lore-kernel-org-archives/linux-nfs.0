@@ -1,66 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34095 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:36408 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752762AbaG3OQu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jul 2014 10:16:50 -0400
-Date: Wed, 30 Jul 2014 10:16:48 -0400
+	id S1756009AbaGRQoU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Jul 2014 12:44:20 -0400
+Date: Fri, 18 Jul 2014 12:44:17 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Decrease nfsd_users in nfsd_startup_generic fail
-Message-ID: <20140730141648.GE26316@fieldses.org>
-References: <53D8F26D.8070304@gmail.com>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 04/10] nfsd: Fix delegation revocation
+Message-ID: <20140718164417.GB8811@fieldses.org>
+References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+ <1405696416-32585-5-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53D8F26D.8070304@gmail.com>
+In-Reply-To: <1405696416-32585-5-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks!
+On Fri, Jul 18, 2014 at 11:13:30AM -0400, Jeff Layton wrote:
+> Ensure that the delegations cannot be found by the laundromat etc once
+> we add them to the various 'revoke' lists.
 
-On Wed, Jul 30, 2014 at 09:26:05PM +0800, Kinglong Mee wrote:
-> If nfsd_startup_generic fail, nfsd_users isn't decreased right now.
-
-Looks like that should only fail in out of memory cases?
-
-> NFSD restarts will return 0 at the first nfsd_users checking,
-> after that, nfs4_state_start_net() will meet a bad laundry_wq
-> (I meet NULL), after nfsd4_grace timeout, the kernel will crash.
-
-So this was introduced with 4539f14981ce02d48b212786a41c8bcfb62851b4
-"nfsd: replace boolean nfsd_up flag by users counter".
+So if I understand right, the big mutex protects all of this right now,
+so this is all just moving the unhashing under a finer-grained lock to
+prevent that in-between state being exposed after the big lock's
+dropped.  Looks reasonable.
 
 --b.
 
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
 > ---
->  fs/nfsd/nfssvc.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
+>  fs/nfsd/nfs4state.c | 37 +++++++++++++++++++++----------------
+>  1 file changed, 21 insertions(+), 16 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 5d026dc..752d56b 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -221,7 +221,8 @@ static int nfsd_startup_generic(int nrservs)
->  	 */
->  	ret = nfsd_racache_init(2*nrservs);
->  	if (ret)
-> -		return ret;
-> +		goto dec_users;
-> +
->  	ret = nfs4_state_start();
->  	if (ret)
->  		goto out_racache;
-> @@ -229,6 +230,8 @@ static int nfsd_startup_generic(int nrservs)
->  
->  out_racache:
->  	nfsd_racache_shutdown();
-> +dec_users:
-> +	nfsd_users--;
->  	return ret;
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 60ae21abce00..7c5233427c9b 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -650,13 +650,13 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+>  	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
 >  }
 >  
+> -/* Called under the state lock. */
+>  static void
+> -unhash_delegation(struct nfs4_delegation *dp)
+> +unhash_delegation_locked(struct nfs4_delegation *dp)
+>  {
+>  	struct nfs4_file *fp = dp->dl_file;
+>  
+> -	spin_lock(&state_lock);
+> +	lockdep_assert_held(&state_lock);
+> +
+>  	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+>  	spin_lock(&fp->fi_lock);
+>  	list_del_init(&dp->dl_perclnt);
+> @@ -665,7 +665,6 @@ unhash_delegation(struct nfs4_delegation *dp)
+>  	spin_unlock(&fp->fi_lock);
+>  	if (fp)
+>  		nfs4_put_deleg_lease(fp);
+> -	spin_unlock(&state_lock);
+>  }
+>  
+>  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+> @@ -676,7 +675,9 @@ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+>  
+>  static void destroy_delegation(struct nfs4_delegation *dp)
+>  {
+> -	unhash_delegation(dp);
+> +	spin_lock(&state_lock);
+> +	unhash_delegation_locked(dp);
+> +	spin_unlock(&state_lock);
+>  	nfs4_put_delegation(dp);
+>  }
+>  
+> @@ -685,11 +686,10 @@ static void revoke_delegation(struct nfs4_delegation *dp)
+>  	struct nfs4_client *clp = dp->dl_stid.sc_client;
+>  
+>  	if (clp->cl_minorversion == 0)
+> -		destroy_delegation(dp);
+> +		destroy_revoked_delegation(dp);
+>  	else {
+> -		unhash_delegation(dp);
+>  		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
+> -		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
+> +		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
+>  	}
+>  }
+>  
+> @@ -1447,15 +1447,16 @@ destroy_client(struct nfs4_client *clp)
+>  	spin_lock(&state_lock);
+>  	while (!list_empty(&clp->cl_delegations)) {
+>  		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
+> -		list_del_init(&dp->dl_perclnt);
+> +		unhash_delegation_locked(dp);
+>  		/* Ensure that deleg break won't try to requeue it */
+>  		++dp->dl_time;
+> -		list_move(&dp->dl_recall_lru, &reaplist);
+> +		list_add(&dp->dl_recall_lru, &reaplist);
+>  	}
+>  	spin_unlock(&state_lock);
+>  	while (!list_empty(&reaplist)) {
+>  		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+> -		destroy_delegation(dp);
+> +		list_del_init(&dp->dl_recall_lru);
+> +		nfs4_put_delegation(dp);
+>  	}
+>  	list_splice_init(&clp->cl_revoked, &reaplist);
+>  	while (!list_empty(&reaplist)) {
+> @@ -3655,7 +3656,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+>  	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
+>  	return;
+>  out_free:
+> -	destroy_delegation(dp);
+> +	nfs4_put_delegation(dp);
+>  out_no_deleg:
+>  	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
+>  	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
+> @@ -3894,7 +3895,8 @@ nfs4_laundromat(struct nfsd_net *nn)
+>  			new_timeo = min(new_timeo, t);
+>  			break;
+>  		}
+> -		list_move(&dp->dl_recall_lru, &reaplist);
+> +		unhash_delegation_locked(dp);
+> +		list_add(&dp->dl_recall_lru, &reaplist);
+>  	}
+>  	spin_unlock(&state_lock);
+>  	list_for_each_safe(pos, next, &reaplist) {
+> @@ -5369,7 +5371,8 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
+>  			 * don't monkey with it now that we are.
+>  			 */
+>  			++dp->dl_time;
+> -			list_move(&dp->dl_recall_lru, victims);
+> +			unhash_delegation_locked(dp);
+> +			list_add(&dp->dl_recall_lru, victims);
+>  		}
+>  		if (++count == max)
+>  			break;
+> @@ -5624,12 +5627,14 @@ nfs4_state_shutdown_net(struct net *net)
+>  	spin_lock(&state_lock);
+>  	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+>  		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+> -		list_move(&dp->dl_recall_lru, &reaplist);
+> +		unhash_delegation_locked(dp);
+> +		list_add(&dp->dl_recall_lru, &reaplist);
+>  	}
+>  	spin_unlock(&state_lock);
+>  	list_for_each_safe(pos, next, &reaplist) {
+>  		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
+> -		destroy_delegation(dp);
+> +		list_del_init(&dp->dl_recall_lru);
+> +		nfs4_put_delegation(dp);
+>  	}
+>  
+>  	nfsd4_client_tracking_exit(net);
 > -- 
 > 1.9.3
 > 
