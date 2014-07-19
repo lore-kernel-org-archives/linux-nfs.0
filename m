@@ -1,406 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:61184 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755268AbaGHSE7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:59 -0400
-Received: by mail-qc0-f173.google.com with SMTP id l6so5542144qcy.4
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:58 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 017/100] nfsd: make deny mode enforcement more efficient and close races in it
-Date: Tue,  8 Jul 2014 14:03:05 -0400
-Message-Id: <1404842668-22521-18-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:50236 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754635AbaGSUHG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Jul 2014 16:07:06 -0400
+Received: by mail-ie0-f181.google.com with SMTP id rp18so5616116iec.40
+        for <linux-nfs@vger.kernel.org>; Sat, 19 Jul 2014 13:07:05 -0700 (PDT)
+Message-ID: <1405800422.3254.4.camel@leira.trondhjem.org>
+Subject: [GIT PULL] Please pull NFS client changes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Date: Sat, 19 Jul 2014 16:07:02 -0400
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
+	boundary="=-Vc6MMz3m04tRvEOxcEvn"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current enforcement of deny modes is both inefficient and scattered
-across several places, which makes it hard to guarantee atomicity. The
-inefficiency is a problem now, and the lack of atomicity will mean races
-once the client_mutex is removed.
 
-First, we address the inefficiency. We have to track deny modes on a
-per-stateid basis to ensure that open downgrades are sane, but when the
-server goes to enforce them it has to walk the entire list of stateids
-and check against each one.
+--=-Vc6MMz3m04tRvEOxcEvn
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-Instead of doing that, maintain a per-nfs4_file deny mode. When a file
-is opened, we simply set any deny bits in that mode that were specified
-in the OPEN call. We can then use that unified deny mode to do a simple
-check to see whether there are any conflicts without needing to walk the
-entire stateid list.
+Hi Linus,
 
-The only time we'll need to walk the entire list of stateids is when a
-stateid that has a deny mode on it is being released, or one is having
-its deny mode downgraded. In that case, we must walk the entire list and
-recalculate the fi_share_deny field. Since deny modes are pretty rare
-today, this should be very rare under normal workloads.
+Apologies for the relative lateness of this pull request, however the
+commits fix some issues with the NFS read/write code updates in 3.16-rc1
+that can cause serious Oopsing when using small r/wsize. The delay was
+mainly due to extra testing to make sure that the fixes behave
+correctly.
 
-To address the potential for races once the client_mutex is removed,
-protect fi_share_deny with the fi_lock. In nfs4_get_vfs_file, check to
-make sure that any deny mode we want to apply won't conflict with
-existing access. If that's ok, then have nfs4_file_get_access check that
-new access to the file won't conflict with existing deny modes.
+The following changes since commit 66b068604903849c5dee3842eb72564064c64c72=
+:
 
-If that also passes, then get file access references, set the correct
-access and deny bits in the stateid, and update the fi_share_deny field.
-If opening the file or truncating it fails, then unwind the whole mess
-and return the appropriate error.
+  NFSv4: test SECINFO RPC_AUTH_GSS pseudoflavors for support (2014-06-24 18=
+:46:58 -0400)
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 208 +++++++++++++++++++++++++++++++++++-----------------
- fs/nfsd/state.h     |   1 +
- 2 files changed, 140 insertions(+), 69 deletions(-)
+are available in the git repository at:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index bd24337a8763..6afeb7d39f9d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -388,28 +388,53 @@ static unsigned int file_hashval(struct inode *ino)
- 
- static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
- 
--static void __nfs4_file_get_access(struct nfs4_file *fp, int oflag)
-+static void
-+__nfs4_file_get_access(struct nfs4_file *fp, u32 access)
- {
--	WARN_ON_ONCE(!(fp->fi_fds[oflag] || fp->fi_fds[O_RDWR]));
--	atomic_inc(&fp->fi_access[oflag]);
-+	int oflag = nfs4_access_to_omode(access);
-+
-+	if (oflag == O_RDWR) {
-+		atomic_inc(&fp->fi_access[O_RDONLY]);
-+		atomic_inc(&fp->fi_access[O_WRONLY]);
-+	} else
-+		atomic_inc(&fp->fi_access[oflag]);
- }
- 
--static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
-+static __be32
-+nfs4_file_get_access(struct nfs4_file *fp, u32 access)
- {
--	int oflag = nfs4_access_to_omode(access);
--
- 	lockdep_assert_held(&fp->fi_lock);
- 
- 	/* Note: relies on NFS4_SHARE_ACCESS_BOTH == READ|WRITE */
- 	access &= NFS4_SHARE_ACCESS_BOTH;
-+
-+	/* Does this access mask make sense? */
- 	if (access == 0)
--		return;
-+		return nfserr_inval;
- 
--	if (oflag == O_RDWR) {
--		__nfs4_file_get_access(fp, O_RDONLY);
--		__nfs4_file_get_access(fp, O_WRONLY);
--	} else
--		__nfs4_file_get_access(fp, oflag);
-+	/* Does it conflict with a deny mode already set? */
-+	if ((access & fp->fi_share_deny) != 0)
-+		return nfserr_share_denied;
-+
-+	__nfs4_file_get_access(fp, access);
-+	return nfs_ok;
-+}
-+
-+static __be32 nfs4_file_check_deny(struct nfs4_file *fp, u32 deny)
-+{
-+	/* Common case is that there is no deny mode. */
-+	deny &= NFS4_SHARE_DENY_BOTH;
-+	if (deny) {
-+		/* Note: relies on NFS4_SHARE_DENY_BOTH == READ|WRITE */
-+		if ((deny & NFS4_SHARE_DENY_READ) &&
-+		    atomic_read(&fp->fi_access[O_RDONLY]))
-+			return nfserr_share_denied;
-+
-+		if ((deny & NFS4_SHARE_DENY_WRITE) &&
-+		    atomic_read(&fp->fi_access[O_WRONLY]))
-+			return nfserr_share_denied;
-+	}
-+	return nfs_ok;
- }
- 
- static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
-@@ -741,17 +766,6 @@ bmap_to_share_mode(unsigned long bmap) {
- 	return access;
- }
- 
--static bool
--test_share(struct nfs4_ol_stateid *stp, struct nfsd4_open *open) {
--	unsigned int access, deny;
--
--	access = bmap_to_share_mode(stp->st_access_bmap);
--	deny = bmap_to_share_mode(stp->st_deny_bmap);
--	if ((access & open->op_share_deny) || (deny & open->op_share_access))
--		return false;
--	return true;
--}
--
- /* set share access for a given stateid */
- static inline void
- set_access(u32 access, struct nfs4_ol_stateid *stp)
-@@ -810,11 +824,49 @@ test_deny(u32 deny, struct nfs4_ol_stateid *stp)
- 	return (bool)(stp->st_deny_bmap & mask);
- }
- 
-+/*
-+ * A stateid that had a deny mode associated with it is being released
-+ * or downgraded. Recalculate the deny mode on the file.
-+ */
-+static void
-+recalculate_deny_mode(struct nfs4_file *fp)
-+{
-+	struct nfs4_ol_stateid *stp;
-+
-+	spin_lock(&fp->fi_lock);
-+	fp->fi_share_deny = 0;
-+	list_for_each_entry(stp, &fp->fi_stateids, st_perfile)
-+		fp->fi_share_deny |= bmap_to_share_mode(stp->st_deny_bmap);
-+	spin_unlock(&fp->fi_lock);
-+}
-+
-+static void
-+reset_union_bmap_deny(u32 deny, struct nfs4_ol_stateid *stp)
-+{
-+	int i;
-+	bool change = false;
-+
-+	for (i = 1; i < 4; i++) {
-+		if ((i & deny) != i) {
-+			change = true;
-+			clear_deny(i, stp);
-+		}
-+	}
-+
-+	/* Recalculate per-file deny mode if there was a change */
-+	if (change)
-+		recalculate_deny_mode(stp->st_file);
-+}
-+
- /* release all access and file references for a given stateid */
- static void
- release_all_access(struct nfs4_ol_stateid *stp)
- {
- 	int i;
-+	struct nfs4_file *fp = stp->st_file;
-+
-+	if (fp && stp->st_deny_bmap != 0)
-+		recalculate_deny_mode(fp);
- 
- 	for (i = 1; i < 4; i++) {
- 		if (test_access(i, stp))
-@@ -2806,6 +2858,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
- 	fp->fi_inode = ino;
- 	fp->fi_had_conflict = false;
- 	fp->fi_lease = NULL;
-+	fp->fi_share_deny = 0;
- 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
- 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
- 	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
-@@ -3034,22 +3087,15 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
- {
- 	struct inode *ino = current_fh->fh_dentry->d_inode;
- 	struct nfs4_file *fp;
--	struct nfs4_ol_stateid *stp;
--	__be32 ret;
-+	__be32 ret = nfs_ok;
- 
- 	fp = find_file(ino);
- 	if (!fp)
--		return nfs_ok;
--	ret = nfserr_locked;
--	/* Search for conflicting share reservations */
-+		return ret;
-+	/* Check for conflicting share reservations */
- 	spin_lock(&fp->fi_lock);
--	list_for_each_entry(stp, &fp->fi_stateids, st_perfile) {
--		if (test_deny(deny_type, stp) ||
--		    test_deny(NFS4_SHARE_DENY_BOTH, stp))
--			goto out;
--	}
--	ret = nfs_ok;
--out:
-+	if (fp->fi_share_deny & deny_type)
-+		ret = nfserr_locked;
- 	spin_unlock(&fp->fi_lock);
- 	put_nfs4_file(fp);
- 	return ret;
-@@ -3292,12 +3338,9 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
- 		if (local->st_stateowner->so_is_open_owner == 0)
- 			continue;
- 		/* remember if we have seen this open owner */
--		if (local->st_stateowner == &oo->oo_owner)
-+		if (local->st_stateowner == &oo->oo_owner) {
- 			*stpp = local;
--		/* check for conflicting share reservations */
--		if (!test_share(local, open)) {
--			spin_unlock(&fp->fi_lock);
--			return nfserr_share_denied;
-+			break;
- 		}
- 	}
- 	spin_unlock(&fp->fi_lock);
-@@ -3338,20 +3381,47 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 	__be32 status;
- 	int oflag = nfs4_access_to_omode(open->op_share_access);
- 	int access = nfs4_access_to_access(open->op_share_access);
-+	unsigned char old_access_bmap, old_deny_bmap;
- 
- 	spin_lock(&fp->fi_lock);
-+
-+	/*
-+	 * Are we trying to set a deny mode that would conflict with
-+	 * current access?
-+	 */
-+	status = nfs4_file_check_deny(fp, open->op_share_deny);
-+	if (status != nfs_ok) {
-+		spin_unlock(&fp->fi_lock);
-+		goto out;
-+	}
-+
-+	/* set access to the file */
-+	status = nfs4_file_get_access(fp, open->op_share_access);
-+	if (status != nfs_ok) {
-+		spin_unlock(&fp->fi_lock);
-+		goto out;
-+	}
-+
-+	/* Set access bits in stateid */
-+	old_access_bmap = stp->st_access_bmap;
-+	set_access(open->op_share_access, stp);
-+
-+	/* Set new deny mask */
-+	old_deny_bmap = stp->st_deny_bmap;
-+	set_deny(open->op_share_deny, stp);
-+	fp->fi_share_deny |= (open->op_share_deny & NFS4_SHARE_DENY_BOTH);
-+
- 	if (!fp->fi_fds[oflag]) {
- 		spin_unlock(&fp->fi_lock);
- 		status = nfsd_open(rqstp, cur_fh, S_IFREG, access, &filp);
- 		if (status)
--			goto out;
-+			goto out_put_access;
- 		spin_lock(&fp->fi_lock);
- 		if (!fp->fi_fds[oflag]) {
- 			fp->fi_fds[oflag] = filp;
- 			filp = NULL;
- 		}
- 	}
--	nfs4_file_get_access(fp, open->op_share_access);
- 	spin_unlock(&fp->fi_lock);
- 	if (filp)
- 		fput(filp);
-@@ -3359,33 +3429,43 @@ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
- 	status = nfsd4_truncate(rqstp, cur_fh, open);
- 	if (status)
- 		goto out_put_access;
--
--	/* Set access and deny bits in stateid */
--	set_access(open->op_share_access, stp);
--	set_deny(open->op_share_deny, stp);
--	return nfs_ok;
--
--out_put_access:
--	nfs4_file_put_access(fp, open->op_share_access);
- out:
- 	return status;
-+out_put_access:
-+	stp->st_access_bmap = old_access_bmap;
-+	nfs4_file_put_access(fp, open->op_share_access);
-+	reset_union_bmap_deny(bmap_to_share_mode(old_deny_bmap), stp);
-+	goto out;
- }
- 
- static __be32
- nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
- {
- 	__be32 status;
-+	unsigned char old_deny_bmap;
- 
- 	if (!test_access(open->op_share_access, stp))
--		status = nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
--	else
--		status = nfsd4_truncate(rqstp, cur_fh, open);
-+		return nfs4_get_vfs_file(rqstp, fp, cur_fh, stp, open);
- 
--	if (status)
-+	/* test and set deny mode */
-+	spin_lock(&fp->fi_lock);
-+	status = nfs4_file_check_deny(fp, open->op_share_deny);
-+	if (status == nfs_ok) {
-+		old_deny_bmap = stp->st_deny_bmap;
-+		set_deny(open->op_share_deny, stp);
-+		fp->fi_share_deny |=
-+				(open->op_share_deny & NFS4_SHARE_DENY_BOTH);
-+	}
-+	spin_unlock(&fp->fi_lock);
-+
-+	if (status != nfs_ok)
- 		return status;
--	return nfs_ok;
--}
- 
-+	status = nfsd4_truncate(rqstp, cur_fh, open);
-+	if (status != nfs_ok)
-+		reset_union_bmap_deny(old_deny_bmap, stp);
-+	return status;
-+}
- 
- static void
- nfs4_set_claim_prev(struct nfsd4_open *open, bool has_session)
-@@ -3607,7 +3687,8 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	 */
- 	fp = find_or_add_file(ino, open->op_file);
- 	if (fp != open->op_file) {
--		if ((status = nfs4_check_open(fp, open, &stp)))
-+		status = nfs4_check_open(fp, open, &stp);
-+		if (status)
- 			goto out;
- 		status = nfs4_check_deleg(cl, open, &dp);
- 		if (status)
-@@ -4294,17 +4375,6 @@ static inline void nfs4_stateid_downgrade(struct nfs4_ol_stateid *stp, u32 to_ac
- 	}
- }
- 
--static void
--reset_union_bmap_deny(u32 deny, struct nfs4_ol_stateid *stp)
--{
--	int i;
--
--	for (i = 1; i < 4; i++) {
--		if ((i & deny) != i)
--			clear_deny(i, stp);
--	}
--}
--
- __be32
- nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 		     struct nfsd4_compound_state *cstate,
-@@ -4603,7 +4673,7 @@ static void get_lock_access(struct nfs4_ol_stateid *lock_stp, u32 access)
- 
- 	if (test_access(access, lock_stp))
- 		return;
--	nfs4_file_get_access(fp, access);
-+	__nfs4_file_get_access(fp, access);
- 	set_access(access, lock_stp);
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index fa6d28329c8a..27adbebfd168 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -393,6 +393,7 @@ struct nfs4_file {
- 	 *   + 1 to both of the above if NFS4_SHARE_ACCESS_BOTH is set.
- 	 */
- 	atomic_t		fi_access[2];
-+	u32			fi_share_deny;
- 	struct file		*fi_deleg_file;
- 	struct file_lock	*fi_lease;
- 	atomic_t		fi_delegees;
--- 
-1.9.3
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.16-=
+3
+
+for you to fetch changes up to f563b89b182594f827b4100bd34f916339785a77:
+
+  NFS: Don't reset pg_moreio in __nfs_pageio_add_request (2014-07-13 15:18:=
+44 -0400)
+
+----------------------------------------------------------------
+NFS client fixes for Linux 3.16
+
+Highlights include;
+- Stable fix for an NFSv3 posix ACL regression
+- Multiple fixes for regressions to the NFS generic read/write code
+  - Fix page splitting bugs that come into play when a small rsize/wsize
+    read/write needs to be sent again (due to error conditions or page
+    redirty).
+  - Fix nfs_wb_page_cancel, which is called by the "invalidatepage" method
+- Fix 2 compile warnings about unused variables.
+- Fix a performance issue affecting unstable writes.
+
+----------------------------------------------------------------
+Christoph Hellwig (1):
+      nfs: only show Posix ACLs in listxattr if actually present
+
+Trond Myklebust (2):
+      NFS: Remove 2 unused variables
+      NFS: Don't reset pg_moreio in __nfs_pageio_add_request
+
+Weston Andros Adamson (5):
+      nfs: mark nfs_page reqs with flag for extra ref
+      nfs: nfs_page should take a ref on the head req
+      nfs: change find_request to find_head_request
+      nfs: handle multiple reqs in nfs_page_async_flush
+      nfs: handle multiple reqs in nfs_wb_page_cancel
+
+ fs/nfs/direct.c   |   2 -
+ fs/nfs/internal.h |   1 +
+ fs/nfs/nfs3acl.c  |  43 +++++++
+ fs/nfs/nfs3proc.c |   4 +-
+ fs/nfs/pagelist.c |  20 +++-
+ fs/nfs/write.c    | 335 +++++++++++++++++++++++++++++++++++++++++++++-----=
+----
+ 6 files changed, 343 insertions(+), 62 deletions(-)
+
+
+
+--=20
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
+
+--=-Vc6MMz3m04tRvEOxcEvn
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+Content-Transfer-Encoding: 7bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAABAgAGBQJTys/mAAoJEGcL54qWCgDynYEQALk9/Qz7ZVLbw/Np65S7d1Ij
+mWWLImJVcbKP7ZJcUuGRtvgnZ1lMUMTXpyLWiyxpUtJpJAj5pVVHivsCS/rwf1rF
+Ng5ixIR9UE62CllJsX3BDDpq1BnEq0Vyvey/McIIxsoWecYT+dpexKIm4s+7SvRC
+ei8f5kX5e7yoXSZWfRv56f2NXY3KwfyaiS9fTZJsWyUXVCfLA8t/0X1Lika65ooh
+Zp5GoMnnVD/HakrAain8LrQuIIGxk0+BeOkxYgCNsrTd9Cs4h171n7SoI2rcdhX6
+H/U8VPApmjEVhisqU56sghbIpTbt8g+2SA22McLVQeeFBVurrI2yJc6aItadbpnC
+K2jEY1EYhS4smWEqITrn3aA65G5zV/Xa0KVDg5B/Zt+0gSryKVXwEbpjcbQFuaiZ
+RLTGmAjSbOMbbhWBqL3QR1tCKFj2ogBKuIrHFIseUhNubUk3IwpJ+f1ew4gynG3w
+g7HciiUGa6FTbh71fpH7QHpqR1iZsFZyWZtaknIv5rNxb1Zey9oWp1ZMZSqAYVRz
+2GXBiOZUXZS6FbbRDbc73fPP93s/H6Bx0heHB5VnkK+/ZpSNa6WmarL0tj7z1tP8
+WVHN+BiKyzqptnmztkRXclHM0L3FSyaxChrmFrloV9nQrqDsCLBY0aPMapwgHJmw
+vSLEXn35LHpMHTngt0zX
+=ndtc
+-----END PGP SIGNATURE-----
+
+--=-Vc6MMz3m04tRvEOxcEvn--
 
