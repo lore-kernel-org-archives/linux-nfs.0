@@ -1,56 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f175.google.com ([209.85.220.175]:55096 "EHLO
-	mail-vc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751962AbaGNCAO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 22:00:14 -0400
-Received: by mail-vc0-f175.google.com with SMTP id hu12so891235vcb.20
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 19:00:13 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140714011630.12562.1940.stgit@notabene.brown>
-References: <20140714011630.12562.1940.stgit@notabene.brown>
-Date: Sun, 13 Jul 2014 22:00:12 -0400
-Message-ID: <CAHQdGtS2XW=GeyxHddKKAb9a2tucO9kzxatPJ78qpMiDiOagiQ@mail.gmail.com>
-Subject: Re: [PATCH 0/7] Add RCU-walk support to NFS.
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from youngberry.canonical.com ([91.189.89.112]:37234 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753115AbaGUVVs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 17:21:48 -0400
+From: Kamal Mostafa <kamal@canonical.com>
+To: Mateusz Guzik <mguzik@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Kamal Mostafa <kamal@canonical.com>, kernel-team@lists.ubuntu.com
+Subject: [3.8.y.z extended stable] Patch "NFS: populate ->net in mount data when remounting" has been added to staging queue
+Date: Mon, 21 Jul 2014 14:21:44 -0700
+Message-Id: <1405977704-2628-1-git-send-email-kamal@canonical.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jul 13, 2014 at 9:28 PM, NeilBrown <neilb@suse.de> wrote:
-> NFS current abort and attempt at filename lookup in RCU mode.
-> This can have serious performance impact on a highly parallel load.
->
-> The "Makefile" below generates just such a load.  On a 40-core
-> machine "make -j 40" is about 6 times as fast at "make -j 5"
-> when a local filesystem is used (e.g. XFS), but as much as half
-> as fast when NFS is used.
-> With this patch set, "make -j 40" is about 3 times as fast as
-> "make -j 5" on NFS, and "perf" data doesn't show spinlocks to be a big
-> problem any more.
->
-> This is a re-submission with a few small improvements of a patch set
-> posted in March.  Since then I have recieved confirmation that it
-> definitely fixes the problem, when combined with a patch set which
-> enhances autofs4 in a similar way.  So it has had quite a bit of
-> testing.
+This is a note to let you know that I have just added a patch titled
 
-Hi Neil,
+    NFS: populate ->net in mount data when remounting
 
-What kind of tests have you personally (or SuSE if relevant) performed?
-Have you run this under NFSometer in order to check for regressions,
-and if so on what workloads?
+to the linux-3.8.y-queue branch of the 3.8.y.z extended stable tree 
+which can be found at:
 
-The above are not requirements in order to get the patches into
-mainline, I'm just curious.
+ http://kernel.ubuntu.com/git?p=ubuntu/linux.git;a=shortlog;h=refs/heads/linux-3.8.y-queue
 
-Cheers
-  Trond
+This patch is scheduled to be released in version 3.8.13.27.
 
--- 
-Trond Myklebust
+If you, or anyone else, feels it should not be added to this tree, please 
+reply to this email.
 
-Linux NFS client maintainer, PrimaryData
+For more information about the 3.8.y.z tree, see
+https://wiki.ubuntu.com/Kernel/Dev/ExtendedStable
 
-trond.myklebust@primarydata.com
+Thanks.
+-Kamal
+
+------
+
+>From e6468e9aa021873e938ae5b44c09b873e42bee91 Mon Sep 17 00:00:00 2001
+From: Mateusz Guzik <mguzik@redhat.com>
+Date: Tue, 10 Jun 2014 12:44:12 +0200
+Subject: NFS: populate ->net in mount data when remounting
+
+commit a914722f333b3359d2f4f12919380a334176bb89 upstream.
+
+Otherwise the kernel oopses when remounting with IPv6 server because
+net is dereferenced in dev_get_by_name.
+
+Use net ns of current thread so that dev_get_by_name does not operate on
+foreign ns. Changing the address is prohibited anyway so this should not
+affect anything.
+
+Signed-off-by: Mateusz Guzik <mguzik@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Kamal Mostafa <kamal@canonical.com>
+---
+ fs/nfs/super.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index b056b16..f4d000a 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2167,6 +2167,7 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+ 	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
+ 	data->nfs_server.port = nfss->port;
+ 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
++	data->net = current->nsproxy->net_ns;
+ 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
+ 		data->nfs_server.addrlen);
+
+--
+1.9.1
+
