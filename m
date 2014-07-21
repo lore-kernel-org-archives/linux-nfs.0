@@ -1,78 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:55007 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751014AbaGMXnE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 19:43:04 -0400
-Received: by mail-ie0-f182.google.com with SMTP id y20so2709820ier.27
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 16:43:03 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] NFS: Remove 2 unused variables
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <1405201064-45906-1-git-send-email-trond.myklebust@primarydata.com>
-Date: Sun, 13 Jul 2014 19:43:07 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <A36A450A-B8FC-4F89-A765-09A756CB033F@primarydata.com>
-References: <1405201064-45906-1-git-send-email-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:57890 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755217AbaGUPDr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:47 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so5508530qge.11
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:46 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 33/40] nfsd: Protect adding/removing lock owners using client_lock
+Date: Mon, 21 Jul 2014 11:02:45 -0400
+Message-Id: <1405954972-28904-34-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, I just noticed those late last week - they were on my todo list.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
--dros
+Once we remove client mutex protection, we'll need to ensure that
+stateowner lookup and creation are atomic between concurrent compounds.
+Ensure that alloc_init_lock_stateowner checks the hashtable under the
+client_lock before adding a new element.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 69 ++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 61 insertions(+), 8 deletions(-)
 
-On Jul 12, 2014, at 5:37 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> Cc: Weston Andros Adamson <dros@primarydata.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
-> fs/nfs/direct.c | 2 --
-> fs/nfs/write.c  | 2 --
-> 2 files changed, 4 deletions(-)
-> 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 8f98138cbc43..f11b9eed0de1 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -756,7 +756,6 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
-> 	spin_unlock(&dreq->lock);
-> 
-> 	while (!list_empty(&hdr->pages)) {
-> -		bool do_destroy = true;
-> 
-> 		req = nfs_list_entry(hdr->pages.next);
-> 		nfs_list_remove_request(req);
-> @@ -765,7 +764,6 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
-> 		case NFS_IOHDR_NEED_COMMIT:
-> 			kref_get(&req->wb_kref);
-> 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
-> -			do_destroy = false;
-> 		}
-> 		nfs_unlock_and_release_request(req);
-> 	}
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index bdc4db23951e..5e2f10304548 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -868,7 +868,6 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
-> {
-> 	struct nfs_commit_info cinfo;
-> 	unsigned long bytes = 0;
-> -	bool do_destroy;
-> 
-> 	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
-> 		goto out;
-> @@ -898,7 +897,6 @@ remove_req:
-> next:
-> 		nfs_unlock_request(req);
-> 		nfs_end_page_writeback(req);
-> -		do_destroy = !test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags);
-> 		nfs_release_request(req);
-> 	}
-> out:
-> -- 
-> 1.9.3
-> 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a3fae742315d..2556499ed8d8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -957,26 +957,42 @@ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	put_generic_stateid(stp);
+ }
+ 
+-static void unhash_lockowner(struct nfs4_lockowner *lo)
++static void unhash_lockowner_locked(struct nfs4_lockowner *lo)
+ {
++	struct nfsd_net *nn = net_generic(lo->lo_owner.so_client->net,
++						nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_del_init(&lo->lo_owner.so_strhash);
+ }
+ 
+ static void release_lockowner_stateids(struct nfs4_lockowner *lo)
+ {
++	struct nfsd_net *nn = net_generic(lo->lo_owner.so_client->net,
++						nfsd_net_id);
+ 	struct nfs4_ol_stateid *stp;
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
++		spin_unlock(&nn->client_lock);
+ 		release_lock_stateid(stp);
++		spin_lock(&nn->client_lock);
+ 	}
+ }
+ 
+ static void release_lockowner(struct nfs4_lockowner *lo)
+ {
+-	unhash_lockowner(lo);
++	struct nfsd_net *nn = net_generic(lo->lo_owner.so_client->net,
++						nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	unhash_lockowner_locked(lo);
+ 	release_lockowner_stateids(lo);
++	spin_unlock(&nn->client_lock);
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+@@ -4819,7 +4835,7 @@ nevermind:
+ }
+ 
+ static struct nfs4_lockowner *
+-find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
++find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
+ 		struct nfsd_net *nn)
+ {
+ 	unsigned int strhashval = ownerstr_hashval(clid->cl_id, owner);
+@@ -4836,9 +4852,25 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
+ 	return NULL;
+ }
+ 
++static struct nfs4_lockowner *
++find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
++		struct nfsd_net *nn)
++{
++	struct nfs4_lockowner *lo;
++
++	spin_lock(&nn->client_lock);
++	lo = find_lockowner_str_locked(clid, owner, nn);
++	spin_unlock(&nn->client_lock);
++	return lo;
++}
++
+ static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
+ {
+-	unhash_lockowner(lockowner(sop));
++	struct nfsd_net *nn = net_generic(sop->so_client->net, nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	unhash_lockowner_locked(lockowner(sop));
++	spin_unlock(&nn->client_lock);
+ }
+ 
+ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
+@@ -4857,9 +4889,12 @@ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
+  * strhashval = ownerstr_hashval
+  */
+ static struct nfs4_lockowner *
+-alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, struct nfs4_ol_stateid *open_stp, struct nfsd4_lock *lock) {
+-	struct nfs4_lockowner *lo;
++alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp,
++			   struct nfs4_ol_stateid *open_stp,
++			   struct nfsd4_lock *lock)
++{
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++	struct nfs4_lockowner *lo, *ret;
+ 
+ 	lo = alloc_stateowner(lockowner_slab, &lock->lk_new_owner, clp);
+ 	if (!lo)
+@@ -4869,7 +4904,16 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
+ 	lo->lo_owner.so_free = nfs4_free_lockowner;
+ 	lo->lo_owner.so_unhash = nfs4_unhash_lockowner;
+-	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
++	spin_lock(&nn->client_lock);
++	ret = find_lockowner_str_locked(&clp->cl_clientid,
++			&lock->lk_new_owner, nn);
++	if (ret == NULL) {
++		list_add(&lo->lo_owner.so_strhash,
++			 &nn->ownerstr_hashtbl[strhashval]);
++		ret = lo;
++	} else
++		nfs4_free_lockowner(&lo->lo_owner);
++	spin_unlock(&nn->client_lock);
+ 	return lo;
+ }
+ 
+@@ -5397,6 +5441,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	unsigned int hashval = ownerstr_hashval(clid->cl_id, owner);
+ 	__be32 status;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
++	struct nfs4_client *clp;
+ 
+ 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
+ 		clid->cl_boot, clid->cl_id);
+@@ -5410,6 +5455,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	status = nfserr_locks_held;
+ 
+ 	/* Find the matching lock stateowner */
++	spin_lock(&nn->client_lock);
+ 	list_for_each_entry(tmp, &nn->ownerstr_hashtbl[hashval], so_strhash) {
+ 		if (tmp->so_is_open_owner)
+ 			continue;
+@@ -5419,6 +5465,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			break;
+ 		}
+ 	}
++	spin_unlock(&nn->client_lock);
+ 
+ 	/* No matching owner found, maybe a replay? Just declare victory... */
+ 	if (!sop) {
+@@ -5428,16 +5475,22 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 
+ 	lo = lockowner(sop);
+ 	/* see if there are still any locks associated with it */
++	clp = cstate->clp;
++	spin_lock(&clp->cl_lock);
+ 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+ 		if (check_for_locks(stp->st_stid.sc_file, lo)) {
+-			nfs4_put_stateowner(sop);
++			spin_unlock(&clp->cl_lock);
+ 			goto out;
+ 		}
+ 	}
++	spin_unlock(&clp->cl_lock);
+ 
+ 	status = nfs_ok;
++	sop = NULL;
+ 	release_lockowner(lo);
+ out:
++	if (sop)
++		nfs4_put_stateowner(sop);
+ 	nfs4_unlock_state();
+ 	return status;
+ }
+-- 
+1.9.3
 
