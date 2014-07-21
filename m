@@ -1,138 +1,182 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:50919 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754474AbaGHSEx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:53 -0400
-Received: by mail-qc0-f173.google.com with SMTP id l6so5542057qcy.4
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:53 -0700 (PDT)
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:59677 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755210AbaGUPDq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:46 -0400
+Received: by mail-qa0-f44.google.com with SMTP id f12so5194826qad.3
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:45 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 013/100] nfsd: shrink st_access_bmap and st_deny_bmap
-Date: Tue,  8 Jul 2014 14:03:01 -0400
-Message-Id: <1404842668-22521-14-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 32/40] nfsd: Protect adding/removing open state owners using client_lock
+Date: Mon, 21 Jul 2014 11:02:44 -0400
+Message-Id: <1405954972-28904-33-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We never use anything above bit #3, so an unsigned long for each is
-wasteful. Shrink them to a char each, and add some WARN_ON_ONCE calls if
-we try to set or clear bits that would go outside those sizes.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Note too that because atomic bitops work on unsigned longs, we have to
-abandon their use here. That shouldn't be a problem though since we
-don't really care about the atomicity in this code anyway. Using them
-was just a convenient way to flip bits.
+Once we remove client mutex protection, we'll need to ensure that
+stateowner lookup and creation are atomic between concurrent compounds.
+Ensure that alloc_init_open_stateowner checks the hashtable under the
+client_lock before adding a new element.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 38 +++++++++++++++++++++++++++-----------
- fs/nfsd/state.h     |  4 ++--
- 2 files changed, 29 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4state.c | 63 +++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 54 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 478f8f6d797e..c6fac2de7c95 100644
+index 0cf457d23e64..a3fae742315d 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -729,42 +729,58 @@ test_share(struct nfs4_ol_stateid *stp, struct nfsd4_open *open) {
- static inline void
- set_access(u32 access, struct nfs4_ol_stateid *stp)
- {
--	__set_bit(access, &stp->st_access_bmap);
-+	unsigned char mask = 1 << access;
-+
-+	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
-+	stp->st_access_bmap |= mask;
+@@ -72,6 +72,9 @@ static u64 current_sessionid = 1;
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
+ static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
++static struct nfs4_openowner *find_openstateowner_str_locked(
++		unsigned int hashval, struct nfsd4_open *open,
++		bool sessions, struct nfsd_net *nn);
+ static void nfs4_put_stateowner(struct nfs4_stateowner *sop);
+ 
+ /* Locking: */
+@@ -1006,8 +1009,13 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ 	put_generic_stateid(stp);
  }
  
- /* clear share access for a given stateid */
- static inline void
- clear_access(u32 access, struct nfs4_ol_stateid *stp)
+-static void unhash_openowner(struct nfs4_openowner *oo)
++static void unhash_openowner_locked(struct nfs4_openowner *oo)
  {
--	__clear_bit(access, &stp->st_access_bmap);
-+	unsigned char mask = 1 << access;
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++						nfsd_net_id);
 +
-+	WARN_ON_ONCE(access > NFS4_SHARE_ACCESS_BOTH);
-+	stp->st_access_bmap &= ~mask;
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_del_init(&oo->oo_owner.so_strhash);
+ 	list_del_init(&oo->oo_perclient);
  }
- 
- /* test whether a given stateid has access */
- static inline bool
- test_access(u32 access, struct nfs4_ol_stateid *stp)
+@@ -1026,18 +1034,29 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ static void release_openowner_stateids(struct nfs4_openowner *oo)
  {
--	return test_bit(access, &stp->st_access_bmap);
-+	unsigned char mask = 1 << access;
+ 	struct nfs4_ol_stateid *stp;
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++						nfsd_net_id);
 +
-+	return (bool)(stp->st_access_bmap & mask);
- }
++	lockdep_assert_held(&nn->client_lock);
  
- /* set share deny for a given stateid */
- static inline void
--set_deny(u32 access, struct nfs4_ol_stateid *stp)
-+set_deny(u32 deny, struct nfs4_ol_stateid *stp)
- {
--	__set_bit(access, &stp->st_deny_bmap);
-+	unsigned char mask = 1 << deny;
-+
-+	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
-+	stp->st_deny_bmap |= mask;
- }
- 
- /* clear share deny for a given stateid */
- static inline void
--clear_deny(u32 access, struct nfs4_ol_stateid *stp)
-+clear_deny(u32 deny, struct nfs4_ol_stateid *stp)
- {
--	__clear_bit(access, &stp->st_deny_bmap);
-+	unsigned char mask = 1 << deny;
-+
-+	WARN_ON_ONCE(deny > NFS4_SHARE_DENY_BOTH);
-+	stp->st_deny_bmap &= ~mask;
- }
- 
- /* test whether a given stateid is denying specific access */
- static inline bool
--test_deny(u32 access, struct nfs4_ol_stateid *stp)
-+test_deny(u32 deny, struct nfs4_ol_stateid *stp)
- {
--	return test_bit(access, &stp->st_deny_bmap);
-+	unsigned char mask = 1 << deny;
-+
-+	return (bool)(stp->st_deny_bmap & mask);
- }
- 
- /* release all access and file references for a given stateid */
-@@ -4284,12 +4300,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 		goto out; 
- 	status = nfserr_inval;
- 	if (!test_access(od->od_share_access, stp)) {
--		dprintk("NFSD: access not a subset current bitmap: 0x%lx, input access=%08x\n",
-+		dprintk("NFSD: access not a subset of current bitmap: 0x%hhx, input access=%08x\n",
- 			stp->st_access_bmap, od->od_share_access);
- 		goto out;
+ 	while (!list_empty(&oo->oo_owner.so_stateids)) {
+ 		stp = list_first_entry(&oo->oo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
++		spin_unlock(&nn->client_lock);
+ 		release_open_stateid(stp);
++		spin_lock(&nn->client_lock);
  	}
- 	if (!test_deny(od->od_share_deny, stp)) {
--		dprintk("NFSD:deny not a subset current bitmap: 0x%lx, input deny=%08x\n",
-+		dprintk("NFSD: deny not a subset of current bitmap: 0x%hhx, input deny=%08x\n",
- 			stp->st_deny_bmap, od->od_share_deny);
- 		goto out;
- 	}
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 2ce1d8f583e1..fa6d28329c8a 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -408,8 +408,8 @@ struct nfs4_ol_stateid {
- 	struct list_head              st_locks;
- 	struct nfs4_stateowner      * st_stateowner;
- 	struct nfs4_file            * st_file;
--	unsigned long                 st_access_bmap;
--	unsigned long                 st_deny_bmap;
-+	unsigned char                 st_access_bmap;
-+	unsigned char                 st_deny_bmap;
- 	struct nfs4_ol_stateid         * st_openstp;
- };
+ }
  
+ static void release_openowner(struct nfs4_openowner *oo)
+ {
+-	unhash_openowner(oo);
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++						nfsd_net_id);
++
++	spin_lock(&nn->client_lock);
++	unhash_openowner_locked(oo);
+ 	release_openowner_stateids(oo);
++	spin_unlock(&nn->client_lock);
+ 	release_last_closed_stateid(oo);
+ 	nfs4_put_stateowner(&oo->oo_owner);
+ }
+@@ -3019,8 +3038,11 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
+ {
+ 	struct nfs4_openowner *oo = openowner(so);
++	struct nfsd_net *nn = net_generic(so->so_client->net, nfsd_net_id);
+ 
+-	unhash_openowner(oo);
++	spin_lock(&nn->client_lock);
++	unhash_openowner_locked(oo);
++	spin_unlock(&nn->client_lock);
+ }
+ 
+ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+@@ -3036,7 +3058,8 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 			   struct nfsd4_compound_state *cstate)
+ {
+ 	struct nfs4_client *clp = cstate->clp;
+-	struct nfs4_openowner *oo;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++	struct nfs4_openowner *oo, *ret;
+ 
+ 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
+ 	if (!oo)
+@@ -3051,7 +3074,15 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	oo->oo_time = 0;
+ 	oo->oo_last_closed_stid = NULL;
+ 	INIT_LIST_HEAD(&oo->oo_close_lru);
+-	hash_openowner(oo, clp, strhashval);
++	spin_lock(&nn->client_lock);
++	ret = find_openstateowner_str_locked(strhashval,
++			open, clp->cl_minorversion, nn);
++	if (ret == NULL) {
++		hash_openowner(oo, clp, strhashval);
++		ret = oo;
++	} else
++		nfs4_free_openowner(&oo->oo_owner);
++	spin_unlock(&nn->client_lock);
+ 	return oo;
+ }
+ 
+@@ -3125,13 +3156,15 @@ same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner,
+ }
+ 
+ static struct nfs4_openowner *
+-find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
++find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
+ 			bool sessions, struct nfsd_net *nn)
+ {
+ 	struct nfs4_stateowner *so;
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_client *clp;
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_for_each_entry(so, &nn->ownerstr_hashtbl[hashval], so_strhash) {
+ 		if (!so->so_is_open_owner)
+ 			continue;
+@@ -3139,15 +3172,27 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
+ 			oo = openowner(so);
+ 			clp = oo->oo_owner.so_client;
+ 			if ((bool)clp->cl_minorversion != sessions)
+-				return NULL;
+-			renew_client(oo->oo_owner.so_client);
+-			atomic_inc(&oo->oo_owner.so_count);
++				break;
++			renew_client_locked(clp);
++			atomic_inc(&so->so_count);
+ 			return oo;
+ 		}
+ 	}
+ 	return NULL;
+ }
+ 
++static struct nfs4_openowner *
++find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
++			bool sessions, struct nfsd_net *nn)
++{
++	struct nfs4_openowner *oo;
++
++	spin_lock(&nn->client_lock);
++	oo = find_openstateowner_str_locked(hashval, open, sessions, nn);
++	spin_unlock(&nn->client_lock);
++	return oo;
++}
++
+ /* search file_hashtbl[] for file */
+ static struct nfs4_file *
+ find_file_locked(struct inode *ino)
 -- 
 1.9.3
 
