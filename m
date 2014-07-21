@@ -1,93 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:65436 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933336AbaGWURt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 16:17:49 -0400
-Received: by mail-qa0-f44.google.com with SMTP id f12so1876410qad.3
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 13:17:49 -0700 (PDT)
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:54640 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755272AbaGUPDo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:44 -0400
+Received: by mail-qg0-f49.google.com with SMTP id j107so5357278qga.22
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:43 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        hch@infradead.org
-Subject: [PATCH v2 1/4] nfsd: Store the filehandle with the struct nfs4_file
-Date: Wed, 23 Jul 2014 16:17:38 -0400
-Message-Id: <1406146661-9794-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406146661-9794-1-git-send-email-jlayton@primarydata.com>
-References: <1406146661-9794-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 31/40] nfsd: don't allow CLOSE to proceed until refcount on stateid drops
+Date: Mon, 21 Jul 2014 11:02:43 -0400
+Message-Id: <1405954972-28904-32-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Once we remove client_mutex protection, it'll be possible to have an
+in-flight operation using an openstateid when a CLOSE call comes in.
+If that happens, we can't just put the sc_file reference and clear its
+pointer without risking an oops.
 
-For use when we may not have a struct inode.
+Fix this by ensuring that v4.0 CLOSE operations wait for the refcount
+to drop before proceeding to do so.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 10 ++++++----
- fs/nfsd/state.h     |  1 +
- 2 files changed, 7 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4state.c | 22 +++++++++++++++++++++-
+ 1 file changed, 21 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 66a3b843a82b..859891f30958 100644
+index 60727b26e2d7..0cf457d23e64 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -2833,7 +2833,8 @@ static struct nfs4_file *nfsd4_alloc_file(void)
- }
+@@ -86,6 +86,12 @@ static DEFINE_MUTEX(client_mutex);
+  */
+ static DEFINE_SPINLOCK(state_lock);
  
- /* OPEN Share state helper functions */
--static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
-+static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino,
-+		struct knfsd_fh *fh)
- {
- 	unsigned int hashval = file_hashval(ino);
++/*
++ * A waitqueue for all in-progress 4.0 CLOSE operations that are waiting for
++ * the refcount on the open stateid to drop.
++ */
++static DECLARE_WAIT_QUEUE_HEAD(close_wq);
++
+ static struct kmem_cache *openowner_slab;
+ static struct kmem_cache *lockowner_slab;
+ static struct kmem_cache *file_slab;
+@@ -643,8 +649,10 @@ static void nfs4_put_stid(struct nfs4_stid *s)
  
-@@ -2845,6 +2846,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
- 	INIT_LIST_HEAD(&fp->fi_delegations);
- 	ihold(ino);
- 	fp->fi_inode = ino;
-+	fh_copy_shallow(&fp->fi_fhandle, fh);
- 	fp->fi_had_conflict = false;
- 	fp->fi_lease = NULL;
- 	fp->fi_share_deny = 0;
-@@ -3049,14 +3051,14 @@ find_file(struct inode *ino)
- }
+ 	might_lock(&clp->cl_lock);
  
- static struct nfs4_file *
--find_or_add_file(struct inode *ino, struct nfs4_file *new)
-+find_or_add_file(struct inode *ino, struct nfs4_file *new, struct knfsd_fh *fh)
- {
- 	struct nfs4_file *fp;
+-	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock))
++	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock)) {
++		wake_up_all(&close_wq);
+ 		return;
++	}
+ 	remove_stid_locked(clp, s);
+ 	spin_unlock(&clp->cl_lock);
+ 	s->sc_free(s);
+@@ -3084,11 +3092,23 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
  
- 	spin_lock(&state_lock);
- 	fp = find_file_locked(ino);
- 	if (fp == NULL) {
--		nfsd4_init_file(new, ino);
-+		nfsd4_init_file(new, ino, fh);
- 		fp = new;
+ 	dprintk("NFSD: move_to_close_lru nfs4_openowner %p\n", oo);
+ 
++	/*
++	 * We know that we hold one reference via nfsd4_close, and another
++	 * "persistent" reference for the client. If the refcount is higher
++	 * than 2, then there are still calls in progress that are using this
++	 * stateid. We can't put the sc_file reference until they are finished.
++	 * Wait for the refcount to drop to 2. Since it has been unhashed,
++	 * there should be no danger of the refcount going back up again at
++	 * this point.
++	 */
++	wait_event(close_wq, atomic_read(&s->st_stid.sc_count) == 2);
++
+ 	release_all_access(s);
+ 	if (s->st_stid.sc_file) {
+ 		put_nfs4_file(s->st_stid.sc_file);
+ 		s->st_stid.sc_file = NULL;
  	}
- 	spin_unlock(&state_lock);
-@@ -3711,7 +3713,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	 * and check for delegations in the process of being recalled.
- 	 * If not found, create the nfs4_file struct
- 	 */
--	fp = find_or_add_file(ino, open->op_file);
-+	fp = find_or_add_file(ino, open->op_file, &current_fh->fh_handle);
- 	if (fp != open->op_file) {
- 		status = nfs4_check_deleg(cl, open, &dp);
- 		if (status)
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e68a9ae30fd7..33cf950b3873 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -396,6 +396,7 @@ struct nfs4_file {
- 	struct file		*fi_deleg_file;
- 	struct file_lock	*fi_lease;
- 	atomic_t		fi_delegees;
-+	struct knfsd_fh		fi_fhandle;
- 	struct inode		*fi_inode;
- 	bool			fi_had_conflict;
- };
++
+ 	release_last_closed_stateid(oo);
+ 	oo->oo_last_closed_stid = s;
+ 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
 -- 
 1.9.3
 
