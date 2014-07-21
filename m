@@ -1,93 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:57534 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934298AbaGPOcO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:32:14 -0400
-Received: by mail-qg0-f52.google.com with SMTP id f51so792145qge.39
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:32:13 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 01/10] nfsd: eliminate nfsd4_init_callback
-Date: Wed, 16 Jul 2014 10:31:56 -0400
-Message-Id: <1405521125-2303-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
-References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:34008 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754402AbaGUVSG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jul 2014 17:18:06 -0400
+Date: Mon, 21 Jul 2014 17:17:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, hch@infradead.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 10/10] nfsd: give block_delegation and
+ delegation_blocked its own spinlock
+Message-ID: <20140721211757.GL8438@fieldses.org>
+References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+ <1405696416-32585-11-git-send-email-jlayton@primarydata.com>
+ <20140721170254.0289ab9f@notabene.brown>
+ <20140721074412.4d9be086@tlielax.poochiereds.net>
+ <20140722064049.6478e74d@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140722064049.6478e74d@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's just an obfuscated INIT_WORK call. Just make the work_func_t a
-non-static symbol and use a normal INIT_WORK call.
+On Tue, Jul 22, 2014 at 06:40:49AM +1000, NeilBrown wrote:
+> On Mon, 21 Jul 2014 07:44:12 -0400 Jeff Layton <jeff.layton@primarydata.com>
+> wrote:
+> 
+> > On Mon, 21 Jul 2014 17:02:54 +1000
+> > NeilBrown <neilb@suse.de> wrote:
+> 
+> > > >  	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
+> > > >  
+> > > >  	__set_bit(hash&255, bd->set[bd->new]);
+> > > >  	__set_bit((hash>>8)&255, bd->set[bd->new]);
+> > > >  	__set_bit((hash>>16)&255, bd->set[bd->new]);
+> > > > +	spin_lock(&blocked_delegations_lock);
+> > > 
+> > > __set_bit isn't atomic.  The spin_lock should be taken *before* these
+> > > __set_bit() calls.
+> > > 
+> > > Otherwise, looks fine.
+> > > 
+> > > Thanks,
+> > > NeilBrown
+> > > 
+> > > 
+> > 
+> > Ok. I guess the worry is that we could end up setting bits in the
+> > middle of swapping the two fields? Makes sense -- fixed in my repo.
+> 
+> It is more subtle than that.
+> __set_bit() will:
+>   read a value from memory to a register
+>   set a bit in the register
+>   write the register back out to memory
+> 
+> If two threads both run __set_bit on the same word of memory at the same
+> time, one of the updates can get lost.
+> set_bit() (no underscore) performs an atomic RMW to avoid this, but is more
+> expensive.
+> spin_lock() obviously ensures the required exclusion and as we are going to
+> take the lock anyway we may as well take it before setting bits so we can use
+> the non-atomic (cheaper) __set_bit function.
+> 
+> > I'll send out the updated set later today (it also includes a few nits
+> > that HCH pointed out last week).
+> > 
+> > As a side note...I wonder how much we'll get in the way of false
+> > positives with this scheme?
+> 
+> If a future version of NFSv4 could allow delegations to be granted while a
+> file is open (oh, it seems you are the only client using this file at the
+> moment, you can treat this "open" as a delegation if you like) a few false
+> positives would be a complete non-issue.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4callback.c | 8 ++------
- fs/nfsd/nfs4state.c    | 4 ++--
- fs/nfsd/state.h        | 2 +-
- 3 files changed, 5 insertions(+), 9 deletions(-)
+For what it's worth, I think 4.1 provides what you're asking for here;
+see
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 2c73cae9899d..30a71cb46001 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1011,7 +1011,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
- 		run_nfsd4_cb(cb);
- }
- 
--static void nfsd4_do_callback_rpc(struct work_struct *w)
-+void
-+nfsd4_do_callback_rpc(struct work_struct *w)
- {
- 	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
- 	struct nfs4_client *clp = cb->cb_clp;
-@@ -1031,11 +1032,6 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
- 			cb->cb_ops, cb);
- }
- 
--void nfsd4_init_callback(struct nfsd4_callback *cb)
--{
--	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
--}
--
- void nfsd4_cb_recall(struct nfs4_delegation *dp)
- {
- 	struct nfsd4_callback *cb = &dp->dl_recall;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 225f98c7d00d..56ea4f12803e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -592,7 +592,7 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time = 0;
- 	atomic_set(&dp->dl_count, 1);
--	nfsd4_init_callback(&dp->dl_recall);
-+	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_do_callback_rpc);
- 	return dp;
- }
- 
-@@ -1677,7 +1677,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 		spin_unlock(&nn->client_lock);
- 		return NULL;
- 	}
--	nfsd4_init_callback(&clp->cl_cb_null);
-+	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_do_callback_rpc);
- 	clp->cl_time = get_seconds();
- 	clear_bit(0, &clp->cl_cb_slot_busy);
- 	copy_verf(clp, verf);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 015b972da8ba..20857142773f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -436,7 +436,7 @@ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
- extern __be32 nfs4_check_open_reclaim(clientid_t *clid,
- 		struct nfsd4_compound_state *cstate, struct nfsd_net *nn);
- extern int set_callback_cred(void);
--extern void nfsd4_init_callback(struct nfsd4_callback *);
-+void nfsd4_do_callback_rpc(struct work_struct *w);
- extern void nfsd4_probe_callback(struct nfs4_client *clp);
- extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
- extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
--- 
-1.9.3
+	http://tools.ietf.org/html/rfc5661#section-20.7
 
+and the discussion of the various WANT_ flags in
+
+	http://tools.ietf.org/html/rfc5661#section-18.16.3
+
+As far as I know none of that is implemented yet.
+
+--b.
