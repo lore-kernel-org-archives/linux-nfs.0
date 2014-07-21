@@ -1,93 +1,212 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:50976 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750900AbaGLMbs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Jul 2014 08:31:48 -0400
-Received: by mail-pa0-f52.google.com with SMTP id eu11so2883023pac.25
-        for <linux-nfs@vger.kernel.org>; Sat, 12 Jul 2014 05:31:48 -0700 (PDT)
-Message-ID: <53C12A93.3040803@gmail.com>
-Date: Sat, 12 Jul 2014 20:31:15 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: fuzz tested user mode linux crashed in NFS code path
-References: <53C10EAA.2000802@gmx.de>
-In-Reply-To: <53C10EAA.2000802@gmx.de>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:56618 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755217AbaGUPDn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:43 -0400
+Received: by mail-qg0-f54.google.com with SMTP id z60so5396673qgd.13
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:42 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 30/40] nfsd: make openstateids hold references to their openowners
+Date: Mon, 21 Jul 2014 11:02:42 -0400
+Message-Id: <1405954972-28904-31-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I think it is caused by kfree an uninitialized address.
-Can you test with the patch listed in following url,
-I have send some days before ?
+Change it so that only openstateids hold persistent references to
+openowners. References can still be held by compounds in progress.
 
-"[PATCH 1/4] NFSD: Fix memory leak in encoding denied lock"
-http://www.spinics.net/lists/linux-nfs/msg44719.html
+With this, we can get rid of NFS4_OO_NEW. It's possible that we
+will create a new openowner in the process of doing the open, but
+something later fails. In the meantime, another task could find
+that openowner and start using it on a successful open. If that
+occurs we don't necessarily want to tear it down, just put the
+reference that the failing compound holds.
 
-thanks,
-Kinglong Mee
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 71 +++++++++++++++++++++++------------------------------
+ fs/nfsd/state.h     |  1 -
+ 2 files changed, 31 insertions(+), 41 deletions(-)
 
-On 7/12/2014 18:32, Toralf Förster wrote:
-> A fuzz-tested a x86 32 bit user user mode linux guest using guest kernel v3.16-rc4-142-g47ea8dd 
-> with trinity using NFSv4 victim files (both NFS server and NFS client run within the same UML).
-> 
-> The guest crashed :
-> 
-> Kernel panic - not syncing: BUG!
-> CPU: 0 PID: 1395 Comm: nfsd Tainted: G    B         3.16.0-rc4-00142-g47ea8dd-dirty #68
-> Stack:
->  0859f770 0859f770 00000003 086c8547 00000000 858742a0 0cacd700 85447e1c
->  084e3dd2 00000000 85447df0 85447e44 084e0408 085ab1c4 08700980 0859c46a
->  85447e50 00000000 00000000 858742a0 0cacd700 85447e74 080ffc70 0859c46a
-> Call Trace:
->  [<084e3dd2>] dump_stack+0x26/0x28
->  [<084e0408>] panic+0x7a/0x194
->  [<080ffc70>] kfree+0x80/0x150
->  [<0822ba2e>] ? nfsd4_encode_stateid+0x3e/0x60
->  [<0822c0ab>] nfsd4_encode_lock+0x4b/0x60
->  [<08233aa3>] nfsd4_encode_operation+0xd3/0x1d0
->  [<0822afcf>] nfsd4_proc_compound+0x4bf/0x670
->  [<0809b999>] ? groups_alloc+0x39/0xe0
->  [<08219aba>] nfsd_dispatch+0xda/0x200
->  [<0846868f>] svc_process_common+0x31f/0x610
->  [<08469b4b>] svc_process+0x10b/0x140
->  [<0809d270>] ? default_wake_function+0x0/0x20
->  [<08219360>] ? nfsd+0x0/0x140
->  [<08219442>] nfsd+0xe2/0x140
->  [<08095806>] kthread+0xd6/0xe0
->  [<0809c60d>] ? finish_task_switch.isra.56+0x1d/0x70
->  [<0805f64b>] new_thread_handler+0x6b/0x90
-> 
-> 
-> FWIW "dirty" cames from 1 patch from Richard Weinberger for arch/um/kernel/tlb.c and arch/um/os-Linux/skas/process.c
-> 
-> 
-> The back trace of the core file gives:
-> 
-> 
-> Thread 1 (LWP 12687):
-> #0  0xb7797aec in __kernel_vsyscall ()
-> #1  0x08484e15 in kill () at ../sysdeps/unix/syscall-template.S:81
-> #2  0x0807253d in uml_abort () at arch/um/os-Linux/util.c:93
-> #3  0x08072885 in os_dump_core () at arch/um/os-Linux/util.c:148
-> #4  0x0806241d in panic_exit (self=0x86c95c0 <panic_exit_notifier>, unused1=0, unused2=0x8700980 <buf.19753>) at arch/um/kernel/um_arch.c:240
-> #5  0x08099706 in notifier_call_chain (nl=0x0, val=2235858240, v=0x6, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
-> #6  0x08099863 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:183
-> #7  atomic_notifier_call_chain (nh=0x8700944 <panic_notifier_list>, val=0, v=0x8700980 <buf.19753>) at kernel/notifier.c:193
-> #8  0x084e0424 in panic (fmt=0x0) at kernel/panic.c:133
-> #9  0x080ffc70 in kfree (x=0x194) at mm/slub.c:3380
-> #10 0x0822c0ab in nfsd4_encode_lock (resp=0x85871030, nfserr=0, lock=0x858742a0) at fs/nfsd/nfs4xdr.c:2910
-> #11 0x08233aa3 in nfsd4_encode_operation (resp=0x85871030, op=0x85874280) at fs/nfsd/nfs4xdr.c:3889
-> #12 0x0822afcf in nfsd4_proc_compound (rqstp=0x858750f0, args=0x85447d40, resp=0x85871030) at fs/nfsd/nfs4proc.c:1386
-> #13 0x08219aba in nfsd_dispatch (rqstp=0x858750f0, statp=0x832c1018) at fs/nfsd/nfssvc.c:686
-> #14 0x0846868f in svc_process_common (rqstp=0x858750f0, argv=0x85447d40, resv=0x8587526c) at net/sunrpc/svc.c:1206
-> #15 0x08469b4b in svc_process (rqstp=0x858750f0) at net/sunrpc/svc.c:1331
-> #16 0x08219442 in nfsd (vrqstp=0x858750f0) at fs/nfsd/nfssvc.c:609
-> #17 0x08095806 in kthread (_create=0x85377eb0) at kernel/kthread.c:207
-> #18 0x0805f64b in new_thread_handler () at arch/um/kernel/process.c:129
-> #19 0x00000000 in ?? ()
-> 
-> 
-> 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5df3577d62bf..60727b26e2d7 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -912,7 +912,7 @@ static void nfs4_free_generic_stateid(struct nfs4_stid *stid)
+ 	struct nfs4_ol_stateid *stp = openlockstateid(stid);
+ 
+ 	release_all_access(stp);
+-	if (stp->st_stateowner && stid->sc_type == NFS4_LOCK_STID)
++	if (stp->st_stateowner)
+ 		nfs4_put_stateowner(stp->st_stateowner);
+ 	nfs4_free_stid(stateid_slab, stid);
+ }
+@@ -1009,8 +1009,9 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+ 
+ 	if (s) {
+-		put_generic_stateid(s);
++		list_del_init(&oo->oo_close_lru);
+ 		oo->oo_last_closed_stid = NULL;
++		put_generic_stateid(s);
+ 	}
+ }
+ 
+@@ -1029,7 +1030,6 @@ static void release_openowner(struct nfs4_openowner *oo)
+ {
+ 	unhash_openowner(oo);
+ 	release_openowner_stateids(oo);
+-	list_del(&oo->oo_close_lru);
+ 	release_last_closed_stateid(oo);
+ 	nfs4_put_stateowner(&oo->oo_owner);
+ }
+@@ -1504,6 +1504,7 @@ destroy_client(struct nfs4_client *clp)
+ 	}
+ 	while (!list_empty(&clp->cl_openowners)) {
+ 		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
++		atomic_inc(&oo->oo_owner.so_count);
+ 		release_openowner(oo);
+ 	}
+ 	nfsd4_shutdown_callback(clp);
+@@ -3036,7 +3037,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	oo->oo_owner.so_unhash = nfs4_unhash_openowner;
+ 	oo->oo_owner.so_is_open_owner = 1;
+ 	oo->oo_owner.so_seqid = open->op_seqid;
+-	oo->oo_flags = NFS4_OO_NEW;
++	oo->oo_flags = 0;
+ 	if (nfsd4_has_session(cstate))
+ 		oo->oo_flags |= NFS4_OO_CONFIRMED;
+ 	oo->oo_time = 0;
+@@ -3053,6 +3054,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_locks);
+ 	stp->st_stateowner = &oo->oo_owner;
++	atomic_inc(&stp->st_stateowner->so_count);
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
+ 	stp->st_access_bmap = 0;
+@@ -3068,13 +3070,27 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ }
+ 
++/*
++ * In the 4.0 case we need to keep the owners around a little while to handle
++ * CLOSE replay. We still do need to release any file access that is held by
++ * them before returning however.
++ */
+ static void
+-move_to_close_lru(struct nfs4_openowner *oo, struct net *net)
++move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+ {
+-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct nfs4_openowner *oo = openowner(s->st_stateowner);
++	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
++						nfsd_net_id);
+ 
+ 	dprintk("NFSD: move_to_close_lru nfs4_openowner %p\n", oo);
+ 
++	release_all_access(s);
++	if (s->st_stid.sc_file) {
++		put_nfs4_file(s->st_stid.sc_file);
++		s->st_stid.sc_file = NULL;
++	}
++	release_last_closed_stateid(oo);
++	oo->oo_last_closed_stid = s;
+ 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
+ 	oo->oo_time = get_seconds();
+ }
+@@ -3105,6 +3121,7 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
+ 			if ((bool)clp->cl_minorversion != sessions)
+ 				return NULL;
+ 			renew_client(oo->oo_owner.so_client);
++			atomic_inc(&oo->oo_owner.so_count);
+ 			return oo;
+ 		}
+ 	}
+@@ -3902,19 +3919,10 @@ void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
+ 			      struct nfsd4_open *open, __be32 status)
+ {
+ 	if (open->op_openowner) {
+-		struct nfs4_openowner *oo = open->op_openowner;
+-
+-		if (!list_empty(&oo->oo_owner.so_stateids))
+-			list_del_init(&oo->oo_close_lru);
+-		if (oo->oo_flags & NFS4_OO_NEW) {
+-			if (status) {
+-				release_openowner(oo);
+-				open->op_openowner = NULL;
+-			} else
+-				oo->oo_flags &= ~NFS4_OO_NEW;
+-		}
+-		if (open->op_openowner)
+-			nfsd4_cstate_assign_replay(cstate, &oo->oo_owner);
++		struct nfs4_stateowner *so = &open->op_openowner->oo_owner;
++
++		nfsd4_cstate_assign_replay(cstate, so);
++		nfs4_put_stateowner(so);
+ 	}
+ 	if (open->op_file)
+ 		nfsd4_free_file(open->op_file);
+@@ -4030,7 +4038,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		release_openowner(oo);
++		release_last_closed_stateid(oo);
+ 	}
+ 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ 	nfs4_unlock_state();
+@@ -4594,31 +4602,14 @@ out:
+ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ {
+ 	struct nfs4_client *clp = s->st_stid.sc_client;
+-	struct nfs4_openowner *oo = openowner(s->st_stateowner);
+ 
+ 	s->st_stid.sc_type = NFS4_CLOSED_STID;
+ 	unhash_open_stateid(s);
+ 
+-	if (clp->cl_minorversion) {
+-		if (list_empty(&oo->oo_owner.so_stateids))
+-			release_openowner(oo);
++	if (clp->cl_minorversion)
+ 		put_generic_stateid(s);
+-	} else {
+-		if (s->st_stid.sc_file) {
+-			put_nfs4_file(s->st_stid.sc_file);
+-			s->st_stid.sc_file = NULL;
+-		}
+-		oo->oo_last_closed_stid = s;
+-		/*
+-		 * In the 4.0 case we need to keep the owners around a
+-		 * little while to handle CLOSE replay. We still do need
+-		 * to release any file access that is held by them
+-		 * before returning however.
+-		 */
+-		release_all_access(s);
+-		if (list_empty(&oo->oo_owner.so_stateids))
+-			move_to_close_lru(oo, clp->net);
+-	}
++	else
++		move_to_close_lru(s, clp->net);
+ }
+ 
+ /*
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index f011a76b7196..785a82ef2196 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -364,7 +364,6 @@ struct nfs4_openowner {
+ 	struct nfs4_ol_stateid *oo_last_closed_stid;
+ 	time_t			oo_time; /* time of placement on so_close_lru */
+ #define NFS4_OO_CONFIRMED   1
+-#define NFS4_OO_NEW         4
+ 	unsigned char		oo_flags;
+ };
+ 
+-- 
+1.9.3
+
