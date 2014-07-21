@@ -1,44 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:62001 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751860AbaGYLty (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jul 2014 07:49:54 -0400
-Received: by mail-qa0-f50.google.com with SMTP id s7so4363048qap.23
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Jul 2014 04:49:54 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 25 Jul 2014 07:49:52 -0400
-To: sheng qiu <herbert1984106@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: pNFS setup
-Message-ID: <20140725074952.5362e6fb@tlielax.poochiereds.net>
-In-Reply-To: <CAB7xdinUj4U3PAYVB7j3o+iWSTV7aNMBD5O-rAgnzj6vgmce0g@mail.gmail.com>
-References: <CAB7xdinUj4U3PAYVB7j3o+iWSTV7aNMBD5O-rAgnzj6vgmce0g@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:54871 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932486AbaGUPDu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:50 -0400
+Received: by mail-qg0-f54.google.com with SMTP id z60so5396820qgd.13
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:49 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 35/40] nfsd: clean up and reorganize release_lockowner
+Date: Mon, 21 Jul 2014 11:02:47 -0400
+Message-Id: <1405954972-28904-36-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 23 Jul 2014 17:12:27 -0700
-sheng qiu <herbert1984106@gmail.com> wrote:
+Do more within the main loop, and simplify the function a bit. Also,
+there's no need to take a stateowner reference unless we're going to call
+release_lockowner.
 
-> Hi,
-> 
-> does anyone can share your experience on setting up the pNFS of file
-> layout or block layout?
-> the wiki instruction :
-> http://wiki.linux-nfs.org/wiki/index.php/PNFS_Setup_Instructions does
-> not work for me on step
-> 
-> echo "/dev/sdc:192.168.0.1,192.168.0.2" >/proc/fs/nfsd/pnfs_dlm_device
-> 
-> since i do not have that directory entry after install the pNFS kernel
-> version. my system is ubuntu 14.
-> 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 49 ++++++++++++++++++-------------------------------
+ 1 file changed, 18 insertions(+), 31 deletions(-)
 
-Take note of "step 0" on that page.
-
-Server-side pNFS patches have not been merged into mainline (yet!).
-You'll need a specially patched kernel for that.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 58013a5e8a7c..95eb5547f46e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5427,8 +5427,8 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			struct nfsd4_release_lockowner *rlockowner)
+ {
+ 	clientid_t *clid = &rlockowner->rl_clientid;
+-	struct nfs4_stateowner *sop = NULL, *tmp;
+-	struct nfs4_lockowner *lo;
++	struct nfs4_stateowner *sop;
++	struct nfs4_lockowner *lo = NULL;
+ 	struct nfs4_ol_stateid *stp;
+ 	struct xdr_netobj *owner = &rlockowner->rl_owner;
+ 	unsigned int hashval = ownerstr_hashval(owner);
+@@ -5445,45 +5445,32 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	if (status)
+ 		goto out;
+ 
+-	status = nfserr_locks_held;
+-
+ 	clp = cstate->clp;
+ 	/* Find the matching lock stateowner */
+ 	spin_lock(&clp->cl_lock);
+-	list_for_each_entry(tmp, &clp->cl_ownerstr_hashtbl[hashval],
++	list_for_each_entry(sop, &clp->cl_ownerstr_hashtbl[hashval],
+ 			    so_strhash) {
+-		if (tmp->so_is_open_owner)
+-			continue;
+-		if (same_owner_str(tmp, owner)) {
+-			sop = tmp;
+-			atomic_inc(&sop->so_count);
+-			break;
+-		}
+-	}
+ 
+-	/* No matching owner found, maybe a replay? Just declare victory... */
+-	if (!sop) {
+-		spin_unlock(&clp->cl_lock);
+-		status = nfs_ok;
+-		goto out;
+-	}
++		if (sop->so_is_open_owner || !same_owner_str(sop, owner))
++			continue;
+ 
+-	lo = lockowner(sop);
+-	/* see if there are still any locks associated with it */
+-	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+-		if (check_for_locks(stp->st_stid.sc_file, lo)) {
+-			spin_unlock(&clp->cl_lock);
+-			goto out;
++		/* see if there are still any locks associated with it */
++		lo = lockowner(sop);
++		list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
++			if (check_for_locks(stp->st_stid.sc_file, lo)) {
++				status = nfserr_locks_held;
++				spin_unlock(&clp->cl_lock);
++				goto out;
++			}
+ 		}
++
++		atomic_inc(&sop->so_count);
++		break;
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+-
+-	status = nfs_ok;
+-	sop = NULL;
+-	release_lockowner(lo);
++	if (lo)
++		release_lockowner(lo);
+ out:
+-	if (sop)
+-		nfs4_put_stateowner(sop);
+ 	nfs4_unlock_state();
+ 	return status;
+ }
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
