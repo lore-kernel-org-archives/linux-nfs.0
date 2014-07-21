@@ -1,136 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:24392 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755380AbaGQOQ2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 10:16:28 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <3cf9f937-4c1c-4a39-9fb8-aca5eea15880@CMEXHTCAS2.ad.emulex.com>
-Date: Thu, 17 Jul 2014 10:16:21 -0400
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <5DD61444-DCBF-40B7-B246-6CAD450E7047@oracle.com>
-References: <59034BAD-306F-462F-A274-3EB06C0CBE47@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FE10DE1@CMEXMB1.ad.emulex.com> <3cf9f937-4c1c-4a39-9fb8-aca5eea15880@CMEXHTCAS2.ad.emulex.com>
-To: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+Received: from fieldses.org ([174.143.236.118]:36553 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932104AbaGUNLj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jul 2014 09:11:39 -0400
+Date: Mon, 21 Jul 2014 09:11:27 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: NeilBrown <neilb@suse.de>, hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 10/10] nfsd: give block_delegation and
+ delegation_blocked its own spinlock
+Message-ID: <20140721131127.GA8438@fieldses.org>
+References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+ <1405696416-32585-11-git-send-email-jlayton@primarydata.com>
+ <20140721170254.0289ab9f@notabene.brown>
+ <20140721074412.4d9be086@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140721074412.4d9be086@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jul 17, 2014, at 10:12 AM, Devesh Sharma <Devesh.Sharma@Emulex.Com> wrote:
-
-> Hi Chuck,
+On Mon, Jul 21, 2014 at 07:44:12AM -0400, Jeff Layton wrote:
+> On Mon, 21 Jul 2014 17:02:54 +1000
+> NeilBrown <neilb@suse.de> wrote:
 > 
-> Tested the cable pull also. V3 is passing the cable pull test also. I have tried following tests:
+> > On Fri, 18 Jul 2014 11:13:36 -0400 Jeff Layton <jlayton@primarydata.com>
+> > wrote:
+> > 
+> > > The state lock can be fairly heavily contended, and there's no reason
+> > > that nfs4_file lookups and delegation_blocked should be mutually
+> > > exclusive.  Let's give the new block_delegation code its own spinlock.
+> > > It does mean that we'll need to take a different lock in the delegation
+> > > break code, but that's not generally as critical to performance.
+> > > 
+> > > Cc: Neil Brown <neilb@suse.de>
+> > > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > 
+> > Makes sense, thanks.
+> > However.....
+> > 
+> > 
+> > > ---
+> > >  fs/nfsd/nfs4state.c | 25 +++++++++++++------------
+> > >  1 file changed, 13 insertions(+), 12 deletions(-)
+> > > 
+> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > > index a2c6c85adfc7..952def00363b 100644
+> > > --- a/fs/nfsd/nfs4state.c
+> > > +++ b/fs/nfsd/nfs4state.c
+> > > @@ -506,10 +506,11 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+> > >   * Each filter is 256 bits.  We hash the filehandle to 32bit and use the
+> > >   * low 3 bytes as hash-table indices.
+> > >   *
+> > > - * 'state_lock', which is always held when block_delegations() is called,
+> > > - * is used to manage concurrent access.  Testing does not need the lock
+> > > - * except when swapping the two filters.
+> > > + * 'blocked_delegations_lock', which is always held when block_delegations()
+> > > + * is called, is used to manage concurrent access.  Testing does not need the
+> > > + * lock except when swapping the two filters.
+> > 
+> > ...this comment is wrong.  blocked_delegations_lock is *not* held when
+> > block_delegations() is call, it is taken when needed (almost) by
+> > block_delegations.
+> > 
 > 
-> Run iozone on nfs-rdma mount.
-> Bring down the link from switch (to simulate cable pull).
-> Wait for 10 secs.
-> Bring back the link.
-> This test passes, iozone resumes traffic.
+> Thanks, fixed.
 > 
-> Run iozone on nfs-rdma mount.
-> Bring down the link from switch (to simulate cable pull).
-> Wait for 70 secs.
-> Bring back the link.
-> This test passes, iozone resumes traffic.
+> > >   */
+> > > +static DEFINE_SPINLOCK(blocked_delegations_lock);
+> > >  static struct bloom_pair {
+> > >  	int	entries, old_entries;
+> > >  	time_t	swap_time;
+> > > @@ -525,7 +526,7 @@ static int delegation_blocked(struct knfsd_fh *fh)
+> > >  	if (bd->entries == 0)
+> > >  		return 0;
+> > >  	if (seconds_since_boot() - bd->swap_time > 30) {
+> > > -		spin_lock(&state_lock);
+> > > +		spin_lock(&blocked_delegations_lock);
+> > >  		if (seconds_since_boot() - bd->swap_time > 30) {
+> > >  			bd->entries -= bd->old_entries;
+> > >  			bd->old_entries = bd->entries;
+> > > @@ -534,7 +535,7 @@ static int delegation_blocked(struct knfsd_fh *fh)
+> > >  			bd->new = 1-bd->new;
+> > >  			bd->swap_time = seconds_since_boot();
+> > >  		}
+> > > -		spin_unlock(&state_lock);
+> > > +		spin_unlock(&blocked_delegations_lock);
+> > >  	}
+> > >  	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
+> > >  	if (test_bit(hash&255, bd->set[0]) &&
+> > > @@ -555,16 +556,16 @@ static void block_delegations(struct knfsd_fh *fh)
+> > >  	u32 hash;
+> > >  	struct bloom_pair *bd = &blocked_delegations;
+> > >  
+> > > -	lockdep_assert_held(&state_lock);
+> > > -
+> > >  	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
+> > >  
+> > >  	__set_bit(hash&255, bd->set[bd->new]);
+> > >  	__set_bit((hash>>8)&255, bd->set[bd->new]);
+> > >  	__set_bit((hash>>16)&255, bd->set[bd->new]);
+> > > +	spin_lock(&blocked_delegations_lock);
+> > 
+> > __set_bit isn't atomic.  The spin_lock should be taken *before* these
+> > __set_bit() calls.
+> > 
+> > Otherwise, looks fine.
+> > 
+> > Thanks,
+> > NeilBrown
+> > 
+> > 
+> 
+> Ok. I guess the worry is that we could end up setting bits in the
+> middle of swapping the two fields? Makes sense -- fixed in my repo.
+> I'll send out the updated set later today (it also includes a few nits
+> that HCH pointed out last week).
+> 
+> As a side note...I wonder how much we'll get in the way of false
+> positives with this scheme?
+> 
+> Given that we'll always have (or will have had) a nfs4_file
+> corresponding to this inode, perhaps we'd be better off doing something
+> like storing (and maybe hashing on) the filehandle in the nfs4_file,
+> and just ensuring that we hold on to it for 30s or so after the last
+> put?
 
-Thanks Devesh!
+You don't want to hold a reference to the inode unnecessarily.
+(Consider for example the case of a deleted-but-still-opened file, in
+which case people can notice if a large file hangs around eating up
+space for an extra 30 seconds.)  So I suppose you'd put fi_inode on last
+close and just make sure the rest of the code is prepared to deal with
+nfs4_file's with struct inodes.  That might make sense to do.
 
-May I add "Tested-by: Devesh Sharma <devesh.sharma@emulex.com>” ?
+Occasional false positives aren't necessarily a big deal, so the current
+approach seems a reasonable compromise for now.
+
+--b.
 
 > 
->> -----Original Message-----
->> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
->> owner@vger.kernel.org] On Behalf Of Devesh Sharma
->> Sent: Thursday, July 17, 2014 10:37 AM
->> To: Chuck Lever; linux-rdma; Linux NFS Mailing List
->> Subject: RE: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
->> 
->> Hi Chuck,
->> 
->> 
->> Tested v3 with  ocrdma (linux-3.16-rc5 inbox`ed ocrdma). Both Cthon and
->> iozone passes with and regressions. I will perform cable pull test as well and
->> get back to you.
->> 
->> -Regards
->> Devesh
->> 
->>> -----Original Message-----
->>> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
->>> owner@vger.kernel.org] On Behalf Of Chuck Lever
->>> Sent: Tuesday, July 15, 2014 7:54 PM
->>> To: linux-rdma; Linux NFS Mailing List
->>> Subject: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
->>> 
->>> The main purpose of this series is to address connection drop recovery
->>> issues by fixing FRMR re-use to make it less likely the client will
->>> deadlock due to a memory management operation error.
->>> 
->>> Some clean-ups and other fixes are present as well.
->>> 
->>> See topic branch nfs-rdma-for-3.17 in
->>> 
->>> git://git.linux-nfs.org/projects/cel/cel-2.6.git
->>> 
->>> I tested with NFSv3 and NFSv4 on all three supported memory
->>> registration modes. Used cthon04, iozone, and dbench with both Solaris
->>> and Linux NFS/RDMA servers. Used xfstests with Linux.
->>> 
->>> v3:
->>> Only two substantive changes:
->>> 
->>> - Patch 08/21 now uses generic IB helpers for managing FRMR
->>>  rkeys
->>> 
->>> - Add Tested-by: from Steve Wise
->>> 
->>> 
->>> v2:
->>> Many patches from v1 have been written or replaced.
->>> 
->>> The MW ref counting approach in v1 is abandoned. Instead, I've
->>> eliminated signaling FAST_REG_MR and LOCAL_INV, and added
->> appropriate
->>> recovery mechanisms after a transport reconnect that should prevent
->>> rkey dis- synchrony entirely.
->>> 
->>> A couple of optimizations have been added, including:
->>> 
->>> - Allocating each MW separately rather than carving each out of a
->>>  large piece of contiguous memory
->>> 
->>> - Now that the receive CQ upcall handler dequeues a bundle of CQEs
->>>  at once, fire off the reply handler tasklet just once per upcall
->>>  to reduce context switches and how often hard IRQs are disabled
->>> 
->>> Jury is still out on the latter.
->>> 
->>> --
->>> Chuck Lever
->>> chuck[dot]lever[at]oracle[dot]com
->>> 
->>> 
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-rdma"
->>> in the body of a message to majordomo@vger.kernel.org More
->> majordomo
->>> info at http://vger.kernel.org/majordomo-info.html
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the
->> body of a message to majordomo@vger.kernel.org More majordomo info at
->> http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
+> Not something I'm looking at doing today, but it might be worth
+> considering for a later delegations rework.
+> 
+> > >  	if (bd->entries == 0)
+> > >  		bd->swap_time = seconds_since_boot();
+> > >  	bd->entries += 1;
+> > > +	spin_unlock(&blocked_delegations_lock);
+> > >  }
+> > >  
+> > >  static struct nfs4_delegation *
+> > > @@ -3097,16 +3098,16 @@ void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
+> > >  	struct nfs4_client *clp = dp->dl_stid.sc_client;
+> > >  	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+> > >  
+> > > -	/*
+> > > -	 * We can't do this in nfsd_break_deleg_cb because it is
+> > > -	 * already holding inode->i_lock
+> > > -	 */
+> > > -	spin_lock(&state_lock);
+> > >  	block_delegations(&dp->dl_fh);
+> > > +
+> > >  	/*
+> > > +	 * We can't do this in nfsd_break_deleg_cb because it is
+> > > +	 * already holding inode->i_lock.
+> > > +	 *
+> > >  	 * If the dl_time != 0, then we know that it has already been
+> > >  	 * queued for a lease break. Don't queue it again.
+> > >  	 */
+> > > +	spin_lock(&state_lock);
+> > >  	if (dp->dl_time == 0) {
+> > >  		dp->dl_time = get_seconds();
+> > >  		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+> > 
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@primarydata.com>
 
 
