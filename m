@@ -1,66 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:39541 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755439AbaGHSGt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:49 -0400
-Received: by mail-qc0-f177.google.com with SMTP id r5so5510094qcx.8
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:48 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 099/100] nfsd: remove the client_mutex and the nfs4_lock/unlock_state wrappers
-Date: Tue,  8 Jul 2014 14:04:27 -0400
-Message-Id: <1404842668-22521-100-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:36130 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932367AbaGUPXD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jul 2014 11:23:03 -0400
+Date: Mon, 21 Jul 2014 11:23:02 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] svcrdma: Select NFSv4.1 backchannel transport based on
+ forward channel
+Message-ID: <20140721152302.GC8438@fieldses.org>
+References: <20140716193542.7847.95868.stgit@klimt.1015granger.net>
+ <20140717183621.GA30442@fieldses.org>
+ <9D651FDC-7C11-476A-AE50-746E6E37B3E2@oracle.com>
+ <99240537-8EC8-4ED3-8574-B95AC8A42F56@oracle.com>
+ <20140718191256.GB12801@fieldses.org>
+ <F69F9045-6ECC-4210-837C-2837AF37D7ED@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <F69F9045-6ECC-4210-837C-2837AF37D7ED@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 15 ---------------
- 1 file changed, 15 deletions(-)
+On Fri, Jul 18, 2014 at 03:27:10PM -0400, Chuck Lever wrote:
+> On Jul 18, 2014, at 3:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > Either that or send the original CREATE_SESSION over the connection you
+> > want used for the backchannel, then send a BIND_CONNECTION_TO_SESSION
+> > over the RDMA connection.
+> > 
+> > That said, if the server knows there's no connection at all that's
+> > available for the backchannel, then yes I agree that it should be
+> > setting the PATH_DOWN flag:
+> 
+> I’m trying a fix that sets cl_cb_state = NFSD4_CB_DOWN in
+> init_session() if SESSION4_BACK_CHAN is clear.
+> 
+> From the looks of it, the server is architected to support one and
+> only one session per client ID. Is that correct?  Thus it expects
+> just one CREATE_SESSION operation per EXCHANGE_ID. Does the server
+> enforce this?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4a5bcf256a1d..3396d246a437 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -80,9 +80,6 @@ static void nfs4_put_stateowner(struct nfs4_stateowner *sop);
- 
- /* Locking: */
- 
--/* Currently used for almost all code touching nfsv4 state: */
--static DEFINE_MUTEX(client_mutex);
--
- /*
-  * Currently used for the del_recall_lru and file hash table.  In an
-  * effort to decrease the scope of the client_mutex, this spinlock may
-@@ -102,12 +99,6 @@ static struct kmem_cache *file_slab;
- static struct kmem_cache *stateid_slab;
- static struct kmem_cache *deleg_slab;
- 
--void
--nfs4_lock_state(void)
--{
--	mutex_lock(&client_mutex);
--}
--
- static void free_session(struct nfsd4_session *);
- 
- static bool is_session_dead(struct nfsd4_session *ses)
-@@ -123,12 +114,6 @@ static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_b
- 	return nfs_ok;
- }
- 
--void
--nfs4_unlock_state(void)
--{
--	mutex_unlock(&client_mutex);
--}
--
- static bool is_client_expired(struct nfs4_client *clp)
- {
- 	return clp->cl_time == 0;
--- 
-1.9.3
+No, that would definitely be a bug, if you see it failing to support
+multiple sessions per client id, let me know.
 
+BUT we definitely only use one backchannel connection at a time, even if
+the client offers us multiple connections over multiple sessions.
+
+> Seems like cl_cb_state really should be a per-session thing for
+> NFSv4.1.
+
+All we care about is whether some session has a working backchannel.
+
+The only callback we currently use is CB_RECALL, and it doesn't matter
+which session that's sent over.  If we needed to support e.g.
+CB_RECALL_SLOT, I think this should change.
+
+> And, while we’re at it, the server should assert
+> SEQ4_STATUS_CB_PATH_DOWN_SESSION as well as SEQ4_STATUS_CB_PATH_DOWN.
+
+Looking back at the spec, especially the language about retrying
+callbacsk, I think you might be right.  (And then maybe we do need to
+track callback status per-session.)  I'm not sure if this has much
+practical effect for now.
+
+> > Yes, agreed, I'll take a look--how are you reproducing?
+> 
+> Prototype Linux client that doesn’t set SESSION4_BACK_CHAN when it does
+> CREATE_SESSION. Preparing it for RDMA support.
+> 
+> You could code a pyNFS test.
+
+OK.  I may not get to this very soon.
+
+> > The
+> > nfsd4_probe_callback() should result in NFSD4_CB_DOWN getting set as
+> > soon as the workqueue process it.
+> 
+> Clearing SESSION4_BACK_CHAN squelches nfsd4_probe_callback(), so
+> the server never checks in this case.
+
+Oops, you're right.  May as well make that unconditional.
+
+> > In theory there's a race there (I
+> > should fix that) in practice I'd normally expect that to run before we
+> > process a SEQUENCE request on the new session.
+> 
+> >> Do you remember what this commit was trying to fix?
+> > 
+> > It's not a bugfix, just a minor optimization.  We could revert it if
+> > need be.
+> 
+> NP, I just don’t see how it helps to make that assumption, plus it
+> doesn’t seem entirely safe.
+> 
+> My initial question was "why does alloc_client() initialize cl_cb_state
+> to NFSD4_CB_UNKNOWN instead of NFSD4_CB_DOWN?”
+
+I don't remember, it could be that we really only need two states.
+
+--b.
