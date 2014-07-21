@@ -1,163 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:40663 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754739AbaG3BfZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:25 -0400
-Received: by mail-qg0-f49.google.com with SMTP id j107so645681qga.22
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:24 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 23/38] nfsd: clean up lockowner refcounting when finding them
-Date: Tue, 29 Jul 2014 21:34:28 -0400
-Message-Id: <1406684083-19736-24-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:58784 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750821AbaGUUlD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jul 2014 16:41:03 -0400
+Date: Tue, 22 Jul 2014 06:40:49 +1000
+From: NeilBrown <neilb@suse.de>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: bfields@fieldses.org, hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 10/10] nfsd: give block_delegation and
+ delegation_blocked its own spinlock
+Message-ID: <20140722064049.6478e74d@notabene.brown>
+In-Reply-To: <20140721074412.4d9be086@tlielax.poochiereds.net>
+References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+	<1405696416-32585-11-git-send-email-jlayton@primarydata.com>
+	<20140721170254.0289ab9f@notabene.brown>
+	<20140721074412.4d9be086@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/HDOUhrIc=0ckY=u.nzUps.0"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that when finding or creating a lockowner, that we get a
-reference to it. For now, we also take an extra reference when a
-lockowner is created that can be put when release_lockowner is called,
-but we'll remove that in a later patch once we change how references are
-held.
+--Sig_/HDOUhrIc=0ckY=u.nzUps.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Since we no longer destroy lockowners in the event of an error in
-nfsd4_lock, we must change how the seqid gets bumped in the lk_is_new
-case. Instead of doing so on creation, do it manually in nfsd4_lock.
+On Mon, 21 Jul 2014 07:44:12 -0400 Jeff Layton <jeff.layton@primarydata.com>
+wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 45 +++++++++++++++++++++++++++++++++------------
- 1 file changed, 33 insertions(+), 12 deletions(-)
+> On Mon, 21 Jul 2014 17:02:54 +1000
+> NeilBrown <neilb@suse.de> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 749608b914b4..eaa5f9ebf444 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4754,6 +4754,7 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
- 			continue;
- 		if (!same_owner_str(so, owner, clid))
- 			continue;
-+		atomic_inc(&so->so_count);
- 		return lockowner(so);
- 	}
- 	return NULL;
-@@ -4787,9 +4788,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 		return NULL;
- 	INIT_LIST_HEAD(&lo->lo_owner.so_stateids);
- 	lo->lo_owner.so_is_open_owner = 0;
--	/* It is the openowner seqid that will be incremented in encode in the
--	 * case of new lockowners; so increment the lock seqid manually: */
--	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid + 1;
-+	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
- 	lo->lo_owner.so_ops = &lockowner_ops;
- 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
- 	return lo;
-@@ -4895,6 +4894,7 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 			    struct nfsd4_lock *lock,
- 			    struct nfs4_ol_stateid **lst, bool *new)
- {
-+	__be32 status;
- 	struct nfs4_file *fi = ost->st_stid.sc_file;
- 	struct nfs4_openowner *oo = openowner(ost->st_stateowner);
- 	struct nfs4_client *cl = oo->oo_owner.so_client;
-@@ -4910,19 +4910,26 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
- 		if (lo == NULL)
- 			return nfserr_jukebox;
-+		/* FIXME: extra reference for new lockowners for the client */
-+		atomic_inc(&lo->lo_owner.so_count);
- 	} else {
- 		/* with an existing lockowner, seqids must be the same */
-+		status = nfserr_bad_seqid;
- 		if (!cstate->minorversion &&
- 		    lock->lk_new_lock_seqid != lo->lo_owner.so_seqid)
--			return nfserr_bad_seqid;
-+			goto out;
- 	}
- 
- 	*lst = find_or_create_lock_stateid(lo, fi, inode, ost, new);
- 	if (*lst == NULL) {
- 		release_lockowner_if_empty(lo);
--		return nfserr_jukebox;
-+		status = nfserr_jukebox;
-+		goto out;
- 	}
--	return nfs_ok;
-+	status = nfs_ok;
-+out:
-+	nfs4_put_stateowner(&lo->lo_owner);
-+	return status;
- }
- 
- /*
-@@ -4941,9 +4948,9 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct file_lock *file_lock = NULL;
- 	struct file_lock *conflock = NULL;
- 	__be32 status = 0;
--	bool new_state = false;
- 	int lkflg;
- 	int err;
-+	bool new = false;
- 	struct net *net = SVC_NET(rqstp);
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
-@@ -4986,7 +4993,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 						&lock->v.new.clientid))
- 			goto out;
- 		status = lookup_or_create_lock_state(cstate, open_stp, lock,
--							&lock_stp, &new_state);
-+							&lock_stp, &new);
- 	} else {
- 		status = nfs4_preprocess_seqid_op(cstate,
- 				       lock->lk_old_lock_seqid,
-@@ -5085,12 +5092,24 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- out:
- 	if (filp)
- 		fput(filp);
--	if (lock_stp)
-+	if (lock_stp) {
-+		/* Bump seqid manually if the 4.0 replay owner is openowner */
-+		if (cstate->replay_owner &&
-+		    cstate->replay_owner != &lock_sop->lo_owner &&
-+		    seqid_mutating_err(ntohl(status)))
-+			lock_sop->lo_owner.so_seqid++;
-+
-+		/*
-+		 * If this is a new, never-before-used stateid, and we are
-+		 * returning an error, then just go ahead and release it.
-+		 */
-+		if (status && new)
-+			release_lock_stateid(lock_stp);
-+
- 		nfs4_put_stid(&lock_stp->st_stid);
-+	}
- 	if (open_stp)
- 		nfs4_put_stid(&open_stp->st_stid);
--	if (status && new_state)
--		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
- 	if (file_lock)
-@@ -5125,7 +5144,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    struct nfsd4_lockt *lockt)
- {
- 	struct file_lock *file_lock = NULL;
--	struct nfs4_lockowner *lo;
-+	struct nfs4_lockowner *lo = NULL;
- 	__be32 status;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
-@@ -5188,6 +5207,8 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		nfs4_set_lock_denied(file_lock, &lockt->lt_denied);
- 	}
- out:
-+	if (lo)
-+		nfs4_put_stateowner(&lo->lo_owner);
- 	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
--- 
-1.9.3
+> > >  	hash =3D arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
+> > > =20
+> > >  	__set_bit(hash&255, bd->set[bd->new]);
+> > >  	__set_bit((hash>>8)&255, bd->set[bd->new]);
+> > >  	__set_bit((hash>>16)&255, bd->set[bd->new]);
+> > > +	spin_lock(&blocked_delegations_lock);
+> >=20
+> > __set_bit isn't atomic.  The spin_lock should be taken *before* these
+> > __set_bit() calls.
+> >=20
+> > Otherwise, looks fine.
+> >=20
+> > Thanks,
+> > NeilBrown
+> >=20
+> >=20
+>=20
+> Ok. I guess the worry is that we could end up setting bits in the
+> middle of swapping the two fields? Makes sense -- fixed in my repo.
 
+It is more subtle than that.
+__set_bit() will:
+  read a value from memory to a register
+  set a bit in the register
+  write the register back out to memory
+
+If two threads both run __set_bit on the same word of memory at the same
+time, one of the updates can get lost.
+set_bit() (no underscore) performs an atomic RMW to avoid this, but is more
+expensive.
+spin_lock() obviously ensures the required exclusion and as we are going to
+take the lock anyway we may as well take it before setting bits so we can u=
+se
+the non-atomic (cheaper) __set_bit function.
+
+> I'll send out the updated set later today (it also includes a few nits
+> that HCH pointed out last week).
+>=20
+> As a side note...I wonder how much we'll get in the way of false
+> positives with this scheme?
+
+If a future version of NFSv4 could allow delegations to be granted while a
+file is open (oh, it seems you are the only client using this file at the
+moment, you can treat this "open" as a delegation if you like) a few false
+positives would be a complete non-issue.  As it is, I think we just have to
+hope.
+
+Thanks,
+NeilBrown
+
+
+--Sig_/HDOUhrIc=0ckY=u.nzUps.0
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU8160Tnsnt1WYoG5AQLJ+BAAkcBf7yv9QhOI/ct0YV8KSFPwP8iogQbt
+Cv9wbmFVWj9XXJoxyl/r+bO1rNlZRVwqnjH4+U2xfE1g5a5Qf0v0VisGlZnvrCnI
+dTmeRI3igOn3nt2Qc+A2X4d09yzETY2W8ACZPorJtMjzFUotsFz/o4LpzIFKylt2
+3G68jyNE1hq9lT97Eysor/2hUEpIHjVV4SLxK3hFlGN1TBDrb35e+XJBTQuUY7Jc
+2GqmDdBBtycfV4ZIY3xWsUatdzyCykQf7Bklz1TX1EXR45djCaQWv858nqw6LMq0
+D3CfZG7uuSzCr9gsuuiky806d6OeDI9qCGrf5DsI/MhD+VeZ6HxPufWARvXxi0G6
+9eldZ4Z+LJVm7HkPcMHVN+mxg4g4Z9jKqmUzxHxQ7XX+Derk3x71mOKN1HbonqwK
+WQCRVZJrfAnozEvrMSPS0nRb0iik0bfpM5FwSSHv7vvdpVFVA9Sf6bsEb/tY6XFr
+uyWUuto76qh/PfzNk5KOD/x6/uehXR7LsNwJEV7zRDd7LQs0kAdGSGnO510S4TQo
+tU8k1nHAq5rbYsPeiyXht/LBqNegN+pgbTsU7d6ELg/soBBAVcOv+XfsszyWdK9A
+gjJUx4gEEs06+XTazMVV8F2qIvk78We1WZn6z2zR/gDJ8C5Z+Q7f2cg4g050PLzJ
+IPuVpBJ/dfA=
+=f9LG
+-----END PGP SIGNATURE-----
+
+--Sig_/HDOUhrIc=0ckY=u.nzUps.0--
