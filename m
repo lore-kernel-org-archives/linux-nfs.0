@@ -1,218 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:62820 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754741AbaG3Bfe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:34 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so659268qgf.7
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:33 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v3 29/38] nfsd: Protect adding/removing open state owners using client_lock
-Date: Tue, 29 Jul 2014 21:34:34 -0400
-Message-Id: <1406684083-19736-30-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:61580 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753839AbaGULoR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 07:44:17 -0400
+Received: by mail-qa0-f49.google.com with SMTP id dc16so5009579qab.36
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 04:44:16 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 21 Jul 2014 07:44:12 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: bfields@fieldses.org, hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 10/10] nfsd: give block_delegation and
+ delegation_blocked its own spinlock
+Message-ID: <20140721074412.4d9be086@tlielax.poochiereds.net>
+In-Reply-To: <20140721170254.0289ab9f@notabene.brown>
+References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+	<1405696416-32585-11-git-send-email-jlayton@primarydata.com>
+	<20140721170254.0289ab9f@notabene.brown>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/GGdF7HKbQP+VoiyDQnY/j9Y"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+--Sig_/GGdF7HKbQP+VoiyDQnY/j9Y
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Once we remove client mutex protection, we'll need to ensure that
-stateowner lookup and creation are atomic between concurrent compounds.
-Ensure that alloc_init_open_stateowner checks the hashtable under the
-client_lock before adding a new element.
+On Mon, 21 Jul 2014 17:02:54 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 118 +++++++++++++++++++++++++++++++++++-----------------
- 1 file changed, 80 insertions(+), 38 deletions(-)
+> On Fri, 18 Jul 2014 11:13:36 -0400 Jeff Layton <jlayton@primarydata.com>
+> wrote:
+>=20
+> > The state lock can be fairly heavily contended, and there's no reason
+> > that nfs4_file lookups and delegation_blocked should be mutually
+> > exclusive.  Let's give the new block_delegation code its own spinlock.
+> > It does mean that we'll need to take a different lock in the delegation
+> > break code, but that's not generally as critical to performance.
+> >=20
+> > Cc: Neil Brown <neilb@suse.de>
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+>=20
+> Makes sense, thanks.
+> However.....
+>=20
+>=20
+> > ---
+> >  fs/nfsd/nfs4state.c | 25 +++++++++++++------------
+> >  1 file changed, 13 insertions(+), 12 deletions(-)
+> >=20
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index a2c6c85adfc7..952def00363b 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -506,10 +506,11 @@ static struct nfs4_ol_stateid * nfs4_alloc_statei=
+d(struct nfs4_client *clp)
+> >   * Each filter is 256 bits.  We hash the filehandle to 32bit and use t=
+he
+> >   * low 3 bytes as hash-table indices.
+> >   *
+> > - * 'state_lock', which is always held when block_delegations() is call=
+ed,
+> > - * is used to manage concurrent access.  Testing does not need the lock
+> > - * except when swapping the two filters.
+> > + * 'blocked_delegations_lock', which is always held when block_delegat=
+ions()
+> > + * is called, is used to manage concurrent access.  Testing does not n=
+eed the
+> > + * lock except when swapping the two filters.
+>=20
+> ...this comment is wrong.  blocked_delegations_lock is *not* held when
+> block_delegations() is call, it is taken when needed (almost) by
+> block_delegations.
+>=20
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6d26d26751f5..c4bb7f2b29d9 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -239,6 +239,53 @@ static void nfsd4_put_session(struct nfsd4_session *ses)
- 	spin_unlock(&nn->client_lock);
- }
- 
-+static int
-+same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner,
-+							clientid_t *clid)
-+{
-+	return (sop->so_owner.len == owner->len) &&
-+		0 == memcmp(sop->so_owner.data, owner->data, owner->len) &&
-+		(sop->so_client->cl_clientid.cl_id == clid->cl_id);
-+}
-+
-+static struct nfs4_openowner *
-+find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
-+			bool sessions, struct nfsd_net *nn)
-+{
-+	struct nfs4_stateowner *so;
-+	struct nfs4_openowner *oo;
-+	struct nfs4_client *clp;
-+
-+	lockdep_assert_held(&nn->client_lock);
-+
-+	list_for_each_entry(so, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-+		if (!so->so_is_open_owner)
-+			continue;
-+		if (same_owner_str(so, &open->op_owner, &open->op_clientid)) {
-+			oo = openowner(so);
-+			clp = oo->oo_owner.so_client;
-+			if ((bool)clp->cl_minorversion != sessions)
-+				break;
-+			renew_client_locked(clp);
-+			atomic_inc(&so->so_count);
-+			return oo;
-+		}
-+	}
-+	return NULL;
-+}
-+
-+static struct nfs4_openowner *
-+find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
-+			bool sessions, struct nfsd_net *nn)
-+{
-+	struct nfs4_openowner *oo;
-+
-+	spin_lock(&nn->client_lock);
-+	oo = find_openstateowner_str_locked(hashval, open, sessions, nn);
-+	spin_unlock(&nn->client_lock);
-+	return oo;
-+}
-+
- 
- static inline u32
- opaque_hashval(const void *ptr, int nbytes)
-@@ -1005,8 +1052,13 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
- 	nfs4_put_stid(&stp->st_stid);
- }
- 
--static void unhash_openowner(struct nfs4_openowner *oo)
-+static void unhash_openowner_locked(struct nfs4_openowner *oo)
- {
-+	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-+						nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
-+
- 	list_del_init(&oo->oo_owner.so_strhash);
- 	list_del_init(&oo->oo_perclient);
- }
-@@ -1025,18 +1077,29 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
- static void release_openowner_stateids(struct nfs4_openowner *oo)
- {
- 	struct nfs4_ol_stateid *stp;
-+	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-+						nfsd_net_id);
-+
-+	lockdep_assert_held(&nn->client_lock);
- 
- 	while (!list_empty(&oo->oo_owner.so_stateids)) {
- 		stp = list_first_entry(&oo->oo_owner.so_stateids,
- 				struct nfs4_ol_stateid, st_perstateowner);
-+		spin_unlock(&nn->client_lock);
- 		release_open_stateid(stp);
-+		spin_lock(&nn->client_lock);
- 	}
- }
- 
- static void release_openowner(struct nfs4_openowner *oo)
- {
--	unhash_openowner(oo);
-+	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-+						nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	unhash_openowner_locked(oo);
- 	release_openowner_stateids(oo);
-+	spin_unlock(&nn->client_lock);
- 	release_last_closed_stateid(oo);
- 	nfs4_put_stateowner(&oo->oo_owner);
- }
-@@ -3004,8 +3067,11 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
- static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
- {
- 	struct nfs4_openowner *oo = openowner(so);
-+	struct nfsd_net *nn = net_generic(so->so_client->net, nfsd_net_id);
- 
--	unhash_openowner(oo);
-+	spin_lock(&nn->client_lock);
-+	unhash_openowner_locked(oo);
-+	spin_unlock(&nn->client_lock);
- }
- 
- static void nfs4_free_openowner(struct nfs4_stateowner *so)
-@@ -3025,7 +3091,8 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- 			   struct nfsd4_compound_state *cstate)
- {
- 	struct nfs4_client *clp = cstate->clp;
--	struct nfs4_openowner *oo;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+	struct nfs4_openowner *oo, *ret;
- 
- 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
- 	if (!oo)
-@@ -3039,7 +3106,15 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- 	oo->oo_time = 0;
- 	oo->oo_last_closed_stid = NULL;
- 	INIT_LIST_HEAD(&oo->oo_close_lru);
--	hash_openowner(oo, clp, strhashval);
-+	spin_lock(&nn->client_lock);
-+	ret = find_openstateowner_str_locked(strhashval,
-+			open, clp->cl_minorversion, nn);
-+	if (ret == NULL) {
-+		hash_openowner(oo, clp, strhashval);
-+		ret = oo;
-+	} else
-+		nfs4_free_openowner(&oo->oo_owner);
-+	spin_unlock(&nn->client_lock);
- 	return oo;
- }
- 
-@@ -3100,39 +3175,6 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- 	oo->oo_time = get_seconds();
- }
- 
--static int
--same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner,
--							clientid_t *clid)
--{
--	return (sop->so_owner.len == owner->len) &&
--		0 == memcmp(sop->so_owner.data, owner->data, owner->len) &&
--		(sop->so_client->cl_clientid.cl_id == clid->cl_id);
--}
--
--static struct nfs4_openowner *
--find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
--			bool sessions, struct nfsd_net *nn)
--{
--	struct nfs4_stateowner *so;
--	struct nfs4_openowner *oo;
--	struct nfs4_client *clp;
--
--	list_for_each_entry(so, &nn->ownerstr_hashtbl[hashval], so_strhash) {
--		if (!so->so_is_open_owner)
--			continue;
--		if (same_owner_str(so, &open->op_owner, &open->op_clientid)) {
--			oo = openowner(so);
--			clp = oo->oo_owner.so_client;
--			if ((bool)clp->cl_minorversion != sessions)
--				return NULL;
--			renew_client(oo->oo_owner.so_client);
--			atomic_inc(&oo->oo_owner.so_count);
--			return oo;
--		}
--	}
--	return NULL;
--}
--
- /* search file_hashtbl[] for file */
- static struct nfs4_file *
- find_file_locked(struct knfsd_fh *fh)
--- 
-1.9.3
+Thanks, fixed.
 
+> >   */
+> > +static DEFINE_SPINLOCK(blocked_delegations_lock);
+> >  static struct bloom_pair {
+> >  	int	entries, old_entries;
+> >  	time_t	swap_time;
+> > @@ -525,7 +526,7 @@ static int delegation_blocked(struct knfsd_fh *fh)
+> >  	if (bd->entries =3D=3D 0)
+> >  		return 0;
+> >  	if (seconds_since_boot() - bd->swap_time > 30) {
+> > -		spin_lock(&state_lock);
+> > +		spin_lock(&blocked_delegations_lock);
+> >  		if (seconds_since_boot() - bd->swap_time > 30) {
+> >  			bd->entries -=3D bd->old_entries;
+> >  			bd->old_entries =3D bd->entries;
+> > @@ -534,7 +535,7 @@ static int delegation_blocked(struct knfsd_fh *fh)
+> >  			bd->new =3D 1-bd->new;
+> >  			bd->swap_time =3D seconds_since_boot();
+> >  		}
+> > -		spin_unlock(&state_lock);
+> > +		spin_unlock(&blocked_delegations_lock);
+> >  	}
+> >  	hash =3D arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
+> >  	if (test_bit(hash&255, bd->set[0]) &&
+> > @@ -555,16 +556,16 @@ static void block_delegations(struct knfsd_fh *fh)
+> >  	u32 hash;
+> >  	struct bloom_pair *bd =3D &blocked_delegations;
+> > =20
+> > -	lockdep_assert_held(&state_lock);
+> > -
+> >  	hash =3D arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
+> > =20
+> >  	__set_bit(hash&255, bd->set[bd->new]);
+> >  	__set_bit((hash>>8)&255, bd->set[bd->new]);
+> >  	__set_bit((hash>>16)&255, bd->set[bd->new]);
+> > +	spin_lock(&blocked_delegations_lock);
+>=20
+> __set_bit isn't atomic.  The spin_lock should be taken *before* these
+> __set_bit() calls.
+>=20
+> Otherwise, looks fine.
+>=20
+> Thanks,
+> NeilBrown
+>=20
+>=20
+
+Ok. I guess the worry is that we could end up setting bits in the
+middle of swapping the two fields? Makes sense -- fixed in my repo.
+I'll send out the updated set later today (it also includes a few nits
+that HCH pointed out last week).
+
+As a side note...I wonder how much we'll get in the way of false
+positives with this scheme?
+
+Given that we'll always have (or will have had) a nfs4_file
+corresponding to this inode, perhaps we'd be better off doing something
+like storing (and maybe hashing on) the filehandle in the nfs4_file,
+and just ensuring that we hold on to it for 30s or so after the last
+put?
+
+Not something I'm looking at doing today, but it might be worth
+considering for a later delegations rework.
+
+> >  	if (bd->entries =3D=3D 0)
+> >  		bd->swap_time =3D seconds_since_boot();
+> >  	bd->entries +=3D 1;
+> > +	spin_unlock(&blocked_delegations_lock);
+> >  }
+> > =20
+> >  static struct nfs4_delegation *
+> > @@ -3097,16 +3098,16 @@ void nfsd4_prepare_cb_recall(struct nfs4_delega=
+tion *dp)
+> >  	struct nfs4_client *clp =3D dp->dl_stid.sc_client;
+> >  	struct nfsd_net *nn =3D net_generic(clp->net, nfsd_net_id);
+> > =20
+> > -	/*
+> > -	 * We can't do this in nfsd_break_deleg_cb because it is
+> > -	 * already holding inode->i_lock
+> > -	 */
+> > -	spin_lock(&state_lock);
+> >  	block_delegations(&dp->dl_fh);
+> > +
+> >  	/*
+> > +	 * We can't do this in nfsd_break_deleg_cb because it is
+> > +	 * already holding inode->i_lock.
+> > +	 *
+> >  	 * If the dl_time !=3D 0, then we know that it has already been
+> >  	 * queued for a lease break. Don't queue it again.
+> >  	 */
+> > +	spin_lock(&state_lock);
+> >  	if (dp->dl_time =3D=3D 0) {
+> >  		dp->dl_time =3D get_seconds();
+> >  		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+>=20
+
+
+--=20
+Jeff Layton <jlayton@primarydata.com>
+
+--Sig_/GGdF7HKbQP+VoiyDQnY/j9Y
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBAgAGBQJTzP0NAAoJEAAOaEEZVoIVMj4P/R5AGdhGuxJ5dX84hQnWw0ju
+Sr2bWZJWup01tXwD0kuLV4j6duzsUqrr3I+HaNFjt/owA3UAxiCUNVjLFQ3MrEUx
+uU86NgFgNkUdxmOf7QDWhIrWHL4bI6pCmO5GICGCaibwa+Rl4Qr4byd8MNxvNoOb
+1xOYCzrQcZBdA4DU0DJiT7BZeYajzwkOzqVGZZD0h51FDScxuxJq2ljTGcLwtREf
+796I4CgWeOHFLetLDb1sX9+h4XvJvxpj1CfQt3dk0WdEwl5BQPHQv8wvKj7RY4/c
+5n9bdktA5frx9puNvVaKDSa2qkiViVEeUQIKskLD2xDvzZo/g55mzpaB0xnTubf0
+4Xl2UMbCgWnr/hFFdh7RKVtZZLnMJOk2buY9+QIVvQcaczEm4UL4eMH/Y/VtP2E7
+aYnamYYlTdbuDi5MC/TpmUI8U2Lo9bDU7K1ArhexaNAZZTwRfOEXXkSVbQdjvbYo
+4PY6N6KDUB+YbrPIPSydjonVJIaYssL2U9y4MhK2C1tfyU+mqBByi3bpeEo80FUk
+VFtMKiBADMMJaMGDLVFCCDEe3S7Y9IGOoC4qcZcKwRhZxgRWnfmkQnb9r6HYtZpi
++nHibqas8EIAAh50e8nonPfT/FKmBMMZpdJJZbg8urWl+N2uAnu0jiM0hGgz9TQN
+vPyNTLyi8afDWYzdy9Ks
+=jFC2
+-----END PGP SIGNATURE-----
+
+--Sig_/GGdF7HKbQP+VoiyDQnY/j9Y--
