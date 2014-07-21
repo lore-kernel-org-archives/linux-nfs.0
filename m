@@ -1,105 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:43792 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761887AbaGRPNv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 11:13:51 -0400
-Received: by mail-qa0-f44.google.com with SMTP id f12so3033423qad.17
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 08:13:50 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v4 05/10] nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock
-Date: Fri, 18 Jul 2014 11:13:31 -0400
-Message-Id: <1405696416-32585-6-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
-References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f67.google.com ([209.85.192.67]:51344 "EHLO
+	mail-qg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754837AbaGUWnA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 18:43:00 -0400
+Received: by mail-qg0-f67.google.com with SMTP id f51so1668930qge.6
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 15:42:59 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 21 Jul 2014 18:42:54 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v5 03/10] nfsd: simplify stateid allocation and file
+ handling
+Message-ID: <20140721184254.7e0467ad@tlielax.poochiereds.net>
+In-Reply-To: <20140721213056.GM8438@fieldses.org>
+References: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
+	<1405949706-27757-4-git-send-email-jlayton@primarydata.com>
+	<20140721213056.GM8438@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, both destroy_revoked_delegation and revoke_delegation
-manipulate the cl_revoked list without any locking aside from the
-client_mutex. Ensure that the clp->cl_lock is held when manipulating it,
-except for the list walking in destroy_client. At that point, the client
-should no longer be in use, and so it should be safe to walk the list
-without any locking. That also means that we don't need to do the
-list_splice_init there either.
+On Mon, 21 Jul 2014 17:30:56 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Also, the fact that destroy_revoked_delegation and revoke_delegation
-delete dl_recall_lru without any locking makes it difficult to know
-whether they're doing so safely in all cases. Move the list_del_init
-calls into the callers, and add WARN_ONs in the event that these calls
-are passed a delegation that has a non-empty list_head.
+> On Mon, Jul 21, 2014 at 09:34:59AM -0400, Jeff Layton wrote:
+> > From: Trond Myklebust <trond.myklebust@primarydata.com>
+> > 
+> > Don't allow stateids to clear the open file pointer until they are
+> > being destroyed. In a later patch we'll want to move the putting of
+> > the nfs4_file into generic stateid handling code and this will help
+> > facilitate that change.
+> > 
+> > Also, move to allocating stateids with kzalloc and get rid of the
+> > explicit zeroing of fields.
+> 
+> There's a regression here: we end up holding an unnecessary reference to
+> the inode a long time just because some client isn't responding to a
+> recall.
+> 
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+I must have missed that exchange...
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7c5233427c9b..d11b298e625e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -669,7 +669,7 @@ unhash_delegation_locked(struct nfs4_delegation *dp)
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
- {
--	list_del_init(&dp->dl_recall_lru);
-+	WARN_ON(!list_empty(&dp->dl_recall_lru));
- 	nfs4_put_delegation(dp);
- }
- 
-@@ -685,11 +685,15 @@ static void revoke_delegation(struct nfs4_delegation *dp)
- {
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 
-+	WARN_ON(!list_empty(&dp->dl_recall_lru));
-+
- 	if (clp->cl_minorversion == 0)
- 		destroy_revoked_delegation(dp);
- 	else {
- 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
--		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
-+		spin_lock(&clp->cl_lock);
-+		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
-+		spin_unlock(&clp->cl_lock);
- 	}
- }
- 
-@@ -1458,9 +1462,9 @@ destroy_client(struct nfs4_client *clp)
- 		list_del_init(&dp->dl_recall_lru);
- 		nfs4_put_delegation(dp);
- 	}
--	list_splice_init(&clp->cl_revoked, &reaplist);
--	while (!list_empty(&reaplist)) {
-+	while (!list_empty(&clp->cl_revoked)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
- 		destroy_revoked_delegation(dp);
- 	}
- 	while (!list_empty(&clp->cl_openowners)) {
-@@ -3899,8 +3903,10 @@ nfs4_laundromat(struct nfsd_net *nn)
- 		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
--	list_for_each_safe(pos, next, &reaplist) {
--		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
-+	while (!list_empty(&reaplist)) {
-+		dp = list_first_entry(&reaplist, struct nfs4_delegation,
-+					dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
- 		revoke_delegation(dp);
- 	}
- 	list_for_each_safe(pos, next, &nn->close_lru) {
-@@ -4244,6 +4250,9 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		break;
- 	case NFS4_REVOKED_DELEG_STID:
- 		dp = delegstateid(s);
-+		spin_lock(&cl->cl_lock);
-+		list_del_init(&dp->dl_recall_lru);
-+		spin_unlock(&cl->cl_lock);
- 		destroy_revoked_delegation(dp);
- 		ret = nfs_ok;
- 		break;
+So that's because we're putting the file reference when we put the
+last delegation reference instead of when we unhash the
+delegation...ok, good point.
+
+I don't see any real harm right offhand of putting the file reference
+early when we unhash, so I think that'll work. We do that already for
+v4.0 open stateids when they are closed, so we might as well do it for
+delegations too. I'll double check that we never use the file after
+unhashing and send up a patch to change that unless I see a problem.
+
+> When I complained about this before Trond said something about replacing
+> fi_inode by a filehandle?  But I can't remember if we've seen code to do
+> that.
+> 
+
+No I don't think we have. That sounds like a bit of an overhaul of the
+nfs4_file code.
+
+Personally, I think that hashing on the filehandle makes a lot of
+sense, and I don't see a reason to pin down the inode except by virtue
+of the fi_fds file references. That said, I'd prefer to defer that sort
+of change until after this series is merged.
+
+> > 
+> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > Reviewed-by: Christoph Hellwig <hch@lst.de>
+> > ---
+> >  fs/nfsd/nfs4state.c | 22 ++++++++++------------
+> >  1 file changed, 10 insertions(+), 12 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index a47c97586c76..8ff5c97a2c5a 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -459,7 +459,7 @@ kmem_cache *slab)
+> >  	struct nfs4_stid *stid;
+> >  	int new_id;
+> >  
+> > -	stid = kmem_cache_alloc(slab, GFP_KERNEL);
+> > +	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
+> >  	if (!stid)
+> >  		return NULL;
+> >  
+> > @@ -467,11 +467,9 @@ kmem_cache *slab)
+> >  	if (new_id < 0)
+> >  		goto out_free;
+> >  	stid->sc_client = cl;
+> > -	stid->sc_type = 0;
+> >  	stid->sc_stateid.si_opaque.so_id = new_id;
+> >  	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
+> >  	/* Will be incremented before return to client: */
+> > -	stid->sc_stateid.si_generation = 0;
+> >  	atomic_set(&stid->sc_count, 1);
+> >  
+> >  	/*
+> > @@ -592,10 +590,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+> >  	INIT_LIST_HEAD(&dp->dl_perfile);
+> >  	INIT_LIST_HEAD(&dp->dl_perclnt);
+> >  	INIT_LIST_HEAD(&dp->dl_recall_lru);
+> > -	dp->dl_file = NULL;
+> >  	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+> >  	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+> > -	dp->dl_time = 0;
+> >  	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
+> >  	return dp;
+> >  }
+> > @@ -616,6 +612,8 @@ void
+> >  nfs4_put_delegation(struct nfs4_delegation *dp)
+> >  {
+> >  	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
+> > +		if (dp->dl_file)
+> > +			put_nfs4_file(dp->dl_file);
+> >  		remove_stid(&dp->dl_stid);
+> >  		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+> >  		num_delegations--;
+> > @@ -665,13 +663,9 @@ unhash_delegation(struct nfs4_delegation *dp)
+> >  	list_del_init(&dp->dl_recall_lru);
+> >  	list_del_init(&dp->dl_perfile);
+> >  	spin_unlock(&fp->fi_lock);
+> > -	if (fp) {
+> > +	if (fp)
+> >  		nfs4_put_deleg_lease(fp);
+> > -		dp->dl_file = NULL;
+> > -	}
+> >  	spin_unlock(&state_lock);
+> > -	if (fp)
+> > -		put_nfs4_file(fp);
+> >  }
+> >  
+> >  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+> > @@ -879,12 +873,12 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+> >  static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+> >  {
+> >  	release_all_access(stp);
+> > -	put_nfs4_file(stp->st_file);
+> > -	stp->st_file = NULL;
+> >  }
+> >  
+> >  static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+> >  {
+> > +	if (stp->st_file)
+> > +		put_nfs4_file(stp->st_file);
+> >  	remove_stid(&stp->st_stid);
+> >  	nfs4_free_stid(stateid_slab, &stp->st_stid);
+> >  }
+> > @@ -4462,6 +4456,10 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+> >  		if (list_empty(&oo->oo_owner.so_stateids))
+> >  			release_openowner(oo);
+> >  	} else {
+> > +		if (s->st_file) {
+> > +			put_nfs4_file(s->st_file);
+> > +			s->st_file = NULL;
+> > +		}
+> >  		oo->oo_last_closed_stid = s;
+> >  		/*
+> >  		 * In the 4.0 case we need to keep the owners around a
+> > -- 
+> > 1.9.3
+> > 
+
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
