@@ -1,75 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:44976 "EHLO plane.gmane.org"
+Received: from fieldses.org ([174.143.236.118]:60104 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751874AbaGHBdY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Jul 2014 21:33:24 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1X4KHb-0001SP-6a
-	for linux-nfs@vger.kernel.org; Tue, 08 Jul 2014 03:33:23 +0200
-Received: from bitis.umrk.nl ([82.95.126.201])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 03:33:23 +0200
-Received: from jwinius by bitis.umrk.nl with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 03:33:23 +0200
-To: linux-nfs@vger.kernel.org
-From: Jaap Winius <jwinius@umrk.nl>
-Subject: Re: NFSv4 cross-realm support
-Date: Tue, 8 Jul 2014 01:33:10 +0000 (UTC)
-Message-ID: <lpfhom$qku$1@ger.gmane.org>
-References: <lp1gar$eb6$1@ger.gmane.org>
-	<CAHVgHyVjoVb--cfbaopoUYA4vbDCjufJVng6OM2e82q0yEMthA@mail.gmail.com>
-	<lpehhl$o74$1@ger.gmane.org>
-	<CAHVgHyWU9B+VE=_qTEG2TVOyMHijzVTA0a2rVb_7hrjsKf7Jfw@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1754684AbaGUVbB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jul 2014 17:31:01 -0400
+Date: Mon, 21 Jul 2014 17:30:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v5 03/10] nfsd: simplify stateid allocation and file
+ handling
+Message-ID: <20140721213056.GM8438@fieldses.org>
+References: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
+ <1405949706-27757-4-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1405949706-27757-4-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 07 Jul 2014 17:24:52 -0400, Andy Adamson wrote:
+On Mon, Jul 21, 2014 at 09:34:59AM -0400, Jeff Layton wrote:
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> 
+> Don't allow stateids to clear the open file pointer until they are
+> being destroyed. In a later patch we'll want to move the putting of
+> the nfs4_file into generic stateid handling code and this will help
+> facilitate that change.
+> 
+> Also, move to allocating stateids with kzalloc and get rid of the
+> explicit zeroing of fields.
 
-> I have never used the olcAuthzRegexp. Is this used to map potentially
-> multiple principal@REALM names to the same UID name/number?
+There's a regression here: we end up holding an unnecessary reference to
+the inode a long time just because some client isn't responding to a
+recall.
 
-Correct. AFAIK MIT Kerberos doesn't issue tickets containing additional 
-authorization data, so my site stores it in an OpenLDAP DIT. Moreover, 
-when OpenLDAP is used as a backend for MIT Kerberos, it does a much 
-better job at database synchronization than kprop. olcAuthzRegexp is a 
-regular expression that maps GSSAPI-format user names to LDAP names. For 
-example:
+When I complained about this before Trond said something about replacing
+fi_inode by a filehandle?  But I can't remember if we've seen code to do
+that.
 
-  olcAuthzRegexp: uid=([^,]+),cn=example.com,cn=gssapi,cn=auth
-    uid=$1,ou=people,dc=example,dc=com
+--b.
 
-This works great for same-realm authentication, mapping bob@EXAMPLE.COM 
-to the corresponding LDAP entry in ou=people where his account metadata 
-is stored, containing UID, GID, shell and home directory information.
-
-See http://www.rjsystems.nl/en/2100-d6-kerberos-openldap-provider.php for 
-a more complete explanation.
-
-For a cross-realm situation, that regex can be modified to map accounts 
-from another trusted realm to an account with the same name in the local 
-realm. However, in a bit of a twist, a foreign account, bob@EXAMPLE.NET, 
-will start out with a slightly different GSSAPI format:
-
-  uid=bob@example.net,cn=example.com,cn=gssapi,cn=auth
-
-The aforementioned olcAuthzRegexp maps it to:
-
-  uid=bob@example.net,ou=people,dc=example,dc=com
-
-As a result, Bob's LDAP entry is not found, even though he is allowed to 
-browse the local DIT (that just works). So, to make sure it works for 
-users in the foreign realm, like Bob, who also happen to have a matching 
-account in the local realm, I modified the regex to look like this:
-
-  uid=([^,@]+)(@example.net)*,cn=example.com,cn=gssapi,cn=auth
-
-That's one problem solved. Now what I need is for NFS to play nice. IMO, 
-rpc.svcgssd should simply ask the local KDC if the foreign realm is to be 
-trusted. Apparently, that's the way OpenLDAP, SSH and Dovecot IMAP do it, 
-but that's not happening at the moment. So is this a bug, or what?
-
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfsd/nfs4state.c | 22 ++++++++++------------
+>  1 file changed, 10 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index a47c97586c76..8ff5c97a2c5a 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -459,7 +459,7 @@ kmem_cache *slab)
+>  	struct nfs4_stid *stid;
+>  	int new_id;
+>  
+> -	stid = kmem_cache_alloc(slab, GFP_KERNEL);
+> +	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
+>  	if (!stid)
+>  		return NULL;
+>  
+> @@ -467,11 +467,9 @@ kmem_cache *slab)
+>  	if (new_id < 0)
+>  		goto out_free;
+>  	stid->sc_client = cl;
+> -	stid->sc_type = 0;
+>  	stid->sc_stateid.si_opaque.so_id = new_id;
+>  	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
+>  	/* Will be incremented before return to client: */
+> -	stid->sc_stateid.si_generation = 0;
+>  	atomic_set(&stid->sc_count, 1);
+>  
+>  	/*
+> @@ -592,10 +590,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+>  	INIT_LIST_HEAD(&dp->dl_perfile);
+>  	INIT_LIST_HEAD(&dp->dl_perclnt);
+>  	INIT_LIST_HEAD(&dp->dl_recall_lru);
+> -	dp->dl_file = NULL;
+>  	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+>  	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+> -	dp->dl_time = 0;
+>  	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
+>  	return dp;
+>  }
+> @@ -616,6 +612,8 @@ void
+>  nfs4_put_delegation(struct nfs4_delegation *dp)
+>  {
+>  	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
+> +		if (dp->dl_file)
+> +			put_nfs4_file(dp->dl_file);
+>  		remove_stid(&dp->dl_stid);
+>  		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+>  		num_delegations--;
+> @@ -665,13 +663,9 @@ unhash_delegation(struct nfs4_delegation *dp)
+>  	list_del_init(&dp->dl_recall_lru);
+>  	list_del_init(&dp->dl_perfile);
+>  	spin_unlock(&fp->fi_lock);
+> -	if (fp) {
+> +	if (fp)
+>  		nfs4_put_deleg_lease(fp);
+> -		dp->dl_file = NULL;
+> -	}
+>  	spin_unlock(&state_lock);
+> -	if (fp)
+> -		put_nfs4_file(fp);
+>  }
+>  
+>  static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+> @@ -879,12 +873,12 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+>  static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+>  {
+>  	release_all_access(stp);
+> -	put_nfs4_file(stp->st_file);
+> -	stp->st_file = NULL;
+>  }
+>  
+>  static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+>  {
+> +	if (stp->st_file)
+> +		put_nfs4_file(stp->st_file);
+>  	remove_stid(&stp->st_stid);
+>  	nfs4_free_stid(stateid_slab, &stp->st_stid);
+>  }
+> @@ -4462,6 +4456,10 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+>  		if (list_empty(&oo->oo_owner.so_stateids))
+>  			release_openowner(oo);
+>  	} else {
+> +		if (s->st_file) {
+> +			put_nfs4_file(s->st_file);
+> +			s->st_file = NULL;
+> +		}
+>  		oo->oo_last_closed_stid = s;
+>  		/*
+>  		 * In the 4.0 case we need to keep the owners around a
+> -- 
+> 1.9.3
+> 
