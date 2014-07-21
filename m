@@ -1,42 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55953 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752510AbaGQSl3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Jul 2014 14:41:29 -0400
-Date: Thu, 17 Jul 2014 14:41:28 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: xdr_get_next_encode_buffer should be declared
- static
-Message-ID: <20140717184128.GC30442@fieldses.org>
-References: <1405202462-50244-1-git-send-email-trond.myklebust@primarydata.com>
- <20140716205846.GE2397@fieldses.org>
- <CAHQdGtS+0mvbWUJiwYE8ZgsirZ6Baw1q4hZ_TjFjJgX4-HYbmw@mail.gmail.com>
- <20140716214455.GF2397@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140716214455.GF2397@fieldses.org>
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:55965 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932332AbaGUPD2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:28 -0400
+Received: by mail-qg0-f49.google.com with SMTP id j107so5349524qga.8
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:27 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 20/40] nfsd: Migrate the stateid reference into nfs4_preprocess_seqid_op
+Date: Mon, 21 Jul 2014 11:02:32 -0400
+Message-Id: <1405954972-28904-21-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 16, 2014 at 05:44:55PM -0400, Bruce Fields wrote:
-> On Wed, Jul 16, 2014 at 02:40:43PM -0700, Trond Myklebust wrote:
-> > On Wed, Jul 16, 2014 at 1:58 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> > > On Sat, Jul 12, 2014 at 06:01:02PM -0400, Trond Myklebust wrote:
-> > >> Quell another sparse warning.
-> > >
-> > > I think jlayton sent you the same fix with his set of sunrpc sparse
-> > > fixes--could you just take that instead?
-> > >
-> > > (Or I can take this if you still want, I don't really care.)
-> > 
-> > I wasn't planning on carrying either patch in my tree. I've offloaded
-> > the merge job to you... :-)
-> > IOW: feel free to take Jeff's patch if that is more convenient.
-> 
-> OK, are you taking the rest of that series or should I get that too?
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-(Applying the one patch, assuming the resti s yours.)
+Allow nfs4_preprocess_seqid_op to take the stateid reference, instead
+of having all the callers do so.
 
---b.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 26 +++++++++++---------------
+ 1 file changed, 11 insertions(+), 15 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f9a3fcd4e217..a0e0882edd2b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4407,8 +4407,11 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 		cstate->replay_owner = stp->st_stateowner;
+ 
+ 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
+-	if (!status)
++	if (!status) {
++		/* FIXME: move into find_stateid_by_type */
++		atomic_inc(&stp->st_stid.sc_count);
+ 		*stpp = stp;
++	}
+ 	return status;
+ }
+ 
+@@ -4417,16 +4420,18 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
+ {
+ 	__be32 status;
+ 	struct nfs4_openowner *oo;
++	struct nfs4_ol_stateid *stp;
+ 
+ 	status = nfs4_preprocess_seqid_op(cstate, seqid, stateid,
+-						NFS4_OPEN_STID, stpp, nn);
++						NFS4_OPEN_STID, &stp, nn);
+ 	if (status)
+ 		return status;
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&(*stpp)->st_stid.sc_count);
+-	oo = openowner((*stpp)->st_stateowner);
+-	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
++	oo = openowner(stp->st_stateowner);
++	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
++		put_generic_stateid(stp);
+ 		return nfserr_bad_stateid;
++	}
++	*stpp = stp;
+ 	return nfs_ok;
+ }
+ 
+@@ -4453,8 +4458,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					NFS4_OPEN_STID, &stp, nn);
+ 	if (status)
+ 		goto out;
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&stp->st_stid.sc_count);
+ 	oo = openowner(stp->st_stateowner);
+ 	status = nfserr_bad_stateid;
+ 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
+@@ -4604,8 +4607,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (status)
+ 		goto out; 
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&stp->st_stid.sc_count);
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ 
+@@ -4953,9 +4954,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 				       lock->lk_old_lock_seqid,
+ 				       &lock->lk_old_lock_stateid,
+ 				       NFS4_LOCK_STID, &lock_stp, nn);
+-		/* FIXME: move into nfs4_preprocess_seqid_op */
+-		if (!status)
+-			atomic_inc(&lock_stp->st_stid.sc_count);
+ 	}
+ 	if (status)
+ 		goto out;
+@@ -5184,8 +5182,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					&stp, nn);
+ 	if (status)
+ 		goto out;
+-	/* FIXME: move into nfs4_preprocess_seqid_op */
+-	atomic_inc(&stp->st_stid.sc_count);
+ 	filp = find_any_file(stp->st_stid.sc_file);
+ 	if (!filp) {
+ 		status = nfserr_lock_range;
+-- 
+1.9.3
+
