@@ -1,151 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:45777 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751169AbaGGQpp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 12:45:45 -0400
-Received: by mail-qg0-f51.google.com with SMTP id z60so3946166qgd.10
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 09:45:44 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 7 Jul 2014 12:45:43 -0400
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        NeilBrown <neilb@suse.de>, jlayton@redhat.com
-Subject: Re: [PATCH 2/4] NFSD: Rervert "knfsd: locks: flag NFSv4-owned
- locks"
-Message-ID: <20140707124543.2968a1a9@tlielax.poochiereds.net>
-In-Reply-To: <53BAAAC5.9000106@gmail.com>
-References: <53BAAAC5.9000106@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:50159 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932543AbaGUQBe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jul 2014 12:01:34 -0400
+Date: Mon, 21 Jul 2014 12:01:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 00/10] nfsd: more delegation fixes to prepare for
+ client_mutex removal
+Message-ID: <20140721160120.GE8438@fieldses.org>
+References: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 07 Jul 2014 22:12:21 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+On Mon, Jul 21, 2014 at 09:34:56AM -0400, Jeff Layton wrote:
+> v5:
+> - fix spinlocking in block_delegations. Lock should be held around all
+>   of the set_bit calls so we don't race with the swap of the two
+>   fields.
+> 
+> - eliminate destroy_revoked_delegation (just use nfs4_put_delegation)
+> 
+> - eliminate unneeded NULL pointer check in nfs4_setlease
+> 
+> v4:
+> - close more potential races in setlease code, and fix some bugs in
+>   error handling in that code.
+> 
+> - clean up delegation setting functions, eliminating unused arguments
+>   and avoiding allocations when there has already been a delegation
+>   break
+> 
+> - add separate spinlock for block_delegations/delegation_blocked code
+> 
+> v3:
+> - use alternate method for checking for delegation break races after
+>   getting a lease (just check fi_had_conflict instead)
+> 
+> - drop file_has_lease patch -- no longer needed
+> 
+> - move cl_revoked handling patch into this set. It means altering a
+>   few of the later patches, but it keeps the set more topically
+>   coherent
+> 
+> v2:
+> - move remove_stid call from nfs4_free_stid and into callers
+> 
+> Ok, I'm hoping we're now on the final respin here. This just cleans
+> up some nits that Christoph noticed in the last set. It also fixes
+> a potential bug that Neil noticed around the block_delegations
+> spinlocking.
+> 
+> Bruce, I noticed that you had merged the last set into your nfsd-next
+> branch, so let me know if you'd prefer me to do incremental changes
+> on top of that instead.
 
-> Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
-> fl_lmops field in file_lock for checking nfsd4 lockowner.
-> 
-> But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return of conflicting locks) causes the fl_lmops of conflock for nfsd4_lock always be NULL.
-> 
-> Also, commit 0996905f93 (lockd: posix_test_lock() should not call locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt always be NULL too.
-> 
-> So that, using fl_lmops cannot checking nfsd4 lockowner for it always be NULL.
-> 
-> This patch save the strhashval in nfs4_lockowner for searching lockownerlike before.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 35 +++++++++++++++++++++++------------
->  fs/nfsd/state.h     |  1 +
->  2 files changed, 24 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 9b9474c..1b5afc1 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4282,18 +4282,30 @@ nfs4_transform_lock_offset(struct file_lock *lock)
->  		lock->fl_end = OFFSET_MAX;
->  }
->  
-> -/* Hack!: For now, we're defining this just so we can use a pointer to it
-> - * as a unique cookie to identify our (NFSv4's) posix locks. */
-> -static const struct lock_manager_operations nfsd_posix_mng_ops  = {
-> -};
-> +static bool
-> +nfs4_verify_lock_stateowner(struct nfs4_lockowner *lo, struct nfsd_net *nn)
-> +{
-> +	struct nfs4_stateowner *local = NULL;
-> +	unsigned hashval = lo->lo_hashval;
-> +
-> +	if (hashval >= OWNER_HASH_SIZE)
-> +		return false;
-> +
+As long as it's just in nfsd-next I'll take replacements, if it's in
+master (== for-3.17) then I'm considering it really and truly committed
+and would rather take incremental patches.  (Though I haven't been
+really great about sticking to that.)
 
-^^^^
-Maybe a WARN_ON_ONCE or something here would be appropriate?
+--b.
 
-> +	list_for_each_entry(local, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-> +		if (local == &lo->lo_owner)
-> +			return true;
-> +	}
-> +
-> +	return false;
-> +}
->  
->  static inline void
-> -nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
-> +nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny,
-> +			struct nfsd_net *nn)
->  {
-> -	struct nfs4_lockowner *lo;
-> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
->  
-> -	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
-> -		lo = (struct nfs4_lockowner *) fl->fl_owner;
-> +	if (nfs4_verify_lock_stateowner(lo, nn)) {
->  		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
->  					lo->lo_owner.so_owner.len, GFP_KERNEL);
->  		if (!deny->ld_owner.data)
-> @@ -4350,6 +4362,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
->  	if (!lo)
->  		return NULL;
->  	INIT_LIST_HEAD(&lo->lo_owner.so_stateids);
-> +	lo->lo_hashval = strhashval;
->  	lo->lo_owner.so_is_open_owner = 0;
->  	/* It is the openowner seqid that will be incremented in encode in the
->  	 * case of new lockowners; so increment the lock seqid manually: */
-> @@ -4564,7 +4577,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	file_lock->fl_pid = current->tgid;
->  	file_lock->fl_file = filp;
->  	file_lock->fl_flags = FL_POSIX;
-> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
->  	file_lock->fl_start = lock->lk_offset;
->  	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
->  	nfs4_transform_lock_offset(file_lock);
-> @@ -4587,7 +4599,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	case (EAGAIN):		/* conflock holds conflicting lock */
->  		status = nfserr_denied;
->  		dprintk("NFSD: nfsd4_lock: conflicting lock found!\n");
-> -		nfs4_set_lock_denied(conflock, &lock->lk_denied);
-> +		nfs4_set_lock_denied(conflock, &lock->lk_denied, nn);
->  		break;
->  	case (EDEADLK):
->  		status = nfserr_deadlock;
-> @@ -4695,7 +4707,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  
->  	if (file_lock->fl_type != F_UNLCK) {
->  		status = nfserr_denied;
-> -		nfs4_set_lock_denied(file_lock, &lockt->lt_denied);
-> +		nfs4_set_lock_denied(file_lock, &lockt->lt_denied, nn);
->  	}
->  out:
->  	nfs4_unlock_state();
-> @@ -4746,7 +4758,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	file_lock->fl_pid = current->tgid;
->  	file_lock->fl_file = filp;
->  	file_lock->fl_flags = FL_POSIX;
-> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
->  	file_lock->fl_start = locku->lu_offset;
->  
->  	file_lock->fl_end = last_byte_offset(locku->lu_offset,
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index 1848fed..9ecae58 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -362,6 +362,7 @@ struct nfs4_openowner {
->  
->  struct nfs4_lockowner {
->  	struct nfs4_stateowner	lo_owner; /* must be first element */
-> +	unsigned int		lo_hashval;
->  };
->  
->  static inline struct nfs4_openowner * openowner(struct nfs4_stateowner *so)
-
-Looks fine other than the comment about the warning. I do have some
-patches that change the ownerstr_hashtbl to be a per-client entity.
-I'll need to respin them to account for this change, but that shouldn't
-be too onerous.
-
-Acked-by: Jeff Layton <jlayton@primarydata.com>
+> 
+> Jeff Layton (7):
+>   nfsd: Protect the nfs4_file delegation fields using the fi_lock
+>   nfsd: Fix delegation revocation
+>   nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock
+>   nfsd: drop unused stp arg to alloc_init_deleg
+>   nfsd: clean up arguments to nfs4_open_delegation
+>   nfsd: clean up nfs4_set_delegation
+>   nfsd: give block_delegation and delegation_blocked its own spinlock
+> 
+> Trond Myklebust (3):
+>   nfsd: Move the delegation reference counter into the struct nfs4_stid
+>   nfsd: simplify stateid allocation and file handling
+>   nfsd: Convert delegation counter to an atomic_long_t type
+> 
+>  fs/nfsd/nfs4state.c | 253 ++++++++++++++++++++++++++++++++--------------------
+>  fs/nfsd/state.h     |   2 +-
+>  2 files changed, 159 insertions(+), 96 deletions(-)
+> 
+> -- 
+> 1.9.3
+> 
