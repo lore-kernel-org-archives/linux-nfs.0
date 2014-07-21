@@ -1,119 +1,278 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:60763 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750965AbaG2Pdp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 11:33:45 -0400
-Received: by mail-ig0-f173.google.com with SMTP id h18so5699591igc.12
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 08:33:45 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: fuzz testing a 32 bit UML guest with NFSv4 gave: BUG kmalloc-256 (Not tainted): Redzone overwritten
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <CAHQdGtRqeQXEP1+VV5UUYSdobwNjWNt8y11HC_Zb891A+t9FFQ@mail.gmail.com>
-Date: Tue, 29 Jul 2014 11:33:42 -0400
-Cc: =?windows-1252?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>,
-        Weston Andros Adamson <weston.adamson@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <7B49B65C-3CD6-43AD-AB11-B3DDC52199FA@primarydata.com>
-References: <53D4CAA7.2000005@gmx.de> <CAHQdGtRqeQXEP1+VV5UUYSdobwNjWNt8y11HC_Zb891A+t9FFQ@mail.gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:37610 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751708AbaGUVFi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jul 2014 17:05:38 -0400
+Date: Mon, 21 Jul 2014 17:05:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 01/10] nfsd: Protect the nfs4_file delegation fields
+ using the fi_lock
+Message-ID: <20140721210531.GJ8438@fieldses.org>
+References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+ <1405696416-32585-2-git-send-email-jlayton@primarydata.com>
+ <20140718162825.GA8811@fieldses.org>
+ <20140718133140.6a26ea4d@f20.localdomain>
+ <20140718174957.GA12801@fieldses.org>
+ <20140718150404.3d1e094c@tlielax.poochiereds.net>
+ <20140718192149.GC12801@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140718192149.GC12801@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jul 27, 2014, at 12:06 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> On Sun, Jul 27, 2014 at 5:47 AM, Toralf Förster <toralf.foerster@gmx.de> wrote:
->> with current git kernel version 3.16.0-rc6-00139-g9c55021 I got today from the syslog :
->> 
->> 
->> Jul 26 23:40:18 trinity kernel: NFSD: unable to generate recoverydir name (-2).
->> Jul 26 23:40:18 trinity kernel: NFSD: disabling legacy clientid tracking. Reboot recovery will not function correctly!
->> Jul 26 23:40:22 trinity kernel: VFS: Warning: trinity-c1 using old stat() call. Recompile your binary.
->> Jul 26 23:40:23 trinity kernel: warning: process `trinity-c1' used the deprecated sysctl system call with
->> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
->> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c1 using old stat() call. Recompile your binary.
->> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
->> Jul 26 23:40:23 trinity kernel: trinity-c0 (1704) uses deprecated remap_file_pages() syscall. See Documentation/vm/remap_file_pages.txt.
->> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
->> Jul 26 23:40:25 trinity kernel: =============================================================================
->> Jul 26 23:40:25 trinity kernel: BUG kmalloc-256 (Not tainted): Redzone overwritten
->> Jul 26 23:40:25 trinity kernel: -----------------------------------------------------------------------------
->> Jul 26 23:40:25 trinity kernel:
->> Jul 26 23:40:25 trinity kernel: Disabling lock debugging due to kernel taint
->> Jul 26 23:40:25 trinity kernel: INFO: 0x82f0e230-0x82f0e233. First byte 0xa0 instead of 0xcc
->> Jul 26 23:40:25 trinity kernel: INFO: Allocated in nfs_generic_pgio+0x86/0x2d0 age=0 cpu=0 pid=1705
->> Jul 26 23:40:25 trinity kernel: INFO: Freed in nfs_pgio_data_release+0x33/0x70 age=0 cpu=0 pid=610
->> Jul 26 23:40:25 trinity kernel: INFO: Slab 0x0b7228c0 objects=13 used=2 fp=0x82f0e000 flags=0x0080
->> Jul 26 23:40:25 trinity kernel: INFO: Object 0x82f0e130 @offset=304 fp=0x82f0e000
->> Jul 26 23:40:25 trinity kernel:
->> Jul 26 23:40:25 trinity kernel: Bytes b4 82f0e120: a9 06 00 00 52 cf ff ff 5a 5a 5a 5a 5a 5a 5a 5a  ....R...ZZZZZZZZ
->> Jul 26 23:40:25 trinity kernel: Object 82f0e130: e0 d3 6b 0b 80 e3 6b 0b a0 e3 6b 0b c0 e3 6b 0b  ..k...k...k...k.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e140: e0 e3 6b 0b 80 13 6c 0b a0 13 6c 0b c0 13 6c 0b  ..k...l...l...l.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e150: e0 13 6c 0b 00 12 6c 0b 20 12 6c 0b 40 12 6c 0b  ..l...l. .l.@.l.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e160: 60 12 6c 0b 80 12 6c 0b a0 12 6c 0b c0 12 6c 0b  `.l...l...l...l.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e170: e0 12 6c 0b 00 10 6c 0b 20 10 6c 0b 40 10 6c 0b  ..l...l. .l.@.l.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e180: 60 10 6c 0b 80 10 6c 0b a0 10 6c 0b c0 10 6c 0b  `.l...l...l...l.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e190: e0 10 6c 0b 00 11 6c 0b 20 11 6c 0b 40 11 6c 0b  ..l...l. .l.@.l.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e1a0: 60 11 6c 0b 80 11 6c 0b a0 11 6c 0b 20 a4 70 0b  `.l...l...l. .p.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e1b0: a0 ca 6f 0b c0 ca 6f 0b e0 ca 6f 0b 00 cb 6f 0b  ..o...o...o...o.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e1c0: 20 cb 6f 0b 40 cb 6f 0b 60 cb 6f 0b 80 cb 6f 0b   .o.@.o.`.o...o.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e1d0: a0 cb 6f 0b c0 cb 6f 0b e0 cb 6f 0b 00 cc 6f 0b  ..o...o...o...o.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e1e0: 20 cc 6f 0b 40 cc 6f 0b 60 cc 6f 0b 80 cc 6f 0b   .o.@.o.`.o...o.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e1f0: a0 cc 6f 0b c0 cc 6f 0b e0 cc 6f 0b 00 cd 6f 0b  ..o...o...o...o.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e200: 20 cd 6f 0b 40 cd 6f 0b 60 cd 6f 0b 80 cd 6f 0b   .o.@.o.`.o...o.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e210: a0 cd 6f 0b c0 cd 6f 0b e0 cd 6f 0b 00 ce 6f 0b  ..o...o...o...o.
->> Jul 26 23:40:25 trinity kernel: Object 82f0e220: 20 ce 6f 0b 40 ce 6f 0b 60 ce 6f 0b 80 ce 6f 0b   .o.@.o.`.o...o.
->> Jul 26 23:40:25 trinity kernel: Redzone 82f0e230: a0 ce 6f 0b                                      ..o.
->> Jul 26 23:40:25 trinity kernel: Padding 82f0e258: 5a 5a 5a 5a 5a 5a 5a 5a                          ZZZZZZZZ
->> Jul 26 23:40:25 trinity kernel: CPU: 0 PID: 610 Comm: kworker/0:2 Tainted: G    B         3.16.0-rc6-00139-g9c55021 #85
->> Jul 26 23:40:25 trinity kernel: Workqueue: nfsiod rpc_async_release
->> Jul 26 23:40:25 trinity kernel: Stack:
->> Jul 26 23:40:25 trinity kernel: 085a296b 085a296b 00000003 086c8547 85449c00 00000128 0b7228c0 8572fd68
->> Jul 26 23:40:25 trinity kernel: 084e6736 00000000 8572fd3c 8572fda0 080ff083 085b1a4f 085b1a63 00000001
->> Jul 26 23:40:25 trinity kernel: 00000010 00000001 82f0e258 00000008 00000001 82f0e130 82f0e230 0b7228c0
->> Jul 26 23:40:25 trinity kernel: Call Trace:
->> Jul 26 23:40:25 trinity kernel: [<084e6736>] dump_stack+0x26/0x28
->> Jul 26 23:40:25 trinity kernel: [<080ff083>] print_trailer+0x1e3/0x1f0
->> Jul 26 23:40:25 trinity kernel: [<080ff989>] check_bytes_and_report+0xa9/0x100
->> Jul 26 23:40:25 trinity kernel: [<080ffa2c>] check_object+0x4c/0x210
->> Jul 26 23:40:25 trinity kernel: [<084e4599>] free_debug_processing+0xab/0x238
->> Jul 26 23:40:25 trinity kernel: [<0846870e>] ? rpc_wake_up_first+0x16e/0x190
->> Jul 26 23:40:25 trinity kernel: [<08496b55>] ? __gettimeofday+0x15/0x30
->> Jul 26 23:40:25 trinity kernel: [<084e475f>] __slab_free+0x39/0x223
->> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
->> Jul 26 23:40:25 trinity kernel: [<0808119c>] ? __local_bh_enable_ip+0x1c/0xa0
->> Jul 26 23:40:25 trinity kernel: [<08090293>] ? insert_work+0x73/0x90
->> Jul 26 23:40:25 trinity kernel: [<080729be>] ? set_signals+0x1e/0x40
->> Jul 26 23:40:25 trinity kernel: [<08101201>] kfree+0x111/0x150
->> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
->> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
->> Jul 26 23:40:25 trinity kernel: [<081e1d33>] nfs_pgio_data_release+0x33/0x70
->> Jul 26 23:40:25 trinity kernel: [<081e1d93>] nfs_pgio_release+0x23/0x30
->> Jul 26 23:40:25 trinity kernel: [<08467c80>] rpc_free_task+0x20/0x60
->> Jul 26 23:40:25 trinity kernel: [<08467cce>] rpc_async_release+0xe/0x10
->> Jul 26 23:40:25 trinity kernel: [<08090d11>] process_one_work+0x1a1/0x310
->> Jul 26 23:40:25 trinity kernel: [<084e7e65>] ? schedule+0x55/0x60
->> Jul 26 23:40:25 trinity kernel: [<0809116a>] worker_thread+0x2ea/0x530
->> Jul 26 23:40:25 trinity kernel: [<080729be>] ? set_signals+0x1e/0x40
->> Jul 26 23:40:25 trinity kernel: [<084e7e65>] ? schedule+0x55/0x60
->> Jul 26 23:40:25 trinity kernel: [<08090e80>] ? worker_thread+0x0/0x530
->> Jul 26 23:40:25 trinity kernel: [<08096806>] kthread+0xd6/0xe0
->> Jul 26 23:40:25 trinity kernel: [<0809dd7d>] ? finish_task_switch.isra.56+0x1d/0x70
->> Jul 26 23:40:25 trinity kernel: [<0806064b>] new_thread_handler+0x6b/0x90
->> Jul 26 23:40:25 trinity kernel:
->> Jul 26 23:40:25 trinity kernel: FIX kmalloc-256: Restoring 0x82f0e230-0x82f0e233=0xcc
->> Jul 26 23:40:25 trinity kernel:
->> Jul 26 23:40:26 trinity trinity: Detected kernel tainting. Last seed was 412561049
->> 
+On Fri, Jul 18, 2014 at 03:21:49PM -0400, J. Bruce Fields wrote:
+> On Fri, Jul 18, 2014 at 03:04:04PM -0400, Jeff Layton wrote:
+> > On Fri, 18 Jul 2014 13:49:57 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Fri, Jul 18, 2014 at 01:31:40PM -0400, Jeff Layton wrote:
+> > > > On Fri, 18 Jul 2014 12:28:25 -0400
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > On Fri, Jul 18, 2014 at 11:13:27AM -0400, Jeff Layton wrote:
+> > > > > > Move more of the delegation fields to be protected by the fi_lock. It's
+> > > > > > more granular than the state_lock and in later patches we'll want to
+> > > > > > be able to rely on it in addition to the state_lock.
+> > > > > > 
+> > > > > > Also, the current code in nfs4_setlease calls vfs_setlease and uses the
+> > > > > > client_mutex to ensure that it doesn't disappear before we can hash the
+> > > > > > delegation. With the client_mutex gone, we'll have a potential race
+> > > > > > condition.
+> > > > > > 
+> > > > > > It's possible that the delegation could be recalled after we acquire the
+> > > > > > lease but before we ever get around to hashing it. If that happens, then
+> > > > > > we'd have a nfs4_file that *thinks* it has a delegation, when it
+> > > > > > actually has none.
+> > > > > 
+> > > > > I understand now, thanks: so the lease break code walks the list of
+> > > > > delegations associated with the file, finds none, and issues no recall,
+> > > > > but the open code continues merrily on and returns a delegation, with
+> > > > > the result that we return the client a delegation that will never be
+> > > > > recalled.
+> > > > > 
+> > > > > That could be worded more carefully, and would be worth a separate patch
+> > > > > (since the bug predates the new locking).
+> > > > > 
+> > > > 
+> > > > Yes, that's basically correct. I'd have to think about how to fix that
+> > > > with the current code. It's probably doable if you think it's
+> > > > worthwhile, but I'll need to rebase this set on top of it.
+> > > 
+> > > Well, I was wondering if this patch could just be split in two, no need
+> > > to backport further than that.
+> > > 
+> > 
+> > Erm, now that I've looked, I don't think it'll be that easy. The key
+> > here is to ensure that fi_had_conflict is set while holding the
+> > fi_lock. The trick here is that we need to take it in nfs4_setlease as
+> > well, and check the flag before hashing the delegation without dropping
+> > the fi_lock.
 > 
-> Hi Dros,
-> 
-> It looks to me as if we're overflowing the page array by 1 page
-> pointer. Do you agree?
-> Do we perhaps have to look again at the way we're calculating the array length?
-> 
+> OK, I'll live.  For the sake of anyone that actually runs across that
+> bug I'll update the summary and changelog to emphasize the bugfix over
+> the locking change.
 
-I think you’re right. Looking at it…
+So, intending to apply as follows.
 
--dros
+--b.
 
+commit 417c6629b2d81d5a18d29c4bbb6a9a4c64282a36
+Author: Jeff Layton <jlayton@primarydata.com>
+Date:   Mon Jul 21 09:34:57 2014 -0400
+
+    nfsd: fix race that grants unrecallable delegation
+    
+    If nfs4_setlease succesfully acquires a new delegation, then another
+    task breaks the delegation before we reach hash_delegation_locked, then
+    the breaking task will see an empty fi_delegations list and do nothing.
+    The client will receive an open reply incorrectly granting a delegation
+    and will never receive a recall.
+    
+    Move more of the delegation fields to be protected by the fi_lock. It's
+    more granular than the state_lock and in later patches we'll want to
+    be able to rely on it in addition to the state_lock.
+    
+    Attempt to acquire a delegation. If that succeeds, take the spinlocks
+    and then check to see if the file has had a conflict show up since then.
+    If it has, then we assume that the lease is no longer valid and that
+    we shouldn't hand out a delegation.
+    
+    There's also one more potential (but very unlikely) problem. If the
+    lease is broken before the delegation is hashed, then it could leak.
+    In the event that the fi_delegations list is empty, reset the
+    fl_break_time to jiffies so that it's cleaned up ASAP by
+    the normal lease handling code.
+    
+    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+    Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+    Reviewed-by: Christoph Hellwig <hch@lst.de>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 10cdb67..cc477dd 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -624,6 +624,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
+ 
+ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+ {
++	lockdep_assert_held(&state_lock);
++
+ 	if (!fp->fi_lease)
+ 		return;
+ 	if (atomic_dec_and_test(&fp->fi_delegees)) {
+@@ -643,11 +645,10 @@ static void
+ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ {
+ 	lockdep_assert_held(&state_lock);
++	lockdep_assert_held(&fp->fi_lock);
+ 
+ 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+-	spin_lock(&fp->fi_lock);
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+-	spin_unlock(&fp->fi_lock);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ }
+ 
+@@ -659,17 +660,18 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 
+ 	spin_lock(&state_lock);
+ 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
++	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_recall_lru);
+-	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perfile);
+ 	spin_unlock(&fp->fi_lock);
+-	spin_unlock(&state_lock);
+ 	if (fp) {
+ 		nfs4_put_deleg_lease(fp);
+-		put_nfs4_file(fp);
+ 		dp->dl_file = NULL;
+ 	}
++	spin_unlock(&state_lock);
++	if (fp)
++		put_nfs4_file(fp);
+ }
+ 
+ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
+@@ -3141,10 +3143,19 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+ 	 */
+ 	fl->fl_break_time = 0;
+ 
+-	fp->fi_had_conflict = true;
+ 	spin_lock(&fp->fi_lock);
+-	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
+-		nfsd_break_one_deleg(dp);
++	fp->fi_had_conflict = true;
++	/*
++	 * If there are no delegations on the list, then we can't count on this
++	 * lease ever being cleaned up. Set the fl_break_time to jiffies so that
++	 * time_out_leases will do it ASAP. The fact that fi_had_conflict is now
++	 * true should keep any new delegations from being hashed.
++	 */
++	if (list_empty(&fp->fi_delegations))
++		fl->fl_break_time = jiffies;
++	else
++		list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
++			nfsd_break_one_deleg(dp);
+ 	spin_unlock(&fp->fi_lock);
+ }
+ 
+@@ -3491,46 +3502,77 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ {
+ 	struct nfs4_file *fp = dp->dl_file;
+ 	struct file_lock *fl;
+-	int status;
++	struct file *filp;
++	int status = 0;
+ 
+ 	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
+ 	if (!fl)
+ 		return -ENOMEM;
+-	fl->fl_file = find_readable_file(fp);
+-	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
+-	if (status)
+-		goto out_free;
++	filp = find_readable_file(fp);
++	if (!filp) {
++		/* We should always have a readable file here */
++		WARN_ON_ONCE(1);
++		return -EBADF;
++	}
++	fl->fl_file = filp;
++	status = vfs_setlease(filp, fl->fl_type, &fl);
++	if (status) {
++		locks_free_lock(fl);
++		goto out_fput;
++	}
++	spin_lock(&state_lock);
++	spin_lock(&fp->fi_lock);
++	/* Did the lease get broken before we took the lock? */
++	status = -EAGAIN;
++	if (fp->fi_had_conflict)
++		goto out_unlock;
++	/* Race breaker */
++	if (fp->fi_lease) {
++		status = 0;
++		atomic_inc(&fp->fi_delegees);
++		hash_delegation_locked(dp, fp);
++		goto out_unlock;
++	}
+ 	fp->fi_lease = fl;
+-	fp->fi_deleg_file = fl->fl_file;
++	fp->fi_deleg_file = filp;
+ 	atomic_set(&fp->fi_delegees, 1);
+-	spin_lock(&state_lock);
+ 	hash_delegation_locked(dp, fp);
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+-out_free:
+-	if (fl->fl_file)
+-		fput(fl->fl_file);
+-	locks_free_lock(fl);
++out_unlock:
++	spin_unlock(&fp->fi_lock);
++	spin_unlock(&state_lock);
++out_fput:
++	fput(filp);
+ 	return status;
+ }
+ 
+ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ {
++	int status = 0;
++
+ 	if (fp->fi_had_conflict)
+ 		return -EAGAIN;
+ 	get_nfs4_file(fp);
++	spin_lock(&state_lock);
++	spin_lock(&fp->fi_lock);
+ 	dp->dl_file = fp;
+-	if (!fp->fi_lease)
++	if (!fp->fi_lease) {
++		spin_unlock(&fp->fi_lock);
++		spin_unlock(&state_lock);
+ 		return nfs4_setlease(dp);
+-	spin_lock(&state_lock);
++	}
+ 	atomic_inc(&fp->fi_delegees);
+ 	if (fp->fi_had_conflict) {
+-		spin_unlock(&state_lock);
+-		return -EAGAIN;
++		status = -EAGAIN;
++		goto out_unlock;
+ 	}
+ 	hash_delegation_locked(dp, fp);
++out_unlock:
++	spin_unlock(&fp->fi_lock);
+ 	spin_unlock(&state_lock);
+-	return 0;
++	return status;
+ }
+ 
+ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
