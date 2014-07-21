@@ -1,113 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtprelay0078.hostedemail.com ([216.40.44.78]:47267 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753710AbaGTSYT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Jul 2014 14:24:19 -0400
-From: Joe Perches <joe@perches.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, David Teigland <teigland@redhat.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Christine Caulfield <ccaulfie@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        cluster-devel@redhat.com, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 9/9] fs: dlm: lockd: Convert int result to unsigned char type
-Date: Sun, 20 Jul 2014 11:23:43 -0700
-Message-Id: <65b9ba0dba9c79a938267d5bed7ed0a8211e89ed.1405879494.git.joe@perches.com>
-In-Reply-To: <cover.1405879494.git.joe@perches.com>
-References: <cover.1405879494.git.joe@perches.com>
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:40091 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932205AbaGUNmn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 09:42:43 -0400
+Received: by mail-qg0-f46.google.com with SMTP id z60so5282317qgd.5
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 06:42:42 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v5 02/10] nfsd: Move the delegation reference counter into the struct nfs4_stid
+Date: Mon, 21 Jul 2014 09:34:58 -0400
+Message-Id: <1405949706-27757-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
+References: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-op->info.rv is an s32, but it's only used as a u8.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Joe Perches <joe@perches.com>
+We will want to add reference counting to the lock stateid and open
+stateids too in later patches.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/dlm/plock.c     |  6 +++---
- fs/lockd/svclock.c | 10 +++++-----
- include/linux/fs.h |  2 +-
- 3 files changed, 9 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4state.c | 6 +++---
+ fs/nfsd/state.h     | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
-index 3e0b6fc..267849d 100644
---- a/fs/dlm/plock.c
-+++ b/fs/dlm/plock.c
-@@ -30,7 +30,7 @@ struct plock_op {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b05ac229fff0..a47c97586c76 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -472,6 +472,7 @@ kmem_cache *slab)
+ 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
+ 	/* Will be incremented before return to client: */
+ 	stid->sc_stateid.si_generation = 0;
++	atomic_set(&stid->sc_count, 1);
  
- struct plock_xop {
- 	struct plock_op xop;
--	int (*callback)(struct file_lock *fl, int result);
-+	int (*callback)(struct file_lock *fl, unsigned char type);
- 	void *fl;
- 	void *file;
- 	struct file_lock flc;
-@@ -190,7 +190,7 @@ static int dlm_plock_callback(struct plock_op *op)
- 	struct file *file;
- 	struct file_lock *fl;
- 	struct file_lock *flc;
--	int (*notify)(struct file_lock *fl, int result) = NULL;
-+	int (*notify)(struct file_lock *fl, unsigned char type) = NULL;
- 	struct plock_xop *xop = (struct plock_xop *)op;
- 	int rv = 0;
- 
-@@ -209,7 +209,7 @@ static int dlm_plock_callback(struct plock_op *op)
- 	notify = xop->callback;
- 
- 	if (op->info.rv) {
--		notify(fl, op->info.rv);
-+		notify(fl, (unsigned char)op->info.rv);
- 		goto out;
- 	}
- 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 2a61701..15532b9 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -667,16 +667,16 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_file *file, struct nlm_lock *l
-  * deferred rpc for GETLK and SETLK.
-  */
- static void
--nlmsvc_update_deferred_block(struct nlm_block *block, int result)
-+nlmsvc_update_deferred_block(struct nlm_block *block, unsigned char type)
+ 	/*
+ 	 * It shouldn't be a problem to reuse an opaque stateid value.
+@@ -595,7 +596,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+-	atomic_set(&dp->dl_count, 1);
+ 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
+ 	return dp;
+ }
+@@ -615,7 +615,7 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
  {
- 	block->b_flags |= B_GOT_CALLBACK;
--	if (result == 0)
-+	if (type == 0)
- 		block->b_granted = 1;
- 	else
- 		block->b_flags |= B_TIMED_OUT;
+-	if (atomic_dec_and_test(&dp->dl_count)) {
++	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
+ 		remove_stid(&dp->dl_stid);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+@@ -3120,7 +3120,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+ 	 * lock) we know the server hasn't removed the lease yet, we know
+ 	 * it's safe to take a reference.
+ 	 */
+-	atomic_inc(&dp->dl_count);
++	atomic_inc(&dp->dl_stid.sc_count);
+ 	nfsd4_cb_recall(dp);
  }
  
--static int nlmsvc_grant_deferred(struct file_lock *fl, int result)
-+static int nlmsvc_grant_deferred(struct file_lock *fl, unsigned char type)
- {
- 	struct nlm_block *block;
- 	int rc = -ENOENT;
-@@ -691,8 +691,8 @@ static int nlmsvc_grant_deferred(struct file_lock *fl, int result)
- 					rc = -ENOLCK;
- 					break;
- 				}
--				nlmsvc_update_deferred_block(block, result);
--			} else if (result == 0)
-+				nlmsvc_update_deferred_block(block, type);
-+			} else if (type == 0)
- 				block->b_granted = 1;
- 
- 			nlmsvc_insert_block_locked(block, 0);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index d083a67..7fbce66 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -842,7 +842,7 @@ struct lock_manager_operations {
- 	int (*lm_compare_owner)(struct file_lock *fl1, struct file_lock *fl2);
- 	unsigned long (*lm_owner_key)(struct file_lock *fl);
- 	void (*lm_notify)(struct file_lock *fl);	/* unblock callback */
--	int (*lm_grant)(struct file_lock *fl, int result);
-+	int (*lm_grant)(struct file_lock *fl, unsigned char type);
- 	void (*lm_break)(struct file_lock *fl);
- 	int (*lm_change)(struct file_lock **fl, int type);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 996d61eeb357..e68a9ae30fd7 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -73,6 +73,7 @@ struct nfsd4_callback {
  };
+ 
+ struct nfs4_stid {
++	atomic_t sc_count;
+ #define NFS4_OPEN_STID 1
+ #define NFS4_LOCK_STID 2
+ #define NFS4_DELEG_STID 4
+@@ -91,7 +92,6 @@ struct nfs4_delegation {
+ 	struct list_head	dl_perfile;
+ 	struct list_head	dl_perclnt;
+ 	struct list_head	dl_recall_lru;  /* delegation recalled */
+-	atomic_t		dl_count;       /* ref count */
+ 	struct nfs4_file	*dl_file;
+ 	u32			dl_type;
+ 	time_t			dl_time;
 -- 
-1.8.1.2.459.gbcd45b4.dirty
+1.9.3
 
