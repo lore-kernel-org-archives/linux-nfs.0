@@ -1,101 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36130 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:55295 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932367AbaGUPXD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jul 2014 11:23:03 -0400
-Date: Mon, 21 Jul 2014 11:23:02 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] svcrdma: Select NFSv4.1 backchannel transport based on
- forward channel
-Message-ID: <20140721152302.GC8438@fieldses.org>
-References: <20140716193542.7847.95868.stgit@klimt.1015granger.net>
- <20140717183621.GA30442@fieldses.org>
- <9D651FDC-7C11-476A-AE50-746E6E37B3E2@oracle.com>
- <99240537-8EC8-4ED3-8574-B95AC8A42F56@oracle.com>
- <20140718191256.GB12801@fieldses.org>
- <F69F9045-6ECC-4210-837C-2837AF37D7ED@oracle.com>
+	id S1753090AbaGUVJF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Jul 2014 17:09:05 -0400
+Date: Mon, 21 Jul 2014 17:09:05 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SUNRPC: Enforce an upper limit on the number of
+ cached credentials
+Message-ID: <20140721210905.GK8438@fieldses.org>
+References: <1405969902-11477-1-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <F69F9045-6ECC-4210-837C-2837AF37D7ED@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1405969902-11477-1-git-send-email-trond.myklebust@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 18, 2014 at 03:27:10PM -0400, Chuck Lever wrote:
-> On Jul 18, 2014, at 3:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > Either that or send the original CREATE_SESSION over the connection you
-> > want used for the backchannel, then send a BIND_CONNECTION_TO_SESSION
-> > over the RDMA connection.
-> > 
-> > That said, if the server knows there's no connection at all that's
-> > available for the backchannel, then yes I agree that it should be
-> > setting the PATH_DOWN flag:
-> 
-> I’m trying a fix that sets cl_cb_state = NFSD4_CB_DOWN in
-> init_session() if SESSION4_BACK_CHAN is clear.
-> 
-> From the looks of it, the server is architected to support one and
-> only one session per client ID. Is that correct?  Thus it expects
-> just one CREATE_SESSION operation per EXCHANGE_ID. Does the server
-> enforce this?
+On Mon, Jul 21, 2014 at 03:11:41PM -0400, Trond Myklebust wrote:
+> In some cases where the credentials are not often reused, we may want
+> to limit their total number just in order to make the negative lookups
+> in the hash table more manageable.
 
-No, that would definitely be a bug, if you see it failing to support
-multiple sessions per client id, let me know.
-
-BUT we definitely only use one backchannel connection at a time, even if
-the client offers us multiple connections over multiple sessions.
-
-> Seems like cl_cb_state really should be a per-session thing for
-> NFSv4.1.
-
-All we care about is whether some session has a working backchannel.
-
-The only callback we currently use is CB_RECALL, and it doesn't matter
-which session that's sent over.  If we needed to support e.g.
-CB_RECALL_SLOT, I think this should change.
-
-> And, while we’re at it, the server should assert
-> SEQ4_STATUS_CB_PATH_DOWN_SESSION as well as SEQ4_STATUS_CB_PATH_DOWN.
-
-Looking back at the spec, especially the language about retrying
-callbacsk, I think you might be right.  (And then maybe we do need to
-track callback status per-session.)  I'm not sure if this has much
-practical effect for now.
-
-> > Yes, agreed, I'll take a look--how are you reproducing?
-> 
-> Prototype Linux client that doesn’t set SESSION4_BACK_CHAN when it does
-> CREATE_SESSION. Preparing it for RDMA support.
-> 
-> You could code a pyNFS test.
-
-OK.  I may not get to this very soon.
-
-> > The
-> > nfsd4_probe_callback() should result in NFSD4_CB_DOWN getting set as
-> > soon as the workqueue process it.
-> 
-> Clearing SESSION4_BACK_CHAN squelches nfsd4_probe_callback(), so
-> the server never checks in this case.
-
-Oops, you're right.  May as well make that unconditional.
-
-> > In theory there's a race there (I
-> > should fix that) in practice I'd normally expect that to run before we
-> > process a SEQUENCE request on the new session.
-> 
-> >> Do you remember what this commit was trying to fix?
-> > 
-> > It's not a bugfix, just a minor optimization.  We could revert it if
-> > need be.
-> 
-> NP, I just don’t see how it helps to make that assumption, plus it
-> doesn’t seem entirely safe.
-> 
-> My initial question was "why does alloc_client() initialize cl_cb_state
-> to NFSD4_CB_UNKNOWN instead of NFSD4_CB_DOWN?”
-
-I don't remember, it could be that we really only need two states.
+Out of curiosity--how would somebody know that might need to set this?
 
 --b.
+
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/auth.c | 44 +++++++++++++++++++++++++++++++++++---------
+>  1 file changed, 35 insertions(+), 9 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+> index 2bc7bb82b162..360decdddc78 100644
+> --- a/net/sunrpc/auth.c
+> +++ b/net/sunrpc/auth.c
+> @@ -80,6 +80,10 @@ static struct kernel_param_ops param_ops_hashtbl_sz = {
+>  module_param_named(auth_hashtable_size, auth_hashbits, hashtbl_sz, 0644);
+>  MODULE_PARM_DESC(auth_hashtable_size, "RPC credential cache hashtable size");
+>  
+> +static unsigned long auth_max_cred_cachesize = ULONG_MAX;
+> +module_param(auth_max_cred_cachesize, ulong, 0644);
+> +MODULE_PARM_DESC(auth_max_cred_cachesize, "RPC credential maximum total cache size");
+> +
+>  static u32
+>  pseudoflavor_to_flavor(u32 flavor) {
+>  	if (flavor > RPC_AUTH_MAXFLAVOR)
+> @@ -481,6 +485,20 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
+>  	return freed;
+>  }
+>  
+> +static unsigned long
+> +rpcauth_cache_do_shrink(int nr_to_scan)
+> +{
+> +	LIST_HEAD(free);
+> +	unsigned long freed;
+> +
+> +	spin_lock(&rpc_credcache_lock);
+> +	freed = rpcauth_prune_expired(&free, nr_to_scan);
+> +	spin_unlock(&rpc_credcache_lock);
+> +	rpcauth_destroy_credlist(&free);
+> +
+> +	return freed;
+> +}
+> +
+>  /*
+>   * Run memory cache shrinker.
+>   */
+> @@ -488,9 +506,6 @@ static unsigned long
+>  rpcauth_cache_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+>  
+>  {
+> -	LIST_HEAD(free);
+> -	unsigned long freed;
+> -
+>  	if ((sc->gfp_mask & GFP_KERNEL) != GFP_KERNEL)
+>  		return SHRINK_STOP;
+>  
+> @@ -498,12 +513,7 @@ rpcauth_cache_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+>  	if (list_empty(&cred_unused))
+>  		return SHRINK_STOP;
+>  
+> -	spin_lock(&rpc_credcache_lock);
+> -	freed = rpcauth_prune_expired(&free, sc->nr_to_scan);
+> -	spin_unlock(&rpc_credcache_lock);
+> -	rpcauth_destroy_credlist(&free);
+> -
+> -	return freed;
+> +	return rpcauth_cache_do_shrink(sc->nr_to_scan);
+>  }
+>  
+>  static unsigned long
+> @@ -513,6 +523,21 @@ rpcauth_cache_shrink_count(struct shrinker *shrink, struct shrink_control *sc)
+>  	return (number_cred_unused / 100) * sysctl_vfs_cache_pressure;
+>  }
+>  
+> +static void
+> +rpcauth_cache_enforce_limit(void)
+> +{
+> +	unsigned long diff;
+> +	unsigned int nr_to_scan;
+> +
+> +	if (number_cred_unused <= auth_max_cred_cachesize)
+> +		return;
+> +	diff = number_cred_unused - auth_max_cred_cachesize;
+> +	nr_to_scan = 100;
+> +	if (diff < nr_to_scan)
+> +		nr_to_scan = diff;
+> +	rpcauth_cache_do_shrink(nr_to_scan);
+> +}
+> +
+>  /*
+>   * Look up a process' credentials in the authentication cache
+>   */
+> @@ -566,6 +591,7 @@ rpcauth_lookup_credcache(struct rpc_auth *auth, struct auth_cred * acred,
+>  	} else
+>  		list_add_tail(&new->cr_lru, &free);
+>  	spin_unlock(&cache->lock);
+> +	rpcauth_cache_enforce_limit();
+>  found:
+>  	if (test_bit(RPCAUTH_CRED_NEW, &cred->cr_flags) &&
+>  	    cred->cr_ops->cr_init != NULL &&
+> -- 
+> 1.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
