@@ -1,85 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:46005 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755604AbaGVOyE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:54:04 -0400
-Subject: [PATCH v4 21/21] xprtrdma: Handle additional connection events
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:54:01 -0400
-Message-ID: <20140722145401.6010.63941.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qc0-f180.google.com ([209.85.216.180]:46240 "EHLO
+	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755123AbaGUPDW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:22 -0400
+Received: by mail-qc0-f180.google.com with SMTP id l6so5627847qcy.39
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:22 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 16/40] nfsd: nfsd4_process_open2() must reference the open stateid
+Date: Mon, 21 Jul 2014 11:02:28 -0400
+Message-Id: <1405954972-28904-17-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 38ca83a5 added RDMA_CM_EVENT_TIMEWAIT_EXIT. But that status
-is relevant only for consumers that re-use their QPs on new
-connections. xprtrdma creates a fresh QP on reconnection, so that
-event should be explicitly ignored.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Squelch the alarming "unexpected CM event" message.
+Ensure that nfsd4_process_open2() keeps a reference to the open
+stateid until it is done working with it. Necessary step toward
+client_mutex removal.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   25 ++++++++++++++-----------
- 1 file changed, 14 insertions(+), 11 deletions(-)
+ fs/nfsd/nfs4state.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 721a6fd..6ead5df 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -326,8 +326,16 @@ static const char * const conn[] = {
- 	"rejected",
- 	"established",
- 	"disconnected",
--	"device removal"
-+	"device removal",
-+	"multicast join",
-+	"multicast error",
-+	"address change",
-+	"timewait exit",
- };
-+
-+#define CONNECTION_MSG(status)						\
-+	((status) < ARRAY_SIZE(conn) ?					\
-+		conn[(status)] : "unrecognized connection error")
- #endif
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2eaaceef11e8..1022d11031f0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3011,6 +3011,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
+ 	struct nfs4_openowner *oo = open->op_openowner;
  
- static int
-@@ -385,23 +393,18 @@ rpcrdma_conn_upcall(struct rdma_cm_id *id, struct rdma_cm_event *event)
- 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
- 		connstate = -ENODEV;
- connected:
--		dprintk("RPC:       %s: %s: %pI4:%u (ep 0x%p event 0x%x)\n",
--			__func__,
--			(event->event <= 11) ? conn[event->event] :
--						"unknown connection error",
--			&addr->sin_addr.s_addr,
--			ntohs(addr->sin_port),
--			ep, event->event);
- 		atomic_set(&rpcx_to_rdmax(ep->rep_xprt)->rx_buf.rb_credits, 1);
- 		dprintk("RPC:       %s: %sconnected\n",
- 					__func__, connstate > 0 ? "" : "dis");
- 		ep->rep_connected = connstate;
- 		ep->rep_func(ep);
- 		wake_up_all(&ep->rep_connect_wait);
--		break;
-+		/*FALLTHROUGH*/
- 	default:
--		dprintk("RPC:       %s: unexpected CM event %d\n",
--			__func__, event->event);
-+		dprintk("RPC:       %s: %pI4:%u (ep 0x%p): %s\n",
-+			__func__, &addr->sin_addr.s_addr,
-+			ntohs(addr->sin_port), ep,
-+			CONNECTION_MSG(event->event));
- 		break;
++	atomic_inc(&stp->st_stid.sc_count);
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_locks);
+ 	stp->st_stateowner = &oo->oo_owner;
+@@ -3394,6 +3395,7 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
+ 			continue;
+ 		if (local->st_stateowner == &oo->oo_owner) {
+ 			ret = local;
++			atomic_inc(&ret->st_stid.sc_count);
+ 			break;
+ 		}
  	}
+@@ -3854,6 +3856,8 @@ out:
+ 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
+ 	if (dp)
+ 		nfs4_put_delegation(dp);
++	if (stp)
++		put_generic_stateid(stp);
  
+ 	return status;
+ }
+-- 
+1.9.3
 
