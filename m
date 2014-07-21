@@ -1,107 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:37123 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755367AbaGHSFx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:53 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so5647880qgf.0
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:53 -0700 (PDT)
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:45993 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932153AbaGUNf0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 09:35:26 -0400
+Received: by mail-qg0-f42.google.com with SMTP id j5so5381445qga.15
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 06:35:25 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 057/100] nfsd: clean up and reorganize release_lockowner
-Date: Tue,  8 Jul 2014 14:03:45 -0400
-Message-Id: <1404842668-22521-58-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Cc: hch@infradead.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 07/10] nfsd: drop unused stp arg to alloc_init_deleg
+Date: Mon, 21 Jul 2014 09:35:03 -0400
+Message-Id: <1405949706-27757-8-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
+References: <1405949706-27757-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Do more within the main loop, and simplify the function a bit. Also,
-there's no need to take a stateowner reference unless we're going to call
-release_lockowner.
-
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 49 ++++++++++++++++++-------------------------------
- 1 file changed, 18 insertions(+), 31 deletions(-)
+ fs/nfsd/nfs4state.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 93d526bca290..fb2f3ec0708f 100644
+index 390515889c91..acddedb7250e 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5403,8 +5403,8 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			struct nfsd4_release_lockowner *rlockowner)
- {
- 	clientid_t *clid = &rlockowner->rl_clientid;
--	struct nfs4_stateowner *sop = NULL, *tmp;
--	struct nfs4_lockowner *lo;
-+	struct nfs4_stateowner *sop;
-+	struct nfs4_lockowner *lo = NULL;
- 	struct nfs4_ol_stateid *stp;
- 	struct xdr_netobj *owner = &rlockowner->rl_owner;
- 	unsigned int hashval = ownerstr_hashval(owner);
-@@ -5421,45 +5421,32 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	if (status)
- 		goto out;
- 
--	status = nfserr_locks_held;
--
- 	clp = cstate->clp;
- 	/* Find the matching lock stateowner */
- 	spin_lock(&clp->cl_lock);
--	list_for_each_entry(tmp, &clp->cl_ownerstr_hashtbl[hashval],
-+	list_for_each_entry(sop, &clp->cl_ownerstr_hashtbl[hashval],
- 			    so_strhash) {
--		if (tmp->so_is_open_owner)
--			continue;
--		if (same_owner_str(tmp, owner)) {
--			sop = tmp;
--			atomic_inc(&sop->so_count);
--			break;
--		}
--	}
- 
--	/* No matching owner found, maybe a replay? Just declare victory... */
--	if (!sop) {
--		spin_unlock(&clp->cl_lock);
--		status = nfs_ok;
--		goto out;
--	}
-+		if (sop->so_is_open_owner || !same_owner_str(sop, owner))
-+			continue;
- 
--	lo = lockowner(sop);
--	/* see if there are still any locks associated with it */
--	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
--		if (check_for_locks(stp->st_stid.sc_file, lo)) {
--			spin_unlock(&clp->cl_lock);
--			goto out;
-+		/* see if there are still any locks associated with it */
-+		lo = lockowner(sop);
-+		list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
-+			if (check_for_locks(stp->st_stid.sc_file, lo)) {
-+				status = nfserr_locks_held;
-+				spin_unlock(&clp->cl_lock);
-+				goto out;
-+			}
- 		}
-+
-+		atomic_inc(&sop->so_count);
-+		break;
- 	}
- 	spin_unlock(&clp->cl_lock);
--
--	status = nfs_ok;
--	sop = NULL;
--	release_lockowner(lo);
-+	if (lo)
-+		release_lockowner(lo);
- out:
--	if (sop)
--		nfs4_put_stateowner(sop);
- 	nfs4_unlock_state();
- 	return status;
+@@ -568,7 +568,7 @@ static void block_delegations(struct knfsd_fh *fh)
  }
+ 
+ static struct nfs4_delegation *
+-alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
++alloc_init_deleg(struct nfs4_client *clp, struct svc_fh *current_fh)
+ {
+ 	struct nfs4_delegation *dp;
+ 	long n;
+@@ -3643,7 +3643,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+ 		default:
+ 			goto out_no_deleg;
+ 	}
+-	dp = alloc_init_deleg(oo->oo_owner.so_client, stp, fh);
++	dp = alloc_init_deleg(oo->oo_owner.so_client, fh);
+ 	if (dp == NULL)
+ 		goto out_no_deleg;
+ 	status = nfs4_set_delegation(dp, stp->st_file);
 -- 
 1.9.3
 
