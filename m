@@ -1,123 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:64033 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754989AbaGNMO7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 08:14:59 -0400
-Received: by mail-qc0-f175.google.com with SMTP id i8so3364291qcq.20
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Jul 2014 05:14:57 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 14 Jul 2014 08:14:55 -0400
-To: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: nfs4_lookup_revalidate need to report STALE
- inodes.
-Message-ID: <20140714081455.69f55224@tlielax.poochiereds.net>
-In-Reply-To: <20140714151405.2fa06dd7@notabene.brown>
-References: <20140714151405.2fa06dd7@notabene.brown>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/MeCzUKgB9BDsSciHf=APoWv"; protocol="application/pgp-signature"
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:41029 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754936AbaGUPDl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:41 -0400
+Received: by mail-qg0-f48.google.com with SMTP id i50so5425344qgf.21
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:40 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 29/40] nfsd: clean up refcounting for lockowners
+Date: Mon, 21 Jul 2014 11:02:41 -0400
+Message-Id: <1405954972-28904-30-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/MeCzUKgB9BDsSciHf=APoWv
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Ensure that lockowner references are only held by lockstateids and
+operations that are in-progress. With this, we can get rid of
+release_lockowner_if_empty, which will be racy once we remove
+client_mutex protection.
 
-On Mon, 14 Jul 2014 15:14:05 +1000
-NeilBrown <neilb@suse.de> wrote:
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 29 +++++++----------------------
+ 1 file changed, 7 insertions(+), 22 deletions(-)
 
->=20
-> If an 'open' of a file in an NFSv4 filesystem finds that the dentry is
-> in cache, but the inode is stale (on the server), the dentry will not
-> be re-validated immediately and may cause ESTALE to be returned to
-> user-space.
->=20
-> For a non-create 'open', do_last() calls lookup_fast() and on success
-> will eventually call may_open() which calls into nfs_permission().
-> If nfs_permission() makes the ACCESS call to the server it will get
-> NFS4ERR_STALE, resulting in ESTALE from may_open() and thence from
-> do_last().
-> The retry-on-ESTALE in filename_lookup() will repeat exactly the same
-> process because nothing in this path will invalidate the dentry due to
-> the inode being stale, so the ESTALE will be returned.
->=20
-> lookup_fast() calls ->d_revalidate(), but for an OPEN on an NFSv4
-> filesystem, that will succeed for regular files:
-> 	/* Let f_op->open() actually open (and revalidate) the file */
->=20
-> Unfortunately in the case of a STALE inode, f_op->open() never gets
-> called.  If we teach nfs4_lookup_revalidate() to report a failure on
-> NFS_STALE() inodes, then the dentry will be invalidated and a full
-> lookup will be attempted.  The ESTALE errors go away.
->=20
->=20
-> While I think this fix is correct, I'm not convinced that it is
-> sufficient, particularly if lookupcache=3Dnone.
-> The current code will fail an "open" is nfs_permission() fails,
-> without having performed a LOOKUP. i.e. it will use the cache.
-> nfs_lookup_revalidate will force a lookup before the permission check
-> if NFS_MOUNT_LOOKUP_CACHE_NONE, but nfs4_lookup_revalidate will not.
->=20
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 348a8b20e546..5df3577d62bf 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -934,7 +934,7 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	nfs4_put_stid(&stp->st_stid);
+ }
+ 
+-static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
++static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+ 
+@@ -958,7 +958,7 @@ static void release_lockowner_stateids(struct nfs4_lockowner *lo)
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		__release_lock_stateid(stp);
++		release_lock_stateid(stp);
+ 	}
+ }
+ 
+@@ -969,21 +969,6 @@ static void release_lockowner(struct nfs4_lockowner *lo)
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+-static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
+-{
+-	if (list_empty(&lo->lo_owner.so_stateids))
+-		release_lockowner(lo);
+-}
+-
+-static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+-{
+-	struct nfs4_lockowner *lo;
+-
+-	lo = lockowner(stp->st_stateowner);
+-	__release_lock_stateid(stp);
+-	release_lockowner_if_empty(lo);
+-}
+-
+ static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
+ 	__releases(&open_stp->st_stateowner->so_client->cl_lock)
+ 	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
+@@ -4338,7 +4323,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+ 
+ 	if (check_for_locks(stp->st_stid.sc_file, lo))
+ 		return nfserr_locks_held;
+-	release_lockowner_if_empty(lo);
++	release_lock_stateid(stp);
+ 	return nfs_ok;
+ }
+ 
+@@ -4945,8 +4930,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
+ 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
+ 		if (lo == NULL)
+ 			return nfserr_jukebox;
+-		/* FIXME: extra reference for new lockowners for the client */
+-		atomic_inc(&lo->lo_owner.so_count);
+ 	} else {
+ 		/* with an existing lockowner, seqids must be the same */
+ 		status = nfserr_bad_seqid;
+@@ -4957,7 +4940,6 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
+ 
+ 	*lst = find_or_create_lock_stateid(lo, fi, ost, new);
+ 	if (*lst == NULL) {
+-		release_lockowner_if_empty(lo);
+ 		status = nfserr_jukebox;
+ 		goto out;
+ 	}
+@@ -5377,6 +5359,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			continue;
+ 		if (same_owner_str(tmp, owner, clid)) {
+ 			sop = tmp;
++			atomic_inc(&sop->so_count);
+ 			break;
+ 		}
+ 	}
+@@ -5390,8 +5373,10 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	lo = lockowner(sop);
+ 	/* see if there are still any locks associated with it */
+ 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+-		if (check_for_locks(stp->st_stid.sc_file, lo))
++		if (check_for_locks(stp->st_stid.sc_file, lo)) {
++			nfs4_put_stateowner(sop);
+ 			goto out;
++		}
+ 	}
+ 
+ 	status = nfs_ok;
+-- 
+1.9.3
 
-This patch should make the code fall through to nfs_lookup_revalidate,
-which would then force the lookup, right?
-
-Also, I'm a little unclear...
-
-Why would may_open fail with ESTALE after the v4 OPEN succeeds? The
-OPEN should be returning a filehandle and attributes for the inode
-actually opened. It seems like we ought to be doing any permission
-checks vs. that inode, not anything we had in cache. Presumably the
-server is then holding it open so it shouldn't be stale.
-
-Are we not properly updating the dcache (and attrcache) after the OPEN
-reply?
-
->=20
-> Signed-off-by: NeilBrown <neilb@suse.de>
->=20
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 4a3d4ef76127..4f7414afca27 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1563,6 +1563,8 @@ static int nfs4_lookup_revalidate(struct dentry
-> *dentry, unsigned int flags) /* We cannot do exclusive creation on a
-> positive dentry */ if (flags & LOOKUP_EXCL)
->  		goto no_open_dput;
-> +	if (NFS_STALE(inode))
-> +		goto no_open_dput;
-> =20
->  	/* Let f_op->open() actually open (and revalidate) the file
-> */ ret =3D 1;
-
-Looks legit to me too, but it seems like the inode could go stale w/o
-us knowing after this point.
-
-Acked-by: Jeff Layton <jlayton@primarydata.com>
-
---Sig_/MeCzUKgB9BDsSciHf=APoWv
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBAgAGBQJTw8m/AAoJEAAOaEEZVoIVEWYQALpaPwCKjPXlgFoIfTRn/+gi
-M+0RKvRiVptX5SFdpmTxDpRkwPeo4+olNC/kXyy5UET5GEkJjZ9FuLcCx1FLUomA
-V8xK5hynYzWzSARVwDJH7VK0mlqp/OfWZ7GdxaxC8jrBkM3uZOkX9TukaIl/f0MU
-GHhetDDzym3uEVX+Q/G79ou/dzUvQr8jL6doVWp7uzDebRyS8SO1gIJ6YLW9X1Ru
-p+44r8gOTnT2GULInC16KeJgv/lxC3V2G9EXSDh+hmwkxjxyj3N6mSRsmaWQEA0e
-P9kOokaLjgNAeaWsLpgQJ0VfIrgYlIZ4933FHChtgMCJ9BddbMkbrq9hOrTEbttp
-z9U6mzwoBR6VpFzjD8mLwmQb2G9lK5gtgOSZQTGNGDZBqnxVpGYMMRjvprsbhTL9
-TigbnyfqX/oUau61WoHWcJj+PjSa8tTp8QutmI2f0IT3W+BIOMv7zTKYffA6slxb
-+AxCRoXI7kVNqVpVLDh2EkY/s3qGLc0YUPs29c9qJn8QVeNtCQmmi6pLs9+Tw5cs
-O2hgyXnDzMsMeAv21rMZw0iB09ZTy6EzgzRY6RzjJ0YPDkR+0hkCI+OGbCVH6AMH
-99iiLIFmCD+sSfD5KnVZpPksf4+DFl3h/VLLnT7LwRP4xlh28kSF6H6apizyi8G0
-mLQVlI12fZxHBF7iF/zB
-=OmzF
------END PGP SIGNATURE-----
-
---Sig_/MeCzUKgB9BDsSciHf=APoWv--
