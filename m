@@ -1,160 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ecl1mtaoutpex02.symantec.com ([166.98.1.210]:49735 "EHLO
-	ecl1mtaoutpex02.symantec.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752918AbaGYQYg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jul 2014 12:24:36 -0400
-From: Rishi Agrawal <Rishi_Agrawal@symantec.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: Rajesh Ghanekar <Rajesh_Ghanekar@symantec.com>,
-        Ram Pandiri <ram_pandiri@symantec.com>,
-        Sreeharsha Sarabu <Sreeharsha_Sarabu@symantec.com>,
-        Abhijit Dey <Abhijit_Dey@symantec.com>,
-        Tushar Shinde <Tushar_Shinde@symantec.com>,
-        "bfields@redhat.com" <bfields@redhat.com>,
-        "steved@redhat.com" <steved@redhat.com>
-Date: Fri, 25 Jul 2014 09:19:25 -0700
-Subject: Patch For Making Readdir_plus configurable
-Message-ID: <20AEB6A025F81A4288597093171D1B5719CF5813D2@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM>
-Content-Type: multipart/mixed;
-	boundary="_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_"
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:23627 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752021AbaGVV1d convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 17:27:33 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH 1/2] svcrdma: Increase credit limit to 32
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20140722203520.GS8438@fieldses.org>
+Date: Tue, 22 Jul 2014 17:27:25 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <39340C1C-072D-4F78-88BE-51C70EC43EA9@oracle.com>
+References: <20140722195840.6011.87861.stgit@klimt.1015granger.net> <20140722200031.6011.28421.stgit@klimt.1015granger.net> <20140722203520.GS8438@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_
-Content-Type: text/plain; charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
 
-Hi,
-=A0=A0 One of our customer's application only needs file names not
-file attributes. With directories having 10K+ inodes (assuming buffer
-cache has directory blocks cached having file names, but inode
-cache is limited and hence need eviction of older cached inodes),
-older inodes are evicted periodically. So if they keep on doing
-readdir(2) from NSF client on multiple directories, some directory's
-files are periodically removed from inode cache and hence new
-readdir(2) on same directory requires disk access to bring back
-inodes again to inode cache.
+On Jul 22, 2014, at 4:35 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-As READDIRPLUS request fetches attributes also, doing getattr on
-each file on server, it causes unnecessary disk accesses. If
-READDIRPLUS on NFS client is returned with -ENOTSUPP, NFS
-client uses READDIR request which just gets the names of the files
-in a directory, not attributes, hence avoiding disk accesses on server.
+> Could I just get a little more of a changelog?  Why (in one sentence)
+> are we doing this?
 
-Can this be per-export tunable so that different application can
-use it in different ways, some supporting readdirplus and others
-not supporting readdirplus?
+Apologies, yes, I will resend with an adequate patch description.
 
-I have worked on a patch against 3.15.6 for this. Also I am
-adding a patch against latest nfs-utils to have an export option
-for this. Can someone let me know if these patches are adequate
-or if any other changes are required. Patches attached, although
-with minimal testing. I would like to know if something like this
-can be added and if the patch can be reworked if I am missing
-something for NFSv4.
+> 
+> --b.
+> 
+> On Tue, Jul 22, 2014 at 04:00:31PM -0400, Chuck Lever wrote:
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> 
+>> include/linux/sunrpc/svc_rdma.h |    3 +--
+>> 1 files changed, 1 insertions(+), 2 deletions(-)
+>> 
+>> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+>> index 5cf99a0..975da75 100644
+>> --- a/include/linux/sunrpc/svc_rdma.h
+>> +++ b/include/linux/sunrpc/svc_rdma.h
+>> @@ -174,8 +174,7 @@ struct svcxprt_rdma {
+>>  * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
+>> #define RPCRDMA_ORD             (64/4)
+>> #define RPCRDMA_SQ_DEPTH_MULT   8
+>> -#define RPCRDMA_MAX_THREADS     16
+>> -#define RPCRDMA_MAX_REQUESTS    16
+>> +#define RPCRDMA_MAX_REQUESTS    32
+>> #define RPCRDMA_MAX_REQ_SIZE    4096
+>> 
+>> /* svc_rdma_marshal.c */
+>> 
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-Regards,
-Rishi Agrawal
 
-
-
---_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_
-Content-Type: application/octet-stream; name="patch_linux-kernel-3-15-6"
-Content-Description: patch_linux-kernel-3-15-6
-Content-Disposition: attachment; filename="patch_linux-kernel-3-15-6";
-	size=2982; creation-date="Fri, 25 Jul 2014 16:05:00 GMT";
-	modification-date="Thu, 24 Jul 2014 15:14:23 GMT"
-Content-Transfer-Encoding: base64
-
-ZGlmZiAtciAtdSBsaW51eC0zLjE1LjYvZnMvbmZzZC9leHBvcnQuYyBwYXRjaGVkX2xpbnV4LTMu
-MTUuNi9mcy9uZnNkL2V4cG9ydC5jCi0tLSBsaW51eC0zLjE1LjYvZnMvbmZzZC9leHBvcnQuYwky
-MDE0LTA3LTE4IDA0OjUzOjMxLjAwMDAwMDAwMCArMDUzMAorKysgcGF0Y2hlZF9saW51eC0zLjE1
-LjYvZnMvbmZzZC9leHBvcnQuYwkyMDE0LTA3LTI0IDIwOjExOjM0LjU3NjU5OTYxOSArMDUzMApA
-QCAtMTEyMyw2ICsxMTIzLDcgQEAKIAl7IE5GU0VYUF9BTExTUVVBU0gsIHsiYWxsX3NxdWFzaCIs
-ICIifX0sCiAJeyBORlNFWFBfQVNZTkMsIHsiYXN5bmMiLCAic3luYyJ9fSwKIAl7IE5GU0VYUF9H
-QVRIRVJFRF9XUklURVMsIHsid2RlbGF5IiwgIm5vX3dkZWxheSJ9fSwKKwl7IE5GU0VYUF9OT1JF
-QURESVJQTFVTLCB7Im5vcmRpcnBsdXMiLCAiIn19LAogCXsgTkZTRVhQX05PSElERSwgeyJub2hp
-ZGUiLCAiIn19LAogCXsgTkZTRVhQX0NST1NTTU9VTlQsIHsiY3Jvc3NtbnQiLCAiIn19LAogCXsg
-TkZTRVhQX05PU1VCVFJFRUNIRUNLLCB7Im5vX3N1YnRyZWVfY2hlY2siLCAiIn19LApkaWZmIC1y
-IC11IGxpbnV4LTMuMTUuNi9mcy9uZnNkL25mczNwcm9jLmMgcGF0Y2hlZF9saW51eC0zLjE1LjYv
-ZnMvbmZzZC9uZnMzcHJvYy5jCi0tLSBsaW51eC0zLjE1LjYvZnMvbmZzZC9uZnMzcHJvYy5jCTIw
-MTQtMDctMTggMDQ6NTM6MzEuMDAwMDAwMDAwICswNTMwCisrKyBwYXRjaGVkX2xpbnV4LTMuMTUu
-Ni9mcy9uZnNkL25mczNwcm9jLmMJMjAxNC0wNy0yNCAyMDoyMDowNi42NTA1OTk3MDkgKzA1MzAK
-QEAgLTQ0Niw2ICs0NDYsMjYgQEAKIAlSRVRVUk5fU1RBVFVTKG5mc2Vycik7CiB9CiAKK3N0YXRp
-YyBpbnQKK25mc2QzX2lzX3JlYWRkaXJwbHVzX3N1cHBvcnRlZChzdHJ1Y3Qgc3ZjX3Jxc3QgKnJx
-c3RwLCBzdHJ1Y3Qgc3ZjX2ZoICpmaHApCit7CisJc3RydWN0IHN2Y19leHBvcnQgKmV4cDsKKwlp
-bnQgc3VwcG9ydGVkID0gMTsgLyogZmFsbCBiYWNrIHRvIHJlYWRkaXJwbHVzIHN1cHBvcnRlZCBp
-biBjYXNlIG9mIGVycm9ycy4qLworCWludCBlcnI7CisKKwllcnIgPSBmaF92ZXJpZnkocnFzdHAs
-IGZocCwgU19JRkRJUiwgTkZTRF9NQVlfUkVBRCk7CisJaWYgKGVycikgeworCQlnb3RvIG91dDsK
-Kwl9CisKKwlleHAgPSBmaHAtPmZoX2V4cG9ydDsKKwlpZiAoZXhwLT5leF9mbGFncyAmIE5GU0VY
-UF9OT1JFQURESVJQTFVTKSB7CisJCXN1cHBvcnRlZCA9IDA7CisJfQorb3V0OgorCXJldHVybiBz
-dXBwb3J0ZWQ7Cit9CisKIC8qCiAgKiBSZWFkIGEgcG9ydGlvbiBvZiBhIGRpcmVjdG9yeSwgaW5j
-bHVkaW5nIGZpbGUgaGFuZGxlcyBhbmQgYXR0cnMuCiAgKiBGb3Igbm93LCB3ZSBjaG9vc2UgdG8g
-aWdub3JlIHRoZSBkaXJjb3VudCBwYXJhbWV0ZXIuCkBAIC00NzYsMTAgKzQ5NiwxNiBAQAogCXJl
-c3AtPmJ1ZmxlbiA9IHJlc3AtPmNvdW50OwogCXJlc3AtPnJxc3RwID0gcnFzdHA7CiAJb2Zmc2V0
-ID0gYXJncC0+Y29va2llOwotCW5mc2VyciA9IG5mc2RfcmVhZGRpcihycXN0cCwgJnJlc3AtPmZo
-LAotCQkJCSAgICAgJm9mZnNldCwKLQkJCQkgICAgICZyZXNwLT5jb21tb24sCi0JCQkJICAgICBu
-ZnMzc3ZjX2VuY29kZV9lbnRyeV9wbHVzKTsKKworCWlmIChuZnNkM19pc19yZWFkZGlycGx1c19z
-dXBwb3J0ZWQocnFzdHAsICZyZXNwLT5maCkpIHsKKwkJbmZzZXJyID0gbmZzZF9yZWFkZGlyKHJx
-c3RwLCAmcmVzcC0+ZmgsCisJCQkJJm9mZnNldCwKKwkJCQkmcmVzcC0+Y29tbW9uLAorCQkJCW5m
-czNzdmNfZW5jb2RlX2VudHJ5X3BsdXMpOworCX0gZWxzZSB7CisJCW5mc2VyciA9IG5mc2Vycm5v
-KC1FT1BOT1RTVVBQKTsKKwl9CisKIAltZW1jcHkocmVzcC0+dmVyZiwgYXJncC0+dmVyZiwgOCk7
-CiAJZm9yIChwID0gcnFzdHAtPnJxX3Jlc3BhZ2VzICsgMTsgcCA8IHJxc3RwLT5ycV9uZXh0X3Bh
-Z2U7IHArKykgewogCQlwYWdlX2FkZHIgPSBwYWdlX2FkZHJlc3MoKnApOwpkaWZmIC1yIC11IGxp
-bnV4LTMuMTUuNi9pbmNsdWRlL3VhcGkvbGludXgvbmZzZC9leHBvcnQuaCBwYXRjaGVkX2xpbnV4
-LTMuMTUuNi9pbmNsdWRlL3VhcGkvbGludXgvbmZzZC9leHBvcnQuaAotLS0gbGludXgtMy4xNS42
-L2luY2x1ZGUvdWFwaS9saW51eC9uZnNkL2V4cG9ydC5oCTIwMTQtMDctMTggMDQ6NTM6MzEuMDAw
-MDAwMDAwICswNTMwCisrKyBwYXRjaGVkX2xpbnV4LTMuMTUuNi9pbmNsdWRlL3VhcGkvbGludXgv
-bmZzZC9leHBvcnQuaAkyMDE0LTA3LTI0IDIwOjE3OjU3Ljg0NTU5OTk5MyArMDUzMApAQCAtMjgs
-NyArMjgsOCBAQAogI2RlZmluZSBORlNFWFBfQUxMU1FVQVNICTB4MDAwOAogI2RlZmluZSBORlNF
-WFBfQVNZTkMJCTB4MDAxMAogI2RlZmluZSBORlNFWFBfR0FUSEVSRURfV1JJVEVTCTB4MDAyMAot
-LyogNDAgODAgMTAwIGN1cnJlbnRseSB1bnVzZWQgKi8KKyNkZWZpbmUgTkZTRVhQX05PUkVBRERJ
-UlBMVVMgICAgMHgwMDQwCisvKiA4MCAxMDAgY3VycmVudGx5IHVudXNlZCAqLwogI2RlZmluZSBO
-RlNFWFBfTk9ISURFCQkweDAyMDAKICNkZWZpbmUgTkZTRVhQX05PU1VCVFJFRUNIRUNLCTB4MDQw
-MAogI2RlZmluZQlORlNFWFBfTk9BVVRITkxNCTB4MDgwMAkJLyogRG9uJ3QgYXV0aGVudGljYXRl
-IE5MTSByZXF1ZXN0cyAtIGp1c3QgdHJ1c3QgKi8KQEAgLTQ3LDcgKzQ4LDcgQEAKICAqLwogI2Rl
-ZmluZQlORlNFWFBfVjRST09UCQkweDEwMDAwCiAvKiBBbGwgZmxhZ3MgdGhhdCB3ZSBjbGFpbSB0
-byBzdXBwb3J0LiAgKE5vdGUgd2UgZG9uJ3Qgc3VwcG9ydCBOT0FDTC4pICovCi0jZGVmaW5lIE5G
-U0VYUF9BTExGTEFHUwkJMHgxN0UzRgorI2RlZmluZSBORlNFWFBfQUxMRkxBR1MJCTB4MUZFN0YK
-IAogLyogVGhlIGZsYWdzIHRoYXQgbWF5IHZhcnkgZGVwZW5kaW5nIG9uIHNlY3VyaXR5IGZsYXZv
-cjogKi8KICNkZWZpbmUgTkZTRVhQX1NFQ0lORk9fRkxBR1MJKE5GU0VYUF9SRUFET05MWSB8IE5G
-U0VYUF9ST09UU1FVQVNIIFwK
-
---_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_
-Content-Type: application/octet-stream; name="patch_nfs-utils-1.3"
-Content-Description: patch_nfs-utils-1.3
-Content-Disposition: attachment; filename="patch_nfs-utils-1.3"; size=1446;
-	creation-date="Fri, 25 Jul 2014 16:05:00 GMT";
-	modification-date="Fri, 25 Jul 2014 16:09:18 GMT"
-Content-Transfer-Encoding: base64
-
-ZGlmZiAtciAtdSBuZnMtdXRpbHMtMS4zLjAvc3VwcG9ydC9pbmNsdWRlL25mcy9leHBvcnQuaCBw
-YXRjaGVkX25mcy11dGlscy0xLjMuMC9zdXBwb3J0L2luY2x1ZGUvbmZzL2V4cG9ydC5oCi0tLSBu
-ZnMtdXRpbHMtMS4zLjAvc3VwcG9ydC9pbmNsdWRlL25mcy9leHBvcnQuaAkyMDE0LTAzLTI1IDIw
-OjQyOjA3LjAwMDAwMDAwMCArMDUzMAorKysgcGF0Y2hlZF9uZnMtdXRpbHMtMS4zLjAvc3VwcG9y
-dC9pbmNsdWRlL25mcy9leHBvcnQuaAkyMDE0LTA3LTIyIDE3OjQxOjI2LjAyMzc4Mjk4NSArMDUz
-MApAQCAtMTcsNyArMTcsOCBAQAogI2RlZmluZSBORlNFWFBfQUxMU1FVQVNICTB4MDAwOAogI2Rl
-ZmluZSBORlNFWFBfQVNZTkMJCTB4MDAxMAogI2RlZmluZSBORlNFWFBfR0FUSEVSRURfV1JJVEVT
-CTB4MDAyMAotLyogNDAsIDgwLCAxMDAgdW51c2VkICovCisjZGVmaW5lIE5GU0VYUF9OT1JFQURE
-SVJQTFVTCTB4MDA0MAorLyogODAsIDEwMCB1bnVzZWQgKi8KICNkZWZpbmUgTkZTRVhQX05PSElE
-RQkJMHgwMjAwCiAjZGVmaW5lIE5GU0VYUF9OT1NVQlRSRUVDSEVDSwkweDA0MDAKICNkZWZpbmUg
-TkZTRVhQX05PQVVUSE5MTQkweDA4MDAKZGlmZiAtciAtdSBuZnMtdXRpbHMtMS4zLjAvc3VwcG9y
-dC9uZnMvZXhwb3J0cy5jIHBhdGNoZWRfbmZzLXV0aWxzLTEuMy4wL3N1cHBvcnQvbmZzL2V4cG9y
-dHMuYwotLS0gbmZzLXV0aWxzLTEuMy4wL3N1cHBvcnQvbmZzL2V4cG9ydHMuYwkyMDE0LTAzLTI1
-IDIwOjQyOjA3LjAwMDAwMDAwMCArMDUzMAorKysgcGF0Y2hlZF9uZnMtdXRpbHMtMS4zLjAvc3Vw
-cG9ydC9uZnMvZXhwb3J0cy5jCTIwMTQtMDctMjIgMTc6NDQ6MjEuNTMyNzgyODgyICswNTMwCkBA
-IC0yNzMsNiArMjczLDggQEAKIAkJImluIiA6ICIiKTsKIAlmcHJpbnRmKGZwLCAiJXNhY2wsIiwg
-KGVwLT5lX2ZsYWdzICYgTkZTRVhQX05PQUNMKT8KIAkJIm5vXyIgOiAiIik7CisJaWYgKGVwLT5l
-X2ZsYWdzICYgTkZTRVhQX05PUkVBRERJUlBMVVMpCisJCWZwcmludGYoZnAsICJub3JkaXJwbHVz
-LCIpOwogCWlmIChlcC0+ZV9mbGFncyAmIE5GU0VYUF9GU0lEKSB7CiAJCWZwcmludGYoZnAsICJm
-c2lkPSVkLCIsIGVwLT5lX2ZzaWQpOwogCX0KQEAgLTUzOSw2ICs1NDEsOCBAQAogCQkJY2xlYXJm
-bGFncyhORlNFWFBfQVNZTkMsIGFjdGl2ZSwgZXApOwogCQllbHNlIGlmICghc3RyY21wKG9wdCwg
-ImFzeW5jIikpCiAJCQlzZXRmbGFncyhORlNFWFBfQVNZTkMsIGFjdGl2ZSwgZXApOworCQllbHNl
-IGlmICghc3RyY21wKG9wdCwgIm5vcmRpcnBsdXMiKSkKKwkJCXNldGZsYWdzKE5GU0VYUF9OT1JF
-QURESVJQTFVTLCBhY3RpdmUsIGVwKTsKIAkJZWxzZSBpZiAoIXN0cmNtcChvcHQsICJub2hpZGUi
-KSkKIAkJCXNldGZsYWdzKE5GU0VYUF9OT0hJREUsIGFjdGl2ZSwgZXApOwogCQllbHNlIGlmICgh
-c3RyY21wKG9wdCwgImhpZGUiKSkK
-
---_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_--
