@@ -1,79 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:20542 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752329AbaGPR5l convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 13:57:41 -0400
-References: <59034BAD-306F-462F-A274-3EB06C0CBE47@oracle.com> <53C69EC3.1010208@oracle.com>
-Mime-Version: 1.0 (1.0)
-In-Reply-To: <53C69EC3.1010208@oracle.com>
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <EB581A8B-097E-4C0F-97B3-D04B2B791A69@oracle.com>
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:56347 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756681AbaGVUAm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 16:00:42 -0400
+Received: by mail-ie0-f175.google.com with SMTP id x19so139424ier.20
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 13:00:41 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
-Date: Wed, 16 Jul 2014 13:57:34 -0400
-To: Shirley Ma <shirley.ma@oracle.com>
+Subject: [PATCH 2/2] svcrdma: Add zero padding if the client doesn't send it
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 22 Jul 2014 16:00:40 -0400
+Message-ID: <20140722200040.6011.86756.stgit@klimt.1015granger.net>
+In-Reply-To: <20140722195840.6011.87861.stgit@klimt.1015granger.net>
+References: <20140722195840.6011.87861.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+See RFC 5666 section 3.7: clients don't have to send zero XDR
+padding.
 
-> On Jul 16, 2014, at 11:48 AM, Shirley Ma <shirley.ma@oracle.com> wrote:
-> 
-> These two patches have been significant reduced interrupt rate by around 4 times.
-> 
->     xprtrdma: Disable completions for FAST_REG_MR Work Requests
->     xprtrdma: Disable completions for LOCAL_INV Work Requests 
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Thanks Shirley!  This is result applies only to FRMR, correct? Also, i'd imagine the savings would be even greater for adapters that have short page list depth?
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   28 ++++++++++++++++++++++++++++
+ 1 files changed, 28 insertions(+), 0 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 8f92a61..e011027 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -43,6 +43,7 @@
+ #include <linux/sunrpc/debug.h>
+ #include <linux/sunrpc/rpc_rdma.h>
+ #include <linux/spinlock.h>
++#include <linux/highmem.h>
+ #include <asm/unaligned.h>
+ #include <rdma/ib_verbs.h>
+ #include <rdma/rdma_cm.h>
+@@ -435,6 +436,32 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
+ 	return ret;
+ }
+ 
++/*
++ * To avoid a separate RDMA READ just for a handful of zero bytes,
++ * RFC 5666 section 3.7 allows the client to omit the XDR zero pad
++ * in chunk lists.
++ */
++static void
++rdma_fix_xdr_pad(struct xdr_buf *buf)
++{
++	unsigned int page_len = buf->page_len;
++	unsigned int size = (XDR_QUADLEN(page_len) << 2) - page_len;
++	unsigned int offset, pg_no;
++	char *p;
++
++	if (size == 0)
++		return;
++
++	pg_no = page_len >> PAGE_SHIFT;
++	offset = page_len & ~PAGE_MASK;
++	p = page_address(buf->pages[pg_no]);
++	memset(p + offset, 0, size);
++
++	buf->page_len += size;
++	buf->buflen += size;
++	buf->len += size;
++}
++
+ static int rdma_read_complete(struct svc_rqst *rqstp,
+ 			      struct svc_rdma_op_ctxt *head)
+ {
+@@ -449,6 +476,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+ 		rqstp->rq_pages[page_no] = head->pages[page_no];
+ 	}
+ 	/* Point rq_arg.pages past header */
++	rdma_fix_xdr_pad(&head->arg);
+ 	rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
+ 	rqstp->rq_arg.page_len = head->arg.page_len;
+ 	rqstp->rq_arg.page_base = head->arg.page_base;
 
-> 
-> Same NFS read/write workload, here are interrupts rate irq/per sec report based upon /proc/interrupts:
-> 
-> w/o patches:
-> -----------
-> PCI-MSI-edge mlx4-ib (204):  105176
-> PCI-MSI-edge mlx4-ib (204):  123650
-> PCI-MSI-edge mlx4-ib (204):  123690
-> PCI-MSI-edge mlx4-ib (204):  116554
-> PCI-MSI-edge mlx4-ib (204):  122864
-> 
-> And perf stat irq report: 
-> Performance counter stats for 'system wide':
-> 
->         2,131,870      irq:irq_handler_entry                                        [100.00%]
->         2,131,870      irq:irq_handler_exit                                         [100.00%]
->           635,587      irq:softirq_entry                                            [100.00%]
->           635,597      irq:softirq_exit                                             [100.00%]
->           636,155      irq:softirq_raise
-> 
->      25.422821792 seconds time elapsed
-> 
-> w/i patches:
-> -----------
-> PCI-MSI-edge mlx4-ib (204):  31131
-> PCI-MSI-edge mlx4-ib (204):  32958
-> PCI-MSI-edge mlx4-ib (204):  31068
-> PCI-MSI-edge mlx4-ib (204):  30236
-> PCI-MSI-edge mlx4-ib (204):  33041
-> 
-> And perf stat irq report:
-> 
-> Performance counter stats for 'system wide':
-> 
->           653,548      irq:irq_handler_entry                                        [100.00%]
->           653,548      irq:irq_handler_exit                                         [100.00%]
->           568,138      irq:softirq_entry                                            [100.00%]
->           568,148      irq:softirq_exit                                             [100.00%]
->           568,690      irq:softirq_raise                                           
-> 
->      21.675597062 seconds time elapsed
-> 
-> Shirley
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
