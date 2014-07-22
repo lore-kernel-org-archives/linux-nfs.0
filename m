@@ -1,86 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:55559 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754356AbaGAUNU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 16:13:20 -0400
-Received: by mail-qc0-f181.google.com with SMTP id x13so8832553qcv.40
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 13:13:19 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 1 Jul 2014 16:13:17 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 000/117] nfsd: eliminate the client_mutex
-Message-ID: <20140701161317.0761839e@tlielax.poochiereds.net>
-In-Reply-To: <20140701200135.GE14728@fieldses.org>
-References: <1403810017-16062-1-git-send-email-jlayton@primarydata.com>
-	<20140630125142.GA32089@infradead.org>
-	<20140630085934.2bf86ba0@tlielax.poochiereds.net>
-	<20140630193237.GA11935@fieldses.org>
-	<20140630162014.20e63e1a@tlielax.poochiereds.net>
-	<CAHQdGtQtHaKx6mEXzO7XndZPo19joccuPa0_z0T_79TiG1434w@mail.gmail.com>
-	<20140630163647.5227ac55@tlielax.poochiereds.net>
-	<20140701101034.520b04bb@tlielax.poochiereds.net>
-	<CAHQdGtQZP8RGqWS0pw-X97D_3GE1tqxaeVMSXgLa+VtaSLae2w@mail.gmail.com>
-	<20140701144631.4bf0e9b5@tlielax.poochiereds.net>
-	<20140701200135.GE14728@fieldses.org>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:41586 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751751AbaGVOvB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:51:01 -0400
+Subject: [PATCH v4 00/21] NFS/RDMA client patches for 3.17
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Anna.Schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 22 Jul 2014 10:50:57 -0400
+Message-ID: <20140722144459.6010.99389.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 1 Jul 2014 16:01:35 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+The main purpose of this series is to address connection drop
+recovery issues by fixing FRMR re-use to make it less likely the
+client will deadlock due to a memory management operation error.
+Some clean-ups and other fixes are present as well.
 
-> On Tue, Jul 01, 2014 at 02:46:31PM -0400, Jeff Layton wrote:
-> > Ok, I haven't tested that yet, but I did put together a f20 machine on
-> > bare metal to act as a server. Here are some results from a test that
-> > forks 128 child processes and has each one create and close 1024 files.
-> > Client is 3.14.8-200.fc20.x86_64 and using NFSv4.1:
-> > 
-> > With a stock Fedora kernel on the server running 3.14.8-200.fc20.x86_64:
-> > 
-> > $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
-> > 
-> > real	59m5.022s
-> > user	0m1.401s
-> > sys	0m17.561s
-> > 
-> > 
-> > ...with the patched kernel 3.16.0-rc2.jlayton.1+ (basically Bruce's
-> > for-3.17 branch with the rest of my patches piled on):
-> > 
-> > $ time sudo ./opentest -n 128 -l 1024 /mnt/palma
-> > 
-> > real	4m19.060s
-> > user	0m1.259s
-> > sys	0m13.059s
-> > 
-> > ...so around a factor of 13x speedup on parallel creates. Again, this
-> > is not a terribly scientific benchmark, but it does suggest that this
-> > patchset helps immensely.
-> 
-> Neat-o.
-> 
-> It might also be interesting to compare with NFSv3?
-> 
-> I wonder what a first good test of the smp scalability would be.
-> 
-> --b.
+Anna, v4 of this series should be ready for merging.
 
-Yeah, it is neato. And just to be sure that it wasn't some other random
-change between 3.14 and 3.16, I popped off all of my patches, rebuilt
-nfsd.ko and reran the test with everything else the same:
+See topic branch nfs-rdma-for-3.17 in
 
-$ time sudo ./opentest -n 128 -l 1024 /mnt/palma
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-real	58m50.564s
-user	0m1.513s
-sys	0m18.963s
+I tested with NFSv3 and NFSv4 on all three supported memory
+registration modes. Used cthon04, iozone, and dbench with both
+Solaris and Linux NFS/RDMA servers. Used xfstests with Linux.
 
-...so it really does appear that these changes make the difference.
+v4:
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+- Rebased on v3.16-rc6
+
+- Add Tested-by: from Shirley Ma and Devesh Sharma
+
+
+v3:
+Only two substantive changes:
+
+- Patch 08/21 now uses generic IB helpers for managing FRMR
+ rkeys
+
+- Add Tested-by: from Steve Wise
+
+
+v2:
+Many patches from v1 have been written or replaced.
+
+The MW ref counting approach in v1 is abandoned. Instead, I've
+eliminated signaling FAST_REG_MR and LOCAL_INV, and added
+appropriate recovery mechanisms after a transport reconnect that
+should prevent rkey dis-synchrony entirely.
+
+A couple of optimizations have been added, including:
+
+- Allocating each MW separately rather than carving each out of a
+ large piece of contiguous memory
+
+- Now that the receive CQ upcall handler dequeues a bundle of CQEs
+ at once, fire off the reply handler tasklet just once per upcall
+ to reduce context switches and how often hard IRQs are disabled
+
+---
+
+Chuck Lever (21):
+      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
+      xprtrdma: Protect ia->ri_id when unmapping/invalidating MRs
+      xprtrdma: Limit data payload size for ALLPHYSICAL
+      xprtrdma: Update rkeys after transport reconnect
+      xprtrdma: On disconnect, don't ignore pending CQEs
+      xprtrdma: Don't invalidate FRMRs if registration fails
+      xprtrdma: Unclutter struct rpcrdma_mr_seg
+      xprtrdma: Back off rkey when FAST_REG_MR fails
+      xprtrdma: Chain together all MWs in same buffer pool
+      xprtrdma: Properly handle exhaustion of the rb_mws list
+      xprtrdma: Reset FRMRs when FAST_REG_MR is flushed by a disconnect
+      xprtrdma: Reset FRMRs after a flushed LOCAL_INV Work Request
+      xprtrdma: Don't post a LOCAL_INV in rpcrdma_register_frmr_external()
+      xprtrdma: Disable completions for FAST_REG_MR Work Requests
+      xprtrdma: Disable completions for LOCAL_INV Work Requests
+      xprtrdma: Rename frmr_wr
+      xprtrdma: Allocate each struct rpcrdma_mw separately
+      xprtrdma: Schedule reply tasklet once per upcall
+      xprtrdma: Make rpcrdma_ep_disconnect() return void
+      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
+      xprtrdma: Handle additional connection events
+
+
+ include/linux/sunrpc/xprtrdma.h |    2 
+ include/rdma/ib_verbs.h         |   11 +
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   83 ++--
+ net/sunrpc/xprtrdma/transport.c |   17 +
+ net/sunrpc/xprtrdma/verbs.c     |  744 ++++++++++++++++++++++++++-------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   61 +++
+ 6 files changed, 615 insertions(+), 303 deletions(-)
+
+--
+Chuck Lever
