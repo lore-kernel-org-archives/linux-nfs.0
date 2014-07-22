@@ -1,171 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:61838 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752921AbaGOOVl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:21:41 -0400
-Subject: [PATCH v3 10/21] xprtrdma: Properly handle exhaustion of the rb_mws
- list
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:50255 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755796AbaGVOxM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:53:12 -0400
+Subject: [PATCH v4 15/21] xprtrdma: Disable completions for LOCAL_INV Work
+ Requests
 From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 15 Jul 2014 10:21:38 -0400
-Message-ID: <20140715142138.8908.75846.stgit@manet.1015granger.net>
-In-Reply-To: <20140715142020.8908.80969.stgit@manet.1015granger.net>
-References: <20140715142020.8908.80969.stgit@manet.1015granger.net>
+To: Anna.Schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 22 Jul 2014 10:53:09 -0400
+Message-ID: <20140722145309.6010.16856.stgit@manet.1015granger.net>
+In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
+References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the rb_mws list is exhausted, clean up and return NULL so that
-call_allocate() will delay and try again.
+Instead of relying on a completion to change the state of an FRMR
+to FRMR_IS_INVALID, set it in advance. If an error occurs, a completion
+will fire anyway and mark the FRMR FRMR_IS_STALE.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Tested-by: Steve Wise <swise@opengridcomputing.com>
+Tested-by: Shirley Ma <shirley.ma@oracle.com>
+Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |  103 ++++++++++++++++++++++++++++++-------------
- 1 file changed, 71 insertions(+), 32 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index abac484..cdea6ff 100644
+index b36a5dd..fa5199d 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1256,6 +1256,67 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 	kfree(buf->rb_pool);
+@@ -154,12 +154,8 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+ 
+ 	if (wc->wr_id == 0ULL)
+ 		return;
+-	if (wc->status != IB_WC_SUCCESS) {
++	if (wc->status != IB_WC_SUCCESS)
+ 		frmr->r.frmr.fr_state = FRMR_IS_STALE;
+-		return;
+-	}
+-
+-	frmr->r.frmr.fr_state = FRMR_IS_INVALID;
  }
  
-+/* "*mw" can be NULL when rpcrdma_buffer_get_mrs() fails, leaving
-+ * some req segments uninitialized.
-+ */
-+static void
-+rpcrdma_buffer_put_mr(struct rpcrdma_mw **mw, struct rpcrdma_buffer *buf)
-+{
-+	if (*mw) {
-+		list_add_tail(&(*mw)->mw_list, &buf->rb_mws);
-+		*mw = NULL;
-+	}
-+}
-+
-+/* Cycle mw's back in reverse order, and "spin" them.
-+ * This delays and scrambles reuse as much as possible.
-+ */
-+static void
-+rpcrdma_buffer_put_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_mr_seg *seg = req->rl_segments;
-+	struct rpcrdma_mr_seg *seg1 = seg;
-+	int i;
-+
-+	for (i = 1, seg++; i < RPCRDMA_MAX_SEGS; seg++, i++)
-+		rpcrdma_buffer_put_mr(&seg->mr_chunk.rl_mw, buf);
-+	rpcrdma_buffer_put_mr(&seg1->mr_chunk.rl_mw, buf);
-+}
-+
-+static void
-+rpcrdma_buffer_put_sendbuf(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
-+{
-+	buf->rb_send_bufs[--buf->rb_send_index] = req;
-+	req->rl_niovs = 0;
-+	if (req->rl_reply) {
-+		buf->rb_recv_bufs[--buf->rb_recv_index] = req->rl_reply;
-+		req->rl_reply->rr_func = NULL;
-+		req->rl_reply = NULL;
-+	}
-+}
-+
-+static struct rpcrdma_req *
-+rpcrdma_buffer_get_mrs(struct rpcrdma_req *req, struct rpcrdma_buffer *buf)
-+{
-+	struct rpcrdma_mw *r;
-+	int i;
-+
-+	i = RPCRDMA_MAX_SEGS - 1;
-+	while (!list_empty(&buf->rb_mws)) {
-+		r = list_entry(buf->rb_mws.next,
-+			       struct rpcrdma_mw, mw_list);
-+		list_del(&r->mw_list);
-+		req->rl_segments[i].mr_chunk.rl_mw = r;
-+		if (unlikely(i-- == 0))
-+			return req;	/* Success */
-+	}
-+
-+	/* Not enough entries on rb_mws for this req */
-+	rpcrdma_buffer_put_sendbuf(req, buf);
-+	rpcrdma_buffer_put_mrs(req, buf);
-+	return NULL;
-+}
-+
- /*
-  * Get a set of request/reply buffers.
-  *
-@@ -1268,10 +1329,9 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- struct rpcrdma_req *
- rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
- {
-+	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
- 	struct rpcrdma_req *req;
- 	unsigned long flags;
--	int i;
--	struct rpcrdma_mw *r;
+ static int
+@@ -1369,12 +1365,11 @@ rpcrdma_retry_local_inv(struct rpcrdma_mw *r, struct rpcrdma_ia *ia)
+ 	dprintk("RPC:       %s: FRMR %p is stale\n", __func__, r);
  
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
- 	if (buffers->rb_send_index == buffers->rb_max_requests) {
-@@ -1291,14 +1351,13 @@ rpcrdma_buffer_get(struct rpcrdma_buffer *buffers)
- 		buffers->rb_recv_bufs[buffers->rb_recv_index++] = NULL;
- 	}
- 	buffers->rb_send_bufs[buffers->rb_send_index++] = NULL;
--	if (!list_empty(&buffers->rb_mws)) {
--		i = RPCRDMA_MAX_SEGS - 1;
--		do {
--			r = list_entry(buffers->rb_mws.next,
--					struct rpcrdma_mw, mw_list);
--			list_del(&r->mw_list);
--			req->rl_segments[i].mr_chunk.rl_mw = r;
--		} while (--i >= 0);
-+	switch (ia->ri_memreg_strategy) {
-+	case RPCRDMA_FRMR:
-+	case RPCRDMA_MTHCAFMR:
-+		req = rpcrdma_buffer_get_mrs(req, buffers);
-+		break;
-+	default:
-+		break;
- 	}
- 	spin_unlock_irqrestore(&buffers->rb_lock, flags);
- 	return req;
-@@ -1313,34 +1372,14 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
- {
- 	struct rpcrdma_buffer *buffers = req->rl_buffer;
- 	struct rpcrdma_ia *ia = rdmab_to_ia(buffers);
--	int i;
- 	unsigned long flags;
+ 	/* When this FRMR is re-inserted into rb_mws, it is no longer stale */
+-	r->r.frmr.fr_state = FRMR_IS_VALID;
++	r->r.frmr.fr_state = FRMR_IS_INVALID;
  
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
--	buffers->rb_send_bufs[--buffers->rb_send_index] = req;
--	req->rl_niovs = 0;
--	if (req->rl_reply) {
--		buffers->rb_recv_bufs[--buffers->rb_recv_index] = req->rl_reply;
--		req->rl_reply->rr_func = NULL;
--		req->rl_reply = NULL;
--	}
-+	rpcrdma_buffer_put_sendbuf(req, buffers);
- 	switch (ia->ri_memreg_strategy) {
- 	case RPCRDMA_FRMR:
- 	case RPCRDMA_MTHCAFMR:
--		/*
--		 * Cycle mw's back in reverse order, and "spin" them.
--		 * This delays and scrambles reuse as much as possible.
--		 */
--		i = 1;
--		do {
--			struct rpcrdma_mw **mw;
--			mw = &req->rl_segments[i].mr_chunk.rl_mw;
--			list_add_tail(&(*mw)->mw_list, &buffers->rb_mws);
--			*mw = NULL;
--		} while (++i < RPCRDMA_MAX_SEGS);
--		list_add_tail(&req->rl_segments[0].mr_chunk.rl_mw->mw_list,
--					&buffers->rb_mws);
--		req->rl_segments[0].mr_chunk.rl_mw = NULL;
-+		rpcrdma_buffer_put_mrs(req, buffers);
- 		break;
- 	default:
- 		break;
+ 	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
+ 	invalidate_wr.wr_id = (unsigned long)(void *)r;
+ 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
+-	invalidate_wr.send_flags = IB_SEND_SIGNALED;
+ 	invalidate_wr.ex.invalidate_rkey = r->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
+@@ -1773,10 +1768,11 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	struct ib_send_wr invalidate_wr, *bad_wr;
+ 	int rc;
+ 
++	seg1->mr_chunk.rl_mw->r.frmr.fr_state = FRMR_IS_INVALID;
++
+ 	memset(&invalidate_wr, 0, sizeof invalidate_wr);
+ 	invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
+ 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
+-	invalidate_wr.send_flags = IB_SEND_SIGNALED;
+ 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
+@@ -1785,9 +1781,12 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+ 		rpcrdma_unmap_one(ia, seg++);
+ 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+ 	read_unlock(&ia->ri_qplock);
+-	if (rc)
++	if (rc) {
++		/* Force rpcrdma_buffer_get() to retry */
++		seg1->mr_chunk.rl_mw->r.frmr.fr_state = FRMR_IS_STALE;
+ 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+ 			" status %i\n", __func__, rc);
++	}
+ 	return rc;
+ }
+ 
 
