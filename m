@@ -1,88 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:58571 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751035AbaG0NfI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jul 2014 09:35:08 -0400
-Date: Sun, 27 Jul 2014 06:35:07 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH 06/40] nfsd: Cleanup the freeing of stateids
-Message-ID: <20140727133507.GH32153@infradead.org>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
- <1405954972-28904-7-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f67.google.com ([209.85.216.67]:48364 "EHLO
+	mail-qa0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752149AbaGVRwJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 13:52:09 -0400
+Received: by mail-qa0-f67.google.com with SMTP id v10so2433129qac.10
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 10:52:09 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 22 Jul 2014 13:52:06 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: bump dp->dl_time when unhashing delegation
+Message-ID: <20140722135206.7dbfbac5@tlielax.poochiereds.net>
+In-Reply-To: <20140722174552.GA27277@fieldses.org>
+References: <1406047291-1279-1-git-send-email-jlayton@primarydata.com>
+	<20140722174552.GA27277@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1405954972-28904-7-git-send-email-jlayton@primarydata.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 21, 2014 at 11:02:18AM -0400, Jeff Layton wrote:
-> Add a ->free() callback to the struct nfs4_stid, so that we can
-> release a reference to the stid without caring about the contents.
+On Tue, 22 Jul 2014 13:45:52 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Looks good, but I'd do it much earlier so that the nfs4_put_stid doesn't
-have to change around again - IMHO adding the free callback should go
-together with introducing the refcounting, as it's kinda required
-to do the refcounting sanely.
+> On Tue, Jul 22, 2014 at 12:41:31PM -0400, Jeff Layton wrote:
+> > There's a potential race between a lease break and DELEGRETURN call.
+> > 
+> > Suppose a lease break comes in and queues the workqueue job for a
+> > delegation, but it doesn't run just yet. Then, a DELEGRETURN comes in
+> > finds the delegation and calls destroy_delegation on it to unhash it and
+> > put its primary reference.
+> > 
+> > Next, the workqueue job runs and queues the delegation back onto the
+> > del_recall_lru list, issues the CB_RECALL and puts the final reference.
+> > With that, the final reference to the delegation is put, but it's still
+> > on the LRU list.
+> > 
+> > When we go to unhash a delegation, it's because we intend to get rid of
+> > it soon afterward, so we don't want lease breaks to mess with it once
+> > that occurs. Fix this by bumping the dl_time whenever we unhash a
+> > delegation, to ensure that lease breaks don't monkey with it.
+> 
+> Makes sense, thanks.  Repeating from IRC: this fixes a regression from
+> 02e1215f9f7 "nfsd: Avoid taking state_lock while holding inode lock in
+> nfsd_break_one_deleg".  (In my tree only.)
+> 
+> --b.
+> 
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > ---
+> >  fs/nfsd/nfs4state.c | 2 ++
+> >  1 file changed, 2 insertions(+)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 72da0d44e66b..a3a828d17563 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -660,6 +660,8 @@ unhash_delegation(struct nfs4_delegation *dp)
+> >  
+> >  	spin_lock(&state_lock);
+> >  	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
+> > +	/* Ensure that deleg break won't try to requeue it */
+> > +	++dp->dl_time;
+> >  	spin_lock(&fp->fi_lock);
+> >  	list_del_init(&dp->dl_perclnt);
+> >  	list_del_init(&dp->dl_recall_lru);
+> > -- 
+> > 1.9.3
+> > 
 
-Also when Trond first posted this I suggested to introduce an ops vector
-instead of a free callback as there wil be a lot more things in the
-stateid handling that could make use of it.  I'm not going to insist on
-the ops vector at this point, but I think it would make things quite
-a bit cleaner.
+Sorry, I think I sent you a version with an earlier description. Here's
+the one I meant to send:
 
+--------------------[snip]---------------------
 
-> +static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
+[PATCH] nfsd: bump dl_time when unhashing delegation
 
-s/generic/ol/
+There's a potential race between a lease break and DELEGRETURN call.
 
-Also maybe just move it into the right place instead of the forward
-declaration given how trivial it is?
+Suppose a lease break comes in and queues the workqueue job for a
+delegation, but it doesn't run just yet. Then, a DELEGRETURN comes in
+finds the delegation and calls destroy_delegation on it to unhash it and
+put its primary reference.
 
-> +static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
-> +{
-> +	if (s->sc_file)
-> +		put_nfs4_file(s->sc_file);
-> +	kmem_cache_free(slab, s);
-> +}
+Next, the workqueue job runs and queues the delegation back onto the
+del_recall_lru list, issues the CB_RECALL and puts the final reference.
+With that, the final reference to the delegation is put, but it's still
+on the LRU list.
 
-I think the layering here is wrong - the generic code should put the
-file before calling into the ->free method as the file is in the
-generic code.  Then the free callback can simply opencode the
-kmem_cache_free instead of adding this helper.
+When we go to unhash a delegation, it's because we intend to get rid of
+it soon afterward, so we don't want lease breaks to mess with it once
+that occurs. Fix this by bumping the dl_time whenever we unhash a
+delegation, to ensure that lease breaks don't monkey with it.
 
-> +static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
-> +					 struct kmem_cache *slab)
->  {
->  	struct nfs4_stid *stid;
->  	int new_id;
-> @@ -492,7 +500,22 @@ out_free:
->  
->  static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
->  {
+I believe this is a regression due to commit 02e1215f9f7 (nfsd: Avoid
+taking state_lock while holding inode lock in nfsd_break_one_deleg).
+Prior to that, the state_lock was held in the lm_break callback itself,
+and that would have prevented this race.
 
-Having and nfs4_alloc_stid and an nfs4_alloc_stateid is a very confusing
-nameing scheme.  I think nfs4_alloc_stateid should be rename to
-nfs4_alloc_ol_stateid.  And nfs4_alloc_stid might actually just be
-redone to nfs4_init_stid, leaving the allocation to the caller similar
-how the specific type handles the free in the ->free callback.
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
->  void
->  nfs4_put_delegation(struct nfs4_delegation *dp)
->  {
-> -	if (nfs4_put_stid(deleg_slab, &dp->dl_stid))
-> -		atomic_long_dec(&num_delegations);
-> +	nfs4_put_stid(&dp->dl_stid);
->  }
-
-And reason to keep nfs4_put_delegation around?
-
->  static void put_generic_stateid(struct nfs4_ol_stateid *stp)
->  {
-> -	nfs4_put_stid(stateid_slab, &stp->st_stid);
-> +	nfs4_put_stid(&stp->st_stid);
->  }
-
-Ditto for put_generic_stateid.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 72da0d44e66b..a3a828d17563 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -660,6 +660,8 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 
+ 	spin_lock(&state_lock);
+ 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
++	/* Ensure that deleg break won't try to requeue it */
++	++dp->dl_time;
+ 	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_recall_lru);
+-- 
+1.9.3
 
