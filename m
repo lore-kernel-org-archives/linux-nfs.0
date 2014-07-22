@@ -1,117 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:63285 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758486AbaGOKiE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 06:38:04 -0400
-Received: by mail-qg0-f49.google.com with SMTP id 63so4515659qgz.22
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 03:38:03 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:42793 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756681AbaGVUAd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 16:00:33 -0400
+Received: by mail-ig0-f180.google.com with SMTP id l13so636732iga.13
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 13:00:33 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/2] svcrdma: Increase credit limit to 32
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 6/7] nfsd: Simplify stateid management
-Date: Tue, 15 Jul 2014 06:37:48 -0400
-Message-Id: <1405420669-4030-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
-References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 22 Jul 2014 16:00:31 -0400
+Message-ID: <20140722200031.6011.28421.stgit@klimt.1015granger.net>
+In-Reply-To: <20140722195840.6011.87861.stgit@klimt.1015granger.net>
+References: <20140722195840.6011.87861.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-
-Don't allow stateids to clear the open file pointer until they are
-being destroyed. Also, move to kzalloc and get rid of explicit
-zeroing of fields.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 21 ++++++++++-----------
- 1 file changed, 10 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 87674a25a15b..1cfc39b505cc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -459,7 +459,7 @@ kmem_cache *slab)
- 	struct nfs4_stid *stid;
- 	int new_id;
+ include/linux/sunrpc/svc_rdma.h |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 5cf99a0..975da75 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -174,8 +174,7 @@ struct svcxprt_rdma {
+  * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
+ #define RPCRDMA_ORD             (64/4)
+ #define RPCRDMA_SQ_DEPTH_MULT   8
+-#define RPCRDMA_MAX_THREADS     16
+-#define RPCRDMA_MAX_REQUESTS    16
++#define RPCRDMA_MAX_REQUESTS    32
+ #define RPCRDMA_MAX_REQ_SIZE    4096
  
--	stid = kmem_cache_alloc(slab, GFP_KERNEL);
-+	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
- 	if (!stid)
- 		return NULL;
- 
-@@ -467,11 +467,9 @@ kmem_cache *slab)
- 	if (new_id < 0)
- 		goto out_free;
- 	stid->sc_client = cl;
--	stid->sc_type = 0;
- 	stid->sc_stateid.si_opaque.so_id = new_id;
- 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
- 	/* Will be incremented before return to client: */
--	stid->sc_stateid.si_generation = 0;
- 	atomic_set(&stid->sc_count, 1);
- 
- 	/*
-@@ -592,10 +590,8 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	INIT_LIST_HEAD(&dp->dl_perfile);
- 	INIT_LIST_HEAD(&dp->dl_perclnt);
- 	INIT_LIST_HEAD(&dp->dl_recall_lru);
--	dp->dl_file = NULL;
- 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
--	dp->dl_time = 0;
- 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
- 	return dp;
- }
-@@ -617,6 +613,8 @@ void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
- 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
-+		if (dp->dl_file)
-+			put_nfs4_file(dp->dl_file);
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
- 	}
-@@ -665,12 +663,9 @@ unhash_delegation(struct nfs4_delegation *dp)
- 	list_del_init(&dp->dl_recall_lru);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
--	if (fp) {
-+	if (fp)
- 		nfs4_put_deleg_lease(fp);
--		dp->dl_file = NULL;
--	}
- 	spin_unlock(&state_lock);
--	put_nfs4_file(fp);
- }
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-@@ -878,12 +873,12 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- static void close_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	release_all_access(stp);
--	put_nfs4_file(stp->st_file);
--	stp->st_file = NULL;
- }
- 
- static void free_generic_stateid(struct nfs4_ol_stateid *stp)
- {
-+	if (stp->st_file)
-+		put_nfs4_file(stp->st_file);
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
- 
-@@ -4445,6 +4440,10 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 		if (list_empty(&oo->oo_owner.so_stateids))
- 			release_openowner(oo);
- 	} else {
-+		if (s->st_file) {
-+			put_nfs4_file(s->st_file);
-+			s->st_file = NULL;
-+		}
- 		oo->oo_last_closed_stid = s;
- 		/*
- 		 * In the 4.0 case we need to keep the owners around a
--- 
-1.9.3
+ /* svc_rdma_marshal.c */
 
