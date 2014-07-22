@@ -1,62 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:39134 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751808AbaG2T55 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 15:57:57 -0400
-Date: Tue, 29 Jul 2014 21:57:54 +0200
-From: Peter Zijlstra <peterz@infradead.org>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Ingo Molnar <mingo@kernel.org>, linux-kernel@vger.kernel.org,
-        linux-arch@vger.kernel.org
-Subject: Re: [PATCH 1/3] SUNRPC: Reduce contention in svc_xprt_enqueue()
-Message-ID: <20140729195754.GQ3935@laptop>
-References: <1406260773-16231-1-git-send-email-trond.myklebust@primarydata.com>
- <20140729193108.GC21091@fieldses.org>
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:33845 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752051AbaGVRxP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 13:53:15 -0400
+Received: by mail-qg0-f49.google.com with SMTP id j107so1130qga.22
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 10:53:14 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 22 Jul 2014 13:53:12 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        hch@infradead.org
+Subject: Re: [PATCH 0/4] nfsd: don't let nfs4_file pin down the inode when
+ it has no open state
+Message-ID: <20140722135312.33d5b7aa@tlielax.poochiereds.net>
+In-Reply-To: <20140722175155.GB27277@fieldses.org>
+References: <1406047784-1578-1-git-send-email-jlayton@primarydata.com>
+	<20140722175155.GB27277@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140729193108.GC21091@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 29, 2014 at 03:31:08PM -0400, Bruce Fields wrote:
-> All three patches look good to me, thanks.
+On Tue, 22 Jul 2014 13:51:55 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Tue, Jul 22, 2014 at 12:49:40PM -0400, Jeff Layton wrote:
+> > This is a port of the patches that Trond sent last night onto the
+> > current tip of Bruce's for-3.17 branch. It basically changes how
+> > nfs4_file objects are hashed. Instead of using the inode pointer (and
+> > pinning down an inode in the process), it uses the filehandle. This
+> > allows us to avoid taking an inode reference directly for the nfs4_file.
+> > It now only takes them indirectly by virtue of struct file objects in
+> > the fi_fds array.
 > 
-> From private email, this:
+> Looks reasonable on a quick skim.
 > 
-> On Thu, Jul 24, 2014 at 11:59:31PM -0400, Trond Myklebust wrote:
-> > @@ -222,11 +223,12 @@ static void svc_xprt_received(struct svc_xprt *xprt)
-> >  	if (!test_bit(XPT_BUSY, &xprt->xpt_flags))
-> >  		return;
-> >  	/* As soon as we clear busy, the xprt could be closed and
-> > -	 * 'put', so we need a reference to call svc_xprt_enqueue with:
-> > +	 * 'put', so we need a reference to call svc_xprt_do_enqueue with:
-> >  	 */
-> >  	svc_xprt_get(xprt);
-> > +	smp_mb__before_clear_bit();
+> It might make sense to get rid of dl_fh at some point?
 > 
-> triggered a warning about smp_mb__before_clear_bit noticed by the kbuild
-> robot.  Looks like that was due to
-> febdbfe8a91ce0d11939d4940b592eb0dba8d663 "arch: Prepare for
-> smp_mb__{before,after}_atomic()".
+> --b.
 > 
-> You questioned whether deprecating smp_mb__{before,after}_clear_bit was
-> an unnecessary burden on people maintaining stable kernels or doing
-> backports more generally.  Cc'ing some addresses from that commit.
 
-I absolutely do not care one whit for that. The kernel lives, deal with
-it.
+Yeah, I think that should be doable. I'll look at rolling that into the
+delegation patches.
 
-Memory barriers are hard enough, we do not need multiple versions of the
-same thing just to confuse people.
 
-> Whatever--I'll probably just replace do the clear_bit->before_atomic
-> replacement and apply unless there's some objection.
+> > 
+> > If this looks good, I'll resend the unmerged delegation overhaul
+> > patches, rebased on top of this series.
+> > 
+> > Trond Myklebust (4):
+> >   nfsd: Store the filehandle with the struct nfs4_file
+> >   nfsd: Use the filehandle to look up the struct nfs4_file instead of
+> >     inode
+> >   nfsd: nfs4_check_fh - make it actually check the filehandle
+> >   nfsd: Do not let nfs4_file pin the struct inode
+> > 
+> >  fs/nfsd/nfs4state.c | 68 +++++++++++++++++++++++++++++++----------------------
+> >  fs/nfsd/state.h     |  3 ++-
+> >  2 files changed, 42 insertions(+), 29 deletions(-)
+> > 
+> > -- 
+> > 1.9.3
+> > 
 
-The old API was preserved to allow for non-flag-day migration to the new
-API. I should do a final sweep and then kill the old API.
 
-The conversion shrank the memory barrier API by 4 variants while
-covering more cases, which is an absolute win in my book.
+-- 
+Jeff Layton <jlayton@primarydata.com>
