@@ -1,49 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-db3lp0084.outbound.protection.outlook.com ([213.199.154.84]:54487
-	"EHLO emea01-db3-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750978AbaGCMaj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 08:30:39 -0400
-From: Yan Burman <yanb@mellanox.com>
-To: Shirley Ma <shirley.ma@oracle.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Rupert Dance <rsdance@soft-forge.com>,
-        "Chuck Lever" <chuck.lever@oracle.com>,
-        Doug Ledford <dledford@redhat.com>,
-        "Anna Schumaker" <Anna.Schumaker@netapp.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: RE: NFSoRDMA developers bi-weekly meeting minutes (6/25)
-Date: Thu, 3 Jul 2014 12:14:38 +0000
-Message-ID: <d3d3fd3f6f1c44159f0e6b9d19a622eb@DB4PR05MB461.eurprd05.prod.outlook.com>
-References: <53B42F2A.9060205@oracle.com>
-In-Reply-To: <53B42F2A.9060205@oracle.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from fieldses.org ([174.143.236.118]:57420 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750748AbaGVRv4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Jul 2014 13:51:56 -0400
+Date: Tue, 22 Jul 2014 13:51:55 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        hch@infradead.org
+Subject: Re: [PATCH 0/4] nfsd: don't let nfs4_file pin down the inode when it
+ has no open state
+Message-ID: <20140722175155.GB27277@fieldses.org>
+References: <1406047784-1578-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1406047784-1578-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Shirley,
+On Tue, Jul 22, 2014 at 12:49:40PM -0400, Jeff Layton wrote:
+> This is a port of the patches that Trond sent last night onto the
+> current tip of Bruce's for-3.17 branch. It basically changes how
+> nfs4_file objects are hashed. Instead of using the inode pointer (and
+> pinning down an inode in the process), it uses the filehandle. This
+> allows us to avoid taking an inode reference directly for the nfs4_file.
+> It now only takes them indirectly by virtue of struct file objects in
+> the fi_fds array.
 
-> -----Original Message-----
-> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
-> owner@vger.kernel.org] On Behalf Of Shirley Ma
-> Sent: Wednesday, July 02, 2014 19:11
-> To: linux-rdma; Linux NFS Mailing List; Rupert Dance; Chuck Lever; Doug
-> Ledford; Anna Schumaker; Steve Wise; Steve Dickson
-> Subject: NFSoRDMA developers bi-weekly meeting minutes (6/25)
+Looks reasonable on a quick skim.
+
+It might make sense to get rid of dl_fh at some point?
+
+--b.
+
 > 
+> If this looks good, I'll resend the unmerged delegation overhaul
+> patches, rebased on top of this series.
 > 
-> 6. NFSoRDMA virtualization doesn't work. Shirley found that VF FRMR
-> reported port error after a successful post_send on connextX-2. It didn't seem
-> an NFSoRDMA issue. Questions are whether VF FRMR is fully tested. Later Yan
-> confirmed VF FRMR doesn't work for NFSoRDMA on connectX-3 either.
+> Trond Myklebust (4):
+>   nfsd: Store the filehandle with the struct nfs4_file
+>   nfsd: Use the filehandle to look up the struct nfs4_file instead of
+>     inode
+>   nfsd: nfs4_check_fh - make it actually check the filehandle
+>   nfsd: Do not let nfs4_file pin the struct inode
 > 
-
-Apparently there has been a misunderstanding. I did not confirm that VF FRMR does not work.
-Actually I use FRMR on VF all the time (not with NFSoRDMA apparently). You can check if FRMR works for you by running krping.
-
-Regards,
-Yan
-
+>  fs/nfsd/nfs4state.c | 68 +++++++++++++++++++++++++++++++----------------------
+>  fs/nfsd/state.h     |  3 ++-
+>  2 files changed, 42 insertions(+), 29 deletions(-)
+> 
+> -- 
+> 1.9.3
+> 
