@@ -1,63 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:48385 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755432AbaGHSGf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:35 -0400
-Received: by mail-qg0-f52.google.com with SMTP id f51so5398422qge.39
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:35 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 089/100] nfsd: Remove nfs4_lock_state(): nfsd4_release_lockowner
-Date: Tue,  8 Jul 2014 14:04:17 -0400
-Message-Id: <1404842668-22521-90-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-vc0-f172.google.com ([209.85.220.172]:57847 "EHLO
+	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756073AbaGVQkk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 12:40:40 -0400
+Received: by mail-vc0-f172.google.com with SMTP id im17so15024239vcb.31
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 09:40:36 -0700 (PDT)
+MIME-Version: 1.0
+From: Jeff Terrace <jterrace@gmail.com>
+Date: Tue, 22 Jul 2014 09:40:16 -0700
+Message-ID: <CAC-XtuMBuis6ssSd0gjdU541YPhkJK+1aD-HfqY5oO-fh2YiMA@mail.gmail.com>
+Subject: sync mount option not applied to subdirectories
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Using kernel 3.8.0-28-generic on Ubuntu, if I mount the root of my
+server with the sync option:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+  mount -o vers=4,sync,sec=none -t nfs 192.168.1.198:/ /mnt/self
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2acae21e67d1..4445925c4c13 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5556,11 +5556,9 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
- 		clid->cl_boot, clid->cl_id);
- 
--	nfs4_lock_state();
--
- 	status = lookup_clientid(clid, cstate, nn);
- 	if (status)
--		goto out;
-+		return status;
- 
- 	clp = cstate->clp;
- 	/* Find the matching lock stateowner */
-@@ -5577,7 +5575,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			if (check_for_locks(stp->st_stid.sc_file, lo)) {
- 				status = nfserr_locks_held;
- 				spin_unlock(&clp->cl_lock);
--				goto out;
-+				return status;
- 			}
- 		}
- 
-@@ -5587,8 +5585,6 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	spin_unlock(&clp->cl_lock);
- 	if (lo)
- 		release_lockowner(lo);
--out:
--	nfs4_unlock_state();
- 	return status;
- }
- 
--- 
-1.9.3
+it gets applied properly:
 
+  $ cat /proc/mounts | grep nfs
+  192.168.1.198:/ /mnt/self nfs4
+rw,sync,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=null,clientaddr=192.168.1.198,local_lock=none,addr=192.168.1.198
+0 0
+
+but if I try to mount a subdirectory:
+
+  mount -o vers=4,sync,sec=none -t nfs 192.168.1.198:/js.js /mnt/self
+
+the sync option is lost:
+
+  $ cat /proc/mounts | grep nfs
+  192.168.1.198:/js.js /mnt/self nfs4
+rw,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=null,clientaddr=192.168.1.198,local_lock=none,addr=192.168.1.198
+0 0
+
+If I mount the subdirectory with the noac option, which implies sync:
+
+  mount -o vers=4,noac,sec=none -t nfs 192.168.1.198:/js.js /mnt/self
+
+then the sync option gets applied:
+
+  $ cat /proc/mounts | grep nfs
+  192.168.1.198:/js.js /mnt/self nfs4
+rw,sync,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,acregmin=0,acregmax=0,acdirmin=0,acdirmax=0,hard,noac,proto=tcp,port=0,timeo=600,retrans=2,sec=null,clientaddr=192.168.1.198,local_lock=none,addr=192.168.1.198
+0 0
+
+The same subdirectory mount command using 2.6.32 on CentOS correctly
+applies the sync option. Running the mount command with -vvv doesn't
+show anything suspect. Is this a regression bug? Any idea what's going
+on here?
+
+Thanks,
+Jeff
