@@ -1,115 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:51227 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754710AbaG3M2F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:05 -0400
-Received: by mail-qa0-f54.google.com with SMTP id k15so1209883qaq.27
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:04 -0700 (PDT)
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:47325 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756323AbaGVQtx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 12:49:53 -0400
+Received: by mail-qa0-f41.google.com with SMTP id j7so7014837qaq.14
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 09:49:53 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 14/37] nfsd: protect clid and verifier generation with client_lock
-Date: Wed, 30 Jul 2014 08:27:15 -0400
-Message-Id: <1406723258-8512-15-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
-References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        hch@infradead.org
+Subject: [PATCH 2/4] nfsd: Use the filehandle to look up the struct nfs4_file instead of inode
+Date: Tue, 22 Jul 2014 12:49:42 -0400
+Message-Id: <1406047784-1578-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406047784-1578-1-git-send-email-jlayton@primarydata.com>
+References: <1406047784-1578-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The clid counter is a global counter currently. Move it to be a per-net
-property so that it can be properly protected by the nn->client_lock
-instead of relying on the client_mutex.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-The verifier generator is also potentially racy if there are two
-simultaneous callers. Generate the verifier when we generate the clid
-value, so it's also created under the client_lock. With this, there's
-no need to keep two counters as they'd always be in sync anyway, so
-just use the clientid_counter for both.
+This makes more sense anyway since an inode pointer value can change
+even when the filehandle doesn't.
 
-As Trond points out, what would be best is to eventually move this
-code to use IDR instead of the hash tables. That would also help ensure
-uniqueness, but that's probably best done as a separate project.
-
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/netns.h     |  6 +++---
- fs/nfsd/nfs4state.c | 21 +++++++++------------
- 2 files changed, 12 insertions(+), 15 deletions(-)
+ fs/nfsd/nfs4state.c | 35 +++++++++++++++++++++++------------
+ 1 file changed, 23 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index e1f479c162b5..3831ef6e5c75 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -92,9 +92,7 @@ struct nfsd_net {
- 	bool nfsd_net_up;
- 	bool lockd_up;
- 
--	/*
--	 * Time of server startup
--	 */
-+	/* Time of server startup */
- 	struct timeval nfssvc_boot;
- 
- 	/*
-@@ -103,6 +101,8 @@ struct nfsd_net {
- 	 */
- 	unsigned int max_connections;
- 
-+	u32 clientid_counter;
-+
- 	struct svc_serv *nfsd_serv;
- };
- 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1fd8a4773191..64caf119ab53 100644
+index 393cd83a4f42..c540a46f6305 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1808,28 +1808,26 @@ static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
- 	return 0 == strcmp(cl->cl_cred.cr_principal, cr->cr_principal);
- }
+@@ -368,10 +368,22 @@ static unsigned int ownerstr_hashval(u32 clientid, struct xdr_netobj *ownername)
+ #define FILE_HASH_BITS                   8
+ #define FILE_HASH_SIZE                  (1 << FILE_HASH_BITS)
  
--static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
--{
--	static u32 current_clientid = 1;
--
--	clp->cl_clientid.cl_boot = nn->boot_time;
--	clp->cl_clientid.cl_id = current_clientid++; 
--}
--
--static void gen_confirm(struct nfs4_client *clp)
-+static void gen_confirm(struct nfs4_client *clp, struct nfsd_net *nn)
+-static unsigned int file_hashval(struct inode *ino)
++static unsigned int nfsd_fh_hashval(struct knfsd_fh *fh)
  {
- 	__be32 verf[2];
--	static u32 i;
- 
- 	/*
- 	 * This is opaque to client, so no need to byte-swap. Use
- 	 * __force to keep sparse happy
- 	 */
- 	verf[0] = (__force __be32)get_seconds();
--	verf[1] = (__force __be32)i++;
-+	verf[1] = (__force __be32)nn->clientid_counter;
- 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
- }
- 
-+static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
-+{
-+	clp->cl_clientid.cl_boot = nn->boot_time;
-+	clp->cl_clientid.cl_id = nn->clientid_counter++;
-+	gen_confirm(clp, nn);
+-	/* XXX: why are we hashing on inode pointer, anyway? */
+-	return hash_ptr(ino, FILE_HASH_BITS);
++	return jhash2(fh->fh_base.fh_pad, XDR_QUADLEN(fh->fh_size), 0);
 +}
 +
- static struct nfs4_stid *
- find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
++static unsigned int file_hashval(struct knfsd_fh *fh)
++{
++	return nfsd_fh_hashval(fh) & (FILE_HASH_SIZE - 1);
++}
++
++static bool nfsd_fh_match(struct knfsd_fh *fh1, struct knfsd_fh *fh2)
++{
++	return fh1->fh_size == fh2->fh_size &&
++		!memcmp(fh1->fh_base.fh_pad,
++				fh2->fh_base.fh_pad,
++				fh1->fh_size);
+ }
+ 
+ static struct hlist_head file_hashtbl[FILE_HASH_SIZE];
+@@ -2836,7 +2848,7 @@ static struct nfs4_file *nfsd4_alloc_file(void)
+ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino,
+ 		struct knfsd_fh *fh)
  {
-@@ -1880,7 +1878,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
- 	clear_bit(0, &clp->cl_cb_slot_busy);
- 	copy_verf(clp, verf);
- 	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
--	gen_confirm(clp);
- 	clp->cl_cb_session = NULL;
- 	clp->net = net;
- 	return clp;
+-	unsigned int hashval = file_hashval(ino);
++	unsigned int hashval = file_hashval(fh);
+ 
+ 	lockdep_assert_held(&state_lock);
+ 
+@@ -3025,15 +3037,15 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
+ 
+ /* search file_hashtbl[] for file */
+ static struct nfs4_file *
+-find_file_locked(struct inode *ino)
++find_file_locked(struct knfsd_fh *fh)
+ {
+-	unsigned int hashval = file_hashval(ino);
++	unsigned int hashval = file_hashval(fh);
+ 	struct nfs4_file *fp;
+ 
+ 	lockdep_assert_held(&state_lock);
+ 
+ 	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
+-		if (fp->fi_inode == ino) {
++		if (nfsd_fh_match(&fp->fi_fhandle, fh)) {
+ 			get_nfs4_file(fp);
+ 			return fp;
+ 		}
+@@ -3042,12 +3054,12 @@ find_file_locked(struct inode *ino)
+ }
+ 
+ static struct nfs4_file *
+-find_file(struct inode *ino)
++find_file(struct knfsd_fh *fh)
+ {
+ 	struct nfs4_file *fp;
+ 
+ 	spin_lock(&state_lock);
+-	fp = find_file_locked(ino);
++	fp = find_file_locked(fh);
+ 	spin_unlock(&state_lock);
+ 	return fp;
+ }
+@@ -3058,7 +3070,7 @@ find_or_add_file(struct inode *ino, struct nfs4_file *new, struct knfsd_fh *fh)
+ 	struct nfs4_file *fp;
+ 
+ 	spin_lock(&state_lock);
+-	fp = find_file_locked(ino);
++	fp = find_file_locked(fh);
+ 	if (fp == NULL) {
+ 		nfsd4_init_file(new, ino, fh);
+ 		fp = new;
+@@ -3075,11 +3087,10 @@ find_or_add_file(struct inode *ino, struct nfs4_file *new, struct knfsd_fh *fh)
+ static __be32
+ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
+ {
+-	struct inode *ino = current_fh->fh_dentry->d_inode;
+ 	struct nfs4_file *fp;
+ 	__be32 ret = nfs_ok;
+ 
+-	fp = find_file(ino);
++	fp = find_file(&current_fh->fh_handle);
+ 	if (!fp)
+ 		return ret;
+ 	/* Check for conflicting share reservations */
 -- 
 1.9.3
 
