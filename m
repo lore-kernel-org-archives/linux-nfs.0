@@ -1,167 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:62599 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753766AbaGVOwh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:52:37 -0400
-Subject: [PATCH v4 11/21] xprtrdma: Reset FRMRs when FAST_REG_MR is flushed
- by a disconnect
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:62630 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757113AbaGVVsG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 17:48:06 -0400
+Received: by mail-ig0-f176.google.com with SMTP id hn18so4536484igb.15
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 14:48:05 -0700 (PDT)
 From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:52:34 -0400
-Message-ID: <20140722145234.6010.25561.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
+Subject: [PATCH] svcrdma: Double the default credit limit
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 22 Jul 2014 17:48:04 -0400
+Message-ID: <20140722214804.3398.34829.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FAST_REG_MR Work Requests update a Memory Region's rkey. Rkey's are
-used to block unwanted access to the memory controlled by an MR. The
-rkey is passed to the receiver (the NFS server, in our case), and is
-also used by xprtrdma to invalidate the MR when the RPC is complete.
+The RDMA credit limit controls how many concurrent RPCs are allowed
+per connection.
 
-When a FAST_REG_MR Work Request is flushed after a transport
-disconnect, xprtrdma cannot tell whether the WR actually hit the
-adapter or not. So it is indeterminant at that point whether the
-existing rkey is still valid.
+An NFS/RDMA client and server exchange their credit limits in the
+RPC/RDMA headers. The Linux client and the Solaris client and server
+allow 32 credits. The Linux server allows only 16, which limits its
+performance.
 
-After the transport connection is re-established, the next
-FAST_REG_MR or LOCAL_INV Work Request against that MR can sometimes
-fail because the rkey value does not match what xprtrdma expects.
-
-The only reliable way to recover in this case is to deregister and
-register the MR before it is used again. These operations can be
-done only in a process context, so handle it in the transport
-connect worker.
+Set the server's default credit limit to 32, like the other well-
+known implementations, so the out-of-the-shrinkwrap performance of
+the Linux server is better.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
 ---
- net/sunrpc/xprtrdma/verbs.c     |   67 ++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 2 files changed, 66 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index cdea6ff..39b31c8 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -61,6 +61,8 @@
- # define RPCDBG_FACILITY	RPCDBG_TRANS
- #endif
+ include/linux/sunrpc/svc_rdma.h |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index 5cf99a0..975da75 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -174,8 +174,7 @@ struct svcxprt_rdma {
+  * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
+ #define RPCRDMA_ORD             (64/4)
+ #define RPCRDMA_SQ_DEPTH_MULT   8
+-#define RPCRDMA_MAX_THREADS     16
+-#define RPCRDMA_MAX_REQUESTS    16
++#define RPCRDMA_MAX_REQUESTS    32
+ #define RPCRDMA_MAX_REQ_SIZE    4096
  
-+static void rpcrdma_reset_frmrs(struct rpcrdma_ia *);
-+
- /*
-  * internal functions
-  */
-@@ -152,8 +154,10 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- 
- 	if (wc->wr_id == 0ULL)
- 		return;
--	if (wc->status != IB_WC_SUCCESS)
-+	if (wc->status != IB_WC_SUCCESS) {
-+		frmr->r.frmr.fr_state = FRMR_IS_STALE;
- 		return;
-+	}
- 
- 	if (wc->opcode == IB_WC_FAST_REG_MR)
- 		frmr->r.frmr.fr_state = FRMR_IS_VALID;
-@@ -881,6 +885,9 @@ retry:
- 				" status %i\n", __func__, rc);
- 		rpcrdma_flush_cqs(ep);
- 
-+		if (ia->ri_memreg_strategy == RPCRDMA_FRMR)
-+			rpcrdma_reset_frmrs(ia);
-+
- 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
- 		id = rpcrdma_create_id(xprt, ia,
- 				(struct sockaddr *)&xprt->rx_data.addr);
-@@ -1256,6 +1263,62 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 	kfree(buf->rb_pool);
- }
- 
-+/* After a disconnect, a flushed FAST_REG_MR can leave an FRMR in
-+ * an unusable state. Find FRMRs in this state and dereg / reg
-+ * each.  FRMRs that are VALID and attached to an rpcrdma_req are
-+ * also torn down.
-+ *
-+ * This gives all in-use FRMRs a fresh rkey and leaves them INVALID.
-+ *
-+ * This is invoked only in the transport connect worker in order
-+ * to serialize with rpcrdma_register_frmr_external().
-+ */
-+static void
-+rpcrdma_reset_frmrs(struct rpcrdma_ia *ia)
-+{
-+	struct rpcrdma_xprt *r_xprt =
-+				container_of(ia, struct rpcrdma_xprt, rx_ia);
-+	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
-+	struct list_head *pos;
-+	struct rpcrdma_mw *r;
-+	int rc;
-+
-+	list_for_each(pos, &buf->rb_all) {
-+		r = list_entry(pos, struct rpcrdma_mw, mw_all);
-+
-+		if (r->r.frmr.fr_state == FRMR_IS_INVALID)
-+			continue;
-+
-+		rc = ib_dereg_mr(r->r.frmr.fr_mr);
-+		if (rc)
-+			dprintk("RPC:       %s: ib_dereg_mr failed %i\n",
-+				__func__, rc);
-+		ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
-+
-+		r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
-+					ia->ri_max_frmr_depth);
-+		if (IS_ERR(r->r.frmr.fr_mr)) {
-+			rc = PTR_ERR(r->r.frmr.fr_mr);
-+			dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
-+				" failed %i\n", __func__, rc);
-+			continue;
-+		}
-+		r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
-+					ia->ri_id->device,
-+					ia->ri_max_frmr_depth);
-+		if (IS_ERR(r->r.frmr.fr_pgl)) {
-+			rc = PTR_ERR(r->r.frmr.fr_pgl);
-+			dprintk("RPC:       %s: "
-+				"ib_alloc_fast_reg_page_list "
-+				"failed %i\n", __func__, rc);
-+
-+			ib_dereg_mr(r->r.frmr.fr_mr);
-+			continue;
-+		}
-+		r->r.frmr.fr_state = FRMR_IS_INVALID;
-+	}
-+}
-+
- /* "*mw" can be NULL when rpcrdma_buffer_get_mrs() fails, leaving
-  * some req segments uninitialized.
-  */
-@@ -1571,7 +1634,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
- 		__func__, mw, i);
- 
--	if (unlikely(frmr->fr_state == FRMR_IS_VALID)) {
-+	if (unlikely(frmr->fr_state != FRMR_IS_INVALID)) {
- 		dprintk("RPC:       %s: frmr %x left valid, posting invalidate.\n",
- 			__func__, mr->rkey);
- 		/* Invalidate before using. */
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c1d8652..1ee6db3 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -161,6 +161,7 @@ struct rpcrdma_rep {
- enum rpcrdma_frmr_state {
- 	FRMR_IS_INVALID,	/* ready to be used */
- 	FRMR_IS_VALID,		/* in use */
-+	FRMR_IS_STALE,		/* failed completion */
- };
- 
- struct rpcrdma_frmr {
+ /* svc_rdma_marshal.c */
 
