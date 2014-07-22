@@ -1,56 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:33489 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756913AbaGWOml (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 10:42:41 -0400
-Date: Wed, 23 Jul 2014 20:12:31 +0530
-From: Himangi Saraogi <himangi774@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc: julia.lawall@lip6.fr
-Subject: [PATCH] infsd4: convert comma to semicolon
-Message-ID: <20140723144231.GA3229@himangi-Dell>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-qa0-f48.google.com ([209.85.216.48]:34256 "EHLO
+	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754740AbaGVQli (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 12:41:38 -0400
+Received: by mail-qa0-f48.google.com with SMTP id m5so6752928qaj.7
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Jul 2014 09:41:38 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: bump dp->dl_time when unhashing delegation
+Date: Tue, 22 Jul 2014 12:41:31 -0400
+Message-Id: <1406047291-1279-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace a comma between expression statements by a semicolon. This changes
-the semantics of the code, but given the current indentation appears to be
-what is intended.
+There's a potential race between a lease break and DELEGRETURN call.
 
-A simplified version of the Coccinelle semantic patch that performs this
-transformation is as follows:
-// <smpl>
-@r@
-expression e1,e2;
-@@
+Suppose a lease break comes in and queues the workqueue job for a
+delegation, but it doesn't run just yet. Then, a DELEGRETURN comes in
+finds the delegation and calls destroy_delegation on it to unhash it and
+put its primary reference.
 
- e1
--,
-+;
- e2;
-// </smpl>
+Next, the workqueue job runs and queues the delegation back onto the
+del_recall_lru list, issues the CB_RECALL and puts the final reference.
+With that, the final reference to the delegation is put, but it's still
+on the LRU list.
 
-Signed-off-by: Himangi Saraogi <himangi774@gmail.com>
-Acked-by: Julia Lawall <julia.lawall@lip6.fr>
+When we go to unhash a delegation, it's because we intend to get rid of
+it soon afterward, so we don't want lease breaks to mess with it once
+that occurs. Fix this by bumping the dl_time whenever we unhash a
+delegation, to ensure that lease breaks don't monkey with it.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4callback.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 564d723..c393d6c 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -678,7 +678,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
- 				(clp->cl_cred.cr_flavor >= RPC_AUTH_GSS_KRB5))
- 			return -EINVAL;
- 		args.client_name = clp->cl_cred.cr_principal;
--		args.prognumber	= conn->cb_prog,
-+		args.prognumber	= conn->cb_prog;
- 		args.protocol = XPRT_TRANSPORT_TCP;
- 		args.authflavor = clp->cl_cred.cr_flavor;
- 		clp->cl_cb_ident = conn->cb_ident;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 72da0d44e66b..a3a828d17563 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -660,6 +660,8 @@ unhash_delegation(struct nfs4_delegation *dp)
+ 
+ 	spin_lock(&state_lock);
+ 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
++	/* Ensure that deleg break won't try to requeue it */
++	++dp->dl_time;
+ 	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_recall_lru);
 -- 
-1.9.1
+1.9.3
 
