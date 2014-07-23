@@ -1,58 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:33562 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751943AbaGNB57 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:57:59 -0400
-Received: by mail-qg0-f50.google.com with SMTP id j5so2895633qga.9
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:57:59 -0700 (PDT)
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:47793 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932847AbaGWURs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 16:17:48 -0400
+Received: by mail-qa0-f44.google.com with SMTP id f12so1870657qad.17
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 13:17:47 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 5/7] sunrpc: clean up sparse endianness warnings in gss_krb5_seal.c
-Date: Sun, 13 Jul 2014 21:57:42 -0400
-Message-Id: <1405303064-9102-6-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        hch@infradead.org
+Subject: [PATCH v2 0/4] nfsd: don't let nfs4_file pin down the inode when it has no open state
+Date: Wed, 23 Jul 2014 16:17:37 -0400
+Message-Id: <1406146661-9794-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-KG2_TOK_MIC is a "palindrome" so byte swapping is a no-op here.
+v2:
+- eliminate the st_inode field from struct nfs4_ol_stateid
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- net/sunrpc/auth_gss/gss_krb5_seal.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+This is a port of the patches that Trond sent the other day onto the
+current tip of Bruce's for-3.17 branch. It basically changes how
+nfs4_file objects are hashed. Instead of using the inode pointer (and
+pinning down an inode in the process), it uses the filehandle. This
+allows us to avoid taking an inode reference directly for the nfs4_file.
+With this, they're only taken by virtue of the files in the fi_fds
+array.
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
-index 94ad57ff7169..3cf49ea54ca9 100644
---- a/net/sunrpc/auth_gss/gss_krb5_seal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
-@@ -106,13 +106,13 @@ setup_token_v2(struct krb5_ctx *ctx, struct xdr_netobj *token)
- 	 * just start the token */
- 	krb5_hdr = ptr = (__be16 *)token->data;
- 
--	*ptr++ = KG2_TOK_MIC;
-+	*ptr++ = cpu_to_be16(KG2_TOK_MIC);
- 	p = (u8 *)ptr;
- 	*p++ = flags;
- 	*p++ = 0xff;
- 	ptr = (__be16 *)p;
--	*ptr++ = 0xffff;
--	*ptr++ = 0xffff;
-+	*ptr++ = cpu_to_be16(0xffff);
-+	*ptr++ = cpu_to_be16(0xffff);
- 
- 	token->len = GSS_KRB5_TOK_HDR_LEN + ctx->gk5e->cksumlength;
- 	return krb5_hdr;
-@@ -181,7 +181,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
- 	spin_lock(&krb5_seq_lock);
- 	seq_send = ctx->seq_send64++;
- 	spin_unlock(&krb5_seq_lock);
--	*((u64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
-+	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
- 
- 	if (ctx->initiate) {
- 		cksumkey = ctx->initiator_sign;
+Jeff Layton (1):
+  nfsd: Do not let nfs4_file pin the struct inode
+
+Trond Myklebust (3):
+  nfsd: Store the filehandle with the struct nfs4_file
+  nfsd: Use the filehandle to look up the struct nfs4_file instead of
+    inode
+  nfsd: nfs4_check_fh - make it actually check the filehandle
+
+ fs/nfsd/nfs4state.c | 86 +++++++++++++++++++++++++++++++++--------------------
+ fs/nfsd/state.h     |  2 +-
+ 2 files changed, 54 insertions(+), 34 deletions(-)
+
 -- 
 1.9.3
 
