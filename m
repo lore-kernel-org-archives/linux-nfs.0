@@ -1,84 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:51308 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753118AbaG3M2X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:23 -0400
-Received: by mail-qg0-f42.google.com with SMTP id j5so1296322qga.29
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:22 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 27/37] nfsd: Remove nfs4_lock_state(): nfsd4_lock/locku/lockt()
-Date: Wed, 30 Jul 2014 08:27:28 -0400
-Message-Id: <1406723258-8512-28-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
-References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:47880 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751936AbaGWO6z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jul 2014 10:58:55 -0400
+Date: Wed, 23 Jul 2014 10:58:54 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Himangi Saraogi <himangi774@gmail.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        julia.lawall@lip6.fr
+Subject: Re: [PATCH] infsd4: convert comma to semicolon
+Message-ID: <20140723145854.GU8438@fieldses.org>
+References: <20140723144231.GA3229@himangi-Dell>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140723144231.GA3229@himangi-Dell>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Wed, Jul 23, 2014 at 08:12:31PM +0530, Himangi Saraogi wrote:
+> Replace a comma between expression statements by a semicolon. This changes
+> the semantics of the code, but given the current indentation appears to be
+> what is intended.
+> 
+> A simplified version of the Coccinelle semantic patch that performs this
+> transformation is as follows:
+> // <smpl>
+> @r@
+> expression e1,e2;
+> @@
+> 
+>  e1
+> -,
+> +;
+>  e2;
+> // </smpl>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 9 ---------
- 1 file changed, 9 deletions(-)
+Thanks, applying for 3.17.--b.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4f04a4a776cd..de3bb633d96b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5201,8 +5201,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return status;
- 	}
- 
--	nfs4_lock_state();
--
- 	if (lock->lk_is_new) {
- 		if (nfsd4_has_session(cstate))
- 			/* See rfc 5661 18.10.3: given clientid is ignored: */
-@@ -5345,7 +5343,6 @@ out:
- 	if (open_stp)
- 		nfs4_put_stid(&open_stp->st_stid);
- 	nfsd4_bump_seqid(cstate, status);
--	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	if (conflock)
-@@ -5388,8 +5385,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (check_lock_length(lockt->lt_offset, lockt->lt_length))
- 		 return nfserr_inval;
- 
--	nfs4_lock_state();
--
- 	if (!nfsd4_has_session(cstate)) {
- 		status = lookup_clientid(&lockt->lt_clientid, cstate, nn);
- 		if (status)
-@@ -5444,7 +5439,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- out:
- 	if (lo)
- 		nfs4_put_stateowner(&lo->lo_owner);
--	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	return status;
-@@ -5468,8 +5462,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (check_lock_length(locku->lu_offset, locku->lu_length))
- 		 return nfserr_inval;
- 
--	nfs4_lock_state();
--									        
- 	status = nfs4_preprocess_seqid_op(cstate, locku->lu_seqid,
- 					&locku->lu_stateid, NFS4_LOCK_STID,
- 					&stp, nn);
-@@ -5512,7 +5504,6 @@ put_stateid:
- 	nfs4_put_stid(&stp->st_stid);
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	nfs4_unlock_state();
- 	if (file_lock)
- 		locks_free_lock(file_lock);
- 	return status;
--- 
-1.9.3
-
+> 
+> Signed-off-by: Himangi Saraogi <himangi774@gmail.com>
+> Acked-by: Julia Lawall <julia.lawall@lip6.fr>
+> ---
+>  fs/nfsd/nfs4callback.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 564d723..c393d6c 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -678,7 +678,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+>  				(clp->cl_cred.cr_flavor >= RPC_AUTH_GSS_KRB5))
+>  			return -EINVAL;
+>  		args.client_name = clp->cl_cred.cr_principal;
+> -		args.prognumber	= conn->cb_prog,
+> +		args.prognumber	= conn->cb_prog;
+>  		args.protocol = XPRT_TRANSPORT_TCP;
+>  		args.authflavor = clp->cl_cred.cr_flavor;
+>  		clp->cl_cb_ident = conn->cb_ident;
+> -- 
+> 1.9.1
+> 
