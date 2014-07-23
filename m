@@ -1,204 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44827 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751154AbaGJRl7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jul 2014 13:41:59 -0400
-Date: Thu, 10 Jul 2014 13:41:58 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 001/100] nfsd: close potential race between delegation
- break and laundromat
-Message-ID: <20140710174158.GH26851@fieldses.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
- <1404842668-22521-2-git-send-email-jlayton@primarydata.com>
- <20140710155905.GF26851@fieldses.org>
- <20140710121625.69c8c08f@tlielax.poochiereds.net>
- <20140710123402.23a33daf@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140710123402.23a33daf@tlielax.poochiereds.net>
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:65356 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932485AbaGWRq4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 13:46:56 -0400
+Received: by mail-qg0-f49.google.com with SMTP id j107so1834014qga.8
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 10:46:55 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH] nfsd: ensure that st_access_bmap and st_deny_bmap are initialized to 0
+Date: Wed, 23 Jul 2014 13:46:49 -0400
+Message-Id: <1406137609-24466-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 10, 2014 at 12:34:02PM -0400, Jeff Layton wrote:
-> On Thu, 10 Jul 2014 12:16:25 -0400
-> Jeff Layton <jlayton@primarydata.com> wrote:
-> 
-> > On Thu, 10 Jul 2014 11:59:05 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Tue, Jul 08, 2014 at 02:02:49PM -0400, Jeff Layton wrote:
-> > > > Bruce says:
-> > > > 
-> > > >     There's also a preexisting expire_client/laundromat vs break race:
-> > > > 
-> > > >     - expire_client/laundromat adds a delegation to its local
-> > > >       reaplist using the same dl_recall_lru field that a delegation
-> > > >       uses to track its position on the recall lru and drops the
-> > > >       state lock.
-> > > > 
-> > > >     - a concurrent break_lease adds the delegation to the lru.
-> > > > 
-> > > >     - expire/client/laundromat then walks it reaplist and sees the
-> > > >       lru head as just another delegation on the list....
-> > > > 
-> > > > Fix this race by checking the dl_time under the state_lock. If we find
-> > > > that it's not 0, then we know that it has already been queued to the LRU
-> > > > list and that we shouldn't queue it again.
-> > > > 
-> > > > In the case of destroy_client, we must also ensure that we don't hit
-> > > > similar races by ensuring that we don't move any delegations to the
-> > > > reaplist with a dl_time of 0. Just bump the dl_time by one before we
-> > > > drop the state_lock. We're destroying the delegations anyway, so a 1s
-> > > > difference there won't matter.
-> > > > 
-> > > > The fault injection code also requires a bit of surgery here:
-> > > > 
-> > > > First, in the case of nfsd_forget_client_delegations, we must prevent
-> > > > the same sort of race vs. the delegation break callback. For that, we
-> > > > just increment the dl_time to ensure that a delegation callback can't
-> > > > race in while we're working on it.
-> > > > 
-> > > > We can't do that for nfsd_recall_client_delegations, as we need to have
-> > > > it actually queue the delegation, and that won't happen if we increment
-> > > > the dl_time. The state lock is held over that function, so we don't need
-> > > > to worry about these sorts of races there.
-> > > > 
-> > > > There is one other potential bug nfsd_recall_client_delegations though.
-> > > > Entries on the victims list are not dequeued before calling
-> > > > nfsd_break_one_deleg. That's a potential list corruptor, so ensure that
-> > > > we do that there.
-> > > > 
-> > > > Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
-> > > > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > > > ---
-> > > >  fs/nfsd/nfs4state.c | 40 +++++++++++++++++++++++++++++++++-------
-> > > >  1 file changed, 33 insertions(+), 7 deletions(-)
-> > > > 
-> > > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > > index 763aeeb67ccf..633b34fd6c92 100644
-> > > > --- a/fs/nfsd/nfs4state.c
-> > > > +++ b/fs/nfsd/nfs4state.c
-> > > > @@ -1287,6 +1287,8 @@ destroy_client(struct nfs4_client *clp)
-> > > >  	while (!list_empty(&clp->cl_delegations)) {
-> > > >  		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
-> > > >  		list_del_init(&dp->dl_perclnt);
-> > > > +		/* Ensure that deleg break won't try to requeue it */
-> > > > +		++dp->dl_time;
-> > > >  		list_move(&dp->dl_recall_lru, &reaplist);
-> > > >  	}
-> > > >  	spin_unlock(&state_lock);
-> > > > @@ -2933,10 +2935,14 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
-> > > >  	 * it's safe to take a reference: */
-> > > >  	atomic_inc(&dp->dl_count);
-> > > >  
-> > > > -	list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
-> > > > -
-> > > > -	/* Only place dl_time is set; protected by i_lock: */
-> > > > -	dp->dl_time = get_seconds();
-> > > > +	/*
-> > > > +	 * If the dl_time != 0, then we know that it has already been
-> > > > +	 * queued for a lease break. Don't queue it again.
-> > > > +	 */
-> > > > +	if (dp->dl_time == 0) {
-> > > 
-> > > Any reason not to just make that
-> > > 
-> > > 	if (dp->dl_time)
-> > > 		return;
-> > > 
-> > > ?
-> > > 
-> > > I don't know if it matters right now, but it might also be useful to
-> > > know that no more work will get queued once dl_time is set.
-> > > 
-> > > --b.
-> > > 
-> > 
-> > No, that makes a lot of sense. I'll respin and do that instead...
-> > 
-> > 
-> 
-> Actually, now that I look, there are a few reasons not to do that...
-> 
-> First, we want to ensure that block_delegations gets called even if the
-> dl_time is non-zero. So fine, we can move that up above the dl_time
-> check...
-> 
-> Second, it'll complicate patch #4 in this series. We have to take a
-> reference to the delegation in the delegation break. The dl_time though
-> must be checked while holding the state_lock. So, if the dl_time ends
-> up being non-zero at that point, we'll have to put the client reference
-> and take care not to do the actual recall job. It's doable, but it'll
-> make the code more complex. I'm not sure that's worth the extra
-> complexity...
+Open stateids must be initialized with the st_access_bmap and
+st_deny_bmap set to 0, so that nfs4_get_vfs_file can properly record
+their state in old_access_bmap and old_deny_bmap.
 
-OK, fine, we can leave it be for now.  Merging this and the following
-patch as is.
+This bug was introduced in commit baeb4ff0e502 (nfsd: make deny mode
+enforcement more efficient and close races in it) and was causing the
+refcounts to end up incorrect when nfs4_get_vfs_file returned an error
+after bumping the refcounts. This made it impossible to unmount the
+underlying filesystem after running pynfs tests that involve deny modes.
 
---b.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-> 
-> > > > +		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
-> > > > +		dp->dl_time = get_seconds();
-> > > > +	}
-> > > >  
-> > > >  	block_delegations(&dp->dl_fh);
-> > > >  
-> > > > @@ -5081,8 +5087,23 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
-> > > >  
-> > > >  	lockdep_assert_held(&state_lock);
-> > > >  	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
-> > > > -		if (victims)
-> > > > +		if (victims) {
-> > > > +			/*
-> > > > +			 * It's not safe to mess with delegations that have a
-> > > > +			 * non-zero dl_time. They might have already been broken
-> > > > +			 * and could be processed by the laundromat outside of
-> > > > +			 * the state_lock. Just leave them be.
-> > > > +			 */
-> > > > +			if (dp->dl_time != 0)
-> > > > +				continue;
-> > > > +
-> > > > +			/*
-> > > > +			 * Increment dl_time to ensure that delegation breaks
-> > > > +			 * don't monkey with it now that we are.
-> > > > +			 */
-> > > > +			++dp->dl_time;
-> > > >  			list_move(&dp->dl_recall_lru, victims);
-> > > > +		}
-> > > >  		if (++count == max)
-> > > >  			break;
-> > > >  	}
-> > > > @@ -5107,14 +5128,19 @@ u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
-> > > >  
-> > > >  u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
-> > > >  {
-> > > > -	struct nfs4_delegation *dp, *next;
-> > > > +	struct nfs4_delegation *dp;
-> > > >  	LIST_HEAD(victims);
-> > > >  	u64 count;
-> > > >  
-> > > >  	spin_lock(&state_lock);
-> > > >  	count = nfsd_find_all_delegations(clp, max, &victims);
-> > > > -	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
-> > > > +	while (!list_empty(&victims)) {
-> > > > +		dp = list_first_entry(&victims, struct nfs4_delegation,
-> > > > +					dl_recall_lru);
-> > > > +		list_del_init(&dp->dl_recall_lru);
-> > > > +		dp->dl_time = 0;
-> > > >  		nfsd_break_one_deleg(dp);
-> > > > +	}
-> > > >  	spin_unlock(&state_lock);
-> > > >  
-> > > >  	return count;
-> > > > -- 
-> > > > 1.9.3
-> > > > 
-> > 
-> > 
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@primarydata.com>
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 72da0d44e66b..ce07e9517a80 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2968,8 +2968,6 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	stp->st_file = fp;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = 0;
+-	set_access(open->op_share_access, stp);
+-	set_deny(open->op_share_deny, stp);
+ 	stp->st_openstp = NULL;
+ 	spin_lock(&fp->fi_lock);
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+-- 
+1.9.3
+
