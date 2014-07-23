@@ -1,82 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:48837 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750988AbaGJMFY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 08:05:24 -0400
-Date: Thu, 10 Jul 2014 05:05:22 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 012/100] nfsd: remove nfs4_file_put_fd
-Message-ID: <20140710120522.GA1197@infradead.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
- <1404842668-22521-13-git-send-email-jlayton@primarydata.com>
- <20140710080336.GB6226@infradead.org>
- <20140710074952.20e97f70@tlielax.poochiereds.net>
+Received: from fieldses.org ([174.143.236.118]:47887 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757032AbaGWO7T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jul 2014 10:59:19 -0400
+Date: Wed, 23 Jul 2014 10:59:17 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
+        Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: fuzz tested user mode linux crashed in NFS code path
+Message-ID: <20140723145917.GV8438@fieldses.org>
+References: <53C10EAA.2000802@gmx.de>
+ <53C12A93.3040803@gmail.com>
+ <20140716185724.GC2397@fieldses.org>
+ <20140717202721.GG30442@fieldses.org>
+ <53C949DC.5060008@gmx.de>
+ <53C9505D.80601@gmx.de>
+ <CAB6yy37-_aC83yS5JaaAbX4-qKWko-pjqSRaipZ3reVnMD=aAg@mail.gmail.com>
+ <20140721155543.GD8438@fieldses.org>
+ <53CF4263.9070506@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140710074952.20e97f70@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <53CF4263.9070506@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 10, 2014 at 07:49:52AM -0400, Jeff Layton wrote:
-> 
-> AFAIU, the fi_access counters tell us when we're able to zero out the
-> fi_fds slot. fput returns void so we don't have a way to know whether
-> we're putting the last reference to a file or not. Without that,
-> find_*_file become quite problematic -- how would we know whether the
-> pointers they return are still good?
-
-Oh right, that's defintively a good reason to keep the counters.
-
-> > Note that the comment explaining fi_access also seems wrong, as it
-> > suggest contributing 0-4 to the counts, but at best we increment each
-> > one by 1 in a single operation.
+On Wed, Jul 23, 2014 at 01:04:35PM +0800, Kinglong Mee wrote:
+> On 7/21/2014 23:55, J. Bruce Fields wrote:
+> > On Sat, Jul 19, 2014 at 11:23:59AM +0800, Kinglong Mee wrote:
+> >> On Sat, Jul 19, 2014 at 12:50 AM, Toralf Förster <toralf.foerster@gmx.de> wrote:
+> >>> On 07/18/2014 06:22 PM, Toralf Förster wrote:
+> >>>> I can now try with kzalloc, but due to the nature of this issue I think, that the absence of this crash - even after 2-3 hours - doesn't mean by 100%, that kzalloc fixed it, or ?
+> >>>
+> >>> Well, next crash (with kzalloc patch) happened after 20 minutes ...
+> >>
+> >> Maybe I have found the problem.
+> >> The stateid and denied are defined as an union as,
+> >> fs/nfsd/xdr4.h
+> >> 145 struct nfsd4_lock_denied {
+> >> 146         clientid_t      ld_clientid;
+> >> 147         struct xdr_netobj       ld_owner;
+> >> 148         u64             ld_start;
+> >> 149         u64             ld_length;
+> >> 150         u32             ld_type;
+> >> 151 };
+> >> 152
+> >> 153 struct nfsd4_lock {
+> >> ... ...
+> >> 174         /* response */
+> >> 175         union {
+> >> 176                 struct {
+> >> 177                         stateid_t               stateid;
+> >> 178                 } ok;
+> >> 179                 struct nfsd4_lock_denied        denied;
+> >> 180         } u;
+> >>
+> >>  30 struct xdr_netobj {
+> >>  31         unsigned int            len;
+> >>  32         u8 *                    data;
+> >>  33 };
+> >>
+> >> sizeof(stateid_t) = 16, sizeof(clientid_t) = 8,
+> >> sizeof(struct xdr_netobj) = 16, (on x86_x64 platform),
+> >> sizeof(struct xdr_netobj) = 8,  (on i686 platform)
+> >>
+> >> Lock file success, nfsd will copy stateid to the union, but the value
+> >> also influence denied.
+> >> If on x86_64 platform, only influence the len in xdr_netobj,
+> >> but on i686 platform, will influence the len and the data in xdr_netobj.
+> >> So, the problem only appears on i686 platform.
 > > 
+> > Oh, great catch, thanks.  Sounds like that would explain all of Toralf's
+> > results.
+> > 
+> > I'll include this explanation with your original patch and submit it for
+> > 3.16.
 > 
-> Right, we only increment by one for each operation, but open stateids
-> can be upgraded and downgraded. If we do:
+> I saw the patch in your git-tree, there is one fault about the comments.
 > 
-> OPEN for NFS4_SHARE_ACCESS_READ
-> OPEN for NFS4_SHARE_ACCESS_WRITE
-> OPEN for NFS4_SHARE_ACCESS_BOTH
+> > (Note that lock->lk_denied.ld_owner.data appears it should be zero here,
+> > until you notice that it's one arm of a union the other arm of which is
+> > written to in the succesful case by the
+> > 
+> > memcpy(&oc->oc_resp_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+> > 
+> > in nfsd4_open_confirm(). 
 > 
-> ...then we will have incremented the fi_access counts by a total of 4.
-> 
-> The big pain in the ass with this code is explained in the comment over
-> bmap_to_share_mode. We have to keep track of what share bits have been
-> previously used in order to comply with the RFC, so you can easily end
-> up with "extra" references.
+> It's, 
+>  memcpy(&lock->lk_resp_stateid, &lock_stp->st_stid.sc_stateid,
+>                                 sizeof(stateid_t));
+> in nfsd4_lock().
 
-I've read both the comment, and the section in the RFC, but I still
-don't understand how they explain this convoluted code.
+Thanks, fixed!
 
-Assume we'd have three members in fi_access instead, indexed by
-(oflags & (O_RDONLY|O_WRONLY|O_RDWR):
-
-static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
-{
-	int oflags = nfs4_access_to_omode(access);
-
-	WARN_ON_ONCE(fp->fi_fds[oflag] == NULL);
-	atomic_inc(&fp->fi_access[oflag]);
-}
-
-static void nfs4_file_put_access(struct nfs4_file *fp, u32 access)
-{
-	int oflags = nfs4_access_to_omode(access);
-
-	if (atomic_dec_and_test(&fp->fi_access[oflag]))
-		nfs4_file_put_fd(fp, oflag);
-}
-
-nfsd4_open_downgrade would become a little more complicated because it
-would have to check if an FD for the downgraded access is around before
-dropping the reference to the r/w one it currently holds. And as far as
-I can tell O_RDWR to O_RDONLY or O_WRONLY is the only possible case for
-it, feel free to correct me.
-
-Or we could simply not bother with downgrading the underlying file here
-at all, just like it's done for the case where only a O_RDWR file is
-open in the current code, which probably is a fairly common case.
+--b.
