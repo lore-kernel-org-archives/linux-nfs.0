@@ -1,38 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f179.google.com ([209.85.220.179]:39972 "EHLO
-	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751876AbaG0PPl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jul 2014 11:15:41 -0400
-Received: by mail-vc0-f179.google.com with SMTP id hq11so9972974vcb.38
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Jul 2014 08:15:40 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140727131949.GB32153@infradead.org>
-References: <20140726162143.GB20396@n2100.arm.linux.org.uk>
-	<20140727131949.GB32153@infradead.org>
-Date: Sun, 27 Jul 2014 11:15:40 -0400
-Message-ID: <CAHQdGtQhEQiuObg48JrNbK5L6=r0mxfSvErVC0JS4TqxxbJy_w@mail.gmail.com>
-Subject: Re: [BUG] nfs3_list_one_acl oops
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        Christoph Hellwig <hch@lst.de>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        linux-arm-kernel@lists.infradead.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Stable Tree <stable@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:40358 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933336AbaGWURw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 16:17:52 -0400
+Received: by mail-qg0-f47.google.com with SMTP id i50so2106248qgf.34
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 13:17:51 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        hch@infradead.org
+Subject: [PATCH v2 3/4] nfsd: nfs4_check_fh - make it actually check the filehandle
+Date: Wed, 23 Jul 2014 16:17:40 -0400
+Message-Id: <1406146661-9794-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406146661-9794-1-git-send-email-jlayton@primarydata.com>
+References: <1406146661-9794-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jul 27, 2014 at 9:19 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> Thanks Russell, the patch looks good.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-No. It needs to use an IS_ERR_OR_NULL() test at least in order to work
-correctly.
+...instead of just checking the inode that corresponds to it.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ab96718df3cc..6ced8d566c0b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3951,7 +3951,7 @@ laundromat_main(struct work_struct *laundry)
+ 
+ static inline __be32 nfs4_check_fh(struct svc_fh *fhp, struct nfs4_ol_stateid *stp)
+ {
+-	if (fhp->fh_dentry->d_inode != stp->st_file->fi_inode)
++	if (!nfsd_fh_match(&fhp->fh_handle, &stp->st_file->fi_fhandle))
+ 		return nfserr_bad_stateid;
+ 	return nfs_ok;
+ }
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
