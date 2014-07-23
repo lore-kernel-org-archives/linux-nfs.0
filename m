@@ -1,32 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:32876 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751934AbaG3U71 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 16:59:27 -0400
-Date: Wed, 30 Jul 2014 13:59:26 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH v3 05/38] nfsd4: use cl_lock to synchronize all stateid
- idr calls
-Message-ID: <20140730205926.GC25112@infradead.org>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
- <1406684083-19736-6-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:65473 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932584AbaGWSds (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jul 2014 14:33:48 -0400
+Date: Wed, 23 Jul 2014 13:33:32 -0500
+From: David Teigland <teigland@redhat.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Joe Perches <joe@perches.com>, Andrew Morton <akpm@linux-foundation.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        Christine Caulfield <ccaulfie@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        cluster-devel@redhat.com, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 9/9] fs: dlm: lockd: Convert int result to unsigned char
+ type
+Message-ID: <20140723183332.GA21992@redhat.com>
+References: <cover.1405879494.git.joe@perches.com>
+ <65b9ba0dba9c79a938267d5bed7ed0a8211e89ed.1405879494.git.joe@perches.com>
+ <20140723141139.2cf90cb0@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1406684083-19736-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <20140723141139.2cf90cb0@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 29, 2014 at 09:34:10PM -0400, Jeff Layton wrote:
-> Currently, this is serialized by the client_mutex, which is slated for
-> removal. Add finer-grained locking here. Also, do some cleanup around
-> find_stateid to prepare for taking references.
+On Wed, Jul 23, 2014 at 02:11:39PM -0400, Jeff Layton wrote:
+> On Sun, 20 Jul 2014 11:23:43 -0700
+> Joe Perches <joe@perches.com> wrote:
 > 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > op->info.rv is an s32, but it's only used as a u8.
+> > 
+> 
+> I don't understand this patch. info.rv is s32 (and I assume that "rv"
+> stands for "return value"). What I don't get is why you think it's just
+> used as a u8. It seems to be used more like a bool than anything else,
 
-Looks good,
+Thank you, Jeff.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+        /* info.rv from userspace is 1 for conflict, 0 for no-conflict,
+           -ENOENT if there are no locks on the file */
+
+        rv = op->info.rv;
+
+> and I'm not sure that "type" is really a good description for it. Maybe
+> it should be a "bool" and named "conflict", given the comments in
+> dlm_posix_get ?
+
+type is not a good name.
+
+Sorry Joe, I'm not a fan of your patches.
+
+Dave
