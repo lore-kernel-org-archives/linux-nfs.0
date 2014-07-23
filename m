@@ -1,51 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:44247 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754474AbaGHSEu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:50 -0400
-Received: by mail-qc0-f175.google.com with SMTP id i8so5571432qcq.20
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:49 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 010/100] nfsd: clean up helper __release_lock_stateid
-Date: Tue,  8 Jul 2014 14:02:58 -0400
-Message-Id: <1404842668-22521-11-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:32801 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932847AbaGWUrU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Jul 2014 16:47:20 -0400
+Date: Wed, 23 Jul 2014 16:47:12 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        hch@infradead.org
+Subject: Re: [PATCH v2 0/4] nfsd: don't let nfs4_file pin down the inode when
+ it has no open state
+Message-ID: <20140723204712.GI9118@fieldses.org>
+References: <1406146661-9794-1-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1406146661-9794-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Wed, Jul 23, 2014 at 04:17:37PM -0400, Jeff Layton wrote:
+> This is a port of the patches that Trond sent the other day onto the
+> current tip of Bruce's for-3.17 branch. It basically changes how
+> nfs4_file objects are hashed. Instead of using the inode pointer (and
+> pinning down an inode in the process), it uses the filehandle. This
+> allows us to avoid taking an inode reference directly for the nfs4_file.
+> With this, they're only taken by virtue of the files in the fi_fds
+> array.
 
-Use filp_close instead of open coding. filp_close does a bit more than
-just release the locks and put the filp. It also calls ->flush and
-dnotify_flush, both of which should be done here anyway.
+Looks OK to me.  I'll give it a day in case Christoph or someone spots a
+problem.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4state.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+--b.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0b42bd47a7d6..775267ed186a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -805,10 +805,8 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
- 	unhash_generic_stateid(stp);
- 	unhash_stid(&stp->st_stid);
- 	file = find_any_file(stp->st_file);
--	if (file) {
--		locks_remove_posix(file, (fl_owner_t)lockowner(stp->st_stateowner));
--		fput(file);
--	}
-+	if (file)
-+		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
- 	close_generic_stateid(stp);
- 	free_generic_stateid(stp);
- }
--- 
-1.9.3
-
+> 
+> Jeff Layton (1):
+>   nfsd: Do not let nfs4_file pin the struct inode
+> 
+> Trond Myklebust (3):
+>   nfsd: Store the filehandle with the struct nfs4_file
+>   nfsd: Use the filehandle to look up the struct nfs4_file instead of
+>     inode
+>   nfsd: nfs4_check_fh - make it actually check the filehandle
+> 
+>  fs/nfsd/nfs4state.c | 86 +++++++++++++++++++++++++++++++++--------------------
+>  fs/nfsd/state.h     |  2 +-
+>  2 files changed, 54 insertions(+), 34 deletions(-)
+> 
+> -- 
+> 1.9.3
+> 
