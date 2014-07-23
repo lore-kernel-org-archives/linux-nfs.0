@@ -1,58 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:63566 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752103AbaGORcW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 13:32:22 -0400
-Received: by mail-qc0-f177.google.com with SMTP id o8so5039978qcw.36
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 10:32:22 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 15 Jul 2014 13:32:20 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: trond.myklebust@primarydata.com, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/7] sunrpc: clean up endianness warnings in setup_token
-Message-ID: <20140715133220.3f02aec0@tlielax.poochiereds.net>
-In-Reply-To: <20140715170806.GE7767@infradead.org>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
-	<1405303064-9102-4-git-send-email-jlayton@primarydata.com>
-	<20140715170806.GE7767@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from userp1040.oracle.com ([156.151.31.81]:19662 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933621AbaGWVYD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 17:24:03 -0400
+References: <20140722144459.6010.99389.stgit@manet.1015granger.net> <53D004A0.7030803@Netapp.com>
+Mime-Version: 1.0 (1.0)
+In-Reply-To: <53D004A0.7030803@Netapp.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <37564E5B-5955-436B-88D2-888ADC3D7A00@oracle.com>
+Cc: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH v4 00/21] NFS/RDMA client patches for 3.17
+Date: Wed, 23 Jul 2014 17:23:58 -0400
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 15 Jul 2014 10:08:06 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
 
-> On Sun, Jul 13, 2014 at 09:57:40PM -0400, Jeff Layton wrote:
-> > This is safe since KG_TOK_MIC_MSG and SEAL_ALG_NONE are both endian
-> > palindromes. I'm also making the assumption that the signalg field
-> > really should be in little-endian. That looks odd, but looking at the
-> > spec I guess it's correct.
+
+> On Jul 23, 2014, at 2:53 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
 > 
-> > @@ -83,10 +83,10 @@ setup_token(struct krb5_ctx *ctx, struct xdr_netobj *token)
-> >  
-> >  	/* ptr now at start of header described in rfc 1964, section 1.2.1: */
-> >  	krb5_hdr = ptr;
-> > +	*ptr++ = cpu_to_be16(KG_TOK_MIC_MSG);
-> > +	*ptr++ = (__force __be16)cpu_to_le16(ctx->gk5e->signalg);
-> > +	*ptr++ = cpu_to_be16(SEAL_ALG_NONE);
-> > +	*ptr++ = cpu_to_be16(0xffff);
+> I've applied these changes and pushed them out in my nfs-rdma branch.  I'm planning to send a pull request to Trond on Friday so these changes can spend some time in linux-next before the next merge window opens.
+
+Thank you! Did you resolve your question about who will merge the ib_dec_rkey patch, or do you want me to pursue that?
+
 > 
-> If signalg is little endian and all others are palindromes it seems
-> like ptr should be defines as __le16.
+> Anna
 > 
-
-The spec doesn't really define it as little-endian. It's just an opaque series of bytes that happens to be a little-endian representation of 
-
-
-> >  	return (char *)krb5_hdr;
+>> On 07/22/2014 10:50 AM, Chuck Lever wrote:
+>> The main purpose of this series is to address connection drop
+>> recovery issues by fixing FRMR re-use to make it less likely the
+>> client will deadlock due to a memory management operation error.
+>> Some clean-ups and other fixes are present as well.
+>> 
+>> Anna, v4 of this series should be ready for merging.
+>> 
+>> See topic branch nfs-rdma-for-3.17 in
+>> 
+>> git://git.linux-nfs.org/projects/cel/cel-2.6.git
+>> 
+>> I tested with NFSv3 and NFSv4 on all three supported memory
+>> registration modes. Used cthon04, iozone, and dbench with both
+>> Solaris and Linux NFS/RDMA servers. Used xfstests with Linux.
+>> 
+>> v4:
+>> 
+>> - Rebased on v3.16-rc6
+>> 
+>> - Add Tested-by: from Shirley Ma and Devesh Sharma
+>> 
+>> 
+>> v3:
+>> Only two substantive changes:
+>> 
+>> - Patch 08/21 now uses generic IB helpers for managing FRMR
+>> rkeys
+>> 
+>> - Add Tested-by: from Steve Wise
+>> 
+>> 
+>> v2:
+>> Many patches from v1 have been written or replaced.
+>> 
+>> The MW ref counting approach in v1 is abandoned. Instead, I've
+>> eliminated signaling FAST_REG_MR and LOCAL_INV, and added
+>> appropriate recovery mechanisms after a transport reconnect that
+>> should prevent rkey dis-synchrony entirely.
+>> 
+>> A couple of optimizations have been added, including:
+>> 
+>> - Allocating each MW separately rather than carving each out of a
+>> large piece of contiguous memory
+>> 
+>> - Now that the receive CQ upcall handler dequeues a bundle of CQEs
+>> at once, fire off the reply handler tasklet just once per upcall
+>> to reduce context switches and how often hard IRQs are disabled
+>> 
+>> ---
+>> 
+>> Chuck Lever (21):
+>>      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
+>>      xprtrdma: Protect ia->ri_id when unmapping/invalidating MRs
+>>      xprtrdma: Limit data payload size for ALLPHYSICAL
+>>      xprtrdma: Update rkeys after transport reconnect
+>>      xprtrdma: On disconnect, don't ignore pending CQEs
+>>      xprtrdma: Don't invalidate FRMRs if registration fails
+>>      xprtrdma: Unclutter struct rpcrdma_mr_seg
+>>      xprtrdma: Back off rkey when FAST_REG_MR fails
+>>      xprtrdma: Chain together all MWs in same buffer pool
+>>      xprtrdma: Properly handle exhaustion of the rb_mws list
+>>      xprtrdma: Reset FRMRs when FAST_REG_MR is flushed by a disconnect
+>>      xprtrdma: Reset FRMRs after a flushed LOCAL_INV Work Request
+>>      xprtrdma: Don't post a LOCAL_INV in rpcrdma_register_frmr_external()
+>>      xprtrdma: Disable completions for FAST_REG_MR Work Requests
+>>      xprtrdma: Disable completions for LOCAL_INV Work Requests
+>>      xprtrdma: Rename frmr_wr
+>>      xprtrdma: Allocate each struct rpcrdma_mw separately
+>>      xprtrdma: Schedule reply tasklet once per upcall
+>>      xprtrdma: Make rpcrdma_ep_disconnect() return void
+>>      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
+>>      xprtrdma: Handle additional connection events
+>> 
+>> 
+>> include/linux/sunrpc/xprtrdma.h |    2 
+>> include/rdma/ib_verbs.h         |   11 +
+>> net/sunrpc/xprtrdma/rpc_rdma.c  |   83 ++--
+>> net/sunrpc/xprtrdma/transport.c |   17 +
+>> net/sunrpc/xprtrdma/verbs.c     |  744 ++++++++++++++++++++++++++-------------
+>> net/sunrpc/xprtrdma/xprt_rdma.h |   61 +++
+>> 6 files changed, 615 insertions(+), 303 deletions(-)
+>> 
+>> --
+>> Chuck Lever
+>> 
 > 
-> Seems like krb5_hdr should simply be defined as void *, together with
-> the return value?
-> 
-
-Yeah, that may make more sense.
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
