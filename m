@@ -1,82 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:60529 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755249AbaGUPDO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:14 -0400
-Received: by mail-qg0-f51.google.com with SMTP id a108so5354993qge.38
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:13 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 10/40] nfsd: Slight cleanup of find_stateid()
-Date: Mon, 21 Jul 2014 11:02:22 -0400
-Message-Id: <1405954972-28904-11-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
-References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f50.google.com ([209.85.216.50]:49070 "EHLO
+	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932745AbaGWSLn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 14:11:43 -0400
+Received: by mail-qa0-f50.google.com with SMTP id s7so1690605qap.9
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 11:11:42 -0700 (PDT)
+Date: Wed, 23 Jul 2014 14:11:39 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Joe Perches <joe@perches.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        David Teigland <teigland@redhat.com>,
+        Christine Caulfield <ccaulfie@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        cluster-devel@redhat.com, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 9/9] fs: dlm: lockd: Convert int result to unsigned char
+ type
+Message-ID: <20140723141139.2cf90cb0@tlielax.poochiereds.net>
+In-Reply-To: <65b9ba0dba9c79a938267d5bed7ed0a8211e89ed.1405879494.git.joe@perches.com>
+References: <cover.1405879494.git.joe@perches.com>
+	<65b9ba0dba9c79a938267d5bed7ed0a8211e89ed.1405879494.git.joe@perches.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Sun, 20 Jul 2014 11:23:43 -0700
+Joe Perches <joe@perches.com> wrote:
 
-In preparation of reference counting.
+> op->info.rv is an s32, but it's only used as a u8.
+> 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 27 ++++++++++++++++++---------
- 1 file changed, 18 insertions(+), 9 deletions(-)
+I don't understand this patch. info.rv is s32 (and I assume that "rv"
+stands for "return value"). What I don't get is why you think it's just
+used as a u8. It seems to be used more like a bool than anything else,
+and I'm not sure that "type" is really a good description for it. Maybe
+it should be a "bool" and named "conflict", given the comments in
+dlm_posix_get ?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5100a737f862..d83f1a27aded 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1692,28 +1692,37 @@ static void gen_confirm(struct nfs4_client *clp)
- 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
- }
- 
--static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
-+static struct nfs4_stid *
-+find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
- {
- 	struct nfs4_stid *ret;
- 
--	spin_lock(&cl->cl_lock);
- 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
--	spin_unlock(&cl->cl_lock);
- 	if (!ret || !ret->sc_type)
- 		return NULL;
- 	return ret;
- }
- 
-+static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
-+{
-+	struct nfs4_stid *ret;
-+
-+	spin_lock(&cl->cl_lock);
-+	ret = find_stateid_locked(cl, t);
-+	spin_unlock(&cl->cl_lock);
-+	return ret;
-+}
-+
- static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
- {
- 	struct nfs4_stid *s;
- 
--	s = find_stateid(cl, t);
--	if (!s)
--		return NULL;
--	if (typemask & s->sc_type)
--		return s;
--	return NULL;
-+	spin_lock(&cl->cl_lock);
-+	s = find_stateid_locked(cl, t);
-+	if (s != NULL && !(typemask & s->sc_type))
-+		s = NULL;
-+	spin_unlock(&cl->cl_lock);
-+	return s;
- }
- 
- static struct nfs4_client *create_client(struct xdr_netobj name,
+> Signed-off-by: Joe Perches <joe@perches.com>
+> ---
+>  fs/dlm/plock.c     |  6 +++---
+>  fs/lockd/svclock.c | 10 +++++-----
+>  include/linux/fs.h |  2 +-
+>  3 files changed, 9 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/dlm/plock.c b/fs/dlm/plock.c
+> index 3e0b6fc..267849d 100644
+> --- a/fs/dlm/plock.c
+> +++ b/fs/dlm/plock.c
+> @@ -30,7 +30,7 @@ struct plock_op {
+>  
+>  struct plock_xop {
+>  	struct plock_op xop;
+> -	int (*callback)(struct file_lock *fl, int result);
+> +	int (*callback)(struct file_lock *fl, unsigned char type);
+>  	void *fl;
+>  	void *file;
+>  	struct file_lock flc;
+> @@ -190,7 +190,7 @@ static int dlm_plock_callback(struct plock_op *op)
+>  	struct file *file;
+>  	struct file_lock *fl;
+>  	struct file_lock *flc;
+> -	int (*notify)(struct file_lock *fl, int result) = NULL;
+> +	int (*notify)(struct file_lock *fl, unsigned char type) = NULL;
+>  	struct plock_xop *xop = (struct plock_xop *)op;
+>  	int rv = 0;
+>  
+> @@ -209,7 +209,7 @@ static int dlm_plock_callback(struct plock_op *op)
+>  	notify = xop->callback;
+>  
+>  	if (op->info.rv) {
+> -		notify(fl, op->info.rv);
+> +		notify(fl, (unsigned char)op->info.rv);
+>  		goto out;
+>  	}
+>  
+> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> index 2a61701..15532b9 100644
+> --- a/fs/lockd/svclock.c
+> +++ b/fs/lockd/svclock.c
+> @@ -667,16 +667,16 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_file *file, struct nlm_lock *l
+>   * deferred rpc for GETLK and SETLK.
+>   */
+>  static void
+> -nlmsvc_update_deferred_block(struct nlm_block *block, int result)
+> +nlmsvc_update_deferred_block(struct nlm_block *block, unsigned char type)
+>  {
+>  	block->b_flags |= B_GOT_CALLBACK;
+> -	if (result == 0)
+> +	if (type == 0)
+>  		block->b_granted = 1;
+>  	else
+>  		block->b_flags |= B_TIMED_OUT;
+>  }
+>  
+> -static int nlmsvc_grant_deferred(struct file_lock *fl, int result)
+> +static int nlmsvc_grant_deferred(struct file_lock *fl, unsigned char type)
+>  {
+>  	struct nlm_block *block;
+>  	int rc = -ENOENT;
+> @@ -691,8 +691,8 @@ static int nlmsvc_grant_deferred(struct file_lock *fl, int result)
+>  					rc = -ENOLCK;
+>  					break;
+>  				}
+> -				nlmsvc_update_deferred_block(block, result);
+> -			} else if (result == 0)
+> +				nlmsvc_update_deferred_block(block, type);
+> +			} else if (type == 0)
+>  				block->b_granted = 1;
+>  
+>  			nlmsvc_insert_block_locked(block, 0);
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index d083a67..7fbce66 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -842,7 +842,7 @@ struct lock_manager_operations {
+>  	int (*lm_compare_owner)(struct file_lock *fl1, struct file_lock *fl2);
+>  	unsigned long (*lm_owner_key)(struct file_lock *fl);
+>  	void (*lm_notify)(struct file_lock *fl);	/* unblock callback */
+> -	int (*lm_grant)(struct file_lock *fl, int result);
+> +	int (*lm_grant)(struct file_lock *fl, unsigned char type);
+>  	void (*lm_break)(struct file_lock *fl);
+>  	int (*lm_change)(struct file_lock **fl, int type);
+>  };
+
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@poochiereds.net>
