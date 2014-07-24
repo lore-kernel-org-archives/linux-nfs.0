@@ -1,112 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f182.google.com ([209.85.220.182]:62828 "EHLO
-	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756245AbaGIXGy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Jul 2014 19:06:54 -0400
-Received: by mail-vc0-f182.google.com with SMTP id il7so8897113vcb.41
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Jul 2014 16:06:53 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <033801cf9bc7$0d7ee190$287ca4b0$@mindspring.com>
-References: <1404942892-18323-1-git-send-email-ffilzlnx@mindspring.com>
-	<CAHQdGtSUwScEdUeKT1w+-ynqNz-e1=YvDBtdu_k=_6yndFZSVQ@mail.gmail.com>
-	<033801cf9bc7$0d7ee190$287ca4b0$@mindspring.com>
-Date: Wed, 9 Jul 2014 19:06:53 -0400
-Message-ID: <CAHQdGtQjCYV2jE7FGu-J+02xp25uaUUVv8uzcs5sfbKXBbVk6A@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Fix permission checking by NFS client for open-create
- with mode 000
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from smtprelay0217.hostedemail.com ([216.40.44.217]:43265 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S934118AbaGXDyE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 23:54:04 -0400
+Message-ID: <1406174039.2755.71.camel@joe-AO725>
+Subject: Re: [PATCH 9/9] fs: dlm: lockd: Convert int result to unsigned char
+ type
+From: Joe Perches <joe@perches.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        David Teigland <teigland@redhat.com>,
+        Christine Caulfield <ccaulfie@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        cluster-devel@redhat.com, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Date: Wed, 23 Jul 2014 20:53:59 -0700
+In-Reply-To: <20140723141139.2cf90cb0@tlielax.poochiereds.net>
+References: <cover.1405879494.git.joe@perches.com>
+	 <65b9ba0dba9c79a938267d5bed7ed0a8211e89ed.1405879494.git.joe@perches.com>
+	 <20140723141139.2cf90cb0@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="ISO-8859-1"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 9, 2014 at 6:42 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->> On Wed, Jul 9, 2014 at 5:54 PM, Frank S. Filz <ffilzlnx@mindspring.com>
->> wrote:
->> > From: "Frank S. Filz" <ffilzlnx@mindspring.com>
->> >
->> > The NFS v4 client sends a COMPOUND with an OPEN and an ACCESS.
->> >
->> > The ACCESS is required to verify an open for read is actually allowed
->> > because RFC 3530 indicates OPEN for read only must succeed for an
->> > execute only file.
->> >
->> > The old code expected to have read access if the requested access was
->> > O_RDWR.
->> >
->> > We can expect the OPEN to properly permission check as long as the
->> > open is O_WRONLY or O_RDWR.
->> >
->> > Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
->> > ---
->> >  fs/nfs/nfs4proc.c | 25 ++++++++++++++++++++-----
->> >  1 file changed, 20 insertions(+), 5 deletions(-)
->> >
->> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c index
->> > 4bf3d97..9742054 100644
->> > --- a/fs/nfs/nfs4proc.c
->> > +++ b/fs/nfs/nfs4proc.c
->> > @@ -1966,15 +1966,30 @@ static int nfs4_opendata_access(struct
->> rpc_cred *cred,
->> >                 return 0;
->> >
->> >         mask = 0;
->> > -       /* don't check MAY_WRITE - a newly created file may not have
->> > -        * write mode bits, but POSIX allows the creating process to write.
->> > -        * use openflags to check for exec, because fmode won't
->> > -        * always have FMODE_EXEC set when file open for exec. */
->> > +       /* Don't trust the permission check on OPEN if open for exec or for
->> > +        * read only. Since FMODE_EXEC doesn't go across the wire, the server
->> > +        * has no way to distinguish between an open to read an executable
->> file
->> > +        * and an open to read a readable file. Write access is properly checked
->> > +        * and permission SHOULD always be granted if the file was created as
->> a
->> > +        * result of this OPEN, no matter what mode the file was created with.
->> > +        *
->> > +        * NOTE: If the case of a OPEN CREATE READ-ONLY with a mode that
->> does
->> > +        *       not allow read access, this test will produce an incorrect
->> > +        *       EACCES error.
->> > +        */
->> >         if (openflags & __FMODE_EXEC) {
->> >                 /* ONLY check for exec rights */
->> >                 mask = MAY_EXEC;
->> > -       } else if (fmode & FMODE_READ)
->> > +       } else if (!(fmode & FMODE_WRITE)) {
->> > +               /* In case the file was execute only, check for read permission
->> > +                * ONLY if write access was not requested. It is expected that
->> > +                * an OPEN for write will fail if the file is execute only.
->> > +                * Note that if the file was newly created, the fmode SHOULD
->> > +                * include FMODE_WRITE, especially if the file will be created
->> > +                * with a restrictive mode.
->> > +                */
->> >                 mask = MAY_READ;
->> > +       }
->>
->> This looks wrong. AFAICS it will allow you to open an existing file which has -
->> wx permissions (i.e. no read permissions) for O_RDWR. That should not be
->> permitted under POSIX rules.
->
-> The server permission checks the OPEN, this only affects the subsequent ACCESS.
->
-> The server will fail the OPEN with NFS4_ERR_ACCESS if the open is for read/write and the file has write-execute permission.
+On Wed, 2014-07-23 at 14:11 -0400, Jeff Layton wrote:
+> On Sun, 20 Jul 2014 11:23:43 -0700 Joe Perches <joe@perches.com> wrote:
+> > op->info.rv is an s32, but it's only used as a u8.
+> I don't understand this patch. info.rv is s32 (and I assume that "rv"
+> stands for "return value").
 
-RFC3530bis draft 33 (6.2.1.3.1.  Discussion of Mask Attributes) states
-that for both the OPEN and the READ operations, "Servers SHOULD allow
-a user the ability to read the data of the file when only the
-ACE4_EXECUTE access mask bit is allowed". RFC5561 has the same
-language.
+In this case it's not a return value but an input.
 
-To me that translates as saying that the server SHOULD accept an
-OPEN(SHARE_ACCESS_READ|SHARE_ACCESS_WRITE) request in the above
-situation.
+> What I don't get is why you think it's just
+> used as a u8.
 
--- 
-Trond Myklebust
+Because it's tested only in nlmsvc_grant_deferred
+and nlmsvc_update_deferred_block against 0.
 
-Linux NFS client maintainer, PrimaryData
+As far as I can tell, it's not possible to set it
+to a negative value.
 
-trond.myklebust@primarydata.com
+> It seems to be used more like a bool than anything else,
+> and I'm not sure that "type" is really a good description for it. Maybe
+> it should be a "bool" and named "conflict",
+
+Maybe.  But it seemed likely and possible to expand
+it from a single bool to a value.
+
+> given the comments in dlm_posix_get ?
+
+Maybe, though I don't see how the comments relate to
+this change.  The rv value returned from that call
+is either -ENOMEM or 0 and is unchanged by this patch.
+
+> > diff --git a/include/linux/fs.h b/include/linux/fs.h
+[]
+> > @@ -842,7 +842,7 @@ struct lock_manager_operations {
+> >  	int (*lm_compare_owner)(struct file_lock *fl1, struct file_lock *fl2);
+> >  	unsigned long (*lm_owner_key)(struct file_lock *fl);
+> >  	void (*lm_notify)(struct file_lock *fl);	/* unblock callback */
+> > -	int (*lm_grant)(struct file_lock *fl, int result);
+> > +	int (*lm_grant)(struct file_lock *fl, unsigned char type);
+> >  	void (*lm_break)(struct file_lock *fl);
+> >  	int (*lm_change)(struct file_lock **fl, int type);
+> >  };
+
+I used variable name "type" because that's what
+lm_change uses.  No worries if you think a name
+like conflict is better.
+
+The only in-kernel setter of lm_grant is:
+
+fs/lockd/svclock.c:     .lm_grant = nlmsvc_grant_deferred,
+
+and for that, I think using a variable name of
+"result" is misleading at best.
+
