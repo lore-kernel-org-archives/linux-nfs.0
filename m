@@ -1,91 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:65104 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754178AbaG2VZX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:25:23 -0400
-Subject: [PATCH v5 15/21] xprtrdma: Disable completions for LOCAL_INV Work
- Requests
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Jul 2014 17:25:20 -0400
-Message-ID: <20140729212520.2812.55003.stgit@manet.1015granger.net>
-In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
+Received: from mx11.netapp.com ([216.240.18.76]:29512 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758806AbaGXNZG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Jul 2014 09:25:06 -0400
+Message-ID: <53D10929.6010307@Netapp.com>
+Date: Thu, 24 Jul 2014 09:24:57 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
+To: Roland Dreier <roland@purestorage.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 08/21] xprtrdma: Back off rkey when FAST_REG_MR fails
+References: <20140722144459.6010.99389.stgit@manet.1015granger.net> <20140722145208.6010.76678.stgit@manet.1015granger.net>
+In-Reply-To: <20140722145208.6010.76678.stgit@manet.1015granger.net>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of relying on a completion to change the state of an FRMR
-to FRMR_IS_INVALID, set it in advance. If an error occurs, a completion
-will fire anyway and mark the FRMR FRMR_IS_STALE.
+Hi Roland,
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
----
- net/sunrpc/xprtrdma/verbs.c |   17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+I'm collecting changes for NFS over RDMA, and I wasn't sure if the change to include/rdma/ib_verbs.h in this patch (adding ib_dec_rkey()) was something that could be merged through the NFS tree.  What do you think?
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 65302e8..750fdf9 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -154,12 +154,8 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- 
- 	if (wc->wr_id == 0ULL)
- 		return;
--	if (wc->status != IB_WC_SUCCESS) {
-+	if (wc->status != IB_WC_SUCCESS)
- 		frmr->r.frmr.fr_state = FRMR_IS_STALE;
--		return;
--	}
--
--	frmr->r.frmr.fr_state = FRMR_IS_INVALID;
- }
- 
- static int
-@@ -1369,12 +1365,11 @@ rpcrdma_retry_local_inv(struct rpcrdma_mw *r, struct rpcrdma_ia *ia)
- 	dprintk("RPC:       %s: FRMR %p is stale\n", __func__, r);
- 
- 	/* When this FRMR is re-inserted into rb_mws, it is no longer stale */
--	r->r.frmr.fr_state = FRMR_IS_VALID;
-+	r->r.frmr.fr_state = FRMR_IS_INVALID;
- 
- 	memset(&invalidate_wr, 0, sizeof(invalidate_wr));
- 	invalidate_wr.wr_id = (unsigned long)(void *)r;
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.send_flags = IB_SEND_SIGNALED;
- 	invalidate_wr.ex.invalidate_rkey = r->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
-@@ -1775,10 +1770,11 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 	struct ib_send_wr invalidate_wr, *bad_wr;
- 	int rc;
- 
-+	seg1->mr_chunk.rl_mw->r.frmr.fr_state = FRMR_IS_INVALID;
-+
- 	memset(&invalidate_wr, 0, sizeof invalidate_wr);
- 	invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
--	invalidate_wr.send_flags = IB_SEND_SIGNALED;
- 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
-@@ -1787,9 +1783,12 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 		rpcrdma_unmap_one(ia, seg++);
- 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
- 	read_unlock(&ia->ri_qplock);
--	if (rc)
-+	if (rc) {
-+		/* Force rpcrdma_buffer_get() to retry */
-+		seg1->mr_chunk.rl_mw->r.frmr.fr_state = FRMR_IS_STALE;
- 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
- 			" status %i\n", __func__, rc);
-+	}
- 	return rc;
- }
- 
+Thanks!
+
+Anna
+
+On 07/22/2014 10:52 AM, Chuck Lever wrote:
+> If posting a FAST_REG_MR Work Reqeust fails, revert the rkey update
+> to avoid subsequent IB_WC_MW_BIND_ERR completions.
+> 
+> Suggested-by: Steve Wise <swise@opengridcomputing.com>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Tested-by: Shirley Ma <shirley.ma@oracle.com>
+> Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+> ---
+>  include/rdma/ib_verbs.h     |   11 +++++++++++
+>  net/sunrpc/xprtrdma/verbs.c |   12 +++++-------
+>  2 files changed, 16 insertions(+), 7 deletions(-)
+> 
+> diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
+> index 7ccef34..c5c7ec6 100644
+> --- a/include/rdma/ib_verbs.h
+> +++ b/include/rdma/ib_verbs.h
+> @@ -2479,6 +2479,17 @@ static inline u32 ib_inc_rkey(u32 rkey)
+>  }
+>  
+>  /**
+> + * ib_dec_rkey - decrements the key portion of the given rkey. Can be used
+> + * when recovering from a local immediate error.
+> + * @rkey - the rkey to decrement.
+> + */
+> +static inline u32 ib_dec_rkey(u32 rkey)
+> +{
+> +	const u32 mask = 0x000000ff;
+> +	return ((rkey - 1) & mask) | (rkey & ~mask);
+> +}
+> +
+> +/**
+>   * ib_alloc_mw - Allocates a memory window.
+>   * @pd: The protection domain associated with the memory window.
+>   * @type: The type of the memory window (1 or 2).
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 8bb7945..394b13f 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1497,13 +1497,12 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  	struct rpcrdma_frmr *frmr = &mw->r.frmr;
+>  	struct ib_mr *mr = frmr->fr_mr;
+>  	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
+> -
+> -	u8 key;
+>  	int len, pageoff;
+>  	int i, rc;
+>  	int seg_len;
+>  	u64 pa;
+>  	int page_no;
+> +	u32 rkey;
+>  
+>  	pageoff = offset_in_page(seg1->mr_offset);
+>  	seg1->mr_offset -= pageoff;	/* start of page */
+> @@ -1558,14 +1557,11 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  		rc = -EIO;
+>  		goto out_err;
+>  	}
+> -
+> -	/* Bump the key */
+> -	key = (u8)(mr->rkey & 0x000000FF);
+> -	ib_update_fast_reg_key(mr, ++key);
+> -
+>  	frmr_wr.wr.fast_reg.access_flags = (writing ?
+>  				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+>  				IB_ACCESS_REMOTE_READ);
+> +	rkey = ib_inc_rkey(mr->rkey);
+> +	ib_update_fast_reg_key(mr, rkey);
+>  	frmr_wr.wr.fast_reg.rkey = mr->rkey;
+>  	DECR_CQCOUNT(&r_xprt->rx_ep);
+>  
+> @@ -1574,6 +1570,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>  	if (rc) {
+>  		dprintk("RPC:       %s: failed ib_post_send for register,"
+>  			" status %i\n", __func__, rc);
+> +		rkey = ib_dec_rkey(mr->rkey);
+> +		ib_update_fast_reg_key(mr, rkey);
+>  		goto out_err;
+>  	} else {
+>  		seg1->mr_rkey = mr->rkey;
+> 
 
