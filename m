@@ -1,69 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:56901 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751943AbaGNB6B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:58:01 -0400
-Received: by mail-qa0-f52.google.com with SMTP id j15so2751333qaq.11
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:58:00 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 6/7] sunrpc: clean up sparse endianness warnings in gss_krb5_wrap.c
-Date: Sun, 13 Jul 2014 21:57:43 -0400
-Message-Id: <1405303064-9102-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+Received: from smtprelay0222.hostedemail.com ([216.40.44.222]:49432 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1757637AbaGXQf0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jul 2014 12:35:26 -0400
+Message-ID: <1406219722.27221.46.camel@joe-AO725>
+Subject: Re: [PATCH 9/9] fs: dlm: lockd: Convert int result to unsigned char
+ type
+From: Joe Perches <joe@perches.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Al Viro <viro@ZenIV.linux.org.uk>,
+        David Teigland <teigland@redhat.com>,
+        Christine Caulfield <ccaulfie@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        cluster-devel@redhat.com, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Date: Thu, 24 Jul 2014 09:35:22 -0700
+In-Reply-To: <20140724122445.2ebd1b23@tlielax.poochiereds.net>
+References: <cover.1405879494.git.joe@perches.com>
+	 <65b9ba0dba9c79a938267d5bed7ed0a8211e89ed.1405879494.git.joe@perches.com>
+	 <20140723141139.2cf90cb0@tlielax.poochiereds.net>
+	 <1406174039.2755.71.camel@joe-AO725>
+	 <20140724122445.2ebd1b23@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="ISO-8859-1"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- net/sunrpc/auth_gss/gss_krb5_wrap.c | 10 +++++-----
- 1 file changed, 5 insertions(+), 5 deletions(-)
+On Thu, 2014-07-24 at 12:24 -0400, Jeff Layton wrote:
+> On Wed, 23 Jul 2014 20:53:59 -0700 Joe Perches <joe@perches.com> wrote:
+> > On Wed, 2014-07-23 at 14:11 -0400, Jeff Layton wrote:
+> > > On Sun, 20 Jul 2014 11:23:43 -0700 Joe Perches <joe@perches.com> wrote:
+> > > > op->info.rv is an s32, but it's only used as a u8.
+> > > I don't understand this patch. info.rv is s32 (and I assume that "rv"
+> > > stands for "return value").
+> > 
+> > In this case it's not a return value but an input.
+[]
+> Well, it's an input into the lm_grant callback, but it originally comes
+> in the downcall from userland (AFAICT). In this case, I'm referring to
+[]
+> It's been a while since I've looked over the lockd code, but I believe
+> it's just a flag that indicates whether there is still a conflict
+> between the block and the lock on the file.
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index 42560e55d978..c5cc0270a334 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -201,9 +201,9 @@ gss_wrap_kerberos_v1(struct krb5_ctx *kctx, int offset,
- 
- 	msg_start = ptr + GSS_KRB5_TOK_HDR_LEN + kctx->gk5e->cksumlength;
- 
--	*(__be16 *)(ptr + 2) = cpu_to_le16(kctx->gk5e->signalg);
-+	*(__be16 *)(ptr + 2) = (__force __be16)cpu_to_le16(kctx->gk5e->signalg);
- 	memset(ptr + 4, 0xff, 4);
--	*(__be16 *)(ptr + 4) = cpu_to_le16(kctx->gk5e->sealalg);
-+	*(__be16 *)(ptr + 4) = (__force __be16)cpu_to_le16(kctx->gk5e->sealalg);
- 
- 	gss_krb5_make_confounder(msg_start, conflen);
- 
-@@ -438,7 +438,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
- 	u8		*ptr, *plainhdr;
- 	s32		now;
- 	u8		flags = 0x00;
--	__be16		*be16ptr, ec = 0;
-+	__be16		*be16ptr;
- 	__be64		*be64ptr;
- 	u32		err;
- 
-@@ -468,7 +468,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
- 	be16ptr = (__be16 *)ptr;
- 
- 	blocksize = crypto_blkcipher_blocksize(kctx->acceptor_enc);
--	*be16ptr++ = cpu_to_be16(ec);
-+	*be16ptr++ = cpu_to_be16(0);
- 	/* "inner" token header always uses 0 for RRC */
- 	*be16ptr++ = cpu_to_be16(0);
- 
-@@ -477,7 +477,7 @@ gss_wrap_kerberos_v2(struct krb5_ctx *kctx, u32 offset,
- 	*be64ptr = cpu_to_be64(kctx->seq_send64++);
- 	spin_unlock(&krb5_seq_lock);
- 
--	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, ec, pages);
-+	err = (*kctx->gk5e->encrypt_v2)(kctx, offset, buf, 0, pages);
- 	if (err)
- 		return err;
- 
--- 
-1.9.3
+Yes, that is how it is used.
+
+> I don't think that patch will break anything. I just don't see it as an
+> improvement on what's already there.
+> 
+> The rationale for this is lost in antiquity, but I think the basic idea
+> was that you're either granting or updating the block based on the
+> _result_ from some check for a lock conflict. While "result" as a name
+> is a little confusing, "type" is even more so, IMO.
+> 
+> If you're hell-bent on changing this, then my suggestion would be
+> to turn it into a bool and call it "conflict" or something similar. If
+> you do decide to do that, adding some helpful kerneldoc comments would
+> be a nice improvement too.
+
+I hope I'm never hell-bent on patches.
+
+I do prefer easier to read, clear code and I agree
+that using it as a bool would make the code better.
+
+I'll see about kernel-doc changes too.
+
+cheers, Joe
 
