@@ -1,48 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:3014 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751224AbaGJURa convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 16:17:30 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: rpciod/1: page allocation failure. order:2, mode:0x20'
-Date: Thu, 10 Jul 2014 20:17:28 +0000
-Message-ID: <69B70372-AC71-46EE-B555-E418124A3348@netapp.com>
-References: <1FAA3C78-BBFA-4186-A25A-0D4E97609934@netapp.com>
- <CAHQdGtReiO9yzXG3_WKk9YJJBAmbT+YO+WtuWXabkCtDm76o-Q@mail.gmail.com>
-In-Reply-To: <CAHQdGtReiO9yzXG3_WKk9YJJBAmbT+YO+WtuWXabkCtDm76o-Q@mail.gmail.com>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:53945 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756000AbaGXAM1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 20:12:27 -0400
+Received: by mail-ie0-f171.google.com with SMTP id at1so1664371iec.2
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 17:12:27 -0700 (PDT)
 MIME-Version: 1.0
+Date: Wed, 23 Jul 2014 17:12:27 -0700
+Message-ID: <CAB7xdinUj4U3PAYVB7j3o+iWSTV7aNMBD5O-rAgnzj6vgmce0g@mail.gmail.com>
+Subject: pNFS setup
+From: sheng qiu <herbert1984106@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
-On Jul 10, 2014, at 4:08 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+does anyone can share your experience on setting up the pNFS of file
+layout or block layout?
+the wiki instruction :
+http://wiki.linux-nfs.org/wiki/index.php/PNFS_Setup_Instructions does
+not work for me on step
 
-> On Thu, Jul 10, 2014 at 4:01 PM, Adamson, Andy
-> <William.Adamson@netapp.com> wrote:
->> Hi
->> 
->> A customer of ours, running a 2.6.32-431.5.1.el6.x86_64 kernel NFS client, is hittng the "rpciod/1: page allocation failure. order:2, mode:0x20", but only with NFSv3 hard mounts (not soft mounts), and not with NFSv4 (same application, same client hardware). Has anyone hit this issue with RHEL6.5?  Any ideas on why NFSv3 would trigger this error and not NFSv4?
->> 
->> I see in Red Hat Bugzilla 767127 - swapper: page allocation failure. order:1, mode:0x20 (edit) that a similar issue was solved by setting vm.zone_reclaim_mode = 1 which used to be the default.  Adjusting the vm.min_free_kbytes higher may also help.  Any side effects or issues with these settings?
->> 
->> Any info appreciated
-> 
-> Where are we doing an order 2 allocation in the NFS/RPC code? Our aim
-> has always been to do nothing larger than an order 0 allocation.
+echo "/dev/sdc:192.168.0.1,192.168.0.2" >/proc/fs/nfsd/pnfs_dlm_device
 
-I don’t yet have the Call trace triggered by the allocation failure, but I think it’s in the tcp layer. I’ll confirm.
+since i do not have that directory entry after install the pNFS kernel
+version. my system is ubuntu 14.
 
-—>Andy
+this is my config file related with nfs part:
 
-> 
-> -- 
-> Trond Myklebust
-> 
-> Linux NFS client maintainer, PrimaryData
-> 
-> trond.myklebust@primarydata.com
+CONFIG_NETWORK_FILESYSTEMS=y
+CONFIG_NFS_FS=m
+CONFIG_NFS_V2=m
+CONFIG_NFS_V3=m
+CONFIG_NFS_V3_ACL=y
+CONFIG_NFS_V4=m
+CONFIG_NFS_SWAP=y
+CONFIG_NFS_V4_1=y
+CONFIG_NFS_V4_2=y
+CONFIG_PNFS_FILE_LAYOUT=m
+CONFIG_PNFS_BLOCK=m
+CONFIG_PNFS_OBJLAYOUT=m
+CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN="kernel.org"
+CONFIG_NFS_V4_SECURITY_LABEL=y
+CONFIG_NFS_FSCACHE=y
+# CONFIG_NFS_USE_LEGACY_DNS is not set
+CONFIG_NFS_USE_KERNEL_DNS=y
+CONFIG_NFS_DEBUG=y
+CONFIG_NFSD=m
+CONFIG_NFSD_V2_ACL=y
+CONFIG_NFSD_V3=y
+CONFIG_NFSD_V3_ACL=y
+CONFIG_NFSD_V4=y
+CONFIG_NFSD_V4_SECURITY_LABEL=y
+# CONFIG_NFSD_FAULT_INJECTION is not set
+CONFIG_PNFSD=y
+CONFIG_PNFSD_LOCAL_EXPORT=y
+# CONFIG_PNFSD_LEXP_LAYOUT_SEGMENTS is not set
+CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE=y
+# CONFIG_PNFSD_LEXP_COMMIT_THRU_MDS is not set
+# CONFIG_PNFSD_LEXP_INJECT_IO_ERRORS is not set
+CONFIG_LOCKD=m
+CONFIG_LOCKD_V4=y
+CONFIG_NFS_ACL_SUPPORT=m
+CONFIG_NFS_COMMON=y
 
+
+thanks a lot if anyone can help.
