@@ -1,97 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:56458 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755191AbaGQTMu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 15:12:50 -0400
-Received: by mail-qc0-f181.google.com with SMTP id w7so2486117qcr.40
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 12:12:50 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 6/6] nfsd: Convert delegation counter to an atomic_long_t type
-Date: Thu, 17 Jul 2014 15:12:34 -0400
-Message-Id: <1405624354-22388-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
-References: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:39207 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752919AbaGYPBP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jul 2014 11:01:15 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s6PF1Eha031406
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jul 2014 11:01:14 -0400
+Message-ID: <53D27138.5010406@RedHat.com>
+Date: Fri, 25 Jul 2014 11:01:12 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Slavek Kabrda <bkabrda@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Fix Python 3 compatibility of mountstats and nfs-iostat
+References: <1405591052-17456-1-git-send-email-bkabrda@redhat.com>
+In-Reply-To: <1405591052-17456-1-git-send-email-bkabrda@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-We want to convert to an atomic type so that we don't need to lock
-across the call to alloc_init_deleg(). Then convert to a long type so
-that we match the size of 'max_delegations'.
 
-None of this is a problem today, but it will be once we remove
-client_mutex protection.
+On 17/07/14 05:57, Slavek Kabrda wrote:
+> Signed-off-by: Slavek Kabrda <bkabrda@redhat.com>
+Committed... 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4state.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ca8b4d0e712b..ba742efbb251 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -343,7 +343,7 @@ find_any_file(struct nfs4_file *f)
- 	return ret;
- }
- 
--static int num_delegations;
-+static atomic_long_t num_delegations;
- unsigned long max_delegations;
- 
- /*
-@@ -571,22 +571,23 @@ static struct nfs4_delegation *
- alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
- {
- 	struct nfs4_delegation *dp;
-+	long n;
- 
- 	dprintk("NFSD alloc_init_deleg\n");
--	if (num_delegations > max_delegations)
--		return NULL;
-+	n = atomic_long_inc_return(&num_delegations);
-+	if (n < 0 || n > max_delegations)
-+		goto out_dec;
- 	if (delegation_blocked(&current_fh->fh_handle))
--		return NULL;
-+		goto out_dec;
- 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
- 	if (dp == NULL)
--		return dp;
-+		goto out_dec;
- 	/*
- 	 * delegation seqid's are never incremented.  The 4.1 special
- 	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
- 	 * 0 anyway just for consistency and use 1:
- 	 */
- 	dp->dl_stid.sc_stateid.si_generation = 1;
--	num_delegations++;
- 	INIT_LIST_HEAD(&dp->dl_perfile);
- 	INIT_LIST_HEAD(&dp->dl_perclnt);
- 	INIT_LIST_HEAD(&dp->dl_recall_lru);
-@@ -594,6 +595,9 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
- 	return dp;
-+out_dec:
-+	atomic_long_dec(&num_delegations);
-+	return NULL;
- }
- 
- static void remove_stid(struct nfs4_stid *s)
-@@ -616,7 +620,7 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
- 			put_nfs4_file(dp->dl_file);
- 		remove_stid(&dp->dl_stid);
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
--		num_delegations--;
-+		atomic_long_dec(&num_delegations);
- 	}
- }
- 
--- 
-1.9.3
-
+steved.
+> ---
+>  tools/mountstats/mountstats.py | 2 +-
+>  tools/nfs-iostat/nfs-iostat.py | 3 ++-
+>  2 files changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+> index e46105d..1fb3e2f 100644
+> --- a/tools/mountstats/mountstats.py
+> +++ b/tools/mountstats/mountstats.py
+> @@ -371,7 +371,7 @@ def parse_stats_file(filename):
+>      ms_dict = dict()
+>      key = ''
+>  
+> -    f = file(filename)
+> +    f = open(filename)
+>      for line in f.readlines():
+>          words = line.split()
+>          if len(words) == 0:
+> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+> index b324cd8..61d15a5 100644
+> --- a/tools/nfs-iostat/nfs-iostat.py
+> +++ b/tools/nfs-iostat/nfs-iostat.py
+> @@ -213,7 +213,8 @@ class DeviceData:
+>          # the reference to them.  so we build new lists here
+>          # for the result object.
+>          for op in result.__rpc_data['ops']:
+> -            result.__rpc_data[op] = map(difference, self.__rpc_data[op], old_stats.__rpc_data[op])
+> +            result.__rpc_data[op] = list(map(
+> +                difference, self.__rpc_data[op], old_stats.__rpc_data[op]))
+>  
+>          # update the remaining keys we care about
+>          result.__rpc_data['rpcsends'] -= old_stats.__rpc_data['rpcsends']
+> 
