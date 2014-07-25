@@ -1,107 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f54.google.com ([209.85.192.54]:63885 "EHLO
-	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754725AbaG3Bfj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:39 -0400
-Received: by mail-qg0-f54.google.com with SMTP id z60so632016qgd.41
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:38 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 32/38] nfsd: clean up and reorganize release_lockowner
-Date: Tue, 29 Jul 2014 21:34:37 -0400
-Message-Id: <1406684083-19736-33-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:48395 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760690AbaGYPAM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Jul 2014 11:00:12 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s6PF0C7C005051
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jul 2014 11:00:12 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-55-68.rdu2.redhat.com [10.10.55.68])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s6PF0BiQ010706
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Jul 2014 11:00:12 -0400
+Message-ID: <53D270FB.602@RedHat.com>
+Date: Fri, 25 Jul 2014 11:00:11 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] gssd: Fixed errno typo in get_servername()
+References: <1405016932-19599-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1405016932-19599-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Do more within the main loop, and simplify the function a bit. Also,
-there's no need to take a stateowner reference unless we're going to call
-release_lockowner.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 49 ++++++++++++++++++-------------------------------
- 1 file changed, 18 insertions(+), 31 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 4af4e5eff491..cd7d7df03afa 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5424,8 +5424,8 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			struct nfsd4_release_lockowner *rlockowner)
- {
- 	clientid_t *clid = &rlockowner->rl_clientid;
--	struct nfs4_stateowner *sop = NULL, *tmp;
--	struct nfs4_lockowner *lo;
-+	struct nfs4_stateowner *sop;
-+	struct nfs4_lockowner *lo = NULL;
- 	struct nfs4_ol_stateid *stp;
- 	struct xdr_netobj *owner = &rlockowner->rl_owner;
- 	unsigned int hashval = ownerstr_hashval(owner);
-@@ -5442,45 +5442,32 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	if (status)
- 		goto out;
- 
--	status = nfserr_locks_held;
--
- 	clp = cstate->clp;
- 	/* Find the matching lock stateowner */
- 	spin_lock(&clp->cl_lock);
--	list_for_each_entry(tmp, &clp->cl_ownerstr_hashtbl[hashval],
-+	list_for_each_entry(sop, &clp->cl_ownerstr_hashtbl[hashval],
- 			    so_strhash) {
--		if (tmp->so_is_open_owner)
--			continue;
--		if (same_owner_str(tmp, owner)) {
--			sop = tmp;
--			atomic_inc(&sop->so_count);
--			break;
--		}
--	}
- 
--	/* No matching owner found, maybe a replay? Just declare victory... */
--	if (!sop) {
--		spin_unlock(&clp->cl_lock);
--		status = nfs_ok;
--		goto out;
--	}
-+		if (sop->so_is_open_owner || !same_owner_str(sop, owner))
-+			continue;
- 
--	lo = lockowner(sop);
--	/* see if there are still any locks associated with it */
--	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
--		if (check_for_locks(stp->st_stid.sc_file, lo)) {
--			spin_unlock(&clp->cl_lock);
--			goto out;
-+		/* see if there are still any locks associated with it */
-+		lo = lockowner(sop);
-+		list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
-+			if (check_for_locks(stp->st_stid.sc_file, lo)) {
-+				status = nfserr_locks_held;
-+				spin_unlock(&clp->cl_lock);
-+				goto out;
-+			}
- 		}
-+
-+		atomic_inc(&sop->so_count);
-+		break;
- 	}
- 	spin_unlock(&clp->cl_lock);
--
--	status = nfs_ok;
--	sop = NULL;
--	release_lockowner(lo);
-+	if (lo)
-+		release_lockowner(lo);
- out:
--	if (sop)
--		nfs4_put_stateowner(sop);
- 	nfs4_unlock_state();
- 	return status;
- }
--- 
-1.9.3
+On 10/07/14 14:28, Steve Dickson wrote:
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
 
+steved.
+> ---
+>  utils/gssd/gssd_proc.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index 40ff188..9925dab 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -218,7 +218,7 @@ get_servername(const char *name, const struct sockaddr *sa, const char *addr)
+>  			  NI_NAMEREQD);
+>  	if (err) {
+>  		printerr(0, "ERROR: unable to resolve %s to hostname: %s\n",
+> -			 addr, err == EAI_SYSTEM ? strerror(err) :
+> +			 addr, err == EAI_SYSTEM ? strerror(errno) :
+>  						   gai_strerror(err));
+>  		return NULL;
+>  	}
+> 
