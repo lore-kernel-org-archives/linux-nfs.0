@@ -1,151 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:50314 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761707AbaGRPNw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 11:13:52 -0400
-Received: by mail-qc0-f174.google.com with SMTP id o8so3398480qcw.19
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 08:13:51 -0700 (PDT)
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:44390 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751478AbaGYLel (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jul 2014 07:34:41 -0400
+Received: by mail-qg0-f49.google.com with SMTP id j107so4822745qga.8
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Jul 2014 04:34:40 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v4 04/10] nfsd: Fix delegation revocation
-Date: Fri, 18 Jul 2014 11:13:30 -0400
-Message-Id: <1405696416-32585-5-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
-References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v6 0/9] nfsd: more delegation fixes to prepare for client_mutex removal
+Date: Fri, 25 Jul 2014 07:34:18 -0400
+Message-Id: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that the delegations cannot be found by the laundromat etc once
-we add them to the various 'revoke' lists.
+v6:
+- rebase on top of patches that change how struct nfs4_file is hashed
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4state.c | 37 +++++++++++++++++++++----------------
- 1 file changed, 21 insertions(+), 16 deletions(-)
+- add patch to remove the dl_fh field from struct nfs4_delegation
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 60ae21abce00..7c5233427c9b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -650,13 +650,13 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- }
- 
--/* Called under the state lock. */
- static void
--unhash_delegation(struct nfs4_delegation *dp)
-+unhash_delegation_locked(struct nfs4_delegation *dp)
- {
- 	struct nfs4_file *fp = dp->dl_file;
- 
--	spin_lock(&state_lock);
-+	lockdep_assert_held(&state_lock);
-+
- 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
- 	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
-@@ -665,7 +665,6 @@ unhash_delegation(struct nfs4_delegation *dp)
- 	spin_unlock(&fp->fi_lock);
- 	if (fp)
- 		nfs4_put_deleg_lease(fp);
--	spin_unlock(&state_lock);
- }
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-@@ -676,7 +675,9 @@ static void destroy_revoked_delegation(struct nfs4_delegation *dp)
- 
- static void destroy_delegation(struct nfs4_delegation *dp)
- {
--	unhash_delegation(dp);
-+	spin_lock(&state_lock);
-+	unhash_delegation_locked(dp);
-+	spin_unlock(&state_lock);
- 	nfs4_put_delegation(dp);
- }
- 
-@@ -685,11 +686,10 @@ static void revoke_delegation(struct nfs4_delegation *dp)
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 
- 	if (clp->cl_minorversion == 0)
--		destroy_delegation(dp);
-+		destroy_revoked_delegation(dp);
- 	else {
--		unhash_delegation(dp);
- 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
--		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
-+		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
- 	}
- }
- 
-@@ -1447,15 +1447,16 @@ destroy_client(struct nfs4_client *clp)
- 	spin_lock(&state_lock);
- 	while (!list_empty(&clp->cl_delegations)) {
- 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
--		list_del_init(&dp->dl_perclnt);
-+		unhash_delegation_locked(dp);
- 		/* Ensure that deleg break won't try to requeue it */
- 		++dp->dl_time;
--		list_move(&dp->dl_recall_lru, &reaplist);
-+		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
- 	while (!list_empty(&reaplist)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
--		destroy_delegation(dp);
-+		list_del_init(&dp->dl_recall_lru);
-+		nfs4_put_delegation(dp);
- 	}
- 	list_splice_init(&clp->cl_revoked, &reaplist);
- 	while (!list_empty(&reaplist)) {
-@@ -3655,7 +3656,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
- 	return;
- out_free:
--	destroy_delegation(dp);
-+	nfs4_put_delegation(dp);
- out_no_deleg:
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
- 	if (open->op_claim_type == NFS4_OPEN_CLAIM_PREVIOUS &&
-@@ -3894,7 +3895,8 @@ nfs4_laundromat(struct nfsd_net *nn)
- 			new_timeo = min(new_timeo, t);
- 			break;
- 		}
--		list_move(&dp->dl_recall_lru, &reaplist);
-+		unhash_delegation_locked(dp);
-+		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
-@@ -5369,7 +5371,8 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
- 			 * don't monkey with it now that we are.
- 			 */
- 			++dp->dl_time;
--			list_move(&dp->dl_recall_lru, victims);
-+			unhash_delegation_locked(dp);
-+			list_add(&dp->dl_recall_lru, victims);
- 		}
- 		if (++count == max)
- 			break;
-@@ -5624,12 +5627,14 @@ nfs4_state_shutdown_net(struct net *net)
- 	spin_lock(&state_lock);
- 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
--		list_move(&dp->dl_recall_lru, &reaplist);
-+		unhash_delegation_locked(dp);
-+		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
--		destroy_delegation(dp);
-+		list_del_init(&dp->dl_recall_lru);
-+		nfs4_put_delegation(dp);
- 	}
- 
- 	nfsd4_client_tracking_exit(net);
+- fix a bug in forget_delegations fault injector
+
+- update some changelogs to be more descriptive
+
+v5:
+- fix spinlocking in block_delegations. Lock should be held around all
+  of the set_bit calls so we don't race with the swap of the two
+  fields.
+
+- eliminate destroy_revoked_delegation (just use nfs4_put_delegation)
+
+- eliminate unneeded NULL pointer check in nfs4_setlease
+
+v4:
+- close more potential races in setlease code, and fix some bugs in
+  error handling in that code.
+
+- clean up delegation setting functions, eliminating unused arguments
+  and avoiding allocations when there has already been a delegation
+  break
+
+- add separate spinlock for block_delegations/delegation_blocked code
+
+v3:
+- use alternate method for checking for delegation break races after
+  getting a lease (just check fi_had_conflict instead)
+
+- drop file_has_lease patch -- no longer needed
+
+- move cl_revoked handling patch into this set. It means altering a
+  few of the later patches, but it keeps the set more topically
+  coherent
+
+v2:
+- move remove_stid call from nfs4_free_stid and into callers
+
+Hopefully this series won't need much introduction now. This is the
+delegation rework to prepare for client_mutex removal, now rebased on
+top of the changes to nfs4_file hashing.
+
+Jeff Layton (7):
+  nfsd: fully unhash delegations when revoking them
+  nfsd: ensure that clp->cl_revoked list is protected by clp->cl_lock
+  nfsd: drop unused stp arg to alloc_init_deleg
+  nfsd: clean up arguments to nfs4_open_delegation
+  nfsd: clean up nfs4_set_delegation
+  nfsd: give block_delegation and delegation_blocked its own spinlock
+  nfsd: remove dl_fh field from struct nfs4_delegation
+
+Trond Myklebust (2):
+  nfsd: simplify stateid allocation and file handling
+  nfsd: Convert delegation counter to an atomic_long_t type
+
+ fs/nfsd/nfs4callback.c |   2 +-
+ fs/nfsd/nfs4state.c    | 180 +++++++++++++++++++++++++++----------------------
+ fs/nfsd/state.h        |   1 -
+ 3 files changed, 99 insertions(+), 84 deletions(-)
+
 -- 
 1.9.3
 
