@@ -1,25 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48104 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751655AbaGPTij (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jul 2014 15:38:39 -0400
-Date: Wed, 16 Jul 2014 15:38:39 -0400
-To: Trond Myklebust <trondmy@gmail.com>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:52393 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751248AbaGYD7Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jul 2014 23:59:25 -0400
+Received: by mail-ie0-f177.google.com with SMTP id at20so3017146iec.8
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Jul 2014 20:59:24 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: invalidating cache on chmod
-Message-ID: <20140716193838.GD2397@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 2/3] SUNRPC: svc_tcp_write_space: don't clear SOCK_NOSPACE prematurely
+Date: Thu, 24 Jul 2014 23:59:32 -0400
+Message-Id: <1406260773-16231-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1406260773-16231-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1406260773-16231-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As of (a backport of) 3a1556e8662 "NFSv2/v3: Simulate the change
-attribute" we have a user complaining about chmod on the client
-invalidating data caches.  (They have some sort of pipeline running on
-the client where output from one stage is has ownership and permissions,
-but not data, change before being used as input to the next.)
+If requests are queued in the socket inbuffer waiting for an
+svc_tcp_has_wspace() requirement to be satisfied, then we do not want
+to clear the SOCK_NOSPACE flag until we've satisfied that requirement.
 
-Looks like that's expected?
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/svcsock.c | 39 +++++++++++++++++++++------------------
+ 1 file changed, 21 insertions(+), 18 deletions(-)
 
---b.
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index b507cd327d9b..7322ea1164fd 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -446,11 +446,31 @@ static void svc_write_space(struct sock *sk)
+ 	}
+ }
+ 
++static int svc_tcp_has_wspace(struct svc_xprt *xprt)
++{
++	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
++	struct svc_serv *serv = svsk->sk_xprt.xpt_server;
++	int required;
++
++	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
++		return 1;
++	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
++	if (sk_stream_wspace(svsk->sk_sk) >= required ||
++	    (sk_stream_min_wspace(svsk->sk_sk) == 0 &&
++	     atomic_read(&xprt->xpt_reserved) == 0))
++		return 1;
++	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
++	return 0;
++}
++
+ static void svc_tcp_write_space(struct sock *sk)
+ {
++	struct svc_sock *svsk = (struct svc_sock *)(sk->sk_user_data);
+ 	struct socket *sock = sk->sk_socket;
+ 
+-	if (sk_stream_is_writeable(sk) && sock)
++	if (!sk_stream_is_writeable(sk) || !sock)
++		return;
++	if (!svsk || svc_tcp_has_wspace(&svsk->sk_xprt))
+ 		clear_bit(SOCK_NOSPACE, &sock->flags);
+ 	svc_write_space(sk);
+ }
+@@ -1197,23 +1217,6 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
+ 	svc_putnl(resv, 0);
+ }
+ 
+-static int svc_tcp_has_wspace(struct svc_xprt *xprt)
+-{
+-	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
+-	struct svc_serv *serv = svsk->sk_xprt.xpt_server;
+-	int required;
+-
+-	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
+-		return 1;
+-	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
+-	if (sk_stream_wspace(svsk->sk_sk) >= required ||
+-	    (sk_stream_min_wspace(svsk->sk_sk) == 0 &&
+-	     atomic_read(&xprt->xpt_reserved) == 0))
+-		return 1;
+-	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
+-	return 0;
+-}
+-
+ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
+ 				       struct net *net,
+ 				       struct sockaddr *sa, int salen,
+-- 
+1.9.3
+
