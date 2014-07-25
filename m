@@ -1,49 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:54679 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751533AbaGMNus (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 09:50:48 -0400
-Received: by mail-qg0-f48.google.com with SMTP id q108so2492300qgd.7
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 06:50:47 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Sun, 13 Jul 2014 09:50:45 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: nfsd4_locku / nfs4_free_lock_stateid question
-Message-ID: <20140713095045.2d179659@tlielax.poochiereds.net>
-In-Reply-To: <20140713121919.GA6456@infradead.org>
-References: <20140713110047.GA28727@infradead.org>
-	<20140713080541.30ecbb51@tlielax.poochiereds.net>
-	<20140713121919.GA6456@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:46301 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751248AbaGYD7X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jul 2014 23:59:23 -0400
+Received: by mail-ie0-f171.google.com with SMTP id at1so3167284iec.16
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Jul 2014 20:59:23 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] SUNRPC: Reduce contention in svc_xprt_enqueue()
+Date: Thu, 24 Jul 2014 23:59:31 -0400
+Message-Id: <1406260773-16231-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 13 Jul 2014 05:19:19 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+Ensure that all calls to svc_xprt_enqueue() except svc_xprt_received()
+check the value of XPT_BUSY, before attempting to grab spinlocks etc.
+This is to avoid situations such as the following "perf" trace,
+which shows heavy contention on the pool spinlock:
 
-> On Sun, Jul 13, 2014 at 08:05:41AM -0400, Jeff Layton wrote:
-> > It is weird, but I don't think it really matters as the filp is only
-> > really used as a way to get to the inode -- it really doesn't matter
-> > which struct file we use there. find_any_file will both take a
-> > reference to and return the file, which is then eventually fput in
-> > filp_close, so there should be no refcount leak or anything.
-> > 
-> > The weirdness all comes from the vfs-layer file locking interfaces,
-> > many of which take a struct file argument when they really would be
-> > fine with a struct inode. Maybe one of these days we can get around to
-> > cleaning that up.
-> 
-> If filesystems get the file passed we should assume that they actually
-> use it.  In fact AFS does, but it's not NFS exportable at the moment,
-> and ceph does in a debug printk.  I'd be much happier to waste a pointer
-> in the lock stateid to avoid this inconsistant interface.  And it would
-> allow to kill find_any_fileas well..
-> 
+    54.15%            nfsd  [kernel.kallsyms]        [k] _raw_spin_lock_bh
+                      |
+                      --- _raw_spin_lock_bh
+                         |
+                         |--71.43%-- svc_xprt_enqueue
+                         |          |
+                         |          |--50.31%-- svc_reserve
+                         |          |
+                         |          |--31.35%-- svc_xprt_received
+                         |          |
+                         |          |--18.34%-- svc_tcp_data_ready
+...
 
-Fair enough -- that would be cleaner. I'll look into changing that as
-well while I'm in here.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/svc_xprt.c | 25 +++++++++++++++++--------
+ 1 file changed, 17 insertions(+), 8 deletions(-)
 
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index b4737fbdec13..54a761fa6351 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -23,6 +23,7 @@ static int svc_deferred_recv(struct svc_rqst *rqstp);
+ static struct cache_deferred_req *svc_defer(struct cache_req *req);
+ static void svc_age_temp_xprts(unsigned long closure);
+ static void svc_delete_xprt(struct svc_xprt *xprt);
++static void svc_xprt_do_enqueue(struct svc_xprt *xprt);
+ 
+ /* apparently the "standard" is that clients close
+  * idle connections after 5 minutes, servers after
+@@ -222,11 +223,12 @@ static void svc_xprt_received(struct svc_xprt *xprt)
+ 	if (!test_bit(XPT_BUSY, &xprt->xpt_flags))
+ 		return;
+ 	/* As soon as we clear busy, the xprt could be closed and
+-	 * 'put', so we need a reference to call svc_xprt_enqueue with:
++	 * 'put', so we need a reference to call svc_xprt_do_enqueue with:
+ 	 */
+ 	svc_xprt_get(xprt);
++	smp_mb__before_clear_bit();
+ 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
+-	svc_xprt_enqueue(xprt);
++	svc_xprt_do_enqueue(xprt);
+ 	svc_xprt_put(xprt);
+ }
+ 
+@@ -335,12 +337,7 @@ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
+ 	return false;
+ }
+ 
+-/*
+- * Queue up a transport with data pending. If there are idle nfsd
+- * processes, wake 'em up.
+- *
+- */
+-void svc_xprt_enqueue(struct svc_xprt *xprt)
++static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+ {
+ 	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
+@@ -398,6 +395,18 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ out_unlock:
+ 	spin_unlock_bh(&pool->sp_lock);
+ }
++
++/*
++ * Queue up a transport with data pending. If there are idle nfsd
++ * processes, wake 'em up.
++ *
++ */
++void svc_xprt_enqueue(struct svc_xprt *xprt)
++{
++	if (test_bit(XPT_BUSY, &xprt->xpt_flags))
++		return;
++	svc_xprt_do_enqueue(xprt);
++}
+ EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
+ 
+ /*
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
