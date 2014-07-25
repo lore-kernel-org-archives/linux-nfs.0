@@ -1,54 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:62694 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933927AbaGPO21 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:28:27 -0400
-Received: by mail-qa0-f41.google.com with SMTP id j7so774532qaq.0
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:28:26 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 16 Jul 2014 10:28:24 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/7] nfsd: Ensure stateids remain unique until they are
- freed
-Message-ID: <20140716102824.27eeb209@tlielax.poochiereds.net>
-In-Reply-To: <20140716134945.GA11961@infradead.org>
-References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
-	<1405420669-4030-3-git-send-email-jlayton@primarydata.com>
-	<20140715171547.GA5269@infradead.org>
-	<20140716081738.05ce6d92@tlielax.poochiereds.net>
-	<20140716134945.GA11961@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:55009 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759947AbaGYLet (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jul 2014 07:34:49 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so4825694qge.11
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Jul 2014 04:34:48 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v6 5/9] nfsd: drop unused stp arg to alloc_init_deleg
+Date: Fri, 25 Jul 2014 07:34:23 -0400
+Message-Id: <1406288067-20663-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
+References: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 16 Jul 2014 06:49:45 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4state.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-> On Wed, Jul 16, 2014 at 08:17:38AM -0400, Jeff Layton wrote:
-> > The problem with keeping them in the caller is that it defeats the main
-> > purpose of the patch. The idea here is to make sure that we keep the
-> > stateids in the IDR tree for as long as possible to help ensure
-> > uniqueness. If we keep it in the caller, we're still removing the stateids
-> > from the IDR hash earlier than we should, and that's a larger potential
-> > for collisions.
-> 
-> I don't understand how that has anything to do with doing the call
-> in either nfs4_free_stid or it's two caller.  For the open and lock
-> stateids nothing changes in either case, and for delegations we
-> move from destroy_(revoked_)delegation to the final put in
-> nfs4_put_delegation for both variants.  While I'd normally prefer
-> what you do in the patch it just seems like churn with the further
-> changes.
-> 
-
-Ahh ok. I misunderstood what you were suggesting. Moving it into the
-actual callers of nfs4_free_stid is fine.
-
-Unfortunately, that creates a pile of merge conflicts in the later
-patches. I'll just go ahead and change that and resend all of the
-delegation patches that Bruce hasn't merged yet. Stay tuned...
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b421b51c3a9e..049ef2ce72bf 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -579,7 +579,7 @@ static void block_delegations(struct knfsd_fh *fh)
+ }
+ 
+ static struct nfs4_delegation *
+-alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
++alloc_init_deleg(struct nfs4_client *clp, struct svc_fh *current_fh)
+ {
+ 	struct nfs4_delegation *dp;
+ 	long n;
+@@ -3649,7 +3649,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+ 		default:
+ 			goto out_no_deleg;
+ 	}
+-	dp = alloc_init_deleg(oo->oo_owner.so_client, stp, fh);
++	dp = alloc_init_deleg(oo->oo_owner.so_client, fh);
+ 	if (dp == NULL)
+ 		goto out_no_deleg;
+ 	status = nfs4_set_delegation(dp, stp->st_file);
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
