@@ -1,76 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f172.google.com ([209.85.216.172]:35684 "EHLO
-	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752536AbaGPIVs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 04:21:48 -0400
-Received: by mail-qc0-f172.google.com with SMTP id l6so462447qcy.3
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 01:21:48 -0700 (PDT)
+Received: from ecl1mtaoutpex02.symantec.com ([166.98.1.210]:49735 "EHLO
+	ecl1mtaoutpex02.symantec.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752918AbaGYQYg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jul 2014 12:24:36 -0400
+From: Rishi Agrawal <Rishi_Agrawal@symantec.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: Rajesh Ghanekar <Rajesh_Ghanekar@symantec.com>,
+        Ram Pandiri <ram_pandiri@symantec.com>,
+        Sreeharsha Sarabu <Sreeharsha_Sarabu@symantec.com>,
+        Abhijit Dey <Abhijit_Dey@symantec.com>,
+        Tushar Shinde <Tushar_Shinde@symantec.com>,
+        "bfields@redhat.com" <bfields@redhat.com>,
+        "steved@redhat.com" <steved@redhat.com>
+Date: Fri, 25 Jul 2014 09:19:25 -0700
+Subject: Patch For Making Readdir_plus configurable
+Message-ID: <20AEB6A025F81A4288597093171D1B5719CF5813D2@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM>
+Content-Type: multipart/mixed;
+	boundary="_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_"
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
-References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
-	<20140710175136.GA26561@fieldses.org>
-	<CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
-	<CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
-Date: Wed, 16 Jul 2014 10:21:47 +0200
-Message-ID: <CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
-Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
-From: Andreas Fenkart <afenkart@gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Daniel Mack <zonque@gmail.com>
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2014-07-16 1:54 GMT+02:00 Trond Myklebust <trond.myklebust@primarydata.com>:
-> On Sun, Jul 13, 2014 at 11:44 PM, Andreas Fenkart <afenkart@gmail.com> wrote:
->> 2014-07-10 19:51 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
->>> On Mon, Jun 23, 2014 at 12:07:22PM +0200, Andreas Fenkart wrote:
->>>> Found regression introduced by this patch
->>>>
->>>> 311324ad NFS: Be more aggressive in using readdirplus for 'ls -l' situations"
->>>>
->>>> # cd /bin
->>>> -sh: cd: /bin: Not a directory
->>>> root@192:/# pwd
->>>> /
->>>> root@192:/# ls /bin
->>>> ls: /bin
->>>> root@192:/# ls -l /bin/sh
->>>> lrwxrwxrwx    1 root     root             9 Jun 16 13:59 /bin/sh -> /bin/bash
->>>>
->>>> the mount options of the client, an embedded system, mounting nfsroot:
->>>> nfs(rw,relatime,vers=2,rsize=4096,wsize=4096,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=192.168.xx.xx,mountvers=1,mountproto=udp,local_lock=all,addr=192.168.xx.xx)
->>>> vers: 3.16.0-rc1
->>>>
->>>> the server exports:
->>>> /exports/rootfs 192.168.xx.xx(rw,no_root_squash,subtree_check)
->>>> vers: 3.14-1-amd64 #1 SMP Debian 3.14.4-1 (2014-05-13) x86_64 GNU/Linux
->>>>
->>>> reverting above patch, dir listing with 'ls /' works again
->>>
->>> Is this still happening?
->>
->> yes it is, I just reverted the aforementioned commit.
->
-> Can you reapply, and then do an "ls /" while recording the traffic to
-> the NFS server using wireshark, and then send us the resulting dump?
+--_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-http://www.pcapr.net/view/afenkart/2014/6/3/1/nfs-client.dump.html
-you have to create a login... simple. Or did you mean attach to email?
+Hi,
+=A0=A0 One of our customer's application only needs file names not
+file attributes. With directories having 10K+ inodes (assuming buffer
+cache has directory blocks cached having file names, but inode
+cache is limited and hence need eviction of older cached inodes),
+older inodes are evicted periodically. So if they keep on doing
+readdir(2) from NSF client on multiple directories, some directory's
+files are periodically removed from inode cache and hence new
+readdir(2) on same directory requires disk access to bring back
+inodes again to inode cache.
 
-> If the client is on an embedded system which can't run wireshark, then
-> it is fine to record it on the server, but please use something like
->
-> 'tshark -w /var/tmp/dump.out host <client-ip>'
+As READDIRPLUS request fetches attributes also, doing getattr on
+each file on server, it causes unnecessary disk accesses. If
+READDIRPLUS on NFS client is returned with -ENOTSUPP, NFS
+client uses READDIR request which just gets the names of the files
+in a directory, not attributes, hence avoiding disk accesses on server.
 
-captured on embedded system:
-tcpdump -w /tmp/nfs-client.dump
+Can this be per-export tunable so that different application can
+use it in different ways, some supporting readdirplus and others
+not supporting readdirplus?
 
->
-> Cheers
->   Trond
+I have worked on a patch against 3.15.6 for this. Also I am
+adding a patch against latest nfs-utils to have an export option
+for this. Can someone let me know if these patches are adequate
+or if any other changes are required. Patches attached, although
+with minimal testing. I would like to know if something like this
+can be added and if the patch can be reworked if I am missing
+something for NFSv4.
 
-thanks, sincerely
-Andreas
+
+Regards,
+Rishi Agrawal
+
+
+
+--_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_
+Content-Type: application/octet-stream; name="patch_linux-kernel-3-15-6"
+Content-Description: patch_linux-kernel-3-15-6
+Content-Disposition: attachment; filename="patch_linux-kernel-3-15-6";
+	size=2982; creation-date="Fri, 25 Jul 2014 16:05:00 GMT";
+	modification-date="Thu, 24 Jul 2014 15:14:23 GMT"
+Content-Transfer-Encoding: base64
+
+ZGlmZiAtciAtdSBsaW51eC0zLjE1LjYvZnMvbmZzZC9leHBvcnQuYyBwYXRjaGVkX2xpbnV4LTMu
+MTUuNi9mcy9uZnNkL2V4cG9ydC5jCi0tLSBsaW51eC0zLjE1LjYvZnMvbmZzZC9leHBvcnQuYwky
+MDE0LTA3LTE4IDA0OjUzOjMxLjAwMDAwMDAwMCArMDUzMAorKysgcGF0Y2hlZF9saW51eC0zLjE1
+LjYvZnMvbmZzZC9leHBvcnQuYwkyMDE0LTA3LTI0IDIwOjExOjM0LjU3NjU5OTYxOSArMDUzMApA
+QCAtMTEyMyw2ICsxMTIzLDcgQEAKIAl7IE5GU0VYUF9BTExTUVVBU0gsIHsiYWxsX3NxdWFzaCIs
+ICIifX0sCiAJeyBORlNFWFBfQVNZTkMsIHsiYXN5bmMiLCAic3luYyJ9fSwKIAl7IE5GU0VYUF9H
+QVRIRVJFRF9XUklURVMsIHsid2RlbGF5IiwgIm5vX3dkZWxheSJ9fSwKKwl7IE5GU0VYUF9OT1JF
+QURESVJQTFVTLCB7Im5vcmRpcnBsdXMiLCAiIn19LAogCXsgTkZTRVhQX05PSElERSwgeyJub2hp
+ZGUiLCAiIn19LAogCXsgTkZTRVhQX0NST1NTTU9VTlQsIHsiY3Jvc3NtbnQiLCAiIn19LAogCXsg
+TkZTRVhQX05PU1VCVFJFRUNIRUNLLCB7Im5vX3N1YnRyZWVfY2hlY2siLCAiIn19LApkaWZmIC1y
+IC11IGxpbnV4LTMuMTUuNi9mcy9uZnNkL25mczNwcm9jLmMgcGF0Y2hlZF9saW51eC0zLjE1LjYv
+ZnMvbmZzZC9uZnMzcHJvYy5jCi0tLSBsaW51eC0zLjE1LjYvZnMvbmZzZC9uZnMzcHJvYy5jCTIw
+MTQtMDctMTggMDQ6NTM6MzEuMDAwMDAwMDAwICswNTMwCisrKyBwYXRjaGVkX2xpbnV4LTMuMTUu
+Ni9mcy9uZnNkL25mczNwcm9jLmMJMjAxNC0wNy0yNCAyMDoyMDowNi42NTA1OTk3MDkgKzA1MzAK
+QEAgLTQ0Niw2ICs0NDYsMjYgQEAKIAlSRVRVUk5fU1RBVFVTKG5mc2Vycik7CiB9CiAKK3N0YXRp
+YyBpbnQKK25mc2QzX2lzX3JlYWRkaXJwbHVzX3N1cHBvcnRlZChzdHJ1Y3Qgc3ZjX3Jxc3QgKnJx
+c3RwLCBzdHJ1Y3Qgc3ZjX2ZoICpmaHApCit7CisJc3RydWN0IHN2Y19leHBvcnQgKmV4cDsKKwlp
+bnQgc3VwcG9ydGVkID0gMTsgLyogZmFsbCBiYWNrIHRvIHJlYWRkaXJwbHVzIHN1cHBvcnRlZCBp
+biBjYXNlIG9mIGVycm9ycy4qLworCWludCBlcnI7CisKKwllcnIgPSBmaF92ZXJpZnkocnFzdHAs
+IGZocCwgU19JRkRJUiwgTkZTRF9NQVlfUkVBRCk7CisJaWYgKGVycikgeworCQlnb3RvIG91dDsK
+Kwl9CisKKwlleHAgPSBmaHAtPmZoX2V4cG9ydDsKKwlpZiAoZXhwLT5leF9mbGFncyAmIE5GU0VY
+UF9OT1JFQURESVJQTFVTKSB7CisJCXN1cHBvcnRlZCA9IDA7CisJfQorb3V0OgorCXJldHVybiBz
+dXBwb3J0ZWQ7Cit9CisKIC8qCiAgKiBSZWFkIGEgcG9ydGlvbiBvZiBhIGRpcmVjdG9yeSwgaW5j
+bHVkaW5nIGZpbGUgaGFuZGxlcyBhbmQgYXR0cnMuCiAgKiBGb3Igbm93LCB3ZSBjaG9vc2UgdG8g
+aWdub3JlIHRoZSBkaXJjb3VudCBwYXJhbWV0ZXIuCkBAIC00NzYsMTAgKzQ5NiwxNiBAQAogCXJl
+c3AtPmJ1ZmxlbiA9IHJlc3AtPmNvdW50OwogCXJlc3AtPnJxc3RwID0gcnFzdHA7CiAJb2Zmc2V0
+ID0gYXJncC0+Y29va2llOwotCW5mc2VyciA9IG5mc2RfcmVhZGRpcihycXN0cCwgJnJlc3AtPmZo
+LAotCQkJCSAgICAgJm9mZnNldCwKLQkJCQkgICAgICZyZXNwLT5jb21tb24sCi0JCQkJICAgICBu
+ZnMzc3ZjX2VuY29kZV9lbnRyeV9wbHVzKTsKKworCWlmIChuZnNkM19pc19yZWFkZGlycGx1c19z
+dXBwb3J0ZWQocnFzdHAsICZyZXNwLT5maCkpIHsKKwkJbmZzZXJyID0gbmZzZF9yZWFkZGlyKHJx
+c3RwLCAmcmVzcC0+ZmgsCisJCQkJJm9mZnNldCwKKwkJCQkmcmVzcC0+Y29tbW9uLAorCQkJCW5m
+czNzdmNfZW5jb2RlX2VudHJ5X3BsdXMpOworCX0gZWxzZSB7CisJCW5mc2VyciA9IG5mc2Vycm5v
+KC1FT1BOT1RTVVBQKTsKKwl9CisKIAltZW1jcHkocmVzcC0+dmVyZiwgYXJncC0+dmVyZiwgOCk7
+CiAJZm9yIChwID0gcnFzdHAtPnJxX3Jlc3BhZ2VzICsgMTsgcCA8IHJxc3RwLT5ycV9uZXh0X3Bh
+Z2U7IHArKykgewogCQlwYWdlX2FkZHIgPSBwYWdlX2FkZHJlc3MoKnApOwpkaWZmIC1yIC11IGxp
+bnV4LTMuMTUuNi9pbmNsdWRlL3VhcGkvbGludXgvbmZzZC9leHBvcnQuaCBwYXRjaGVkX2xpbnV4
+LTMuMTUuNi9pbmNsdWRlL3VhcGkvbGludXgvbmZzZC9leHBvcnQuaAotLS0gbGludXgtMy4xNS42
+L2luY2x1ZGUvdWFwaS9saW51eC9uZnNkL2V4cG9ydC5oCTIwMTQtMDctMTggMDQ6NTM6MzEuMDAw
+MDAwMDAwICswNTMwCisrKyBwYXRjaGVkX2xpbnV4LTMuMTUuNi9pbmNsdWRlL3VhcGkvbGludXgv
+bmZzZC9leHBvcnQuaAkyMDE0LTA3LTI0IDIwOjE3OjU3Ljg0NTU5OTk5MyArMDUzMApAQCAtMjgs
+NyArMjgsOCBAQAogI2RlZmluZSBORlNFWFBfQUxMU1FVQVNICTB4MDAwOAogI2RlZmluZSBORlNF
+WFBfQVNZTkMJCTB4MDAxMAogI2RlZmluZSBORlNFWFBfR0FUSEVSRURfV1JJVEVTCTB4MDAyMAot
+LyogNDAgODAgMTAwIGN1cnJlbnRseSB1bnVzZWQgKi8KKyNkZWZpbmUgTkZTRVhQX05PUkVBRERJ
+UlBMVVMgICAgMHgwMDQwCisvKiA4MCAxMDAgY3VycmVudGx5IHVudXNlZCAqLwogI2RlZmluZSBO
+RlNFWFBfTk9ISURFCQkweDAyMDAKICNkZWZpbmUgTkZTRVhQX05PU1VCVFJFRUNIRUNLCTB4MDQw
+MAogI2RlZmluZQlORlNFWFBfTk9BVVRITkxNCTB4MDgwMAkJLyogRG9uJ3QgYXV0aGVudGljYXRl
+IE5MTSByZXF1ZXN0cyAtIGp1c3QgdHJ1c3QgKi8KQEAgLTQ3LDcgKzQ4LDcgQEAKICAqLwogI2Rl
+ZmluZQlORlNFWFBfVjRST09UCQkweDEwMDAwCiAvKiBBbGwgZmxhZ3MgdGhhdCB3ZSBjbGFpbSB0
+byBzdXBwb3J0LiAgKE5vdGUgd2UgZG9uJ3Qgc3VwcG9ydCBOT0FDTC4pICovCi0jZGVmaW5lIE5G
+U0VYUF9BTExGTEFHUwkJMHgxN0UzRgorI2RlZmluZSBORlNFWFBfQUxMRkxBR1MJCTB4MUZFN0YK
+IAogLyogVGhlIGZsYWdzIHRoYXQgbWF5IHZhcnkgZGVwZW5kaW5nIG9uIHNlY3VyaXR5IGZsYXZv
+cjogKi8KICNkZWZpbmUgTkZTRVhQX1NFQ0lORk9fRkxBR1MJKE5GU0VYUF9SRUFET05MWSB8IE5G
+U0VYUF9ST09UU1FVQVNIIFwK
+
+--_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_
+Content-Type: application/octet-stream; name="patch_nfs-utils-1.3"
+Content-Description: patch_nfs-utils-1.3
+Content-Disposition: attachment; filename="patch_nfs-utils-1.3"; size=1446;
+	creation-date="Fri, 25 Jul 2014 16:05:00 GMT";
+	modification-date="Fri, 25 Jul 2014 16:09:18 GMT"
+Content-Transfer-Encoding: base64
+
+ZGlmZiAtciAtdSBuZnMtdXRpbHMtMS4zLjAvc3VwcG9ydC9pbmNsdWRlL25mcy9leHBvcnQuaCBw
+YXRjaGVkX25mcy11dGlscy0xLjMuMC9zdXBwb3J0L2luY2x1ZGUvbmZzL2V4cG9ydC5oCi0tLSBu
+ZnMtdXRpbHMtMS4zLjAvc3VwcG9ydC9pbmNsdWRlL25mcy9leHBvcnQuaAkyMDE0LTAzLTI1IDIw
+OjQyOjA3LjAwMDAwMDAwMCArMDUzMAorKysgcGF0Y2hlZF9uZnMtdXRpbHMtMS4zLjAvc3VwcG9y
+dC9pbmNsdWRlL25mcy9leHBvcnQuaAkyMDE0LTA3LTIyIDE3OjQxOjI2LjAyMzc4Mjk4NSArMDUz
+MApAQCAtMTcsNyArMTcsOCBAQAogI2RlZmluZSBORlNFWFBfQUxMU1FVQVNICTB4MDAwOAogI2Rl
+ZmluZSBORlNFWFBfQVNZTkMJCTB4MDAxMAogI2RlZmluZSBORlNFWFBfR0FUSEVSRURfV1JJVEVT
+CTB4MDAyMAotLyogNDAsIDgwLCAxMDAgdW51c2VkICovCisjZGVmaW5lIE5GU0VYUF9OT1JFQURE
+SVJQTFVTCTB4MDA0MAorLyogODAsIDEwMCB1bnVzZWQgKi8KICNkZWZpbmUgTkZTRVhQX05PSElE
+RQkJMHgwMjAwCiAjZGVmaW5lIE5GU0VYUF9OT1NVQlRSRUVDSEVDSwkweDA0MDAKICNkZWZpbmUg
+TkZTRVhQX05PQVVUSE5MTQkweDA4MDAKZGlmZiAtciAtdSBuZnMtdXRpbHMtMS4zLjAvc3VwcG9y
+dC9uZnMvZXhwb3J0cy5jIHBhdGNoZWRfbmZzLXV0aWxzLTEuMy4wL3N1cHBvcnQvbmZzL2V4cG9y
+dHMuYwotLS0gbmZzLXV0aWxzLTEuMy4wL3N1cHBvcnQvbmZzL2V4cG9ydHMuYwkyMDE0LTAzLTI1
+IDIwOjQyOjA3LjAwMDAwMDAwMCArMDUzMAorKysgcGF0Y2hlZF9uZnMtdXRpbHMtMS4zLjAvc3Vw
+cG9ydC9uZnMvZXhwb3J0cy5jCTIwMTQtMDctMjIgMTc6NDQ6MjEuNTMyNzgyODgyICswNTMwCkBA
+IC0yNzMsNiArMjczLDggQEAKIAkJImluIiA6ICIiKTsKIAlmcHJpbnRmKGZwLCAiJXNhY2wsIiwg
+KGVwLT5lX2ZsYWdzICYgTkZTRVhQX05PQUNMKT8KIAkJIm5vXyIgOiAiIik7CisJaWYgKGVwLT5l
+X2ZsYWdzICYgTkZTRVhQX05PUkVBRERJUlBMVVMpCisJCWZwcmludGYoZnAsICJub3JkaXJwbHVz
+LCIpOwogCWlmIChlcC0+ZV9mbGFncyAmIE5GU0VYUF9GU0lEKSB7CiAJCWZwcmludGYoZnAsICJm
+c2lkPSVkLCIsIGVwLT5lX2ZzaWQpOwogCX0KQEAgLTUzOSw2ICs1NDEsOCBAQAogCQkJY2xlYXJm
+bGFncyhORlNFWFBfQVNZTkMsIGFjdGl2ZSwgZXApOwogCQllbHNlIGlmICghc3RyY21wKG9wdCwg
+ImFzeW5jIikpCiAJCQlzZXRmbGFncyhORlNFWFBfQVNZTkMsIGFjdGl2ZSwgZXApOworCQllbHNl
+IGlmICghc3RyY21wKG9wdCwgIm5vcmRpcnBsdXMiKSkKKwkJCXNldGZsYWdzKE5GU0VYUF9OT1JF
+QURESVJQTFVTLCBhY3RpdmUsIGVwKTsKIAkJZWxzZSBpZiAoIXN0cmNtcChvcHQsICJub2hpZGUi
+KSkKIAkJCXNldGZsYWdzKE5GU0VYUF9OT0hJREUsIGFjdGl2ZSwgZXApOwogCQllbHNlIGlmICgh
+c3RyY21wKG9wdCwgImhpZGUiKSkK
+
+--_003_20AEB6A025F81A4288597093171D1B5719CF5813D2APJ1XCHEVSPIN_--
