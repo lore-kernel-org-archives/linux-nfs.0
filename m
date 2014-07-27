@@ -1,70 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from master.debian.org ([82.195.75.110]:34192 "EHLO
-	master.debian.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751423AbaGWBN4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 21:13:56 -0400
-Date: Wed, 23 Jul 2014 10:47:21 +1000
-From: =?iso-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
-To: linux-nfs@vger.kernel.org
-Cc: John Hughes <john@calva.com>, 755703@bugs.debian.org
-Subject: Re: libtirpc1 0.2.4-1 causes rpc.gssd to crash on nfs4 sec=krb5 mount
-Message-ID: <20140723004721.GA10142@master.debian.org>
-References: <20140722144831.2069.50552.reportbug@celtic.calvaedi.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:58956 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751078AbaG0N7t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jul 2014 09:59:49 -0400
+Date: Sun, 27 Jul 2014 06:59:48 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 25/40] nfsd: Keep a reference to the open stateid for the
+ NFSv4.0 replay cache
+Message-ID: <20140727135948.GB5062@infradead.org>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+ <1405954972-28904-26-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20140722144831.2069.50552.reportbug@celtic.calvaedi.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1405954972-28904-26-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-07-22 16:48:31 +0200, John Hughes wrote:
-> Package: libtirpc1
-> Version: 0.2.3-2
-> Severity: important
-> 
-> Dear Maintainer,
-> 
->    * What led up to the situation?
-> 
-> Upgraded to libtirpc1_0.2.4-1_amd64.deb
-> 
->    * What was the outcome of this action?
-> 
-> nfs4 sec=krb5 mounts stopped working, rpc.gssd segfaults in libgssapi_krb5
-> 
-> Jul 22 16:22:22 celtic kernel: [  285.086078] rpc.gssd[1611]: segfault at 6c ip 00007f24c8f9e72f sp 00007fff60b1df10 error 4 in libgssapi_krb5.so.2.2[7f24c8f8b000+45000
-> 
-> Downgrading to 0.2.3-2 "fixes" the problem.
-> 
-> Note that some non-Debian people seem to have the same problem, e.g.
-> 
-> http://forums.opensuse.org/showthread.php/494292-segmentation-fault-OpenSUSE-13-1-when-mounting-nfs4-with-kerberos
-> 
-> or:
-> 
-> https://bugs.archlinux.org/task/39217
-> 
-> -- System Information:
-> Debian Release: jessie/sid
->   APT prefers unstable
->   APT policy: (500, 'unstable'), (1, 'experimental')
-> Architecture: amd64 (x86_64)
-> Foreign Architectures: i386
-> 
-> Kernel: Linux 3.14-1-amd64 (SMP w/4 CPU cores)
-> Locale: LANG=en_US.UTF-8, LC_CTYPE=en_US.UTF-8 (charmap=UTF-8)
-> Shell: /bin/sh linked to /bin/dash
-> 
-> Versions of packages libtirpc1 depends on:
-> ii  libc6              2.19-7
-> ii  libgssglue1        0.4-2
-> ii  multiarch-support  2.19-7
-> 
-> libtirpc1 recommends no packages.
-> 
-> libtirpc1 suggests no packages.
-> 
-> -- no debconf information
+> -	nfsd4_cleanup_open_state(open, status);
+> -	if (open->op_openowner)
+> -		nfsd4_cstate_assign_replay(cstate,
+> -				&open->op_openowner->oo_owner);
+> +	nfsd4_cleanup_open_state(cstate, open, status);
 
-https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=755703
+This was just added in the last patch, seems like you should introduce this
+form of nfsd4_cleanup_open_state in the earlier patch.
 
-How can I fix this bug in Debian?
+> index 6886135b82ec..4f518fb453b5 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2951,6 +2951,27 @@ static void init_nfs4_replay(struct nfs4_replay *rp)
+>  	mutex_init(&rp->rp_mutex);
+>  }
+>  
+> +static void nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
+> +		struct nfs4_stateowner *so)
+
+> +void nfsd4_cstate_clear_replay(struct nfsd4_compound_state *cstate)
+
+And keep these in nfs4state.c from the start.
+
