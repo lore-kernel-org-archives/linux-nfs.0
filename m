@@ -1,55 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f182.google.com ([209.85.128.182]:36042 "EHLO
-	mail-ve0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751167AbaGGVYx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Jul 2014 17:24:53 -0400
-Received: by mail-ve0-f182.google.com with SMTP id oy12so4691493veb.41
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Jul 2014 14:24:52 -0700 (PDT)
+Received: from bombadil.infradead.org ([198.137.202.9]:57835 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751290AbaG0NXG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jul 2014 09:23:06 -0400
+Date: Sun, 27 Jul 2014 06:23:05 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 02/40] nfsd: Add reference counting to the lock and open
+ stateids
+Message-ID: <20140727132305.GD32153@infradead.org>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+ <1405954972-28904-3-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <lpehhl$o74$1@ger.gmane.org>
-References: <lp1gar$eb6$1@ger.gmane.org>
-	<CAHVgHyVjoVb--cfbaopoUYA4vbDCjufJVng6OM2e82q0yEMthA@mail.gmail.com>
-	<lpehhl$o74$1@ger.gmane.org>
-Date: Mon, 7 Jul 2014 17:24:52 -0400
-Message-ID: <CAHVgHyWU9B+VE=_qTEG2TVOyMHijzVTA0a2rVb_7hrjsKf7Jfw@mail.gmail.com>
-Subject: Re: NFSv4 cross-realm support
-From: Andy Adamson <androsadamson@gmail.com>
-To: Jaap Winius <jwinius@umrk.nl>
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1405954972-28904-3-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 7, 2014 at 12:23 PM, Jaap Winius <jwinius@umrk.nl> wrote:
-> On Mon, 07 Jul 2014 08:36:00 -0400, Andy Adamson wrote:
->
->> So you are supporting two Kerberos realms under one NFSv4 domain?
->
-> At some point I even hope to make it three Kerberos realms under one
-> NFSv4 domain, but this also depends on a cross-realm issue with Exim4
-> being resolved, so for now it's just two realms under one NFSv4 domain.
->
->> You are using LDAP for id mapping?
->
-> Yes. After tweaking the user-olcAuthzRegexp for cn=config it seems to be
-> working perfectly.
+On Mon, Jul 21, 2014 at 11:02:14AM -0400, Jeff Layton wrote:
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> 
+> When we remove the client_mutex, we'll need to be able to ensure that
+> these objects aren't destroyed while we're not holding locks.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 14 ++++++++------
+>  1 file changed, 8 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 3e55df0d7504..76d28be3ef41 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -883,8 +883,10 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+>  	release_all_access(stp);
+>  }
+>  
+> -static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+> +static void put_generic_stateid(struct nfs4_ol_stateid *stp)
 
-I have never used the olcAuthzRegexp. Is this used to map potentially
-multiple principal@REALM names to the same UID name/number?
+Can you please call this put_ol_stateid while you're at it?  And throw
+in a patch to rename the other two generic_stateid names when you touch
+them or at the end of the series?
 
--->Andy
+Otherwise looks good to me,
 
->
->> Which version of nfs-utils and which client kernel?
->
-> I'm using Debian wheezy (stable), which comes with with nfs-common
-> 1.2.6-4 and kernel 3.2.0-4-amd64.
->
-> Cheers,
->
-> Jaap
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Reviewed-by: Christoph Hellwig <hch@lst.de>
