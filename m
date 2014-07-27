@@ -1,28 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54831 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751412AbaGaQxC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 31 Jul 2014 12:53:02 -0400
-Date: Thu, 31 Jul 2014 12:52:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org,
+Received: from bombadil.infradead.org ([198.137.202.9]:58420 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751035AbaG0NZc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jul 2014 09:25:32 -0400
+Date: Sun, 27 Jul 2014 06:25:31 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v3 04/38] nfsd: Replace nfs4_ol_stateid->st_file with the
+Subject: Re: [PATCH 04/40] nfsd: Replace nfs4_ol_stateid->st_file with the
  st_stid.sc_file
-Message-ID: <20140731165259.GB11218@fieldses.org>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
- <1406684083-19736-5-git-send-email-jlayton@primarydata.com>
- <20140730205902.GB25112@infradead.org>
+Message-ID: <20140727132531.GF32153@infradead.org>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+ <1405954972-28904-5-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140730205902.GB25112@infradead.org>
+In-Reply-To: <1405954972-28904-5-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 30, 2014 at 01:59:02PM -0700, Christoph Hellwig wrote:
-> FYI, I'd merge this into the previous patch.
+On Mon, Jul 21, 2014 at 11:02:16AM -0400, Jeff Layton wrote:
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 
-OK, done.
+Looks good,
 
---b.
+Reviewed-by: Christoph Hellwig <hch@lst.de>
