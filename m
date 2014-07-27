@@ -1,151 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:60712 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754113AbaGNMf0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Jul 2014 08:35:26 -0400
-Date: Mon, 14 Jul 2014 22:35:13 +1000
-From: NeilBrown <neilb@suse.de>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: nfs4_lookup_revalidate need to report STALE
- inodes.
-Message-ID: <20140714223513.47807c98@notabene.brown>
-In-Reply-To: <20140714081455.69f55224@tlielax.poochiereds.net>
-References: <20140714151405.2fa06dd7@notabene.brown>
-	<20140714081455.69f55224@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/dZWtfWH1iTJwqtK2b5s7vxi"; protocol="application/pgp-signature"
+Received: from bombadil.infradead.org ([198.137.202.9]:58571 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751035AbaG0NfI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jul 2014 09:35:08 -0400
+Date: Sun, 27 Jul 2014 06:35:07 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH 06/40] nfsd: Cleanup the freeing of stateids
+Message-ID: <20140727133507.GH32153@infradead.org>
+References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+ <1405954972-28904-7-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1405954972-28904-7-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/dZWtfWH1iTJwqtK2b5s7vxi
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Mon, Jul 21, 2014 at 11:02:18AM -0400, Jeff Layton wrote:
+> Add a ->free() callback to the struct nfs4_stid, so that we can
+> release a reference to the stid without caring about the contents.
 
-On Mon, 14 Jul 2014 08:14:55 -0400 Jeff Layton <jeff.layton@primarydata.com>
-wrote:
+Looks good, but I'd do it much earlier so that the nfs4_put_stid doesn't
+have to change around again - IMHO adding the free callback should go
+together with introducing the refcounting, as it's kinda required
+to do the refcounting sanely.
 
-> On Mon, 14 Jul 2014 15:14:05 +1000
-> NeilBrown <neilb@suse.de> wrote:
->=20
-> >=20
-> > If an 'open' of a file in an NFSv4 filesystem finds that the dentry is
-> > in cache, but the inode is stale (on the server), the dentry will not
-> > be re-validated immediately and may cause ESTALE to be returned to
-> > user-space.
-> >=20
-> > For a non-create 'open', do_last() calls lookup_fast() and on success
-> > will eventually call may_open() which calls into nfs_permission().
-> > If nfs_permission() makes the ACCESS call to the server it will get
-> > NFS4ERR_STALE, resulting in ESTALE from may_open() and thence from
-> > do_last().
-> > The retry-on-ESTALE in filename_lookup() will repeat exactly the same
-> > process because nothing in this path will invalidate the dentry due to
-> > the inode being stale, so the ESTALE will be returned.
-> >=20
-> > lookup_fast() calls ->d_revalidate(), but for an OPEN on an NFSv4
-> > filesystem, that will succeed for regular files:
-> > 	/* Let f_op->open() actually open (and revalidate) the file */
-> >=20
-> > Unfortunately in the case of a STALE inode, f_op->open() never gets
-> > called.  If we teach nfs4_lookup_revalidate() to report a failure on
-> > NFS_STALE() inodes, then the dentry will be invalidated and a full
-> > lookup will be attempted.  The ESTALE errors go away.
-> >=20
-> >=20
-> > While I think this fix is correct, I'm not convinced that it is
-> > sufficient, particularly if lookupcache=3Dnone.
-> > The current code will fail an "open" is nfs_permission() fails,
-> > without having performed a LOOKUP. i.e. it will use the cache.
-> > nfs_lookup_revalidate will force a lookup before the permission check
-> > if NFS_MOUNT_LOOKUP_CACHE_NONE, but nfs4_lookup_revalidate will not.
-> >=20
->=20
-> This patch should make the code fall through to nfs_lookup_revalidate,
-> which would then force the lookup, right?
-
-Yes ... though maybe that's not what I really want to do.  I really wanted =
-to
-just return '0', though I would need to check that is right in all cases.
-
->=20
-> Also, I'm a little unclear...
->=20
-> Why would may_open fail with ESTALE after the v4 OPEN succeeds? The
-> OPEN should be returning a filehandle and attributes for the inode
-> actually opened. It seems like we ought to be doing any permission
-> checks vs. that inode, not anything we had in cache. Presumably the
-> server is then holding it open so it shouldn't be stale.
-
-may_open is called *before* and v4 OPEN.
-
-In do_last, if the inode is already in cache, then
-  lookup_fast is called, which calls d_revalidate
-  then may_open (calls ->permission)
-  then finish_open which calls f_op->open
-
-Yes, we should be doing permission checking against whatever 'open' finds.
-But the VFS is structured to the the permission check after d_revalidate and
-before ->open.  So maybe d_revalidate needs to do the NFS open??
+Also when Trond first posted this I suggested to introduce an ops vector
+instead of a free callback as there wil be a lot more things in the
+stateid handling that could make use of it.  I'm not going to insist on
+the ops vector at this point, but I think it would make things quite
+a bit cleaner.
 
 
->=20
-> Are we not properly updating the dcache (and attrcache) after the OPEN
-> reply?
+> +static void nfs4_free_generic_stateid(struct nfs4_stid *stid);
 
-I think so, yes.  But in the problem case, we don't even send an OPEN reque=
-st.
+s/generic/ol/
 
+Also maybe just move it into the right place instead of the forward
+declaration given how trivial it is?
 
->=20
-> >=20
-> > Signed-off-by: NeilBrown <neilb@suse.de>
-> >=20
-> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > index 4a3d4ef76127..4f7414afca27 100644
-> > --- a/fs/nfs/dir.c
-> > +++ b/fs/nfs/dir.c
-> > @@ -1563,6 +1563,8 @@ static int nfs4_lookup_revalidate(struct dentry
-> > *dentry, unsigned int flags) /* We cannot do exclusive creation on a
-> > positive dentry */ if (flags & LOOKUP_EXCL)
-> >  		goto no_open_dput;
-> > +	if (NFS_STALE(inode))
-> > +		goto no_open_dput;
-> > =20
-> >  	/* Let f_op->open() actually open (and revalidate) the file
-> > */ ret =3D 1;
->=20
-> Looks legit to me too, but it seems like the inode could go stale w/o
-> us knowing after this point.
->=20
-> Acked-by: Jeff Layton <jlayton@primarydata.com>
+> +static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+> +{
+> +	if (s->sc_file)
+> +		put_nfs4_file(s->sc_file);
+> +	kmem_cache_free(slab, s);
+> +}
 
-Thanks,
-NeilBrown
+I think the layering here is wrong - the generic code should put the
+file before calling into the ->free method as the file is in the
+generic code.  Then the free callback can simply opencode the
+kmem_cache_free instead of adding this helper.
 
---Sig_/dZWtfWH1iTJwqtK2b5s7vxi
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+> +static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
+> +					 struct kmem_cache *slab)
+>  {
+>  	struct nfs4_stid *stid;
+>  	int new_id;
+> @@ -492,7 +500,22 @@ out_free:
+>  
+>  static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+>  {
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
+Having and nfs4_alloc_stid and an nfs4_alloc_stateid is a very confusing
+nameing scheme.  I think nfs4_alloc_stateid should be rename to
+nfs4_alloc_ol_stateid.  And nfs4_alloc_stid might actually just be
+redone to nfs4_init_stid, leaving the allocation to the caller similar
+how the specific type handles the free in the ->free callback.
 
-iQIVAwUBU8POgTnsnt1WYoG5AQKnpQ//T8BKPiKeYctHLdydKTZb3HKVLEQsQugp
-NWjKUK3xiT2JqYBv5uaBVw5/WGLQ65rgkDhCJgQHUNLegzYoTMI43zqNou4lpjom
-fRibdN7eYmHHd5rud09is0KL5bPHf7eXrj6JonXAs4EDS2m+MvtUGpRlBCKvsHkg
-/10h+7zWGyE1+33ER8KXnDIyWEoIANpcS8dDWLESNhZSLH3svFYDXyRaEpt5RXEM
-LW8SQOnD8kE0iIPCK2eL8/K1ybnU2eOcmE/9z0oR1pIZmVRdgEKlu74F+a67rn17
-x45O78LNtb8/Xk8d5r8y7wpy6jEs/tebXBD9npnziLf/UH/xjIEO6JRugjOPYw3q
-0kFQ8bjDfCeB5gmKoEdBonMaptJg/Qj7NJvxT/MWhY7vydvm7m6qFsoRt966utss
-ER9FTXX9qhRXCX5i7GO2ZIoK2oF5/zYNQLl3GOQSOFQter97OB2lu+H+mtyywdeG
-2Ia+tzm70UKKHRBjwO8+3ER2zFQd0C0MWDlmorHouj16rv0L2pLYMZXv8A8gIAXp
-QyWPFmcnTWo/LUvRmU7nOExnn+NCG+Z+SmBqxExpprvsVPAhdmx37LmXMBQs3m3R
-LO4Ix3hFi4uVed/oDUvTxdI5bDamFKZS0pi9JdhY0GLUxA5186mOGVvYpFC6NgLf
-A+Akid2RVfg=
-=d096
------END PGP SIGNATURE-----
+>  void
+>  nfs4_put_delegation(struct nfs4_delegation *dp)
+>  {
+> -	if (nfs4_put_stid(deleg_slab, &dp->dl_stid))
+> -		atomic_long_dec(&num_delegations);
+> +	nfs4_put_stid(&dp->dl_stid);
+>  }
 
---Sig_/dZWtfWH1iTJwqtK2b5s7vxi--
+And reason to keep nfs4_put_delegation around?
+
+>  static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+>  {
+> -	nfs4_put_stid(stateid_slab, &stp->st_stid);
+> +	nfs4_put_stid(&stp->st_stid);
+>  }
+
+Ditto for put_generic_stateid.
+
