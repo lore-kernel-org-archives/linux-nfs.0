@@ -1,119 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:40220 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753244AbaG3M17 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:27:59 -0400
-Received: by mail-qa0-f53.google.com with SMTP id v10so1146676qac.40
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:27:58 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 10/37] nfsd: protect the close_lru list and oo_last_closed_stid with client_lock
-Date: Wed, 30 Jul 2014 08:27:11 -0400
-Message-Id: <1406723258-8512-11-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
-References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:39872 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751946AbaG1P3q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Jul 2014 11:29:46 -0400
+Date: Mon, 28 Jul 2014 20:59:38 +0530
+From: Himangi Saraogi <himangi774@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: julia.lawall@lip6.fr
+Subject: [PATCH] svcrdma: delete double assignment
+Message-ID: <20140728152938.GA3040@himangi-Dell>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, it's protected by the client_mutex. Move it so that the list
-and the fields in the openowner are protected by the client_lock.
+Delete successive assignments to the same location.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+A simplified version of Coccinelle semantic match that finds this problem is as
+follows:
+
+// <smpl>
+@@
+expression i;
+@@
+
+*i = ...;
+ i = ...;
+// </smpl>
+
+Signed-off-by: Himangi Saraogi <himangi774@gmail.com>
 ---
- fs/nfsd/nfs4state.c | 38 +++++++++++++++++++++++++++++++-------
- 1 file changed, 31 insertions(+), 7 deletions(-)
+Should the assignment be the maximum of the 2 values?
+ net/sunrpc/xprtrdma/svc_rdma_transport.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e7dfd4e9d942..818480035453 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1122,13 +1122,19 @@ static void unhash_openowner_locked(struct nfs4_openowner *oo)
- 
- static void release_last_closed_stateid(struct nfs4_openowner *oo)
- {
--	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
-+	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-+					  nfsd_net_id);
-+	struct nfs4_ol_stateid *s;
- 
-+	spin_lock(&nn->client_lock);
-+	s = oo->oo_last_closed_stid;
- 	if (s) {
- 		list_del_init(&oo->oo_close_lru);
- 		oo->oo_last_closed_stid = NULL;
--		nfs4_put_stid(&s->st_stid);
- 	}
-+	spin_unlock(&nn->client_lock);
-+	if (s)
-+		nfs4_put_stid(&s->st_stid);
- }
- 
- static void release_openowner(struct nfs4_openowner *oo)
-@@ -3265,6 +3271,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- static void
- move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- {
-+	struct nfs4_ol_stateid *last;
- 	struct nfs4_openowner *oo = openowner(s->st_stateowner);
- 	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
- 						nfsd_net_id);
-@@ -3287,10 +3294,15 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- 		put_nfs4_file(s->st_stid.sc_file);
- 		s->st_stid.sc_file = NULL;
- 	}
--	release_last_closed_stateid(oo);
-+
-+	spin_lock(&nn->client_lock);
-+	last = oo->oo_last_closed_stid;
- 	oo->oo_last_closed_stid = s;
- 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
- 	oo->oo_time = get_seconds();
-+	spin_unlock(&nn->client_lock);
-+	if (last)
-+		nfs4_put_stid(&last->st_stid);
- }
- 
- /* search file_hashtbl[] for file */
-@@ -4148,6 +4160,7 @@ nfs4_laundromat(struct nfsd_net *nn)
- 	struct nfs4_client *clp;
- 	struct nfs4_openowner *oo;
- 	struct nfs4_delegation *dp;
-+	struct nfs4_ol_stateid *stp;
- 	struct list_head *pos, *next, reaplist;
- 	time_t cutoff = get_seconds() - nn->nfsd4_lease;
- 	time_t t, new_timeo = nn->nfsd4_lease;
-@@ -4201,15 +4214,26 @@ nfs4_laundromat(struct nfsd_net *nn)
- 		list_del_init(&dp->dl_recall_lru);
- 		revoke_delegation(dp);
- 	}
--	list_for_each_safe(pos, next, &nn->close_lru) {
--		oo = container_of(pos, struct nfs4_openowner, oo_close_lru);
--		if (time_after((unsigned long)oo->oo_time, (unsigned long)cutoff)) {
-+
-+	spin_lock(&nn->client_lock);
-+	while (!list_empty(&nn->close_lru)) {
-+		oo = list_first_entry(&nn->close_lru, struct nfs4_openowner,
-+					oo_close_lru);
-+		if (time_after((unsigned long)oo->oo_time,
-+			       (unsigned long)cutoff)) {
- 			t = oo->oo_time - cutoff;
- 			new_timeo = min(new_timeo, t);
- 			break;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 06a5d92..8976529 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -956,7 +956,6 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 			dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
+ 			goto errout;
  		}
--		release_last_closed_stateid(oo);
-+		list_del_init(&oo->oo_close_lru);
-+		stp = oo->oo_last_closed_stid;
-+		oo->oo_last_closed_stid = NULL;
-+		spin_unlock(&nn->client_lock);
-+		nfs4_put_stid(&stp->st_stid);
-+		spin_lock(&nn->client_lock);
- 	}
-+	spin_unlock(&nn->client_lock);
-+
- 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
- 	nfs4_unlock_state();
- 	return new_timeo;
+-		newxprt->sc_max_sge = qp_attr.cap.max_send_sge;
+ 		newxprt->sc_max_sge = qp_attr.cap.max_recv_sge;
+ 		newxprt->sc_sq_depth = qp_attr.cap.max_send_wr;
+ 		newxprt->sc_max_requests = qp_attr.cap.max_recv_wr;
 -- 
-1.9.3
+1.9.1
 
