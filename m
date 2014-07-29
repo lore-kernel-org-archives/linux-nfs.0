@@ -1,67 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:18257 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965166AbaGPPsZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 11:48:25 -0400
-Message-ID: <53C69EC3.1010208@oracle.com>
-Date: Wed, 16 Jul 2014 08:48:19 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 00/21] NFS/RDMA client patches for 3.17
-References: <59034BAD-306F-462F-A274-3EB06C0CBE47@oracle.com>
-In-Reply-To: <59034BAD-306F-462F-A274-3EB06C0CBE47@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:46508 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754416AbaG2UfV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:35:21 -0400
+Received: by mail-qg0-f44.google.com with SMTP id e89so307762qgf.17
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:35:20 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 34/38] nfsd: optimize destroy_lockowner cl_lock thrashing
+Date: Tue, 29 Jul 2014 16:34:17 -0400
+Message-Id: <1406666061-14175-35-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These two patches have been significant reduced interrupt rate by around 4 times.
+Reduce the cl_lock trashing in destroy_lockowner. Unhash all of the
+lockstateids on the lockowner's list. Put the reference under the lock
+and see if it was the last one. If so, then add it to a private list
+to be destroyed after we drop the lock.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 34 insertions(+), 17 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9b342e164407..9358cbe2283d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -983,14 +983,23 @@ static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
+ 	nfs4_free_ol_stateid(stid);
+ }
  
-     xprtrdma: Disable completions for FAST_REG_MR Work Requests
-     xprtrdma: Disable completions for LOCAL_INV Work Requests 
-
-Same NFS read/write workload, here are interrupts rate irq/per sec report based upon /proc/interrupts:
-
-w/o patches:
------------
-PCI-MSI-edge mlx4-ib (204):  105176
-PCI-MSI-edge mlx4-ib (204):  123650
-PCI-MSI-edge mlx4-ib (204):  123690
-PCI-MSI-edge mlx4-ib (204):  116554
-PCI-MSI-edge mlx4-ib (204):  122864
-
-And perf stat irq report: 
-Performance counter stats for 'system wide':
-
-         2,131,870      irq:irq_handler_entry                                        [100.00%]
-         2,131,870      irq:irq_handler_exit                                         [100.00%]
-           635,587      irq:softirq_entry                                            [100.00%]
-           635,597      irq:softirq_exit                                             [100.00%]
-           636,155      irq:softirq_raise
-
-      25.422821792 seconds time elapsed
-
-w/i patches:
------------
-PCI-MSI-edge mlx4-ib (204):  31131
-PCI-MSI-edge mlx4-ib (204):  32958
-PCI-MSI-edge mlx4-ib (204):  31068
-PCI-MSI-edge mlx4-ib (204):  30236
-PCI-MSI-edge mlx4-ib (204):  33041
-
-And perf stat irq report:
-
-Performance counter stats for 'system wide':
-
-           653,548      irq:irq_handler_entry                                        [100.00%]
-           653,548      irq:irq_handler_exit                                         [100.00%]
-           568,138      irq:softirq_entry                                            [100.00%]
-           568,148      irq:softirq_exit                                             [100.00%]
-           568,690      irq:softirq_raise                                           
-
-      21.675597062 seconds time elapsed
-
-Shirley
+-static void release_lock_stateid(struct nfs4_ol_stateid *stp)
++static void unhash_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+ 
+-	spin_lock(&oo->oo_owner.so_client->cl_lock);
+-	list_del(&stp->st_locks);
++	lockdep_assert_held(&oo->oo_owner.so_client->cl_lock);
++
++	list_del_init(&stp->st_locks);
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
++}
++
++static void release_lock_stateid(struct nfs4_ol_stateid *stp)
++{
++	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
++
++	spin_lock(&oo->oo_owner.so_client->cl_lock);
++	unhash_lock_stateid(stp);
+ 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ 	nfs4_put_stid(&stp->st_stid);
+ }
+@@ -1004,30 +1013,38 @@ static void unhash_lockowner_locked(struct nfs4_lockowner *lo)
+ 	list_del_init(&lo->lo_owner.so_strhash);
+ }
+ 
+-static void release_lockowner_stateids(struct nfs4_lockowner *lo)
++static void release_lockowner(struct nfs4_lockowner *lo)
+ {
+ 	struct nfs4_client *clp = lo->lo_owner.so_client;
+ 	struct nfs4_ol_stateid *stp;
++	struct list_head reaplist;
+ 
+-	lockdep_assert_held(&clp->cl_lock);
++	INIT_LIST_HEAD(&reaplist);
+ 
++	spin_lock(&clp->cl_lock);
++	unhash_lockowner_locked(lo);
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		spin_unlock(&clp->cl_lock);
+-		release_lock_stateid(stp);
+-		spin_lock(&clp->cl_lock);
++		unhash_lock_stateid(stp);
++		/*
++		 * We now know that no new references can be added to the
++		 * stateid. If ours is the last one, finish the unhashing
++		 * and put it on the list to be reaped.
++		 */
++		if (atomic_dec_and_test(&stp->st_stid.sc_count)) {
++			idr_remove(&clp->cl_stateids,
++				stp->st_stid.sc_stateid.si_opaque.so_id);
++			list_add(&stp->st_locks, &reaplist);
++		}
+ 	}
+-}
+-
+-static void release_lockowner(struct nfs4_lockowner *lo)
+-{
+-	struct nfs4_client *clp = lo->lo_owner.so_client;
+-
+-	spin_lock(&clp->cl_lock);
+-	unhash_lockowner_locked(lo);
+-	release_lockowner_stateids(lo);
+ 	spin_unlock(&clp->cl_lock);
++	while (!list_empty(&reaplist)) {
++		stp = list_first_entry(&reaplist, struct nfs4_ol_stateid,
++					st_locks);
++		list_del(&stp->st_locks);
++		stp->st_stid.sc_free(&stp->st_stid);
++	}
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+-- 
+1.9.3
 
