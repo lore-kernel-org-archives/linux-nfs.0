@@ -1,78 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:58190 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760265AbaGYLey (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Jul 2014 07:34:54 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so4864459qgf.35
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Jul 2014 04:34:54 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v6 9/9] nfsd: remove dl_fh field from struct nfs4_delegation
-Date: Fri, 25 Jul 2014 07:34:27 -0400
-Message-Id: <1406288067-20663-10-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
-References: <1406288067-20663-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:45104 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751680AbaG2Tbi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Jul 2014 15:31:38 -0400
+Date: Tue, 29 Jul 2014 15:31:08 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Peter Zijlstra <peterz@infradead.org>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Ingo Molnar <mingo@kernel.org>, linux-kernel@vger.kernel.org,
+        linux-arch@vger.kernel.org
+Subject: Re: [PATCH 1/3] SUNRPC: Reduce contention in svc_xprt_enqueue()
+Message-ID: <20140729193108.GC21091@fieldses.org>
+References: <1406260773-16231-1-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1406260773-16231-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that the nfs4_file has a filehandle in it, we no longer need to
-keep a per-delegation copy of it. Switch to using the one in the
-nfs4_file instead.
+All three patches look good to me, thanks.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4callback.c | 2 +-
- fs/nfsd/nfs4state.c    | 3 +--
- fs/nfsd/state.h        | 1 -
- 3 files changed, 2 insertions(+), 4 deletions(-)
+>From private email, this:
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index c393d6ca3fce..e9813389687b 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -337,7 +337,7 @@ static void encode_cb_recall4args(struct xdr_stream *xdr,
- 	p = xdr_reserve_space(xdr, 4);
- 	*p++ = xdr_zero;			/* truncate */
- 
--	encode_nfs_fh4(xdr, &dp->dl_fh);
-+	encode_nfs_fh4(xdr, &dp->dl_file->fi_fhandle);
- 
- 	hdr->nops++;
- }
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ecfddca9b841..b0f83beeca75 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -604,7 +604,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct svc_fh *current_fh)
- 	INIT_LIST_HEAD(&dp->dl_perclnt);
- 	INIT_LIST_HEAD(&dp->dl_recall_lru);
- 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
--	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
- 	return dp;
- out_dec:
-@@ -3097,7 +3096,7 @@ void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
--	block_delegations(&dp->dl_fh);
-+	block_delegations(&dp->dl_file->fi_fhandle);
- 
- 	/*
- 	 * We can't do this in nfsd_break_deleg_cb because it is
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 0097d4771521..39747736e83b 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -96,7 +96,6 @@ struct nfs4_delegation {
- 	u32			dl_type;
- 	time_t			dl_time;
- /* For recall: */
--	struct knfsd_fh		dl_fh;
- 	int			dl_retries;
- 	struct nfsd4_callback	dl_recall;
- };
--- 
-1.9.3
+On Thu, Jul 24, 2014 at 11:59:31PM -0400, Trond Myklebust wrote:
+> @@ -222,11 +223,12 @@ static void svc_xprt_received(struct svc_xprt *xprt)
+>  	if (!test_bit(XPT_BUSY, &xprt->xpt_flags))
+>  		return;
+>  	/* As soon as we clear busy, the xprt could be closed and
+> -	 * 'put', so we need a reference to call svc_xprt_enqueue with:
+> +	 * 'put', so we need a reference to call svc_xprt_do_enqueue with:
+>  	 */
+>  	svc_xprt_get(xprt);
+> +	smp_mb__before_clear_bit();
 
+triggered a warning about smp_mb__before_clear_bit noticed by the kbuild
+robot.  Looks like that was due to
+febdbfe8a91ce0d11939d4940b592eb0dba8d663 "arch: Prepare for
+smp_mb__{before,after}_atomic()".
+
+You questioned whether deprecating smp_mb__{before,after}_clear_bit was
+an unnecessary burden on people maintaining stable kernels or doing
+backports more generally.  Cc'ing some addresses from that commit.
+
+Whatever--I'll probably just replace do the clear_bit->before_atomic
+replacement and apply unless there's some objection.
+
+--b.
+
+>  	clear_bit(XPT_BUSY, &xprt->xpt_flags);
+> -	svc_xprt_enqueue(xprt);
+> +	svc_xprt_do_enqueue(xprt);
+>  	svc_xprt_put(xprt);
+>  }
+>  
+> @@ -335,12 +337,7 @@ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
+>  	return false;
+>  }
+>  
+> -/*
+> - * Queue up a transport with data pending. If there are idle nfsd
+> - * processes, wake 'em up.
+> - *
+> - */
+> -void svc_xprt_enqueue(struct svc_xprt *xprt)
+> +static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+>  {
+>  	struct svc_pool *pool;
+>  	struct svc_rqst	*rqstp;
+> @@ -398,6 +395,18 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+>  out_unlock:
+>  	spin_unlock_bh(&pool->sp_lock);
+>  }
+> +
+> +/*
+> + * Queue up a transport with data pending. If there are idle nfsd
+> + * processes, wake 'em up.
+> + *
+> + */
+> +void svc_xprt_enqueue(struct svc_xprt *xprt)
+> +{
+> +	if (test_bit(XPT_BUSY, &xprt->xpt_flags))
+> +		return;
+> +	svc_xprt_do_enqueue(xprt);
+> +}
+>  EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
+>  
+>  /*
+> -- 
+> 1.9.3
+> 
