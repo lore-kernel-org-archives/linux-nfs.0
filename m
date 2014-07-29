@@ -1,129 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46872 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756535AbaGVTg1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Jul 2014 15:36:27 -0400
-Date: Tue, 22 Jul 2014 15:36:26 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: bump dp->dl_time when unhashing delegation
-Message-ID: <20140722193626.GQ8438@fieldses.org>
-References: <1406047291-1279-1-git-send-email-jlayton@primarydata.com>
- <20140722174552.GA27277@fieldses.org>
- <20140722135206.7dbfbac5@tlielax.poochiereds.net>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:45886 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752073AbaG2VXK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:23:10 -0400
+Subject: [PATCH v5 00/21] NFS/RDMA client patches for 3.17
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Anna.Schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 29 Jul 2014 17:23:07 -0400
+Message-ID: <20140729211534.2812.3128.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140722135206.7dbfbac5@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 22, 2014 at 01:52:06PM -0400, Jeff Layton wrote:
-> On Tue, 22 Jul 2014 13:45:52 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Tue, Jul 22, 2014 at 12:41:31PM -0400, Jeff Layton wrote:
-> > > There's a potential race between a lease break and DELEGRETURN call.
-> > > 
-> > > Suppose a lease break comes in and queues the workqueue job for a
-> > > delegation, but it doesn't run just yet. Then, a DELEGRETURN comes in
-> > > finds the delegation and calls destroy_delegation on it to unhash it and
-> > > put its primary reference.
-> > > 
-> > > Next, the workqueue job runs and queues the delegation back onto the
-> > > del_recall_lru list, issues the CB_RECALL and puts the final reference.
-> > > With that, the final reference to the delegation is put, but it's still
-> > > on the LRU list.
-> > > 
-> > > When we go to unhash a delegation, it's because we intend to get rid of
-> > > it soon afterward, so we don't want lease breaks to mess with it once
-> > > that occurs. Fix this by bumping the dl_time whenever we unhash a
-> > > delegation, to ensure that lease breaks don't monkey with it.
-> > 
-> > Makes sense, thanks.  Repeating from IRC: this fixes a regression from
-> > 02e1215f9f7 "nfsd: Avoid taking state_lock while holding inode lock in
-> > nfsd_break_one_deleg".  (In my tree only.)
-> > 
-> > --b.
-> > 
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > > ---
-> > >  fs/nfsd/nfs4state.c | 2 ++
-> > >  1 file changed, 2 insertions(+)
-> > > 
-> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > > index 72da0d44e66b..a3a828d17563 100644
-> > > --- a/fs/nfsd/nfs4state.c
-> > > +++ b/fs/nfsd/nfs4state.c
-> > > @@ -660,6 +660,8 @@ unhash_delegation(struct nfs4_delegation *dp)
-> > >  
-> > >  	spin_lock(&state_lock);
-> > >  	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-> > > +	/* Ensure that deleg break won't try to requeue it */
-> > > +	++dp->dl_time;
-> > >  	spin_lock(&fp->fi_lock);
-> > >  	list_del_init(&dp->dl_perclnt);
-> > >  	list_del_init(&dp->dl_recall_lru);
-> > > -- 
-> > > 1.9.3
-> > > 
-> 
-> Sorry, I think I sent you a version with an earlier description. Here's
-> the one I meant to send:
+The main purpose of this series is to address connection drop
+recovery issues by fixing FRMR re-use to make it less likely the
+client will deadlock due to a memory management operation error.
+Some clean-ups and other fixes are present as well.
 
-Thanks, applying this version.--b.
+See topic branch nfs-rdma-for-3.17-plan-b in
 
-> 
-> --------------------[snip]---------------------
-> 
-> [PATCH] nfsd: bump dl_time when unhashing delegation
-> 
-> There's a potential race between a lease break and DELEGRETURN call.
-> 
-> Suppose a lease break comes in and queues the workqueue job for a
-> delegation, but it doesn't run just yet. Then, a DELEGRETURN comes in
-> finds the delegation and calls destroy_delegation on it to unhash it and
-> put its primary reference.
-> 
-> Next, the workqueue job runs and queues the delegation back onto the
-> del_recall_lru list, issues the CB_RECALL and puts the final reference.
-> With that, the final reference to the delegation is put, but it's still
-> on the LRU list.
-> 
-> When we go to unhash a delegation, it's because we intend to get rid of
-> it soon afterward, so we don't want lease breaks to mess with it once
-> that occurs. Fix this by bumping the dl_time whenever we unhash a
-> delegation, to ensure that lease breaks don't monkey with it.
-> 
-> I believe this is a regression due to commit 02e1215f9f7 (nfsd: Avoid
-> taking state_lock while holding inode lock in nfsd_break_one_deleg).
-> Prior to that, the state_lock was held in the lm_break callback itself,
-> and that would have prevented this race.
-> 
-> Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 72da0d44e66b..a3a828d17563 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -660,6 +660,8 @@ unhash_delegation(struct nfs4_delegation *dp)
->  
->  	spin_lock(&state_lock);
->  	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-> +	/* Ensure that deleg break won't try to requeue it */
-> +	++dp->dl_time;
->  	spin_lock(&fp->fi_lock);
->  	list_del_init(&dp->dl_perclnt);
->  	list_del_init(&dp->dl_recall_lru);
-> -- 
-> 1.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+Topic branch nfs-rdma-for-3.17 still contains v4 of this series.
+You can choose whichever series is convenient for you and Roland.
+
+I tested with NFSv3 and NFSv4 on all three supported memory
+registration modes. Used cthon04, iozone, vdbench, and dbench with
+both Solaris and Linux NFS/RDMA servers. Used xfstests with Linux.
+
+
+v5:
+
+- Rebased on v3.16-rc7
+
+- Replaced patch 08/21 with an equivalent one-liner that does not
+  alter include/rdma/ib_verbs.h. A couple of subsequent patches were
+  updated to apply on the new 08/21. This allows the whole series to
+  be submitted through the NFS tree.
+
+
+v4:
+
+- Rebased on v3.16-rc6
+
+- Add Tested-by: from Shirley Ma and Devesh Sharma
+
+
+v3:
+Only two substantive changes:
+
+- Patch 08/21 now uses generic IB helpers for managing FRMR
+  rkeys
+
+- Add Tested-by: from Steve Wise
+
+
+v2:
+Many patches from v1 have been written or replaced.
+
+The MW ref counting approach in v1 is abandoned. Instead, I've
+eliminated signaling FAST_REG_MR and LOCAL_INV, and added
+appropriate recovery mechanisms after a transport reconnect that
+should prevent rkey dis-synchrony entirely.
+
+A couple of optimizations have been added, including:
+
+- Allocating each MW separately rather than carving each out of a
+  large piece of contiguous memory
+
+- Now that the receive CQ upcall handler dequeues a bundle of CQEs
+  at once, fire off the reply handler tasklet just once per upcall
+  to reduce context switches and how often hard IRQs are disabled
+
+---
+
+Chuck Lever (21):
+      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
+      xprtrdma: Protect ia->ri_id when unmapping/invalidating MRs
+      xprtrdma: Limit data payload size for ALLPHYSICAL
+      xprtrdma: Update rkeys after transport reconnect
+      xprtrdma: On disconnect, don't ignore pending CQEs
+      xprtrdma: Don't invalidate FRMRs if registration fails
+      xprtrdma: Unclutter struct rpcrdma_mr_seg
+      xprtrdma: Back off rkey when FAST_REG_MR fails
+      xprtrdma: Chain together all MWs in same buffer pool
+      xprtrdma: Properly handle exhaustion of the rb_mws list
+      xprtrdma: Reset FRMRs when FAST_REG_MR is flushed by a disconnect
+      xprtrdma: Reset FRMRs after a flushed LOCAL_INV Work Request
+      xprtrdma: Don't post a LOCAL_INV in rpcrdma_register_frmr_external()
+      xprtrdma: Disable completions for FAST_REG_MR Work Requests
+      xprtrdma: Disable completions for LOCAL_INV Work Requests
+      xprtrdma: Rename frmr_wr
+      xprtrdma: Allocate each struct rpcrdma_mw separately
+      xprtrdma: Schedule reply tasklet once per upcall
+      xprtrdma: Make rpcrdma_ep_disconnect() return void
+      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
+      xprtrdma: Handle additional connection events
+
+
+ include/linux/sunrpc/xprtrdma.h |    2 
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   83 ++--
+ net/sunrpc/xprtrdma/transport.c |   17 +
+ net/sunrpc/xprtrdma/verbs.c     |  736 ++++++++++++++++++++++++++-------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   61 +++
+ 5 files changed, 601 insertions(+), 298 deletions(-)
+
+--
+Chuck Lever
