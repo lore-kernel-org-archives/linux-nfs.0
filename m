@@ -1,161 +1,195 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:26656 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754906AbaGRT1T convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 15:27:19 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] svcrdma: Select NFSv4.1 backchannel transport based on forward channel
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140718191256.GB12801@fieldses.org>
-Date: Fri, 18 Jul 2014 15:27:10 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <F69F9045-6ECC-4210-837C-2837AF37D7ED@oracle.com>
-References: <20140716193542.7847.95868.stgit@klimt.1015granger.net> <20140717183621.GA30442@fieldses.org> <9D651FDC-7C11-476A-AE50-746E6E37B3E2@oracle.com> <99240537-8EC8-4ED3-8574-B95AC8A42F56@oracle.com> <20140718191256.GB12801@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:35639 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754396AbaG2UfB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:35:01 -0400
+Received: by mail-qg0-f44.google.com with SMTP id e89so307160qgf.17
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:35:00 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 21/38] nfsd: Add reference counting to state owners
+Date: Tue, 29 Jul 2014 16:34:04 -0400
+Message-Id: <1406666061-14175-22-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The way stateowners are managed today is somewhat awkward. They need to
+be explicitly destroyed, even though the stateids reference them. This
+will be particularly problematic when we remove the client_mutex.
 
-On Jul 18, 2014, at 3:12 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+We may create a new stateowner and attempt to open a file or set a lock,
+and have that fail. In the meantime, another RPC may come in that uses
+that same stateowner and succeed. We can't have the first task tearing
+down the stateowner in that situation.
 
-> On Fri, Jul 18, 2014 at 02:47:41PM -0400, Chuck Lever wrote:
->> 
->> On Jul 17, 2014, at 2:59 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> 
->>> On Jul 17, 2014, at 2:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->>> 
->>>> On Wed, Jul 16, 2014 at 03:38:32PM -0400, Chuck Lever wrote:
->>>>> The current code always selects XPRT_TRANSPORT_BC_TCP for the back
->>>>> channel, even when the forward channel was not TCP (eg, RDMA). When
->>>>> a 4.1 mount is attempted with RDMA, the server panics in the TCP BC
->>>>> code when trying to send CB_NULL.
->>>>> 
->>>>> Instead, construct the transport protocol number from the forward
->>>>> channel transport or'd with XPRT_TRANSPORT_BC. Transports that do
->>>>> not support bi-directional RPC will not have registered a "BC"
->>>>> transport, causing create_backchannel_client() to fail immediately.
->>>>> 
->>>>> Fixes: https://bugzilla.linux-nfs.org/show_bug.cgi?id=265
->>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>> ---
->>>>> Hi Bruce-
->>>>> 
->>>>> What do you think of this approach?
->>>> 
->>>> OK by me.  (So clients use a separate tcp connection for the
->>>> backchannel?)
->>> 
->>> Right.
->>> 
->>> The current plan is that, for NFSv4.1 over RDMA, the Linux client will
->>> create an additional TCP connection and bind it to the same session as
->>> the RDMA transport.
->>> 
->>> The TCP connection will be used solely for callback operations.  The
->>> forward channel on that connection will not be used, except for
->>> BIND_CONN_TO_SESSION operations.
->> 
->> Hi Bruce, pursuant to this goal, I’m trying to understand commit
->> 14a24e99, especially the interior comment:
->> 
->> 3114 /* Should we give out recallable state?: */
->> 3115 static bool nfsd4_cb_channel_good(struct nfs4_client *clp)
->> 3116 {
->> 3117         if (clp->cl_cb_state == NFSD4_CB_UP)
->> 3118                 return true;
->> 3119         /*
->> 3120          * In the sessions case, since we don't have to establish a
->> 3121          * separate connection for callbacks, we assume it's OK
->> 3122          * until we hear otherwise:
->> 3123          */
->> 3124         return clp->cl_minorversion && clp->cl_cb_state == NFSD4_CB_UNKNOWN;
->> 3125 }
->> 
->> I wonder if that’s a valid assumption?
->> 
->> A separate virtual connection _does_ have to be established. If the
->> client sent a CREATE_SESSION operation with the SESSION4_BACK_CHAN flag
->> set, the server must verify that the client has an active bi-directional
->> RPC service on the transport.
-> 
-> If the client sets the BACK_CHAN flag, that means it wants that
-> connection to be used as a back channel.
-> 
-> So in the RDMA case it sounds like the client needs to clear that flag
-> on the create session.
+To fix this, we need to change how stateowners are tracked altogether.
+Refcount them and only destroy them once all stateids that reference
+them have been destroyed. This patch starts by adding the refcounting
+necessary to do that.
 
-Right.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 49 +++++++++++++++++++++++++++++++++++--------------
+ fs/nfsd/state.h     | 22 +++++++++++++++-------
+ 2 files changed, 50 insertions(+), 21 deletions(-)
 
-> Either that or send the original CREATE_SESSION over the connection you
-> want used for the backchannel, then send a BIND_CONNECTION_TO_SESSION
-> over the RDMA connection.
-> 
-> That said, if the server knows there's no connection at all that's
-> available for the backchannel, then yes I agree that it should be
-> setting the PATH_DOWN flag:
-
-I’m trying a fix that sets cl_cb_state = NFSD4_CB_DOWN in
-init_session() if SESSION4_BACK_CHAN is clear.
-
->From the looks of it, the server is architected to support one and
-only one session per client ID. Is that correct? Thus it expects
-just one CREATE_SESSION operation per EXCHANGE_ID. Does the server
-enforce this?
-
-Seems like cl_cb_state really should be a per-session thing for
-NFSv4.1.
-
-And, while we’re at it, the server should assert
-SEQ4_STATUS_CB_PATH_DOWN_SESSION as well as SEQ4_STATUS_CB_PATH_DOWN.
-
-> 
->> Otherwise it can hand out recallable state
->> to a client with no callback service. Is that always safe?
->> 
->> Or, if the client sent a CREATE_SESSION operation with the
->> SESSION4_BACK_CHAN flag cleared, then either the client intends not to
->> set up a backchannel, or it intends to establish a separate transport
->> for the backchannel. There is no backchannel in that case until the
->> client establishes it.
->> 
->> Right now, if the client does not set SESSION4_BACK_CHAN, the server
->> never asserts SEQ4_STATUS_CB_PATH_DOWN, even though there is no
->> backchannel. That seems like a (minor, perhaps) bug.
-> 
-> Yes, agreed, I'll take a look--how are you reproducing?
-
-Prototype Linux client that doesn’t set SESSION4_BACK_CHAN when it does
-CREATE_SESSION. Preparing it for RDMA support.
-
-You could code a pyNFS test.
-
-> The
-> nfsd4_probe_callback() should result in NFSD4_CB_DOWN getting set as
-> soon as the workqueue process it.
-
-Clearing SESSION4_BACK_CHAN squelches nfsd4_probe_callback(), so
-the server never checks in this case.
-
-> In theory there's a race there (I
-> should fix that) in practice I'd normally expect that to run before we
-> process a SEQUENCE request on the new session.
-
->> Do you remember what this commit was trying to fix?
-> 
-> It's not a bugfix, just a minor optimization.  We could revert it if
-> need be.
-
-NP, I just don’t see how it helps to make that assumption, plus it
-doesn’t seem entirely safe.
-
-My initial question was "why does alloc_client() initialize cl_cb_state
-to NFSD4_CB_UNKNOWN instead of NFSD4_CB_DOWN?”
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c4dd0b4cdc53..a57b90a9ffd6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -890,6 +890,14 @@ release_all_access(struct nfs4_ol_stateid *stp)
+ 	}
+ }
+ 
++static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
++{
++	if (!atomic_dec_and_test(&sop->so_count))
++		return;
++	kfree(sop->so_owner.data);
++	sop->so_ops->so_free(sop);
++}
++
+ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_file *fp = stp->st_stid.sc_file;
+@@ -946,16 +954,10 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ 	}
+ }
+ 
+-static void nfs4_free_lockowner(struct nfs4_lockowner *lo)
+-{
+-	kfree(lo->lo_owner.so_owner.data);
+-	kmem_cache_free(lockowner_slab, lo);
+-}
+-
+ static void release_lockowner(struct nfs4_lockowner *lo)
+ {
+ 	unhash_lockowner(lo);
+-	nfs4_free_lockowner(lo);
++	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+ static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
+@@ -1025,18 +1027,12 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	}
+ }
+ 
+-static void nfs4_free_openowner(struct nfs4_openowner *oo)
+-{
+-	kfree(oo->oo_owner.so_owner.data);
+-	kmem_cache_free(openowner_slab, oo);
+-}
+-
+ static void release_openowner(struct nfs4_openowner *oo)
+ {
+ 	unhash_openowner(oo);
+ 	list_del(&oo->oo_close_lru);
+ 	release_last_closed_stateid(oo);
+-	nfs4_free_openowner(oo);
++	nfs4_put_stateowner(&oo->oo_owner);
+ }
+ 
+ static inline int
+@@ -2964,6 +2960,7 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
+ 	INIT_LIST_HEAD(&sop->so_stateids);
+ 	sop->so_client = clp;
+ 	init_nfs4_replay(&sop->so_replay);
++	atomic_set(&sop->so_count, 1);
+ 	return sop;
+ }
+ 
+@@ -2975,6 +2972,17 @@ static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, u
+ 	list_add(&oo->oo_perclient, &clp->cl_openowners);
+ }
+ 
++static void nfs4_free_openowner(struct nfs4_stateowner *so)
++{
++	struct nfs4_openowner *oo = openowner(so);
++
++	kmem_cache_free(openowner_slab, oo);
++}
++
++static const struct nfs4_stateowner_operations openowner_ops = {
++	.so_free = nfs4_free_openowner,
++};
++
+ static struct nfs4_openowner *
+ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 			   struct nfsd4_compound_state *cstate)
+@@ -2985,6 +2993,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
+ 	if (!oo)
+ 		return NULL;
++	oo->oo_owner.so_ops = &openowner_ops;
+ 	oo->oo_owner.so_is_open_owner = 1;
+ 	oo->oo_owner.so_seqid = open->op_seqid;
+ 	oo->oo_flags = NFS4_OO_NEW;
+@@ -4729,6 +4738,17 @@ find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
+ 	return NULL;
+ }
+ 
++static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
++{
++	struct nfs4_lockowner *lo = lockowner(sop);
++
++	kmem_cache_free(lockowner_slab, lo);
++}
++
++static const struct nfs4_stateowner_operations lockowner_ops = {
++	.so_free = nfs4_free_lockowner,
++};
++
+ /*
+  * Alloc a lock owner structure.
+  * Called in nfsd4_lock - therefore, OPEN and OPEN_CONFIRM (if needed) has 
+@@ -4749,6 +4769,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ 	/* It is the openowner seqid that will be incremented in encode in the
+ 	 * case of new lockowners; so increment the lock seqid manually: */
+ 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid + 1;
++	lo->lo_owner.so_ops = &lockowner_ops;
+ 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
+ 	return lo;
+ }
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index af1d9c42e939..dc725deb4aa8 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -331,16 +331,24 @@ struct nfs4_replay {
+ 	char			rp_ibuf[NFSD4_REPLAY_ISIZE];
+ };
+ 
++struct nfs4_stateowner;
++
++struct nfs4_stateowner_operations {
++	void (*so_free)(struct nfs4_stateowner *);
++};
++
+ struct nfs4_stateowner {
+-	struct list_head        so_strhash;   /* hash by op_name */
+-	struct list_head        so_stateids;
+-	struct nfs4_client *    so_client;
++	struct list_head			so_strhash;
++	struct list_head			so_stateids;
++	struct nfs4_client			*so_client;
++	const struct nfs4_stateowner_operations	*so_ops;
+ 	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
+ 	 * sequence id expected from the client: */
+-	u32                     so_seqid;
+-	struct xdr_netobj       so_owner;     /* open owner name */
+-	struct nfs4_replay	so_replay;
+-	bool			so_is_open_owner;
++	atomic_t				so_count;
++	u32					so_seqid;
++	struct xdr_netobj			so_owner; /* open owner name */
++	struct nfs4_replay			so_replay;
++	bool					so_is_open_owner;
+ };
+ 
+ struct nfs4_openowner {
+-- 
+1.9.3
 
