@@ -1,115 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:58160 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752275AbaGCWbS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 18:31:18 -0400
-Received: by mail-qc0-f181.google.com with SMTP id x13so849117qcv.12
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jul 2014 15:31:17 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 3 Jul 2014 18:31:15 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 015/114] nfsd: Allow struct nfsd4_compound_state to
- cache the nfs4_client
-Message-ID: <20140703183115.397af08e@tlielax.poochiereds.net>
-In-Reply-To: <20140703213526.GG24322@fieldses.org>
-References: <1404143423-24381-1-git-send-email-jlayton@primarydata.com>
-	<1404143423-24381-16-git-send-email-jlayton@primarydata.com>
-	<20140703203259.GF24322@fieldses.org>
-	<20140703213526.GG24322@fieldses.org>
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="MP_/iruD5j=mZKYdaAoNrcG09TZ"
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:42763 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754392AbaG2Uez (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:55 -0400
+Received: by mail-qg0-f51.google.com with SMTP id a108so314566qge.10
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:54 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 17/38] nfsd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
+Date: Tue, 29 Jul 2014 16:34:00 -0400
+Message-Id: <1406666061-14175-18-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---MP_/iruD5j=mZKYdaAoNrcG09TZ
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-On Thu, 3 Jul 2014 17:35:26 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+Ensure that all the callers put the open stateid after use.
+Necessary step toward client_mutex removal.
 
-> On Thu, Jul 03, 2014 at 04:32:59PM -0400, J. Bruce Fields wrote:
-> > On Mon, Jun 30, 2014 at 11:48:44AM -0400, Jeff Layton wrote:
-> > > We want to use the nfsd4_compound_state to cache the nfs4_client in
-> > > order to optimise away extra lookups of the clid.
-> > > 
-> > > In the v4.0 case, we use this to ensure that we only have to look up the
-> > > client at most once per compound for each call into lookup_clientid. For
-> > > v4.1+ we set the pointer in the cstate during SEQUENCE processing so we
-> > > should never need to do a search for it.
-> > 
-> > The connectathon locking test is failing for me in the nfsv4/krb5i case
-> > as of this commit.
-> > 
-> > Which makes no sense to me whatsoever, so it's entirely possible this is
-> > some unrelated problem on my side.  I'll let you know when I've figured
-> > out anything more.
-> 
-> It's intermittent.
-> 
-> I've reproduced it on the previous commit so I know at least that this
-> one isn't at fault.
-> 
-> I doubt it's really dependent on krb5i, at most that's probably just
-> making it more likely to reproduce.
-> 
-> --b.
-
-Bruce,
-
-Does this patch help? I suspect this is where the bug crept in, but I'm
-unclear on why it would be intermittent...
-
-FWIW, this all gets cleaned up in a later patch that changes how the
-refcounting on lock and openowners works.
-
--- 
-Jeff Layton <jlayton@primarydata.com>
-
---MP_/iruD5j=mZKYdaAoNrcG09TZ
-Content-Type: text/x-patch
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename=0001-nfsd-fix-lock-stateid-cleanup-on-error-in-nfsd4_lock.patch
-
->From 84884320b983eaeb68c652de8fe4b48aad4052c3 Mon Sep 17 00:00:00 2001
-From: Jeff Layton <jlayton@primarydata.com>
-Date: Thu, 3 Jul 2014 18:20:31 -0400
-Subject: [PATCH] nfsd: fix lock stateid cleanup on error in nfsd4_lock
-
-commit 43a1b041e3b changed nfsd4_lock to call release_lockowner_if_empty
-if the the lock stateid was new and the function was going to return an
-error.
-
-This is wrong. The lockowner will never be empty in that situation since
-it still has the new lock stateid attached to it. Change it to call
-release_lock_stateid instead, which will destroy the lock stateid and
-then release the lockowner if it's empty at that point.
-
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Reported-by: J. Bruce Fields <bfields@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index a22c73f14a17..b2ea0a06fbf2 100644
+index 5e31bc6a03a6..7fa25be7ef2e 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4600,7 +4600,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+@@ -4405,6 +4405,8 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
+ 						NFS4_OPEN_STID, stpp, nn);
+ 	if (status)
+ 		return status;
++	/* FIXME: move into nfs4_preprocess_seqid_op */
++	atomic_inc(&(*stpp)->st_stid.sc_count);
+ 	oo = openowner((*stpp)->st_stateowner);
+ 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
+ 		return nfserr_bad_stateid;
+@@ -4509,12 +4511,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	if (!test_access(od->od_share_access, stp)) {
+ 		dprintk("NFSD: access not a subset of current bitmap: 0x%hhx, input access=%08x\n",
+ 			stp->st_access_bmap, od->od_share_access);
+-		goto out;
++		goto put_stateid;
  	}
+ 	if (!test_deny(od->od_share_deny, stp)) {
+ 		dprintk("NFSD: deny not a subset of current bitmap: 0x%hhx, input deny=%08x\n",
+ 			stp->st_deny_bmap, od->od_share_deny);
+-		goto out;
++		goto put_stateid;
+ 	}
+ 	nfs4_stateid_downgrade(stp, od->od_share_access);
+ 
+@@ -4523,6 +4525,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&od->od_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ 	status = nfs_ok;
++put_stateid:
++	nfs4_put_stid(&stp->st_stid);
  out:
- 	if (status && new_state)
--		release_lockowner_if_empty(lock_sop);
-+		release_lock_stateid(lock_stp);
  	nfsd4_bump_seqid(cstate, status);
  	if (!cstate->replay_owner)
- 		nfs4_unlock_state();
+@@ -4883,6 +4887,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfs4_openowner *open_sop = NULL;
+ 	struct nfs4_lockowner *lock_sop = NULL;
+ 	struct nfs4_ol_stateid *lock_stp = NULL;
++	struct nfs4_ol_stateid *open_stp = NULL;
+ 	struct nfs4_file *fp;
+ 	struct file *filp = NULL;
+ 	struct file_lock *file_lock = NULL;
+@@ -4910,8 +4915,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfs4_lock_state();
+ 
+ 	if (lock->lk_is_new) {
+-		struct nfs4_ol_stateid *open_stp = NULL;
+-
+ 		if (nfsd4_has_session(cstate))
+ 			/* See rfc 5661 18.10.3: given clientid is ignored: */
+ 			memcpy(&lock->v.new.clientid,
+@@ -5039,6 +5042,8 @@ out:
+ 		fput(filp);
+ 	if (lock_stp)
+ 		nfs4_put_stid(&lock_stp->st_stid);
++	if (open_stp)
++		nfs4_put_stid(&open_stp->st_stid);
+ 	if (status && new_state)
+ 		release_lock_stateid(lock_stp);
+ 	nfsd4_bump_seqid(cstate, status);
 -- 
 1.9.3
 
-
---MP_/iruD5j=mZKYdaAoNrcG09TZ--
