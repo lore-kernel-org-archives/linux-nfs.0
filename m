@@ -1,56 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:62944 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753619AbaGOOvO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 10:51:14 -0400
-Received: by mail-qc0-f173.google.com with SMTP id c9so5065432qcz.32
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Jul 2014 07:51:14 -0700 (PDT)
-Date: Tue, 15 Jul 2014 10:51:11 -0400
-From: Tejun Heo <tj@kernel.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH/RFC] NFS: state manager thread must start running.
-Message-ID: <20140715145111.GA18661@htj.dyndns.org>
-References: <20140715163942.1d94304f@notabene.brown>
- <20140715074942.GA6166@infradead.org>
- <20140715181317.2de14c51@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140715181317.2de14c51@notabene.brown>
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:58825 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754396AbaG2UfW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:35:22 -0400
+Received: by mail-qg0-f51.google.com with SMTP id a108so315361qge.10
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:35:22 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 35/38] nfsd: close potential race in nfsd4_free_stateid
+Date: Tue, 29 Jul 2014 16:34:18 -0400
+Message-Id: <1406666061-14175-36-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Neil.
+Once we remove the client_mutex, it'll be possible for the sc_type of a
+lock stateid to change after it's found and checked, but before we can
+go to destroy it. If that happens, we can end up putting the persistent
+reference to the stateid more than once, and unhash it more than once.
 
-On Tue, Jul 15, 2014 at 06:13:17PM +1000, NeilBrown wrote:
-> Could do that (or per-client) but it doesn't really buy us anything does it?
+Fix this by unhashing the lock stateid prior to dropping the cl_lock but
+after finding it.
 
-It does buy some.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 21 +++++++++------------
+ 1 file changed, 9 insertions(+), 12 deletions(-)
 
-1. The kworker threads are more likely to be cache-hot than explicit
-   kthreads.
-
-2. Workqueue is a lot eaiser to get right in terms of synchronization
-   and freezing.
-
-3. Workqueue mandates well-defined boundaries between separate
-   execution instances which often makes it a lot easier to implement
-   and update kernel-wide features such as like freezer and runtime
-   kernel patching.
-
-> The state manager assumes it is single threads, so it would need to be
-> a single-threaded workqueue with always at least one thread running.
-> That is much the same as a kthread.
-> 
-> And then there is that fact that the current code explicitly enabled SIGKILL
-> and maybe that is important.
-
-If SIGKILL handling is mandatory (really?), kthread_worker can be used
-for #2 and #3.
-
-Thanks.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9358cbe2283d..9c7dcbb68094 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4397,17 +4397,6 @@ unlock_state:
+ 	return status;
+ }
+ 
+-static __be32
+-nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+-{
+-	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
+-
+-	if (check_for_locks(stp->st_stid.sc_file, lo))
+-		return nfserr_locks_held;
+-	release_lock_stateid(stp);
+-	return nfs_ok;
+-}
+-
+ /*
+  * Test if the stateid is valid
+  */
+@@ -4434,6 +4423,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	stateid_t *stateid = &free_stateid->fr_stateid;
+ 	struct nfs4_stid *s;
+ 	struct nfs4_delegation *dp;
++	struct nfs4_ol_stateid *stp;
+ 	struct nfs4_client *cl = cstate->session->se_client;
+ 	__be32 ret = nfserr_bad_stateid;
+ 
+@@ -4456,8 +4446,15 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 		if (ret)
+ 			break;
++		stp = openlockstateid(s);
++		ret = nfserr_locks_held;
++		if (check_for_locks(stp->st_stid.sc_file,
++				    lockowner(stp->st_stateowner)))
++			break;
++		unhash_lock_stateid(stp);
+ 		spin_unlock(&cl->cl_lock);
+-		ret = nfsd4_free_lock_stateid(openlockstateid(s));
++		nfs4_put_stid(s);
++		ret = nfs_ok;
+ 		goto out;
+ 	case NFS4_REVOKED_DELEG_STID:
+ 		dp = delegstateid(s);
 -- 
-tejun
+1.9.3
+
