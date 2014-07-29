@@ -1,109 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38651 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751090AbaGVPAH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Jul 2014 11:00:07 -0400
-Date: Tue, 22 Jul 2014 11:00:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, hch@infradead.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 10/10] nfsd: give block_delegation and
- delegation_blocked its own spinlock
-Message-ID: <20140722150000.GO8438@fieldses.org>
-References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
- <1405696416-32585-11-git-send-email-jlayton@primarydata.com>
- <20140721170254.0289ab9f@notabene.brown>
- <20140721074412.4d9be086@tlielax.poochiereds.net>
- <20140722064049.6478e74d@notabene.brown>
- <20140721211757.GL8438@fieldses.org>
- <20140722085025.00ca48cb@notabene.brown>
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:39638 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754119AbaG2VYs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:24:48 -0400
+Subject: [PATCH v5 11/21] xprtrdma: Reset FRMRs when FAST_REG_MR is flushed
+ by a disconnect
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Anna.Schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 29 Jul 2014 17:24:45 -0400
+Message-ID: <20140729212445.2812.69481.stgit@manet.1015granger.net>
+In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
+References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140722085025.00ca48cb@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 22, 2014 at 08:50:25AM +1000, NeilBrown wrote:
-> On Mon, 21 Jul 2014 17:17:57 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Tue, Jul 22, 2014 at 06:40:49AM +1000, NeilBrown wrote:
-> > > On Mon, 21 Jul 2014 07:44:12 -0400 Jeff Layton <jeff.layton@primarydata.com>
-> > > wrote:
-> > > 
-> > > > On Mon, 21 Jul 2014 17:02:54 +1000
-> > > > NeilBrown <neilb@suse.de> wrote:
-> > > 
-> > > > > >  	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
-> > > > > >  
-> > > > > >  	__set_bit(hash&255, bd->set[bd->new]);
-> > > > > >  	__set_bit((hash>>8)&255, bd->set[bd->new]);
-> > > > > >  	__set_bit((hash>>16)&255, bd->set[bd->new]);
-> > > > > > +	spin_lock(&blocked_delegations_lock);
-> > > > > 
-> > > > > __set_bit isn't atomic.  The spin_lock should be taken *before* these
-> > > > > __set_bit() calls.
-> > > > > 
-> > > > > Otherwise, looks fine.
-> > > > > 
-> > > > > Thanks,
-> > > > > NeilBrown
-> > > > > 
-> > > > > 
-> > > > 
-> > > > Ok. I guess the worry is that we could end up setting bits in the
-> > > > middle of swapping the two fields? Makes sense -- fixed in my repo.
-> > > 
-> > > It is more subtle than that.
-> > > __set_bit() will:
-> > >   read a value from memory to a register
-> > >   set a bit in the register
-> > >   write the register back out to memory
-> > > 
-> > > If two threads both run __set_bit on the same word of memory at the same
-> > > time, one of the updates can get lost.
-> > > set_bit() (no underscore) performs an atomic RMW to avoid this, but is more
-> > > expensive.
-> > > spin_lock() obviously ensures the required exclusion and as we are going to
-> > > take the lock anyway we may as well take it before setting bits so we can use
-> > > the non-atomic (cheaper) __set_bit function.
-> > > 
-> > > > I'll send out the updated set later today (it also includes a few nits
-> > > > that HCH pointed out last week).
-> > > > 
-> > > > As a side note...I wonder how much we'll get in the way of false
-> > > > positives with this scheme?
-> > > 
-> > > If a future version of NFSv4 could allow delegations to be granted while a
-> > > file is open (oh, it seems you are the only client using this file at the
-> > > moment, you can treat this "open" as a delegation if you like) a few false
-> > > positives would be a complete non-issue.
-> > 
-> > For what it's worth, I think 4.1 provides what you're asking for here;
-> > see
-> > 
-> > 	http://tools.ietf.org/html/rfc5661#section-20.7
-> > 
-> > and the discussion of the various WANT_ flags in
-> > 
-> > 	http://tools.ietf.org/html/rfc5661#section-18.16.3
-> > 
-> > As far as I know none of that is implemented yet.
-> > 
-> > --b.
-> 
-> I guess I should really read the 4.1 (and 4.2) spec some day....
-> Though the 20.7 section seems to be about saying "resources in general are
-> available" rather than "this  specific file that you wanted a delegation for
-> but didn't get one is how up for delegation"....
-> But I only had a quick read so I might have missed something.
+FAST_REG_MR Work Requests update a Memory Region's rkey. Rkey's are
+used to block unwanted access to the memory controlled by an MR. The
+rkey is passed to the receiver (the NFS server, in our case), and is
+also used by xprtrdma to invalidate the MR when the RPC is complete.
 
-It was me that missed something, looks like CB_PUSH_DELEG is what you
-actually want, not CB_RECALL_OBJ_AVAIL:
+When a FAST_REG_MR Work Request is flushed after a transport
+disconnect, xprtrdma cannot tell whether the WR actually hit the
+adapter or not. So it is indeterminant at that point whether the
+existing rkey is still valid.
 
-	http://tools.ietf.org/html/rfc5661#section-20.5
+After the transport connection is re-established, the next
+FAST_REG_MR or LOCAL_INV Work Request against that MR can sometimes
+fail because the rkey value does not match what xprtrdma expects.
+
+The only reliable way to recover in this case is to deregister and
+register the MR before it is used again. These operations can be
+done only in a process context, so handle it in the transport
+connect worker.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+Tested-by: Shirley Ma <shirley.ma@oracle.com>
+Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+---
+ net/sunrpc/xprtrdma/verbs.c     |   67 ++++++++++++++++++++++++++++++++++++++-
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 66 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index addda7f..4bb1209 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -61,6 +61,8 @@
+ # define RPCDBG_FACILITY	RPCDBG_TRANS
+ #endif
  
-NFS4.1: it's the whole bell-and-whistle orchestra.
++static void rpcrdma_reset_frmrs(struct rpcrdma_ia *);
++
+ /*
+  * internal functions
+  */
+@@ -152,8 +154,10 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
+ 
+ 	if (wc->wr_id == 0ULL)
+ 		return;
+-	if (wc->status != IB_WC_SUCCESS)
++	if (wc->status != IB_WC_SUCCESS) {
++		frmr->r.frmr.fr_state = FRMR_IS_STALE;
+ 		return;
++	}
+ 
+ 	if (wc->opcode == IB_WC_FAST_REG_MR)
+ 		frmr->r.frmr.fr_state = FRMR_IS_VALID;
+@@ -881,6 +885,9 @@ retry:
+ 				" status %i\n", __func__, rc);
+ 		rpcrdma_flush_cqs(ep);
+ 
++		if (ia->ri_memreg_strategy == RPCRDMA_FRMR)
++			rpcrdma_reset_frmrs(ia);
++
+ 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+ 		id = rpcrdma_create_id(xprt, ia,
+ 				(struct sockaddr *)&xprt->rx_data.addr);
+@@ -1256,6 +1263,62 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 	kfree(buf->rb_pool);
+ }
+ 
++/* After a disconnect, a flushed FAST_REG_MR can leave an FRMR in
++ * an unusable state. Find FRMRs in this state and dereg / reg
++ * each.  FRMRs that are VALID and attached to an rpcrdma_req are
++ * also torn down.
++ *
++ * This gives all in-use FRMRs a fresh rkey and leaves them INVALID.
++ *
++ * This is invoked only in the transport connect worker in order
++ * to serialize with rpcrdma_register_frmr_external().
++ */
++static void
++rpcrdma_reset_frmrs(struct rpcrdma_ia *ia)
++{
++	struct rpcrdma_xprt *r_xprt =
++				container_of(ia, struct rpcrdma_xprt, rx_ia);
++	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
++	struct list_head *pos;
++	struct rpcrdma_mw *r;
++	int rc;
++
++	list_for_each(pos, &buf->rb_all) {
++		r = list_entry(pos, struct rpcrdma_mw, mw_all);
++
++		if (r->r.frmr.fr_state == FRMR_IS_INVALID)
++			continue;
++
++		rc = ib_dereg_mr(r->r.frmr.fr_mr);
++		if (rc)
++			dprintk("RPC:       %s: ib_dereg_mr failed %i\n",
++				__func__, rc);
++		ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
++
++		r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
++					ia->ri_max_frmr_depth);
++		if (IS_ERR(r->r.frmr.fr_mr)) {
++			rc = PTR_ERR(r->r.frmr.fr_mr);
++			dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
++				" failed %i\n", __func__, rc);
++			continue;
++		}
++		r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
++					ia->ri_id->device,
++					ia->ri_max_frmr_depth);
++		if (IS_ERR(r->r.frmr.fr_pgl)) {
++			rc = PTR_ERR(r->r.frmr.fr_pgl);
++			dprintk("RPC:       %s: "
++				"ib_alloc_fast_reg_page_list "
++				"failed %i\n", __func__, rc);
++
++			ib_dereg_mr(r->r.frmr.fr_mr);
++			continue;
++		}
++		r->r.frmr.fr_state = FRMR_IS_INVALID;
++	}
++}
++
+ /* "*mw" can be NULL when rpcrdma_buffer_get_mrs() fails, leaving
+  * some req segments uninitialized.
+  */
+@@ -1572,7 +1635,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
+ 		__func__, mw, i);
+ 
+-	if (unlikely(frmr->fr_state == FRMR_IS_VALID)) {
++	if (unlikely(frmr->fr_state != FRMR_IS_INVALID)) {
+ 		dprintk("RPC:       %s: frmr %x left valid, posting invalidate.\n",
+ 			__func__, mr->rkey);
+ 		/* Invalidate before using. */
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index c1d8652..1ee6db3 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -161,6 +161,7 @@ struct rpcrdma_rep {
+ enum rpcrdma_frmr_state {
+ 	FRMR_IS_INVALID,	/* ready to be used */
+ 	FRMR_IS_VALID,		/* in use */
++	FRMR_IS_STALE,		/* failed completion */
+ };
+ 
+ struct rpcrdma_frmr {
 
---b.
