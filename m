@@ -1,52 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:44044 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751853AbaGJMTO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 08:19:14 -0400
-Received: by mail-qg0-f52.google.com with SMTP id f51so264838qge.25
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 05:19:13 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 10 Jul 2014 08:19:12 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 015/100] nfsd: clean up reset_union_bmap_deny
-Message-ID: <20140710081912.4af7c35b@tlielax.poochiereds.net>
-In-Reply-To: <20140710103100.GA6935@infradead.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-	<1404842668-22521-16-git-send-email-jlayton@primarydata.com>
-	<20140710103100.GA6935@infradead.org>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:39258 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754188AbaG2V0H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:26:07 -0400
+Subject: [PATCH v5 20/21] xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION
+ macro
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Anna.Schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 29 Jul 2014 17:26:04 -0400
+Message-ID: <20140729212604.2812.98504.stgit@manet.1015granger.net>
+In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
+References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 10 Jul 2014 03:31:00 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+Clean up.
 
-> >  static void
-> > -reset_union_bmap_deny(unsigned long deny, struct nfs4_ol_stateid *stp)
-> > +reset_union_bmap_deny(u32 deny, struct nfs4_ol_stateid *stp)
-> >  {
-> >  	int i;
-> > -	for (i = 0; i < 4; i++) {
-> > +
-> > +	for (i = 1; i < 4; i++) {
-> >  		if ((i & deny) != i)
-> >  			clear_deny(i, stp);
-> >  	}
-> 
-> 
-> Couldn't this simply be written as:
-> 
-> 	stp->st_deny_bmap &= ~deny;
-> 
-> and inlined into the caller?
+RPCRDMA_PERSISTENT_REGISTRATION was a compile-time switch between
+RPCRDMA_REGISTER mode and RPCRDMA_ALLPHYSICAL mode.  Since
+RPCRDMA_REGISTER has been removed, there's no need for the extra
+conditional compilation.
 
-No, the st_deny_bmap does not hold the NFS_SHARE_DENY_* bits
-themselves. It sets a bit for each NFS_SHARE_DENY_* mode that the
-stateid has used. The difference is subtle, but significant.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+Tested-by: Shirley Ma <shirley.ma@oracle.com>
+Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+---
+ include/linux/sunrpc/xprtrdma.h |    2 --
+ net/sunrpc/xprtrdma/verbs.c     |   13 -------------
+ 2 files changed, 15 deletions(-)
 
-The rationale for that is in the comments above bmap_to_share_mode.
+diff --git a/include/linux/sunrpc/xprtrdma.h b/include/linux/sunrpc/xprtrdma.h
+index c2f04e1..64a0a0a 100644
+--- a/include/linux/sunrpc/xprtrdma.h
++++ b/include/linux/sunrpc/xprtrdma.h
+@@ -62,8 +62,6 @@
+ #define RPCRDMA_INLINE_PAD_THRESH  (512)/* payload threshold to pad (bytes) */
+ 
+ /* memory registration strategies */
+-#define RPCRDMA_PERSISTENT_REGISTRATION (1)
+-
+ enum rpcrdma_memreg {
+ 	RPCRDMA_BOUNCEBUFFERS = 0,
+ 	RPCRDMA_REGISTER,
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index a1b70fc..699e62d 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -561,12 +561,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		if (!ia->ri_id->device->alloc_fmr) {
+ 			dprintk("RPC:       %s: MTHCAFMR registration "
+ 				"not supported by HCA\n", __func__);
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+-#else
+-			rc = -ENOMEM;
+-			goto out2;
+-#endif
+ 		}
+ 	}
+ 
+@@ -581,20 +576,16 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	switch (memreg) {
+ 	case RPCRDMA_FRMR:
+ 		break;
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 	case RPCRDMA_ALLPHYSICAL:
+ 		mem_priv = IB_ACCESS_LOCAL_WRITE |
+ 				IB_ACCESS_REMOTE_WRITE |
+ 				IB_ACCESS_REMOTE_READ;
+ 		goto register_setup;
+-#endif
+ 	case RPCRDMA_MTHCAFMR:
+ 		if (ia->ri_have_dma_lkey)
+ 			break;
+ 		mem_priv = IB_ACCESS_LOCAL_WRITE;
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 	register_setup:
+-#endif
+ 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
+ 		if (IS_ERR(ia->ri_bind_mem)) {
+ 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
+@@ -1902,7 +1893,6 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 
+ 	switch (ia->ri_memreg_strategy) {
+ 
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 	case RPCRDMA_ALLPHYSICAL:
+ 		rpcrdma_map_one(ia, seg, writing);
+ 		seg->mr_rkey = ia->ri_bind_mem->rkey;
+@@ -1910,7 +1900,6 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 		seg->mr_nsegs = 1;
+ 		nsegs = 1;
+ 		break;
+-#endif
+ 
+ 	/* Registration using frmr registration */
+ 	case RPCRDMA_FRMR:
+@@ -1940,13 +1929,11 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 
+ 	switch (ia->ri_memreg_strategy) {
+ 
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 	case RPCRDMA_ALLPHYSICAL:
+ 		read_lock(&ia->ri_qplock);
+ 		rpcrdma_unmap_one(ia, seg);
+ 		read_unlock(&ia->ri_qplock);
+ 		break;
+-#endif
+ 
+ 	case RPCRDMA_FRMR:
+ 		rc = rpcrdma_deregister_frmr_external(seg, ia, r_xprt);
 
--- 
-Jeff Layton <jlayton@primarydata.com>
