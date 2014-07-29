@@ -1,62 +1,23 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:61806 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754386AbaG2Uev (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:51 -0400
-Received: by mail-qa0-f41.google.com with SMTP id j7so271001qaq.28
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:50 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 14/38] nfsd: nfsd4_process_open2() must reference the open stateid
-Date: Tue, 29 Jul 2014 16:33:57 -0400
-Message-Id: <1406666061-14175-15-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from g4t3426.houston.hp.com ([15.201.208.54]:59694 "EHLO
+	g4t3426.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751465AbaG2TSz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 15:18:55 -0400
+Received: from G4W6310.americas.hpqcorp.net (g4w6310.houston.hp.com [16.210.26.217])
+	(using TLSv1 with cipher AES128-SHA (128/128 bits))
+	(No client certificate requested)
+	by g4t3426.houston.hp.com (Postfix) with ESMTPS id 287121DD
+	for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 19:18:55 +0000 (UTC)
+From: "McEvoy, James" <james.mcevoy@hp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: NFSv4.1 ACL reference implementation
+Date: Tue, 29 Jul 2014 19:18:03 +0000
+Message-ID: <6301806E96421841896741228C6B1A2764A7C51F@G4W3216.americas.hpqcorp.net>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Is there a working NFSv4.1 reference implementation available and are there any instructs on how to build/install it? 
 
-Ensure that nfsd4_process_open2() keeps a reference to the open
-stateid until it is done working with it. Necessary step toward
-client_mutex removal.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 4 ++++
- 1 file changed, 4 insertions(+)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2020303fd100..f8e181fda015 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2996,6 +2996,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
- 	struct nfs4_openowner *oo = open->op_openowner;
- 
-+	atomic_inc(&stp->st_stid.sc_count);
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_locks);
- 	stp->st_stateowner = &oo->oo_owner;
-@@ -3376,6 +3377,7 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
- 			continue;
- 		if (local->st_stateowner == &oo->oo_owner) {
- 			ret = local;
-+			atomic_inc(&ret->st_stid.sc_count);
- 			break;
- 		}
- 	}
-@@ -3836,6 +3838,8 @@ out:
- 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
- 	if (dp)
- 		nfs4_put_stid(&dp->dl_stid);
-+	if (stp)
-+		nfs4_put_stid(&stp->st_stid);
- 
- 	return status;
- }
--- 
-1.9.3
-
+  --jim
