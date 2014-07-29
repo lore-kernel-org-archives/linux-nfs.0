@@ -1,56 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:46002 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752536AbaGVSOt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 14:14:49 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: <linux-rdma@vger.kernel.org>
-Cc: <linux-nfs@vger.kernel.org>, "'Shirley Ma'" <shirley.ma@oracle.com>,
-        "'Chuck Lever'" <chuck.lever@oracle.com>,
-        "'Veeresh U. Kokatnur'" <veereshuk@chelsio.com>,
-        "'Indranil Choudhury'" <indranil@chelsio.com>
-Subject: NFSRDMA test branch update to 3.16-rc6
-Date: Tue, 22 Jul 2014 13:14:52 -0500
-Message-ID: <006601cfa5d8$d5331f10$7f995d30$@opengridcomputing.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:55033 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754366AbaG2Uei (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:38 -0400
+Received: by mail-qg0-f46.google.com with SMTP id z60so279353qgd.33
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:37 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 05/38] nfsd4: use cl_lock to synchronize all stateid idr calls
+Date: Tue, 29 Jul 2014 16:33:48 -0400
+Message-Id: <1406666061-14175-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
- Hey all,
+Currently, this is serialized by the client_mutex, which is slated for
+removal. Add finer-grained locking here. Also, do some cleanup around
+find_stateid to prepare for taking references.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 41 ++++++++++++++++++++++++++++++-----------
+ 1 file changed, 30 insertions(+), 11 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3c8f45f18186..e45a45d12954 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -467,7 +467,6 @@ static void nfs4_file_put_access(struct nfs4_file *fp, u32 access)
+ static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
+ 					 struct kmem_cache *slab)
+ {
+-	struct idr *stateids = &cl->cl_stateids;
+ 	struct nfs4_stid *stid;
+ 	int new_id;
  
- I've updated the for-test branch of git://git.linux-nfs.org/projects/swise/linux.git.  It
-is based on tag v3.16-rc6 and has these additional patches including v4 of Chuck's client
-series:
-
-[swise@build linux]$ git shortlog v3.16-rc6.. stevo-nfs/for-test
-Chuck Lever (23):
-      xprtrdma: Fix panic in rpcrdma_register_frmr_external()
-      xprtrdma: Protect ia->ri_id when unmapping/invalidating MRs
-      xprtrdma: Limit data payload size for ALLPHYSICAL
-      xprtrdma: Update rkeys after transport reconnect
-      xprtrdma: On disconnect, don't ignore pending CQEs
-      xprtrdma: Don't invalidate FRMRs if registration fails
-      xprtrdma: Unclutter struct rpcrdma_mr_seg
-      xprtrdma: Back off rkey when FAST_REG_MR fails
-      xprtrdma: Chain together all MWs in same buffer pool
-      xprtrdma: Properly handle exhaustion of the rb_mws list
-      xprtrdma: Reset FRMRs when FAST_REG_MR is flushed by a disconnect
-      xprtrdma: Reset FRMRs after a flushed LOCAL_INV Work Request
-      xprtrdma: Don't post a LOCAL_INV in rpcrdma_register_frmr_external()
-      xprtrdma: Disable completions for FAST_REG_MR Work Requests
-      xprtrdma: Disable completions for LOCAL_INV Work Requests
-      xprtrdma: Rename frmr_wr
-      xprtrdma: Allocate each struct rpcrdma_mw separately
-      xprtrdma: Schedule reply tasklet once per upcall
-      xprtrdma: Make rpcrdma_ep_disconnect() return void
-      xprtrdma: Remove RPCRDMA_PERSISTENT_REGISTRATION macro
-      xprtrdma: Handle additional connection events
-      [v2,1/2] svcrdma: Increase credit limit to 32
-      [v2,2/2] svcrdma: Add zero padding if the client doesn't send it
-
-Steve Wise (1):
-      svcrdma: send_write() must not overflow the device's max sge
-
+@@ -475,7 +474,11 @@ static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl,
+ 	if (!stid)
+ 		return NULL;
+ 
+-	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_KERNEL);
++	idr_preload(GFP_KERNEL);
++	spin_lock(&cl->cl_lock);
++	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 0, 0, GFP_NOWAIT);
++	spin_unlock(&cl->cl_lock);
++	idr_preload_end();
+ 	if (new_id < 0)
+ 		goto out_free;
+ 	stid->sc_client = cl;
+@@ -635,9 +638,12 @@ nfs4_put_stid(struct nfs4_stid *s)
+ 	struct nfs4_file *fp = s->sc_file;
+ 	struct nfs4_client *clp = s->sc_client;
+ 
+-	if (!atomic_dec_and_test(&s->sc_count))
++	might_lock(&clp->cl_lock);
++
++	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock))
+ 		return;
+ 	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
++	spin_unlock(&clp->cl_lock);
+ 	s->sc_free(s);
+ 	if (fp)
+ 		put_nfs4_file(fp);
+@@ -1652,7 +1658,8 @@ static void gen_confirm(struct nfs4_client *clp)
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ }
+ 
+-static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
++static struct nfs4_stid *
++find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ {
+ 	struct nfs4_stid *ret;
+ 
+@@ -1662,16 +1669,28 @@ static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
+ 	return ret;
+ }
+ 
+-static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
++static struct nfs4_stid *
++find_stateid(struct nfs4_client *cl, stateid_t *t)
++{
++	struct nfs4_stid *ret;
++
++	spin_lock(&cl->cl_lock);
++	ret = find_stateid_locked(cl, t);
++	spin_unlock(&cl->cl_lock);
++	return ret;
++}
++
++static struct nfs4_stid *
++find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
+ {
+ 	struct nfs4_stid *s;
+ 
+-	s = find_stateid(cl, t);
+-	if (!s)
+-		return NULL;
+-	if (typemask & s->sc_type)
+-		return s;
+-	return NULL;
++	spin_lock(&cl->cl_lock);
++	s = find_stateid_locked(cl, t);
++	if (s != NULL && !(typemask & s->sc_type))
++		s = NULL;
++	spin_unlock(&cl->cl_lock);
++	return s;
+ }
+ 
+ static struct nfs4_client *create_client(struct xdr_netobj name,
+-- 
+1.9.3
 
