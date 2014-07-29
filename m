@@ -1,59 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:61192 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754725AbaG3Bfr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:47 -0400
-Received: by mail-qg0-f53.google.com with SMTP id q107so656363qgd.40
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:47 -0700 (PDT)
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:58971 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754376AbaG2Ues (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:48 -0400
+Received: by mail-qg0-f51.google.com with SMTP id a108so271556qge.38
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:48 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH v3 38/38] nfsd: rename unhash_generic_stateid to unhash_ol_stateid
-Date: Tue, 29 Jul 2014 21:34:43 -0400
-Message-Id: <1406684083-19736-39-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 12/38] nfsd: Ensure that nfs4_open_delegation() references the delegation stateid
+Date: Tue, 29 Jul 2014 16:33:55 -0400
+Message-Id: <1406666061-14175-13-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...to better match other functions that deal with open/lock stateids.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Ensure that nfs4_open_delegation() keeps a reference to the delegation
+stateid until it is done working with it. Necessary step toward
+client_mutex removal.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/nfsd/nfs4state.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1f67a96c4941..52ec47de1185 100644
+index 65e20c4bc257..ddb6706e2046 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -949,7 +949,7 @@ static void nfs4_put_stateowner(struct nfs4_stateowner *sop)
- 	sop->so_ops->so_free(sop);
- }
+@@ -674,6 +674,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	lockdep_assert_held(&state_lock);
+ 	lockdep_assert_held(&fp->fi_lock);
  
--static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
-+static void unhash_ol_stateid(struct nfs4_ol_stateid *stp)
- {
- 	struct nfs4_file *fp = stp->st_stid.sc_file;
- 
-@@ -1014,7 +1014,7 @@ static void unhash_lock_stateid(struct nfs4_ol_stateid *stp)
- 	lockdep_assert_held(&oo->oo_owner.so_client->cl_lock);
- 
- 	list_del_init(&stp->st_locks);
--	unhash_generic_stateid(stp);
-+	unhash_ol_stateid(stp);
- 	unhash_stid(&stp->st_stid);
- }
- 
-@@ -1095,7 +1095,7 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp,
- {
- 	lockdep_assert_held(&stp->st_stid.sc_client->cl_lock);
- 
--	unhash_generic_stateid(stp);
-+	unhash_ol_stateid(stp);
- 	release_open_stateid_locks(stp, reaplist);
- }
- 
++	atomic_inc(&dp->dl_stid.sc_count);
+ 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+@@ -3704,6 +3705,7 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
+ 	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
+ 		STATEID_VAL(&dp->dl_stid.sc_stateid));
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
++	nfs4_put_stid(&dp->dl_stid);
+ 	return;
+ out_no_deleg:
+ 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
 -- 
 1.9.3
 
