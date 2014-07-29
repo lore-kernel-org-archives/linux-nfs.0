@@ -1,68 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:64891 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932817AbaGQOmD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 10:42:03 -0400
-Received: by mail-qg0-f50.google.com with SMTP id q108so2108716qgd.9
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 07:42:01 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 17 Jul 2014 10:41:59 -0400
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] NFS: nfs4_lookup_revalidate need to report STALE
- inodes.
-Message-ID: <20140717104159.59ea2f6f@tlielax.poochiereds.net>
-In-Reply-To: <CAJfpegs+EzqtDTZEWTHP0b7HNM+4sFPN4KwsdEhEh6gabmdjWA@mail.gmail.com>
-References: <20140714151405.2fa06dd7@notabene.brown>
-	<20140714081455.69f55224@tlielax.poochiereds.net>
-	<20140714223513.47807c98@notabene.brown>
-	<20140714090028.6f04fd2c@tlielax.poochiereds.net>
-	<20140715085727.6fa12272@notabene.brown>
-	<20140714194738.5aafaf25@tlielax.poochiereds.net>
-	<20140717115024.1eb7433d@notabene.brown>
-	<20140717072241.2c1549a3@tlielax.poochiereds.net>
-	<CAJfpegs+EzqtDTZEWTHP0b7HNM+4sFPN4KwsdEhEh6gabmdjWA@mail.gmail.com>
+Received: from casper.infradead.org ([85.118.1.10]:39134 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751808AbaG2T55 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 15:57:57 -0400
+Date: Tue, 29 Jul 2014 21:57:54 +0200
+From: Peter Zijlstra <peterz@infradead.org>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Ingo Molnar <mingo@kernel.org>, linux-kernel@vger.kernel.org,
+        linux-arch@vger.kernel.org
+Subject: Re: [PATCH 1/3] SUNRPC: Reduce contention in svc_xprt_enqueue()
+Message-ID: <20140729195754.GQ3935@laptop>
+References: <1406260773-16231-1-git-send-email-trond.myklebust@primarydata.com>
+ <20140729193108.GC21091@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140729193108.GC21091@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 17 Jul 2014 14:52:00 +0200
-Miklos Szeredi <miklos@szeredi.hu> wrote:
-
-> On Thu, Jul 17, 2014 at 1:22 PM, Jeff Layton
-> <jeff.layton@primarydata.com> wrote:
+On Tue, Jul 29, 2014 at 03:31:08PM -0400, Bruce Fields wrote:
+> All three patches look good to me, thanks.
 > 
-> > What's so special about an EOPENSTALE return from finish_open that we
-> > need to handle retries in do_last? It seems like we could get rid of the
-> > stale_open label and just let do_filp_open handle it like we would
-> > an ESTALE return from any other spot in the function.
-> >
-> > Just for giggles, here's an RFC patch. It builds but I haven't tested
-> > it. It might also be possible to do some cleanup around saved_parent
-> > with this.
-> >
-> > Thoughts?
+> From private email, this:
 > 
-> EOPENSTALE is an optimization for the redoing only the last component.
-> It's the analogue of ->d_revalidate() failure, in which case lookup of
-> that component only is retried path components before that are not.
+> On Thu, Jul 24, 2014 at 11:59:31PM -0400, Trond Myklebust wrote:
+> > @@ -222,11 +223,12 @@ static void svc_xprt_received(struct svc_xprt *xprt)
+> >  	if (!test_bit(XPT_BUSY, &xprt->xpt_flags))
+> >  		return;
+> >  	/* As soon as we clear busy, the xprt could be closed and
+> > -	 * 'put', so we need a reference to call svc_xprt_enqueue with:
+> > +	 * 'put', so we need a reference to call svc_xprt_do_enqueue with:
+> >  	 */
+> >  	svc_xprt_get(xprt);
+> > +	smp_mb__before_clear_bit();
 > 
-> I'm not sure if it's a valid optimization, but if not, then we should
-> also consider doing LOOKUP_REVAL on the whole path on any
-> d_revalidate() failure as well.
+> triggered a warning about smp_mb__before_clear_bit noticed by the kbuild
+> robot.  Looks like that was due to
+> febdbfe8a91ce0d11939d4940b592eb0dba8d663 "arch: Prepare for
+> smp_mb__{before,after}_atomic()".
 > 
-> Thanks,
-> Miklos
+> You questioned whether deprecating smp_mb__{before,after}_clear_bit was
+> an unnecessary burden on people maintaining stable kernels or doing
+> backports more generally.  Cc'ing some addresses from that commit.
 
+I absolutely do not care one whit for that. The kernel lives, deal with
+it.
 
-Ok, that makes sense and it's seems like good enough reason to keep it
-as is for now. We can just drop my RFC patch...
+Memory barriers are hard enough, we do not need multiple versions of the
+same thing just to confuse people.
 
-Thanks,
--- 
-Jeff Layton <jlayton@primarydata.com>
+> Whatever--I'll probably just replace do the clear_bit->before_atomic
+> replacement and apply unless there's some objection.
+
+The old API was preserved to allow for non-flag-day migration to the new
+API. I should do a final sweep and then kill the old API.
+
+The conversion shrank the memory barrier API by 4 variants while
+covering more cases, which is an absolute win in my book.
