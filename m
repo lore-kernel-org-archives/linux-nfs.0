@@ -1,36 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:52254 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752949AbaGOHub (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 03:50:31 -0400
-Date: Tue, 15 Jul 2014 00:50:29 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 003/100] nfsd: Ensure stateids remain unique until
- they are freed
-Message-ID: <20140715075029.GA9479@infradead.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
- <1404842668-22521-4-git-send-email-jlayton@primarydata.com>
- <20140710112342.GB10893@infradead.org>
- <20140710084300.3ef4d466@tlielax.poochiereds.net>
- <20140714124551.391363a1@tlielax.poochiereds.net>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:48244 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754286AbaG2VYV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:24:21 -0400
+Subject: [PATCH v5 08/21] xprtrdma: Back off rkey when FAST_REG_MR fails
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Anna.Schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 29 Jul 2014 17:24:19 -0400
+Message-ID: <20140729212419.2812.56123.stgit@manet.1015granger.net>
+In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
+References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140714124551.391363a1@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 14, 2014 at 12:45:51PM -0400, Jeff Layton wrote:
-> I've been looking at this and I don't really see much in the way of
-> benefit from changing to a set of flags for that sort of thing. I don't
-> think it will materially improve the code.
-> 
-> Currently, we only rarely search for these "secondary" stateid types
-> (only in nfsd4_close), and if we add in a set of flags then we have to
-> worry about checking them in places where we're searching for "base"
-> stateid types today.
+If posting a FAST_REG_MR Work Reqeust fails, revert the rkey update
+to avoid subsequent IB_WC_MW_BIND_ERR completions.
 
-Ok.
+Suggested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 8bb7945..dc53ea2 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1574,6 +1574,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	if (rc) {
+ 		dprintk("RPC:       %s: failed ib_post_send for register,"
+ 			" status %i\n", __func__, rc);
++		ib_update_fast_reg_key(mr, --key);
+ 		goto out_err;
+ 	} else {
+ 		seg1->mr_rkey = mr->rkey;
 
