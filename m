@@ -1,47 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:64861 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751943AbaGNB5y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Jul 2014 21:57:54 -0400
-Received: by mail-qa0-f52.google.com with SMTP id j15so2719512qaq.39
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Jul 2014 18:57:54 -0700 (PDT)
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:52193 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754423AbaG2UfS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:35:18 -0400
+Received: by mail-qg0-f42.google.com with SMTP id j5so315563qga.1
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:35:17 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        Arnd Bergmann <arnd@arndb.de>,
-        Paul McKenney <paulmck@linux.vnet.ibm.com>
-Subject: [PATCH 1/7] sunrpc: remove __rcu annotation from struct gss_cl_ctx->gc_gss_ctx
-Date: Sun, 13 Jul 2014 21:57:38 -0400
-Message-Id: <1405303064-9102-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 32/38] nfsd: clean up and reorganize release_lockowner
+Date: Tue, 29 Jul 2014 16:34:15 -0400
+Message-Id: <1406666061-14175-33-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 5b22216e11f7 (nfs: __rcu annotations) added a __rcu annotation to
-the gc_gss_ctx field. I see no rationale for adding that though, as that
-field does not seem to be managed via RCU at all.
+Do more within the main loop, and simplify the function a bit. Also,
+there's no need to take a stateowner reference unless we're going to call
+release_lockowner.
 
-Cc: Arnd Bergmann <arnd@arndb.de>
-Cc: Paul McKenney <paulmck@linux.vnet.ibm.com>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- include/linux/sunrpc/auth_gss.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 49 ++++++++++++++++++-------------------------------
+ 1 file changed, 18 insertions(+), 31 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
-index cbc6875fb9cf..36eebc451b41 100644
---- a/include/linux/sunrpc/auth_gss.h
-+++ b/include/linux/sunrpc/auth_gss.h
-@@ -69,7 +69,7 @@ struct gss_cl_ctx {
- 	enum rpc_gss_proc	gc_proc;
- 	u32			gc_seq;
- 	spinlock_t		gc_seq_lock;
--	struct gss_ctx __rcu	*gc_gss_ctx;
-+	struct gss_ctx		*gc_gss_ctx;
- 	struct xdr_netobj	gc_wire_ctx;
- 	struct xdr_netobj	gc_acceptor;
- 	u32			gc_win;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4af4e5eff491..cd7d7df03afa 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5424,8 +5424,8 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			struct nfsd4_release_lockowner *rlockowner)
+ {
+ 	clientid_t *clid = &rlockowner->rl_clientid;
+-	struct nfs4_stateowner *sop = NULL, *tmp;
+-	struct nfs4_lockowner *lo;
++	struct nfs4_stateowner *sop;
++	struct nfs4_lockowner *lo = NULL;
+ 	struct nfs4_ol_stateid *stp;
+ 	struct xdr_netobj *owner = &rlockowner->rl_owner;
+ 	unsigned int hashval = ownerstr_hashval(owner);
+@@ -5442,45 +5442,32 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	if (status)
+ 		goto out;
+ 
+-	status = nfserr_locks_held;
+-
+ 	clp = cstate->clp;
+ 	/* Find the matching lock stateowner */
+ 	spin_lock(&clp->cl_lock);
+-	list_for_each_entry(tmp, &clp->cl_ownerstr_hashtbl[hashval],
++	list_for_each_entry(sop, &clp->cl_ownerstr_hashtbl[hashval],
+ 			    so_strhash) {
+-		if (tmp->so_is_open_owner)
+-			continue;
+-		if (same_owner_str(tmp, owner)) {
+-			sop = tmp;
+-			atomic_inc(&sop->so_count);
+-			break;
+-		}
+-	}
+ 
+-	/* No matching owner found, maybe a replay? Just declare victory... */
+-	if (!sop) {
+-		spin_unlock(&clp->cl_lock);
+-		status = nfs_ok;
+-		goto out;
+-	}
++		if (sop->so_is_open_owner || !same_owner_str(sop, owner))
++			continue;
+ 
+-	lo = lockowner(sop);
+-	/* see if there are still any locks associated with it */
+-	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+-		if (check_for_locks(stp->st_stid.sc_file, lo)) {
+-			spin_unlock(&clp->cl_lock);
+-			goto out;
++		/* see if there are still any locks associated with it */
++		lo = lockowner(sop);
++		list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
++			if (check_for_locks(stp->st_stid.sc_file, lo)) {
++				status = nfserr_locks_held;
++				spin_unlock(&clp->cl_lock);
++				goto out;
++			}
+ 		}
++
++		atomic_inc(&sop->so_count);
++		break;
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+-
+-	status = nfs_ok;
+-	sop = NULL;
+-	release_lockowner(lo);
++	if (lo)
++		release_lockowner(lo);
+ out:
+-	if (sop)
+-		nfs4_put_stateowner(sop);
+ 	nfs4_unlock_state();
+ 	return status;
+ }
 -- 
 1.9.3
 
