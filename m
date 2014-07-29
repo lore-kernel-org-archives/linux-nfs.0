@@ -1,56 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:58361 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755402AbaGHSGc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:32 -0400
-Received: by mail-qc0-f177.google.com with SMTP id r5so5509714qcx.8
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:32 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 087/100] nfsd: Remove nfs4_lock_state(): nfs4_preprocess_stateid_op()
-Date: Tue,  8 Jul 2014 14:04:15 -0400
-Message-Id: <1404842668-22521-88-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:58872 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752073AbaG2VXT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:23:19 -0400
+Subject: [PATCH v5 01/21] xprtrdma: Fix panic in
+ rpcrdma_register_frmr_external()
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Anna.Schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 29 Jul 2014 17:23:17 -0400
+Message-ID: <20140729212317.2812.84498.stgit@manet.1015granger.net>
+In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
+References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+seg1->mr_nsegs is not yet initialized when it is used to unmap
+segments during an error exit. Use the same unmapping logic for
+all error exits.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+"if (frmr_wr.wr.fast_reg.length < len) {" used to be a BUG_ON check.
+The broken code will never be executed under normal operation.
+
+Fixes: c977dea (xprtrdma: Remove BUG_ON() call sites)
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+Tested-by: Shirley Ma <shirley.ma@oracle.com>
+Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
 ---
- fs/nfsd/nfs4state.c | 6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6342fb55ced4..5410b7ee2273 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4464,13 +4464,11 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
- 		return check_special_stateids(net, current_fh, stateid, flags);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 13dbd1c..78bd7c6 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1545,9 +1545,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
+ 	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
+ 	if (frmr_wr.wr.fast_reg.length < len) {
+-		while (seg1->mr_nsegs--)
+-			rpcrdma_unmap_one(ia, seg++);
+-		return -EIO;
++		rc = -EIO;
++		goto out_err;
+ 	}
  
--	nfs4_lock_state();
--
- 	status = nfsd4_lookup_stateid(cstate, stateid,
- 				NFS4_DELEG_STID|NFS4_OPEN_STID|NFS4_LOCK_STID,
- 				&s, nn);
- 	if (status)
--		goto unlock_state;
-+		return status;
- 	status = check_stateid_generation(stateid, &s->sc_stateid, nfsd4_has_session(cstate));
- 	if (status)
- 		goto out;
-@@ -4520,8 +4518,6 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 		*filpp = file;
- out:
- 	nfs4_put_stid(s);
--unlock_state:
--	nfs4_unlock_state();
- 	return status;
+ 	/* Bump the key */
+@@ -1565,8 +1564,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	if (rc) {
+ 		dprintk("RPC:       %s: failed ib_post_send for register,"
+ 			" status %i\n", __func__, rc);
+-		while (i--)
+-			rpcrdma_unmap_one(ia, --seg);
++		goto out_err;
+ 	} else {
+ 		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 		seg1->mr_base = seg1->mr_dma + pageoff;
+@@ -1574,6 +1572,10 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 		seg1->mr_len = len;
+ 	}
+ 	*nsegs = i;
++	return 0;
++out_err:
++	while (i--)
++		rpcrdma_unmap_one(ia, --seg);
+ 	return rc;
  }
  
--- 
-1.9.3
 
