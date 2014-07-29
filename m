@@ -1,56 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f174.google.com ([209.85.160.174]:57789 "EHLO
-	mail-yk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750707AbaGCENA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 00:13:00 -0400
-Received: by mail-yk0-f174.google.com with SMTP id 19so6958138ykq.33
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Jul 2014 21:12:59 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/2] SUNRPC: Handle EPIPE in xprt_connect_status
-Date: Thu,  3 Jul 2014 00:12:51 -0400
-Message-Id: <1404360771-6782-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1404360771-6782-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1404360771-6782-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:61313 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754365AbaG2Uel (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:41 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so285830qge.25
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:40 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 07/38] nfsd: Add locking to protect the state owner lists
+Date: Tue, 29 Jul 2014 16:33:50 -0400
+Message-Id: <1406666061-14175-8-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The callback handler xs_error_report() can end up propagating an EPIPE
-error by means of the call to xprt_wake_pending_tasks(). Ensure that
-xprt_connect_status() does not automatically convert this into an
-EIO error.
+Change to using the clp->cl_lock for this. For now, there's a lot of
+cl_lock thrashing, but in later patches we'll eliminate that and close
+the potential races that can occur when releasing the cl_lock while
+walking the lists. For now, the client_mutex prevents those races.
 
-Reported-by: Weston Andros Adamson <dros@primarydata.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/clnt.c | 1 +
- net/sunrpc/xprt.c | 1 +
- 2 files changed, 2 insertions(+)
+ fs/nfsd/nfs4state.c | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 575e63f6c13e..488ddeed9363 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1814,6 +1814,7 @@ call_connect_status(struct rpc_task *task)
- 	case -ENETUNREACH:
- 	case -EHOSTUNREACH:
- 	case -ENOBUFS:
-+	case -EPIPE:
- 		if (RPC_IS_SOFTCONN(task))
- 			break;
- 		/* retry with existing socket, after a delay */
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index c3b2b3369e52..c5b2916298b0 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -744,6 +744,7 @@ static void xprt_connect_status(struct rpc_task *task)
- 	case -ECONNABORTED:
- 	case -ENETUNREACH:
- 	case -EHOSTUNREACH:
-+	case -EPIPE:
- 	case -EAGAIN:
- 		dprintk("RPC: %5u xprt_connect_status: retrying\n", task->tk_pid);
- 		break;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index a99c054da4a6..549e678b65cf 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -893,6 +893,8 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_file *fp = stp->st_stid.sc_file;
+ 
++	lockdep_assert_held(&stp->st_stateowner->so_client->cl_lock);
++
+ 	spin_lock(&fp->fi_lock);
+ 	list_del(&stp->st_perfile);
+ 	spin_unlock(&fp->fi_lock);
+@@ -921,9 +923,13 @@ static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
+ 
+ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
++	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
++
++	spin_lock(&oo->oo_owner.so_client->cl_lock);
+ 	list_del(&stp->st_locks);
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
++	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ 	nfs4_put_stid(&stp->st_stid);
+ }
+ 
+@@ -967,20 +973,26 @@ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ }
+ 
+ static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
++	__releases(&open_stp->st_stateowner->so_client->cl_lock)
++	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
+ {
+ 	struct nfs4_ol_stateid *stp;
+ 
+ 	while (!list_empty(&open_stp->st_locks)) {
+ 		stp = list_entry(open_stp->st_locks.next,
+ 				struct nfs4_ol_stateid, st_locks);
++		spin_unlock(&open_stp->st_stateowner->so_client->cl_lock);
+ 		release_lock_stateid(stp);
++		spin_lock(&open_stp->st_stateowner->so_client->cl_lock);
+ 	}
+ }
+ 
+ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ {
++	spin_lock(&stp->st_stateowner->so_client->cl_lock);
+ 	unhash_generic_stateid(stp);
+ 	release_open_stateid_locks(stp);
++	spin_unlock(&stp->st_stateowner->so_client->cl_lock);
+ }
+ 
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+@@ -2996,16 +3008,18 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_locks);
+-	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+ 	stp->st_stateowner = &oo->oo_owner;
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = 0;
+ 	stp->st_openstp = NULL;
++	spin_lock(&oo->oo_owner.so_client->cl_lock);
++	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+ 	spin_lock(&fp->fi_lock);
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	spin_unlock(&fp->fi_lock);
++	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ }
+ 
+ static void
+@@ -4711,6 +4725,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp,
+ 		struct nfs4_ol_stateid *open_stp)
+ {
+ 	struct nfs4_stid *s;
++	struct nfs4_openowner *oo = openowner(open_stp->st_stateowner);
+ 	struct nfs4_ol_stateid *stp;
+ 	struct nfs4_client *clp = lo->lo_owner.so_client;
+ 
+@@ -4719,7 +4734,6 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp,
+ 		return NULL;
+ 	stp = openlockstateid(s);
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+-	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
+@@ -4727,10 +4741,13 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp,
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
++	spin_lock(&oo->oo_owner.so_client->cl_lock);
+ 	list_add(&stp->st_locks, &open_stp->st_locks);
++	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
+ 	spin_lock(&fp->fi_lock);
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	spin_unlock(&fp->fi_lock);
++	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ 	return stp;
+ }
+ 
 -- 
 1.9.3
 
