@@ -1,53 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f54.google.com ([209.85.192.54]:49890 "EHLO
-	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755249AbaGUPDV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Jul 2014 11:03:21 -0400
-Received: by mail-qg0-f54.google.com with SMTP id z60so5396212qgd.13
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Jul 2014 08:03:19 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 14/40] nfsd: Ensure that nfs4_open_delegation() references the delegation stateid
-Date: Mon, 21 Jul 2014 11:02:26 -0400
-Message-Id: <1405954972-28904-15-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:45522 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752969AbaG2LmO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 07:42:14 -0400
+Received: by mail-qa0-f52.google.com with SMTP id j15so9086151qaq.25
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 04:42:13 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 29 Jul 2014 07:42:09 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/40] nfsd: Add locking to protect the state owner
+ lists
+Message-ID: <20140729074209.122238bd@f20.localdomain>
+In-Reply-To: <20140727134218.GA26868@infradead.org>
 References: <1405954972-28904-1-git-send-email-jlayton@primarydata.com>
+ <1405954972-28904-9-git-send-email-jlayton@primarydata.com>
+ <20140727134218.GA26868@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Sun, 27 Jul 2014 06:42:18 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Ensure that nfs4_open_delegation() keeps a reference to the delegation
-stateid until it is done working with it. Necessary step toward
-client_mutex removal.
+> On Mon, Jul 21, 2014 at 11:02:20AM -0400, Jeff Layton wrote:
+> > Change to using the clp->cl_lock for this. For now, there's a lot of
+> > cl_lock thrashing, but in later patches we'll eliminate that and close
+> > the potential races that can occur when releasing the cl_lock while
+> > walking the lists. For now, the client_mutex prevents those races.
+> 
+> I'll have to look at those later patches, but in general I'd prefer
+> not to have an intermediate stage like this.  Maybe just merge
+> the later cleanup in, maybe do some of the required cleanups before
+> even adding the new locking.
+> 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 2 ++
- 1 file changed, 2 insertions(+)
+Thanks for the comments so far! FWIW, this set of patches needed to be
+respun anyway to deal with the nfs4_file hashing changes.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0720e0888753..6587230ab4a2 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -680,6 +680,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	lockdep_assert_held(&state_lock);
- 	lockdep_assert_held(&fp->fi_lock);
- 
-+	atomic_inc(&dp->dl_stid.sc_count);
- 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
-@@ -3721,6 +3722,7 @@ nfs4_open_delegation(struct svc_fh *fh, struct nfsd4_open *open,
- 	dprintk("NFSD: delegation stateid=" STATEID_FMT "\n",
- 		STATEID_VAL(&dp->dl_stid.sc_stateid));
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
-+	nfs4_put_delegation(dp);
- 	return;
- out_no_deleg:
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
+I've incorporated most of your comments into the respun set, and I'll
+repost it once I get some confirmation from Bruce about the latest
+set of delegation patches that precede it.
+
+The one thing I didn't address is your comment above. Adding this
+locking is hairy enough that I think it's warranted to do it with an
+intermediate step like this.
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
