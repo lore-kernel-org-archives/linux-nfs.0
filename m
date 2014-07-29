@@ -1,88 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49316 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751262AbaGJTnu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Jul 2014 15:43:50 -0400
-Date: Thu, 10 Jul 2014 15:43:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: swise@ogc.net, Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 2/2] svcrdma: Remove extra writeargs sanity check for
- NFSv2/3
-Message-ID: <20140710194349.GD26561@fieldses.org>
-References: <20140710174225.3734.44692.stgit@klimt.1015granger.net>
- <20140710174435.3734.69638.stgit@klimt.1015granger.net>
- <20140710181944.GB26561@fieldses.org>
- <3BA364F8-E5ED-45A1-8662-E5F91AA7AF0A@oracle.com>
- <20140710184948.GC26561@fieldses.org>
- <B89AB7AC-32E1-4944-9287-73958A569A8E@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <B89AB7AC-32E1-4944-9287-73958A569A8E@oracle.com>
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:53011 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754412AbaG2UfJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:35:09 -0400
+Received: by mail-qa0-f41.google.com with SMTP id j7so276750qaq.14
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:35:08 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 26/38] nfsd: clean up refcounting for lockowners
+Date: Tue, 29 Jul 2014 16:34:09 -0400
+Message-Id: <1406666061-14175-27-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 10, 2014 at 03:07:34PM -0400, Chuck Lever wrote:
-> Hi Bruce-
-> 
-> On Jul 10, 2014, at 2:49 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> > On Thu, Jul 10, 2014 at 02:24:57PM -0400, Chuck Lever wrote:
-> >> 
-> >> On Jul 10, 2014, at 2:19 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> 
-> >>> On Thu, Jul 10, 2014 at 01:44:35PM -0400, Chuck Lever wrote:
-> >>>> The server should comply with RFC 5667,
-> >>> 
-> >>> Where's the relevant language?  (I took a quick look but didn't see it.)
-> >> 
-> >> Sorry, I listed the wrong RFC when I wrote the description of bug 246.
-> >> It’s actually RFC 5666, section 3.7.
-> > 
-> > Thanks.
-> > 
-> >>> So I think you just want to drop the round-up of len, not the whole
-> >>> check.
-> >> 
-> >> I’ll try that, thanks!
-> 
-> Works-as-expected.
-> 
-> > Actually, I'd really rather this get fixed up in the rpc layer.  The
-> > padding is really required for correct xdr.
-> 
-> How so?
+Ensure that lockowner references are only held by lockstateids and
+operations that are in-progress. With this, we can get rid of
+release_lockowner_if_empty, which will be racy once we remove
+client_mutex protection.
 
-Well, to be spec-lawyerly, rfc 1832 3.9 defines opaque data as including
-the zero-padding; a sequence of bytes isn't legal xdr if it just ends
-early.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 29 +++++++----------------------
+ 1 file changed, 7 insertions(+), 22 deletions(-)
 
-> All of NFSv4 and all other NFSv3 operations work as expected
-> without that padding present. There doesn’t seem to be any operational
-> dependency on the presence of padding. Help?
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 00cb44fa07bd..549218087595 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -933,7 +933,7 @@ static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
+ 	nfs4_free_ol_stateid(stid);
+ }
+ 
+-static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
++static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct nfs4_openowner *oo = openowner(stp->st_openstp->st_stateowner);
+ 
+@@ -957,7 +957,7 @@ static void release_lockowner_stateids(struct nfs4_lockowner *lo)
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		__release_lock_stateid(stp);
++		release_lock_stateid(stp);
+ 	}
+ }
+ 
+@@ -968,21 +968,6 @@ static void release_lockowner(struct nfs4_lockowner *lo)
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+-static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
+-{
+-	if (list_empty(&lo->lo_owner.so_stateids))
+-		release_lockowner(lo);
+-}
+-
+-static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+-{
+-	struct nfs4_lockowner *lo;
+-
+-	lo = lockowner(stp->st_stateowner);
+-	__release_lock_stateid(stp);
+-	release_lockowner_if_empty(lo);
+-}
+-
+ static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
+ 	__releases(&open_stp->st_stateowner->so_client->cl_lock)
+ 	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
+@@ -4323,7 +4308,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+ 
+ 	if (check_for_locks(stp->st_stid.sc_file, lo))
+ 		return nfserr_locks_held;
+-	release_lockowner_if_empty(lo);
++	release_lock_stateid(stp);
+ 	return nfs_ok;
+ }
+ 
+@@ -4938,8 +4923,6 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
+ 		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
+ 		if (lo == NULL)
+ 			return nfserr_jukebox;
+-		/* FIXME: extra reference for new lockowners for the client */
+-		atomic_inc(&lo->lo_owner.so_count);
+ 	} else {
+ 		/* with an existing lockowner, seqids must be the same */
+ 		status = nfserr_bad_seqid;
+@@ -4950,7 +4933,6 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
+ 
+ 	*lst = find_or_create_lock_stateid(lo, fi, inode, ost, new);
+ 	if (*lst == NULL) {
+-		release_lockowner_if_empty(lo);
+ 		status = nfserr_jukebox;
+ 		goto out;
+ 	}
+@@ -5379,6 +5361,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			continue;
+ 		if (same_owner_str(tmp, owner, clid)) {
+ 			sop = tmp;
++			atomic_inc(&sop->so_count);
+ 			break;
+ 		}
+ 	}
+@@ -5392,8 +5375,10 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	lo = lockowner(sop);
+ 	/* see if there are still any locks associated with it */
+ 	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
+-		if (check_for_locks(stp->st_stid.sc_file, lo))
++		if (check_for_locks(stp->st_stid.sc_file, lo)) {
++			nfs4_put_stateowner(sop);
+ 			goto out;
++		}
+ 	}
+ 
+ 	status = nfs_ok;
+-- 
+1.9.3
 
-I can believe that the code deals with it now, I just wonder if this
-check may not be the only case where someone writing xdr code expects
-total length to be a multiple of four.
-
-The drc code also depends on the length being right, see
-nfsd_cache_csum.  I don't know whether that will cause a practical
-problem in this case.
-
-(What about the krb5i case?)
-
-> > The fact that RDMA doesn't
-> > require those zeroes to be literally transmitted across the network
-> > sounds like a transport-level detail that should be hidden from the xdr
-> > code.
-> 
-> The best I can think of is adding a false page array entry to the
-> xdr_buf if the last incoming page is short by a few bytes.
-
-The padding just gets added to the end of whichever page the write ended
-on, and you only use another page if you run out of space, right?
-
-I don't know, if that's a huge pain then I guess we can live with this.
-
---b.
