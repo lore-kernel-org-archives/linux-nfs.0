@@ -1,94 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:35194 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755338AbaGHSFd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:33 -0400
-Received: by mail-qg0-f47.google.com with SMTP id q108so5427940qgd.6
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:33 -0700 (PDT)
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:59480 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754363AbaG2Ueo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:44 -0400
+Received: by mail-qg0-f44.google.com with SMTP id e89so306708qgf.17
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:43 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 042/100] nfsd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
-Date: Tue,  8 Jul 2014 14:03:30 -0400
-Message-Id: <1404842668-22521-43-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v2 09/38] nfsd: ensure atomicity in nfsd4_free_stateid and nfsd4_validate_stateid
+Date: Tue, 29 Jul 2014 16:33:52 -0400
+Message-Id: <1406666061-14175-10-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-
-Ensure that all the callers put the open stateid after use.
-Necessary step toward client_mutex removal.
+Hold the cl_lock over the bulk of these functions. In addition to
+ensuring that they aren't freed prematurely, this will also help prevent
+a potential race that could be introduced later. Once we remove the
+client_mutex, it'll be possible for FREE_STATEID and CLOSE to race and
+for both to try to put the "persistent" reference to the stateid.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4state.c | 71 +++++++++++++++++++++++++++--------------------------
+ 1 file changed, 36 insertions(+), 35 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ef1fd4ddc0f7..fa6a060b0b14 100644
+index 36231704e76a..6da8d6b9a45c 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4398,6 +4398,8 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- 						NFS4_OPEN_STID, stpp, nn);
- 	if (status)
- 		return status;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&(*stpp)->st_stid.sc_count);
- 	oo = openowner((*stpp)->st_stateowner);
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
- 		return nfserr_bad_stateid;
-@@ -4501,12 +4503,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	if (!test_access(od->od_share_access, stp)) {
- 		dprintk("NFSD: access not a subset of current bitmap: 0x%hhx, input access=%08x\n",
- 			stp->st_access_bmap, od->od_share_access);
--		goto out;
-+		goto put_stateid;
- 	}
- 	if (!test_deny(od->od_share_deny, stp)) {
- 		dprintk("NFSD: deny not a subset of current bitmap: 0x%hhx, input deny=%08x\n",
- 			stp->st_deny_bmap, od->od_share_deny);
--		goto out;
-+		goto put_stateid;
- 	}
- 	nfs4_stateid_downgrade(stp, od->od_share_access);
+@@ -1689,17 +1689,6 @@ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ }
  
-@@ -4515,6 +4517,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&od->od_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 	status = nfs_ok;
-+put_stateid:
-+	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
-@@ -4865,6 +4869,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_openowner *open_sop = NULL;
- 	struct nfs4_lockowner *lock_sop = NULL;
- 	struct nfs4_ol_stateid *lock_stp = NULL;
-+	struct nfs4_ol_stateid *open_stp = NULL;
- 	struct nfs4_file *fp;
- 	struct file *filp = NULL;
- 	struct file_lock *file_lock = NULL;
-@@ -4892,8 +4897,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
- 
- 	if (lock->lk_is_new) {
--		struct nfs4_ol_stateid *open_stp = NULL;
+ static struct nfs4_stid *
+-find_stateid(struct nfs4_client *cl, stateid_t *t)
+-{
+-	struct nfs4_stid *ret;
 -
- 		if (nfsd4_has_session(cstate))
- 			/* See rfc 5661 18.10.3: given clientid is ignored: */
- 			memcpy(&lock->v.new.clientid,
-@@ -5021,6 +5024,8 @@ out:
- 		fput(filp);
- 	if (lock_stp)
- 		put_generic_stateid(lock_stp);
-+	if (open_stp)
-+		put_generic_stateid(open_stp);
- 	if (status && new_state)
- 		release_lock_stateid(lock_stp);
- 	nfsd4_bump_seqid(cstate, status);
+-	spin_lock(&cl->cl_lock);
+-	ret = find_stateid_locked(cl, t);
+-	spin_unlock(&cl->cl_lock);
+-	return ret;
+-}
+-
+-static struct nfs4_stid *
+ find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
+ {
+ 	struct nfs4_stid *s;
+@@ -4098,10 +4087,10 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ {
+ 	struct nfs4_stid *s;
+ 	struct nfs4_ol_stateid *ols;
+-	__be32 status;
++	__be32 status = nfserr_bad_stateid;
+ 
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+-		return nfserr_bad_stateid;
++		return status;
+ 	/* Client debugging aid. */
+ 	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
+ 		char addr_str[INET6_ADDRSTRLEN];
+@@ -4109,34 +4098,42 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 				 sizeof(addr_str));
+ 		pr_warn_ratelimited("NFSD: client %s testing state ID "
+ 					"with incorrect client ID\n", addr_str);
+-		return nfserr_bad_stateid;
++		return status;
+ 	}
+-	s = find_stateid(cl, stateid);
++	spin_lock(&cl->cl_lock);
++	s = find_stateid_locked(cl, stateid);
+ 	if (!s)
+-		return nfserr_bad_stateid;
++		goto out_unlock;
+ 	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 	if (status)
+-		return status;
++		goto out_unlock;
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+-		return nfs_ok;
++		status = nfs_ok;
++		break;
+ 	case NFS4_REVOKED_DELEG_STID:
+-		return nfserr_deleg_revoked;
++		status = nfserr_deleg_revoked;
++		break;
+ 	case NFS4_OPEN_STID:
+ 	case NFS4_LOCK_STID:
+ 		ols = openlockstateid(s);
+ 		if (ols->st_stateowner->so_is_open_owner
+ 	    			&& !(openowner(ols->st_stateowner)->oo_flags
+ 						& NFS4_OO_CONFIRMED))
+-			return nfserr_bad_stateid;
+-		return nfs_ok;
++			status = nfserr_bad_stateid;
++		else
++			status = nfs_ok;
++		break;
+ 	default:
+ 		printk("unknown stateid type %x\n", s->sc_type);
+ 		/* Fallthrough */
+ 	case NFS4_CLOSED_STID:
+ 	case NFS4_CLOSED_DELEG_STID:
+-		return nfserr_bad_stateid;
++		status = nfserr_bad_stateid;
+ 	}
++out_unlock:
++	spin_unlock(&cl->cl_lock);
++	return status;
+ }
+ 
+ static __be32
+@@ -4287,34 +4284,38 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 ret = nfserr_bad_stateid;
+ 
+ 	nfs4_lock_state();
+-	s = find_stateid(cl, stateid);
++	spin_lock(&cl->cl_lock);
++	s = find_stateid_locked(cl, stateid);
+ 	if (!s)
+-		goto out;
++		goto out_unlock;
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+ 		ret = nfserr_locks_held;
+-		goto out;
++		break;
+ 	case NFS4_OPEN_STID:
+-	case NFS4_LOCK_STID:
+ 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 		if (ret)
+-			goto out;
+-		if (s->sc_type == NFS4_LOCK_STID)
+-			ret = nfsd4_free_lock_stateid(openlockstateid(s));
+-		else
+-			ret = nfserr_locks_held;
++			break;
++		ret = nfserr_locks_held;
+ 		break;
++	case NFS4_LOCK_STID:
++		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
++		if (ret)
++			break;
++		spin_unlock(&cl->cl_lock);
++		ret = nfsd4_free_lock_stateid(openlockstateid(s));
++		goto out;
+ 	case NFS4_REVOKED_DELEG_STID:
+ 		dp = delegstateid(s);
+-		spin_lock(&cl->cl_lock);
+ 		list_del_init(&dp->dl_recall_lru);
+ 		spin_unlock(&cl->cl_lock);
+ 		nfs4_put_stid(s);
+ 		ret = nfs_ok;
+-		break;
+-	default:
+-		ret = nfserr_bad_stateid;
++		goto out;
++	/* Default falls through and returns nfserr_bad_stateid */
+ 	}
++out_unlock:
++	spin_unlock(&cl->cl_lock);
+ out:
+ 	nfs4_unlock_state();
+ 	return ret;
 -- 
 1.9.3
 
