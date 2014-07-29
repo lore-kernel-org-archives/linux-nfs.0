@@ -1,51 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:57781 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752050AbaGJMtY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 08:49:24 -0400
-Received: by mail-qa0-f54.google.com with SMTP id s7so3141136qap.13
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 05:49:24 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 10 Jul 2014 08:49:22 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 011/100] nfsd: refactor nfs4_file_get_access and
- nfs4_file_put_access
-Message-ID: <20140710084922.6899fdf2@tlielax.poochiereds.net>
-In-Reply-To: <20140710113523.GA17814@infradead.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-	<1404842668-22521-12-git-send-email-jlayton@primarydata.com>
-	<20140710075920.GA6226@infradead.org>
-	<20140710073214.5621293f@tlielax.poochiereds.net>
-	<20140710113523.GA17814@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qa0-f48.google.com ([209.85.216.48]:42150 "EHLO
+	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754363AbaG2Uer (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:47 -0400
+Received: by mail-qa0-f48.google.com with SMTP id m5so266773qaj.35
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:46 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v2 11/38] nfsd: nfsd4_locku() must reference the lock stateid
+Date: Tue, 29 Jul 2014 16:33:54 -0400
+Message-Id: <1406666061-14175-12-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 10 Jul 2014 04:35:23 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-> On Thu, Jul 10, 2014 at 07:32:14AM -0400, Jeff Layton wrote:
-> > So, you're correct that we never take an fi_access reference for O_RDWR,
-> > which is why the array doesn't have a slot for it:
-> > 
-> >         atomic_t                fi_access[2];
-> > 
-> > ...it's tracked by the union of the O_RDONLY and O_WRONLY counters.
-> 
-> Which will be racy as long we try to use an atomic_t and not a proper
-> lock over access to all of fi_access.
-> 
+Ensure that nfsd4_locku() keeps a reference to the lock stateid
+until it is done working with it. Necessary step toward client_mutex
+removal.
 
-gets are always done with the lock held. puts do an atomic_dec_and_lock
-or are done with the lock held. I don't see how that's racy...
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-> I'm still trying to understand why we even need fi_access and can't just
-> use the file references directly, though.
-> 
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 21963664fbb7..65e20c4bc257 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5147,10 +5147,12 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					&stp, nn);
+ 	if (status)
+ 		goto out;
++	/* FIXME: move into nfs4_preprocess_seqid_op */
++	atomic_inc(&stp->st_stid.sc_count);
+ 	filp = find_any_file(stp->st_stid.sc_file);
+ 	if (!filp) {
+ 		status = nfserr_lock_range;
+-		goto out;
++		goto put_stateid;
+ 	}
+ 	file_lock = locks_alloc_lock();
+ 	if (!file_lock) {
+@@ -5180,6 +5182,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+ fput:
+ 	fput(filp);
++put_stateid:
++	nfs4_put_stid(&stp->st_stid);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (!cstate->replay_owner)
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
