@@ -1,80 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f180.google.com ([209.85.160.180]:39624 "EHLO
-	mail-yk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1030325AbaGAW14 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Jul 2014 18:27:56 -0400
-Received: by mail-yk0-f180.google.com with SMTP id 131so6058350ykp.11
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Jul 2014 15:27:56 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: Ensure that nfsd_create_setattr commits files to stable storage
-Date: Tue,  1 Jul 2014 18:27:53 -0400
-Message-Id: <1404253673-12676-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:51227 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754710AbaG3M2F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:05 -0400
+Received: by mail-qa0-f54.google.com with SMTP id k15so1209883qaq.27
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:04 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 14/37] nfsd: protect clid and verifier generation with client_lock
+Date: Wed, 30 Jul 2014 08:27:15 -0400
+Message-Id: <1406723258-8512-15-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since nfsd_create_setattr strips the mode from the struct iattr, it
-is quite possible that it will optimise away the call to nfsd_setattr
-altogether.
-If this is the case, then we never call commit_metadata() on the
-newly created file.
+The clid counter is a global counter currently. Move it to be a per-net
+property so that it can be properly protected by the nn->client_lock
+instead of relying on the client_mutex.
 
-Also ensure that both nfsd_setattr() and nfsd_create_setattr() fail
-when the call to commit_metadata fails.
+The verifier generator is also potentially racy if there are two
+simultaneous callers. Generate the verifier when we generate the clid
+value, so it's also created under the client_lock. With this, there's
+no need to keep two counters as they'd always be in sync anyway, so
+just use the clientid_counter for both.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+As Trond points out, what would be best is to eventually move this
+code to use IDR instead of the hash tables. That would also help ensure
+uniqueness, but that's probably best done as a separate project.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/vfs.c | 15 +++++++++------
- 1 file changed, 9 insertions(+), 6 deletions(-)
+ fs/nfsd/netns.h     |  6 +++---
+ fs/nfsd/nfs4state.c | 21 +++++++++------------
+ 2 files changed, 12 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 140c496f612c..5fd9095268cb 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -464,7 +464,7 @@ out_put_write_access:
- 	if (size_change)
- 		put_write_access(inode);
- 	if (!err)
--		commit_metadata(fhp);
-+		err = commit_metadata(fhp);
- out:
- 	return err;
- }
-@@ -1121,7 +1121,8 @@ nfsd_create_setattr(struct svc_rqst *rqstp, struct svc_fh *resfhp,
- 		iap->ia_valid &= ~(ATTR_UID|ATTR_GID);
- 	if (iap->ia_valid)
- 		return nfsd_setattr(rqstp, resfhp, iap, 0, (time_t)0);
--	return 0;
-+	/* Callers expect file metadata to be committed here */
-+	return commit_metadata(resfhp);
- }
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index e1f479c162b5..3831ef6e5c75 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -92,9 +92,7 @@ struct nfsd_net {
+ 	bool nfsd_net_up;
+ 	bool lockd_up;
  
- /* HPUX client sometimes creates a file in mode 000, and sets size to 0.
-@@ -1253,9 +1254,10 @@ nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	err = nfsd_create_setattr(rqstp, resfhp, iap);
+-	/*
+-	 * Time of server startup
+-	 */
++	/* Time of server startup */
+ 	struct timeval nfssvc_boot;
  
  	/*
--	 * nfsd_setattr already committed the child.  Transactional filesystems
--	 * had a chance to commit changes for both parent and child
--	 * simultaneously making the following commit_metadata a noop.
-+	 * nfsd_create_setattr already committed the child.  Transactional
-+	 * filesystems had a chance to commit changes for both parent and
-+	 * child * simultaneously making the following commit_metadata a
-+	 * noop.
+@@ -103,6 +101,8 @@ struct nfsd_net {
  	 */
- 	err2 = nfserrno(commit_metadata(fhp));
- 	if (err2)
-@@ -1426,7 +1428,8 @@ do_nfsd_create(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	err = nfsd_create_setattr(rqstp, resfhp, iap);
+ 	unsigned int max_connections;
+ 
++	u32 clientid_counter;
++
+ 	struct svc_serv *nfsd_serv;
+ };
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1fd8a4773191..64caf119ab53 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1808,28 +1808,26 @@ static bool mach_creds_match(struct nfs4_client *cl, struct svc_rqst *rqstp)
+ 	return 0 == strcmp(cl->cl_cred.cr_principal, cr->cr_principal);
+ }
+ 
+-static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
+-{
+-	static u32 current_clientid = 1;
+-
+-	clp->cl_clientid.cl_boot = nn->boot_time;
+-	clp->cl_clientid.cl_id = current_clientid++; 
+-}
+-
+-static void gen_confirm(struct nfs4_client *clp)
++static void gen_confirm(struct nfs4_client *clp, struct nfsd_net *nn)
+ {
+ 	__be32 verf[2];
+-	static u32 i;
  
  	/*
--	 * nfsd_setattr already committed the child (and possibly also the parent).
-+	 * nfsd_create_setattr already committed the child
-+	 * (and possibly also the parent).
+ 	 * This is opaque to client, so no need to byte-swap. Use
+ 	 * __force to keep sparse happy
  	 */
- 	if (!err)
- 		err = nfserrno(commit_metadata(fhp));
+ 	verf[0] = (__force __be32)get_seconds();
+-	verf[1] = (__force __be32)i++;
++	verf[1] = (__force __be32)nn->clientid_counter;
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ }
+ 
++static void gen_clid(struct nfs4_client *clp, struct nfsd_net *nn)
++{
++	clp->cl_clientid.cl_boot = nn->boot_time;
++	clp->cl_clientid.cl_id = nn->clientid_counter++;
++	gen_confirm(clp, nn);
++}
++
+ static struct nfs4_stid *
+ find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ {
+@@ -1880,7 +1878,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+ 	copy_verf(clp, verf);
+ 	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
+-	gen_confirm(clp);
+ 	clp->cl_cb_session = NULL;
+ 	clp->net = net;
+ 	return clp;
 -- 
 1.9.3
 
