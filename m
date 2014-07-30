@@ -1,94 +1,221 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:59979 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750884AbaGCFFw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 01:05:52 -0400
-Received: by mail-pa0-f41.google.com with SMTP id fb1so13792971pad.28
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Jul 2014 22:05:52 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 3/3] nfs41: layout return on close in delegation return
-Date: Thu,  3 Jul 2014 13:05:02 +0800
-Message-Id: <1404363902-12943-4-git-send-email-tao.peng@primarydata.com>
-In-Reply-To: <1404363902-12943-3-git-send-email-tao.peng@primarydata.com>
-References: <1404363902-12943-1-git-send-email-tao.peng@primarydata.com>
- <1404363902-12943-2-git-send-email-tao.peng@primarydata.com>
- <1404363902-12943-3-git-send-email-tao.peng@primarydata.com>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:51627 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754743AbaG3Bfb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:31 -0400
+Received: by mail-qa0-f52.google.com with SMTP id j15so569019qaq.39
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:31 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v3 27/38] nfsd: make openstateids hold references to their openowners
+Date: Tue, 29 Jul 2014 21:34:32 -0400
+Message-Id: <1406684083-19736-28-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If file is not opened by anyone, we do layout return on close
-in delegation return.
+Change it so that only openstateids hold persistent references to
+openowners. References can still be held by compounds in progress.
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+With this, we can get rid of NFS4_OO_NEW. It's possible that we
+will create a new openowner in the process of doing the open, but
+something later fails. In the meantime, another task could find
+that openowner and start using it on a successful open. If that
+occurs we don't necessarily want to tear it down, just put the
+reference that the failing compound holds.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 73 +++++++++++++++++++++++------------------------------
+ fs/nfsd/state.h     |  1 -
+ 2 files changed, 32 insertions(+), 42 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 81c0d2e..70a623c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5022,6 +5022,9 @@ struct nfs4_delegreturndata {
- 	unsigned long timestamp;
- 	struct nfs_fattr fattr;
- 	int rpc_status;
-+	struct inode *inode;
-+	bool roc;
-+	u32 roc_barrier;
- };
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index c86fe66254b0..b61319401826 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -916,6 +916,8 @@ static void nfs4_free_ol_stateid(struct nfs4_stid *stid)
+ 	struct nfs4_ol_stateid *stp = openlockstateid(stid);
  
- static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
-@@ -5035,7 +5038,6 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 	switch (task->tk_status) {
- 	case 0:
- 		renew_lease(data->res.server, data->timestamp);
--		break;
- 	case -NFS4ERR_ADMIN_REVOKED:
- 	case -NFS4ERR_DELEG_REVOKED:
- 	case -NFS4ERR_BAD_STATEID:
-@@ -5043,6 +5045,8 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 	case -NFS4ERR_STALE_STATEID:
- 	case -NFS4ERR_EXPIRED:
- 		task->tk_status = 0;
-+		if (data->roc)
-+			pnfs_roc_set_barrier(data->inode, data->roc_barrier);
- 		break;
- 	default:
- 		if (nfs4_async_handle_error(task, data->res.server, NULL) ==
-@@ -5056,6 +5060,10 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 
- static void nfs4_delegreturn_release(void *calldata)
- {
-+	struct nfs4_delegreturndata *data = calldata;
-+
-+	if (data->roc)
-+		pnfs_roc_release(data->inode);
- 	kfree(calldata);
+ 	release_all_access(stp);
++	if (stp->st_stateowner)
++		nfs4_put_stateowner(stp->st_stateowner);
+ 	kmem_cache_free(stateid_slab, stid);
  }
  
-@@ -5065,6 +5073,10 @@ static void nfs4_delegreturn_prepare(struct rpc_task *task, void *data)
+@@ -928,8 +930,6 @@ static void nfs4_free_lock_stateid(struct nfs4_stid *stid)
+ 	file = find_any_file(stp->st_stid.sc_file);
+ 	if (file)
+ 		filp_close(file, (fl_owner_t)lo);
+-	if (stp->st_stateowner)
+-		nfs4_put_stateowner(stp->st_stateowner);
+ 	nfs4_free_ol_stateid(stid);
+ }
  
- 	d_data = (struct nfs4_delegreturndata *)data;
+@@ -1008,8 +1008,9 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
  
-+	if (d_data->roc &&
-+	    pnfs_roc_drain(d_data->inode, &d_data->roc_barrier, task))
-+		return;
+ 	if (s) {
+-		nfs4_put_stid(&s->st_stid);
++		list_del_init(&oo->oo_close_lru);
+ 		oo->oo_last_closed_stid = NULL;
++		nfs4_put_stid(&s->st_stid);
+ 	}
+ }
+ 
+@@ -1028,7 +1029,6 @@ static void release_openowner(struct nfs4_openowner *oo)
+ {
+ 	unhash_openowner(oo);
+ 	release_openowner_stateids(oo);
+-	list_del(&oo->oo_close_lru);
+ 	release_last_closed_stateid(oo);
+ 	nfs4_put_stateowner(&oo->oo_owner);
+ }
+@@ -1497,6 +1497,7 @@ destroy_client(struct nfs4_client *clp)
+ 	}
+ 	while (!list_empty(&clp->cl_openowners)) {
+ 		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
++		atomic_inc(&oo->oo_owner.so_count);
+ 		release_openowner(oo);
+ 	}
+ 	nfsd4_shutdown_callback(clp);
+@@ -3024,7 +3025,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ 	oo->oo_owner.so_ops = &openowner_ops;
+ 	oo->oo_owner.so_is_open_owner = 1;
+ 	oo->oo_owner.so_seqid = open->op_seqid;
+-	oo->oo_flags = NFS4_OO_NEW;
++	oo->oo_flags = 0;
+ 	if (nfsd4_has_session(cstate))
+ 		oo->oo_flags |= NFS4_OO_CONFIRMED;
+ 	oo->oo_time = 0;
+@@ -3041,6 +3042,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_locks);
+ 	stp->st_stateowner = &oo->oo_owner;
++	atomic_inc(&stp->st_stateowner->so_count);
+ 	get_nfs4_file(fp);
+ 	stp->st_stid.sc_file = fp;
+ 	stp->st_access_bmap = 0;
+@@ -3054,13 +3056,27 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+ }
+ 
++/*
++ * In the 4.0 case we need to keep the owners around a little while to handle
++ * CLOSE replay. We still do need to release any file access that is held by
++ * them before returning however.
++ */
+ static void
+-move_to_close_lru(struct nfs4_openowner *oo, struct net *net)
++move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+ {
+-	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct nfs4_openowner *oo = openowner(s->st_stateowner);
++	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
++						nfsd_net_id);
+ 
+ 	dprintk("NFSD: move_to_close_lru nfs4_openowner %p\n", oo);
+ 
++	release_all_access(s);
++	if (s->st_stid.sc_file) {
++		put_nfs4_file(s->st_stid.sc_file);
++		s->st_stid.sc_file = NULL;
++	}
++	release_last_closed_stateid(oo);
++	oo->oo_last_closed_stid = s;
+ 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
+ 	oo->oo_time = get_seconds();
+ }
+@@ -3091,6 +3107,7 @@ find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
+ 			if ((bool)clp->cl_minorversion != sessions)
+ 				return NULL;
+ 			renew_client(oo->oo_owner.so_client);
++			atomic_inc(&oo->oo_owner.so_count);
+ 			return oo;
+ 		}
+ 	}
+@@ -3887,19 +3904,10 @@ void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
+ 			      struct nfsd4_open *open, __be32 status)
+ {
+ 	if (open->op_openowner) {
+-		struct nfs4_openowner *oo = open->op_openowner;
+-
+-		if (!list_empty(&oo->oo_owner.so_stateids))
+-			list_del_init(&oo->oo_close_lru);
+-		if (oo->oo_flags & NFS4_OO_NEW) {
+-			if (status) {
+-				release_openowner(oo);
+-				open->op_openowner = NULL;
+-			} else
+-				oo->oo_flags &= ~NFS4_OO_NEW;
+-		}
+-		if (open->op_openowner)
+-			nfsd4_cstate_assign_replay(cstate, &oo->oo_owner);
++		struct nfs4_stateowner *so = &open->op_openowner->oo_owner;
 +
- 	nfs4_setup_sequence(d_data->res.server,
- 			&d_data->args.seq_args,
- 			&d_data->res.seq_res,
-@@ -5108,6 +5120,9 @@ static int _nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, co
- 	nfs_fattr_init(data->res.fattr);
- 	data->timestamp = jiffies;
- 	data->rpc_status = 0;
-+	data->inode = inode;
-+	data->roc = list_empty(&NFS_I(inode)->open_files) ?
-+		    pnfs_roc(inode) : false;
++		nfsd4_cstate_assign_replay(cstate, so);
++		nfs4_put_stateowner(so);
+ 	}
+ 	if (open->op_file)
+ 		nfsd4_free_file(open->op_file);
+@@ -4015,7 +4023,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		release_openowner(oo);
++		release_last_closed_stateid(oo);
+ 	}
+ 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ 	nfs4_unlock_state();
+@@ -4580,31 +4588,14 @@ out:
+ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ {
+ 	struct nfs4_client *clp = s->st_stid.sc_client;
+-	struct nfs4_openowner *oo = openowner(s->st_stateowner);
  
- 	task_setup_data.callback_data = data;
- 	msg.rpc_argp = &data->args;
+ 	s->st_stid.sc_type = NFS4_CLOSED_STID;
+ 	unhash_open_stateid(s);
+ 
+-	if (clp->cl_minorversion) {
+-		if (list_empty(&oo->oo_owner.so_stateids))
+-			release_openowner(oo);
++	if (clp->cl_minorversion)
+ 		nfs4_put_stid(&s->st_stid);
+-	} else {
+-		/*
+-		 * In the 4.0 case we need to keep the owners around a
+-		 * little while to handle CLOSE replay. We still do need
+-		 * to release any file access that is held by them
+-		 * before returning however.
+-		 */
+-		release_all_access(s);
+-		if (s->st_stid.sc_file) {
+-			put_nfs4_file(s->st_stid.sc_file);
+-			s->st_stid.sc_file = NULL;
+-		}
+-		oo->oo_last_closed_stid = s;
+-		if (list_empty(&oo->oo_owner.so_stateids))
+-			move_to_close_lru(oo, clp->net);
+-	}
++	else
++		move_to_close_lru(s, clp->net);
+ }
+ 
+ /*
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 232246039db0..e073c86f389c 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -367,7 +367,6 @@ struct nfs4_openowner {
+ 	struct nfs4_ol_stateid *oo_last_closed_stid;
+ 	time_t			oo_time; /* time of placement on so_close_lru */
+ #define NFS4_OO_CONFIRMED   1
+-#define NFS4_OO_NEW         4
+ 	unsigned char		oo_flags;
+ };
+ 
 -- 
-1.9.1
+1.9.3
 
