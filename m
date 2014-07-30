@@ -1,29 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58943 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752030AbaG2VJE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Jul 2014 17:09:04 -0400
-Date: Tue, 29 Jul 2014 17:09:02 -0400
-To: "McEvoy, James" <james.mcevoy@hp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4.1 ACL reference implementation
-Message-ID: <20140729210901.GA24471@fieldses.org>
-References: <6301806E96421841896741228C6B1A2764A7C51F@G4W3216.americas.hpqcorp.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <6301806E96421841896741228C6B1A2764A7C51F@G4W3216.americas.hpqcorp.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:42676 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752191AbaG3Bev (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:34:51 -0400
+Received: by mail-qg0-f51.google.com with SMTP id a108so654645qge.24
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:34:50 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 01/38] nfsd: Add reference counting to the lock and open stateids
+Date: Tue, 29 Jul 2014 21:34:06 -0400
+Message-Id: <1406684083-19736-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 29, 2014 at 07:18:03PM +0000, McEvoy, James wrote:
-> Is there a working NFSv4.1 reference implementation available and are there any instructs on how to build/install it? 
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-I don't recall seeing any, no.
+When we remove the client_mutex, we'll need to be able to ensure that
+these objects aren't destroyed while we're not holding locks.
 
-(Most NFSv4.0 ACL implementations should still be perfectly compliant
-with the NFSv4.1 spec too as far as I know.  But I don't know of any
-implementations of the ACL features that are new to RFC 5661.  Is there
-any particular feature that you're interested in?)
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4state.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
---b.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b0f83beeca75..3b0836db8553 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -890,8 +890,10 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	release_all_access(stp);
+ }
+ 
+-static void free_generic_stateid(struct nfs4_ol_stateid *stp)
++static void put_ol_stateid(struct nfs4_ol_stateid *stp)
+ {
++	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
++		return;
+ 	if (stp->st_file)
+ 		put_nfs4_file(stp->st_file);
+ 	remove_stid(&stp->st_stid);
+@@ -909,7 +911,7 @@ static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	if (file)
+ 		filp_close(file, (fl_owner_t)lockowner(stp->st_stateowner));
+ 	close_generic_stateid(stp);
+-	free_generic_stateid(stp);
++	put_ol_stateid(stp);
+ }
+ 
+ static void unhash_lockowner(struct nfs4_lockowner *lo)
+@@ -972,7 +974,7 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	unhash_open_stateid(stp);
+-	free_generic_stateid(stp);
++	put_ol_stateid(stp);
+ }
+ 
+ static void unhash_openowner(struct nfs4_openowner *oo)
+@@ -993,7 +995,7 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+ 
+ 	if (s) {
+-		free_generic_stateid(s);
++		put_ol_stateid(s);
+ 		oo->oo_last_closed_stid = NULL;
+ 	}
+ }
+@@ -3818,7 +3820,7 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
+ 	if (open->op_file)
+ 		nfsd4_free_file(open->op_file);
+ 	if (open->op_stp)
+-		free_generic_stateid(open->op_stp);
++		put_ol_stateid(open->op_stp);
+ }
+ 
+ __be32
+@@ -4477,9 +4479,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 	unhash_open_stateid(s);
+ 
+ 	if (clp->cl_minorversion) {
+-		free_generic_stateid(s);
+ 		if (list_empty(&oo->oo_owner.so_stateids))
+ 			release_openowner(oo);
++		put_ol_stateid(s);
+ 	} else {
+ 		if (s->st_file) {
+ 			put_nfs4_file(s->st_file);
+-- 
+1.9.3
+
