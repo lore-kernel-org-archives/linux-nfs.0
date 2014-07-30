@@ -1,69 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:63235 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755784AbaGVOxE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:53:04 -0400
-Subject: [PATCH v4 14/21] xprtrdma: Disable completions for FAST_REG_MR Work
- Requests
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:53:01 -0400
-Message-ID: <20140722145301.6010.49629.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f50.google.com ([209.85.216.50]:51735 "EHLO
+	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751895AbaG3BfL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:11 -0400
+Received: by mail-qa0-f50.google.com with SMTP id s7so583700qap.23
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:11 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 14/38] nfsd: nfsd4_process_open2() must reference the open stateid
+Date: Tue, 29 Jul 2014 21:34:19 -0400
+Message-Id: <1406684083-19736-15-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of relying on a completion to change the state of an FRMR
-to FRMR_IS_VALID, set it in advance. If an error occurs, a completion
-will fire anyway and mark the FRMR FRMR_IS_STALE.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+Ensure that nfsd4_process_open2() keeps a reference to the open
+stateid until it is done working with it. Necessary step toward
+client_mutex removal.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |    9 ++++-----
- 1 file changed, 4 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 8429869..b36a5dd 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -159,10 +159,7 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- 		return;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5cb6305036cd..f3018cb26769 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2996,6 +2996,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
+ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
+ 	struct nfs4_openowner *oo = open->op_openowner;
+ 
++	atomic_inc(&stp->st_stid.sc_count);
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_locks);
+ 	stp->st_stateowner = &oo->oo_owner;
+@@ -3376,6 +3377,7 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
+ 			continue;
+ 		if (local->st_stateowner == &oo->oo_owner) {
+ 			ret = local;
++			atomic_inc(&ret->st_stid.sc_count);
+ 			break;
+ 		}
  	}
+@@ -3836,6 +3838,8 @@ out:
+ 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
+ 	if (dp)
+ 		nfs4_put_stid(&dp->dl_stid);
++	if (stp)
++		nfs4_put_stid(&stp->st_stid);
  
--	if (wc->opcode == IB_WC_FAST_REG_MR)
--		frmr->r.frmr.fr_state = FRMR_IS_VALID;
--	else if (wc->opcode == IB_WC_LOCAL_INV)
--		frmr->r.frmr.fr_state = FRMR_IS_INVALID;
-+	frmr->r.frmr.fr_state = FRMR_IS_INVALID;
+ 	return status;
  }
- 
- static int
-@@ -1724,10 +1721,11 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
- 		__func__, mw, i);
- 
-+	frmr->fr_state = FRMR_IS_VALID;
-+
- 	memset(&frmr_wr, 0, sizeof frmr_wr);
- 	frmr_wr.wr_id = (unsigned long)(void *)mw;
- 	frmr_wr.opcode = IB_WR_FAST_REG_MR;
--	frmr_wr.send_flags = IB_SEND_SIGNALED;
- 	frmr_wr.wr.fast_reg.iova_start = seg1->mr_dma;
- 	frmr_wr.wr.fast_reg.page_list = frmr->fr_pgl;
- 	frmr_wr.wr.fast_reg.page_list_len = page_no;
-@@ -1761,6 +1759,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	*nsegs = i;
- 	return 0;
- out_err:
-+	frmr->fr_state = FRMR_IS_INVALID;
- 	while (i--)
- 		rpcrdma_unmap_one(ia, --seg);
- 	return rc;
+-- 
+1.9.3
 
