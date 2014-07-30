@@ -1,104 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f196.google.com ([209.85.216.196]:47911 "EHLO
-	mail-qc0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753625AbaGJNPu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 09:15:50 -0400
-Received: by mail-qc0-f196.google.com with SMTP id i17so1163724qcy.3
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 06:15:49 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 10 Jul 2014 09:15:43 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 012/100] nfsd: remove nfs4_file_put_fd
-Message-ID: <20140710091543.62a543a6@tlielax.poochiereds.net>
-In-Reply-To: <20140710120522.GA1197@infradead.org>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-	<1404842668-22521-13-git-send-email-jlayton@primarydata.com>
-	<20140710080336.GB6226@infradead.org>
-	<20140710074952.20e97f70@tlielax.poochiereds.net>
-	<20140710120522.GA1197@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:62204 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750702AbaG3Bhu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:37:50 -0400
+Received: by mail-qg0-f49.google.com with SMTP id j107so647996qga.22
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:37:49 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH resend] nfsd: print status when nfsd4_open fails to open file it just created
+Date: Tue, 29 Jul 2014 21:37:44 -0400
+Message-Id: <1406684264-19922-1-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1405949850-27841-1-git-send-email-jlayton@primarydata.com>
+References: <1405949850-27841-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 10 Jul 2014 05:05:22 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+It's possible for nfsd to fail opening a file that it has just created.
+When that happens, we throw a WARN but it doesn't include any info about
+the error code. Print the status code to give us a bit more info.
 
-> On Thu, Jul 10, 2014 at 07:49:52AM -0400, Jeff Layton wrote:
-> > 
-> > AFAIU, the fi_access counters tell us when we're able to zero out the
-> > fi_fds slot. fput returns void so we don't have a way to know whether
-> > we're putting the last reference to a file or not. Without that,
-> > find_*_file become quite problematic -- how would we know whether the
-> > pointers they return are still good?
-> 
-> Oh right, that's defintively a good reason to keep the counters.
-> 
-> > > Note that the comment explaining fi_access also seems wrong, as it
-> > > suggest contributing 0-4 to the counts, but at best we increment each
-> > > one by 1 in a single operation.
-> > > 
-> > 
-> > Right, we only increment by one for each operation, but open stateids
-> > can be upgraded and downgraded. If we do:
-> > 
-> > OPEN for NFS4_SHARE_ACCESS_READ
-> > OPEN for NFS4_SHARE_ACCESS_WRITE
-> > OPEN for NFS4_SHARE_ACCESS_BOTH
-> > 
-> > ...then we will have incremented the fi_access counts by a total of 4.
-> > 
-> > The big pain in the ass with this code is explained in the comment over
-> > bmap_to_share_mode. We have to keep track of what share bits have been
-> > previously used in order to comply with the RFC, so you can easily end
-> > up with "extra" references.
-> 
-> I've read both the comment, and the section in the RFC, but I still
-> don't understand how they explain this convoluted code.
-> 
-> Assume we'd have three members in fi_access instead, indexed by
-> (oflags & (O_RDONLY|O_WRONLY|O_RDWR):
-> 
-> static void nfs4_file_get_access(struct nfs4_file *fp, u32 access)
-> {
-> 	int oflags = nfs4_access_to_omode(access);
-> 
-> 	WARN_ON_ONCE(fp->fi_fds[oflag] == NULL);
-> 	atomic_inc(&fp->fi_access[oflag]);
-> }
-> 
-> static void nfs4_file_put_access(struct nfs4_file *fp, u32 access)
-> {
-> 	int oflags = nfs4_access_to_omode(access);
-> 
-> 	if (atomic_dec_and_test(&fp->fi_access[oflag]))
-> 		nfs4_file_put_fd(fp, oflag);
-> }
-> 
-> nfsd4_open_downgrade would become a little more complicated because it
-> would have to check if an FD for the downgraded access is around before
-> dropping the reference to the r/w one it currently holds. And as far as
-> I can tell O_RDWR to O_RDONLY or O_WRONLY is the only possible case for
-> it, feel free to correct me.
-> 
-> Or we could simply not bother with downgrading the underlying file here
-> at all, just like it's done for the case where only a O_RDWR file is
-> open in the current code, which probably is a fairly common case.
+Our QA group hit some of these warnings under some very heavy stress
+testing. My suspicion is that they hit the file-max limit, but it's hard
+to know for sure. Go ahead and add a -ENFILE mapping to
+nfserr_serverfault to make the error more distinct (and correct).
 
-That sounds like it would work, but will it really improve this code?
-I'm not convinced.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4proc.c | 4 +++-
+ fs/nfsd/nfsproc.c  | 1 +
+ 2 files changed, 4 insertions(+), 1 deletion(-)
 
-Having to check whether you actually have the fd before dropping its
-refcount sounds "fiddly". You'd need to do the check and put under the
-fi_lock in order to not open up new races.
-
-So, we'd either lose the benefit of using atomics for fi_access, or
-have to have a whole separate nfs4_file_put_access_locked codepath that
-can be done while already holding the lock.
-
-That doesn't sound to me like it's really an improvement on this code.
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 29a617ebe38c..8611585f739d 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -460,7 +460,9 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
+ 	 */
+ 	status = nfsd4_process_open2(rqstp, resfh, open);
+-	WARN_ON(status && open->op_created);
++	WARN(status && open->op_created,
++	     "nfsd4_process_open2 failed to open newly-created file! status=%u\n",
++	     be32_to_cpu(status));
+ out:
+ 	if (resfh && resfh != &cstate->current_fh) {
+ 		fh_dup2(&cstate->current_fh, resfh);
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index b19c7e8bf64c..b8680738f588 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -745,6 +745,7 @@ nfserrno (int errno)
+ 		{ nfserr_notsupp, -EOPNOTSUPP },
+ 		{ nfserr_toosmall, -ETOOSMALL },
+ 		{ nfserr_serverfault, -ESERVERFAULT },
++		{ nfserr_serverfault, -ENFILE },
+ 	};
+ 	int	i;
+ 
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
