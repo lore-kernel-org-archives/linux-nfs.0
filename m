@@ -1,129 +1,251 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37726 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759960AbaGPS50 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Jul 2014 14:57:26 -0400
-Date: Wed, 16 Jul 2014 14:57:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Toralf =?utf-8?Q?F=C3=B6rster?= <toralf.foerster@gmx.de>,
-        Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: fuzz tested user mode linux crashed in NFS code path
-Message-ID: <20140716185724.GC2397@fieldses.org>
-References: <53C10EAA.2000802@gmx.de>
- <53C12A93.3040803@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <53C12A93.3040803@gmail.com>
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:56017 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753876AbaG3M2N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:13 -0400
+Received: by mail-qa0-f54.google.com with SMTP id k15so1210055qaq.27
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:13 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 20/37] nfsd: add more granular locking to forget_locks fault injector
+Date: Wed, 30 Jul 2014 08:27:21 -0400
+Message-Id: <1406723258-8512-21-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jul 12, 2014 at 08:31:15PM +0800, Kinglong Mee wrote:
-> I think it is caused by kfree an uninitialized address.
-> Can you test with the patch listed in following url,
-> I have send some days before ?
-> 
-> "[PATCH 1/4] NFSD: Fix memory leak in encoding denied lock"
-> http://www.spinics.net/lists/linux-nfs/msg44719.html
+...instead of relying on the client_mutex.
 
-I have this queued for 3.17, but if it causes a crash then it should go
-to 3.16 now.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/fault_inject.c |   8 ++-
+ fs/nfsd/nfs4state.c    | 132 +++++++++++++++++++++++++++++++++++++++++++++----
+ fs/nfsd/state.h        |   7 ++-
+ 3 files changed, 131 insertions(+), 16 deletions(-)
 
-However, I'm confused: the only explicit initialization of lk_denied is
-in the case vfs_lock_file() returns -EAGAIN.  Our usual tests (cthon,
-pynfs) do lots of succesful locks, so should have hit this before.
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index 76ecdff37ea2..a444d821d2a5 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -140,11 +140,9 @@ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	},
+ 	{
+ 		.file     = "forget_locks",
+-		.get	  = nfsd_inject_get,
+-		.set_val  = nfsd_inject_set,
+-		.set_clnt = nfsd_inject_set_client,
+-		.forget   = nfsd_forget_client_locks,
+-		.print    = nfsd_print_client_locks,
++		.get	  = nfsd_inject_print_locks,
++		.set_val  = nfsd_inject_forget_locks,
++		.set_clnt = nfsd_inject_forget_client_locks,
+ 	},
+ 	{
+ 		.file     = "forget_openowners",
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b6020e4a2102..594aa01806d1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5719,6 +5719,12 @@ nfs4_check_open_reclaim(clientid_t *clid,
+ }
+ 
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
++static inline void
++put_client(struct nfs4_client *clp)
++{
++	atomic_dec(&clp->cl_refcount);
++}
++
+ u64
+ nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
+ {
+@@ -5806,6 +5812,22 @@ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ 	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
+ }
+ 
++static void
++nfsd_inject_add_lock_to_list(struct nfs4_ol_stateid *lst,
++			     struct list_head *collect)
++{
++	struct nfs4_client *clp = lst->st_stid.sc_client;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++					  nfsd_net_id);
++
++	if (!collect)
++		return;
++
++	lockdep_assert_held(&nn->client_lock);
++	atomic_inc(&clp->cl_refcount);
++	list_add(&lst->st_locks, collect);
++}
++
+ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 				    struct list_head *collect,
+ 				    void (*func)(struct nfs4_ol_stateid *))
+@@ -5815,6 +5837,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 	struct nfs4_ol_stateid *lst, *lst_next;
+ 	u64 count = 0;
+ 
++	spin_lock(&clp->cl_lock);
+ 	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
+ 		list_for_each_entry_safe(stp, st_next,
+ 				&oop->oo_owner.so_stateids, st_perstateowner) {
+@@ -5822,31 +5845,122 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max,
+ 					&stp->st_locks, st_locks) {
+ 				if (func) {
+ 					func(lst);
+-					if (collect)
+-						list_add(&lst->st_locks,
+-							 collect);
++					nfsd_inject_add_lock_to_list(lst,
++								collect);
+ 				}
+-				if (++count == max)
+-					return count;
++				++count;
++				/*
++				 * Despite the fact that these functions deal
++				 * with 64-bit integers for "count", we must
++				 * ensure that it doesn't blow up the
++				 * clp->cl_refcount. Throw a warning if we
++				 * start to approach INT_MAX here.
++				 */
++				WARN_ON_ONCE(count == (INT_MAX / 2));
++				if (count == max)
++					goto out;
+ 			}
+ 		}
+ 	}
++out:
++	spin_unlock(&clp->cl_lock);
+ 
+ 	return count;
+ }
+ 
+-u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
++static u64
++nfsd_collect_client_locks(struct nfs4_client *clp, struct list_head *collect,
++			  u64 max)
+ {
+-	return nfsd_foreach_client_lock(clp, max, NULL, release_lock_stateid);
++	return nfsd_foreach_client_lock(clp, max, collect, unhash_lock_stateid);
+ }
+ 
+-u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
++static u64
++nfsd_print_client_locks(struct nfs4_client *clp)
+ {
+-	u64 count = nfsd_foreach_client_lock(clp, max, NULL, NULL);
++	u64 count = nfsd_foreach_client_lock(clp, 0, NULL, NULL);
+ 	nfsd_print_count(clp, count, "locked files");
+ 	return count;
+ }
+ 
++u64
++nfsd_inject_print_locks(struct nfsd_fault_inject_op *op)
++{
++	struct nfs4_client *clp;
++	u64 count = 0;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
++
++	if (!nfsd_netns_ready(nn))
++		return 0;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru)
++		count += nfsd_print_client_locks(clp);
++	spin_unlock(&nn->client_lock);
++
++	return count;
++}
++
++static void
++nfsd_reap_locks(struct list_head *reaplist)
++{
++	struct nfs4_client *clp;
++	struct nfs4_ol_stateid *stp, *next;
++
++	list_for_each_entry_safe(stp, next, reaplist, st_locks) {
++		list_del_init(&stp->st_locks);
++		clp = stp->st_stid.sc_client;
++		nfs4_put_stid(&stp->st_stid);
++		put_client(clp);
++	}
++}
++
++u64
++nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *op,
++				struct sockaddr_storage *addr, size_t addr_size)
++{
++	unsigned int count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	clp = nfsd_find_client(addr, addr_size);
++	if (clp)
++		count = nfsd_collect_client_locks(clp, &reaplist, 0);
++	spin_unlock(&nn->client_lock);
++	nfsd_reap_locks(&reaplist);
++	return count;
++}
++
++u64
++nfsd_inject_forget_locks(struct nfsd_fault_inject_op *op, u64 max)
++{
++	u64 count = 0;
++	struct nfs4_client *clp;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++						nfsd_net_id);
++	LIST_HEAD(reaplist);
++
++	if (!nfsd_netns_ready(nn))
++		return count;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		count += nfsd_collect_client_locks(clp, &reaplist, max - count);
++		if (max != 0 && count >= max)
++			break;
++	}
++	spin_unlock(&nn->client_lock);
++	nfsd_reap_locks(&reaplist);
++	return count;
++}
++
+ static u64 nfsd_foreach_client_open(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_openowner *))
+ {
+ 	struct nfs4_openowner *oop, *next;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 480fce8d5cc8..cfd6277b966d 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -483,12 +483,15 @@ u64 nfsd_inject_forget_client(struct nfsd_fault_inject_op *,
+ 			      struct sockaddr_storage *, size_t);
+ u64 nfsd_inject_forget_clients(struct nfsd_fault_inject_op *, u64);
+ 
+-u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
++u64 nfsd_inject_print_locks(struct nfsd_fault_inject_op *);
++u64 nfsd_inject_forget_client_locks(struct nfsd_fault_inject_op *,
++				    struct sockaddr_storage *, size_t);
++u64 nfsd_inject_forget_locks(struct nfsd_fault_inject_op *, u64);
++
+ u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+ u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ 
+-u64 nfsd_print_client_locks(struct nfs4_client *, u64);
+ u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
+ #else /* CONFIG_NFSD_FAULT_INJECTION */
+-- 
+1.9.3
 
-OK, I see: this memory zeroed by a memset in svc_process_common():
-
-	memset(rqstp->rq_argp, 0, procp->pc_argsize);
-
-*But* in the case of the NFSv4 compound operation, we only have enough
-space in rq_argp for 8 operations, anything more is allocated in
-fs/nfsd/nfs4xdr.c:nfsd4_decode_compound:
-
-	if (argp->opcnt > ARRAY_SIZE(argp->iops)) {
-		argp->ops = kmalloc(argp->opcnt * sizeof(*argp->ops), GFP_KERNEL);
-		...
-
-So, perhaps we got a compound with more than 8 operations, with the LOCK
-operation in the 9th or later position?
-
-But the Linux NFS client doesn't do that, so I don't understand how
-Toralf hit this.
-
-Am I missing anything here?
-
-Toralf, is that crash reproduceable?  If so, does replacing the above
-kmalloc by a kcalloc also fix it?
-
-(And thanks for your fuzz testing, it seems to catch interesting bugs.)
-
---b.
-
-
-> 
-> thanks,
-> Kinglong Mee
-> 
-> On 7/12/2014 18:32, Toralf Förster wrote:
-> > A fuzz-tested a x86 32 bit user user mode linux guest using guest kernel v3.16-rc4-142-g47ea8dd 
-> > with trinity using NFSv4 victim files (both NFS server and NFS client run within the same UML).
-> > 
-> > The guest crashed :
-> > 
-> > Kernel panic - not syncing: BUG!
-> > CPU: 0 PID: 1395 Comm: nfsd Tainted: G    B         3.16.0-rc4-00142-g47ea8dd-dirty #68
-> > Stack:
-> >  0859f770 0859f770 00000003 086c8547 00000000 858742a0 0cacd700 85447e1c
-> >  084e3dd2 00000000 85447df0 85447e44 084e0408 085ab1c4 08700980 0859c46a
-> >  85447e50 00000000 00000000 858742a0 0cacd700 85447e74 080ffc70 0859c46a
-> > Call Trace:
-> >  [<084e3dd2>] dump_stack+0x26/0x28
-> >  [<084e0408>] panic+0x7a/0x194
-> >  [<080ffc70>] kfree+0x80/0x150
-> >  [<0822ba2e>] ? nfsd4_encode_stateid+0x3e/0x60
-> >  [<0822c0ab>] nfsd4_encode_lock+0x4b/0x60
-> >  [<08233aa3>] nfsd4_encode_operation+0xd3/0x1d0
-> >  [<0822afcf>] nfsd4_proc_compound+0x4bf/0x670
-> >  [<0809b999>] ? groups_alloc+0x39/0xe0
-> >  [<08219aba>] nfsd_dispatch+0xda/0x200
-> >  [<0846868f>] svc_process_common+0x31f/0x610
-> >  [<08469b4b>] svc_process+0x10b/0x140
-> >  [<0809d270>] ? default_wake_function+0x0/0x20
-> >  [<08219360>] ? nfsd+0x0/0x140
-> >  [<08219442>] nfsd+0xe2/0x140
-> >  [<08095806>] kthread+0xd6/0xe0
-> >  [<0809c60d>] ? finish_task_switch.isra.56+0x1d/0x70
-> >  [<0805f64b>] new_thread_handler+0x6b/0x90
-> > 
-> > 
-> > FWIW "dirty" cames from 1 patch from Richard Weinberger for arch/um/kernel/tlb.c and arch/um/os-Linux/skas/process.c
-> > 
-> > 
-> > The back trace of the core file gives:
-> > 
-> > 
-> > Thread 1 (LWP 12687):
-> > #0  0xb7797aec in __kernel_vsyscall ()
-> > #1  0x08484e15 in kill () at ../sysdeps/unix/syscall-template.S:81
-> > #2  0x0807253d in uml_abort () at arch/um/os-Linux/util.c:93
-> > #3  0x08072885 in os_dump_core () at arch/um/os-Linux/util.c:148
-> > #4  0x0806241d in panic_exit (self=0x86c95c0 <panic_exit_notifier>, unused1=0, unused2=0x8700980 <buf.19753>) at arch/um/kernel/um_arch.c:240
-> > #5  0x08099706 in notifier_call_chain (nl=0x0, val=2235858240, v=0x6, nr_to_call=-2, nr_calls=0x0) at kernel/notifier.c:93
-> > #6  0x08099863 in __atomic_notifier_call_chain (nr_calls=<optimized out>, nr_to_call=<optimized out>, v=<optimized out>, val=<optimized out>, nh=<optimized out>) at kernel/notifier.c:183
-> > #7  atomic_notifier_call_chain (nh=0x8700944 <panic_notifier_list>, val=0, v=0x8700980 <buf.19753>) at kernel/notifier.c:193
-> > #8  0x084e0424 in panic (fmt=0x0) at kernel/panic.c:133
-> > #9  0x080ffc70 in kfree (x=0x194) at mm/slub.c:3380
-> > #10 0x0822c0ab in nfsd4_encode_lock (resp=0x85871030, nfserr=0, lock=0x858742a0) at fs/nfsd/nfs4xdr.c:2910
-> > #11 0x08233aa3 in nfsd4_encode_operation (resp=0x85871030, op=0x85874280) at fs/nfsd/nfs4xdr.c:3889
-> > #12 0x0822afcf in nfsd4_proc_compound (rqstp=0x858750f0, args=0x85447d40, resp=0x85871030) at fs/nfsd/nfs4proc.c:1386
-> > #13 0x08219aba in nfsd_dispatch (rqstp=0x858750f0, statp=0x832c1018) at fs/nfsd/nfssvc.c:686
-> > #14 0x0846868f in svc_process_common (rqstp=0x858750f0, argv=0x85447d40, resv=0x8587526c) at net/sunrpc/svc.c:1206
-> > #15 0x08469b4b in svc_process (rqstp=0x858750f0) at net/sunrpc/svc.c:1331
-> > #16 0x08219442 in nfsd (vrqstp=0x858750f0) at fs/nfsd/nfssvc.c:609
-> > #17 0x08095806 in kthread (_create=0x85377eb0) at kernel/kthread.c:207
-> > #18 0x0805f64b in new_thread_handler () at arch/um/kernel/process.c:129
-> > #19 0x00000000 in ?? ()
-> > 
-> > 
-> > 
