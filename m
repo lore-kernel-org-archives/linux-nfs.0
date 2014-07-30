@@ -1,29 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 67.228.10.34-static.reverse.softlayer.com ([67.228.10.34]:47217
-	"EHLO pluto.businessmedia.ca" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1750933AbaG1R4T convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Jul 2014 13:56:19 -0400
-Date: Mon, 28 Jul 2014 17:50:03 +0000
-Message-ID: <20140728175003.Horde.X0kjMTgXOYZnLEs3ZWYaBw8@webmail.drilroc.com>
-From: Monica Suwayd <monica.suayd@hotmail.com>
-Subject: =?utf-8?b?RG9icsO9IA==?= =?utf-8?b?dmXEjWVy?=
-Reply-to: monica.suwayd@hotmail.com
-Content-Type: text/plain; charset=UTF-8; format=flowed; DelSp=Yes
-To: unlisted-recipients:; (no To-header on input)
+Received: from mail-qa0-f65.google.com ([209.85.216.65]:62345 "EHLO
+	mail-qa0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752883AbaG3Xyl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 19:54:41 -0400
+Received: by mail-qa0-f65.google.com with SMTP id k15so476147qaq.4
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 16:54:40 -0700 (PDT)
+Date: Thu, 31 Jul 2014 01:27:03 +0200
+Message-ID: <CABfGM6_nBUSgO_4D4Wi_h67VQOty+jYQXqE0JDvRx0gL-rj_bw@mail.gmail.com>
+Subject: -- Re: Very Urgent............
+From: Fabian Morision <fmorision1@gmail.com>
+To: undisclosed-recipients:;
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
+Greetings from gulf region
 
+Thanks for the e-mail. I am very interested on funding lucrative
+business partnership with you acting as the manager and sole
+controller of the investment while i remain a silent investor for a
+period of ten yrs , though I am only looking at investment
+opportunities within the range you specified for a start. You can
+reply me here (fmorision@yahoo.com)
 
-ahoj
-Dobrý večer, já jsem Monica Suwayd budu muset, mít nějakou diskusi s
-vámi. Pokud vám to nebude vadit. Prosím, dejte mi vědět, zda můj dopis
-je vítán. Jde Monica Suwayd.
-.........
+Let me know your thought asap
 
-Hello
-Good evening, I'm Monica Suwayd I would have like to have some
-discussion with you. If you don't mind. Please let me know if my letter
-is welcome. Regards Monica Suwayd.
+Regards
+
+Financial Consultant
+
+Mr.Fabian Morision
