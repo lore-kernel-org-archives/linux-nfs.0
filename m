@@ -1,209 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:42303 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753115AbaG3M2h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:37 -0400
-Received: by mail-qg0-f52.google.com with SMTP id f51so1273852qge.25
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:37 -0700 (PDT)
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:40220 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753244AbaG3M17 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:27:59 -0400
+Received: by mail-qa0-f53.google.com with SMTP id v10so1146676qac.40
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:27:58 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH 37/37] nfsd: add some comments to the nfsd4 object definitions
-Date: Wed, 30 Jul 2014 08:27:38 -0400
-Message-Id: <1406723258-8512-38-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH 10/37] nfsd: protect the close_lru list and oo_last_closed_stid with client_lock
+Date: Wed, 30 Jul 2014 08:27:11 -0400
+Message-Id: <1406723258-8512-11-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add some comments that describe what each of these objects is, and how
-they related to one another.
+Currently, it's protected by the client_mutex. Move it so that the list
+and the fields in the openowner are protected by the client_lock.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/netns.h |  8 +++++
- fs/nfsd/state.h | 91 ++++++++++++++++++++++++++++++++++++++++++++++++++++-----
- 2 files changed, 92 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4state.c | 38 +++++++++++++++++++++++++++++++-------
+ 1 file changed, 31 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 3831ef6e5c75..46680da55cd7 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -34,6 +34,14 @@
- struct cld_net;
- struct nfsd4_client_tracking_ops;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e7dfd4e9d942..818480035453 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1122,13 +1122,19 @@ static void unhash_openowner_locked(struct nfs4_openowner *oo)
  
-+/*
-+ * Represents a nfsd "container". With respect to nfsv4 state tracking, the
-+ * fields of interest are the *_id_hashtbls and the *_name_tree. These track
-+ * the nfs4_client objects by either short or long form clientid.
-+ *
-+ * Each nfsd_net runs a nfs4_laundromat workqueue job every lease period to
-+ * clean up expired clients and delegations within the container.
-+ */
- struct nfsd_net {
- 	struct cld_net *cld_net;
+ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ {
+-	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
++	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
++					  nfsd_net_id);
++	struct nfs4_ol_stateid *s;
  
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index a363f6bb621e..52ccd07d92ed 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -72,6 +72,11 @@ struct nfsd4_callback {
- 	bool cb_done;
- };
- 
-+/*
-+ * A core object that represents a "common" stateid. These are generally
-+ * embedded within the different (more specific) stateid objects and contain
-+ * fields that are of general use to any stateid.
-+ */
- struct nfs4_stid {
- 	atomic_t sc_count;
- #define NFS4_OPEN_STID 1
-@@ -89,6 +94,18 @@ struct nfs4_stid {
- 	void (*sc_free)(struct nfs4_stid *);
- };
- 
-+/*
-+ * Represents a delegation stateid. The nfs4_client holds references to these
-+ * and they are put when it is being destroyed or when the delegation is
-+ * returned by the client.
-+ *
-+ * If the server attempts to recall a delegation and the client doesn't do so
-+ * before a timeout, the server may also revoke the delegation. In that case,
-+ * the object will either be destroyed (v4.0) or moved to a per-client list of
-+ * revoked delegations (v4.1+).
-+ *
-+ * This object is a superset of the nfs4_stid.
-+ */
- struct nfs4_delegation {
- 	struct nfs4_stid	dl_stid; /* must be first field */
- 	struct list_head	dl_perfile;
-@@ -195,6 +212,11 @@ struct nfsd4_conn {
- 	unsigned char cn_flags;
- };
- 
-+/*
-+ * Representation of a v4.1+ session. These are refcounted in a similar fashion
-+ * to the nfs4_client. References are only taken when the server is actively
-+ * working on the object (primarily during the processing of compounds).
-+ */
- struct nfsd4_session {
- 	atomic_t		se_ref;
- 	struct list_head	se_hash;	/* hash by sessionid */
-@@ -224,13 +246,30 @@ struct nfsd4_sessionid {
- 
- /*
-  * struct nfs4_client - one per client.  Clientids live here.
-- * 	o Each nfs4_client is hashed by clientid.
-  *
-- * 	o Each nfs4_clients is also hashed by name 
-- * 	  (the opaque quantity initially sent by the client to identify itself).
-+ * The initial object created by an NFS client using SETCLIENTID (for NFSv4.0)
-+ * or EXCHANGE_ID (for NFSv4.1+). These objects are refcounted and timestamped.
-+ * Each nfsd_net_ns object contains a set of these and they are tracked via
-+ * short and long form clientid. They are hashed and searched for under the
-+ * per-nfsd_net client_lock spinlock.
-+ *
-+ * References to it are only held during the processing of compounds, and in
-+ * certain other operations. In their "resting state" they have a refcount of
-+ * 0. If they are not renewed within a lease period, they become eligible for
-+ * destruction by the laundromat.
-+ *
-+ * These objects can also be destroyed prematurely by the fault injection code,
-+ * or if the client sends certain forms of SETCLIENTID or EXCHANGE_ID updates.
-+ * Care is taken *not* to do this however when the objects have an elevated
-+ * refcount.
-+ *
-+ * o Each nfs4_client is hashed by clientid
-+ *
-+ * o Each nfs4_clients is also hashed by name (the opaque quantity initially
-+ *   sent by the client to identify itself).
-  * 	  
-- *	o cl_perclient list is used to ensure no dangling stateowner references
-- *	  when we expire the nfs4_client
-+ * o cl_perclient list is used to ensure no dangling stateowner references
-+ *   when we expire the nfs4_client
-  */
- struct nfs4_client {
- 	struct list_head	cl_idhash; 	/* hash by cl_clientid.id */
-@@ -340,6 +379,12 @@ struct nfs4_stateowner_operations {
- 	void (*so_free)(struct nfs4_stateowner *);
- };
- 
-+/*
-+ * A core object that represents either an open or lock owner. The object and
-+ * lock owner objects have one of these embedded within them. Refcounts and
-+ * other fields common to both owner types are contained within these
-+ * structures.
-+ */
- struct nfs4_stateowner {
- 	struct list_head			so_strhash;
- 	struct list_head			so_stateids;
-@@ -354,6 +399,12 @@ struct nfs4_stateowner {
- 	bool					so_is_open_owner;
- };
- 
-+/*
-+ * When a file is opened, the client provides an open state owner opaque string
-+ * that indicates the "owner" of that open. These objects are refcounted.
-+ * References to it are held by each open state associated with it. This object
-+ * is a superset of the nfs4_stateowner struct.
-+ */
- struct nfs4_openowner {
- 	struct nfs4_stateowner	oo_owner; /* must be first field */
- 	struct list_head        oo_perclient;
-@@ -371,6 +422,12 @@ struct nfs4_openowner {
- 	unsigned char		oo_flags;
- };
- 
-+/*
-+ * Represents a generic "lockowner". Similar to an openowner. References to it
-+ * are held by the lock stateids that are created on its behalf. This object is
-+ * a superset of the nfs4_stateowner struct (or would be if it needed any extra
-+ * fields).
-+ */
- struct nfs4_lockowner {
- 	struct nfs4_stateowner	lo_owner; /* must be first element */
- };
-@@ -385,7 +442,14 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
- 	return container_of(so, struct nfs4_lockowner, lo_owner);
++	spin_lock(&nn->client_lock);
++	s = oo->oo_last_closed_stid;
+ 	if (s) {
+ 		list_del_init(&oo->oo_close_lru);
+ 		oo->oo_last_closed_stid = NULL;
+-		nfs4_put_stid(&s->st_stid);
+ 	}
++	spin_unlock(&nn->client_lock);
++	if (s)
++		nfs4_put_stid(&s->st_stid);
  }
  
--/* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
-+/*
-+ * nfs4_file: a file opened by some number of (open) nfs4_stateowners.
-+ *
-+ * These objects are global. nfsd only keeps one instance of a nfs4_file per
-+ * inode (though it may keep multiple file descriptors open per inode). These
-+ * are tracked in the file_hashtbl which is protected by the state_lock
-+ * spinlock.
-+ */
- struct nfs4_file {
- 	atomic_t		fi_ref;
- 	spinlock_t		fi_lock;
-@@ -410,7 +474,20 @@ struct nfs4_file {
- 	bool			fi_had_conflict;
- };
+ static void release_openowner(struct nfs4_openowner *oo)
+@@ -3265,6 +3271,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ static void
+ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+ {
++	struct nfs4_ol_stateid *last;
+ 	struct nfs4_openowner *oo = openowner(s->st_stateowner);
+ 	struct nfsd_net *nn = net_generic(s->st_stid.sc_client->net,
+ 						nfsd_net_id);
+@@ -3287,10 +3294,15 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
+ 		put_nfs4_file(s->st_stid.sc_file);
+ 		s->st_stid.sc_file = NULL;
+ 	}
+-	release_last_closed_stateid(oo);
++
++	spin_lock(&nn->client_lock);
++	last = oo->oo_last_closed_stid;
+ 	oo->oo_last_closed_stid = s;
+ 	list_move_tail(&oo->oo_close_lru, &nn->close_lru);
+ 	oo->oo_time = get_seconds();
++	spin_unlock(&nn->client_lock);
++	if (last)
++		nfs4_put_stid(&last->st_stid);
+ }
  
--/* "ol" stands for "Open or Lock".  Better suggestions welcome. */
-+/*
-+ * A generic struct representing either a open or lock stateid. The nfs4_client
-+ * holds a reference to each of these objects, and they in turn hold a
-+ * reference to their respective stateowners. The client's reference is
-+ * released in response to a close or unlock (depending on whether it's an open
-+ * or lock stateid) or when the client is being destroyed.
-+ *
-+ * In the case of v4.0 open stateids, these objects are preserved for a little
-+ * while after close in order to handle CLOSE replays. Those are eventually
-+ * reclaimed via a LRU scheme by the laundromat.
-+ *
-+ * This object is a superset of the nfs4_stid. "ol" stands for "Open or Lock".
-+ * Better suggestions welcome.
-+ */
- struct nfs4_ol_stateid {
- 	struct nfs4_stid    st_stid; /* must be first field */
- 	struct list_head              st_perfile;
+ /* search file_hashtbl[] for file */
+@@ -4148,6 +4160,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	struct nfs4_client *clp;
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
++	struct nfs4_ol_stateid *stp;
+ 	struct list_head *pos, *next, reaplist;
+ 	time_t cutoff = get_seconds() - nn->nfsd4_lease;
+ 	time_t t, new_timeo = nn->nfsd4_lease;
+@@ -4201,15 +4214,26 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		list_del_init(&dp->dl_recall_lru);
+ 		revoke_delegation(dp);
+ 	}
+-	list_for_each_safe(pos, next, &nn->close_lru) {
+-		oo = container_of(pos, struct nfs4_openowner, oo_close_lru);
+-		if (time_after((unsigned long)oo->oo_time, (unsigned long)cutoff)) {
++
++	spin_lock(&nn->client_lock);
++	while (!list_empty(&nn->close_lru)) {
++		oo = list_first_entry(&nn->close_lru, struct nfs4_openowner,
++					oo_close_lru);
++		if (time_after((unsigned long)oo->oo_time,
++			       (unsigned long)cutoff)) {
+ 			t = oo->oo_time - cutoff;
+ 			new_timeo = min(new_timeo, t);
+ 			break;
+ 		}
+-		release_last_closed_stateid(oo);
++		list_del_init(&oo->oo_close_lru);
++		stp = oo->oo_last_closed_stid;
++		oo->oo_last_closed_stid = NULL;
++		spin_unlock(&nn->client_lock);
++		nfs4_put_stid(&stp->st_stid);
++		spin_lock(&nn->client_lock);
+ 	}
++	spin_unlock(&nn->client_lock);
++
+ 	new_timeo = max_t(time_t, new_timeo, NFSD_LAUNDROMAT_MINTIMEOUT);
+ 	nfs4_unlock_state();
+ 	return new_timeo;
 -- 
 1.9.3
 
