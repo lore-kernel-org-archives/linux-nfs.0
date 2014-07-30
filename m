@@ -1,66 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:51437 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750854AbaGLVht (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Jul 2014 17:37:49 -0400
-Received: by mail-qg0-f49.google.com with SMTP id 63so2116863qgz.22
-        for <linux-nfs@vger.kernel.org>; Sat, 12 Jul 2014 14:37:48 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH] NFS: Remove 2 unused variables
-Date: Sat, 12 Jul 2014 17:37:44 -0400
-Message-Id: <1405201064-45906-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:42152 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753115AbaG3M2e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:34 -0400
+Received: by mail-qa0-f46.google.com with SMTP id v10so1175803qac.33
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:34 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 35/37] nfsd: remove nfs4_lock_state: nfs4_state_shutdown_net
+Date: Wed, 30 Jul 2014 08:27:36 -0400
+Message-Id: <1406723258-8512-36-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cc: Weston Andros Adamson <dros@primarydata.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/direct.c | 2 --
- fs/nfs/write.c  | 2 --
- 2 files changed, 4 deletions(-)
+ fs/nfsd/nfs4state.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 8f98138cbc43..f11b9eed0de1 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -756,7 +756,6 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
- 	spin_unlock(&dreq->lock);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7eea82e1d779..a33ce55925fb 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6402,7 +6402,6 @@ nfs4_state_shutdown_net(struct net *net)
+ 	cancel_delayed_work_sync(&nn->laundromat_work);
+ 	locks_end_grace(&nn->nfsd4_manager);
  
- 	while (!list_empty(&hdr->pages)) {
--		bool do_destroy = true;
+-	nfs4_lock_state();
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&state_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+@@ -6419,7 +6418,6 @@ nfs4_state_shutdown_net(struct net *net)
  
- 		req = nfs_list_entry(hdr->pages.next);
- 		nfs_list_remove_request(req);
-@@ -765,7 +764,6 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
- 		case NFS_IOHDR_NEED_COMMIT:
- 			kref_get(&req->wb_kref);
- 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
--			do_destroy = false;
- 		}
- 		nfs_unlock_and_release_request(req);
- 	}
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index bdc4db23951e..5e2f10304548 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -868,7 +868,6 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
- {
- 	struct nfs_commit_info cinfo;
- 	unsigned long bytes = 0;
--	bool do_destroy;
+ 	nfsd4_client_tracking_exit(net);
+ 	nfs4_state_destroy_net(net);
+-	nfs4_unlock_state();
+ }
  
- 	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
- 		goto out;
-@@ -898,7 +897,6 @@ remove_req:
- next:
- 		nfs_unlock_request(req);
- 		nfs_end_page_writeback(req);
--		do_destroy = !test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags);
- 		nfs_release_request(req);
- 	}
- out:
+ void
 -- 
 1.9.3
 
