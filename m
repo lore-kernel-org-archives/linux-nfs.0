@@ -1,91 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:43544 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754905AbaGQTMp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Jul 2014 15:12:45 -0400
-Received: by mail-qc0-f176.google.com with SMTP id i17so2511549qcy.35
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Jul 2014 12:12:44 -0700 (PDT)
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:41212 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753556AbaG3M1u (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:27:50 -0400
+Received: by mail-qa0-f45.google.com with SMTP id cm18so1165541qab.32
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:27:50 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/6] nfsd: Move the delegation reference counter into the struct nfs4_stid
-Date: Thu, 17 Jul 2014 15:12:30 -0400
-Message-Id: <1405624354-22388-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
-References: <1405624354-22388-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 04/37] nfsd: Move create_client() call outside the lock
+Date: Wed, 30 Jul 2014 08:27:05 -0400
+Message-Id: <1406723258-8512-5-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-We will want to add reference counting to the lock stateid and open
-stateids too in later patches.
+For efficiency reasons, and because we want to use spin locks instead
+of relying on the client_mutex.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 6 +++---
- fs/nfsd/state.h     | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4state.c | 35 +++++++++++++++++++----------------
+ 1 file changed, 19 insertions(+), 16 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9bc896720db3..d88a33fa8e8f 100644
+index 256e9032f49c..4b42cb95e315 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -472,6 +472,7 @@ kmem_cache *slab)
- 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
- 	/* Will be incremented before return to client: */
- 	stid->sc_stateid.si_generation = 0;
-+	atomic_set(&stid->sc_count, 1);
+@@ -2181,6 +2181,10 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		return nfserr_encr_alg_unsupp;
+ 	}
  
- 	/*
- 	 * It shouldn't be a problem to reuse an opaque stateid value.
-@@ -595,7 +596,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time = 0;
--	atomic_set(&dp->dl_count, 1);
- 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
- 	return dp;
++	new = create_client(exid->clname, rqstp, &verf);
++	if (new == NULL)
++		return nfserr_jukebox;
++
+ 	/* Cases below refer to rfc 5661 section 18.35.4: */
+ 	nfs4_lock_state();
+ 	conf = find_confirmed_client_by_name(&exid->clname, nn);
+@@ -2207,7 +2211,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 			}
+ 			/* case 6 */
+ 			exid->flags |= EXCHGID4_FLAG_CONFIRMED_R;
+-			new = conf;
+ 			goto out_copy;
+ 		}
+ 		if (!creds_match) { /* case 3 */
+@@ -2220,7 +2223,6 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		}
+ 		if (verfs_match) { /* case 2 */
+ 			conf->cl_exchange_flags |= EXCHGID4_FLAG_CONFIRMED_R;
+-			new = conf;
+ 			goto out_copy;
+ 		}
+ 		/* case 5, client reboot */
+@@ -2238,29 +2240,28 @@ nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 
+ 	/* case 1 (normal case) */
+ out_new:
+-	new = create_client(exid->clname, rqstp, &verf);
+-	if (new == NULL) {
+-		status = nfserr_jukebox;
+-		goto out;
+-	}
+ 	new->cl_minorversion = cstate->minorversion;
+ 	new->cl_mach_cred = (exid->spa_how == SP4_MACH_CRED);
+ 
+ 	gen_clid(new, nn);
+ 	add_to_unconfirmed(new);
++	conf = new;
++	new = NULL;
+ out_copy:
+-	exid->clientid.cl_boot = new->cl_clientid.cl_boot;
+-	exid->clientid.cl_id = new->cl_clientid.cl_id;
++	exid->clientid.cl_boot = conf->cl_clientid.cl_boot;
++	exid->clientid.cl_id = conf->cl_clientid.cl_id;
+ 
+-	exid->seqid = new->cl_cs_slot.sl_seqid + 1;
+-	nfsd4_set_ex_flags(new, exid);
++	exid->seqid = conf->cl_cs_slot.sl_seqid + 1;
++	nfsd4_set_ex_flags(conf, exid);
+ 
+ 	dprintk("nfsd4_exchange_id seqid %d flags %x\n",
+-		new->cl_cs_slot.sl_seqid, new->cl_exchange_flags);
++		conf->cl_cs_slot.sl_seqid, conf->cl_exchange_flags);
+ 	status = nfs_ok;
+ 
+ out:
+ 	nfs4_unlock_state();
++	if (new)
++		free_client(new);
+ 	return status;
  }
-@@ -615,7 +615,7 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
- void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
--	if (atomic_dec_and_test(&dp->dl_count)) {
-+	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
- 		remove_stid(&dp->dl_stid);
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
-@@ -3120,7 +3120,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
- 	 * lock) we know the server hasn't removed the lease yet, we know
- 	 * it's safe to take a reference.
- 	 */
--	atomic_inc(&dp->dl_count);
-+	atomic_inc(&dp->dl_stid.sc_count);
- 	nfsd4_cb_recall(dp);
+ 
+@@ -2903,6 +2904,9 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	__be32 			status;
+ 	struct nfsd_net		*nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
++	new = create_client(clname, rqstp, &clverifier);
++	if (new == NULL)
++		return nfserr_jukebox;
+ 	/* Cases below refer to rfc 3530 section 14.2.33: */
+ 	nfs4_lock_state();
+ 	conf = find_confirmed_client_by_name(&clname, nn);
+@@ -2923,10 +2927,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	unconf = find_unconfirmed_client_by_name(&clname, nn);
+ 	if (unconf)
+ 		expire_client(unconf);
+-	status = nfserr_jukebox;
+-	new = create_client(clname, rqstp, &clverifier);
+-	if (new == NULL)
+-		goto out;
+ 	if (conf && same_verf(&conf->cl_verifier, &clverifier))
+ 		/* case 1: probable callback update */
+ 		copy_clid(new, conf);
+@@ -2938,9 +2938,12 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	setclid->se_clientid.cl_boot = new->cl_clientid.cl_boot;
+ 	setclid->se_clientid.cl_id = new->cl_clientid.cl_id;
+ 	memcpy(setclid->se_confirm.data, new->cl_confirm.data, sizeof(setclid->se_confirm.data));
++	new = NULL;
+ 	status = nfs_ok;
+ out:
+ 	nfs4_unlock_state();
++	if (new)
++		free_client(new);
+ 	return status;
  }
  
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 996d61eeb357..e68a9ae30fd7 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -73,6 +73,7 @@ struct nfsd4_callback {
- };
- 
- struct nfs4_stid {
-+	atomic_t sc_count;
- #define NFS4_OPEN_STID 1
- #define NFS4_LOCK_STID 2
- #define NFS4_DELEG_STID 4
-@@ -91,7 +92,6 @@ struct nfs4_delegation {
- 	struct list_head	dl_perfile;
- 	struct list_head	dl_perclnt;
- 	struct list_head	dl_recall_lru;  /* delegation recalled */
--	atomic_t		dl_count;       /* ref count */
- 	struct nfs4_file	*dl_file;
- 	u32			dl_type;
- 	time_t			dl_time;
 -- 
 1.9.3
 
