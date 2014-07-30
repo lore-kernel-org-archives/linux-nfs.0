@@ -1,71 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:53731 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754266AbaG2VXy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:23:54 -0400
-Subject: [PATCH v5 05/21] xprtrdma: On disconnect, don't ignore pending CQEs
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Jul 2014 17:23:52 -0400
-Message-ID: <20140729212352.2812.99981.stgit@manet.1015granger.net>
-In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:59413 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754671AbaG3M16 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:27:58 -0400
+Received: by mail-qg0-f51.google.com with SMTP id a108so1288073qge.24
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:27:57 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 09/37] nfsd: Add lockdep assertions to document the nfs4_client/session locking
+Date: Wed, 30 Jul 2014 08:27:10 -0400
+Message-Id: <1406723258-8512-10-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-xprtrdma is currently throwing away queued completions during
-a reconnect. RPC replies posted just before connection loss, or
-successful completions that change the state of an FRMR, can be
-missed.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 0d5187d..7fd457e 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -310,6 +310,13 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
- 	rpcrdma_recvcq_poll(cq, ep);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f9d077d800ee..e7dfd4e9d942 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -139,6 +139,10 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ 
+ static __be32 get_client_locked(struct nfs4_client *clp)
+ {
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	if (is_client_expired(clp))
+ 		return nfserr_expired;
+ 	atomic_inc(&clp->cl_refcount);
+@@ -179,6 +183,10 @@ renew_client(struct nfs4_client *clp)
+ 
+ static void put_client_renew_locked(struct nfs4_client *clp)
+ {
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	if (!atomic_dec_and_test(&clp->cl_refcount))
+ 		return;
+ 	if (!is_client_expired(clp))
+@@ -212,6 +220,9 @@ static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+ static void nfsd4_put_session_locked(struct nfsd4_session *ses)
+ {
+ 	struct nfs4_client *clp = ses->se_client;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
+ 
+ 	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
+ 		free_session(ses);
+@@ -1453,6 +1464,8 @@ __find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
+ 	int idx;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	dump_sessionid(__func__, sessionid);
+ 	idx = hash_sessionid(sessionid);
+ 	/* Search in the appropriate list */
+@@ -1489,6 +1502,11 @@ out:
+ static void
+ unhash_session(struct nfsd4_session *ses)
+ {
++	struct nfs4_client *clp = ses->se_client;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++	lockdep_assert_held(&nn->client_lock);
++
+ 	list_del(&ses->se_hash);
+ 	spin_lock(&ses->se_client->cl_lock);
+ 	list_del(&ses->se_perclnt);
+@@ -1575,6 +1593,8 @@ unhash_client_locked(struct nfs4_client *clp)
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 	struct nfsd4_session *ses;
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	/* Mark the client as expired! */
+ 	clp->cl_time = 0;
+ 	/* Make it invisible */
+@@ -1906,6 +1926,8 @@ add_to_unconfirmed(struct nfs4_client *clp)
+ 	unsigned int idhashval;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	clear_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags);
+ 	add_clp_to_name_tree(clp, &nn->unconf_name_tree);
+ 	idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+@@ -1919,6 +1941,8 @@ move_to_confirmed(struct nfs4_client *clp)
+ 	unsigned int idhashval = clientid_hashval(clp->cl_clientid.cl_id);
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
++	lockdep_assert_held(&nn->client_lock);
++
+ 	dprintk("NFSD: move_to_confirm nfs4_client %p\n", clp);
+ 	list_move(&clp->cl_idhash, &nn->conf_id_hashtbl[idhashval]);
+ 	rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
+@@ -1949,6 +1973,7 @@ find_confirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
+ {
+ 	struct list_head *tbl = nn->conf_id_hashtbl;
+ 
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_client_in_id_table(tbl, clid, sessions);
  }
  
-+static void
-+rpcrdma_flush_cqs(struct rpcrdma_ep *ep)
-+{
-+	rpcrdma_recvcq_upcall(ep->rep_attr.recv_cq, ep);
-+	rpcrdma_sendcq_upcall(ep->rep_attr.send_cq, ep);
-+}
-+
- #ifdef RPC_DEBUG
- static const char * const conn[] = {
- 	"address resolved",
-@@ -872,9 +879,7 @@ retry:
- 		if (rc && rc != -ENOTCONN)
- 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
- 				" status %i\n", __func__, rc);
--
--		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
--		rpcrdma_clean_cq(ep->rep_attr.send_cq);
-+		rpcrdma_flush_cqs(ep);
- 
- 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
- 		id = rpcrdma_create_id(xprt, ia,
-@@ -985,8 +990,7 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+@@ -1957,6 +1982,7 @@ find_unconfirmed_client(clientid_t *clid, bool sessions, struct nfsd_net *nn)
  {
- 	int rc;
+ 	struct list_head *tbl = nn->unconf_id_hashtbl;
  
--	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
--	rpcrdma_clean_cq(ep->rep_attr.send_cq);
-+	rpcrdma_flush_cqs(ep);
- 	rc = rdma_disconnect(ia->ri_id);
- 	if (!rc) {
- 		/* returns without wait if not connected */
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_client_in_id_table(tbl, clid, sessions);
+ }
+ 
+@@ -1968,12 +1994,14 @@ static bool clp_used_exchangeid(struct nfs4_client *clp)
+ static struct nfs4_client *
+ find_confirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
+ {
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_clp_in_name_tree(name, &nn->conf_name_tree);
+ }
+ 
+ static struct nfs4_client *
+ find_unconfirmed_client_by_name(struct xdr_netobj *name, struct nfsd_net *nn)
+ {
++	lockdep_assert_held(&nn->client_lock);
+ 	return find_clp_in_name_tree(name, &nn->unconf_name_tree);
+ }
+ 
+@@ -4907,6 +4935,8 @@ find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
+ 	unsigned int strhashval = ownerstr_hashval(owner);
+ 	struct nfs4_stateowner *so;
+ 
++	lockdep_assert_held(&clp->cl_lock);
++
+ 	list_for_each_entry(so, &clp->cl_ownerstr_hashtbl[strhashval],
+ 			    so_strhash) {
+ 		if (so->so_is_open_owner)
+-- 
+1.9.3
 
