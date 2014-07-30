@@ -1,170 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:48528 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754474AbaGHSFE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:04 -0400
-Received: by mail-qc0-f181.google.com with SMTP id x13so5660153qcv.40
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:03 -0700 (PDT)
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:35698 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752191AbaG3Bey (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:34:54 -0400
+Received: by mail-qa0-f45.google.com with SMTP id cm18so577347qab.32
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:34:53 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 021/100] nfsd: Protect the nfs4_file delegation fields using the fi_lock
-Date: Tue,  8 Jul 2014 14:03:09 -0400
-Message-Id: <1404842668-22521-22-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 03/38] nfsd: Add a struct nfs4_file field to struct nfs4_stid
+Date: Tue, 29 Jul 2014 21:34:08 -0400
+Message-Id: <1406684083-19736-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move more of the delegation fields to be protected by the fi_lock. It's
-more granular than the state_lock and in later patches we'll want to
-be able to rely on it in addition to the state_lock.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Also, the current code in nfs4_setlease calls vfs_setlease and uses the
-client_mutex to ensure that it doesn't disappear before we can hash the
-delegation. With the client_mutex gone, we'll have a potential race
-condition.
-
-It's possible that the delegation could be recalled after we acquire the
-lease but before we ever get around to hashing it. If that happens, then
-we'd have a nfs4_file that *thinks* it has a delegation, when it
-actually has none.
-
-Attempt to acquire a delegation. If that succeeds, take the state_lock
-and recheck to make sure the lease is still there. If it is, then take
-the fi_lock and set up the rest of the delegation fields. This prevents
-the race because the delegation break workqueue job must also take the
-state_lock.
+All stateids are associated with a nfs4_file. Let's consolidate.
+Start by replacing delegation->dl_file with the dl_stid.sc_file
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++++++++-------------
- 1 file changed, 38 insertions(+), 13 deletions(-)
+ fs/nfsd/nfs4callback.c |  2 +-
+ fs/nfsd/nfs4state.c    | 21 ++++++++++-----------
+ fs/nfsd/state.h        |  2 +-
+ 3 files changed, 12 insertions(+), 13 deletions(-)
 
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 8574c708cf8c..e0be57b0f79b 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -337,7 +337,7 @@ static void encode_cb_recall4args(struct xdr_stream *xdr,
+ 	p = xdr_reserve_space(xdr, 4);
+ 	*p++ = xdr_zero;			/* truncate */
+ 
+-	encode_nfs_fh4(xdr, &dp->dl_file->fi_fhandle);
++	encode_nfs_fh4(xdr, &dp->dl_stid.sc_file->fi_fhandle);
+ 
+ 	hdr->nops++;
+ }
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9dd3571b0ec6..a1ddb1e6805c 100644
+index 60ab22b6e099..d6b0ef4e90fe 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -649,6 +649,8 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
+@@ -515,10 +515,6 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+ 
+ static void nfs4_free_deleg(struct nfs4_stid *stid)
+ {
+-	struct nfs4_delegation *dp = delegstateid(stid);
+-
+-	if (dp->dl_file)
+-		put_nfs4_file(dp->dl_file);
+ 	kmem_cache_free(deleg_slab, stid);
+ 	atomic_long_dec(&num_delegations);
+ }
+@@ -636,12 +632,15 @@ out_dec:
+ void
+ nfs4_put_stid(struct nfs4_stid *s)
+ {
++	struct nfs4_file *fp = s->sc_file;
+ 	struct nfs4_client *clp = s->sc_client;
+ 
+ 	if (!atomic_dec_and_test(&s->sc_count))
+ 		return;
+ 	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
+ 	s->sc_free(s);
++	if (fp)
++		put_nfs4_file(fp);
+ }
  
  static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+@@ -677,7 +676,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ static void
+ unhash_delegation_locked(struct nfs4_delegation *dp)
  {
-+	lockdep_assert_held(&state_lock);
-+
- 	if (!fp->fi_lease)
- 		return;
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
-@@ -668,11 +670,10 @@ static void
- hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
+-	struct nfs4_file *fp = dp->dl_file;
++	struct nfs4_file *fp = dp->dl_stid.sc_file;
+ 
  	lockdep_assert_held(&state_lock);
-+	lockdep_assert_held(&fp->fi_lock);
  
- 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
--	spin_lock(&fp->fi_lock);
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
--	spin_unlock(&fp->fi_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- }
+@@ -3097,10 +3096,10 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
  
-@@ -684,17 +685,17 @@ unhash_delegation(struct nfs4_delegation *dp)
- 
- 	spin_lock(&state_lock);
- 	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-+	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
- 	list_del_init(&dp->dl_recall_lru);
--	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
--	spin_unlock(&state_lock);
- 	if (fp) {
- 		nfs4_put_deleg_lease(fp);
--		put_nfs4_file(fp);
- 		dp->dl_file = NULL;
- 	}
-+	spin_unlock(&state_lock);
-+	put_nfs4_file(fp);
- }
- 
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-@@ -3506,7 +3507,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
  {
- 	struct nfs4_file *fp = dp->dl_file;
+-	struct nfs4_client *clp = dp->dl_stid.sc_client;
+-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++	struct nfsd_net *nn = net_generic(dp->dl_stid.sc_client->net,
++					  nfsd_net_id);
+ 
+-	block_delegations(&dp->dl_file->fi_fhandle);
++	block_delegations(&dp->dl_stid.sc_file->fi_fhandle);
+ 
+ 	/*
+ 	 * We can't do this in nfsd_break_deleg_cb because it is
+@@ -3508,7 +3507,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_file *fp, int flag)
+ 
+ static int nfs4_setlease(struct nfs4_delegation *dp)
+ {
+-	struct nfs4_file *fp = dp->dl_file;
++	struct nfs4_file *fp = dp->dl_stid.sc_file;
  	struct file_lock *fl;
--	int status;
-+	int status = 0;
- 
- 	fl = nfs4_alloc_init_lease(fp, NFS4_OPEN_DELEGATE_READ);
- 	if (!fl)
-@@ -3514,15 +3515,31 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	fl->fl_file = find_readable_file(fp);
- 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
- 	if (status)
--		goto out_free;
-+		goto out_fput;
-+	spin_lock(&state_lock);
-+	/* Did the lease get broken before we took the lock? */
-+	status = -EAGAIN;
-+	if (!file_has_lease(fl->fl_file))
-+		goto out_unlock;
-+	spin_lock(&fp->fi_lock);
-+	/* Race breaker */
-+	if (fp->fi_lease) {
-+		status = 0;
-+		atomic_inc(&fp->fi_delegees);
-+		hash_delegation_locked(dp, fp);
-+		spin_unlock(&fp->fi_lock);
-+		goto out_unlock;
-+	}
- 	fp->fi_lease = fl;
- 	fp->fi_deleg_file = fl->fl_file;
- 	atomic_set(&fp->fi_delegees, 1);
--	spin_lock(&state_lock);
- 	hash_delegation_locked(dp, fp);
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
--out_free:
-+out_unlock:
-+	spin_unlock(&state_lock);
-+out_fput:
- 	if (fl->fl_file)
- 		fput(fl->fl_file);
- 	locks_free_lock(fl);
-@@ -3531,19 +3548,27 @@ out_free:
- 
- static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- {
-+	int status = 0;
-+
- 	if (fp->fi_had_conflict)
- 		return -EAGAIN;
+ 	struct file *filp;
+ 	int status = 0;
+@@ -3573,7 +3572,7 @@ nfs4_set_delegation(struct nfs4_client *clp, struct svc_fh *fh,
  	get_nfs4_file(fp);
-+	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
- 	dp->dl_file = fp;
--	if (!fp->fi_lease)
-+	if (!fp->fi_lease) {
-+		spin_unlock(&fp->fi_lock);
-+		spin_unlock(&state_lock);
- 		return nfs4_setlease(dp);
--	spin_lock(&state_lock);
-+	}
- 	atomic_inc(&fp->fi_delegees);
- 	if (fp->fi_had_conflict) {
--		spin_unlock(&state_lock);
--		return -EAGAIN;
-+		status = -EAGAIN;
-+		goto out_unlock;
- 	}
- 	hash_delegation_locked(dp, fp);
-+out_unlock:
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
- }
+ 	spin_lock(&state_lock);
+ 	spin_lock(&fp->fi_lock);
+-	dp->dl_file = fp;
++	dp->dl_stid.sc_file = fp;
+ 	if (!fp->fi_lease) {
+ 		spin_unlock(&fp->fi_lock);
+ 		spin_unlock(&state_lock);
+@@ -4167,7 +4166,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 		if (status)
+ 			goto out;
+ 		if (filpp) {
+-			file = dp->dl_file->fi_deleg_file;
++			file = dp->dl_stid.sc_file->fi_deleg_file;
+ 			if (!file) {
+ 				WARN_ON_ONCE(1);
+ 				status = nfserr_serverfault;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 32c466265ac1..c856601c15f6 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -85,6 +85,7 @@ struct nfs4_stid {
+ 	unsigned char sc_type;
+ 	stateid_t sc_stateid;
+ 	struct nfs4_client *sc_client;
++	struct nfs4_file *sc_file;
+ 	void (*sc_free)(struct nfs4_stid *);
+ };
+ 
+@@ -93,7 +94,6 @@ struct nfs4_delegation {
+ 	struct list_head	dl_perfile;
+ 	struct list_head	dl_perclnt;
+ 	struct list_head	dl_recall_lru;  /* delegation recalled */
+-	struct nfs4_file	*dl_file;
+ 	u32			dl_type;
+ 	time_t			dl_time;
+ /* For recall: */
 -- 
 1.9.3
 
