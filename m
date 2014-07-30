@@ -1,27 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:34854 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753193AbaGOQYn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Jul 2014 12:24:43 -0400
-Date: Tue, 15 Jul 2014 09:24:42 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH 0/7] nfsd: more delegation fixes to prepare for
- client_mutex removal
-Message-ID: <20140715162442.GA8928@infradead.org>
-References: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
+Received: from g4t3427.houston.hp.com ([15.201.208.55]:51493 "EHLO
+	g4t3427.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754604AbaG3RJ0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 13:09:26 -0400
+From: "McEvoy, James" <james.mcevoy@hp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: NFSv4.1 ACL reference implementation
+Date: Wed, 30 Jul 2014 17:08:25 +0000
+Message-ID: <6301806E96421841896741228C6B1A2764A7DCF7@G4W3216.americas.hpqcorp.net>
+References: <6301806E96421841896741228C6B1A2764A7C51F@G4W3216.americas.hpqcorp.net>
+ <20140729210901.GA24471@fieldses.org>
+In-Reply-To: <20140729210901.GA24471@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1405420669-4030-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 15, 2014 at 06:37:42AM -0400, Jeff Layton wrote:
-> I know that the Christoph mentioned pushing out the open and lock
-> stateid changes next, but we need to finish up the delegation changes in
-> order to prepare for those. Most of these have been posted before, and
-> they should be merged on top of the two lm_break callback patches that I
-> posted yesterday.
+We are implementing NFSv4.1 ACLs in the filesystem mostly to support 
+SMB/CIFS but I am seeing some strange behavior with ACL group 
+inheritance on children/grand-children using the nfs4_setfacl and 
+nfs4_getfacl on the parent directory.  The problems are mostly with 
+inheritance on the @OWNER and @GROUP ACEs... 
 
-Fixing delegations up first sounds perfectly fine to.
+What I am looking for is a reference that I can use to validate ACL 
+inheritance behavior. Is there a distro that has a filesystem which supports 
+NFSv4 ACLs?  Or ideally an rpm that I could install on a CentOS6 VM.
+I have tried using the richacl mount option on OpenSUSE 13.1 but the 
+nfs4_getfacl command returns: 
+"Operation to request attribute not supported." 
+The fstab entry to mount the filesystem is:
+/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0-0-0-0-part3 \
+	/home	ext4	acl,richacl,user_xattr 1 2
+
+Do you have any recommendations as to what and how I can install 
+a filesystem that supports nfsv4 ACLs?
+
+  --jim
+
+> -----Original Message-----
+> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> Sent: Tuesday, July 29, 2014 2:09 PM
+> To: McEvoy, James
+> Cc: linux-nfs@vger.kernel.org
+> Subject: Re: NFSv4.1 ACL reference implementation
+> 
+> On Tue, Jul 29, 2014 at 07:18:03PM +0000, McEvoy, James wrote:
+> > Is there a working NFSv4.1 reference implementation available and are there
+> any instructs on how to build/install it?
+> 
+> I don't recall seeing any, no.
+> 
+> (Most NFSv4.0 ACL implementations should still be perfectly compliant with the
+> NFSv4.1 spec too as far as I know.  But I don't know of any implementations of
+> the ACL features that are new to RFC 5661.  Is there any particular feature that
+> you're interested in?)
+> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of
+> a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
