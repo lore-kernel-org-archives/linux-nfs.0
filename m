@@ -1,70 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:53945 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756000AbaGXAM1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Jul 2014 20:12:27 -0400
-Received: by mail-ie0-f171.google.com with SMTP id at1so1664371iec.2
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Jul 2014 17:12:27 -0700 (PDT)
-MIME-Version: 1.0
-Date: Wed, 23 Jul 2014 17:12:27 -0700
-Message-ID: <CAB7xdinUj4U3PAYVB7j3o+iWSTV7aNMBD5O-rAgnzj6vgmce0g@mail.gmail.com>
-Subject: pNFS setup
-From: sheng qiu <herbert1984106@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:40659 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754652AbaG3Bfq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:46 -0400
+Received: by mail-qa0-f42.google.com with SMTP id j15so600842qaq.1
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:45 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH v3 37/38] nfsd: don't thrash the cl_lock while freeing an open stateid
+Date: Tue, 29 Jul 2014 21:34:42 -0400
+Message-Id: <1406684083-19736-38-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+When we remove the client_mutex, we'll have a potential race between
+FREE_STATEID and CLOSE.
 
-does anyone can share your experience on setting up the pNFS of file
-layout or block layout?
-the wiki instruction :
-http://wiki.linux-nfs.org/wiki/index.php/PNFS_Setup_Instructions does
-not work for me on step
+The root of the problem is that we are walking the st_locks list,
+dropping the spinlock and then trying to release the persistent
+reference to the lockstateid. In between, a FREE_STATEID call can come
+along and take the lock, find the stateid and then try to put the
+reference. That leads to a double put.
 
-echo "/dev/sdc:192.168.0.1,192.168.0.2" >/proc/fs/nfsd/pnfs_dlm_device
+Fix this by not releasing the cl_lock in order to release each lock
+stateid. Use put_generic_stateid_locked to unhash them and gather them
+onto a list, and free_ol_stateid_reaplist to free any that end up on the
+list.
 
-since i do not have that directory entry after install the pNFS kernel
-version. my system is ubuntu 14.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 34 +++++++++++++++++++---------------
+ 1 file changed, 19 insertions(+), 15 deletions(-)
 
-this is my config file related with nfs part:
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 879342bc16b2..1f67a96c4941 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1077,27 +1077,26 @@ static void release_lockowner(struct nfs4_lockowner *lo)
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ }
+ 
+-static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
+-	__releases(&open_stp->st_stateowner->so_client->cl_lock)
+-	__acquires(&open_stp->st_stateowner->so_client->cl_lock)
++static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp,
++				       struct list_head *reaplist)
+ {
+ 	struct nfs4_ol_stateid *stp;
+ 
+ 	while (!list_empty(&open_stp->st_locks)) {
+ 		stp = list_entry(open_stp->st_locks.next,
+ 				struct nfs4_ol_stateid, st_locks);
+-		spin_unlock(&open_stp->st_stateowner->so_client->cl_lock);
+-		release_lock_stateid(stp);
+-		spin_lock(&open_stp->st_stateowner->so_client->cl_lock);
++		unhash_lock_stateid(stp);
++		put_ol_stateid_locked(stp, reaplist);
+ 	}
+ }
+ 
+-static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
++static void unhash_open_stateid(struct nfs4_ol_stateid *stp,
++				struct list_head *reaplist)
+ {
+ 	lockdep_assert_held(&stp->st_stid.sc_client->cl_lock);
+ 
+ 	unhash_generic_stateid(stp);
+-	release_open_stateid_locks(stp);
++	release_open_stateid_locks(stp, reaplist);
+ }
+ 
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+@@ -1105,7 +1104,7 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ 	LIST_HEAD(reaplist);
+ 
+ 	spin_lock(&stp->st_stid.sc_client->cl_lock);
+-	unhash_open_stateid(stp);
++	unhash_open_stateid(stp, &reaplist);
+ 	put_ol_stateid_locked(stp, &reaplist);
+ 	spin_unlock(&stp->st_stid.sc_client->cl_lock);
+ 	free_ol_stateid_reaplist(&reaplist);
+@@ -1145,7 +1144,7 @@ static void release_openowner(struct nfs4_openowner *oo)
+ 	while (!list_empty(&oo->oo_owner.so_stateids)) {
+ 		stp = list_first_entry(&oo->oo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		unhash_open_stateid(stp);
++		unhash_open_stateid(stp, &reaplist);
+ 		put_ol_stateid_locked(stp, &reaplist);
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+@@ -4701,16 +4700,21 @@ out:
+ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ {
+ 	struct nfs4_client *clp = s->st_stid.sc_client;
++	LIST_HEAD(reaplist);
+ 
+ 	s->st_stid.sc_type = NFS4_CLOSED_STID;
+ 	spin_lock(&clp->cl_lock);
+-	unhash_open_stateid(s);
+-	spin_unlock(&clp->cl_lock);
++	unhash_open_stateid(s, &reaplist);
+ 
+-	if (clp->cl_minorversion)
+-		nfs4_put_stid(&s->st_stid);
+-	else
++	if (clp->cl_minorversion) {
++		put_ol_stateid_locked(s, &reaplist);
++		spin_unlock(&clp->cl_lock);
++		free_ol_stateid_reaplist(&reaplist);
++	} else {
++		spin_unlock(&clp->cl_lock);
++		free_ol_stateid_reaplist(&reaplist);
+ 		move_to_close_lru(s, clp->net);
++	}
+ }
+ 
+ /*
+-- 
+1.9.3
 
-CONFIG_NETWORK_FILESYSTEMS=y
-CONFIG_NFS_FS=m
-CONFIG_NFS_V2=m
-CONFIG_NFS_V3=m
-CONFIG_NFS_V3_ACL=y
-CONFIG_NFS_V4=m
-CONFIG_NFS_SWAP=y
-CONFIG_NFS_V4_1=y
-CONFIG_NFS_V4_2=y
-CONFIG_PNFS_FILE_LAYOUT=m
-CONFIG_PNFS_BLOCK=m
-CONFIG_PNFS_OBJLAYOUT=m
-CONFIG_NFS_V4_1_IMPLEMENTATION_ID_DOMAIN="kernel.org"
-CONFIG_NFS_V4_SECURITY_LABEL=y
-CONFIG_NFS_FSCACHE=y
-# CONFIG_NFS_USE_LEGACY_DNS is not set
-CONFIG_NFS_USE_KERNEL_DNS=y
-CONFIG_NFS_DEBUG=y
-CONFIG_NFSD=m
-CONFIG_NFSD_V2_ACL=y
-CONFIG_NFSD_V3=y
-CONFIG_NFSD_V3_ACL=y
-CONFIG_NFSD_V4=y
-CONFIG_NFSD_V4_SECURITY_LABEL=y
-# CONFIG_NFSD_FAULT_INJECTION is not set
-CONFIG_PNFSD=y
-CONFIG_PNFSD_LOCAL_EXPORT=y
-# CONFIG_PNFSD_LEXP_LAYOUT_SEGMENTS is not set
-CONFIG_PNFSD_LEXP_RETURN_ON_CLOSE=y
-# CONFIG_PNFSD_LEXP_COMMIT_THRU_MDS is not set
-# CONFIG_PNFSD_LEXP_INJECT_IO_ERRORS is not set
-CONFIG_LOCKD=m
-CONFIG_LOCKD_V4=y
-CONFIG_NFS_ACL_SUPPORT=m
-CONFIG_NFS_COMMON=y
-
-
-thanks a lot if anyone can help.
