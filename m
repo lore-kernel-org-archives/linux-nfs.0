@@ -1,128 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:56090 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755089AbaGVOvS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Jul 2014 10:51:18 -0400
-Subject: [PATCH v4 02/21] xprtrdma: Protect ia->ri_id when
- unmapping/invalidating MRs
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 22 Jul 2014 10:51:16 -0400
-Message-ID: <20140722145116.6010.56308.stgit@manet.1015granger.net>
-In-Reply-To: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-lb0-f177.google.com ([209.85.217.177]:49359 "EHLO
+	mail-lb0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752646AbaG3LXg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 07:23:36 -0400
+Received: by mail-lb0-f177.google.com with SMTP id s7so753899lbd.22
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 04:23:34 -0700 (PDT)
+From: Natanael Copa <natanael.copa@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH 08/11] include libgen.h for basename
+Date: Wed, 30 Jul 2014 13:23:16 +0200
+Message-Id: <1406719399-1735-9-git-send-email-ncopa@alpinelinux.org>
+In-Reply-To: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
+References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure ia->ri_id remains valid while invoking dma_unmap_page() or
-posting LOCAL_INV during a transport reconnect. Otherwise,
-ia->ri_id->device or ia->ri_id->qp is NULL, which triggers a panic.
+According POSIX basename(3) should have an #include <libgen.h>
 
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=259
-Fixes: ec62f40 'xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting'
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+There are a different GNU implementation too, that can be used with
+_GNU_SOURCE, but the POSIX version is good enough and more portable.
+
+Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
 ---
- net/sunrpc/xprtrdma/verbs.c     |   23 +++++++++++++++++------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 2 files changed, 18 insertions(+), 6 deletions(-)
+ tools/rpcdebug/rpcdebug.c    | 1 +
+ utils/mount/mount.c          | 1 +
+ utils/mount/mount_libmount.c | 1 +
+ utils/nfsd/nfsd.c            | 1 +
+ utils/nfsidmap/nfsidmap.c    | 1 +
+ 5 files changed, 5 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 78bd7c6..cab742d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -613,6 +613,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	/* Else will do memory reg/dereg for each chunk */
- 	ia->ri_memreg_strategy = memreg;
+diff --git a/tools/rpcdebug/rpcdebug.c b/tools/rpcdebug/rpcdebug.c
+index d6e10d3..18b1622 100644
+--- a/tools/rpcdebug/rpcdebug.c
++++ b/tools/rpcdebug/rpcdebug.c
+@@ -26,6 +26,7 @@
+ #include <malloc.h>
+ #include <fcntl.h>
+ #include <ctype.h>
++#include <libgen.h>
+ /* RPC debug flags
+    #include <sunrpc/debug.h> */
+ /* NFS debug flags
+diff --git a/utils/mount/mount.c b/utils/mount/mount.c
+index eea00af..91f1087 100644
+--- a/utils/mount/mount.c
++++ b/utils/mount/mount.c
+@@ -33,6 +33,7 @@
+ #include <getopt.h>
+ #include <mntent.h>
+ #include <pwd.h>
++#include <libgen.h>
  
-+	rwlock_init(&ia->ri_qplock);
- 	return 0;
- out2:
- 	rdma_destroy_id(ia->ri_id);
-@@ -859,7 +860,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- int
- rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
--	struct rdma_cm_id *id;
-+	struct rdma_cm_id *id, *old;
- 	int rc = 0;
- 	int retry_count = 0;
+ #include "fstab.h"
+ #include "xcommon.h"
+diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
+index 701d41e..6f85dc9 100644
+--- a/utils/mount/mount_libmount.c
++++ b/utils/mount/mount_libmount.c
+@@ -29,6 +29,7 @@
+ #include <string.h>
+ #include <errno.h>
+ #include <getopt.h>
++#include <libgen.h>
  
-@@ -905,9 +906,14 @@ retry:
- 			rc = -ENETUNREACH;
- 			goto out;
- 		}
--		rdma_destroy_qp(ia->ri_id);
--		rdma_destroy_id(ia->ri_id);
-+
-+		write_lock(&ia->ri_qplock);
-+		old = ia->ri_id;
- 		ia->ri_id = id;
-+		write_unlock(&ia->ri_qplock);
-+
-+		rdma_destroy_qp(old);
-+		rdma_destroy_id(old);
- 	} else {
- 		dprintk("RPC:       %s: connecting...\n", __func__);
- 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
-@@ -1587,9 +1593,6 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 	struct ib_send_wr invalidate_wr, *bad_wr;
- 	int rc;
+ #include <libmount/libmount.h>
  
--	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
--
- 	memset(&invalidate_wr, 0, sizeof invalidate_wr);
- 	invalidate_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
-@@ -1597,7 +1600,11 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 03e3c81..201bb13 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -19,6 +19,7 @@
+ #include <errno.h>
+ #include <getopt.h>
+ #include <netdb.h>
++#include <libgen.h>
+ #include <sys/socket.h>
+ #include <netinet/in.h>
+ #include <arpa/inet.h>
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index 3f51b4d..e0d31e7 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -4,6 +4,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <errno.h>
++#include <libgen.h>
  
-+	read_lock(&ia->ri_qplock);
-+	while (seg1->mr_nsegs--)
-+		rpcrdma_unmap_one(ia, seg++);
- 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
-+	read_unlock(&ia->ri_qplock);
- 	if (rc)
- 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
- 			" status %i\n", __func__, rc);
-@@ -1658,8 +1665,10 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
- 
- 	list_add(&seg1->mr_chunk.rl_mw->r.fmr->list, &l);
- 	rc = ib_unmap_fmr(&l);
-+	read_lock(&ia->ri_qplock);
- 	while (seg1->mr_nsegs--)
- 		rpcrdma_unmap_one(ia, seg++);
-+	read_unlock(&ia->ri_qplock);
- 	if (rc)
- 		dprintk("RPC:       %s: failed ib_unmap_fmr,"
- 			" status %i\n", __func__, rc);
-@@ -1715,7 +1724,9 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 
- #if RPCRDMA_PERSISTENT_REGISTRATION
- 	case RPCRDMA_ALLPHYSICAL:
-+		read_lock(&ia->ri_qplock);
- 		rpcrdma_unmap_one(ia, seg);
-+		read_unlock(&ia->ri_qplock);
- 		break;
- #endif
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 89e7cd4..97ca516 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -59,6 +59,7 @@
-  * Interface Adapter -- one per transport instance
-  */
- struct rpcrdma_ia {
-+	rwlock_t		ri_qplock;
- 	struct rdma_cm_id 	*ri_id;
- 	struct ib_pd		*ri_pd;
- 	struct ib_mr		*ri_bind_mem;
+ #include <pwd.h>
+ #include <grp.h>
+-- 
+2.0.3
 
