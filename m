@@ -1,60 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:56629 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759587AbaGCTQA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Jul 2014 15:16:00 -0400
-Received: by mail-qg0-f45.google.com with SMTP id a108so631266qge.32
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Jul 2014 12:15:59 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: add a nfserrno mapping for -E2BIG to nfserr_fbig
-Date: Thu,  3 Jul 2014 15:15:54 -0400
-Message-Id: <1404414954-5227-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-la0-f41.google.com ([209.85.215.41]:57791 "EHLO
+	mail-la0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752609AbaG3LX3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 07:23:29 -0400
+Received: by mail-la0-f41.google.com with SMTP id s18so781168lam.28
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 04:23:27 -0700 (PDT)
+From: Natanael Copa <natanael.copa@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH 00/11] Porting nfs-utils to musl libc
+Date: Wed, 30 Jul 2014 13:23:08 +0200
+Message-Id: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I saw this pop up with some pynfs testing:
+Musl libc is a modern libc for Linux which focuses on correctness in
+standards-conformance. We use this libc for Alpine Linux.
 
-    [  123.609992] nfsd: non-standard errno: -7
+This patchset makes nfs-utils build with musl libc and should generally
+improve portability.
 
-...and -7 is -E2BIG. I think what happened is that XFS returned -E2BIG
-due to some xattr operations with the ACL10 pynfs TEST (I guess it has
-limited xattr size?).
+It would be nice if at least some of the patches could be applied
+upstream so we can reduce the number of patches for getting nfs working
+on Alpine Linux.
 
-Add a better mapping for that error since it's possible that we'll need
-it. How about we convert it to NFSERR_FBIG? As Bruce points out, they
-both have "BIG" in the name so it must be good.
+Natanael Copa (11):
+  conffile: use standard uint*_t and unsigned char
+  Fix header include for definition of NULL
+  replace __attribute_malloc__ with the more portable
+    __attribute__((__malloc__))
+  exportfs: define _GNU_SOURCE for stat64
+  mountd: define _GNU_SOURCE for statfs64 and use standard dev_t
+  nfsstat: replace the legacy SA_ONESHOT with standard SA_RESETHAND
+  Allow usage of getrpcbynumber() when getrpcbynumber_r() is unavailable
+  include libgen.h for basename
+  Only work around glibc bugs on glibc
+  exportfs: fix test of NULL pointer in host_pton()
+  exportfs: only do glibc specific hackery on glibc
 
-Also, turn the printk in this function into a WARN() so that we can get
-a bit more information about situations that don't have proper mappings.
+ configure.ac                 |  6 +-----
+ support/export/hostname.c    | 29 +++++++++++++++++------------
+ support/include/conffile.h   |  2 +-
+ support/include/exportfs.h   | 10 +++++-----
+ support/include/sockaddr.h   |  1 +
+ support/nfs/conffile.c       | 14 +++++++-------
+ support/nfs/svc_create.c     |  2 +-
+ support/nfs/svc_socket.c     |  6 ++++++
+ tools/rpcdebug/rpcdebug.c    |  1 +
+ utils/exportfs/exportfs.c    |  4 ++++
+ utils/mount/mount.c          |  1 +
+ utils/mount/mount_libmount.c |  1 +
+ utils/mountd/cache.c         |  6 +++++-
+ utils/mountd/svc_run.c       |  2 +-
+ utils/nfsd/nfsd.c            |  1 +
+ utils/nfsidmap/nfsidmap.c    |  1 +
+ utils/nfsstat/nfsstat.c      |  2 +-
+ utils/statd/hostname.c       |  6 +++---
+ utils/statd/sm-notify.c      |  8 ++++----
+ utils/statd/statd.h          |  2 +-
+ 20 files changed, 63 insertions(+), 42 deletions(-)
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfsproc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index eff49552cdc8..b19c7e8bf64c 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -717,6 +717,7 @@ nfserrno (int errno)
- 		{ nfserr_noent, -ENOENT },
- 		{ nfserr_io, -EIO },
- 		{ nfserr_nxio, -ENXIO },
-+		{ nfserr_fbig, -E2BIG },
- 		{ nfserr_acces, -EACCES },
- 		{ nfserr_exist, -EEXIST },
- 		{ nfserr_xdev, -EXDEV },
-@@ -751,7 +752,7 @@ nfserrno (int errno)
- 		if (nfs_errtbl[i].syserr == errno)
- 			return nfs_errtbl[i].nfserr;
- 	}
--	printk (KERN_INFO "nfsd: non-standard errno: %d\n", errno);
-+	WARN(1, "nfsd: non-standard errno: %d\n", errno);
- 	return nfserr_io;
- }
- 
 -- 
-1.9.3
+2.0.3
 
