@@ -1,52 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:49664 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755288AbaGHSFb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:05:31 -0400
-Received: by mail-qa0-f45.google.com with SMTP id s7so1182312qap.18
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:05:30 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
+Received: from fieldses.org ([174.143.236.118]:49603 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751577AbaG3N26 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jul 2014 09:28:58 -0400
+Date: Wed, 30 Jul 2014 09:28:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 040/100] nfsd: Prepare nfsd4_close() for open stateid referencing
-Date: Tue,  8 Jul 2014 14:03:28 -0400
-Message-Id: <1404842668-22521-41-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Subject: Re: [PATCH resend] nfsd: print status when nfsd4_open fails to open
+ file it just created
+Message-ID: <20140730132857.GD26316@fieldses.org>
+References: <1405949850-27841-1-git-send-email-jlayton@primarydata.com>
+ <1406684264-19922-1-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1406684264-19922-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Thanks for the resend, applied.--b.
 
-Prepare nfsd4_close for a future where nfs4_preprocess_seqid_op()
-hands it a fully referenced open stateid. Necessary step toward
-client_mutex removal.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 5 +++++
- 1 file changed, 5 insertions(+)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6bd5453f2f76..72e5be805e3e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4570,10 +4570,15 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_bump_seqid(cstate, status);
- 	if (status)
- 		goto out; 
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&stp->st_stid.sc_count);
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 
- 	nfsd4_close_open_stateid(stp);
-+
-+	/* put reference from nfs4_preprocess_seqid_op */
-+	put_generic_stateid(stp);
- out:
- 	nfs4_unlock_state();
- 	return status;
--- 
-1.9.3
-
+On Tue, Jul 29, 2014 at 09:37:44PM -0400, Jeff Layton wrote:
+> It's possible for nfsd to fail opening a file that it has just created.
+> When that happens, we throw a WARN but it doesn't include any info about
+> the error code. Print the status code to give us a bit more info.
+> 
+> Our QA group hit some of these warnings under some very heavy stress
+> testing. My suspicion is that they hit the file-max limit, but it's hard
+> to know for sure. Go ahead and add a -ENFILE mapping to
+> nfserr_serverfault to make the error more distinct (and correct).
+> 
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 4 +++-
+>  fs/nfsd/nfsproc.c  | 1 +
+>  2 files changed, 4 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 29a617ebe38c..8611585f739d 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -460,7 +460,9 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
+>  	 */
+>  	status = nfsd4_process_open2(rqstp, resfh, open);
+> -	WARN_ON(status && open->op_created);
+> +	WARN(status && open->op_created,
+> +	     "nfsd4_process_open2 failed to open newly-created file! status=%u\n",
+> +	     be32_to_cpu(status));
+>  out:
+>  	if (resfh && resfh != &cstate->current_fh) {
+>  		fh_dup2(&cstate->current_fh, resfh);
+> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+> index b19c7e8bf64c..b8680738f588 100644
+> --- a/fs/nfsd/nfsproc.c
+> +++ b/fs/nfsd/nfsproc.c
+> @@ -745,6 +745,7 @@ nfserrno (int errno)
+>  		{ nfserr_notsupp, -EOPNOTSUPP },
+>  		{ nfserr_toosmall, -ETOOSMALL },
+>  		{ nfserr_serverfault, -ESERVERFAULT },
+> +		{ nfserr_serverfault, -ENFILE },
+>  	};
+>  	int	i;
+>  
+> -- 
+> 1.9.3
+> 
