@@ -1,88 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34008 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754402AbaGUVSG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Jul 2014 17:18:06 -0400
-Date: Mon, 21 Jul 2014 17:17:57 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, hch@infradead.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 10/10] nfsd: give block_delegation and
- delegation_blocked its own spinlock
-Message-ID: <20140721211757.GL8438@fieldses.org>
-References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
- <1405696416-32585-11-git-send-email-jlayton@primarydata.com>
- <20140721170254.0289ab9f@notabene.brown>
- <20140721074412.4d9be086@tlielax.poochiereds.net>
- <20140722064049.6478e74d@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140722064049.6478e74d@notabene.brown>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:57535 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753830AbaG3M2U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:20 -0400
+Received: by mail-qa0-f46.google.com with SMTP id v10so1175458qac.33
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:20 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 25/37] nfsd: Remove nfs4_lock_state(): nfsd4_test_stateid/nfsd4_free_stateid
+Date: Wed, 30 Jul 2014 08:27:26 -0400
+Message-Id: <1406723258-8512-26-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 22, 2014 at 06:40:49AM +1000, NeilBrown wrote:
-> On Mon, 21 Jul 2014 07:44:12 -0400 Jeff Layton <jeff.layton@primarydata.com>
-> wrote:
-> 
-> > On Mon, 21 Jul 2014 17:02:54 +1000
-> > NeilBrown <neilb@suse.de> wrote:
-> 
-> > > >  	hash = arch_fast_hash(&fh->fh_base, fh->fh_size, 0);
-> > > >  
-> > > >  	__set_bit(hash&255, bd->set[bd->new]);
-> > > >  	__set_bit((hash>>8)&255, bd->set[bd->new]);
-> > > >  	__set_bit((hash>>16)&255, bd->set[bd->new]);
-> > > > +	spin_lock(&blocked_delegations_lock);
-> > > 
-> > > __set_bit isn't atomic.  The spin_lock should be taken *before* these
-> > > __set_bit() calls.
-> > > 
-> > > Otherwise, looks fine.
-> > > 
-> > > Thanks,
-> > > NeilBrown
-> > > 
-> > > 
-> > 
-> > Ok. I guess the worry is that we could end up setting bits in the
-> > middle of swapping the two fields? Makes sense -- fixed in my repo.
-> 
-> It is more subtle than that.
-> __set_bit() will:
->   read a value from memory to a register
->   set a bit in the register
->   write the register back out to memory
-> 
-> If two threads both run __set_bit on the same word of memory at the same
-> time, one of the updates can get lost.
-> set_bit() (no underscore) performs an atomic RMW to avoid this, but is more
-> expensive.
-> spin_lock() obviously ensures the required exclusion and as we are going to
-> take the lock anyway we may as well take it before setting bits so we can use
-> the non-atomic (cheaper) __set_bit function.
-> 
-> > I'll send out the updated set later today (it also includes a few nits
-> > that HCH pointed out last week).
-> > 
-> > As a side note...I wonder how much we'll get in the way of false
-> > positives with this scheme?
-> 
-> If a future version of NFSv4 could allow delegations to be granted while a
-> file is open (oh, it seems you are the only client using this file at the
-> moment, you can treat this "open" as a delegation if you like) a few false
-> positives would be a complete non-issue.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-For what it's worth, I think 4.1 provides what you're asking for here;
-see
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-	http://tools.ietf.org/html/rfc5661#section-20.7
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9013a30874e3..cd9da9891039 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4528,11 +4528,9 @@ nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfsd4_test_stateid_id *stateid;
+ 	struct nfs4_client *cl = cstate->session->se_client;
+ 
+-	nfs4_lock_state();
+ 	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list)
+ 		stateid->ts_id_status =
+ 			nfsd4_validate_stateid(cl, &stateid->ts_id_stateid);
+-	nfs4_unlock_state();
+ 
+ 	return nfs_ok;
+ }
+@@ -4548,7 +4546,6 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfs4_client *cl = cstate->session->se_client;
+ 	__be32 ret = nfserr_bad_stateid;
+ 
+-	nfs4_lock_state();
+ 	spin_lock(&cl->cl_lock);
+ 	s = find_stateid_locked(cl, stateid);
+ 	if (!s)
+@@ -4589,7 +4586,6 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out_unlock:
+ 	spin_unlock(&cl->cl_lock);
+ out:
+-	nfs4_unlock_state();
+ 	return ret;
+ }
+ 
+-- 
+1.9.3
 
-and the discussion of the various WANT_ flags in
-
-	http://tools.ietf.org/html/rfc5661#section-18.16.3
-
-As far as I know none of that is implemented yet.
-
---b.
