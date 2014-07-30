@@ -1,102 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33788 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751601AbaGOO2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jul 2014 10:28:32 -0400
-Date: Tue, 15 Jul 2014 10:28:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: Add zero padding if the client doesn't send it
-Message-ID: <20140715142831.GH17956@fieldses.org>
-References: <20140715140417.23046.27242.stgit@klimt.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140715140417.23046.27242.stgit@klimt.1015granger.net>
+Received: from mail-la0-f53.google.com ([209.85.215.53]:53666 "EHLO
+	mail-la0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752615AbaG3LXa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 07:23:30 -0400
+Received: by mail-la0-f53.google.com with SMTP id gl10so744531lab.40
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 04:23:28 -0700 (PDT)
+From: Natanael Copa <natanael.copa@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH 01/11] conffile: use standard uint*_t and unsigned char
+Date: Wed, 30 Jul 2014 13:23:09 +0200
+Message-Id: <1406719399-1735-2-git-send-email-ncopa@alpinelinux.org>
+In-Reply-To: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
+References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 15, 2014 at 10:11:34AM -0400, Chuck Lever wrote:
-> See RFC 5666 section 3.7: clients don't have to send zero XDR
-> padding.
-> 
-> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> Hi Bruce-
-> 
-> This is an alternative solution to changing the sanity check in the
-> XDR WRITE decoder. It adjusts the incoming xdr_buf to include a zero
-> pad just after the transport has received each RPC request.
-> 
-> Thoughts?
+Use the standard integer types. This fixes compiling errors with musl
+libc.
 
-That looks pretty simple.  So if this works then I think I'd be happier
-doing this than worrying about other spots like the drc code where we
-might have missed an assumption.
+Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
+---
+ support/include/conffile.h |  2 +-
+ support/nfs/conffile.c     | 14 +++++++-------
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   30 ++++++++++++++++++++++++++++++
->  1 files changed, 30 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> index 8f92a61..9a3465d 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> @@ -43,6 +43,7 @@
->  #include <linux/sunrpc/debug.h>
->  #include <linux/sunrpc/rpc_rdma.h>
->  #include <linux/spinlock.h>
-> +#include <linux/highmem.h>
->  #include <asm/unaligned.h>
->  #include <rdma/ib_verbs.h>
->  #include <rdma/rdma_cm.h>
-> @@ -435,6 +436,34 @@ static int rdma_read_chunks(struct svcxprt_rdma *xprt,
->  	return ret;
->  }
->  
-> +/*
-> + * To avoid a separate RDMA READ just for a handful of zero bytes,
-> + * RFC 5666 section 3.7 allows the client to omit the XDR zero pad
-> + * in chunk lists.
-> + */
-> +static void
-> +rdma_fix_xdr_pad(struct xdr_buf *buf)
-> +{
-> +	unsigned int page_len = buf->page_len;
-> +	unsigned int size = (XDR_QUADLEN(page_len) << 2) - page_len;
-> + 	unsigned int offset, pg_no;
-> +	char *p;
-> +
-> +	if (size == 0)
-> +		return;
-> +
-> +	offset = page_len & ~PAGE_MASK;
-> +	pg_no = page_len >> PAGE_SHIFT;
-> +
-> +	p = kmap_atomic(buf->pages[pg_no]);
-> +	memset(p + offset, 0, size);
-> +	kunmap_atomic(p);
+diff --git a/support/include/conffile.h b/support/include/conffile.h
+index 05ea5d2..94fb005 100644
+--- a/support/include/conffile.h
++++ b/support/include/conffile.h
+@@ -49,7 +49,7 @@ struct conf_list {
+ extern char    *conf_path;
+ 
+ extern int      conf_begin(void);
+-extern int      conf_decode_base64(u_int8_t *, u_int32_t *, u_char *);
++extern int      conf_decode_base64(uint8_t *, uint32_t *, unsigned char *);
+ extern int      conf_end(int, int);
+ extern void     conf_free_list(struct conf_list *);
+ extern struct sockaddr *conf_get_address(char *, char *);
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index c3434d5..6b94ec0 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -72,10 +72,10 @@ TAILQ_HEAD (conf_trans_head, conf_trans) conf_trans_queue;
+ /*
+  * Radix-64 Encoding.
+  */
+-static const u_int8_t bin2asc[]
++static const uint8_t bin2asc[]
+   = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+ 
+-static const u_int8_t asc2bin[] =
++static const uint8_t asc2bin[] =
+ {
+   255, 255, 255, 255, 255, 255, 255, 255,
+   255, 255, 255, 255, 255, 255, 255, 255,
+@@ -109,10 +109,10 @@ LIST_HEAD (conf_bindings, conf_binding) conf_bindings[256];
+ 
+ static char *conf_addr;
+ 
+-static __inline__ u_int8_t
++static __inline__ uint8_t
+ conf_hash(char *s)
+ {
+-	u_int8_t hash = 0;
++	uint8_t hash = 0;
+ 
+ 	while (*s) {
+ 		hash = ((hash << 1) | (hash >> 7)) ^ tolower (*s);
+@@ -603,10 +603,10 @@ cleanup:
+ 
+ /* Decode a PEM encoded buffer.  */
+ int
+-conf_decode_base64 (u_int8_t *out, u_int32_t *len, u_char *buf)
++conf_decode_base64 (uint8_t *out, uint32_t *len, unsigned char *buf)
+ {
+-	u_int32_t c = 0;
+-	u_int8_t c1, c2, c3, c4;
++	uint32_t c = 0;
++	uint8_t c1, c2, c3, c4;
+ 
+ 	while (*buf) {
+ 		if (*buf > 127 || (c1 = asc2bin[*buf]) == 255)
+-- 
+2.0.3
 
-If these are pages alloc'd by svc_recv() with alloc_page(GFP_KERNEL)
-then the kmap/kunmap shouldn't be necessary.
-
---b.
-
-> +
-> +	buf->page_len += size;
-> +	buf->buflen += size;
-> +	buf->len += size;
-> +}
-> +
->  static int rdma_read_complete(struct svc_rqst *rqstp,
->  			      struct svc_rdma_op_ctxt *head)
->  {
-> @@ -449,6 +478,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
->  		rqstp->rq_pages[page_no] = head->pages[page_no];
->  	}
->  	/* Point rq_arg.pages past header */
-> +	rdma_fix_xdr_pad(&head->arg);
->  	rqstp->rq_arg.pages = &rqstp->rq_pages[head->hdr_count];
->  	rqstp->rq_arg.page_len = head->arg.page_len;
->  	rqstp->rq_arg.page_base = head->arg.page_base;
-> 
