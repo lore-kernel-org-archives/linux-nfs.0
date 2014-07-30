@@ -1,109 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16210 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755499AbaG3TLn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Jul 2014 15:11:43 -0400
-Message-ID: <53D94367.7080903@Netapp.com>
-Date: Wed, 30 Jul 2014 15:11:35 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:56768 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751351AbaG3T7a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 15:59:30 -0400
+Message-ID: <53D94EA6.10201@opengridcomputing.com>
+Date: Wed, 30 Jul 2014 14:59:34 -0500
+From: Steve Wise <swise@opengridcomputing.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        Roland Dreier <roland@kernel.org>, <sean.hefty@intel.com>,
-        <hal.rosenstock@gmail.com>
-Subject: Re: [PATCH v4 08/21] xprtrdma: Back off rkey when FAST_REG_MR fails
-References: <20140722144459.6010.99389.stgit@manet.1015granger.net> <20140722145208.6010.76678.stgit@manet.1015granger.net>
-In-Reply-To: <20140722145208.6010.76678.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+To: David Miller <davem@davemloft.net>, himangi774@gmail.com
+CC: trond.myklebust@primarydata.com, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, julia.lawall@lip6.fr
+Subject: Re: [PATCH] svcrdma: delete double assignment
+References: <20140728152938.GA3040@himangi-Dell> <20140729.155050.311148635959938226.davem@davemloft.net>
+In-Reply-To: <20140729.155050.311148635959938226.davem@davemloft.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Roland, Sean and Hal.
+On 7/29/2014 5:50 PM, David Miller wrote:
+> From: Himangi Saraogi <himangi774@gmail.com>
+> Date: Mon, 28 Jul 2014 20:59:38 +0530
+>
+>> Delete successive assignments to the same location.
+>>
+>> A simplified version of Coccinelle semantic match that finds this problem is as
+>> follows:
+>>
+>> // <smpl>
+>> @@
+>> expression i;
+>> @@
+>>
+>> *i = ...;
+>>   i = ...;
+>> // </smpl>
+>>
+>> Signed-off-by: Himangi Saraogi <himangi774@gmail.com>
+> I am not so sure about this change either.
+>
+>> @@ -956,7 +956,6 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>>   			dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
+>>   			goto errout;
+>>   		}
+>> -		newxprt->sc_max_sge = qp_attr.cap.max_send_sge;
+>>   		newxprt->sc_max_sge = qp_attr.cap.max_recv_sge;
+>>   		newxprt->sc_sq_depth = qp_attr.cap.max_send_wr;
+>>   		newxprt->sc_max_requests = qp_attr.cap.max_recv_wr;
+> ->sc_max_sge is used to limit the number of segments used during sends,
+> currently in this code.  Grep for where it is used.
+>
+> Therefore, if anything, the correct thing to do would be to retain the
+> first line rather than the second line.
+>
+> Someone who actually works on this code and understands it should
+> really take a close look at this before anyone even thinks about
+> applying this patch.
 
-We would like to submit this patch through the NFS tree, since the function added to include/rdma/ib_verbs.h is only used for NFS over RDMA.  Do any of you have a problem with this patch, and can I have an acked-by if this is okay?
+We should remove that whole block that tries to recover from a 
+rdma_create_qp() failure.   I don't believe we would ever hit it. The 
+value initially stored in sc_max_sge is from the device attribute 
+max_sge returned from ib_query_device() just above the code we're 
+talking about.  If rdma_create_qp() fails, it would not be because the 
+max_send_sge and max_recv_sge values passed in exceed the device's max...
 
-Thanks!
-Anna
+Like this:
 
-On 07/22/2014 10:52 AM, Chuck Lever wrote:
-> If posting a FAST_REG_MR Work Reqeust fails, revert the rkey update
-> to avoid subsequent IB_WC_MW_BIND_ERR completions.
-> 
-> Suggested-by: Steve Wise <swise@opengridcomputing.com>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Tested-by: Shirley Ma <shirley.ma@oracle.com>
-> Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
-> ---
->  include/rdma/ib_verbs.h     |   11 +++++++++++
->  net/sunrpc/xprtrdma/verbs.c |   12 +++++-------
->  2 files changed, 16 insertions(+), 7 deletions(-)
-> 
-> diff --git a/include/rdma/ib_verbs.h b/include/rdma/ib_verbs.h
-> index 7ccef34..c5c7ec6 100644
-> --- a/include/rdma/ib_verbs.h
-> +++ b/include/rdma/ib_verbs.h
-> @@ -2479,6 +2479,17 @@ static inline u32 ib_inc_rkey(u32 rkey)
->  }
->  
->  /**
-> + * ib_dec_rkey - decrements the key portion of the given rkey. Can be used
-> + * when recovering from a local immediate error.
-> + * @rkey - the rkey to decrement.
-> + */
-> +static inline u32 ib_dec_rkey(u32 rkey)
-> +{
-> +	const u32 mask = 0x000000ff;
-> +	return ((rkey - 1) & mask) | (rkey & ~mask);
-> +}
-> +
-> +/**
->   * ib_alloc_mw - Allocates a memory window.
->   * @pd: The protection domain associated with the memory window.
->   * @type: The type of the memory window (1 or 2).
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 8bb7945..394b13f 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -1497,13 +1497,12 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->  	struct rpcrdma_frmr *frmr = &mw->r.frmr;
->  	struct ib_mr *mr = frmr->fr_mr;
->  	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
-> -
-> -	u8 key;
->  	int len, pageoff;
->  	int i, rc;
->  	int seg_len;
->  	u64 pa;
->  	int page_no;
-> +	u32 rkey;
->  
->  	pageoff = offset_in_page(seg1->mr_offset);
->  	seg1->mr_offset -= pageoff;	/* start of page */
-> @@ -1558,14 +1557,11 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->  		rc = -EIO;
->  		goto out_err;
->  	}
-> -
-> -	/* Bump the key */
-> -	key = (u8)(mr->rkey & 0x000000FF);
-> -	ib_update_fast_reg_key(mr, ++key);
-> -
->  	frmr_wr.wr.fast_reg.access_flags = (writing ?
->  				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
->  				IB_ACCESS_REMOTE_READ);
-> +	rkey = ib_inc_rkey(mr->rkey);
-> +	ib_update_fast_reg_key(mr, rkey);
->  	frmr_wr.wr.fast_reg.rkey = mr->rkey;
->  	DECR_CQCOUNT(&r_xprt->rx_ep);
->  
-> @@ -1574,6 +1570,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->  	if (rc) {
->  		dprintk("RPC:       %s: failed ib_post_send for register,"
->  			" status %i\n", __func__, rc);
-> +		rkey = ib_dec_rkey(mr->rkey);
-> +		ib_update_fast_reg_key(mr, rkey);
->  		goto out_err;
->  	} else {
->  		seg1->mr_rkey = mr->rkey;
-> 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c 
+b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index e7323fb..282a43b 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -942,23 +942,8 @@ static struct svc_xprt *svc_rdma_accept(struct 
+svc_xprt *xprt)
+
+         ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd, &qp_attr);
+         if (ret) {
+-               /*
+-                * XXX: This is a hack. We need a xx_request_qp interface
+-                * that will adjust the qp_attr's with a best-effort
+-                * number
+-                */
+-               qp_attr.cap.max_send_sge -= 2;
+-               qp_attr.cap.max_recv_sge -= 2;
+-               ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd,
+-                                    &qp_attr);
+-               if (ret) {
+-                       dprintk("svcrdma: failed to create QP, 
+ret=%d\n", ret);
+-                       goto errout;
+-               }
+-               newxprt->sc_max_sge = qp_attr.cap.max_send_sge;
+-               newxprt->sc_max_sge = qp_attr.cap.max_recv_sge;
+-               newxprt->sc_sq_depth = qp_attr.cap.max_send_wr;
+-               newxprt->sc_max_requests = qp_attr.cap.max_recv_wr;
++               dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
++               goto errout;
+         }
+         newxprt->sc_qp = newxprt->sc_cm_id->qp;
+
+
+Steve.
+
+
+
 
