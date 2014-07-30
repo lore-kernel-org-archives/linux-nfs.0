@@ -1,104 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:47946 "EHLO
-	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754407AbaGBTst (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Jul 2014 15:48:49 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Steve Wise <swise@opengridcomputing.com>,
-        "'Chuck Lever'" <chuck.lever@oracle.com>
-CC: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH v1 05/13] xprtrdma: Don't drain CQs on transport
- disconnect
-Date: Wed, 2 Jul 2014 19:48:47 +0000
-Message-ID: <EE7902D3F51F404C82415C4803930ACD3FE0C594@CMEXMB1.ad.emulex.com>
-References: <20140623223201.1634.83888.stgit@manet.1015granger.net>
- <20140623223942.1634.89063.stgit@manet.1015granger.net>
- <EE7902D3F51F404C82415C4803930ACD3FE0C540@CMEXMB1.ad.emulex.com>
- <53B45D7B.4020705@opengridcomputing.com>
- <C9B761DF-7960-4346-949E-17A9BDD357DB@oracle.com>
- <005a01cf962e$43d44300$cb7cc900$@opengridcomputing.com>
-In-Reply-To: <005a01cf962e$43d44300$cb7cc900$@opengridcomputing.com>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+Received: from mail-qa0-f47.google.com ([209.85.216.47]:53104 "EHLO
+	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754725AbaG3BfP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:15 -0400
+Received: by mail-qa0-f47.google.com with SMTP id i13so592175qae.20
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:14 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 16/38] nfsd: nfsd4_open_confirm() must reference the open stateid
+Date: Tue, 29 Jul 2014 21:34:21 -0400
+Message-Id: <1406684083-19736-17-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTogU3RldmUgV2lzZSBbbWFp
-bHRvOnN3aXNlQG9wZW5ncmlkY29tcHV0aW5nLmNvbV0NCj4gU2VudDogVGh1cnNkYXksIEp1bHkg
-MDMsIDIwMTQgMToxNiBBTQ0KPiBUbzogJ0NodWNrIExldmVyJzsgRGV2ZXNoIFNoYXJtYQ0KPiBD
-YzogbGludXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7ICdMaW51eCBORlMgTWFpbGluZyBMaXN0Jw0K
-PiBTdWJqZWN0OiBSRTogW1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1Fz
-IG9uIHRyYW5zcG9ydA0KPiBkaXNjb25uZWN0DQo+IA0KPiANCj4gDQo+ID4gLS0tLS1PcmlnaW5h
-bCBNZXNzYWdlLS0tLS0NCj4gPiBGcm9tOiBDaHVjayBMZXZlciBbbWFpbHRvOmNodWNrLmxldmVy
-QG9yYWNsZS5jb21dDQo+ID4gU2VudDogV2VkbmVzZGF5LCBKdWx5IDAyLCAyMDE0IDI6NDAgUE0N
-Cj4gPiBUbzogU3RldmUgV2lzZTsgRGV2ZXNoIFNoYXJtYQ0KPiA+IENjOiBsaW51eC1yZG1hQHZn
-ZXIua2VybmVsLm9yZzsgTGludXggTkZTIE1haWxpbmcgTGlzdA0KPiA+IFN1YmplY3Q6IFJlOiBb
-UEFUQ0ggdjEgMDUvMTNdIHhwcnRyZG1hOiBEb24ndCBkcmFpbiBDUXMgb24gdHJhbnNwb3J0DQo+
-ID4gZGlzY29ubmVjdA0KPiA+DQo+ID4NCj4gPiBPbiBKdWwgMiwgMjAxNCwgYXQgMzoyOCBQTSwg
-U3RldmUgV2lzZSA8c3dpc2VAb3BlbmdyaWRjb21wdXRpbmcuY29tPg0KPiB3cm90ZToNCj4gPg0K
-PiA+ID4gT24gNy8yLzIwMTQgMjowNiBQTSwgRGV2ZXNoIFNoYXJtYSB3cm90ZToNCj4gPiA+PiBU
-aGlzIGNoYW5nZSBpcyB2ZXJ5IG11Y2ggcHJvbmUgdG8gZ2VuZXJhdGUgcG9sbF9jcSBlcnJvcnMg
-YmVjYXVzZQ0KPiA+ID4+IG9mIHVuLWNsZWFuZWQNCj4gPiBjb21wbGV0aW9ucyB3aGljaCBzdGls
-bA0KPiA+ID4+IHBvaW50IHRvIHRoZSBub24tZXhpc3RlbnQgUVBzLiBPbiB0aGUgbmV3IGNvbm5l
-Y3Rpb24gd2hlbiB0aGVzZQ0KPiA+ID4+IGNvbXBsZXRpb25zIGFyZSBwb2xsZWQsDQo+ID4gdGhl
-IHBvbGxfY3Egd2lsbA0KPiA+ID4+IGZhaWwgYmVjYXVzZSBvbGQgUVAgcG9pbnRlciBpcyBhbHJl
-YWR5IE5VTEwuDQo+ID4gPj4gRGlkIGFueW9uZSBoaXQgdGhpcyBzaXR1YXRpb24gZHVyaW5nIHRo
-ZWlyIHRlc3Rpbmc/DQo+ID4NCj4gPiBJIHRlc3RlZCB0aGlzIGFnZ3Jlc3NpdmVseSB3aXRoIGEg
-ZmF1bHQgaW5qZWN0b3IgdGhhdCB0cmlnZ2VycyByZWd1bGFyDQo+ID4gY29ubmVjdGlvbiBkaXNy
-dXB0aW9uLg0KPiA+DQo+ID4gPiBIZXkgRGV2ZXNoLA0KPiA+ID4NCj4gPiA+IGl3X2N4Z2I0IHdp
-bGwgc2lsZW50bHkgdG9zcyBDUUVzIGlmIHRoZSBRUCBpcyBub3QgYWN0aXZlLg0KPiA+DQo+ID4g
-eHBydHJkbWEgcmVsaWVzIG9uIGdldHRpbmcgYSBjb21wbGV0aW9uIChlaXRoZXIgc3VjY2Vzc2Z1
-bCBvciBpbg0KPiA+IGVycm9yKSBmb3IgZXZlcnkgV1IgaXQgaGFzIHBvc3RlZC4gVGhlIGdvYWwg
-b2YgdGhpcyBwYXRjaCBpcyB0byBhdm9pZA0KPiA+IHRocm93aW5nIGF3YXkgcXVldWVkIGNvbXBs
-ZXRpb25zIGFmdGVyIGEgdHJhbnNwb3J0IGRpc2Nvbm5lY3Qgc28gd2UNCj4gPiBkb24ndCBsb3Nl
-IHRyYWNrIG9mIEZSTVIgcmtleSB1cGRhdGVzIChGQVNUX1JFR19NUiBhbmQgTE9DQUxfSU5WDQo+
-ID4gY29tcGxldGlvbnMpIGFuZCB3ZSBjYW4gY2FwdHVyZSBhbGwgUlBDIHJlcGxpZXMgcG9zdGVk
-IGJlZm9yZSB0aGUNCj4gY29ubmVjdGlvbiB3YXMgbG9zdC4NCj4gPg0KPiA+IFNvdW5kcyBsaWtl
-IHdlIGFsc28gbmVlZCB0byBrZWVwIHRoZSBRUCBhcm91bmQsIGV2ZW4gaW4gZXJyb3Igc3RhdGUs
-DQo+ID4gdW50aWwgYWxsIGtub3duIFdScyBvbiB0aGF0IFFQIGhhdmUgY29tcGxldGVkPw0KPiA+
-DQoNCldoeSBub3QgcG9sbCBhbmQgcHJvY2VzcyBldmVyeSBjb21wbGV0aW9uIGR1cmluZyBycGNy
-ZG1hX2NxX2NsZWFudXAoKS4uLi4NCg0KPiANCj4gUGVyaGFwcy4NCj4gDQo+ID4NCj4gPiA+DQo+
-ID4gPg0KPiA+ID4+PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiA+ID4+PiBGcm9tOiBs
-aW51eC1yZG1hLW93bmVyQHZnZXIua2VybmVsLm9yZyBbbWFpbHRvOmxpbnV4LXJkbWEtDQo+ID4g
-Pj4+IG93bmVyQHZnZXIua2VybmVsLm9yZ10gT24gQmVoYWxmIE9mIENodWNrIExldmVyDQo+ID4g
-Pj4+IFNlbnQ6IFR1ZXNkYXksIEp1bmUgMjQsIDIwMTQgNDoxMCBBTQ0KPiA+ID4+PiBUbzogbGlu
-dXgtcmRtYUB2Z2VyLmtlcm5lbC5vcmc7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiA+
-Pj4gU3ViamVjdDogW1BBVENIIHYxIDA1LzEzXSB4cHJ0cmRtYTogRG9uJ3QgZHJhaW4gQ1FzIG9u
-IHRyYW5zcG9ydA0KPiA+ID4+PiBkaXNjb25uZWN0DQo+ID4gPj4+DQo+ID4gPj4+IENRcyBhcmUg
-bm90IGRlc3Ryb3llZCB1bnRpbCB1bm1vdW50LiBCeSBkcmFpbmluZyBDUXMgb24gdHJhbnNwb3J0
-DQo+ID4gPj4+IGRpc2Nvbm5lY3QsIHN1Y2Nlc3NmdWwgY29tcGxldGlvbnMgdGhhdCBjYW4gY2hh
-bmdlIHRoZQ0KPiA+ID4+PiByLmZybXIuc3RhdGUgZmllbGQgY2FuIGJlIG1pc3NlZC4NCj4gPiA+
-Pj4NCj4gPiA+Pj4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNs
-ZS5jb20+DQo+ID4gPj4+IC0tLQ0KPiA+ID4+PiAgbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5j
-IHwgICAgNSAtLS0tLQ0KPiA+ID4+PiAgMSBmaWxlIGNoYW5nZWQsIDUgZGVsZXRpb25zKC0pDQo+
-ID4gPj4+DQo+ID4gPj4+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMN
-Cj4gPiA+Pj4gYi9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgaW5kZXggM2M3ZjkwNC4uNDUx
-ZTEwMCAxMDA2NDQNCj4gPiA+Pj4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jDQo+
-ID4gPj4+ICsrKyBiL25ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYw0KPiA+ID4+PiBAQCAtODcz
-LDkgKzg3Myw2IEBAIHJldHJ5Og0KPiA+ID4+PiAgCQkJZHByaW50aygiUlBDOiAgICAgICAlczog
-cnBjcmRtYV9lcF9kaXNjb25uZWN0Ig0KPiA+ID4+PiAgCQkJCSIgc3RhdHVzICVpXG4iLCBfX2Z1
-bmNfXywgcmMpOw0KPiA+ID4+Pg0KPiA+ID4+PiAtCQlycGNyZG1hX2NsZWFuX2NxKGVwLT5yZXBf
-YXR0ci5yZWN2X2NxKTsNCj4gPiA+Pj4gLQkJcnBjcmRtYV9jbGVhbl9jcShlcC0+cmVwX2F0dHIu
-c2VuZF9jcSk7DQo+ID4gPj4+IC0NCj4gPiA+Pj4gIAkJeHBydCA9IGNvbnRhaW5lcl9vZihpYSwg
-c3RydWN0IHJwY3JkbWFfeHBydCwgcnhfaWEpOw0KPiA+ID4+PiAgCQlpZCA9IHJwY3JkbWFfY3Jl
-YXRlX2lkKHhwcnQsIGlhLA0KPiA+ID4+PiAgCQkJCShzdHJ1Y3Qgc29ja2FkZHIgKikmeHBydC0+
-cnhfZGF0YS5hZGRyKTsNCj4gQEAgLTk4NSw4ICs5ODIsNiBAQA0KPiA+ID4+PiBycGNyZG1hX2Vw
-X2Rpc2Nvbm5lY3Qoc3RydWN0IHJwY3JkbWFfZXAgKmVwLCBzdHJ1Y3QgcnBjcmRtYV9pYQ0KPiA+
-ID4+PiAqaWEpICB7DQo+ID4gPj4+ICAJaW50IHJjOw0KPiA+ID4+Pg0KPiA+ID4+PiAtCXJwY3Jk
-bWFfY2xlYW5fY3EoZXAtPnJlcF9hdHRyLnJlY3ZfY3EpOw0KPiA+ID4+PiAtCXJwY3JkbWFfY2xl
-YW5fY3EoZXAtPnJlcF9hdHRyLnNlbmRfY3EpOw0KPiA+ID4+PiAgCXJjID0gcmRtYV9kaXNjb25u
-ZWN0KGlhLT5yaV9pZCk7DQo+ID4gPj4+ICAJaWYgKCFyYykgew0KPiA+ID4+PiAgCQkvKiByZXR1
-cm5zIHdpdGhvdXQgd2FpdCBpZiBub3QgY29ubmVjdGVkICovDQo+ID4gPj4+DQo+ID4gPj4+IC0t
-DQo+ID4gPj4+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1
-bnN1YnNjcmliZQ0KPiA+ID4+PiBsaW51eC1yZG1hIiBpbiB0aGUgYm9keSBvZiBhIG1lc3NhZ2Ug
-dG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+ID4+PiBNb3JlIG1ham9yZG9tbyBpbmZv
-IGF0IGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiA+ID4+IE4g
-ICAgIHIgIHkgICBiIFggIMendiBeICneunsubiArICAgIHsgICAiICBebiByICAgeiAaICBoICAg
-ICYgIB4gRw0KPiA+ID4+IGggAygg6ZqODQo+ID4gIN2iaiIgIBogG20gICAgIHog3pYgICBmICAg
-aCAgIH4gbW1sPT0NCj4gPiA+DQo+ID4gPiAtLQ0KPiA+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0
-aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyINCj4gPiA+IGlu
-IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnIE1vcmUN
-Cj4gbWFqb3Jkb21vDQo+ID4gPiBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9y
-ZG9tby1pbmZvLmh0bWwNCj4gPg0KPiA+IC0tDQo+ID4gQ2h1Y2sgTGV2ZXINCj4gPiBjaHVja1tk
-b3RdbGV2ZXJbYXRdb3JhY2xlW2RvdF1jb20NCj4gPg0KPiA+DQo+IA0KDQo=
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+
+Ensure that nfsd4_open_confirm() keeps a reference to the open
+stateid until it is done working with it.
+
+Necessary step toward client_mutex removal.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 4e50f14f5bc1..8e18ca49555f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4434,10 +4434,12 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 					NFS4_OPEN_STID, &stp, nn);
+ 	if (status)
+ 		goto out;
++	/* FIXME: move into nfs4_preprocess_seqid_op */
++	atomic_inc(&stp->st_stid.sc_count);
+ 	oo = openowner(stp->st_stateowner);
+ 	status = nfserr_bad_stateid;
+ 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
+-		goto out;
++		goto put_stateid;
+ 	oo->oo_flags |= NFS4_OO_CONFIRMED;
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&oc->oc_resp_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+@@ -4446,6 +4448,8 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 
+ 	nfsd4_client_record_create(oo->oo_owner.so_client);
+ 	status = nfs_ok;
++put_stateid:
++	nfs4_put_stid(&stp->st_stid);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (!cstate->replay_owner)
+-- 
+1.9.3
+
