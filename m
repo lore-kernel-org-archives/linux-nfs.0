@@ -1,81 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:33108 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751652AbaGJSIB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Jul 2014 14:08:01 -0400
-Received: by mail-qa0-f52.google.com with SMTP id j15so1038459qaq.11
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Jul 2014 11:07:59 -0700 (PDT)
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:51308 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753118AbaG3M2X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:23 -0400
+Received: by mail-qg0-f42.google.com with SMTP id j5so1296322qga.29
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:22 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 11/11] nfsd: cleanup and rename nfs4_check_open
-Date: Thu, 10 Jul 2014 14:07:35 -0400
-Message-Id: <1405015655-12469-12-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
-References: <1405015655-12469-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 27/37] nfsd: Remove nfs4_lock_state(): nfsd4_lock/locku/lockt()
+Date: Wed, 30 Jul 2014 08:27:28 -0400
+Message-Id: <1406723258-8512-28-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rename it to better describe what it does, and have it just return the
-stateid instead of a __be32 (which is now always nfs_ok). Also, do the
-search for an existing stateid after the delegation check, to reduce
-cleanup if the delegation check returns error.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 15 ++++++---------
- 1 file changed, 6 insertions(+), 9 deletions(-)
+ fs/nfsd/nfs4state.c | 9 ---------
+ 1 file changed, 9 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index da88b31c0afe..225f98c7d00d 100644
+index 4f04a4a776cd..de3bb633d96b 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3297,10 +3297,10 @@ out:
- 	return nfs_ok;
- }
- 
--static __be32
--nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_stateid **stpp)
-+static struct nfs4_ol_stateid *
-+nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
- {
--	struct nfs4_ol_stateid *local;
-+	struct nfs4_ol_stateid *local, *ret = NULL;
- 	struct nfs4_openowner *oo = open->op_openowner;
- 
- 	spin_lock(&fp->fi_lock);
-@@ -3308,14 +3308,13 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
- 		/* ignore lock owners */
- 		if (local->st_stateowner->so_is_open_owner == 0)
- 			continue;
--		/* remember if we have seen this open owner */
- 		if (local->st_stateowner == &oo->oo_owner) {
--			*stpp = local;
-+			ret = local;
- 			break;
- 		}
+@@ -5201,8 +5201,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return status;
  	}
- 	spin_unlock(&fp->fi_lock);
--	return nfs_ok;
-+	return ret;
- }
  
- static inline int nfs4_access_to_access(u32 nfs4_access)
-@@ -3658,12 +3657,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	 */
- 	fp = find_or_add_file(ino, open->op_file);
- 	if (fp != open->op_file) {
--		status = nfs4_check_open(fp, open, &stp);
--		if (status)
--			goto out;
- 		status = nfs4_check_deleg(cl, open, &dp);
+-	nfs4_lock_state();
+-
+ 	if (lock->lk_is_new) {
+ 		if (nfsd4_has_session(cstate))
+ 			/* See rfc 5661 18.10.3: given clientid is ignored: */
+@@ -5345,7 +5343,6 @@ out:
+ 	if (open_stp)
+ 		nfs4_put_stid(&open_stp->st_stid);
+ 	nfsd4_bump_seqid(cstate, status);
+-	nfs4_unlock_state();
+ 	if (file_lock)
+ 		locks_free_lock(file_lock);
+ 	if (conflock)
+@@ -5388,8 +5385,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (check_lock_length(lockt->lt_offset, lockt->lt_length))
+ 		 return nfserr_inval;
+ 
+-	nfs4_lock_state();
+-
+ 	if (!nfsd4_has_session(cstate)) {
+ 		status = lookup_clientid(&lockt->lt_clientid, cstate, nn);
  		if (status)
- 			goto out;
-+		stp = nfsd4_find_existing_open(fp, open);
- 	} else {
- 		open->op_file = NULL;
- 		status = nfserr_bad_stateid;
+@@ -5444,7 +5439,6 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out:
+ 	if (lo)
+ 		nfs4_put_stateowner(&lo->lo_owner);
+-	nfs4_unlock_state();
+ 	if (file_lock)
+ 		locks_free_lock(file_lock);
+ 	return status;
+@@ -5468,8 +5462,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (check_lock_length(locku->lu_offset, locku->lu_length))
+ 		 return nfserr_inval;
+ 
+-	nfs4_lock_state();
+-									        
+ 	status = nfs4_preprocess_seqid_op(cstate, locku->lu_seqid,
+ 					&locku->lu_stateid, NFS4_LOCK_STID,
+ 					&stp, nn);
+@@ -5512,7 +5504,6 @@ put_stateid:
+ 	nfs4_put_stid(&stp->st_stid);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+-	nfs4_unlock_state();
+ 	if (file_lock)
+ 		locks_free_lock(file_lock);
+ 	return status;
 -- 
 1.9.3
 
