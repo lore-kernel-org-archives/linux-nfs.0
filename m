@@ -1,94 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f172.google.com ([209.85.220.172]:58239 "EHLO
-	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934096AbaGPOrO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 10:47:14 -0400
-Received: by mail-vc0-f172.google.com with SMTP id im17so1887677vcb.3
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 07:47:13 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
-References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
-	<20140710175136.GA26561@fieldses.org>
-	<CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
-	<CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
-	<CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
-Date: Wed, 16 Jul 2014 07:47:13 -0700
-Message-ID: <CAHQdGtS_O3i6fBhW7vTurL=Y7cKmoeGjTXiEMU5mbb3tR3-LjA@mail.gmail.com>
-Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andreas Fenkart <afenkart@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Daniel Mack <zonque@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:59925 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754720AbaG3M2I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:28:08 -0400
+Received: by mail-qg0-f50.google.com with SMTP id q108so1280465qgd.23
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:28:07 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: [PATCH 16/37] nfsd: add a forget_clients "get" routine with proper locking
+Date: Wed, 30 Jul 2014 08:27:17 -0400
+Message-Id: <1406723258-8512-17-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 16, 2014 at 1:21 AM, Andreas Fenkart <afenkart@gmail.com> wrote:
-> 2014-07-16 1:54 GMT+02:00 Trond Myklebust <trond.myklebust@primarydata.com>:
->> On Sun, Jul 13, 2014 at 11:44 PM, Andreas Fenkart <afenkart@gmail.com> wrote:
->>> 2014-07-10 19:51 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
->>>> On Mon, Jun 23, 2014 at 12:07:22PM +0200, Andreas Fenkart wrote:
->>>>> Found regression introduced by this patch
->>>>>
->>>>> 311324ad NFS: Be more aggressive in using readdirplus for 'ls -l' situations"
->>>>>
->>>>> # cd /bin
->>>>> -sh: cd: /bin: Not a directory
->>>>> root@192:/# pwd
->>>>> /
->>>>> root@192:/# ls /bin
->>>>> ls: /bin
->>>>> root@192:/# ls -l /bin/sh
->>>>> lrwxrwxrwx    1 root     root             9 Jun 16 13:59 /bin/sh -> /bin/bash
->>>>>
->>>>> the mount options of the client, an embedded system, mounting nfsroot:
->>>>> nfs(rw,relatime,vers=2,rsize=4096,wsize=4096,namlen=255,hard,nolock,proto=udp,timeo=11,retrans=3,sec=sys,mountaddr=192.168.xx.xx,mountvers=1,mountproto=udp,local_lock=all,addr=192.168.xx.xx)
->>>>> vers: 3.16.0-rc1
->>>>>
->>>>> the server exports:
->>>>> /exports/rootfs 192.168.xx.xx(rw,no_root_squash,subtree_check)
->>>>> vers: 3.14-1-amd64 #1 SMP Debian 3.14.4-1 (2014-05-13) x86_64 GNU/Linux
->>>>>
->>>>> reverting above patch, dir listing with 'ls /' works again
->>>>
->>>> Is this still happening?
->>>
->>> yes it is, I just reverted the aforementioned commit.
->>
->> Can you reapply, and then do an "ls /" while recording the traffic to
->> the NFS server using wireshark, and then send us the resulting dump?
->
-> http://www.pcapr.net/view/afenkart/2014/6/3/1/nfs-client.dump.html
-> you have to create a login... simple. Or did you mean attach to email?
->
->> If the client is on an embedded system which can't run wireshark, then
->> it is fine to record it on the server, but please use something like
->>
->> 'tshark -w /var/tmp/dump.out host <client-ip>'
->
-> captured on embedded system:
-> tcpdump -w /tmp/nfs-client.dump
->
->>
->> Cheers
->>   Trond
->
-> thanks, sincerely
-> Andreas
+Add a new "get" routine for forget_clients that relies on the
+client_lock instead of the client_mutex.
 
-That unfortunately only shows a few READ requests, probably because
-the readdirs etc are cached. Could you try again with a directory that
-is not in cache and/or try "echo 3 >/proc/sys/vm/drop_caches" before
-retrying the 'ls /'?
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/fault_inject.c |  3 +--
+ fs/nfsd/nfs4state.c    | 30 ++++++++++++++++++++++--------
+ fs/nfsd/state.h        |  4 +++-
+ 3 files changed, 26 insertions(+), 11 deletions(-)
 
-Note: I am a little surprised that there are no GETATTRs in that dump.
-Even if the readdir is cached, the client is supposed to revalidate
-the directory.
-
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index b1159900d934..a0387fd47e14 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -134,11 +134,10 @@ void nfsd_fault_inject_cleanup(void)
+ static struct nfsd_fault_inject_op inject_ops[] = {
+ 	{
+ 		.file     = "forget_clients",
+-		.get	  = nfsd_inject_get,
++		.get	  = nfsd_inject_print_clients,
+ 		.set_val  = nfsd_inject_set,
+ 		.set_clnt = nfsd_inject_set_client,
+ 		.forget   = nfsd_forget_client,
+-		.print    = nfsd_print_client,
+ 	},
+ 	{
+ 		.file     = "forget_locks",
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 64caf119ab53..60f6e2f2463e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5719,6 +5719,28 @@ nfs4_check_open_reclaim(clientid_t *clid,
+ }
+ 
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
++u64
++nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
++{
++	struct nfs4_client *clp;
++	u64 count = 0;
++	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
++					  nfsd_net_id);
++	char buf[INET6_ADDRSTRLEN];
++
++	if (!nfsd_netns_ready(nn))
++		return 0;
++
++	spin_lock(&nn->client_lock);
++	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
++		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
++		pr_info("NFS Client: %s\n", buf);
++		++count;
++	}
++	spin_unlock(&nn->client_lock);
++
++	return count;
++}
+ 
+ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ {
+@@ -5734,14 +5756,6 @@ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
+ 	return 1;
+ }
+ 
+-u64 nfsd_print_client(struct nfs4_client *clp, u64 num)
+-{
+-	char buf[INET6_ADDRSTRLEN];
+-	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
+-	printk(KERN_INFO "NFS Client: %s\n", buf);
+-	return 1;
+-}
+-
+ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ 			     const char *type)
+ {
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 73a209dc352b..02707375cb4b 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -471,18 +471,20 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
+ 
+ /* nfs fault injection functions */
+ #ifdef CONFIG_NFSD_FAULT_INJECTION
++struct nfsd_fault_inject_op;
++
+ int nfsd_fault_inject_init(void);
+ void nfsd_fault_inject_cleanup(void);
+ u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
+ struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
+ 
++u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
+ u64 nfsd_forget_client(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
+ u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
+ u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
+ 
+-u64 nfsd_print_client(struct nfs4_client *, u64);
+ u64 nfsd_print_client_locks(struct nfs4_client *, u64);
+ u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
+ u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
