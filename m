@@ -1,95 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38553 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751308AbaGOOuk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Jul 2014 10:50:40 -0400
-Date: Tue, 15 Jul 2014 10:50:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: nfsd4_locku / nfs4_free_lock_stateid question
-Message-ID: <20140715145029.GI17956@fieldses.org>
-References: <20140713110047.GA28727@infradead.org>
- <20140713080541.30ecbb51@tlielax.poochiereds.net>
- <20140713121919.GA6456@infradead.org>
- <20140715081334.654473fd@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140715081334.654473fd@tlielax.poochiereds.net>
+Received: from mail-la0-f48.google.com ([209.85.215.48]:47908 "EHLO
+	mail-la0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752650AbaG3LXh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 07:23:37 -0400
+Received: by mail-la0-f48.google.com with SMTP id gl10so772569lab.35
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 04:23:36 -0700 (PDT)
+From: Natanael Copa <natanael.copa@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH 10/11] exportfs: fix test of NULL pointer in host_pton()
+Date: Wed, 30 Jul 2014 13:23:18 +0200
+Message-Id: <1406719399-1735-11-git-send-email-ncopa@alpinelinux.org>
+In-Reply-To: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
+References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 15, 2014 at 08:13:34AM -0400, Jeff Layton wrote:
-> On Sun, 13 Jul 2014 05:19:19 -0700
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > On Sun, Jul 13, 2014 at 08:05:41AM -0400, Jeff Layton wrote:
-> > > It is weird, but I don't think it really matters as the filp is only
-> > > really used as a way to get to the inode -- it really doesn't matter
-> > > which struct file we use there. find_any_file will both take a
-> > > reference to and return the file, which is then eventually fput in
-> > > filp_close, so there should be no refcount leak or anything.
-> > > 
-> > > The weirdness all comes from the vfs-layer file locking interfaces,
-> > > many of which take a struct file argument when they really would be
-> > > fine with a struct inode. Maybe one of these days we can get around to
-> > > cleaning that up.
-> > 
-> > If filesystems get the file passed we should assume that they actually
-> > use it.  In fact AFS does, but it's not NFS exportable at the moment,
-> > and ceph does in a debug printk.  I'd be much happier to waste a pointer
-> > in the lock stateid to avoid this inconsistant interface.  And it would
-> > allow to kill find_any_fileas well..
-> > 
-> 
-> I started looking at this this morning...
-> 
-> FWIW, I don't see where AFS uses the struct file for anything
-> non-trivial in the filp_close codepaths. afs_do_unlk doesn't seem to do
-> much with it, and I don't see a ->flush operation for AFS. Am I missing
-> something there?
-> 
-> Here's what I think this change would look like. It builds but is
-> otherwise untested, and the commit log is sort of half-assed right now.
-> It should get slotted on top of this patch in the series:
-> 
->     nfsd: do filp_close in sc_free callback for lock stateids
-> 
-> I'm not sure this really improves anything.
-> 
-> For one thing, we can only store a single struct file, but there's no
-> guarantee that the locks represented by the lock stateid all used that
-> file.
+should fix https://bugzilla.redhat.com/show_bug.cgi?id=1083018
 
-Right, so after this patch st_file means "the last file used by a lock
-operation using this lock stateid"?
+Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
+---
+ support/export/hostname.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-> Also, find_any_file is rather cheap, so I don't see this helping
-> performance much.
-> 
-> Given that, is this really worth the extra memory? Thoughts?
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index ad595d1..d9153e1 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -115,6 +115,11 @@ host_pton(const char *paddr)
+ 	 * have a real AF_INET presentation address, before invoking
+ 	 * getaddrinfo(3) to generate the full addrinfo list.
+ 	 */
++	if (paddr == NULL) {
++		xlog(D_GENERAL, "%s: passed a NULL presentation address",
++			__func__);
++		return NULL;
++	}
+ 	inet4 = 1;
+ 	if (inet_pton(AF_INET, paddr, &sin.sin_addr) == 0)
+ 		inet4 = 0;
+@@ -123,15 +128,12 @@ host_pton(const char *paddr)
+ 	switch (error) {
+ 	case 0:
+ 		if (!inet4 && ai->ai_addr->sa_family == AF_INET) {
++			xlog(D_GENERAL, "%s: failed to convert %s",
++					__func__, paddr);
+ 			freeaddrinfo(ai);
+ 			break;
+ 		}
+ 		return ai;
+-	case EAI_NONAME:
+-		if (paddr == NULL)
+-			xlog(D_GENERAL, "%s: passed a NULL presentation address",
+-				__func__);
+-		break;
+ 	case EAI_SYSTEM:
+ 		xlog(D_GENERAL, "%s: failed to convert %s: (%d) %m",
+ 				__func__, paddr, errno);
+-- 
+2.0.3
 
-I'm not convinced it is.  But I understand that we're imposing a weird
-assumption on the lock interface: "if you're exportable, you should use
-the struct file we passed you only to get the inode".
-
-It's out of scope for this work now, but I wonder whether my
-f9d7562fdb9d "nfsd4: share file descriptors between stateid's" was a
-mistake.  It also seemed potentially surprising to filesystems that we
-could write or write-lock using a struct file originally opened for
-read, but maybe that wasn't really a problem.
-
-> @@ -4866,8 +4849,10 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		case NFS4_READW_LT:
->  			spin_lock(&fp->fi_lock);
->  			filp = find_readable_file_locked(fp);
-> -			if (filp)
-> +			if (filp) {
-> +				swap(lock_stp->st_file, filp);
->  				get_lock_access(lock_stp, NFS4_SHARE_ACCESS_READ);
-
-I haven't checked carefully, but in the case of a new lock stateid, is
-st_file going to be NULL, in which case this is going to cause the
-openmode check following this case statement to fail?
-
---b.
