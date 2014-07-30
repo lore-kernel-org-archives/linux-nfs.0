@@ -1,35 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.kundenserver.de ([212.227.17.13]:55539 "EHLO
-	mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754569AbaGNOYB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Jul 2014 10:24:01 -0400
-From: Arnd Bergmann <arnd@arndb.de>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: trond.myklebust@primarydata.com, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org, Paul McKenney <paulmck@linux.vnet.ibm.com>
-Subject: Re: [PATCH 1/7] sunrpc: remove __rcu annotation from struct gss_cl_ctx->gc_gss_ctx
-Date: Mon, 14 Jul 2014 16:23:53 +0200
-Message-ID: <6702571.1HVrh55XfQ@wuerfel>
-In-Reply-To: <1405303064-9102-2-git-send-email-jlayton@primarydata.com>
-References: <1405303064-9102-1-git-send-email-jlayton@primarydata.com> <1405303064-9102-2-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:53718 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754673AbaG3M14 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:27:56 -0400
+Received: by mail-qg0-f41.google.com with SMTP id q107so1321222qgd.28
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:27:55 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 08/37] nfsd: Ensure lookup_clientid() takes client_lock
+Date: Wed, 30 Jul 2014 08:27:09 -0400
+Message-Id: <1406723258-8512-9-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sunday 13 July 2014 21:57:38 Jeff Layton wrote:
-> 
-> Commit 5b22216e11f7 (nfs: __rcu annotations) added a __rcu annotation to
-> the gc_gss_ctx field. I see no rationale for adding that though, as that
-> field does not seem to be managed via RCU at all.
-> 
-> Cc: Arnd Bergmann <arnd@arndb.de>
-> Cc: Paul McKenney <paulmck@linux.vnet.ibm.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-Unfortunately, it's been too long ago for me to remember what led to me
-adding it. I also don't see a reason for it in today's code, but I don't
-know if the code has changed, if I made a mistake then, or if it's actually
-needed for some reason I don't see.
+Ensure that the client lookup is done safely under the client_lock, so
+we're not relying on the client_mutex.
 
-	Arnd
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 68383b09c7dc..f9d077d800ee 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3451,13 +3451,17 @@ static __be32 lookup_clientid(clientid_t *clid,
+ 	 * will be false.
+ 	 */
+ 	WARN_ON_ONCE(cstate->session);
++	spin_lock(&nn->client_lock);
+ 	found = find_confirmed_client(clid, false, nn);
+-	if (!found)
++	if (!found) {
++		spin_unlock(&nn->client_lock);
+ 		return nfserr_expired;
++	}
++	atomic_inc(&found->cl_refcount);
++	spin_unlock(&nn->client_lock);
+ 
+ 	/* Cache the nfs4_client in cstate! */
+ 	cstate->clp = found;
+-	atomic_inc(&found->cl_refcount);
+ 	return nfs_ok;
+ }
+ 
+-- 
+1.9.3
+
