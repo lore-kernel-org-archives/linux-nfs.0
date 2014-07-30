@@ -1,81 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f67.google.com ([209.85.192.67]:54148 "EHLO
-	mail-qg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934955AbaGPTED (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Jul 2014 15:04:03 -0400
-Received: by mail-qg0-f67.google.com with SMTP id f51so307518qge.6
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Jul 2014 12:04:02 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 16 Jul 2014 15:04:01 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 06/10] nfsd: Protect the nfs4_file delegation fields
- using the fi_lock
-Message-ID: <20140716150401.00757454@tlielax.poochiereds.net>
-In-Reply-To: <20140716180943.GA6920@infradead.org>
-References: <1405521125-2303-1-git-send-email-jlayton@primarydata.com>
-	<1405521125-2303-7-git-send-email-jlayton@primarydata.com>
-	<20140716180943.GA6920@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:57966 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751895AbaG3BfF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 21:35:05 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so637541qge.39
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 18:35:04 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH v3 10/38] nfsd: Add reference counting to lock stateids
+Date: Tue, 29 Jul 2014 21:34:15 -0400
+Message-Id: <1406684083-19736-11-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 16 Jul 2014 11:09:43 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-> >  	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
-> > +	spin_lock(&fp->fi_lock);
-> >  	list_del_init(&dp->dl_perclnt);
-> >  	list_del_init(&dp->dl_recall_lru);
-> > -	spin_lock(&fp->fi_lock);
-> >  	list_del_init(&dp->dl_perfile);
-> >  	spin_unlock(&fp->fi_lock);
-> > -	spin_unlock(&state_lock);
-> >  	if (fp) {
-> >  		nfs4_put_deleg_lease(fp);
-> > -		put_nfs4_file(fp);
-> >  		dp->dl_file = NULL;
-> >  	}
-> > +	spin_unlock(&state_lock);
-> > +	put_nfs4_file(fp);
-> >  }
-> 
-> Unless I've missed something put_nfs4_file does not handle a NULL
-> pointer argument in the current tree, so this needs a NULL check
-> for fp.
-> 
+Ensure that nfsd4_lock() references the lock stateid while it is
+manipulating it. Not currently necessary, but will be once the
+client_mutex is removed.
 
-Well spotted, I'll fix that...
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
-> > +	spin_lock(&state_lock);
-> > +	/* Did the lease get broken before we took the lock? */
-> > +	status = -EAGAIN;
-> > +	if (!file_has_lease(fl->fl_file))
-> > +		goto out_unlock;
-> 
-> So if the delegation we just tried to add got broken, but someone else
-> managed to add one this would also return true.  But could that happen
-> either in real life or in theory?  Shouldn't we instead have an
-> atomic flag on the delegation that it got broken which we could check
-> here?
-> 
-
-Hmm...maybe. It's a very unlikely race though, and I think the same
-sort of race exists today. In fact, it's worse today since we don't do
-any checking of the validity of the lease after acquiring it now.
-
-The flag sounds like a good idea, but the code is structured completely
-wrong for it currently. The delegation is only hashed after we get a
-lease, so the lease break wouldn't find anything to set a flag on.
-
-Quite frankly, I _really_ do not want to have to rework the locking in
-the delegation code yet again. I think this scheme is an improvement
-over what we have now, even if it's not 100% perfect.
-
-Once we get the scalability set done, I'd like to go back and overhaul
-the delegation code. There are a lot of ugly warts here, but fixing
-them is really a separate project in its own right.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index f4c7bf96c9fd..1ddf4da0023d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4729,6 +4729,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
+ 
+ 	lockdep_assert_held(&clp->cl_lock);
+ 
++	atomic_inc(&stp->st_stid.sc_count);
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+@@ -4753,8 +4754,10 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
+ 	lockdep_assert_held(&clp->cl_lock);
+ 
+ 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
+-		if (lst->st_stid.sc_file == fp)
++		if (lst->st_stid.sc_file == fp) {
++			atomic_inc(&lst->st_stid.sc_count);
+ 			return lst;
++		}
+ 	}
+ 	return NULL;
+ }
+@@ -4856,7 +4859,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ {
+ 	struct nfs4_openowner *open_sop = NULL;
+ 	struct nfs4_lockowner *lock_sop = NULL;
+-	struct nfs4_ol_stateid *lock_stp;
++	struct nfs4_ol_stateid *lock_stp = NULL;
+ 	struct nfs4_file *fp;
+ 	struct file *filp = NULL;
+ 	struct file_lock *file_lock = NULL;
+@@ -4910,11 +4913,15 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			goto out;
+ 		status = lookup_or_create_lock_state(cstate, open_stp, lock,
+ 							&lock_stp, &new_state);
+-	} else
++	} else {
+ 		status = nfs4_preprocess_seqid_op(cstate,
+ 				       lock->lk_old_lock_seqid,
+ 				       &lock->lk_old_lock_stateid,
+ 				       NFS4_LOCK_STID, &lock_stp, nn);
++		/* FIXME: move into nfs4_preprocess_seqid_op */
++		if (!status)
++			atomic_inc(&lock_stp->st_stid.sc_count);
++	}
+ 	if (status)
+ 		goto out;
+ 	lock_sop = lockowner(lock_stp->st_stateowner);
+@@ -5007,6 +5014,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ out:
+ 	if (filp)
+ 		fput(filp);
++	if (lock_stp)
++		nfs4_put_stid(&lock_stp->st_stid);
+ 	if (status && new_state)
+ 		release_lock_stateid(lock_stp);
+ 	nfsd4_bump_seqid(cstate, status);
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
