@@ -1,90 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:46711 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754474AbaGHSEo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:04:44 -0400
-Received: by mail-qc0-f170.google.com with SMTP id l6so5687414qcy.15
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:04:43 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 006/100] nfsd4: use cl_lock to synchronize all stateid idr calls
-Date: Tue,  8 Jul 2014 14:02:54 -0400
-Message-Id: <1404842668-22521-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:50535 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753333AbaG3SFw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jul 2014 14:05:52 -0400
+Date: Wed, 30 Jul 2014 14:05:52 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "McEvoy, James" <james.mcevoy@hp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4.1 ACL reference implementation
+Message-ID: <20140730180552.GI26316@fieldses.org>
+References: <6301806E96421841896741228C6B1A2764A7C51F@G4W3216.americas.hpqcorp.net>
+ <20140729210901.GA24471@fieldses.org>
+ <6301806E96421841896741228C6B1A2764A7DCF7@G4W3216.americas.hpqcorp.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <6301806E96421841896741228C6B1A2764A7DCF7@G4W3216.americas.hpqcorp.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@primarydata.com>
+On Wed, Jul 30, 2014 at 05:08:25PM +0000, McEvoy, James wrote:
+> We are implementing NFSv4.1 ACLs in the filesystem mostly to support 
+> SMB/CIFS but I am seeing some strange behavior with ACL group 
+> inheritance on children/grand-children using the nfs4_setfacl and 
+> nfs4_getfacl on the parent directory.  The problems are mostly with 
+> inheritance on the @OWNER and @GROUP ACEs... 
 
-Currently, this is serialized by the client_mutex, which is slated for
-removal. Add finer-grained locking here.
+The usual problem is that the umask is applied.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4state.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+> What I am looking for is a reference that I can use to validate ACL 
+> inheritance behavior. Is there a distro that has a filesystem which supports 
+> NFSv4 ACLs?  Or ideally an rpm that I could install on a CentOS6 VM.
+> I have tried using the richacl mount option on OpenSUSE 13.1 but the 
+> nfs4_getfacl command returns: 
+> "Operation to request attribute not supported." 
+> The fstab entry to mount the filesystem is:
+> /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0-0-0-0-part3 \
+> 	/home	ext4	acl,richacl,user_xattr 1 2
+> 
+> Do you have any recommendations as to what and how I can install 
+> a filesystem that supports nfsv4 ACLs?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index bcfb350661ee..4b91058169af 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -347,7 +347,6 @@ static void nfs4_file_put_access(struct nfs4_file *fp, int oflag)
- static struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct
- kmem_cache *slab)
- {
--	struct idr *stateids = &cl->cl_stateids;
- 	struct nfs4_stid *stid;
- 	int new_id;
- 
-@@ -355,7 +354,11 @@ kmem_cache *slab)
- 	if (!stid)
- 		return NULL;
- 
--	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_KERNEL);
-+	idr_preload(GFP_KERNEL);
-+	spin_lock(&cl->cl_lock);
-+	new_id = idr_alloc_cyclic(&cl->cl_stateids, stid, 0, 0, GFP_NOWAIT);
-+	spin_unlock(&cl->cl_lock);
-+	idr_preload_end();
- 	if (new_id < 0)
- 		goto out_free;
- 	stid->sc_client = cl;
-@@ -493,9 +496,11 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 
- static void remove_stid(struct nfs4_stid *s)
- {
--	struct idr *stateids = &s->sc_client->cl_stateids;
-+	struct nfs4_client *clp = s->sc_client;
- 
--	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
-+	spin_lock(&clp->cl_lock);
-+	idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
-+	spin_unlock(&clp->cl_lock);
- }
- 
- static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
-@@ -1266,7 +1271,9 @@ free_client(struct nfs4_client *clp)
- 	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
- 	free_svc_cred(&clp->cl_cred);
- 	kfree(clp->cl_name.data);
-+	spin_lock(&clp->cl_lock);
- 	idr_destroy(&clp->cl_stateids);
-+	spin_unlock(&clp->cl_lock);
- 	kfree(clp);
- }
- 
-@@ -1491,7 +1498,9 @@ static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
- {
- 	struct nfs4_stid *ret;
- 
-+	spin_lock(&cl->cl_lock);
- 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
-+	spin_unlock(&cl->cl_lock);
- 	if (!ret || !ret->sc_type)
- 		return NULL;
- 	return ret;
--- 
-1.9.3
+No, they all just do "posix" acls and nfsd tries to translate.
 
+But the umask issue is somewhat of a separate issue.
+
+--b.
+
+> 
+>   --jim
+> 
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > Sent: Tuesday, July 29, 2014 2:09 PM
+> > To: McEvoy, James
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: NFSv4.1 ACL reference implementation
+> > 
+> > On Tue, Jul 29, 2014 at 07:18:03PM +0000, McEvoy, James wrote:
+> > > Is there a working NFSv4.1 reference implementation available and are there
+> > any instructs on how to build/install it?
+> > 
+> > I don't recall seeing any, no.
+> > 
+> > (Most NFSv4.0 ACL implementations should still be perfectly compliant with the
+> > NFSv4.1 spec too as far as I know.  But I don't know of any implementations of
+> > the ACL features that are new to RFC 5661.  Is there any particular feature that
+> > you're interested in?)
+> > 
+> > --b.
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of
+> > a message to majordomo@vger.kernel.org More majordomo info at
+> > http://vger.kernel.org/majordomo-info.html
