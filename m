@@ -1,122 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:64181 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755388AbaGHSGW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Jul 2014 14:06:22 -0400
-Received: by mail-qg0-f51.google.com with SMTP id z60so5478817qgd.10
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Jul 2014 11:06:21 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 079/100] nfsd: add a forget_clients "get" routine with proper locking
-Date: Tue,  8 Jul 2014 14:04:07 -0400
-Message-Id: <1404842668-22521-80-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
-References: <1404842668-22521-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:42021 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932180AbaG3SVC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Jul 2014 14:21:02 -0400
+Date: Wed, 30 Jul 2014 14:21:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "McEvoy, James" <james.mcevoy@hp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Fernandez, Roselle N" <roselle.fernandez@hp.com>,
+        "Palanisamy, Nandesh" <nandesh.palanisamy@hp.com>
+Subject: Re: NFSv4.1 ACL reference implementation
+Message-ID: <20140730182101.GJ26316@fieldses.org>
+References: <6301806E96421841896741228C6B1A2764A7C51F@G4W3216.americas.hpqcorp.net>
+ <20140729210901.GA24471@fieldses.org>
+ <6301806E96421841896741228C6B1A2764A7DCF7@G4W3216.americas.hpqcorp.net>
+ <20140730180552.GI26316@fieldses.org>
+ <6301806E96421841896741228C6B1A2764A7DEB1@G4W3216.americas.hpqcorp.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <6301806E96421841896741228C6B1A2764A7DEB1@G4W3216.americas.hpqcorp.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a new "get" routine for forget_clients that relies on the
-client_lock instead of the client_mutex.
+On Wed, Jul 30, 2014 at 06:15:37PM +0000, McEvoy, James wrote:
+> 
+> 
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > Sent: Wednesday, July 30, 2014 11:06 AM
+> > To: McEvoy, James
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: NFSv4.1 ACL reference implementation
+> > 
+> > On Wed, Jul 30, 2014 at 05:08:25PM +0000, McEvoy, James wrote:
+> > > We are implementing NFSv4.1 ACLs in the filesystem mostly to support
+> > > SMB/CIFS but I am seeing some strange behavior with ACL group
+> > > inheritance on children/grand-children using the nfs4_setfacl and
+> > > nfs4_getfacl on the parent directory.  The problems are mostly with
+> > > inheritance on the @OWNER and @GROUP ACEs...
+> > 
+> > The usual problem is that the umask is applied.
+> 
+> Where can I find the proper behavior between umask and inheritance? 
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/fault_inject.c |  3 +--
- fs/nfsd/nfs4state.c    | 30 ++++++++++++++++++++++--------
- fs/nfsd/state.h        |  4 +++-
- 3 files changed, 26 insertions(+), 11 deletions(-)
+For "posix" ACLs on local linux filesystems, the umask is just ignored
+in the case where we're creating a new file in a directory with
+default (inheritable) ACLs.
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index b1159900d934..a0387fd47e14 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -134,11 +134,10 @@ void nfsd_fault_inject_cleanup(void)
- static struct nfsd_fault_inject_op inject_ops[] = {
- 	{
- 		.file     = "forget_clients",
--		.get	  = nfsd_inject_get,
-+		.get	  = nfsd_inject_print_clients,
- 		.set_val  = nfsd_inject_set,
- 		.set_clnt = nfsd_inject_set_client,
- 		.forget   = nfsd_forget_client,
--		.print    = nfsd_print_client,
- 	},
- 	{
- 		.file     = "forget_locks",
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fc2abf9428af..e929e6f51788 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5702,6 +5702,28 @@ nfs4_check_open_reclaim(clientid_t *clid,
- }
- 
- #ifdef CONFIG_NFSD_FAULT_INJECTION
-+u64
-+nfsd_inject_print_clients(struct nfsd_fault_inject_op *op)
-+{
-+	struct nfs4_client *clp;
-+	u64 count = 0;
-+	struct nfsd_net *nn = net_generic(current->nsproxy->net_ns,
-+					  nfsd_net_id);
-+	char buf[INET6_ADDRSTRLEN];
-+
-+	if (!nfsd_netns_ready(nn))
-+		return 0;
-+
-+	spin_lock(&nn->client_lock);
-+	list_for_each_entry(clp, &nn->client_lru, cl_lru) {
-+		rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
-+		pr_info("NFS Client: %s\n", buf);
-+		++count;
-+	}
-+	spin_unlock(&nn->client_lock);
-+
-+	return count;
-+}
- 
- u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
- {
-@@ -5717,14 +5739,6 @@ u64 nfsd_forget_client(struct nfs4_client *clp, u64 max)
- 	return 1;
- }
- 
--u64 nfsd_print_client(struct nfs4_client *clp, u64 num)
--{
--	char buf[INET6_ADDRSTRLEN];
--	rpc_ntop((struct sockaddr *)&clp->cl_addr, buf, sizeof(buf));
--	printk(KERN_INFO "NFS Client: %s\n", buf);
--	return 1;
--}
--
- static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
- 			     const char *type)
- {
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 7e395f665b0f..e0bf42051c1f 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -466,18 +466,20 @@ extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
- 
- /* nfs fault injection functions */
- #ifdef CONFIG_NFSD_FAULT_INJECTION
-+struct nfsd_fault_inject_op;
-+
- int nfsd_fault_inject_init(void);
- void nfsd_fault_inject_cleanup(void);
- u64 nfsd_for_n_state(u64, u64 (*)(struct nfs4_client *, u64));
- struct nfs4_client *nfsd_find_client(struct sockaddr_storage *, size_t);
- 
-+u64 nfsd_inject_print_clients(struct nfsd_fault_inject_op *op);
- u64 nfsd_forget_client(struct nfs4_client *, u64);
- u64 nfsd_forget_client_locks(struct nfs4_client*, u64);
- u64 nfsd_forget_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_forget_client_delegations(struct nfs4_client *, u64);
- u64 nfsd_recall_client_delegations(struct nfs4_client *, u64);
- 
--u64 nfsd_print_client(struct nfs4_client *, u64);
- u64 nfsd_print_client_locks(struct nfs4_client *, u64);
- u64 nfsd_print_client_openowners(struct nfs4_client *, u64);
- u64 nfsd_print_client_delegations(struct nfs4_client *, u64);
--- 
-1.9.3
+In the v4 case that doesn't happen.  I think this probably a bug that
+needs to be fixed, but I'm not sure how.
 
+--b.
+
+> > > What I am looking for is a reference that I can use to validate ACL
+> > > inheritance behavior. Is there a distro that has a filesystem which
+> > > supports
+> > > NFSv4 ACLs?  Or ideally an rpm that I could install on a CentOS6 VM.
+> > > I have tried using the richacl mount option on OpenSUSE 13.1 but the
+> > > nfs4_getfacl command returns:
+> > > "Operation to request attribute not supported."
+> > > The fstab entry to mount the filesystem is:
+> > > /dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_drive-scsi0-0-0-0-part3 \
+> > > 	/home	ext4	acl,richacl,user_xattr 1 2
+> > >
+> > > Do you have any recommendations as to what and how I can install a
+> > > filesystem that supports nfsv4 ACLs?
+> > 
+> > No, they all just do "posix" acls and nfsd tries to translate.
+> > 
+> > But the umask issue is somewhat of a separate issue.
+> > 
+> > --b.
+> > 
+> > >
+> > >   --jim
+> > >
+> > > > -----Original Message-----
+> > > > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > > > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > > > Sent: Tuesday, July 29, 2014 2:09 PM
+> > > > To: McEvoy, James
+> > > > Cc: linux-nfs@vger.kernel.org
+> > > > Subject: Re: NFSv4.1 ACL reference implementation
+> > > >
+> > > > On Tue, Jul 29, 2014 at 07:18:03PM +0000, McEvoy, James wrote:
+> > > > > Is there a working NFSv4.1 reference implementation available and
+> > > > > are there
+> > > > any instructs on how to build/install it?
+> > > >
+> > > > I don't recall seeing any, no.
+> > > >
+> > > > (Most NFSv4.0 ACL implementations should still be perfectly
+> > > > compliant with the
+> > > > NFSv4.1 spec too as far as I know.  But I don't know of any
+> > > > implementations of the ACL features that are new to RFC 5661.  Is
+> > > > there any particular feature that you're interested in?)
+> > > >
+> > > > --b.
+> > > > --
+> > > > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> > > > in the body of a message to majordomo@vger.kernel.org More majordomo
+> > > > info at http://vger.kernel.org/majordomo-info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of
+> > a message to majordomo@vger.kernel.org More majordomo info at
+> > http://vger.kernel.org/majordomo-info.html
