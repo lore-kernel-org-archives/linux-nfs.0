@@ -1,91 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:35438 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754309AbaG2VZF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 17:25:05 -0400
-Subject: [PATCH v5 13/21] xprtrdma: Don't post a LOCAL_INV in
- rpcrdma_register_frmr_external()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Anna.Schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 29 Jul 2014 17:25:03 -0400
-Message-ID: <20140729212503.2812.14645.stgit@manet.1015granger.net>
-In-Reply-To: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-References: <20140729211534.2812.3128.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:39603 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754671AbaG3M1z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Jul 2014 08:27:55 -0400
+Received: by mail-qa0-f46.google.com with SMTP id v10so1182695qac.19
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Jul 2014 05:27:54 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 07/37] nfsd: Protect nfsd4_destroy_clientid using client_lock
+Date: Wed, 30 Jul 2014 08:27:08 -0400
+Message-Id: <1406723258-8512-8-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Any FRMR arriving in rpcrdma_register_frmr_external() is now
-guaranteed to be either invalid, or to be targeted by a queued
-LOCAL_INV that will invalidate it before the adapter processes
-the FAST_REG_MR being built here.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 
-The problem with current arrangement of chaining a LOCAL_INV to the
-FAST_REG_MR is that if the transport is not connected, the LOCAL_INV
-is flushed and the FAST_REG_MR is flushed. This leaves the FRMR
-valid with the old rkey. But rpcrdma_register_frmr_external() has
-already bumped the in-memory rkey.
+...instead of relying on the client_mutex.
 
-Next time through rpcrdma_register_frmr_external(), a LOCAL_INV and
-FAST_REG_MR is attempted again because the FRMR is still valid. But
-the rkey no longer matches the hardware's rkey, and a memory
-management operation error occurs.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
-Tested-by: Shirley Ma <shirley.ma@oracle.com>
-Tested-by: Devesh Sharma <devesh.sharma@emulex.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   22 ++--------------------
- 1 file changed, 2 insertions(+), 20 deletions(-)
+ fs/nfsd/nfs4state.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 2e91745..8da9a35 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1692,8 +1692,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	struct rpcrdma_mw *mw = seg1->mr_chunk.rl_mw;
- 	struct rpcrdma_frmr *frmr = &mw->r.frmr;
- 	struct ib_mr *mr = frmr->fr_mr;
--	struct ib_send_wr invalidate_wr, frmr_wr, *bad_wr, *post_wr;
--
-+	struct ib_send_wr frmr_wr, *bad_wr;
- 	u8 key;
- 	int len, pageoff;
- 	int i, rc;
-@@ -1725,22 +1724,6 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	dprintk("RPC:       %s: Using frmr %p to map %d segments\n",
- 		__func__, mw, i);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 52a4677f6f35..68383b09c7dc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2826,22 +2826,23 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
+ __be32
+ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
+ {
+-	struct nfs4_client *conf, *unconf, *clp;
++	struct nfs4_client *conf, *unconf;
++	struct nfs4_client *clp = NULL;
+ 	__be32 status = 0;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
  
--	if (unlikely(frmr->fr_state != FRMR_IS_INVALID)) {
--		dprintk("RPC:       %s: frmr %x left valid, posting invalidate.\n",
--			__func__, mr->rkey);
--		/* Invalidate before using. */
--		memset(&invalidate_wr, 0, sizeof invalidate_wr);
--		invalidate_wr.wr_id = (unsigned long)(void *)mw;
--		invalidate_wr.next = &frmr_wr;
--		invalidate_wr.opcode = IB_WR_LOCAL_INV;
--		invalidate_wr.send_flags = IB_SEND_SIGNALED;
--		invalidate_wr.ex.invalidate_rkey = mr->rkey;
--		DECR_CQCOUNT(&r_xprt->rx_ep);
--		post_wr = &invalidate_wr;
--	} else
--		post_wr = &frmr_wr;
--
--	/* Prepare FRMR WR */
- 	memset(&frmr_wr, 0, sizeof frmr_wr);
- 	frmr_wr.wr_id = (unsigned long)(void *)mw;
- 	frmr_wr.opcode = IB_WR_FAST_REG_MR;
-@@ -1765,8 +1748,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	frmr_wr.wr.fast_reg.rkey = mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 	nfs4_lock_state();
++	spin_lock(&nn->client_lock);
+ 	unconf = find_unconfirmed_client(&dc->clientid, true, nn);
+ 	conf = find_confirmed_client(&dc->clientid, true, nn);
+ 	WARN_ON_ONCE(conf && unconf);
  
--	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
+ 	if (conf) {
+-		clp = conf;
 -
-+	rc = ib_post_send(ia->ri_id->qp, &frmr_wr, &bad_wr);
- 	if (rc) {
- 		dprintk("RPC:       %s: failed ib_post_send for register,"
- 			" status %i\n", __func__, rc);
+ 		if (client_has_state(conf)) {
+ 			status = nfserr_clientid_busy;
+ 			goto out;
+ 		}
++		clp = conf;
+ 	} else if (unconf)
+ 		clp = unconf;
+ 	else {
+@@ -2849,12 +2850,16 @@ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 		goto out;
+ 	}
+ 	if (!mach_creds_match(clp, rqstp)) {
++		clp = NULL;
+ 		status = nfserr_wrong_cred;
+ 		goto out;
+ 	}
+-	expire_client(clp);
++	unhash_client_locked(clp);
+ out:
++	spin_unlock(&nn->client_lock);
+ 	nfs4_unlock_state();
++	if (clp)
++		expire_client(clp);
+ 	return status;
+ }
+ 
+-- 
+1.9.3
 
