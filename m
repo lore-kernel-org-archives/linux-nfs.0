@@ -1,70 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:56722 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754403AbaG2Ue7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Jul 2014 16:34:59 -0400
-Received: by mail-qa0-f45.google.com with SMTP id cm18so250733qab.32
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Jul 2014 13:34:59 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH v2 20/38] nfsd: Migrate the stateid reference into nfs4_find_stateid_by_type()
-Date: Tue, 29 Jul 2014 16:34:03 -0400
-Message-Id: <1406666061-14175-21-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
-References: <1406666061-14175-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:45075 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750782AbaGaLen (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2014 07:34:43 -0400
+Received: by mail-qg0-f50.google.com with SMTP id q108so3569824qgd.9
+        for <linux-nfs@vger.kernel.org>; Thu, 31 Jul 2014 04:34:43 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 31 Jul 2014 07:34:41 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: Natanael Copa <natanael.copa@gmail.com>, linux-nfs@vger.kernel.org,
+        Natanael Copa <ncopa@alpinelinux.org>
+Subject: Re: [PATCH 04/11] exportfs: define _GNU_SOURCE for stat64
+Message-ID: <20140731073441.7e354359@tlielax.poochiereds.net>
+In-Reply-To: <20140731113022.22afdefc@notabene.brown>
+References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
+	<1406719399-1735-5-git-send-email-ncopa@alpinelinux.org>
+	<20140731113022.22afdefc@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+On Thu, 31 Jul 2014 11:30:22 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-Allow nfs4_find_stateid_by_type to take the stateid reference, while
-still holding the &cl->cl_lock. Necessary step toward client_mutex
-removal.
+> On Wed, 30 Jul 2014 13:23:12 +0200 Natanael Copa <natanael.copa@gmail.com>
+> wrote:
+> 
+> > Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
+> > ---
+> >  utils/exportfs/exportfs.c | 4 ++++
+> >  1 file changed, 4 insertions(+)
+> > 
+> > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> > index bf07555..7ab93d1 100644
+> > --- a/utils/exportfs/exportfs.c
+> > +++ b/utils/exportfs/exportfs.c
+> > @@ -12,6 +12,10 @@
+> >  #include <config.h>
+> >  #endif
+> >  
+> > +#ifndef _GNU_SOURCE
+> > +#define _GNU_SOURCE
+> > +#endif
+> > +
+> >  #include <sys/types.h>
+> >  #include <sys/stat.h>
+> >  #include <sys/vfs.h>
+> 
+> These all look really sensible!
+> 
+> One small suggestion: it would be really nice to see a comment in the code
+> explaining why _GNU_SOURCE is needed.  I suspect such comments get out of
+> date quickly, so maybe it wouldn't end up be all that useful.  But having a
+> comment is still, in my opinion, more useful than not.
+> 
+> Thanks,
+> NeilBrown
+> 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+Agreed, they all look pretty sensible. That said, I think the supposed
+best way to enable _GNU_SOURCE on autoconf projects is to use
+AC_USE_SYSTEM_EXTENSIONS:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 285958cd0e3c..c4dd0b4cdc53 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1696,8 +1696,12 @@ find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
- 
- 	spin_lock(&cl->cl_lock);
- 	s = find_stateid_locked(cl, t);
--	if (s != NULL && !(typemask & s->sc_type))
--		s = NULL;
-+	if (s != NULL) {
-+		if (typemask & s->sc_type)
-+			atomic_inc(&s->sc_count);
-+		else
-+			s = NULL;
-+	}
- 	spin_unlock(&cl->cl_lock);
- 	return s;
- }
-@@ -3326,8 +3330,6 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
- 	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
- 	if (!ret)
- 		return NULL;
--	/* FIXME: move into find_stateid_by_type */
--	atomic_inc(&ret->sc_count);
- 	return delegstateid(ret);
- }
- 
-@@ -4170,8 +4172,6 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
- 	if (!*s)
- 		return nfserr_bad_stateid;
--	/* FIXME: move into find_stateid_by_type */
--	atomic_inc(&(*s)->sc_count);
- 	return nfs_ok;
- }
- 
+    https://www.gnu.org/software/autoconf/manual/autoconf-2.64/html_node/Posix-Variants.html
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
