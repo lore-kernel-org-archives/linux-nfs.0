@@ -1,133 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:56025 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756191AbaGRTc1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Jul 2014 15:32:27 -0400
-Received: by mail-qa0-f49.google.com with SMTP id dc16so3347700qab.36
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Jul 2014 12:32:27 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 18 Jul 2014 15:32:24 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, hch@infradead.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v4 01/10] nfsd: Protect the nfs4_file delegation fields
- using the fi_lock
-Message-ID: <20140718153224.1ca7815c@tlielax.poochiereds.net>
-In-Reply-To: <20140718192149.GC12801@fieldses.org>
-References: <1405696416-32585-1-git-send-email-jlayton@primarydata.com>
-	<1405696416-32585-2-git-send-email-jlayton@primarydata.com>
-	<20140718162825.GA8811@fieldses.org>
-	<20140718133140.6a26ea4d@f20.localdomain>
-	<20140718174957.GA12801@fieldses.org>
-	<20140718150404.3d1e094c@tlielax.poochiereds.net>
-	<20140718192149.GC12801@fieldses.org>
+Received: from mail2.candelatech.com ([208.74.158.173]:53815 "EHLO
+	mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750709AbaGaTwz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2014 15:52:55 -0400
+Received: from [192.168.100.236] (firewall.candelatech.com [70.89.124.249])
+	(using TLSv1 with cipher DHE-RSA-CAMELLIA256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mail2.candelatech.com (Postfix) with ESMTPSA id 1CB6740AB5B
+	for <linux-nfs@vger.kernel.org>; Thu, 31 Jul 2014 12:52:55 -0700 (PDT)
+Message-ID: <53DA9E96.8080100@candelatech.com>
+Date: Thu, 31 Jul 2014 12:52:54 -0700
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Killing process in D state on mount to dead NFS server.
+References: <53DA8443.407@candelatech.com> <20140731194936.GB29395@us.ibm.com>
+In-Reply-To: <20140731194936.GB29395@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 18 Jul 2014 15:21:49 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Fri, Jul 18, 2014 at 03:04:04PM -0400, Jeff Layton wrote:
-> > On Fri, 18 Jul 2014 13:49:57 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Fri, Jul 18, 2014 at 01:31:40PM -0400, Jeff Layton wrote:
-> > > > On Fri, 18 Jul 2014 12:28:25 -0400
-> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > 
-> > > > > On Fri, Jul 18, 2014 at 11:13:27AM -0400, Jeff Layton wrote:
-> > > > > > Move more of the delegation fields to be protected by the fi_lock. It's
-> > > > > > more granular than the state_lock and in later patches we'll want to
-> > > > > > be able to rely on it in addition to the state_lock.
-> > > > > > 
-> > > > > > Also, the current code in nfs4_setlease calls vfs_setlease and uses the
-> > > > > > client_mutex to ensure that it doesn't disappear before we can hash the
-> > > > > > delegation. With the client_mutex gone, we'll have a potential race
-> > > > > > condition.
-> > > > > > 
-> > > > > > It's possible that the delegation could be recalled after we acquire the
-> > > > > > lease but before we ever get around to hashing it. If that happens, then
-> > > > > > we'd have a nfs4_file that *thinks* it has a delegation, when it
-> > > > > > actually has none.
-> > > > > 
-> > > > > I understand now, thanks: so the lease break code walks the list of
-> > > > > delegations associated with the file, finds none, and issues no recall,
-> > > > > but the open code continues merrily on and returns a delegation, with
-> > > > > the result that we return the client a delegation that will never be
-> > > > > recalled.
-> > > > > 
-> > > > > That could be worded more carefully, and would be worth a separate patch
-> > > > > (since the bug predates the new locking).
-> > > > > 
-> > > > 
-> > > > Yes, that's basically correct. I'd have to think about how to fix that
-> > > > with the current code. It's probably doable if you think it's
-> > > > worthwhile, but I'll need to rebase this set on top of it.
-> > > 
-> > > Well, I was wondering if this patch could just be split in two, no need
-> > > to backport further than that.
-> > > 
-> > 
-> > Erm, now that I've looked, I don't think it'll be that easy. The key
-> > here is to ensure that fi_had_conflict is set while holding the
-> > fi_lock. The trick here is that we need to take it in nfs4_setlease as
-> > well, and check the flag before hashing the delegation without dropping
-> > the fi_lock.
+On 07/31/2014 12:49 PM, Malahal Naineni wrote:
+> Ben Greear [greearb@candelatech.com] wrote:
+>> So, this has been asked all over the interweb for years and years, but
+>> the best answer I can find is to reboot the system or create a fake NFS
+>> server somewhere with the same IP as the gone-away NFS server.
+>>
+>> The problem is:
+>>
+>> I have some mounts to an NFS server that no longer exists (crashed/powered down).
+>>
+>> I have some processes stuck trying to write to files open on these mounts.
+>>
+>> I want to kill the process and unmount.
+>>
+>> umount -l will make the mount go a way, sort of.  But process is still hung.
+>> umount -f complains:
+>>   umount2:  Device or resource busy
+>>   umount.nfs: /mnt/foo: device is busy
+>>
+>> kill -9 does not work on process.
+>>
+>>
+>> Aside from bringing a fake NFS server back up on the same IP, is there any
+>> other way to get these mounts unmounted and the processes killed without
+>> rebooting?
 > 
-> OK, I'll live.  For the sake of anyone that actually runs across that
-> bug I'll update the summary and changelog to emphasize the bugfix over
-> the locking change.
+> You don't need a fake NFS server, you just need a fake or real server
+> with that IP address.  A popular way is to alias that IP on the NFS
+> client itself.
 > 
+> See the second popular answer below:
+> http://stackoverflow.com/questions/40317/force-unmount-of-nfs-mounted-directory
 
-Ok, thanks.
+In my case, routing is set up so that the NFS traffic always exits the system, so
+doing a local IP that matches the server is not an option.  It also seems like a
+horrible hack that should have a better solution :P
 
-> > > > > > Attempt to acquire a delegation. If that succeeds, take the spinlocks
-> > > > > > and then check to see if the file has had a conflict show up since then.
-> > > > > > If it has, then we assume that the lease is no longer valid and that
-> > > > > > we shouldn't hand out a delegation.
-> > > > > > 
-> > > > > > There's also one more potential (but very unlikely) problem. If the
-> > > > > > lease is broken before the delegation is hashed, then it could leak.
-> > > > > > In the event that the fi_delegations list is empty, reset the
-> > > > > > fl_break_time to jiffies so that it's cleaned up ASAP by
-> > > > > > the normal lease handling code.
-> > > > > 
-> > > > > Is there actually any guarantee time_out_leases() will get called on
-> > > > > this inode again?
-> > > > > 
-> > > > > --b.
-> > > > > 
-> > > > 
-> > > > Yes. Lease breaks are handled in two phases. We walk the i_flock list
-> > > > and issue a ->lm_break on each lease, and then later we walk the list
-> > > > again after putting the task to sleep, and try to time out the leases.
-> > > > So by doing this, we should ensure that the task will wake up after
-> > > > sleeping and delete it.
-> > > 
-> > > In the case of an interrupt or a nonblocking break (which is what nfsd
-> > > will do), then time_out_leases isn't called again from what I could
-> > > tell.
-> > > 
-> > > --b.
-> > > 
-> > 
-> > In both cases, time_out_leases is still called at the beginning of
-> > __break_lease. So the next time that function is called it'll
-> > get cleaned up, or when the filp is closed (in locks_remove_file).
+Thanks,
+Ben
+
 > 
-> Right, but there's no guarantee another break_lease comes.  E.g. the
-> process waiting on the lease break could get killed.
-> 
-> --b.
+> Regards, Malahal.
 
-In that case, there's no harm in leaving the lease on the list until
-the filp closes.
-
-FWIW, I looked at trying to just remove the lease from the list, but
-that's not safe from the lm_break callback. So, I think this is the
-best we can reasonably do here.
 
 -- 
-Jeff Layton <jlayton@primarydata.com>
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
