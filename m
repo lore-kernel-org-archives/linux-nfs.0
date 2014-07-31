@@ -1,37 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:55094 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752237AbaG0Tup (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Jul 2014 15:50:45 -0400
-Date: Sun, 27 Jul 2014 12:50:41 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Andrey Utkin <andrey.krieger.utkin@gmail.com>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        kernel-janitors@vger.kernel.org, Russell King <linux@arm.linux.org.uk>
-Subject: Re: [PATCH] nfs3_list_one_acl(): check get_acl() result with
- IS_ERR_OR_NULL
-Message-ID: <20140727195041.GA11575@infradead.org>
-References: <1406375881-18837-1-git-send-email-andrey.krieger.utkin@gmail.com>
- <20140727131917.GA32153@infradead.org>
- <CAHQdGtRzDzpOuwZYWaBake-bH0z0eyMd2g-RTVwO0d2f0Zmsow@mail.gmail.com>
+Received: from fieldses.org ([174.143.236.118]:49196 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750868AbaGaUE2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Jul 2014 16:04:28 -0400
+Date: Thu, 31 Jul 2014 16:04:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v3 20/38] nfsd: Migrate the stateid reference into
+ nfs4_find_stateid_by_type()
+Message-ID: <20140731200421.GA21300@fieldses.org>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+ <1406684083-19736-21-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtRzDzpOuwZYWaBake-bH0z0eyMd2g-RTVwO0d2f0Zmsow@mail.gmail.com>
+In-Reply-To: <1406684083-19736-21-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jul 27, 2014 at 11:13:50AM -0400, Trond Myklebust wrote:
-> Why are we not passing the error code back to the caller here in the
-> case where we have one? One of the main purposes of returning an error
-> in get_acl() is to ensure that we pass -EOPNOTSUPP if the operation
-> fails due to lack of server support.
+These look OK to me at least through this patch.
 
-Do we really want to return EOPNOTSUPP from listxattr?  Seems like
-simply not listing anything if the server doesn't support ACLs would
-be the usual behaviour.  E.g. on local filesystems we'll also just get
-back an empty list of xattrs if ACLs aren't supported and not other
-attribute is set.
+--b.
 
+On Tue, Jul 29, 2014 at 09:34:25PM -0400, Jeff Layton wrote:
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> 
+> Allow nfs4_find_stateid_by_type to take the stateid reference, while
+> still holding the &cl->cl_lock. Necessary step toward client_mutex
+> removal.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 12 ++++++------
+>  1 file changed, 6 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index a4a49a3b464c..653de6b14665 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1696,8 +1696,12 @@ find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
+>  
+>  	spin_lock(&cl->cl_lock);
+>  	s = find_stateid_locked(cl, t);
+> -	if (s != NULL && !(typemask & s->sc_type))
+> -		s = NULL;
+> +	if (s != NULL) {
+> +		if (typemask & s->sc_type)
+> +			atomic_inc(&s->sc_count);
+> +		else
+> +			s = NULL;
+> +	}
+>  	spin_unlock(&cl->cl_lock);
+>  	return s;
+>  }
+> @@ -3326,8 +3330,6 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
+>  	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
+>  	if (!ret)
+>  		return NULL;
+> -	/* FIXME: move into find_stateid_by_type */
+> -	atomic_inc(&ret->sc_count);
+>  	return delegstateid(ret);
+>  }
+>  
+> @@ -4170,8 +4172,6 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+>  	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
+>  	if (!*s)
+>  		return nfserr_bad_stateid;
+> -	/* FIXME: move into find_stateid_by_type */
+> -	atomic_inc(&(*s)->sc_count);
+>  	return nfs_ok;
+>  }
+>  
+> -- 
+> 1.9.3
+> 
