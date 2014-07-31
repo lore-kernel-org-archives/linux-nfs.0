@@ -1,95 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53423 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752443AbaGNBbY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 13 Jul 2014 21:31:24 -0400
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Mon, 14 Jul 2014 11:28:20 +1000
-Subject: [PATCH 4/7] NFS: support RCU_WALK in nfs_permission()
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20140714012820.12562.43671.stgit@notabene.brown>
-In-Reply-To: <20140714011630.12562.1940.stgit@notabene.brown>
-References: <20140714011630.12562.1940.stgit@notabene.brown>
+Received: from mail2.candelatech.com ([208.74.158.173]:54642 "EHLO
+	mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750907AbaGaVUI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2014 17:20:08 -0400
+Message-ID: <53DAB307.2000206@candelatech.com>
+Date: Thu, 31 Jul 2014 14:20:07 -0700
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: NeilBrown <neilb@suse.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Killing process in D state on mount to dead NFS server.
+References: <53DA8443.407@candelatech.com> <20140801064217.01852788@notabene.brown>
+In-Reply-To: <20140801064217.01852788@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_permission makes two calls which are not always safe in RCU_WALK,
-rpc_lookup_cred and nfs_do_access.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-The second can easily be made rcu-safe by aborting with -ECHILD before
-making the RPC call.
+On 07/31/2014 01:42 PM, NeilBrown wrote:
+> On Thu, 31 Jul 2014 11:00:35 -0700 Ben Greear <greearb@candelatech.com> wrote:
+> 
+>> So, this has been asked all over the interweb for years and years, but the best answer I can find is to reboot the system or create a fake NFS server
+>> somewhere with the same IP as the gone-away NFS server.
+>> 
+>> The problem is:
+>> 
+>> I have some mounts to an NFS server that no longer exists (crashed/powered down).
+>> 
+>> I have some processes stuck trying to write to files open on these mounts.
+>> 
+>> I want to kill the process and unmount.
+>> 
+>> umount -l will make the mount go a way, sort of.  But process is still hung. umount -f complains: umount2:  Device or resource busy umount.nfs: /mnt/foo:
+>> device is busy
+>> 
+>> kill -9 does not work on process.
+> 
+> Kill -1 should work (since about 2.6.25 or so).
 
-The former can be made rcu-safe by calling rpc_lookup_cred_nonblock()
-instead.
-As this will almost always succeed, we use it even when RCU_WALK
-isn't being used as it still saves some spinlocks in a common case.
-We only fall back to rpc_lookup_cred() if rpc_lookup_cred_nonblock()
-fails and MAY_NOT_BLOCK isn't set.
+That is -[ONE], right?  Assuming so, it did not work for me.
 
-This optimisation (always trying rpc_lookup_cred_nonblock()) is
-particularly important when a security module is active.
-In that case inode_permission() may return -ECHILD from
-security_inode_permission() even though ->permission() succeeded in
-RCU_WALK mode.
-This leads to may_lookup() retrying inode_permission after performing
-unlazy_walk().  The spinlock that rpc_lookup_cred() takes is often
-more expensive than anything security_inode_permission() does, so that
-spinlock becomes the main bottleneck.
+Kernel is 3.14.4+, with some of extra patches, but probably nothing that
+influences this particular behaviour.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/nfs/dir.c |   28 ++++++++++++++++++++--------
- 1 file changed, 20 insertions(+), 8 deletions(-)
+[root@lf1005-14010010 ~]# cat /proc/3805/stack
+[<ffffffff811371ba>] sleep_on_page+0x9/0xd
+[<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
+[<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
+[<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
+[<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
+[<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
+[<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
+[<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
+[<ffffffff81183e46>] filp_close+0x3f/0x71
+[<ffffffff8119c8ae>] __close_fd+0x80/0x98
+[<ffffffff81183de5>] SyS_close+0x1c/0x3e
+[<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
+[<ffffffffffffffff>] 0xffffffffffffffff
+[root@lf1005-14010010 ~]# kill -1 3805
+[root@lf1005-14010010 ~]# cat /proc/3805/stack
+[<ffffffff811371ba>] sleep_on_page+0x9/0xd
+[<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
+[<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
+[<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
+[<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
+[<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
+[<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
+[<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
+[<ffffffff81183e46>] filp_close+0x3f/0x71
+[<ffffffff8119c8ae>] __close_fd+0x80/0x98
+[<ffffffff81183de5>] SyS_close+0x1c/0x3e
+[<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
+[<ffffffffffffffff>] 0xffffffffffffffff
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 3c2b36acf291..ac958f29e558 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2288,6 +2288,10 @@ static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
- 	if (status == 0)
- 		goto out_cached;
- 
-+	status = -ECHILD;
-+	if (mask & MAY_NOT_BLOCK)
-+		goto out;
-+
- 	/* Be clever: ask server to check for all possible rights */
- 	cache.mask = MAY_EXEC | MAY_WRITE | MAY_READ;
- 	cache.cred = cred;
-@@ -2364,15 +2368,23 @@ force_lookup:
- 	if (!NFS_PROTO(inode)->access)
- 		goto out_notsup;
- 
--	if (mask & MAY_NOT_BLOCK)
--		return -ECHILD;
--
--	cred = rpc_lookup_cred();
--	if (!IS_ERR(cred)) {
--		res = nfs_do_access(inode, cred, mask);
--		put_rpccred(cred);
--	} else
-+	/* Always try fast lookups first */
-+	rcu_read_lock();
-+	cred = rpc_lookup_cred_nonblock();
-+	if (!IS_ERR(cred))
-+		res = nfs_do_access(inode, cred, mask|MAY_NOT_BLOCK);
-+	else
- 		res = PTR_ERR(cred);
-+	rcu_read_unlock();
-+	if (res == -ECHILD && !(mask & MAY_NOT_BLOCK)) {
-+		/* Fast lookup failed, try the slow way */
-+		cred = rpc_lookup_cred();
-+		if (!IS_ERR(cred)) {
-+			res = nfs_do_access(inode, cred, mask);
-+			put_rpccred(cred);
-+		} else
-+			res = PTR_ERR(cred);
-+	}
- out:
- 	if (!res && (mask & MAY_EXEC) && !execute_ok(inode))
- 		res = -EACCES;
+Thanks,
+Ben
+
+> If it doesn't please report the kernel version and cat /proc/$PID/stack
+> 
+> for some processes that cannot be killed.
+> 
+> NeilBrown
+> 
+>> 
+>> 
+>> Aside from bringing a fake NFS server back up on the same IP, is there any other way to get these mounts unmounted and the processes killed without 
+>> rebooting?
+>> 
+>> Thanks, Ben
+>> 
+> 
 
 
+- -- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.13 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iQEcBAEBAgAGBQJT2rLiAAoJELbHqkYeJT4OqPgH/0taKW6Be90c1mETZf9yeqZF
+YMLZk8XC2wloEd9nVz//mXREmiu18Hc+5p7Upd4Os21J2P4PBMGV6P/9DMxxehwH
+YX1HKha0EoAsbO5ILQhbLf83cRXAPEpvJPgYHrq6xjlKB8Q8OxxND37rY7kl19Zz
+sdAw6GiqHICF3Hq1ATa/jvixMluDnhER9Dln3wOdAGzmmuFYqpTsV4EwzbKKqInJ
+6C15q+cq/9aYh6usN6z2qJhbHgqM9EWcPL6jOrCwX4PbC1XjKHekpFN0t9oKQClx
+qSPuweMQ7fP4IBd2Ke8L/QlyOVblAKSE7t+NdrjfzLmYPzyHTyfLABR/BI053to=
+=/9FJ
+-----END PGP SIGNATURE-----
