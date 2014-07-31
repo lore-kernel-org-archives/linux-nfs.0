@@ -1,81 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:34048 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751765AbaGYD70 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Jul 2014 23:59:26 -0400
-Received: by mail-ig0-f175.google.com with SMTP id uq10so294243igb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Jul 2014 20:59:25 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] SUNRPC: Allow svc_reserve() to notify TCP socket that space has been freed
-Date: Thu, 24 Jul 2014 23:59:33 -0400
-Message-Id: <1406260773-16231-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1406260773-16231-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1406260773-16231-1-git-send-email-trond.myklebust@primarydata.com>
- <1406260773-16231-2-git-send-email-trond.myklebust@primarydata.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:58371 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751541AbaGaU0H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Jul 2014 16:26:07 -0400
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH] svcrdma: remove rdma_create_qp() failure recovery logic
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Thu, 31 Jul 2014 15:26:07 -0500
+Message-ID: <20140731202606.12144.2363.stgit@build.ogc.int>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- include/linux/sunrpc/svc_xprt.h | 1 +
- net/sunrpc/svc_xprt.c           | 2 ++
- net/sunrpc/svcsock.c            | 9 +++++++++
- 3 files changed, 12 insertions(+)
+In svc_rdma_accept(), if rdma_create_qp() fails, there is useless
+logic to try and call rdma_create_qp() again with reduced sge depths.
+The assumption, I guess, was that perhaps the initial sge depths
+chosen were too big.  However they initial depths are selected based
+on the rdma device attribute max_sge returned from ib_query_device().
+If rdma_create_qp() fails, it would not be because the max_send_sge and
+max_recv_sge values passed in exceed the device's max.  So just remove
+this code.
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 7235040a19b2..8f241ac6934b 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -25,6 +25,7 @@ struct svc_xprt_ops {
- 	void		(*xpo_detach)(struct svc_xprt *);
- 	void		(*xpo_free)(struct svc_xprt *);
- 	int		(*xpo_secure_port)(struct svc_rqst *);
-+	void		(*xpo_adjust_wspace)(struct svc_xprt *);
- };
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+---
+
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   19 ++-----------------
+ 1 files changed, 2 insertions(+), 17 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index e7323fb..282a43b 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -942,23 +942,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
  
- struct svc_xprt_class {
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 54a761fa6351..32647b2a6a34 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -448,6 +448,8 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
- 		atomic_sub((rqstp->rq_reserved - space), &xprt->xpt_reserved);
- 		rqstp->rq_reserved = space;
- 
-+		if (xprt->xpt_ops->xpo_adjust_wspace)
-+			xprt->xpt_ops->xpo_adjust_wspace(xprt);
- 		svc_xprt_enqueue(xprt);
+ 	ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd, &qp_attr);
+ 	if (ret) {
+-		/*
+-		 * XXX: This is a hack. We need a xx_request_qp interface
+-		 * that will adjust the qp_attr's with a best-effort
+-		 * number
+-		 */
+-		qp_attr.cap.max_send_sge -= 2;
+-		qp_attr.cap.max_recv_sge -= 2;
+-		ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd,
+-				     &qp_attr);
+-		if (ret) {
+-			dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
+-			goto errout;
+-		}
+-		newxprt->sc_max_sge = qp_attr.cap.max_send_sge;
+-		newxprt->sc_max_sge = qp_attr.cap.max_recv_sge;
+-		newxprt->sc_sq_depth = qp_attr.cap.max_send_wr;
+-		newxprt->sc_max_requests = qp_attr.cap.max_recv_wr;
++		dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
++		goto errout;
  	}
- }
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 7322ea1164fd..72597d7fe60a 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -475,6 +475,14 @@ static void svc_tcp_write_space(struct sock *sk)
- 	svc_write_space(sk);
- }
+ 	newxprt->sc_qp = newxprt->sc_cm_id->qp;
  
-+static void svc_tcp_adjust_wspace(struct svc_xprt *xprt)
-+{
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+
-+	if (svc_tcp_has_wspace(xprt))
-+		clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+}
-+
- /*
-  * See net/ipv6/ip_sockglue.c : ip_cmsg_recv_pktinfo
-  */
-@@ -1288,6 +1296,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_has_wspace = svc_tcp_has_wspace,
- 	.xpo_accept = svc_tcp_accept,
- 	.xpo_secure_port = svc_sock_secure_port,
-+	.xpo_adjust_wspace = svc_tcp_adjust_wspace,
- };
- 
- static struct svc_xprt_class svc_tcp_class = {
--- 
-1.9.3
 
