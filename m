@@ -1,170 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:63238 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752311AbaHVWtb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 18:49:31 -0400
-Received: by mail-ie0-f171.google.com with SMTP id at1so7229404iec.2
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2014 15:49:30 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Junxiao Bi <junxiao.bi@oracle.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-Date: Fri, 22 Aug 2014 18:49:31 -0400
-Message-Id: <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <53F6F772.6020708@oracle.com>
-References: <53F6F772.6020708@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:35622 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751460AbaHAUZe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Aug 2014 16:25:34 -0400
+Date: Fri, 1 Aug 2014 16:25:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH v3 00/38] nfsd: stateid and stateowner refcounting
+ overhaul
+Message-ID: <20140801202529.GE24461@fieldses.org>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Junxiao Bi reports seeing the following deadlock:
+On Tue, Jul 29, 2014 at 09:34:05PM -0400, Jeff Layton wrote:
+> v3:
+> - fix intermediate regression in nfsd4_close_open_stateid
 
-@ crash> bt 1539
-@ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
-@  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
-@  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
-@  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
-@  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
-@  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
-@  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
-@  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
-@  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
-@  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
-@  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
-@ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
-@ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
-@ #12 [ffff88178f64d978] kmem_getpages at ffffffff8110e18b
-@ #13 [ffff88178f64d9a8] fallback_alloc at ffffffff8110e35e
-@ #14 [ffff88178f64da08] ____cache_alloc_node at ffffffff8110e51f
-@ #15 [ffff88178f64da48] __kmalloc at ffffffff8110efba
-@ #16 [ffff88178f64da98] xs_setup_xprt at ffffffffa00a563f [sunrpc]
-@ #17 [ffff88178f64dad8] xs_setup_tcp at ffffffffa00a7648 [sunrpc]
-@ #18 [ffff88178f64daf8] xprt_create_transport at ffffffffa00a478f [sunrpc]
-@ #19 [ffff88178f64db18] rpc_create at ffffffffa00a2d7a [sunrpc]
-@ #20 [ffff88178f64dbf8] rpcb_create at ffffffffa00b026b [sunrpc]
-@ #21 [ffff88178f64dc98] rpcb_getport_async at ffffffffa00b0c94 [sunrpc]
-@ #22 [ffff88178f64ddf8] call_bind at ffffffffa00a11f8 [sunrpc]
-@ #23 [ffff88178f64de18] __rpc_execute at ffffffffa00a88ef [sunrpc]
-@ #24 [ffff88178f64de58] rpc_async_schedule at ffffffffa00a9187 [sunrpc]
-@ #25 [ffff88178f64de78] worker_thread at ffffffff81072ed2
-@ #26 [ffff88178f64dee8] kthread at ffffffff81076df3
-@ #27 [ffff88178f64df48] kernel_thread at ffffffff81012e2a
-@ crash>
+These all look OK to me; applying for 3.17.--b.
 
-Junxiao notes that the problem is not limited to the rpcbind client. In
-fact we can trigger the exact same problem when trying to reconnect to
-the server, and we find ourselves calling sock_alloc().
-
-The following solution should work for all kernels that support the
-PF_MEMALLOC_NOIO flag (i.e. Linux 3.9 and newer).
-
-Link: http://lkml.kernel.org/r/53F6F772.6020708@oracle.com
-Reported-by: Junxiao Bi <junxiao.bi@oracle.com>
-Cc: stable@vger.kernel.org # 3.9+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/sched.c    |  5 +++--
- net/sunrpc/xprtsock.c | 15 ++++++++-------
- 2 files changed, 11 insertions(+), 9 deletions(-)
-
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 9358c79fd589..ab3aff71ff93 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -19,6 +19,7 @@
- #include <linux/spinlock.h>
- #include <linux/mutex.h>
- #include <linux/freezer.h>
-+#include <linux/sched.h>
- 
- #include <linux/sunrpc/clnt.h>
- 
-@@ -821,9 +822,9 @@ void rpc_execute(struct rpc_task *task)
- 
- static void rpc_async_schedule(struct work_struct *work)
- {
--	current->flags |= PF_FSTRANS;
-+	current->flags |= PF_FSTRANS | PF_MEMALLOC_NOIO;
- 	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
--	current->flags &= ~PF_FSTRANS;
-+	current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
- }
- 
- /**
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 43cd89eacfab..1d6d4d84b299 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -38,6 +38,7 @@
- #include <linux/sunrpc/svcsock.h>
- #include <linux/sunrpc/xprtsock.h>
- #include <linux/file.h>
-+#include <linux/sched.h>
- #ifdef CONFIG_SUNRPC_BACKCHANNEL
- #include <linux/sunrpc/bc_xprt.h>
- #endif
-@@ -1927,7 +1928,7 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
- 	struct socket *sock;
- 	int status = -EIO;
- 
--	current->flags |= PF_FSTRANS;
-+	current->flags |= PF_FSTRANS | PF_MEMALLOC_NOIO;
- 
- 	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
- 	status = __sock_create(xprt->xprt_net, AF_LOCAL,
-@@ -1968,7 +1969,7 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
--	current->flags &= ~PF_FSTRANS;
-+	current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
- 	return status;
- }
- 
-@@ -2071,7 +2072,7 @@ static void xs_udp_setup_socket(struct work_struct *work)
- 	struct socket *sock = transport->sock;
- 	int status = -EIO;
- 
--	current->flags |= PF_FSTRANS;
-+	current->flags |= PF_FSTRANS | PF_MEMALLOC_NOIO;
- 
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
-@@ -2092,7 +2093,7 @@ static void xs_udp_setup_socket(struct work_struct *work)
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
--	current->flags &= ~PF_FSTRANS;
-+	current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
- }
- 
- /*
-@@ -2229,7 +2230,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 	struct rpc_xprt *xprt = &transport->xprt;
- 	int status = -EIO;
- 
--	current->flags |= PF_FSTRANS;
-+	current->flags |= PF_FSTRANS | PF_MEMALLOC_NOIO;
- 
- 	if (!sock) {
- 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
-@@ -2276,7 +2277,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 	case -EINPROGRESS:
- 	case -EALREADY:
- 		xprt_clear_connecting(xprt);
--		current->flags &= ~PF_FSTRANS;
-+		current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
- 		return;
- 	case -EINVAL:
- 		/* Happens, for instance, if the user specified a link
-@@ -2294,7 +2295,7 @@ out_eagain:
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
--	current->flags &= ~PF_FSTRANS;
-+	current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
- }
- 
- /**
--- 
-1.9.3
-
+> 
+> v2:
+> - rename functions from *_generic_stateid to *_ol_stateid
+> - eliminate some nfs4_put_* wrappers around nfs4_put_stid
+> - clean up lock stateid allocation and initialization
+> - reorder patches to reduce churn
+> - handle open/lock stateids individually in nfsd4_free_stateid
+> - add ops struct for stateowners
+> - combine v4.0 replay cache patches
+> 
+> Here is the next swath of patches for the nfsd client_mutex removal
+> series. The main focus of this series is to add refcounting to open and
+> lock stateids and to use those to drive their management and eventual
+> destruction. Additionally, we add refcounting to the open and lock
+> stateowners and use that refcount to manage their lifecycle as well.
+> 
+> Most of the new locking here is superfluous until we remove the
+> client_mutex. This series should apply cleanly to Bruce's for-3.17
+> branch now that the delegation patches have been merged.
+> 
+> Jeff Layton (20):
+>   nfsd: Cleanup the freeing of stateids
+>   nfsd4: use cl_lock to synchronize all stateid idr calls
+>   nfsd: do filp_close in sc_free callback for lock stateids
+>   nfsd: Add locking to protect the state owner lists
+>   nfsd: clean up races in lock stateid searching and creation
+>   nfsd: ensure atomicity in nfsd4_free_stateid and
+>     nfsd4_validate_stateid
+>   nfsd: Add reference counting to state owners
+>   nfsd: Add a mutex to protect the NFSv4.0 open owner replay cache
+>   nfsd: clean up lockowner refcounting when finding them
+>   nfsd: add an operation for unhashing a stateowner
+>   nfsd: clean up refcounting for lockowners
+>   nfsd: make openstateids hold references to their openowners
+>   nfsd: don't allow CLOSE to proceed until refcount on stateid drops
+>   nfsd: clean up and reorganize release_lockowner
+>   nfsd: add locking to stateowner release
+>   nfsd: optimize destroy_lockowner cl_lock thrashing
+>   nfsd: close potential race in nfsd4_free_stateid
+>   nfsd: reduce cl_lock thrashing in release_openowner
+>   nfsd: don't thrash the cl_lock while freeing an open stateid
+>   nfsd: rename unhash_generic_stateid to unhash_ol_stateid
+> 
+> Trond Myklebust (18):
+>   nfsd: Add reference counting to the lock and open stateids
+>   nfsd: Add a struct nfs4_file field to struct nfs4_stid
+>   nfsd: Replace nfs4_ol_stateid->st_file with the st_stid.sc_file
+>   nfsd: Add reference counting to lock stateids
+>   nfsd: nfsd4_locku() must reference the lock stateid
+>   nfsd: Ensure that nfs4_open_delegation() references the delegation
+>     stateid
+>   nfsd: nfsd4_process_open2() must reference the delegation stateid
+>   nfsd: nfsd4_process_open2() must reference the open stateid
+>   nfsd: Prepare nfsd4_close() for open stateid referencing
+>   nfsd: nfsd4_open_confirm() must reference the open stateid
+>   nfsd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
+>   nfsd: Migrate the stateid reference into nfs4_preprocess_seqid_op
+>   nfsd: Migrate the stateid reference into nfs4_lookup_stateid()
+>   nfsd: Migrate the stateid reference into nfs4_find_stateid_by_type()
+>   nfsd: Make lock stateid take a reference to the lockowner
+>   nfsd: Protect adding/removing open state owners using client_lock
+>   nfsd: Protect adding/removing lock owners using client_lock
+>   nfsd: Move the open owner hash table into struct nfs4_client
+> 
+>  fs/nfsd/netns.h        |    1 -
+>  fs/nfsd/nfs4callback.c |    4 +-
+>  fs/nfsd/nfs4proc.c     |   12 +-
+>  fs/nfsd/nfs4state.c    | 1014 +++++++++++++++++++++++++++++++-----------------
+>  fs/nfsd/nfs4xdr.c      |    2 -
+>  fs/nfsd/state.h        |   32 +-
+>  fs/nfsd/xdr4.h         |    5 +-
+>  7 files changed, 695 insertions(+), 375 deletions(-)
+> 
+> -- 
+> 1.9.3
+> 
