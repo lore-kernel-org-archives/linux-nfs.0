@@ -1,119 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:50589 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:39538 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751739AbaHCXDi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Aug 2014 19:03:38 -0400
-Date: Mon, 4 Aug 2014 09:03:28 +1000
-From: NeilBrown <neilb@suse.de>
-To: kbuild test robot <fengguang.wu@intel.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>, kbuild-all@01.org,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs:testing 56/61] fs/nfs/dir.c:1092:26: sparse: incompatible
- types in comparison expression (different address spaces)
-Message-ID: <20140804090328.0068952f@notabene.brown>
-In-Reply-To: <53deb592.cf6oANONk2xIr46y%fengguang.wu@intel.com>
-References: <53deb592.cf6oANONk2xIr46y%fengguang.wu@intel.com>
+	id S1755387AbaHAUsv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Aug 2014 16:48:51 -0400
+Date: Fri, 1 Aug 2014 16:48:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH 00/37] nfsd: remaining client_mutex removal patches
+Message-ID: <20140801204847.GG24461@fieldses.org>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/tRT7m7XLyaUxxEwb_EMxV88"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/tRT7m7XLyaUxxEwb_EMxV88
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Wed, Jul 30, 2014 at 08:27:01AM -0400, Jeff Layton wrote:
+> This patchset is the remainder of the client_mutex removal patches,
+> which should be merged after the stateid and stateowner refcounting
+> overhaul. The main focus of this part is to ensure that the nfs4_client
+> refcounting is up to snuff and then to remove the client_mutex.
+> 
+> There's also a series in here that basically rewrites the fault
+> injection code. That rewrite has some significant holes in it (note the
+> WARN_ONs when the client refcount goes too high), but it should keep it
+> limping along for now.
+> 
+> FWIW, I think we should probably go ahead and mark the fault injection
+> code deprecated in the upcoming merge window and then plan to remove
+> it in 2-3 releases.
 
-On Mon, 04 Aug 2014 06:20:02 +0800 kbuild test robot <fengguang.wu@intel.co=
-m>
-wrote:
+I basically skipped reading the fault injection patches because I don't
+care much about them.
 
-> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
-> head:   f682a398b2e24ae0a775ddf37cced83b897198ee
-> commit: d51ac1a8e9b86b2d17d349bb256869cab6522787 [56/61] NFS: prepare for=
- RCU-walk support but pushing tests later in code.
-> reproduce: make C=3D1 CF=3D-D__CHECK_ENDIAN__
->=20
->=20
-> sparse warnings: (new ones prefixed by >>)
->=20
-> >> fs/nfs/dir.c:1092:26: sparse: incompatible types in comparison express=
-ion (different address spaces)
-> >> fs/nfs/dir.c:1169:31: sparse: incompatible types in comparison express=
-ion (different address spaces)
->=20
-> vim +1092 fs/nfs/dir.c
->=20
->   1086		struct nfs_fh *fhandle =3D NULL;
->   1087		struct nfs_fattr *fattr =3D NULL;
->   1088		struct nfs4_label *label =3D NULL;
->   1089		int error;
->   1090=09
->   1091		if (flags & LOOKUP_RCU) {
-> > 1092			parent =3D rcu_dereference(dentry->d_parent);
->   1093			dir =3D ACCESS_ONCE(parent->d_inode);
->   1094			if (!dir)
->   1095				return -ECHILD;
+The other patches look good to me, but I'd like to take a more careful
+look at a few of them and give anyone else a chance to comment before
+committing.
 
-Hmmm.. I suspect rcu_dereference doesn't really make sense here.
-After all, d_parent is not assigned with rcu_assign_ptr, and no-one else us=
-es
-rcu_dereference for it.
+---b.
 
-The issue is that, without locks, d_parent could change at any point.
-As dentries are freed with call_rcu it is safe to follow any pointers we fi=
-nd,
-but there is a limit how much we can trust them.
-It is very likely that any change to d_parent that mattered would increment
-some seqlock so that RCU-walk would eventually abort.
-
-So we may not need the=20
-
-> > 1169			if (parent !=3D rcu_dereference(dentry->d_parent))
->   1170				return -ECHILD;
-
-at the end, as a seqlock will probably catch any problem.
-Without that we don't even need to store 'parent' at all, just
-     dir =3D ACCESS_ONCE(dentry->d_parent->d_inode);
-
-If we keep it, which is probably safest, then using ACCESS_ONCE in place of
-the current rcu_dereference() make sense.
-
-     parent =3D ACCESS_ONCE(dentry->d_parent);
-     dir =3D ACCESS_ONCE(dir->d_inode);
-
-...
-
-     if (parent !=3D ACCESS_ONCE(dentry->d_parent))
-            return -ECHILD;
-
-
-Trond, would you like me to resend that patch, or do you want to just
-s/rcu_derefence/ACCESS_ONCE/
-??
-
-Thanks,
-NeilBrown
-
---Sig_/tRT7m7XLyaUxxEwb_EMxV88
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU96/wDnsnt1WYoG5AQI91A/9H+cS+aCMTjg6Utp0XdZ4PKVz8HstEXW/
-eozIQ9Z5PUsh9y6q5H+/OMXKLOlx7IzrVX1ALQIB3qwO/3NkrL7SUz1vUmxiw8ax
-7suBTyvltDLEj804N0ZDwe1pOa2xdcqG4lVnK2yVPsaV4UhTEE8/pIvz6YeglZyf
-uvRIwzadDjMAY22fdgrYp24velOWJ+bkEXFgKnyCuRkvQVdyOUnIbMDf5s6P3eTB
-te43tkVFlWmMDZzMiB4ZNuKFSfJJ1t1yh9ZN5ZUluxjsrcFKV+CxqiSQttyxn7z0
-w+jFlRXndJcs9JZz1YND0Wl+W4empDtRvF8WCkREbxMI2w/ak3gb27Y9INOr6o6e
-arwBbgcScL3NxjI3S9lVd2hlbdUip1BP/IJbHDqFJiFw7JstThVa7Z0lhUuG/nam
-rdXi2fzFyxnV+UZVeoCsjF7MaL2JCJ5IWcfxO9yvmPXs8YM4Pcc73y+P6yuVj/Kc
-5MT1SPUekQ1EYcRtLGRI3oPiIZaXTVqR2/dPUtH8rW2Wag6rKMIgfYF2FvZnAS3C
-XE+dHnqyWW/KuAgx1j5oyf0fAhve7jzhSNzUm8DssqqSaoYxyTq0PuhbCDASdgoJ
-JBkdIgl7OQ+of1HL63YgR6Hj49KeMjfEYXmvPUVaVScLVbCYydE96cnxx0OApoVp
-AiWR5GoDGZY=
-=U0rQ
------END PGP SIGNATURE-----
-
---Sig_/tRT7m7XLyaUxxEwb_EMxV88--
+> 
+> Jeff Layton (19):
+>   nfsd: Protect session creation and client confirm using client_lock
+>   nfsd: protect the close_lru list and oo_last_closed_stid with
+>     client_lock
+>   nfsd: move unhash_client_locked call into mark_client_expired_locked
+>   nfsd: don't destroy client if mark_client_expired_locked fails
+>   nfsd: don't destroy clients that are busy
+>   nfsd: protect clid and verifier generation with client_lock
+>   nfsd: abstract out the get and set routines into the fault injection
+>     ops
+>   nfsd: add a forget_clients "get" routine with proper locking
+>   nfsd: add a forget_client set_clnt routine
+>   nfsd: add nfsd_inject_forget_clients
+>   nfsd: add a list_head arg to nfsd_foreach_client_lock
+>   nfsd: add more granular locking to forget_locks fault injector
+>   nfsd: add more granular locking to forget_openowners fault injector
+>   nfsd: add more granular locking to *_delegations fault injectors
+>   nfsd: remove old fault injection infrastructure
+>   nfsd: remove nfs4_lock_state: nfs4_laundromat
+>   nfsd: remove nfs4_lock_state: nfs4_state_shutdown_net
+>   nfsd: remove the client_mutex and the nfs4_lock/unlock_state wrappers
+>   nfsd: add some comments to the nfsd4 object definitions
+> 
+> Trond Myklebust (18):
+>   nfsd: Ensure struct nfs4_client is unhashed before we try to destroy
+>     it
+>   nfsd: Ensure that the laundromat unhashes the client before releasing
+>     locks
+>   nfsd: Don't require client_lock in free_client
+>   nfsd: Move create_client() call outside the lock
+>   nfsd: Protect unconfirmed client creation using client_lock
+>   nfsd: Protect nfsd4_destroy_clientid using client_lock
+>   nfsd: Ensure lookup_clientid() takes client_lock
+>   nfsd: Add lockdep assertions to document the nfs4_client/session
+>     locking
+>   nfsd: Remove nfs4_lock_state(): nfs4_preprocess_stateid_op()
+>   nfsd: Remove nfs4_lock_state(): nfsd4_test_stateid/nfsd4_free_stateid
+>   nfsd: Remove nfs4_lock_state(): nfsd4_release_lockowner
+>   nfsd: Remove nfs4_lock_state(): nfsd4_lock/locku/lockt()
+>   nfsd: Remove nfs4_lock_state(): nfsd4_open_downgrade + nfsd4_close
+>   nfsd: Remove nfs4_lock_state(): nfsd4_delegreturn()
+>   nfsd: Remove nfs4_lock_state(): nfsd4_open and nfsd4_open_confirm
+>   nfsd: Remove nfs4_lock_state(): exchange_id, create/destroy_session()
+>   nfsd: Remove nfs4_lock_state(): setclientid, setclientid_confirm,
+>     renew
+>   nfsd: Remove nfs4_lock_state(): reclaim_complete()
+> 
+>  fs/nfsd/fault_inject.c | 130 +++----
+>  fs/nfsd/netns.h        |  14 +-
+>  fs/nfsd/nfs4proc.c     |   3 -
+>  fs/nfsd/nfs4state.c    | 922 +++++++++++++++++++++++++++++++++++--------------
+>  fs/nfsd/state.h        | 122 +++++--
+>  5 files changed, 836 insertions(+), 355 deletions(-)
+> 
+> -- 
+> 1.9.3
+> 
