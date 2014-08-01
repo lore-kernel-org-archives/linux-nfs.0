@@ -1,68 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46203 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:40642 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932330AbaHGQro (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Aug 2014 12:47:44 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s77GliuU029827
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Aug 2014 12:47:44 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-61-47.rdu2.redhat.com [10.10.61.47])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s77Glhhm031787
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Aug 2014 12:47:44 -0400
-Message-ID: <53E3ADAF.9090401@RedHat.com>
-Date: Thu, 07 Aug 2014 12:47:43 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752571AbaHAQsr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Aug 2014 12:48:47 -0400
+Date: Fri, 1 Aug 2014 12:48:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH v3 21/38] nfsd: Add reference counting to state owners
+Message-ID: <20140801164843.GB32749@fieldses.org>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+ <1406684083-19736-22-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Linux NFS Town Hall  meeting: Tomorrow - Thur 08/7/14
-References: <53E25E8A.60603@RedHat.com>
-In-Reply-To: <53E25E8A.60603@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1406684083-19736-22-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-FYI... This will be start in a few minutes... if interested... 
+On Tue, Jul 29, 2014 at 09:34:26PM -0400, Jeff Layton wrote:
+>  struct nfs4_stateowner {
+> -	struct list_head        so_strhash;   /* hash by op_name */
+> -	struct list_head        so_stateids;
+> -	struct nfs4_client *    so_client;
+> +	struct list_head			so_strhash;
+> +	struct list_head			so_stateids;
+> +	struct nfs4_client			*so_client;
+> +	const struct nfs4_stateowner_operations	*so_ops;
+>  	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
+>  	 * sequence id expected from the client: */
 
-steved.
+Uh, that could use updating--applying below.
 
-On 08/06/2014 12:57 PM, Steve Dickson wrote:
-> Hello,
-> 
-> Its been a while and a few things have happen... 
-> 
->  So the Linux NFS town hall meeting is tomorrow
-> *Thur Aug 7 at 01:00 pm EST (10:00am PST)*
-> 
-> The usual agenda will apply. The maintainers will give
-> a quick status of what is happening in their worlds.
-> 
-> Next we'll get updates from major contributors on what
-> they have been doing and are planing on doing.
->   
-> Finally, we'll open the floor to questions, comments, 
-> concerns from the community.  
-> 
-> Generally the meeting lasts between 30 to 45 mins, with 
-> a very hard stop at 60mins. 
-> 
-> Please feel to attend and participate!
-> 
-> Time: 10:00 am PST (01:00 pm EST)
-> 
-> The call in numbers are:
-> 
-> U.S. and Canada: (800) 451-8679
-> World wide toll free numbers
->    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-> 
-> Conference code: 564.272.1552
-> 
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Anyway, the stateowner reference counting makes sense to me.
+
+--b.
+
+commit 84a46922ea90
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Jul 31 16:10:08 2014 -0400
+
+    nfsd4: fix out of date comment
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 73a209dc352b..0b234500f104 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -345,7 +345,7 @@ struct nfs4_stateowner {
+ 	struct list_head			so_stateids;
+ 	struct nfs4_client			*so_client;
+ 	const struct nfs4_stateowner_operations	*so_ops;
+-	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
++	/* after increment in nfsd4_bump_seqid, represents the next
+ 	 * sequence id expected from the client: */
+ 	atomic_t				so_count;
+ 	u32					so_seqid;
