@@ -1,57 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:34329 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751822AbaHCRDP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:15 -0400
-Received: by mail-qa0-f44.google.com with SMTP id f12so6068584qad.3
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:14 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 00/11] SUNRPC server scalability improvements
-Date: Sun,  3 Aug 2014 13:03:02 -0400
-Message-Id: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:58458 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932258AbaHBOVR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 10:21:17 -0400
+Received: by mail-pd0-f178.google.com with SMTP id w10so7100167pde.23
+        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 07:21:17 -0700 (PDT)
+Message-ID: <53DCF3C0.6050201@gmail.com>
+Date: Sat, 02 Aug 2014 22:20:48 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Jeff Layton <jlayton@primarydata.com>, Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into struct
+ nfs4_client
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>	<1406684083-19736-32-git-send-email-jlayton@primarydata.com>	<53DCBFDB.5060808@gmail.com>	<CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com>	<53DCEAE8.70707@gmail.com> <CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
+In-Reply-To: <CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+On 8/2/2014 22:05, Trond Myklebust wrote:
+> On Sat, Aug 2, 2014 at 9:43 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>> On 8/2/2014 21:11, Trond Myklebust wrote:
+>>> On Sat, Aug 2, 2014 at 6:39 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>>>> On 7/30/2014 09:34, Jeff Layton wrote:
+>>>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>>
+>>>>> Preparation for removing the client_mutex.
+>>>>>
+>>>>> Convert the open owner hash table into a per-client table and protect it
+>>>>> using the nfs4_client->cl_lock spin lock.
+>>>>>
+>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>> ---
+>>>>>  fs/nfsd/netns.h     |   1 -
+>>>>>  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
+>>>>>  fs/nfsd/state.h     |   1 +
+>>>>>  3 files changed, 86 insertions(+), 103 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+>>>>> index a71d14413d39..e1f479c162b5 100644
+>>>>> --- a/fs/nfsd/netns.h
+>>>>> +++ b/fs/nfsd/netns.h
+>>>>> @@ -63,7 +63,6 @@ struct nfsd_net {
+>>>>>       struct rb_root conf_name_tree;
+>>>>>       struct list_head *unconf_id_hashtbl;
+>>>>>       struct rb_root unconf_name_tree;
+>>>>> -     struct list_head *ownerstr_hashtbl;
+>>>>
+>>>> I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
+>>>> http://comments.gmane.org/gmane.linux.nfs/64382
+>>>>
+>>>> nfsd needs the hashtbl to find the lockowner for locking by owner from
+>>>> fl->fl_owner stored in struct file_lock, but without nfs_client.
+>>>
+>>> Why? We're not currently doing that.
+>>
+>> Although not doing that right now, but there is a bug for getting the right ld_owner
+>> in nfs4_set_lock_denied.
+>>
+>> If denying locks, vfs don't copy fl->fl_lmops to the returned file_lock, so that,
+>> fl->fl_lmops always be NULL, nfsd never return the owner who holds the conflock.
+>>
+>> If we want fix this problem, needs finding the lockowner from struct file_lock.
+> 
+> Do we really care enough about fixing nfs4_set_lock_denied enough to
+> do so at the cost of reducing overall scalability of locking state?
 
-When testing knfsd on 10GigE and 40GigE networks, we've been hitting a few
-scalability issues that are seriously affecting performance. The main issue
-was scalability of the pool->sp_lock, but we also hit a couple of things
-like the use of ioctls in the receive fast path, as well as some issues
-with heuristic tests being performed twice in the same path.
+I just report this problem, don't think enough about the scalability.
 
-This is not urgent, and can definitely be delayed until the 3.18 merge
-window, however since the performance gains were significant over NFSv3,
-I thought I'd share now.
+> We will always be faking up the clientid etc for local locks. Are
+> there any clients out there that actually inspect the clientid on a
+> result of NFS4ERR_DENIED and that will break if we give them a fake
+> for non-local locks?
 
-Cheers
-  Trond
+Jeff has point the same problem of a non-nfs4_lockowner.
+Maybe we should copy fl_lmops to conflock as before, nfsd can distinguish
+the lockowner stored in struct file_lock by checking fl_lmops.
 
-Trond Myklebust (11):
-  SUNRPC: Reduce contention in svc_xprt_enqueue()
-  SUNRPC: svc_tcp_write_space: don't clear SOCK_NOSPACE prematurely
-  SUNRPC: Allow svc_reserve() to notify TCP socket that space has been
-    freed
-  SUNRPC: Do not override wspace tests in svc_handle_xprt
-  lockd: Ensure that lockd_start_svc sets the server rq_task...
-  nfs: Ensure that nfs_callback_start_svc sets the server rq_task...
-  SUNRPC: Do not grab pool->sp_lock unnecessarily in svc_get_next_xprt
-  SUNRPC: get rid of the request wait queue
-  SUNRPC: Fix broken kthread_should_stop test in svc_get_next_xprt
-  SUNRPC: More optimisations of svc_xprt_enqueue()
-  SUNRPC: Optimise away svc_recv_available
-
- fs/lockd/svc.c                  |   2 +
- fs/nfs/callback.c               |   1 +
- include/linux/sunrpc/svc.h      |   1 -
- include/linux/sunrpc/svc_xprt.h |   1 +
- net/sunrpc/svc.c                |   2 -
- net/sunrpc/svc_xprt.c           | 112 ++++++++++++++++++++--------------------
- net/sunrpc/svcsock.c            |  71 ++++++++++++-------------
- 7 files changed, 96 insertions(+), 94 deletions(-)
-
--- 
-1.9.3
+thanks,
+Kinglong Mee
 
