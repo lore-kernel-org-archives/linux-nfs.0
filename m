@@ -1,48 +1,208 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45775 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754072AbaHGHVh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:37 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 08/17] pnfs/blocklayout: reject pnfs blocksize larger than page size
-Date: Thu,  7 Aug 2014 09:23:40 +0200
-Message-Id: <1407396229-4785-9-git-send-email-hch@lst.de>
-In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
-References: <1407396229-4785-1-git-send-email-hch@lst.de>
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:58201 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751190AbaHBCHj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Aug 2014 22:07:39 -0400
+Received: by mail-qa0-f44.google.com with SMTP id f12so4765662qad.31
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Aug 2014 19:07:39 -0700 (PDT)
+Date: Fri, 1 Aug 2014 22:07:34 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Roger Heflin <rogerheflin@gmail.com>
+Cc: NeilBrown <neilb@suse.de>, Ben Greear <greearb@candelatech.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Kernel development list <linux-kernel@vger.kernel.org>,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org
+Subject: Re: Killing process in D state on mount to dead NFS server. (when
+ process is in fsync)
+Message-ID: <20140801220734.29cbc332@tlielax.poochiereds.net>
+In-Reply-To: <CAAMCDeeRWTEXu_UTWJ_aC_6Pb3286ijZByeDpwKwAeMqGBAODQ@mail.gmail.com>
+References: <53DA8443.407@candelatech.com>
+	<20140801064217.01852788@notabene.brown>
+	<53DAB307.2000206@candelatech.com>
+	<20140801075053.2120cb33@notabene.brown>
+	<20140801212120.1ae0eb02@tlielax.poochiereds.net>
+	<CAAMCDeeRWTEXu_UTWJ_aC_6Pb3286ijZByeDpwKwAeMqGBAODQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The Linux VM subsystem can't support block sizes larger than page size
-for block based filesystems very well.  While this can be hacked around
-to some extent for simple filesystems the read-modify-write cycles
-required for pnfs block invalid extents are extremly deadlock prone
-when operating on multiple pages.  Reject this case early on instead
-of pretending to support it (badly).
+On Fri, 1 Aug 2014 20:50:13 -0500
+Roger Heflin <rogerheflin@gmail.com> wrote:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c | 6 ++++++
- 1 file changed, 6 insertions(+)
+> Doesn't NFS have an intr flag to allow kill -9 to work?   Whenever I
+> have had that set it has appeared to work after about 30 seconds or
+> so...without that kill -9 does not work when the nfs server is
+> missing.
+> 
+> 
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index cbb1797..6c1a421 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -1115,6 +1115,12 @@ bl_set_layoutdriver(struct nfs_server *server, const struct nfs_fh *fh)
- 		dprintk("%s Server did not return blksize\n", __func__);
- 		return -EINVAL;
- 	}
-+	if (server->pnfs_blksize > PAGE_SIZE) {
-+		printk(KERN_ERR "%s: pNFS blksize %d not supported.\n",
-+			__func__, server->pnfs_blksize);
-+		return -EINVAL;
-+	}
-+
- 	b_mt_id = kzalloc(sizeof(struct block_mount_id), GFP_NOFS);
- 	if (!b_mt_id) {
- 		status = -ENOMEM;
+Not anymore. That mount option has been deprecated (and ignored) for
+years. The code in the RPC engine will generally give up in the face of
+fatal signals. In this case though, we're in uninterruptible sleep in
+the bowels of the writeback code.
+
+The problem here is not really specific to NFS, per-se -- it just
+happens to be the filesystem that most people notice it on.
+
+> 
+> On Fri, Aug 1, 2014 at 8:21 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> > On Fri, 1 Aug 2014 07:50:53 +1000
+> > NeilBrown <neilb@suse.de> wrote:
+> >
+> >> On Thu, 31 Jul 2014 14:20:07 -0700 Ben Greear <greearb@candelatech.com> wrote:
+> >>
+> >> > -----BEGIN PGP SIGNED MESSAGE-----
+> >> > Hash: SHA1
+> >> >
+> >> > On 07/31/2014 01:42 PM, NeilBrown wrote:
+> >> > > On Thu, 31 Jul 2014 11:00:35 -0700 Ben Greear <greearb@candelatech.com> wrote:
+> >> > >
+> >> > >> So, this has been asked all over the interweb for years and years, but the best answer I can find is to reboot the system or create a fake NFS server
+> >> > >> somewhere with the same IP as the gone-away NFS server.
+> >> > >>
+> >> > >> The problem is:
+> >> > >>
+> >> > >> I have some mounts to an NFS server that no longer exists (crashed/powered down).
+> >> > >>
+> >> > >> I have some processes stuck trying to write to files open on these mounts.
+> >> > >>
+> >> > >> I want to kill the process and unmount.
+> >> > >>
+> >> > >> umount -l will make the mount go a way, sort of.  But process is still hung. umount -f complains: umount2:  Device or resource busy umount.nfs: /mnt/foo:
+> >> > >> device is busy
+> >> > >>
+> >> > >> kill -9 does not work on process.
+> >> > >
+> >> > > Kill -1 should work (since about 2.6.25 or so).
+> >> >
+> >> > That is -[ONE], right?  Assuming so, it did not work for me.
+> >>
+> >> No, it was "-9" .... sorry, I really shouldn't be let out without my proof
+> >> reader.
+> >>
+> >> However the 'stack' is sufficient to see what is going on.
+> >>
+> >> The problem is that it is blocked inside the "VM" well away from NFS and
+> >> there is no way for NFS to say "give up and go home".
+> >>
+> >> I'd suggest that is a bug.   I cannot see any justification for fsync to not
+> >> be killable.
+> >> It wouldn't be too hard to create a patch to make it so.
+> >> It would be a little harder to examine all call paths and create a
+> >> convincing case that the patch was safe.
+> >> It might be herculean task to convince others that it was the right thing
+> >> to do.... so let's start with that one.
+> >>
+> >> Hi Linux-mm and fs-devel people.  What do people think of making "fsync" and
+> >> variants "KILLABLE" ??
+> >>
+> >> I probably only need a little bit of encouragement to write a patch....
+> >>
+> >> Thanks,
+> >> NeilBrown
+> >>
+> >
+> >
+> > It would be good to fix this in some fashion once and for all, and the
+> > wait_on_page_writeback wait is a major source of pain for a lot of
+> > people.
+> >
+> > So to summarize...
+> >
+> > The problem in a nutshell is that Ben has some cached writes to the
+> > NFS server, but the server has gone away (presumably forever). The
+> > question is -- how do we communicate to the kernel that that server
+> > isn't coming back and that those dirty pages should be invalidated so
+> > that we can umount the filesystem?
+> >
+> > Allowing fsync/close to be killable sounds reasonable to me as at least
+> > a partial solution. Both close(2) and fsync(2) are allowed to return
+> > EINTR according to the POSIX spec. Allowing a kill -9 there seems
+> > like it should be fine, and maybe we ought to even consider letting it
+> > be susceptible to lesser signals.
+> >
+> > That still leaves some open questions though...
+> >
+> > Is that enough to fix it? You'd still have the dirty pages lingering
+> > around, right? Would a umount -f presumably work at that point?
+> >
+> >> >
+> >> > Kernel is 3.14.4+, with some of extra patches, but probably nothing that
+> >> > influences this particular behaviour.
+> >> >
+> >> > [root@lf1005-14010010 ~]# cat /proc/3805/stack
+> >> > [<ffffffff811371ba>] sleep_on_page+0x9/0xd
+> >> > [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
+> >> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
+> >> > [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
+> >> > [<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
+> >> > [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
+> >> > [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
+> >> > [<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
+> >> > [<ffffffff81183e46>] filp_close+0x3f/0x71
+> >> > [<ffffffff8119c8ae>] __close_fd+0x80/0x98
+> >> > [<ffffffff81183de5>] SyS_close+0x1c/0x3e
+> >> > [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
+> >> > [<ffffffffffffffff>] 0xffffffffffffffff
+> >> > [root@lf1005-14010010 ~]# kill -1 3805
+> >> > [root@lf1005-14010010 ~]# cat /proc/3805/stack
+> >> > [<ffffffff811371ba>] sleep_on_page+0x9/0xd
+> >> > [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
+> >> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
+> >> > [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
+> >> > [<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
+> >> > [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
+> >> > [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
+> >> > [<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
+> >> > [<ffffffff81183e46>] filp_close+0x3f/0x71
+> >> > [<ffffffff8119c8ae>] __close_fd+0x80/0x98
+> >> > [<ffffffff81183de5>] SyS_close+0x1c/0x3e
+> >> > [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
+> >> > [<ffffffffffffffff>] 0xffffffffffffffff
+> >> >
+> >> > Thanks,
+> >> > Ben
+> >> >
+> >> > > If it doesn't please report the kernel version and cat /proc/$PID/stack
+> >> > >
+> >> > > for some processes that cannot be killed.
+> >> > >
+> >> > > NeilBrown
+> >> > >
+> >> > >>
+> >> > >>
+> >> > >> Aside from bringing a fake NFS server back up on the same IP, is there any other way to get these mounts unmounted and the processes killed without
+> >> > >> rebooting?
+> >> > >>
+> >> > >> Thanks, Ben
+> >> > >>
+> >> > >
+> >> >
+> >> >
+> >> > - --
+> >> > Ben Greear <greearb@candelatech.com>
+> >> > Candela Technologies Inc  http://www.candelatech.com
+> >> >
+> >> > -----BEGIN PGP SIGNATURE-----
+> >> > Version: GnuPG v1.4.13 (GNU/Linux)
+> >> > Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+> >> >
+> >> > iQEcBAEBAgAGBQJT2rLiAAoJELbHqkYeJT4OqPgH/0taKW6Be90c1mETZf9yeqZF
+> >> > YMLZk8XC2wloEd9nVz//mXREmiu18Hc+5p7Upd4Os21J2P4PBMGV6P/9DMxxehwH
+> >> > YX1HKha0EoAsbO5ILQhbLf83cRXAPEpvJPgYHrq6xjlKB8Q8OxxND37rY7kl19Zz
+> >> > sdAw6GiqHICF3Hq1ATa/jvixMluDnhER9Dln3wOdAGzmmuFYqpTsV4EwzbKKqInJ
+> >> > 6C15q+cq/9aYh6usN6z2qJhbHgqM9EWcPL6jOrCwX4PbC1XjKHekpFN0t9oKQClx
+> >> > qSPuweMQ7fP4IBd2Ke8L/QlyOVblAKSE7t+NdrjfzLmYPzyHTyfLABR/BI053to=
+> >> > =/9FJ
+> >> > -----END PGP SIGNATURE-----
+> >>
+> >
+> >
+> > --
+> > Jeff Layton <jlayton@poochiereds.net>
+
+
 -- 
-1.9.1
-
+Jeff Layton <jlayton@poochiereds.net>
