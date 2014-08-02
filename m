@@ -1,47 +1,186 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f48.google.com ([74.125.82.48]:52285 "EHLO
-	mail-wg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751986AbaH0IWo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2014 04:22:44 -0400
-Received: by mail-wg0-f48.google.com with SMTP id x13so15507630wgg.19
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Aug 2014 01:22:43 -0700 (PDT)
-Message-ID: <53FD9550.5010605@gmail.com>
-Date: Wed, 27 Aug 2014 11:22:40 +0300
-From: Boaz Harrosh <openosd@gmail.com>
+Received: from mail-yk0-f174.google.com ([209.85.160.174]:63882 "EHLO
+	mail-yk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751190AbaHBBue (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Aug 2014 21:50:34 -0400
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Boaz Harrosh <boaz@plexistor.com>
-CC: "Matt W. Benjamin" <matt@linuxbox.com>, Christoph Hellwig <hch@lst.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Adam C. Emerson" <aemerson@linuxbox.com>
-Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
-References: <53FCA183.8000605@plexistor.com>	<1435166875.78.1409066662291.JavaMail.root@thunderbeast.private.linuxbox.com>	<CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>	<53FCBC5A.4060304@plexistor.com>	<CAHQdGtSghgbrPr=X8O2YLq=vXbKY1y5OuOMisf6vRoj8WeF0YA@mail.gmail.com>	<53FCBE9C.40906@plexistor.com>	<CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>	<53FCCFBD.3080305@plexistor.com> <CAHQdGtRi_jA8+RkDqh+VBKwHhTpxygSEBWaDScqozyxVSPKAtg@mail.gmail.com>
-In-Reply-To: <CAHQdGtRi_jA8+RkDqh+VBKwHhTpxygSEBWaDScqozyxVSPKAtg@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20140801212120.1ae0eb02@tlielax.poochiereds.net>
+References: <53DA8443.407@candelatech.com> <20140801064217.01852788@notabene.brown>
+ <53DAB307.2000206@candelatech.com> <20140801075053.2120cb33@notabene.brown> <20140801212120.1ae0eb02@tlielax.poochiereds.net>
+From: Roger Heflin <rogerheflin@gmail.com>
+Date: Fri, 1 Aug 2014 20:50:13 -0500
+Message-ID: <CAAMCDeeRWTEXu_UTWJ_aC_6Pb3286ijZByeDpwKwAeMqGBAODQ@mail.gmail.com>
+Subject: Re: Killing process in D state on mount to dead NFS server. (when
+ process is in fsync)
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: NeilBrown <neilb@suse.de>, Ben Greear <greearb@candelatech.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Kernel development list <linux-kernel@vger.kernel.org>,
+        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/26/2014 09:41 PM, Trond Myklebust wrote:
-<> 
-> Whether or not your particular server allows it or not is irrelevant.
-> We're not coding the client to a particular implementation. 
+Doesn't NFS have an intr flag to allow kill -9 to work?   Whenever I
+have had that set it has appeared to work after about 30 seconds or
+so...without that kill -9 does not work when the nfs server is
+missing.
 
-God, No this is not up to any particular server implementation
-it is stated clearly in the draft text. The Server is specifically
-forbidden to wait in lo_get and device_info/device_list actually
-any resource that is recallable.
 
-This is the STD exactly for those reasons you stated.
 
-> None of
-> the other callbacks do synchronous RPC calls, and that's very
-> intentional.
-> 
-
-Because none of the other callbacks have the protection of the STD
-that forbids the server of synchronous operations, so the client
-have to.
-
-Thanks
-Boaz
-
+On Fri, Aug 1, 2014 at 8:21 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> On Fri, 1 Aug 2014 07:50:53 +1000
+> NeilBrown <neilb@suse.de> wrote:
+>
+>> On Thu, 31 Jul 2014 14:20:07 -0700 Ben Greear <greearb@candelatech.com> wrote:
+>>
+>> > -----BEGIN PGP SIGNED MESSAGE-----
+>> > Hash: SHA1
+>> >
+>> > On 07/31/2014 01:42 PM, NeilBrown wrote:
+>> > > On Thu, 31 Jul 2014 11:00:35 -0700 Ben Greear <greearb@candelatech.com> wrote:
+>> > >
+>> > >> So, this has been asked all over the interweb for years and years, but the best answer I can find is to reboot the system or create a fake NFS server
+>> > >> somewhere with the same IP as the gone-away NFS server.
+>> > >>
+>> > >> The problem is:
+>> > >>
+>> > >> I have some mounts to an NFS server that no longer exists (crashed/powered down).
+>> > >>
+>> > >> I have some processes stuck trying to write to files open on these mounts.
+>> > >>
+>> > >> I want to kill the process and unmount.
+>> > >>
+>> > >> umount -l will make the mount go a way, sort of.  But process is still hung. umount -f complains: umount2:  Device or resource busy umount.nfs: /mnt/foo:
+>> > >> device is busy
+>> > >>
+>> > >> kill -9 does not work on process.
+>> > >
+>> > > Kill -1 should work (since about 2.6.25 or so).
+>> >
+>> > That is -[ONE], right?  Assuming so, it did not work for me.
+>>
+>> No, it was "-9" .... sorry, I really shouldn't be let out without my proof
+>> reader.
+>>
+>> However the 'stack' is sufficient to see what is going on.
+>>
+>> The problem is that it is blocked inside the "VM" well away from NFS and
+>> there is no way for NFS to say "give up and go home".
+>>
+>> I'd suggest that is a bug.   I cannot see any justification for fsync to not
+>> be killable.
+>> It wouldn't be too hard to create a patch to make it so.
+>> It would be a little harder to examine all call paths and create a
+>> convincing case that the patch was safe.
+>> It might be herculean task to convince others that it was the right thing
+>> to do.... so let's start with that one.
+>>
+>> Hi Linux-mm and fs-devel people.  What do people think of making "fsync" and
+>> variants "KILLABLE" ??
+>>
+>> I probably only need a little bit of encouragement to write a patch....
+>>
+>> Thanks,
+>> NeilBrown
+>>
+>
+>
+> It would be good to fix this in some fashion once and for all, and the
+> wait_on_page_writeback wait is a major source of pain for a lot of
+> people.
+>
+> So to summarize...
+>
+> The problem in a nutshell is that Ben has some cached writes to the
+> NFS server, but the server has gone away (presumably forever). The
+> question is -- how do we communicate to the kernel that that server
+> isn't coming back and that those dirty pages should be invalidated so
+> that we can umount the filesystem?
+>
+> Allowing fsync/close to be killable sounds reasonable to me as at least
+> a partial solution. Both close(2) and fsync(2) are allowed to return
+> EINTR according to the POSIX spec. Allowing a kill -9 there seems
+> like it should be fine, and maybe we ought to even consider letting it
+> be susceptible to lesser signals.
+>
+> That still leaves some open questions though...
+>
+> Is that enough to fix it? You'd still have the dirty pages lingering
+> around, right? Would a umount -f presumably work at that point?
+>
+>> >
+>> > Kernel is 3.14.4+, with some of extra patches, but probably nothing that
+>> > influences this particular behaviour.
+>> >
+>> > [root@lf1005-14010010 ~]# cat /proc/3805/stack
+>> > [<ffffffff811371ba>] sleep_on_page+0x9/0xd
+>> > [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
+>> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
+>> > [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
+>> > [<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
+>> > [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
+>> > [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
+>> > [<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
+>> > [<ffffffff81183e46>] filp_close+0x3f/0x71
+>> > [<ffffffff8119c8ae>] __close_fd+0x80/0x98
+>> > [<ffffffff81183de5>] SyS_close+0x1c/0x3e
+>> > [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
+>> > [<ffffffffffffffff>] 0xffffffffffffffff
+>> > [root@lf1005-14010010 ~]# kill -1 3805
+>> > [root@lf1005-14010010 ~]# cat /proc/3805/stack
+>> > [<ffffffff811371ba>] sleep_on_page+0x9/0xd
+>> > [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
+>> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
+>> > [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
+>> > [<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
+>> > [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
+>> > [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
+>> > [<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
+>> > [<ffffffff81183e46>] filp_close+0x3f/0x71
+>> > [<ffffffff8119c8ae>] __close_fd+0x80/0x98
+>> > [<ffffffff81183de5>] SyS_close+0x1c/0x3e
+>> > [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
+>> > [<ffffffffffffffff>] 0xffffffffffffffff
+>> >
+>> > Thanks,
+>> > Ben
+>> >
+>> > > If it doesn't please report the kernel version and cat /proc/$PID/stack
+>> > >
+>> > > for some processes that cannot be killed.
+>> > >
+>> > > NeilBrown
+>> > >
+>> > >>
+>> > >>
+>> > >> Aside from bringing a fake NFS server back up on the same IP, is there any other way to get these mounts unmounted and the processes killed without
+>> > >> rebooting?
+>> > >>
+>> > >> Thanks, Ben
+>> > >>
+>> > >
+>> >
+>> >
+>> > - --
+>> > Ben Greear <greearb@candelatech.com>
+>> > Candela Technologies Inc  http://www.candelatech.com
+>> >
+>> > -----BEGIN PGP SIGNATURE-----
+>> > Version: GnuPG v1.4.13 (GNU/Linux)
+>> > Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+>> >
+>> > iQEcBAEBAgAGBQJT2rLiAAoJELbHqkYeJT4OqPgH/0taKW6Be90c1mETZf9yeqZF
+>> > YMLZk8XC2wloEd9nVz//mXREmiu18Hc+5p7Upd4Os21J2P4PBMGV6P/9DMxxehwH
+>> > YX1HKha0EoAsbO5ILQhbLf83cRXAPEpvJPgYHrq6xjlKB8Q8OxxND37rY7kl19Zz
+>> > sdAw6GiqHICF3Hq1ATa/jvixMluDnhER9Dln3wOdAGzmmuFYqpTsV4EwzbKKqInJ
+>> > 6C15q+cq/9aYh6usN6z2qJhbHgqM9EWcPL6jOrCwX4PbC1XjKHekpFN0t9oKQClx
+>> > qSPuweMQ7fP4IBd2Ke8L/QlyOVblAKSE7t+NdrjfzLmYPzyHTyfLABR/BI053to=
+>> > =/9FJ
+>> > -----END PGP SIGNATURE-----
+>>
+>
+>
+> --
+> Jeff Layton <jlayton@poochiereds.net>
