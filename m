@@ -1,90 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ozlabs.org ([103.22.144.67]:43886 "EHLO ozlabs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753093AbaHMCJQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Aug 2014 22:09:16 -0400
-Date: Wed, 13 Aug 2014 12:09:07 +1000
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls
- outside of i_lock
-Message-ID: <20140813120907.33c5584a@canb.auug.org.au>
-In-Reply-To: <20140812194736.3184fce4@tlielax.poochiereds.net>
-References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
-	<20140813082827.1097c3ad@canb.auug.org.au>
-	<20140812194736.3184fce4@tlielax.poochiereds.net>
+Received: from mail-qg0-f45.google.com ([209.85.192.45]:45531 "EHLO
+	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750733AbaHBW7g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 18:59:36 -0400
+Received: by mail-qg0-f45.google.com with SMTP id f51so7401279qge.32
+        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 15:59:36 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sat, 2 Aug 2014 18:59:33 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Kinglong Mee <kinglongmee@gmail.com>, Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into
+ struct nfs4_client
+Message-ID: <20140802185933.64ba0b15@tlielax.poochiereds.net>
+In-Reply-To: <CAHQdGtRNwSbhKkfbop-8NFq6WTS_EmrojC2HyLmkKki94oxSHw@mail.gmail.com>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+	<1406684083-19736-32-git-send-email-jlayton@primarydata.com>
+	<53DCBFDB.5060808@gmail.com>
+	<CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com>
+	<53DCEAE8.70707@gmail.com>
+	<CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
+	<53DCF3C0.6050201@gmail.com>
+	<CAHQdGtRNwSbhKkfbop-8NFq6WTS_EmrojC2HyLmkKki94oxSHw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- boundary="Sig_/uJ0dE+bqlGu==x_x2ME.BTt"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/uJ0dE+bqlGu==x_x2ME.BTt
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Sat, 2 Aug 2014 10:47:27 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-Hi Jeff,
+> On Sat, Aug 2, 2014 at 10:20 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+> > On 8/2/2014 22:05, Trond Myklebust wrote:
+> >> On Sat, Aug 2, 2014 at 9:43 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+> >>> On 8/2/2014 21:11, Trond Myklebust wrote:
+> >>>> On Sat, Aug 2, 2014 at 6:39 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+> >>>>> On 7/30/2014 09:34, Jeff Layton wrote:
+> >>>>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> >>>>>>
+> >>>>>> Preparation for removing the client_mutex.
+> >>>>>>
+> >>>>>> Convert the open owner hash table into a per-client table and protect it
+> >>>>>> using the nfs4_client->cl_lock spin lock.
+> >>>>>>
+> >>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> >>>>>> ---
+> >>>>>>  fs/nfsd/netns.h     |   1 -
+> >>>>>>  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
+> >>>>>>  fs/nfsd/state.h     |   1 +
+> >>>>>>  3 files changed, 86 insertions(+), 103 deletions(-)
+> >>>>>>
+> >>>>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+> >>>>>> index a71d14413d39..e1f479c162b5 100644
+> >>>>>> --- a/fs/nfsd/netns.h
+> >>>>>> +++ b/fs/nfsd/netns.h
+> >>>>>> @@ -63,7 +63,6 @@ struct nfsd_net {
+> >>>>>>       struct rb_root conf_name_tree;
+> >>>>>>       struct list_head *unconf_id_hashtbl;
+> >>>>>>       struct rb_root unconf_name_tree;
+> >>>>>> -     struct list_head *ownerstr_hashtbl;
+> >>>>>
+> >>>>> I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
+> >>>>> http://comments.gmane.org/gmane.linux.nfs/64382
+> >>>>>
+> >>>>> nfsd needs the hashtbl to find the lockowner for locking by owner from
+> >>>>> fl->fl_owner stored in struct file_lock, but without nfs_client.
+> >>>>
+> >>>> Why? We're not currently doing that.
+> >>>
+> >>> Although not doing that right now, but there is a bug for getting the right ld_owner
+> >>> in nfs4_set_lock_denied.
+> >>>
+> >>> If denying locks, vfs don't copy fl->fl_lmops to the returned file_lock, so that,
+> >>> fl->fl_lmops always be NULL, nfsd never return the owner who holds the conflock.
+> >>>
+> >>> If we want fix this problem, needs finding the lockowner from struct file_lock.
+> >>
+> >> Do we really care enough about fixing nfs4_set_lock_denied enough to
+> >> do so at the cost of reducing overall scalability of locking state?
+> >
+> > I just report this problem, don't think enough about the scalability.
+> >
+> >> We will always be faking up the clientid etc for local locks. Are
+> >> there any clients out there that actually inspect the clientid on a
+> >> result of NFS4ERR_DENIED and that will break if we give them a fake
+> >> for non-local locks?
+> >
+> > Jeff has point the same problem of a non-nfs4_lockowner.
+> > Maybe we should copy fl_lmops to conflock as before, nfsd can distinguish
+> > the lockowner stored in struct file_lock by checking fl_lmops.
+> >
+> 
+> Alternatively, set a flag in fl_flags. Back in the days, we used to
+> have a FL_NFSD, perhaps it is time to resurrect that?
+> 
 
-On Tue, 12 Aug 2014 19:47:36 -0400 Jeff Layton <jeff.layton@primarydata.com=
-> wrote:
->
-> On Wed, 13 Aug 2014 08:28:27 +1000
-> Stephen Rothwell <sfr@canb.auug.org.au> wrote:
->=20
-> > On Tue, 12 Aug 2014 10:48:08 -0400 Jeff Layton <jlayton@primarydata.com=
-> wrote:
-> > >
-> > > Absent any objections, I'll plan to merge these for 3.18.
-> >=20
-> > This means that this patch set should *not* be in linux-next until after
-> > (at least) v3.17-rc1 is released ...  This s reinforced by the lack of
-> > Acked-by, Reviewed-by and Tested-by tags ... (the addition of which wou=
-ld
-> > presumably require the rebase (or rewrite) of a published git tree.)
->=20
-> It would, but I sent a later reply that revised that statement.
->=20
-> Trond pointed out that this problem can cause a user-triggerable oops,
-> so we may have to merge it for 3.17 after all. With that in mind, I
-> added these to my linux-next branch and will probably send a pull
-> request before the window closes (assuming that there are no glaring
-> problems with it).
+Would we need a similar flag for lockd too?
 
-OK, fine.  I have merged it today in any case.
+I'm not sure a flag is the correct approach for this. A "fl_lmtype" field
+or something similar might make sense, but I'm not sure that really
+adds much over just ensuring that fl_lmops is set properly for these locks.
 
-> While we're on the subject, we probably ought to rename my tree in your
-> "Trees" file from "file-private-locks" to "file-locks" or something.
-> File private locks (aka OFD locks) got merged in v3.15, but I have been
-> collecting patches that touch fs/locks.c
+That said, we definitely will need to ensure that there are no harmful
+effects from setting fl_lmops on a conflock container. I don't see any
+right offhand, but it's probably reasonable to put something like that
+in -next for a bit of soak time...
 
-OK, I will do that tomorrow.
-
---=20
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-
---Sig_/uJ0dE+bqlGu==x_x2ME.BTt
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBCAAGBQJT6sjJAAoJEMDTa8Ir7ZwV+P0P/0WHMJbEG92a1tE+5hFJhDUy
-H6QMpgtHiHT4zMxqHR9bqNyxDKAuNLUXrFph4I0cpr7xu6/SMPNem9UpFH5VDuFc
-W6c0X9NAmXvHjmXdxQf33rZmeAfhGHyvtaImi7ZUnnyW2ercOlqk0k9gFbpoQErC
-3wycMbgLomDrkEXbrgB2sVMycyqeIRCJbHm9GE79KO0WRLVu8XwnigPn6sZFo7Vl
-cCP9ZPfu/pn9NYvZzlYEQditKGULCV9wY/lKPDylnisPqPUTXx91SB5/CsHua3Js
-W4hjhghhqYpcUqM+mFLll6Ob1ywBJYccuGwr7vOvICg3geipmrHe6G39pAYf5igW
-TTlxJiBVTuPvyqite3P5e7+NAnDBpXjzT5M/MexCrp951GiNtpPTdJtd8I9Kq5R5
-mwqIDTDb9Aw0vebTRx3AfmYl9afifMG4wrPwPXulIIMkM8kvKp3ZWQG/+mGBABhm
-+ZtRN/kxGZQOq331kUnJ/bqeAV7jYM5DgOW6ZsgAKC9kt4A3bfRar+fdUKDs5hOM
-NMw/pXm1RAFJEDvXosL+QR+WRCB4A8LiQXhYGGjppbsPGXj2ifCBvUS01WgNuY7M
-dgmDTlpp7njzEuezQWiVr0o4Ua2yw2+Uf/IuHHgVKdRzUsY3B3hLtPB6/hSz/SJU
-u6StAEfP4RWSR6B7kuny
-=muyF
------END PGP SIGNATURE-----
-
---Sig_/uJ0dE+bqlGu==x_x2ME.BTt--
+-- 
+Jeff Layton <jlayton@primarydata.com>
