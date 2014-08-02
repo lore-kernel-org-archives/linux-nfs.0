@@ -1,244 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:51205 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752528AbaHUQID (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 12:08:03 -0400
-Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XKUu9-0000BA-Nt
-	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 16:08:02 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 19/19] pnfs/blocklayout: allocate separate pages for the layoutcommit payload
-Date: Thu, 21 Aug 2014 11:09:35 -0500
-Message-Id: <1408637375-11343-20-git-send-email-hch@lst.de>
-In-Reply-To: <1408637375-11343-1-git-send-email-hch@lst.de>
-References: <pnfs block layout driver fixes V2>
- <1408637375-11343-1-git-send-email-hch@lst.de>
+Received: from mail-pd0-f172.google.com ([209.85.192.172]:51512 "EHLO
+	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750851AbaHBNwH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 09:52:07 -0400
+Received: by mail-pd0-f172.google.com with SMTP id ft15so7151964pdb.31
+        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 06:52:05 -0700 (PDT)
+Message-ID: <53DCECE0.4070309@gmail.com>
+Date: Sat, 02 Aug 2014 21:51:28 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into struct
+ nfs4_client
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>	<1406684083-19736-32-git-send-email-jlayton@primarydata.com>	<53DCBFDB.5060808@gmail.com>	<CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com> <20140802092356.2c8bf1c8@tlielax.poochiereds.net>
+In-Reply-To: <20140802092356.2c8bf1c8@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of overflowing the XDR send buffer with our extent list allocate
-pages and pre-encode the layoutupdate payload into them.  We optimistically
-allocate a single page use alloc_page and only switch to vmalloc when we
-have more extents outstanding.  Currently there is only a single testcase
-(xfstests generic/113) which can reproduce large enough extent lists for
-this to occur.
+On 8/2/2014 21:23, Jeff Layton wrote:
+> On Sat, 2 Aug 2014 09:11:25 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+>> On Sat, Aug 2, 2014 at 6:39 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>>> On 7/30/2014 09:34, Jeff Layton wrote:
+>>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>
+>>>> Preparation for removing the client_mutex.
+>>>>
+>>>> Convert the open owner hash table into a per-client table and protect it
+>>>> using the nfs4_client->cl_lock spin lock.
+>>>>
+>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>> ---
+>>>>  fs/nfsd/netns.h     |   1 -
+>>>>  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
+>>>>  fs/nfsd/state.h     |   1 +
+>>>>  3 files changed, 86 insertions(+), 103 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+>>>> index a71d14413d39..e1f479c162b5 100644
+>>>> --- a/fs/nfsd/netns.h
+>>>> +++ b/fs/nfsd/netns.h
+>>>> @@ -63,7 +63,6 @@ struct nfsd_net {
+>>>>       struct rb_root conf_name_tree;
+>>>>       struct list_head *unconf_id_hashtbl;
+>>>>       struct rb_root unconf_name_tree;
+>>>> -     struct list_head *ownerstr_hashtbl;
+>>>
+>>> I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
+>>> http://comments.gmane.org/gmane.linux.nfs/64382
+>>>
+>>> nfsd needs the hashtbl to find the lockowner for locking by owner from
+>>> fl->fl_owner stored in struct file_lock, but without nfs_client.
+>>
+>> Why? We're not currently doing that.
+>>
+>>> If moving the hashtbl to nfs_client, it's hard to finding the lockowner for locking.
+>>
+> 
+> I think there's a fundamental flaw in your original patch.
+> 
+> You're casting fl->fl_owner to a struct nfs4_lockowner pointer, and
+> then dereferencing that pointer to get to the lo->lo_hashval field. The
+> problem there is that conflock might refer to a lock that is not a
+> nfsv4 lock, and in that case there is zero guarantee that the
+> fl_owner_t is a pointer at all, so that method could end up causing
+> oopses.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c |  15 ++----
- fs/nfs/blocklayout/blocklayout.h |   8 ++--
- fs/nfs/blocklayout/extent_tree.c | 100 +++++++++++++++++++++++++++++++--------
- 3 files changed, 90 insertions(+), 33 deletions(-)
+Yes, you are right, the old patch has the problem.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index d5a2b87..fdc065c 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -498,21 +498,16 @@ bl_return_range(struct pnfs_layout_hdr *lo,
- 	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
- }
- 
--static void
--bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
--		       const struct nfs4_layoutcommit_args *arg)
-+static int
-+bl_prepare_layoutcommit(struct nfs4_layoutcommit_args *arg)
- {
--	dprintk("%s enter\n", __func__);
--	ext_tree_encode_commit(BLK_LO2EXT(lo), xdr);
-+	return ext_tree_prepare_commit(arg);
- }
- 
- static void
- bl_cleanup_layoutcommit(struct nfs4_layoutcommit_data *lcdata)
- {
--	struct pnfs_layout_hdr *lo = NFS_I(lcdata->args.inode)->layout;
--
--	dprintk("%s enter\n", __func__);
--	ext_tree_mark_committed(BLK_LO2EXT(lo), lcdata->res.status);
-+	ext_tree_mark_committed(&lcdata->args, lcdata->res.status);
- }
- 
- static void free_blk_mountid(struct block_mount_id *mid)
-@@ -808,7 +803,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.alloc_lseg			= bl_alloc_lseg,
- 	.free_lseg			= bl_free_lseg,
- 	.return_range			= bl_return_range,
--	.encode_layoutcommit		= bl_encode_layoutcommit,
-+	.prepare_layoutcommit		= bl_prepare_layoutcommit,
- 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
- 	.set_layoutdriver		= bl_set_layoutdriver,
- 	.clear_layoutdriver		= bl_clear_layoutdriver,
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index b4f66d8..6f3a550 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -80,6 +80,9 @@ struct pnfs_block_extent {
- 	unsigned int	be_tag;
- };
- 
-+/* on the wire size of the extent */
-+#define BL_EXTENT_SIZE	(7 * sizeof(__be32) + NFS4_DEVICEID4_SIZE)
-+
- struct pnfs_block_layout {
- 	struct pnfs_layout_hdr	bl_layout;
- 	struct rb_root		bl_ext_rw;
-@@ -138,8 +141,7 @@ int ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
- 		sector_t len);
- bool ext_tree_lookup(struct pnfs_block_layout *bl, sector_t isect,
- 		struct pnfs_block_extent *ret, bool rw);
--int ext_tree_encode_commit(struct pnfs_block_layout *bl,
--		struct xdr_stream *xdr);
--void ext_tree_mark_committed(struct pnfs_block_layout *bl, int status);
-+int ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg);
-+void ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status);
- 
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
-index c7dacfa..acdfcb9 100644
---- a/fs/nfs/blocklayout/extent_tree.c
-+++ b/fs/nfs/blocklayout/extent_tree.c
-@@ -465,19 +465,25 @@ out:
- 	return err;
- }
- 
--int
--ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
-+static void ext_tree_free_commitdata(struct nfs4_layoutcommit_args *arg,
-+		size_t buffer_size)
- {
--	struct pnfs_block_extent *be;
--	unsigned int count = 0;
--	__be32 *p, *xdr_start;
--	int ret = 0;
-+	if (arg->layoutupdate_pages != &arg->layoutupdate_page) {
-+		int nr_pages = DIV_ROUND_UP(buffer_size, PAGE_SIZE), i;
- 
--	dprintk("%s enter\n", __func__);
-+		for (i = 0; i < nr_pages; i++)
-+			put_page(arg->layoutupdate_pages[i]);
-+		kfree(arg->layoutupdate_pages);
-+	} else {
-+		put_page(arg->layoutupdate_page);
-+	}
-+}
- 
--	xdr_start = xdr_reserve_space(xdr, 8);
--	if (!xdr_start)
--		return -ENOSPC;
-+static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
-+		size_t buffer_size, size_t *count)
-+{
-+	struct pnfs_block_extent *be;
-+	int ret = 0;
- 
- 	spin_lock(&bl->bl_ext_lock);
- 	for (be = ext_tree_first(&bl->bl_ext_rw); be; be = ext_tree_next(be)) {
-@@ -485,12 +491,11 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
- 		    be->be_tag != EXTENT_WRITTEN)
- 			continue;
- 
--		p = xdr_reserve_space(xdr, 7 * sizeof(__be32) +
--					NFS4_DEVICEID4_SIZE);
--		if (!p) {
--			printk("%s: out of space for extent list\n", __func__);
-+		(*count)++;
-+		if (*count * BL_EXTENT_SIZE > buffer_size) {
-+			/* keep counting.. */
- 			ret = -ENOSPC;
--			break;
-+			continue;
- 		}
- 
- 		p = xdr_encode_opaque_fixed(p, be->be_devid.data,
-@@ -501,25 +506,80 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
- 		*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
- 
- 		be->be_tag = EXTENT_COMMITTING;
--		count++;
- 	}
- 	spin_unlock(&bl->bl_ext_lock);
- 
--	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
--	xdr_start[1] = cpu_to_be32(count);
-+	return ret;
-+}
-+
-+int
-+ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg)
-+{
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
-+	size_t count = 0, buffer_size = PAGE_SIZE;
-+	__be32 *start_p;
-+	int ret;
-+
-+	dprintk("%s enter\n", __func__);
-+
-+	arg->layoutupdate_page = alloc_page(GFP_NOFS);
-+	if (!arg->layoutupdate_page)
-+		return -ENOMEM;
-+	start_p = page_address(arg->layoutupdate_page);
-+	arg->layoutupdate_pages = &arg->layoutupdate_page;
-+
-+retry:
-+	ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count);
-+	if (unlikely(ret)) {
-+		ext_tree_free_commitdata(arg, buffer_size);
-+
-+		buffer_size = sizeof(__be32) + BL_EXTENT_SIZE * count;
-+		count = 0;
-+
-+		arg->layoutupdate_pages =
-+			kcalloc(DIV_ROUND_UP(buffer_size, PAGE_SIZE),
-+				sizeof(struct page *), GFP_NOFS);
-+		if (!arg->layoutupdate_pages)
-+			return -ENOMEM;
-+
-+		start_p = __vmalloc(buffer_size, GFP_NOFS, PAGE_KERNEL);
-+		if (!start_p) {
-+			kfree(arg->layoutupdate_pages);
-+			return -ENOMEM;
-+		}
-+
-+		goto retry;
-+	}
-+
-+	*start_p = cpu_to_be32(count);
-+	arg->layoutupdate_len = sizeof(__be32) + BL_EXTENT_SIZE * count;
-+
-+	if (unlikely(arg->layoutupdate_pages != &arg->layoutupdate_page)) {
-+		__be32 *p = start_p;
-+		int i = 0;
-+
-+		for (p = start_p;
-+		     p < start_p + arg->layoutupdate_len;
-+		     p += PAGE_SIZE) {
-+			arg->layoutupdate_pages[i++] = vmalloc_to_page(p);
-+		}
-+	}
- 
- 	dprintk("%s found %i ranges\n", __func__, count);
--	return ret;
-+	return 0;
- }
- 
- void
--ext_tree_mark_committed(struct pnfs_block_layout *bl, int status)
-+ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status)
- {
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
- 	struct rb_root *root = &bl->bl_ext_rw;
- 	struct pnfs_block_extent *be;
- 
- 	dprintk("%s status %d\n", __func__, status);
- 
-+	ext_tree_free_commitdata(arg, arg->layoutupdate_len);
-+
- 	spin_lock(&bl->bl_ext_lock);
- 	for (be = ext_tree_first(root); be; be = ext_tree_next(be)) {
- 		if (be->be_state != PNFS_BLOCK_INVALID_DATA ||
--- 
-1.9.1
+> 
+> The fl_owner is really intended to be an opaque token, and you can't
+> turn it back into a pointer without knowing for a fact what sort of
+> lock it is. In the v4 case, we use the fl_lmops field to try and
+> designate that.
 
+Got it.
+
+> 
+> Perhaps you need to change it so that the conflocks get fl_lmops set
+> properly instead of changing things like you are in that patch?
+
+OK, I will sends a new patch coping fl_lmops to conflocks for this problem.
+
+thanks,
+Kinglong Mee
+
+> 
