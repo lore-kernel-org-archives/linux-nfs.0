@@ -1,81 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:40983 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752222AbaHZSa5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 14:30:57 -0400
-Received: by mail-ie0-f170.google.com with SMTP id rl12so12127595iec.29
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 11:30:56 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: James Drews <drews@engr.wisc.edu>, jrs@world.std.com
-Subject: [PATCH v2 1/2] NFSv4: Fix problems with close in the presence of a delegation
-Date: Tue, 26 Aug 2014 14:30:52 -0400
-Message-Id: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:44424 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751783AbaHCOu4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 10:50:56 -0400
+Received: by mail-pd0-f170.google.com with SMTP id g10so8160602pdj.15
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 07:50:56 -0700 (PDT)
+Message-ID: <53DE4C33.1040509@gmail.com>
+Date: Sun, 03 Aug 2014 22:50:27 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+Subject: NFS: Don't restart release lockowner RPC if getting expired error
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the presence of delegations, we can no longer assume that the
-state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
-stateid share mode, and so we need to need to calculate the initial
-value for calldata->arg.fmode using the state->flags.
+Fix Commit 60ea681299 (NFS: Migration support for RELEASE_LOCKOWNER)
+If getting expired error, client will enter a infinite loop as,
 
-Reported-by: James Drews <drews@engr.wisc.edu>
-Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
-Cc: stable@vger.kernel.org # 2.6.33+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+client                            server
+   RELEASE_LOCKOWNER(old clid) ----->
+                <--- expired error
+   RENEW(old clid)             ----->
+                <--- expired error
+   SETCLIENTID                 ----->
+                <--- a new clid
+   SETCLIENTID_CONFIRM (new clid) -->
+                <--- ok
+   RELEASE_LOCKOWNER(old clid) ----->
+                <--- expired error
+   RENEW(new clid)             ----->
+                <-- ok
+   RELEASE_LOCKOWNER(old clid) ----->
+                <--- expired error
+   RENEW(new clid)             ----->
+                <-- ok
+                ... ...
+
+This patch just handle the expired error to register clientid,
+but not restart a release lockowner RPC.
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/nfs4proc.c | 19 +++++++++++++------
- 1 file changed, 13 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4proc.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 75ae8d22f067..7d67d5b332d4 100644
+index 285ad53..902aadf 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -2601,6 +2601,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	struct nfs4_closedata *calldata = data;
- 	struct nfs4_state *state = calldata->state;
- 	struct inode *inode = calldata->inode;
-+	bool is_rdonly, is_wronly, is_rdwr;
- 	int call_close = 0;
- 
- 	dprintk("%s: begin!\n", __func__);
-@@ -2608,24 +2609,30 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 		goto out_wait;
- 
- 	task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_DOWNGRADE];
--	calldata->arg.fmode = FMODE_READ|FMODE_WRITE;
- 	spin_lock(&state->owner->so_lock);
-+	is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
-+	is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
-+	is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
-+	spin_unlock(&state->owner->so_lock);
-+	/* Calculate the current open share mode */
-+	calldata->arg.fmode = 0;
-+	if (is_rdonly || is_rdwr)
-+		calldata->arg.fmode |= FMODE_READ;
-+	if (is_wronly || is_rdwr)
-+		calldata->arg.fmode |= FMODE_WRITE;
- 	/* Calculate the change in open mode */
- 	if (state->n_rdwr == 0) {
- 		if (state->n_rdonly == 0) {
--			call_close |= test_bit(NFS_O_RDONLY_STATE, &state->flags);
--			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
-+			call_close |= is_rdonly || is_rdwr;
- 			calldata->arg.fmode &= ~FMODE_READ;
- 		}
- 		if (state->n_wronly == 0) {
--			call_close |= test_bit(NFS_O_WRONLY_STATE, &state->flags);
--			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
-+			call_close |= is_wronly || is_rdwr;
- 			calldata->arg.fmode &= ~FMODE_WRITE;
- 		}
- 	}
- 	if (!nfs4_valid_open_stateid(state))
- 		call_close = 0;
--	spin_unlock(&state->owner->so_lock);
- 
- 	if (!call_close) {
- 		/* Note: exit _without_ calling nfs4_close_done */
+@@ -5852,6 +5852,8 @@ static void nfs4_release_lockowner_done(struct rpc_task *task, void *calldata)
+ 		break;
+ 	case -NFS4ERR_STALE_CLIENTID:
+ 	case -NFS4ERR_EXPIRED:
++		nfs4_async_handle_error(task, server, NULL);
++		break;
+ 	case -NFS4ERR_LEASE_MOVED:
+ 	case -NFS4ERR_DELAY:
+ 		if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN)
 -- 
 1.9.3
 
