@@ -1,125 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:39035 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751640AbaHTJ6I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 05:58:08 -0400
-Message-ID: <53F47115.6050607@gmail.com>
-Date: Wed, 20 Aug 2014 17:57:41 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 5/6 v5] NFSD: New helper nfs4_get_stateowner() for atomic_inc
- sop reference
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com> <53F36CB5.2030707@gmail.com>
-In-Reply-To: <53F36CB5.2030707@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:34668 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752622AbaHCRD2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:28 -0400
+Received: by mail-qa0-f46.google.com with SMTP id v10so5905168qac.5
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:28 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 11/11] SUNRPC: Optimise away svc_recv_available
+Date: Sun,  3 Aug 2014 13:03:13 -0400
+Message-Id: <1407085393-3175-12-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085393-3175-11-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-6-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-7-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-8-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-9-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-10-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-11-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v5: same as the first version
+We really do not want to do ioctls in the server's fast path. Instead, let's
+use the fact that we managed to read a full record as the indicator that
+we should try to read the socket again.
 
-Reviewed-by: Jeff Layton <jlayton@primarydata.com>
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 32 ++++++++++++++++----------------
- 1 file changed, 16 insertions(+), 16 deletions(-)
+ net/sunrpc/svcsock.c | 23 ++++++-----------------
+ 1 file changed, 6 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 98edf97..e087a71 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -216,6 +216,13 @@ static void nfsd4_put_session(struct nfsd4_session *ses)
- 	spin_unlock(&nn->client_lock);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 72597d7fe60a..949bb2bb8f07 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -312,19 +312,6 @@ static int svc_one_sock_name(struct svc_sock *svsk, char *buf, int remaining)
  }
  
-+static inline struct nfs4_stateowner *
-+nfs4_get_stateowner(struct nfs4_stateowner *sop)
-+{
-+	atomic_inc(&sop->so_count);
-+	return sop;
-+}
-+
- static int
- same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner)
+ /*
+- * Check input queue length
+- */
+-static int svc_recv_available(struct svc_sock *svsk)
+-{
+-	struct socket	*sock = svsk->sk_sock;
+-	int		avail, err;
+-
+-	err = kernel_sock_ioctl(sock, TIOCINQ, (unsigned long) &avail);
+-
+-	return (err >= 0)? avail : err;
+-}
+-
+-/*
+  * Generic recvfrom routine.
+  */
+ static int svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr,
+@@ -339,8 +326,14 @@ static int svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr,
+ 
+ 	rqstp->rq_xprt_hlen = 0;
+ 
++	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
+ 				msg.msg_flags);
++	/* If we read a full record, then assume there may be more
++	 * data to read (stream based sockets only!)
++	 */
++	if (len == buflen)
++		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 
+ 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
+ 		svsk, iov[0].iov_base, iov[0].iov_len, len);
+@@ -979,8 +972,6 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 	unsigned int want;
+ 	int len;
+ 
+-	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+-
+ 	if (svsk->sk_tcplen < sizeof(rpc_fraghdr)) {
+ 		struct kvec	iov;
+ 
+@@ -1072,8 +1063,6 @@ static int copy_pages_to_kvecs(struct kvec *vec, struct page **pages, int len)
+ static void svc_tcp_fragment_received(struct svc_sock *svsk)
  {
-@@ -235,10 +242,8 @@ find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
- 			    so_strhash) {
- 		if (!so->so_is_open_owner)
- 			continue;
--		if (same_owner_str(so, &open->op_owner)) {
--			atomic_inc(&so->so_count);
--			return openowner(so);
--		}
-+		if (same_owner_str(so, &open->op_owner))
-+			return openowner(nfs4_get_stateowner(so));
- 	}
- 	return NULL;
- }
-@@ -1644,7 +1649,7 @@ __destroy_client(struct nfs4_client *clp)
- 	}
- 	while (!list_empty(&clp->cl_openowners)) {
- 		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
--		atomic_inc(&oo->oo_owner.so_count);
-+		nfs4_get_stateowner(&oo->oo_owner);
- 		release_openowner(oo);
- 	}
- 	nfsd4_shutdown_callback(clp);
-@@ -3125,8 +3130,7 @@ static void nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
- {
- 	if (!nfsd4_has_session(cstate)) {
- 		mutex_lock(&so->so_replay.rp_mutex);
--		cstate->replay_owner = so;
--		atomic_inc(&so->so_count);
-+		cstate->replay_owner = nfs4_get_stateowner(so);
- 	}
- }
- 
-@@ -3225,8 +3229,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	atomic_inc(&stp->st_stid.sc_count);
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_locks);
--	stp->st_stateowner = &oo->oo_owner;
--	atomic_inc(&stp->st_stateowner->so_count);
-+	stp->st_stateowner = nfs4_get_stateowner(&oo->oo_owner);
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
- 	stp->st_access_bmap = 0;
-@@ -4914,10 +4917,8 @@ find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
- 			    so_strhash) {
- 		if (so->so_is_open_owner)
- 			continue;
--		if (!same_owner_str(so, owner))
--			continue;
--		atomic_inc(&so->so_count);
--		return lockowner(so);
-+		if (same_owner_str(so, owner))
-+			return lockowner(nfs4_get_stateowner(so));
- 	}
- 	return NULL;
- }
-@@ -4996,8 +4997,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
- 
- 	atomic_inc(&stp->st_stid.sc_count);
- 	stp->st_stid.sc_type = NFS4_LOCK_STID;
--	stp->st_stateowner = &lo->lo_owner;
--	atomic_inc(&lo->lo_owner.so_count);
-+	stp->st_stateowner = nfs4_get_stateowner(&lo->lo_owner);
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
- 	stp->st_stid.sc_free = nfs4_free_lock_stateid;
-@@ -5539,7 +5539,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			}
- 		}
- 
--		atomic_inc(&sop->so_count);
-+		nfs4_get_stateowner(sop);
- 		break;
- 	}
- 	spin_unlock(&clp->cl_lock);
+ 	/* If we have more data, signal svc_xprt_enqueue() to try again */
+-	if (svc_recv_available(svsk) > sizeof(rpc_fraghdr))
+-		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
+ 	dprintk("svc: TCP %s record (%d bytes)\n",
+ 		svc_sock_final_rec(svsk) ? "final" : "nonfinal",
+ 		svc_sock_reclen(svsk));
 -- 
 1.9.3
 
