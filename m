@@ -1,194 +1,219 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43165 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751132AbaHONzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Aug 2014 09:55:24 -0400
-Date: Fri, 15 Aug 2014 09:55:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFSD: Revert setting op_encode_lockowner_maxsz
-Message-ID: <20140815135524.GB3343@fieldses.org>
-References: <53E2EE2E.9040007@gmail.com>
- <20140811200118.GG9095@fieldses.org>
- <20140812175826.GE22365@fieldses.org>
- <53EE0ECB.5040202@gmail.com>
+Received: from gproxy8-pub.mail.unifiedlayer.com ([67.222.33.93]:56695 "HELO
+	gproxy8-pub.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1750960AbaHCOe5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 10:34:57 -0400
+Received: from [98.248.107.106] (port=39368 helo=monster.martins.cc)
+	by box503.bluehost.com with esmtpsa (TLSv1.2:DHE-RSA-AES256-GCM-SHA384:256)
+	(Exim 4.82)
+	(envelope-from <linux@martins.cc>)
+	id 1XDws8-0003gT-9j
+	for linux-nfs@vger.kernel.org; Sun, 03 Aug 2014 08:34:52 -0600
+Received: from monster.martins.cc (monster.martins.cc [127.0.0.1])
+	by monster.martins.cc (Postfix) with ESMTP id CD577627F4
+	for <linux-nfs@vger.kernel.org>; Sun,  3 Aug 2014 07:34:47 -0700 (PDT)
+From: Henrique Martins <linux@martins.cc>
+To: linux-nfs@vger.kernel.org
+Subject: nfs-utils.spec patch
+In-reply-to: <bug-1115179-43722-GPTO0t3XWU@bugzilla.redhat.com>
+References: <bug-1115179-43722@bugzilla.redhat.com>
+ <bug-1115179-43722-GPTO0t3XWU@bugzilla.redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53EE0ECB.5040202@gmail.com>
+Content-Type: multipart/mixed; boundary="=-=-="
+Date: Sun, 03 Aug 2014 07:34:47 -0700
+Message-ID: <25446.1407076487@monster.martins.cc>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 15, 2014 at 09:44:43PM +0800, Kinglong Mee wrote:
-> On 8/13/2014 01:58, J. Bruce Fields wrote:
-> > On Mon, Aug 11, 2014 at 04:01:18PM -0400, J. Bruce Fields wrote:
-> >> On Thu, Aug 07, 2014 at 11:10:38AM +0800, Kinglong Mee wrote:
-> >>> Commit 8c7424cff6 (nfsd4: don't try to encode conflicting owner if low on space)
-> >>> set op_encode_lockowner_maxsz to zero.
-> >>>
-> >>> If setting op_encode_lockowner_maxsz to zero, nfsd will not encode
-> >>> the owner of conflock forever.
-> >>
-> >> Right, so the problem is that the lock reply encoder is unique in that
-> >> it will happily adjust the xdr encoding if it's running out of space.
-> >>
-> >> This came about with 8c7424cff6 "nfsd4: don't try to encode conflicting
-> >> owner if low on space".  The problem is that:
-> >>
-> >> 	- the maximum size of a lock reply is kind of big (the original
-> >> 	  calculation below is actually wrong, IDMAP_NAMESZ should be
-> >> 	  NFS4_OPAQUE_LIMIT).
-> >> 	- we may not be the only server that's been sloppy about
-> >> 	  enforcing the theoretical maximum here, and I'd rather be
-> >> 	  forgiving to clients that don't insist on the theoretical
-> >> 	  maximum maxresp_cached.
-> >>
-> >> So best seems just to allow a LOCK even if space is insufficient and
-> >> just throw out the conflicting lockowner if there isn't enough space,
-> >> since large lockowners should be rare and we don't care about the
-> >> conflicting lockowner anyway.
-> >>
-> >> So anyway we need to leave the maximum reserved in rq_reserved without
-> >> changing the check we make before executing the LOCK.
-> > 
-> > I think this is all we need, but I haven't actually tested whether it
-> > fixes the warnings.
-> > 
-> > --b.
-> > 
-> > commit 5e78bb7e34d6
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Tue Aug 12 11:41:40 2014 -0400
-> > 
-> >     nfsd4: reserve adequate space for LOCK op
-> >     
-> >     As of  8c7424cff6 "nfsd4: don't try to encode conflicting owner if low
-> >     on space", we permit the server to process a LOCK operation even if
-> >     there might not be space to return the conflicting lockowner, because
-> >     we've made returning the conflicting lockowner optional.
-> >     
-> >     However, the rpc server still wants to know the most we might possibly
-> >     return, so we need to take into account the possible conflicting
-> >     lockowner in the svc_reserve_space() call here.
-> >     
-> >     Symptoms were log messages like "RPC request reserved 88 but used 108".
-> >     
-> >     Fixes: 8c7424cff6 "nfsd4: don't try to encode conflicting owner if low on space"
-> >     Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> > index 8112ce8f4b23..e771a1a7c6f1 100644
-> > --- a/fs/nfsd/nfs4xdr.c
-> > +++ b/fs/nfsd/nfs4xdr.c
-> > @@ -1663,6 +1663,14 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
-> >  			readbytes += nfsd4_max_reply(argp->rqstp, op);
-> >  		} else
-> >  			max_reply += nfsd4_max_reply(argp->rqstp, op);
-> > +		/*
-> > +		 * OP_LOCK may return a conflicting lock.  (Special case
-> > +		 * because it will just skip encoding this if it runs
-> > +		 * out of xdr buffer space, and it is the only operation
-> > +		 * that behaves this way.)
-> > +		 */
-> > +		if (op->opnum == OP_LOCK)
-> > +			max_reply += NFS4_OPAQUE_LIMIT;
-> >  
-> >  		if (op->status) {
-> >  			argp->opcnt = i+1;
-> > 
-> 
-> Yes, this patch can fixes the warnings.
-> But, I don't think it's the best fix for the problem.
-> 
-> Why not save reply size of NFS4_OPAQUE_LIMIT in op_encode_lockowner_maxsz,
+--=-=-=
+Content-Type: text/plain; charset=utf-8
 
-A lock request is nonidempotent, so clients usually want to cache it.
-This would force maxresp_cached to be larger than otherwise necessary.
 
-Which I guess the spec already requires.  But I'd rather be forgiving if
-a client overlooks this and requests too small a maxresp_cached.
+The spec file for nfs-utils-1.3.0-2.1.fc20 (nfs-utils.spec)
+has a bunch of bad date entries in %changelog which cause
+warnings when running rpmbuild.
 
-> nfsd4_lockt also needs it.
+Patch attached, by changing the weekday to match the day
+number.
 
-nfsd4_lockt is nonidempotent (and probably not terribly common) so we
-don't care about it that much--there's not even a lockt_rsize defined
-for it.
+-- Henrique
 
---b.
 
-> The nfsd4_lock reply contains only stateid when success,
-> only conflock when denied, so the max size should be
-> max(stateid size, denied lock size).
-> 
-> --------------------------snip---------------------------------------------
-> 
-> >From efa33c8c4e9dc99f7addeec935d7172437d6ba10 Mon Sep 17 00:00:00 2001
-> From: Kinglong Mee <kinglongmee@gmail.com>
-> Date: Sat, 16 Aug 2014 05:33:32 +0800
-> Subject: [PATCH] NFSD: Correct max reply size for LOCK/LOCKT
-> 
-> As of  8c7424cff6 "nfsd4: don't try to encode conflicting owner if low
-> on space", we permit the server to process a LOCK operation even if
-> there might not be space to return the conflicting lockowner, because
-> we've made returning the conflicting lockowner optional.
-> 
-> However, the rpc server still wants to know the most we might possibly
-> return, so we need to take into account the possible conflicting
-> lockowner in the svc_reserve() call here.
-> 
-> Symptoms were log messages like "RPC request reserved 88 but used 108".
-> 
-> Also, max_reply will be PAGE_SIZE for nfsd4_lockt's .op_rsize_bop is NULL.
-> New .op_rsize_bop named nfsd4_lockt_rsize for nfsd4_lockt.
->     
-> Fixes: 8c7424cff6 "nfsd4: don't try to encode conflicting owner if low on space"
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4proc.c | 12 +++++++++---
->  1 file changed, 9 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 5e0dc52..64557c9 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1414,8 +1414,7 @@ out:
->  #define op_encode_change_info_maxsz	(5)
->  #define nfs4_fattr_bitmap_maxsz		(4)
->  
-> -/* We'll fall back on returning no lockowner if run out of space: */
-> -#define op_encode_lockowner_maxsz	(0)
-> +#define op_encode_lockowner_maxsz	(XDR_QUADLEN(NFS4_OPAQUE_LIMIT))
->  #define op_encode_lock_denied_maxsz	(8 + op_encode_lockowner_maxsz)
->  
->  #define nfs4_owner_maxsz		(1 + XDR_QUADLEN(IDMAP_NAMESZ))
-> @@ -1498,10 +1497,16 @@ static inline u32 nfsd4_link_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  
->  static inline u32 nfsd4_lock_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  {
-> -	return (op_encode_hdr_size + op_encode_lock_denied_maxsz)
-> +	return (op_encode_hdr_size
-> +		+ max(op_encode_lock_denied_maxsz, op_encode_stateid_maxsz))
->  		* sizeof(__be32);
->  }
->  
-> +static inline u32 nfsd4_lockt_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
-> +{
-> +	return (op_encode_hdr_size + op_encode_lock_denied_maxsz) * sizeof(__be32);
-> +}
-> +
->  static inline u32 nfsd4_open_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  {
->  	return (op_encode_hdr_size + op_encode_stateid_maxsz
-> @@ -1654,6 +1659,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  	[OP_LOCKT] = {
->  		.op_func = (nfsd4op_func)nfsd4_lockt,
->  		.op_name = "OP_LOCKT",
-> +		.op_rsize_bop = (nfsd4op_rsize)nfsd4_lockt_rsize,
->  	},
->  	[OP_LOCKU] = {
->  		.op_func = (nfsd4op_func)nfsd4_locku,
-> -- 
-> 1.9.3
-> 
+--=-=-=
+Content-Type: text/x-diff; charset=utf-8
+Content-Disposition: attachment; filename=nfs-utils.spec.patch
+
+*** SPECS/nfs-utils.spec.orig	2014-06-03 10:54:25.000000000 -0700
+--- SPECS/nfs-utils.spec	2014-08-02 14:16:02.297833025 -0700
+***************
+*** 671,677 ****
+  - Updated to the latest pseudo root release (rel10) which
+    containts the upstream pseudo root release
+
+! * Mon Jan 12 2010 Steve Dickson <steved@redhat.com> 1.2.1-9
+  - Updated to latest upstream RC release: nfs-utils-1-2-2-rc5
+
+  * Mon Jan  4 2010 Steve Dickson <steved@redhat.com> 1.2.1-8
+--- 671,677 ----
+  - Updated to the latest pseudo root release (rel10) which
+    containts the upstream pseudo root release
+
+! * Tue Jan 12 2010 Steve Dickson <steved@redhat.com> 1.2.1-9
+  - Updated to latest upstream RC release: nfs-utils-1-2-2-rc5
+
+  * Mon Jan  4 2010 Steve Dickson <steved@redhat.com> 1.2.1-8
+***************
+*** 1062,1068 ****
+  - Added -o nordirplus mount option to disable READDIRPLUS (bz 240357)
+  - Disabled the FSCache patch, for now...
+
+! * Wed May 10 2007 Steve Dickson <steved@redhat.com> 1.0.12-5
+  - Fix mount.nfs4 to display correct error message (bz 227212)
+  - Updated mountd and showmount reverse lookup flags (bz 220772)
+  - Eliminate timeout on nfsd shutdowns (bz 222001)
+--- 1062,1068 ----
+  - Added -o nordirplus mount option to disable READDIRPLUS (bz 240357)
+  - Disabled the FSCache patch, for now...
+
+! * Thu May 10 2007 Steve Dickson <steved@redhat.com> 1.0.12-5
+  - Fix mount.nfs4 to display correct error message (bz 227212)
+  - Updated mountd and showmount reverse lookup flags (bz 220772)
+  - Eliminate timeout on nfsd shutdowns (bz 222001)
+***************
+*** 1105,1111 ****
+  * Wed Dec 13 2006 Steve Dickson <steved@redhat.com> 1.0.10-5
+  - Stopped v4 umounts from ping rpc.mountd (bz 215553)
+
+! * Wed Nov 28 2006 Steve Dickson <steved@redhat.com> 1.0.10-4
+  - Doing a connect on UDP sockets causes the linux network
+    stack to reject UDP patches from multi-home server with
+    nic on the same subnet. (bz 212471)
+--- 1105,1111 ----
+  * Wed Dec 13 2006 Steve Dickson <steved@redhat.com> 1.0.10-5
+  - Stopped v4 umounts from ping rpc.mountd (bz 215553)
+
+! * Tue Nov 28 2006 Steve Dickson <steved@redhat.com> 1.0.10-4
+  - Doing a connect on UDP sockets causes the linux network
+    stack to reject UDP patches from multi-home server with
+    nic on the same subnet. (bz 212471)
+***************
+*** 1236,1242 ****
+  - Updated libevent from 1.0b to 1.1a
+  - Added libgssapi-0.4 and librpcsecgss-0.6 libs from CITI
+
+! * Tue Sep  8 2005 Steve Dickson <SteveD@RedHat.com> 1.0.7-16
+  - Reworked the nfslock init script so if lockd is running
+    it will be killed which is what the HA community needs. (bz 162446)
+  - Stopped rpcidmapd.init from doing extra echoing when
+--- 1236,1242 ----
+  - Updated libevent from 1.0b to 1.1a
+  - Added libgssapi-0.4 and librpcsecgss-0.6 libs from CITI
+
+! * Thu Sep  8 2005 Steve Dickson <SteveD@RedHat.com> 1.0.7-16
+  - Reworked the nfslock init script so if lockd is running
+    it will be killed which is what the HA community needs. (bz 162446)
+  - Stopped rpcidmapd.init from doing extra echoing when
+***************
+*** 1267,1273 ****
+  * Wed Apr 13 2005 Steve Dickson <SteveD@RedHat.com> 1.0.7-6
+  - Fixed misformated output from nfslock script (bz 154648)
+
+! * Mon Mar 29 2005 Steve Dickson <SteveD@RedHat.com> 1.0.7-4
+  - Fixed a compile error on x86_64 machines in the gss code.
+  - Updated the statd-notify-hostname.patch to eliminate
+    a segmentation fault in rpc.statd when an network
+--- 1267,1273 ----
+  * Wed Apr 13 2005 Steve Dickson <SteveD@RedHat.com> 1.0.7-6
+  - Fixed misformated output from nfslock script (bz 154648)
+
+! * Tue Mar 29 2005 Steve Dickson <SteveD@RedHat.com> 1.0.7-4
+  - Fixed a compile error on x86_64 machines in the gss code.
+  - Updated the statd-notify-hostname.patch to eliminate
+    a segmentation fault in rpc.statd when an network
+***************
+*** 1362,1368 ****
+    by default, there only needs to be away of
+    turning them off.
+
+! * Thu May 10 2004 <SteveD@RedHat.com>
+  - Rebuilt
+
+  * Thu Apr 15 2004 <SteveD@RedHat.com>
+--- 1362,1368 ----
+    by default, there only needs to be away of
+    turning them off.
+
+! * Mon May 10 2004 <SteveD@RedHat.com>
+  - Rebuilt
+
+  * Thu Apr 15 2004 <SteveD@RedHat.com>
+***************
+*** 1437,1443 ****
+  - Upgrated to 1.0.6
+  - Commented out the acl path for fedora
+
+! * Thu Aug  27 2003 Steve Dickson <SteveD@RedHat.com>
+  - Added the setting of lockd ports via sysclt interface
+  - Removed queue setting code since its no longer needed
+
+--- 1437,1443 ----
+  - Upgrated to 1.0.6
+  - Commented out the acl path for fedora
+
+! * Wed Aug  27 2003 Steve Dickson <SteveD@RedHat.com>
+  - Added the setting of lockd ports via sysclt interface
+  - Removed queue setting code since its no longer needed
+
+***************
+*** 1447,1453 ****
+  * Wed Jul 23 2003 Steve Dickson <SteveD@RedHat.com>
+  - Commented out the acl patch (for now)
+
+! * Wed Jul 21 2003 Steve Dickson <SteveD@RedHat.com>
+  - Upgrated to 1.0.5
+
+  * Wed Jun 18 2003 Steve Dickson <SteveD@RedHat.com>
+--- 1447,1453 ----
+  * Wed Jul 23 2003 Steve Dickson <SteveD@RedHat.com>
+  - Commented out the acl patch (for now)
+
+! * Mon Jul 21 2003 Steve Dickson <SteveD@RedHat.com>
+  - Upgrated to 1.0.5
+
+  * Wed Jun 18 2003 Steve Dickson <SteveD@RedHat.com>
+***************
+*** 1536,1542 ****
+  - don't use rquotad from here now; quota package contains a version that
+    works with 2.4 (#33738)
+
+! * Tue Mar 12 2001 Bob Matthews <bmatthews@redhat.com>
+  - Statd logs at LOG_DAEMON rather than LOG_LOCAL5
+  - s/nfs/\$0/ where appropriate in init scripts
+
+--- 1536,1542 ----
+  - don't use rquotad from here now; quota package contains a version that
+    works with 2.4 (#33738)
+
+! * Mon Mar 12 2001 Bob Matthews <bmatthews@redhat.com>
+  - Statd logs at LOG_DAEMON rather than LOG_LOCAL5
+  - s/nfs/\$0/ where appropriate in init scripts
+
+***************
+*** 1562,1568 ****
+  - Fix incorrect file specifications in statd manpage.
+  - Require gawk 'cause it's used in nfslock init script.
+
+! * Thu Dec 13 2000 Bob Matthews <bmatthews@redhat.com>
+  - Require sed because it's used in nfs init script
+
+  * Tue Dec 12 2000 Bob Matthews <bmatthews@redhat.com>
+--- 1562,1568 ----
+  - Fix incorrect file specifications in statd manpage.
+  - Require gawk 'cause it's used in nfslock init script.
+
+! * Wed Dec 13 2000 Bob Matthews <bmatthews@redhat.com>
+  - Require sed because it's used in nfs init script
+
+  * Tue Dec 12 2000 Bob Matthews <bmatthews@redhat.com>
+
+--=-=-=--
