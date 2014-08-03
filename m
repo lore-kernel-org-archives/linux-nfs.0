@@ -1,84 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:61829 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751139AbaHOK5n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 06:57:43 -0400
-Received: by mail-qg0-f46.google.com with SMTP id z60so2054437qgd.33
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 03:57:43 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 15 Aug 2014 06:57:41 -0400
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 1/5 v3] NFSD: Remove duplicate initialization of
- file_lock
-Message-ID: <20140815065741.42f18ec9@tlielax.poochiereds.net>
-In-Reply-To: <53ED4E2F.2010701@gmail.com>
-References: <53BAAAC5.9000106@gmail.com>
-	<53E22EA5.70708@gmail.com>
-	<20140809065112.700e0ecc@tlielax.poochiereds.net>
-	<53E791F1.40802@gmail.com>
-	<53ED4E2F.2010701@gmail.com>
+Received: from mail-vc0-f175.google.com ([209.85.220.175]:33109 "EHLO
+	mail-vc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750876AbaHCB7h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 21:59:37 -0400
+Received: by mail-vc0-f175.google.com with SMTP id ik5so8902724vcb.6
+        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 18:59:36 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20140802185933.64ba0b15@tlielax.poochiereds.net>
+References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
+	<1406684083-19736-32-git-send-email-jlayton@primarydata.com>
+	<53DCBFDB.5060808@gmail.com>
+	<CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com>
+	<53DCEAE8.70707@gmail.com>
+	<CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
+	<53DCF3C0.6050201@gmail.com>
+	<CAHQdGtRNwSbhKkfbop-8NFq6WTS_EmrojC2HyLmkKki94oxSHw@mail.gmail.com>
+	<20140802185933.64ba0b15@tlielax.poochiereds.net>
+Date: Sat, 2 Aug 2014 21:59:36 -0400
+Message-ID: <CAHQdGtS+X1KABsr5buxKqC5VNpyWBrJYMD74HzWtF=fDOs19bg@mail.gmail.com>
+Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into struct nfs4_client
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Kinglong Mee <kinglongmee@gmail.com>, Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 15 Aug 2014 08:02:55 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+On Sat, Aug 2, 2014 at 6:59 PM, Jeff Layton <jeff.layton@primarydata.com> wrote:
+> On Sat, 2 Aug 2014 10:47:27 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>
+>> On Sat, Aug 2, 2014 at 10:20 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>> > On 8/2/2014 22:05, Trond Myklebust wrote:
+>> >> On Sat, Aug 2, 2014 at 9:43 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>> >>> On 8/2/2014 21:11, Trond Myklebust wrote:
+>> >>>> On Sat, Aug 2, 2014 at 6:39 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>> >>>>> On 7/30/2014 09:34, Jeff Layton wrote:
+>> >>>>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
+>> >>>>>>
+>> >>>>>> Preparation for removing the client_mutex.
+>> >>>>>>
+>> >>>>>> Convert the open owner hash table into a per-client table and protect it
+>> >>>>>> using the nfs4_client->cl_lock spin lock.
+>> >>>>>>
+>> >>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> >>>>>> ---
+>> >>>>>>  fs/nfsd/netns.h     |   1 -
+>> >>>>>>  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
+>> >>>>>>  fs/nfsd/state.h     |   1 +
+>> >>>>>>  3 files changed, 86 insertions(+), 103 deletions(-)
+>> >>>>>>
+>> >>>>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+>> >>>>>> index a71d14413d39..e1f479c162b5 100644
+>> >>>>>> --- a/fs/nfsd/netns.h
+>> >>>>>> +++ b/fs/nfsd/netns.h
+>> >>>>>> @@ -63,7 +63,6 @@ struct nfsd_net {
+>> >>>>>>       struct rb_root conf_name_tree;
+>> >>>>>>       struct list_head *unconf_id_hashtbl;
+>> >>>>>>       struct rb_root unconf_name_tree;
+>> >>>>>> -     struct list_head *ownerstr_hashtbl;
+>> >>>>>
+>> >>>>> I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
+>> >>>>> http://comments.gmane.org/gmane.linux.nfs/64382
+>> >>>>>
+>> >>>>> nfsd needs the hashtbl to find the lockowner for locking by owner from
+>> >>>>> fl->fl_owner stored in struct file_lock, but without nfs_client.
+>> >>>>
+>> >>>> Why? We're not currently doing that.
+>> >>>
+>> >>> Although not doing that right now, but there is a bug for getting the right ld_owner
+>> >>> in nfs4_set_lock_denied.
+>> >>>
+>> >>> If denying locks, vfs don't copy fl->fl_lmops to the returned file_lock, so that,
+>> >>> fl->fl_lmops always be NULL, nfsd never return the owner who holds the conflock.
+>> >>>
+>> >>> If we want fix this problem, needs finding the lockowner from struct file_lock.
+>> >>
+>> >> Do we really care enough about fixing nfs4_set_lock_denied enough to
+>> >> do so at the cost of reducing overall scalability of locking state?
+>> >
+>> > I just report this problem, don't think enough about the scalability.
+>> >
+>> >> We will always be faking up the clientid etc for local locks. Are
+>> >> there any clients out there that actually inspect the clientid on a
+>> >> result of NFS4ERR_DENIED and that will break if we give them a fake
+>> >> for non-local locks?
+>> >
+>> > Jeff has point the same problem of a non-nfs4_lockowner.
+>> > Maybe we should copy fl_lmops to conflock as before, nfsd can distinguish
+>> > the lockowner stored in struct file_lock by checking fl_lmops.
+>> >
+>>
+>> Alternatively, set a flag in fl_flags. Back in the days, we used to
+>> have a FL_NFSD, perhaps it is time to resurrect that?
+>>
+>
+> Would we need a similar flag for lockd too?
+>
+> I'm not sure a flag is the correct approach for this. A "fl_lmtype" field
+> or something similar might make sense, but I'm not sure that really
+> adds much over just ensuring that fl_lmops is set properly for these locks.
 
-> locks_alloc_lock() has initialize struct file_lock,
-> don't need re-initialize it by locks_init_lock().
-> 
-> v3: A new patch isn't exit in v2/v1.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 6 ++----
->  1 file changed, 2 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 2e80a59..98edf97 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3759,7 +3759,6 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_file *fp, int flag)
->  	fl = locks_alloc_lock();
->  	if (!fl)
->  		return NULL;
-> -	locks_init_lock(fl);
->  	fl->fl_lmops = &nfsd_lease_mng_ops;
->  	fl->fl_flags = FL_DELEG;
->  	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
-> @@ -5210,7 +5209,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	}
->  
->  	fp = lock_stp->st_stid.sc_file;
-> -	locks_init_lock(file_lock);
->  	switch (lock->lk_type) {
->  		case NFS4_READ_LT:
->  		case NFS4_READW_LT:
-> @@ -5354,7 +5352,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		status = nfserr_jukebox;
->  		goto out;
->  	}
-> -	locks_init_lock(file_lock);
-> +
->  	switch (lockt->lt_type) {
->  		case NFS4_READ_LT:
->  		case NFS4_READW_LT:
-> @@ -5432,7 +5430,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		status = nfserr_jukebox;
->  		goto fput;
->  	}
-> -	locks_init_lock(file_lock);
-> +
->  	file_lock->fl_type = F_UNLCK;
->  	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
->  	file_lock->fl_pid = current->tgid;
+It avoids adding an extra copy of fl_lmops that would only be useful
+to knfsd as a flag.
 
-Bruce, since this is an nfsd patch, do you mind picking this one up?
+> That said, we definitely will need to ensure that there are no harmful
+> effects from setting fl_lmops on a conflock container. I don't see any
+> right offhand, but it's probably reasonable to put something like that
+> in -next for a bit of soak time...
 
-Reviewed-by: Jeff Layton <jlayton@primarydata.com>
+The real problem here is that you are copying the lock, and then
+trying to dereference the copied pointer without ensuring that the
+thing the pointer is referencing still exists. Given that we're
+removing the global state mutex, then it is now perfectly possible for
+a competing knfsd thread to free the conflicting lock and the
+lockowner pointed to by fl->fl_owner before your thread hits
+nfs4_set_lock_denied.
+The check for fl_lmtype does nothing to fix that race (nor does FL_NFSD).
+
+Cheers
+  Trond
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
