@@ -1,89 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:51192 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752191AbaHUQHe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 12:07:34 -0400
-Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XKUtg-0000A4-V1
-	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 16:07:33 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 08/19] pnfs: add return_range method
-Date: Thu, 21 Aug 2014 11:09:24 -0500
-Message-Id: <1408637375-11343-9-git-send-email-hch@lst.de>
-In-Reply-To: <1408637375-11343-1-git-send-email-hch@lst.de>
-References: <pnfs block layout driver fixes V2>
- <1408637375-11343-1-git-send-email-hch@lst.de>
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:58935 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752923AbaHCRGO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:06:14 -0400
+Received: by mail-qg0-f51.google.com with SMTP id a108so7849708qge.24
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:06:13 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 6/6] nfsd: Reorder nfsd_cache_match to check more powerful discriminators first
+Date: Sun,  3 Aug 2014 13:06:04 -0400
+Message-Id: <1407085564-3227-7-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085564-3227-6-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-3-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-4-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-5-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-6-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a layout driver keeps per-inode state outside of the layout segments it
-needs to be notified of any layout returns or recalls on an inode, and not
-just about the freeing of layout segments.  Add a method to acomplish this,
-which will allow the block layout driver to handle the case of truncated
-and re-expanded files properly.
+We would normally expect the xid and the checksum to be the best
+discriminators. Check them before looking at the procedure number,
+etc.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/callback_proc.c |  6 +++++-
- fs/nfs/pnfs.c          | 10 ++++++++++
- fs/nfs/pnfs.h          |  3 +++
- 3 files changed, 18 insertions(+), 1 deletion(-)
+ fs/nfsd/nfscache.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index bf017b0..86541e0 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -179,8 +179,12 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 			&args->cbl_range)) {
- 		need_commit = true;
- 		rv = NFS4ERR_DELAY;
-+	} else {
-+		if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
-+			NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo,
-+				&args->cbl_range);
-+		}
- 	}
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 74603654b7f9..122f69185ef5 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -338,20 +338,24 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
+ static bool
+ nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
+ {
+-	/* Check RPC header info first */
+-	if (rqstp->rq_xid != rp->c_xid || rqstp->rq_proc != rp->c_proc ||
+-	    rqstp->rq_prot != rp->c_prot || rqstp->rq_vers != rp->c_vers ||
+-	    rqstp->rq_arg.len != rp->c_len ||
+-	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
+-	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
++	/* Check RPC XID first */
++	if (rqstp->rq_xid != rp->c_xid)
+ 		return false;
 -
- 	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&free_me_list);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index bce7f1b..e481d1c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -857,6 +857,16 @@ _pnfs_return_layout(struct inode *ino)
- 	empty = list_empty(&lo->plh_segs);
- 	pnfs_clear_layoutcommit(ino, &tmp_list);
- 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
-+
-+	if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
-+		struct pnfs_layout_range range = {
-+			.iomode		= IOMODE_ANY,
-+			.offset		= 0,
-+			.length		= NFS4_MAX_UINT64,
-+		};
-+		NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo, &range);
-+	}
-+
- 	/* Don't send a LAYOUTRETURN if list was initially empty */
- 	if (empty) {
- 		spin_unlock(&ino->i_lock);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 302b279..044c071 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -94,6 +94,9 @@ struct pnfs_layoutdriver_type {
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+ 	/* compare checksum of NFS data */
+ 	if (csum != rp->c_csum) {
+ 		++payload_misses;
+ 		return false;
+ 	}
  
-+	void (*return_range) (struct pnfs_layout_hdr *lo,
-+			      struct pnfs_layout_range *range);
++	/* Other discriminators */
++	if (rqstp->rq_proc != rp->c_proc ||
++	    rqstp->rq_prot != rp->c_prot ||
++	    rqstp->rq_vers != rp->c_vers ||
++	    rqstp->rq_arg.len != rp->c_len ||
++	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
++	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
++		return false;
 +
- 	/* test for nfs page cache coalescing */
- 	const struct nfs_pageio_ops *pg_read_ops;
- 	const struct nfs_pageio_ops *pg_write_ops;
+ 	return true;
+ }
+ 
 -- 
-1.9.1
+1.9.3
 
