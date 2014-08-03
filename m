@@ -1,83 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39996 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757335AbaHGLrU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Aug 2014 07:47:20 -0400
-Message-ID: <53E36741.2010907@RedHat.com>
-Date: Thu, 07 Aug 2014 07:47:13 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jurjen Bokma <j.bokma@rug.nl>, linux-nfs@vger.kernel.org
-Subject: Re: Patch: select non-conventional principal in gssd
-References: <53E242E9.1050106@rug.nl>
-In-Reply-To: <53E242E9.1050106@rug.nl>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:38910 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753101AbaHCRGK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:06:10 -0400
+Received: by mail-qg0-f53.google.com with SMTP id q107so8021734qgd.12
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:06:09 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/6] nfsd: Remove the cache_hash list
+Date: Sun,  3 Aug 2014 13:06:01 -0400
+Message-Id: <1407085564-3227-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085564-3227-3-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Now that the lru list is per-bucket, we don't need a second list for
+searches.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/cache.h    |  1 -
+ fs/nfsd/nfscache.c | 19 ++-----------------
+ 2 files changed, 2 insertions(+), 18 deletions(-)
 
-On 08/06/2014 10:59 AM, Jurjen Bokma wrote:
-> HiAll,
-> 
-> I have a patch to utils/gssd/krb5_util.c that enables kerberized NFS
-> mounts to succeed even if the principal is not <HOSTNAME>$.
-> 
-> It works by reading another principal name from the [appdefaults]
-> section of krb5.conf:
-> 
-> [appdefaults]
-> nfs = {
->     ad_principal_name = 129.125.39.115$
-> }
-> 
-> Patch is attached. Would you please incorporate it in the source if you
-> find it useful?
-> Sorry if I'm asking in the wrong place.
-A couple things.... 
-
-One please inline your patche in your email, not attach them
-as suggested in https://www.kernel.org/doc/Documentation/SubmittingPatches
-Inlining makes it easier to review... 
-
-
---- utils/gssd/krb5_util.c.orig	2014-08-06 10:54:18.806414170 +0200
-+++ utils/gssd/krb5_util.c	2014-08-06 11:01:21.016320365 +0200
-@@ -801,7 +801,8 @@
- 	char *k5err = NULL;
- 	int tried_all = 0, tried_default = 0;
- 	krb5_principal princ;
--
-+	const char *notsetstr = "not set";
-+	char *adhostoverride;
+diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+index b582f9ab6b2a..dd96a3830004 100644
+--- a/fs/nfsd/cache.h
++++ b/fs/nfsd/cache.h
+@@ -18,7 +18,6 @@
+  * is much larger than a sockaddr_in6.
+  */
+ struct svc_cacherep {
+-	struct hlist_node	c_hash;
+ 	struct list_head	c_lru;
  
- 	/* Get full target hostname */
- 	retval = get_full_hostname(tgtname, targethostname,
-@@ -818,11 +819,18 @@
+ 	unsigned char		c_state,	/* unused, inprog, done */
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index a387d443641f..8abec475f80f 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -28,7 +28,6 @@
+ #define TARGET_BUCKET_SIZE	64
+ 
+ struct nfsd_drc_bucket {
+-	struct hlist_head cache_hash;
+ 	struct list_head lru_head;
+ };
+ 
+@@ -137,7 +136,6 @@ nfsd_reply_cache_alloc(void)
+ 		rp->c_state = RC_UNUSED;
+ 		rp->c_type = RC_NOCACHE;
+ 		INIT_LIST_HEAD(&rp->c_lru);
+-		INIT_HLIST_NODE(&rp->c_hash);
  	}
+ 	return rp;
+ }
+@@ -149,8 +147,6 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+ 		drc_mem_usage -= rp->c_replvec.iov_len;
+ 		kfree(rp->c_replvec.iov_base);
+ 	}
+-	if (!hlist_unhashed(&rp->c_hash))
+-		hlist_del(&rp->c_hash);
+ 	list_del(&rp->c_lru);
+ 	--num_drc_entries;
+ 	drc_mem_usage -= sizeof(*rp);
+@@ -233,16 +229,6 @@ lru_put_end(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
+ 	schedule_delayed_work(&cache_cleaner, RC_EXPIRE);
+ }
  
- 	/* Compute the active directory machine name HOST$ */
--	strcpy(myhostad, myhostname);
--	for (i = 0; myhostad[i] != 0; ++i)
--		myhostad[i] = toupper(myhostad[i]);
--	myhostad[i] = '$';
--	myhostad[i+1] = 0;
-+	krb5_appdefault_string(context, "nfs", NULL, "ad_principal_name", notsetstr, &adhostoverride);
-Secondly, where does them memory for adhostoverride get freed??
-
-steved.
-
-+	if (strcmp(adhostoverride, notsetstr) != 0) {
-+	        printerr (0, "AD host string overridden with \"%s\" from appdefaults\n", adhostoverride);
-+	        /* No overflow: Windows cannot handle strings longer than 19 chars */
-+	        strcpy(myhostad, adhostoverride);
-+	} else {
-+	        strcpy(myhostad, myhostname);
-+	        for (i = 0; myhostad[i] != 0; ++i)
-+	          myhostad[i] = toupper(myhostad[i]);
-+	        myhostad[i] = '$';
-+	        myhostad[i+1] = 0;
-+	}
+-/*
+- * Move a cache entry from one hash list to another
+- */
+-static void
+-hash_refile(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
+-{
+-	hlist_del(&rp->c_hash);
+-	hlist_add_head(&rp->c_hash, &b->cache_hash);
+-}
+-
+ static long
+ prune_bucket(struct nfsd_drc_bucket *b)
+ {
+@@ -386,10 +372,10 @@ nfsd_cache_search(struct nfsd_drc_bucket *b, struct svc_rqst *rqstp,
+ 		__wsum csum)
+ {
+ 	struct svc_cacherep	*rp, *ret = NULL;
+-	struct hlist_head 	*rh = &b->cache_hash;
++	struct list_head 	*rh = &b->lru_head;
+ 	unsigned int		entries = 0;
  
- 	retval = get_full_hostname(myhostname, myhostname, sizeof(myhostname));
- 	if (retval)
+-	hlist_for_each_entry(rp, rh, c_hash) {
++	list_for_each_entry(rp, rh, c_lru) {
+ 		++entries;
+ 		if (nfsd_cache_match(rqstp, csum, rp)) {
+ 			ret = rp;
+@@ -479,7 +465,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	rp->c_len = rqstp->rq_arg.len;
+ 	rp->c_csum = csum;
+ 
+-	hash_refile(b, rp);
+ 	lru_put_end(b, rp);
+ 
+ 	/* release any buffer */
+-- 
+1.9.3
+
