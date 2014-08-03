@@ -1,81 +1,194 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:57748 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751808AbaHSPTZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 11:19:25 -0400
-Message-ID: <53F36AE2.7070507@gmail.com>
-Date: Tue, 19 Aug 2014 23:18:58 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 2/6 v4] locks: New ops in file_lock_operations for get/put
- owner
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com>
-In-Reply-To: <53ED5093.6000308@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:52857 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753109AbaHCRGN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:06:13 -0400
+Received: by mail-qg0-f44.google.com with SMTP id e89so8125633qgf.3
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:06:12 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/6] nfsd: split DRC global spinlock into per-bucket locks
+Date: Sun,  3 Aug 2014 13:06:03 -0400
+Message-Id: <1407085564-3227-6-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085564-3227-5-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-3-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-4-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-5-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSD or other lockmanager may increase the owner's reference,
-so adds two new options for copying and releasing owner.
-
-v4: rename lm_copy_owner/lm_release_owner to lm_get_owner/lm_put_owner
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/locks.c         | 12 ++++++++++--
- include/linux/fs.h |  2 ++
- 2 files changed, 12 insertions(+), 2 deletions(-)
+ fs/nfsd/nfscache.c | 43 ++++++++++++++++++++-----------------------
+ 1 file changed, 20 insertions(+), 23 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index cb66fb0..08342e0 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -230,8 +230,12 @@ void locks_release_private(struct file_lock *fl)
- 			fl->fl_ops->fl_release_private(fl);
- 		fl->fl_ops = NULL;
- 	}
--	fl->fl_lmops = NULL;
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index dc909091349b..74603654b7f9 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -29,6 +29,7 @@
  
-+	if (fl->fl_lmops) {
-+		if (fl->fl_lmops->lm_put_owner)
-+			fl->fl_lmops->lm_put_owner(fl);
-+		fl->fl_lmops = NULL;
-+	}
- }
- EXPORT_SYMBOL_GPL(locks_release_private);
+ struct nfsd_drc_bucket {
+ 	struct list_head lru_head;
++	spinlock_t cache_lock;
+ };
  
-@@ -274,8 +278,12 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
- 			fl->fl_ops->fl_copy_lock(new, fl);
- 		new->fl_ops = fl->fl_ops;
- 	}
--	if (fl->fl_lmops)
-+
-+	if (fl->fl_lmops) {
-+		if (fl->fl_lmops->lm_get_owner)
-+			fl->fl_lmops->lm_get_owner(new, fl);
- 		new->fl_lmops = fl->fl_lmops;
-+	}
- }
+ static struct nfsd_drc_bucket	*drc_hashtbl;
+@@ -79,7 +80,6 @@ static struct shrinker nfsd_reply_cache_shrinker = {
+  * A cache entry is "single use" if c_state == RC_INPROG
+  * Otherwise, it when accessing _prev or _next, the lock must be held.
+  */
+-static DEFINE_SPINLOCK(cache_lock);
+ static DECLARE_DELAYED_WORK(cache_cleaner, cache_cleaner_func);
  
  /*
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 908af4f..6829340 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -868,6 +868,8 @@ struct file_lock_operations {
- struct lock_manager_operations {
- 	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
- 	unsigned long (*lm_owner_key)(struct file_lock *);
-+	void (*lm_get_owner)(struct file_lock *, struct file_lock *);
-+	void (*lm_put_owner)(struct file_lock *);
- 	void (*lm_notify)(struct file_lock *);	/* unblock callback */
- 	int (*lm_grant)(struct file_lock *, int);
- 	void (*lm_break)(struct file_lock *);
+@@ -154,11 +154,11 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+ }
+ 
+ static void
+-nfsd_reply_cache_free(struct svc_cacherep *rp)
++nfsd_reply_cache_free(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
+ {
+-	spin_lock(&cache_lock);
++	spin_lock(&b->cache_lock);
+ 	nfsd_reply_cache_free_locked(rp);
+-	spin_unlock(&cache_lock);
++	spin_unlock(&b->cache_lock);
+ }
+ 
+ int nfsd_reply_cache_init(void)
+@@ -180,8 +180,10 @@ int nfsd_reply_cache_init(void)
+ 	drc_hashtbl = kcalloc(hashsize, sizeof(*drc_hashtbl), GFP_KERNEL);
+ 	if (!drc_hashtbl)
+ 		goto out_nomem;
+-	for (i = 0; i < hashsize; i++)
++	for (i = 0; i < hashsize; i++) {
+ 		INIT_LIST_HEAD(&drc_hashtbl[i].lru_head);
++		spin_lock_init(&drc_hashtbl[i].cache_lock);
++	}
+ 	drc_hashsize = hashsize;
+ 
+ 	return 0;
+@@ -265,9 +267,13 @@ prune_cache_entries(void)
+ 	for (i = 0; i < drc_hashsize; i++) {
+ 		struct nfsd_drc_bucket *b = &drc_hashtbl[i];
+ 
++		if (list_empty(&b->lru_head))
++			continue;
++		spin_lock(&b->cache_lock);
+ 		freed += prune_bucket(b);
+ 		if (!list_empty(&b->lru_head))
+ 			cancel = false;
++		spin_unlock(&b->cache_lock);
+ 	}
+ 
+ 	/*
+@@ -282,9 +288,7 @@ prune_cache_entries(void)
+ static void
+ cache_cleaner_func(struct work_struct *unused)
+ {
+-	spin_lock(&cache_lock);
+ 	prune_cache_entries();
+-	spin_unlock(&cache_lock);
+ }
+ 
+ static unsigned long
+@@ -296,12 +300,7 @@ nfsd_reply_cache_count(struct shrinker *shrink, struct shrink_control *sc)
+ static unsigned long
+ nfsd_reply_cache_scan(struct shrinker *shrink, struct shrink_control *sc)
+ {
+-	unsigned long freed;
+-
+-	spin_lock(&cache_lock);
+-	freed = prune_cache_entries();
+-	spin_unlock(&cache_lock);
+-	return freed;
++	return prune_cache_entries();
+ }
+ /*
+  * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
+@@ -426,14 +425,14 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	 * preallocate an entry.
+ 	 */
+ 	rp = nfsd_reply_cache_alloc();
+-	spin_lock(&cache_lock);
++	spin_lock(&b->cache_lock);
+ 	if (likely(rp)) {
+ 		atomic_inc(&num_drc_entries);
+ 		drc_mem_usage += sizeof(*rp);
+ 	}
+ 
+ 	/* go ahead and prune the cache */
+-	prune_cache_entries();
++	prune_bucket(b);
+ 
+ 	found = nfsd_cache_search(b, rqstp, csum);
+ 	if (found) {
+@@ -470,7 +469,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	}
+ 	rp->c_type = RC_NOCACHE;
+  out:
+-	spin_unlock(&cache_lock);
++	spin_unlock(&b->cache_lock);
+ 	return rtn;
+ 
+ found_entry:
+@@ -548,7 +547,7 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
+ 
+ 	/* Don't cache excessive amounts of data and XDR failures */
+ 	if (!statp || len > (256 >> 2)) {
+-		nfsd_reply_cache_free(rp);
++		nfsd_reply_cache_free(b, rp);
+ 		return;
+ 	}
+ 
+@@ -563,23 +562,23 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
+ 		bufsize = len << 2;
+ 		cachv->iov_base = kmalloc(bufsize, GFP_KERNEL);
+ 		if (!cachv->iov_base) {
+-			nfsd_reply_cache_free(rp);
++			nfsd_reply_cache_free(b, rp);
+ 			return;
+ 		}
+ 		cachv->iov_len = bufsize;
+ 		memcpy(cachv->iov_base, statp, bufsize);
+ 		break;
+ 	case RC_NOCACHE:
+-		nfsd_reply_cache_free(rp);
++		nfsd_reply_cache_free(b, rp);
+ 		return;
+ 	}
+-	spin_lock(&cache_lock);
++	spin_lock(&b->cache_lock);
+ 	drc_mem_usage += bufsize;
+ 	lru_put_end(b, rp);
+ 	rp->c_secure = rqstp->rq_secure;
+ 	rp->c_type = cachetype;
+ 	rp->c_state = RC_DONE;
+-	spin_unlock(&cache_lock);
++	spin_unlock(&b->cache_lock);
+ 	return;
+ }
+ 
+@@ -610,7 +609,6 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
+  */
+ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
+ {
+-	spin_lock(&cache_lock);
+ 	seq_printf(m, "max entries:           %u\n", max_drc_entries);
+ 	seq_printf(m, "num entries:           %u\n",
+ 			atomic_read(&num_drc_entries));
+@@ -622,7 +620,6 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
+ 	seq_printf(m, "payload misses:        %u\n", payload_misses);
+ 	seq_printf(m, "longest chain len:     %u\n", longest_chain);
+ 	seq_printf(m, "cachesize at longest:  %u\n", longest_chain_cachesize);
+-	spin_unlock(&cache_lock);
+ 	return 0;
+ }
+ 
 -- 
 1.9.3
 
