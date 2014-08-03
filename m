@@ -1,34 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:38437 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750922AbaHaAcJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Aug 2014 20:32:09 -0400
-Received: by mail-qg0-f45.google.com with SMTP id e89so3813842qgf.18
-        for <linux-nfs@vger.kernel.org>; Sat, 30 Aug 2014 17:32:08 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140830232755.GG7996@ZenIV.linux.org.uk>
-References: <CAHQdGtT4kbPqQvD_fu7c_5_CqK8FCpA5mJsVdh=KxoE9_vXRzw@mail.gmail.com>
- <20140829205817.GB7996@ZenIV.linux.org.uk> <CAHQdGtRBqmsfeVVysTnTEELHuwiPwvsyTHtoRAsfSS0aSyCbfQ@mail.gmail.com>
- <20140829230147.GD7996@ZenIV.linux.org.uk> <CAKVebiWBU3du650yeTMfaFuLr=WLUBc2RukFGyBF6Qgxd6zA8Q@mail.gmail.com>
- <20140830173638.GE7996@ZenIV.linux.org.uk> <20140830232755.GG7996@ZenIV.linux.org.uk>
-From: Peng Tao <tao.peng@primarydata.com>
-Date: Sun, 31 Aug 2014 08:31:47 +0800
-Message-ID: <CAKVebiV8erTbK6ZA1g2X+xsKRBG2n61XBoqc04NvzSGTZRhTgw@mail.gmail.com>
-Subject: Re: VFS regression: commit aba809cf0944 breaks MNT_SHRINKABLE
- automounted partitions
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qa0-f43.google.com ([209.85.216.43]:50498 "EHLO
+	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751822AbaHCRDU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:20 -0400
+Received: by mail-qa0-f43.google.com with SMTP id w8so5995412qac.30
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:19 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/11] SUNRPC: Do not override wspace tests in svc_handle_xprt
+Date: Sun,  3 Aug 2014 13:03:06 -0400
+Message-Id: <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 31, 2014 at 7:27 AM, Al Viro <viro@zeniv.linux.org.uk> wrote:
->         Could you check if vfs.git#for-linus fixes that crap?
-The related commits are the top two of vfs.git#for-linus, right? I
-cherry-picked them to 3.14.15 and they fixed the bug instantly. Thank
-you for the quick fix!
+We already determined that there was enough wspace when we
+called svc_xprt_enqueue.
 
-Cheers,
-Tao
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/svc_xprt.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 32647b2a6a34..b731077b6a30 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -744,7 +744,7 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+ 			svc_add_new_temp_xprt(serv, newxpt);
+ 		else
+ 			module_put(xprt->xpt_class->xcl_owner);
+-	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
++	} else {
+ 		/* XPT_DATA|XPT_DEFERRED case: */
+ 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
+ 			rqstp, rqstp->rq_pool->sp_id, xprt,
+-- 
+1.9.3
+
