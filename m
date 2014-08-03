@@ -1,105 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f48.google.com ([209.85.213.48]:58841 "EHLO
-	mail-yh0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754115AbaHZUPQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 16:15:16 -0400
-Received: by mail-yh0-f48.google.com with SMTP id i57so12346061yha.7
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 13:15:15 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <53FCE9DF.1050407@Netapp.com>
-References: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>
-	<53FCE9DF.1050407@Netapp.com>
-Date: Tue, 26 Aug 2014 16:15:15 -0400
-Message-ID: <CAHQdGtQNOJveS3wK3nxvv43jXBHC_0Z3Bo+TSVPmHz9qRtZNUw@mail.gmail.com>
-Subject: Re: [PATCH v2 1/2] NFSv4: Fix problems with close in the presence of
- a delegation
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:33039 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752622AbaHCRD0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:26 -0400
+Received: by mail-qg0-f44.google.com with SMTP id e89so7931332qgf.17
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:26 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        James Drews <drews@engr.wisc.edu>, jrs@world.std.com
-Content-Type: text/plain; charset=UTF-8
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 09/11] SUNRPC: Fix broken kthread_should_stop test in svc_get_next_xprt
+Date: Sun,  3 Aug 2014 13:03:11 -0400
+Message-Id: <1407085393-3175-10-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085393-3175-9-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-6-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-7-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-8-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-9-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 26, 2014 at 4:11 PM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> On 08/26/2014 02:30 PM, Trond Myklebust wrote:
->> In the presence of delegations, we can no longer assume that the
->> state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
->> stateid share mode, and so we need to need to calculate the initial
-> Nit:  Remove the duplicate "need to" (above).
->
->> value for calldata->arg.fmode using the state->flags.
->>
->> Reported-by: James Drews <drews@engr.wisc.edu>
->> Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
->> Cc: stable@vger.kernel.org # 2.6.33+
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->>  fs/nfs/nfs4proc.c | 19 +++++++++++++------
->>  1 file changed, 13 insertions(+), 6 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 75ae8d22f067..7d67d5b332d4 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -2601,6 +2601,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
->>       struct nfs4_closedata *calldata = data;
->>       struct nfs4_state *state = calldata->state;
->>       struct inode *inode = calldata->inode;
->> +     bool is_rdonly, is_wronly, is_rdwr;
->>       int call_close = 0;
->>
->>       dprintk("%s: begin!\n", __func__);
->> @@ -2608,24 +2609,30 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
->>               goto out_wait;
->>
->>       task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_DOWNGRADE];
->> -     calldata->arg.fmode = FMODE_READ|FMODE_WRITE;
->>       spin_lock(&state->owner->so_lock);
->> +     is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
->> +     is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
->> +     is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
->> +     spin_unlock(&state->owner->so_lock);
->> +     /* Calculate the current open share mode */
->> +     calldata->arg.fmode = 0;
->> +     if (is_rdonly || is_rdwr)
->> +             calldata->arg.fmode |= FMODE_READ;
->> +     if (is_wronly || is_rdwr)
->> +             calldata->arg.fmode |= FMODE_WRITE;
->>       /* Calculate the change in open mode */
->>       if (state->n_rdwr == 0) {
-> Do we need the owner lock for reading state->n_rdwr, n_rdonly, and n_wronly?
+We should definitely not be exiting svc_get_next_xprt() with the
+thread enqueued. Fix this by ensuring that we fall through to
+the dequeue.
+Also move the test itself outside the spin lock protected section.
 
-Duh, yes, you're right. I'll revert that part of the change.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/svc_xprt.c | 31 ++++++++++---------------------
+ 1 file changed, 10 insertions(+), 21 deletions(-)
 
-> Anna
->>               if (state->n_rdonly == 0) {
->> -                     call_close |= test_bit(NFS_O_RDONLY_STATE, &state->flags);
->> -                     call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
->> +                     call_close |= is_rdonly || is_rdwr;
->>                       calldata->arg.fmode &= ~FMODE_READ;
->>               }
->>               if (state->n_wronly == 0) {
->> -                     call_close |= test_bit(NFS_O_WRONLY_STATE, &state->flags);
->> -                     call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
->> +                     call_close |= is_wronly || is_rdwr;
->>                       calldata->arg.fmode &= ~FMODE_WRITE;
->>               }
->>       }
->>       if (!nfs4_valid_open_stateid(state))
->>               call_close = 0;
->> -     spin_unlock(&state->owner->so_lock);
->>
->>       if (!call_close) {
->>               /* Note: exit _without_ calling nfs4_close_done */
->
-
-
-
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 438e91c12851..b334cf71be3a 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -632,7 +632,7 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+ {
+ 	struct svc_xprt *xprt;
+ 	struct svc_pool		*pool = rqstp->rq_pool;
+-	long			time_left;
++	long			time_left = 0;
+ 
+ 	/* Normally we will wait up to 5 seconds for any required
+ 	 * cache information to be provided.
+@@ -665,30 +665,19 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+ 
+ 		/* No data pending. Go to sleep */
+ 		svc_thread_enqueue(pool, rqstp);
+-
+-		/*
+-		 * checking kthread_should_stop() here allows us to avoid
+-		 * locking and signalling when stopping kthreads that call
+-		 * svc_recv. If the thread has already been woken up, then
+-		 * we can exit here without sleeping. If not, then it
+-		 * it'll be woken up quickly during the schedule_timeout
+-		 */
+-		if (kthread_should_stop()) {
+-			set_current_state(TASK_RUNNING);
+-			xprt = ERR_PTR(-EINTR);
+-			goto out;
+-		}
+-
+ 		spin_unlock_bh(&pool->sp_lock);
+ 
+-		time_left = schedule_timeout(timeout);
+-		__set_current_state(TASK_RUNNING);
++		if (!(signalled() || kthread_should_stop())) {
++			time_left = schedule_timeout(timeout);
++			__set_current_state(TASK_RUNNING);
+ 
+-		try_to_freeze();
++			try_to_freeze();
+ 
+-		xprt = rqstp->rq_xprt;
+-		if (xprt != NULL)
+-			return xprt;
++			xprt = rqstp->rq_xprt;
++			if (xprt != NULL)
++				return xprt;
++		} else
++			__set_current_state(TASK_RUNNING);
+ 
+ 		spin_lock_bh(&pool->sp_lock);
+ 		if (!time_left)
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
