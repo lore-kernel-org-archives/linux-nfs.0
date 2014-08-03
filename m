@@ -1,95 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:48680 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755617AbaHZGtk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 02:49:40 -0400
-Message-ID: <53FC2DDD.9050705@oracle.com>
-Date: Tue, 26 Aug 2014 14:49:01 +0800
-From: Junxiao Bi <junxiao.bi@oracle.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Mel Gorman <mgorman@suse.com>
-Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-References: <53F6F772.6020708@oracle.com>	<1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>	<20140825164852.50723141@notabene.brown>	<53FC1E93.2060800@oracle.com> <20140826162138.5df2f8a3@notabene.brown>
-In-Reply-To: <20140826162138.5df2f8a3@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:34329 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751822AbaHCRDP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:15 -0400
+Received: by mail-qa0-f44.google.com with SMTP id f12so6068584qad.3
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:14 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 00/11] SUNRPC server scalability improvements
+Date: Sun,  3 Aug 2014 13:03:02 -0400
+Message-Id: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/26/2014 02:21 PM, NeilBrown wrote:
-> On Tue, 26 Aug 2014 13:43:47 +0800 Junxiao Bi <junxiao.bi@oracle.com> wrote:
-> 
->> On 08/25/2014 02:48 PM, NeilBrown wrote:
->>> On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>>
->>>> Junxiao Bi reports seeing the following deadlock:
->>>>
->>>> @ crash> bt 1539
->>>> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
->>>> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
->>>> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
->>>> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
->>>> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
->>>> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
->>>> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
->>>> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
->>>> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
->>>> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
->>>> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
->>>> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
->>>> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
->>>
->>> This stack trace (from 2.6.32) cannot happen in mainline, though it took me a
->>> while to remember/discover exactly why.
->>>
->>> try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
->>> set to NULL.
->>> shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
->>> it is NULL, wait_on_page_writeback is *not* called.
->>>
->>> So we can only hit this deadlock if mem-cgroup limits are imposed on a
->>> process which is using NFS - which is quite possible but probably not common.
->>>
->>> The fact that a dead-lock can happen only when memcg limits are imposed seems
->>> very fragile.  People aren't going to test that case much so there could well
->>> be other deadlock possibilities lurking.
->>>
->>> Mel: might there be some other way we could get out of this deadlock?
->>> Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
->>> wait or something?  Any other wait out of this deadlock other than setting
->>> PF_MEMALLOC_NOIO everywhere?
->>
->> Not only the wait_on_page_writeback() cause the deadlock but also the
->> next pageout()-> (mapping->a_ops->writepage), Trond's second patch fix
->> this. So fix the wait_on_page_writeback is not enough to fix deadlock.
-> 
-> Shortly before the only place that pageout() is called there is this code:
-> 
-> 			if (page_is_file_cache(page) &&
-> 					(!current_is_kswapd() ||
-> 					 !zone_is_reclaim_dirty(zone))) {
->                                 .....
-> 				goto keep_locked;
-> 
-> 
-> So pageout() only gets called by kswapd() .... or for swap. swap-over-NFS is
-> already very cautious about memory allocations, and uses nfs_direct_IO, not
-> nfs_writepage.
-> 
-> So nfs_writepage will never get called during direct reclaim.  There is no
-> memory-allocate deadlock risk there.
-Yes, thanks for explaining this.
-But is it possible rpciod blocked somewhere by memory allocation using
-GFP_KERNEL and kswapd is trying to pageout nfs dirty pages and blocked
-by rpciod?
+Hi Bruce,
 
-Thanks,
-Junxiao.
+When testing knfsd on 10GigE and 40GigE networks, we've been hitting a few
+scalability issues that are seriously affecting performance. The main issue
+was scalability of the pool->sp_lock, but we also hit a couple of things
+like the use of ioctls in the receive fast path, as well as some issues
+with heuristic tests being performed twice in the same path.
 
-> 
-> NeilBrown
-> 
+This is not urgent, and can definitely be delayed until the 3.18 merge
+window, however since the performance gains were significant over NFSv3,
+I thought I'd share now.
+
+Cheers
+  Trond
+
+Trond Myklebust (11):
+  SUNRPC: Reduce contention in svc_xprt_enqueue()
+  SUNRPC: svc_tcp_write_space: don't clear SOCK_NOSPACE prematurely
+  SUNRPC: Allow svc_reserve() to notify TCP socket that space has been
+    freed
+  SUNRPC: Do not override wspace tests in svc_handle_xprt
+  lockd: Ensure that lockd_start_svc sets the server rq_task...
+  nfs: Ensure that nfs_callback_start_svc sets the server rq_task...
+  SUNRPC: Do not grab pool->sp_lock unnecessarily in svc_get_next_xprt
+  SUNRPC: get rid of the request wait queue
+  SUNRPC: Fix broken kthread_should_stop test in svc_get_next_xprt
+  SUNRPC: More optimisations of svc_xprt_enqueue()
+  SUNRPC: Optimise away svc_recv_available
+
+ fs/lockd/svc.c                  |   2 +
+ fs/nfs/callback.c               |   1 +
+ include/linux/sunrpc/svc.h      |   1 -
+ include/linux/sunrpc/svc_xprt.h |   1 +
+ net/sunrpc/svc.c                |   2 -
+ net/sunrpc/svc_xprt.c           | 112 ++++++++++++++++++++--------------------
+ net/sunrpc/svcsock.c            |  71 ++++++++++++-------------
+ 7 files changed, 96 insertions(+), 94 deletions(-)
+
+-- 
+1.9.3
 
