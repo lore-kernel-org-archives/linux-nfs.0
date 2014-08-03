@@ -1,77 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:51437 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752498AbaHNWty (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 18:49:54 -0400
-From: Cong Wang <xiyou.wangcong@gmail.com>
-To: linux-kernel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Cong Wang <xiyou.wangcong@gmail.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: [PATCH] nfs: fix kernel warning when removing proc entry
-Date: Thu, 14 Aug 2014 15:49:39 -0700
-Message-Id: <1408056579-25255-1-git-send-email-xiyou.wangcong@gmail.com>
+Received: from mail-qa0-f47.google.com ([209.85.216.47]:42628 "EHLO
+	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752050AbaHCRDT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:19 -0400
+Received: by mail-qa0-f47.google.com with SMTP id i13so5944323qae.6
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:18 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 03/11] SUNRPC: Allow svc_reserve() to notify TCP socket that space has been freed
+Date: Sun,  3 Aug 2014 13:03:05 -0400
+Message-Id: <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I saw the following kernel warning:
-
-[ 1852.321222] ------------[ cut here ]------------
-[ 1852.326527] WARNING: CPU: 0 PID: 118 at fs/proc/generic.c:521 remove_proc_entry+0x154/0x16b()
-[ 1852.335630] remove_proc_entry: removing non-empty directory 'fs/nfsfs', leaking at least 'volumes'
-[ 1852.344084] CPU: 0 PID: 118 Comm: kworker/u8:2 Not tainted 3.16.0+ #540
-[ 1852.350036] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-[ 1852.354992] Workqueue: netns cleanup_net
-[ 1852.358701]  0000000000000000 ffff880116f2fbd0 ffffffff819c03e9 ffff880116f2fc18
-[ 1852.366474]  ffff880116f2fc08 ffffffff810744ee ffffffff811e0e6e ffff8800d4e96238
-[ 1852.373507]  ffffffff81dbe665 ffff8800d46a5948 0000000000000005 ffff880116f2fc68
-[ 1852.380224] Call Trace:
-[ 1852.381976]  [<ffffffff819c03e9>] dump_stack+0x4d/0x66
-[ 1852.385495]  [<ffffffff810744ee>] warn_slowpath_common+0x7a/0x93
-[ 1852.389869]  [<ffffffff811e0e6e>] ? remove_proc_entry+0x154/0x16b
-[ 1852.393987]  [<ffffffff8107457b>] warn_slowpath_fmt+0x4c/0x4e
-[ 1852.397999]  [<ffffffff811e0e6e>] remove_proc_entry+0x154/0x16b
-[ 1852.402034]  [<ffffffff8129c73d>] nfs_fs_proc_net_exit+0x53/0x56
-[ 1852.406136]  [<ffffffff812a103b>] nfs_net_exit+0x12/0x1d
-[ 1852.409774]  [<ffffffff81785bc9>] ops_exit_list+0x44/0x55
-[ 1852.413529]  [<ffffffff81786389>] cleanup_net+0xee/0x182
-[ 1852.417198]  [<ffffffff81088c9e>] process_one_work+0x209/0x40d
-[ 1852.502320]  [<ffffffff81088bf7>] ? process_one_work+0x162/0x40d
-[ 1852.587629]  [<ffffffff810890c1>] worker_thread+0x1f0/0x2c7
-[ 1852.673291]  [<ffffffff81088ed1>] ? process_scheduled_works+0x2f/0x2f
-[ 1852.759470]  [<ffffffff8108e079>] kthread+0xc9/0xd1
-[ 1852.843099]  [<ffffffff8109427f>] ? finish_task_switch+0x3a/0xce
-[ 1852.926518]  [<ffffffff8108dfb0>] ? __kthread_parkme+0x61/0x61
-[ 1853.008565]  [<ffffffff819cbeac>] ret_from_fork+0x7c/0xb0
-[ 1853.076477]  [<ffffffff8108dfb0>] ? __kthread_parkme+0x61/0x61
-[ 1853.140653] ---[ end trace 69c4c6617f78e32d ]---
-
-It looks wrong that we add "/proc/net/nfsfs" in nfs_fs_proc_net_init()
-while remove "/proc/fs/nfsfs" in nfs_fs_proc_net_exit().
-
-Fixes: commit 65b38851a17 (NFS: Fix /proc/fs/nfsfs/servers and /proc/fs/nfsfs/volumes)
-Cc: Eric W. Biederman <ebiederm@xmission.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: Cong Wang <xiyou.wangcong@gmail.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/client.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ include/linux/sunrpc/svc_xprt.h | 1 +
+ net/sunrpc/svc_xprt.c           | 2 ++
+ net/sunrpc/svcsock.c            | 9 +++++++++
+ 3 files changed, 12 insertions(+)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 1c5ff6d..1c57202 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1429,7 +1429,7 @@ void nfs_fs_proc_net_exit(struct net *net)
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index 7235040a19b2..8f241ac6934b 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -25,6 +25,7 @@ struct svc_xprt_ops {
+ 	void		(*xpo_detach)(struct svc_xprt *);
+ 	void		(*xpo_free)(struct svc_xprt *);
+ 	int		(*xpo_secure_port)(struct svc_rqst *);
++	void		(*xpo_adjust_wspace)(struct svc_xprt *);
+ };
  
- 	remove_proc_entry("volumes", nn->proc_nfsfs);
- 	remove_proc_entry("servers", nn->proc_nfsfs);
--	remove_proc_entry("fs/nfsfs", NULL);
-+	remove_proc_entry("nfsfs", net->proc_net);
+ struct svc_xprt_class {
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 54a761fa6351..32647b2a6a34 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -448,6 +448,8 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
+ 		atomic_sub((rqstp->rq_reserved - space), &xprt->xpt_reserved);
+ 		rqstp->rq_reserved = space;
+ 
++		if (xprt->xpt_ops->xpo_adjust_wspace)
++			xprt->xpt_ops->xpo_adjust_wspace(xprt);
+ 		svc_xprt_enqueue(xprt);
+ 	}
+ }
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 7322ea1164fd..72597d7fe60a 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -475,6 +475,14 @@ static void svc_tcp_write_space(struct sock *sk)
+ 	svc_write_space(sk);
  }
  
++static void svc_tcp_adjust_wspace(struct svc_xprt *xprt)
++{
++	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
++
++	if (svc_tcp_has_wspace(xprt))
++		clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
++}
++
  /*
+  * See net/ipv6/ip_sockglue.c : ip_cmsg_recv_pktinfo
+  */
+@@ -1288,6 +1296,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+ 	.xpo_has_wspace = svc_tcp_has_wspace,
+ 	.xpo_accept = svc_tcp_accept,
+ 	.xpo_secure_port = svc_sock_secure_port,
++	.xpo_adjust_wspace = svc_tcp_adjust_wspace,
+ };
+ 
+ static struct svc_xprt_class svc_tcp_class = {
 -- 
-1.8.3.1
+1.9.3
 
