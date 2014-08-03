@@ -1,63 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:62556 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751576AbaHSSuA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:50:00 -0400
-Received: by mail-qc0-f179.google.com with SMTP id m20so6575721qcx.24
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:49:56 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:40028 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753096AbaHCRGL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:06:11 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so7743257qge.25
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:06:11 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/7] nfs-utils: support for lifting grace period early
-Date: Tue, 19 Aug 2014 14:49:42 -0400
-Message-Id: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH 4/6] nfsd: convert num_drc_entries to an atomic_t
+Date: Sun,  3 Aug 2014 13:06:02 -0400
+Message-Id: <1407085564-3227-5-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085564-3227-4-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-3-git-send-email-trond.myklebust@primarydata.com>
+ <1407085564-3227-4-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset adds some support to sm-notify and nfsdcltrack for lifting
-the grace periods early. Allowing this to actually work depends on the
-companion kernel patchset, but the approach I've taken here should deal
-properly with userland/kernel mismatches.
+...so we can remove the spinlocking around it.
 
-There are two main pieces:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfscache.c | 28 ++++++++++++----------------
+ 1 file changed, 12 insertions(+), 16 deletions(-)
 
-sm-notify: in the event that sm-notify isn't sending any NOTIFY
-requests, we don't expect to see any reclaims from clients. In that
-case, we should be able to safely lift the lockd grace period early.
-The first patch in the series implements this (though we'll probably
-need a bit of selinux work to get that working in Fedora under enforcing
-mode).
-
-nfsdcltrack: if there are no v4.0 clients and all v4.1+ clients have
-issued a RECLAIM_COMPLETE, then we can go ahead and end the nfsd grace
-period. The remainder of the patchset adds the support for this. This
-requires revving the DB schema for it, and making use of the environment
-variables that are passed to the upcall by the kernel.
-
-With an updated kernel and nfs-utils, I typically see the grace period
-being lifted just a few seconds after it starts. It may take a little
-longer with more clients, but this is a vast improvement over having
-to wait 90s after each reboot to get meaningful work done.
-
-Assuming that the kernel parts are acceptable to Bruce et. al., then I
-think we'll want this merged around the same time.
-
-Jeff Layton (7):
-  sm-notify: inform the kernel if there were no hosts to notify
-  nfsdcltrack: update comments in sqlite.c
-  nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
-  nfsdcltrack: overhaul database initializtion
-  nfsdcltrack: update schema to v2
-  nfsdcltrack: grab the client minorversion from the env var if it's
-    present
-  nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
-
- utils/nfsdcltrack/nfsdcltrack.c | 106 +++++++++++-
- utils/nfsdcltrack/sqlite.c      | 375 ++++++++++++++++++++++++++++++----------
- utils/nfsdcltrack/sqlite.h      |   5 +-
- utils/statd/sm-notify.c         |  25 +++
- 4 files changed, 413 insertions(+), 98 deletions(-)
-
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 8abec475f80f..dc909091349b 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -47,7 +47,7 @@ static unsigned int		drc_hashsize;
+  */
+ 
+ /* total number of entries */
+-static unsigned int		num_drc_entries;
++static atomic_t			num_drc_entries;
+ 
+ /* cache misses due only to checksum comparison failures */
+ static unsigned int		payload_misses;
+@@ -148,7 +148,7 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+ 		kfree(rp->c_replvec.iov_base);
+ 	}
+ 	list_del(&rp->c_lru);
+-	--num_drc_entries;
++	atomic_dec(&num_drc_entries);
+ 	drc_mem_usage -= sizeof(*rp);
+ 	kmem_cache_free(drc_slab, rp);
+ }
+@@ -167,7 +167,7 @@ int nfsd_reply_cache_init(void)
+ 	unsigned int i;
+ 
+ 	max_drc_entries = nfsd_cache_size_limit();
+-	num_drc_entries = 0;
++	atomic_set(&num_drc_entries, 0);
+ 	hashsize = nfsd_hashsize(max_drc_entries);
+ 	maskbits = ilog2(hashsize);
+ 
+@@ -242,7 +242,7 @@ prune_bucket(struct nfsd_drc_bucket *b)
+ 		 */
+ 		if (rp->c_state == RC_INPROG)
+ 			continue;
+-		if (num_drc_entries <= max_drc_entries &&
++		if (atomic_read(&num_drc_entries) <= max_drc_entries &&
+ 		    time_before(jiffies, rp->c_timestamp + RC_EXPIRE))
+ 			break;
+ 		nfsd_reply_cache_free_locked(rp);
+@@ -290,13 +290,7 @@ cache_cleaner_func(struct work_struct *unused)
+ static unsigned long
+ nfsd_reply_cache_count(struct shrinker *shrink, struct shrink_control *sc)
+ {
+-	unsigned long num;
+-
+-	spin_lock(&cache_lock);
+-	num = num_drc_entries;
+-	spin_unlock(&cache_lock);
+-
+-	return num;
++	return atomic_read(&num_drc_entries);
+ }
+ 
+ static unsigned long
+@@ -386,11 +380,12 @@ nfsd_cache_search(struct nfsd_drc_bucket *b, struct svc_rqst *rqstp,
+ 	/* tally hash chain length stats */
+ 	if (entries > longest_chain) {
+ 		longest_chain = entries;
+-		longest_chain_cachesize = num_drc_entries;
++		longest_chain_cachesize = atomic_read(&num_drc_entries);
+ 	} else if (entries == longest_chain) {
+ 		/* prefer to keep the smallest cachesize possible here */
+-		longest_chain_cachesize = min(longest_chain_cachesize,
+-						num_drc_entries);
++		longest_chain_cachesize = min_t(unsigned int,
++				longest_chain_cachesize,
++				atomic_read(&num_drc_entries));
+ 	}
+ 
+ 	return ret;
+@@ -433,7 +428,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	rp = nfsd_reply_cache_alloc();
+ 	spin_lock(&cache_lock);
+ 	if (likely(rp)) {
+-		++num_drc_entries;
++		atomic_inc(&num_drc_entries);
+ 		drc_mem_usage += sizeof(*rp);
+ 	}
+ 
+@@ -617,7 +612,8 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
+ {
+ 	spin_lock(&cache_lock);
+ 	seq_printf(m, "max entries:           %u\n", max_drc_entries);
+-	seq_printf(m, "num entries:           %u\n", num_drc_entries);
++	seq_printf(m, "num entries:           %u\n",
++			atomic_read(&num_drc_entries));
+ 	seq_printf(m, "hash buckets:          %u\n", 1 << maskbits);
+ 	seq_printf(m, "mem usage:             %u\n", drc_mem_usage);
+ 	seq_printf(m, "cache hits:            %u\n", nfsdstats.rchits);
 -- 
 1.9.3
 
