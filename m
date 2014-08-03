@@ -1,48 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53376 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753475AbaHUMux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Aug 2014 08:50:53 -0400
-Date: Thu, 21 Aug 2014 08:50:51 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Trond Myklebust <trondmy@gmail.com>, Kinglong Mee <kinglongmee@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] NFSD: Convert magic numbers to sizeof() for
- encode/decode
-Message-ID: <20140821125051.GA31181@fieldses.org>
-References: <53F4994A.3060506@gmail.com>
- <CAABAsM65rWByuQYrWZ8jiieMzkitdRgVA5-zxxXTqE+ddvN8AA@mail.gmail.com>
- <20140820221938.GA20442@infradead.org>
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:61800 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751143AbaHCPYN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 11:24:13 -0400
+Received: by mail-pd0-f176.google.com with SMTP id y10so8223240pdj.7
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 08:24:12 -0700 (PDT)
+Message-ID: <53DE53FF.4000506@gmail.com>
+Date: Sun, 03 Aug 2014 23:23:43 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140820221938.GA20442@infradead.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFS: Don't restart release lockowner RPC if getting expired error
+References: <53DE4C33.1040509@gmail.com>
+In-Reply-To: <53DE4C33.1040509@gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 20, 2014 at 03:19:38PM -0700, Christoph Hellwig wrote:
-> On Wed, Aug 20, 2014 at 09:42:38AM -0400, Trond Myklebust wrote:
-> > OK, can someone please tell me how this is useful for documentation
-> > purposes? Anybody who doesn't know that sizeof(__be32) == 4 has no
-> > business working on XDR code.
-> > I could understand this kind of patch if you were converting to
-> > sizeof(<variable name>), as that documents exactly which variable you
-> > are going to encode in this buffer and so is better than a naked
-> > value, but how is sizeof(__be32) any more useful documentation than
-> > "4"?
-> 
-> I think this was in reply to my complaints about the very magic length
-> reserved.  I think arithmetic expressions in the form of 4 + 4 + 8 etc
-> are fine too, although the sizeof expressions seem to be even more
-> obvious and thus preferable to me.  The main problem is something like:
-> 
-> 
->         p = xdr_reserve_space(xdr, 20);
-> 
-> hidden deep down in a routine which requires you to count over
-> all kinds of statements working with the XDR stream.
+Please ignore this version, I found some problems of it.
+A new patch will be send later.
 
-OK.  So maybe a better approach would be individual patches for
-confusing spots as we come across them.
+thanks,
+Kinglong Mee
 
---b.
+On 8/3/2014 22:50, Kinglong Mee wrote:
+> Fix Commit 60ea681299 (NFS: Migration support for RELEASE_LOCKOWNER)
+> If getting expired error, client will enter a infinite loop as,
+> 
+> client                            server
+>    RELEASE_LOCKOWNER(old clid) ----->
+>                 <--- expired error
+>    RENEW(old clid)             ----->
+>                 <--- expired error
+>    SETCLIENTID                 ----->
+>                 <--- a new clid
+>    SETCLIENTID_CONFIRM (new clid) -->
+>                 <--- ok
+>    RELEASE_LOCKOWNER(old clid) ----->
+>                 <--- expired error
+>    RENEW(new clid)             ----->
+>                 <-- ok
+>    RELEASE_LOCKOWNER(old clid) ----->
+>                 <--- expired error
+>    RENEW(new clid)             ----->
+>                 <-- ok
+>                 ... ...
+> 
+> This patch just handle the expired error to register clientid,
+> but not restart a release lockowner RPC.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfs/nfs4proc.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 285ad53..902aadf 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5852,6 +5852,8 @@ static void nfs4_release_lockowner_done(struct rpc_task *task, void *calldata)
+>  		break;
+>  	case -NFS4ERR_STALE_CLIENTID:
+>  	case -NFS4ERR_EXPIRED:
+> +		nfs4_async_handle_error(task, server, NULL);
+> +		break;
+>  	case -NFS4ERR_LEASE_MOVED:
+>  	case -NFS4ERR_DELAY:
+>  		if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN)
+> 
