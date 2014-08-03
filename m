@@ -1,98 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f182.google.com ([209.85.220.182]:51696 "EHLO
-	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935147AbaH0SvD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2014 14:51:03 -0400
-Received: by mail-vc0-f182.google.com with SMTP id hy4so83050vcb.41
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Aug 2014 11:51:03 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAHVgHyWwoOyguyJa-tmQVQE56c2wSOR2xUnwOzPOfet_nK60Sw@mail.gmail.com>
-References: <CAHVgHyWwoOyguyJa-tmQVQE56c2wSOR2xUnwOzPOfet_nK60Sw@mail.gmail.com>
-Date: Wed, 27 Aug 2014 14:51:02 -0400
-Message-ID: <CAHQdGtQxQ_dwPOwpUac2LhN60YHXTYPbNomec6KsZ843DrBGUw@mail.gmail.com>
-Subject: Re: nfsiod work_queue hang issue in RHEL 6.6 pre kernel (2.6.32-459)
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:61867 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752050AbaHCRDV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:21 -0400
+Received: by mail-qg0-f54.google.com with SMTP id z60so7686248qgd.41
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:20 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andy Adamson <androsadamson@gmail.com>
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 05/11] lockd: Ensure that lockd_start_svc sets the server rq_task...
+Date: Sun,  3 Aug 2014 13:03:07 -0400
+Message-Id: <1407085393-3175-6-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 27, 2014 at 1:35 PM, Andy Adamson <androsadamson@gmail.com> wrote:
-> We are seeing nfsiod hang for 5 to 20+ minutes.
->
-> This thread hung for 5-10 minutes then cleared.
->
-> Aug 26 05:10:01 scspr0012063007 kernel: nfsiod        S
-> 0000000000000000     0  4931      2 0x00000080
-> Aug 26 05:05:01 scspr0012063007 kernel: ffff880037891e30
-> 0000000000000046 ffff8800d130d400 ffffffffa01e1030
-> Aug 26 05:05:01 scspr0012063007 kernel: ffff880037891fd8
-> ffffe8ffff608ac8 ffff880037891dc0 ffffffffa0287e8d
-> Aug 26 05:05:01 scspr0012063007 kernel: ffff880104fb5098
-> ffff880037891fd8 000000000000fbc8 ffff880104fb5098
-> Aug 26 05:05:01 scspr0012063007 kernel: Call Trace:
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffffa01e1030>] ?
-> rpc_async_release+0x0/0x20 [sunrpc]
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffffa0287e8d>] ?
-> nfs_writedata_release+0x6d/0x90 [nfs]
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b7fe>] ?
-> prepare_to_wait+0x4e/0x80
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffffa01e1030>] ?
-> rpc_async_release+0x0/0x20 [sunrpc]
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff81094fdc>]
-> worker_thread+0x1fc/0x2a0
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b4d0>] ?
-> autoremove_wake_function+0x0/0x40
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff81094de0>] ?
-> worker_thread+0x0/0x2a0
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b126>] kthread+0x96/0xa0
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8100c20a>] child_rip+0xa/0x20
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b090>] ? kthread+0x0/0xa0
-> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8100c200>] ?
-> child_rip+0x0/0x20
->
-> This similar Call Trace, nfsiod hung for 20 minutest, then the client
-> was rebooted.
->
-> Aug 26 06:00:01 scspr0012063007 kernel: nfsiod        S
-> 0000000000000000     0  1701      2 0x00000000
-> Aug 26 06:00:01 scspr0012063007 kernel: ffff880037a63e30
-> 0000000000000046 ffff880037a62000 ffff880037a62000
-> Aug 26 06:00:01 scspr0012063007 kernel: ffff8800f3421140
-> 0000000000000000 ffff8800f3421140 ffffffffa0316030
-> Aug 26 06:00:01 scspr0012063007 kernel: ffff880100e2f098
-> ffff880037a63fd8 000000000000fbc8 ffff880100e2f098
-> Aug 26 06:00:01 scspr0012063007 kernel: Call Trace:
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffffa0316030>] ?
-> rpc_async_release+0x0/0x20 [sunrpc]
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b7fe>] ?
-> prepare_to_wait+0x4e/0x80
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffffa0316030>] ?
-> rpc_async_release+0x0/0x20 [sunrpc]
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff81094fdc>]
-> worker_thread+0x1fc/0x2a0
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b4d0>] ?
-> autoremove_wake_function+0x0/0x40
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff81094de0>] ?
-> worker_thread+0x0/0x2a0
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b126>] kthread+0x96/0xa0
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8100c20a>] child_rip+0xa/0x20
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b090>] ? kthread+0x0/0xa0
-> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8100c200>] ?
-> child_rip+0x0/0x20
->
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/lockd/svc.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Doesn't the "?" beside the stack entries above label them as being
-unreliable (i.e. they lie outside the stack frame)? If so, it looks to
-me as if both these 2 threads are just sleeping in the worker_thread()
-function, which isn't unusual in itself.
-
-Are there any other hints that might help?
-
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 8f27c93f8d2e..b416b3355807 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -313,6 +313,8 @@ static int lockd_start_svc(struct svc_serv *serv)
+ 			"lockd_up: kthread_run failed, error=%d\n", error);
+ 		goto out_task;
+ 	}
++	nlmsvc_rqst->rq_task = nlmsvc_task;
++
+ 	dprintk("lockd_up: service started\n");
+ 	return 0;
+ 
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
