@@ -1,56 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f170.google.com ([209.85.220.170]:40439 "EHLO
-	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751349AbaHUPuh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 11:50:37 -0400
-Received: by mail-vc0-f170.google.com with SMTP id lf12so10960182vcb.15
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2014 08:50:36 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <53F612DC.60006@redhat.com>
-References: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com>
-	<1408580933.4029.2.camel@leira.trondhjem.org>
-	<53F612DC.60006@redhat.com>
-Date: Thu, 21 Aug 2014 11:50:36 -0400
-Message-ID: <CAHQdGtRw0V=mAuXs=UL7aJxxvKo26xqVoyOwR7r+9PrGPNmn_g@mail.gmail.com>
-Subject: Re: [PATCH] nfs: Always try and release an NFS file lock, even after
- receiving a SIGKILL
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:41383 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751822AbaHCRDR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:17 -0400
+Received: by mail-qg0-f48.google.com with SMTP id i50so7989468qgf.35
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:16 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: David Jeffery <djeffery@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 01/11] SUNRPC: Reduce contention in svc_xprt_enqueue()
+Date: Sun,  3 Aug 2014 13:03:03 -0400
+Message-Id: <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 21, 2014 at 11:40 AM, David Jeffery <djeffery@redhat.com> wrote:
-> On 08/20/2014 08:28 PM, Trond Myklebust wrote:
->>
->> What guarantees that this does not lead to silent corruption of the file
->> if there are outstanding write requests?
->>
->
-> Do you have a particular scenario in mind you are concerned about?
->
-> Right before the code the patch modifies, nfs_sync_mapping() is called.
->  Any writes started before the unlock operation began have already been
-> flushed, so we shouldn't have a corruption case of writes from before
-> the unlock began being sent after the unlock is complete.
->
-> Are you concerned about some other nfs4 writes being started while we
-> initially waited on the counter?  Such a write racing with the unlock
+Ensure that all calls to svc_xprt_enqueue() except svc_xprt_received()
+check the value of XPT_BUSY, before attempting to grab spinlocks etc.
+This is to avoid situations such as the following "perf" trace,
+which shows heavy contention on the pool spinlock:
 
-No. I'm worried about the writes that have been started, but which are
-now completing in the background while the lock is being freed.
+    54.15%            nfsd  [kernel.kallsyms]        [k] _raw_spin_lock_bh
+                      |
+                      --- _raw_spin_lock_bh
+                         |
+                         |--71.43%-- svc_xprt_enqueue
+                         |          |
+                         |          |--50.31%-- svc_reserve
+                         |          |
+                         |          |--31.35%-- svc_xprt_received
+                         |          |
+                         |          |--18.34%-- svc_tcp_data_ready
+...
 
-> going ahead instead of erroring out could initially fail from a wrong
-> state ID, but should retry with the new state.  Is there something I've
-> overlooked?
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/svc_xprt.c | 25 +++++++++++++++++--------
+ 1 file changed, 17 insertions(+), 8 deletions(-)
 
-Loss of lock atomicity due to the fact that the writes are completing
-after the lock was released.
-
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index b4737fbdec13..54a761fa6351 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -23,6 +23,7 @@ static int svc_deferred_recv(struct svc_rqst *rqstp);
+ static struct cache_deferred_req *svc_defer(struct cache_req *req);
+ static void svc_age_temp_xprts(unsigned long closure);
+ static void svc_delete_xprt(struct svc_xprt *xprt);
++static void svc_xprt_do_enqueue(struct svc_xprt *xprt);
+ 
+ /* apparently the "standard" is that clients close
+  * idle connections after 5 minutes, servers after
+@@ -222,11 +223,12 @@ static void svc_xprt_received(struct svc_xprt *xprt)
+ 	if (!test_bit(XPT_BUSY, &xprt->xpt_flags))
+ 		return;
+ 	/* As soon as we clear busy, the xprt could be closed and
+-	 * 'put', so we need a reference to call svc_xprt_enqueue with:
++	 * 'put', so we need a reference to call svc_xprt_do_enqueue with:
+ 	 */
+ 	svc_xprt_get(xprt);
++	smp_mb__before_clear_bit();
+ 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
+-	svc_xprt_enqueue(xprt);
++	svc_xprt_do_enqueue(xprt);
+ 	svc_xprt_put(xprt);
+ }
+ 
+@@ -335,12 +337,7 @@ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
+ 	return false;
+ }
+ 
+-/*
+- * Queue up a transport with data pending. If there are idle nfsd
+- * processes, wake 'em up.
+- *
+- */
+-void svc_xprt_enqueue(struct svc_xprt *xprt)
++static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+ {
+ 	struct svc_pool *pool;
+ 	struct svc_rqst	*rqstp;
+@@ -398,6 +395,18 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
+ out_unlock:
+ 	spin_unlock_bh(&pool->sp_lock);
+ }
++
++/*
++ * Queue up a transport with data pending. If there are idle nfsd
++ * processes, wake 'em up.
++ *
++ */
++void svc_xprt_enqueue(struct svc_xprt *xprt)
++{
++	if (test_bit(XPT_BUSY, &xprt->xpt_flags))
++		return;
++	svc_xprt_do_enqueue(xprt);
++}
+ EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
+ 
+ /*
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
