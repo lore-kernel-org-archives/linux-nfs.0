@@ -1,129 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:37798 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751758AbaHWOlk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Aug 2014 10:41:40 -0400
-Received: by mail-qa0-f49.google.com with SMTP id dc16so10756265qab.22
-        for <linux-nfs@vger.kernel.org>; Sat, 23 Aug 2014 07:41:39 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: bfields@fieldses.org, hch@infradead.org, cluster-devel@redhat.com,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 08/10] locks: move i_lock acquisition into generic_*_lease handlers
-Date: Sat, 23 Aug 2014 10:41:16 -0400
-Message-Id: <1408804878-1331-9-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
-References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pa0-f43.google.com ([209.85.220.43]:54468 "EHLO
+	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751710AbaHDIS3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Aug 2014 04:18:29 -0400
+Received: by mail-pa0-f43.google.com with SMTP id lf10so9574231pab.16
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Aug 2014 01:18:29 -0700 (PDT)
+Message-ID: <53DF41C8.70303@gmail.com>
+Date: Mon, 04 Aug 2014 16:18:16 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2] NFS: Avoid infinite loop when RELEASE_LOCKOWNER getting
+ expired error
+References: <53DE56C7.2080407@gmail.com> <CAHQdGtQRhmvWWizba58ApjrcWwPt-E8uUNNT4DYJNF2YXncSWw@mail.gmail.com>
+In-Reply-To: <CAHQdGtQRhmvWWizba58ApjrcWwPt-E8uUNNT4DYJNF2YXncSWw@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that we have a saner internal API for managing leases, we no longer
-need to mandate that the inode->i_lock be held over most of the lease
-code. Push it down into generic_add_lease and generic_delete_lease.
+Fix Commit 60ea681299 (NFS: Migration support for RELEASE_LOCKOWNER)
+If getting expired error, client will enter a infinite loop as,
 
-With this change ->setlease calls can now block, which is a necessary
-(but not sufficient!) step toward allowing leases to work with
-distributed filesystems.
+client                            server
+   RELEASE_LOCKOWNER(old clid) ----->
+                <--- expired error
+   RENEW(old clid)             ----->
+                <--- expired error
+   SETCLIENTID                 ----->
+                <--- a new clid
+   SETCLIENTID_CONFIRM (new clid) -->
+                <--- ok
+   RELEASE_LOCKOWNER(old clid) ----->
+                <--- expired error
+   RENEW(new clid)             ----->
+                <-- ok
+   RELEASE_LOCKOWNER(old clid) ----->
+                <--- expired error
+   RENEW(new clid)             ----->
+                <-- ok
+                ... ...
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/locks.c | 29 +++++++++++++++--------------
- 1 file changed, 15 insertions(+), 14 deletions(-)
+ fs/nfs/nfs4proc.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index b35b706c05fe..49210d5cbf41 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1335,6 +1335,8 @@ static void time_out_leases(struct inode *inode)
- 	struct file_lock **before;
- 	struct file_lock *fl;
- 
-+	lockdep_assert_held(&inode->i_lock);
-+
- 	before = &inode->i_flock;
- 	while ((fl = *before) && IS_LEASE(fl) && lease_breaking(fl)) {
- 		trace_time_out_leases(inode, fl);
-@@ -1595,6 +1597,9 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **au
- 		return -EINVAL;
- 	}
- 
-+	spin_lock(&inode->i_lock);
-+	time_out_leases(inode);
-+
- 	error = check_conflicting_open(dentry, arg);
- 	if (error)
- 		goto out;
-@@ -1660,6 +1665,7 @@ out_setup:
- 	if (lease->fl_lmops->lm_setup)
- 		lease->fl_lmops->lm_setup(lease, aux);
- out:
-+	spin_unlock(&inode->i_lock);
- 	if (is_deleg)
- 		mutex_unlock(&inode->i_mutex);
- 	if (!error && !my_before)
-@@ -1672,18 +1678,22 @@ out_unlink:
- 
- static int generic_delete_lease(struct file *filp)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 285ad53..75dcce29c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5834,8 +5834,10 @@ struct nfs_release_lockowner_data {
+ static void nfs4_release_lockowner_prepare(struct rpc_task *task, void *calldata)
  {
-+	int error = -EAGAIN;
- 	struct file_lock *fl, **before;
- 	struct dentry *dentry = filp->f_path.dentry;
- 	struct inode *inode = dentry->d_inode;
- 
-+	spin_lock(&inode->i_lock);
-+	time_out_leases(inode);
- 	for (before = &inode->i_flock;
- 			((fl = *before) != NULL) && IS_LEASE(fl);
- 			before = &fl->fl_next) {
- 		if (fl->fl_file != filp)
- 			continue;
--		return fl->fl_lmops->lm_change(before, F_UNLCK);
-+		error = fl->fl_lmops->lm_change(before, F_UNLCK);
- 	}
--	return -EAGAIN;
-+	spin_unlock(&inode->i_lock);
-+	return error;
+ 	struct nfs_release_lockowner_data *data = calldata;
+-	nfs40_setup_sequence(data->server,
+-				&data->args.seq_args, &data->res.seq_res, task);
++	struct nfs_server *server = data->server;
++	nfs40_setup_sequence(server, &data->args.seq_args,
++				&data->res.seq_res, task);
++	data->args.lock_owner.clientid = server->nfs_client->cl_clientid;
+ 	data->timestamp = jiffies;
  }
  
- /**
-@@ -1702,8 +1712,7 @@ static int generic_delete_lease(struct file *filp)
- int generic_setlease(struct file *filp, long arg, struct file_lock **flp,
- 			void **aux)
- {
--	struct dentry *dentry = filp->f_path.dentry;
--	struct inode *inode = dentry->d_inode;
-+	struct inode *inode = file_inode(filp);
- 	int error;
- 
- 	if ((!uid_eq(current_fsuid(), inode->i_uid)) && !capable(CAP_LEASE))
-@@ -1714,8 +1723,6 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp,
- 	if (error)
- 		return error;
- 
--	time_out_leases(inode);
--
- 	switch (arg) {
- 	case F_UNLCK:
- 		return generic_delete_lease(filp);
-@@ -1759,16 +1766,10 @@ EXPORT_SYMBOL(generic_setlease);
- int
- vfs_setlease(struct file *filp, long arg, struct file_lock **lease, void **aux)
- {
--	struct inode *inode = file_inode(filp);
--	int error;
--
--	spin_lock(&inode->i_lock);
- 	if (filp->f_op->setlease)
--		error = filp->f_op->setlease(filp, arg, lease, aux);
-+		return filp->f_op->setlease(filp, arg, lease, aux);
- 	else
--		error = generic_setlease(filp, arg, lease, aux);
--	spin_unlock(&inode->i_lock);
--	return error;
-+		return generic_setlease(filp, arg, lease, aux);
- }
- EXPORT_SYMBOL_GPL(vfs_setlease);
- 
+@@ -5852,6 +5854,8 @@ static void nfs4_release_lockowner_done(struct rpc_task *task, void *calldata)
+ 		break;
+ 	case -NFS4ERR_STALE_CLIENTID:
+ 	case -NFS4ERR_EXPIRED:
++		nfs4_async_handle_error(task, server, NULL);
++		break;
+ 	case -NFS4ERR_LEASE_MOVED:
+ 	case -NFS4ERR_DELAY:
+ 		if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN)
 -- 
 1.9.3
+
 
