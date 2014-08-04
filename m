@@ -1,50 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f50.google.com ([74.125.82.50]:42755 "EHLO
-	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751527AbaHPR46 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Aug 2014 13:56:58 -0400
-Received: by mail-wg0-f50.google.com with SMTP id n12so3336110wgh.21
-        for <linux-nfs@vger.kernel.org>; Sat, 16 Aug 2014 10:56:57 -0700 (PDT)
-Date: Sat, 16 Aug 2014 20:56:53 +0300
-From: Dan Aloni <dan@kernelim.com>
-To: Cong Wang <xiyou.wangcong@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Subject: Re: [PATCH] nfs: fix kernel warning when removing proc entry
-Message-ID: <20140816175653.GA3884@gmail.com>
-References: <1408056579-25255-1-git-send-email-xiyou.wangcong@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:61924 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751904AbaHDBBZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Aug 2014 21:01:25 -0400
+Message-ID: <53DEDB53.6030001@RedHat.com>
+Date: Sun, 03 Aug 2014 21:01:07 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1408056579-25255-1-git-send-email-xiyou.wangcong@gmail.com>
+To: NFSv4 <nfsv4@ietf.org>, Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Oct  2014 Bakeathon in Westford, Ma
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 14, 2014 at 03:49:39PM -0700, Cong Wang wrote:
-Signed-off-by: Cong Wang <xiyou.wangcong@gmail.com>
-> ---
->  fs/nfs/client.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 1c5ff6d..1c57202 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -1429,7 +1429,7 @@ void nfs_fs_proc_net_exit(struct net *net)
->  
->  	remove_proc_entry("volumes", nn->proc_nfsfs);
->  	remove_proc_entry("servers", nn->proc_nfsfs);
-> -	remove_proc_entry("fs/nfsfs", NULL);
-> +	remove_proc_entry("nfsfs", net->proc_net);
->  }
+Red Hat is pleased to announce that it is hosting the an NFSv4
+Bakeathon Oct 06-10 at our Westford, MA office.  
 
-nfs_fs_proc_net_init() has:
+Details and registration info is here:
 
-error_1:
-        remove_proc_entry("fs/nfsfs", NULL);
+http://www.nfsv4bat.org/Events/2013/September/BAT/index.html
 
-I think this needs fixing too, for consistency.
+I have 20 rooms blocked of at two different hotels this year
+due to some people not too happy with the rooms at the
+Westford Regency Inn, but other people thought they were fine.
 
--- 
-Dan Aloni
+Details are on the BAT website, but there are another
+20 rooms blocked off at a fairly new Hampton Inn & Suites.
+
+Last year it was a little tight space wise, so this year I
+booked two conference rooms that should give us plenty of
+space.
+
+When registering (i.e. replying to this email) please give me
+   * Company Name
+   * How engineers are coming
+   * T-shirt size  
+
+I hope to see you in October!!!
+
+steved.
