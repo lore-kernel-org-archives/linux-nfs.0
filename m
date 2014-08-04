@@ -1,64 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:38012 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752178AbaHLHAM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 03:00:12 -0400
-Date: Tue, 12 Aug 2014 08:59:58 +0200
-From: Peter Zijlstra <peterz@infradead.org>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: Nick Krause <xerofoify@gmail.com>, Fengguang Wu <fengguang.wu@intel.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        Jet Chen <jet.chen@intel.com>, Su Tao <tao.su@intel.com>,
-        Yuanhan Liu <yuanhan.liu@intel.com>, LKP <lkp@01.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [nfs] BUG: sleeping function called from invalid context at
- include/linux/wait.h:976
-Message-ID: <20140812065958.GL9918@twins.programming.kicks-ass.net>
-References: <20140805140307.GB5593@localhost>
- <DBF9CA04-ACDF-47AC-9FA6-57DD202D2AC1@primarydata.com>
- <CAPDOMVibdcRRdqGRsK4kq+cdh3yBjBU4XB7JjTfyOMFk+jYyvA@mail.gmail.com>
- <7EA40233-6820-4F0E-A2B7-687DC01BDD78@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:52685 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751053AbaHDGZX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Aug 2014 02:25:23 -0400
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Mon, 04 Aug 2014 16:24:00 +1000
+Subject: [PATCH 2/2] SUNRPC: remove all refcounting of groupinfo from
+ rpcauth_lookupcred
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140804062400.7621.4909.stgit@notabene.brown>
+In-Reply-To: <20140804062225.7621.70050.stgit@notabene.brown>
+References: <20140804062225.7621.70050.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="mCRau3CSwZDVtMjk"
-In-Reply-To: <7EA40233-6820-4F0E-A2B7-687DC01BDD78@primarydata.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+current_cred() can only be changed by 'current', and
+cred->group_info is never changed.  If a new group_info is
+needed, a new 'cred' is created.
 
---mCRau3CSwZDVtMjk
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Consequently it is always safe to access
+   current_cred()->group_info
 
-On Mon, Aug 11, 2014 at 10:52:38PM -0400, Weston Andros Adamson wrote:
-> Weston Andros Adamson (5):
->  nfs: change nfs_page_group_lock argument
->  nfs: fix nonblocking calls to nfs_page_group_lock
->  nfs: use blocking page_group_lock in add_request
->  nfs: fix error handling in lock_and_join_requests
->  nfs: don't sleep with inode lock in lock_and_join_requests
+without taking any further references.
+So drop the refcounting and the incorrect rcu_dereference().
 
-Thanks for taking care of that!
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ net/sunrpc/auth.c |    8 +-------
+ 1 file changed, 1 insertion(+), 7 deletions(-)
 
---mCRau3CSwZDVtMjk
-Content-Type: application/pgp-signature
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 794fc0f4fc4c..df2bd96f129d 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -595,14 +595,8 @@ rpcauth_lookupcred(struct rpc_auth *auth, int flags)
+ 	memset(&acred, 0, sizeof(acred));
+ 	acred.uid = cred->fsuid;
+ 	acred.gid = cred->fsgid;
+-	if (flags & RPCAUTH_LOOKUP_RCU)
+-		acred.group_info = rcu_dereference(cred->group_info);
+-	else
+-		acred.group_info = get_group_info(((struct cred *)cred)->group_info);
+-
++	acred.group_info = cred->group_info;
+ 	ret = auth->au_ops->lookup_cred(auth, &acred, flags);
+-	if (!(flags & RPCAUTH_LOOKUP_RCU))
+-		put_group_info(acred.group_info);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_lookupcred);
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
 
-iQIcBAEBAgAGBQJT6btuAAoJEHZH4aRLwOS6VXIP/AqO8xRL7NO7NVavywjpPV4Q
-uM0ummIaAtYI/iUK+pZ8DPnKCC6ZgIWqCqlaHeld4ABMCD9hKRtD42CFiz901nxp
-lckzLMsRyAPeYFfRovLwjRxrwBFwKwupdCHBK0+Jr6ifwvromya5bx19AgO1++0X
-Nx2L7qH8KFN6ZNC0uxdvLrbwOdiWdQB2ozCv/7EFtE+OBJXLzfAFluJXpDtB0cH7
-OAsrguSl++onebXfFe5zDpFjzShp5hPr5JdIPT3RKQ8SkOT3ESqPUieYeaEpnSwJ
-soTUrpLGCewj4eYjPQ5I3TNGdpYS885FOZsBj5+oIH2U/ScuvnT2+qzqxvbwOefs
-fp1/giMWHTme0RDLCWQcOPbXvuQEbhCF5SgSElP5NJc0kYGpsY1zEhx4LFjZ4H4U
-SQLpUYuDTBayQ5LzUuz352+nnvJlwScbuuKeGIjEd78K8lDP94JD1UqAJqap4kqO
-bH0Uy6HQ3vcU0I5wkGX1hjgi0dI4hG7E/4NJmvOAIlN8oLSyFj20jdQSQBdZsNZ8
-GMLFPRHFJISrAKn9MmLiSZG2oujhSowmCWWjyJNm/bAa7/9lfmU4YEkgrgUm7sPf
-DCZBkDLqP3VAN76vPHiJ+xXJxOmSOs6eyCTzQEk4fii8IG0foSNcVvOwsBii9TOr
-Ru/r05AOPa6FODQU+3xL
-=oKFG
------END PGP SIGNATURE-----
-
---mCRau3CSwZDVtMjk--
