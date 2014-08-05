@@ -1,71 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f169.google.com ([209.85.217.169]:64408 "EHLO
-	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751323AbaHFGZQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:25:16 -0400
-Received: by mail-lb0-f169.google.com with SMTP id s7so1562000lbd.28
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 23:25:14 -0700 (PDT)
-From: Natanael Copa <natanael.copa@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Natanael Copa <ncopa@alpinelinux.org>
-Subject: [PATCH v2 00/11] Porting nfs-utils to musl libc
-Date: Wed,  6 Aug 2014 08:24:55 +0200
-Message-Id: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:55827 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752020AbaHENod (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2014 09:44:33 -0400
+Received: by mail-qg0-f52.google.com with SMTP id f51so965262qge.25
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 06:44:32 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 5 Aug 2014 09:44:30 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: Put the reference of nfs4_file when freeing stid
+Message-ID: <20140805094430.332ffc66@tlielax.poochiereds.net>
+In-Reply-To: <53E0DA1B.2020705@gmail.com>
+References: <53E0DA1B.2020705@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Musl libc is a modern libc for Linux which focuses on correctness in
-standards-conformance. We use this libc for Alpine Linux.
+On Tue, 05 Aug 2014 21:20:27 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-This patchset makes nfs-utils build with musl libc and should generally
-improve portability.
+> After testing nfs4 lock, I restart the nfsd service, got messages as,
+> 
+> [ 5677.403419] nfsd: last server has exited, flushing export cache
+> [ 5677.463728] =============================================================================
+> [ 5677.463942] BUG nfsd4_files (Tainted: G    B      OE): Objects remaining in nfsd4_files on kmem_cache_close()
+> [ 5677.464055] -----------------------------------------------------------------------------
+> 
+> [ 5677.464203] INFO: Slab 0xffffea0000233400 objects=28 used=1 fp=0xffff880008cd3d98 flags=0x3ffc0000004080
+> [ 5677.464318] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
+> [ 5677.464420] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+> [ 5677.464538]  0000000000000000 0000000036af2c9f ffff88000ce97d68 ffffffff816eacfa
+> [ 5677.464643]  ffffea0000233400 ffff88000ce97e40 ffffffff811cda44 ffffffff00000020
+> [ 5677.464774]  ffff88000ce97e50 ffff88000ce97e00 656a624f00000008 616d657220737463
+> [ 5677.464875] Call Trace:
+> [ 5677.464925]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
+> [ 5677.464983]  [<ffffffff811cda44>] slab_err+0xb4/0xe0
+> [ 5677.465040]  [<ffffffff811d0457>] ? __kmalloc+0x117/0x290
+> [ 5677.465099]  [<ffffffff81100eec>] ? on_each_cpu_cond+0xac/0xf0
+> [ 5677.465158]  [<ffffffff811d1bc0>] ? kmem_cache_close+0x110/0x2e0
+> [ 5677.465218]  [<ffffffff811d1be0>] kmem_cache_close+0x130/0x2e0
+> [ 5677.465279]  [<ffffffff8135a0c1>] ? kobject_cleanup+0x91/0x1b0
+> [ 5677.465338]  [<ffffffff811d22be>] __kmem_cache_shutdown+0xe/0x10
+> [ 5677.465399]  [<ffffffff8119bd28>] kmem_cache_destroy+0x48/0x100
+> [ 5677.465466]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
+> [ 5677.465530]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
+> [ 5677.465589]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
+> [ 5677.465649]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
+> [ 5677.465759]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
+> [ 5677.465822] INFO: Object 0xffff880008cd0000 @offset=0
+> [ 5677.465882] INFO: Allocated in nfsd4_process_open1+0x61/0x350 [nfsd] age=7599 cpu=0 pid=3253
+> [ 5677.466115]  __slab_alloc+0x3b0/0x4b1
+> [ 5677.466166]  kmem_cache_alloc+0x1e4/0x240
+> [ 5677.466220]  nfsd4_process_open1+0x61/0x350 [nfsd]
+> [ 5677.466276]  nfsd4_open+0xee/0x860 [nfsd]
+> [ 5677.466329]  nfsd4_proc_compound+0x4d7/0x7f0 [nfsd]
+> [ 5677.466384]  nfsd_dispatch+0xbb/0x200 [nfsd]
+> [ 5677.466447]  svc_process_common+0x453/0x6f0 [sunrpc]
+> [ 5677.466506]  svc_process+0x103/0x170 [sunrpc]
+> [ 5677.466559]  nfsd+0x117/0x190 [nfsd]
+> [ 5677.466609]  kthread+0xd8/0xf0
+> [ 5677.466656]  ret_from_fork+0x7c/0xb0
+> [ 5677.466775] kmem_cache_destroy nfsd4_files: Slab cache still has objects
+> [ 5677.466839] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
+> [ 5677.466937] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+> [ 5677.467049]  0000000000000000 0000000036af2c9f ffff88000ce97eb0 ffffffff816eacfa
+> [ 5677.467150]  ffff880020bb2d00 ffff88000ce97ed0 ffffffff8119bdd9 0000000000000000
+> [ 5677.467250]  ffffffffa06065c0 ffff88000ce97ee0 ffffffffa05ef78d ffff88000ce97ef0
+> [ 5677.467351] Call Trace:
+> [ 5677.467397]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
+> [ 5677.467454]  [<ffffffff8119bdd9>] kmem_cache_destroy+0xf9/0x100
+> [ 5677.467516]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
+> [ 5677.467579]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
+> [ 5677.467639]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
+> [ 5677.467765]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
+> [ 5677.467826]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4state.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 56999cb..e87005d 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1037,6 +1037,7 @@ static void
+>  free_ol_stateid_reaplist(struct list_head *reaplist)
+>  {
+>  	struct nfs4_ol_stateid *stp;
+> +	struct nfs4_file *fp;
+>  
+>  	might_sleep();
+>  
+> @@ -1044,7 +1045,10 @@ free_ol_stateid_reaplist(struct list_head *reaplist)
+>  		stp = list_first_entry(reaplist, struct nfs4_ol_stateid,
+>  				       st_locks);
+>  		list_del(&stp->st_locks);
+> +		fp = stp->st_stid.sc_file;
+>  		stp->st_stid.sc_free(&stp->st_stid);
+> +		if (fp)
+> +			put_nfs4_file(fp);
+>  	}
+>  }
+>  
 
-It would be nice if at least some of the patches could be applied
-upstream so we can reduce the number of patches for getting nfs working
-on Alpine Linux.
+Well spotted. I missed that when moved the nfs4_file handling out of
+sc_free.
 
-Changes v1 -> v2 based on feedback:
- - Use AC_USE_SYSTEM_EXTENSIONS in configure.ac instead of defining
-   _GNU_SOURCE various places. This means that the patch "include
-   libgen.h for basename" is strictly no longer needed, but I kept it
-   since this is more "correct".
- - Fix typo in "exportfs: only do glibc specific hackery on glibc"
-
-Natanael Copa (11):
-  conffile: use standard uint*_t and unsigned char
-  Fix header include for definition of NULL
-  configure.ac: enable GNU_SOURCE for stat64/statfs64
-  replace __attribute_malloc__ with the more portable
-    __attribute__((__malloc__))
-  mountd: use standard dev_t instead of glibc internals
-  nfsstat: replace the legacy SA_ONESHOT with standard SA_RESETHAND
-  Allow usage of getrpcbynumber() when getrpcbynumber_r() is unavailable
-  Only work around glibc bugs on glibc
-  include libgen.h for basename
-  exportfs: fix test of NULL pointer in host_pton()
-  exportfs: only do glibc specific hackery on glibc
-
- configure.ac                 |  7 ++-----
- support/export/hostname.c    | 29 +++++++++++++++++------------
- support/include/conffile.h   |  2 +-
- support/include/exportfs.h   | 10 +++++-----
- support/include/sockaddr.h   |  1 +
- support/nfs/conffile.c       | 14 +++++++-------
- support/nfs/svc_create.c     |  2 +-
- support/nfs/svc_socket.c     |  6 ++++++
- tools/rpcdebug/rpcdebug.c    |  1 +
- utils/mount/mount.c          |  1 +
- utils/mount/mount_libmount.c |  1 +
- utils/mountd/cache.c         |  2 +-
- utils/mountd/svc_run.c       |  2 +-
- utils/nfsd/nfsd.c            |  1 +
- utils/nfsidmap/nfsidmap.c    |  1 +
- utils/nfsstat/nfsstat.c      |  2 +-
- utils/statd/hostname.c       |  6 +++---
- utils/statd/sm-notify.c      |  8 ++++----
- utils/statd/statd.h          |  2 +-
- 19 files changed, 56 insertions(+), 42 deletions(-)
-
--- 
-2.0.4
-
+Reviewed-by: Jeff Layton <jlayton@primarydata.com>
