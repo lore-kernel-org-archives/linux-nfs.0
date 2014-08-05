@@ -1,133 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:46604 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752473AbaHNMa6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 08:30:58 -0400
-Message-ID: <53ECABE9.8060204@gmail.com>
-Date: Thu, 14 Aug 2014 20:30:33 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from tus1smtoutpex01.symantec.com ([216.10.195.241]:49756 "EHLO
+	tus1smtoutpex01.symantec.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756006AbaHEHD6 convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Aug 2014 03:03:58 -0400
+From: Rishi Agrawal <Rishi_Agrawal@symantec.com>
+To: Steve Dickson <SteveD@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: Rajesh Ghanekar <Rajesh_Ghanekar@symantec.com>,
+        Ram Pandiri <ram_pandiri@symantec.com>,
+        Sreeharsha Sarabu <Sreeharsha_Sarabu@symantec.com>,
+        Abhijit Dey <Abhijit_Dey@symantec.com>,
+        Tushar Shinde <Tushar_Shinde@symantec.com>,
+        "bfields@redhat.com" <bfields@redhat.com>
+Date: Mon, 4 Aug 2014 23:58:48 -0700
+Subject: RE: Patch For Making Readdir_plus configurable
+Message-ID: <20AEB6A025F81A4288597093171D1B571DBE0A7836@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM>
+References: <20AEB6A025F81A4288597093171D1B5719CF5813D2@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM>
+ <53DF992D.6090404@RedHat.com>
+In-Reply-To: <53DF992D.6090404@RedHat.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: Re: [PATCH 3/3 v2] NFSD: Increase the reference of lockowner when
- coping file_lock
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com>	<20140809065112.700e0ecc@tlielax.poochiereds.net>	<53E791F1.40802@gmail.com>	<53E7933D.80504@gmail.com> <20140811124610.16f49168@tlielax.poochiereds.net>
-In-Reply-To: <20140811124610.16f49168@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/12/2014 00:46, Jeff Layton wrote:
-> On Sun, 10 Aug 2014 23:43:57 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
->> v2: Fix bad using of struct file_lock_operations for handle the owner.
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  fs/nfsd/nfs4state.c | 32 ++++++++++++++++++++++++++++++--
->>  1 file changed, 30 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 2e80a59..24a8d91 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -4867,9 +4867,33 @@ nfs4_transform_lock_offset(struct file_lock *lock)
->>  		lock->fl_end = OFFSET_MAX;
->>  }
->>  
->> +static inline struct nfs4_lockowner *get_lockowner(struct nfs4_lockowner *lo)
->> +{
->> +	atomic_inc(&lo->lo_owner.so_count);
->> +	return lo;
->> +}
->> +
-> 
-> The other places that increment the so_count on a lockowner should
-> probably be changed to use get_lockowner.
+Hi,
 
-Got it, thanks.
+Regards,
+Rishi Agrawal
 
-> 
-> Or what may be better is to make a nfs4_get_stateowner call and change
-> all of the places that bump the so_count to use it. Then you could just
-> do something like this in the right spot below:
-> 
->     file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(lock_sop));
+-----Original Message-----
+From: Steve Dickson [mailto:SteveD@redhat.com] 
+Sent: Monday, August 04, 2014 8:01 PM
+To: Rishi Agrawal; linux-nfs@vger.kernel.org
+Cc: Rajesh Ghanekar; Ram Pandiri; Sreeharsha Sarabu; Abhijit Dey; Tushar Shinde; bfields@redhat.com
+Subject: Re: Patch For Making Readdir_plus configurable
 
-Yes, nfs4_get_stateowner corresponds with nfs4_put_stateowner.
+Hello,
 
->> +static void nfsd4_fl_copy_owner(struct file_lock *dst, struct file_lock *src)
->> +{
->> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) src->fl_owner;
->> +	dst->fl_owner = (fl_owner_t) get_lockowner(lo);
->> +}
->> +
->> +static void nfsd4_fl_release_owner(struct file_lock *fl)
->> +{
->> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
->> +
->> +	if (lo) {
->> +		nfs4_put_stateowner(&lo->lo_owner);
->> +		fl->fl_owner = NULL;
->> +	}
->> +}
->> +
->>  /* Hack!: For now, we're defining this just so we can use a pointer to it
->>   * as a unique cookie to identify our (NFSv4's) posix locks. */
+On 25/07/14 12:19, Rishi Agrawal wrote:
+> Hi,
+>    One of our customer's application only needs file names not file 
+> attributes. With directories having 10K+ inodes (assuming buffer cache 
+> has directory blocks cached having file names, but inode cache is 
+> limited and hence need eviction of older cached inodes), older inodes 
+> are evicted periodically. So if they keep on doing
+> readdir(2) from NSF client on multiple directories, some directory's 
+> files are periodically removed from inode cache and hence new
+> readdir(2) on same directory requires disk access to bring back inodes 
+> again to inode cache.
 > 
-> The above comment should be removed now.
+> As READDIRPLUS request fetches attributes also, doing getattr on each 
+> file on server, it causes unnecessary disk accesses. If READDIRPLUS on 
+> NFS client is returned with -ENOTSUPP, NFS client uses READDIR request 
+> which just gets the names of the files in a directory, not attributes, 
+> hence avoiding disk accesses on server.
+> 
+> Can this be per-export tunable so that different application can use 
+> it in different ways, some supporting readdirplus and others not 
+> supporting readdirplus?
+> 
+> I have worked on a patch against 3.15.6 for this. Also I am adding a 
+> patch against latest nfs-utils to have an export option for this. Can 
+> someone let me know if these patches are adequate or if any other 
+> changes are required. Patches attached, although with minimal testing. 
+> I would like to know if something like this can be added and if the 
+> patch can be reworked if I am missing something for NFSv4.
 
-OK, will remove it in next version.
+I just notice that the nfs-utils patch does not update the exports(5) man page. In that update please note this is a v3 only thing.... Not clear what we are going to do in the v4 case.
 
-thanks,
-Kinglong Mee
+Finally, please inline your patch posting in the your email as its is explained there
+   https://www.kernel.org/doc/Documentation/SubmittingPatches
 
-> 
->>  static const struct lock_manager_operations nfsd_posix_mng_ops  = {
->> +	.lm_copy_owner = nfsd4_fl_copy_owner,
->> +	.lm_release_owner = nfsd4_fl_release_owner,
->>  };
->>  
->>  static inline void
->> @@ -5238,7 +5262,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  		status = nfserr_openmode;
->>  		goto out;
->>  	}
->> -	file_lock->fl_owner = (fl_owner_t)lock_sop;
->> +
->> +	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
->>  	file_lock->fl_pid = current->tgid;
->>  	file_lock->fl_file = filp;
->>  	file_lock->fl_flags = FL_POSIX;
->> @@ -5405,6 +5430,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  	struct nfs4_ol_stateid *stp;
->>  	struct file *filp = NULL;
->>  	struct file_lock *file_lock = NULL;
->> +	struct nfs4_lockowner *lock_sop = NULL;
->>  	__be32 status;
->>  	int err;
->>  	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
->> @@ -5426,6 +5452,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  		status = nfserr_lock_range;
->>  		goto put_stateid;
->>  	}
->> +
->> +	lock_sop = lockowner(stp->st_stateowner);
->>  	file_lock = locks_alloc_lock();
->>  	if (!file_lock) {
->>  		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
->> @@ -5434,7 +5462,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  	}
->>  	locks_init_lock(file_lock);
->>  	file_lock->fl_type = F_UNLCK;
->> -	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
->> +	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
->>  	file_lock->fl_pid = current->tgid;
->>  	file_lock->fl_file = filp;
->>  	file_lock->fl_flags = FL_POSIX;
-> 
-> 
+It just makes it easier for everyone to do the review... 
+
+tia,
+
+steved.
+[[[Rishi]]] 
+
+I will take care of the changes and resubmit the patch.
+
+-- Rishi
