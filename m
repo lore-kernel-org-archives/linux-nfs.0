@@ -1,89 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:41031 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757478AbaHZKxI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Aug 2014 06:53:08 -0400
-Date: Tue, 26 Aug 2014 11:53:04 +0100
-From: Mel Gorman <mgorman@suse.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Junxiao Bi <junxiao.bi@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-Message-ID: <20140826105304.GT17696@novell.com>
-References: <53F6F772.6020708@oracle.com>
- <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
- <20140825164852.50723141@notabene.brown>
+Received: from mx6-phx2.redhat.com ([209.132.183.39]:39358 "EHLO
+	mx6-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754753AbaHEPRG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2014 11:17:06 -0400
+Received: from zmail10.collab.prod.int.phx2.redhat.com (zmail10.collab.prod.int.phx2.redhat.com [10.5.83.12])
+	by mx6-phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s75FH5HR025251
+	for <linux-nfs@vger.kernel.org>; Tue, 5 Aug 2014 11:17:05 -0400
+Date: Tue, 5 Aug 2014 11:17:05 -0400 (EDT)
+From: David Jeffery <djeffery@redhat.com>
+To: linux-nfs@vger.kernel.org
+Message-ID: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com>
+In-Reply-To: <1136742914.14501494.1407251366067.JavaMail.zimbra@redhat.com>
+Subject: [PATCH] nfs: Always try and release an NFS file lock, even after
+ receiving a SIGKILL
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <20140825164852.50723141@notabene.brown>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 25, 2014 at 04:48:52PM +1000, NeilBrown wrote:
-> On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
-> 
-> > Junxiao Bi reports seeing the following deadlock:
-> > 
-> > @ crash> bt 1539
-> > @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
-> > @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
-> > @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
-> > @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
-> > @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
-> > @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
-> > @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
-> > @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
-> > @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
-> > @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
-> > @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
-> > @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
-> > @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
-> 
-> This stack trace (from 2.6.32) cannot happen in mainline, though it took me a
-> while to remember/discover exactly why.
-> 
-> try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
-> set to NULL.
-> shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
-> it is NULL, wait_on_page_writeback is *not* called.
-> 
 
-wait_on_page_writeback has a host of other damage associated with it which
-is why we don't do it from reclaim any more. If the storage is very slow
-then a process can be stalled by unrelated IO to slow storage.  If the
-storage is broken and the writeback can never complete then it causes other
-issues. That kind of thing.
+If a task holding an NFS file lock is killed with SIGKILL, it can
+error out of do_unlk without ever trying to release the lock on
+the server. This triggers the WARN in locks_remove_file(), while
+also leaving the lock still claimed on the NFS server.  The file's
+lock state is left out of sync between client and server, requiring
+a restart of one or the other in order to release this ghost lock
+on the file.
 
-> So we can only hit this deadlock if mem-cgroup limits are imposed on a
-> process which is using NFS - which is quite possible but probably not common.
-> 
-> The fact that a dead-lock can happen only when memcg limits are imposed seems
-> very fragile.  People aren't going to test that case much so there could well
-> be other deadlock possibilities lurking.
-> 
+do_unlk() should continue on and tell the server to release the
+lock, even if nfs_iocounter_wait() reports an error do to SIGKILL.
 
-memcgs still can call wait_on_page_writeback and this is known to be a
-hand-grenade to the memcg people but I've never heard of them trying to
-tackle the problem.
+Signed-off-by: David Jeffery <djeffery@redhat.com>
 
-> Mel: might there be some other way we could get out of this deadlock?
-> Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
-> wait or something?  Any other wait out of this deadlock other than setting
-> PF_MEMALLOC_NOIO everywhere?
-> 
+---
+ file.c |    4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-I don't have the full thread as it was not cc'd to lkml so I don't know
-what circumstances reached this deadlock in the first place. If this is
-on 2.6.32 and the deadline cannot happen during reclaim in mainline then
-why is mainline being patched?
-
-Do not alter wait_on_page_writeback() to timeout as it will blow
-up spectacularly -- swap unuse races, data would not longer be synced
-correctly to disk, sync IO would be flaky, stable page writes would be
-fired out the window etc.
-
--- 
-Mel Gorman
-SUSE Labs
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 4042ff5..1b09243 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -750,10 +750,8 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+ 
+ 	l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
+ 	if (!IS_ERR(l_ctx)) {
+-		status = nfs_iocounter_wait(&l_ctx->io_count);
++		nfs_iocounter_wait(&l_ctx->io_count);
+ 		nfs_put_lock_context(l_ctx);
+-		if (status < 0)
+-			return status;
+ 	}
+ 
+ 	/* NOTE: special case
