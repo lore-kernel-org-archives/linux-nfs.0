@@ -1,139 +1,267 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f47.google.com ([209.85.192.47]:59368 "EHLO
-	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751576AbaHSSuE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:50:04 -0400
-Received: by mail-qg0-f47.google.com with SMTP id i50so6446443qgf.34
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:50:04 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 6/7] nfsdcltrack: grab the client minorversion from the env var if it's present
-Date: Tue, 19 Aug 2014 14:49:48 -0400
-Message-Id: <1408474189-14491-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
-References: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:45324 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755227AbaHERBJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2014 13:01:09 -0400
+Received: by mail-qa0-f41.google.com with SMTP id j7so1259669qaq.14
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 10:01:08 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 5 Aug 2014 13:01:05 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: [PATCH 37/37] nfsd: add some comments to the nfsd4 object
+ definitions
+Message-ID: <20140805130105.7eeef9ea@tlielax.poochiereds.net>
+In-Reply-To: <20140805153628.GP23341@fieldses.org>
+References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+	<1406723258-8512-38-git-send-email-jlayton@primarydata.com>
+	<20140805153628.GP23341@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-And set the reclaim_complete field in the DB based on whether it's zero
-or not. We have no way to know for certain when a v4.0 client has
-completed reclaim, so we always set that field in the DB to zero for
-v4.0 clients.
+On Tue, 5 Aug 2014 11:36:28 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- utils/nfsdcltrack/nfsdcltrack.c | 29 +++++++++++++++++++++++++++--
- utils/nfsdcltrack/sqlite.c      | 16 ++++++++++++----
- utils/nfsdcltrack/sqlite.h      |  3 ++-
- 3 files changed, 41 insertions(+), 7 deletions(-)
+> Thanks for the documentation!  A couple comments:
+> 
+> On Wed, Jul 30, 2014 at 08:27:38AM -0400, Jeff Layton wrote:
+> > Add some comments that describe what each of these objects is, and how
+> > they related to one another.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > ---
+> >  fs/nfsd/netns.h |  8 +++++
+> >  fs/nfsd/state.h | 91 ++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+> >  2 files changed, 92 insertions(+), 7 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+> > index 3831ef6e5c75..46680da55cd7 100644
+> > --- a/fs/nfsd/netns.h
+> > +++ b/fs/nfsd/netns.h
+> > @@ -34,6 +34,14 @@
+> >  struct cld_net;
+> >  struct nfsd4_client_tracking_ops;
+> >  
+> > +/*
+> > + * Represents a nfsd "container". With respect to nfsv4 state tracking, the
+> > + * fields of interest are the *_id_hashtbls and the *_name_tree. These track
+> > + * the nfs4_client objects by either short or long form clientid.
+> > + *
+> > + * Each nfsd_net runs a nfs4_laundromat workqueue job every lease period to
+> 
+> It's a little more complicated than that suggests--maybe replace "every
+> lease period" by "when necessary"?
+> 
 
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-index f2813610be73..cbc98c7edc11 100644
---- a/utils/nfsdcltrack/nfsdcltrack.c
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -37,6 +37,7 @@
- #include <libgen.h>
- #include <sys/inotify.h>
- #include <dirent.h>
-+#include <limits.h>
- #ifdef HAVE_SYS_CAPABILITY_H
- #include <sys/prctl.h>
- #include <sys/capability.h>
-@@ -254,6 +255,30 @@ cltrack_init(const char __attribute__((unused)) *unused)
- 	return ret;
- }
- 
-+/*
-+ * Fetch the contents of the NFSDCLTRACK_CLIENT_MINORVERSION env var. If
-+ * it's not set or there is an error converting it to an unsigned int
-+ * then return 0 (since the minorversion isn't reliable at that point).
-+ */
-+static unsigned int
-+cltrack_get_minorvers(void)
-+{
-+	unsigned long minorvers;
-+	char *end;
-+	char *minorvers_str = getenv("NFSDCLTRACK_CLIENT_MINORVERSION");
-+
-+	if (!minorvers_str)
-+		return 0;
-+
-+	errno = 0;
-+	minorvers = strtoul(minorvers_str, &end, 0);
-+	/* Problem converting or value is too large? */
-+	if (errno || minorvers > UINT_MAX)
-+		return 0;
-+
-+	return (unsigned int)minorvers;
-+}
-+
- static int
- cltrack_create(const char *id)
- {
-@@ -270,7 +295,7 @@ cltrack_create(const char *id)
- 	if (len < 0)
- 		return (int)len;
- 
--	ret = sqlite_insert_client(blob, len);
-+	ret = sqlite_insert_client(blob, len, cltrack_get_minorvers());
- 
- 	return ret ? -EREMOTEIO : ret;
- }
-@@ -323,7 +348,7 @@ cltrack_check_legacy(const unsigned char *blob, const ssize_t len)
- 	}
- 
- 	/* Dir exists, try to insert record into db */
--	ret = sqlite_insert_client(blob, len);
-+	ret = sqlite_insert_client(blob, len, 0);
- 	if (ret) {
- 		xlog(D_GENERAL, "Failed to insert client: %d", ret);
- 		return -EREMOTEIO;
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index e260e81b1722..01084bb6c4d8 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -369,14 +369,22 @@ out_close:
-  * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
-  */
- int
--sqlite_insert_client(const unsigned char *clname, const size_t namelen)
-+sqlite_insert_client(const unsigned char *clname, const size_t namelen,
-+			const unsigned int minorvers)
- {
- 	int ret;
- 	sqlite3_stmt *stmt = NULL;
- 
--	ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients VALUES "
--					"(?, strftime('%s', 'now'), 0);", -1,
--					&stmt, NULL);
-+	if (minorvers == 0)
-+		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
-+				"VALUES (?, strftime('%s', 'now'), 0);", -1,
-+				&stmt, NULL);
-+	else
-+		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
-+				"VALUES (?, strftime('%s', 'now'), "
-+				"strftime('%s', 'now'));", -1,
-+				&stmt, NULL);
-+
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
- 			__func__, sqlite3_errmsg(dbh));
-diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
-index 3713bfb66e2f..e9cc84cbb294 100644
---- a/utils/nfsdcltrack/sqlite.h
-+++ b/utils/nfsdcltrack/sqlite.h
-@@ -21,7 +21,8 @@
- #define _SQLITE_H_
- 
- int sqlite_prepare_dbh(const char *topdir);
--int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
-+int sqlite_insert_client(const unsigned char *clname, const size_t namelen,
-+				const unsigned int minorvers);
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
- int sqlite_check_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_unreclaimed(const time_t grace_start);
+Ok, sure...
+
+> > + * clean up expired clients and delegations within the container.
+> > + */
+> >  struct nfsd_net {
+> >  	struct cld_net *cld_net;
+> >  
+> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> > index a363f6bb621e..52ccd07d92ed 100644
+> > --- a/fs/nfsd/state.h
+> > +++ b/fs/nfsd/state.h
+> > @@ -72,6 +72,11 @@ struct nfsd4_callback {
+> >  	bool cb_done;
+> >  };
+> >  
+> > +/*
+> > + * A core object that represents a "common" stateid. These are generally
+> > + * embedded within the different (more specific) stateid objects and contain
+> > + * fields that are of general use to any stateid.
+> > + */
+> >  struct nfs4_stid {
+> >  	atomic_t sc_count;
+> >  #define NFS4_OPEN_STID 1
+> > @@ -89,6 +94,18 @@ struct nfs4_stid {
+> >  	void (*sc_free)(struct nfs4_stid *);
+> >  };
+> >  
+> > +/*
+> > + * Represents a delegation stateid. The nfs4_client holds references to these
+> > + * and they are put when it is being destroyed or when the delegation is
+> > + * returned by the client.
+> 
+> This might be worth another sentence or two.  I believe the references
+> are:
+> 
+> 	- 1 reference as long as a delegation is still in force (taken
+> 	  when it's alloc'd, put when it's returned or revoked)
+> 	- 1 reference as long as a recall rpc is in progress (taken when
+> 	  the lease is broken, put when the rpc exits.
+> 	- 1 more ephemeral reference for each nfsd thread currently
+> 	  doing something with that delegation without holding
+> 	  cl_lock?
+> 
+
+Sounds about right. Would you rather just add that and the other
+changes you suggested above, or do you want me to resend the patch?
+
+> (By the way, I wonder if that list_for_each_entry() at the end of
+> nfsd4_process_cb_update actually does anything: hasn't
+> nfsd4_cb_recall_release() already run and removed any delegation from
+> the cl_callbacks list?  I may just be forgetting how this works.)
+> 
+
+Oh, hm. I'm not sure about that. I didn't touch that bit of code, so I
+don't profess to really understand it either.
+
+Let's see...
+
+It's only going to remove it from the list if cb_done is true, and that
+doesn't happen if there was an error and dl_retries isn't exhausted
+yet. So no, I don't think it's dead code...
+
+> --b.
+> 
+> > + * If the server attempts to recall a delegation and the client doesn't do so
+> > + * before a timeout, the server may also revoke the delegation. In that case,
+> > + * the object will either be destroyed (v4.0) or moved to a per-client list of
+> > + * revoked delegations (v4.1+).
+> > + *
+> > + * This object is a superset of the nfs4_stid.
+> > + */
+> >  struct nfs4_delegation {
+> >  	struct nfs4_stid	dl_stid; /* must be first field */
+> >  	struct list_head	dl_perfile;
+> > @@ -195,6 +212,11 @@ struct nfsd4_conn {
+> >  	unsigned char cn_flags;
+> >  };
+> >  
+> > +/*
+> > + * Representation of a v4.1+ session. These are refcounted in a similar fashion
+> > + * to the nfs4_client. References are only taken when the server is actively
+> > + * working on the object (primarily during the processing of compounds).
+> > + */
+> >  struct nfsd4_session {
+> >  	atomic_t		se_ref;
+> >  	struct list_head	se_hash;	/* hash by sessionid */
+> > @@ -224,13 +246,30 @@ struct nfsd4_sessionid {
+> >  
+> >  /*
+> >   * struct nfs4_client - one per client.  Clientids live here.
+> > - * 	o Each nfs4_client is hashed by clientid.
+> >   *
+> > - * 	o Each nfs4_clients is also hashed by name 
+> > - * 	  (the opaque quantity initially sent by the client to identify itself).
+> > + * The initial object created by an NFS client using SETCLIENTID (for NFSv4.0)
+> > + * or EXCHANGE_ID (for NFSv4.1+). These objects are refcounted and timestamped.
+> > + * Each nfsd_net_ns object contains a set of these and they are tracked via
+> > + * short and long form clientid. They are hashed and searched for under the
+> > + * per-nfsd_net client_lock spinlock.
+> > + *
+> > + * References to it are only held during the processing of compounds, and in
+> > + * certain other operations. In their "resting state" they have a refcount of
+> > + * 0. If they are not renewed within a lease period, they become eligible for
+> > + * destruction by the laundromat.
+> > + *
+> > + * These objects can also be destroyed prematurely by the fault injection code,
+> > + * or if the client sends certain forms of SETCLIENTID or EXCHANGE_ID updates.
+> > + * Care is taken *not* to do this however when the objects have an elevated
+> > + * refcount.
+> > + *
+> > + * o Each nfs4_client is hashed by clientid
+> > + *
+> > + * o Each nfs4_clients is also hashed by name (the opaque quantity initially
+> > + *   sent by the client to identify itself).
+> >   * 	  
+> > - *	o cl_perclient list is used to ensure no dangling stateowner references
+> > - *	  when we expire the nfs4_client
+> > + * o cl_perclient list is used to ensure no dangling stateowner references
+> > + *   when we expire the nfs4_client
+> >   */
+> >  struct nfs4_client {
+> >  	struct list_head	cl_idhash; 	/* hash by cl_clientid.id */
+> > @@ -340,6 +379,12 @@ struct nfs4_stateowner_operations {
+> >  	void (*so_free)(struct nfs4_stateowner *);
+> >  };
+> >  
+> > +/*
+> > + * A core object that represents either an open or lock owner. The object and
+> > + * lock owner objects have one of these embedded within them. Refcounts and
+> > + * other fields common to both owner types are contained within these
+> > + * structures.
+> > + */
+> >  struct nfs4_stateowner {
+> >  	struct list_head			so_strhash;
+> >  	struct list_head			so_stateids;
+> > @@ -354,6 +399,12 @@ struct nfs4_stateowner {
+> >  	bool					so_is_open_owner;
+> >  };
+> >  
+> > +/*
+> > + * When a file is opened, the client provides an open state owner opaque string
+> > + * that indicates the "owner" of that open. These objects are refcounted.
+> > + * References to it are held by each open state associated with it. This object
+> > + * is a superset of the nfs4_stateowner struct.
+> > + */
+> >  struct nfs4_openowner {
+> >  	struct nfs4_stateowner	oo_owner; /* must be first field */
+> >  	struct list_head        oo_perclient;
+> > @@ -371,6 +422,12 @@ struct nfs4_openowner {
+> >  	unsigned char		oo_flags;
+> >  };
+> >  
+> > +/*
+> > + * Represents a generic "lockowner". Similar to an openowner. References to it
+> > + * are held by the lock stateids that are created on its behalf. This object is
+> > + * a superset of the nfs4_stateowner struct (or would be if it needed any extra
+> > + * fields).
+> > + */
+> >  struct nfs4_lockowner {
+> >  	struct nfs4_stateowner	lo_owner; /* must be first element */
+> >  };
+> > @@ -385,7 +442,14 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
+> >  	return container_of(so, struct nfs4_lockowner, lo_owner);
+> >  }
+> >  
+> > -/* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
+> > +/*
+> > + * nfs4_file: a file opened by some number of (open) nfs4_stateowners.
+> > + *
+> > + * These objects are global. nfsd only keeps one instance of a nfs4_file per
+> > + * inode (though it may keep multiple file descriptors open per inode). These
+> > + * are tracked in the file_hashtbl which is protected by the state_lock
+> > + * spinlock.
+> > + */
+> >  struct nfs4_file {
+> >  	atomic_t		fi_ref;
+> >  	spinlock_t		fi_lock;
+> > @@ -410,7 +474,20 @@ struct nfs4_file {
+> >  	bool			fi_had_conflict;
+> >  };
+> >  
+> > -/* "ol" stands for "Open or Lock".  Better suggestions welcome. */
+> > +/*
+> > + * A generic struct representing either a open or lock stateid. The nfs4_client
+> > + * holds a reference to each of these objects, and they in turn hold a
+> > + * reference to their respective stateowners. The client's reference is
+> > + * released in response to a close or unlock (depending on whether it's an open
+> > + * or lock stateid) or when the client is being destroyed.
+> > + *
+> > + * In the case of v4.0 open stateids, these objects are preserved for a little
+> > + * while after close in order to handle CLOSE replays. Those are eventually
+> > + * reclaimed via a LRU scheme by the laundromat.
+> > + *
+> > + * This object is a superset of the nfs4_stid. "ol" stands for "Open or Lock".
+> > + * Better suggestions welcome.
+> > + */
+> >  struct nfs4_ol_stateid {
+> >  	struct nfs4_stid    st_stid; /* must be first field */
+> >  	struct list_head              st_perfile;
+> > -- 
+> > 1.9.3
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
