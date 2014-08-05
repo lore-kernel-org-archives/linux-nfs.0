@@ -1,66 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:60060 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751234AbaHWOlc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Aug 2014 10:41:32 -0400
-Received: by mail-qa0-f49.google.com with SMTP id dc16so10782216qab.36
-        for <linux-nfs@vger.kernel.org>; Sat, 23 Aug 2014 07:41:30 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: bfields@fieldses.org, hch@infradead.org, cluster-devel@redhat.com,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 02/10] nfsd: fix potential lease memory leak in nfs4_setlease
-Date: Sat, 23 Aug 2014 10:41:10 -0400
-Message-Id: <1408804878-1331-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
-References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:46679 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753438AbaHETU6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2014 15:20:58 -0400
+Received: by mail-qa0-f41.google.com with SMTP id j7so1440153qaq.0
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 12:20:57 -0700 (PDT)
+Date: Tue, 5 Aug 2014 15:20:54 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        NeilBrown <neilb@suse.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] fs/locks.c: Copy fl_lmops to conflock for nfsd using
+Message-ID: <20140805152054.60e00162@tlielax.poochiereds.net>
+In-Reply-To: <20140805191458.GV23341@fieldses.org>
+References: <53BAAAC5.9000106@gmail.com>
+	<53DCF97D.3000605@gmail.com>
+	<20140802190505.442f07b8@tlielax.poochiereds.net>
+	<20140805191458.GV23341@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's unlikely to ever occur, but if there were already a lease set on
-the file then we could end up getting back a different pointer on a
-successful setlease attempt than the one we allocated. If that happens,
-the one we allocated could leak.
+On Tue, 5 Aug 2014 15:14:58 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-In practice, I don't think this will happen due to the fact that we only
-try to set up the lease once per nfs4_file, but this error handling is a
-bit more correct given the current lease API.
+> On Sat, Aug 02, 2014 at 07:05:05PM -0400, Jeff Layton wrote:
+> > On Sat, 02 Aug 2014 22:45:17 +0800
+> > Kinglong Mee <kinglongmee@gmail.com> wrote:
+> > 
+> > > Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks)
+> > > using fl_lmops field in file_lock for checking nfsd4 lockowner.
+> > > 
+> > > But, commit 1a747ee0cc (locks: don't call ->copy_lock methods
+> > > on return of conflicting locks) causes the fl_lmops of conflock
+> > > for nfsd4_lock always be NULL.
+> > > 
+> > > Also, commit 0996905f93 (lockd: posix_test_lock() should not call
+> > > locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt
+> > > always be NULL too.
+> > > 
+> > > So that, nfsd4 lockowner for it always be NULL too.
+> > > 
+> > > This patch re-coping the fl_lmops to conflock.
+> > > 
+> > > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > > ---
+> > >  fs/locks.c | 3 +--
+> > >  1 file changed, 1 insertion(+), 2 deletions(-)
+> > > 
+> > > diff --git a/fs/locks.c b/fs/locks.c
+> > > index 717fbc4..cc1219a 100644
+> > > --- a/fs/locks.c
+> > > +++ b/fs/locks.c
+> > > @@ -279,7 +279,7 @@ void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
+> > >  	new->fl_start = fl->fl_start;
+> > >  	new->fl_end = fl->fl_end;
+> > >  	new->fl_ops = NULL;
+> > > -	new->fl_lmops = NULL;
+> > > +	new->fl_lmops = fl->fl_lmops;
+> > >  }
+> > >  EXPORT_SYMBOL(__locks_copy_lock);
+> > >  
+> > > @@ -290,7 +290,6 @@ void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+> > >  	__locks_copy_lock(new, fl);
+> > >  	new->fl_file = fl->fl_file;
+> > >  	new->fl_ops = fl->fl_ops;
+> > > -	new->fl_lmops = fl->fl_lmops;
+> > >  
+> > >  	locks_copy_private(new, fl);
+> > >  }
+> > 
+> > This looks sane to me AFAICT.
+> > 
+> > I'll run a few tests with it, and put it into I'll plan to pick this up
+> > since I have some other fs/locks.c related patches slated for 3.17.
+> 
+> Looks like your mail and Trond's crossed?  I'd need to go remind myself
+> of the __locks_copy_lock callers, but I'm pretty sure Trond's right....
+> 
+> --b.
 
-Cc: J. Bruce Fields <bfields@fieldses.org>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+Yeah, I missed his earlier reply and have since dropped this patch. The
+potential race that Trond pointed out trumps the minor problem of not
+having conflock info, so I'm inclined to wait for a better solution to
+that problem.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fd5ff4b17292..29fac18d9102 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3774,7 +3774,7 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_file *fp, int flag)
- static int nfs4_setlease(struct nfs4_delegation *dp)
- {
- 	struct nfs4_file *fp = dp->dl_stid.sc_file;
--	struct file_lock *fl;
-+	struct file_lock *fl, *ret;
- 	struct file *filp;
- 	int status = 0;
- 
-@@ -3788,11 +3788,14 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 		return -EBADF;
- 	}
- 	fl->fl_file = filp;
--	status = vfs_setlease(filp, fl->fl_type, &fl);
-+	ret = fl;
-+	status = vfs_setlease(filp, fl->fl_type, &ret);
- 	if (status) {
- 		locks_free_lock(fl);
- 		goto out_fput;
- 	}
-+	if (ret != fl)
-+		locks_free_lock(fl);
- 	spin_lock(&state_lock);
- 	spin_lock(&fp->fi_lock);
- 	/* Did the lease get broken before we took the lock? */
 -- 
-1.9.3
-
+Jeff Layton <jlayton@poochiereds.net>
