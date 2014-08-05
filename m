@@ -1,194 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:58888 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752161AbaHFRoj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 13:44:39 -0400
-Received: by mail-ig0-f176.google.com with SMTP id hn18so9071224igb.15
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Aug 2014 10:44:38 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/6] nfsd: split DRC global spinlock into per-bucket locks
-Date: Wed,  6 Aug 2014 13:44:24 -0400
-Message-Id: <1407347065-17463-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407347065-17463-5-git-send-email-trond.myklebust@primarydata.com>
-References: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
- <1407347065-17463-2-git-send-email-trond.myklebust@primarydata.com>
- <1407347065-17463-3-git-send-email-trond.myklebust@primarydata.com>
- <1407347065-17463-4-git-send-email-trond.myklebust@primarydata.com>
- <1407347065-17463-5-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:37359 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753066AbaHEOtP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Aug 2014 10:49:15 -0400
+Date: Tue, 5 Aug 2014 10:49:13 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: Put the reference of nfs4_file when freeing stid
+Message-ID: <20140805144912.GO23341@fieldses.org>
+References: <53E0DA1B.2020705@gmail.com>
+ <20140805094430.332ffc66@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140805094430.332ffc66@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfscache.c | 43 ++++++++++++++++++++-----------------------
- 1 file changed, 20 insertions(+), 23 deletions(-)
+On Tue, Aug 05, 2014 at 09:44:30AM -0400, Jeff Layton wrote:
+> On Tue, 05 Aug 2014 21:20:27 +0800
+> Kinglong Mee <kinglongmee@gmail.com> wrote:
+> 
+> > After testing nfs4 lock, I restart the nfsd service, got messages as,
+> > 
+> > [ 5677.403419] nfsd: last server has exited, flushing export cache
+> > [ 5677.463728] =============================================================================
+> > [ 5677.463942] BUG nfsd4_files (Tainted: G    B      OE): Objects remaining in nfsd4_files on kmem_cache_close()
+> > [ 5677.464055] -----------------------------------------------------------------------------
+> > 
+> > [ 5677.464203] INFO: Slab 0xffffea0000233400 objects=28 used=1 fp=0xffff880008cd3d98 flags=0x3ffc0000004080
+> > [ 5677.464318] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
+> > [ 5677.464420] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+> > [ 5677.464538]  0000000000000000 0000000036af2c9f ffff88000ce97d68 ffffffff816eacfa
+> > [ 5677.464643]  ffffea0000233400 ffff88000ce97e40 ffffffff811cda44 ffffffff00000020
+> > [ 5677.464774]  ffff88000ce97e50 ffff88000ce97e00 656a624f00000008 616d657220737463
+> > [ 5677.464875] Call Trace:
+> > [ 5677.464925]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
+> > [ 5677.464983]  [<ffffffff811cda44>] slab_err+0xb4/0xe0
+> > [ 5677.465040]  [<ffffffff811d0457>] ? __kmalloc+0x117/0x290
+> > [ 5677.465099]  [<ffffffff81100eec>] ? on_each_cpu_cond+0xac/0xf0
+> > [ 5677.465158]  [<ffffffff811d1bc0>] ? kmem_cache_close+0x110/0x2e0
+> > [ 5677.465218]  [<ffffffff811d1be0>] kmem_cache_close+0x130/0x2e0
+> > [ 5677.465279]  [<ffffffff8135a0c1>] ? kobject_cleanup+0x91/0x1b0
+> > [ 5677.465338]  [<ffffffff811d22be>] __kmem_cache_shutdown+0xe/0x10
+> > [ 5677.465399]  [<ffffffff8119bd28>] kmem_cache_destroy+0x48/0x100
+> > [ 5677.465466]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
+> > [ 5677.465530]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
+> > [ 5677.465589]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
+> > [ 5677.465649]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
+> > [ 5677.465759]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
+> > [ 5677.465822] INFO: Object 0xffff880008cd0000 @offset=0
+> > [ 5677.465882] INFO: Allocated in nfsd4_process_open1+0x61/0x350 [nfsd] age=7599 cpu=0 pid=3253
+> > [ 5677.466115]  __slab_alloc+0x3b0/0x4b1
+> > [ 5677.466166]  kmem_cache_alloc+0x1e4/0x240
+> > [ 5677.466220]  nfsd4_process_open1+0x61/0x350 [nfsd]
+> > [ 5677.466276]  nfsd4_open+0xee/0x860 [nfsd]
+> > [ 5677.466329]  nfsd4_proc_compound+0x4d7/0x7f0 [nfsd]
+> > [ 5677.466384]  nfsd_dispatch+0xbb/0x200 [nfsd]
+> > [ 5677.466447]  svc_process_common+0x453/0x6f0 [sunrpc]
+> > [ 5677.466506]  svc_process+0x103/0x170 [sunrpc]
+> > [ 5677.466559]  nfsd+0x117/0x190 [nfsd]
+> > [ 5677.466609]  kthread+0xd8/0xf0
+> > [ 5677.466656]  ret_from_fork+0x7c/0xb0
+> > [ 5677.466775] kmem_cache_destroy nfsd4_files: Slab cache still has objects
+> > [ 5677.466839] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
+> > [ 5677.466937] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+> > [ 5677.467049]  0000000000000000 0000000036af2c9f ffff88000ce97eb0 ffffffff816eacfa
+> > [ 5677.467150]  ffff880020bb2d00 ffff88000ce97ed0 ffffffff8119bdd9 0000000000000000
+> > [ 5677.467250]  ffffffffa06065c0 ffff88000ce97ee0 ffffffffa05ef78d ffff88000ce97ef0
+> > [ 5677.467351] Call Trace:
+> > [ 5677.467397]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
+> > [ 5677.467454]  [<ffffffff8119bdd9>] kmem_cache_destroy+0xf9/0x100
+> > [ 5677.467516]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
+> > [ 5677.467579]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
+> > [ 5677.467639]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
+> > [ 5677.467765]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
+> > [ 5677.467826]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
+> > 
+> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > ---
+> >  fs/nfsd/nfs4state.c | 4 ++++
+> >  1 file changed, 4 insertions(+)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 56999cb..e87005d 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -1037,6 +1037,7 @@ static void
+> >  free_ol_stateid_reaplist(struct list_head *reaplist)
+> >  {
+> >  	struct nfs4_ol_stateid *stp;
+> > +	struct nfs4_file *fp;
+> >  
+> >  	might_sleep();
+> >  
+> > @@ -1044,7 +1045,10 @@ free_ol_stateid_reaplist(struct list_head *reaplist)
+> >  		stp = list_first_entry(reaplist, struct nfs4_ol_stateid,
+> >  				       st_locks);
+> >  		list_del(&stp->st_locks);
+> > +		fp = stp->st_stid.sc_file;
+> >  		stp->st_stid.sc_free(&stp->st_stid);
+> > +		if (fp)
+> > +			put_nfs4_file(fp);
+> >  	}
+> >  }
+> >  
+> 
+> Well spotted. I missed that when moved the nfs4_file handling out of
+> sc_free.
+> 
+> Reviewed-by: Jeff Layton <jlayton@primarydata.com>
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index dc909091349b..74603654b7f9 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -29,6 +29,7 @@
- 
- struct nfsd_drc_bucket {
- 	struct list_head lru_head;
-+	spinlock_t cache_lock;
- };
- 
- static struct nfsd_drc_bucket	*drc_hashtbl;
-@@ -79,7 +80,6 @@ static struct shrinker nfsd_reply_cache_shrinker = {
-  * A cache entry is "single use" if c_state == RC_INPROG
-  * Otherwise, it when accessing _prev or _next, the lock must be held.
-  */
--static DEFINE_SPINLOCK(cache_lock);
- static DECLARE_DELAYED_WORK(cache_cleaner, cache_cleaner_func);
- 
- /*
-@@ -154,11 +154,11 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
- }
- 
- static void
--nfsd_reply_cache_free(struct svc_cacherep *rp)
-+nfsd_reply_cache_free(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
- {
--	spin_lock(&cache_lock);
-+	spin_lock(&b->cache_lock);
- 	nfsd_reply_cache_free_locked(rp);
--	spin_unlock(&cache_lock);
-+	spin_unlock(&b->cache_lock);
- }
- 
- int nfsd_reply_cache_init(void)
-@@ -180,8 +180,10 @@ int nfsd_reply_cache_init(void)
- 	drc_hashtbl = kcalloc(hashsize, sizeof(*drc_hashtbl), GFP_KERNEL);
- 	if (!drc_hashtbl)
- 		goto out_nomem;
--	for (i = 0; i < hashsize; i++)
-+	for (i = 0; i < hashsize; i++) {
- 		INIT_LIST_HEAD(&drc_hashtbl[i].lru_head);
-+		spin_lock_init(&drc_hashtbl[i].cache_lock);
-+	}
- 	drc_hashsize = hashsize;
- 
- 	return 0;
-@@ -265,9 +267,13 @@ prune_cache_entries(void)
- 	for (i = 0; i < drc_hashsize; i++) {
- 		struct nfsd_drc_bucket *b = &drc_hashtbl[i];
- 
-+		if (list_empty(&b->lru_head))
-+			continue;
-+		spin_lock(&b->cache_lock);
- 		freed += prune_bucket(b);
- 		if (!list_empty(&b->lru_head))
- 			cancel = false;
-+		spin_unlock(&b->cache_lock);
- 	}
- 
- 	/*
-@@ -282,9 +288,7 @@ prune_cache_entries(void)
- static void
- cache_cleaner_func(struct work_struct *unused)
- {
--	spin_lock(&cache_lock);
- 	prune_cache_entries();
--	spin_unlock(&cache_lock);
- }
- 
- static unsigned long
-@@ -296,12 +300,7 @@ nfsd_reply_cache_count(struct shrinker *shrink, struct shrink_control *sc)
- static unsigned long
- nfsd_reply_cache_scan(struct shrinker *shrink, struct shrink_control *sc)
- {
--	unsigned long freed;
--
--	spin_lock(&cache_lock);
--	freed = prune_cache_entries();
--	spin_unlock(&cache_lock);
--	return freed;
-+	return prune_cache_entries();
- }
- /*
-  * Walk an xdr_buf and get a CRC for at most the first RC_CSUMLEN bytes
-@@ -426,14 +425,14 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	 * preallocate an entry.
- 	 */
- 	rp = nfsd_reply_cache_alloc();
--	spin_lock(&cache_lock);
-+	spin_lock(&b->cache_lock);
- 	if (likely(rp)) {
- 		atomic_inc(&num_drc_entries);
- 		drc_mem_usage += sizeof(*rp);
- 	}
- 
- 	/* go ahead and prune the cache */
--	prune_cache_entries();
-+	prune_bucket(b);
- 
- 	found = nfsd_cache_search(b, rqstp, csum);
- 	if (found) {
-@@ -470,7 +469,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	}
- 	rp->c_type = RC_NOCACHE;
-  out:
--	spin_unlock(&cache_lock);
-+	spin_unlock(&b->cache_lock);
- 	return rtn;
- 
- found_entry:
-@@ -548,7 +547,7 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
- 
- 	/* Don't cache excessive amounts of data and XDR failures */
- 	if (!statp || len > (256 >> 2)) {
--		nfsd_reply_cache_free(rp);
-+		nfsd_reply_cache_free(b, rp);
- 		return;
- 	}
- 
-@@ -563,23 +562,23 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
- 		bufsize = len << 2;
- 		cachv->iov_base = kmalloc(bufsize, GFP_KERNEL);
- 		if (!cachv->iov_base) {
--			nfsd_reply_cache_free(rp);
-+			nfsd_reply_cache_free(b, rp);
- 			return;
- 		}
- 		cachv->iov_len = bufsize;
- 		memcpy(cachv->iov_base, statp, bufsize);
- 		break;
- 	case RC_NOCACHE:
--		nfsd_reply_cache_free(rp);
-+		nfsd_reply_cache_free(b, rp);
- 		return;
- 	}
--	spin_lock(&cache_lock);
-+	spin_lock(&b->cache_lock);
- 	drc_mem_usage += bufsize;
- 	lru_put_end(b, rp);
- 	rp->c_secure = rqstp->rq_secure;
- 	rp->c_type = cachetype;
- 	rp->c_state = RC_DONE;
--	spin_unlock(&cache_lock);
-+	spin_unlock(&b->cache_lock);
- 	return;
- }
- 
-@@ -610,7 +609,6 @@ nfsd_cache_append(struct svc_rqst *rqstp, struct kvec *data)
-  */
- static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- {
--	spin_lock(&cache_lock);
- 	seq_printf(m, "max entries:           %u\n", max_drc_entries);
- 	seq_printf(m, "num entries:           %u\n",
- 			atomic_read(&num_drc_entries));
-@@ -622,7 +620,6 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- 	seq_printf(m, "payload misses:        %u\n", payload_misses);
- 	seq_printf(m, "longest chain len:     %u\n", longest_chain);
- 	seq_printf(m, "cachesize at longest:  %u\n", longest_chain_cachesize);
--	spin_unlock(&cache_lock);
- 	return 0;
- }
- 
--- 
-1.9.3
+Thanks, Kinglong Mee!
 
+I'll also add a note that this fixes 11b9164adad7 "nfsd: Add a struct
+nfs4_file field to struct nfs4_stid".
+
+--b.
+
+--b.
