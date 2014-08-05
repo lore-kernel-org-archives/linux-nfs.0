@@ -1,55 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:51196 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752214AbaHUQHk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 12:07:40 -0400
-Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XKUtm-0000Ac-VN
-	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 16:07:39 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 11/19] pnfs/blocklayout: improve GETDEVICEINFO error reporting
-Date: Thu, 21 Aug 2014 11:09:27 -0500
-Message-Id: <1408637375-11343-12-git-send-email-hch@lst.de>
-In-Reply-To: <1408637375-11343-1-git-send-email-hch@lst.de>
-References: <pnfs block layout driver fixes V2>
- <1408637375-11343-1-git-send-email-hch@lst.de>
+Received: from mail-pa0-f41.google.com ([209.85.220.41]:62515 "EHLO
+	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753216AbaHENUn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2014 09:20:43 -0400
+Received: by mail-pa0-f41.google.com with SMTP id rd3so1419408pab.28
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 06:20:42 -0700 (PDT)
+Message-ID: <53E0DA1B.2020705@gmail.com>
+Date: Tue, 05 Aug 2014 21:20:27 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        kinglongmee@gmail.com
+Subject: [PATCH] NFSD: Put the reference of nfs4_file when freeing stid
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tell userspace what stage of GETDEVICEINFO failed so that there is a chance
-to debug it, especially with the userspace daemon clusterf***k in the block
-layout driver.
+After testing nfs4 lock, I restart the nfsd service, got messages as,
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+[ 5677.403419] nfsd: last server has exited, flushing export cache
+[ 5677.463728] =============================================================================
+[ 5677.463942] BUG nfsd4_files (Tainted: G    B      OE): Objects remaining in nfsd4_files on kmem_cache_close()
+[ 5677.464055] -----------------------------------------------------------------------------
+
+[ 5677.464203] INFO: Slab 0xffffea0000233400 objects=28 used=1 fp=0xffff880008cd3d98 flags=0x3ffc0000004080
+[ 5677.464318] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
+[ 5677.464420] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+[ 5677.464538]  0000000000000000 0000000036af2c9f ffff88000ce97d68 ffffffff816eacfa
+[ 5677.464643]  ffffea0000233400 ffff88000ce97e40 ffffffff811cda44 ffffffff00000020
+[ 5677.464774]  ffff88000ce97e50 ffff88000ce97e00 656a624f00000008 616d657220737463
+[ 5677.464875] Call Trace:
+[ 5677.464925]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
+[ 5677.464983]  [<ffffffff811cda44>] slab_err+0xb4/0xe0
+[ 5677.465040]  [<ffffffff811d0457>] ? __kmalloc+0x117/0x290
+[ 5677.465099]  [<ffffffff81100eec>] ? on_each_cpu_cond+0xac/0xf0
+[ 5677.465158]  [<ffffffff811d1bc0>] ? kmem_cache_close+0x110/0x2e0
+[ 5677.465218]  [<ffffffff811d1be0>] kmem_cache_close+0x130/0x2e0
+[ 5677.465279]  [<ffffffff8135a0c1>] ? kobject_cleanup+0x91/0x1b0
+[ 5677.465338]  [<ffffffff811d22be>] __kmem_cache_shutdown+0xe/0x10
+[ 5677.465399]  [<ffffffff8119bd28>] kmem_cache_destroy+0x48/0x100
+[ 5677.465466]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
+[ 5677.465530]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
+[ 5677.465589]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
+[ 5677.465649]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
+[ 5677.465759]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
+[ 5677.465822] INFO: Object 0xffff880008cd0000 @offset=0
+[ 5677.465882] INFO: Allocated in nfsd4_process_open1+0x61/0x350 [nfsd] age=7599 cpu=0 pid=3253
+[ 5677.466115]  __slab_alloc+0x3b0/0x4b1
+[ 5677.466166]  kmem_cache_alloc+0x1e4/0x240
+[ 5677.466220]  nfsd4_process_open1+0x61/0x350 [nfsd]
+[ 5677.466276]  nfsd4_open+0xee/0x860 [nfsd]
+[ 5677.466329]  nfsd4_proc_compound+0x4d7/0x7f0 [nfsd]
+[ 5677.466384]  nfsd_dispatch+0xbb/0x200 [nfsd]
+[ 5677.466447]  svc_process_common+0x453/0x6f0 [sunrpc]
+[ 5677.466506]  svc_process+0x103/0x170 [sunrpc]
+[ 5677.466559]  nfsd+0x117/0x190 [nfsd]
+[ 5677.466609]  kthread+0xd8/0xf0
+[ 5677.466656]  ret_from_fork+0x7c/0xb0
+[ 5677.466775] kmem_cache_destroy nfsd4_files: Slab cache still has objects
+[ 5677.466839] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
+[ 5677.466937] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+[ 5677.467049]  0000000000000000 0000000036af2c9f ffff88000ce97eb0 ffffffff816eacfa
+[ 5677.467150]  ffff880020bb2d00 ffff88000ce97ed0 ffffffff8119bdd9 0000000000000000
+[ 5677.467250]  ffffffffa06065c0 ffff88000ce97ee0 ffffffffa05ef78d ffff88000ce97ef0
+[ 5677.467351] Call Trace:
+[ 5677.467397]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
+[ 5677.467454]  [<ffffffff8119bdd9>] kmem_cache_destroy+0xf9/0x100
+[ 5677.467516]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
+[ 5677.467579]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
+[ 5677.467639]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
+[ 5677.467765]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
+[ 5677.467826]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/blocklayout/blocklayoutdev.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index 04303b5..63f77925 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -150,7 +150,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	remove_wait_queue(&nn->bl_wq, &wq);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 56999cb..e87005d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1037,6 +1037,7 @@ static void
+ free_ol_stateid_reaplist(struct list_head *reaplist)
+ {
+ 	struct nfs4_ol_stateid *stp;
++	struct nfs4_file *fp;
  
- 	if (reply->status != BL_DEVICE_REQUEST_PROC) {
--		dprintk("%s failed to open device: %d\n",
-+		printk(KERN_WARNING "%s failed to decode device: %d\n",
- 			__func__, reply->status);
- 		rv = ERR_PTR(-EINVAL);
- 		goto out;
-@@ -159,7 +159,8 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	bd = blkdev_get_by_dev(MKDEV(reply->major, reply->minor),
- 			       FMODE_READ, NULL);
- 	if (IS_ERR(bd)) {
--		dprintk("%s failed to open device : %ld\n", __func__,
-+		printk(KERN_WARNING "%s failed to open device %d:%d (%ld)\n",
-+			__func__, reply->major, reply->minor,
- 			PTR_ERR(bd));
- 		rv = ERR_CAST(bd);
- 		goto out;
+ 	might_sleep();
+ 
+@@ -1044,7 +1045,10 @@ free_ol_stateid_reaplist(struct list_head *reaplist)
+ 		stp = list_first_entry(reaplist, struct nfs4_ol_stateid,
+ 				       st_locks);
+ 		list_del(&stp->st_locks);
++		fp = stp->st_stid.sc_file;
+ 		stp->st_stid.sc_free(&stp->st_stid);
++		if (fp)
++			put_nfs4_file(fp);
+ 	}
+ }
+ 
 -- 
-1.9.1
+1.9.3
 
