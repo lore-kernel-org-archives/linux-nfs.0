@@ -1,80 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54017 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:33620 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754323AbaHAMri (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Aug 2014 08:47:38 -0400
-Date: Fri, 1 Aug 2014 14:47:34 +0200
-From: Jan Kara <jack@suse.cz>
-To: NeilBrown <neilb@suse.de>
-Cc: Ben Greear <greearb@candelatech.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: Killing process in D state on mount to dead NFS server. (when
- process is in fsync)
-Message-ID: <20140801124734.GB5431@quack.suse.cz>
-References: <53DA8443.407@candelatech.com>
- <20140801064217.01852788@notabene.brown>
- <53DAB307.2000206@candelatech.com>
- <20140801075053.2120cb33@notabene.brown>
+	id S1753590AbaHEUvH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Aug 2014 16:51:07 -0400
+Date: Tue, 5 Aug 2014 16:51:05 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/6] NFS DRC scalability patches
+Message-ID: <20140805205105.GA23341@fieldses.org>
+References: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
+ <20140804074546.7c63e725@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140801075053.2120cb33@notabene.brown>
+In-Reply-To: <20140804074546.7c63e725@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri 01-08-14 07:50:53, NeilBrown wrote:
-> On Thu, 31 Jul 2014 14:20:07 -0700 Ben Greear <greearb@candelatech.com> wrote:
-> > -----BEGIN PGP SIGNED MESSAGE-----
-> > Hash: SHA1
+On Mon, Aug 04, 2014 at 07:45:46AM -0400, Jeff Layton wrote:
+> On Sun,  3 Aug 2014 13:05:58 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+> > Hi Bruce,
 > > 
-> > On 07/31/2014 01:42 PM, NeilBrown wrote:
-> > > On Thu, 31 Jul 2014 11:00:35 -0700 Ben Greear <greearb@candelatech.com> wrote:
-> > > 
-> > >> So, this has been asked all over the interweb for years and years, but the best answer I can find is to reboot the system or create a fake NFS server
-> > >> somewhere with the same IP as the gone-away NFS server.
-> > >> 
-> > >> The problem is:
-> > >> 
-> > >> I have some mounts to an NFS server that no longer exists (crashed/powered down).
-> > >> 
-> > >> I have some processes stuck trying to write to files open on these mounts.
-> > >> 
-> > >> I want to kill the process and unmount.
-> > >> 
-> > >> umount -l will make the mount go a way, sort of.  But process is still hung. umount -f complains: umount2:  Device or resource busy umount.nfs: /mnt/foo:
-> > >> device is busy
-> > >> 
-> > >> kill -9 does not work on process.
-> > > 
-> > > Kill -1 should work (since about 2.6.25 or so).
+> > The following patchset is again more an FYI than a must have, but it
+> > addresses a significant scalability problem for NFSv3 when running
+> > over 10GigE and 40GigE networks. At one point, I was seeing >60% CPU
+> > spinning on the DRC global spinlock...
 > > 
-> > That is -[ONE], right?  Assuming so, it did not work for me.
+> > The one thing to note is that because the statistics are moved outside
+> > spinlocking, then their accuracy is slightly reduced (I do convert the
+> > number of entries into an atomic, so that is still 100% correct). The
+> > right thing to do there is probably to convert those into per-cpu
+> > counters, however I've not had time to do so for now.
+> > 
 > 
-> No, it was "-9" .... sorry, I really shouldn't be let out without my proof
-> reader.
+> Consider adding some FIXME comments to that effect? While not terribly
+> important, it would be good to fix them at some point.
 > 
-> However the 'stack' is sufficient to see what is going on.
+> > Cheers,
+> >   Trond
+> > 
+> > Trond Myklebust (6):
+> >   nfsd: Clean up drc cache in preparation for global spinlock
+> >     elimination
+> >   nfsd: convert the lru list into a per-bucket thing
+> >   nfsd: Remove the cache_hash list
+> >   nfsd: convert num_drc_entries to an atomic_t
+> >   nfsd: split DRC global spinlock into per-bucket locks
+> >   nfsd: Reorder nfsd_cache_match to check more powerful discriminators
+> >     first
+> > 
+> >  fs/nfsd/cache.h    |   1 -
+> >  fs/nfsd/nfscache.c | 205 +++++++++++++++++++++++++++++------------------------
+> >  2 files changed, 113 insertions(+), 93 deletions(-)
+> > 
 > 
-> The problem is that it is blocked inside the "VM" well away from NFS and
-> there is no way for NFS to say "give up and go home".
+> Looks good. Nice work! You can add this to each since they all look
+> good to me. It would be good to fix up the stats collection and the
+> comments, but I wouldn't want to hold up this work for that.
 > 
-> I'd suggest that is a bug.   I cannot see any justification for fsync to not
-> be killable.
-> It wouldn't be too hard to create a patch to make it so.
-> It would be a little harder to examine all call paths and create a
-> convincing case that the patch was safe.
-> It might be herculean task to convince others that it was the right thing
-> to do.... so let's start with that one.
-> 
-> Hi Linux-mm and fs-devel people.  What do people think of making "fsync" and
-> variants "KILLABLE" ??
-  Sounds useful to me and I don't see how it could break some
-application...
+>     Reviewed-by: Jeff Layton <jlayton@primarydata.com>
 
-								Honza
+Could you also rebase this to my for-3.17?  (Or to 3.17-rc1, whenever
+that comes out.)  Not urgent, but there appear to be some minor
+conflicts.
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+--b.
