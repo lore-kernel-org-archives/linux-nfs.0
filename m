@@ -1,85 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:50128 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750819AbaHTKAS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 06:00:18 -0400
-Message-ID: <53F47185.2070301@gmail.com>
-Date: Wed, 20 Aug 2014 17:59:33 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from fieldses.org ([174.143.236.118]:45978 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753519AbaHETPA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Aug 2014 15:15:00 -0400
+Date: Tue, 5 Aug 2014 15:14:58 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        NeilBrown <neilb@suse.de>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 6/6 v5] NFSD: Get reference of lockowner when coping file_lock
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com> <53F36CB5.2030707@gmail.com>
-In-Reply-To: <53F36CB5.2030707@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] fs/locks.c: Copy fl_lmops to conflock for nfsd using
+Message-ID: <20140805191458.GV23341@fieldses.org>
+References: <53BAAAC5.9000106@gmail.com>
+ <53DCF97D.3000605@gmail.com>
+ <20140802190505.442f07b8@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140802190505.442f07b8@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v5: using nfs4_get_stateowner() instead of an inline function
-v3: Update based on Jeff's comments
-v2: Fix bad using of struct file_lock_operations for handle the owner
+On Sat, Aug 02, 2014 at 07:05:05PM -0400, Jeff Layton wrote:
+> On Sat, 02 Aug 2014 22:45:17 +0800
+> Kinglong Mee <kinglongmee@gmail.com> wrote:
+> 
+> > Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks)
+> > using fl_lmops field in file_lock for checking nfsd4 lockowner.
+> > 
+> > But, commit 1a747ee0cc (locks: don't call ->copy_lock methods
+> > on return of conflicting locks) causes the fl_lmops of conflock
+> > for nfsd4_lock always be NULL.
+> > 
+> > Also, commit 0996905f93 (lockd: posix_test_lock() should not call
+> > locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt
+> > always be NULL too.
+> > 
+> > So that, nfsd4 lockowner for it always be NULL too.
+> > 
+> > This patch re-coping the fl_lmops to conflock.
+> > 
+> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > ---
+> >  fs/locks.c | 3 +--
+> >  1 file changed, 1 insertion(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/locks.c b/fs/locks.c
+> > index 717fbc4..cc1219a 100644
+> > --- a/fs/locks.c
+> > +++ b/fs/locks.c
+> > @@ -279,7 +279,7 @@ void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
+> >  	new->fl_start = fl->fl_start;
+> >  	new->fl_end = fl->fl_end;
+> >  	new->fl_ops = NULL;
+> > -	new->fl_lmops = NULL;
+> > +	new->fl_lmops = fl->fl_lmops;
+> >  }
+> >  EXPORT_SYMBOL(__locks_copy_lock);
+> >  
+> > @@ -290,7 +290,6 @@ void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+> >  	__locks_copy_lock(new, fl);
+> >  	new->fl_file = fl->fl_file;
+> >  	new->fl_ops = fl->fl_ops;
+> > -	new->fl_lmops = fl->fl_lmops;
+> >  
+> >  	locks_copy_private(new, fl);
+> >  }
+> 
+> This looks sane to me AFAICT.
+> 
+> I'll run a few tests with it, and put it into I'll plan to pick this up
+> since I have some other fs/locks.c related patches slated for 3.17.
 
-Acked-by: Jeff Layton <jlayton@primarydata.com>
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4state.c | 25 +++++++++++++++++++++----
- 1 file changed, 21 insertions(+), 4 deletions(-)
+Looks like your mail and Trond's crossed?  I'd need to go remind myself
+of the __locks_copy_lock callers, but I'm pretty sure Trond's right....
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e087a71..fd5ff4b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4869,9 +4869,25 @@ nfs4_transform_lock_offset(struct file_lock *lock)
- 		lock->fl_end = OFFSET_MAX;
- }
- 
--/* Hack!: For now, we're defining this just so we can use a pointer to it
-- * as a unique cookie to identify our (NFSv4's) posix locks. */
-+static void nfsd4_fl_get_owner(struct file_lock *dst, struct file_lock *src)
-+{
-+	struct nfs4_lockowner *lo = (struct nfs4_lockowner *)src->fl_owner;
-+	dst->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(&lo->lo_owner));
-+}
-+
-+static void nfsd4_fl_put_owner(struct file_lock *fl)
-+{
-+	struct nfs4_lockowner *lo = (struct nfs4_lockowner *)fl->fl_owner;
-+
-+	if (lo) {
-+		nfs4_put_stateowner(&lo->lo_owner);
-+		fl->fl_owner = NULL;
-+	}
-+}
-+
- static const struct lock_manager_operations nfsd_posix_mng_ops  = {
-+	.lm_get_owner = nfsd4_fl_get_owner,
-+	.lm_put_owner = nfsd4_fl_put_owner,
- };
- 
- static inline void
-@@ -5236,7 +5252,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_openmode;
- 		goto out;
- 	}
--	file_lock->fl_owner = (fl_owner_t)lock_sop;
-+
-+	file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(&lock_sop->lo_owner));
- 	file_lock->fl_pid = current->tgid;
- 	file_lock->fl_file = filp;
- 	file_lock->fl_flags = FL_POSIX;
-@@ -5432,7 +5449,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 
- 	file_lock->fl_type = F_UNLCK;
--	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
-+	file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(stp->st_stateowner));
- 	file_lock->fl_pid = current->tgid;
- 	file_lock->fl_file = filp;
- 	file_lock->fl_flags = FL_POSIX;
--- 
-1.9.3
-
+--b.
