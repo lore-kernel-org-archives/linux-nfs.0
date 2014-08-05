@@ -1,64 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:50573 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751141AbaHWOl2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Aug 2014 10:41:28 -0400
-Received: by mail-qa0-f45.google.com with SMTP id cm18so10622603qab.18
-        for <linux-nfs@vger.kernel.org>; Sat, 23 Aug 2014 07:41:27 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: bfields@fieldses.org, hch@infradead.org, cluster-devel@redhat.com,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 00/10] locks/nfsd: internal lease API overhaul
-Date: Sat, 23 Aug 2014 10:41:08 -0400
-Message-Id: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:59823 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753438AbaHEUmC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Aug 2014 16:42:02 -0400
+Date: Tue, 5 Aug 2014 16:42:02 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/11] SUNRPC server scalability improvements
+Message-ID: <20140805204202.GZ23341@fieldses.org>
+References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+ <20140804133641.GA23341@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140804133641.GA23341@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The internal "API" for handling leases has a lot of problems. The main
-one is that on success it can return a pointer to a lease that sits on
-the inode's i_flock list. That pointer is only guaranteed to be valid
-until the i_lock is dropped, which makes it a bit dangerous to use.
+On Mon, Aug 04, 2014 at 09:36:41AM -0400, Bruce Fields wrote:
+> On Sun, Aug 03, 2014 at 01:03:02PM -0400, Trond Myklebust wrote:
+> > When testing knfsd on 10GigE and 40GigE networks, we've been hitting a few
+> > scalability issues that are seriously affecting performance. The main issue
+> > was scalability of the pool->sp_lock, but we also hit a couple of things
+> > like the use of ioctls in the receive fast path, as well as some issues
+> > with heuristic tests being performed twice in the same path.
+> > 
+> > This is not urgent, and can definitely be delayed until the 3.18 merge
+> > window, however since the performance gains were significant over NFSv3,
+> > I thought I'd share now.
+> 
+> Thanks!  On a quick skim these and the DRC patches look good.
+> 
+> My first priority is to see if I can merge the last of the state locking
+> patches which are already in nfsd-next, so yes I'll probably queue these
+> up for 3.18 later.
 
-Also, the i_lock is held over much too much of the code, which
-precludes any hope of ever adding proper support for leases to
-distributed filesystems.
+Though note I already applied the first three--I'm assuming the versions
+of those posted here are the same as the ones previously applied.  (See
+git://linux-nfs.org/~bfields/linux.git for-3.17.)
 
-This patchset is a cleanup and overhaul of the internal lease API. It
-fixes a number of problems in that code and makes an attempt at making
-that API more sane to use.
-
-The only real consumer of that API is knfsd, but this should make it
-easier for others to do so, reduce and clarify the spinlocking involved
-in handling leases, and get us a step closer toward allowing lease
-implementations that can block.
-
-I'm targeting this work for v3.18. Review would be welcome...
-
-Jeff Layton (10):
-  locks: close potential race in lease_get_mtime
-  nfsd: fix potential lease memory leak in nfs4_setlease
-  locks: generic_delete_lease doesn't need a file_lock at all
-  locks: clean up vfs_setlease kerneldoc comments
-  nfsd: don't keep a pointer to the lease in nfs4_file
-  locks: plumb an "aux" pointer into the setlease routines
-  locks: define a lm_setup handler for leases
-  locks: move i_lock acquisition into generic_*_lease handlers
-  locks: move freeing of leases outside of i_lock
-  locks: update Documentation/filesystems with lease API changes
-
- Documentation/filesystems/Locking |  21 ++--
- Documentation/filesystems/vfs.txt |   7 +-
- fs/cifs/cifsfs.c                  |   7 +-
- fs/gfs2/file.c                    |   3 +-
- fs/locks.c                        | 237 +++++++++++++++++++++-----------------
- fs/nfs/file.c                     |   2 +-
- fs/nfs/internal.h                 |   2 +-
- fs/nfsd/nfs4state.c               |  24 ++--
- fs/nfsd/state.h                   |   1 -
- include/linux/fs.h                |  18 +--
- 10 files changed, 172 insertions(+), 150 deletions(-)
-
--- 
-1.9.3
-
+--b.
