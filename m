@@ -1,88 +1,216 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f172.google.com ([209.85.216.172]:54319 "EHLO
-	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751166AbaHLXrk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 19:47:40 -0400
-Received: by mail-qc0-f172.google.com with SMTP id i8so3561705qcq.3
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 16:47:39 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 12 Aug 2014 19:47:36 -0400
-To: Stephen Rothwell <sfr@canb.auug.org.au>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls
- outside of i_lock
-Message-ID: <20140812194736.3184fce4@tlielax.poochiereds.net>
-In-Reply-To: <20140813082827.1097c3ad@canb.auug.org.au>
-References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
-	<20140813082827.1097c3ad@canb.auug.org.au>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/kxYLXrXQl0u7I2tdLiDGKVx"; protocol="application/pgp-signature"
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:42606 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753821AbaHFRog (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 13:44:36 -0400
+Received: by mail-ig0-f174.google.com with SMTP id c1so9090551igq.13
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Aug 2014 10:44:35 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/6] nfsd: convert the lru list into a per-bucket thing
+Date: Wed,  6 Aug 2014 13:44:21 -0400
+Message-Id: <1407347065-17463-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407347065-17463-2-git-send-email-trond.myklebust@primarydata.com>
+References: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407347065-17463-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/kxYLXrXQl0u7I2tdLiDGKVx
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfscache.c | 73 +++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 50 insertions(+), 23 deletions(-)
 
-On Wed, 13 Aug 2014 08:28:27 +1000
-Stephen Rothwell <sfr@canb.auug.org.au> wrote:
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index c74bcd628c4f..c01f44eb7fe4 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -29,10 +29,10 @@
+ 
+ struct nfsd_drc_bucket {
+ 	struct hlist_head cache_hash;
++	struct list_head lru_head;
+ };
+ 
+ static struct nfsd_drc_bucket	*drc_hashtbl;
+-static struct list_head 	lru_head;
+ static struct kmem_cache	*drc_slab;
+ 
+ /* max number of entries allowed in the cache */
+@@ -40,6 +40,7 @@ static unsigned int		max_drc_entries;
+ 
+ /* number of significant bits in the hash value */
+ static unsigned int		maskbits;
++static unsigned int		drc_hashsize;
+ 
+ /*
+  * Stats and other tracking of on the duplicate reply cache. All of these and
+@@ -167,8 +168,8 @@ nfsd_reply_cache_free(struct svc_cacherep *rp)
+ int nfsd_reply_cache_init(void)
+ {
+ 	unsigned int hashsize;
++	unsigned int i;
+ 
+-	INIT_LIST_HEAD(&lru_head);
+ 	max_drc_entries = nfsd_cache_size_limit();
+ 	num_drc_entries = 0;
+ 	hashsize = nfsd_hashsize(max_drc_entries);
+@@ -183,6 +184,9 @@ int nfsd_reply_cache_init(void)
+ 	drc_hashtbl = kcalloc(hashsize, sizeof(*drc_hashtbl), GFP_KERNEL);
+ 	if (!drc_hashtbl)
+ 		goto out_nomem;
++	for (i = 0; i < hashsize; i++)
++		INIT_LIST_HEAD(&drc_hashtbl[i].lru_head);
++	drc_hashsize = hashsize;
+ 
+ 	return 0;
+ out_nomem:
+@@ -194,17 +198,22 @@ out_nomem:
+ void nfsd_reply_cache_shutdown(void)
+ {
+ 	struct svc_cacherep	*rp;
++	unsigned int i;
+ 
+ 	unregister_shrinker(&nfsd_reply_cache_shrinker);
+ 	cancel_delayed_work_sync(&cache_cleaner);
+ 
+-	while (!list_empty(&lru_head)) {
+-		rp = list_entry(lru_head.next, struct svc_cacherep, c_lru);
+-		nfsd_reply_cache_free_locked(rp);
++	for (i = 0; i < drc_hashsize; i++) {
++		struct list_head *head = &drc_hashtbl[i].lru_head;
++		while (!list_empty(head)) {
++			rp = list_first_entry(head, struct svc_cacherep, c_lru);
++			nfsd_reply_cache_free_locked(rp);
++		}
+ 	}
+ 
+ 	kfree (drc_hashtbl);
+ 	drc_hashtbl = NULL;
++	drc_hashsize = 0;
+ 
+ 	if (drc_slab) {
+ 		kmem_cache_destroy(drc_slab);
+@@ -217,10 +226,10 @@ void nfsd_reply_cache_shutdown(void)
+  * not already scheduled.
+  */
+ static void
+-lru_put_end(struct svc_cacherep *rp)
++lru_put_end(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
+ {
+ 	rp->c_timestamp = jiffies;
+-	list_move_tail(&rp->c_lru, &lru_head);
++	list_move_tail(&rp->c_lru, &b->lru_head);
+ 	schedule_delayed_work(&cache_cleaner, RC_EXPIRE);
+ }
+ 
+@@ -234,17 +243,13 @@ hash_refile(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
+ 	hlist_add_head(&rp->c_hash, &b->cache_hash);
+ }
+ 
+-/*
+- * Walk the LRU list and prune off entries that are older than RC_EXPIRE.
+- * Also prune the oldest ones when the total exceeds the max number of entries.
+- */
+ static long
+-prune_cache_entries(void)
++prune_bucket(struct nfsd_drc_bucket *b)
+ {
+ 	struct svc_cacherep *rp, *tmp;
+ 	long freed = 0;
+ 
+-	list_for_each_entry_safe(rp, tmp, &lru_head, c_lru) {
++	list_for_each_entry_safe(rp, tmp, &b->lru_head, c_lru) {
+ 		/*
+ 		 * Don't free entries attached to calls that are still
+ 		 * in-progress, but do keep scanning the list.
+@@ -257,16 +262,33 @@ prune_cache_entries(void)
+ 		nfsd_reply_cache_free_locked(rp);
+ 		freed++;
+ 	}
++	return freed;
++}
++
++/*
++ * Walk the LRU list and prune off entries that are older than RC_EXPIRE.
++ * Also prune the oldest ones when the total exceeds the max number of entries.
++ */
++static long
++prune_cache_entries(void)
++{
++	unsigned int i;
++	long freed = 0;
++	bool cancel = true;
++
++	for (i = 0; i < drc_hashsize; i++) {
++		struct nfsd_drc_bucket *b = &drc_hashtbl[i];
++
++		freed += prune_bucket(b);
++		if (!list_empty(&b->lru_head))
++			cancel = false;
++	}
+ 
+ 	/*
+-	 * Conditionally rearm the job. If we cleaned out the list, then
+-	 * cancel any pending run (since there won't be any work to do).
+-	 * Otherwise, we rearm the job or modify the existing one to run in
+-	 * RC_EXPIRE since we just ran the pruner.
++	 * Conditionally rearm the job to run in RC_EXPIRE since we just
++	 * ran the pruner.
+ 	 */
+-	if (list_empty(&lru_head))
+-		cancel_delayed_work(&cache_cleaner);
+-	else
++	if (!cancel)
+ 		mod_delayed_work(system_wq, &cache_cleaner, RC_EXPIRE);
+ 	return freed;
+ }
+@@ -458,7 +480,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	rp->c_csum = csum;
+ 
+ 	hash_refile(b, rp);
+-	lru_put_end(rp);
++	lru_put_end(b, rp);
+ 
+ 	/* release any buffer */
+ 	if (rp->c_type == RC_REPLBUFF) {
+@@ -475,7 +497,7 @@ found_entry:
+ 	nfsdstats.rchits++;
+ 	/* We found a matching entry which is either in progress or done. */
+ 	age = jiffies - rp->c_timestamp;
+-	lru_put_end(rp);
++	lru_put_end(b, rp);
+ 
+ 	rtn = RC_DROPIT;
+ 	/* Request being processed or excessive rexmits */
+@@ -530,12 +552,17 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
+ {
+ 	struct svc_cacherep *rp = rqstp->rq_cacherep;
+ 	struct kvec	*resv = &rqstp->rq_res.head[0], *cachv;
++	u32		hash;
++	struct nfsd_drc_bucket *b;
+ 	int		len;
+ 	size_t		bufsize = 0;
+ 
+ 	if (!rp)
+ 		return;
+ 
++	hash = nfsd_cache_hash(rp->c_xid);
++	b = &drc_hashtbl[hash];
++
+ 	len = resv->iov_len - ((char*)statp - (char*)resv->iov_base);
+ 	len >>= 2;
+ 
+@@ -568,7 +595,7 @@ nfsd_cache_update(struct svc_rqst *rqstp, int cachetype, __be32 *statp)
+ 	}
+ 	spin_lock(&cache_lock);
+ 	drc_mem_usage += bufsize;
+-	lru_put_end(rp);
++	lru_put_end(b, rp);
+ 	rp->c_secure = rqstp->rq_secure;
+ 	rp->c_type = cachetype;
+ 	rp->c_state = RC_DONE;
+-- 
+1.9.3
 
-> Hi Jeff,
->=20
-> On Tue, 12 Aug 2014 10:48:08 -0400 Jeff Layton <jlayton@primarydata.com> =
-wrote:
-> >
-> > Absent any objections, I'll plan to merge these for 3.18.
->=20
-> This means that this patch set should *not* be in linux-next until after
-> (at least) v3.17-rc1 is released ...  This s reinforced by the lack of
-> Acked-by, Reviewed-by and Tested-by tags ... (the addition of which would=
- presumably require the rebase (or rewrite) of a published git tree.)
->=20
-
-It would, but I sent a later reply that revised that statement.
-
-Trond pointed out that this problem can cause a user-triggerable oops,
-so we may have to merge it for 3.17 after all. With that in mind, I
-added these to my linux-next branch and will probably send a pull
-request before the window closes (assuming that there are no glaring
-problems with it).
-
-While we're on the subject, we probably ought to rename my tree in your
-"Trees" file from "file-private-locks" to "file-locks" or something.
-File private locks (aka OFD locks) got merged in v3.15, but I have been
-collecting patches that touch fs/locks.c
-
-> /me suspects that many people do not read his daily release notes :-(
-
-Guilty as charged. I'll try to keep up in the future.
-
-Thanks,
---=20
-Jeff Layton <jlayton@primarydata.com>
-
---Sig_/kxYLXrXQl0u7I2tdLiDGKVx
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBAgAGBQJT6qeYAAoJEAAOaEEZVoIVJWwP/2IOnANkv4Ay2E/QHApA+Guw
-jft1AXNRN/ymISGt+qMV0r1DSN5vReV6YlsqYHrDS3W2UHrx1jpSLqd5uRb4Ozou
-MnHKj96Sd1ci0Iav2puzPti3Rusm2zxH8Rfxct0XJjhswwYsB6dFAtcFSUQbF9+R
-HjyWYxI2A7JDFFMgD81CjMm0/OcM68YEIhNrJFcI3pHe8vilhVKmr5kv1/h6Zxzc
-1fs2K0RxC6sxuEXqgMN7npX/jdgXMzWrF8YAAXrHtA3bhc1N1mk6LgU3jNGDtp1c
-ORSXYAXAEfDKr5FIsSxrKdAm92SN5jQKlBEP2EtDUUmmR4bDZ+2TpY5xDMetRdRv
-auois8k1HtP4Z+TeFDJJIyL+IJCdg9ZQREe829KiXsa1SlqxF/sRre1RakpDBWur
-wHJVXaUrCbuelUZ7LJb3ogoaHkTD5Xrz4IudzgiRTPt2Fe7tcN6SJ6R9h00k3rFo
-5QyI8uLZM52TyUvyVvB1syy2r7SJCul5d8Rzh/jSENER4tNh46tUXijWnWhduTN7
-EvTgJaVNq/Q0uqSVOzQWfBcC76lUCNGml8OvSVBLmCzMxbY2MxAnSWPZs/yAt85m
-KxOMiojPGLDOyWrnSonkopU6Cyr7WEJlVZyzhHWHUGx9j5CBUpAZqUD7c8OSF8q8
-rbiTkW1IrdCfbArw1xyu
-=Ccvm
------END PGP SIGNATURE-----
-
---Sig_/kxYLXrXQl0u7I2tdLiDGKVx--
