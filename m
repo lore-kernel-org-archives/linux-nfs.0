@@ -1,137 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f180.google.com ([209.85.220.180]:57812 "EHLO
-	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751871AbaHCXva (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 19:51:30 -0400
-Received: by mail-vc0-f180.google.com with SMTP id ij19so9944799vcb.11
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 16:51:29 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140804093423.3b467fe2@notabene.brown>
-References: <53deb592.cf6oANONk2xIr46y%fengguang.wu@intel.com>
-	<20140804090328.0068952f@notabene.brown>
-	<CAHQdGtRYzKZiJLEuKAPWyE7j=H0-ymLJ-mpj+k1=eNY-MR70vA@mail.gmail.com>
-	<20140804093423.3b467fe2@notabene.brown>
-Date: Sun, 3 Aug 2014 19:51:29 -0400
-Message-ID: <CAHQdGtTH6++F1zeP15XnDznGWbGfHb7s1a6_1U=EUt0Qq7yC8g@mail.gmail.com>
-Subject: Re: [nfs:testing 56/61] fs/nfs/dir.c:1092:26: sparse: incompatible
- types in comparison expression (different address spaces)
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:62778 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752161AbaHFRoe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 13:44:34 -0400
+Received: by mail-ig0-f179.google.com with SMTP id h18so3233323igc.6
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Aug 2014 10:44:34 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: NeilBrown <neilb@suse.de>
-Cc: kbuild test robot <fengguang.wu@intel.com>, kbuild-all@01.org,
-        NFS <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/6] nfsd: Clean up drc cache in preparation for global spinlock elimination
+Date: Wed,  6 Aug 2014 13:44:20 -0400
+Message-Id: <1407347065-17463-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 3, 2014 at 7:34 PM, NeilBrown <neilb@suse.de> wrote:
-> On Sun, 3 Aug 2014 19:14:18 -0400 Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->
->> On Sun, Aug 3, 2014 at 7:03 PM, NeilBrown <neilb@suse.de> wrote:
->> > On Mon, 04 Aug 2014 06:20:02 +0800 kbuild test robot <fengguang.wu@intel.com>
->> > wrote:
->> >
->> >> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git testing
->> >> head:   f682a398b2e24ae0a775ddf37cced83b897198ee
->> >> commit: d51ac1a8e9b86b2d17d349bb256869cab6522787 [56/61] NFS: prepare for RCU-walk support but pushing tests later in code.
->> >> reproduce: make C=1 CF=-D__CHECK_ENDIAN__
->> >>
->> >>
->> >> sparse warnings: (new ones prefixed by >>)
->> >>
->> >> >> fs/nfs/dir.c:1092:26: sparse: incompatible types in comparison expression (different address spaces)
->> >> >> fs/nfs/dir.c:1169:31: sparse: incompatible types in comparison expression (different address spaces)
->> >>
->> >> vim +1092 fs/nfs/dir.c
->> >>
->> >>   1086                struct nfs_fh *fhandle = NULL;
->> >>   1087                struct nfs_fattr *fattr = NULL;
->> >>   1088                struct nfs4_label *label = NULL;
->> >>   1089                int error;
->> >>   1090
->> >>   1091                if (flags & LOOKUP_RCU) {
->> >> > 1092                        parent = rcu_dereference(dentry->d_parent);
->> >>   1093                        dir = ACCESS_ONCE(parent->d_inode);
->> >>   1094                        if (!dir)
->> >>   1095                                return -ECHILD;
->> >
->> > Hmmm.. I suspect rcu_dereference doesn't really make sense here.
->> > After all, d_parent is not assigned with rcu_assign_ptr, and no-one else uses
->> > rcu_dereference for it.
->> >
->> > The issue is that, without locks, d_parent could change at any point.
->> > As dentries are freed with call_rcu it is safe to follow any pointers we find,
->> > but there is a limit how much we can trust them.
->> > It is very likely that any change to d_parent that mattered would increment
->> > some seqlock so that RCU-walk would eventually abort.
->> >
->> >
->> > So we may not need the
->> >
->> >> > 1169                        if (parent != rcu_dereference(dentry->d_parent))
->> >>   1170                                return -ECHILD;
->> >
->> > at the end, as a seqlock will probably catch any problem.
->>
->> My main worry with that argument is whether or not the d_seq protected
->> lookups are guaranteed to always cover the parent. I can't see
->> anything in Documentation/filesystems/path-lookup.txt that indicates
->> that they must be.
->
-> I'll look harder and come up with something more convincing.
-> Give me a couple of days ... if this set misses the 3.17 merge window, then
-> it'll be nice and ready for 3.18 :-)
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfscache.c | 45 ++++++++++++++++++++++++---------------------
+ 1 file changed, 24 insertions(+), 21 deletions(-)
 
-I'm leaning towards believing that the code is safe, simply because
-you do that comparison between the cached 'parent' pointer and the
-same dereferenced pointer at the end, and you don't really use
-'parent' for anything else.
-
-It would be nice to get rid of the sparse warning though...
-
->>
->> > Without that we don't even need to store 'parent' at all, just
->> >      dir = ACCESS_ONCE(dentry->d_parent->d_inode);
->> >
->> > If we keep it, which is probably safest, then using ACCESS_ONCE in place of
->> > the current rcu_dereference() make sense.
->> >
->> >      parent = ACCESS_ONCE(dentry->d_parent);
->> >      dir = ACCESS_ONCE(dir->d_inode);
->> >
->> > ...
->> >
->> >      if (parent != ACCESS_ONCE(dentry->d_parent))
->> >             return -ECHILD;
->> >
->> >
->> > Trond, would you like me to resend that patch, or do you want to just
->> > s/rcu_derefence/ACCESS_ONCE/
->> > ??
->>
->> Could you send an incremental patch?
->
-> I went back to look at all the rcu_derefs with a refresh perspective.  There
-> are two patches which make the above error, and the rcu_deref in
-> rpcauth_lookupcred() is wrong.
-> In fact, the get_groups_info() is unneeded.  current_cred()->group_info is
-> never changed.   If the groups for a process change, the current_cred() is
-> updated, and that is already rcu protected.
-> So that patch can be significant simplified.
->
-> I'll send you incremental patches for anything I find and we can go from
-> there.
->
-
-That sounds good.
-
-Thanks!
-  Trond
-
-
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index ff9567633245..c74bcd628c4f 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -27,7 +27,11 @@
+  */
+ #define TARGET_BUCKET_SIZE	64
+ 
+-static struct hlist_head *	cache_hash;
++struct nfsd_drc_bucket {
++	struct hlist_head cache_hash;
++};
++
++static struct nfsd_drc_bucket	*drc_hashtbl;
+ static struct list_head 	lru_head;
+ static struct kmem_cache	*drc_slab;
+ 
+@@ -116,6 +120,12 @@ nfsd_hashsize(unsigned int limit)
+ 	return roundup_pow_of_two(limit / TARGET_BUCKET_SIZE);
+ }
+ 
++static u32
++nfsd_cache_hash(__be32 xid)
++{
++	return hash_32(be32_to_cpu(xid), maskbits);
++}
++
+ static struct svc_cacherep *
+ nfsd_reply_cache_alloc(void)
+ {
+@@ -170,8 +180,8 @@ int nfsd_reply_cache_init(void)
+ 	if (!drc_slab)
+ 		goto out_nomem;
+ 
+-	cache_hash = kcalloc(hashsize, sizeof(struct hlist_head), GFP_KERNEL);
+-	if (!cache_hash)
++	drc_hashtbl = kcalloc(hashsize, sizeof(*drc_hashtbl), GFP_KERNEL);
++	if (!drc_hashtbl)
+ 		goto out_nomem;
+ 
+ 	return 0;
+@@ -193,8 +203,8 @@ void nfsd_reply_cache_shutdown(void)
+ 		nfsd_reply_cache_free_locked(rp);
+ 	}
+ 
+-	kfree (cache_hash);
+-	cache_hash = NULL;
++	kfree (drc_hashtbl);
++	drc_hashtbl = NULL;
+ 
+ 	if (drc_slab) {
+ 		kmem_cache_destroy(drc_slab);
+@@ -218,15 +228,10 @@ lru_put_end(struct svc_cacherep *rp)
+  * Move a cache entry from one hash list to another
+  */
+ static void
+-hash_refile(struct svc_cacherep *rp)
++hash_refile(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
+ {
+ 	hlist_del_init(&rp->c_hash);
+-	/*
+-	 * No point in byte swapping c_xid since we're just using it to pick
+-	 * a hash bucket.
+-	 */
+-	hlist_add_head(&rp->c_hash, cache_hash +
+-			hash_32((__force u32)rp->c_xid, maskbits));
++	hlist_add_head(&rp->c_hash, &b->cache_hash);
+ }
+ 
+ /*
+@@ -355,17 +360,13 @@ nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
+  * NULL on failure.
+  */
+ static struct svc_cacherep *
+-nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
++nfsd_cache_search(struct nfsd_drc_bucket *b, struct svc_rqst *rqstp,
++		__wsum csum)
+ {
+ 	struct svc_cacherep	*rp, *ret = NULL;
+-	struct hlist_head 	*rh;
++	struct hlist_head 	*rh = &b->cache_hash;
+ 	unsigned int		entries = 0;
+ 
+-	/*
+-	 * No point in byte swapping rq_xid since we're just using it to pick
+-	 * a hash bucket.
+-	 */
+-	rh = &cache_hash[hash_32((__force u32)rqstp->rq_xid, maskbits)];
+ 	hlist_for_each_entry(rp, rh, c_hash) {
+ 		++entries;
+ 		if (nfsd_cache_match(rqstp, csum, rp)) {
+@@ -403,6 +404,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 				vers = rqstp->rq_vers,
+ 				proc = rqstp->rq_proc;
+ 	__wsum			csum;
++	u32 hash = nfsd_cache_hash(xid);
++	struct nfsd_drc_bucket *b = &drc_hashtbl[hash];
+ 	unsigned long		age;
+ 	int type = rqstp->rq_cachetype;
+ 	int rtn = RC_DOIT;
+@@ -429,7 +432,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	/* go ahead and prune the cache */
+ 	prune_cache_entries();
+ 
+-	found = nfsd_cache_search(rqstp, csum);
++	found = nfsd_cache_search(b, rqstp, csum);
+ 	if (found) {
+ 		if (likely(rp))
+ 			nfsd_reply_cache_free_locked(rp);
+@@ -454,7 +457,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 	rp->c_len = rqstp->rq_arg.len;
+ 	rp->c_csum = csum;
+ 
+-	hash_refile(rp);
++	hash_refile(b, rp);
+ 	lru_put_end(rp);
+ 
+ 	/* release any buffer */
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
