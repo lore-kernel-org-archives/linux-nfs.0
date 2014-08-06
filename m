@@ -1,43 +1,220 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f42.google.com ([209.85.215.42]:61805 "EHLO
-	mail-la0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753307AbaHFGZS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:25:18 -0400
-Received: by mail-la0-f42.google.com with SMTP id pv20so1572303lab.15
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 23:25:16 -0700 (PDT)
+Received: from mail-lb0-f182.google.com ([209.85.217.182]:55024 "EHLO
+	mail-lb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753523AbaHFGZT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:25:19 -0400
+Received: by mail-lb0-f182.google.com with SMTP id z11so1559136lbi.13
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 23:25:17 -0700 (PDT)
 From: Natanael Copa <natanael.copa@gmail.com>
 To: linux-nfs@vger.kernel.org
 Cc: Natanael Copa <ncopa@alpinelinux.org>
-Subject: [PATCH v2 03/11] configure.ac: enable GNU_SOURCE for stat64/statfs64
-Date: Wed,  6 Aug 2014 08:24:58 +0200
-Message-Id: <1407306306-29796-4-git-send-email-ncopa@alpinelinux.org>
+Subject: [PATCH v2 04/11] replace __attribute_malloc__ with the more portable __attribute__((__malloc__))
+Date: Wed,  6 Aug 2014 08:24:59 +0200
+Message-Id: <1407306306-29796-5-git-send-email-ncopa@alpinelinux.org>
 In-Reply-To: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
 References: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use AC_USE_SYSTEM_EXTENSIONS to enable GNU_SOURCE, which is needed
-for:
- - stat64 in utils/exportfs/exportfs.c
- - statfs64 in utils/mountd/cache.c
-
 Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
 ---
- configure.ac | 1 +
- 1 file changed, 1 insertion(+)
+ support/export/hostname.c  | 14 +++++++-------
+ support/include/exportfs.h | 10 +++++-----
+ support/nfs/svc_create.c   |  2 +-
+ utils/statd/hostname.c     |  6 +++---
+ utils/statd/sm-notify.c    |  8 ++++----
+ utils/statd/statd.h        |  2 +-
+ 6 files changed, 21 insertions(+), 21 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index 408f4c8..b9682ed 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -8,6 +8,7 @@ AM_INIT_AUTOMAKE
- AC_PREREQ(2.59)
- AC_PREFIX_DEFAULT(/usr)
- AM_MAINTAINER_MODE
-+AC_USE_SYSTEM_EXTENSIONS
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index 3e949a1..ad595d1 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -91,7 +91,7 @@ host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
+  * Returns address info structure, or NULL if an error occurs.  Caller
+  * must free the returned structure with freeaddrinfo(3).
+  */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ struct addrinfo *
+ host_pton(const char *paddr)
+ {
+@@ -153,7 +153,7 @@ host_pton(const char *paddr)
+  * if no information is available for @hostname.  Caller must free the
+  * returned structure with freeaddrinfo(3).
+  */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ struct addrinfo *
+ host_addrinfo(const char *hostname)
+ {
+@@ -199,7 +199,7 @@ host_addrinfo(const char *hostname)
+  * the string.
+  */
+ #ifdef HAVE_GETNAMEINFO
+-__attribute_malloc__
++__attribute__((__malloc__))
+ char *
+ host_canonname(const struct sockaddr *sap)
+ {
+@@ -234,7 +234,7 @@ host_canonname(const struct sockaddr *sap)
+ 	return strdup(buf);
+ }
+ #else	/* !HAVE_GETNAMEINFO */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ char *
+ host_canonname(const struct sockaddr *sap)
+ {
+@@ -266,7 +266,7 @@ host_canonname(const struct sockaddr *sap)
+  *
+  * Caller must free the returned structure with freeaddrinfo(3).
+  */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ struct addrinfo *
+ host_reliable_addrinfo(const struct sockaddr *sap)
+ {
+@@ -313,7 +313,7 @@ out_free_hostname:
+  * Caller must free the returned structure with freeaddrinfo(3).
+  */
+ #ifdef HAVE_GETNAMEINFO
+-__attribute_malloc__
++__attribute__((__malloc__))
+ struct addrinfo *
+ host_numeric_addrinfo(const struct sockaddr *sap)
+ {
+@@ -361,7 +361,7 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 	return ai;
+ }
+ #else	/* !HAVE_GETNAMEINFO */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ struct addrinfo *
+ host_numeric_addrinfo(const struct sockaddr *sap)
+ {
+diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+index 97b2327..9021fae 100644
+--- a/support/include/exportfs.h
++++ b/support/include/exportfs.h
+@@ -156,15 +156,15 @@ int				secinfo_addflavor(struct flav_info *, struct exportent *);
  
- dnl *************************************************************
- dnl * Define the set of applicable options
+ char *				host_ntop(const struct sockaddr *sap,
+ 						char *buf, const size_t buflen);
+-__attribute_malloc__
++__attribute__((__malloc__))
+ struct addrinfo *		host_pton(const char *paddr);
+-__attribute_malloc__
++__attribute__((__malloc__))
+ struct addrinfo *		host_addrinfo(const char *hostname);
+-__attribute_malloc__
++__attribute__((__malloc__))
+ char *				host_canonname(const struct sockaddr *sap);
+-__attribute_malloc__
++__attribute__((__malloc__))
+ struct addrinfo *		host_reliable_addrinfo(const struct sockaddr *sap);
+-__attribute_malloc__
++__attribute__((__malloc__))
+ struct addrinfo *		host_numeric_addrinfo(const struct sockaddr *sap);
+ 
+ int				rmtab_read(void);
+diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
+index 6b9e85b..a706f87 100644
+--- a/support/nfs/svc_create.c
++++ b/support/nfs/svc_create.c
+@@ -113,7 +113,7 @@ svc_create_find_xprt(const struct sockaddr *bindaddr, const struct netconfig *nc
+  *
+  * Otherwise NULL is returned if an error occurs.
+  */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ static struct addrinfo *
+ svc_create_bindaddr(struct netconfig *nconf, const uint16_t port)
+ {
+diff --git a/utils/statd/hostname.c b/utils/statd/hostname.c
+index 746ecc7..c61087c 100644
+--- a/utils/statd/hostname.c
++++ b/utils/statd/hostname.c
+@@ -105,7 +105,7 @@ statd_present_address(const struct sockaddr *sap, char *buf, const size_t buflen
+  * Look up the hostname; report exceptional errors.  Caller must
+  * call freeaddrinfo(3) if a valid addrinfo is returned.
+  */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ static struct addrinfo *
+ get_addrinfo(const char *hostname, const struct addrinfo *hint)
+ {
+@@ -184,7 +184,7 @@ get_nameinfo(const struct sockaddr *sap,
+  * We won't monitor peers that don't have a reverse map.  The canonical
+  * name gives us a key for our monitor list.
+  */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ char *
+ statd_canonical_name(const char *hostname)
+ {
+@@ -234,7 +234,7 @@ statd_canonical_name(const char *hostname)
+  * NULL if some error occurs.  Caller must free the returned
+  * list with freeaddrinfo(3).
+  */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ static struct addrinfo *
+ statd_canonical_list(const char *hostname)
+ {
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 9dbe5d9..5994b2f 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -74,7 +74,7 @@ static int		record_pid(void);
+ 
+ static struct nsm_host *	hosts = NULL;
+ 
+-__attribute_malloc__
++__attribute__((__malloc__))
+ static struct addrinfo *
+ smn_lookup(const char *name)
+ {
+@@ -149,7 +149,7 @@ smn_get_hostname(const struct sockaddr *sap,
+  * if the canonical name doesn't exist or cannot be determined.
+  * The caller must free the result with free(3).
+  */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ static char *
+ smn_verify_my_name(const char *name)
+ {
+@@ -189,7 +189,7 @@ smn_verify_my_name(const char *name)
+ 	return retval;
+ }
+ 
+-__attribute_malloc__
++__attribute__((__malloc__))
+ static struct nsm_host *
+ smn_alloc_host(const char *hostname, const char *mon_name,
+ 		const char *my_name, const time_t timestamp)
+@@ -343,7 +343,7 @@ static int smn_socket(void)
+  * If admin specified a source address or srcport, then convert those
+  * to a sockaddr and return it.   Otherwise, return an ANYADDR address.
+  */
+-__attribute_malloc__
++__attribute__((__malloc__))
+ static struct addrinfo *
+ smn_bind_address(const char *srcaddr, const char *srcport)
+ {
+diff --git a/utils/statd/statd.h b/utils/statd/statd.h
+index e89e666..a1d8035 100644
+--- a/utils/statd/statd.h
++++ b/utils/statd/statd.h
+@@ -25,7 +25,7 @@
+ extern _Bool	statd_matchhostname(const char *hostname1, const char *hostname2);
+ extern _Bool	statd_present_address(const struct sockaddr *sap, char *buf,
+ 					const size_t buflen);
+-__attribute_malloc__
++__attribute__((__malloc__))
+ extern char *	statd_canonical_name(const char *hostname);
+ 
+ extern void	my_svc_run(void);
 -- 
 2.0.4
 
