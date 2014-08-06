@@ -1,58 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:52179 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752161AbaHFRod (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 13:44:33 -0400
-Received: by mail-ig0-f173.google.com with SMTP id h18so9083900igc.6
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Aug 2014 10:44:33 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/6] NFS DRC scalability patches
-Date: Wed,  6 Aug 2014 13:44:19 -0400
-Message-Id: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-la0-f43.google.com ([209.85.215.43]:65088 "EHLO
+	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753060AbaHFMB2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 08:01:28 -0400
+From: Pavel Shilovsky <pshilovsky@samba.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Jeff Layton <jlayton@samba.org>, Jeff Layton <jlayton@redhat.com>
+Subject: [PATCH 1/5] tlock: munmap missed before close
+Date: Wed,  6 Aug 2014 16:01:08 +0400
+Message-Id: <1407326472-13853-2-git-send-email-pshilovsky@samba.org>
+In-Reply-To: <1407326472-13853-1-git-send-email-pshilovsky@samba.org>
+References: <1407326472-13853-1-git-send-email-pshilovsky@samba.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+From: Jeff Layton <jlayton@redhat.com>
 
-Rebased onto your nfsd-next branch
+test13 mmaps the testfile, but doesn't munmap it before returning.
 
-Cheers
-  Trond
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Pavel Shilovsky <pshilovsky@samba.org>
+---
+ lock/tlock.c | 1 +
+ 1 file changed, 1 insertion(+)
 
----------------------------
-
-Hi Bruce,
-
-The following patchset is again more an FYI than a must have, but it
-addresses a significant scalability problem for NFSv3 when running
-over 10GigE and 40GigE networks. At one point, I was seeing >60% CPU
-spinning on the DRC global spinlock...
-
-The one thing to note is that because the statistics are moved outside
-spinlocking, then their accuracy is slightly reduced (I do convert the
-number of entries into an atomic, so that is still 100% correct). The
-right thing to do there is probably to convert those into per-cpu
-counters, however I've not had time to do so for now.
-
-Cheers,
-  Trond
-
-Trond Myklebust (6):
-  nfsd: Clean up drc cache in preparation for global spinlock
-    elimination
-  nfsd: convert the lru list into a per-bucket thing
-  nfsd: Remove the cache_hash list
-  nfsd: convert num_drc_entries to an atomic_t
-  nfsd: split DRC global spinlock into per-bucket locks
-  nfsd: Reorder nfsd_cache_match to check more powerful discriminators
-    first
-
- fs/nfsd/cache.h    |   1 -
- fs/nfsd/nfscache.c | 214 ++++++++++++++++++++++++++++-------------------------
- 2 files changed, 113 insertions(+), 102 deletions(-)
-
+diff --git a/lock/tlock.c b/lock/tlock.c
+index 39a6ad9..6e19a3d 100644
+--- a/lock/tlock.c
++++ b/lock/tlock.c
+@@ -1509,6 +1509,7 @@ test13()
+ 			FATAL);
+ 		test(13, 4, F_TLOCK, (off_t)mappedlen - 2, (off_t)END,
+ 			lock1err, WARN);
++		testmunmap();
+ 		close_testfile(DO_UNLINK);
+ 
+ 		childfree(0);
 -- 
-1.9.3
+1.8.1.2
 
