@@ -1,114 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54195 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756006AbaH0Bnf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Aug 2014 21:43:35 -0400
-Date: Wed, 27 Aug 2014 11:43:23 +1000
-From: NeilBrown <neilb@suse.de>
-To: Johannes Weiner <hannes@cmpxchg.org>
-Cc: Mel Gorman <mgorman@suse.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Junxiao Bi <junxiao.bi@oracle.com>, Michal Hocko <mhocko@suse.cz>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-Message-ID: <20140827114323.2c3e9e41@notabene.brown>
-In-Reply-To: <20140826231938.GA13889@cmpxchg.org>
-References: <53F6F772.6020708@oracle.com>
-	<1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
-	<20140825164852.50723141@notabene.brown>
-	<20140826105304.GT17696@novell.com>
-	<CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com>
-	<20140826132624.GU17696@novell.com>
-	<20140826231938.GA13889@cmpxchg.org>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/dKFHZHdCmuIAx8w5_G94/mM"; protocol="application/pgp-signature"
+Received: from mail-lb0-f169.google.com ([209.85.217.169]:64408 "EHLO
+	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751323AbaHFGZQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:25:16 -0400
+Received: by mail-lb0-f169.google.com with SMTP id s7so1562000lbd.28
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 23:25:14 -0700 (PDT)
+From: Natanael Copa <natanael.copa@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH v2 00/11] Porting nfs-utils to musl libc
+Date: Wed,  6 Aug 2014 08:24:55 +0200
+Message-Id: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/dKFHZHdCmuIAx8w5_G94/mM
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Musl libc is a modern libc for Linux which focuses on correctness in
+standards-conformance. We use this libc for Alpine Linux.
 
-On Tue, 26 Aug 2014 19:19:38 -0400 Johannes Weiner <hannes@cmpxchg.org> wro=
-te:
+This patchset makes nfs-utils build with musl libc and should generally
+improve portability.
 
-> On Tue, Aug 26, 2014 at 02:26:24PM +0100, Mel Gorman wrote:
+It would be nice if at least some of the patches could be applied
+upstream so we can reduce the number of patches for getting nfs working
+on Alpine Linux.
 
-> > It'd be nice of the memcg people could comment on whether they plan to
-> > handle the fact that memcg is the only called of wait_on_page_writeback
-> > in direct reclaim paths.
->=20
-> wait_on_page_writeback() is a hammer, and we need to be better about
-> this once we have per-memcg dirty writeback and throttling, but I
-> think that really misses the point.  Even if memcg writeback waiting
-> were smarter, any length of time spent waiting for yourself to make
-> progress is absurd.  We just shouldn't be solving deadlock scenarios
-> through arbitrary timeouts on one side.  If you can't wait for IO to
-> finish, you shouldn't be passing __GFP_IO.
+Changes v1 -> v2 based on feedback:
+ - Use AC_USE_SYSTEM_EXTENSIONS in configure.ac instead of defining
+   _GNU_SOURCE various places. This means that the patch "include
+   libgen.h for basename" is strictly no longer needed, but I kept it
+   since this is more "correct".
+ - Fix typo in "exportfs: only do glibc specific hackery on glibc"
 
-I think that is overly simplistic.  Certainly "waiting for yourself" is
-absurd, but it can be hard to know if that is what you are doing.
-Refusing to wait at all just because you might be waiting for yourself is
-also absurd.
-Direct reclaim already has "congestion_wait()" calls which wait a little
-while, just in case.  Doing that you find a page in writeback might not be
-such a bad thing.
+Natanael Copa (11):
+  conffile: use standard uint*_t and unsigned char
+  Fix header include for definition of NULL
+  configure.ac: enable GNU_SOURCE for stat64/statfs64
+  replace __attribute_malloc__ with the more portable
+    __attribute__((__malloc__))
+  mountd: use standard dev_t instead of glibc internals
+  nfsstat: replace the legacy SA_ONESHOT with standard SA_RESETHAND
+  Allow usage of getrpcbynumber() when getrpcbynumber_r() is unavailable
+  Only work around glibc bugs on glibc
+  include libgen.h for basename
+  exportfs: fix test of NULL pointer in host_pton()
+  exportfs: only do glibc specific hackery on glibc
 
-When this becomes an issue, writeout is already slowing everything down, and
-maybe slowing down a bit more isn't much cost.
+ configure.ac                 |  7 ++-----
+ support/export/hostname.c    | 29 +++++++++++++++++------------
+ support/include/conffile.h   |  2 +-
+ support/include/exportfs.h   | 10 +++++-----
+ support/include/sockaddr.h   |  1 +
+ support/nfs/conffile.c       | 14 +++++++-------
+ support/nfs/svc_create.c     |  2 +-
+ support/nfs/svc_socket.c     |  6 ++++++
+ tools/rpcdebug/rpcdebug.c    |  1 +
+ utils/mount/mount.c          |  1 +
+ utils/mount/mount_libmount.c |  1 +
+ utils/mountd/cache.c         |  2 +-
+ utils/mountd/svc_run.c       |  2 +-
+ utils/nfsd/nfsd.c            |  1 +
+ utils/nfsidmap/nfsidmap.c    |  1 +
+ utils/nfsstat/nfsstat.c      |  2 +-
+ utils/statd/hostname.c       |  6 +++---
+ utils/statd/sm-notify.c      |  8 ++++----
+ utils/statd/statd.h          |  2 +-
+ 19 files changed, 56 insertions(+), 42 deletions(-)
 
+-- 
+2.0.4
 
->=20
-> Can't you use mempools like the other IO paths?
-
-mempools and other pre-allocation strategies are appropriate for block
-devices and critical for any "swap out" path.
-Filesystems have traditionally got by without them, using GFP_NOFS when
-necessary.
-
-GFP_NOFS was originally meant to be set when holding filesystem-internal
-locks.  Setting it everywhere that memory might be allocated while handing
-write-out is a very different use-case.
-
-Setting GFP_NOFS in more and more places doesn't really scale very well and
-is particularly awkward for NFS as lots of network interfaces don't allow
-setting GFP flags, and the network maintainers really don't want them to.
-
-The recent direct-reclaim changes to get kswapd and the flush- threads to do
-most of the work made it much easier to avoid deadlocks.  Direct reclaim no
-longer calls ->writepage and doesn't wait_on_page_writeback().  Except when
-handling memory pressure for a memcg.
-
-It's not an easy problem, but I don't think that "use mempools" is a valid
-answer.  A simple rule like "direct reclaim never blocks indefinitely" is, I
-think, quite achievable and would resolve a whole class of deadlocks.
-
-Thanks,
-NeilBrown
-
-
---Sig_/dKFHZHdCmuIAx8w5_G94/mM
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU/03uznsnt1WYoG5AQJ6cw/+Pi26eA4dgpo/malX0ba+0tgsK37N4ax6
-Iipmfiye4bQ7YJLTsVS98bCHSvhirBq0h/tACiWqV/gOpfh4PEaTd7RXB7PJmhtL
-bkRXm72W12Vqa6lBOmdmRXOx4LaHzEJObcbAJP4Hkdh1j0KLWP3gAUYf0Uz/nzLt
-OztdOpQgFeEmIoXiQMeyTtHOpzxfvZn8IGw+lyqU7klPCsasv4YHoe78JkfLyVWd
-POkFvcSDGrXYOZvXgcKTZgSG8qDhFZPdeW72WBRpEhEIqhNAwNAJxBwgS2Szq0MX
-Mfgw0/YOk0K/F2/nyOzbrdogakONauJKnsVYWykjNRvFxuUyLmNBcUHzRhZm/NjE
-pEuCjZjZWnR7eQfW+3Q93qiAril6/CsJ7alXx/ixzaDmMSjXzboZO244zUkASbXl
-FsH0rLwcoaI9ZgCPvWcvo14igYhco6Jb3UTAelULl1pLDwxrnUwYgKFXxDjqN+cM
-lh6SwZdT/T1nMSeLrjwGgZ3KkFdheLRKO9JXz0h6Zpb95K1x5JlmMz3mFpxBwYfA
-VbCO663dU2hZA/OPlKhnLrUByrjwiistmwqdIaZTfOisL0/KvLD4PO0XWEv4rf9u
-JMUJxFBU/mh2ep9xdZSc3ulPvDcqm5i2pITHs1ByciUyyY9vcL5QUoB/NWA0oR+P
-/ZsCEzVhNyc=
-=KQWH
------END PGP SIGNATURE-----
-
---Sig_/dKFHZHdCmuIAx8w5_G94/mM--
