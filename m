@@ -1,45 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:42981 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751123AbaHaOvY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Aug 2014 10:51:24 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so4507700qcx.27
-        for <linux-nfs@vger.kernel.org>; Sun, 31 Aug 2014 07:51:24 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Sun, 31 Aug 2014 10:51:21 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org,
-        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 08/10] locks: move i_lock acquisition into
- generic_*_lease handlers
-Message-ID: <20140831105121.65086ded@tlielax.poochiereds.net>
-In-Reply-To: <20140824161134.GJ15908@infradead.org>
-References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
-	<1408804878-1331-9-git-send-email-jlayton@primarydata.com>
-	<20140824160634.GG15908@infradead.org>
-	<20140824161134.GJ15908@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-lb0-f178.google.com ([209.85.217.178]:63796 "EHLO
+	mail-lb0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754069AbaHFGZV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:25:21 -0400
+Received: by mail-lb0-f178.google.com with SMTP id c11so1518747lbj.23
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 23:25:19 -0700 (PDT)
+From: Natanael Copa <natanael.copa@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH v2 07/11] Allow usage of getrpcbynumber() when getrpcbynumber_r() is unavailable
+Date: Wed,  6 Aug 2014 08:25:02 +0200
+Message-Id: <1407306306-29796-8-git-send-email-ncopa@alpinelinux.org>
+In-Reply-To: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
+References: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 24 Aug 2014 09:11:34 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
+---
+ configure.ac             | 6 +-----
+ support/nfs/svc_socket.c | 6 ++++++
+ 2 files changed, 7 insertions(+), 5 deletions(-)
 
-> On Sun, Aug 24, 2014 at 09:06:34AM -0700, Christoph Hellwig wrote:
-> > We really should split a lm_release from lm_change, the way it is
-> > used is highly confusing.  In addition I think a lot of code
-> > currently in lease_modify should move here instead, e.g. something like:
-> 
-> At this point the old lm_change actually becomes superflous if we
-> simply disallow changes for delegation.
-> 
-
-This sounds like a reasonable change, but I think it'll be easier to
-implement a little later once we've done some cleanup and change how
-file locks are handled. I'm going to leave this out of this current
-patchset, but I'll keep it in mind for a later cleanup.
-
+diff --git a/configure.ac b/configure.ac
+index b9682ed..bc48373 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -248,9 +248,6 @@ AC_CHECK_FUNC([connect], ,
+ AC_CHECK_FUNC([getaddrinfo], ,
+               [AC_MSG_ERROR([Function 'getaddrinfo' not found.])])
+ 
+-AC_CHECK_FUNC([getrpcbynumber], ,
+-              [AC_MSG_ERROR([Function 'getrpcbynumber' not found.])])
+-
+ AC_CHECK_FUNC([getservbyname], ,
+               [AC_MSG_ERROR([Function 'getservbyname' not found.])])
+ 
+@@ -409,12 +406,11 @@ AC_FUNC_STAT
+ AC_FUNC_VPRINTF
+ AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
+                gethostbyaddr gethostbyname gethostname getmntent \
+-               getnameinfo getrpcbyname getifaddrs \
++               getnameinfo getrpcbyname getrpcbynumber getrpcbynumber_r getifaddrs \
+                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
+                ppoll realpath rmdir select socket strcasecmp strchr strdup \
+                strerror strrchr strtol strtoul sigprocmask name_to_handle_at])
+ 
+-
+ dnl *************************************************************
+ dnl Check for data sizes
+ dnl *************************************************************
+diff --git a/support/nfs/svc_socket.c b/support/nfs/svc_socket.c
+index f56f310..61ccf5b 100644
+--- a/support/nfs/svc_socket.c
++++ b/support/nfs/svc_socket.c
+@@ -42,8 +42,14 @@ int getservport(u_long number, const char *proto)
+ 	struct servent servbuf, *servp = NULL;
+ 	int ret;
+ 
++#if HAVE_GETRPCBYNUMBER_R
+ 	ret = getrpcbynumber_r(number, &rpcbuf, rpcdata, sizeof rpcdata,
+ 				&rpcp);
++#else
++	rpcp = getrpcbynumber(number);
++	ret = 0;
++#endif
++
+ 	if (ret == 0 && rpcp != NULL) {
+ 		/* First try name.  */
+ 		ret = getservbyname_r(rpcp->r_name, proto, &servbuf, servdata,
 -- 
-Jeff Layton <jlayton@primarydata.com>
+2.0.4
+
