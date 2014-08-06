@@ -1,37 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:36454 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751170AbaHQNMB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Aug 2014 09:12:01 -0400
-Received: by mail-qg0-f53.google.com with SMTP id z60so204195qgd.26
-        for <linux-nfs@vger.kernel.org>; Sun, 17 Aug 2014 06:12:00 -0700 (PDT)
-Date: Sun, 17 Aug 2014 09:11:56 -0400
-From: Tejun Heo <tj@kernel.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        NFS <linux-nfs@vger.kernel.org>, Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] NFS: state manager thread must stay running.
-Message-ID: <20140817131156.GB7679@mtj.dyndns.org>
-References: <20140813140831.22f3e9c7@notabene.brown>
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:51416 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750878AbaHFNdj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 09:33:39 -0400
+Message-ID: <53E22EA5.70708@gmail.com>
+Date: Wed, 06 Aug 2014 21:33:25 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140813140831.22f3e9c7@notabene.brown>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>, jlayton@redhat.com,
+        kinglongmee@gmail.com, linux-fsdevel@vger.kernel.org
+Subject: [PATCH 1/3] NFSD: New FL_NFSD for marking file_lock belongs to NFSD
+References: <53BAAAC5.9000106@gmail.com>
+In-Reply-To: <53BAAAC5.9000106@gmail.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello, Neil.
+Using fl_flags instead of fl_lmops for marking file_lock belongs to NFSD.
 
-On Wed, Aug 13, 2014 at 02:08:31PM +1000, NeilBrown wrote:
-> There are two interesting requirements for the manager thread:
-> 1/ It must allow SIGKILL, which can abort NFS transactions to
->    a dead server.
-> 2/ It may continue running after the filesystem is unmounted,
->    until the server recovers or the thread is SIGKILLed
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4state.c | 15 ++++-----------
+ include/linux/fs.h  |  1 +
+ 2 files changed, 5 insertions(+), 11 deletions(-)
 
-Out of curiosity, why is SIGKILL handling necessary at all?  Can't nfs
-just keep the manager running while any mount is active?
-
-Thanks.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2e80a59..24168ae 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4867,17 +4867,12 @@ nfs4_transform_lock_offset(struct file_lock *lock)
+ 		lock->fl_end = OFFSET_MAX;
+ }
+ 
+-/* Hack!: For now, we're defining this just so we can use a pointer to it
+- * as a unique cookie to identify our (NFSv4's) posix locks. */
+-static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+-};
+-
+ static inline void
+ nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
+ {
+ 	struct nfs4_lockowner *lo;
+ 
+-	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
++	if (fl->fl_flags & FL_NFSD) {
+ 		lo = (struct nfs4_lockowner *) fl->fl_owner;
+ 		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
+ 					lo->lo_owner.so_owner.len, GFP_KERNEL);
+@@ -5241,8 +5236,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	file_lock->fl_owner = (fl_owner_t)lock_sop;
+ 	file_lock->fl_pid = current->tgid;
+ 	file_lock->fl_file = filp;
+-	file_lock->fl_flags = FL_POSIX;
+-	file_lock->fl_lmops = &nfsd_posix_mng_ops;
++	file_lock->fl_flags = FL_POSIX | FL_NFSD;
+ 	file_lock->fl_start = lock->lk_offset;
+ 	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
+ 	nfs4_transform_lock_offset(file_lock);
+@@ -5375,7 +5369,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (lo)
+ 		file_lock->fl_owner = (fl_owner_t)lo;
+ 	file_lock->fl_pid = current->tgid;
+-	file_lock->fl_flags = FL_POSIX;
++	file_lock->fl_flags = FL_POSIX | FL_NFSD;
+ 
+ 	file_lock->fl_start = lockt->lt_offset;
+ 	file_lock->fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
+@@ -5437,8 +5431,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
+ 	file_lock->fl_pid = current->tgid;
+ 	file_lock->fl_file = filp;
+-	file_lock->fl_flags = FL_POSIX;
+-	file_lock->fl_lmops = &nfsd_posix_mng_ops;
++	file_lock->fl_flags = FL_POSIX | FL_NFSD;
+ 	file_lock->fl_start = locku->lu_offset;
+ 
+ 	file_lock->fl_end = last_byte_offset(locku->lu_offset,
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e11d60c..4d40097 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -819,6 +819,7 @@ static inline struct file *get_file(struct file *f)
+ #define FL_DOWNGRADE_PENDING	256 /* Lease is being downgraded */
+ #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
+ #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
++#define FL_NFSD		2048	/* NFSD holds this lock */
+ 
+ /*
+  * Special return value from posix_lock_file() and vfs_lock_file() for
 -- 
-tejun
+1.9.3
+
