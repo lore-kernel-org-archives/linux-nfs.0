@@ -1,36 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:58414 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752897AbaHXPvc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Aug 2014 11:51:32 -0400
-Date: Sun, 24 Aug 2014 08:51:32 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org, hch@infradead.org,
-        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 05/10] nfsd: don't keep a pointer to the lease in
- nfs4_file
-Message-ID: <20140824155132.GD15908@infradead.org>
-References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
- <1408804878-1331-6-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1408804878-1331-6-git-send-email-jlayton@primarydata.com>
+Received: from mail-la0-f41.google.com ([209.85.215.41]:47816 "EHLO
+	mail-la0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751913AbaHFMB0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 08:01:26 -0400
+From: Pavel Shilovsky <pshilovsky@samba.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Jeff Layton <jlayton@samba.org>
+Subject: [PATCH 0/5] SMB/CIFS nounix support for Connectathon test suite
+Date: Wed,  6 Aug 2014 16:01:07 +0400
+Message-Id: <1407326472-13853-1-git-send-email-pshilovsky@samba.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 23, 2014 at 10:41:13AM -0400, Jeff Layton wrote:
-> Now that we don't need to pass in an actual lease pointer to
-> vfs_setlease on unlock, we can stop tracking a pointer to the lease in
-> the nfs4_file.
-> 
-> Switch all of the places that check the fi_lease to check fi_deleg_file
-> instead. We always set that at the same time so it will have the same
-> semantics.
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+The goal of the series is to add support of testing various versions of SMB/CIFS protocol without Unix extensions. Also there are two patches that fixes problems in special and tlock tests.
 
-Looks good,
+With the patchset applied nounix SMB/CIFS servers and clients can be tested with "server -C" command.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Jeff Layton (2):
+  tlock: munmap missed before close
+  Add SMB/CIFS mounts support
+
+Pavel Shilovsky (3):
+  Add capability to test SMB 2.0 and higher verions
+  Add SMB/CIFS section in tests.init
+  special: fix op_unlk and op_ren tests output
+
+ basic/runtests       |  8 +++++---
+ lock/runtests        |  9 +++++++--
+ lock/tlock.c         | 11 +++++++++--
+ server               |  5 +++--
+ special/op_ren.c     | 16 +++++++++++++---
+ special/op_unlk.c    |  8 +++++---
+ special/runtests.wrk | 11 ++++++++---
+ tests.init           |  4 ++++
+ 8 files changed, 54 insertions(+), 18 deletions(-)
+
+-- 
+1.8.1.2
+
