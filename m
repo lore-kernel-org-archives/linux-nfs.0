@@ -1,109 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:32086 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755391AbaHZHYF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 03:24:05 -0400
-Message-ID: <53FC3600.9050202@oracle.com>
-Date: Tue, 26 Aug 2014 15:23:44 +0800
-From: Junxiao Bi <junxiao.bi@oracle.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Mel Gorman <mgorman@suse.com>
-Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-References: <53F6F772.6020708@oracle.com>	<1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>	<20140825164852.50723141@notabene.brown>	<53FC1E93.2060800@oracle.com>	<20140826162138.5df2f8a3@notabene.brown>	<53FC2DDD.9050705@oracle.com> <20140826170410.20560764@notabene.brown>
-In-Reply-To: <20140826170410.20560764@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-lb0-f179.google.com ([209.85.217.179]:57475 "EHLO
+	mail-lb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752963AbaHFGZQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:25:16 -0400
+Received: by mail-lb0-f179.google.com with SMTP id v6so1518535lbi.10
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 23:25:15 -0700 (PDT)
+From: Natanael Copa <natanael.copa@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH v2 01/11] conffile: use standard uint*_t and unsigned char
+Date: Wed,  6 Aug 2014 08:24:56 +0200
+Message-Id: <1407306306-29796-2-git-send-email-ncopa@alpinelinux.org>
+In-Reply-To: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
+References: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/26/2014 03:04 PM, NeilBrown wrote:
-> On Tue, 26 Aug 2014 14:49:01 +0800 Junxiao Bi <junxiao.bi@oracle.com> wrote:
-> 
->> On 08/26/2014 02:21 PM, NeilBrown wrote:
->>> On Tue, 26 Aug 2014 13:43:47 +0800 Junxiao Bi <junxiao.bi@oracle.com> wrote:
->>>
->>>> On 08/25/2014 02:48 PM, NeilBrown wrote:
->>>>> On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
->>>>> <trond.myklebust@primarydata.com> wrote:
->>>>>
->>>>>> Junxiao Bi reports seeing the following deadlock:
->>>>>>
->>>>>> @ crash> bt 1539
->>>>>> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
->>>>>> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
->>>>>> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
->>>>>> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
->>>>>> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
->>>>>> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
->>>>>> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
->>>>>> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
->>>>>> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
->>>>>> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
->>>>>> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
->>>>>> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
->>>>>> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
->>>>>
->>>>> This stack trace (from 2.6.32) cannot happen in mainline, though it took me a
->>>>> while to remember/discover exactly why.
->>>>>
->>>>> try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
->>>>> set to NULL.
->>>>> shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
->>>>> it is NULL, wait_on_page_writeback is *not* called.
->>>>>
->>>>> So we can only hit this deadlock if mem-cgroup limits are imposed on a
->>>>> process which is using NFS - which is quite possible but probably not common.
->>>>>
->>>>> The fact that a dead-lock can happen only when memcg limits are imposed seems
->>>>> very fragile.  People aren't going to test that case much so there could well
->>>>> be other deadlock possibilities lurking.
->>>>>
->>>>> Mel: might there be some other way we could get out of this deadlock?
->>>>> Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
->>>>> wait or something?  Any other wait out of this deadlock other than setting
->>>>> PF_MEMALLOC_NOIO everywhere?
->>>>
->>>> Not only the wait_on_page_writeback() cause the deadlock but also the
->>>> next pageout()-> (mapping->a_ops->writepage), Trond's second patch fix
->>>> this. So fix the wait_on_page_writeback is not enough to fix deadlock.
->>>
->>> Shortly before the only place that pageout() is called there is this code:
->>>
->>> 			if (page_is_file_cache(page) &&
->>> 					(!current_is_kswapd() ||
->>> 					 !zone_is_reclaim_dirty(zone))) {
->>>                                 .....
->>> 				goto keep_locked;
->>>
->>>
->>> So pageout() only gets called by kswapd() .... or for swap. swap-over-NFS is
->>> already very cautious about memory allocations, and uses nfs_direct_IO, not
->>> nfs_writepage.
->>>
->>> So nfs_writepage will never get called during direct reclaim.  There is no
->>> memory-allocate deadlock risk there.
->> Yes, thanks for explaining this.
->> But is it possible rpciod blocked somewhere by memory allocation using
->> GFP_KERNEL and kswapd is trying to pageout nfs dirty pages and blocked
->> by rpciod?
-> 
-> I don't think so, no.
-> 
-> Only 40% of memory (/proc/sys/vm/dirty_ratio) can be dirty.  The direct
-> reclaim procedure will eventually find some non-dirty memory it can use.
-> If it cannot, and cannot write anything out to swap either, it will
-> eventually trigger the OOM killer.
-> 
-> Direct reclaim shouldn't ever block indefinitely.  It will sometimes wait for
-> a short while (e.g. congestion_wait()) but it should then push on until it
-> finds something it can do: free a clean page, write something to swap, or
-> kill a memory-hog with the OOM killer.
-That makes sense. Thanks.
+Use the standard integer types. This fixes compiling errors with musl
+libc.
 
-Junxiao.
-> 
-> NeilBrown
-> 
+Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
+---
+ support/include/conffile.h |  2 +-
+ support/nfs/conffile.c     | 14 +++++++-------
+ 2 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/support/include/conffile.h b/support/include/conffile.h
+index 05ea5d2..94fb005 100644
+--- a/support/include/conffile.h
++++ b/support/include/conffile.h
+@@ -49,7 +49,7 @@ struct conf_list {
+ extern char    *conf_path;
+ 
+ extern int      conf_begin(void);
+-extern int      conf_decode_base64(u_int8_t *, u_int32_t *, u_char *);
++extern int      conf_decode_base64(uint8_t *, uint32_t *, unsigned char *);
+ extern int      conf_end(int, int);
+ extern void     conf_free_list(struct conf_list *);
+ extern struct sockaddr *conf_get_address(char *, char *);
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index c3434d5..6b94ec0 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -72,10 +72,10 @@ TAILQ_HEAD (conf_trans_head, conf_trans) conf_trans_queue;
+ /*
+  * Radix-64 Encoding.
+  */
+-static const u_int8_t bin2asc[]
++static const uint8_t bin2asc[]
+   = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+ 
+-static const u_int8_t asc2bin[] =
++static const uint8_t asc2bin[] =
+ {
+   255, 255, 255, 255, 255, 255, 255, 255,
+   255, 255, 255, 255, 255, 255, 255, 255,
+@@ -109,10 +109,10 @@ LIST_HEAD (conf_bindings, conf_binding) conf_bindings[256];
+ 
+ static char *conf_addr;
+ 
+-static __inline__ u_int8_t
++static __inline__ uint8_t
+ conf_hash(char *s)
+ {
+-	u_int8_t hash = 0;
++	uint8_t hash = 0;
+ 
+ 	while (*s) {
+ 		hash = ((hash << 1) | (hash >> 7)) ^ tolower (*s);
+@@ -603,10 +603,10 @@ cleanup:
+ 
+ /* Decode a PEM encoded buffer.  */
+ int
+-conf_decode_base64 (u_int8_t *out, u_int32_t *len, u_char *buf)
++conf_decode_base64 (uint8_t *out, uint32_t *len, unsigned char *buf)
+ {
+-	u_int32_t c = 0;
+-	u_int8_t c1, c2, c3, c4;
++	uint32_t c = 0;
++	uint8_t c1, c2, c3, c4;
+ 
+ 	while (*buf) {
+ 		if (*buf > 127 || (c1 = asc2bin[*buf]) == 255)
+-- 
+2.0.4
 
