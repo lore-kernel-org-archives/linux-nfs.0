@@ -1,41 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61924 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751904AbaHDBBZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 3 Aug 2014 21:01:25 -0400
-Message-ID: <53DEDB53.6030001@RedHat.com>
-Date: Sun, 03 Aug 2014 21:01:07 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: NFSv4 <nfsv4@ietf.org>, Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Oct  2014 Bakeathon in Westford, Ma
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-lb0-f172.google.com ([209.85.217.172]:48900 "EHLO
+	mail-lb0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753307AbaHFGZV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:25:21 -0400
+Received: by mail-lb0-f172.google.com with SMTP id z11so1573308lbi.3
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 23:25:20 -0700 (PDT)
+From: Natanael Copa <natanael.copa@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Natanael Copa <ncopa@alpinelinux.org>
+Subject: [PATCH v2 08/11] Only work around glibc bugs on glibc
+Date: Wed,  6 Aug 2014 08:25:03 +0200
+Message-Id: <1407306306-29796-9-git-send-email-ncopa@alpinelinux.org>
+In-Reply-To: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
+References: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Red Hat is pleased to announce that it is hosting the an NFSv4
-Bakeathon Oct 06-10 at our Westford, MA office.  
+Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
+---
+ utils/mountd/svc_run.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Details and registration info is here:
+diff --git a/utils/mountd/svc_run.c b/utils/mountd/svc_run.c
+index 1938a67..a572441 100644
+--- a/utils/mountd/svc_run.c
++++ b/utils/mountd/svc_run.c
+@@ -60,7 +60,7 @@
+ void cache_set_fds(fd_set *fdset);
+ int cache_process_req(fd_set *readfds);
+ 
+-#if LONG_MAX != INT_MAX	
++#if defined(__GLIBC__) && LONG_MAX != INT_MAX
+ /* bug in glibc 2.3.6 and earlier, we need
+  * our own svc_getreqset
+  */
+-- 
+2.0.4
 
-http://www.nfsv4bat.org/Events/2013/September/BAT/index.html
-
-I have 20 rooms blocked of at two different hotels this year
-due to some people not too happy with the rooms at the
-Westford Regency Inn, but other people thought they were fine.
-
-Details are on the BAT website, but there are another
-20 rooms blocked off at a fairly new Hampton Inn & Suites.
-
-Last year it was a little tight space wise, so this year I
-booked two conference rooms that should give us plenty of
-space.
-
-When registering (i.e. replying to this email) please give me
-   * Company Name
-   * How engineers are coming
-   * T-shirt size  
-
-I hope to see you in October!!!
-
-steved.
