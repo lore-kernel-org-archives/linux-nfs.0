@@ -1,110 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:47229 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752821AbaHHPBK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:01:10 -0400
-Received: by mail-ie0-f169.google.com with SMTP id rd18so6636125iec.28
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:01:09 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 1/5] nfs: change nfs_page_group_lock argument
-Date: Fri,  8 Aug 2014 11:00:53 -0400
-Message-Id: <1407510057-6881-2-git-send-email-dros@primarydata.com>
-In-Reply-To: <1407510057-6881-1-git-send-email-dros@primarydata.com>
-References: <1407510057-6881-1-git-send-email-dros@primarydata.com>
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:56313 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753805AbaHFRok (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 13:44:40 -0400
+Received: by mail-ig0-f171.google.com with SMTP id l13so9067188iga.10
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Aug 2014 10:44:39 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 6/6] nfsd: Reorder nfsd_cache_match to check more powerful discriminators first
+Date: Wed,  6 Aug 2014 13:44:25 -0400
+Message-Id: <1407347065-17463-7-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1407347065-17463-6-git-send-email-trond.myklebust@primarydata.com>
+References: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407347065-17463-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407347065-17463-3-git-send-email-trond.myklebust@primarydata.com>
+ <1407347065-17463-4-git-send-email-trond.myklebust@primarydata.com>
+ <1407347065-17463-5-git-send-email-trond.myklebust@primarydata.com>
+ <1407347065-17463-6-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Flip the meaning of the second argument from 'wait' to 'nonblock' to
-match related functions. Update all five calls to reflect this change.
+We would normally expect the xid and the checksum to be the best
+discriminators. Check them before looking at the procedure number,
+etc.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-Reviewed-by: Peng Tao <tao.peng@primarydata.com>
-
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pagelist.c | 11 ++++++-----
- fs/nfs/write.c    |  4 ++--
- 2 files changed, 8 insertions(+), 7 deletions(-)
+ fs/nfsd/nfscache.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 9425118..38eaf83 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -145,13 +145,14 @@ static int nfs_wait_bit_uninterruptible(void *word)
- /*
-  * nfs_page_group_lock - lock the head of the page group
-  * @req - request in group that is to be locked
-+ * @nonblock - if true don't block waiting for lock
-  *
-  * this lock must be held if modifying the page group list
-  *
-  * returns result from wait_on_bit_lock: 0 on success, < 0 on error
-  */
- int
--nfs_page_group_lock(struct nfs_page *req, bool wait)
-+nfs_page_group_lock(struct nfs_page *req, bool nonblock)
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 74603654b7f9..122f69185ef5 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -338,20 +338,24 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
+ static bool
+ nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
  {
- 	struct nfs_page *head = req->wb_head;
- 	int ret;
-@@ -162,7 +163,7 @@ nfs_page_group_lock(struct nfs_page *req, bool wait)
- 		ret = wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
- 			nfs_wait_bit_uninterruptible,
- 			TASK_UNINTERRUPTIBLE);
--	} while (wait && ret != 0);
-+	} while (!nonblock && ret != 0);
- 
- 	WARN_ON_ONCE(ret > 0);
- 	return ret;
-@@ -226,7 +227,7 @@ bool nfs_page_group_sync_on_bit(struct nfs_page *req, unsigned int bit)
- {
- 	bool ret;
- 
--	nfs_page_group_lock(req, true);
-+	nfs_page_group_lock(req, false);
- 	ret = nfs_page_group_sync_on_bit_locked(req, bit);
- 	nfs_page_group_unlock(req);
- 
-@@ -868,7 +869,7 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 	unsigned int offset, pgbase;
- 	int ret;
- 
--	ret = nfs_page_group_lock(req, false);
-+	ret = nfs_page_group_lock(req, true);
- 	if (ret < 0) {
- 		desc->pg_error = ret;
- 		return 0;
-@@ -894,7 +895,7 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 			if (desc->pg_recoalesce)
- 				return 0;
- 			/* retry add_request for this subreq */
--			ret = nfs_page_group_lock(req, false);
-+			ret = nfs_page_group_lock(req, true);
- 			if (ret < 0) {
- 				desc->pg_error = ret;
- 				return 0;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 1065de2..321e561 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -241,7 +241,7 @@ static bool nfs_page_group_covers_page(struct nfs_page *req)
- 	unsigned int pos = 0;
- 	unsigned int len = nfs_page_length(req->wb_page);
- 
--	nfs_page_group_lock(req, true);
-+	nfs_page_group_lock(req, false);
- 
- 	do {
- 		tmp = nfs_page_group_search_locked(req->wb_head, pos);
-@@ -479,7 +479,7 @@ try_again:
+-	/* Check RPC header info first */
+-	if (rqstp->rq_xid != rp->c_xid || rqstp->rq_proc != rp->c_proc ||
+-	    rqstp->rq_prot != rp->c_prot || rqstp->rq_vers != rp->c_vers ||
+-	    rqstp->rq_arg.len != rp->c_len ||
+-	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
+-	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
++	/* Check RPC XID first */
++	if (rqstp->rq_xid != rp->c_xid)
+ 		return false;
+-
+ 	/* compare checksum of NFS data */
+ 	if (csum != rp->c_csum) {
+ 		++payload_misses;
+ 		return false;
  	}
  
- 	/* lock each request in the page group */
--	ret = nfs_page_group_lock(head, false);
-+	ret = nfs_page_group_lock(head, true);
- 	if (ret < 0)
- 		return ERR_PTR(ret);
- 	subreq = head;
++	/* Other discriminators */
++	if (rqstp->rq_proc != rp->c_proc ||
++	    rqstp->rq_prot != rp->c_prot ||
++	    rqstp->rq_vers != rp->c_vers ||
++	    rqstp->rq_arg.len != rp->c_len ||
++	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
++	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
++		return false;
++
+ 	return true;
+ }
+ 
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
