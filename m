@@ -1,557 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:46183 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753501AbaHBKkH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 06:40:07 -0400
-Received: by mail-pd0-f174.google.com with SMTP id fp1so6941710pdb.5
-        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 03:40:07 -0700 (PDT)
-Message-ID: <53DCBFDB.5060808@gmail.com>
-Date: Sat, 02 Aug 2014 18:39:23 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from smtp24.rug.nl ([129.125.60.105]:57911 "EHLO smtp24.rug.nl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754597AbaHGNBc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 09:01:32 -0400
+Received: from mail-wg0-f42.google.com ([172.23.16.207])
+	by smtp24.rug.nl (8.14.7/8.14.7) with ESMTP id s77D1VNc017505
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Aug 2014 15:01:31 +0200
+Received: by mail-wg0-f42.google.com with SMTP id l18so4108681wgh.1
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Aug 2014 06:01:31 -0700 (PDT)
+Message-ID: <53E378A6.8040401@rug.nl>
+Date: Thu, 07 Aug 2014 15:01:26 +0200
+From: Jurjen Bokma <j.bokma@rug.nl>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@primarydata.com>, bfields@fieldses.org
-CC: linux-nfs@vger.kernel.org, hch@infradead.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into struct
- nfs4_client
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com> <1406684083-19736-32-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406684083-19736-32-git-send-email-jlayton@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
+To: SteveD@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: Patch: select non-conventional principal in gssd
+References: <53E242E9.1050106@rug.nl> <53E36741.2010907@RedHat.com>
+In-Reply-To: <53E36741.2010907@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7/30/2014 09:34, Jeff Layton wrote:
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> 
-> Preparation for removing the client_mutex.
-> 
-> Convert the open owner hash table into a per-client table and protect it
-> using the nfs4_client->cl_lock spin lock.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/netns.h     |   1 -
->  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
->  fs/nfsd/state.h     |   1 +
->  3 files changed, 86 insertions(+), 103 deletions(-)
-> 
-> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> index a71d14413d39..e1f479c162b5 100644
-> --- a/fs/nfsd/netns.h
-> +++ b/fs/nfsd/netns.h
-> @@ -63,7 +63,6 @@ struct nfsd_net {
->  	struct rb_root conf_name_tree;
->  	struct list_head *unconf_id_hashtbl;
->  	struct rb_root unconf_name_tree;
-> -	struct list_head *ownerstr_hashtbl;
+On 08/07/2014 01:47 PM, Steve Dickson wrote:
+>
+> On 08/06/2014 10:59 AM, Jurjen Bokma wrote:
+>> HiAll,
+>>
+>> I have a patch to utils/gssd/krb5_util.c that enables kerberized NFS
+>> mounts to succeed even if the principal is not <HOSTNAME>$.
+>>
+>> It works by reading another principal name from the [appdefaults]
+>> section of krb5.conf:
+>>
+>> [appdefaults]
+>> nfs = {
+>>     ad_principal_name = 129.125.39.115$
+>> }
+>>
+>> Patch is attached. Would you please incorporate it in the source if you
+>> find it useful?
+>> Sorry if I'm asking in the wrong place.
+> A couple things.... 
+>
+> One please inline your patche in your email, not attach them
+> as suggested in https://www.kernel.org/doc/Documentation/SubmittingPatches
+> Inlining makes it easier to review... 
+I'm sorry. Also for not using the proper command, not choosing the
+proper subsystem, and a couple more mistakes.
+> <snip 1st version of patch>
+> +	krb5_appdefault_string(context, "nfs", NULL, "ad_principal_name", notsetstr, &adhostoverride);
+> Secondly, where does them memory for adhostoverride get freed??
+Thank you for reviewing. <shame>Leaking memory in just a dozen
+LOC.</shame> Wrong assumption on my part.
+With the free(adhostoverride) added, the patch becomes:
 
-I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
-http://comments.gmane.org/gmane.linux.nfs/64382
+--- utils/gssd/krb5_util.c.orig 2014-08-06 10:54:18.806414170 +0200
++++ utils/gssd/krb5_util.c      2014-08-07 14:21:51.795949903 +0200
+@@ -801,7 +801,8 @@ find_keytab_entry(krb5_context context,
+        char *k5err = NULL;
+        int tried_all = 0, tried_default = 0;
+        krb5_principal princ;
+-
++       const char *notsetstr = "not set";
++       char *adhostoverride;
+ 
+        /* Get full target hostname */
+        retval = get_full_hostname(tgtname, targethostname,
+@@ -818,11 +819,19 @@ find_keytab_entry(krb5_context context,
+        }
+ 
+        /* Compute the active directory machine name HOST$ */
+-       strcpy(myhostad, myhostname);
+-       for (i = 0; myhostad[i] != 0; ++i)
+-               myhostad[i] = toupper(myhostad[i]);
+-       myhostad[i] = '$';
+-       myhostad[i+1] = 0;
++       krb5_appdefault_string(context, "nfs", NULL,
+"ad_principal_name", notsetstr, &adhostoverride);
++       if (strcmp(adhostoverride, notsetstr) != 0) {
++               printerr (0, "AD host string overridden with \"%s\" from
+appdefaults\n", adhostoverride);
++               /* No overflow: Windows cannot handle strings longer
+than 19 chars */
++               strcpy(myhostad, adhostoverride);
++               free(adhostoverride);
++       } else {
++               strcpy(myhostad, myhostname);
++               for (i = 0; myhostad[i] != 0; ++i)
++                 myhostad[i] = toupper(myhostad[i]);
++               myhostad[i] = '$';
++               myhostad[i+1] = 0;
++       }
+ 
+        retval = get_full_hostname(myhostname, myhostname,
+sizeof(myhostname));
+        if (retval)
 
-nfsd needs the hashtbl to find the lockowner for locking by owner from
-fl->fl_owner stored in struct file_lock, but without nfs_client.
+And another one for the man page, if you like:
 
-If moving the hashtbl to nfs_client, it's hard to finding the lockowner for locking.
+--- a/utils/gssd/gssd.man
++++ b/utils/gssd/gssd.man
+@@ -140,7 +140,23 @@
+ that enables Kerberized NFS when the local system is joined
+ to an Active Directory domain using Samba.
+ A password for this principal must be provided in the local system's
+keytab.
+-.P
++If the host is joined to an AD domain, but not with a principal
+<HOSTNAME>$,
++then another principal name can be configured in
++.B /etc/krb5.conf
++in a
++.B appdefaults
++stanza:
++.sp
++  [appdefaults]
++.br
++  nfs = {
++.br
++    # This name should reflect a principal that has a key in the keytab
++.br
++    ad_principal_name = 192.168.3.19$
++.br
++  }
++.sp
+ You can specify another keytab by using the
+ .B -k
+ option if
 
-thanks,
-Kinglong Mee
 
->  	struct list_head *sessionid_hashtbl;
->  	/*
->  	 * client_lru holds client queue ordered by nfs4_client.cl_time
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 7c15918d20f0..4af4e5eff491 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -240,35 +240,27 @@ static void nfsd4_put_session(struct nfsd4_session *ses)
->  }
->  
->  static int
-> -same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner,
-> -							clientid_t *clid)
-> +same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner)
->  {
->  	return (sop->so_owner.len == owner->len) &&
-> -		0 == memcmp(sop->so_owner.data, owner->data, owner->len) &&
-> -		(sop->so_client->cl_clientid.cl_id == clid->cl_id);
-> +		0 == memcmp(sop->so_owner.data, owner->data, owner->len);
->  }
->  
->  static struct nfs4_openowner *
->  find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
-> -			bool sessions, struct nfsd_net *nn)
-> +			struct nfs4_client *clp)
->  {
->  	struct nfs4_stateowner *so;
-> -	struct nfs4_openowner *oo;
-> -	struct nfs4_client *clp;
->  
-> -	lockdep_assert_held(&nn->client_lock);
-> +	lockdep_assert_held(&clp->cl_lock);
->  
-> -	list_for_each_entry(so, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-> +	list_for_each_entry(so, &clp->cl_ownerstr_hashtbl[hashval],
-> +			    so_strhash) {
->  		if (!so->so_is_open_owner)
->  			continue;
-> -		if (same_owner_str(so, &open->op_owner, &open->op_clientid)) {
-> -			oo = openowner(so);
-> -			clp = oo->oo_owner.so_client;
-> -			if ((bool)clp->cl_minorversion != sessions)
-> -				break;
-> -			renew_client_locked(clp);
-> +		if (same_owner_str(so, &open->op_owner)) {
->  			atomic_inc(&so->so_count);
-> -			return oo;
-> +			return openowner(so);
->  		}
->  	}
->  	return NULL;
-> @@ -276,17 +268,16 @@ find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
->  
->  static struct nfs4_openowner *
->  find_openstateowner_str(unsigned int hashval, struct nfsd4_open *open,
-> -			bool sessions, struct nfsd_net *nn)
-> +			struct nfs4_client *clp)
->  {
->  	struct nfs4_openowner *oo;
->  
-> -	spin_lock(&nn->client_lock);
-> -	oo = find_openstateowner_str_locked(hashval, open, sessions, nn);
-> -	spin_unlock(&nn->client_lock);
-> +	spin_lock(&clp->cl_lock);
-> +	oo = find_openstateowner_str_locked(hashval, open, clp);
-> +	spin_unlock(&clp->cl_lock);
->  	return oo;
->  }
->  
-> -
->  static inline u32
->  opaque_hashval(const void *ptr, int nbytes)
->  {
-> @@ -408,12 +399,11 @@ unsigned long max_delegations;
->  #define OWNER_HASH_SIZE             (1 << OWNER_HASH_BITS)
->  #define OWNER_HASH_MASK             (OWNER_HASH_SIZE - 1)
->  
-> -static unsigned int ownerstr_hashval(u32 clientid, struct xdr_netobj *ownername)
-> +static unsigned int ownerstr_hashval(struct xdr_netobj *ownername)
->  {
->  	unsigned int ret;
->  
->  	ret = opaque_hashval(ownername->data, ownername->len);
-> -	ret += clientid;
->  	return ret & OWNER_HASH_MASK;
->  }
->  
-> @@ -1002,40 +992,37 @@ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
->  
->  static void unhash_lockowner_locked(struct nfs4_lockowner *lo)
->  {
-> -	struct nfsd_net *nn = net_generic(lo->lo_owner.so_client->net,
-> -						nfsd_net_id);
-> +	struct nfs4_client *clp = lo->lo_owner.so_client;
->  
-> -	lockdep_assert_held(&nn->client_lock);
-> +	lockdep_assert_held(&clp->cl_lock);
->  
->  	list_del_init(&lo->lo_owner.so_strhash);
->  }
->  
->  static void release_lockowner_stateids(struct nfs4_lockowner *lo)
->  {
-> -	struct nfsd_net *nn = net_generic(lo->lo_owner.so_client->net,
-> -						nfsd_net_id);
-> +	struct nfs4_client *clp = lo->lo_owner.so_client;
->  	struct nfs4_ol_stateid *stp;
->  
-> -	lockdep_assert_held(&nn->client_lock);
-> +	lockdep_assert_held(&clp->cl_lock);
->  
->  	while (!list_empty(&lo->lo_owner.so_stateids)) {
->  		stp = list_first_entry(&lo->lo_owner.so_stateids,
->  				struct nfs4_ol_stateid, st_perstateowner);
-> -		spin_unlock(&nn->client_lock);
-> +		spin_unlock(&clp->cl_lock);
->  		release_lock_stateid(stp);
-> -		spin_lock(&nn->client_lock);
-> +		spin_lock(&clp->cl_lock);
->  	}
->  }
->  
->  static void release_lockowner(struct nfs4_lockowner *lo)
->  {
-> -	struct nfsd_net *nn = net_generic(lo->lo_owner.so_client->net,
-> -						nfsd_net_id);
-> +	struct nfs4_client *clp = lo->lo_owner.so_client;
->  
-> -	spin_lock(&nn->client_lock);
-> +	spin_lock(&clp->cl_lock);
->  	unhash_lockowner_locked(lo);
->  	release_lockowner_stateids(lo);
-> -	spin_unlock(&nn->client_lock);
-> +	spin_unlock(&clp->cl_lock);
->  	nfs4_put_stateowner(&lo->lo_owner);
->  }
->  
-> @@ -1070,10 +1057,9 @@ static void release_open_stateid(struct nfs4_ol_stateid *stp)
->  
->  static void unhash_openowner_locked(struct nfs4_openowner *oo)
->  {
-> -	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-> -						nfsd_net_id);
-> +	struct nfs4_client *clp = oo->oo_owner.so_client;
->  
-> -	lockdep_assert_held(&nn->client_lock);
-> +	lockdep_assert_held(&clp->cl_lock);
->  
->  	list_del_init(&oo->oo_owner.so_strhash);
->  	list_del_init(&oo->oo_perclient);
-> @@ -1093,29 +1079,27 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
->  static void release_openowner_stateids(struct nfs4_openowner *oo)
->  {
->  	struct nfs4_ol_stateid *stp;
-> -	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-> -						nfsd_net_id);
-> +	struct nfs4_client *clp = oo->oo_owner.so_client;
->  
-> -	lockdep_assert_held(&nn->client_lock);
-> +	lockdep_assert_held(&clp->cl_lock);
->  
->  	while (!list_empty(&oo->oo_owner.so_stateids)) {
->  		stp = list_first_entry(&oo->oo_owner.so_stateids,
->  				struct nfs4_ol_stateid, st_perstateowner);
-> -		spin_unlock(&nn->client_lock);
-> +		spin_unlock(&clp->cl_lock);
->  		release_open_stateid(stp);
-> -		spin_lock(&nn->client_lock);
-> +		spin_lock(&clp->cl_lock);
->  	}
->  }
->  
->  static void release_openowner(struct nfs4_openowner *oo)
->  {
-> -	struct nfsd_net *nn = net_generic(oo->oo_owner.so_client->net,
-> -						nfsd_net_id);
-> +	struct nfs4_client *clp = oo->oo_owner.so_client;
->  
-> -	spin_lock(&nn->client_lock);
-> +	spin_lock(&clp->cl_lock);
->  	unhash_openowner_locked(oo);
->  	release_openowner_stateids(oo);
-> -	spin_unlock(&nn->client_lock);
-> +	spin_unlock(&clp->cl_lock);
->  	release_last_closed_stateid(oo);
->  	nfs4_put_stateowner(&oo->oo_owner);
->  }
-> @@ -1497,15 +1481,20 @@ STALE_CLIENTID(clientid_t *clid, struct nfsd_net *nn)
->  static struct nfs4_client *alloc_client(struct xdr_netobj name)
->  {
->  	struct nfs4_client *clp;
-> +	int i;
->  
->  	clp = kzalloc(sizeof(struct nfs4_client), GFP_KERNEL);
->  	if (clp == NULL)
->  		return NULL;
->  	clp->cl_name.data = kmemdup(name.data, name.len, GFP_KERNEL);
-> -	if (clp->cl_name.data == NULL) {
-> -		kfree(clp);
-> -		return NULL;
-> -	}
-> +	if (clp->cl_name.data == NULL)
-> +		goto err_no_name;
-> +	clp->cl_ownerstr_hashtbl = kmalloc(sizeof(struct list_head) *
-> +			OWNER_HASH_SIZE, GFP_KERNEL);
-> +	if (!clp->cl_ownerstr_hashtbl)
-> +		goto err_no_hashtbl;
-> +	for (i = 0; i < OWNER_HASH_SIZE; i++)
-> +		INIT_LIST_HEAD(&clp->cl_ownerstr_hashtbl[i]);
->  	clp->cl_name.len = name.len;
->  	INIT_LIST_HEAD(&clp->cl_sessions);
->  	idr_init(&clp->cl_stateids);
-> @@ -1520,6 +1509,11 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
->  	spin_lock_init(&clp->cl_lock);
->  	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
->  	return clp;
-> +err_no_hashtbl:
-> +	kfree(clp->cl_name.data);
-> +err_no_name:
-> +	kfree(clp);
-> +	return NULL;
->  }
->  
->  static void
-> @@ -1538,6 +1532,7 @@ free_client(struct nfs4_client *clp)
->  	}
->  	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
->  	free_svc_cred(&clp->cl_cred);
-> +	kfree(clp->cl_ownerstr_hashtbl);
->  	kfree(clp->cl_name.data);
->  	idr_destroy(&clp->cl_stateids);
->  	kfree(clp);
-> @@ -3074,20 +3069,20 @@ static inline void *alloc_stateowner(struct kmem_cache *slab, struct xdr_netobj
->  
->  static void hash_openowner(struct nfs4_openowner *oo, struct nfs4_client *clp, unsigned int strhashval)
->  {
-> -	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-> +	lockdep_assert_held(&clp->cl_lock);
->  
-> -	list_add(&oo->oo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
-> +	list_add(&oo->oo_owner.so_strhash,
-> +		 &clp->cl_ownerstr_hashtbl[strhashval]);
->  	list_add(&oo->oo_perclient, &clp->cl_openowners);
->  }
->  
->  static void nfs4_unhash_openowner(struct nfs4_stateowner *so)
->  {
-> -	struct nfs4_openowner *oo = openowner(so);
-> -	struct nfsd_net *nn = net_generic(so->so_client->net, nfsd_net_id);
-> +	struct nfs4_client *clp = so->so_client;
->  
-> -	spin_lock(&nn->client_lock);
-> -	unhash_openowner_locked(oo);
-> -	spin_unlock(&nn->client_lock);
-> +	spin_lock(&clp->cl_lock);
-> +	unhash_openowner_locked(openowner(so));
-> +	spin_unlock(&clp->cl_lock);
->  }
->  
->  static void nfs4_free_openowner(struct nfs4_stateowner *so)
-> @@ -3107,7 +3102,6 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
->  			   struct nfsd4_compound_state *cstate)
->  {
->  	struct nfs4_client *clp = cstate->clp;
-> -	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
->  	struct nfs4_openowner *oo, *ret;
->  
->  	oo = alloc_stateowner(openowner_slab, &open->op_owner, clp);
-> @@ -3122,15 +3116,14 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
->  	oo->oo_time = 0;
->  	oo->oo_last_closed_stid = NULL;
->  	INIT_LIST_HEAD(&oo->oo_close_lru);
-> -	spin_lock(&nn->client_lock);
-> -	ret = find_openstateowner_str_locked(strhashval,
-> -			open, clp->cl_minorversion, nn);
-> +	spin_lock(&clp->cl_lock);
-> +	ret = find_openstateowner_str_locked(strhashval, open, clp);
->  	if (ret == NULL) {
->  		hash_openowner(oo, clp, strhashval);
->  		ret = oo;
->  	} else
->  		nfs4_free_openowner(&oo->oo_owner);
-> -	spin_unlock(&nn->client_lock);
-> +	spin_unlock(&clp->cl_lock);
->  	return oo;
->  }
->  
-> @@ -3412,8 +3405,8 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
->  		return status;
->  	clp = cstate->clp;
->  
-> -	strhashval = ownerstr_hashval(clientid->cl_id, &open->op_owner);
-> -	oo = find_openstateowner_str(strhashval, open, cstate->minorversion, nn);
-> +	strhashval = ownerstr_hashval(&open->op_owner);
-> +	oo = find_openstateowner_str(strhashval, open, clp);
->  	open->op_openowner = oo;
->  	if (!oo) {
->  		goto new_owner;
-> @@ -4818,15 +4811,16 @@ nevermind:
->  
->  static struct nfs4_lockowner *
->  find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
-> -		struct nfsd_net *nn)
-> +		struct nfs4_client *clp)
->  {
-> -	unsigned int strhashval = ownerstr_hashval(clid->cl_id, owner);
-> +	unsigned int strhashval = ownerstr_hashval(owner);
->  	struct nfs4_stateowner *so;
->  
-> -	list_for_each_entry(so, &nn->ownerstr_hashtbl[strhashval], so_strhash) {
-> +	list_for_each_entry(so, &clp->cl_ownerstr_hashtbl[strhashval],
-> +			    so_strhash) {
->  		if (so->so_is_open_owner)
->  			continue;
-> -		if (!same_owner_str(so, owner, clid))
-> +		if (!same_owner_str(so, owner))
->  			continue;
->  		atomic_inc(&so->so_count);
->  		return lockowner(so);
-> @@ -4836,23 +4830,23 @@ find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
->  
->  static struct nfs4_lockowner *
->  find_lockowner_str(clientid_t *clid, struct xdr_netobj *owner,
-> -		struct nfsd_net *nn)
-> +		struct nfs4_client *clp)
->  {
->  	struct nfs4_lockowner *lo;
->  
-> -	spin_lock(&nn->client_lock);
-> -	lo = find_lockowner_str_locked(clid, owner, nn);
-> -	spin_unlock(&nn->client_lock);
-> +	spin_lock(&clp->cl_lock);
-> +	lo = find_lockowner_str_locked(clid, owner, clp);
-> +	spin_unlock(&clp->cl_lock);
->  	return lo;
->  }
->  
->  static void nfs4_unhash_lockowner(struct nfs4_stateowner *sop)
->  {
-> -	struct nfsd_net *nn = net_generic(sop->so_client->net, nfsd_net_id);
-> +	struct nfs4_client *clp = sop->so_client;
->  
-> -	spin_lock(&nn->client_lock);
-> +	spin_lock(&clp->cl_lock);
->  	unhash_lockowner_locked(lockowner(sop));
-> -	spin_unlock(&nn->client_lock);
-> +	spin_unlock(&clp->cl_lock);
->  }
->  
->  static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
-> @@ -4879,7 +4873,6 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp,
->  			   struct nfs4_ol_stateid *open_stp,
->  			   struct nfsd4_lock *lock)
->  {
-> -	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
->  	struct nfs4_lockowner *lo, *ret;
->  
->  	lo = alloc_stateowner(lockowner_slab, &lock->lk_new_owner, clp);
-> @@ -4889,16 +4882,16 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp,
->  	lo->lo_owner.so_is_open_owner = 0;
->  	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid;
->  	lo->lo_owner.so_ops = &lockowner_ops;
-> -	spin_lock(&nn->client_lock);
-> +	spin_lock(&clp->cl_lock);
->  	ret = find_lockowner_str_locked(&clp->cl_clientid,
-> -			&lock->lk_new_owner, nn);
-> +			&lock->lk_new_owner, clp);
->  	if (ret == NULL) {
->  		list_add(&lo->lo_owner.so_strhash,
-> -			 &nn->ownerstr_hashtbl[strhashval]);
-> +			 &clp->cl_ownerstr_hashtbl[strhashval]);
->  		ret = lo;
->  	} else
->  		nfs4_free_lockowner(&lo->lo_owner);
-> -	spin_unlock(&nn->client_lock);
-> +	spin_unlock(&clp->cl_lock);
->  	return lo;
->  }
->  
-> @@ -5010,12 +5003,10 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
->  	struct inode *inode = cstate->current_fh.fh_dentry->d_inode;
->  	struct nfs4_lockowner *lo;
->  	unsigned int strhashval;
-> -	struct nfsd_net *nn = net_generic(cl->net, nfsd_net_id);
->  
-> -	lo = find_lockowner_str(&cl->cl_clientid, &lock->v.new.owner, nn);
-> +	lo = find_lockowner_str(&cl->cl_clientid, &lock->v.new.owner, cl);
->  	if (!lo) {
-> -		strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
-> -				&lock->v.new.owner);
-> +		strhashval = ownerstr_hashval(&lock->v.new.owner);
->  		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
->  		if (lo == NULL)
->  			return nfserr_jukebox;
-> @@ -5293,7 +5284,8 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		goto out;
->  	}
->  
-> -	lo = find_lockowner_str(&lockt->lt_clientid, &lockt->lt_owner, nn);
-> +	lo = find_lockowner_str(&lockt->lt_clientid, &lockt->lt_owner,
-> +				cstate->clp);
->  	if (lo)
->  		file_lock->fl_owner = (fl_owner_t)lo;
->  	file_lock->fl_pid = current->tgid;
-> @@ -5436,7 +5428,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
->  	struct nfs4_lockowner *lo;
->  	struct nfs4_ol_stateid *stp;
->  	struct xdr_netobj *owner = &rlockowner->rl_owner;
-> -	unsigned int hashval = ownerstr_hashval(clid->cl_id, owner);
-> +	unsigned int hashval = ownerstr_hashval(owner);
->  	__be32 status;
->  	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
->  	struct nfs4_client *clp;
-> @@ -5452,29 +5444,29 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
->  
->  	status = nfserr_locks_held;
->  
-> +	clp = cstate->clp;
->  	/* Find the matching lock stateowner */
-> -	spin_lock(&nn->client_lock);
-> -	list_for_each_entry(tmp, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-> +	spin_lock(&clp->cl_lock);
-> +	list_for_each_entry(tmp, &clp->cl_ownerstr_hashtbl[hashval],
-> +			    so_strhash) {
->  		if (tmp->so_is_open_owner)
->  			continue;
-> -		if (same_owner_str(tmp, owner, clid)) {
-> +		if (same_owner_str(tmp, owner)) {
->  			sop = tmp;
->  			atomic_inc(&sop->so_count);
->  			break;
->  		}
->  	}
-> -	spin_unlock(&nn->client_lock);
->  
->  	/* No matching owner found, maybe a replay? Just declare victory... */
->  	if (!sop) {
-> +		spin_unlock(&clp->cl_lock);
->  		status = nfs_ok;
->  		goto out;
->  	}
->  
->  	lo = lockowner(sop);
->  	/* see if there are still any locks associated with it */
-> -	clp = cstate->clp;
-> -	spin_lock(&clp->cl_lock);
->  	list_for_each_entry(stp, &sop->so_stateids, st_perstateowner) {
->  		if (check_for_locks(stp->st_stid.sc_file, lo)) {
->  			spin_unlock(&clp->cl_lock);
-> @@ -5829,10 +5821,6 @@ static int nfs4_state_create_net(struct net *net)
->  			CLIENT_HASH_SIZE, GFP_KERNEL);
->  	if (!nn->unconf_id_hashtbl)
->  		goto err_unconf_id;
-> -	nn->ownerstr_hashtbl = kmalloc(sizeof(struct list_head) *
-> -			OWNER_HASH_SIZE, GFP_KERNEL);
-> -	if (!nn->ownerstr_hashtbl)
-> -		goto err_ownerstr;
->  	nn->sessionid_hashtbl = kmalloc(sizeof(struct list_head) *
->  			SESSION_HASH_SIZE, GFP_KERNEL);
->  	if (!nn->sessionid_hashtbl)
-> @@ -5842,8 +5830,6 @@ static int nfs4_state_create_net(struct net *net)
->  		INIT_LIST_HEAD(&nn->conf_id_hashtbl[i]);
->  		INIT_LIST_HEAD(&nn->unconf_id_hashtbl[i]);
->  	}
-> -	for (i = 0; i < OWNER_HASH_SIZE; i++)
-> -		INIT_LIST_HEAD(&nn->ownerstr_hashtbl[i]);
->  	for (i = 0; i < SESSION_HASH_SIZE; i++)
->  		INIT_LIST_HEAD(&nn->sessionid_hashtbl[i]);
->  	nn->conf_name_tree = RB_ROOT;
-> @@ -5859,8 +5845,6 @@ static int nfs4_state_create_net(struct net *net)
->  	return 0;
->  
->  err_sessionid:
-> -	kfree(nn->ownerstr_hashtbl);
-> -err_ownerstr:
->  	kfree(nn->unconf_id_hashtbl);
->  err_unconf_id:
->  	kfree(nn->conf_id_hashtbl);
-> @@ -5890,7 +5874,6 @@ nfs4_state_destroy_net(struct net *net)
->  	}
->  
->  	kfree(nn->sessionid_hashtbl);
-> -	kfree(nn->ownerstr_hashtbl);
->  	kfree(nn->unconf_id_hashtbl);
->  	kfree(nn->conf_id_hashtbl);
->  	put_net(net);
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index e073c86f389c..73a209dc352b 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -235,6 +235,7 @@ struct nfsd4_sessionid {
->  struct nfs4_client {
->  	struct list_head	cl_idhash; 	/* hash by cl_clientid.id */
->  	struct rb_node		cl_namenode;	/* link into by-name trees */
-> +	struct list_head	*cl_ownerstr_hashtbl;
->  	struct list_head	cl_openowners;
->  	struct idr		cl_stateids;	/* stateid lookup */
->  	struct list_head	cl_delegations;
-> 
+Thanks!
+Jurjen
+
+
