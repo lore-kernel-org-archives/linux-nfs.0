@@ -1,93 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f41.google.com ([209.85.216.41]:46679 "EHLO
-	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753438AbaHETU6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2014 15:20:58 -0400
-Received: by mail-qa0-f41.google.com with SMTP id j7so1440153qaq.0
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 12:20:57 -0700 (PDT)
-Date: Tue, 5 Aug 2014 15:20:54 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] fs/locks.c: Copy fl_lmops to conflock for nfsd using
-Message-ID: <20140805152054.60e00162@tlielax.poochiereds.net>
-In-Reply-To: <20140805191458.GV23341@fieldses.org>
-References: <53BAAAC5.9000106@gmail.com>
-	<53DCF97D.3000605@gmail.com>
-	<20140802190505.442f07b8@tlielax.poochiereds.net>
-	<20140805191458.GV23341@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from casper.infradead.org ([85.118.1.10]:45771 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754119AbaHGHVf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:35 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 06/17] pnfs: add return_range method
+Date: Thu,  7 Aug 2014 09:23:38 +0200
+Message-Id: <1407396229-4785-7-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 5 Aug 2014 15:14:58 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+If a layout driver keeps per-inode state outside of the layout segments it
+needs to be notified of any layout returns or recalls on an inode, and not
+just about the freeing of layout segments.  Add a method to acomplish this,
+which will allow the block layout driver to handle the case of truncated
+and re-expanded files properly.
 
-> On Sat, Aug 02, 2014 at 07:05:05PM -0400, Jeff Layton wrote:
-> > On Sat, 02 Aug 2014 22:45:17 +0800
-> > Kinglong Mee <kinglongmee@gmail.com> wrote:
-> > 
-> > > Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks)
-> > > using fl_lmops field in file_lock for checking nfsd4 lockowner.
-> > > 
-> > > But, commit 1a747ee0cc (locks: don't call ->copy_lock methods
-> > > on return of conflicting locks) causes the fl_lmops of conflock
-> > > for nfsd4_lock always be NULL.
-> > > 
-> > > Also, commit 0996905f93 (lockd: posix_test_lock() should not call
-> > > locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt
-> > > always be NULL too.
-> > > 
-> > > So that, nfsd4 lockowner for it always be NULL too.
-> > > 
-> > > This patch re-coping the fl_lmops to conflock.
-> > > 
-> > > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> > > ---
-> > >  fs/locks.c | 3 +--
-> > >  1 file changed, 1 insertion(+), 2 deletions(-)
-> > > 
-> > > diff --git a/fs/locks.c b/fs/locks.c
-> > > index 717fbc4..cc1219a 100644
-> > > --- a/fs/locks.c
-> > > +++ b/fs/locks.c
-> > > @@ -279,7 +279,7 @@ void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
-> > >  	new->fl_start = fl->fl_start;
-> > >  	new->fl_end = fl->fl_end;
-> > >  	new->fl_ops = NULL;
-> > > -	new->fl_lmops = NULL;
-> > > +	new->fl_lmops = fl->fl_lmops;
-> > >  }
-> > >  EXPORT_SYMBOL(__locks_copy_lock);
-> > >  
-> > > @@ -290,7 +290,6 @@ void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
-> > >  	__locks_copy_lock(new, fl);
-> > >  	new->fl_file = fl->fl_file;
-> > >  	new->fl_ops = fl->fl_ops;
-> > > -	new->fl_lmops = fl->fl_lmops;
-> > >  
-> > >  	locks_copy_private(new, fl);
-> > >  }
-> > 
-> > This looks sane to me AFAICT.
-> > 
-> > I'll run a few tests with it, and put it into I'll plan to pick this up
-> > since I have some other fs/locks.c related patches slated for 3.17.
-> 
-> Looks like your mail and Trond's crossed?  I'd need to go remind myself
-> of the __locks_copy_lock callers, but I'm pretty sure Trond's right....
-> 
-> --b.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/callback_proc.c |  6 +++++-
+ fs/nfs/pnfs.c          | 10 ++++++++++
+ fs/nfs/pnfs.h          |  3 +++
+ 3 files changed, 18 insertions(+), 1 deletion(-)
 
-Yeah, I missed his earlier reply and have since dropped this patch. The
-potential race that Trond pointed out trumps the minor problem of not
-having conflock info, so I'm inclined to wait for a better solution to
-that problem.
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index bf017b0..86541e0 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -179,8 +179,12 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 			&args->cbl_range)) {
+ 		need_commit = true;
+ 		rv = NFS4ERR_DELAY;
++	} else {
++		if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
++			NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo,
++				&args->cbl_range);
++		}
+ 	}
+-
+ 	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&free_me_list);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 22183fc..13b1406 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -856,6 +856,16 @@ _pnfs_return_layout(struct inode *ino)
+ 	empty = list_empty(&lo->plh_segs);
+ 	pnfs_clear_layoutcommit(ino, &tmp_list);
+ 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
++
++	if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
++		struct pnfs_layout_range range = {
++			.iomode		= IOMODE_ANY,
++			.offset		= 0,
++			.length		= NFS4_MAX_UINT64,
++		};
++		NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo, &range);
++	}
++
+ 	/* Don't send a LAYOUTRETURN if list was initially empty */
+ 	if (empty) {
+ 		spin_unlock(&ino->i_lock);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 882387c..cab5259 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -93,6 +93,9 @@ struct pnfs_layoutdriver_type {
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+ 
++	void (*return_range) (struct pnfs_layout_hdr *lo,
++			      struct pnfs_layout_range *range);
++
+ 	/* test for nfs page cache coalescing */
+ 	const struct nfs_pageio_ops *pg_read_ops;
+ 	const struct nfs_pageio_ops *pg_write_ops;
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+1.9.1
+
