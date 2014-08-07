@@ -1,34 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:57626 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752789AbaHXPsR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Aug 2014 11:48:17 -0400
-Date: Sun, 24 Aug 2014 08:48:17 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org, hch@infradead.org,
-        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 01/10] locks: close potential race in lease_get_mtime
-Message-ID: <20140824154817.GA15908@infradead.org>
-References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
- <1408804878-1331-2-git-send-email-jlayton@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:34644 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753416AbaHGHM2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Aug 2014 03:12:28 -0400
+Date: Thu, 7 Aug 2014 09:12:24 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Russell King - ARM Linux <linux@arm.linux.org.uk>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        linux-arm-kernel@lists.infradead.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [BUG] nfs3_list_one_acl oops
+Message-ID: <20140807071224.GA17501@lst.de>
+References: <20140726162143.GB20396@n2100.arm.linux.org.uk> <20140727131949.GB32153@infradead.org> <CAHQdGtQhEQiuObg48JrNbK5L6=r0mxfSvErVC0JS4TqxxbJy_w@mail.gmail.com> <20140806223441.GU30282@n2100.arm.linux.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1408804878-1331-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <20140806223441.GU30282@n2100.arm.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 23, 2014 at 10:41:09AM -0400, Jeff Layton wrote:
-> lease_get_mtime is called without the i_lock held, so there's no
-> guarantee about the stability of the list. Between the time when we
-> assign "flock" and then dereference it to check whether it's a lease
-> and for write, the lease could be freed.
-> 
-> Ensure that that doesn't occur by taking the i_lock before trying
-> to check the lease.
+On Wed, Aug 06, 2014 at 11:34:41PM +0100, Russell King - ARM Linux wrote:
+> What's happening on this?  Did this get fixed for v3.16?
 
-Looks good.  Also looks way cleaner than before by being just a tad more
-verbose..
+Trond has Andrey's patch queued up for 3.17 with a Cc to stable, so it
+will go into a 3.16 stable kernel as soon as it hits Linus' tree.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
