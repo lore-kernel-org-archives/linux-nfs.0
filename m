@@ -1,120 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:62369 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751477AbaHWOld (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Aug 2014 10:41:33 -0400
-Received: by mail-qc0-f179.google.com with SMTP id m20so11975377qcx.38
-        for <linux-nfs@vger.kernel.org>; Sat, 23 Aug 2014 07:41:32 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: bfields@fieldses.org, hch@infradead.org, cluster-devel@redhat.com,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 03/10] locks: generic_delete_lease doesn't need a file_lock at all
-Date: Sat, 23 Aug 2014 10:41:11 -0400
-Message-Id: <1408804878-1331-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
-References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+Received: from casper.infradead.org ([85.118.1.10]:45767 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753975AbaHGHVd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:33 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/17] pnfs: don't check sequence on new stateids in layoutget
+Date: Thu,  7 Aug 2014 09:23:36 +0200
+Message-Id: <1407396229-4785-5-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that it's OK to pass in a NULL file_lock double pointer on
-a F_UNLCK request and convert the vfs_setlease F_UNLCK callers to
-do just that.
+When layoutget returns an entirely new layout stateid it should not
+check the generation counter as the new stateid will start with a new
+counter entirely unrelated to old one.
 
-Finally, turn the BUG_ON in generic_setlease into a WARN_ON_ONCE
-with an error return. That's a problem we can handle without
-crashing the box if it occurs.
+The current behavior causes constant layoutget failures against a block
+server which allocates a new stateid after an recall that removed all
+outstanding layouts.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/locks.c          | 25 ++++++++-----------------
- fs/nfsd/nfs4state.c |  2 +-
- 2 files changed, 9 insertions(+), 18 deletions(-)
+ fs/nfs/pnfs.c | 36 +++++++++++++++++++-----------------
+ 1 file changed, 19 insertions(+), 17 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 58ce8897f2e4..bedb817a5cc4 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1637,20 +1637,18 @@ out:
- 	return error;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index c72376c..22183fc 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -685,17 +685,6 @@ static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
+ 	return (s32)(s1 - s2) > 0;
  }
  
--static int generic_delete_lease(struct file *filp, struct file_lock **flp)
-+static int generic_delete_lease(struct file *filp)
- {
- 	struct file_lock *fl, **before;
- 	struct dentry *dentry = filp->f_path.dentry;
- 	struct inode *inode = dentry->d_inode;
- 
--	trace_generic_delete_lease(inode, *flp);
--
- 	for (before = &inode->i_flock;
- 			((fl = *before) != NULL) && IS_LEASE(fl);
- 			before = &fl->fl_next) {
- 		if (fl->fl_file != filp)
- 			continue;
--		return (*flp)->fl_lmops->lm_change(before, F_UNLCK);
-+		return fl->fl_lmops->lm_change(before, F_UNLCK);
- 	}
- 	return -EAGAIN;
- }
-@@ -1682,13 +1680,15 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
- 
- 	time_out_leases(inode);
- 
--	BUG_ON(!(*flp)->fl_lmops->lm_break);
--
- 	switch (arg) {
- 	case F_UNLCK:
--		return generic_delete_lease(filp, flp);
-+		return generic_delete_lease(filp);
- 	case F_RDLCK:
- 	case F_WRLCK:
-+		if (!(*flp)->fl_lmops->lm_break) {
-+			WARN_ON_ONCE(1);
-+			return -ENOLCK;
-+		}
- 		return generic_add_lease(filp, arg, flp);
- 	default:
- 		return -EINVAL;
-@@ -1744,15 +1744,6 @@ int vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
- }
- EXPORT_SYMBOL_GPL(vfs_setlease);
- 
--static int do_fcntl_delete_lease(struct file *filp)
+-static void
+-pnfs_verify_layout_stateid(struct pnfs_layout_hdr *lo,
+-		const nfs4_stateid *new,
+-		struct list_head *free_me_list)
 -{
--	struct file_lock fl, *flp = &fl;
--
--	lease_init(filp, F_UNLCK, flp);
--
--	return vfs_setlease(filp, F_UNLCK, &flp);
+-	if (nfs4_stateid_match_other(&lo->plh_stateid, new))
+-		return;
+-	/* Layout is new! Kill existing layout segments */
+-	pnfs_mark_matching_lsegs_invalid(lo, free_me_list, NULL);
 -}
 -
- static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
- {
- 	struct file_lock *fl, *ret;
-@@ -1809,7 +1800,7 @@ out_unlock:
- int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
- {
- 	if (arg == F_UNLCK)
--		return do_fcntl_delete_lease(filp);
-+		return vfs_setlease(filp, F_UNLCK, NULL);
- 	return do_fcntl_add_lease(fd, filp, arg);
- }
+ /* update lo->plh_stateid with new if is more recent */
+ void
+ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
+@@ -1370,16 +1359,29 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 		goto out_forget_reply;
+ 	}
  
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 29fac18d9102..0cd252916e1a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -683,7 +683,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- 	if (!fp->fi_lease)
- 		return;
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
--		vfs_setlease(fp->fi_deleg_file, F_UNLCK, &fp->fi_lease);
-+		vfs_setlease(fp->fi_deleg_file, F_UNLCK, NULL);
- 		fp->fi_lease = NULL;
- 		fput(fp->fi_deleg_file);
- 		fp->fi_deleg_file = NULL;
+-	if (pnfs_layoutgets_blocked(lo, 1) ||
+-	    pnfs_layout_stateid_blocked(lo, &res->stateid)) {
++	if (pnfs_layoutgets_blocked(lo, 1)) {
+ 		dprintk("%s forget reply due to state\n", __func__);
+ 		goto out_forget_reply;
+ 	}
+ 
+-	/* Check that the new stateid matches the old stateid */
+-	pnfs_verify_layout_stateid(lo, &res->stateid, &free_me);
+-	/* Done processing layoutget. Set the layout stateid */
+-	pnfs_set_layout_stateid(lo, &res->stateid, false);
++	if (nfs4_stateid_match_other(&lo->plh_stateid, &res->stateid)) {
++		/* existing state ID, make sure the sequence number matches. */
++		if (pnfs_layout_stateid_blocked(lo, &res->stateid)) {
++			dprintk("%s forget reply due to sequence\n", __func__);
++			goto out_forget_reply;
++		}
++		pnfs_set_layout_stateid(lo, &res->stateid, false);
++	} else {
++		/*
++		 * We got an entirely new state ID.  Mark all segments for the
++		 * inode invalid, and don't bother validating the stateid
++		 * sequence number.
++		 */
++		pnfs_mark_matching_lsegs_invalid(lo, &free_me, NULL);
++
++		nfs4_stateid_copy(&lo->plh_stateid, &res->stateid);
++		lo->plh_barrier = be32_to_cpu(res->stateid.seqid);
++	}
+ 
+ 	pnfs_get_lseg(lseg);
+ 	pnfs_layout_insert_lseg(lo, lseg);
 -- 
-1.9.3
+1.9.1
 
