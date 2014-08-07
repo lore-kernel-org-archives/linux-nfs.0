@@ -1,99 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out02.mta.xmission.com ([166.70.13.232]:57567 "EHLO
-	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750703AbaHTEZY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 00:25:24 -0400
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Cong Wang <xiyou.wangcong@gmail.com>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dan Aloni <dan@kernelim.com>
-References: <1408217806-25877-1-git-send-email-xiyou.wangcong@gmail.com>
-Date: Tue, 19 Aug 2014 21:20:38 -0700
-In-Reply-To: <1408217806-25877-1-git-send-email-xiyou.wangcong@gmail.com>
-	(Cong Wang's message of "Sat, 16 Aug 2014 12:36:46 -0700")
-Message-ID: <87ppfvrdux.fsf@x220.int.ebiederm.org>
+Received: from mx1.redhat.com ([209.132.183.28]:17890 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757434AbaHGNb0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Aug 2014 09:31:26 -0400
+Message-ID: <53E37FA8.5010402@RedHat.com>
+Date: Thu, 07 Aug 2014 09:31:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
-Subject: Re: [PATCH v2] nfs: fix kernel warning when removing proc entry
+To: Jurjen Bokma <j.bokma@rug.nl>, linux-nfs@vger.kernel.org
+Subject: Re: Patch: select non-conventional principal in gssd
+References: <53E242E9.1050106@rug.nl> <53E36741.2010907@RedHat.com> <53E378A6.8040401@rug.nl>
+In-Reply-To: <53E378A6.8040401@rug.nl>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cong Wang <xiyou.wangcong@gmail.com> writes:
 
-> I saw the following kernel warning:
 
-Cong thanks for finding and tracking this.  I was clearly asleep at the
-switch when I was testing my fix to the nfs client code :(
+On 08/07/2014 09:01 AM, Jurjen Bokma wrote:
+> On 08/07/2014 01:47 PM, Steve Dickson wrote:
+>>
+>> On 08/06/2014 10:59 AM, Jurjen Bokma wrote:
+>>> HiAll,
+>>>
+>>> I have a patch to utils/gssd/krb5_util.c that enables kerberized NFS
+>>> mounts to succeed even if the principal is not <HOSTNAME>$.
+>>>
+>>> It works by reading another principal name from the [appdefaults]
+>>> section of krb5.conf:
+>>>
+>>> [appdefaults]
+>>> nfs = {
+>>>     ad_principal_name = 129.125.39.115$
+>>> }
+>>>
+>>> Patch is attached. Would you please incorporate it in the source if you
+>>> find it useful?
+>>> Sorry if I'm asking in the wrong place.
+>> A couple things.... 
+>>
+>> One please inline your patche in your email, not attach them
+>> as suggested in https://www.kernel.org/doc/Documentation/SubmittingPatches
+>> Inlining makes it easier to review... 
+> I'm sorry. Also for not using the proper command, not choosing the
+> proper subsystem, and a couple more mistakes.
+Unfortunately you still don't have a proper  Signed-off-by: 
+as described in the above documentation... So you will 
+need to re-post the patch... but... 
 
-I have applied this patch and will push it to Linus after it has a
-little bit to sit in linux-next.
+So lets start from the beginning.... 
 
-Eric
+When you commit the patch to your git tree do:
+   git commit -s -a # this will automatically added the Signed-off-by:
 
-> [ 1852.321222] ------------[ cut here ]------------
-> [ 1852.326527] WARNING: CPU: 0 PID: 118 at fs/proc/generic.c:521 remove_proc_entry+0x154/0x16b()
-> [ 1852.335630] remove_proc_entry: removing non-empty directory 'fs/nfsfs', leaking at least 'volumes'
-> [ 1852.344084] CPU: 0 PID: 118 Comm: kworker/u8:2 Not tainted 3.16.0+ #540
-> [ 1852.350036] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> [ 1852.354992] Workqueue: netns cleanup_net
-> [ 1852.358701]  0000000000000000 ffff880116f2fbd0 ffffffff819c03e9 ffff880116f2fc18
-> [ 1852.366474]  ffff880116f2fc08 ffffffff810744ee ffffffff811e0e6e ffff8800d4e96238
-> [ 1852.373507]  ffffffff81dbe665 ffff8800d46a5948 0000000000000005 ffff880116f2fc68
-> [ 1852.380224] Call Trace:
-> [ 1852.381976]  [<ffffffff819c03e9>] dump_stack+0x4d/0x66
-> [ 1852.385495]  [<ffffffff810744ee>] warn_slowpath_common+0x7a/0x93
-> [ 1852.389869]  [<ffffffff811e0e6e>] ? remove_proc_entry+0x154/0x16b
-> [ 1852.393987]  [<ffffffff8107457b>] warn_slowpath_fmt+0x4c/0x4e
-> [ 1852.397999]  [<ffffffff811e0e6e>] remove_proc_entry+0x154/0x16b
-> [ 1852.402034]  [<ffffffff8129c73d>] nfs_fs_proc_net_exit+0x53/0x56
-> [ 1852.406136]  [<ffffffff812a103b>] nfs_net_exit+0x12/0x1d
-> [ 1852.409774]  [<ffffffff81785bc9>] ops_exit_list+0x44/0x55
-> [ 1852.413529]  [<ffffffff81786389>] cleanup_net+0xee/0x182
-> [ 1852.417198]  [<ffffffff81088c9e>] process_one_work+0x209/0x40d
-> [ 1852.502320]  [<ffffffff81088bf7>] ? process_one_work+0x162/0x40d
-> [ 1852.587629]  [<ffffffff810890c1>] worker_thread+0x1f0/0x2c7
-> [ 1852.673291]  [<ffffffff81088ed1>] ? process_scheduled_works+0x2f/0x2f
-> [ 1852.759470]  [<ffffffff8108e079>] kthread+0xc9/0xd1
-> [ 1852.843099]  [<ffffffff8109427f>] ? finish_task_switch+0x3a/0xce
-> [ 1852.926518]  [<ffffffff8108dfb0>] ? __kthread_parkme+0x61/0x61
-> [ 1853.008565]  [<ffffffff819cbeac>] ret_from_fork+0x7c/0xb0
-> [ 1853.076477]  [<ffffffff8108dfb0>] ? __kthread_parkme+0x61/0x61
-> [ 1853.140653] ---[ end trace 69c4c6617f78e32d ]---
->
-> It looks wrong that we add "/proc/net/nfsfs" in nfs_fs_proc_net_init()
-> while remove "/proc/fs/nfsfs" in nfs_fs_proc_net_exit().
->
-> Fixes: commit 65b38851a17 (NFS: Fix /proc/fs/nfsfs/servers and /proc/fs/nfsfs/volumes)
-> Cc: Eric W. Biederman <ebiederm@xmission.com>
-> Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-> Cc: Dan Aloni <dan@kernelim.com>
-> Signed-off-by: Cong Wang <xiyou.wangcong@gmail.com>
-> ---
-> v2 - fix nfs_fs_proc_net_init() as well
->
->  fs/nfs/client.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 1c5ff6d..c117b96 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -1418,7 +1418,7 @@ int nfs_fs_proc_net_init(struct net *net)
->  error_2:
->  	remove_proc_entry("servers", nn->proc_nfsfs);
->  error_1:
-> -	remove_proc_entry("fs/nfsfs", NULL);
-> +	remove_proc_entry("nfsfs", net->proc_net);
->  error_0:
->  	return -ENOMEM;
->  }
-> @@ -1429,7 +1429,7 @@ void nfs_fs_proc_net_exit(struct net *net)
->  
->  	remove_proc_entry("volumes", nn->proc_nfsfs);
->  	remove_proc_entry("servers", nn->proc_nfsfs);
-> -	remove_proc_entry("fs/nfsfs", NULL);
-> +	remove_proc_entry("nfsfs", net->proc_net);
->  }
->  
->  /*
+Next create the patch with:
+   git format-patch -1
+
+Finally send the patch to list with
+   git send-email \
+       --to "Steve Dickson <steved@redhat.com>" \
+       --cc "Linux NFS Mailing list <linux-nfs@vger.kernel.org>" \
+       *.patch 
+
+Note: git send-email has a --dry-run that will test the sending
+without actually sending it... I would suggest you always do a 
+test sending... Just to make sure things are going in the 
+right direction! ;-) 
+
+steved.
