@@ -1,59 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57154 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751569AbaHJBAH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 9 Aug 2014 21:00:07 -0400
-Date: Sat, 9 Aug 2014 21:00:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4 RFC] NFSD: Revert setting op_encode_lockowner_maxsz
-Message-ID: <20140810010006.GA31913@fieldses.org>
-References: <53BAAAFE.8090403@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53BAAAFE.8090403@gmail.com>
+Received: from casper.infradead.org ([85.118.1.10]:45785 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754238AbaHGHVm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:42 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 13/17] pnfs/blocklayout: don't set pages uptodate
+Date: Thu,  7 Aug 2014 09:23:45 +0200
+Message-Id: <1407396229-4785-14-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 07, 2014 at 10:13:18PM +0800, Kinglong Mee wrote:
-> Commit 8c7424cff6 (nfsd4: don't try to encode conflicting owner if low on space)
-> set op_encode_lockowner_maxsz to zero.
-> 
-> When testing nfsd4_lock with conflict lock (has right owner), dmesg gets
->   "[18668.241385] RPC request reserved 88 but used 108"
-> because xdr_reserve_space don't return NULL in nfsd4_encode_lock_denied.
-> 
-> Just revert op_encode_lockowner_maxsz.
+The core nfs code handles setting pages uptodate on reads, no need to mess
+with the pageflags outselves.  Also remove a debug function to dump page
+flags.
 
-Thanks for the bug report here and apologies for the slow response, I
-think this (and your more recent two patches) aren't the right fix, but
-just haven't had the chance to take a closer look--I'll look at it
-Monday.  We probably need to get both a minimum and maximum size for
-some of these operations.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c | 24 +-----------------------
+ 1 file changed, 1 insertion(+), 23 deletions(-)
 
---b.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 6484b9f..92be984 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -49,20 +49,6 @@ MODULE_LICENSE("GPL");
+ MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
+ MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
+ 
+-static void print_page(struct page *page)
+-{
+-	dprintk("PRINTPAGE page %p\n", page);
+-	dprintk("	PagePrivate %d\n", PagePrivate(page));
+-	dprintk("	PageUptodate %d\n", PageUptodate(page));
+-	dprintk("	PageError %d\n", PageError(page));
+-	dprintk("	PageDirty %d\n", PageDirty(page));
+-	dprintk("	PageReferenced %d\n", PageReferenced(page));
+-	dprintk("	PageLocked %d\n", PageLocked(page));
+-	dprintk("	PageWriteback %d\n", PageWriteback(page));
+-	dprintk("	PageMappedToDisk %d\n", PageMappedToDisk(page));
+-	dprintk("\n");
+-}
+-
+ /* Given the be associated with isect, determine if page data needs to be
+  * initialized.
+  */
+@@ -187,16 +173,9 @@ retry:
+ 	return bio;
+ }
+ 
+-/* This is basically copied from mpage_end_io_read */
+ static void bl_end_io_read(struct bio *bio, int err)
+ {
+ 	struct parallel_io *par = bio->bi_private;
+-	struct bio_vec *bvec;
+-	int i;
+-
+-	if (!err)
+-		bio_for_each_segment_all(bvec, bio, i)
+-			SetPageUptodate(bvec->bv_page);
+ 
+ 	if (err) {
+ 		struct nfs_pgio_header *header = par->data;
+@@ -205,6 +184,7 @@ static void bl_end_io_read(struct bio *bio, int err)
+ 			header->pnfs_error = -EIO;
+ 		pnfs_set_lo_fail(header->lseg);
+ 	}
++
+ 	bio_put(bio);
+ 	put_parallel(par);
+ }
+@@ -304,8 +284,6 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
+ 			/* Fill hole w/ zeroes w/o accessing device */
+ 			dprintk("%s Zeroing page for hole\n", __func__);
+ 			zero_user_segment(pages[i], pg_offset, pg_len);
+-			print_page(pages[i]);
+-			SetPageUptodate(pages[i]);
+ 		} else {
+ 			struct pnfs_block_extent *be_read;
+ 
+-- 
+1.9.1
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4proc.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 846fd55..6217190 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1422,8 +1422,7 @@ out:
->  #define op_encode_change_info_maxsz	(5)
->  #define nfs4_fattr_bitmap_maxsz		(4)
->  
-> -/* We'll fall back on returning no lockowner if run out of space: */
-> -#define op_encode_lockowner_maxsz	(0)
-> +#define op_encode_lockowner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
->  #define op_encode_lock_denied_maxsz	(8 + op_encode_lockowner_maxsz)
->  
->  #define nfs4_owner_maxsz		(1 + XDR_QUADLEN(IDMAP_NAMESZ))
-> -- 
-> 1.9.3
-> 
