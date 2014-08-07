@@ -1,42 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:64975 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752663AbaHHPBJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:01:09 -0400
-Received: by mail-ig0-f180.google.com with SMTP id l13so1153169iga.13
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:01:08 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 0/5] nfs_page_group_lock cleanup
-Date: Fri,  8 Aug 2014 11:00:52 -0400
-Message-Id: <1407510057-6881-1-git-send-email-dros@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:35130 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753416AbaHGLZm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Aug 2014 07:25:42 -0400
+Date: Thu, 7 Aug 2014 13:25:37 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linuxnfs <linux-nfs@vger.kernel.org>,
+        "faibish, sorin" <faibish_sorin@emc.com>
+Subject: Re: [PATCH 08/17] pnfs/blocklayout: reject pnfs blocksize larger
+	than page size
+Message-ID: <20140807112537.GA3437@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de> <1407396229-4785-9-git-send-email-hch@lst.de> <CA+a=Yy42e46zA+X-VQQj9RAzZ4T+A7dOOrjUMVONsh8Pt8QdcQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CA+a=Yy42e46zA+X-VQQj9RAzZ4T+A7dOOrjUMVONsh8Pt8QdcQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These patches clean up some issues surrouding nfs_page_group_lock:
+On Thu, Aug 07, 2014 at 06:43:14PM +0800, Peng Tao wrote:
+> So this kills EMC server support.
 
- - normalize wait/nonblock argument
- - make nonblocking calls really nonblocking
- - handle errors
- - ensure that we don't call blocking nfs_page_group_lock when holding the
-   inode spinlock
+Given the state the code  claiming support for any server is a large
+exaggeration..
 
-This cleanup was inspired by Fengguang Wu's report that we were sleeping with
-locks held in nfs_lock_and_join_requests.
+> Can you please share what kind of
+> badly deadlock you saw with large block size support?
 
-Weston Andros Adamson (5):
-  nfs: change nfs_page_group_lock argument
-  nfs: fix nonblocking calls to nfs_page_group_lock
-  nfs: use blocking page_group_lock in add_request
-  nfs: fix error handling in lock_and_join_requests
-  nfs: don't sleep with inode lock in lock_and_join_requests
-
- fs/nfs/pagelist.c        | 59 ++++++++++++++++++++++++++++++------------------
- fs/nfs/write.c           | 21 +++++++++++++----
- include/linux/nfs_page.h |  1 +
- 3 files changed, 55 insertions(+), 26 deletions(-)
-
--- 
-1.8.5.2 (Apple Git-48)
+The read-modify write code (which I'll remove later) can lock arbitary
+numbers of additional pages from the writeback back code without doing
+a trylock, which is required for doing this in page writeback.  Note
+that it's not a deadlock, but I can also trivіally corrupt data in
+those pages as it doesn't lock against them, you just need a race
+window where it's modified after writeback has been started for a large
+extents, which isn't too hard to hit with tools like fsstress.
 
