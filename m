@@ -1,33 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:35424 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754678AbaH0Rn0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2014 13:43:26 -0400
-Date: Wed, 27 Aug 2014 10:43:25 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Add v4.2 SEEK support
-Message-ID: <20140827174325.GB13128@infradead.org>
-References: <1409152730-8070-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:29704 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757491AbaHGNSK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Aug 2014 09:18:10 -0400
+Message-ID: <53E37C86.5060401@RedHat.com>
+Date: Thu, 07 Aug 2014 09:17:58 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1409152730-8070-1-git-send-email-Anna.Schumaker@Netapp.com>
+To: Christoph Hellwig <hch@lst.de>, Peng Tao <bergwolf@gmail.com>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linuxnfs <linux-nfs@vger.kernel.org>,
+        "faibish, sorin" <faibish_sorin@emc.com>
+Subject: Re: [PATCH 08/17] pnfs/blocklayout: reject pnfs blocksize larger
+ than page size
+References: <1407396229-4785-1-git-send-email-hch@lst.de> <1407396229-4785-9-git-send-email-hch@lst.de> <CA+a=Yy42e46zA+X-VQQj9RAzZ4T+A7dOOrjUMVONsh8Pt8QdcQ@mail.gmail.com> <20140807112537.GA3437@lst.de> <53E37B96.8040807@RedHat.com>
+In-Reply-To: <53E37B96.8040807@RedHat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 27, 2014 at 11:18:49AM -0400, Anna Schumaker wrote:
-> This patch adds support for the NFS v4.2 operation SEEK.
-> 
-> I think nfs4proc.c and nfs4xdr.c have grown out of control, and I would like
-> to avoid adding new functions to these files unless absolutely necessary.
-> Therefore, I created nfs4.2proc.c and nfs4.2xdr.h in an attempt to separate
-> out the new code.
-> 
-> Questions?  Comments?  Thoughts?
 
-I hate the dot in the name :)  why not nfs42proc.c and co?
 
-Also without splitting out the much larger 4.1 ops this seems a bit
-pointless, although I generally like the idea.
+On 08/07/2014 09:13 AM, Steve Dickson wrote:
+> 
+> 
+> On 08/07/2014 07:25 AM, Christoph Hellwig wrote:
+>> On Thu, Aug 07, 2014 at 06:43:14PM +0800, Peng Tao wrote:
+>>>> So this kills EMC server support.
+>> Given the state the code  claiming support for any server is a large
+>> exaggeration..
+>>
+> But eliminating the potential of supporting block layouts
+> does not sound like a very good idea to me.... 
+> 
+> There are rumors of other block layouts implementations
+> coming down the pike.... So hopefully we don't eliminating
+> any and all possible support of block layouts in the future...
+> 
+My bad... I see this not the case... I jumped in with
+out reading the entire thread.... 
+
+But EMC server support is still not a good idea IMHO...
+
+steved.
 
