@@ -1,102 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19442 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.211]:35217 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754794AbaHLTIX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Aug 2014 15:08:23 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s7CJ8Nmi015053
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 15:08:23 -0400
-Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.19.60.55])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s7CJ8NHu012384
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 15:08:23 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] server: Added -A flag which will cause server script to ask to mount.
-Date: Tue, 12 Aug 2014 15:08:06 -0400
-Message-Id: <1407870486-7215-1-git-send-email-steved@redhat.com>
+	id S1754303AbaHGMKz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Aug 2014 08:10:55 -0400
+Date: Thu, 7 Aug 2014 14:10:52 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Peng Tao <bergwolf@gmail.com>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linuxnfs <linux-nfs@vger.kernel.org>,
+        "faibish, sorin" <faibish_sorin@emc.com>
+Subject: Re: [PATCH 08/17] pnfs/blocklayout: reject pnfs blocksize larger
+	than page size
+Message-ID: <20140807121052.GA5678@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de> <1407396229-4785-9-git-send-email-hch@lst.de> <CA+a=Yy42e46zA+X-VQQj9RAzZ4T+A7dOOrjUMVONsh8Pt8QdcQ@mail.gmail.com> <20140807112537.GA3437@lst.de> <CA+a=Yy4muAYw8KjZcFh4NMwOOizD=gNXNeweLHix46vjQoS53Q@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+a=Yy4muAYw8KjZcFh4NMwOOizD=gNXNeweLHix46vjQoS53Q@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-By default the server script will no longer ask to mount. Use
-the new -A flag to restore the asking about the mount
+On Thu, Aug 07, 2014 at 07:51:57PM +0800, Peng Tao wrote:
+> Is it bl_find_get_zeroing_page() you are concerning about?
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- server | 31 ++++++++++++++++++-------------
- 1 file changed, 18 insertions(+), 13 deletions(-)
+That's the primary culprit.
 
-diff --git a/server b/server
-index 439c96f..e63f6d5 100755
---- a/server
-+++ b/server
-@@ -11,6 +11,7 @@
- #	-c		use cachefs; need to specify cachefs mount
- #			options with -o
- #	-N passes	repeat "passes" times
-+#   -A    Ask before doing the mount [default: no]
- #	mnt_options	arg to -o mount options
- #	server_path	path to mount from server
- #	mntpoint	path to mount on locally
-@@ -19,15 +20,16 @@
- Program=`basename $0`
- 
- InitFile="./tests.init"
--USAGE="usage:  $Program [-a|-b|-g|-s|-l|-c] [-f|-t|-n|-h|-C] [-o mnt_options] [-p server_path] [-m mntpoint] [-N passes] server_name"
-+USAGE="usage:  $Program [-a|-b|-B|-g|-s|-l|-c] [-f|-t|-n|-h|-C] [-o mnt_options] [-p server_path] [-m mntpoint] [-N passes] server_name"
- 
- # defaults
- . $InitFile
- export PATH CFLAGS LIBS MOUNT UMOUNT MNTOPTIONS
- 
- passes="1"
-+askt2mnt="no"
- 
--set - `getopt abcCfglhm:N:no:p:st $*`
-+set - `getopt aAbcCfglhm:N:no:p:st $*`
- 
- if [ $? != 0 ]
- then
-@@ -40,6 +42,7 @@ do
- 		-a|-b|-g|-s|-l)	TEST=$c; shift	;;
- 		-f|-n|-t)	TESTARG=$c; shift	;;
- 		-c)		cachefs="yes"; shift	;;
-+		-A)		ask2mnt="yes"; shift ;;
- 		-C)		CIFS="yes"; export CIFS; shift ;;
- 		-h)		HARDLINKS=n; export HARDLINKS; shift	;;
- 		-m)		USRMNTPOINT=$2; shift; shift	;;
-@@ -124,18 +127,20 @@ HOSTNAME=`hostname`
- HOSTNAME=`expr $HOSTNAME : '\([^.]*\)'`
- NFSTESTDIR=$MNTPOINT/$HOSTNAME.test
- export NFSTESTDIR
--echo $DASHN "Start tests on path $NFSTESTDIR [y/n]?" "$BLC"
--read ans
--case $ans in
--    Y*|y*)
--	;;
--    *)
--	echo "Terminating ($MNTPOINT left mounted)."
--	exit 1
--	;;
--esac
--	
-+if test $ask2mnt = "yes" 
-+then
-+	echo $DASHN "Start tests on path $NFSTESTDIR [y/n]?" "$BLC"
-+	read ans
-+	case $ans in
-+    	Y*|y*)
-+		;;
-+    	*)
-+		echo "Terminating ($MNTPOINT left mounted)."
-+		exit 1
-+		;;
-+	esac
- echo ""
-+fi
- 
- if test $passes = "1"
- then
--- 
-1.9.3
+If you want to do the read-modify write cycle properly you'll have to
+do it at the time the invalid extent is read, not written.  Take a look
+at my patch to add a flag to do that in page 5, although it would
+be a lot more involved to do it for large pnfs block sizes.  Given
+that the code never really fully worked beforehand I'm not tempted
+to come up with that myself, though.
 
