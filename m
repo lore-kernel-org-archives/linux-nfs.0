@@ -1,83 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f169.google.com ([209.85.220.169]:49048 "EHLO
-	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750851AbaHBOGA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 10:06:00 -0400
-Received: by mail-vc0-f169.google.com with SMTP id le20so8527160vcb.28
-        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 07:06:00 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <53DCEAE8.70707@gmail.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-	<1406684083-19736-32-git-send-email-jlayton@primarydata.com>
-	<53DCBFDB.5060808@gmail.com>
-	<CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com>
-	<53DCEAE8.70707@gmail.com>
-Date: Sat, 2 Aug 2014 10:05:59 -0400
-Message-ID: <CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
-Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into struct nfs4_client
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Jeff Layton <jlayton@primarydata.com>, Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from casper.infradead.org ([85.118.1.10]:45781 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754072AbaHGHVk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:40 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 11/17] pnfs/blocklayout: correctly decrement extent length
+Date: Thu,  7 Aug 2014 09:23:43 +0200
+Message-Id: <1407396229-4785-12-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 2, 2014 at 9:43 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> On 8/2/2014 21:11, Trond Myklebust wrote:
->> On Sat, Aug 2, 2014 at 6:39 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
->>> On 7/30/2014 09:34, Jeff Layton wrote:
->>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
->>>>
->>>> Preparation for removing the client_mutex.
->>>>
->>>> Convert the open owner hash table into a per-client table and protect it
->>>> using the nfs4_client->cl_lock spin lock.
->>>>
->>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>>> ---
->>>>  fs/nfsd/netns.h     |   1 -
->>>>  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
->>>>  fs/nfsd/state.h     |   1 +
->>>>  3 files changed, 86 insertions(+), 103 deletions(-)
->>>>
->>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
->>>> index a71d14413d39..e1f479c162b5 100644
->>>> --- a/fs/nfsd/netns.h
->>>> +++ b/fs/nfsd/netns.h
->>>> @@ -63,7 +63,6 @@ struct nfsd_net {
->>>>       struct rb_root conf_name_tree;
->>>>       struct list_head *unconf_id_hashtbl;
->>>>       struct rb_root unconf_name_tree;
->>>> -     struct list_head *ownerstr_hashtbl;
->>>
->>> I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
->>> http://comments.gmane.org/gmane.linux.nfs/64382
->>>
->>> nfsd needs the hashtbl to find the lockowner for locking by owner from
->>> fl->fl_owner stored in struct file_lock, but without nfs_client.
->>
->> Why? We're not currently doing that.
->
-> Although not doing that right now, but there is a bug for getting the right ld_owner
-> in nfs4_set_lock_denied.
->
-> If denying locks, vfs don't copy fl->fl_lmops to the returned file_lock, so that,
-> fl->fl_lmops always be NULL, nfsd never return the owner who holds the conflock.
->
-> If we want fix this problem, needs finding the lockowner from struct file_lock.
+When we do non-page sized reads we can underflow the extent_length variable
+and read incorrect data.  Fix the extent_length calculation and change to
+defensive <= checks for the extent length in the read and write path.
 
-Do we really care enough about fixing nfs4_set_lock_denied enough to
-do so at the cost of reducing overall scalability of locking state?
-We will always be faking up the clientid etc for local locks. Are
-there any clients out there that actually inspect the clientid on a
-result of NFS4ERR_DENIED and that will break if we give them a fake
-for non-local locks?
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 5427ae7..87a633d 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -272,7 +272,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
+ 	isect = (sector_t) (f_offset >> SECTOR_SHIFT);
+ 	/* Code assumes extents are page-aligned */
+ 	for (i = pg_index; i < hdr->page_array.npages; i++) {
+-		if (!extent_length) {
++		if (extent_length <= 0) {
+ 			/* We've used up the previous extent */
+ 			bl_put_extent(be);
+ 			bl_put_extent(cow_read);
+@@ -303,6 +303,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
+ 			f_offset += pg_len;
+ 			bytes_left -= pg_len;
+ 			isect += (pg_offset >> SECTOR_SHIFT);
++			extent_length -= (pg_offset >> SECTOR_SHIFT);
+ 		} else {
+ 			pg_offset = 0;
+ 			pg_len = PAGE_CACHE_SIZE;
+@@ -333,7 +334,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
+ 			}
+ 		}
+ 		isect += (pg_len >> SECTOR_SHIFT);
+-		extent_length -= PAGE_CACHE_SECTORS;
++		extent_length -= (pg_len >> SECTOR_SHIFT);
+ 	}
+ 	if ((isect << SECTOR_SHIFT) >= header->inode->i_size) {
+ 		hdr->res.eof = 1;
+@@ -797,7 +798,7 @@ next_page:
+ 	/* Middle pages */
+ 	pg_index = header->args.pgbase >> PAGE_CACHE_SHIFT;
+ 	for (i = pg_index; i < header->page_array.npages; i++) {
+-		if (!extent_length) {
++		if (extent_length <= 0) {
+ 			/* We've used up the previous extent */
+ 			bl_put_extent(be);
+ 			bl_put_extent(cow_read);
 -- 
-Trond Myklebust
+1.9.1
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
