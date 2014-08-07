@@ -1,92 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:39065 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752704AbaHXTSm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 24 Aug 2014 15:18:42 -0400
-Date: Sun, 24 Aug 2014 21:18:39 +0200
+Received: from casper.infradead.org ([85.118.1.10]:45769 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754037AbaHGHVe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:34 -0400
 From: Christoph Hellwig <hch@lst.de>
-To: Boaz Harrosh <openosd@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 03/19] pnfs: force a layout commit when encountering
-	busy segments during recall
-Message-ID: <20140824191839.GA9717@lst.de>
-References: <1408637375-11343-1-git-send-email-hch@lst.de> <1408637375-11343-4-git-send-email-hch@lst.de> <53FA259C.9050807@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53FA259C.9050807@gmail.com>
+Subject: [PATCH 05/17] pnfs: add flag to force read-modify-write in ->write_begin
+Date: Thu,  7 Aug 2014 09:23:37 +0200
+Message-Id: <1407396229-4785-6-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 24, 2014 at 08:49:16PM +0300, Boaz Harrosh wrote:
-> I've been sitting on client RECALL bugs over a year NOW. I have you scenario
-> but actually a real DEAD-LOCK instead of an annoying delay.
+Like all block based filesystems, the pNFS block layout driver can't read
+or write at a byte granularity and thus has to perform read-modify-write
+cycles on writes smaller than this granularity.
 
-A sufficiently long delay is undistinguishable from a deadlock :)
+Add a flag so that the core NFS code always reads a whole page when
+starting a smaller write, so that we can do it in the place where the VFS
+expects it instead of doing in very deadlock prone way in the writeback
+handler.
 
-> * Client is doing a LAYOUT_GET and is returned RECALL_CONFLICT
-> 
->   Comment: If your server is serious about it's recalls, then all the
->   while a recall is in progress it will return RECALL_CONFLICT on any
->   segment in conflict with the RECALL.
+Note that in theory we could do less than page size reads here for disks
+that have a smaller sector size which are server by a server with a smaller
+pnfs block size.  But so far that doesn't seem like a worthwhile
+optimization.
 
-It does.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/file.c | 9 +++++++++
+ fs/nfs/pnfs.h | 1 +
+ 2 files changed, 10 insertions(+)
 
->   In objects layout this is easy to hit, because the LAYOUT_GET itself
->   may cause the issue of the RECALL, because if the objects map grows
->   do to the current LAYOUT_GET then all clients are RECALLed including
->   the one issuing the call.
-
-RFC5663 also requires recalls from layoutget in certain cases.  The language
-in is rather vague though, and I did chose to interpret it that the client
-is responsible for coherency management on it's outstanding layouts, and thus
-I will only recall layouts from other clientids.  Without that utter madness
-would happen with the forgetful client model that Linux uses.
-
->   But this can also happen when one client caused an operation that
->   sends a RECALL on our client while our client is in the middle of
->   issuing a LAYOUT_GET.
-
-This is something I could hit a well.  Might be worth to write a reproducer
-(I've been trying to play a bit with pynfs, but it still confuses the heck
-out of me)
-
-> 1. I do the pnfs_layoutcommit_inode() regrdless of busy segments because
->    if it has-nothing-to-do it returns right-away. Segments may be busy
->    because of need-to-commit but also because they are used by in-flight-IO
->    So busy segments are not an exact indication.
->    In any way we can always do pnfs_layoutcommit_inode() to kick a LAYOUTCOMMIT
->    it will never do any harm.
-
-Sounds fine to me.
-
-> 2. This has a performance advantage, any segments held by LAYOUTCOMMIT will
->    now be freed, and the RECALL will return success instead of forcing the
->    server to one or more RECALL rounds with ERR_DELAY.
-
-Sounds good to me as well.
-
-> Also with my patch I hit races in state management, because my patch waits
-> for LAYOUT_COMMIT to execute synchronously from the RECALL thread, your
-> patch of  asynchronous LAYOUT_COMMIT has a lower chance of hitting. But I
-> think Trond might have fixed these races, as I have tested this code like
-> 6 month a go.
-
-I've been running into various stateid handling problems, of which some
-could be considered races.  Look at the other patches in this series - two of
-those only appeared in the second iteration as they were only causing
-MDS fallbacks, but no actual data corruption.
-
-> If you are up to it you might want to test my synchronous way and see if you like
-> things better. I'm testing your code as well to see how it looks.
-
-Can you send me a full patch?  Either against mainline or my tree is fine.
-
-> BTW: It looks like the hch-pnfs/getdeviceinfo has some of the pnfs fixes but that
-> the hch-pnfs/blocklayout-for-3.18 has newer fixes but without the getdeviceinfo
-> stuff. I'm testing with the older getdeviceinfo branch.
-
-The getdeviceinfo as of now is missing two stateid handling fixes.  It was
-based on blocklayout-for-3.18 when I pushed it out, but I have since updated
-blocklayout-for-3.18.  I will push out a rebased getdeviceinfo branch later
-today.
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 4042ff5..718cdd6 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -36,6 +36,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #include "nfstrace.h"
+ 
+@@ -323,10 +324,18 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+ static int nfs_want_read_modify_write(struct file *file, struct page *page,
+ 			loff_t pos, unsigned len)
+ {
++	struct nfs_server *server = NFS_SERVER(file->f_mapping->host);
+ 	unsigned int pglen = nfs_page_length(page);
+ 	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
+ 	unsigned int end = offset + len;
+ 
++	if (server->pnfs_curr_ld &&
++	    (server->pnfs_curr_ld->flags & PNFS_READ_WHOLE_PAGE)) {
++		if (!PageUptodate(page))
++			return 1;
++		return 0;
++	}
++
+ 	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
+ 	    !PageUptodate(page) &&		/* Uptodate? */
+ 	    !PagePrivate(page) &&		/* i/o request already? */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index aca3dff..882387c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -71,6 +71,7 @@ enum layoutdriver_policy_flags {
+ 	/* Should the pNFS client commit and return the layout upon a setattr */
+ 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
+ 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
++	PNFS_READ_WHOLE_PAGE		= 1 << 2,
+ };
+ 
+ struct nfs4_deviceid_node;
+-- 
+1.9.1
 
