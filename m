@@ -1,44 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:56827 "EHLO
-	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752496AbaHYFvK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2014 01:51:10 -0400
-Date: Mon, 25 Aug 2014 01:51:04 -0400 (EDT)
-From: Xiong Zhou <xzhou@redhat.com>
-To: Ben Hutchings <ben@decadent.org.uk>,
-        trond myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Message-ID: <1859750321.23735105.1408945864304.JavaMail.zimbra@redhat.com>
-In-Reply-To: <1408576235.2618.47.camel@deadeye.wl.decadent.org.uk>
-References: <1927160445.21851828.1408504000719.JavaMail.zimbra@redhat.com> <1408576235.2618.47.camel@deadeye.wl.decadent.org.uk>
-Subject: [PATCH v2] nfs: remove redundant slash from nfs_path
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:52350 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754420AbaHGCPX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 22:15:23 -0400
+Received: by mail-pd0-f176.google.com with SMTP id y10so4289074pdj.7
+        for <linux-nfs@vger.kernel.org>; Wed, 06 Aug 2014 19:15:22 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH 2/2] nfs/filelayout: set layoutcommit depending on write verifier
+Date: Thu,  7 Aug 2014 10:15:03 +0800
+Message-Id: <1407377703-6593-2-git-send-email-tao.peng@primarydata.com>
+In-Reply-To: <1407377703-6593-1-git-send-email-tao.peng@primarydata.com>
+References: <1407377703-6593-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When export root dir(/) via nfs, and mount a particular dir under root, eg
-/nfsexport, there will be defect double slash output in /proc/mounts, like
-localhost://nfsexport. While this patch change it to localhost:/nfsexport.
+Following http://www.rfc-editor.org/errata_search.php?rfc=5661&eid=2751
+Don't set layoutcommit for commit_through_mds case.
+For FILE_SYNC writes, don't set layoutcommit.
+For DATA_SYNC wirtes, set layout commit right after wirtes done.
+For UNSTABLE writes, set layout commit when commit done.
 
-Signed-off-by: Xiong Zhou <xzhou@redhat.com>
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 ---
- fs/nfs/namespace.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/filelayout/filelayout.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-index b5a0afc..24f954e 100644
---- a/fs/nfs/namespace.c
-+++ b/fs/nfs/namespace.c
-@@ -98,7 +98,7 @@ rename_retry:
- 		return end;
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 1359c4a..e8720ec 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -265,7 +265,7 @@ filelayout_set_layoutcommit(struct nfs_pgio_header *hdr)
+ {
+ 
+ 	if (FILELAYOUT_LSEG(hdr->lseg)->commit_through_mds ||
+-	    hdr->res.verf->committed == NFS_FILE_SYNC)
++	    hdr->res.verf->committed != NFS_DATA_SYNC)
+ 		return;
+ 
+ 	pnfs_set_layoutcommit(hdr);
+@@ -403,6 +403,9 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 		return -EAGAIN;
  	}
- 	namelen = strlen(base);
--	if (flags & NFS_PATH_CANONICAL) {
-+	if ((flags & NFS_PATH_CANONICAL) || *end == '/') {
- 		/* Strip off excess slashes in base string */
- 		while (namelen > 0 && base[namelen - 1] == '/')
- 			namelen--;
+ 
++	if (data->verf.committed == NFS_UNSTABLE)
++		pnfs_commit_set_layoutcommit(data);
++
+ 	return 0;
+ }
+ 
 -- 
-1.8.3.1
+1.9.1
 
