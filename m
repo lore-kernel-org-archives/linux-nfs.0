@@ -1,81 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f46.google.com ([74.125.82.46]:52793 "EHLO
-	mail-wg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753017AbaHZSTo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 14:19:44 -0400
-Received: by mail-wg0-f46.google.com with SMTP id m15so14888329wgh.29
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 11:19:43 -0700 (PDT)
-Message-ID: <53FCCFBD.3080305@plexistor.com>
-Date: Tue, 26 Aug 2014 21:19:41 +0300
-From: Boaz Harrosh <boaz@plexistor.com>
-MIME-Version: 1.0
+Received: from casper.infradead.org ([85.118.1.10]:45765 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754063AbaHGHVd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:33 -0400
+From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "Matt W. Benjamin" <matt@linuxbox.com>, Christoph Hellwig <hch@lst.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Adam C. Emerson" <aemerson@linuxbox.com>
-Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
-References: <53FCA183.8000605@plexistor.com>	<1435166875.78.1409066662291.JavaMail.root@thunderbeast.private.linuxbox.com>	<CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>	<53FCBC5A.4060304@plexistor.com>	<CAHQdGtSghgbrPr=X8O2YLq=vXbKY1y5OuOMisf6vRoj8WeF0YA@mail.gmail.com>	<53FCBE9C.40906@plexistor.com> <CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>
-In-Reply-To: <CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 03/17] pnfs: force a layout commit when encountering busy segments during recall
+Date: Thu,  7 Aug 2014 09:23:35 +0200
+Message-Id: <1407396229-4785-4-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/26/2014 08:54 PM, Trond Myklebust wrote:
-> On Tue, Aug 26, 2014 at 1:06 PM, Boaz Harrosh <boaz@plexistor.com> wrote:
+Expedite layout recall processing by forcing a layout commit when
+we see busy segments.  Without it the layout recall might have to wait
+until the VM decided to start writeback for the file, which can introduce
+long delays.
 
-> 
-> The deadlock occurs _if_ the above layout commit  is unable to get a
-> slot. You can't guarantee that it will, because the slot table is a
-> finite resource and it can be exhausted 
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/callback_proc.c | 16 +++++++++++-----
+ fs/nfs/pnfs.c          |  3 +++
+ 2 files changed, 14 insertions(+), 5 deletions(-)
 
-Yes all I ever seen is 1 slot in any of the clients/servers I've
-seen so I assume 1 slot ever
-
-> if you allow fore channel
-> calls to trigger synchronous recalls on the back channel 
-
-Beep! but this is exactly what I'm trying to say. The STD specifically
-forbids that. The server is not allowed to wait here, it must return
-imitatively, with an error that frees the slot and then later issue the
-RECALL.
-
-This is what I said exactly three times in my mail, and what I have
-depicted in my flow:
-	Server async operation (mandated by the STD)
-	Client back-channel can be sync with for channel (Not mentioned by the STD)
-
-> that again trigger synchronous calls on the fore channel. 
-
-
-> You're basically saying
-> that the client needs to guarantee that it can allocate 2 slots before
-> it is allowed to send a layoutget just in case the server needs to
-> recall a layout.
-> 
-
-No I am not saying that, please count. Since the Server is not allowed
-sync operation then one slot is enough and the client can do sync lo_commit
-while in recall.
-
-> If, OTOH, the layoutcommit is asynchronous, then there is no
-> serialisation and the back channel thread can happily reply to the
-> layout recall even if there are no free slots in the fore channel.
-> 
-
-Sure that will work as well, but not optimally, and for no good reason.
-
-Please go back to my flow with the 3 cases. See how the server never waits
-for anything and will always imitatively reply to the layout_get.
-Since the server is not allowed a sync operation and is mandated by the
-RFC text to not wait, then the client is allowed and can do sync operations
-because it is enough that only one do async.
-
-BTW: If what you are saying is true than there is a bug in the slot code
-because this patch does work, and everything flows past this situation.
-I have a reproducer test that fails 100% of the time without this patch
-and only fails much later at some other place, but not at this deadlock,
-with this patch applied.
-
-Cheers
-Boaz
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 41db525..bf017b0 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -164,6 +164,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 	struct inode *ino;
+ 	struct pnfs_layout_hdr *lo;
+ 	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
++	bool need_commit = false;
+ 	LIST_HEAD(free_me_list);
+ 
+ 	lo = get_layout_by_fh(clp, &args->cbl_fh, &args->cbl_stateid);
+@@ -172,16 +173,21 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 
+ 	ino = lo->plh_inode;
+ 	spin_lock(&ino->i_lock);
+-	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+-	    pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
+-					&args->cbl_range))
++	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
+ 		rv = NFS4ERR_DELAY;
+-	else
+-		rv = NFS4ERR_NOMATCHING_LAYOUT;
++	} else if (pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
++			&args->cbl_range)) {
++		need_commit = true;
++		rv = NFS4ERR_DELAY;
++	}
++
+ 	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&free_me_list);
+ 	pnfs_put_layout_hdr(lo);
++
++	if (need_commit)
++		pnfs_layoutcommit_inode(ino, false);
+ 	iput(ino);
+ out:
+ 	return rv;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6d01740..c72376c 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -604,6 +604,9 @@ pnfs_layout_free_bulk_destroy_list(struct list_head *layout_list,
+ 		spin_unlock(&inode->i_lock);
+ 		pnfs_free_lseg_list(&lseg_list);
+ 		pnfs_put_layout_hdr(lo);
++
++		if (ret)
++			pnfs_layoutcommit_inode(inode, false);
+ 		iput(inode);
+ 	}
+ 	return ret;
+-- 
+1.9.1
 
