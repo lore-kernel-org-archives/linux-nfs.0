@@ -1,51 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:45841 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755594AbaHHK3Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 06:29:16 -0400
-Received: by mail-ig0-f178.google.com with SMTP id uq10so792356igb.17
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 03:29:16 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140807162059.GA23188@lst.de>
-References: <1407396229-4785-1-git-send-email-hch@lst.de> <1407396229-4785-9-git-send-email-hch@lst.de>
- <CA+a=Yy42e46zA+X-VQQj9RAzZ4T+A7dOOrjUMVONsh8Pt8QdcQ@mail.gmail.com>
- <20140807112537.GA3437@lst.de> <CA+a=Yy4muAYw8KjZcFh4NMwOOizD=gNXNeweLHix46vjQoS53Q@mail.gmail.com>
- <20140807121052.GA5678@lst.de> <CA+a=Yy4YmBzYFUTHb72hyZ1--N_w6YDZhmbFEAU11YTt+1qxOg@mail.gmail.com>
- <20140807162059.GA23188@lst.de>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Fri, 8 Aug 2014 18:28:56 +0800
-Message-ID: <CA+a=Yy5YRTnTwoO4HUAAJnRbwdwT1o7Gvr2Ke=dZq9gOX8X2fA@mail.gmail.com>
-Subject: Re: [PATCH 08/17] pnfs/blocklayout: reject pnfs blocksize larger than
- page size
-To: Christoph Hellwig <hch@lst.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linuxnfs <linux-nfs@vger.kernel.org>,
-        "faibish, sorin" <faibish_sorin@emc.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from casper.infradead.org ([85.118.1.10]:45789 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754217AbaHGHVo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:44 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 15/17] pnfs/blocklayout: implement the return_range method
+Date: Thu,  7 Aug 2014 09:23:47 +0200
+Message-Id: <1407396229-4785-16-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 8, 2014 at 12:20 AM, Christoph Hellwig <hch@lst.de> wrote:
-> On Thu, Aug 07, 2014 at 09:43:09PM +0800, Peng Tao wrote:
->> we can't assume all pages written back have their pari pages (for 8K
->> block size e.g.) read in read_pagelists(). A page can also be read in
->> via MDS read. So what we need is a hook into nfs_readpage to read or
->> zero additional pages. But we might not even have a layout there.
->
-> We can't assume the page is there for writeback either, what all this
-> mess exists for.
-In write_pagelist, we can find or create the pair page. It is indeed
-cow extent that makes things complicated by requiring to read from
-disk. If we drop cow support (which is required by rfc but I don't
-know of any server that supports it), we can just zero the extra pages
-and mark them uptodate. No extra read in or writeback required. That
-is doable IMHO.
+This allows removing extents from the extent tree especially on truncate
+operations, and thus fixing reads from truncated and re-extended that
+previously returned stale data.
 
-> That's why we really shouldn't even attempt to support
-> a a block size large than the page size, and that's also why the local
-> Linux filesystems strictly refuse to support it.  If you want to hack
-> around it you will run into problems in either case.
->
-> I also don't really see why a server would insist on this large block
-> size, there really isn't any major benefit in doing that today (aka the last 20
-> years) now that we have extent based filesystems.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 42b6f9c..a7524c4 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -470,6 +470,35 @@ static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+ }
+ 
+ static void
++bl_return_range(struct pnfs_layout_hdr *lo,
++		struct pnfs_layout_range *range)
++{
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
++	sector_t offset = range->offset >> SECTOR_SHIFT, end;
++	int err;
++
++	if (range->offset % 8) {
++		dprintk("%s: offset %lld not block size aligned\n",
++			__func__, range->offset);
++		return;
++	}
++
++	if (range->length != NFS4_MAX_UINT64) {
++		if (range->length % 8) {
++			dprintk("%s: length %lld not block size aligned\n",
++				__func__, range->length);
++			return;
++		}
++
++		end = offset + (range->length >> SECTOR_SHIFT);
++	} else {
++		end = round_down(NFS4_MAX_UINT64, PAGE_SIZE);
++	}
++
++	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
++}
++
++static void
+ bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
+ 		       const struct nfs4_layoutcommit_args *arg)
+ {
+@@ -777,6 +806,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.free_layout_hdr		= bl_free_layout_hdr,
+ 	.alloc_lseg			= bl_alloc_lseg,
+ 	.free_lseg			= bl_free_lseg,
++	.return_range			= bl_return_range,
+ 	.encode_layoutcommit		= bl_encode_layoutcommit,
+ 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
+ 	.set_layoutdriver		= bl_set_layoutdriver,
+-- 
+1.9.1
+
