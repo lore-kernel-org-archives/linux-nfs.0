@@ -1,74 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f178.google.com ([209.85.217.178]:63796 "EHLO
-	mail-lb0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754069AbaHFGZV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:25:21 -0400
-Received: by mail-lb0-f178.google.com with SMTP id c11so1518747lbj.23
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 23:25:19 -0700 (PDT)
-From: Natanael Copa <natanael.copa@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Natanael Copa <ncopa@alpinelinux.org>
-Subject: [PATCH v2 07/11] Allow usage of getrpcbynumber() when getrpcbynumber_r() is unavailable
-Date: Wed,  6 Aug 2014 08:25:02 +0200
-Message-Id: <1407306306-29796-8-git-send-email-ncopa@alpinelinux.org>
-In-Reply-To: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
-References: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
+Received: from casper.infradead.org ([85.118.1.10]:45760 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753145AbaHGHVb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:31 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 01/17] nfs: cap request size to fit a kmalloced page array
+Date: Thu,  7 Aug 2014 09:23:33 +0200
+Message-Id: <1407396229-4785-2-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
----
- configure.ac             | 6 +-----
- support/nfs/svc_socket.c | 6 ++++++
- 2 files changed, 7 insertions(+), 5 deletions(-)
+pNFS servers may return arbitrarily large layouts.  Trim back the I/O size
+to one that we can at least allocate the page array for.
 
-diff --git a/configure.ac b/configure.ac
-index b9682ed..bc48373 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -248,9 +248,6 @@ AC_CHECK_FUNC([connect], ,
- AC_CHECK_FUNC([getaddrinfo], ,
-               [AC_MSG_ERROR([Function 'getaddrinfo' not found.])])
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/pagelist.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 9425118..23471b1 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -466,6 +466,14 @@ size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+ 		return 0;
+ 	}
  
--AC_CHECK_FUNC([getrpcbynumber], ,
--              [AC_MSG_ERROR([Function 'getrpcbynumber' not found.])])
--
- AC_CHECK_FUNC([getservbyname], ,
-               [AC_MSG_ERROR([Function 'getservbyname' not found.])])
- 
-@@ -409,12 +406,11 @@ AC_FUNC_STAT
- AC_FUNC_VPRINTF
- AC_CHECK_FUNCS([alarm atexit dup2 fdatasync ftruncate getcwd \
-                gethostbyaddr gethostbyname gethostname getmntent \
--               getnameinfo getrpcbyname getifaddrs \
-+               getnameinfo getrpcbyname getrpcbynumber getrpcbynumber_r getifaddrs \
-                gettimeofday hasmntopt inet_ntoa innetgr memset mkdir pathconf \
-                ppoll realpath rmdir select socket strcasecmp strchr strdup \
-                strerror strrchr strtol strtoul sigprocmask name_to_handle_at])
- 
--
- dnl *************************************************************
- dnl Check for data sizes
- dnl *************************************************************
-diff --git a/support/nfs/svc_socket.c b/support/nfs/svc_socket.c
-index f56f310..61ccf5b 100644
---- a/support/nfs/svc_socket.c
-+++ b/support/nfs/svc_socket.c
-@@ -42,8 +42,14 @@ int getservport(u_long number, const char *proto)
- 	struct servent servbuf, *servp = NULL;
- 	int ret;
- 
-+#if HAVE_GETRPCBYNUMBER_R
- 	ret = getrpcbynumber_r(number, &rpcbuf, rpcdata, sizeof rpcdata,
- 				&rpcp);
-+#else
-+	rpcp = getrpcbynumber(number);
-+	ret = 0;
-+#endif
++	/*
++	 * Limit the request size so that we can still allocate a page array
++	 * for it without upsetting the slab allocator.
++	 */
++	if (((desc->pg_count + req->wb_bytes) >> PAGE_SHIFT) *
++			sizeof(struct page) > PAGE_SIZE)
++		return 0;
 +
- 	if (ret == 0 && rpcp != NULL) {
- 		/* First try name.  */
- 		ret = getservbyname_r(rpcp->r_name, proto, &servbuf, servdata,
+ 	return min(desc->pg_bsize - desc->pg_count, (size_t)req->wb_bytes);
+ }
+ EXPORT_SYMBOL_GPL(nfs_generic_pg_test);
 -- 
-2.0.4
+1.9.1
 
