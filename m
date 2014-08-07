@@ -1,204 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:33428 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754322AbaHNOEi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 10:04:38 -0400
-Message-ID: <53ECC1E4.6080104@gmail.com>
-Date: Thu, 14 Aug 2014 22:04:20 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, Joe Perches <joe@perches.com>
-Subject: Re: [PATCH 1/3 v2] fs/locks.c: Copy all information for conflock
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com>	<20140809065112.700e0ecc@tlielax.poochiereds.net>	<53E791F1.40802@gmail.com>	<20140811121949.4c3d7894@tlielax.poochiereds.net>	<53ECAADB.6040903@gmail.com> <20140814100025.2b2f72db@tlielax.poochiereds.net>
-In-Reply-To: <20140814100025.2b2f72db@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=windows-1252
+Received: from casper.infradead.org ([85.118.1.10]:45793 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754217AbaHGHVq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:46 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 17/17] pnfs/blocklayout: allocate separate pages for the layoutcommit payload
+Date: Thu,  7 Aug 2014 09:23:49 +0200
+Message-Id: <1407396229-4785-18-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/14/2014 22:00, Jeff Layton wrote:
-> On Thu, 14 Aug 2014 20:26:03 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
->> On 8/12/2014 00:19, Jeff Layton wrote:
->>> On Sun, 10 Aug 2014 23:38:25 +0800
->>> Kinglong Mee <kinglongmee@gmail.com> wrote:
->>>
->>>> Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
->>>> fl_lmops field in file_lock for checking nfsd4 lockowner.
->>>>
->>>> But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return
->>>> of conflicting locks) causes the fl_lmops of conflock always be NULL.
->>>>
->>>> Also, commit 0996905f93 (lockd: posix_test_lock() should not call
->>>> locks_copy_lock()) caused the fl_lmops of conflock always be NULL too.
->>>>
->>>> v2: Only change the order from 3/3 to 1/3 now.
->>>>
->>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->>>> ---
->>>>  fs/lockd/svclock.c |  2 +-
->>>>  fs/locks.c         | 25 ++++++-------------------
->>>>  include/linux/fs.h |  6 ------
->>>>  3 files changed, 7 insertions(+), 26 deletions(-)
->>>>
->>>> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
->>>> index ab798a8..e1f209c 100644
->>>> --- a/fs/lockd/svclock.c
->>>> +++ b/fs/lockd/svclock.c
->>>> @@ -677,7 +677,7 @@ nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
->>>>  		block->b_flags |= B_TIMED_OUT;
->>>>  	if (conf) {
->>>>  		if (block->b_fl)
->>>> -			__locks_copy_lock(block->b_fl, conf);
->>>> +			locks_copy_lock(block->b_fl, conf);
->>>>  	}
->>>>  }
->>>>  
->>>> diff --git a/fs/locks.c b/fs/locks.c
->>>> index 717fbc4..91b0f03 100644
->>>> --- a/fs/locks.c
->>>> +++ b/fs/locks.c
->>>> @@ -266,35 +266,22 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
->>>>  		new->fl_lmops = fl->fl_lmops;
->>>>  }
->>>>  
->>>> -/*
->>>> - * Initialize a new lock from an existing file_lock structure.
->>>> - */
->>>> -void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
->>>> +void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
->>>>  {
->>>> +	locks_release_private(new);
->>>> +
->>>>  	new->fl_owner = fl->fl_owner;
->>>>  	new->fl_pid = fl->fl_pid;
->>>> -	new->fl_file = NULL;
->>>> +	new->fl_file = fl->fl_file;
->>>>  	new->fl_flags = fl->fl_flags;
->>>>  	new->fl_type = fl->fl_type;
->>>>  	new->fl_start = fl->fl_start;
->>>>  	new->fl_end = fl->fl_end;
->>>>  	new->fl_ops = NULL;
->>>>  	new->fl_lmops = NULL;
->>>> -}
->>>> -EXPORT_SYMBOL(__locks_copy_lock);
->>>> -
->>>> -void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
->>>> -{
->>>> -	locks_release_private(new);
->>>> -
->>>> -	__locks_copy_lock(new, fl);
->>>> -	new->fl_file = fl->fl_file;
->>>> -	new->fl_ops = fl->fl_ops;
->>>> -	new->fl_lmops = fl->fl_lmops;
->>>>  
->>>>  	locks_copy_private(new, fl);
->>>>  }
->>>
->>> (cc'ing Joe Perches)
->>>
->>> Ok, so you're basically just reverting 1a747ee0cc11a19. The catch there
->>> is that you now need to ensure that any conflock structures are
->>> properly initialized before passing them to locks_copy_lock.
->>>
->>> The nfsv4 server code currently doesn't do that and it will need to be
->>> fixed to do so or that will be a regression.
->>
->> I don't think so.
->> locks_alloc_lock() has initialize the file_lock struct,
->> the same as locks_init_lock().
->>
->> I will clean the duplicate initialize for file_lock in nfs4state.c in v3.
->>
-> 
-> Ahh, you're correct. Yes, please just remove that instead. You might
-> also want to look for other places in the kernel that call
-> locks_init_lock unnecessarily. We might as well get rid of all of
-> them while we're looking.
+Instead of overflowing the XDR send buffer with our extent list allocate
+pages and pre-encode the layoutupdate payload into them.  We optimistically
+allocate a single page use alloc_page and only switch to vmalloc when we
+have more extents outstanding.  Currently there is only a single testcase
+(xfstests generic/113) which can reproduce large enough extent lists for
+this to occur.
 
-OK, I will review those codes where calling locks_init_lock().
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c |  9 ++--
+ fs/nfs/blocklayout/blocklayout.h |  6 ++-
+ fs/nfs/blocklayout/extent_tree.c | 89 +++++++++++++++++++++++++++++++---------
+ 3 files changed, 78 insertions(+), 26 deletions(-)
 
-> 
->>> For the NLM code, Joe Perches has proposed a patch to remove the
->>> conflock parameter from lm_grant since the callers always pass in NULL
->>> anyway. You may want to pull in his patch and rebase yours on top of it
->>> since it'll remove that __locks_copy_lock call altogether.
->>>
->>> Joe, is Andrew merging that patch or do I need to pull it into the
->>> locks tree?
->>
->> I will update this patch based on that patch and your new patch for locks.c.
->>
->> thanks,
->> Kinglong Mee
->>
-> 
-> Thanks. I wiggled Joe's patch on top of my current set of locking
-> patches and will plan to merge it for v3.18 unless there are any
-> objections.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index d5a2b87..fae8144 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -498,12 +498,11 @@ bl_return_range(struct pnfs_layout_hdr *lo,
+ 	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
+ }
+ 
+-static void
+-bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
+-		       const struct nfs4_layoutcommit_args *arg)
++static int
++bl_prepare_layoutcommit(struct nfs4_layoutcommit_args *arg)
+ {
+ 	dprintk("%s enter\n", __func__);
+-	ext_tree_encode_commit(BLK_LO2EXT(lo), xdr);
++	return ext_tree_prepare_commit(arg);
+ }
+ 
+ static void
+@@ -808,7 +807,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.alloc_lseg			= bl_alloc_lseg,
+ 	.free_lseg			= bl_free_lseg,
+ 	.return_range			= bl_return_range,
+-	.encode_layoutcommit		= bl_encode_layoutcommit,
++	.prepare_layoutcommit		= bl_prepare_layoutcommit,
+ 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
+ 	.set_layoutdriver		= bl_set_layoutdriver,
+ 	.clear_layoutdriver		= bl_clear_layoutdriver,
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index b4f66d8..caae202 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -80,6 +80,9 @@ struct pnfs_block_extent {
+ 	unsigned int	be_tag;
+ };
+ 
++/* on the wire size of the extent */
++#define BL_EXTENT_SIZE	(7 * sizeof(__be32) + NFS4_DEVICEID4_SIZE)
++
+ struct pnfs_block_layout {
+ 	struct pnfs_layout_hdr	bl_layout;
+ 	struct rb_root		bl_ext_rw;
+@@ -138,8 +141,7 @@ int ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
+ 		sector_t len);
+ bool ext_tree_lookup(struct pnfs_block_layout *bl, sector_t isect,
+ 		struct pnfs_block_extent *ret, bool rw);
+-int ext_tree_encode_commit(struct pnfs_block_layout *bl,
+-		struct xdr_stream *xdr);
++int ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg);
+ void ext_tree_mark_committed(struct pnfs_block_layout *bl, int status);
+ 
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index c7dacfa..3945221 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -465,32 +465,23 @@ out:
+ 	return err;
+ }
+ 
+-int
+-ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
++static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
++		size_t buffer_size, size_t *count)
+ {
+ 	struct pnfs_block_extent *be;
+-	unsigned int count = 0;
+-	__be32 *p, *xdr_start;
+ 	int ret = 0;
+ 
+-	dprintk("%s enter\n", __func__);
+-
+-	xdr_start = xdr_reserve_space(xdr, 8);
+-	if (!xdr_start)
+-		return -ENOSPC;
+-
+ 	spin_lock(&bl->bl_ext_lock);
+ 	for (be = ext_tree_first(&bl->bl_ext_rw); be; be = ext_tree_next(be)) {
+ 		if (be->be_state != PNFS_BLOCK_INVALID_DATA ||
+ 		    be->be_tag != EXTENT_WRITTEN)
+ 			continue;
+ 
+-		p = xdr_reserve_space(xdr, 7 * sizeof(__be32) +
+-					NFS4_DEVICEID4_SIZE);
+-		if (!p) {
+-			printk("%s: out of space for extent list\n", __func__);
++		(*count)++;
++		if (*count * BL_EXTENT_SIZE > buffer_size) {
++			/* keep counting.. */
+ 			ret = -ENOSPC;
+-			break;
++			continue;
+ 		}
+ 
+ 		p = xdr_encode_opaque_fixed(p, be->be_devid.data,
+@@ -501,15 +492,75 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
+ 		*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
+ 
+ 		be->be_tag = EXTENT_COMMITTING;
+-		count++;
+ 	}
+ 	spin_unlock(&bl->bl_ext_lock);
+ 
+-	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
+-	xdr_start[1] = cpu_to_be32(count);
++	return ret;
++}
++
++int
++ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg)
++{
++	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
++	size_t count = 0, buffer_size = PAGE_SIZE;
++	__be32 *start_p;
++	int ret;
++
++	dprintk("%s enter\n", __func__);
++
++	arg->layoutupdate_page = alloc_page(GFP_NOFS);
++	if (!arg->layoutupdate_page)
++		return -ENOMEM;
++	start_p = page_address(arg->layoutupdate_page);
++	arg->layoutupdate_pages = &arg->layoutupdate_page;
++
++retry:
++	ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count);
++	if (unlikely(ret)) {
++		if (arg->layoutupdate_pages != &arg->layoutupdate_page) {
++			int nr_pages = DIV_ROUND_UP(buffer_size, PAGE_SIZE), i;
++
++			for (i = 0; i < nr_pages; i++)
++				put_page(arg->layoutupdate_pages[i]);
++			kfree(arg->layoutupdate_pages);
++		} else {
++			put_page(arg->layoutupdate_page);
++		}
++
++		buffer_size = sizeof(__be32) + BL_EXTENT_SIZE * count;
++		count = 0;
++
++		arg->layoutupdate_pages =
++			kcalloc(DIV_ROUND_UP(buffer_size, PAGE_SIZE),
++				sizeof(struct page *), GFP_NOFS);
++		if (!arg->layoutupdate_pages)
++			return -ENOMEM;
++
++		start_p = __vmalloc(buffer_size, GFP_NOFS, PAGE_KERNEL);
++		if (!start_p) {
++			kfree(arg->layoutupdate_pages);
++			return -ENOMEM;
++		}
++
++		goto retry;
++	}
++
++	*start_p = cpu_to_be32(count);
++	arg->layoutupdate_len = sizeof(__be32) + BL_EXTENT_SIZE * count;
++
++	if (unlikely(arg->layoutupdate_pages != &arg->layoutupdate_page)) {
++		__be32 *p = start_p;
++		int i = 0;
++
++		for (p = start_p;
++		     p < start_p + arg->layoutupdate_len;
++		     p += PAGE_SIZE) {
++			arg->layoutupdate_pages[i++] = vmalloc_to_page(p);
++		}
++	}
+ 
+ 	dprintk("%s found %i ranges\n", __func__, count);
+-	return ret;
++	return 0;
+ }
+ 
+ void
+-- 
+1.9.1
 
-I saw your patch, thank you very much.
-
-thanks,
-Kinglong Mee
-
-> 
->>>
->>>> -
->>>>  EXPORT_SYMBOL(locks_copy_lock);
->>>>  
->>>>  static inline int flock_translate_cmd(int cmd) {
->>>> @@ -718,7 +705,7 @@ posix_test_lock(struct file *filp, struct file_lock *fl)
->>>>  			break;
->>>>  	}
->>>>  	if (cfl) {
->>>> -		__locks_copy_lock(fl, cfl);
->>>> +		locks_copy_lock(fl, cfl);
->>>>  		if (cfl->fl_nspid)
->>>>  			fl->fl_pid = pid_vnr(cfl->fl_nspid);
->>>>  	} else
->>>> @@ -921,7 +908,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
->>>>  			if (!posix_locks_conflict(request, fl))
->>>>  				continue;
->>>>  			if (conflock)
->>>> -				__locks_copy_lock(conflock, fl);
->>>> +				locks_copy_lock(conflock, fl);
->>>>  			error = -EAGAIN;
->>>>  			if (!(request->fl_flags & FL_SLEEP))
->>>>  				goto out;
->>>> diff --git a/include/linux/fs.h b/include/linux/fs.h
->>>> index e11d60c..ced023d 100644
->>>> --- a/include/linux/fs.h
->>>> +++ b/include/linux/fs.h
->>>> @@ -941,7 +941,6 @@ void locks_free_lock(struct file_lock *fl);
->>>>  extern void locks_init_lock(struct file_lock *);
->>>>  extern struct file_lock * locks_alloc_lock(void);
->>>>  extern void locks_copy_lock(struct file_lock *, struct file_lock *);
->>>> -extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
->>>>  extern void locks_remove_posix(struct file *, fl_owner_t);
->>>>  extern void locks_remove_file(struct file *);
->>>>  extern void locks_release_private(struct file_lock *);
->>>> @@ -1001,11 +1000,6 @@ static inline void locks_init_lock(struct file_lock *fl)
->>>>  	return;
->>>>  }
->>>>  
->>>> -static inline void __locks_copy_lock(struct file_lock *new, struct file_lock *fl)
->>>> -{
->>>> -	return;
->>>> -}
->>>> -
->>>>  static inline void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
->>>>  {
->>>>  	return;
->>>
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
