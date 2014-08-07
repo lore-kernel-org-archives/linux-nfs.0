@@ -1,115 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.alpinelinux.org ([74.117.189.114]:33276 "EHLO
-	mail.alpinelinux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755485AbaHHJik (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 05:38:40 -0400
-Date: Fri, 8 Aug 2014 11:38:33 +0200
-From: Natanael Copa <ncopa@alpinelinux.org>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from casper.infradead.org ([85.118.1.10]:45773 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754217AbaHGHVg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:36 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 11/11] exportfs: only do glibc specific hackery on glibc
-Message-ID: <20140808113833.48f192ab@ncopa-desktop.alpinelinux.org>
-In-Reply-To: <53E36DC5.7020200@RedHat.com>
-References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
-	<1406719399-1735-12-git-send-email-ncopa@alpinelinux.org>
-	<53E36DC5.7020200@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Subject: [PATCH 07/17] pnfs: allow splicing pre-encoded pages into the layoutcommit args
+Date: Thu,  7 Aug 2014 09:23:39 +0200
+Message-Id: <1407396229-4785-8-git-send-email-hch@lst.de>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 07 Aug 2014 08:15:01 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+Currently there is no XDR buffer space allocated for the per-layout driver
+layoutcommit payload, which leads to server buffer overflows in the
+blocklayout driver even under simple workloads.  As we can't do per-layout
+sizes for XDR operations we'll have to splice a previously encoded list
+of pages into the XDR stream, similar to how we handle ACL buffers.
 
-> 
-> 
-> On 07/30/2014 07:23 AM, Natanael Copa wrote:
-> > We should not depend on the libc do free(3) on ai_canonname as that is
-> > completely up to implementation and known o break things on uclibc and
-> > musl libc.
-> > 
-> > Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
-> > ---
-> >  support/export/hostname.c | 3 +++
-> >  1 file changed, 3 insertions(+)
-> > 
-> > diff --git a/support/export/hostname.c b/support/export/hostname.c
-> > index d9153e1..30584b4 100644
-> > --- a/support/export/hostname.c
-> > +++ b/support/export/hostname.c
-> > @@ -382,6 +382,7 @@ host_numeric_addrinfo(const struct sockaddr *sap)
-> >  
-> >  	ai = host_pton(buf);
-> >  
-> > +#if !definded(__UCLIBC__) && defined(__GLIBC__)
-> You still have this typo here... and the only reason
-> it compiled is HAVE_GETNAMEINFO is not defined 
-> in your world....
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/nfs4proc.c       | 14 ++++++++++++++
+ fs/nfs/nfs4xdr.c        | 18 +++++++++++++-----
+ fs/nfs/pnfs.c           | 15 +++++++++++++++
+ fs/nfs/pnfs.h           |  4 ++--
+ include/linux/nfs_xdr.h |  3 +++
+ 5 files changed, 47 insertions(+), 7 deletions(-)
 
-I do have HAVE_GETNAMEINFO or I wouldn't have this issue in first place.
-
-$ grep HAVE_GETNAMEINFO support/include/config.h
-#define HAVE_GETNAMEINFO 1
-
-
-> How well were these change tested against glibc? I'm 
-> concern about eliminating chunks of need code with
-> all these new  defines.... 
-
-Argh! Sorry my bad. I fixed but must missed it in a redo.
-
-I have not tested those in glibc at all.
-
-When I look now, this is wrong anyway. It was supposed to fix a
-segfault due to a just-in-case free() below:
-
-        /*
-         * getaddrinfo(AI_NUMERICHOST) never fills in ai_canonname
-         */
-        if (ai != NULL) {
-                free(ai->ai_canonname);         /* just in case */
-                ai->ai_canonname = strdup(buf);
-                if (ai->ai_canonname == NULL) {
-                        freeaddrinfo(ai);
-                        ai = NULL;
-                }
-        }
-
-I but I think my patch does the ifdef in wrong place. When I grep for
-'never fills' in the sources i find that there are 2 places where there
-is an
-
-  ai->ai_canonname = strdup(buf);
-
-With the assumption that freeaddrinfo() will free ai->ai_canonname for
-us. I think this is wrong.
-
-The just in case free(ai->ai_canonname) causes segfault on uclibc (and
-used to do so on musl too) and I am pretty sure the "ai->ai_canonname =
-strdup(buf);" will cause memleak, atleast on musl libc.
-
-I'd be happy if you applied the other 10 patches though.
-
-Do you want me to resend the others 10 with a v3 prefix?
-
--nc
-
-
-
-> steved.
-> 
-> >  	/*
-> >  	 * getaddrinfo(AI_NUMERICHOST) never fills in ai_canonname
-> >  	 */
-> > @@ -392,7 +393,9 @@ host_numeric_addrinfo(const struct sockaddr *sap)
-> >  			ai = NULL;
-> >  		}
-> >  	}
-> > +#endif
-> >  
-> >  	return ai;
-> >  }
-> > +
-> >  #endif	/* !HAVE_GETNAMEINFO */
-> > 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 66fd901..732fe09 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7920,6 +7920,18 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
+ 	}
+ }
+ 
++static void nfs4_layoutcommit_release_pages(
++		struct nfs4_layoutcommit_data *data)
++{
++	int nr_pages = DIV_ROUND_UP(data->args.layoutupdate_len, PAGE_SIZE), i;
++
++	for (i = 0; i < nr_pages; i++)
++		put_page(data->args.layoutupdate_pages[i]);
++
++	if (data->args.layoutupdate_pages != &data->args.layoutupdate_page)
++		kfree(data->args.layoutupdate_pages);
++}
++
+ static void nfs4_layoutcommit_release(void *calldata)
+ {
+ 	struct nfs4_layoutcommit_data *data = calldata;
+@@ -7927,6 +7939,8 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 	pnfs_cleanup_layoutcommit(data);
+ 	nfs_post_op_update_inode_force_wcc(data->args.inode,
+ 					   data->res.fattr);
++	if (data->args.layoutupdate_pages)
++		nfs4_layoutcommit_release_pages(data);
+ 	put_rpccred(data->cred);
+ 	kfree(data);
+ }
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index e13b59d..f2cd957 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -395,7 +395,10 @@ static int nfs4_stat_to_errno(int);
+ 				2 /* last byte written */ + \
+ 				1 /* nt_timechanged (false) */ + \
+ 				1 /* layoutupdate4 layout type */ + \
+-				1 /* NULL filelayout layoutupdate4 payload */)
++				1 /* layoutupdate4 opaqueue len */)
++				  /* the actual content of layoutupdate4 should
++				     be allocated by drivers and spliced in
++				     using xdr_write_pages */
+ #define decode_layoutcommit_maxsz (op_decode_hdr_maxsz + 3)
+ #define encode_layoutreturn_maxsz (8 + op_encode_hdr_maxsz + \
+ 				encode_stateid_maxsz + \
+@@ -1990,7 +1993,7 @@ encode_layoutget(struct xdr_stream *xdr,
+ static int
+ encode_layoutcommit(struct xdr_stream *xdr,
+ 		    struct inode *inode,
+-		    const struct nfs4_layoutcommit_args *args,
++		    struct nfs4_layoutcommit_args *args,
+ 		    struct compound_hdr *hdr)
+ {
+ 	__be32 *p;
+@@ -2011,11 +2014,16 @@ encode_layoutcommit(struct xdr_stream *xdr,
+ 	*p++ = cpu_to_be32(0); /* Never send time_modify_changed */
+ 	*p++ = cpu_to_be32(NFS_SERVER(args->inode)->pnfs_curr_ld->id);/* type */
+ 
+-	if (NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit)
++	if (NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit) {
+ 		NFS_SERVER(inode)->pnfs_curr_ld->encode_layoutcommit(
+ 			NFS_I(inode)->layout, xdr, args);
+-	else
+-		encode_uint32(xdr, 0); /* no layout-type payload */
++	} else {
++		encode_uint32(xdr, args->layoutupdate_len);
++		if (args->layoutupdate_pages) {
++			xdr_write_pages(xdr, args->layoutupdate_pages, 0,
++					args->layoutupdate_len);
++		}
++	}
+ 
+ 	return 0;
+ }
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 13b1406..8c8955e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1833,6 +1833,7 @@ void pnfs_cleanup_layoutcommit(struct nfs4_layoutcommit_data *data)
+ int
+ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ {
++	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
+ 	struct nfs4_layoutcommit_data *data;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	loff_t end_pos;
+@@ -1883,6 +1884,20 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
+ 	data->args.lastbytewritten = end_pos - 1;
+ 	data->res.server = NFS_SERVER(inode);
+ 
++	if (ld->prepare_layoutcommit) {
++		status = ld->prepare_layoutcommit(&data->args);
++		if (status) {
++			spin_lock(&inode->i_lock);
++			if (end_pos < nfsi->layout->plh_lwb)
++				nfsi->layout->plh_lwb = end_pos;
++			spin_unlock(&inode->i_lock);
++			put_rpccred(data->cred);
++			set_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags);
++			goto clear_layoutcommitting;
++		}
++	}
++
++
+ 	status = nfs4_proc_layoutcommit(data, sync);
+ out:
+ 	if (status)
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index cab5259..603f460 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -131,8 +131,8 @@ struct pnfs_layoutdriver_type {
+ 				     const struct nfs4_layoutreturn_args *args);
+ 
+ 	void (*cleanup_layoutcommit) (struct nfs4_layoutcommit_data *data);
+-
+-	void (*encode_layoutcommit) (struct pnfs_layout_hdr *layoutid,
++	int (*prepare_layoutcommit) (struct nfs4_layoutcommit_args *args);
++	void (*encode_layoutcommit) (struct pnfs_layout_hdr *lo,
+ 				     struct xdr_stream *xdr,
+ 				     const struct nfs4_layoutcommit_args *args);
+ };
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 8a57de3..7d8c3d4 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -279,6 +279,9 @@ struct nfs4_layoutcommit_args {
+ 	__u64 lastbytewritten;
+ 	struct inode *inode;
+ 	const u32 *bitmask;
++	size_t layoutupdate_len;
++	struct page *layoutupdate_page;
++	struct page **layoutupdate_pages;
+ };
+ 
+ struct nfs4_layoutcommit_res {
+-- 
+1.9.1
 
