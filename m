@@ -1,95 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:51416 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750878AbaHFNdj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 09:33:39 -0400
-Message-ID: <53E22EA5.70708@gmail.com>
-Date: Wed, 06 Aug 2014 21:33:25 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:39792 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754303AbaHGMPO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Aug 2014 08:15:14 -0400
+Message-ID: <53E36DC5.7020200@RedHat.com>
+Date: Thu, 07 Aug 2014 08:15:01 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>, jlayton@redhat.com,
-        kinglongmee@gmail.com, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 1/3] NFSD: New FL_NFSD for marking file_lock belongs to NFSD
-References: <53BAAAC5.9000106@gmail.com>
-In-Reply-To: <53BAAAC5.9000106@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+To: Natanael Copa <natanael.copa@gmail.com>, linux-nfs@vger.kernel.org
+CC: Natanael Copa <ncopa@alpinelinux.org>
+Subject: Re: [PATCH 11/11] exportfs: only do glibc specific hackery on glibc
+References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org> <1406719399-1735-12-git-send-email-ncopa@alpinelinux.org>
+In-Reply-To: <1406719399-1735-12-git-send-email-ncopa@alpinelinux.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Using fl_flags instead of fl_lmops for marking file_lock belongs to NFSD.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4state.c | 15 ++++-----------
- include/linux/fs.h  |  1 +
- 2 files changed, 5 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e80a59..24168ae 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4867,17 +4867,12 @@ nfs4_transform_lock_offset(struct file_lock *lock)
- 		lock->fl_end = OFFSET_MAX;
- }
- 
--/* Hack!: For now, we're defining this just so we can use a pointer to it
-- * as a unique cookie to identify our (NFSv4's) posix locks. */
--static const struct lock_manager_operations nfsd_posix_mng_ops  = {
--};
--
- static inline void
- nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
- {
- 	struct nfs4_lockowner *lo;
- 
--	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
-+	if (fl->fl_flags & FL_NFSD) {
- 		lo = (struct nfs4_lockowner *) fl->fl_owner;
- 		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
- 					lo->lo_owner.so_owner.len, GFP_KERNEL);
-@@ -5241,8 +5236,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	file_lock->fl_owner = (fl_owner_t)lock_sop;
- 	file_lock->fl_pid = current->tgid;
- 	file_lock->fl_file = filp;
--	file_lock->fl_flags = FL_POSIX;
--	file_lock->fl_lmops = &nfsd_posix_mng_ops;
-+	file_lock->fl_flags = FL_POSIX | FL_NFSD;
- 	file_lock->fl_start = lock->lk_offset;
- 	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
- 	nfs4_transform_lock_offset(file_lock);
-@@ -5375,7 +5369,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (lo)
- 		file_lock->fl_owner = (fl_owner_t)lo;
- 	file_lock->fl_pid = current->tgid;
--	file_lock->fl_flags = FL_POSIX;
-+	file_lock->fl_flags = FL_POSIX | FL_NFSD;
- 
- 	file_lock->fl_start = lockt->lt_offset;
- 	file_lock->fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
-@@ -5437,8 +5431,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
- 	file_lock->fl_pid = current->tgid;
- 	file_lock->fl_file = filp;
--	file_lock->fl_flags = FL_POSIX;
--	file_lock->fl_lmops = &nfsd_posix_mng_ops;
-+	file_lock->fl_flags = FL_POSIX | FL_NFSD;
- 	file_lock->fl_start = locku->lu_offset;
- 
- 	file_lock->fl_end = last_byte_offset(locku->lu_offset,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index e11d60c..4d40097 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -819,6 +819,7 @@ static inline struct file *get_file(struct file *f)
- #define FL_DOWNGRADE_PENDING	256 /* Lease is being downgraded */
- #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
- #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
-+#define FL_NFSD		2048	/* NFSD holds this lock */
- 
- /*
-  * Special return value from posix_lock_file() and vfs_lock_file() for
--- 
-1.9.3
+On 07/30/2014 07:23 AM, Natanael Copa wrote:
+> We should not depend on the libc do free(3) on ai_canonname as that is
+> completely up to implementation and known o break things on uclibc and
+> musl libc.
+> 
+> Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
+> ---
+>  support/export/hostname.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/support/export/hostname.c b/support/export/hostname.c
+> index d9153e1..30584b4 100644
+> --- a/support/export/hostname.c
+> +++ b/support/export/hostname.c
+> @@ -382,6 +382,7 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+>  
+>  	ai = host_pton(buf);
+>  
+> +#if !definded(__UCLIBC__) && defined(__GLIBC__)
+You still have this typo here... and the only reason
+it compiled is HAVE_GETNAMEINFO is not defined 
+in your world....
 
+How well were these change tested against glibc? I'm 
+concern about eliminating chunks of need code with
+all these new  defines.... 
+
+steved.
+
+>  	/*
+>  	 * getaddrinfo(AI_NUMERICHOST) never fills in ai_canonname
+>  	 */
+> @@ -392,7 +393,9 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+>  			ai = NULL;
+>  		}
+>  	}
+> +#endif
+>  
+>  	return ai;
+>  }
+> +
+>  #endif	/* !HAVE_GETNAMEINFO */
+> 
