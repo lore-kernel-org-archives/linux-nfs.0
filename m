@@ -1,70 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33620 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753590AbaHEUvH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Aug 2014 16:51:07 -0400
-Date: Tue, 5 Aug 2014 16:51:05 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/6] NFS DRC scalability patches
-Message-ID: <20140805205105.GA23341@fieldses.org>
-References: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
- <20140804074546.7c63e725@tlielax.poochiereds.net>
+Received: from mailuogwhop.emc.com ([168.159.213.141]:45004 "EHLO
+	mailuogwhop.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757781AbaHGM42 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 08:56:28 -0400
+From: "faibish, sorin" <faibish_sorin@emc.com>
+To: Peng Tao <bergwolf@gmail.com>, Christoph Hellwig <hch@lst.de>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linuxnfs <linux-nfs@vger.kernel.org>
+Date: Thu, 7 Aug 2014 08:56:04 -0400
+Subject: RE: [PATCH 08/17] pnfs/blocklayout: reject pnfs blocksize larger
+ than page size
+Message-ID: <2512424DBC01FD48843E938C780FA97C1D160F928F@MX23A.corp.emc.com>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
+ <1407396229-4785-9-git-send-email-hch@lst.de>
+ <CA+a=Yy42e46zA+X-VQQj9RAzZ4T+A7dOOrjUMVONsh8Pt8QdcQ@mail.gmail.com>
+ <20140807112537.GA3437@lst.de>
+ <CA+a=Yy4muAYw8KjZcFh4NMwOOizD=gNXNeweLHix46vjQoS53Q@mail.gmail.com>
+In-Reply-To: <CA+a=Yy4muAYw8KjZcFh4NMwOOizD=gNXNeweLHix46vjQoS53Q@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140804074546.7c63e725@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 04, 2014 at 07:45:46AM -0400, Jeff Layton wrote:
-> On Sun,  3 Aug 2014 13:05:58 -0400
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > Hi Bruce,
-> > 
-> > The following patchset is again more an FYI than a must have, but it
-> > addresses a significant scalability problem for NFSv3 when running
-> > over 10GigE and 40GigE networks. At one point, I was seeing >60% CPU
-> > spinning on the DRC global spinlock...
-> > 
-> > The one thing to note is that because the statistics are moved outside
-> > spinlocking, then their accuracy is slightly reduced (I do convert the
-> > number of entries into an atomic, so that is still 100% correct). The
-> > right thing to do there is probably to convert those into per-cpu
-> > counters, however I've not had time to do so for now.
-> > 
-> 
-> Consider adding some FIXME comments to that effect? While not terribly
-> important, it would be good to fix them at some point.
-> 
-> > Cheers,
-> >   Trond
-> > 
-> > Trond Myklebust (6):
-> >   nfsd: Clean up drc cache in preparation for global spinlock
-> >     elimination
-> >   nfsd: convert the lru list into a per-bucket thing
-> >   nfsd: Remove the cache_hash list
-> >   nfsd: convert num_drc_entries to an atomic_t
-> >   nfsd: split DRC global spinlock into per-bucket locks
-> >   nfsd: Reorder nfsd_cache_match to check more powerful discriminators
-> >     first
-> > 
-> >  fs/nfsd/cache.h    |   1 -
-> >  fs/nfsd/nfscache.c | 205 +++++++++++++++++++++++++++++------------------------
-> >  2 files changed, 113 insertions(+), 93 deletions(-)
-> > 
-> 
-> Looks good. Nice work! You can add this to each since they all look
-> good to me. It would be good to fix up the stats collection and the
-> comments, but I wouldn't want to hold up this work for that.
-> 
->     Reviewed-by: Jeff Layton <jlayton@primarydata.com>
-
-Could you also rebase this to my for-3.17?  (Or to 3.17-rc1, whenever
-that comes out.)  Not urgent, but there appear to be some minor
-conflicts.
-
---b.
+V2h5IGRvbid0IHlvdSBzZW5kIGEgcGF0Y2g/DQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0t
+DQpGcm9tOiBQZW5nIFRhbyBbbWFpbHRvOmJlcmd3b2xmQGdtYWlsLmNvbV0gDQpTZW50OiBUaHVy
+c2RheSwgQXVndXN0IDA3LCAyMDE0IDc6NTIgQU0NClRvOiBDaHJpc3RvcGggSGVsbHdpZw0KQ2M6
+IFRyb25kIE15a2xlYnVzdDsgbGludXhuZnM7IGZhaWJpc2gsIHNvcmluDQpTdWJqZWN0OiBSZTog
+W1BBVENIIDA4LzE3XSBwbmZzL2Jsb2NrbGF5b3V0OiByZWplY3QgcG5mcyBibG9ja3NpemUgbGFy
+Z2VyIHRoYW4gcGFnZSBzaXplDQoNCk9uIFRodSwgQXVnIDcsIDIwMTQgYXQgNzoyNSBQTSwgQ2hy
+aXN0b3BoIEhlbGx3aWcgPGhjaEBsc3QuZGU+IHdyb3RlOg0KPiBPbiBUaHUsIEF1ZyAwNywgMjAx
+NCBhdCAwNjo0MzoxNFBNICswODAwLCBQZW5nIFRhbyB3cm90ZToNCj4+IFNvIHRoaXMga2lsbHMg
+RU1DIHNlcnZlciBzdXBwb3J0Lg0KPg0KPiBHaXZlbiB0aGUgc3RhdGUgdGhlIGNvZGUgIGNsYWlt
+aW5nIHN1cHBvcnQgZm9yIGFueSBzZXJ2ZXIgaXMgYSBsYXJnZSANCj4gZXhhZ2dlcmF0aW9uLi4N
+Cj4NCj4+IENhbiB5b3UgcGxlYXNlIHNoYXJlIHdoYXQga2luZCBvZg0KPj4gYmFkbHkgZGVhZGxv
+Y2sgeW91IHNhdyB3aXRoIGxhcmdlIGJsb2NrIHNpemUgc3VwcG9ydD8NCj4NCj4gVGhlIHJlYWQt
+bW9kaWZ5IHdyaXRlIGNvZGUgKHdoaWNoIEknbGwgcmVtb3ZlIGxhdGVyKSBjYW4gbG9jayBhcmJp
+dGFyeSANCj4gbnVtYmVycyBvZiBhZGRpdGlvbmFsIHBhZ2VzIGZyb20gdGhlIHdyaXRlYmFjayBi
+YWNrIGNvZGUgd2l0aG91dCBkb2luZyANCj4gYSB0cnlsb2NrLCB3aGljaCBpcyByZXF1aXJlZCBm
+b3IgZG9pbmcgdGhpcyBpbiBwYWdlIHdyaXRlYmFjay4gIE5vdGUgDQo+IHRoYXQgaXQncyBub3Qg
+YSBkZWFkbG9jaywgYnV0IEkgY2FuIGFsc28gdHJpdtGWYWxseSBjb3JydXB0IGRhdGEgaW4gDQo+
+IHRob3NlIHBhZ2VzIGFzIGl0IGRvZXNuJ3QgbG9jayBhZ2FpbnN0IHRoZW0sIHlvdSBqdXN0IG5l
+ZWQgYSByYWNlIA0KPiB3aW5kb3cgd2hlcmUgaXQncyBtb2RpZmllZCBhZnRlciB3cml0ZWJhY2sg
+aGFzIGJlZW4gc3RhcnRlZCBmb3IgYSANCj4gbGFyZ2UgZXh0ZW50cywgd2hpY2ggaXNuJ3QgdG9v
+IGhhcmQgdG8gaGl0IHdpdGggdG9vbHMgbGlrZSBmc3N0cmVzcy4NCj4NCklzIGl0IGJsX2ZpbmRf
+Z2V0X3plcm9pbmdfcGFnZSgpIHlvdSBhcmUgY29uY2VybmluZyBhYm91dD8gSSB3YXMgaG9waW5n
+IHBhZ2UgZmxhZ3MgY2FuIHRlbGwgaWYgc29tZSBvdGhlciB0aHJlYWRzIGFyZSBmbHVzaGluZyB0
+aGUgc2FtZSBwYWdlLiBBbmQgdGhlIGV4dHJhIHBhZ2UgaXMgYWx3YXlzIGxvY2tlZCBiZWZvcmUg
+cmVhZGluIG9yIHplcm9lZCwgYWZ0ZXIgd2hpY2ggdGhlIHBhZ2UgaXMgbWFya2VkIHVwdG9kYXRl
+IGJlZm9yZSB1bmxvY2tpbmcuIFNvIHRoZSBwcm9ibGVtIGlzIHRoYXQgYSBwYWdlIHRoYXQgaXMg
+YmVpbmcgd3JpdHRlbiBiYWNrIGdldHMgbW9kaWZpZWQgYnkgYSBuZXcgd3JpdGVyLCBpcyBpdCBj
+b3JyZWN0PyBIb3cgYWJvdXQgbWFya2luZyBpdCB3cml0ZWJhY2sgYmVmb3JlIHVubG9ja2luZyBp
+biBibF9maW5kX2dldF96ZXJvaW5nX3BhZ2UoKT8gVGhhdCBzaG91bGQga2VlcCBuZXcgd3JpdGVy
+cyBmcm9tIG1vZGlmeWluZyBpdCBjb25jdXJyZW50bHkuDQo=
