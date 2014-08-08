@@ -1,80 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45779 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754238AbaHGHVj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:39 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 10/17] pnfs/blocklayout: plug block queues
-Date: Thu,  7 Aug 2014 09:23:42 +0200
-Message-Id: <1407396229-4785-11-git-send-email-hch@lst.de>
-In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
-References: <1407396229-4785-1-git-send-email-hch@lst.de>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:37856 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752663AbaHHPBN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:01:13 -0400
+Received: by mail-ie0-f180.google.com with SMTP id at20so6538402iec.39
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:01:12 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 4/5] nfs: fix error handling in lock_and_join_requests
+Date: Fri,  8 Aug 2014 11:00:56 -0400
+Message-Id: <1407510057-6881-5-git-send-email-dros@primarydata.com>
+In-Reply-To: <1407510057-6881-1-git-send-email-dros@primarydata.com>
+References: <1407510057-6881-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make sure the block queue is plugged when performing pNFS blocklayout I/O.
+This fixes handling of errors from nfs_page_group_lock in
+nfs_lock_and_join_requests.  It now releases the inode lock and the
+reference to the head request.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reported-by: Peng Tao <tao.peng@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Reviewed-by: Peng Tao <tao.peng@primarydata.com>
+
 ---
- fs/nfs/blocklayout/blocklayout.c | 9 +++++++++
- 1 file changed, 9 insertions(+)
+ fs/nfs/write.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 6c1a421..5427ae7 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -255,6 +255,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 	struct page **pages = hdr->args.pages;
- 	int pg_index = hdr->args.pgbase >> PAGE_CACHE_SHIFT;
- 	const bool is_dio = (header->dreq != NULL);
-+	struct blk_plug plug;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 321e561..0e3186b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -480,8 +480,11 @@ try_again:
  
- 	dprintk("%s enter nr_pages %u offset %lld count %u\n", __func__,
- 		hdr->page_array.npages, f_offset,
-@@ -266,6 +267,8 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 	par->pnfs_callback = bl_end_par_io_read;
- 	/* At this point, we can no longer jump to use_mds */
- 
-+	blk_start_plug(&plug);
-+
- 	isect = (sector_t) (f_offset >> SECTOR_SHIFT);
- 	/* Code assumes extents are page-aligned */
- 	for (i = pg_index; i < hdr->page_array.npages; i++) {
-@@ -342,6 +345,7 @@ out:
- 	bl_put_extent(be);
- 	bl_put_extent(cow_read);
- 	bl_submit_bio(READ, bio);
-+	blk_finish_plug(&plug);
- 	put_parallel(par);
- 	return PNFS_ATTEMPTED;
- 
-@@ -688,9 +692,12 @@ bl_write_pagelist(struct nfs_pgio_header *header, int sync)
- 	u64 temp;
- 	int npg_per_block =
- 	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
-+	struct blk_plug plug;
- 
- 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
- 
-+	blk_start_plug(&plug);
-+
- 	if (header->dreq != NULL &&
- 	    (!IS_ALIGNED(offset, NFS_SERVER(header->inode)->pnfs_blksize) ||
- 	     !IS_ALIGNED(count, NFS_SERVER(header->inode)->pnfs_blksize))) {
-@@ -894,9 +901,11 @@ out:
- 	bl_put_extent(be);
- 	bl_put_extent(cow_read);
- 	bl_submit_bio(WRITE, bio);
-+	blk_finish_plug(&plug);
- 	put_parallel(par);
- 	return PNFS_ATTEMPTED;
- out_mds:
-+	blk_finish_plug(&plug);
- 	bl_put_extent(be);
- 	bl_put_extent(cow_read);
- 	kfree(par);
+ 	/* lock each request in the page group */
+ 	ret = nfs_page_group_lock(head, true);
+-	if (ret < 0)
++	if (ret < 0) {
++		spin_unlock(&inode->i_lock);
++		nfs_release_request(head);
+ 		return ERR_PTR(ret);
++	}
+ 	subreq = head;
+ 	do {
+ 		/*
 -- 
-1.9.1
+1.8.5.2 (Apple Git-48)
 
