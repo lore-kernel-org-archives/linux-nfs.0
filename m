@@ -1,308 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:33449 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751628AbaHWOlh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Aug 2014 10:41:37 -0400
-Received: by mail-qa0-f54.google.com with SMTP id k15so10543786qaq.41
-        for <linux-nfs@vger.kernel.org>; Sat, 23 Aug 2014 07:41:36 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: bfields@fieldses.org, hch@infradead.org, cluster-devel@redhat.com,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 06/10] locks: plumb an "aux" pointer into the setlease routines
-Date: Sat, 23 Aug 2014 10:41:14 -0400
-Message-Id: <1408804878-1331-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
-References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:62762 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752821AbaHHPO7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:14:59 -0400
+Received: by mail-ig0-f173.google.com with SMTP id h18so1177837igc.12
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:14:58 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 1/5] nfs: check wait_on_bit_lock err in page_group_lock
+Date: Fri,  8 Aug 2014 11:13:32 -0400
+Message-Id: <1407510816-7002-2-git-send-email-dros@primarydata.com>
+In-Reply-To: <1407510816-7002-1-git-send-email-dros@primarydata.com>
+References: <1407510816-7002-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In later patches, we're going to add a new lock_manager_operation to
-finish setting up the lease while still holding the i_lock.  To do
-this, we'll need to pass a little bit of info in the fcntl setlease
-case (primarily an fasync structure). Plumb the extra pointer into
-there in advance of that.
+Return errors from wait_on_bit_lock from nfs_page_group_lock.
 
-We declare this pointer as a void ** to make it clear that this is
-auxillary info, and that the caller isn't required to set this unless
-the lm_setup specifically requires it.
+Add a bool argument @wait to nfs_page_group_lock. If true, loop over
+wait_on_bit_lock until it returns cleanly. If false, return the error
+from wait_on_bit_lock.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/cifs/cifsfs.c    |  7 ++++---
- fs/gfs2/file.c      |  3 ++-
- fs/locks.c          | 33 +++++++++++++++++++++------------
- fs/nfs/file.c       |  2 +-
- fs/nfs/internal.h   |  2 +-
- fs/nfsd/nfs4state.c |  4 ++--
- include/linux/fs.h  | 10 +++++-----
- 7 files changed, 36 insertions(+), 25 deletions(-)
+ fs/nfs/pagelist.c        | 29 +++++++++++++++++++++++------
+ fs/nfs/write.c           |  6 ++++--
+ include/linux/nfs_page.h |  2 +-
+ 3 files changed, 28 insertions(+), 9 deletions(-)
 
-diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-index 889b98455750..f463d86f097a 100644
---- a/fs/cifs/cifsfs.c
-+++ b/fs/cifs/cifsfs.c
-@@ -813,7 +813,8 @@ static loff_t cifs_llseek(struct file *file, loff_t offset, int whence)
- 	return generic_file_llseek(file, offset, whence);
- }
- 
--static int cifs_setlease(struct file *file, long arg, struct file_lock **lease)
-+static int
-+cifs_setlease(struct file *file, long arg, struct file_lock **lease, void **aux)
- {
- 	/*
- 	 * Note that this is called by vfs setlease with i_lock held to
-@@ -829,7 +830,7 @@ static int cifs_setlease(struct file *file, long arg, struct file_lock **lease)
- 	if (arg == F_UNLCK ||
- 	    ((arg == F_RDLCK) && CIFS_CACHE_READ(CIFS_I(inode))) ||
- 	    ((arg == F_WRLCK) && CIFS_CACHE_WRITE(CIFS_I(inode))))
--		return generic_setlease(file, arg, lease);
-+		return generic_setlease(file, arg, lease, aux);
- 	else if (tlink_tcon(cfile->tlink)->local_lease &&
- 		 !CIFS_CACHE_READ(CIFS_I(inode)))
- 		/*
-@@ -840,7 +841,7 @@ static int cifs_setlease(struct file *file, long arg, struct file_lock **lease)
- 		 * knows that the file won't be changed on the server by anyone
- 		 * else.
- 		 */
--		return generic_setlease(file, arg, lease);
-+		return generic_setlease(file, arg, lease, aux);
- 	else
- 		return -EAGAIN;
- }
-diff --git a/fs/gfs2/file.c b/fs/gfs2/file.c
-index 26b3f952e6b1..253feff90b4e 100644
---- a/fs/gfs2/file.c
-+++ b/fs/gfs2/file.c
-@@ -927,7 +927,8 @@ out_uninit:
-  * Returns: errno
-  */
- 
--static int gfs2_setlease(struct file *file, long arg, struct file_lock **fl)
-+static int gfs2_setlease(struct file *file, long arg, struct file_lock **fl,
-+			 void **aux)
- {
- 	return -EINVAL;
- }
-diff --git a/fs/locks.c b/fs/locks.c
-index 597e71a1e90f..906e09da115a 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1297,7 +1297,6 @@ int lease_modify(struct file_lock **before, int arg)
- 	}
- 	return 0;
- }
--
- EXPORT_SYMBOL(lease_modify);
- 
- static bool past_time(unsigned long then)
-@@ -1543,7 +1542,8 @@ check_conflicting_open(const struct dentry *dentry, const long arg)
- 	return ret;
- }
- 
--static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
-+static int
-+generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **aux)
- {
- 	struct file_lock *fl, **before, **my_before = NULL, *lease;
- 	struct dentry *dentry = filp->f_path.dentry;
-@@ -1607,6 +1607,7 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
- 	}
- 
- 	if (my_before != NULL) {
-+		lease = *my_before;
- 		error = lease->fl_lmops->lm_change(my_before, arg);
- 		if (!error)
- 			*flp = *my_before;
-@@ -1630,11 +1631,14 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
- 	smp_mb();
- 	error = check_conflicting_open(dentry, arg);
- 	if (error)
--		locks_unlink_lock(before);
-+		goto out_unlink;
- out:
- 	if (is_deleg)
- 		mutex_unlock(&inode->i_mutex);
- 	return error;
-+out_unlink:
-+	locks_unlink_lock(before);
-+	goto out;
- }
- 
- static int generic_delete_lease(struct file *filp)
-@@ -1658,13 +1662,15 @@ static int generic_delete_lease(struct file *filp)
-  *	@filp: file pointer
-  *	@arg: type of lease to obtain
-  *	@flp: input - file_lock to use, output - file_lock inserted
-+ *	@aux: auxillary data for lm_setup
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index e76a40e..9425118 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -147,17 +147,25 @@ static int nfs_wait_bit_uninterruptible(void *word)
+  * @req - request in group that is to be locked
   *
-  *	The (input) flp->fl_lmops->lm_break function is required
-  *	by break_lease().
-  *
-  *	Called with inode->i_lock held.
+  * this lock must be held if modifying the page group list
++ *
++ * returns result from wait_on_bit_lock: 0 on success, < 0 on error
   */
--int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
-+int generic_setlease(struct file *filp, long arg, struct file_lock **flp,
-+			void **aux)
- {
- 	struct dentry *dentry = filp->f_path.dentry;
- 	struct inode *inode = dentry->d_inode;
-@@ -1689,19 +1695,20 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
- 			WARN_ON_ONCE(1);
- 			return -ENOLCK;
- 		}
--		return generic_add_lease(filp, arg, flp);
-+		return generic_add_lease(filp, arg, flp, aux);
- 	default:
- 		return -EINVAL;
- 	}
- }
- EXPORT_SYMBOL(generic_setlease);
- 
--static int __vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
-+static int
-+__vfs_setlease(struct file *filp, long arg, struct file_lock **lease, void **aux)
- {
- 	if (filp->f_op->setlease)
--		return filp->f_op->setlease(filp, arg, lease);
-+		return filp->f_op->setlease(filp, arg, lease, aux);
- 	else
--		return generic_setlease(filp, arg, lease);
-+		return generic_setlease(filp, arg, lease, aux);
- }
- 
- /**
-@@ -1709,6 +1716,7 @@ static int __vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
-  * @filp: file pointer
-  * @arg: type of lease to obtain
-  * @lease: file_lock to use when adding a lease
-+ * @aux: auxillary info for lm_setup when adding a lease
-  *
-  * Call this to establish a lease on the file. The "lease" argument is not
-  * used for F_UNLCK requests and may be NULL. For commands that set or alter
-@@ -1724,13 +1732,14 @@ static int __vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
-  * this for leases held by processes on this node.
-  */
- 
--int vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
+-void
+-nfs_page_group_lock(struct nfs_page *req)
 +int
-+vfs_setlease(struct file *filp, long arg, struct file_lock **lease, void **aux)
++nfs_page_group_lock(struct nfs_page *req, bool wait)
  {
- 	struct inode *inode = file_inode(filp);
- 	int error;
+ 	struct nfs_page *head = req->wb_head;
++	int ret;
  
- 	spin_lock(&inode->i_lock);
--	error = __vfs_setlease(filp, arg, lease);
-+	error = __vfs_setlease(filp, arg, lease, aux);
- 	spin_unlock(&inode->i_lock);
+ 	WARN_ON_ONCE(head != head->wb_head);
  
- 	return error;
-@@ -1755,7 +1764,7 @@ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+-	wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
++	do {
++		ret = wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
+ 			nfs_wait_bit_uninterruptible,
+ 			TASK_UNINTERRUPTIBLE);
++	} while (wait && ret != 0);
++
++	WARN_ON_ONCE(ret > 0);
++	return ret;
+ }
+ 
+ /*
+@@ -218,7 +226,7 @@ bool nfs_page_group_sync_on_bit(struct nfs_page *req, unsigned int bit)
+ {
+ 	bool ret;
+ 
+-	nfs_page_group_lock(req);
++	nfs_page_group_lock(req, true);
+ 	ret = nfs_page_group_sync_on_bit_locked(req, bit);
+ 	nfs_page_group_unlock(req);
+ 
+@@ -858,8 +866,13 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 	struct nfs_page *subreq;
+ 	unsigned int bytes_left = 0;
+ 	unsigned int offset, pgbase;
++	int ret;
+ 
+-	nfs_page_group_lock(req);
++	ret = nfs_page_group_lock(req, false);
++	if (ret < 0) {
++		desc->pg_error = ret;
++		return 0;
++	}
+ 
+ 	subreq = req;
+ 	bytes_left = subreq->wb_bytes;
+@@ -881,7 +894,11 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 			if (desc->pg_recoalesce)
+ 				return 0;
+ 			/* retry add_request for this subreq */
+-			nfs_page_group_lock(req);
++			ret = nfs_page_group_lock(req, false);
++			if (ret < 0) {
++				desc->pg_error = ret;
++				return 0;
++			}
+ 			continue;
+ 		}
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index d357728..8d1ed2b 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -216,7 +216,7 @@ static bool nfs_page_group_covers_page(struct nfs_page *req)
+ 	unsigned int pos = 0;
+ 	unsigned int len = nfs_page_length(req->wb_page);
+ 
+-	nfs_page_group_lock(req);
++	nfs_page_group_lock(req, true);
+ 
+ 	do {
+ 		tmp = nfs_page_group_search_locked(req->wb_head, pos);
+@@ -456,7 +456,9 @@ try_again:
  	}
- 	ret = fl;
- 	spin_lock(&inode->i_lock);
--	error = __vfs_setlease(filp, arg, &ret);
-+	error = __vfs_setlease(filp, arg, &ret, NULL);
- 	if (error)
- 		goto out_unlock;
- 	if (ret == fl)
-@@ -1793,7 +1802,7 @@ out_unlock:
- int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
- {
- 	if (arg == F_UNLCK)
--		return vfs_setlease(filp, F_UNLCK, NULL);
-+		return vfs_setlease(filp, F_UNLCK, NULL, NULL);
- 	return do_fcntl_add_lease(fd, filp, arg);
- }
  
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 524dd80d1898..7221022232d9 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -895,7 +895,7 @@ EXPORT_SYMBOL_GPL(nfs_flock);
-  * There is no protocol support for leases, so we have no way to implement
-  * them correctly in the face of opens by other clients.
-  */
--int nfs_setlease(struct file *file, long arg, struct file_lock **fl)
-+int nfs_setlease(struct file *file, long arg, struct file_lock **fl, void **aux)
- {
- 	dprintk("NFS: setlease(%pD2, arg=%ld)\n", file, arg);
- 	return -EINVAL;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 9056622d2230..dcdc83072c10 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -346,7 +346,7 @@ int nfs_file_release(struct inode *, struct file *);
- int nfs_lock(struct file *, int, struct file_lock *);
- int nfs_flock(struct file *, int, struct file_lock *);
- int nfs_check_flags(int);
--int nfs_setlease(struct file *, long, struct file_lock **);
-+int nfs_setlease(struct file *, long, struct file_lock **, void **);
+ 	/* lock each request in the page group */
+-	nfs_page_group_lock(head);
++	ret = nfs_page_group_lock(head, false);
++	if (ret < 0)
++		return ERR_PTR(ret);
+ 	subreq = head;
+ 	do {
+ 		/*
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 4b48548..291924c 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -122,7 +122,7 @@ extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+ extern  int nfs_wait_on_request(struct nfs_page *);
+ extern	void nfs_unlock_request(struct nfs_page *req);
+ extern	void nfs_unlock_and_release_request(struct nfs_page *);
+-extern void nfs_page_group_lock(struct nfs_page *);
++extern int nfs_page_group_lock(struct nfs_page *, bool);
+ extern void nfs_page_group_unlock(struct nfs_page *);
+ extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
  
- /* inode.c */
- extern struct workqueue_struct *nfsiod_workqueue;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d0a6e8e022a2..d964a41c9151 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -683,7 +683,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- 	if (!fp->fi_deleg_file)
- 		return;
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
--		vfs_setlease(fp->fi_deleg_file, F_UNLCK, NULL);
-+		vfs_setlease(fp->fi_deleg_file, F_UNLCK, NULL, NULL);
- 		fput(fp->fi_deleg_file);
- 		fp->fi_deleg_file = NULL;
- 	}
-@@ -3788,7 +3788,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	}
- 	fl->fl_file = filp;
- 	ret = fl;
--	status = vfs_setlease(filp, fl->fl_type, &ret);
-+	status = vfs_setlease(filp, fl->fl_type, &fl, NULL);
- 	if (status) {
- 		locks_free_lock(fl);
- 		goto out_fput;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 458f733c96bd..2668d054147f 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -982,8 +982,8 @@ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
- extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
- extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
- extern void lease_get_mtime(struct inode *, struct timespec *time);
--extern int generic_setlease(struct file *, long, struct file_lock **);
--extern int vfs_setlease(struct file *, long, struct file_lock **);
-+extern int generic_setlease(struct file *, long, struct file_lock **, void **aux);
-+extern int vfs_setlease(struct file *, long, struct file_lock **, void **aux);
- extern int lease_modify(struct file_lock **, int);
- #else /* !CONFIG_FILE_LOCKING */
- static inline int fcntl_getlk(struct file *file, unsigned int cmd,
-@@ -1100,13 +1100,13 @@ static inline void lease_get_mtime(struct inode *inode, struct timespec *time)
- }
- 
- static inline int generic_setlease(struct file *filp, long arg,
--				    struct file_lock **flp)
-+				    struct file_lock **flp, void **aux)
- {
- 	return -EINVAL;
- }
- 
- static inline int vfs_setlease(struct file *filp, long arg,
--			       struct file_lock **lease)
-+			       struct file_lock **lease, void **aux)
- {
- 	return -EINVAL;
- }
-@@ -1494,7 +1494,7 @@ struct file_operations {
- 	int (*flock) (struct file *, int, struct file_lock *);
- 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
- 	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
--	int (*setlease)(struct file *, long, struct file_lock **);
-+	int (*setlease)(struct file *, long, struct file_lock **, void **);
- 	long (*fallocate)(struct file *file, int mode, loff_t offset,
- 			  loff_t len);
- 	int (*show_fdinfo)(struct seq_file *m, struct file *f);
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
