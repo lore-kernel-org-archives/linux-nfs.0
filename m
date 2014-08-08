@@ -1,74 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:58532 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752183AbaHTJvw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 05:51:52 -0400
-Message-ID: <53F46F92.8000103@gmail.com>
-Date: Wed, 20 Aug 2014 17:51:14 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 1/6 v5] NFSD: Remove the duplicate initialize of file_lock
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com> <53F36CB5.2030707@gmail.com>
-In-Reply-To: <53F36CB5.2030707@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:35873 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752663AbaHHPBL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:01:11 -0400
+Received: by mail-ie0-f178.google.com with SMTP id rd18so6533789iec.9
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:01:10 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 2/5] nfs: fix nonblocking calls to nfs_page_group_lock
+Date: Fri,  8 Aug 2014 11:00:54 -0400
+Message-Id: <1407510057-6881-3-git-send-email-dros@primarydata.com>
+In-Reply-To: <1407510057-6881-1-git-send-email-dros@primarydata.com>
+References: <1407510057-6881-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-locks_alloc_lock() has initialize the struct file_lock,
-so, don't need re-initialize it by locks_init_lock().
+nfs_page_group_lock was calling wait_on_bit_lock even when told not to
+block. Fix by first trying test_and_set_bit, followed by wait_on_bit_lock
+if and only if blocking is allowed.  Return -EAGAIN if nonblocking and the
+test_and_set of the bit was already locked.
 
-v5: same the first version, only cleanup
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Reviewed-by: Peng Tao <tao.peng@primarydata.com>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-Reviewed-by: Jeff Layton <jlayton@primarydata.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+ fs/nfs/pagelist.c | 23 ++++++++++++++---------
+ 1 file changed, 14 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e80a59..98edf97 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3759,7 +3759,6 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_file *fp, int flag)
- 	fl = locks_alloc_lock();
- 	if (!fl)
- 		return NULL;
--	locks_init_lock(fl);
- 	fl->fl_lmops = &nfsd_lease_mng_ops;
- 	fl->fl_flags = FL_DELEG;
- 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
-@@ -5210,7 +5209,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 38eaf83..f393c72 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -149,24 +149,29 @@ static int nfs_wait_bit_uninterruptible(void *word)
+  *
+  * this lock must be held if modifying the page group list
+  *
+- * returns result from wait_on_bit_lock: 0 on success, < 0 on error
++ * return 0 on success, < 0 on error: -EDELAY if nonblocking or the
++ * result from wait_on_bit_lock
++ *
++ * NOTE: calling with nonblock=false should always have set the
++ *       lock bit (see fs/buffer.c and other uses of wait_on_bit_lock
++ *       with TASK_UNINTERRUPTIBLE), so there is no need to check the result.
+  */
+ int
+ nfs_page_group_lock(struct nfs_page *req, bool nonblock)
+ {
+ 	struct nfs_page *head = req->wb_head;
+-	int ret;
  
- 	fp = lock_stp->st_stid.sc_file;
--	locks_init_lock(file_lock);
- 	switch (lock->lk_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
-@@ -5354,7 +5352,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_jukebox;
- 		goto out;
- 	}
--	locks_init_lock(file_lock);
+ 	WARN_ON_ONCE(head != head->wb_head);
+ 
+-	do {
+-		ret = wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
+-			nfs_wait_bit_uninterruptible,
+-			TASK_UNINTERRUPTIBLE);
+-	} while (!nonblock && ret != 0);
++	if (!test_and_set_bit(PG_HEADLOCK, &head->wb_flags))
++		return 0;
+ 
+-	WARN_ON_ONCE(ret > 0);
+-	return ret;
++	if (!nonblock)
++		return wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
++				nfs_wait_bit_uninterruptible,
++				TASK_UNINTERRUPTIBLE);
 +
- 	switch (lockt->lt_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
-@@ -5432,7 +5430,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_jukebox;
- 		goto fput;
- 	}
--	locks_init_lock(file_lock);
-+
- 	file_lock->fl_type = F_UNLCK;
- 	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
- 	file_lock->fl_pid = current->tgid;
++	return -EAGAIN;
+ }
+ 
+ /*
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
