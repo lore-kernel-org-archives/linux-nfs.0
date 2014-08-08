@@ -1,106 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f179.google.com ([209.85.192.179]:43922 "EHLO
-	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751249AbaHJPoJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Aug 2014 11:44:09 -0400
-Message-ID: <53E7933D.80504@gmail.com>
-Date: Sun, 10 Aug 2014 23:43:57 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 3/3 v2] NFSD: Increase the reference of lockowner when coping
- file_lock
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com>
-In-Reply-To: <53E791F1.40802@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:33747 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752821AbaHHPBM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:01:12 -0400
+Received: by mail-ie0-f177.google.com with SMTP id at20so6508187iec.36
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:01:11 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 3/5] nfs: use blocking page_group_lock in add_request
+Date: Fri,  8 Aug 2014 11:00:55 -0400
+Message-Id: <1407510057-6881-4-git-send-email-dros@primarydata.com>
+In-Reply-To: <1407510057-6881-1-git-send-email-dros@primarydata.com>
+References: <1407510057-6881-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: Fix bad using of struct file_lock_operations for handle the owner.
+__nfs_pageio_add_request was calling nfs_page_group_lock nonblocking, but
+this can return -EAGAIN which would end up passing -EIO to the application.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+There is no reason not to block in this path, so change the two calls to
+do so. Also, there is no need to check the return value of
+nfs_page_group_lock when nonblock=false, so remove the error handling code.
+
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Reviewed-by: Peng Tao <tao.peng@primarydata.com>
+
 ---
- fs/nfsd/nfs4state.c | 32 ++++++++++++++++++++++++++++++--
- 1 file changed, 30 insertions(+), 2 deletions(-)
+ fs/nfs/pagelist.c | 13 ++-----------
+ 1 file changed, 2 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e80a59..24a8d91 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4867,9 +4867,33 @@ nfs4_transform_lock_offset(struct file_lock *lock)
- 		lock->fl_end = OFFSET_MAX;
- }
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index f393c72..af707e0 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -872,13 +872,8 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 	struct nfs_page *subreq;
+ 	unsigned int bytes_left = 0;
+ 	unsigned int offset, pgbase;
+-	int ret;
  
-+static inline struct nfs4_lockowner *get_lockowner(struct nfs4_lockowner *lo)
-+{
-+	atomic_inc(&lo->lo_owner.so_count);
-+	return lo;
-+}
-+
-+static void nfsd4_fl_copy_owner(struct file_lock *dst, struct file_lock *src)
-+{
-+	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) src->fl_owner;
-+	dst->fl_owner = (fl_owner_t) get_lockowner(lo);
-+}
-+
-+static void nfsd4_fl_release_owner(struct file_lock *fl)
-+{
-+	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
-+
-+	if (lo) {
-+		nfs4_put_stateowner(&lo->lo_owner);
-+		fl->fl_owner = NULL;
-+	}
-+}
-+
- /* Hack!: For now, we're defining this just so we can use a pointer to it
-  * as a unique cookie to identify our (NFSv4's) posix locks. */
- static const struct lock_manager_operations nfsd_posix_mng_ops  = {
-+	.lm_copy_owner = nfsd4_fl_copy_owner,
-+	.lm_release_owner = nfsd4_fl_release_owner,
- };
+-	ret = nfs_page_group_lock(req, true);
+-	if (ret < 0) {
+-		desc->pg_error = ret;
+-		return 0;
+-	}
++	nfs_page_group_lock(req, false);
  
- static inline void
-@@ -5238,7 +5262,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_openmode;
- 		goto out;
- 	}
--	file_lock->fl_owner = (fl_owner_t)lock_sop;
-+
-+	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
- 	file_lock->fl_pid = current->tgid;
- 	file_lock->fl_file = filp;
- 	file_lock->fl_flags = FL_POSIX;
-@@ -5405,6 +5430,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_ol_stateid *stp;
- 	struct file *filp = NULL;
- 	struct file_lock *file_lock = NULL;
-+	struct nfs4_lockowner *lock_sop = NULL;
- 	__be32 status;
- 	int err;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-@@ -5426,6 +5452,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_lock_range;
- 		goto put_stateid;
- 	}
-+
-+	lock_sop = lockowner(stp->st_stateowner);
- 	file_lock = locks_alloc_lock();
- 	if (!file_lock) {
- 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
-@@ -5434,7 +5462,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 	locks_init_lock(file_lock);
- 	file_lock->fl_type = F_UNLCK;
--	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
-+	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
- 	file_lock->fl_pid = current->tgid;
- 	file_lock->fl_file = filp;
- 	file_lock->fl_flags = FL_POSIX;
+ 	subreq = req;
+ 	bytes_left = subreq->wb_bytes;
+@@ -900,11 +895,7 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 			if (desc->pg_recoalesce)
+ 				return 0;
+ 			/* retry add_request for this subreq */
+-			ret = nfs_page_group_lock(req, true);
+-			if (ret < 0) {
+-				desc->pg_error = ret;
+-				return 0;
+-			}
++			nfs_page_group_lock(req, false);
+ 			continue;
+ 		}
+ 
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
