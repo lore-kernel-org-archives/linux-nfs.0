@@ -1,131 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:33774 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752496AbaHYGFM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Aug 2014 02:05:12 -0400
-Date: Mon, 25 Aug 2014 16:05:01 +1000
-From: NeilBrown <neilb@suse.de>
-To: Junxiao Bi <junxiao.bi@oracle.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: rpciod deadlock issue
-Message-ID: <20140825160501.433b3e9e@notabene.brown>
-In-Reply-To: <53F6F772.6020708@oracle.com>
-References: <53F6F772.6020708@oracle.com>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/89.fRU7nTq_jxw8HjpPTaRv"; protocol="application/pgp-signature"
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:51969 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756622AbaHHPPC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:15:02 -0400
+Received: by mail-ig0-f176.google.com with SMTP id hn18so1176069igb.9
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:15:01 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 5/5] nfs: clear_request_commit while holding i_lock
+Date: Fri,  8 Aug 2014 11:13:36 -0400
+Message-Id: <1407510816-7002-6-git-send-email-dros@primarydata.com>
+In-Reply-To: <1407510816-7002-1-git-send-email-dros@primarydata.com>
+References: <1407510816-7002-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/89.fRU7nTq_jxw8HjpPTaRv
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/filelayout/filelayout.c |  5 ++---
+ fs/nfs/write.c                 | 15 ++++-----------
+ 2 files changed, 6 insertions(+), 14 deletions(-)
 
-On Fri, 22 Aug 2014 15:55:30 +0800 Junxiao Bi <junxiao.bi@oracle.com> wrote:
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 524e66f..1359c4a 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -1009,6 +1009,7 @@ static u32 select_bucket_index(struct nfs4_filelayout_segment *fl, u32 j)
+ 
+ /* The generic layer is about to remove the req from the commit list.
+  * If this will make the bucket empty, it will need to put the lseg reference.
++ * Note this is must be called holding the inode (/cinfo) lock
+  */
+ static void
+ filelayout_clear_request_commit(struct nfs_page *req,
+@@ -1016,7 +1017,6 @@ filelayout_clear_request_commit(struct nfs_page *req,
+ {
+ 	struct pnfs_layout_segment *freeme = NULL;
+ 
+-	spin_lock(cinfo->lock);
+ 	if (!test_and_clear_bit(PG_COMMIT_TO_DS, &req->wb_flags))
+ 		goto out;
+ 	cinfo->ds->nwritten--;
+@@ -1031,8 +1031,7 @@ filelayout_clear_request_commit(struct nfs_page *req,
+ 	}
+ out:
+ 	nfs_request_remove_commit_list(req, cinfo);
+-	spin_unlock(cinfo->lock);
+-	pnfs_put_lseg(freeme);
++	pnfs_put_lseg_async(freeme);
+ }
+ 
+ static void
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index ba41769..1065de2 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -404,8 +404,6 @@ nfs_destroy_unlinked_subrequests(struct nfs_page *destroy_list,
+ 		subreq->wb_head = subreq;
+ 		subreq->wb_this_page = subreq;
+ 
+-		nfs_clear_request_commit(subreq);
+-
+ 		/* subreq is now totally disconnected from page group or any
+ 		 * write / commit lists. last chance to wake any waiters */
+ 		nfs_unlock_request(subreq);
+@@ -515,7 +513,7 @@ try_again:
+ 	 * Commit list removal accounting is done after locks are dropped */
+ 	subreq = head;
+ 	do {
+-		nfs_list_remove_request(subreq);
++		nfs_clear_request_commit(subreq);
+ 		subreq = subreq->wb_this_page;
+ 	} while (subreq != head);
+ 
+@@ -545,15 +543,11 @@ try_again:
+ 
+ 	nfs_page_group_unlock(head);
+ 
+-	/* drop lock to clear_request_commit the head req and clean up
+-	 * requests on destroy list */
++	/* drop lock to clean uprequests on destroy list */
+ 	spin_unlock(&inode->i_lock);
+ 
+ 	nfs_destroy_unlinked_subrequests(destroy_list, head);
+ 
+-	/* clean up commit list state */
+-	nfs_clear_request_commit(head);
+-
+ 	/* still holds ref on head from nfs_page_find_head_request_locked
+ 	 * and still has lock on head from lock loop */
+ 	return head;
+@@ -837,6 +831,7 @@ nfs_clear_page_commit(struct page *page)
+ 	dec_bdi_stat(page_file_mapping(page)->backing_dev_info, BDI_RECLAIMABLE);
+ }
+ 
++/* Called holding inode (/cinfo) lock */
+ static void
+ nfs_clear_request_commit(struct nfs_page *req)
+ {
+@@ -846,9 +841,7 @@ nfs_clear_request_commit(struct nfs_page *req)
+ 
+ 		nfs_init_cinfo_from_inode(&cinfo, inode);
+ 		if (!pnfs_clear_request_commit(req, &cinfo)) {
+-			spin_lock(cinfo.lock);
+ 			nfs_request_remove_commit_list(req, &cinfo);
+-			spin_unlock(cinfo.lock);
+ 		}
+ 		nfs_clear_page_commit(req->wb_page);
+ 	}
+@@ -1061,9 +1054,9 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+ 	else
+ 		req->wb_bytes = rqend - req->wb_offset;
+ out_unlock:
+-	spin_unlock(&inode->i_lock);
+ 	if (req)
+ 		nfs_clear_request_commit(req);
++	spin_unlock(&inode->i_lock);
+ 	return req;
+ out_flushme:
+ 	spin_unlock(&inode->i_lock);
+-- 
+1.8.5.2 (Apple Git-48)
 
-> Hi All,
->=20
-> I got an nfs hung issue, looks like "rpciod" run into deadlock. Bug is
-> reported on 2.6.32, but seems mainline also suffers this bug from the
-> source code.
->=20
-> See the following rpciod trace. rpciod allocated memory using GFP_KERNEL
-> in xs_setup_xprt(). That triggered direct reclaim when available memory
-> was not enough, where it waited an write-back page done, but that page
-> was a nfs page, and it depended on rpciod to write back. So this caused
-> a deadlock.
->=20
-> I am not sure how to fix this issue. Replace GFP_KERNEL with GFP_NOFS in
-> xs_setup_xprt() can fix this trace, but there are other place allocating
-> memory with GFP_KERNEL in rpciod, like
-> xs_tcp_setup_socket()->xs_create_sock()->__sock_create()->sock_alloc(),
-> there is no way to pass GFP_NOFS to network command code. Also mainline
-> has changed to not care ___GFP_FS before waiting page write back done.
-> Upstream commit 5cf02d0 (nfs: skip commit in releasepage if we're
-> freeing memory for fs-related reasons) uses PF_FSTRANS to avoid another
-> deadlock when direct reclaim, i am thinking whether we can check
-> PF_FSTRANS flag in shrink_page_list(), if this flag is set, it will not
-> wait any page write back done? I saw this flag is also used by xfs, not
-> sure whether this will affect xfs.
->=20
-> Any advices is appreciated.
-
-This problem shouldn't affect mainline.
-
-Since Linux 3.2, "direct reclaim" never wait for writeback - that is left f=
-or
-kswapd to do. (See "A pivotal patch" in https://lwn.net/Articles/595652/)
-So this deadlock cannot happen.
-
-Probably the simplest fix for your deadlock would be:
-- in shrink_page_list, clear may_enter_fs if PF_FSTRANS is set.
-- in rpc_async_schedule, set PF_FSTRANS before calling __rpc_execute, and
-  clear it again afterwards.
-
-NeilBrown
-
->=20
-> @ crash> bt 1539
-> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
-> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
-> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
-> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
-> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
-> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
-> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
-> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
-> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
-> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
-> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
-> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
-> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
-> @ #12 [ffff88178f64d978] kmem_getpages at ffffffff8110e18b
-> @ #13 [ffff88178f64d9a8] fallback_alloc at ffffffff8110e35e
-> @ #14 [ffff88178f64da08] ____cache_alloc_node at ffffffff8110e51f
-> @ #15 [ffff88178f64da48] __kmalloc at ffffffff8110efba
-> @ #16 [ffff88178f64da98] xs_setup_xprt at ffffffffa00a563f [sunrpc]
-> @ #17 [ffff88178f64dad8] xs_setup_tcp at ffffffffa00a7648 [sunrpc]
-> @ #18 [ffff88178f64daf8] xprt_create_transport at ffffffffa00a478f [sunrp=
-c]
-> @ #19 [ffff88178f64db18] rpc_create at ffffffffa00a2d7a [sunrpc]
-> @ #20 [ffff88178f64dbf8] rpcb_create at ffffffffa00b026b [sunrpc]
-> @ #21 [ffff88178f64dc98] rpcb_getport_async at ffffffffa00b0c94 [sunrpc]
-> @ #22 [ffff88178f64ddf8] call_bind at ffffffffa00a11f8 [sunrpc]
-> @ #23 [ffff88178f64de18] __rpc_execute at ffffffffa00a88ef [sunrpc]
-> @ #24 [ffff88178f64de58] rpc_async_schedule at ffffffffa00a9187 [sunrpc]
-> @ #25 [ffff88178f64de78] worker_thread at ffffffff81072ed2
-> @ #26 [ffff88178f64dee8] kthread at ffffffff81076df3
-> @ #27 [ffff88178f64df48] kernel_thread at ffffffff81012e2a
-> @ crash>
->=20
-> Thanks,
-> Junxiao.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
---Sig_/89.fRU7nTq_jxw8HjpPTaRv
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU/rSDTnsnt1WYoG5AQJvexAAof1x6HdHEkbHRLLiy5fDt3UpLrlmLQSy
-7OEVR/qAZRz/2fdD5lkOw/4dAxUU/Xb5q22EnqZCG982BGOj3e0+MzUAW1Ywmj4S
-klM5oEQgrEc11LknsI2YFSkC0pM/HBMUnT4HhDUmxl//doj3llSOlbHkYouMj4EK
-CN+PFMTbSy7/7EuK1VdyYlmUurXw9FStJ5mg3vhKhjGmXQadVEV5m8dddDWM418H
-yGNkbvpI9txSwhmFWZt7Jl2mBsm7ZaL3Q0KIlWhfp2G7/v3vPiziVnNblMiDk3Bn
-fY/p3wY/HzK1ykNKYLqgF9U0VVvwpSfHPhRHYhaSQ8ugzTOMZHrCMIoIDxGv3Heq
-CrG0lZmZZsKGuEtfUeluBFERGPUxRWoGVX/uhsEF7jFqPlE51qGuyo78lxprbYJm
-QCACOIxEeZRHjrpkn8x7z7fL3VxwYJmXEJ0HZoDsFAXaP8aRs8zerUAeID+8+qzl
-o6TUfgsPhmB6LPMIVwEOfzqxOMF3rIj3DxjO8KowSbmuBWruHiQZVYN/+TAGfIOV
-UhBZW80KGq7wuYeJQoscTBRLmdPrMjqA2SpcETxXzysPzWI4HsFdhugVDr5OKQuc
-S9oJmAbBQEdyYfm8C70c/nM3Zb6K8GeE1sYEaa7xz/VTZLL+URtdIMzt+sST0XU5
-Do4fiRNQLB0=
-=Pjuh
------END PGP SIGNATURE-----
-
---Sig_/89.fRU7nTq_jxw8HjpPTaRv--
