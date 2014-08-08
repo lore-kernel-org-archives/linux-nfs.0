@@ -1,85 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:40267 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751576AbaHSSt6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:49:58 -0400
-Received: by mail-qa0-f52.google.com with SMTP id j15so6093862qaq.11
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:49:57 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/7] sm-notify: inform the kernel if there were no hosts to notify
-Date: Tue, 19 Aug 2014 14:49:43 -0400
-Message-Id: <1408474189-14491-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
-References: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:64285 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752663AbaHHPBP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:01:15 -0400
+Received: by mail-ig0-f176.google.com with SMTP id hn18so1160412igb.3
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:01:14 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 5/5] nfs: don't sleep with inode lock in lock_and_join_requests
+Date: Fri,  8 Aug 2014 11:00:57 -0400
+Message-Id: <1407510057-6881-6-git-send-email-dros@primarydata.com>
+In-Reply-To: <1407510057-6881-1-git-send-email-dros@primarydata.com>
+References: <1407510057-6881-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the event that there no hosts to be notified after a reboot, there's
-no real reason to force lockd to wait the entire grace period before
-handing out locks. We're not expecting any reclaim requests to come in
-that situation.
+This handles the 'nonblock=false' case in nfs_lock_and_join_requests.
+If the group is already locked and blocking is allowed, drop the inode lock
+and wait for the group lock to be cleared before trying it all again.
+This should fix warnings found in peterz's tree (sched/wait branch), where
+might_sleep() checks are added to wait.[ch].
 
-Have sm-notify do a write to /proc/fs/lockd/nlm_end_grace if that file
-is present. That informs the kernel that it's OK to go ahead and lift
-lockd's grace period early.
+Reported-by: Fengguang Wu <fengguang.wu@intel.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Reviewed-by: Peng Tao <tao.peng@primarydata.com>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- utils/statd/sm-notify.c | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+ fs/nfs/pagelist.c        | 18 ++++++++++++++++++
+ fs/nfs/write.c           | 12 +++++++++++-
+ include/linux/nfs_page.h |  1 +
+ 3 files changed, 30 insertions(+), 1 deletion(-)
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 9dbe5d908336..828a6991f8e6 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -42,6 +42,8 @@
- #define NSM_TIMEOUT	2
- #define NSM_MAX_TIMEOUT	120	/* don't make this too big */
- 
-+#define NLM_END_GRACE_FILE	"/proc/fs/lockd/nlm_end_grace"
-+
- struct nsm_host {
- 	struct nsm_host *	next;
- 	char *			name;
-@@ -450,6 +452,28 @@ retry:
- 	return sock;
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index af707e0..e0c2e72 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -175,6 +175,24 @@ nfs_page_group_lock(struct nfs_page *req, bool nonblock)
  }
  
-+/* Inform the kernel that it's OK to lift lockd's grace period */
-+static void
-+nsm_lift_grace_period(void)
+ /*
++ * nfs_page_group_lock_wait - wait for the lock to clear, but don't grab it
++ * @req - a request in the group
++ *
++ * This is a blocking call to wait for the group lock to be cleared.
++ */
++void
++nfs_page_group_lock_wait(struct nfs_page *req)
 +{
-+	int fd;
++	struct nfs_page *head = req->wb_head;
 +
-+	fd = open(NLM_END_GRACE_FILE, O_WRONLY);
-+	if (fd < 0) {
-+		/* Don't warn if file isn't present */
-+		if (errno != ENOENT)
-+			xlog(L_WARNING, "Unable to open %s: %m",
-+				NLM_END_GRACE_FILE);
-+		return;
-+	}
++	WARN_ON_ONCE(head != head->wb_head);
 +
-+	if (write(fd, "Y", 1) < 0)
-+		xlog(L_WARNING, "Unable to write to %s: %m", NLM_END_GRACE_FILE);
-+
-+	close(fd);
-+	return;
++	wait_on_bit(&head->wb_flags, PG_HEADLOCK,
++		nfs_wait_bit_uninterruptible,
++		TASK_UNINTERRUPTIBLE);
 +}
 +
- int
- main(int argc, char **argv)
- {
-@@ -534,6 +558,7 @@ usage:		fprintf(stderr,
- 	(void)nsm_retire_monitored_hosts();
- 	if (nsm_load_notify_list(smn_get_host) == 0) {
- 		xlog(D_GENERAL, "No hosts to notify; exiting");
-+		nsm_lift_grace_period();
- 		return 0;
++/*
+  * nfs_page_group_unlock - unlock the head of the page group
+  * @req - request in group that is to be unlocked
+  */
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0e3186b..f744f02 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -478,13 +478,23 @@ try_again:
+ 		return NULL;
  	}
  
+-	/* lock each request in the page group */
++	/* holding inode lock, so always make a non-blocking call to try the
++	 * page group lock */
+ 	ret = nfs_page_group_lock(head, true);
+ 	if (ret < 0) {
+ 		spin_unlock(&inode->i_lock);
++
++		if (!nonblock && ret == -EAGAIN) {
++			nfs_page_group_lock_wait(head);
++			nfs_release_request(head);
++			goto try_again;
++		}
++
+ 		nfs_release_request(head);
+ 		return ERR_PTR(ret);
+ 	}
++
++	/* lock each request in the page group */
+ 	subreq = head;
+ 	do {
+ 		/*
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 6ad2bbc..6c3e06e 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -123,6 +123,7 @@ extern  int nfs_wait_on_request(struct nfs_page *);
+ extern	void nfs_unlock_request(struct nfs_page *req);
+ extern	void nfs_unlock_and_release_request(struct nfs_page *);
+ extern int nfs_page_group_lock(struct nfs_page *, bool);
++extern void nfs_page_group_lock_wait(struct nfs_page *);
+ extern void nfs_page_group_unlock(struct nfs_page *);
+ extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
+ 
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
