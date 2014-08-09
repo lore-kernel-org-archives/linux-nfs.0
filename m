@@ -1,85 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45771 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754119AbaHGHVf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:35 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 06/17] pnfs: add return_range method
-Date: Thu,  7 Aug 2014 09:23:38 +0200
-Message-Id: <1407396229-4785-7-git-send-email-hch@lst.de>
-In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
-References: <1407396229-4785-1-git-send-email-hch@lst.de>
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:48438 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751122AbaHIKvP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Aug 2014 06:51:15 -0400
+Received: by mail-qg0-f53.google.com with SMTP id q107so7009217qgd.40
+        for <linux-nfs@vger.kernel.org>; Sat, 09 Aug 2014 03:51:14 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sat, 9 Aug 2014 06:51:12 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>, jlayton@redhat.com,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 1/3] NFSD: New FL_NFSD for marking file_lock belongs to
+ NFSD
+Message-ID: <20140809065112.700e0ecc@tlielax.poochiereds.net>
+In-Reply-To: <53E22EA5.70708@gmail.com>
+References: <53BAAAC5.9000106@gmail.com>
+	<53E22EA5.70708@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a layout driver keeps per-inode state outside of the layout segments it
-needs to be notified of any layout returns or recalls on an inode, and not
-just about the freeing of layout segments.  Add a method to acomplish this,
-which will allow the block layout driver to handle the case of truncated
-and re-expanded files properly.
+On Wed, 06 Aug 2014 21:33:25 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/callback_proc.c |  6 +++++-
- fs/nfs/pnfs.c          | 10 ++++++++++
- fs/nfs/pnfs.h          |  3 +++
- 3 files changed, 18 insertions(+), 1 deletion(-)
+> Using fl_flags instead of fl_lmops for marking file_lock belongs to NFSD.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4state.c | 15 ++++-----------
+>  include/linux/fs.h  |  1 +
+>  2 files changed, 5 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2e80a59..24168ae 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4867,17 +4867,12 @@ nfs4_transform_lock_offset(struct file_lock *lock)
+>  		lock->fl_end = OFFSET_MAX;
+>  }
+>  
+> -/* Hack!: For now, we're defining this just so we can use a pointer to it
+> - * as a unique cookie to identify our (NFSv4's) posix locks. */
+> -static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+> -};
+> -
+>  static inline void
+>  nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
+>  {
+>  	struct nfs4_lockowner *lo;
+>  
+> -	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
+> +	if (fl->fl_flags & FL_NFSD) {
+>  		lo = (struct nfs4_lockowner *) fl->fl_owner;
+>  		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
+>  					lo->lo_owner.so_owner.len, GFP_KERNEL);
+> @@ -5241,8 +5236,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	file_lock->fl_owner = (fl_owner_t)lock_sop;
+>  	file_lock->fl_pid = current->tgid;
+>  	file_lock->fl_file = filp;
+> -	file_lock->fl_flags = FL_POSIX;
+> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
+> +	file_lock->fl_flags = FL_POSIX | FL_NFSD;
+>  	file_lock->fl_start = lock->lk_offset;
+>  	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
+>  	nfs4_transform_lock_offset(file_lock);
+> @@ -5375,7 +5369,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	if (lo)
+>  		file_lock->fl_owner = (fl_owner_t)lo;
+>  	file_lock->fl_pid = current->tgid;
+> -	file_lock->fl_flags = FL_POSIX;
+> +	file_lock->fl_flags = FL_POSIX | FL_NFSD;
+>  
+>  	file_lock->fl_start = lockt->lt_offset;
+>  	file_lock->fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
+> @@ -5437,8 +5431,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
+>  	file_lock->fl_pid = current->tgid;
+>  	file_lock->fl_file = filp;
+> -	file_lock->fl_flags = FL_POSIX;
+> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
+> +	file_lock->fl_flags = FL_POSIX | FL_NFSD;
+>  	file_lock->fl_start = locku->lu_offset;
+>  
+>  	file_lock->fl_end = last_byte_offset(locku->lu_offset,
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index e11d60c..4d40097 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -819,6 +819,7 @@ static inline struct file *get_file(struct file *f)
+>  #define FL_DOWNGRADE_PENDING	256 /* Lease is being downgraded */
+>  #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
+>  #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
+> +#define FL_NFSD		2048	/* NFSD holds this lock */
+>  
+>  /*
+>   * Special return value from posix_lock_file() and vfs_lock_file() for
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index bf017b0..86541e0 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -179,8 +179,12 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 			&args->cbl_range)) {
- 		need_commit = true;
- 		rv = NFS4ERR_DELAY;
-+	} else {
-+		if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
-+			NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo,
-+				&args->cbl_range);
-+		}
- 	}
--
- 	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&free_me_list);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 22183fc..13b1406 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -856,6 +856,16 @@ _pnfs_return_layout(struct inode *ino)
- 	empty = list_empty(&lo->plh_segs);
- 	pnfs_clear_layoutcommit(ino, &tmp_list);
- 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
-+
-+	if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
-+		struct pnfs_layout_range range = {
-+			.iomode		= IOMODE_ANY,
-+			.offset		= 0,
-+			.length		= NFS4_MAX_UINT64,
-+		};
-+		NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo, &range);
-+	}
-+
- 	/* Don't send a LAYOUTRETURN if list was initially empty */
- 	if (empty) {
- 		spin_unlock(&ino->i_lock);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 882387c..cab5259 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -93,6 +93,9 @@ struct pnfs_layoutdriver_type {
- 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
- 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
- 
-+	void (*return_range) (struct pnfs_layout_hdr *lo,
-+			      struct pnfs_layout_range *range);
-+
- 	/* test for nfs page cache coalescing */
- 	const struct nfs_pageio_ops *pg_read_ops;
- 	const struct nfs_pageio_ops *pg_write_ops;
+Honestly, I'd prefer not using a fl_flag for this. Why, might you ask?
+
+Currently, there are two alternate lock managers in the kernel (nfsd
+and lockd) but there could (in principle) be an arbitrary number of
+them later. What's so special about knfsd that it warrants its own flag?
+
+I think existing use of an empty lock_manager_operations is a cleaner
+solution than this for identifying locks owned by knfsd.
+
 -- 
-1.9.1
-
+Jeff Layton <jlayton@primarydata.com>
