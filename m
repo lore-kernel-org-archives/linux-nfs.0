@@ -1,239 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:34199 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753273AbaHYGtC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Aug 2014 02:49:02 -0400
-Date: Mon, 25 Aug 2014 16:48:52 +1000
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Junxiao Bi <junxiao.bi@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Mel Gorman <mgorman@suse.com>
-Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-Message-ID: <20140825164852.50723141@notabene.brown>
-In-Reply-To: <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
-References: <53F6F772.6020708@oracle.com>
-	<1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:57781 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750969AbaHILIV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Aug 2014 07:08:21 -0400
+Received: by mail-qa0-f52.google.com with SMTP id j15so6285353qaq.25
+        for <linux-nfs@vger.kernel.org>; Sat, 09 Aug 2014 04:08:20 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sat, 9 Aug 2014 07:08:18 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 2/3] NFSD: Increase the reference of lockowner when
+ coping file_lock
+Message-ID: <20140809070818.4d939a6a@tlielax.poochiereds.net>
+In-Reply-To: <53E22F2C.8070900@gmail.com>
+References: <53BAAAC5.9000106@gmail.com>
+	<53E22EA5.70708@gmail.com>
+	<53E22F2C.8070900@gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/Msmo3U9lW5aeckjbCXwnaz_"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/Msmo3U9lW5aeckjbCXwnaz_
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Wed, 06 Aug 2014 21:35:40 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-
-> Junxiao Bi reports seeing the following deadlock:
->=20
-> @ crash> bt 1539
-> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
-> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
-> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
-> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
-> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
-> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
-> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
-> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
-> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
-> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
-> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
-> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
-> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
-
-This stack trace (from 2.6.32) cannot happen in mainline, though it took me=
- a
-while to remember/discover exactly why.
-
-try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
-set to NULL.
-shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
-it is NULL, wait_on_page_writeback is *not* called.
-
-So we can only hit this deadlock if mem-cgroup limits are imposed on a
-process which is using NFS - which is quite possible but probably not commo=
-n.
-
-The fact that a dead-lock can happen only when memcg limits are imposed see=
-ms
-very fragile.  People aren't going to test that case much so there could we=
-ll
-be other deadlock possibilities lurking.
-
-Mel: might there be some other way we could get out of this deadlock?
-Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
-wait or something?  Any other wait out of this deadlock other than setting
-PF_MEMALLOC_NOIO everywhere?
-
-Thanks,
-NeilBrown
-
-
-
-> @ #12 [ffff88178f64d978] kmem_getpages at ffffffff8110e18b
-> @ #13 [ffff88178f64d9a8] fallback_alloc at ffffffff8110e35e
-> @ #14 [ffff88178f64da08] ____cache_alloc_node at ffffffff8110e51f
-> @ #15 [ffff88178f64da48] __kmalloc at ffffffff8110efba
-> @ #16 [ffff88178f64da98] xs_setup_xprt at ffffffffa00a563f [sunrpc]
-> @ #17 [ffff88178f64dad8] xs_setup_tcp at ffffffffa00a7648 [sunrpc]
-> @ #18 [ffff88178f64daf8] xprt_create_transport at ffffffffa00a478f [sunrp=
-c]
-> @ #19 [ffff88178f64db18] rpc_create at ffffffffa00a2d7a [sunrpc]
-> @ #20 [ffff88178f64dbf8] rpcb_create at ffffffffa00b026b [sunrpc]
-> @ #21 [ffff88178f64dc98] rpcb_getport_async at ffffffffa00b0c94 [sunrpc]
-> @ #22 [ffff88178f64ddf8] call_bind at ffffffffa00a11f8 [sunrpc]
-> @ #23 [ffff88178f64de18] __rpc_execute at ffffffffa00a88ef [sunrpc]
-> @ #24 [ffff88178f64de58] rpc_async_schedule at ffffffffa00a9187 [sunrpc]
-> @ #25 [ffff88178f64de78] worker_thread at ffffffff81072ed2
-> @ #26 [ffff88178f64dee8] kthread at ffffffff81076df3
-> @ #27 [ffff88178f64df48] kernel_thread at ffffffff81012e2a
-> @ crash>
->=20
-> Junxiao notes that the problem is not limited to the rpcbind client. In
-> fact we can trigger the exact same problem when trying to reconnect to
-> the server, and we find ourselves calling sock_alloc().
->=20
-> The following solution should work for all kernels that support the
-> PF_MEMALLOC_NOIO flag (i.e. Linux 3.9 and newer).
->=20
-> Link: http://lkml.kernel.org/r/53F6F772.6020708@oracle.com
-> Reported-by: Junxiao Bi <junxiao.bi@oracle.com>
-> Cc: stable@vger.kernel.org # 3.9+
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 > ---
->  net/sunrpc/sched.c    |  5 +++--
->  net/sunrpc/xprtsock.c | 15 ++++++++-------
->  2 files changed, 11 insertions(+), 9 deletions(-)
->=20
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> index 9358c79fd589..ab3aff71ff93 100644
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -19,6 +19,7 @@
->  #include <linux/spinlock.h>
->  #include <linux/mutex.h>
->  #include <linux/freezer.h>
-> +#include <linux/sched.h>
-> =20
->  #include <linux/sunrpc/clnt.h>
-> =20
-> @@ -821,9 +822,9 @@ void rpc_execute(struct rpc_task *task)
-> =20
->  static void rpc_async_schedule(struct work_struct *work)
+>  fs/nfsd/nfs4state.c | 33 +++++++++++++++++++++++++++++++--
+>  1 file changed, 31 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 24168ae..07e4b5c 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4867,6 +4867,29 @@ nfs4_transform_lock_offset(struct file_lock *lock)
+>  		lock->fl_end = OFFSET_MAX;
+>  }
+>  
+> +static inline struct nfs4_lockowner *get_lockowner(struct nfs4_lockowner *lo)
+> +{
+> +	atomic_inc(&lo->lo_owner.so_count);
+> +	return lo;
+> +}
+> +
+> +static void nfsd4_fl_copy_lock(struct file_lock *dst, struct file_lock *src)
+> +{
+> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) src->fl_owner;
+> +	get_lockowner(lo);
+> +}
+> +
+> +static void nfsd4_fl_release_lock(struct file_lock *fl)
+> +{
+> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
+> +	nfs4_put_stateowner(&lo->lo_owner);
+> +}
+> +
+> +static const struct file_lock_operations nfsd4_fl_lock_ops = {
+> +	.fl_copy_lock = nfsd4_fl_copy_lock,
+> +	.fl_release_private = nfsd4_fl_release_lock,
+> +};
+> +
+>  static inline void
+>  nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
 >  {
-> -	current->flags |=3D PF_FSTRANS;
-> +	current->flags |=3D PF_FSTRANS | PF_MEMALLOC_NOIO;
->  	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
-> -	current->flags &=3D ~PF_FSTRANS;
-> +	current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  }
-> =20
->  /**
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 43cd89eacfab..1d6d4d84b299 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -38,6 +38,7 @@
->  #include <linux/sunrpc/svcsock.h>
->  #include <linux/sunrpc/xprtsock.h>
->  #include <linux/file.h>
-> +#include <linux/sched.h>
->  #ifdef CONFIG_SUNRPC_BACKCHANNEL
->  #include <linux/sunrpc/bc_xprt.h>
->  #endif
-> @@ -1927,7 +1928,7 @@ static int xs_local_setup_socket(struct sock_xprt *=
-transport)
->  	struct socket *sock;
->  	int status =3D -EIO;
-> =20
-> -	current->flags |=3D PF_FSTRANS;
-> +	current->flags |=3D PF_FSTRANS | PF_MEMALLOC_NOIO;
-> =20
->  	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
->  	status =3D __sock_create(xprt->xprt_net, AF_LOCAL,
-> @@ -1968,7 +1969,7 @@ static int xs_local_setup_socket(struct sock_xprt *=
-transport)
->  out:
->  	xprt_clear_connecting(xprt);
->  	xprt_wake_pending_tasks(xprt, status);
-> -	current->flags &=3D ~PF_FSTRANS;
-> +	current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  	return status;
->  }
-> =20
-> @@ -2071,7 +2072,7 @@ static void xs_udp_setup_socket(struct work_struct =
-*work)
->  	struct socket *sock =3D transport->sock;
->  	int status =3D -EIO;
-> =20
-> -	current->flags |=3D PF_FSTRANS;
-> +	current->flags |=3D PF_FSTRANS | PF_MEMALLOC_NOIO;
-> =20
->  	/* Start by resetting any existing state */
->  	xs_reset_transport(transport);
-> @@ -2092,7 +2093,7 @@ static void xs_udp_setup_socket(struct work_struct =
-*work)
->  out:
->  	xprt_clear_connecting(xprt);
->  	xprt_wake_pending_tasks(xprt, status);
-> -	current->flags &=3D ~PF_FSTRANS;
-> +	current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  }
-> =20
->  /*
-> @@ -2229,7 +2230,7 @@ static void xs_tcp_setup_socket(struct work_struct =
-*work)
->  	struct rpc_xprt *xprt =3D &transport->xprt;
->  	int status =3D -EIO;
-> =20
-> -	current->flags |=3D PF_FSTRANS;
-> +	current->flags |=3D PF_FSTRANS | PF_MEMALLOC_NOIO;
-> =20
->  	if (!sock) {
->  		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
-> @@ -2276,7 +2277,7 @@ static void xs_tcp_setup_socket(struct work_struct =
-*work)
->  	case -EINPROGRESS:
->  	case -EALREADY:
->  		xprt_clear_connecting(xprt);
-> -		current->flags &=3D ~PF_FSTRANS;
-> +		current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  		return;
->  	case -EINVAL:
->  		/* Happens, for instance, if the user specified a link
-> @@ -2294,7 +2295,7 @@ out_eagain:
->  out:
->  	xprt_clear_connecting(xprt);
->  	xprt_wake_pending_tasks(xprt, status);
-> -	current->flags &=3D ~PF_FSTRANS;
-> +	current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  }
-> =20
->  /**
+> @@ -5233,10 +5256,12 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		status = nfserr_openmode;
+>  		goto out;
+>  	}
+> -	file_lock->fl_owner = (fl_owner_t)lock_sop;
+> +
+> +	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
+>  	file_lock->fl_pid = current->tgid;
+>  	file_lock->fl_file = filp;
+>  	file_lock->fl_flags = FL_POSIX | FL_NFSD;
+> +	file_lock->fl_ops = &nfsd4_fl_lock_ops;
+>  	file_lock->fl_start = lock->lk_offset;
+>  	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
+>  	nfs4_transform_lock_offset(file_lock);
+> @@ -5399,6 +5424,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	struct nfs4_ol_stateid *stp;
+>  	struct file *filp = NULL;
+>  	struct file_lock *file_lock = NULL;
+> +	struct nfs4_lockowner *lock_sop = NULL;
+>  	__be32 status;
+>  	int err;
+>  	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+> @@ -5420,6 +5446,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		status = nfserr_lock_range;
+>  		goto put_stateid;
+>  	}
+> +
+> +	lock_sop = lockowner(stp->st_stateowner);
+>  	file_lock = locks_alloc_lock();
+>  	if (!file_lock) {
+>  		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+> @@ -5428,10 +5456,11 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	}
+>  	locks_init_lock(file_lock);
+>  	file_lock->fl_type = F_UNLCK;
+> -	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
+> +	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
+>  	file_lock->fl_pid = current->tgid;
+>  	file_lock->fl_file = filp;
+>  	file_lock->fl_flags = FL_POSIX | FL_NFSD;
+> +	file_lock->fl_ops = &nfsd4_fl_lock_ops;
+>  	file_lock->fl_start = locku->lu_offset;
+>  
+>  	file_lock->fl_end = last_byte_offset(locku->lu_offset,
 
+(Sorry I didn't respond to these before -- I no longer work for Red
+ Hat, so emails to jlayton@redhat.com don't get to me).
 
---Sig_/Msmo3U9lW5aeckjbCXwnaz_
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+This looks really wrong. In this case, knfsd is acting as a
+(server-side) lock manager, not a filesystem:
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
+        const struct file_lock_operations *fl_ops;      /* Callbacks for filesystems */
+        const struct lock_manager_operations *fl_lmops; /* Callbacks for lockmanagers */
 
-iQIVAwUBU/rcVDnsnt1WYoG5AQLIRg//Y6AK9WfNX+Xbmci3KOFwuKcJlRnipjBS
-HuaPoaA5Hzd8X7QyOAe7sPugbckjXyw03cs5qh2XEZKjxmvw1iE/KqrVQUd5cZjx
-9xbIEOZaxECFZIafFIgaHnQTn85OrIZNs2xL8dg/3ahQ8P+/madgxFGfb1WtFDly
-2QK5cxMm8iYvPEIDozN74TXDoOP/GeViROhQxFNorjw1UUvi4YBfM9JZfl5JjA2T
-6F1x2Anb4ZlU8rPVWxZT5U2NgYdUfbZu3HbYkV2TKQl8vQ1oDnF3Oc2qZkywqQPl
-Rl/pY/Zqg2NIAXGH2dGOZ91MTXUD6ie8gJvaH1IhmFpXksNn42z8J9a48cUBra1r
-S7fUTpc7zt4ffIPovpt0XsFhhOEMAl20E2vOXoUUdzM0T2wziUQQ2/54OBhXFVQh
-NBt0r7TKUB8N3HgBcpdxNWkkc2LHSnFQ4vgtaGJQdetDcBXERc/9TURBf3nAV5oW
-OZSVLyShbzLbUY5U4CP9uuS2ftCyzgwu1ZpBYHz2L1H77PqWrCtb7PsAlhtjDeek
-aPr2JJaXCoclSIohVnZtD9VqXycswcP1wX7mm+P/OSbPqJ0XjO009JA9GNi8OBQk
-f9DCH9oRYJE3PrQp9b3t9NXBliEvq7NilVdnMOObRjOSYvVE5XLm2lcR2AwbOalI
-sSCD/OXTVpg=
-=sWVh
------END PGP SIGNATURE-----
+So really, taking and putting of lockowner references is really the
+purview of the lockmanager. If you had a filesystem that set fl_ops and
+was exportable, then this will likely break it.
 
---Sig_/Msmo3U9lW5aeckjbCXwnaz_--
+The fact that the file locking code uses struct file_lock for lock
+requests and for tracking the locks themselves makes for a horribly
+confusing interface. If I were designing this from scratch I would have
+made those two distinct structures. Maybe we should do that anyway
+sometime.
+
+What you probably ought want to do is to declare some new fl_lmops for
+taking and putting lockowner references and add hooks to call them at
+the appropriate places.
+
+-- 
+Jeff Layton <jlayton@primarydata.com>
