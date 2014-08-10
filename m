@@ -1,134 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f169.google.com ([209.85.216.169]:40918 "EHLO
-	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751608AbaHSUOK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 16:14:10 -0400
-Received: by mail-qc0-f169.google.com with SMTP id c9so6824906qcz.0
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 13:14:05 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 19 Aug 2014 16:14:04 -0400
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:37919 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751381AbaHJPij (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Aug 2014 11:38:39 -0400
+Message-ID: <53E791F1.40802@gmail.com>
+Date: Sun, 10 Aug 2014 23:38:25 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 5/6 v4] NFSD: New helper nfs4_get_stateowner() for
- atomic_inc sop reference
-Message-ID: <20140819161404.27621456@tlielax.poochiereds.net>
-In-Reply-To: <53F36C6C.3050600@gmail.com>
-References: <53BAAAC5.9000106@gmail.com>
-	<53E22EA5.70708@gmail.com>
-	<20140809065112.700e0ecc@tlielax.poochiereds.net>
-	<53E791F1.40802@gmail.com>
-	<53ED5093.6000308@gmail.com>
-	<53F36C6C.3050600@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
+Subject: [PATCH 1/3 v2] fs/locks.c: Copy all information for conflock
+References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net>
+In-Reply-To: <20140809065112.700e0ecc@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 19 Aug 2014 23:25:32 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
+fl_lmops field in file_lock for checking nfsd4 lockowner.
 
-> v4: same as v3
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 32 ++++++++++++++++----------------
->  1 file changed, 16 insertions(+), 16 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 98edf97..e087a71 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -216,6 +216,13 @@ static void nfsd4_put_session(struct nfsd4_session *ses)
->  	spin_unlock(&nn->client_lock);
->  }
->  
-> +static inline struct nfs4_stateowner *
-> +nfs4_get_stateowner(struct nfs4_stateowner *sop)
-> +{
-> +	atomic_inc(&sop->so_count);
-> +	return sop;
-> +}
-> +
->  static int
->  same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner)
->  {
-> @@ -235,10 +242,8 @@ find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
->  			    so_strhash) {
->  		if (!so->so_is_open_owner)
->  			continue;
-> -		if (same_owner_str(so, &open->op_owner)) {
-> -			atomic_inc(&so->so_count);
-> -			return openowner(so);
-> -		}
-> +		if (same_owner_str(so, &open->op_owner))
-> +			return openowner(nfs4_get_stateowner(so));
->  	}
->  	return NULL;
->  }
-> @@ -1644,7 +1649,7 @@ __destroy_client(struct nfs4_client *clp)
->  	}
->  	while (!list_empty(&clp->cl_openowners)) {
->  		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
-> -		atomic_inc(&oo->oo_owner.so_count);
-> +		nfs4_get_stateowner(&oo->oo_owner);
->  		release_openowner(oo);
->  	}
->  	nfsd4_shutdown_callback(clp);
-> @@ -3125,8 +3130,7 @@ static void nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
->  {
->  	if (!nfsd4_has_session(cstate)) {
->  		mutex_lock(&so->so_replay.rp_mutex);
-> -		cstate->replay_owner = so;
-> -		atomic_inc(&so->so_count);
-> +		cstate->replay_owner = nfs4_get_stateowner(so);
->  	}
->  }
->  
-> @@ -3225,8 +3229,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
->  	atomic_inc(&stp->st_stid.sc_count);
->  	stp->st_stid.sc_type = NFS4_OPEN_STID;
->  	INIT_LIST_HEAD(&stp->st_locks);
-> -	stp->st_stateowner = &oo->oo_owner;
-> -	atomic_inc(&stp->st_stateowner->so_count);
-> +	stp->st_stateowner = nfs4_get_stateowner(&oo->oo_owner);
->  	get_nfs4_file(fp);
->  	stp->st_stid.sc_file = fp;
->  	stp->st_access_bmap = 0;
-> @@ -4914,10 +4917,8 @@ find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
->  			    so_strhash) {
->  		if (so->so_is_open_owner)
->  			continue;
-> -		if (!same_owner_str(so, owner))
-> -			continue;
-> -		atomic_inc(&so->so_count);
-> -		return lockowner(so);
-> +		if (same_owner_str(so, owner))
-> +			return lockowner(nfs4_get_stateowner(so));
->  	}
->  	return NULL;
->  }
-> @@ -4996,8 +4997,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
->  
->  	atomic_inc(&stp->st_stid.sc_count);
->  	stp->st_stid.sc_type = NFS4_LOCK_STID;
-> -	stp->st_stateowner = &lo->lo_owner;
-> -	atomic_inc(&lo->lo_owner.so_count);
-> +	stp->st_stateowner = nfs4_get_stateowner(&lo->lo_owner);
->  	get_nfs4_file(fp);
->  	stp->st_stid.sc_file = fp;
->  	stp->st_stid.sc_free = nfs4_free_lock_stateid;
-> @@ -5539,7 +5539,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
->  			}
->  		}
->  
-> -		atomic_inc(&sop->so_count);
-> +		nfs4_get_stateowner(sop);
->  		break;
->  	}
->  	spin_unlock(&clp->cl_lock);
+But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return
+of conflicting locks) causes the fl_lmops of conflock always be NULL.
 
-Reviewed-by: Jeff Layton <jlayton@primarydata.com>
+Also, commit 0996905f93 (lockd: posix_test_lock() should not call
+locks_copy_lock()) caused the fl_lmops of conflock always be NULL too.
+
+v2: Only change the order from 3/3 to 1/3 now.
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/lockd/svclock.c |  2 +-
+ fs/locks.c         | 25 ++++++-------------------
+ include/linux/fs.h |  6 ------
+ 3 files changed, 7 insertions(+), 26 deletions(-)
+
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index ab798a8..e1f209c 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -677,7 +677,7 @@ nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
+ 		block->b_flags |= B_TIMED_OUT;
+ 	if (conf) {
+ 		if (block->b_fl)
+-			__locks_copy_lock(block->b_fl, conf);
++			locks_copy_lock(block->b_fl, conf);
+ 	}
+ }
+ 
+diff --git a/fs/locks.c b/fs/locks.c
+index 717fbc4..91b0f03 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -266,35 +266,22 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
+ 		new->fl_lmops = fl->fl_lmops;
+ }
+ 
+-/*
+- * Initialize a new lock from an existing file_lock structure.
+- */
+-void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
++void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+ {
++	locks_release_private(new);
++
+ 	new->fl_owner = fl->fl_owner;
+ 	new->fl_pid = fl->fl_pid;
+-	new->fl_file = NULL;
++	new->fl_file = fl->fl_file;
+ 	new->fl_flags = fl->fl_flags;
+ 	new->fl_type = fl->fl_type;
+ 	new->fl_start = fl->fl_start;
+ 	new->fl_end = fl->fl_end;
+ 	new->fl_ops = NULL;
+ 	new->fl_lmops = NULL;
+-}
+-EXPORT_SYMBOL(__locks_copy_lock);
+-
+-void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+-{
+-	locks_release_private(new);
+-
+-	__locks_copy_lock(new, fl);
+-	new->fl_file = fl->fl_file;
+-	new->fl_ops = fl->fl_ops;
+-	new->fl_lmops = fl->fl_lmops;
+ 
+ 	locks_copy_private(new, fl);
+ }
+-
+ EXPORT_SYMBOL(locks_copy_lock);
+ 
+ static inline int flock_translate_cmd(int cmd) {
+@@ -718,7 +705,7 @@ posix_test_lock(struct file *filp, struct file_lock *fl)
+ 			break;
+ 	}
+ 	if (cfl) {
+-		__locks_copy_lock(fl, cfl);
++		locks_copy_lock(fl, cfl);
+ 		if (cfl->fl_nspid)
+ 			fl->fl_pid = pid_vnr(cfl->fl_nspid);
+ 	} else
+@@ -921,7 +908,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 			if (!posix_locks_conflict(request, fl))
+ 				continue;
+ 			if (conflock)
+-				__locks_copy_lock(conflock, fl);
++				locks_copy_lock(conflock, fl);
+ 			error = -EAGAIN;
+ 			if (!(request->fl_flags & FL_SLEEP))
+ 				goto out;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index e11d60c..ced023d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -941,7 +941,6 @@ void locks_free_lock(struct file_lock *fl);
+ extern void locks_init_lock(struct file_lock *);
+ extern struct file_lock * locks_alloc_lock(void);
+ extern void locks_copy_lock(struct file_lock *, struct file_lock *);
+-extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
+ extern void locks_remove_posix(struct file *, fl_owner_t);
+ extern void locks_remove_file(struct file *);
+ extern void locks_release_private(struct file_lock *);
+@@ -1001,11 +1000,6 @@ static inline void locks_init_lock(struct file_lock *fl)
+ 	return;
+ }
+ 
+-static inline void __locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+-{
+-	return;
+-}
+-
+ static inline void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+ {
+ 	return;
+-- 
+1.9.3
+
