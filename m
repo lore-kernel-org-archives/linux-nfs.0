@@ -1,71 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:35463 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755379AbaHZCqb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2014 22:46:31 -0400
-Received: by mail-ie0-f176.google.com with SMTP id tr6so10875588ieb.21
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Aug 2014 19:46:30 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:54269 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753277AbaHKSXi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Aug 2014 14:23:38 -0400
+Received: by mail-ie0-f169.google.com with SMTP id rd18so10343160iec.14
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Aug 2014 11:23:38 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAAd7aua8+U=eFZUFhjp8gcnYv9BkvjOgSbLJbGp_Qg9O5cHH5w@mail.gmail.com>
+References: <CAAd7aua8+U=eFZUFhjp8gcnYv9BkvjOgSbLJbGp_Qg9O5cHH5w@mail.gmail.com>
+Date: Mon, 11 Aug 2014 13:23:38 -0500
+Message-ID: <CAAd7auZOmk4_tR0WnqFCbv3CSLF=BXoQjtdsQZaB0dgoOYNREw@mail.gmail.com>
+Subject: Fwd: question re: NO_AUTH_DATA_REQUIRED
+From: Ben H <bhendin@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFSv4: Fix problems with close in the presence of a delegation
-Date: Mon, 25 Aug 2014 22:46:31 -0400
-Message-Id: <1409021192-12706-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the presence of delegations, we can no longer assume that the
-state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
-stateid share mode, and so we need to need to calculate the initial
-value for calldata->arg.fmode using the state->flags.
+First off, apologies if this is not the correct list.
+I saw questions like this on the old nfsv4@linux-nfs.org list, and
+believe that this replaces that.
+Please direct me to a more appropriate resource if available.
+If I'm in the right place, I'm looking for some schooling...
 
-Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
-Cc: stable@vger.kernel.org # 2.6.33+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 16 +++++++++++-----
- 1 file changed, 11 insertions(+), 5 deletions(-)
+I have been working with NFSv4 sec=krb5 and early on ran into the PAC
+issue described nebulously throughout various resources on the web.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 75ae8d22f067..caf838b4edbd 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2601,6 +2601,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 	struct nfs4_closedata *calldata = data;
- 	struct nfs4_state *state = calldata->state;
- 	struct inode *inode = calldata->inode;
-+	bool is_rdonly, is_wronly, is_rdwr;
- 	int call_close = 0;
- 
- 	dprintk("%s: begin!\n", __func__);
-@@ -2608,18 +2609,23 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
- 		goto out_wait;
- 
- 	task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_DOWNGRADE];
--	calldata->arg.fmode = FMODE_READ|FMODE_WRITE;
-+	calldata->arg.fmode = 0;
- 	spin_lock(&state->owner->so_lock);
- 	/* Calculate the change in open mode */
-+	is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
-+	is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
-+	is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
-+	if (is_rdonly || is_rdwr)
-+		calldata->arg.fmode |= FMODE_READ;
-+	if (is_wronly || is_rdwr)
-+		calldata->arg.fmode |= FMODE_WRITE;
- 	if (state->n_rdwr == 0) {
- 		if (state->n_rdonly == 0) {
--			call_close |= test_bit(NFS_O_RDONLY_STATE, &state->flags);
--			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
-+			call_close |= is_rdonly || is_rdwr;
- 			calldata->arg.fmode &= ~FMODE_READ;
- 		}
- 		if (state->n_wronly == 0) {
--			call_close |= test_bit(NFS_O_WRONLY_STATE, &state->flags);
--			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
-+			call_close |= is_wronly || is_rdwr;
- 			calldata->arg.fmode &= ~FMODE_WRITE;
- 		}
- 	}
--- 
-1.9.3
+When working with AD users who are in multiple groups (in my
+experiments, seems to be approximately 20) I have to set
+NO_AUTH_DATA_REQUIRED on the userAccountControl of my NFS server
+principal so that the PAC is not sent and the TGS-REQ can occur over
+UDP.
 
+What I cannot find an answer for is why/where exactly is this
+limitation introduced?
+Kerberos can deal with the larger packets via TCP, and some Kerberos
+implementation may enforce TCP even on smaller packets.
+
+(1) Will NFSv4 have an issue with pure TCP, or is there an internal
+limitation (and if so what) within the NFS code that prohibits the
+larger PAC buffer (regardless of how it was delivered) from working?
+
+It seems this issue has been around for quite a while, yet the errors
+given on such an event are relatively obtuse:
+
+WARNING: Failed to create krb5 context for user with uid 402135588 for
+server spp-vp-master01.spptech.com
+WARNING: Failed to create krb5 context for user with uid 402135588 for
+server spp-vp-master01.spptech.com
+doing error downcall
+
+(2) Is there a level of debugging that would have provided me more
+data about the particular event?
+
+My second issue is in trying to understand what possible drawbacks
+might exist with setting NO_AUTH_DATA_REQUIRED.
+I previously have not used NO_AUTH_DATA_REQUIRED, and when I first
+read http://support.microsoft.com/kb/832572, I was under the
+impression that this was something that you would set on a user's
+account to prohibit the PAC from being sent.
+For instance, if "jsmith" is having problems accessing a service, then
+you would set NO_AUTH_DATA_REQUIRED on "jsmith" directly.
+This of course, would be very problematic since jsmith requires his
+PAC for logging into Windows systems or for access to other services
+which might use his PAC for authorizations.
+Although, I believe the NO_AUTH_DATA_REQUIRED does not affect getting
+a PAC in an AS-REP, only in a TGS-REP(?)  Still, it would prohibit
+jsmith from obtaining correct authorizations to Windows services.
+
+In working with NFSv4 it is apparent that you only need to set
+NO_AUTH_DATA_REQUIRED on the nfs/principal account whether that is a
+user account or the computer account (when joined to AD via Samba or
+3rd party tools).
+It also became clear that even though configuration using a computer
+account (when available) is generally easier, this might cause
+problems is the computer account is used for multiple services, some
+which might require a PAC.
+
+Therefore, creating a separate nfs/userprincipal and enabling
+NO_AUTH_DATA_REQUIRED appears to solve the issue.
+
+My assumption is that setting NO_AUTH_DATA_REQUIRED works this way:
+a) When set on a user account is prevents the user's PAC from being
+added to *any service ticket requested*
+b) When set on a service account if prevents PACs from *all users
+being to service tickets requested for itself*
+
+(3) Can someone confirm if this is correct?
+
+(4) My overarching question on this is "are we loosing anything re:
+sec=krb5 without a PAC being delivered in the service ticket to the
+NFS server?"
+
+Once the NFSv4 server has authenticated our user identity us based on
+our service ticket, are authorizations for the data being done solely
+on UID/GID mappings?
+If all my groups are defined in AD, and the NFS client and Server
+resolve those groups, I assume that is enough?
+As long as the client is aware of all the user groups (i.e. "id" shows
+all the proper groups) then I should be able to access the files?
+
+TIA for all help.
