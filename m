@@ -1,121 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:40028 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753096AbaHCRGL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:06:11 -0400
-Received: by mail-qg0-f52.google.com with SMTP id f51so7743257qge.25
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:06:11 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/6] nfsd: convert num_drc_entries to an atomic_t
-Date: Sun,  3 Aug 2014 13:06:02 -0400
-Message-Id: <1407085564-3227-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407085564-3227-4-git-send-email-trond.myklebust@primarydata.com>
-References: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
- <1407085564-3227-2-git-send-email-trond.myklebust@primarydata.com>
- <1407085564-3227-3-git-send-email-trond.myklebust@primarydata.com>
- <1407085564-3227-4-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:46529 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751100AbaHKQqM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Aug 2014 12:46:12 -0400
+Received: by mail-qa0-f46.google.com with SMTP id v10so8004952qac.5
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Aug 2014 09:46:11 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 11 Aug 2014 12:46:10 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 3/3 v2] NFSD: Increase the reference of lockowner when
+ coping file_lock
+Message-ID: <20140811124610.16f49168@tlielax.poochiereds.net>
+In-Reply-To: <53E7933D.80504@gmail.com>
+References: <53BAAAC5.9000106@gmail.com>
+	<53E22EA5.70708@gmail.com>
+	<20140809065112.700e0ecc@tlielax.poochiereds.net>
+	<53E791F1.40802@gmail.com>
+	<53E7933D.80504@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...so we can remove the spinlocking around it.
+On Sun, 10 Aug 2014 23:43:57 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfscache.c | 28 ++++++++++++----------------
- 1 file changed, 12 insertions(+), 16 deletions(-)
+> v2: Fix bad using of struct file_lock_operations for handle the owner.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4state.c | 32 ++++++++++++++++++++++++++++++--
+>  1 file changed, 30 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2e80a59..24a8d91 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4867,9 +4867,33 @@ nfs4_transform_lock_offset(struct file_lock *lock)
+>  		lock->fl_end = OFFSET_MAX;
+>  }
+>  
+> +static inline struct nfs4_lockowner *get_lockowner(struct nfs4_lockowner *lo)
+> +{
+> +	atomic_inc(&lo->lo_owner.so_count);
+> +	return lo;
+> +}
+> +
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 8abec475f80f..dc909091349b 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -47,7 +47,7 @@ static unsigned int		drc_hashsize;
-  */
- 
- /* total number of entries */
--static unsigned int		num_drc_entries;
-+static atomic_t			num_drc_entries;
- 
- /* cache misses due only to checksum comparison failures */
- static unsigned int		payload_misses;
-@@ -148,7 +148,7 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
- 		kfree(rp->c_replvec.iov_base);
- 	}
- 	list_del(&rp->c_lru);
--	--num_drc_entries;
-+	atomic_dec(&num_drc_entries);
- 	drc_mem_usage -= sizeof(*rp);
- 	kmem_cache_free(drc_slab, rp);
- }
-@@ -167,7 +167,7 @@ int nfsd_reply_cache_init(void)
- 	unsigned int i;
- 
- 	max_drc_entries = nfsd_cache_size_limit();
--	num_drc_entries = 0;
-+	atomic_set(&num_drc_entries, 0);
- 	hashsize = nfsd_hashsize(max_drc_entries);
- 	maskbits = ilog2(hashsize);
- 
-@@ -242,7 +242,7 @@ prune_bucket(struct nfsd_drc_bucket *b)
- 		 */
- 		if (rp->c_state == RC_INPROG)
- 			continue;
--		if (num_drc_entries <= max_drc_entries &&
-+		if (atomic_read(&num_drc_entries) <= max_drc_entries &&
- 		    time_before(jiffies, rp->c_timestamp + RC_EXPIRE))
- 			break;
- 		nfsd_reply_cache_free_locked(rp);
-@@ -290,13 +290,7 @@ cache_cleaner_func(struct work_struct *unused)
- static unsigned long
- nfsd_reply_cache_count(struct shrinker *shrink, struct shrink_control *sc)
- {
--	unsigned long num;
--
--	spin_lock(&cache_lock);
--	num = num_drc_entries;
--	spin_unlock(&cache_lock);
--
--	return num;
-+	return atomic_read(&num_drc_entries);
- }
- 
- static unsigned long
-@@ -386,11 +380,12 @@ nfsd_cache_search(struct nfsd_drc_bucket *b, struct svc_rqst *rqstp,
- 	/* tally hash chain length stats */
- 	if (entries > longest_chain) {
- 		longest_chain = entries;
--		longest_chain_cachesize = num_drc_entries;
-+		longest_chain_cachesize = atomic_read(&num_drc_entries);
- 	} else if (entries == longest_chain) {
- 		/* prefer to keep the smallest cachesize possible here */
--		longest_chain_cachesize = min(longest_chain_cachesize,
--						num_drc_entries);
-+		longest_chain_cachesize = min_t(unsigned int,
-+				longest_chain_cachesize,
-+				atomic_read(&num_drc_entries));
- 	}
- 
- 	return ret;
-@@ -433,7 +428,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	rp = nfsd_reply_cache_alloc();
- 	spin_lock(&cache_lock);
- 	if (likely(rp)) {
--		++num_drc_entries;
-+		atomic_inc(&num_drc_entries);
- 		drc_mem_usage += sizeof(*rp);
- 	}
- 
-@@ -617,7 +612,8 @@ static int nfsd_reply_cache_stats_show(struct seq_file *m, void *v)
- {
- 	spin_lock(&cache_lock);
- 	seq_printf(m, "max entries:           %u\n", max_drc_entries);
--	seq_printf(m, "num entries:           %u\n", num_drc_entries);
-+	seq_printf(m, "num entries:           %u\n",
-+			atomic_read(&num_drc_entries));
- 	seq_printf(m, "hash buckets:          %u\n", 1 << maskbits);
- 	seq_printf(m, "mem usage:             %u\n", drc_mem_usage);
- 	seq_printf(m, "cache hits:            %u\n", nfsdstats.rchits);
+The other places that increment the so_count on a lockowner should
+probably be changed to use get_lockowner.
+
+Or what may be better is to make a nfs4_get_stateowner call and change
+all of the places that bump the so_count to use it. Then you could just
+do something like this in the right spot below:
+
+    file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(lock_sop));
+
+...
+> +static void nfsd4_fl_copy_owner(struct file_lock *dst, struct file_lock *src)
+> +{
+> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) src->fl_owner;
+> +	dst->fl_owner = (fl_owner_t) get_lockowner(lo);
+> +}
+> +
+> +static void nfsd4_fl_release_owner(struct file_lock *fl)
+> +{
+> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
+> +
+> +	if (lo) {
+> +		nfs4_put_stateowner(&lo->lo_owner);
+> +		fl->fl_owner = NULL;
+> +	}
+> +}
+> +
+>  /* Hack!: For now, we're defining this just so we can use a pointer to it
+>   * as a unique cookie to identify our (NFSv4's) posix locks. */
+
+The above comment should be removed now.
+
+>  static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+> +	.lm_copy_owner = nfsd4_fl_copy_owner,
+> +	.lm_release_owner = nfsd4_fl_release_owner,
+>  };
+>  
+>  static inline void
+> @@ -5238,7 +5262,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		status = nfserr_openmode;
+>  		goto out;
+>  	}
+> -	file_lock->fl_owner = (fl_owner_t)lock_sop;
+> +
+> +	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
+>  	file_lock->fl_pid = current->tgid;
+>  	file_lock->fl_file = filp;
+>  	file_lock->fl_flags = FL_POSIX;
+> @@ -5405,6 +5430,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	struct nfs4_ol_stateid *stp;
+>  	struct file *filp = NULL;
+>  	struct file_lock *file_lock = NULL;
+> +	struct nfs4_lockowner *lock_sop = NULL;
+>  	__be32 status;
+>  	int err;
+>  	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+> @@ -5426,6 +5452,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		status = nfserr_lock_range;
+>  		goto put_stateid;
+>  	}
+> +
+> +	lock_sop = lockowner(stp->st_stateowner);
+>  	file_lock = locks_alloc_lock();
+>  	if (!file_lock) {
+>  		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+> @@ -5434,7 +5462,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	}
+>  	locks_init_lock(file_lock);
+>  	file_lock->fl_type = F_UNLCK;
+> -	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
+> +	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
+>  	file_lock->fl_pid = current->tgid;
+>  	file_lock->fl_file = filp;
+>  	file_lock->fl_flags = FL_POSIX;
+
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
