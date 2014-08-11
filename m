@@ -1,95 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f171.google.com ([209.85.217.171]:46491 "EHLO
-	mail-lb0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754190AbaHFGZW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:25:22 -0400
-Received: by mail-lb0-f171.google.com with SMTP id l4so1532008lbv.2
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 23:25:21 -0700 (PDT)
-From: Natanael Copa <natanael.copa@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Natanael Copa <ncopa@alpinelinux.org>
-Subject: [PATCH v2 09/11] include libgen.h for basename
-Date: Wed,  6 Aug 2014 08:25:04 +0200
-Message-Id: <1407306306-29796-10-git-send-email-ncopa@alpinelinux.org>
-In-Reply-To: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
-References: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
+Received: from fieldses.org ([174.143.236.118]:59492 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752591AbaHKTPv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Aug 2014 15:15:51 -0400
+Date: Mon, 11 Aug 2014 15:15:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSD: Treat rq_reserved when initializing xdr_buf
+Message-ID: <20140811191550.GF9095@fieldses.org>
+References: <53E2EE27.5010603@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <53E2EE27.5010603@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-According POSIX basename(3) should have an #include <libgen.h>
+On Thu, Aug 07, 2014 at 11:10:31AM +0800, Kinglong Mee wrote:
+> After calling svc_reserve() with a small length,
+> nfsd does't treat it in svcxdr_init_encode().
+> 
+> So, when testing conflock, got message as,
+> 
+> [  970.127216] RPC request reserved 88 but used 116
 
-There are a different GNU implementation too, that can be used with
-_GNU_SOURCE, but the POSIX version is good enough and more portable.
+rq_reserved should always be set no smaller than the maximum possible
+size of the reply, given everything we know about the request.
 
-Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
----
- tools/rpcdebug/rpcdebug.c    | 1 +
- utils/mount/mount.c          | 1 +
- utils/mount/mount_libmount.c | 1 +
- utils/nfsd/nfsd.c            | 1 +
- utils/nfsidmap/nfsidmap.c    | 1 +
- 5 files changed, 5 insertions(+)
+So the bug is that rq_reserved was set to small.
 
-diff --git a/tools/rpcdebug/rpcdebug.c b/tools/rpcdebug/rpcdebug.c
-index d6e10d3..18b1622 100644
---- a/tools/rpcdebug/rpcdebug.c
-+++ b/tools/rpcdebug/rpcdebug.c
-@@ -26,6 +26,7 @@
- #include <malloc.h>
- #include <fcntl.h>
- #include <ctype.h>
-+#include <libgen.h>
- /* RPC debug flags
-    #include <sunrpc/debug.h> */
- /* NFS debug flags
-diff --git a/utils/mount/mount.c b/utils/mount/mount.c
-index eea00af..91f1087 100644
---- a/utils/mount/mount.c
-+++ b/utils/mount/mount.c
-@@ -33,6 +33,7 @@
- #include <getopt.h>
- #include <mntent.h>
- #include <pwd.h>
-+#include <libgen.h>
- 
- #include "fstab.h"
- #include "xcommon.h"
-diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
-index 701d41e..6f85dc9 100644
---- a/utils/mount/mount_libmount.c
-+++ b/utils/mount/mount_libmount.c
-@@ -29,6 +29,7 @@
- #include <string.h>
- #include <errno.h>
- #include <getopt.h>
-+#include <libgen.h>
- 
- #include <libmount/libmount.h>
- 
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index 03e3c81..201bb13 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -19,6 +19,7 @@
- #include <errno.h>
- #include <getopt.h>
- #include <netdb.h>
-+#include <libgen.h>
- #include <sys/socket.h>
- #include <netinet/in.h>
- #include <arpa/inet.h>
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index 3f51b4d..e0d31e7 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -4,6 +4,7 @@
- #include <stdlib.h>
- #include <string.h>
- #include <errno.h>
-+#include <libgen.h>
- 
- #include <pwd.h>
- #include <grp.h>
--- 
-2.0.4
+The risk of returning a reply larger than rq_reserved is a relatively
+rare deadlock, so I'd rather just stick to the log warning than convert
+it to a hard error.
 
+The solution in this case is to fix the incorrect estimate.
+
+--b.
+
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 7 +++++--
+>  1 file changed, 5 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 5e0dc52..084e46e 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1245,17 +1245,20 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>  	struct xdr_stream *xdr = &resp->xdr;
+>  	struct xdr_buf *buf = &rqstp->rq_res;
+>  	struct kvec *head = buf->head;
+> +	int tlen = 0;
+>  
+>  	xdr->buf = buf;
+>  	xdr->iov = head;
+>  	xdr->p   = head->iov_base + head->iov_len;
+> -	xdr->end = head->iov_base + PAGE_SIZE - rqstp->rq_auth_slack;
+> +	tlen = PAGE_SIZE - rqstp->rq_auth_slack;
+> +	xdr->end = head->iov_base + min(tlen, rqstp->rq_reserved);
+>  	/* Tail and page_len should be zero at this point: */
+>  	buf->len = buf->head[0].iov_len;
+>  	xdr->scratch.iov_len = 0;
+>  	xdr->page_ptr = buf->pages - 1;
+> -	buf->buflen = PAGE_SIZE * (1 + rqstp->rq_page_end - buf->pages)
+> +	tlen = PAGE_SIZE * (1 + rqstp->rq_page_end - buf->pages)
+>  		- rqstp->rq_auth_slack;
+> +	buf->buflen = min(tlen, rqstp->rq_reserved);
+>  }
+>  
+>  /*
+> -- 
+> 1.9.3
+> 
