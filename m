@@ -1,235 +1,225 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:35255 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753756AbaHFOMw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 10:12:52 -0400
-Date: Wed, 6 Aug 2014 19:42:48 +0530
-From: Himangi Saraogi <himangi774@gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: julia.lawall@lip6.fr
-Subject: [PATCH] nfs: Remove typedef nfs_readdir_descriptor_t
-Message-ID: <20140806141248.GA15627@himangi-Dell>
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:50626 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751438AbaHKNEU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Aug 2014 09:04:20 -0400
+Received: by mail-qg0-f47.google.com with SMTP id i50so8348097qgf.34
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Aug 2014 06:04:20 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 11 Aug 2014 09:04:17 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 2/3] nfs4: queue free_lock_state job submission to
+ nfsiod
+Message-ID: <20140811090417.0287b32b@tlielax.poochiereds.net>
+In-Reply-To: <20140811075013.77e0a29e@tlielax.poochiereds.net>
+References: <1398940127-31150-1-git-send-email-jlayton@poochiereds.net>
+ <1398940127-31150-3-git-send-email-jlayton@poochiereds.net>
+ <20140811104253.GA4747@infradead.org>
+ <20140811075013.77e0a29e@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The Linux kernel coding style guidelines suggest not using typedefs
-for structure types. This patch gets rid of the typedef for
-nfs_readdir_descriptor_t. Also the names of the struct is changed to
-drop the _t, to make the name look less typedef-like.
+On Mon, 11 Aug 2014 07:50:13 -0400
+Jeff Layton <jeff.layton@primarydata.com> wrote:
 
-The following Coccinelle semantic patch detects the case.
+> On Mon, 11 Aug 2014 03:42:53 -0700
+> Christoph Hellwig <hch@infradead.org> wrote:
+> 
+> > This seems to introduce a fairly easily reproducible oops, which I can
+> > reproduce when running xfstests against a Linux NFSv4.1 server:
+> > 
+> > generic/089 242s ...[ 2187.041239] general protection fault: 0000 [#1]
+> > SMP 
+> > [ 2187.042899] Modules linked in:
+> > [ 2187.044000] CPU: 0 PID: 11913 Comm: kworker/0:1 Not tainted 3.16.0-rc6+ #1151
+> > [ 2187.044287] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
+> > [ 2187.044287] Workqueue: nfsiod free_lock_state_work
+> > [ 2187.044287] task: ffff880072b50cd0 ti: ffff88007a4ec000 task.ti: ffff88007a4ec000
+> > [ 2187.044287] RIP: 0010:[<ffffffff81361ca6>]  [<ffffffff81361ca6>] free_lock_state_work+0x16/0x30
+> > [ 2187.044287] RSP: 0018:ffff88007a4efd58  EFLAGS: 00010296
+> > [ 2187.044287] RAX: 6b6b6b6b6b6b6b6b RBX: ffff88007a947ac0 RCX: 8000000000000000
+> > [ 2187.044287] RDX: ffffffff826af9e0 RSI: ffff88007b093c00 RDI: ffff88007b093db8
+> > [ 2187.044287] RBP: ffff88007a4efd58 R08: ffffffff832d3e10 R09: 000001c40efc0000
+> > [ 2187.044287] R10: 0000000000000000 R11: 0000000000059e30 R12: ffff88007fc13240
+> > [ 2187.044287] R13: ffff88007fc18b00 R14: ffff88007b093db8 R15: 0000000000000000
+> > [ 2187.044287] FS:  0000000000000000(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
+> > [ 2187.044287] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> > [ 2187.044287] CR2: 00007f93ec33fb80 CR3: 0000000079dc2000 CR4: 00000000000006f0
+> > [ 2187.044287] Stack:
+> > [ 2187.044287]  ffff88007a4efdd8 ffffffff810cc877 ffffffff810cc80d ffff88007fc13258
+> > [ 2187.044287]  000000007a947af0 0000000000000000 ffffffff8353ccc8 ffffffff82b6f3d0
+> > [ 2187.044287]  0000000000000000 ffffffff82267679 ffff88007a4efdd8 ffff88007fc13240
+> > [ 2187.044287] Call Trace:
+> > [ 2187.044287]  [<ffffffff810cc877>] process_one_work+0x1c7/0x490
+> > [ 2187.044287]  [<ffffffff810cc80d>] ? process_one_work+0x15d/0x490
+> > [ 2187.044287]  [<ffffffff810cd569>] worker_thread+0x119/0x4f0
+> > [ 2187.044287]  [<ffffffff810fbbad>] ? trace_hardirqs_on+0xd/0x10
+> > [ 2187.044287]  [<ffffffff810cd450>] ? init_pwq+0x190/0x190
+> > [ 2187.044287]  [<ffffffff810d3c6f>] kthread+0xdf/0x100
+> > [ 2187.044287]  [<ffffffff810d3b90>] ? __init_kthread_worker+0x70/0x70
+> > [ 2187.044287]  [<ffffffff81d9873c>] ret_from_fork+0x7c/0xb0
+> > [ 2187.044287]  [<ffffffff810d3b90>] ? __init_kthread_worker+0x70/0x70
+> > [ 2187.044287] Code: 0f 1f 44 00 00 31 c0 5d c3 66 66 66 2e 0f 1f 84 00 00 00 00 00 55 48 8d b7 48 fe ff ff 48 8b 87 58 fe ff ff 48 89 e5 48 8b 40 30 <48> 8b 00 48 8b 10 48 89 c7 48 8b 92 90 03 00 00 ff 52 28 5d c3 
+> > [ 2187.044287] RIP  [<ffffffff81361ca6>] free_lock_state_work+0x16/0x30
+> > [ 2187.044287]  RSP <ffff88007a4efd58>
+> > [ 2187.103626] ---[ end trace 0f11326d28e5d8fa ]---
+> > 
+> > seems like this happens when trying to derefence the state owner in
+> > the work queue:
+> > 
+> > (gdb) l *(free_lock_state_work+0x16)
+> > 0xffffffff81361ca6 is in free_lock_state_work (fs/nfs/nfs4state.c:808).
+> > 803	free_lock_state_work(struct work_struct *work)
+> > 804	{
+> > 805		struct nfs4_lock_state *lsp = container_of(work,
+> > 806						struct nfs4_lock_state,
+> > ls_release);
+> > 807		struct nfs4_state *state = lsp->ls_state;
+> > 808		struct nfs_server *server = state->owner->so_server;
+> > 809		struct nfs_client *clp = server->nfs_client;
+> > 810	
+> > 811		clp->cl_mvops->free_lock_state(server, lsp);
+> > 812	}
+> > 
+> 
+> Thanks for the report, Christoph.
+> 
+> I suspect what's happening is that the lock state is outliving the open
+> state that it's associated with. That does look to be possible now that
+> we're queueing ->free_lock_state to a workqueue.
+> 
+> It looks like the simplest fix would be to have a lock state hold a
+> reference to the open state, but that could be problematic too. The
+> open stateid holds an inode reference, but not necessarily one to the
+> superblock. I think you could end up closing a file and unmounting
+> before the work runs.
+> 
+> Mostly we just need the server pointer which implies that we need to
+> pin the superblock somehow until the workqueue job is done. Should we
+> just add a sb pointer to nfs4_lock_state, and call nfs_sb_active before
+> queueing the work and then call nfs_sb_deactive on completion?
+> 
 
-@tn1@
-type td;
-@@
+Christoph,
 
-typedef struct { ... } td;
+Does this patch fix it? Note that I haven't yet tested it but it does
+build. I'll see if I can reproduce this later today and test it out.
 
-@script:python tf@
-td << tn1.td;
-tdres;
-@@
+I'm also not sure whether it's really the _right_ solution but I
+believe it should fix the problem.
 
-coccinelle.tdres = td;
+----------------------[snip]------------------------
 
-@@
-type tn1.td;
-identifier tf.tdres;
-@@
+[PATCH] nfs: pin superblock when running free_lock_state operations
 
--typedef
- struct
-+  tdres
-   { ... }
--td
- ;
+Christoph reported seeing this oops when running xfstests on a v4.1 client:
 
-@@
-type tn1.td;
-identifier tf.tdres;
-@@
+generic/089 242s ...[ 2187.041239] general protection fault: 0000 [#1]
+SMP
+[ 2187.042899] Modules linked in:
+[ 2187.044000] CPU: 0 PID: 11913 Comm: kworker/0:1 Not tainted 3.16.0-rc6+ #1151
+[ 2187.044287] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
+[ 2187.044287] Workqueue: nfsiod free_lock_state_work
+[ 2187.044287] task: ffff880072b50cd0 ti: ffff88007a4ec000 task.ti: ffff88007a4ec000
+[ 2187.044287] RIP: 0010:[<ffffffff81361ca6>]  [<ffffffff81361ca6>] free_lock_state_work+0x16/0x30
+[ 2187.044287] RSP: 0018:ffff88007a4efd58  EFLAGS: 00010296
+[ 2187.044287] RAX: 6b6b6b6b6b6b6b6b RBX: ffff88007a947ac0 RCX: 8000000000000000
+[ 2187.044287] RDX: ffffffff826af9e0 RSI: ffff88007b093c00 RDI: ffff88007b093db8
+[ 2187.044287] RBP: ffff88007a4efd58 R08: ffffffff832d3e10 R09: 000001c40efc0000
+[ 2187.044287] R10: 0000000000000000 R11: 0000000000059e30 R12: ffff88007fc13240
+[ 2187.044287] R13: ffff88007fc18b00 R14: ffff88007b093db8 R15: 0000000000000000
+[ 2187.044287] FS:  0000000000000000(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
+[ 2187.044287] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 2187.044287] CR2: 00007f93ec33fb80 CR3: 0000000079dc2000 CR4: 00000000000006f0
+[ 2187.044287] Stack:
+[ 2187.044287]  ffff88007a4efdd8 ffffffff810cc877 ffffffff810cc80d ffff88007fc13258
+[ 2187.044287]  000000007a947af0 0000000000000000 ffffffff8353ccc8 ffffffff82b6f3d0
+[ 2187.044287]  0000000000000000 ffffffff82267679 ffff88007a4efdd8 ffff88007fc13240
+[ 2187.044287] Call Trace:
+[ 2187.044287]  [<ffffffff810cc877>] process_one_work+0x1c7/0x490
+[ 2187.044287]  [<ffffffff810cc80d>] ? process_one_work+0x15d/0x490
+[ 2187.044287]  [<ffffffff810cd569>] worker_thread+0x119/0x4f0
+[ 2187.044287]  [<ffffffff810fbbad>] ? trace_hardirqs_on+0xd/0x10
+[ 2187.044287]  [<ffffffff810cd450>] ? init_pwq+0x190/0x190
+[ 2187.044287]  [<ffffffff810d3c6f>] kthread+0xdf/0x100
+[ 2187.044287]  [<ffffffff810d3b90>] ? __init_kthread_worker+0x70/0x70
+[ 2187.044287]  [<ffffffff81d9873c>] ret_from_fork+0x7c/0xb0
+[ 2187.044287]  [<ffffffff810d3b90>] ? __init_kthread_worker+0x70/0x70
+[ 2187.044287] Code: 0f 1f 44 00 00 31 c0 5d c3 66 66 66 2e 0f 1f 84 00 00 00 00 00 55 48 8d b7 48 fe ff ff 48 8b 87 58 fe ff ff 48 89 e5 48 8b 40 30 <48> 8b 00 48 8b 10 48 89 c7 48 8b 92 90 03 00 00 ff 52 28 5d c3
+[ 2187.044287] RIP  [<ffffffff81361ca6>] free_lock_state_work+0x16/0x30
+[ 2187.044287]  RSP <ffff88007a4efd58>
+[ 2187.103626] ---[ end trace 0f11326d28e5d8fa ]---
 
-(
--td
-+ struct tdres
-|
- const
-- td
-+ struct tdres
-)
+It appears that the lock state outlived the open state with which it
+was associated. We don't actually need to get to the open state -- it
+was just a convenient way to get to the server pointer. We do however
+need to ensure that the nfs_server doesn't go away until the workqueue
+job has run.
 
-Signed-off-by: Himangi Saraogi <himangi774@gmail.com>
-Acked-by: Julia Lawall <julia.lawall@lip6.fr>
+Fix this by pinning down the sb via nfs_sb_active prior to queueing the
+workqueue job, and then calling nfs_sb_deactive after the
+free_lock_state operation has completed. Once the rpc_task is queued,
+then we no longer need to hold down the sb reference.
+
+Reported-by: Christoph Hellwig <hch@infradead.org>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/dir.c | 40 +++++++++++++++++++++++-----------------
- 1 file changed, 23 insertions(+), 17 deletions(-)
+ fs/nfs/nfs4_fs.h   |  1 +
+ fs/nfs/nfs4state.c | 11 +++++++----
+ 2 files changed, 8 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 7e17687..ba5bb19 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -152,7 +152,7 @@ struct nfs_cache_array {
- };
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 92193eddb41d..6eee1fd6b4f1 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -135,6 +135,7 @@ struct nfs4_lock_state {
+ #define NFS_LOCK_INITIALIZED 0
+ #define NFS_LOCK_LOST        1
+ 	unsigned long			ls_flags;
++	struct super_block		*ls_sb;
+ 	struct nfs_seqid_counter	ls_seqid;
+ 	nfs4_stateid			ls_stateid;
+ 	atomic_t			ls_count;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index a770c8e469a7..0a5da4bedbb2 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -804,11 +804,12 @@ free_lock_state_work(struct work_struct *work)
+ {
+ 	struct nfs4_lock_state *lsp = container_of(work,
+ 					struct nfs4_lock_state, ls_release);
+-	struct nfs4_state *state = lsp->ls_state;
+-	struct nfs_server *server = state->owner->so_server;
++	struct super_block *sb = lsp->ls_sb;
++	struct nfs_server *server = NFS_SB(sb);
+ 	struct nfs_client *clp = server->nfs_client;
  
- typedef int (*decode_dirent_t)(struct xdr_stream *, struct nfs_entry *, int);
--typedef struct {
-+struct nfs_readdir_descriptor {
- 	struct file	*file;
- 	struct page	*page;
- 	struct dir_context *ctx;
-@@ -167,7 +167,7 @@ typedef struct {
- 	unsigned int	cache_entry_index;
- 	unsigned int	plus:1;
- 	unsigned int	eof:1;
--} nfs_readdir_descriptor_t;
-+};
+ 	clp->cl_mvops->free_lock_state(server, lsp);
++	nfs_sb_deactive(sb);
+ }
  
  /*
-  * The caller is responsible for calling nfs_readdir_release_array(page)
-@@ -259,7 +259,8 @@ out:
- }
- 
- static
--int nfs_readdir_search_for_pos(struct nfs_cache_array *array, nfs_readdir_descriptor_t *desc)
-+int nfs_readdir_search_for_pos(struct nfs_cache_array *array,
-+			       struct nfs_readdir_descriptor *desc)
- {
- 	loff_t diff = desc->ctx->pos - desc->current_index;
- 	unsigned int index;
-@@ -291,7 +292,8 @@ nfs_readdir_inode_mapping_valid(struct nfs_inode *nfsi)
- }
- 
- static
--int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_descriptor_t *desc)
-+int nfs_readdir_search_for_cookie(struct nfs_cache_array *array,
-+				  struct nfs_readdir_descriptor *desc)
- {
- 	int i;
- 	loff_t new_pos;
-@@ -338,7 +340,7 @@ out:
- }
- 
- static
--int nfs_readdir_search_array(nfs_readdir_descriptor_t *desc)
-+int nfs_readdir_search_array(struct nfs_readdir_descriptor *desc)
- {
- 	struct nfs_cache_array *array;
- 	int status;
-@@ -366,7 +368,8 @@ out:
- 
- /* Fill a page with xdr information before transferring to the cache page */
- static
--int nfs_readdir_xdr_filler(struct page **pages, nfs_readdir_descriptor_t *desc,
-+int nfs_readdir_xdr_filler(struct page **pages,
-+			   struct nfs_readdir_descriptor *desc,
- 			struct nfs_entry *entry, struct file *file, struct inode *inode)
- {
- 	struct nfs_open_dir_context *ctx = file->private_data;
-@@ -395,7 +398,7 @@ error:
- 	return error;
- }
- 
--static int xdr_decode(nfs_readdir_descriptor_t *desc,
-+static int xdr_decode(struct nfs_readdir_descriptor *desc,
- 		      struct nfs_entry *entry, struct xdr_stream *xdr)
- {
- 	int error;
-@@ -515,7 +518,8 @@ out:
- 
- /* Perform conversion from xdr to cache array */
- static
--int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *entry,
-+int nfs_readdir_page_filler(struct nfs_readdir_descriptor *desc,
-+			    struct nfs_entry *entry,
- 				struct page **xdr_pages, struct page *page, unsigned int buflen)
- {
- 	struct xdr_stream stream;
-@@ -602,7 +606,8 @@ out_freepages:
- }
- 
- static
--int nfs_readdir_xdr_to_array(nfs_readdir_descriptor_t *desc, struct page *page, struct inode *inode)
-+int nfs_readdir_xdr_to_array(struct nfs_readdir_descriptor *desc,
-+			     struct page *page, struct inode *inode)
- {
- 	struct page *pages[NFS_MAX_READDIR_PAGES];
- 	void *pages_ptr = NULL;
-@@ -671,7 +676,8 @@ out:
-  * We only need to convert from xdr once so future lookups are much simpler
-  */
- static
--int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
-+int nfs_readdir_filler(struct nfs_readdir_descriptor *desc,
-+		       struct page *page)
- {
- 	struct inode	*inode = file_inode(desc->file);
- 	int ret;
-@@ -693,7 +699,7 @@ int nfs_readdir_filler(nfs_readdir_descriptor_t *desc, struct page* page)
- }
- 
- static
--void cache_page_release(nfs_readdir_descriptor_t *desc)
-+void cache_page_release(struct nfs_readdir_descriptor *desc)
- {
- 	if (!desc->page->mapping)
- 		nfs_readdir_clear_array(desc->page);
-@@ -702,7 +708,7 @@ void cache_page_release(nfs_readdir_descriptor_t *desc)
- }
- 
- static
--struct page *get_cache_page(nfs_readdir_descriptor_t *desc)
-+struct page *get_cache_page(struct nfs_readdir_descriptor *desc)
- {
- 	return read_cache_page(file_inode(desc->file)->i_mapping,
- 			desc->page_index, (filler_t *)nfs_readdir_filler, desc);
-@@ -712,7 +718,7 @@ struct page *get_cache_page(nfs_readdir_descriptor_t *desc)
-  * Returns 0 if desc->dir_cookie was found on page desc->page_index
-  */
- static
--int find_cache_page(nfs_readdir_descriptor_t *desc)
-+int find_cache_page(struct nfs_readdir_descriptor *desc)
- {
- 	int res;
- 
-@@ -728,7 +734,7 @@ int find_cache_page(nfs_readdir_descriptor_t *desc)
- 
- /* Search for desc->dir_cookie from the beginning of the page cache */
- static inline
--int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
-+int readdir_search_pagecache(struct nfs_readdir_descriptor *desc)
- {
- 	int res;
- 
-@@ -746,7 +752,7 @@ int readdir_search_pagecache(nfs_readdir_descriptor_t *desc)
-  * Once we've found the start of the dirent within a page: fill 'er up...
-  */
- static 
--int nfs_do_filldir(nfs_readdir_descriptor_t *desc)
-+int nfs_do_filldir(struct nfs_readdir_descriptor *desc)
- {
- 	struct file	*file = desc->file;
- 	int i = 0;
-@@ -801,7 +807,7 @@ out:
-  *	 directory in the page cache by the time we get here.
-  */
- static inline
--int uncached_readdir(nfs_readdir_descriptor_t *desc)
-+int uncached_readdir(struct nfs_readdir_descriptor *desc)
- {
- 	struct page	*page = NULL;
- 	int		status;
-@@ -856,7 +862,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
- {
- 	struct dentry	*dentry = file->f_path.dentry;
- 	struct inode	*inode = dentry->d_inode;
--	nfs_readdir_descriptor_t my_desc,
-+	struct nfs_readdir_descriptor my_desc,
- 			*desc = &my_desc;
- 	struct nfs_open_dir_context *dir_ctx = file->private_data;
- 	int res = 0;
+@@ -896,9 +897,11 @@ void nfs4_put_lock_state(struct nfs4_lock_state *lsp)
+ 	if (list_empty(&state->lock_states))
+ 		clear_bit(LK_STATE_IN_USE, &state->flags);
+ 	spin_unlock(&state->state_lock);
+-	if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags))
++	if (test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags)) {
++		lsp->ls_sb = lsp->ls_state->inode->i_sb;
++		nfs_sb_active(lsp->ls_sb);
+ 		queue_work(nfsiod_workqueue, &lsp->ls_release);
+-	else {
++	} else {
+ 		server = state->owner->so_server;
+ 		nfs4_free_lock_state(server, lsp);
+ 	}
 -- 
-1.9.1
+1.9.3
 
+
+
+-- 
+Jeff Layton <jlayton@primarydata.com>
