@@ -1,122 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2469 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:49570 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753159AbaH2Qbu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Aug 2014 12:31:50 -0400
-Date: Fri, 29 Aug 2014 12:31:47 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-cc: David Jeffery <djeffery@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: Always try and release an NFS file lock, even after
- receiving a SIGKILL
-In-Reply-To: <CAHQdGtTYzn2LoE+pSEDEk2pRUgn8=KSUDW0T-OdJVg4+QUfnhA@mail.gmail.com>
-Message-ID: <alpine.LRH.2.11.1408291213280.26449@bcodding-csb.redhat.com>
-References: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com> <1408580933.4029.2.camel@leira.trondhjem.org> <53F612DC.60006@redhat.com> <CAHQdGtRw0V=mAuXs=UL7aJxxvKo26xqVoyOwR7r+9PrGPNmn_g@mail.gmail.com> <53F63758.70306@redhat.com>
- <CAHQdGtQT9-YJ=L1jLKc53e7nzdNU0GaUie0RwEdF3EpsJEvPsg@mail.gmail.com> <alpine.LRH.2.11.1408291128050.26449@bcodding-csb.redhat.com> <CAHQdGtTYzn2LoE+pSEDEk2pRUgn8=KSUDW0T-OdJVg4+QUfnhA@mail.gmail.com>
+	id S1754308AbaHKRld (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Aug 2014 13:41:33 -0400
+Date: Mon, 11 Aug 2014 13:41:32 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd: allow find_any_file to return a fi_deleg_file
+ reference
+Message-ID: <20140811174132.GD9095@fieldses.org>
+References: <1407594162-28342-1-git-send-email-jlayton@primarydata.com>
+ <1407594162-28342-4-git-send-email-jlayton@primarydata.com>
+ <20140811160840.GB9095@fieldses.org>
+ <20140811124039.7b57888d@tlielax.poochiereds.net>
+ <20140811170937.GC9095@fieldses.org>
+ <20140811132053.7f058eb1@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140811132053.7f058eb1@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 29 Aug 2014, Trond Myklebust wrote:
+On Mon, Aug 11, 2014 at 01:20:53PM -0400, Jeff Layton wrote:
+> On Mon, 11 Aug 2014 13:09:37 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Mon, Aug 11, 2014 at 12:40:39PM -0400, Jeff Layton wrote:
+> > > On Mon, 11 Aug 2014 12:08:40 -0400
+> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > 
+> > > > On Sat, Aug 09, 2014 at 10:22:42AM -0400, Jeff Layton wrote:
+> > > > > It's possible that we'll have a nfs4_file that has nothing in its fds
+> > > > > array, but that has a populated fi_deleg_file field.
+> > > > 
+> > > > Is it really possible?  On a quick skim it looks like this is only used
+> > > > in the presence of lock stateid's, when we should have an open.
+> > > > 
+> > > > OK with the cleanup I'm just not seeing a reason either one way or the
+> > > > other for the fi_deleg_file change.
+> > > > 
+> > > > --b.
+> > > > 
+> > > 
+> > > You're correct. The existing code doesn't specifically require this
+> > > patch since find_any_file is only used with lock stateids. It
+> > > should be harmless but it won't hurt anything to drop it.
+> > > 
+> > > I did however need this when I rebased some pnfsd patches on top of the
+> > > state overhaul, and it seemed like a reasonable change from a
+> > > "future-proofing" standpoint.
+> > 
+> > So layout operations depend on this somehow?  (But layouts can outlast
+> > delegations, so that must not be it.)
+> > 
+> > I'm not opposed to future-proofing as long as we have some evidence
+> > about the future.
+> > 
+> 
+> The code I'm working on does depend on this, but it's may not be
+> correct for any arbitrary filesystem.
+> 
+> This filesystem sets return_on_close, and we automatically return the
+> layout to the fs when all of the open and deleg stateids go away. If
+> the last one to drop its reference happens to be the delegation
+> stateid, then you may have nothing in the fi_fds slots, and no way to
+> get to the inode in order to return the layout.
+> 
+> I've been toying with the idea of keeping an inode reference in the
+> layout state, but I'm not sure if it's the right thing to do...
 
-> On Fri, Aug 29, 2014 at 11:34 AM, Benjamin Coddington
-> <bcodding@redhat.com> wrote:
->>
->> On Thu, 21 Aug 2014, Trond Myklebust wrote:
->>>
->>> On Thu, Aug 21, 2014 at 2:15 PM, David Jeffery <djeffery@redhat.com>
->>> wrote:
->>>>
->>>> On 08/21/2014 11:50 AM, Trond Myklebust wrote:
->>>>>
->>>>> On Thu, Aug 21, 2014 at 11:40 AM, David Jeffery <djeffery@redhat.com>
->>>>> wrote:
->>>>>>
->>>>>> On 08/20/2014 08:28 PM, Trond Myklebust wrote:
->>>>>>>
->>>>>>>
->>>>>>> What guarantees that this does not lead to silent corruption of the
->>>>>>> file
->>>>>>> if there are outstanding write requests?
->>>>>>>
->>>>>>
->>>>>> Do you have a particular scenario in mind you are concerned about?
->>>>>>
->>>>>> Right before the code the patch modifies, nfs_sync_mapping() is called.
->>>>>>  Any writes started before the unlock operation began have already been
->>>>>> flushed, so we shouldn't have a corruption case of writes from before
->>>>>> the unlock began being sent after the unlock is complete.
->>>>>>
->>>>>> Are you concerned about some other nfs4 writes being started while we
->>>>>> initially waited on the counter?  Such a write racing with the unlock
->>>>>
->>>>>
->>>>> No. I'm worried about the writes that have been started, but which are
->>>>> now completing in the background while the lock is being freed.
->>>>>
->>>>>> going ahead instead of erroring out could initially fail from a wrong
->>>>>> state ID, but should retry with the new state.  Is there something I've
->>>>>> overlooked?
->>>>>
->>>>>
->>>>> Loss of lock atomicity due to the fact that the writes are completing
->>>>> after the lock was released.
->>>>>
->>>>
->>>> I don't think my patches break lock atomicity, unless I've completely
->>>> misunderstood nfs_sync_mapping()'s behavior.
->>>>
->>>> The background writes should have already been waited for by
->>>> nfs_sync_mapping() at the beginning of do_unlk().  nfs_sync_mapping()
->>>> would call nfs_wb_all() which calls sync_inode() with WB_SYNC_ALL, so
->>>> it's going to push out any dirty data and wait for any writes to
->>>> complete.  Only after the writes are complete do we go on to call
->>>> nfs_iocounter_wait().
->>>
->>>
->>> What if nfs_wb_all() is interrupted? Currently, that doesn't matter
->>> precisely because of the call to nfs_iocounter_wait.
->>
->>
->> Hi Trond, it looks like the intent of:
->>
->> 577b423 NFS: Add functionality to allow waiting on all outstanding reads..
->> 7a8203d NFS: Ensure that NFS file unlock waits for readahead to complete..
->>
->> was to wait for readahead, not to avoid releasing the lock if nfs_wb_all()
->> is interrupted.  What was the underlying reason for waiting for readahead to
->> complete?  I know there was one issue where the NFS server would release the
->> lockowner before processing the reads - was that what these were trying to
->> avoid?  I ask because if we're only worried about outstanding writes we
->> could just wait on the writes, not the reads.
->>
->> Would it be better to use TASK_UNINTERRUPTIBLE instead of TASK_KILLABLE in
->> __nfs_iocounter_wait?
->>
->> Ben
->
-> Hi Ben,
->
-> The main intent of the two patches was to ensure that all I/O that
-> uses the lock stateid should have completed before we attempt to
-> release the lock. The main reason is to avoid an unnecessary
-> "recovery" situation where the server asks us to resend the I/O
-> because the lock stateid is no longer valid.
->
-> Concerning writes; if there are any outstanding then we must ensure
-> those complete before we unlock the file. This rule should be
-> unaffected by the above 2 patches (although it is just a bonus if they
-> help to enforce it).
+OK, makes sense, thanks for the explanation.  But I think I'll drop this
+third patch for now.
 
-If so, then David's patch shouldn't risk corruption any more than before
-577b423 and 7a8203d were applied.
+--b.
 
-He's trying to avoid the problem (I think) where very aggressive readahead
-behavior blocks the unlocking thread and a sysadmin decides to kill the
-process, which results in the abandoned lock.  That can make a big mess.
-Instead, his change would result in the "recovery" scenario at worst when
-the impatient sysadmin goes on a rampage.
-
-Ben
+> 
+> > > Do you intend to the take the first two in the series? I would like to
+> > > see those go in since they move the lease removal outside of spinlocks.
+> > 
+> > Yes, just waiting for -rc1 comes out to push out a for-3.18 tree.
+> > 
+> 
+> Sounds good -- no rush on them.
+> 
+> Thanks!
+> -- 
+> Jeff Layton <jlayton@primarydata.com>
