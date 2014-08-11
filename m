@@ -1,100 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39538 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40667 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755387AbaHAUsv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Aug 2014 16:48:51 -0400
-Date: Fri, 1 Aug 2014 16:48:47 -0400
+	id S1753969AbaHKRJi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Aug 2014 13:09:38 -0400
+Date: Mon, 11 Aug 2014 13:09:37 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH 00/37] nfsd: remaining client_mutex removal patches
-Message-ID: <20140801204847.GG24461@fieldses.org>
-References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd: allow find_any_file to return a fi_deleg_file
+ reference
+Message-ID: <20140811170937.GC9095@fieldses.org>
+References: <1407594162-28342-1-git-send-email-jlayton@primarydata.com>
+ <1407594162-28342-4-git-send-email-jlayton@primarydata.com>
+ <20140811160840.GB9095@fieldses.org>
+ <20140811124039.7b57888d@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <20140811124039.7b57888d@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 30, 2014 at 08:27:01AM -0400, Jeff Layton wrote:
-> This patchset is the remainder of the client_mutex removal patches,
-> which should be merged after the stateid and stateowner refcounting
-> overhaul. The main focus of this part is to ensure that the nfs4_client
-> refcounting is up to snuff and then to remove the client_mutex.
+On Mon, Aug 11, 2014 at 12:40:39PM -0400, Jeff Layton wrote:
+> On Mon, 11 Aug 2014 12:08:40 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> There's also a series in here that basically rewrites the fault
-> injection code. That rewrite has some significant holes in it (note the
-> WARN_ONs when the client refcount goes too high), but it should keep it
-> limping along for now.
+> > On Sat, Aug 09, 2014 at 10:22:42AM -0400, Jeff Layton wrote:
+> > > It's possible that we'll have a nfs4_file that has nothing in its fds
+> > > array, but that has a populated fi_deleg_file field.
+> > 
+> > Is it really possible?  On a quick skim it looks like this is only used
+> > in the presence of lock stateid's, when we should have an open.
+> > 
+> > OK with the cleanup I'm just not seeing a reason either one way or the
+> > other for the fi_deleg_file change.
+> > 
+> > --b.
+> > 
 > 
-> FWIW, I think we should probably go ahead and mark the fault injection
-> code deprecated in the upcoming merge window and then plan to remove
-> it in 2-3 releases.
+> You're correct. The existing code doesn't specifically require this
+> patch since find_any_file is only used with lock stateids. It
+> should be harmless but it won't hurt anything to drop it.
+> 
+> I did however need this when I rebased some pnfsd patches on top of the
+> state overhaul, and it seemed like a reasonable change from a
+> "future-proofing" standpoint.
 
-I basically skipped reading the fault injection patches because I don't
-care much about them.
+So layout operations depend on this somehow?  (But layouts can outlast
+delegations, so that must not be it.)
 
-The other patches look good to me, but I'd like to take a more careful
-look at a few of them and give anyone else a chance to comment before
-committing.
+I'm not opposed to future-proofing as long as we have some evidence
+about the future.
 
----b.
+> Do you intend to the take the first two in the series? I would like to
+> see those go in since they move the lease removal outside of spinlocks.
+
+Yes, just waiting for -rc1 comes out to push out a for-3.18 tree.
+
+--b.
 
 > 
-> Jeff Layton (19):
->   nfsd: Protect session creation and client confirm using client_lock
->   nfsd: protect the close_lru list and oo_last_closed_stid with
->     client_lock
->   nfsd: move unhash_client_locked call into mark_client_expired_locked
->   nfsd: don't destroy client if mark_client_expired_locked fails
->   nfsd: don't destroy clients that are busy
->   nfsd: protect clid and verifier generation with client_lock
->   nfsd: abstract out the get and set routines into the fault injection
->     ops
->   nfsd: add a forget_clients "get" routine with proper locking
->   nfsd: add a forget_client set_clnt routine
->   nfsd: add nfsd_inject_forget_clients
->   nfsd: add a list_head arg to nfsd_foreach_client_lock
->   nfsd: add more granular locking to forget_locks fault injector
->   nfsd: add more granular locking to forget_openowners fault injector
->   nfsd: add more granular locking to *_delegations fault injectors
->   nfsd: remove old fault injection infrastructure
->   nfsd: remove nfs4_lock_state: nfs4_laundromat
->   nfsd: remove nfs4_lock_state: nfs4_state_shutdown_net
->   nfsd: remove the client_mutex and the nfs4_lock/unlock_state wrappers
->   nfsd: add some comments to the nfsd4 object definitions
 > 
-> Trond Myklebust (18):
->   nfsd: Ensure struct nfs4_client is unhashed before we try to destroy
->     it
->   nfsd: Ensure that the laundromat unhashes the client before releasing
->     locks
->   nfsd: Don't require client_lock in free_client
->   nfsd: Move create_client() call outside the lock
->   nfsd: Protect unconfirmed client creation using client_lock
->   nfsd: Protect nfsd4_destroy_clientid using client_lock
->   nfsd: Ensure lookup_clientid() takes client_lock
->   nfsd: Add lockdep assertions to document the nfs4_client/session
->     locking
->   nfsd: Remove nfs4_lock_state(): nfs4_preprocess_stateid_op()
->   nfsd: Remove nfs4_lock_state(): nfsd4_test_stateid/nfsd4_free_stateid
->   nfsd: Remove nfs4_lock_state(): nfsd4_release_lockowner
->   nfsd: Remove nfs4_lock_state(): nfsd4_lock/locku/lockt()
->   nfsd: Remove nfs4_lock_state(): nfsd4_open_downgrade + nfsd4_close
->   nfsd: Remove nfs4_lock_state(): nfsd4_delegreturn()
->   nfsd: Remove nfs4_lock_state(): nfsd4_open and nfsd4_open_confirm
->   nfsd: Remove nfs4_lock_state(): exchange_id, create/destroy_session()
->   nfsd: Remove nfs4_lock_state(): setclientid, setclientid_confirm,
->     renew
->   nfsd: Remove nfs4_lock_state(): reclaim_complete()
+> > > Since that function
+> > > is generally happy with any file reference, allow it to find and take
+> > > a reference to it in that situation. Also, clean up find_any_file for
+> > > better readability.
+> > > 
+> > > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > > ---
+> > >  fs/nfsd/nfs4state.c | 19 ++++++++++++++-----
+> > >  1 file changed, 14 insertions(+), 5 deletions(-)
+> > > 
+> > > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > > index 4356d32479b2..5c5873811bd9 100644
+> > > --- a/fs/nfsd/nfs4state.c
+> > > +++ b/fs/nfsd/nfs4state.c
+> > > @@ -355,11 +355,20 @@ find_any_file(struct nfs4_file *f)
+> > >  
+> > >  	spin_lock(&f->fi_lock);
+> > >  	ret = __nfs4_get_fd(f, O_RDWR);
+> > > -	if (!ret) {
+> > > -		ret = __nfs4_get_fd(f, O_WRONLY);
+> > > -		if (!ret)
+> > > -			ret = __nfs4_get_fd(f, O_RDONLY);
+> > > -	}
+> > > +	if (ret)
+> > > +		goto out;
+> > > +
+> > > +	ret = __nfs4_get_fd(f, O_WRONLY);
+> > > +	if (ret)
+> > > +		goto out;
+> > > +
+> > > +	ret = __nfs4_get_fd(f, O_RDONLY);
+> > > +	if (ret)
+> > > +		goto out;
+> > > +
+> > > +	if (f->fi_deleg_file)
+> > > +		ret = get_file(f->fi_deleg_file);
+> > > +out:
+> > >  	spin_unlock(&f->fi_lock);
+> > >  	return ret;
+> > >  }
+> > > -- 
+> > > 1.9.3
+> > > 
 > 
->  fs/nfsd/fault_inject.c | 130 +++----
->  fs/nfsd/netns.h        |  14 +-
->  fs/nfsd/nfs4proc.c     |   3 -
->  fs/nfsd/nfs4state.c    | 922 +++++++++++++++++++++++++++++++++++--------------
->  fs/nfsd/state.h        | 122 +++++--
->  5 files changed, 836 insertions(+), 355 deletions(-)
 > 
 > -- 
-> 1.9.3
-> 
+> Jeff Layton <jlayton@primarydata.com>
