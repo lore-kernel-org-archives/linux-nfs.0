@@ -1,55 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:55633 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753590AbaHLQVU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 12:21:20 -0400
-Received: by mail-qc0-f181.google.com with SMTP id x13so3081451qcv.12
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 09:21:19 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 12 Aug 2014 12:21:16 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls
- outside of i_lock
-Message-ID: <20140812122116.5e047c3d@tlielax.poochiereds.net>
-In-Reply-To: <20140812153229.GA15922@infradead.org>
-References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
-	<20140812153229.GA15922@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from smtprelay0002.hostedemail.com ([216.40.44.2]:59920 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753220AbaHKQZR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Aug 2014 12:25:17 -0400
+Message-ID: <1407774312.20795.20.camel@joe-AO725>
+Subject: Re: [PATCH 1/3 v2] fs/locks.c: Copy all information for conflock
+From: Joe Perches <joe@perches.com>
+To: Jeff Layton <jeff.layton@primarydata.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org
+Date: Mon, 11 Aug 2014 09:25:12 -0700
+In-Reply-To: <20140811121949.4c3d7894@tlielax.poochiereds.net>
+References: <53BAAAC5.9000106@gmail.com> <53E22EA5.70708@gmail.com>
+	 <20140809065112.700e0ecc@tlielax.poochiereds.net>
+	 <53E791F1.40802@gmail.com>
+	 <20140811121949.4c3d7894@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="ISO-8859-1"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 12 Aug 2014 08:32:29 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
-
-> Btw, I might be missing something here, but wouldn't it be better
-> to reference count the file_lock structure and grab a reference to
-> it where we currently call (__)locks_copy_lock?
+On Mon, 2014-08-11 at 12:19 -0400, Jeff Layton wrote:
+> On Sun, 10 Aug 2014 23:38:25 +0800
+> Kinglong Mee <kinglongmee@gmail.com> wrote:
 > 
+> > Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
+> > fl_lmops field in file_lock for checking nfsd4 lockowner.
+> > 
+> > But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return
+> > of conflicting locks) causes the fl_lmops of conflock always be NULL.
+> > 
+> > Also, commit 0996905f93 (lockd: posix_test_lock() should not call
+> > locks_copy_lock()) caused the fl_lmops of conflock always be NULL too.
+> > 
+> > v2: Only change the order from 3/3 to 1/3 now.
+> > 
+> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > ---
+> >  fs/lockd/svclock.c |  2 +-
+> >  fs/locks.c         | 25 ++++++-------------------
+> >  include/linux/fs.h |  6 ------
+> >  3 files changed, 7 insertions(+), 26 deletions(-)
+> > 
+> > diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> > index ab798a8..e1f209c 100644
+> > --- a/fs/lockd/svclock.c
+> > +++ b/fs/lockd/svclock.c
+> > @@ -677,7 +677,7 @@ nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
+> >  		block->b_flags |= B_TIMED_OUT;
+> >  	if (conf) {
+> >  		if (block->b_fl)
+> > -			__locks_copy_lock(block->b_fl, conf);
+> > +			locks_copy_lock(block->b_fl, conf);
+> >  	}
+> >  }
+> >  
+> > diff --git a/fs/locks.c b/fs/locks.c
+> > index 717fbc4..91b0f03 100644
+> > --- a/fs/locks.c
+> > +++ b/fs/locks.c
+> > @@ -266,35 +266,22 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
+> >  		new->fl_lmops = fl->fl_lmops;
+> >  }
+> >  
+> > -/*
+> > - * Initialize a new lock from an existing file_lock structure.
+> > - */
+> > -void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
+> > +void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+> >  {
+> > +	locks_release_private(new);
+> > +
+> >  	new->fl_owner = fl->fl_owner;
+> >  	new->fl_pid = fl->fl_pid;
+> > -	new->fl_file = NULL;
+> > +	new->fl_file = fl->fl_file;
+> >  	new->fl_flags = fl->fl_flags;
+> >  	new->fl_type = fl->fl_type;
+> >  	new->fl_start = fl->fl_start;
+> >  	new->fl_end = fl->fl_end;
+> >  	new->fl_ops = NULL;
+> >  	new->fl_lmops = NULL;
+> > -}
+> > -EXPORT_SYMBOL(__locks_copy_lock);
+> > -
+> > -void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+> > -{
+> > -	locks_release_private(new);
+> > -
+> > -	__locks_copy_lock(new, fl);
+> > -	new->fl_file = fl->fl_file;
+> > -	new->fl_ops = fl->fl_ops;
+> > -	new->fl_lmops = fl->fl_lmops;
+> >  
+> >  	locks_copy_private(new, fl);
+> >  }
+> 
+> (cc'ing Joe Perches)
 
-It's not really possible with the way this code works at the moment.
-The problem there is that struct file_lock can represent any of:
+(cc'ing Andrew Morton too)
 
-- a lock request (copied from userland into a kernel structure)
-- a lock record (that lives on the i_flock list)
-- a conflicting lock record (returned by GETLK-type request)
+> Ok, so you're basically just reverting 1a747ee0cc11a19. The catch there
+> is that you now need to ensure that any conflock structures are
+> properly initialized before passing them to locks_copy_lock.
+> 
+> The nfsv4 server code currently doesn't do that and it will need to be
+> fixed to do so or that will be a regression.
+> 
+> For the NLM code, Joe Perches has proposed a patch to remove the
+> conflock parameter from lm_grant since the callers always pass in NULL
+> anyway. You may want to pull in his patch and rebase yours on top of it
+> since it'll remove that __locks_copy_lock call altogether.
+> 
+> Joe, is Andrew merging that patch or do I need to pull it into the
+> locks tree?
 
-In many cases we call (__)locks_copy_lock to copy from one "use-type" of
-struct file_lock to another, and doing that with refcounts makes that a
-bit difficult to manage.
+I believe Andrew is merging it.
 
-If I were designing this code from scratch, I'd have probably made each
-use-type a distinct structure. Maybe we should do that anyway at
-some point -- I'm not sure.
 
-Now, all that said...I think we will end up needing to do some sort of
-refcounting to fix the leasing code at some point. Currently,
-->setlease operations can't block, which is a significant impediment to
-adding leases to clustered filesystems and the like. It would be nice
-to lift that limitation and that may require making leases be
-refcounted (or maybe RCU-managed).
-
--- 
-Jeff Layton <jlayton@primarydata.com>
