@@ -1,52 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:63090 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753094AbaH2Tfr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Aug 2014 15:35:47 -0400
-Received: by mail-ig0-f176.google.com with SMTP id hn18so10160101igb.9
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Aug 2014 12:35:47 -0700 (PDT)
-Message-ID: <1409340947.18172.4.camel@leira.trondhjem.org>
-Subject: [GIT PULL] Please pull NFS client fixes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Date: Fri, 29 Aug 2014 15:35:47 -0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:19442 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754794AbaHLTIX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Aug 2014 15:08:23 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s7CJ8Nmi015053
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 15:08:23 -0400
+Received: from bighat.boston.devel.redhat.com (bighat.boston.devel.redhat.com [10.19.60.55])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s7CJ8NHu012384
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 15:08:23 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] server: Added -A flag which will cause server script to ask to mount.
+Date: Tue, 12 Aug 2014 15:08:06 -0400
+Message-Id: <1407870486-7215-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+By default the server script will no longer ask to mount. Use
+the new -A flag to restore the asking about the mount
 
-The following changes since commit 52addcf9d6669fa439387610bc65c92fa0980cef:
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ server | 31 ++++++++++++++++++-------------
+ 1 file changed, 18 insertions(+), 13 deletions(-)
 
-  Linux 3.17-rc2 (2014-08-25 15:36:20 -0700)
-
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.17-3
-
-for you to fetch changes up to f87d928f6d98644d39809a013a22f981d39017cf:
-
-  NFSv3: Fix another acl regression (2014-08-26 16:17:48 -0400)
-
-----------------------------------------------------------------
-NFS client fixes for 3.17
-
-Highlights:
-- NFSv3 stable fix for another POSIX ACL regression
-- NFSv4 stable fix for a regression with OPEN_DOWNGRADE
-- NFSv4 stable fix for bad close() behaviour when holding a delegation
-
-----------------------------------------------------------------
-Trond Myklebust (3):
-      NFSv4: Fix problems with close in the presence of a delegation
-      NFSv4: Don't clear the open state when we just did an OPEN_DOWNGRADE
-      NFSv3: Fix another acl regression
-
- fs/nfs/nfs3acl.c  |  5 ++++-
- fs/nfs/nfs4proc.c | 26 +++++++++++++++++---------
- 2 files changed, 21 insertions(+), 10 deletions(-)
-
+diff --git a/server b/server
+index 439c96f..e63f6d5 100755
+--- a/server
++++ b/server
+@@ -11,6 +11,7 @@
+ #	-c		use cachefs; need to specify cachefs mount
+ #			options with -o
+ #	-N passes	repeat "passes" times
++#   -A    Ask before doing the mount [default: no]
+ #	mnt_options	arg to -o mount options
+ #	server_path	path to mount from server
+ #	mntpoint	path to mount on locally
+@@ -19,15 +20,16 @@
+ Program=`basename $0`
+ 
+ InitFile="./tests.init"
+-USAGE="usage:  $Program [-a|-b|-g|-s|-l|-c] [-f|-t|-n|-h|-C] [-o mnt_options] [-p server_path] [-m mntpoint] [-N passes] server_name"
++USAGE="usage:  $Program [-a|-b|-B|-g|-s|-l|-c] [-f|-t|-n|-h|-C] [-o mnt_options] [-p server_path] [-m mntpoint] [-N passes] server_name"
+ 
+ # defaults
+ . $InitFile
+ export PATH CFLAGS LIBS MOUNT UMOUNT MNTOPTIONS
+ 
+ passes="1"
++askt2mnt="no"
+ 
+-set - `getopt abcCfglhm:N:no:p:st $*`
++set - `getopt aAbcCfglhm:N:no:p:st $*`
+ 
+ if [ $? != 0 ]
+ then
+@@ -40,6 +42,7 @@ do
+ 		-a|-b|-g|-s|-l)	TEST=$c; shift	;;
+ 		-f|-n|-t)	TESTARG=$c; shift	;;
+ 		-c)		cachefs="yes"; shift	;;
++		-A)		ask2mnt="yes"; shift ;;
+ 		-C)		CIFS="yes"; export CIFS; shift ;;
+ 		-h)		HARDLINKS=n; export HARDLINKS; shift	;;
+ 		-m)		USRMNTPOINT=$2; shift; shift	;;
+@@ -124,18 +127,20 @@ HOSTNAME=`hostname`
+ HOSTNAME=`expr $HOSTNAME : '\([^.]*\)'`
+ NFSTESTDIR=$MNTPOINT/$HOSTNAME.test
+ export NFSTESTDIR
+-echo $DASHN "Start tests on path $NFSTESTDIR [y/n]?" "$BLC"
+-read ans
+-case $ans in
+-    Y*|y*)
+-	;;
+-    *)
+-	echo "Terminating ($MNTPOINT left mounted)."
+-	exit 1
+-	;;
+-esac
+-	
++if test $ask2mnt = "yes" 
++then
++	echo $DASHN "Start tests on path $NFSTESTDIR [y/n]?" "$BLC"
++	read ans
++	case $ans in
++    	Y*|y*)
++		;;
++    	*)
++		echo "Terminating ($MNTPOINT left mounted)."
++		exit 1
++		;;
++	esac
+ echo ""
++fi
+ 
+ if test $passes = "1"
+ then
+-- 
+1.9.3
 
