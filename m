@@ -1,78 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:64686 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752491AbaHALU1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Aug 2014 07:20:27 -0400
-Received: by mail-qg0-f50.google.com with SMTP id q108so5524176qgd.23
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Aug 2014 04:20:26 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 1 Aug 2014 07:20:25 -0400
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH 36/37] nfsd: remove the client_mutex and the
- nfs4_lock/unlock_state wrappers
-Message-ID: <20140801072025.63f145b6@tlielax.poochiereds.net>
-In-Reply-To: <1406723258-8512-37-git-send-email-jlayton@primarydata.com>
-References: <1406723258-8512-1-git-send-email-jlayton@primarydata.com>
-	<1406723258-8512-37-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qg0-f43.google.com ([209.85.192.43]:46376 "EHLO
+	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753126AbaHLOsW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 10:48:22 -0400
+Received: by mail-qg0-f43.google.com with SMTP id a108so9783129qge.30
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 07:48:21 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/5] locks: don't reuse file_lock in __posix_lock_file
+Date: Tue, 12 Aug 2014 10:48:10 -0400
+Message-Id: <1407854893-2698-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 30 Jul 2014 08:27:37 -0400
-Jeff Layton <jlayton@primarydata.com> wrote:
+Currently in the case where a new file lock completely replaces the old
+one, we end up overwriting the existing lock with the new info. This
+means that we have to call fl_release_private inside i_lock. Change the
+code to instead copy the info to new_fl, insert that lock into the
+correct spot and then delete the old lock. In a later patch, we'll defer
+the freeing of the old lock until after the i_lock has been dropped.
 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 15 ---------------
->  1 file changed, 15 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a33ce55925fb..de811dc39061 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -75,9 +75,6 @@ static void nfs4_free_ol_stateid(struct nfs4_stid *stid);
->  
->  /* Locking: */
->  
-> -/* Currently used for almost all code touching nfsv4 state: */
-> -static DEFINE_MUTEX(client_mutex);
-> -
->  /*
->   * Currently used for the del_recall_lru and file hash table.  In an
->   * effort to decrease the scope of the client_mutex, this spinlock may
-> @@ -97,12 +94,6 @@ static struct kmem_cache *file_slab;
->  static struct kmem_cache *stateid_slab;
->  static struct kmem_cache *deleg_slab;
->  
-> -void
-> -nfs4_lock_state(void)
-> -{
-> -	mutex_lock(&client_mutex);
-> -}
-> -
->  static void free_session(struct nfsd4_session *);
->  
->  static bool is_session_dead(struct nfsd4_session *ses)
-> @@ -118,12 +109,6 @@ static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_b
->  	return nfs_ok;
->  }
->  
-> -void
-> -nfs4_unlock_state(void)
-> -{
-> -	mutex_unlock(&client_mutex);
-> -}
-> -
->  static bool is_client_expired(struct nfs4_client *clp)
->  {
->  	return clp->cl_time == 0;
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/locks.c | 25 ++++++++++++++-----------
+ 1 file changed, 14 insertions(+), 11 deletions(-)
 
-I just noticed that the above patch neglects to remove the declarations
-of nfs4_lock/unlock_state from state.h. Bruce, let me know if you want me
-to resend. Otherwise, I'll assume that you can fix that up.
-
-Thanks,
+diff --git a/fs/locks.c b/fs/locks.c
+index 2c2d4f5022a7..7dd4defb4d8d 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1022,18 +1022,21 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+ 					locks_delete_lock(before);
+ 					continue;
+ 				}
+-				/* Replace the old lock with the new one.
+-				 * Wake up anybody waiting for the old one,
+-				 * as the change in lock type might satisfy
+-				 * their needs.
++				/*
++				 * Replace the old lock with new_fl, and
++				 * remove the old one. It's safe to do the
++				 * insert here since we know that we won't be
++				 * using new_fl later, and that the lock is
++				 * just replacing an existing lock.
+ 				 */
+-				locks_wake_up_blocks(fl);
+-				fl->fl_start = request->fl_start;
+-				fl->fl_end = request->fl_end;
+-				fl->fl_type = request->fl_type;
+-				locks_release_private(fl);
+-				locks_copy_private(fl, request);
+-				request = fl;
++				error = -ENOLCK;
++				if (!new_fl)
++					goto out;
++				locks_copy_lock(new_fl, request);
++				request = new_fl;
++				new_fl = NULL;
++				locks_delete_lock(before);
++				locks_insert_lock(before, request);
+ 				added = true;
+ 			}
+ 		}
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
