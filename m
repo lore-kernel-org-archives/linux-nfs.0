@@ -1,124 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtprelay0002.hostedemail.com ([216.40.44.2]:59920 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1753220AbaHKQZR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Aug 2014 12:25:17 -0400
-Message-ID: <1407774312.20795.20.camel@joe-AO725>
-Subject: Re: [PATCH 1/3 v2] fs/locks.c: Copy all information for conflock
-From: Joe Perches <joe@perches.com>
-To: Jeff Layton <jeff.layton@primarydata.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org
-Date: Mon, 11 Aug 2014 09:25:12 -0700
-In-Reply-To: <20140811121949.4c3d7894@tlielax.poochiereds.net>
-References: <53BAAAC5.9000106@gmail.com> <53E22EA5.70708@gmail.com>
-	 <20140809065112.700e0ecc@tlielax.poochiereds.net>
-	 <53E791F1.40802@gmail.com>
-	 <20140811121949.4c3d7894@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="ISO-8859-1"
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:40122 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753856AbaHLTQn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Aug 2014 15:16:43 -0400
+Date: Tue, 12 Aug 2014 15:16:43 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 04/11] SUNRPC: Do not override wspace tests in
+ svc_handle_xprt
+Message-ID: <20140812191643.GB25914@fieldses.org>
+References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
+ <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2014-08-11 at 12:19 -0400, Jeff Layton wrote:
-> On Sun, 10 Aug 2014 23:38:25 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
-> > Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
-> > fl_lmops field in file_lock for checking nfsd4 lockowner.
-> > 
-> > But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return
-> > of conflicting locks) causes the fl_lmops of conflock always be NULL.
-> > 
-> > Also, commit 0996905f93 (lockd: posix_test_lock() should not call
-> > locks_copy_lock()) caused the fl_lmops of conflock always be NULL too.
-> > 
-> > v2: Only change the order from 3/3 to 1/3 now.
-> > 
-> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> > ---
-> >  fs/lockd/svclock.c |  2 +-
-> >  fs/locks.c         | 25 ++++++-------------------
-> >  include/linux/fs.h |  6 ------
-> >  3 files changed, 7 insertions(+), 26 deletions(-)
-> > 
-> > diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> > index ab798a8..e1f209c 100644
-> > --- a/fs/lockd/svclock.c
-> > +++ b/fs/lockd/svclock.c
-> > @@ -677,7 +677,7 @@ nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
-> >  		block->b_flags |= B_TIMED_OUT;
-> >  	if (conf) {
-> >  		if (block->b_fl)
-> > -			__locks_copy_lock(block->b_fl, conf);
-> > +			locks_copy_lock(block->b_fl, conf);
-> >  	}
-> >  }
-> >  
-> > diff --git a/fs/locks.c b/fs/locks.c
-> > index 717fbc4..91b0f03 100644
-> > --- a/fs/locks.c
-> > +++ b/fs/locks.c
-> > @@ -266,35 +266,22 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
-> >  		new->fl_lmops = fl->fl_lmops;
-> >  }
-> >  
-> > -/*
-> > - * Initialize a new lock from an existing file_lock structure.
-> > - */
-> > -void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
-> > +void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
-> >  {
-> > +	locks_release_private(new);
-> > +
-> >  	new->fl_owner = fl->fl_owner;
-> >  	new->fl_pid = fl->fl_pid;
-> > -	new->fl_file = NULL;
-> > +	new->fl_file = fl->fl_file;
-> >  	new->fl_flags = fl->fl_flags;
-> >  	new->fl_type = fl->fl_type;
-> >  	new->fl_start = fl->fl_start;
-> >  	new->fl_end = fl->fl_end;
-> >  	new->fl_ops = NULL;
-> >  	new->fl_lmops = NULL;
-> > -}
-> > -EXPORT_SYMBOL(__locks_copy_lock);
-> > -
-> > -void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
-> > -{
-> > -	locks_release_private(new);
-> > -
-> > -	__locks_copy_lock(new, fl);
-> > -	new->fl_file = fl->fl_file;
-> > -	new->fl_ops = fl->fl_ops;
-> > -	new->fl_lmops = fl->fl_lmops;
-> >  
-> >  	locks_copy_private(new, fl);
-> >  }
-> 
-> (cc'ing Joe Perches)
+On Sun, Aug 03, 2014 at 01:03:06PM -0400, Trond Myklebust wrote:
+> We already determined that there was enough wspace when we
+> called svc_xprt_enqueue.
 
-(cc'ing Andrew Morton too)
+So xpo_has_wspace may have returned true then, but I don't see what
+guarantees it still would now.  Couldn't another server thread have also
+run svc_recv() and the atomic_add(rqstp->rq_reserved,
+&xprt->xpt_reserved) between the svc_xprt_enqueue call and now?
 
-> Ok, so you're basically just reverting 1a747ee0cc11a19. The catch there
-> is that you now need to ensure that any conflock structures are
-> properly initialized before passing them to locks_copy_lock.
+--b.
+
 > 
-> The nfsv4 server code currently doesn't do that and it will need to be
-> fixed to do so or that will be a regression.
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/svc_xprt.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> For the NLM code, Joe Perches has proposed a patch to remove the
-> conflock parameter from lm_grant since the callers always pass in NULL
-> anyway. You may want to pull in his patch and rebase yours on top of it
-> since it'll remove that __locks_copy_lock call altogether.
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 32647b2a6a34..b731077b6a30 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -744,7 +744,7 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+>  			svc_add_new_temp_xprt(serv, newxpt);
+>  		else
+>  			module_put(xprt->xpt_class->xcl_owner);
+> -	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
+> +	} else {
+>  		/* XPT_DATA|XPT_DEFERRED case: */
+>  		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
+>  			rqstp, rqstp->rq_pool->sp_id, xprt,
+> -- 
+> 1.9.3
 > 
-> Joe, is Andrew merging that patch or do I need to pull it into the
-> locks tree?
-
-I believe Andrew is merging it.
-
-
