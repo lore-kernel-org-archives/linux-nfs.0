@@ -1,49 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:49508 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752923AbaHCRGH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:06:07 -0400
-Received: by mail-qa0-f45.google.com with SMTP id cm18so5894588qab.18
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:06:05 -0700 (PDT)
+Received: from mail-vc0-f178.google.com ([209.85.220.178]:51483 "EHLO
+	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754456AbaHLUJy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 16:09:54 -0400
+Received: by mail-vc0-f178.google.com with SMTP id la4so13829008vcb.23
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 13:09:53 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140812195308.GC25914@fieldses.org>
+References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+	<1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
+	<1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
+	<1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
+	<1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
+	<1407085393-3175-6-git-send-email-trond.myklebust@primarydata.com>
+	<1407085393-3175-7-git-send-email-trond.myklebust@primarydata.com>
+	<1407085393-3175-8-git-send-email-trond.myklebust@primarydata.com>
+	<1407085393-3175-9-git-send-email-trond.myklebust@primarydata.com>
+	<20140812195308.GC25914@fieldses.org>
+Date: Tue, 12 Aug 2014 16:09:52 -0400
+Message-ID: <CAHQdGtR6-yGfuu2WZSD1JpmLbO5XuoU3QoU37e_oVWpYspDxCA@mail.gmail.com>
+Subject: Re: [PATCH 08/11] SUNRPC: get rid of the request wait queue
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/6] NFS DRC scalability patches
-Date: Sun,  3 Aug 2014 13:05:58 -0400
-Message-Id: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+On Tue, Aug 12, 2014 at 3:53 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> On Sun, Aug 03, 2014 at 01:03:10PM -0400, Trond Myklebust wrote:
+>> We're always _only_ waking up tasks from within the sp_threads list, so
+>> we know that they are enqueued and alive. The rq_wait waitqueue is just
+>> a distraction with extra atomic semantics.
+>>
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>>  include/linux/sunrpc/svc.h |  1 -
+>>  net/sunrpc/svc.c           |  2 --
+>>  net/sunrpc/svc_xprt.c      | 32 +++++++++++++++++---------------
+>>  3 files changed, 17 insertions(+), 18 deletions(-)
+>>
+>> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+>> index 1bc7cd05b22e..3ec769b65c7f 100644
+>> --- a/include/linux/sunrpc/svc.h
+>> +++ b/include/linux/sunrpc/svc.h
+>> @@ -280,7 +280,6 @@ struct svc_rqst {
+>>       int                     rq_splice_ok;   /* turned off in gss privacy
+>>                                                * to prevent encrypting page
+>>                                                * cache pages */
+>> -     wait_queue_head_t       rq_wait;        /* synchronization */
+>>       struct task_struct      *rq_task;       /* service thread */
+>>  };
+>>
+>> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+>> index 5de6801cd924..dfb78c4f3031 100644
+>> --- a/net/sunrpc/svc.c
+>> +++ b/net/sunrpc/svc.c
+>> @@ -612,8 +612,6 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
+>>       if (!rqstp)
+>>               goto out_enomem;
+>>
+>> -     init_waitqueue_head(&rqstp->rq_wait);
+>> -
+>>       serv->sv_nrthreads++;
+>>       spin_lock_bh(&pool->sp_lock);
+>>       pool->sp_nrthreads++;
+>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+>> index 2c30193c7a13..438e91c12851 100644
+>> --- a/net/sunrpc/svc_xprt.c
+>> +++ b/net/sunrpc/svc_xprt.c
+>> @@ -348,8 +348,6 @@ static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+>>
+>>       cpu = get_cpu();
+>>       pool = svc_pool_for_cpu(xprt->xpt_server, cpu);
+>> -     put_cpu();
+>> -
+>>       spin_lock_bh(&pool->sp_lock);
+>>
+>>       if (!list_empty(&pool->sp_threads) &&
+>> @@ -382,10 +380,15 @@ static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+>>                       printk(KERN_ERR
+>>                               "svc_xprt_enqueue: server %p, rq_xprt=%p!\n",
+>>                               rqstp, rqstp->rq_xprt);
+>> -             rqstp->rq_xprt = xprt;
+>> +             /* Note the order of the following 3 lines:
+>> +              * We want to assign xprt to rqstp->rq_xprt only _after_
+>> +              * we've woken up the process, so that we don't race with
+>> +              * the lockless check in svc_get_next_xprt().
+>
+> Sorry, I'm not following this: what exactly is the race?
 
-The following patchset is again more an FYI than a must have, but it
-addresses a significant scalability problem for NFSv3 when running
-over 10GigE and 40GigE networks. At one point, I was seeing >60% CPU
-spinning on the DRC global spinlock...
+There are 2 potential races, both due to the lockless check for rqstp->rq_xprt.
 
-The one thing to note is that because the statistics are moved outside
-spinlocking, then their accuracy is slightly reduced (I do convert the
-number of entries into an atomic, so that is still 100% correct). The
-right thing to do there is probably to convert those into per-cpu
-counters, however I've not had time to do so for now.
+1) You need to ensure that the reference count in xprt is bumped
+before assigning to rqstp->rq_xprt, because svc_get_next_xprt() does a
+lockless check for rqstp->rq_xprt != NULL, so there is no lock to
+ensure that the refcount bump occurs before whoever called
+svc_get_next_xprt() calls svc_xprt_put()...
 
-Cheers,
-  Trond
+2) You want to ensure that you don't call wake_up_process() after
+exiting svc_get_next_xprt() since you would no longer be guaranteed
+that the task still exists. By calling wake_up_process() before
+setting rqstp->rq_xprt, you ensure that if the task wakes up before
+calling wake_up_process(), then the test for rqstp->rq_xprt == NULL
+forces you into the spin_lock_bh() protected region, where it is safe
+to test rqstp->rq_xprt again and decide whether or not the task is
+still queued on &pool->sp_threads.
 
-Trond Myklebust (6):
-  nfsd: Clean up drc cache in preparation for global spinlock
-    elimination
-  nfsd: convert the lru list into a per-bucket thing
-  nfsd: Remove the cache_hash list
-  nfsd: convert num_drc_entries to an atomic_t
-  nfsd: split DRC global spinlock into per-bucket locks
-  nfsd: Reorder nfsd_cache_match to check more powerful discriminators
-    first
-
- fs/nfsd/cache.h    |   1 -
- fs/nfsd/nfscache.c | 205 +++++++++++++++++++++++++++++------------------------
- 2 files changed, 113 insertions(+), 93 deletions(-)
 
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
