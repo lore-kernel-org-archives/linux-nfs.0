@@ -1,123 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37359 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38766 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753066AbaHEOtP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Aug 2014 10:49:15 -0400
-Date: Tue, 5 Aug 2014 10:49:13 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Put the reference of nfs4_file when freeing stid
-Message-ID: <20140805144912.GO23341@fieldses.org>
-References: <53E0DA1B.2020705@gmail.com>
- <20140805094430.332ffc66@tlielax.poochiereds.net>
+	id S1753417AbaHLSTm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Aug 2014 14:19:42 -0400
+Date: Tue, 12 Aug 2014 14:19:41 -0400
+To: Ben H <bhendin@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Fwd: question re: NO_AUTH_DATA_REQUIRED
+Message-ID: <20140812181941.GA25197@fieldses.org>
+References: <CAAd7aua8+U=eFZUFhjp8gcnYv9BkvjOgSbLJbGp_Qg9O5cHH5w@mail.gmail.com>
+ <CAAd7auZOmk4_tR0WnqFCbv3CSLF=BXoQjtdsQZaB0dgoOYNREw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140805094430.332ffc66@tlielax.poochiereds.net>
+In-Reply-To: <CAAd7auZOmk4_tR0WnqFCbv3CSLF=BXoQjtdsQZaB0dgoOYNREw@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 05, 2014 at 09:44:30AM -0400, Jeff Layton wrote:
-> On Tue, 05 Aug 2014 21:20:27 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
+On Mon, Aug 11, 2014 at 01:23:38PM -0500, Ben H wrote:
+> First off, apologies if this is not the correct list.
+> I saw questions like this on the old nfsv4@linux-nfs.org list, and
+> believe that this replaces that.
+> Please direct me to a more appropriate resource if available.
+> If I'm in the right place, I'm looking for some schooling...
 > 
-> > After testing nfs4 lock, I restart the nfsd service, got messages as,
-> > 
-> > [ 5677.403419] nfsd: last server has exited, flushing export cache
-> > [ 5677.463728] =============================================================================
-> > [ 5677.463942] BUG nfsd4_files (Tainted: G    B      OE): Objects remaining in nfsd4_files on kmem_cache_close()
-> > [ 5677.464055] -----------------------------------------------------------------------------
-> > 
-> > [ 5677.464203] INFO: Slab 0xffffea0000233400 objects=28 used=1 fp=0xffff880008cd3d98 flags=0x3ffc0000004080
-> > [ 5677.464318] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
-> > [ 5677.464420] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
-> > [ 5677.464538]  0000000000000000 0000000036af2c9f ffff88000ce97d68 ffffffff816eacfa
-> > [ 5677.464643]  ffffea0000233400 ffff88000ce97e40 ffffffff811cda44 ffffffff00000020
-> > [ 5677.464774]  ffff88000ce97e50 ffff88000ce97e00 656a624f00000008 616d657220737463
-> > [ 5677.464875] Call Trace:
-> > [ 5677.464925]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
-> > [ 5677.464983]  [<ffffffff811cda44>] slab_err+0xb4/0xe0
-> > [ 5677.465040]  [<ffffffff811d0457>] ? __kmalloc+0x117/0x290
-> > [ 5677.465099]  [<ffffffff81100eec>] ? on_each_cpu_cond+0xac/0xf0
-> > [ 5677.465158]  [<ffffffff811d1bc0>] ? kmem_cache_close+0x110/0x2e0
-> > [ 5677.465218]  [<ffffffff811d1be0>] kmem_cache_close+0x130/0x2e0
-> > [ 5677.465279]  [<ffffffff8135a0c1>] ? kobject_cleanup+0x91/0x1b0
-> > [ 5677.465338]  [<ffffffff811d22be>] __kmem_cache_shutdown+0xe/0x10
-> > [ 5677.465399]  [<ffffffff8119bd28>] kmem_cache_destroy+0x48/0x100
-> > [ 5677.465466]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
-> > [ 5677.465530]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
-> > [ 5677.465589]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
-> > [ 5677.465649]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
-> > [ 5677.465759]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
-> > [ 5677.465822] INFO: Object 0xffff880008cd0000 @offset=0
-> > [ 5677.465882] INFO: Allocated in nfsd4_process_open1+0x61/0x350 [nfsd] age=7599 cpu=0 pid=3253
-> > [ 5677.466115]  __slab_alloc+0x3b0/0x4b1
-> > [ 5677.466166]  kmem_cache_alloc+0x1e4/0x240
-> > [ 5677.466220]  nfsd4_process_open1+0x61/0x350 [nfsd]
-> > [ 5677.466276]  nfsd4_open+0xee/0x860 [nfsd]
-> > [ 5677.466329]  nfsd4_proc_compound+0x4d7/0x7f0 [nfsd]
-> > [ 5677.466384]  nfsd_dispatch+0xbb/0x200 [nfsd]
-> > [ 5677.466447]  svc_process_common+0x453/0x6f0 [sunrpc]
-> > [ 5677.466506]  svc_process+0x103/0x170 [sunrpc]
-> > [ 5677.466559]  nfsd+0x117/0x190 [nfsd]
-> > [ 5677.466609]  kthread+0xd8/0xf0
-> > [ 5677.466656]  ret_from_fork+0x7c/0xb0
-> > [ 5677.466775] kmem_cache_destroy nfsd4_files: Slab cache still has objects
-> > [ 5677.466839] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
-> > [ 5677.466937] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
-> > [ 5677.467049]  0000000000000000 0000000036af2c9f ffff88000ce97eb0 ffffffff816eacfa
-> > [ 5677.467150]  ffff880020bb2d00 ffff88000ce97ed0 ffffffff8119bdd9 0000000000000000
-> > [ 5677.467250]  ffffffffa06065c0 ffff88000ce97ee0 ffffffffa05ef78d ffff88000ce97ef0
-> > [ 5677.467351] Call Trace:
-> > [ 5677.467397]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
-> > [ 5677.467454]  [<ffffffff8119bdd9>] kmem_cache_destroy+0xf9/0x100
-> > [ 5677.467516]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
-> > [ 5677.467579]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
-> > [ 5677.467639]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
-> > [ 5677.467765]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
-> > [ 5677.467826]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
-> > 
-> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 4 ++++
-> >  1 file changed, 4 insertions(+)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 56999cb..e87005d 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -1037,6 +1037,7 @@ static void
-> >  free_ol_stateid_reaplist(struct list_head *reaplist)
-> >  {
-> >  	struct nfs4_ol_stateid *stp;
-> > +	struct nfs4_file *fp;
-> >  
-> >  	might_sleep();
-> >  
-> > @@ -1044,7 +1045,10 @@ free_ol_stateid_reaplist(struct list_head *reaplist)
-> >  		stp = list_first_entry(reaplist, struct nfs4_ol_stateid,
-> >  				       st_locks);
-> >  		list_del(&stp->st_locks);
-> > +		fp = stp->st_stid.sc_file;
-> >  		stp->st_stid.sc_free(&stp->st_stid);
-> > +		if (fp)
-> > +			put_nfs4_file(fp);
-> >  	}
-> >  }
-> >  
+> I have been working with NFSv4 sec=krb5 and early on ran into the PAC
+> issue described nebulously throughout various resources on the web.
 > 
-> Well spotted. I missed that when moved the nfs4_file handling out of
-> sc_free.
+> When working with AD users who are in multiple groups (in my
+> experiments, seems to be approximately 20) I have to set
+> NO_AUTH_DATA_REQUIRED on the userAccountControl of my NFS server
+> principal so that the PAC is not sent and the TGS-REQ can occur over
+> UDP.
 > 
-> Reviewed-by: Jeff Layton <jlayton@primarydata.com>
+> What I cannot find an answer for is why/where exactly is this
+> limitation introduced?
+> Kerberos can deal with the larger packets via TCP, and some Kerberos
+> implementation may enforce TCP even on smaller packets.
 
-Thanks, Kinglong Mee!
+The main problem is the kernel<->rpc.svcgssd interface.
 
-I'll also add a note that this fixes 11b9164adad7 "nfsd: Add a struct
-nfs4_file field to struct nfs4_stid".
-
---b.
+The problem should be fixed on newer distros that use gss-proxy.
 
 --b.
