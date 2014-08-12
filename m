@@ -1,48 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24407 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.211]:43212 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753949AbaHLSWD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Aug 2014 14:22:03 -0400
-Message-ID: <53EA5B47.7020306@RedHat.com>
-Date: Tue, 12 Aug 2014 14:21:59 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751605AbaHLJwo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Aug 2014 05:52:44 -0400
+Date: Tue, 12 Aug 2014 11:52:42 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Boaz Harrosh <openosd@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: pnfs: factor GETDEVICEINFO implementations
+Message-ID: <20140812095242.GA6842@lst.de>
+References: <1407787617-26050-1-git-send-email-hch@lst.de> <53E9DFDD.50405@gmail.com>
 MIME-Version: 1.0
-To: Pavel Shilovsky <pshilovsky@samba.org>
-CC: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@samba.org>
-Subject: Re: [PATCH 0/5] SMB/CIFS nounix support for Connectathon test suite
-References: <1407326472-13853-1-git-send-email-pshilovsky@samba.org>
-In-Reply-To: <1407326472-13853-1-git-send-email-pshilovsky@samba.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <53E9DFDD.50405@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Aug 12, 2014 at 12:35:25PM +0300, Boaz Harrosh wrote:
+> > This is mostly done by moving well tested code from the file and block
+> > layout drivers to common code.  I've only tested it using the block
+> > layout driver, so testing with the other layouts would be greatly
+> > appreciated.  I'm mostly concerned about the object layout driver as
+> > it had significant differences and missing bug fixes compared to the
+> > others.
+> > 
+> Hi Christoph
+> 
+> Please say what BUGs have you seen in object-layout-drive?
 
+I've not seen actual bugs, but it's been missing various minor bug
+fixes that were applied to the file layout version.
 
-On 08/06/2014 08:01 AM, Pavel Shilovsky wrote:
-> The goal of the series is to add support of testing various versions of SMB/CIFS protocol without Unix extensions. Also there are two patches that fixes problems in special and tlock tests.
-> 
-> With the patchset applied nounix SMB/CIFS servers and clients can be tested with "server -C" command.
-> 
-> Jeff Layton (2):
->   tlock: munmap missed before close
->   Add SMB/CIFS mounts support
-> 
-> Pavel Shilovsky (3):
->   Add capability to test SMB 2.0 and higher verions
->   Add SMB/CIFS section in tests.init
->   special: fix op_unlk and op_ren tests output
-> 
->  basic/runtests       |  8 +++++---
->  lock/runtests        |  9 +++++++--
->  lock/tlock.c         | 11 +++++++++--
->  server               |  5 +++--
->  special/op_ren.c     | 16 +++++++++++++---
->  special/op_unlk.c    |  8 +++++---
->  special/runtests.wrk | 11 ++++++++---
->  tests.init           |  4 ++++
->  8 files changed, 54 insertions(+), 18 deletions(-)
-> 
-All five patches have been committed... 
+> Do you have this on a public tree somewhere? I would like to test it?
 
-steved.
+I didn't bother for just those few patches, but I've created a "getdeviceinfo"
+branch at git://git.infradead.org/users/hch/pnfs.git
+
