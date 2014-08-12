@@ -1,72 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:55898 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751209AbaHOADK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 20:03:10 -0400
-Message-ID: <53ED4E2F.2010701@gmail.com>
-Date: Fri, 15 Aug 2014 08:02:55 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from casper.infradead.org ([85.118.1.10]:38012 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752178AbaHLHAM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 03:00:12 -0400
+Date: Tue, 12 Aug 2014 08:59:58 +0200
+From: Peter Zijlstra <peterz@infradead.org>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: Nick Krause <xerofoify@gmail.com>, Fengguang Wu <fengguang.wu@intel.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        Jet Chen <jet.chen@intel.com>, Su Tao <tao.su@intel.com>,
+        Yuanhan Liu <yuanhan.liu@intel.com>, LKP <lkp@01.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [nfs] BUG: sleeping function called from invalid context at
+ include/linux/wait.h:976
+Message-ID: <20140812065958.GL9918@twins.programming.kicks-ass.net>
+References: <20140805140307.GB5593@localhost>
+ <DBF9CA04-ACDF-47AC-9FA6-57DD202D2AC1@primarydata.com>
+ <CAPDOMVibdcRRdqGRsK4kq+cdh3yBjBU4XB7JjTfyOMFk+jYyvA@mail.gmail.com>
+ <7EA40233-6820-4F0E-A2B7-687DC01BDD78@primarydata.com>
 MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 1/5 v3] NFSD: Remove duplicate initialization of file_lock
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com>
-In-Reply-To: <53E791F1.40802@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="mCRau3CSwZDVtMjk"
+In-Reply-To: <7EA40233-6820-4F0E-A2B7-687DC01BDD78@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-locks_alloc_lock() has initialize struct file_lock,
-don't need re-initialize it by locks_init_lock().
 
-v3: A new patch isn't exit in v2/v1.
+--mCRau3CSwZDVtMjk
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4state.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+On Mon, Aug 11, 2014 at 10:52:38PM -0400, Weston Andros Adamson wrote:
+> Weston Andros Adamson (5):
+>  nfs: change nfs_page_group_lock argument
+>  nfs: fix nonblocking calls to nfs_page_group_lock
+>  nfs: use blocking page_group_lock in add_request
+>  nfs: fix error handling in lock_and_join_requests
+>  nfs: don't sleep with inode lock in lock_and_join_requests
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e80a59..98edf97 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3759,7 +3759,6 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_file *fp, int flag)
- 	fl = locks_alloc_lock();
- 	if (!fl)
- 		return NULL;
--	locks_init_lock(fl);
- 	fl->fl_lmops = &nfsd_lease_mng_ops;
- 	fl->fl_flags = FL_DELEG;
- 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
-@@ -5210,7 +5209,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 
- 	fp = lock_stp->st_stid.sc_file;
--	locks_init_lock(file_lock);
- 	switch (lock->lk_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
-@@ -5354,7 +5352,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_jukebox;
- 		goto out;
- 	}
--	locks_init_lock(file_lock);
-+
- 	switch (lockt->lt_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
-@@ -5432,7 +5430,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_jukebox;
- 		goto fput;
- 	}
--	locks_init_lock(file_lock);
-+
- 	file_lock->fl_type = F_UNLCK;
- 	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
- 	file_lock->fl_pid = current->tgid;
--- 
-1.9.3
+Thanks for taking care of that!
 
+--mCRau3CSwZDVtMjk
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.12 (GNU/Linux)
+
+iQIcBAEBAgAGBQJT6btuAAoJEHZH4aRLwOS6VXIP/AqO8xRL7NO7NVavywjpPV4Q
+uM0ummIaAtYI/iUK+pZ8DPnKCC6ZgIWqCqlaHeld4ABMCD9hKRtD42CFiz901nxp
+lckzLMsRyAPeYFfRovLwjRxrwBFwKwupdCHBK0+Jr6ifwvromya5bx19AgO1++0X
+Nx2L7qH8KFN6ZNC0uxdvLrbwOdiWdQB2ozCv/7EFtE+OBJXLzfAFluJXpDtB0cH7
+OAsrguSl++onebXfFe5zDpFjzShp5hPr5JdIPT3RKQ8SkOT3ESqPUieYeaEpnSwJ
+soTUrpLGCewj4eYjPQ5I3TNGdpYS885FOZsBj5+oIH2U/ScuvnT2+qzqxvbwOefs
+fp1/giMWHTme0RDLCWQcOPbXvuQEbhCF5SgSElP5NJc0kYGpsY1zEhx4LFjZ4H4U
+SQLpUYuDTBayQ5LzUuz352+nnvJlwScbuuKeGIjEd78K8lDP94JD1UqAJqap4kqO
+bH0Uy6HQ3vcU0I5wkGX1hjgi0dI4hG7E/4NJmvOAIlN8oLSyFj20jdQSQBdZsNZ8
+GMLFPRHFJISrAKn9MmLiSZG2oujhSowmCWWjyJNm/bAa7/9lfmU4YEkgrgUm7sPf
+DCZBkDLqP3VAN76vPHiJ+xXJxOmSOs6eyCTzQEk4fii8IG0foSNcVvOwsBii9TOr
+Ru/r05AOPa6FODQU+3xL
+=oKFG
+-----END PGP SIGNATURE-----
+
+--mCRau3CSwZDVtMjk--
