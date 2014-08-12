@@ -1,78 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:62743 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750708AbaHBXFJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 19:05:09 -0400
-Received: by mail-qa0-f49.google.com with SMTP id dc16so5354950qab.8
-        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 16:05:08 -0700 (PDT)
-Date: Sat, 2 Aug 2014 19:05:05 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] fs/locks.c: Copy fl_lmops to conflock for nfsd using
-Message-ID: <20140802190505.442f07b8@tlielax.poochiereds.net>
-In-Reply-To: <53DCF97D.3000605@gmail.com>
-References: <53BAAAC5.9000106@gmail.com>
-	<53DCF97D.3000605@gmail.com>
+Received: from ozlabs.org ([103.22.144.67]:40725 "EHLO ozlabs.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754630AbaHLW2f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Aug 2014 18:28:35 -0400
+Date: Wed, 13 Aug 2014 08:28:27 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls
+ outside of i_lock
+Message-ID: <20140813082827.1097c3ad@canb.auug.org.au>
+In-Reply-To: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ boundary="Sig_/kE9c5iQLQE.k2/XeWc._pcT"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 02 Aug 2014 22:45:17 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+--Sig_/kE9c5iQLQE.k2/XeWc._pcT
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks)
-> using fl_lmops field in file_lock for checking nfsd4 lockowner.
-> 
-> But, commit 1a747ee0cc (locks: don't call ->copy_lock methods
-> on return of conflicting locks) causes the fl_lmops of conflock
-> for nfsd4_lock always be NULL.
-> 
-> Also, commit 0996905f93 (lockd: posix_test_lock() should not call
-> locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt
-> always be NULL too.
-> 
-> So that, nfsd4 lockowner for it always be NULL too.
-> 
-> This patch re-coping the fl_lmops to conflock.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/locks.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index 717fbc4..cc1219a 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -279,7 +279,7 @@ void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
->  	new->fl_start = fl->fl_start;
->  	new->fl_end = fl->fl_end;
->  	new->fl_ops = NULL;
-> -	new->fl_lmops = NULL;
-> +	new->fl_lmops = fl->fl_lmops;
->  }
->  EXPORT_SYMBOL(__locks_copy_lock);
->  
-> @@ -290,7 +290,6 @@ void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
->  	__locks_copy_lock(new, fl);
->  	new->fl_file = fl->fl_file;
->  	new->fl_ops = fl->fl_ops;
-> -	new->fl_lmops = fl->fl_lmops;
->  
->  	locks_copy_private(new, fl);
->  }
+Hi Jeff,
 
-This looks sane to me AFAICT.
+On Tue, 12 Aug 2014 10:48:08 -0400 Jeff Layton <jlayton@primarydata.com> wr=
+ote:
+>
+> Absent any objections, I'll plan to merge these for 3.18.
 
-I'll run a few tests with it, and put it into I'll plan to pick this up
-since I have some other fs/locks.c related patches slated for 3.17.
+This means that this patch set should *not* be in linux-next until after
+(at least) v3.17-rc1 is released ...  This s reinforced by the lack of
+Acked-by, Reviewed-by and Tested-by tags ... (the addition of which would p=
+resumably require the rebase (or rewrite) of a published git tree.)
 
-Thanks!
--- 
-Jeff Layton <jlayton@poochiereds.net>
+/me suspects that many people do not read his daily release notes :-(
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+
+--Sig_/kE9c5iQLQE.k2/XeWc._pcT
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJT6pUQAAoJEMDTa8Ir7ZwVTisQAIxg+9qTRROcI90xF8edNQ/L
+pcpNey/kXd7AFpqvdcPmRjb8wWzZhPhWn7Gz9wQgC6UKQy7UG0T47eeInZvxX8mp
+IgyR7DRhnuW7yTZdyqbOSYX+563ayw3H2BGRPImjZTOt5NL/Xll7FWusN2GI2Ses
+9CfpuQ7umojSZX2lmB/V46FZ4QvvamDlJf7ybpoid+CxVWVy2zKbeQzilCNNneTv
+1fyZGVVVPFfe5y6rN5vFLIMhrCkwPBjg9nSPCFLmTBE+D6541Q7z5wdc8Y1wyVGI
+OMrORVjFV9sQd1qdvA5+dt1vZZzQ/WtYYX5mGUBzpV9uzlHVYxke9esL0bVRdAA1
+o966aVugwQrqU0oc5zBpjf4GGy3/RTtvQgQ0FBnLLJRzUxjXuKiIxSGStP6u6E4I
+9Ntd5dkL7YYzKyWg+59h2giVBZrmQxIlmtiwSf0JJRboynaoDObJQ3i79AbfT2IQ
+9nlOa8TZCiRDUmiBOXXY0jz9jo6AlRZDiWKH961oUCBm6uf+38tr8zbAV6lyzSlS
+rvZ6DQaniMUmHjCvIfbe9TIa9L/muNBjP93GVMMoM2t8RVp+6LEvPOlvbB/oo6AV
+p/2gj1fDVSP5tSVRmFi6xWqf9F7oa0rI1Y1TU4F8frSn9r+y/JiycERJa3esL7Q1
+4dXiD2vYBJT904Tkb3rv
+=GIIv
+-----END PGP SIGNATURE-----
+
+--Sig_/kE9c5iQLQE.k2/XeWc._pcT--
