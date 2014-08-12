@@ -1,103 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:54928 "EHLO mx12.netapp.com"
+Received: from smtp.gentoo.org ([140.211.166.183]:57882 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753330AbaHZUVT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Aug 2014 16:21:19 -0400
-Message-ID: <53FCEC3C.80909@Netapp.com>
-Date: Tue, 26 Aug 2014 16:21:16 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        James Drews <drews@engr.wisc.edu>, <jrs@world.std.com>
-Subject: Re: [PATCH v2 1/2] NFSv4: Fix problems with close in the presence
- of a delegation
-References: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>	<53FCE9DF.1050407@Netapp.com> <CAHQdGtQNOJveS3wK3nxvv43jXBHC_0Z3Bo+TSVPmHz9qRtZNUw@mail.gmail.com>
-In-Reply-To: <CAHQdGtQNOJveS3wK3nxvv43jXBHC_0Z3Bo+TSVPmHz9qRtZNUw@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+	id S1752253AbaHLHMS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Aug 2014 03:12:18 -0400
+From: Mike Frysinger <vapier@gentoo.org>
+To: libtirpc-devel@lists.sourceforge.net
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH [libtirpc]] include stdarg.h when used
+Date: Tue, 12 Aug 2014 03:12:12 -0400
+Message-Id: <1407827532-31173-1-git-send-email-vapier@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/26/2014 04:15 PM, Trond Myklebust wrote:
-> On Tue, Aug 26, 2014 at 4:11 PM, Anna Schumaker
-> <Anna.Schumaker@netapp.com> wrote:
->> On 08/26/2014 02:30 PM, Trond Myklebust wrote:
->>> In the presence of delegations, we can no longer assume that the
->>> state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
->>> stateid share mode, and so we need to need to calculate the initial
->> Nit:  Remove the duplicate "need to" (above).
->>
->>> value for calldata->arg.fmode using the state->flags.
->>>
->>> Reported-by: James Drews <drews@engr.wisc.edu>
->>> Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
->>> Cc: stable@vger.kernel.org # 2.6.33+
->>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>> ---
->>>  fs/nfs/nfs4proc.c | 19 +++++++++++++------
->>>  1 file changed, 13 insertions(+), 6 deletions(-)
->>>
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index 75ae8d22f067..7d67d5b332d4 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -2601,6 +2601,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
->>>       struct nfs4_closedata *calldata = data;
->>>       struct nfs4_state *state = calldata->state;
->>>       struct inode *inode = calldata->inode;
->>> +     bool is_rdonly, is_wronly, is_rdwr;
->>>       int call_close = 0;
->>>
->>>       dprintk("%s: begin!\n", __func__);
->>> @@ -2608,24 +2609,30 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
->>>               goto out_wait;
->>>
->>>       task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_DOWNGRADE];
->>> -     calldata->arg.fmode = FMODE_READ|FMODE_WRITE;
->>>       spin_lock(&state->owner->so_lock);
->>> +     is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
->>> +     is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
->>> +     is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
->>> +     spin_unlock(&state->owner->so_lock);
->>> +     /* Calculate the current open share mode */
->>> +     calldata->arg.fmode = 0;
->>> +     if (is_rdonly || is_rdwr)
->>> +             calldata->arg.fmode |= FMODE_READ;
->>> +     if (is_wronly || is_rdwr)
->>> +             calldata->arg.fmode |= FMODE_WRITE;
->>>       /* Calculate the change in open mode */
->>>       if (state->n_rdwr == 0) {
->> Do we need the owner lock for reading state->n_rdwr, n_rdonly, and n_wronly?
-> 
-> Duh, yes, you're right. I'll revert that part of the change.
+The debug.h header uses va_list but doesn't include stdarg.h which
+can lead to random build failures.
 
-I could be wrong!  I checked for other uses, and nfs4proc.c:can_open_cached() reads these values without a lock.
+Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+---
+ src/debug.h | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Anna
-
-> 
->> Anna
->>>               if (state->n_rdonly == 0) {
->>> -                     call_close |= test_bit(NFS_O_RDONLY_STATE, &state->flags);
->>> -                     call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
->>> +                     call_close |= is_rdonly || is_rdwr;
->>>                       calldata->arg.fmode &= ~FMODE_READ;
->>>               }
->>>               if (state->n_wronly == 0) {
->>> -                     call_close |= test_bit(NFS_O_WRONLY_STATE, &state->flags);
->>> -                     call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
->>> +                     call_close |= is_wronly || is_rdwr;
->>>                       calldata->arg.fmode &= ~FMODE_WRITE;
->>>               }
->>>       }
->>>       if (!nfs4_valid_open_stateid(state))
->>>               call_close = 0;
->>> -     spin_unlock(&state->owner->so_lock);
->>>
->>>       if (!call_close) {
->>>               /* Note: exit _without_ calling nfs4_close_done */
->>
-> 
-> 
-> 
+diff --git a/src/debug.h b/src/debug.h
+index afc8d57..c971ac3 100644
+--- a/src/debug.h
++++ b/src/debug.h
+@@ -21,6 +21,8 @@
+ 
+ #ifndef _DEBUG_H
+ #define _DEBUG_H
++
++#include <stdarg.h>
+ #include <syslog.h>
+ 
+ extern int libtirpc_debug_level;
+-- 
+2.0.0
 
