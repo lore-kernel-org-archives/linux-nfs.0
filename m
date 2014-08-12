@@ -1,163 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38959 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934477AbaH0Pgs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Aug 2014 11:36:48 -0400
-Date: Wed, 27 Aug 2014 16:36:44 +0100
-From: Mel Gorman <mgorman@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Johannes Weiner <hannes@cmpxchg.org>, NeilBrown <neilb@suse.de>,
-        Junxiao Bi <junxiao.bi@oracle.com>, Michal Hocko <mhocko@suse.cz>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-Message-ID: <20140827153644.GF12374@novell.com>
-References: <53F6F772.6020708@oracle.com>
- <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
- <20140825164852.50723141@notabene.brown>
- <20140826105304.GT17696@novell.com>
- <CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com>
- <20140826132624.GU17696@novell.com>
- <20140826231938.GA13889@cmpxchg.org>
- <CAHQdGtRPsVFVfph5OcsZk_+WYPPJ-MpE2myZfXAb3jq6fuM4zw@mail.gmail.com>
- <CAHQdGtQPMJNzSM5Wt4RnNqEawBLqmYHycXTmBHhmAt26dz5wCw@mail.gmail.com>
+Received: from mail-qc0-f172.google.com ([209.85.216.172]:54319 "EHLO
+	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751166AbaHLXrk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 19:47:40 -0400
+Received: by mail-qc0-f172.google.com with SMTP id i8so3561705qcq.3
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 16:47:39 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 12 Aug 2014 19:47:36 -0400
+To: Stephen Rothwell <sfr@canb.auug.org.au>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls
+ outside of i_lock
+Message-ID: <20140812194736.3184fce4@tlielax.poochiereds.net>
+In-Reply-To: <20140813082827.1097c3ad@canb.auug.org.au>
+References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+	<20140813082827.1097c3ad@canb.auug.org.au>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <CAHQdGtQPMJNzSM5Wt4RnNqEawBLqmYHycXTmBHhmAt26dz5wCw@mail.gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/kxYLXrXQl0u7I2tdLiDGKVx"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 26, 2014 at 08:00:20PM -0400, Trond Myklebust wrote:
-> On Tue, Aug 26, 2014 at 7:51 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
-> > On Tue, Aug 26, 2014 at 7:19 PM, Johannes Weiner <hannes@cmpxchg.org> wrote:
-> >> On Tue, Aug 26, 2014 at 02:26:24PM +0100, Mel Gorman wrote:
-> >>> On Tue, Aug 26, 2014 at 08:58:36AM -0400, Trond Myklebust wrote:
-> >>> > On Tue, Aug 26, 2014 at 6:53 AM, Mel Gorman <mgorman@suse.com> wrote:
-> >>> > > On Mon, Aug 25, 2014 at 04:48:52PM +1000, NeilBrown wrote:
-> >>> > >> On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
-> >>> > >> <trond.myklebust@primarydata.com> wrote:
-> >>> > >>
-> >>> > >> > Junxiao Bi reports seeing the following deadlock:
-> >>> > >> >
-> >>> > >> > @ crash> bt 1539
-> >>> > >> > @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
-> >>> > >> > @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
-> >>> > >> > @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
-> >>> > >> > @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
-> >>> > >> > @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
-> >>> > >> > @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
-> >>> > >> > @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
-> >>> > >> > @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
-> >>> > >> > @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
-> >>> > >> > @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
-> >>> > >> > @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
-> >>> > >> > @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
-> >>> > >> > @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
-> >>> > >>
-> >>> > >> This stack trace (from 2.6.32) cannot happen in mainline, though it took me a
-> >>> > >> while to remember/discover exactly why.
-> >>> > >>
-> >>> > >> try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
-> >>> > >> set to NULL.
-> >>> > >> shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
-> >>> > >> it is NULL, wait_on_page_writeback is *not* called.
-> >>> > >>
-> >>> > >
-> >>> > > wait_on_page_writeback has a host of other damage associated with it which
-> >>> > > is why we don't do it from reclaim any more. If the storage is very slow
-> >>> > > then a process can be stalled by unrelated IO to slow storage.  If the
-> >>> > > storage is broken and the writeback can never complete then it causes other
-> >>> > > issues. That kind of thing.
-> >>> > >
-> >>> > >> So we can only hit this deadlock if mem-cgroup limits are imposed on a
-> >>> > >> process which is using NFS - which is quite possible but probably not common.
-> >>> > >>
-> >>> > >> The fact that a dead-lock can happen only when memcg limits are imposed seems
-> >>> > >> very fragile.  People aren't going to test that case much so there could well
-> >>> > >> be other deadlock possibilities lurking.
-> >>> > >>
-> >>> > >
-> >>> > > memcgs still can call wait_on_page_writeback and this is known to be a
-> >>> > > hand-grenade to the memcg people but I've never heard of them trying to
-> >>> > > tackle the problem.
-> >>> > >
-> >>> > >> Mel: might there be some other way we could get out of this deadlock?
-> >>> > >> Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
-> >>> > >> wait or something?  Any other wait out of this deadlock other than setting
-> >>> > >> PF_MEMALLOC_NOIO everywhere?
-> >>> > >>
-> >>> > >
-> >>> > > I don't have the full thread as it was not cc'd to lkml so I don't know
-> >>> > > what circumstances reached this deadlock in the first place. If this is
-> >>> > > on 2.6.32 and the deadline cannot happen during reclaim in mainline then
-> >>> > > why is mainline being patched?
-> >>> > >
-> >>> > > Do not alter wait_on_page_writeback() to timeout as it will blow
-> >>> > > up spectacularly -- swap unuse races, data would not longer be synced
-> >>> > > correctly to disk, sync IO would be flaky, stable page writes would be
-> >>> > > fired out the window etc.
-> >>> >
-> >>> > Hi Mel,
-> >>> >
-> >>> > The above stack trace really is the entire deadlock: the rpciod work
-> >>> > queue, which drives I/O on behalf of NFS, gets caught in a
-> >>> > shrink_page_list() situation where it ends up waiting on page
-> >>> > writeback. Boom....
-> >>> >
-> >>> > Even if this can only happen for non-trivial memcg situations, then it
-> >>> > still needs to be addressed: if rpciod blocks, then all NFS I/O will
-> >>> > block and we can no longer write out the dirty pages. This is why we
-> >>> > need a mainline fix.
-> >>> >
-> >>>
-> >>> In that case I'm adding the memcg people. I recognise that rpciod should
-> >>> never block on writeback for similar reasons why flushers should never block.
-> >>> memcg blocking on writeback is dangerous for reasons other than NFS but
-> >>> adding a variant that times out just means that on occasion processes get
-> >>> stalled for long periods of time timing out on these writeback pages. In
-> >>> that case, forward progress of rpciod would be painfully slow.
-> >>>
-> >>> On the other hand, forcing PF_MEMALLOC_NOIO for all rpciod allocations in
-> >>> an ideal world is massive overkill and while it will work, there will be
-> >>> other consequences -- unable to swap pages for example, unable to release
-> >>> buffers to free clean pages etc.
-> >>>
-> >>> It'd be nice of the memcg people could comment on whether they plan to
-> >>> handle the fact that memcg is the only called of wait_on_page_writeback
-> >>> in direct reclaim paths.
-> >>
-> >> wait_on_page_writeback() is a hammer, and we need to be better about
-> >> this once we have per-memcg dirty writeback and throttling, but I
-> >> think that really misses the point.  Even if memcg writeback waiting
-> >> were smarter, any length of time spent waiting for yourself to make
-> >> progress is absurd.  We just shouldn't be solving deadlock scenarios
-> >> through arbitrary timeouts on one side.  If you can't wait for IO to
-> >> finish, you shouldn't be passing __GFP_IO.
-> >>
-> >> Can't you use mempools like the other IO paths?
+--Sig_/kxYLXrXQl0u7I2tdLiDGKVx
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
+
+On Wed, 13 Aug 2014 08:28:27 +1000
+Stephen Rothwell <sfr@canb.auug.org.au> wrote:
+
+> Hi Jeff,
+>=20
+> On Tue, 12 Aug 2014 10:48:08 -0400 Jeff Layton <jlayton@primarydata.com> =
+wrote:
 > >
-> > There is no way to pass any allocation flags at all to an operation
-> > such as __sock_create() (which may be needed if the server
-> > disconnects). So in general, the answer is no.
-> >
-> 
-> Actually, one question that should probably be raised before anything
-> else: is it at all possible for a workqueue like rpciod to have a
-> non-trivial setting for ->target_mem_cgroup? If not, then the whole
-> question is moot.
-> 
+> > Absent any objections, I'll plan to merge these for 3.18.
+>=20
+> This means that this patch set should *not* be in linux-next until after
+> (at least) v3.17-rc1 is released ...  This s reinforced by the lack of
+> Acked-by, Reviewed-by and Tested-by tags ... (the addition of which would=
+ presumably require the rebase (or rewrite) of a published git tree.)
+>=20
 
-AFAIK, today it's not possible to add kernel threads (which rpciod is one)
-to a memcg so the issue is entirely theoritical at the moment.  Even if
-this was to change, it's not clear to me what adding kernel threads to a
-memcg would mean as kernel threads have no RSS. Even if kernel resources
-were accounted for, I cannot see why a kernel thread would join a memcg.
+It would, but I sent a later reply that revised that statement.
 
-I expec that it's currently impossible for rpciod to have a non-trivial
-target_mem_cgroup. The memcg folk will correct me if I'm wrong or if there
-are plans to change that for some reason.
+Trond pointed out that this problem can cause a user-triggerable oops,
+so we may have to merge it for 3.17 after all. With that in mind, I
+added these to my linux-next branch and will probably send a pull
+request before the window closes (assuming that there are no glaring
+problems with it).
 
--- 
-Mel Gorman
-SUSE Labs
+While we're on the subject, we probably ought to rename my tree in your
+"Trees" file from "file-private-locks" to "file-locks" or something.
+File private locks (aka OFD locks) got merged in v3.15, but I have been
+collecting patches that touch fs/locks.c
+
+> /me suspects that many people do not read his daily release notes :-(
+
+Guilty as charged. I'll try to keep up in the future.
+
+Thanks,
+--=20
+Jeff Layton <jlayton@primarydata.com>
+
+--Sig_/kxYLXrXQl0u7I2tdLiDGKVx
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBAgAGBQJT6qeYAAoJEAAOaEEZVoIVJWwP/2IOnANkv4Ay2E/QHApA+Guw
+jft1AXNRN/ymISGt+qMV0r1DSN5vReV6YlsqYHrDS3W2UHrx1jpSLqd5uRb4Ozou
+MnHKj96Sd1ci0Iav2puzPti3Rusm2zxH8Rfxct0XJjhswwYsB6dFAtcFSUQbF9+R
+HjyWYxI2A7JDFFMgD81CjMm0/OcM68YEIhNrJFcI3pHe8vilhVKmr5kv1/h6Zxzc
+1fs2K0RxC6sxuEXqgMN7npX/jdgXMzWrF8YAAXrHtA3bhc1N1mk6LgU3jNGDtp1c
+ORSXYAXAEfDKr5FIsSxrKdAm92SN5jQKlBEP2EtDUUmmR4bDZ+2TpY5xDMetRdRv
+auois8k1HtP4Z+TeFDJJIyL+IJCdg9ZQREe829KiXsa1SlqxF/sRre1RakpDBWur
+wHJVXaUrCbuelUZ7LJb3ogoaHkTD5Xrz4IudzgiRTPt2Fe7tcN6SJ6R9h00k3rFo
+5QyI8uLZM52TyUvyVvB1syy2r7SJCul5d8Rzh/jSENER4tNh46tUXijWnWhduTN7
+EvTgJaVNq/Q0uqSVOzQWfBcC76lUCNGml8OvSVBLmCzMxbY2MxAnSWPZs/yAt85m
+KxOMiojPGLDOyWrnSonkopU6Cyr7WEJlVZyzhHWHUGx9j5CBUpAZqUD7c8OSF8q8
+rbiTkW1IrdCfbArw1xyu
+=Ccvm
+-----END PGP SIGNATURE-----
+
+--Sig_/kxYLXrXQl0u7I2tdLiDGKVx--
