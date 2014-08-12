@@ -1,53 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:32893 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752821AbaHHPO5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:14:57 -0400
-Received: by mail-ie0-f175.google.com with SMTP id x19so6358182ier.6
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:14:56 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 0/5] more pgio cleanup
-Date: Fri,  8 Aug 2014 11:13:31 -0400
-Message-Id: <1407510816-7002-1-git-send-email-dros@primarydata.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:61438 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753141AbaHLOsY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 10:48:24 -0400
+Received: by mail-qc0-f175.google.com with SMTP id w7so2809594qcr.20
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 07:48:24 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 4/5] locks: move locks_free_lock calls in do_fcntl_add_lease outside spinlock
+Date: Tue, 12 Aug 2014 10:48:12 -0400
+Message-Id: <1407854893-2698-5-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There was a mixup and this patchset was posted to Trond, but not the list -
-and they've already made it to his testing branch. Oops!
+There's no need to call locks_free_lock here while still holding the
+i_lock. Defer that until the lock has been dropped.
 
-"nfs: check wait_on_bit_lock err in page_group_lock" does not handle blocking
-calls correctly and is fixed by a patch in patchset I just posted: 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/locks.c | 16 +++++++---------
+ 1 file changed, 7 insertions(+), 9 deletions(-)
 
-  [PATCH 2/5] nfs: fix nonblocking calls to nfs_page_group_lock
-
-I don't know if we want to apply it as a fixup or leave them as separate
-patches..
-
-Sorry, I did not intend to bypass the list! Have at them and I'll address
-any issues ASAP.
-
-Thanks,
-
- -dros
-
-
-Weston Andros Adamson (5):
-  nfs: check wait_on_bit_lock err in page_group_lock
-  nfs: fix comment and add warn_on for PG_INODE_REF
-  pnfs: find swapped pages on pnfs commit lists too
-  pnfs: add pnfs_put_lseg_async
-  nfs: clear_request_commit while holding i_lock
-
- fs/nfs/filelayout/filelayout.c | 36 +++++++++++++++++++--
- fs/nfs/pagelist.c              | 29 +++++++++++++----
- fs/nfs/pnfs.c                  | 17 ++++++++++
- fs/nfs/pnfs.h                  | 27 ++++++++++++++++
- fs/nfs/write.c                 | 72 +++++++++++++++++++++++++++---------------
- include/linux/nfs_page.h       |  4 +--
- 6 files changed, 149 insertions(+), 36 deletions(-)
-
+diff --git a/fs/locks.c b/fs/locks.c
+index 4ce087cca501..cb66fb05ad4a 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1761,13 +1761,10 @@ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ 	ret = fl;
+ 	spin_lock(&inode->i_lock);
+ 	error = __vfs_setlease(filp, arg, &ret);
+-	if (error) {
+-		spin_unlock(&inode->i_lock);
+-		locks_free_lock(fl);
+-		goto out_free_fasync;
+-	}
+-	if (ret != fl)
+-		locks_free_lock(fl);
++	if (error)
++		goto out_unlock;
++	if (ret == fl)
++		fl = NULL;
+ 
+ 	/*
+ 	 * fasync_insert_entry() returns the old entry if any.
+@@ -1779,9 +1776,10 @@ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ 		new = NULL;
+ 
+ 	error = __f_setown(filp, task_pid(current), PIDTYPE_PID, 0);
++out_unlock:
+ 	spin_unlock(&inode->i_lock);
+-
+-out_free_fasync:
++	if (fl)
++		locks_free_lock(fl);
+ 	if (new)
+ 		fasync_free(new);
+ 	return error;
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.3
 
