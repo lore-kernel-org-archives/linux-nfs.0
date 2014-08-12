@@ -1,206 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:55641 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756293AbaHHPPA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:15:00 -0400
-Received: by mail-ie0-f181.google.com with SMTP id rp18so6537314iec.12
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:15:00 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 3/5] pnfs: find swapped pages on pnfs commit lists too
-Date: Fri,  8 Aug 2014 11:13:34 -0400
-Message-Id: <1407510816-7002-4-git-send-email-dros@primarydata.com>
-In-Reply-To: <1407510816-7002-1-git-send-email-dros@primarydata.com>
-References: <1407510816-7002-1-git-send-email-dros@primarydata.com>
+Received: from mail-wi0-f177.google.com ([209.85.212.177]:44515 "EHLO
+	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752532AbaHLMdz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 08:33:55 -0400
+Received: by mail-wi0-f177.google.com with SMTP id ho1so5698965wib.16
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 05:33:54 -0700 (PDT)
+Message-ID: <53EA09AF.9010509@gmail.com>
+Date: Tue, 12 Aug 2014 15:33:51 +0300
+From: Boaz Harrosh <openosd@gmail.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@lst.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/4] pnfs: factor GETDEVICEINFO implementations
+References: <1407787617-26050-1-git-send-email-hch@lst.de> <1407787617-26050-2-git-send-email-hch@lst.de> <53E9FC57.9010806@gmail.com> <20140812122156.GA16362@lst.de>
+In-Reply-To: <20140812122156.GA16362@lst.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_page_find_head_request_locked looks through the regular nfs commit lists
-when the page is swapped out, but doesn't look through the pnfs commit lists.
+On 08/12/2014 03:21 PM, Christoph Hellwig wrote:
+> [Can you please trim your quotes?  Quoting 700+ lines of a patch for
+>  a 30 line reply is completely unreasonable, and placing the reply in
+>  the middle of it is even worse.  I will ignore mails ignoring the
+>  netiquette this blatantly in the future]
+> 
 
-I'm not sure if anyone has hit any issues caused by this.
+Yes sorry you are absolutely right, My bad, I usually do this, a moment
+of spaciness.
 
-Suggested-by: Peng Tao <tao.peng@primarydata.com>
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/filelayout/filelayout.c | 31 ++++++++++++++++++++++++++
- fs/nfs/pnfs.h                  | 20 +++++++++++++++++
- fs/nfs/write.c                 | 49 +++++++++++++++++++++++++++++++-----------
- 3 files changed, 88 insertions(+), 12 deletions(-)
+> On Tue, Aug 12, 2014 at 02:36:55PM +0300, Boaz Harrosh wrote:
+>>> +	/*
+>>> +	 * Use the session max response size as the basis for setting
+>>> +	 * GETDEVICEINFO's maxcount
+>>> +	 */
+>>> +	max_resp_sz = server->nfs_client->cl_session->fc_attrs.max_resp_sz;
+>>> +	max_pages = nfs_page_array_len(0, max_resp_sz);
+>>> +	dprintk("%s: server %p max_resp_sz %u max_pages %d\n",
+>>> +		__func__, server, max_resp_sz, max_pages);
+>>> +
+>>
+>> This is an extremely too big an allocation for obj-lo (which has
+>> a couple of embedded strings here). The all RPC can fit a single
+>> page
+>>
+>> Should we put like a flag in struct pnfs_layoutdriver_type:
+>>
+>> 	if (server->pnfs_curr_ld->flags & PNFS_DEVINFO_SINGLE_PAGE) {
+>> 		max_pages = 1;
+>> 		max_resp_sz = PAGE_SIZE;
+>> 	}
+>>
+>> This gives us so many extra allocation for storing one page pointer but for
+>> the simplicity of the cleanup we can live with it.
+> 
+> Sounds fine to me, but do you really have that many GETDEVICEINFO calls
+> in object layout setups that it's worth the effort?
+> 
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 2576d28b..524e66f 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -1237,6 +1237,36 @@ restart:
- 	spin_unlock(cinfo->lock);
- }
- 
-+/* filelayout_search_commit_reqs - Search lists in @cinfo for the head reqest
-+ *				   for @page
-+ * @cinfo - commit info for current inode
-+ * @page - page to search for matching head request
-+ *
-+ * Returns a the head request if one is found, otherwise returns NULL.
-+ */
-+static struct nfs_page *
-+filelayout_search_commit_reqs(struct nfs_commit_info *cinfo, struct page *page)
-+{
-+	struct nfs_page *freq, *t;
-+	struct pnfs_commit_bucket *b;
-+	int i;
-+
-+	/* Linearly search the commit lists for each bucket until a matching
-+	 * request is found */
-+	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
-+		list_for_each_entry_safe(freq, t, &b->written, wb_list) {
-+			if (freq->wb_page == page)
-+				return freq->wb_head;
-+		}
-+		list_for_each_entry_safe(freq, t, &b->committing, wb_list) {
-+			if (freq->wb_page == page)
-+				return freq->wb_head;
-+		}
-+	}
-+
-+	return NULL;
-+}
-+
- static void filelayout_retry_commit(struct nfs_commit_info *cinfo, int idx)
- {
- 	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
-@@ -1386,6 +1416,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
- 	.clear_request_commit	= filelayout_clear_request_commit,
- 	.scan_commit_lists	= filelayout_scan_commit_lists,
- 	.recover_commit_reqs	= filelayout_recover_commit_reqs,
-+	.search_commit_reqs	= filelayout_search_commit_reqs,
- 	.commit_pagelist	= filelayout_commit_pagelist,
- 	.read_pagelist		= filelayout_read_pagelist,
- 	.write_pagelist		= filelayout_write_pagelist,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 27ddecd..203b6c9 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -104,6 +104,8 @@ struct pnfs_layoutdriver_type {
- 				  int max);
- 	void (*recover_commit_reqs) (struct list_head *list,
- 				     struct nfs_commit_info *cinfo);
-+	struct nfs_page * (*search_commit_reqs)(struct nfs_commit_info *cinfo,
-+						struct page *page);
- 	int (*commit_pagelist)(struct inode *inode,
- 			       struct list_head *mds_pages,
- 			       int how,
-@@ -341,6 +343,17 @@ pnfs_recover_commit_reqs(struct inode *inode, struct list_head *list,
- 	NFS_SERVER(inode)->pnfs_curr_ld->recover_commit_reqs(list, cinfo);
- }
- 
-+static inline struct nfs_page *
-+pnfs_search_commit_reqs(struct inode *inode, struct nfs_commit_info *cinfo,
-+			struct page *page)
-+{
-+	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
-+
-+	if (ld == NULL || ld->search_commit_reqs == NULL)
-+		return NULL;
-+	return ld->search_commit_reqs(cinfo, page);
-+}
-+
- /* Should the pNFS client commit and return the layout upon a setattr */
- static inline bool
- pnfs_ld_layoutret_on_setattr(struct inode *inode)
-@@ -492,6 +505,13 @@ pnfs_recover_commit_reqs(struct inode *inode, struct list_head *list,
- {
- }
- 
-+static inline struct nfs_page *
-+pnfs_search_commit_reqs(struct inode *inode, struct nfs_commit_info *cinfo,
-+			struct page *page)
-+{
-+	return NULL;
-+}
-+
- static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
- {
- 	return 0;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index e6bc5b5..ba41769 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -47,6 +47,8 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
- static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
- static const struct nfs_rw_ops nfs_rw_write_ops;
- static void nfs_clear_request_commit(struct nfs_page *req);
-+static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
-+				      struct inode *inode);
- 
- static struct kmem_cache *nfs_wdata_cachep;
- static mempool_t *nfs_wdata_mempool;
-@@ -93,6 +95,38 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
- }
- 
- /*
-+ * nfs_page_search_commits_for_head_request_locked
-+ *
-+ * Search through commit lists on @inode for the head request for @page.
-+ * Must be called while holding the inode (which is cinfo) lock.
-+ *
-+ * Returns the head request if found, or NULL if not found.
-+ */
-+static struct nfs_page *
-+nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
-+						struct page *page)
-+{
-+	struct nfs_page *freq, *t;
-+	struct nfs_commit_info cinfo;
-+	struct inode *inode = &nfsi->vfs_inode;
-+
-+	nfs_init_cinfo_from_inode(&cinfo, inode);
-+
-+	/* search through pnfs commit lists */
-+	freq = pnfs_search_commit_reqs(inode, &cinfo, page);
-+	if (freq)
-+		return freq->wb_head;
-+
-+	/* Linearly search the commit list for the correct request */
-+	list_for_each_entry_safe(freq, t, &cinfo.mds->list, wb_list) {
-+		if (freq->wb_page == page)
-+			return freq->wb_head;
-+	}
-+
-+	return NULL;
-+}
-+
-+/*
-  * nfs_page_find_head_request_locked - find head request associated with @page
-  *
-  * must be called while holding the inode lock.
-@@ -106,21 +140,12 @@ nfs_page_find_head_request_locked(struct nfs_inode *nfsi, struct page *page)
- 
- 	if (PagePrivate(page))
- 		req = (struct nfs_page *)page_private(page);
--	else if (unlikely(PageSwapCache(page))) {
--		struct nfs_page *freq, *t;
--
--		/* Linearly search the commit list for the correct req */
--		list_for_each_entry_safe(freq, t, &nfsi->commit_info.list, wb_list) {
--			if (freq->wb_page == page) {
--				req = freq->wb_head;
--				break;
--			}
--		}
--	}
-+	else if (unlikely(PageSwapCache(page)))
-+		req = nfs_page_search_commits_for_head_request_locked(nfsi,
-+			page);
- 
- 	if (req) {
- 		WARN_ON_ONCE(req->wb_head != req);
--
- 		kref_get(&req->wb_kref);
- 	}
- 
--- 
-1.8.5.2 (Apple Git-48)
+Panasas's biggest installation is like 1200 OSDs. With exofs I tested
+with 300. They come in groups of like 9, each 9 devices is good for
+2G of data, before you move to the next set. Each file has a randomized
+set of devices, so a git clone would load the 300 devices easily.
+
+> Another slightly cleaner option would be to have a max_deviceinfo_size
+> field in the layout driver and cap the size by it.
+>
+
+Sure! max_deviceinfo_size would be even better, lets say that if it is
+zero then max_resp_sz is used. (Easier for you)
+
+Thanks
+Boaz
 
