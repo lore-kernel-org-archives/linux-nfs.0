@@ -1,51 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45777 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754037AbaHGHVi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:38 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/17] pnfs/blocklayout: improve GETDEVICEINFO error reporting
-Date: Thu,  7 Aug 2014 09:23:41 +0200
-Message-Id: <1407396229-4785-10-git-send-email-hch@lst.de>
-In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
-References: <1407396229-4785-1-git-send-email-hch@lst.de>
+Received: from mail-qg0-f51.google.com ([209.85.192.51]:34429 "EHLO
+	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753920AbaHLRnP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 13:43:15 -0400
+Received: by mail-qg0-f51.google.com with SMTP id a108so10001039qge.10
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 10:43:15 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 12 Aug 2014 13:43:13 -0400
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        trond.myklebust@primarydata.com
+Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls
+ outside of i_lock
+Message-ID: <20140812134313.1273dc63@tlielax.poochiereds.net>
+In-Reply-To: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tell userspace what stage of GETDEVICEINFO failed so that there is a chance
-to debug it, especially with the userspace daemon clusterf***k in the block
-layout driver.
+On Tue, 12 Aug 2014 10:48:08 -0400
+Jeff Layton <jlayton@primarydata.com> wrote:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayoutdev.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+> In the days of yore, the file locking code was primarily protected by
+> the BKL. That changed in commit 72f98e72551fa (locks: turn lock_flocks
+> into a spinlock), at which point the code was changed to be protected
+> by a conventional spinlock (mostly due to a push to finally eliminate
+> the BKL). Since then, the code has been changed to use the i_lock
+> instead of a global spinlock, but it's still under a spinlock.
+> 
+> With that change, several functions now no longer can block when they
+> originally could. This is a particular problem with the
+> fl_release_private operation. In NFSv4, that operation is used to kick
+> off a RELEASE_LOCKOWNER or FREE_STATEID call, and that requires being
+> able to do an allocation.
+> 
+> This was reported by Josh Stone here:
+> 
+>     https://bugzilla.redhat.com/show_bug.cgi?id=1089092
+> 
+> My initial stab at fixing this involved moving this to a workqueue, but
+> Trond pointed out the above change was technically a regression with the
+> way the spinlocking in the file locking code works, and suggested an
+> alternate approach to fixing it.
+> 
+> This set focuses on moving most of the locks_release_private calls
+> outside of the inode->i_lock. There are still a few that are done
+> under the i_lock in the lease handling code. Cleaning up the use of
+> the i_lock in the lease code is a larger project which we'll have to
+> tackle at some point, but there are some other cleanups that will
+> need to happen first.
+> 
+> Absent any objections, I'll plan to merge these for 3.18.
+> 
 
-diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
-index 04303b5..63f77925 100644
---- a/fs/nfs/blocklayout/blocklayoutdev.c
-+++ b/fs/nfs/blocklayout/blocklayoutdev.c
-@@ -150,7 +150,7 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	remove_wait_queue(&nn->bl_wq, &wq);
- 
- 	if (reply->status != BL_DEVICE_REQUEST_PROC) {
--		dprintk("%s failed to open device: %d\n",
-+		printk(KERN_WARNING "%s failed to decode device: %d\n",
- 			__func__, reply->status);
- 		rv = ERR_PTR(-EINVAL);
- 		goto out;
-@@ -159,7 +159,8 @@ nfs4_blk_decode_device(struct nfs_server *server,
- 	bd = blkdev_get_by_dev(MKDEV(reply->major, reply->minor),
- 			       FMODE_READ, NULL);
- 	if (IS_ERR(bd)) {
--		dprintk("%s failed to open device : %ld\n", __func__,
-+		printk(KERN_WARNING "%s failed to open device %d:%d (%ld)\n",
-+			__func__, reply->major, reply->minor,
- 			PTR_ERR(bd));
- 		rv = ERR_CAST(bd);
- 		goto out;
+Erm...make that v3.17...
+
+As Trond points out, the fact that we end up doing sleeping allocations
+under spinlock can allow an unprivileged user to crash a NFSv4 client.
+So I may see about merging these sooner rather than later after they've
+had a little soak time in linux-next.
+
 -- 
-1.9.1
-
+Jeff Layton <jlayton@primarydata.com>
