@@ -1,50 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:33190 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754872AbaHNN5D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 09:57:03 -0400
-Received: by mail-qc0-f175.google.com with SMTP id w7so1090294qcr.6
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Aug 2014 06:57:01 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 14 Aug 2014 09:56:58 -0400
-To: Joe Perches <joe@perches.com>
-Cc: Christine Caulfield <ccaulfie@redhat.com>,
-        David Teigland <teigland@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, cluster-devel@redhat.com,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, Kinglong Mee <kinglongmee@gmail.com>
-Subject: Re: [PATCH] locks: Remove unused conf argument from lm_grant
-Message-ID: <20140814095658.1716c48e@tlielax.poochiereds.net>
-In-Reply-To: <1408024360-5177-1-git-send-email-jlayton@primarydata.com>
-References: <1408024360-5177-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:2571 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751429AbaHMTS6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2014 15:18:58 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s7DJIvaS027216
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Aug 2014 15:18:57 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-55-121.rdu2.redhat.com [10.10.55.121])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s7DJIu7E023385
+	for <linux-nfs@vger.kernel.org>; Wed, 13 Aug 2014 15:18:56 -0400
+Message-ID: <53EBBA1F.4010907@RedHat.com>
+Date: Wed, 13 Aug 2014 15:18:55 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: ANNOUNCE: libnfsidmap-0.26  release.
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 14 Aug 2014 09:52:40 -0400
-Jeff Layton <jlayton@primarydata.com> wrote:
+The majority in this release is bug fixes and clean up
 
-> From: Joe Perches <joe@perches.com>
-> 
-> This argument is always NULL so don't pass it around.
-> 
-> Signed-off-by: Joe Perches <joe@perches.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/dlm/plock.c     |  8 ++++----
->  fs/lockd/svclock.c | 12 +++---------
->  include/linux/fs.h |  2 +-
->  3 files changed, 8 insertions(+), 14 deletions(-)
-> 
+The tarballs can be found at
+  https://fedorapeople.org/~steved/libnfsidmap/0.26/
 
-Joe, if this looks OK with you, I'll plan to merge this for v3.18.
+The change log is at 
+   https://fedorapeople.org/~steved/libnfsidmap/libnfsidmap/0.26/0.26-Changelog
 
-Kinglong, I've added this to my "locks-3.18" branch if you need
-something to base your nfsd conflock patches on:
+The git tree is at:
+  git://linux-nfs.org/~steved/libnfsidmap
+  
+Please send comments/bugs to linux-nfs@vger.kernel.org
 
-    git://git.samba.org/jlayton/linux.git
-
-Thanks,
--- 
-Jeff Layton <jlayton@primarydata.com>
+steved.
