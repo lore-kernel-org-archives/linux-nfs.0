@@ -1,123 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:44694 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758063AbaHZN03 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Aug 2014 09:26:29 -0400
-Date: Tue, 26 Aug 2014 14:26:24 +0100
-From: Mel Gorman <mgorman@suse.com>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:50884 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752368AbaHNN1J convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 09:27:09 -0400
+Received: by mail-ig0-f182.google.com with SMTP id c1so4950724igq.15
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Aug 2014 06:27:09 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: fuzz testing a 32 bit UML guest with NFSv4 gave: BUG kmalloc-256 (Not tainted): Redzone overwritten
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <7B49B65C-3CD6-43AD-AB11-B3DDC52199FA@primarydata.com>
+Date: Wed, 13 Aug 2014 18:00:17 -0400
+Cc: =?windows-1252?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>,
+        Weston Andros Adamson <weston.adamson@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <B5E517A7-303C-40B6-99B4-1FEF72EBFEB1@primarydata.com>
+References: <53D4CAA7.2000005@gmx.de> <CAHQdGtRqeQXEP1+VV5UUYSdobwNjWNt8y11HC_Zb891A+t9FFQ@mail.gmail.com> <7B49B65C-3CD6-43AD-AB11-B3DDC52199FA@primarydata.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: NeilBrown <neilb@suse.de>, Junxiao Bi <junxiao.bi@oracle.com>,
-        Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@suse.cz>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-Message-ID: <20140826132624.GU17696@novell.com>
-References: <53F6F772.6020708@oracle.com>
- <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
- <20140825164852.50723141@notabene.brown>
- <20140826105304.GT17696@novell.com>
- <CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-15
-In-Reply-To: <CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 26, 2014 at 08:58:36AM -0400, Trond Myklebust wrote:
-> On Tue, Aug 26, 2014 at 6:53 AM, Mel Gorman <mgorman@suse.com> wrote:
-> > On Mon, Aug 25, 2014 at 04:48:52PM +1000, NeilBrown wrote:
-> >> On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
-> >> <trond.myklebust@primarydata.com> wrote:
-> >>
-> >> > Junxiao Bi reports seeing the following deadlock:
-> >> >
-> >> > @ crash> bt 1539
-> >> > @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
-> >> > @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
-> >> > @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
-> >> > @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
-> >> > @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
-> >> > @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
-> >> > @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
-> >> > @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
-> >> > @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
-> >> > @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
-> >> > @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
-> >> > @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
-> >> > @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
-> >>
-> >> This stack trace (from 2.6.32) cannot happen in mainline, though it took me a
-> >> while to remember/discover exactly why.
-> >>
-> >> try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
-> >> set to NULL.
-> >> shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
-> >> it is NULL, wait_on_page_writeback is *not* called.
-> >>
-> >
-> > wait_on_page_writeback has a host of other damage associated with it which
-> > is why we don't do it from reclaim any more. If the storage is very slow
-> > then a process can be stalled by unrelated IO to slow storage.  If the
-> > storage is broken and the writeback can never complete then it causes other
-> > issues. That kind of thing.
-> >
-> >> So we can only hit this deadlock if mem-cgroup limits are imposed on a
-> >> process which is using NFS - which is quite possible but probably not common.
-> >>
-> >> The fact that a dead-lock can happen only when memcg limits are imposed seems
-> >> very fragile.  People aren't going to test that case much so there could well
-> >> be other deadlock possibilities lurking.
-> >>
-> >
-> > memcgs still can call wait_on_page_writeback and this is known to be a
-> > hand-grenade to the memcg people but I've never heard of them trying to
-> > tackle the problem.
-> >
-> >> Mel: might there be some other way we could get out of this deadlock?
-> >> Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
-> >> wait or something?  Any other wait out of this deadlock other than setting
-> >> PF_MEMALLOC_NOIO everywhere?
-> >>
-> >
-> > I don't have the full thread as it was not cc'd to lkml so I don't know
-> > what circumstances reached this deadlock in the first place. If this is
-> > on 2.6.32 and the deadline cannot happen during reclaim in mainline then
-> > why is mainline being patched?
-> >
-> > Do not alter wait_on_page_writeback() to timeout as it will blow
-> > up spectacularly -- swap unuse races, data would not longer be synced
-> > correctly to disk, sync IO would be flaky, stable page writes would be
-> > fired out the window etc.
-> 
-> Hi Mel,
-> 
-> The above stack trace really is the entire deadlock: the rpciod work
-> queue, which drives I/O on behalf of NFS, gets caught in a
-> shrink_page_list() situation where it ends up waiting on page
-> writeback. Boom....
-> 
-> Even if this can only happen for non-trivial memcg situations, then it
-> still needs to be addressed: if rpciod blocks, then all NFS I/O will
-> block and we can no longer write out the dirty pages. This is why we
-> need a mainline fix.
-> 
+I'm pretty sure I understand the problem now.
 
-In that case I'm adding the memcg people. I recognise that rpciod should
-never block on writeback for similar reasons why flushers should never block.
-memcg blocking on writeback is dangerous for reasons other than NFS but
-adding a variant that times out just means that on occasion processes get
-stalled for long periods of time timing out on these writeback pages. In
-that case, forward progress of rpciod would be painfully slow.
+This happens when calls to nfs_direct_write_schedule_iovec have multiple iov_iter_get_pages_alloc
+chunks.  The resulting requests (struct nfs_page) that are put on the nfs_pageio_descriptor:pg_list have
+different  ->wb_page pointers even though they are contiguous from the perspective of the file 
+(req_offset(req) == req_offset(prev) + prev->wb_bytes).  The pagecount calculation in nfs_generic_pgio 
+doesn't account for this.
 
-On the other hand, forcing PF_MEMALLOC_NOIO for all rpciod allocations in
-an ideal world is massive overkill and while it will work, there will be
-other consequences -- unable to swap pages for example, unable to release
-buffers to free clean pages etc.
+A similar problem can happen in the read path.
 
-It'd be nice of the memcg people could comment on whether they plan to
-handle the fact that memcg is the only called of wait_on_page_writeback
-in direct reclaim paths.
+There are two solutions:
 
--- 
-Mel Gorman
-SUSE Labs
+ 1) introduce a new check in nfs_can_coalesce_requests - basically the same
+    tests as were removed in commit 362251a0eb540cf2537d78d508b2bcd87fe66321, but each with:
+   && req->wb_page != prev->wb_page.
+
+ 2) change how we calculate pagecount in nfs_generic_pgio - make the vector big enough to hold
+     all unique pages which are counted as we build the list (easy as duplicates must be sequential).
+
+Option 2 seems better to me as it really would be nice to coalesce into one NFS write if possible.
+
+I'm going to test both approaches and report back.  I'll also add a WARN_ON_ONCE
+to nfs_generic_pgio so that we catch this type of thing in the future.
+
+More tomorrow….
+
+-dros
+
+
+
+On Jul 29, 2014, at 11:33 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
+
+> On Jul 27, 2014, at 12:06 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+>> On Sun, Jul 27, 2014 at 5:47 AM, Toralf Förster <toralf.foerster@gmx.de> wrote:
+>>> with current git kernel version 3.16.0-rc6-00139-g9c55021 I got today from the syslog :
+>>> 
+>>> 
+>>> Jul 26 23:40:18 trinity kernel: NFSD: unable to generate recoverydir name (-2).
+>>> Jul 26 23:40:18 trinity kernel: NFSD: disabling legacy clientid tracking. Reboot recovery will not function correctly!
+>>> Jul 26 23:40:22 trinity kernel: VFS: Warning: trinity-c1 using old stat() call. Recompile your binary.
+>>> Jul 26 23:40:23 trinity kernel: warning: process `trinity-c1' used the deprecated sysctl system call with
+>>> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
+>>> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c1 using old stat() call. Recompile your binary.
+>>> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
+>>> Jul 26 23:40:23 trinity kernel: trinity-c0 (1704) uses deprecated remap_file_pages() syscall. See Documentation/vm/remap_file_pages.txt.
+>>> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
+>>> Jul 26 23:40:25 trinity kernel: =============================================================================
+>>> Jul 26 23:40:25 trinity kernel: BUG kmalloc-256 (Not tainted): Redzone overwritten
+>>> Jul 26 23:40:25 trinity kernel: -----------------------------------------------------------------------------
+>>> Jul 26 23:40:25 trinity kernel:
+>>> Jul 26 23:40:25 trinity kernel: Disabling lock debugging due to kernel taint
+>>> Jul 26 23:40:25 trinity kernel: INFO: 0x82f0e230-0x82f0e233. First byte 0xa0 instead of 0xcc
+>>> Jul 26 23:40:25 trinity kernel: INFO: Allocated in nfs_generic_pgio+0x86/0x2d0 age=0 cpu=0 pid=1705
+>>> Jul 26 23:40:25 trinity kernel: INFO: Freed in nfs_pgio_data_release+0x33/0x70 age=0 cpu=0 pid=610
+>>> Jul 26 23:40:25 trinity kernel: INFO: Slab 0x0b7228c0 objects=13 used=2 fp=0x82f0e000 flags=0x0080
+>>> Jul 26 23:40:25 trinity kernel: INFO: Object 0x82f0e130 @offset=304 fp=0x82f0e000
+>>> Jul 26 23:40:25 trinity kernel:
+>>> Jul 26 23:40:25 trinity kernel: Bytes b4 82f0e120: a9 06 00 00 52 cf ff ff 5a 5a 5a 5a 5a 5a 5a 5a  ....R...ZZZZZZZZ
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e130: e0 d3 6b 0b 80 e3 6b 0b a0 e3 6b 0b c0 e3 6b 0b  ..k...k...k...k.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e140: e0 e3 6b 0b 80 13 6c 0b a0 13 6c 0b c0 13 6c 0b  ..k...l...l...l.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e150: e0 13 6c 0b 00 12 6c 0b 20 12 6c 0b 40 12 6c 0b  ..l...l. .l.@.l.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e160: 60 12 6c 0b 80 12 6c 0b a0 12 6c 0b c0 12 6c 0b  `.l...l...l...l.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e170: e0 12 6c 0b 00 10 6c 0b 20 10 6c 0b 40 10 6c 0b  ..l...l. .l.@.l.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e180: 60 10 6c 0b 80 10 6c 0b a0 10 6c 0b c0 10 6c 0b  `.l...l...l...l.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e190: e0 10 6c 0b 00 11 6c 0b 20 11 6c 0b 40 11 6c 0b  ..l...l. .l.@.l.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e1a0: 60 11 6c 0b 80 11 6c 0b a0 11 6c 0b 20 a4 70 0b  `.l...l...l. .p.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e1b0: a0 ca 6f 0b c0 ca 6f 0b e0 ca 6f 0b 00 cb 6f 0b  ..o...o...o...o.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e1c0: 20 cb 6f 0b 40 cb 6f 0b 60 cb 6f 0b 80 cb 6f 0b   .o.@.o.`.o...o.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e1d0: a0 cb 6f 0b c0 cb 6f 0b e0 cb 6f 0b 00 cc 6f 0b  ..o...o...o...o.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e1e0: 20 cc 6f 0b 40 cc 6f 0b 60 cc 6f 0b 80 cc 6f 0b   .o.@.o.`.o...o.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e1f0: a0 cc 6f 0b c0 cc 6f 0b e0 cc 6f 0b 00 cd 6f 0b  ..o...o...o...o.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e200: 20 cd 6f 0b 40 cd 6f 0b 60 cd 6f 0b 80 cd 6f 0b   .o.@.o.`.o...o.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e210: a0 cd 6f 0b c0 cd 6f 0b e0 cd 6f 0b 00 ce 6f 0b  ..o...o...o...o.
+>>> Jul 26 23:40:25 trinity kernel: Object 82f0e220: 20 ce 6f 0b 40 ce 6f 0b 60 ce 6f 0b 80 ce 6f 0b   .o.@.o.`.o...o.
+>>> Jul 26 23:40:25 trinity kernel: Redzone 82f0e230: a0 ce 6f 0b                                      ..o.
+>>> Jul 26 23:40:25 trinity kernel: Padding 82f0e258: 5a 5a 5a 5a 5a 5a 5a 5a                          ZZZZZZZZ
+>>> Jul 26 23:40:25 trinity kernel: CPU: 0 PID: 610 Comm: kworker/0:2 Tainted: G    B         3.16.0-rc6-00139-g9c55021 #85
+>>> Jul 26 23:40:25 trinity kernel: Workqueue: nfsiod rpc_async_release
+>>> Jul 26 23:40:25 trinity kernel: Stack:
+>>> Jul 26 23:40:25 trinity kernel: 085a296b 085a296b 00000003 086c8547 85449c00 00000128 0b7228c0 8572fd68
+>>> Jul 26 23:40:25 trinity kernel: 084e6736 00000000 8572fd3c 8572fda0 080ff083 085b1a4f 085b1a63 00000001
+>>> Jul 26 23:40:25 trinity kernel: 00000010 00000001 82f0e258 00000008 00000001 82f0e130 82f0e230 0b7228c0
+>>> Jul 26 23:40:25 trinity kernel: Call Trace:
+>>> Jul 26 23:40:25 trinity kernel: [<084e6736>] dump_stack+0x26/0x28
+>>> Jul 26 23:40:25 trinity kernel: [<080ff083>] print_trailer+0x1e3/0x1f0
+>>> Jul 26 23:40:25 trinity kernel: [<080ff989>] check_bytes_and_report+0xa9/0x100
+>>> Jul 26 23:40:25 trinity kernel: [<080ffa2c>] check_object+0x4c/0x210
+>>> Jul 26 23:40:25 trinity kernel: [<084e4599>] free_debug_processing+0xab/0x238
+>>> Jul 26 23:40:25 trinity kernel: [<0846870e>] ? rpc_wake_up_first+0x16e/0x190
+>>> Jul 26 23:40:25 trinity kernel: [<08496b55>] ? __gettimeofday+0x15/0x30
+>>> Jul 26 23:40:25 trinity kernel: [<084e475f>] __slab_free+0x39/0x223
+>>> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
+>>> Jul 26 23:40:25 trinity kernel: [<0808119c>] ? __local_bh_enable_ip+0x1c/0xa0
+>>> Jul 26 23:40:25 trinity kernel: [<08090293>] ? insert_work+0x73/0x90
+>>> Jul 26 23:40:25 trinity kernel: [<080729be>] ? set_signals+0x1e/0x40
+>>> Jul 26 23:40:25 trinity kernel: [<08101201>] kfree+0x111/0x150
+>>> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
+>>> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
+>>> Jul 26 23:40:25 trinity kernel: [<081e1d33>] nfs_pgio_data_release+0x33/0x70
+>>> Jul 26 23:40:25 trinity kernel: [<081e1d93>] nfs_pgio_release+0x23/0x30
+>>> Jul 26 23:40:25 trinity kernel: [<08467c80>] rpc_free_task+0x20/0x60
+>>> Jul 26 23:40:25 trinity kernel: [<08467cce>] rpc_async_release+0xe/0x10
+>>> Jul 26 23:40:25 trinity kernel: [<08090d11>] process_one_work+0x1a1/0x310
+>>> Jul 26 23:40:25 trinity kernel: [<084e7e65>] ? schedule+0x55/0x60
+>>> Jul 26 23:40:25 trinity kernel: [<0809116a>] worker_thread+0x2ea/0x530
+>>> Jul 26 23:40:25 trinity kernel: [<080729be>] ? set_signals+0x1e/0x40
+>>> Jul 26 23:40:25 trinity kernel: [<084e7e65>] ? schedule+0x55/0x60
+>>> Jul 26 23:40:25 trinity kernel: [<08090e80>] ? worker_thread+0x0/0x530
+>>> Jul 26 23:40:25 trinity kernel: [<08096806>] kthread+0xd6/0xe0
+>>> Jul 26 23:40:25 trinity kernel: [<0809dd7d>] ? finish_task_switch.isra.56+0x1d/0x70
+>>> Jul 26 23:40:25 trinity kernel: [<0806064b>] new_thread_handler+0x6b/0x90
+>>> Jul 26 23:40:25 trinity kernel:
+>>> Jul 26 23:40:25 trinity kernel: FIX kmalloc-256: Restoring 0x82f0e230-0x82f0e233=0xcc
+>>> Jul 26 23:40:25 trinity kernel:
+>>> Jul 26 23:40:26 trinity trinity: Detected kernel tainting. Last seed was 412561049
+>>> 
+>> 
+>> Hi Dros,
+>> 
+>> It looks to me as if we're overflowing the page array by 1 page
+>> pointer. Do you agree?
+>> Do we perhaps have to look again at the way we're calculating the array length?
+>> 
+> 
+> I think you’re right. Looking at it…
+> 
+> -dros
+
