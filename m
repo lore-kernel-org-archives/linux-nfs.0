@@ -1,128 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f41.google.com ([209.85.220.41]:55301 "EHLO
-	mail-pa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750846AbaHOOaB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:30:01 -0400
-Received: by mail-pa0-f41.google.com with SMTP id rd3so3553480pab.14
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:30:00 -0700 (PDT)
-Message-ID: <53EE195A.6060100@gmail.com>
-Date: Fri, 15 Aug 2014 22:29:46 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:44822 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753907AbaHMVSk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2014 17:18:40 -0400
+Date: Thu, 14 Aug 2014 07:18:27 +1000
+From: NeilBrown <neilb@suse.de>
+To: Ben Greear <greearb@candelatech.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Killing process in D state on mount to dead NFS server.
+Message-ID: <20140814071827.702b68e4@notabene.brown>
+In-Reply-To: <53EB876A.4090705@candelatech.com>
+References: <53DA8443.407@candelatech.com>
+	<20140801064217.01852788@notabene.brown>
+	<53DAB307.2000206@candelatech.com>
+	<53EB876A.4090705@candelatech.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: Re: [PATCH 2/2] NFSD: Revert setting op_encode_lockowner_maxsz
-References: <53E2EE2E.9040007@gmail.com> <20140811200118.GG9095@fieldses.org> <20140812175826.GE22365@fieldses.org> <53EE0ECB.5040202@gmail.com> <20140815135524.GB3343@fieldses.org>
-In-Reply-To: <20140815135524.GB3343@fieldses.org>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/5XrpQ2ioACF_FIuLiz.Wena"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/15/2014 21:55, J. Bruce Fields wrote:
-> On Fri, Aug 15, 2014 at 09:44:43PM +0800, Kinglong Mee wrote:
->> On 8/13/2014 01:58, J. Bruce Fields wrote:
->>> On Mon, Aug 11, 2014 at 04:01:18PM -0400, J. Bruce Fields wrote:
->>>> On Thu, Aug 07, 2014 at 11:10:38AM +0800, Kinglong Mee wrote:
->>>>> Commit 8c7424cff6 (nfsd4: don't try to encode conflicting owner if low on space)
->>>>> set op_encode_lockowner_maxsz to zero.
->>>>>
->>>>> If setting op_encode_lockowner_maxsz to zero, nfsd will not encode
->>>>> the owner of conflock forever.
->>>>
->>>> Right, so the problem is that the lock reply encoder is unique in that
->>>> it will happily adjust the xdr encoding if it's running out of space.
->>>>
->>>> This came about with 8c7424cff6 "nfsd4: don't try to encode conflicting
->>>> owner if low on space".  The problem is that:
->>>>
->>>> 	- the maximum size of a lock reply is kind of big (the original
->>>> 	  calculation below is actually wrong, IDMAP_NAMESZ should be
->>>> 	  NFS4_OPAQUE_LIMIT).
->>>> 	- we may not be the only server that's been sloppy about
->>>> 	  enforcing the theoretical maximum here, and I'd rather be
->>>> 	  forgiving to clients that don't insist on the theoretical
->>>> 	  maximum maxresp_cached.
->>>>
->>>> So best seems just to allow a LOCK even if space is insufficient and
->>>> just throw out the conflicting lockowner if there isn't enough space,
->>>> since large lockowners should be rare and we don't care about the
->>>> conflicting lockowner anyway.
->>>>
->>>> So anyway we need to leave the maximum reserved in rq_reserved without
->>>> changing the check we make before executing the LOCK.
->>>
->>> I think this is all we need, but I haven't actually tested whether it
->>> fixes the warnings.
->>>
->>> --b.
->>>
->>> commit 5e78bb7e34d6
->>> Author: J. Bruce Fields <bfields@redhat.com>
->>> Date:   Tue Aug 12 11:41:40 2014 -0400
->>>
->>>     nfsd4: reserve adequate space for LOCK op
->>>     
->>>     As of  8c7424cff6 "nfsd4: don't try to encode conflicting owner if low
->>>     on space", we permit the server to process a LOCK operation even if
->>>     there might not be space to return the conflicting lockowner, because
->>>     we've made returning the conflicting lockowner optional.
->>>     
->>>     However, the rpc server still wants to know the most we might possibly
->>>     return, so we need to take into account the possible conflicting
->>>     lockowner in the svc_reserve_space() call here.
->>>     
->>>     Symptoms were log messages like "RPC request reserved 88 but used 108".
->>>     
->>>     Fixes: 8c7424cff6 "nfsd4: don't try to encode conflicting owner if low on space"
->>>     Reported-by: Kinglong Mee <kinglongmee@gmail.com>
->>>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>>
->>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>> index 8112ce8f4b23..e771a1a7c6f1 100644
->>> --- a/fs/nfsd/nfs4xdr.c
->>> +++ b/fs/nfsd/nfs4xdr.c
->>> @@ -1663,6 +1663,14 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
->>>  			readbytes += nfsd4_max_reply(argp->rqstp, op);
->>>  		} else
->>>  			max_reply += nfsd4_max_reply(argp->rqstp, op);
->>> +		/*
->>> +		 * OP_LOCK may return a conflicting lock.  (Special case
->>> +		 * because it will just skip encoding this if it runs
->>> +		 * out of xdr buffer space, and it is the only operation
->>> +		 * that behaves this way.)
->>> +		 */
->>> +		if (op->opnum == OP_LOCK)
->>> +			max_reply += NFS4_OPAQUE_LIMIT;
->>>  
->>>  		if (op->status) {
->>>  			argp->opcnt = i+1;
->>>
->>
->> Yes, this patch can fixes the warnings.
->> But, I don't think it's the best fix for the problem.
->>
->> Why not save reply size of NFS4_OPAQUE_LIMIT in op_encode_lockowner_maxsz,
-> 
-> A lock request is nonidempotent, so clients usually want to cache it.
-> This would force maxresp_cached to be larger than otherwise necessary.
-> 
-> Which I guess the spec already requires.  But I'd rather be forgiving if
-> a client overlooks this and requests too small a maxresp_cached.
+--Sig_/5XrpQ2ioACF_FIuLiz.Wena
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Got it, thanks.
-I just test LOCK/LOCKT that on nfsv4.0, I will test on nfsv4.1 next day.
+On Wed, 13 Aug 2014 08:42:34 -0700 Ben Greear <greearb@candelatech.com> wro=
+te:
 
-You can push out this patch on your git tree,
-I will comment you if I have other questions. Thanks again.
+> -----BEGIN PGP SIGNED MESSAGE-----
+> Hash: SHA1
+>=20
+> Hello!
+>=20
+> Did you get a chance to look at the stacks below?
 
-> 
->> nfsd4_lockt also needs it.
-> 
-> nfsd4_lockt is nonidempotent (and probably not terribly common) so we
-> don't care about it that much--there's not even a lockt_rsize defined
-> for it.
+Yes I did, and I replied on Date: Fri, 1 Aug 2014 07:50:53 +1000
 
-Thanks for your comment.
+The problem is that "fsync" and related functions are not killable.
+I think it is generally agreed that this is a bug, and that a fix would
+probably be accepted.
+I started working on one the other day but haven't got very hard yet (lots =
+of
+other things to work on).
 
-thanks,
-Kinglong Mee
+NeilBrown
+
+>=20
+> Thanks,
+> Ben
+>=20
+>=20
+> On 07/31/2014 02:20 PM, Ben Greear wrote:
+> > On 07/31/2014 01:42 PM, NeilBrown wrote:
+> >> On Thu, 31 Jul 2014 11:00:35 -0700 Ben Greear <greearb@candelatech.com=
+> wrote:
+> >=20
+> >>> So, this has been asked all over the interweb for years and years, bu=
+t the best answer I can find is to reboot the system or create a fake NFS s=
+erver=20
+> >>> somewhere with the same IP as the gone-away NFS server.
+> >>>=20
+> >>> The problem is:
+> >>>=20
+> >>> I have some mounts to an NFS server that no longer exists (crashed/po=
+wered down).
+> >>>=20
+> >>> I have some processes stuck trying to write to files open on these mo=
+unts.
+> >>>=20
+> >>> I want to kill the process and unmount.
+> >>>=20
+> >>> umount -l will make the mount go a way, sort of.  But process is stil=
+l hung. umount -f complains: umount2:  Device or resource busy umount.nfs:
+> >>> /mnt/foo: device is busy
+> >>>=20
+> >>> kill -9 does not work on process.
+> >=20
+> >> Kill -1 should work (since about 2.6.25 or so).
+> >=20
+> > That is -[ONE], right?  Assuming so, it did not work for me.
+> >=20
+> > Kernel is 3.14.4+, with some of extra patches, but probably nothing tha=
+t influences this particular behaviour.
+> >=20
+> > [root@lf1005-14010010 ~]# cat /proc/3805/stack [<ffffffff811371ba>] sle=
+ep_on_page+0x9/0xd [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78=20
+> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d [<ffffffff81137=
+80e>] filemap_write_and_wait_range+0x3b/0x77 [<ffffffffa0f04734>]
+> > nfs_file_fsync+0x37/0x83 [nfs] [<ffffffff811a8d32>] vfs_fsync_range+0x1=
+9/0x1b [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19 [<ffffffffa0f05305>]
+> > nfs_file_flush+0x6b/0x6f [nfs] [<ffffffff81183e46>] filp_close+0x3f/0x7=
+1 [<ffffffff8119c8ae>] __close_fd+0x80/0x98 [<ffffffff81183de5>]
+> > SyS_close+0x1c/0x3e [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b=
+ [<ffffffffffffffff>] 0xffffffffffffffff [root@lf1005-14010010 ~]# kill -1 =
+3805=20
+> > [root@lf1005-14010010 ~]# cat /proc/3805/stack [<ffffffff811371ba>] sle=
+ep_on_page+0x9/0xd [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78=20
+> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d [<ffffffff81137=
+80e>] filemap_write_and_wait_range+0x3b/0x77 [<ffffffffa0f04734>]
+> > nfs_file_fsync+0x37/0x83 [nfs] [<ffffffff811a8d32>] vfs_fsync_range+0x1=
+9/0x1b [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19 [<ffffffffa0f05305>]
+> > nfs_file_flush+0x6b/0x6f [nfs] [<ffffffff81183e46>] filp_close+0x3f/0x7=
+1 [<ffffffff8119c8ae>] __close_fd+0x80/0x98 [<ffffffff81183de5>]
+> > SyS_close+0x1c/0x3e [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b=
+ [<ffffffffffffffff>] 0xffffffffffffffff
+> >=20
+> > Thanks, Ben
+> >=20
+> >> If it doesn't please report the kernel version and cat /proc/$PID/stack
+> >=20
+> >> for some processes that cannot be killed.
+> >=20
+> >> NeilBrown
+> >=20
+> >>>=20
+> >>>=20
+> >>> Aside from bringing a fake NFS server back up on the same IP, is ther=
+e any other way to get these mounts unmounted and the processes killed with=
+out=20
+> >>> rebooting?
+> >>>=20
+> >>> Thanks, Ben
+> >>>=20
+> >=20
+> >=20
+> >=20
+> > -- To unsubscribe from this list: send the line "unsubscribe linux-nfs"=
+ in the body of a message to majordomo@vger.kernel.org More majordomo info =
+at
+> > http://vger.kernel.org/majordomo-info.html
+> >=20
+>=20
+> - --=20
+> Ben Greear <greearb@candelatech.com>
+> Candela Technologies Inc  http://www.candelatech.com
+>=20
+> -----BEGIN PGP SIGNATURE-----
+> Version: GnuPG v1.4.13 (GNU/Linux)
+> Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+>=20
+> iQEcBAEBAgAGBQJT64dqAAoJELbHqkYeJT4OHC0IAIRB2A8v5msRhXrdd+ybvkwD
+> NcOSYOhSsxCHIS5BR5CNLg89zipRuocVCbdLRdtbse8nspMq8PAiQJt3YOkGwzos
+> ifcsgxouMUKfmLcFHtJ0maIkWMPIrttPvHJuw67gt7LbHLPsFjlrdrKPv6aGa95m
+> 7mCkY/bRniiJYCxrCqixzQpuWfIyVal6FPGtmpydTVh6lq0y05vDEVB8lP5xGyes
+> w+I/vJkGf9ddTIDasYJbLwUXECbN3makJxmHNAZf4slQMB5FNNnpeTOqL17u62cY
+> F/do8m/zxzztibTZqjKHIhHGDw/huTyQWfRsQ0AA9Exu8/RZKhJlL2EeYlFJWJQ=3D
+> =3DhNGY
+> -----END PGP SIGNATURE-----
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--Sig_/5XrpQ2ioACF_FIuLiz.Wena
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU+vWIznsnt1WYoG5AQL+4xAAhXJke4QTSJ2dB6LUks4UG9WTxJMGEydZ
+k45sC+E+A3aykQTnQKaSPERJEvPeFMRkQmNFdXWMcc2+gcK+mQi+lKz2XOCcz9Ji
+cJ2z1+/fi9VtW858cL8KkDHckEMJcSZrUCMRPQPwOyCidoQHYjqGKpLXH8bzTj/z
+PMQpnM6d/FVCQDjztcuSN9B/n9HP0a63BEZi8jElN6h/2tLoaW9pn3jD2x04PhvX
+Yr8yCzqXMxoJXKgjOIooH1FoMQ/LhOyWwonbhZSE8iGSUt3FwuHLBWLZPJJyczRR
+b0pB/6gXV+rzh4WuPTm6dxyatAEf/LBODlZgcy9Ea8vgkx6bc1zDufaNK5gJ53r3
+xwd8D2dZqw0E02MNAfMJvHj5f4WRkQ6QpqkbvIks1vXA2nkMYhh3/HCwSbxDPdXK
+cxX9/bFI1Md41z/Mv9j5lnw1/Hms/Fo7z4GrpksrGGhu4LHvR1pjQLfuyjnqVx1r
+JGkqBqpRPuxFeVSOhXrifP+Z/zYGYRU7aCGzQcli+qN+tDYqdI+2/YvlevUBb/SG
+BQiOft9hARHaB3PtteaCBPcL3dj5sgdnhd8mAaQ57wQy9f7JJSsubCOTDc0pgzsr
+npwTBRuE/SuKh8K1xRSC5V07OsdZSGbyXWWA05QaryARg/y/Vzdl/FyShvWzgOdG
+QBgjq6AY0WQ=
+=DFxk
+-----END PGP SIGNATURE-----
+
+--Sig_/5XrpQ2ioACF_FIuLiz.Wena--
