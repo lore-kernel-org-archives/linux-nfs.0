@@ -1,125 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f47.google.com ([209.85.213.47]:39310 "EHLO
-	mail-yh0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755843AbaHZO02 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 10:26:28 -0400
-Received: by mail-yh0-f47.google.com with SMTP id f10so11795459yha.6
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 07:26:27 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:3286 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751557AbaHMOxu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2014 10:53:50 -0400
+Message-ID: <53EB7BF7.4050805@RedHat.com>
+Date: Wed, 13 Aug 2014 10:53:43 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <53FC9545.4000800@plexistor.com>
-References: <1408637375-11343-1-git-send-email-hch@lst.de>
-	<1408637375-11343-4-git-send-email-hch@lst.de>
-	<53FA259C.9050807@gmail.com>
-	<20140824191839.GA9717@lst.de>
-	<53FC9545.4000800@plexistor.com>
-Date: Tue, 26 Aug 2014 10:26:27 -0400
-Message-ID: <CAHQdGtQNDvofWVzn9CmtmbDRSj39BLT_gNDyY34uUFw_nEDe0Q@mail.gmail.com>
-Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Boaz Harrosh <boaz@plexistor.com>
-Cc: Christoph Hellwig <hch@lst.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Matt Benjamin <matt@linuxbox.com>
-Content-Type: text/plain; charset=UTF-8
+To: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] blkmapd: fix broken multipath handling
+References: <1407396409-5036-1-git-send-email-hch@lst.de> <1407396409-5036-2-git-send-email-hch@lst.de>
+In-Reply-To: <1407396409-5036-2-git-send-email-hch@lst.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 26, 2014 at 10:10 AM, Boaz Harrosh <boaz@plexistor.com> wrote:
-> From: Boaz Harrosh <boaz@plexistor.com>
->
-> This fixes a dead-lock in the pnfs recall processing
->
-> pnfs_layoutcommit_inode() is called through update_inode()
-> called from VFS. By setting set_inode_dirty during
-> pnfs write IO.
->
-> But the VFS will not schedule another update_inode()
-> If it is already inside an update_inode() or an sb-writeback
->
-> As part of writeback pnfs code might get stuck in LAYOUT_GET
-> with the server returning ERR_RECALL_CONFLICT because some
-> operation has caused the server to RECALL all layouts, including
-> those from our client.
->
-> So the RECALL is received, but our client is returning ERR_DELAY
-> because its write-segments need a LAYOUT_COMMIT, but
-> pnfs_layoutcommit_inode will never come because it is scheduled
-> behind the LAYOUT_GET which is stuck waiting for the recall to
-> finish
->
-> Hence the deadlock, client is stuck polling LAYOUT_GET receiving
-> ERR_RECALL_CONFLICT. Server is stuck polling RECALL receiving
-> ERR_DELAY.
->
-> With pnfs-objects the above condition can easily happen, when
-> a file grows beyond a group of devices. The pnfs-objects-server
-> will RECALL all layouts because the file-objects-map will
-> change and all old layouts will have stale attributes, therefor
-> the RECALL is initiated as part of a LAYOUT_GET, and this can
-> be triggered from within a single client operation.
->
-> A simple solution is to kick out a pnfs_layoutcommit_inode()
-> from within the recall, to free any need-to-commit segments
-> and let the client return success on the RECALL, so streaming
-> can continue.
->
-> This patch Is based on 3.17-rc1. It is completely UNTESTED.
-> I have tested a version of this patch at around the 3.12 Kernel
-> at which point the deadlock was resolved but I hit some race
-> conditions on pnfs state management farther on, so the actual
-> overall processing was not fixed. But hopefully these were fixed
-> by Trond and Christoph, and it should work better now.
->
-> Signed-off-by: Boaz Harrosh <boaz@plexistor.com>
+
+
+On 08/07/2014 03:26 AM, Christoph Hellwig wrote:
+> We do want to use the dm-multipath device if it exists, which the
+> code is generally prepared for, except that this check excludes them
+> early.  In addition this will also add the passive path to the device
+> list, which is harmless if an active one exists as that or the multipath
+> device will be preferred, and at least allows us to work if it doesn't.
+> 
+> Also fix up the check if an path needs to be updated to remove the silly
+> partition check - pNFS block offset are relative to the device so partion
+> should never match it instead of the full device.  On the other hand the
+> simplistic check easily creates false positives, e.g. dm-10 is considered
+> a partition of dm-1.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+Committed... 
+
+steved.
+
 > ---
->  fs/nfs/callback_proc.c | 9 ++++++++-
->  1 file changed, 8 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index 41db525..8660f96 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -171,6 +171,14 @@ static u32 initiate_file_draining(struct nfs_client *clp,
->                 goto out;
->
->         ino = lo->plh_inode;
-> +
-> +       spin_lock(&ino->i_lock);
-> +       pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
-> +       spin_unlock(&ino->i_lock);
-> +
-> +       /* kick out any segs held by need to commit */
-> +       pnfs_layoutcommit_inode(ino, true);
-
-Making this call synchronous could deadlock the entire back channel.
-Is there any reason why it can't just be made asynchonous?
-
-> +
->         spin_lock(&ino->i_lock);
->         if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
->             pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
-> @@ -178,7 +186,6 @@ static u32 initiate_file_draining(struct nfs_client *clp,
->                 rv = NFS4ERR_DELAY;
->         else
->                 rv = NFS4ERR_NOMATCHING_LAYOUT;
-> -       pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
->         spin_unlock(&ino->i_lock);
->         pnfs_free_lseg_list(&free_me_list);
->         pnfs_put_layout_hdr(lo);
-> --
-> 1.9.3
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+>  utils/blkmapd/device-discovery.c | 27 ++++-----------------------
+>  1 file changed, 4 insertions(+), 23 deletions(-)
+> 
+> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+> index df4627e..bcfb060 100644
+> --- a/utils/blkmapd/device-discovery.c
+> +++ b/utils/blkmapd/device-discovery.c
+> @@ -77,16 +77,6 @@ struct bl_disk_path *bl_get_path(const char *filepath,
+>  	return tmp;
+>  }
+>  
+> -/* Check whether valid_path is a substring(partition) of path */
+> -int bl_is_partition(struct bl_disk_path *valid_path, struct bl_disk_path *path)
+> -{
+> -	if (!strncmp(valid_path->full_path, path->full_path,
+> -		     strlen(valid_path->full_path)))
+> -		return 1;
+> -
+> -	return 0;
+> -}
+> -
+>  /*
+>   * For multipath devices, devices state could be PASSIVE/ACTIVE/PSEUDO,
+>   * where PSEUDO > ACTIVE > PASSIVE. Device with highest state is used to
+> @@ -95,19 +85,13 @@ int bl_is_partition(struct bl_disk_path *valid_path, struct bl_disk_path *path)
+>   * If device-mapper multipath support is a must, pseudo devices should
+>   * exist for each multipath device. If not, active device path will be
+>   * chosen for device creation.
+> - * Treat partition as invalid path.
+>   */
+> -int bl_update_path(struct bl_disk_path *path, enum bl_path_state_e state,
+> -		   struct bl_disk *disk)
+> +int bl_update_path(enum bl_path_state_e state, struct bl_disk *disk)
+>  {
+>  	struct bl_disk_path *valid_path = disk->valid_path;
+>  
+> -	if (valid_path) {
+> -		if (valid_path->state >= state) {
+> -			if (bl_is_partition(valid_path, path))
+> -				return 0;
+> -		}
+> -	}
+> +	if (valid_path && valid_path->state >= state)
+> +		return 0;
+>  	return 1;
+>  }
+>  
+> @@ -170,9 +154,6 @@ void bl_add_disk(char *filepath)
+>  		ap_state = bldev_read_ap_state(fd);
+>  	close(fd);
+>  
+> -	if (ap_state != BL_PATH_STATE_ACTIVE)
+> -		return;
+> -
+>  	for (disk = visible_disk_list; disk != NULL; disk = disk->next) {
+>  		/* Already scanned or a partition?
+>  		 * XXX: if released each time, maybe not need to compare
+> @@ -216,7 +197,7 @@ void bl_add_disk(char *filepath)
+>  		path->next = disk->paths;
+>  		disk->paths = path;
+>  		/* check whether we need to update disk info */
+> -		if (bl_update_path(path, path->state, disk)) {
+> +		if (bl_update_path(path->state, disk)) {
+>  			disk->dev = dev;
+>  			disk->size = size;
+>  			disk->valid_path = path;
+> 
