@@ -1,89 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:56286 "EHLO mx12.netapp.com"
+Received: from ozlabs.org ([103.22.144.67]:43886 "EHLO ozlabs.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753081AbaHZULP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 26 Aug 2014 16:11:15 -0400
-Message-ID: <53FCE9DF.1050407@Netapp.com>
-Date: Tue, 26 Aug 2014 16:11:11 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1753093AbaHMCJQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Aug 2014 22:09:16 -0400
+Date: Wed, 13 Aug 2014 12:09:07 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls
+ outside of i_lock
+Message-ID: <20140813120907.33c5584a@canb.auug.org.au>
+In-Reply-To: <20140812194736.3184fce4@tlielax.poochiereds.net>
+References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+	<20140813082827.1097c3ad@canb.auug.org.au>
+	<20140812194736.3184fce4@tlielax.poochiereds.net>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        <linux-nfs@vger.kernel.org>
-CC: James Drews <drews@engr.wisc.edu>, <jrs@world.std.com>
-Subject: Re: [PATCH v2 1/2] NFSv4: Fix problems with close in the presence
- of a delegation
-References: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ boundary="Sig_/uJ0dE+bqlGu==x_x2ME.BTt"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/26/2014 02:30 PM, Trond Myklebust wrote:
-> In the presence of delegations, we can no longer assume that the
-> state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
-> stateid share mode, and so we need to need to calculate the initial
-Nit:  Remove the duplicate "need to" (above).
+--Sig_/uJ0dE+bqlGu==x_x2ME.BTt
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> value for calldata->arg.fmode using the state->flags.
+Hi Jeff,
+
+On Tue, 12 Aug 2014 19:47:36 -0400 Jeff Layton <jeff.layton@primarydata.com=
+> wrote:
 >
-> Reported-by: James Drews <drews@engr.wisc.edu>
-> Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
-> Cc: stable@vger.kernel.org # 2.6.33+
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs4proc.c | 19 +++++++++++++------
->  1 file changed, 13 insertions(+), 6 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 75ae8d22f067..7d67d5b332d4 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2601,6 +2601,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
->  	struct nfs4_closedata *calldata = data;
->  	struct nfs4_state *state = calldata->state;
->  	struct inode *inode = calldata->inode;
-> +	bool is_rdonly, is_wronly, is_rdwr;
->  	int call_close = 0;
->  
->  	dprintk("%s: begin!\n", __func__);
-> @@ -2608,24 +2609,30 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
->  		goto out_wait;
->  
->  	task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_DOWNGRADE];
-> -	calldata->arg.fmode = FMODE_READ|FMODE_WRITE;
->  	spin_lock(&state->owner->so_lock);
-> +	is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
-> +	is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
-> +	is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
-> +	spin_unlock(&state->owner->so_lock);
-> +	/* Calculate the current open share mode */
-> +	calldata->arg.fmode = 0;
-> +	if (is_rdonly || is_rdwr)
-> +		calldata->arg.fmode |= FMODE_READ;
-> +	if (is_wronly || is_rdwr)
-> +		calldata->arg.fmode |= FMODE_WRITE;
->  	/* Calculate the change in open mode */
->  	if (state->n_rdwr == 0) {
-Do we need the owner lock for reading state->n_rdwr, n_rdonly, and n_wronly?
+> On Wed, 13 Aug 2014 08:28:27 +1000
+> Stephen Rothwell <sfr@canb.auug.org.au> wrote:
+>=20
+> > On Tue, 12 Aug 2014 10:48:08 -0400 Jeff Layton <jlayton@primarydata.com=
+> wrote:
+> > >
+> > > Absent any objections, I'll plan to merge these for 3.18.
+> >=20
+> > This means that this patch set should *not* be in linux-next until after
+> > (at least) v3.17-rc1 is released ...  This s reinforced by the lack of
+> > Acked-by, Reviewed-by and Tested-by tags ... (the addition of which wou=
+ld
+> > presumably require the rebase (or rewrite) of a published git tree.)
+>=20
+> It would, but I sent a later reply that revised that statement.
+>=20
+> Trond pointed out that this problem can cause a user-triggerable oops,
+> so we may have to merge it for 3.17 after all. With that in mind, I
+> added these to my linux-next branch and will probably send a pull
+> request before the window closes (assuming that there are no glaring
+> problems with it).
 
-Anna
->  		if (state->n_rdonly == 0) {
-> -			call_close |= test_bit(NFS_O_RDONLY_STATE, &state->flags);
-> -			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
-> +			call_close |= is_rdonly || is_rdwr;
->  			calldata->arg.fmode &= ~FMODE_READ;
->  		}
->  		if (state->n_wronly == 0) {
-> -			call_close |= test_bit(NFS_O_WRONLY_STATE, &state->flags);
-> -			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
-> +			call_close |= is_wronly || is_rdwr;
->  			calldata->arg.fmode &= ~FMODE_WRITE;
->  		}
->  	}
->  	if (!nfs4_valid_open_stateid(state))
->  		call_close = 0;
-> -	spin_unlock(&state->owner->so_lock);
->  
->  	if (!call_close) {
->  		/* Note: exit _without_ calling nfs4_close_done */
+OK, fine.  I have merged it today in any case.
 
+> While we're on the subject, we probably ought to rename my tree in your
+> "Trees" file from "file-private-locks" to "file-locks" or something.
+> File private locks (aka OFD locks) got merged in v3.15, but I have been
+> collecting patches that touch fs/locks.c
+
+OK, I will do that tomorrow.
+
+--=20
+Cheers,
+Stephen Rothwell                    sfr@canb.auug.org.au
+
+--Sig_/uJ0dE+bqlGu==x_x2ME.BTt
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAEBCAAGBQJT6sjJAAoJEMDTa8Ir7ZwV+P0P/0WHMJbEG92a1tE+5hFJhDUy
+H6QMpgtHiHT4zMxqHR9bqNyxDKAuNLUXrFph4I0cpr7xu6/SMPNem9UpFH5VDuFc
+W6c0X9NAmXvHjmXdxQf33rZmeAfhGHyvtaImi7ZUnnyW2ercOlqk0k9gFbpoQErC
+3wycMbgLomDrkEXbrgB2sVMycyqeIRCJbHm9GE79KO0WRLVu8XwnigPn6sZFo7Vl
+cCP9ZPfu/pn9NYvZzlYEQditKGULCV9wY/lKPDylnisPqPUTXx91SB5/CsHua3Js
+W4hjhghhqYpcUqM+mFLll6Ob1ywBJYccuGwr7vOvICg3geipmrHe6G39pAYf5igW
+TTlxJiBVTuPvyqite3P5e7+NAnDBpXjzT5M/MexCrp951GiNtpPTdJtd8I9Kq5R5
+mwqIDTDb9Aw0vebTRx3AfmYl9afifMG4wrPwPXulIIMkM8kvKp3ZWQG/+mGBABhm
++ZtRN/kxGZQOq331kUnJ/bqeAV7jYM5DgOW6ZsgAKC9kt4A3bfRar+fdUKDs5hOM
+NMw/pXm1RAFJEDvXosL+QR+WRCB4A8LiQXhYGGjppbsPGXj2ifCBvUS01WgNuY7M
+dgmDTlpp7njzEuezQWiVr0o4Ua2yw2+Uf/IuHHgVKdRzUsY3B3hLtPB6/hSz/SJU
+u6StAEfP4RWSR6B7kuny
+=muyF
+-----END PGP SIGNATURE-----
+
+--Sig_/uJ0dE+bqlGu==x_x2ME.BTt--
