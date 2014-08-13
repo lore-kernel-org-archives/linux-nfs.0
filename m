@@ -1,116 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:59099 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751661AbaH3Rgk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Aug 2014 13:36:40 -0400
-Date: Sat, 30 Aug 2014 18:36:38 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Peng Tao <tao.peng@primarydata.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: VFS regression: commit aba809cf0944 breaks MNT_SHRINKABLE
- automounted partitions
-Message-ID: <20140830173638.GE7996@ZenIV.linux.org.uk>
-References: <CAHQdGtT4kbPqQvD_fu7c_5_CqK8FCpA5mJsVdh=KxoE9_vXRzw@mail.gmail.com>
- <20140829205817.GB7996@ZenIV.linux.org.uk>
- <CAHQdGtRBqmsfeVVysTnTEELHuwiPwvsyTHtoRAsfSS0aSyCbfQ@mail.gmail.com>
- <20140829230147.GD7996@ZenIV.linux.org.uk>
- <CAKVebiWBU3du650yeTMfaFuLr=WLUBc2RukFGyBF6Qgxd6zA8Q@mail.gmail.com>
+Received: from arafel.iwakd.de ([78.46.72.57]:56180 "EHLO arafel.iwakd.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750913AbaHMRv2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2014 13:51:28 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKVebiWBU3du650yeTMfaFuLr=WLUBc2RukFGyBF6Qgxd6zA8Q@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Wed, 13 Aug 2014 19:45:16 +0200
+From: Christian Seiler <christian@iwakd.de>
+To: Steve Dickson <steved@redhat.com>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] libnfsidmap: respect Nobody-User/Nobody-Group
+In-Reply-To: <53EB962C.5000001@RedHat.com>
+References: <1401794264-3975-1-git-send-email-christian@iwakd.de>
+ <53EB962C.5000001@RedHat.com>
+Message-ID: <603dd17035c81999c99b9020b65d8768@iwakd.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 30, 2014 at 08:38:56AM +0800, Peng Tao wrote:
-> On Sat, Aug 30, 2014 at 7:01 AM, Al Viro <viro@zeniv.linux.org.uk> wrote:
-> > On Fri, Aug 29, 2014 at 05:47:58PM -0400, Trond Myklebust wrote:
-> >
-> >> Note that the issue happens with NFSv4 or NFSv4.1 (not NFSv3).
-> >
-> > That's what I'd been using for testing.
-> >
-> >> Note that on my system, if I call 'umount' a second time after getting
-> >> the 'device is busy' error, then it succeeds. It looks as if the first
-> >> call to 'umount /mnt' causes the directory /mnt/export to clear,
-> >> causing the second 'umount /mnt' to succeeed (unless I try to access
-> >> /mnt/export again):
-> Just to be clear, it is what I saw as well. I did not get permanent
-> -EBUSY and I could umount /mnt if I run `umount /mnt` twice.
-> 
-> And I did not do git bisect. I had doubts in the code so I found the
-> specific commit to revert it and it worked. But if it is some other
-> commit in the middle, I could have missed it.
-> 
-> My theory to blame aba809cf0944 is that in
-> do_umount()->shrink_submounts()->umount_tree(), it transfers parent
-> mnt refcount (held by child mnt) to mnt_ex_mountpoint but that is put
-> _after_ do_umount() calls propagate_mount_busy(mnt, 2). So
-> propagate_mount_busy() would fail do_refcount_check(). Does it make
-> sense to you?
+Hi,
 
-Of course; the question is what to do with that.  The root of the problem
-is in ordering constraints on fs shutdown and dput() of mountpoints.  What
-we have right now solves that by holding "ghost" reference to parent vfsmount
-until namespace_unlock(), where we drop them after having done that dput().
+Am 2014-08-13 18:45, schrieb Steve Dickson:
+> On 06/03/2014 07:17 AM, Christian Seiler wrote:
+>> Previous behavior of libnfsidmap was to do a name lookup of
+>> nobody@DEFAULTDOMAIN (for both user and group), which does not match
+>> the behavior of rpc.idmapd.
+>>
+>> This patch makes libnfsidmap respect Nobody-User/Nobody-Group for
+>> lookups, thus making the nfsidmap utility properly handle the case 
+>> if
+>> nobody@DEFAULTDOMAIN does not directly map to any user/group on the
+>> system.
+>>
+>> Signed-off-by: Christian Seiler <christian@iwakd.de>
+> Wow... This one fell of the radar... sorry about that!
 
-The constrants are
-	* dput() of mountpoint should happen only after we'd dropped namespace
-lock - we really don't want any IO under it.
-	* it should happen before fs containing that mountpoint gets shut down.
-	* non-lazy umount(2) should not return until all filesystems it
-will shut down are, indeed, shut down
+No problem. To be honest, I completely forgot about this patch
+myself, because I wrote this patch when I tried to switch from
+idmapd to nfsidmap, but after I had some problems with that, I
+kind of switched back to idmapd, and then kind of put the whole
+thing to the back of my mind.
 
-FWIW, I suspect that the simplest solution is this:
-	* decrement parent's refcount when detaching a child from it in
-umount_tree()
-	* in namespace_unlock(), _before_ dropping the rwsem, go through the
-list of victims and bump refcounts on their parents.  Note that those could
-not have been shut down, let alone freed yet - either we are the ones to
-take the parent out, in which case its refcount won't get to zero until
-namespace_unlock() regardless of the children, or we are not.  In which case
-its ->mnt_ns is non-NULL and will stay that way until rwsem is dropped (and
-its refcount is also guaranteed to stay positive, not that mntput() would
-bother checking that with non-NULL ->mnt_ns).
+But perhaps you can give me a couple of pointers on how to
+best debug the issue I had with nfsidmap:
 
-It does give a window when parent looks busy - from dropping rwsem in
-namespace_unlock() to the moment when we get to the (ex-)child in the
-loop there.  So what?  It doesn't affect the busy checks for that syscall -
-we'd already done them all.  It doesn't affect the busy checks for anything
-we do after returning from that syscall - namespace_unlock() completes before
-we return to userland and all is good.  And if another process calls umount()
-before ours return...  Well, it gets its EBUSY - same as it would if it got
-there just as the first one has finished finding the mountpoint of child.
-Two processes playing with umount(2) on the same area in the tree without
-serialization should be ready to see the damn things transiently busy, simply
-from another process looking at its victims...
+  - nsswitch translation for idmapping, nss_ldapd
+  - nfsv4 sec=krb5 mount (mounted via autofs)
+  - no krb5 ticket: ls doesn't even work (permission denied)
+    (this is expected, not a bug)
+  - with krb5 ticket: ls -l shows correct directory contents,
+    with correct user/group ownership (translation nfs4 ->
+    uid/gid via nfsidmap and then uid/gid -> local names via
+    getpwnam works)
+  - accessing files owned by myself but that are not group/other
+    readable doesn't work (permission denied)
+  - writing to files / directories on which I have write
+    permission (but no other write permission) doesn't work
+  - nfsv4 sec=sys mounts don't have this problem
 
-IOW, how about this (completely untested)?  That's on top of that commit
-from -next, but those two should be easy to backport to older trees
-(->mnt_mp_list won't be there for those, but that's about it).
+To me this appears to be a problem that while uids/gids are
+correctly mapped when getting data from the server, they are
+not mapped properly when sending requests to the server, so
+that it always falls back to nobody, therefore giving me
+insufficient permissions.
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 3733cfb..00e5b1e 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -1299,6 +1299,11 @@ static void namespace_unlock(void)
- 	head.first->pprev = &head.first;
- 	INIT_HLIST_HEAD(&unmounted);
- 
-+	/* undo decrements we'd done in umount_tree() */
-+	hlist_for_each_entry(mnt, &head, mnt_hash)
-+		if (mnt->mnt_ex_mountpoint.mnt)
-+			mntget(mnt->mnt_ex_mountpoint.mnt);
-+
- 	up_write(&namespace_sem);
- 
- 	synchronize_rcu();
-@@ -1351,6 +1356,7 @@ void umount_tree(struct mount *mnt, int how)
- 		if (mnt_has_parent(p)) {
- 			hlist_del_init(&p->mnt_mp_list);
- 			put_mountpoint(p->mnt_mp);
-+			mnt_add_count(p->mnt_parent, -1);
- 			/* move the reference to mountpoint into ->mnt_ex_mountpoint */
- 			p->mnt_ex_mountpoint.dentry = p->mnt_mountpoint;
- 			p->mnt_ex_mountpoint.mnt = &p->mnt_parent->mnt;
+The problem doesn't occur with rpc.idmapd (and disabled
+nfsidmap).
+
+My question would be whether there is an easy way to debug this?
+I tried to have a look at the kernel nfs4 client code / the
+interaction with idmap, but I just don't know enough about that
+area of the kernel to really see through the logic.
+
+> Committed!
+
+Thanks!
+
+Regards,
+Christian
+
