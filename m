@@ -1,71 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:56313 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753805AbaHFRok (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 13:44:40 -0400
-Received: by mail-ig0-f171.google.com with SMTP id l13so9067188iga.10
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Aug 2014 10:44:39 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 6/6] nfsd: Reorder nfsd_cache_match to check more powerful discriminators first
-Date: Wed,  6 Aug 2014 13:44:25 -0400
-Message-Id: <1407347065-17463-7-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407347065-17463-6-git-send-email-trond.myklebust@primarydata.com>
-References: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
- <1407347065-17463-2-git-send-email-trond.myklebust@primarydata.com>
- <1407347065-17463-3-git-send-email-trond.myklebust@primarydata.com>
- <1407347065-17463-4-git-send-email-trond.myklebust@primarydata.com>
- <1407347065-17463-5-git-send-email-trond.myklebust@primarydata.com>
- <1407347065-17463-6-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:22987 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751675AbaHMTKC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2014 15:10:02 -0400
+Message-ID: <53EBB805.6070006@RedHat.com>
+Date: Wed, 13 Aug 2014 15:09:57 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Christian Seiler <christian@iwakd.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] libnfsidmap: respect Nobody-User/Nobody-Group
+References: <1401794264-3975-1-git-send-email-christian@iwakd.de> <53EB962C.5000001@RedHat.com> <603dd17035c81999c99b9020b65d8768@iwakd.de>
+In-Reply-To: <603dd17035c81999c99b9020b65d8768@iwakd.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We would normally expect the xid and the checksum to be the best
-discriminators. Check them before looking at the procedure number,
-etc.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfscache.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 74603654b7f9..122f69185ef5 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -338,20 +338,24 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
- static bool
- nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
- {
--	/* Check RPC header info first */
--	if (rqstp->rq_xid != rp->c_xid || rqstp->rq_proc != rp->c_proc ||
--	    rqstp->rq_prot != rp->c_prot || rqstp->rq_vers != rp->c_vers ||
--	    rqstp->rq_arg.len != rp->c_len ||
--	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
--	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
-+	/* Check RPC XID first */
-+	if (rqstp->rq_xid != rp->c_xid)
- 		return false;
--
- 	/* compare checksum of NFS data */
- 	if (csum != rp->c_csum) {
- 		++payload_misses;
- 		return false;
- 	}
- 
-+	/* Other discriminators */
-+	if (rqstp->rq_proc != rp->c_proc ||
-+	    rqstp->rq_prot != rp->c_prot ||
-+	    rqstp->rq_vers != rp->c_vers ||
-+	    rqstp->rq_arg.len != rp->c_len ||
-+	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
-+	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
-+		return false;
-+
- 	return true;
- }
- 
--- 
-1.9.3
+On 08/13/2014 01:45 PM, Christian Seiler wrote:
+> No problem. To be honest, I completely forgot about this patch
+> myself, because I wrote this patch when I tried to switch from
+> idmapd to nfsidmap, but after I had some problems with that, I
+> kind of switched back to idmapd, and then kind of put the whole
+> thing to the back of my mind.
+> 
+> But perhaps you can give me a couple of pointers on how to
+> best debug the issue I had with nfsidmap:
+> 
+>  - nsswitch translation for idmapping, nss_ldapd
+I'm not sure what you are asking...
 
+>  - nfsv4 sec=krb5 mount (mounted via autofs)
+So your saying krb5 v4 mounts don't work via autofs and
+its because idmapping??
+
+>  - no krb5 ticket: ls doesn't even work (permission denied)
+>    (this is expected, not a bug)
+>  - with krb5 ticket: ls -l shows correct directory contents,
+>    with correct user/group ownership (translation nfs4 ->
+>    uid/gid via nfsidmap and then uid/gid -> local names via
+>    getpwnam works)
+And what's the problem?
+
+>  - accessing files owned by myself but that are not group/other
+>    readable doesn't work (permission denied)
+hmm... this sound like a bug...
+
+>  - writing to files / directories on which I have write
+>    permission (but no other write permission) doesn't work
+Is the execute bit on? 
+>  - nfsv4 sec=sys mounts don't have this problem
+> 
+> To me this appears to be a problem that while uids/gids are
+> correctly mapped when getting data from the server, they are
+> not mapped properly when sending requests to the server, so
+> that it always falls back to nobody, therefore giving me
+> insufficient permissions.
+> 
+> The problem doesn't occur with rpc.idmapd (and disabled
+> nfsidmap).
+This is very odd...
+
+> 
+> My question would be whether there is an easy way to debug this?
+> I tried to have a look at the kernel nfs4 client code / the
+> interaction with idmap, but I just don't know enough about that
+> area of the kernel to really see through the logic.
+
+set the Verbosity = 9 in /etc/idmapd.conf the look
+in /var/log/messages for the output...
+
+steved.
