@@ -1,46 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34135 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:37417 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S935621AbaH0VQu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Aug 2014 17:16:50 -0400
-Date: Wed, 27 Aug 2014 17:16:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/4] sunrpc: fix byte-swapping of displayed XID
-Message-ID: <20140827211649.GA18393@fieldses.org>
-References: <20140822190835.3883.7581.stgit@klimt.1015granger.net>
- <20140822191050.3883.53374.stgit@klimt.1015granger.net>
+	id S1751557AbaHMPvd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2014 11:51:33 -0400
+Date: Wed, 13 Aug 2014 11:51:31 -0400
+To: Stephen Rothwell <sfr@canb.auug.org.au>
+Cc: Jeff Layton <jlayton@primarydata.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls outside
+ of i_lock
+Message-ID: <20140813155131.GA5169@fieldses.org>
+References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+ <20140813082827.1097c3ad@canb.auug.org.au>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140822191050.3883.53374.stgit@klimt.1015granger.net>
+In-Reply-To: <20140813082827.1097c3ad@canb.auug.org.au>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 22, 2014 at 03:10:50PM -0400, Chuck Lever wrote:
-> xprt_lookup_rqst() and bc_send_request() display a byte-swapped XID,
-> but receive_cb_reply() does not.
+On Wed, Aug 13, 2014 at 08:28:27AM +1000, Stephen Rothwell wrote:
+> This s reinforced by the lack of Acked-by, Reviewed-by and Tested-by
+> tags ... (the addition of which would presumably require the rebase
+> (or rewrite) of a published git tree.)
 
-Thanks, applying.--b.
+By the way, I reshuffled my branches recently so the one you pull has
+incoming patches that I think are mature enough to be worth testing but
+haven't finished review yet.
 
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  net/sunrpc/svcsock.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
-> 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index c24a8ff..6ed8729 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -1036,7 +1036,7 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
->  			"%s: Got unrecognized reply: "
->  			"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
->  			__func__, ntohl(calldir),
-> -			bc_xprt, xid);
-> +			bc_xprt, ntohl(xid));
->  		return -EAGAIN;
->  	}
->  
-> 
+That was partly Jeff's request, as he wanted his patches to get some
+exposure while waiting for review.
+
+It also means I can fold in some minor fixes instead of piling up fixes
+for nits found by the kbuild robot.  (But maybe that unfairly denies it
+some credit, I don't know.)
+
+Anyway that means that branch is getting rewritten, say, weekly, as
+opposed to never (or maybe for once-in-a-year level screwups).
+
+Am I doing it wrong?
+
+--b.
