@@ -1,56 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40122 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:4766 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753856AbaHLTQn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Aug 2014 15:16:43 -0400
-Date: Tue, 12 Aug 2014 15:16:43 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 04/11] SUNRPC: Do not override wspace tests in
- svc_handle_xprt
-Message-ID: <20140812191643.GB25914@fieldses.org>
-References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
+	id S1751145AbaHMOyT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Aug 2014 10:54:19 -0400
+Message-ID: <53EB7C17.8050402@RedHat.com>
+Date: Wed, 13 Aug 2014 10:54:15 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] blkmapd: dump useful device information to syslog
+References: <1407396409-5036-1-git-send-email-hch@lst.de> <1407396409-5036-3-git-send-email-hch@lst.de>
+In-Reply-To: <1407396409-5036-3-git-send-email-hch@lst.de>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 03, 2014 at 01:03:06PM -0400, Trond Myklebust wrote:
-> We already determined that there was enough wspace when we
-> called svc_xprt_enqueue.
 
-So xpo_has_wspace may have returned true then, but I don't see what
-guarantees it still would now.  Couldn't another server thread have also
-run svc_recv() and the atomic_add(rqstp->rq_reserved,
-&xprt->xpt_reserved) between the svc_xprt_enqueue call and now?
 
---b.
-
+On 08/07/2014 03:26 AM, Christoph Hellwig wrote:
+> Dump some information about used devices to syslog so that an admin
+> can troubleshoot failing blocklayout mounts.
 > 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+Committed... after fixing a couple format warnings... 
+
+steved.
+
 > ---
->  net/sunrpc/svc_xprt.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+>  utils/blkmapd/device-discovery.c | 6 +++++-
+>  utils/blkmapd/device-process.c   | 2 ++
+>  utils/blkmapd/dm-device.c        | 4 ++++
+>  3 files changed, 11 insertions(+), 1 deletion(-)
 > 
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 32647b2a6a34..b731077b6a30 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -744,7 +744,7 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
->  			svc_add_new_temp_xprt(serv, newxpt);
->  		else
->  			module_put(xprt->xpt_class->xcl_owner);
-> -	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
-> +	} else {
->  		/* XPT_DATA|XPT_DEFERRED case: */
->  		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
->  			rqstp, rqstp->rq_pool->sp_id, xprt,
-> -- 
-> 1.9.3
+> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+> index bcfb060..b52afe2 100644
+> --- a/utils/blkmapd/device-discovery.c
+> +++ b/utils/blkmapd/device-discovery.c
+> @@ -148,7 +148,11 @@ void bl_add_disk(char *filepath)
+>  
+>  	dev = sb.st_rdev;
+>  	serial = bldev_read_serial(fd, filepath);
+> -	if (dm_is_dm_major(major(dev)))
+> +	if (!serial) {
+> +		BL_LOG_ERR("%s: no serial found for %s\n",
+> +				 __func__, filepath);
+> +		ap_state = BL_PATH_STATE_PASSIVE;
+> +	} else if (dm_is_dm_major(major(dev)))
+>  		ap_state = BL_PATH_STATE_PSEUDO;
+>  	else
+>  		ap_state = bldev_read_ap_state(fd);
+> diff --git a/utils/blkmapd/device-process.c b/utils/blkmapd/device-process.c
+> index 5fe3dff..f53a616 100644
+> --- a/utils/blkmapd/device-process.c
+> +++ b/utils/blkmapd/device-process.c
+> @@ -181,6 +181,8 @@ static int map_sig_to_device(struct bl_sig *sig, struct bl_volume *vol)
+>  		/* FIXME: should we use better algorithm for disk scan? */
+>  		mapped = verify_sig(disk, sig);
+>  		if (mapped) {
+> +			BL_LOG_INFO("%s: using device %s\n",
+> +					__func__, disk->valid_path->full_path);
+>  			vol->param.bv_dev = disk->dev;
+>  			vol->bv_size = disk->size;
+>  			break;
+> diff --git a/utils/blkmapd/dm-device.c b/utils/blkmapd/dm-device.c
+> index 0f4f148..8ffb19e 100644
+> --- a/utils/blkmapd/dm-device.c
+> +++ b/utils/blkmapd/dm-device.c
+> @@ -400,6 +400,8 @@ uint64_t dm_device_create(struct bl_volume *vols, int num_vols)
+>  			}
+>  			dev = node->bv_vols[0]->param.bv_dev;
+>  			tmp = table->params;
+> +			BL_LOG_INFO("%s: major %u minor %u", __func__,
+> +					MAJOR(dev), MINOR(dev));
+>  			if (!dm_format_dev(tmp, DM_PARAMS_LEN,
+>  					   MAJOR(dev), MINOR(dev))) {
+>  				free(table);
+> @@ -459,6 +461,8 @@ uint64_t dm_device_create(struct bl_volume *vols, int num_vols)
+>  				strcpy(table->target_type, "linear");
+>  				tmp = table->params;
+>  				dev = node->bv_vols[i]->param.bv_dev;
+> +				BL_LOG_INFO("%s: major %u minor %u", __func__,
+> +					MAJOR(dev), MINOR(dev));
+>  				if (!dm_format_dev(tmp, DM_PARAMS_LEN,
+>  						   MAJOR(dev), MINOR(dev))) {
+>  					free(table);
 > 
