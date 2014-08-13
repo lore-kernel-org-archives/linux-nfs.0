@@ -1,133 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:58276 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751148AbaHFNi6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 09:38:58 -0400
-Message-ID: <53E22FDD.4090900@gmail.com>
-Date: Wed, 06 Aug 2014 21:38:37 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail2.candelatech.com ([208.74.158.173]:36428 "EHLO
+	mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752929AbaHMPmg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2014 11:42:36 -0400
+Message-ID: <53EB876A.4090705@candelatech.com>
+Date: Wed, 13 Aug 2014 08:42:34 -0700
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>, jlayton@redhat.com,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 3/3 RFC] fs/locks.c: Copy all infomation for conflock
-References: <53BAAAC5.9000106@gmail.com> <53E22EA5.70708@gmail.com> <53E22F2C.8070900@gmail.com>
-In-Reply-To: <53E22F2C.8070900@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+To: NeilBrown <neilb@suse.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Killing process in D state on mount to dead NFS server.
+References: <53DA8443.407@candelatech.com> <20140801064217.01852788@notabene.brown> <53DAB307.2000206@candelatech.com>
+In-Reply-To: <53DAB307.2000206@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make sure copy the private information by fl_copy_lock()
-in struct file_lock_operations, use locks_copy_lock copying
-all information for conflock.
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/lockd/svclock.c |  2 +-
- fs/locks.c         | 27 ++++++---------------------
- include/linux/fs.h |  6 ------
- 3 files changed, 7 insertions(+), 28 deletions(-)
+Hello!
 
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index ab798a8..e1f209c 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -677,7 +677,7 @@ nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
- 		block->b_flags |= B_TIMED_OUT;
- 	if (conf) {
- 		if (block->b_fl)
--			__locks_copy_lock(block->b_fl, conf);
-+			locks_copy_lock(block->b_fl, conf);
- 	}
- }
- 
-diff --git a/fs/locks.c b/fs/locks.c
-index 717fbc4..5547b3f 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -266,35 +266,20 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
- 		new->fl_lmops = fl->fl_lmops;
- }
- 
--/*
-- * Initialize a new lock from an existing file_lock structure.
-- */
--void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
-+void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
- {
-+	locks_release_private(new);
-+
- 	new->fl_owner = fl->fl_owner;
- 	new->fl_pid = fl->fl_pid;
--	new->fl_file = NULL;
-+	new->fl_file = fl->fl_file;
- 	new->fl_flags = fl->fl_flags;
- 	new->fl_type = fl->fl_type;
- 	new->fl_start = fl->fl_start;
- 	new->fl_end = fl->fl_end;
--	new->fl_ops = NULL;
--	new->fl_lmops = NULL;
--}
--EXPORT_SYMBOL(__locks_copy_lock);
--
--void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
--{
--	locks_release_private(new);
--
--	__locks_copy_lock(new, fl);
--	new->fl_file = fl->fl_file;
--	new->fl_ops = fl->fl_ops;
--	new->fl_lmops = fl->fl_lmops;
- 
- 	locks_copy_private(new, fl);
- }
--
- EXPORT_SYMBOL(locks_copy_lock);
- 
- static inline int flock_translate_cmd(int cmd) {
-@@ -718,7 +703,7 @@ posix_test_lock(struct file *filp, struct file_lock *fl)
- 			break;
- 	}
- 	if (cfl) {
--		__locks_copy_lock(fl, cfl);
-+		locks_copy_lock(fl, cfl);
- 		if (cfl->fl_nspid)
- 			fl->fl_pid = pid_vnr(cfl->fl_nspid);
- 	} else
-@@ -921,7 +906,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 			if (!posix_locks_conflict(request, fl))
- 				continue;
- 			if (conflock)
--				__locks_copy_lock(conflock, fl);
-+				locks_copy_lock(conflock, fl);
- 			error = -EAGAIN;
- 			if (!(request->fl_flags & FL_SLEEP))
- 				goto out;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 4d40097..0d2c491 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -942,7 +942,6 @@ void locks_free_lock(struct file_lock *fl);
- extern void locks_init_lock(struct file_lock *);
- extern struct file_lock * locks_alloc_lock(void);
- extern void locks_copy_lock(struct file_lock *, struct file_lock *);
--extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
- extern void locks_remove_posix(struct file *, fl_owner_t);
- extern void locks_remove_file(struct file *);
- extern void locks_release_private(struct file_lock *);
-@@ -1002,11 +1001,6 @@ static inline void locks_init_lock(struct file_lock *fl)
- 	return;
- }
- 
--static inline void __locks_copy_lock(struct file_lock *new, struct file_lock *fl)
--{
--	return;
--}
--
- static inline void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
- {
- 	return;
--- 
-1.9.3
+Did you get a chance to look at the stacks below?
 
+Thanks,
+Ben
+
+
+On 07/31/2014 02:20 PM, Ben Greear wrote:
+> On 07/31/2014 01:42 PM, NeilBrown wrote:
+>> On Thu, 31 Jul 2014 11:00:35 -0700 Ben Greear <greearb@candelatech.com> wrote:
+> 
+>>> So, this has been asked all over the interweb for years and years, but the best answer I can find is to reboot the system or create a fake NFS server 
+>>> somewhere with the same IP as the gone-away NFS server.
+>>> 
+>>> The problem is:
+>>> 
+>>> I have some mounts to an NFS server that no longer exists (crashed/powered down).
+>>> 
+>>> I have some processes stuck trying to write to files open on these mounts.
+>>> 
+>>> I want to kill the process and unmount.
+>>> 
+>>> umount -l will make the mount go a way, sort of.  But process is still hung. umount -f complains: umount2:  Device or resource busy umount.nfs:
+>>> /mnt/foo: device is busy
+>>> 
+>>> kill -9 does not work on process.
+> 
+>> Kill -1 should work (since about 2.6.25 or so).
+> 
+> That is -[ONE], right?  Assuming so, it did not work for me.
+> 
+> Kernel is 3.14.4+, with some of extra patches, but probably nothing that influences this particular behaviour.
+> 
+> [root@lf1005-14010010 ~]# cat /proc/3805/stack [<ffffffff811371ba>] sleep_on_page+0x9/0xd [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78 
+> [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77 [<ffffffffa0f04734>]
+> nfs_file_fsync+0x37/0x83 [nfs] [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19 [<ffffffffa0f05305>]
+> nfs_file_flush+0x6b/0x6f [nfs] [<ffffffff81183e46>] filp_close+0x3f/0x71 [<ffffffff8119c8ae>] __close_fd+0x80/0x98 [<ffffffff81183de5>]
+> SyS_close+0x1c/0x3e [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b [<ffffffffffffffff>] 0xffffffffffffffff [root@lf1005-14010010 ~]# kill -1 3805 
+> [root@lf1005-14010010 ~]# cat /proc/3805/stack [<ffffffff811371ba>] sleep_on_page+0x9/0xd [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78 
+> [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77 [<ffffffffa0f04734>]
+> nfs_file_fsync+0x37/0x83 [nfs] [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19 [<ffffffffa0f05305>]
+> nfs_file_flush+0x6b/0x6f [nfs] [<ffffffff81183e46>] filp_close+0x3f/0x71 [<ffffffff8119c8ae>] __close_fd+0x80/0x98 [<ffffffff81183de5>]
+> SyS_close+0x1c/0x3e [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b [<ffffffffffffffff>] 0xffffffffffffffff
+> 
+> Thanks, Ben
+> 
+>> If it doesn't please report the kernel version and cat /proc/$PID/stack
+> 
+>> for some processes that cannot be killed.
+> 
+>> NeilBrown
+> 
+>>> 
+>>> 
+>>> Aside from bringing a fake NFS server back up on the same IP, is there any other way to get these mounts unmounted and the processes killed without 
+>>> rebooting?
+>>> 
+>>> Thanks, Ben
+>>> 
+> 
+> 
+> 
+> -- To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
+> 
+
+- -- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.13 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iQEcBAEBAgAGBQJT64dqAAoJELbHqkYeJT4OHC0IAIRB2A8v5msRhXrdd+ybvkwD
+NcOSYOhSsxCHIS5BR5CNLg89zipRuocVCbdLRdtbse8nspMq8PAiQJt3YOkGwzos
+ifcsgxouMUKfmLcFHtJ0maIkWMPIrttPvHJuw67gt7LbHLPsFjlrdrKPv6aGa95m
+7mCkY/bRniiJYCxrCqixzQpuWfIyVal6FPGtmpydTVh6lq0y05vDEVB8lP5xGyes
+w+I/vJkGf9ddTIDasYJbLwUXECbN3makJxmHNAZf4slQMB5FNNnpeTOqL17u62cY
+F/do8m/zxzztibTZqjKHIhHGDw/huTyQWfRsQ0AA9Exu8/RZKhJlL2EeYlFJWJQ=
+=hNGY
+-----END PGP SIGNATURE-----
