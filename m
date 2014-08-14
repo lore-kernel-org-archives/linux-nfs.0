@@ -1,166 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:55247 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754552AbaHUNRB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 09:17:01 -0400
-Received: by mail-pd0-f169.google.com with SMTP id y10so13772883pdj.0
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2014 06:17:00 -0700 (PDT)
-Message-ID: <53F5F12B.1020801@gmail.com>
-Date: Thu, 21 Aug 2014 21:16:27 +0800
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:46604 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752473AbaHNMa6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 08:30:58 -0400
+Message-ID: <53ECABE9.8060204@gmail.com>
+Date: Thu, 14 Aug 2014 20:30:33 +0800
 From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
 To: Jeff Layton <jeff.layton@primarydata.com>
 CC: "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Joe Perches <joe@perches.com>, Kinglong Mee <kinglongmee@gmail.com>,
-        eshel@almaden.ibm.com
-Subject: Re: [PATCH] lockd: Remove unused b_fl member from struct nlm_block
-References: <53F47357.7050608@gmail.com>	<20140820065826.6def22d5@tlielax.poochiereds.net>	<53F4904B.6080204@gmail.com> <20140820090412.309b7599@tlielax.poochiereds.net>
-In-Reply-To: <20140820090412.309b7599@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=UTF-8
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
+Subject: Re: [PATCH 3/3 v2] NFSD: Increase the reference of lockowner when
+ coping file_lock
+References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com>	<20140809065112.700e0ecc@tlielax.poochiereds.net>	<53E791F1.40802@gmail.com>	<53E7933D.80504@gmail.com> <20140811124610.16f49168@tlielax.poochiereds.net>
+In-Reply-To: <20140811124610.16f49168@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/20/2014 21:04, Jeff Layton wrote:
-> On Wed, 20 Aug 2014 20:10:51 +0800
+On 8/12/2014 00:46, Jeff Layton wrote:
+> On Sun, 10 Aug 2014 23:43:57 +0800
 > Kinglong Mee <kinglongmee@gmail.com> wrote:
 > 
->> On 8/20/2014 18:58, Jeff Layton wrote:
->>> On Wed, 20 Aug 2014 18:07:19 +0800
->>> Kinglong Mee <kinglongmee@gmail.com> wrote:
->>>
->>>> Fix left code by Joe Perches's patch,
->>>> "locks: Remove unused conf argument from lm_grant"
->>>>
->>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->>>> ---
->>>>  fs/lockd/svclock.c          | 26 +++++---------------------
->>>>  include/linux/lockd/lockd.h |  1 -
->>>>  2 files changed, 5 insertions(+), 22 deletions(-)
->>>>
->>>> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
->>>> index 2a61701..796e63b 100644
->>>> --- a/fs/lockd/svclock.c
->>>> +++ b/fs/lockd/svclock.c
->>>> @@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
->>>>  	block->b_daemon = rqstp->rq_server;
->>>>  	block->b_host   = host;
->>>>  	block->b_file   = file;
->>>> -	block->b_fl = NULL;
->>>>  	file->f_count++;
->>>>  
->>>>  	/* Add to file's list of blocks */
->>>> @@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
->>>>  	nlmsvc_freegrantargs(block->b_call);
->>>>  	nlmsvc_release_call(block->b_call);
->>>>  	nlm_release_file(block->b_file);
->>>> -	kfree(block->b_fl);
->>>>  	kfree(block);
->>>>  }
->>>>  
->>>> @@ -523,20 +521,13 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->>>>  	block = nlmsvc_lookup_block(file, lock);
->>>>  
->>>>  	if (block == NULL) {
->>>> -		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
->>>> -
->>>> -		if (conf == NULL)
->>>> -			return nlm_granted;
->>>>  		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
->>>> -		if (block == NULL) {
->>>> -			kfree(conf);
->>>> +		if (block == NULL)
->>>>  			return nlm_granted;
->>>> -		}
->>>> -		block->b_fl = conf;
->>>
->>> NAK. The b_fl member is not unused, as is evidenced by the assignment
->>> above.
+>> v2: Fix bad using of struct file_lock_operations for handle the owner.
 >>
->> Sorry for my bad title, Maybe I should use a good name, sorry!
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfsd/nfs4state.c | 32 ++++++++++++++++++++++++++++++--
+>>  1 file changed, 30 insertions(+), 2 deletions(-)
 >>
->>>
->>> Joe's patch removed the conflock from the lm_grant callback since the
->>> filesystem never set that parameter in the lm_grant callback. This call
->>> however has nothing to do with lm_grant. It's done when the client
->>> issues a NLM_TEST operation.
->>>
->>>>  	}
->>>>  	if (block->b_flags & B_QUEUED) {
->>>> -		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
->>>> -			block, block->b_flags, block->b_fl);
->>>> +		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d\n",
->>>> +			block, block->b_flags);
->>>>  		if (block->b_flags & B_TIMED_OUT) {
->>>>  			nlmsvc_unlink_block(block);
->>>>  			ret = nlm_lck_denied;
->>>> @@ -544,14 +535,8 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->>>>  		}
->>>>  		if (block->b_flags & B_GOT_CALLBACK) {
->>>>  			nlmsvc_unlink_block(block);
->>>> -			if (block->b_fl != NULL
->>>> -					&& block->b_fl->fl_type != F_UNLCK) {
->>>> -				lock->fl = *block->b_fl;
->>>> -				goto conf_lock;
->>
->> block->b_fl = conf just set an all-zero filed structure to block above,
->> and never be updated later.
->> If lockd enter here, lock->fl will contains all filed with zero,
->> I don't know whether is it OK.
->>
->> thanks,
->> Kinglong Mee
->>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 2e80a59..24a8d91 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -4867,9 +4867,33 @@ nfs4_transform_lock_offset(struct file_lock *lock)
+>>  		lock->fl_end = OFFSET_MAX;
+>>  }
+>>  
+>> +static inline struct nfs4_lockowner *get_lockowner(struct nfs4_lockowner *lo)
+>> +{
+>> +	atomic_inc(&lo->lo_owner.so_count);
+>> +	return lo;
+>> +}
+>> +
 > 
-> Not quite....You can end up getting back FILE_LOCK_DEFERRED from an
-> initial vfs_test_lock request. At that point, a block will be queued
-> and we'll end up retrying that until the fs comes back. The result of
-> those retries will end up in b_fl and that's what will end up being
-> copied to lock->fl.
+> The other places that increment the so_count on a lockowner should
+> probably be changed to use get_lockowner.
 
-Yes, that's right.
-What I　care is that block->b_fl contains with all zero for all field, 
-block->b_fl->fl_type == 0 == F_RDLCK.
+Got it, thanks.
 
-For block with b_flags & B_GOT_CALLBACK, block->b_fl will always be non-NULL,
-and block->b_fl->fl_type always be F_RDLCK (Cannot be updated after initial),
-so that, nlmsvc_testlock will return nlm_lck_denied,
-but I think should return nlm_granted.
+> 
+> Or what may be better is to make a nfs4_get_stateowner call and change
+> all of the places that bump the so_count to use it. Then you could just
+> do something like this in the right spot below:
+> 
+>     file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(lock_sop));
 
-So, I think commit 5ea0d75037b9 (lockd: handle test_lock deferrals)
-introduces the bug. After Joe's patch, we should remove b_fl in struct block.
+Yes, nfs4_get_stateowner corresponds with nfs4_put_stateowner.
 
-Cc Marc Eshel
+>> +static void nfsd4_fl_copy_owner(struct file_lock *dst, struct file_lock *src)
+>> +{
+>> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) src->fl_owner;
+>> +	dst->fl_owner = (fl_owner_t) get_lockowner(lo);
+>> +}
+>> +
+>> +static void nfsd4_fl_release_owner(struct file_lock *fl)
+>> +{
+>> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
+>> +
+>> +	if (lo) {
+>> +		nfs4_put_stateowner(&lo->lo_owner);
+>> +		fl->fl_owner = NULL;
+>> +	}
+>> +}
+>> +
+>>  /* Hack!: For now, we're defining this just so we can use a pointer to it
+>>   * as a unique cookie to identify our (NFSv4's) posix locks. */
+> 
+> The above comment should be removed now.
 
-506 __be32
-507 nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
-508                 struct nlm_host *host, struct nlm_lock *lock,
-509                 struct nlm_lock *conflock, struct nlm_cookie *cookie)
-510 {
-511         struct nlm_block        *block = NULL;
-... ...
-536         }
-537         if (block->b_flags & B_QUEUED) {
-538                 dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
-539                         block, block->b_flags, block->b_fl);
-540                 if (block->b_flags & B_TIMED_OUT) {
-541                         nlmsvc_unlink_block(block);
-542                         ret = nlm_lck_denied;
-543                         goto out;
-544                 }
-545                 if (block->b_flags & B_GOT_CALLBACK) {
-546                         nlmsvc_unlink_block(block);
-547                         if (block->b_fl != NULL
-548                                         && block->b_fl->fl_type != F_UNLCK) {
-                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-549                                 lock->fl = *block->b_fl;
-550                                 goto conf_lock;
-551                         } else {
-552                                 ret = nlm_granted;
-553                                 goto out;
-554                         }
-555                 }
+OK, will remove it in next version.
 
 thanks,
 Kinglong Mee
+
+> 
+>>  static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+>> +	.lm_copy_owner = nfsd4_fl_copy_owner,
+>> +	.lm_release_owner = nfsd4_fl_release_owner,
+>>  };
+>>  
+>>  static inline void
+>> @@ -5238,7 +5262,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>  		status = nfserr_openmode;
+>>  		goto out;
+>>  	}
+>> -	file_lock->fl_owner = (fl_owner_t)lock_sop;
+>> +
+>> +	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
+>>  	file_lock->fl_pid = current->tgid;
+>>  	file_lock->fl_file = filp;
+>>  	file_lock->fl_flags = FL_POSIX;
+>> @@ -5405,6 +5430,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>  	struct nfs4_ol_stateid *stp;
+>>  	struct file *filp = NULL;
+>>  	struct file_lock *file_lock = NULL;
+>> +	struct nfs4_lockowner *lock_sop = NULL;
+>>  	__be32 status;
+>>  	int err;
+>>  	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+>> @@ -5426,6 +5452,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>  		status = nfserr_lock_range;
+>>  		goto put_stateid;
+>>  	}
+>> +
+>> +	lock_sop = lockowner(stp->st_stateowner);
+>>  	file_lock = locks_alloc_lock();
+>>  	if (!file_lock) {
+>>  		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+>> @@ -5434,7 +5462,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>  	}
+>>  	locks_init_lock(file_lock);
+>>  	file_lock->fl_type = F_UNLCK;
+>> -	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
+>> +	file_lock->fl_owner = (fl_owner_t)get_lockowner(lock_sop);
+>>  	file_lock->fl_pid = current->tgid;
+>>  	file_lock->fl_file = filp;
+>>  	file_lock->fl_flags = FL_POSIX;
+> 
+> 
