@@ -1,82 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:42628 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752050AbaHCRDT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:19 -0400
-Received: by mail-qa0-f47.google.com with SMTP id i13so5944323qae.6
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:18 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/11] SUNRPC: Allow svc_reserve() to notify TCP socket that space has been freed
-Date: Sun,  3 Aug 2014 13:03:05 -0400
-Message-Id: <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
-References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:34313 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932081AbaHNVjk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 17:39:40 -0400
+Received: by mail-ig0-f177.google.com with SMTP id hn18so207817igb.10
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Aug 2014 14:39:40 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 1/2] nfs: disallow duplicate pages in pgio page vectors
+Date: Thu, 14 Aug 2014 17:39:32 -0400
+Message-Id: <1408052373-4306-2-git-send-email-dros@primarydata.com>
+In-Reply-To: <1408052373-4306-1-git-send-email-dros@primarydata.com>
+References: <1408052373-4306-1-git-send-email-dros@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- include/linux/sunrpc/svc_xprt.h | 1 +
- net/sunrpc/svc_xprt.c           | 2 ++
- net/sunrpc/svcsock.c            | 9 +++++++++
- 3 files changed, 12 insertions(+)
+Adjacent requests that share the same page are allowed, but should only
+use one entry in the page vector. This avoids overruning the page
+vector - it is sized based on how many bytes there are, not by
+request count.
 
-diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-index 7235040a19b2..8f241ac6934b 100644
---- a/include/linux/sunrpc/svc_xprt.h
-+++ b/include/linux/sunrpc/svc_xprt.h
-@@ -25,6 +25,7 @@ struct svc_xprt_ops {
- 	void		(*xpo_detach)(struct svc_xprt *);
- 	void		(*xpo_free)(struct svc_xprt *);
- 	int		(*xpo_secure_port)(struct svc_rqst *);
-+	void		(*xpo_adjust_wspace)(struct svc_xprt *);
- };
+This fixes issues that manifest as "Redzone overwritten" bugs (the
+vector overrun) and hangs waiting on page read / write, as it waits on
+the same page more than once.
+
+This also adds bounds checking to the page vector with a graceful failure
+(WARN_ON_ONCE and pgio error returned to application).
+
+Reported-by: Toralf Förster <toralf.foerster@gmx.de>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/pagelist.c | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index e0c2e72..73476df 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -733,10 +733,11 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
+ 		     struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_page		*req;
+-	struct page		**pages;
++	struct page		**pages,
++				*last_page;
+ 	struct list_head *head = &desc->pg_list;
+ 	struct nfs_commit_info cinfo;
+-	unsigned int pagecount;
++	unsigned int pagecount, pageused;
  
- struct svc_xprt_class {
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 54a761fa6351..32647b2a6a34 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -448,6 +448,8 @@ void svc_reserve(struct svc_rqst *rqstp, int space)
- 		atomic_sub((rqstp->rq_reserved - space), &xprt->xpt_reserved);
- 		rqstp->rq_reserved = space;
+ 	pagecount = nfs_page_array_len(desc->pg_base, desc->pg_count);
+ 	if (!nfs_pgarray_set(&hdr->page_array, pagecount))
+@@ -744,11 +745,26 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
  
-+		if (xprt->xpt_ops->xpo_adjust_wspace)
-+			xprt->xpt_ops->xpo_adjust_wspace(xprt);
- 		svc_xprt_enqueue(xprt);
+ 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
+ 	pages = hdr->page_array.pagevec;
++	last_page = NULL;
++	pageused = 0;
+ 	while (!list_empty(head)) {
+ 		req = nfs_list_entry(head->next);
+ 		nfs_list_remove_request(req);
+ 		nfs_list_add_request(req, &hdr->pages);
+-		*pages++ = req->wb_page;
++
++		if (pageused >= pagecount) {
++			WARN_ON_ONCE(1);
++			return nfs_pgio_error(desc, hdr);
++		}
++
++		if (!last_page || last_page != req->wb_page) {
++			*pages++ = last_page = req->wb_page;
++			pageused++;
++		}
++	}
++	if (pageused != pagecount) {
++		WARN_ON_ONCE(1);
++		return nfs_pgio_error(desc, hdr);
  	}
- }
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 7322ea1164fd..72597d7fe60a 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -475,6 +475,14 @@ static void svc_tcp_write_space(struct sock *sk)
- 	svc_write_space(sk);
- }
  
-+static void svc_tcp_adjust_wspace(struct svc_xprt *xprt)
-+{
-+	struct svc_sock *svsk = container_of(xprt, struct svc_sock, sk_xprt);
-+
-+	if (svc_tcp_has_wspace(xprt))
-+		clear_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+}
-+
- /*
-  * See net/ipv6/ip_sockglue.c : ip_cmsg_recv_pktinfo
-  */
-@@ -1288,6 +1296,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
- 	.xpo_has_wspace = svc_tcp_has_wspace,
- 	.xpo_accept = svc_tcp_accept,
- 	.xpo_secure_port = svc_sock_secure_port,
-+	.xpo_adjust_wspace = svc_tcp_adjust_wspace,
- };
- 
- static struct svc_xprt_class svc_tcp_class = {
+ 	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
 -- 
-1.9.3
+1.8.5.2 (Apple Git-48)
 
