@@ -1,144 +1,204 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:62778 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752161AbaHFRoe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 13:44:34 -0400
-Received: by mail-ig0-f179.google.com with SMTP id h18so3233323igc.6
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Aug 2014 10:44:34 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/6] nfsd: Clean up drc cache in preparation for global spinlock elimination
-Date: Wed,  6 Aug 2014 13:44:20 -0400
-Message-Id: <1407347065-17463-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:33428 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754322AbaHNOEi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 10:04:38 -0400
+Message-ID: <53ECC1E4.6080104@gmail.com>
+Date: Thu, 14 Aug 2014 22:04:20 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org, Joe Perches <joe@perches.com>
+Subject: Re: [PATCH 1/3 v2] fs/locks.c: Copy all information for conflock
+References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com>	<20140809065112.700e0ecc@tlielax.poochiereds.net>	<53E791F1.40802@gmail.com>	<20140811121949.4c3d7894@tlielax.poochiereds.net>	<53ECAADB.6040903@gmail.com> <20140814100025.2b2f72db@tlielax.poochiereds.net>
+In-Reply-To: <20140814100025.2b2f72db@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfscache.c | 45 ++++++++++++++++++++++++---------------------
- 1 file changed, 24 insertions(+), 21 deletions(-)
+On 8/14/2014 22:00, Jeff Layton wrote:
+> On Thu, 14 Aug 2014 20:26:03 +0800
+> Kinglong Mee <kinglongmee@gmail.com> wrote:
+> 
+>> On 8/12/2014 00:19, Jeff Layton wrote:
+>>> On Sun, 10 Aug 2014 23:38:25 +0800
+>>> Kinglong Mee <kinglongmee@gmail.com> wrote:
+>>>
+>>>> Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
+>>>> fl_lmops field in file_lock for checking nfsd4 lockowner.
+>>>>
+>>>> But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return
+>>>> of conflicting locks) causes the fl_lmops of conflock always be NULL.
+>>>>
+>>>> Also, commit 0996905f93 (lockd: posix_test_lock() should not call
+>>>> locks_copy_lock()) caused the fl_lmops of conflock always be NULL too.
+>>>>
+>>>> v2: Only change the order from 3/3 to 1/3 now.
+>>>>
+>>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>>>> ---
+>>>>  fs/lockd/svclock.c |  2 +-
+>>>>  fs/locks.c         | 25 ++++++-------------------
+>>>>  include/linux/fs.h |  6 ------
+>>>>  3 files changed, 7 insertions(+), 26 deletions(-)
+>>>>
+>>>> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+>>>> index ab798a8..e1f209c 100644
+>>>> --- a/fs/lockd/svclock.c
+>>>> +++ b/fs/lockd/svclock.c
+>>>> @@ -677,7 +677,7 @@ nlmsvc_update_deferred_block(struct nlm_block *block, struct file_lock *conf,
+>>>>  		block->b_flags |= B_TIMED_OUT;
+>>>>  	if (conf) {
+>>>>  		if (block->b_fl)
+>>>> -			__locks_copy_lock(block->b_fl, conf);
+>>>> +			locks_copy_lock(block->b_fl, conf);
+>>>>  	}
+>>>>  }
+>>>>  
+>>>> diff --git a/fs/locks.c b/fs/locks.c
+>>>> index 717fbc4..91b0f03 100644
+>>>> --- a/fs/locks.c
+>>>> +++ b/fs/locks.c
+>>>> @@ -266,35 +266,22 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
+>>>>  		new->fl_lmops = fl->fl_lmops;
+>>>>  }
+>>>>  
+>>>> -/*
+>>>> - * Initialize a new lock from an existing file_lock structure.
+>>>> - */
+>>>> -void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
+>>>> +void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+>>>>  {
+>>>> +	locks_release_private(new);
+>>>> +
+>>>>  	new->fl_owner = fl->fl_owner;
+>>>>  	new->fl_pid = fl->fl_pid;
+>>>> -	new->fl_file = NULL;
+>>>> +	new->fl_file = fl->fl_file;
+>>>>  	new->fl_flags = fl->fl_flags;
+>>>>  	new->fl_type = fl->fl_type;
+>>>>  	new->fl_start = fl->fl_start;
+>>>>  	new->fl_end = fl->fl_end;
+>>>>  	new->fl_ops = NULL;
+>>>>  	new->fl_lmops = NULL;
+>>>> -}
+>>>> -EXPORT_SYMBOL(__locks_copy_lock);
+>>>> -
+>>>> -void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+>>>> -{
+>>>> -	locks_release_private(new);
+>>>> -
+>>>> -	__locks_copy_lock(new, fl);
+>>>> -	new->fl_file = fl->fl_file;
+>>>> -	new->fl_ops = fl->fl_ops;
+>>>> -	new->fl_lmops = fl->fl_lmops;
+>>>>  
+>>>>  	locks_copy_private(new, fl);
+>>>>  }
+>>>
+>>> (cc'ing Joe Perches)
+>>>
+>>> Ok, so you're basically just reverting 1a747ee0cc11a19. The catch there
+>>> is that you now need to ensure that any conflock structures are
+>>> properly initialized before passing them to locks_copy_lock.
+>>>
+>>> The nfsv4 server code currently doesn't do that and it will need to be
+>>> fixed to do so or that will be a regression.
+>>
+>> I don't think so.
+>> locks_alloc_lock() has initialize the file_lock struct,
+>> the same as locks_init_lock().
+>>
+>> I will clean the duplicate initialize for file_lock in nfs4state.c in v3.
+>>
+> 
+> Ahh, you're correct. Yes, please just remove that instead. You might
+> also want to look for other places in the kernel that call
+> locks_init_lock unnecessarily. We might as well get rid of all of
+> them while we're looking.
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index ff9567633245..c74bcd628c4f 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -27,7 +27,11 @@
-  */
- #define TARGET_BUCKET_SIZE	64
- 
--static struct hlist_head *	cache_hash;
-+struct nfsd_drc_bucket {
-+	struct hlist_head cache_hash;
-+};
-+
-+static struct nfsd_drc_bucket	*drc_hashtbl;
- static struct list_head 	lru_head;
- static struct kmem_cache	*drc_slab;
- 
-@@ -116,6 +120,12 @@ nfsd_hashsize(unsigned int limit)
- 	return roundup_pow_of_two(limit / TARGET_BUCKET_SIZE);
- }
- 
-+static u32
-+nfsd_cache_hash(__be32 xid)
-+{
-+	return hash_32(be32_to_cpu(xid), maskbits);
-+}
-+
- static struct svc_cacherep *
- nfsd_reply_cache_alloc(void)
- {
-@@ -170,8 +180,8 @@ int nfsd_reply_cache_init(void)
- 	if (!drc_slab)
- 		goto out_nomem;
- 
--	cache_hash = kcalloc(hashsize, sizeof(struct hlist_head), GFP_KERNEL);
--	if (!cache_hash)
-+	drc_hashtbl = kcalloc(hashsize, sizeof(*drc_hashtbl), GFP_KERNEL);
-+	if (!drc_hashtbl)
- 		goto out_nomem;
- 
- 	return 0;
-@@ -193,8 +203,8 @@ void nfsd_reply_cache_shutdown(void)
- 		nfsd_reply_cache_free_locked(rp);
- 	}
- 
--	kfree (cache_hash);
--	cache_hash = NULL;
-+	kfree (drc_hashtbl);
-+	drc_hashtbl = NULL;
- 
- 	if (drc_slab) {
- 		kmem_cache_destroy(drc_slab);
-@@ -218,15 +228,10 @@ lru_put_end(struct svc_cacherep *rp)
-  * Move a cache entry from one hash list to another
-  */
- static void
--hash_refile(struct svc_cacherep *rp)
-+hash_refile(struct nfsd_drc_bucket *b, struct svc_cacherep *rp)
- {
- 	hlist_del_init(&rp->c_hash);
--	/*
--	 * No point in byte swapping c_xid since we're just using it to pick
--	 * a hash bucket.
--	 */
--	hlist_add_head(&rp->c_hash, cache_hash +
--			hash_32((__force u32)rp->c_xid, maskbits));
-+	hlist_add_head(&rp->c_hash, &b->cache_hash);
- }
- 
- /*
-@@ -355,17 +360,13 @@ nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
-  * NULL on failure.
-  */
- static struct svc_cacherep *
--nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
-+nfsd_cache_search(struct nfsd_drc_bucket *b, struct svc_rqst *rqstp,
-+		__wsum csum)
- {
- 	struct svc_cacherep	*rp, *ret = NULL;
--	struct hlist_head 	*rh;
-+	struct hlist_head 	*rh = &b->cache_hash;
- 	unsigned int		entries = 0;
- 
--	/*
--	 * No point in byte swapping rq_xid since we're just using it to pick
--	 * a hash bucket.
--	 */
--	rh = &cache_hash[hash_32((__force u32)rqstp->rq_xid, maskbits)];
- 	hlist_for_each_entry(rp, rh, c_hash) {
- 		++entries;
- 		if (nfsd_cache_match(rqstp, csum, rp)) {
-@@ -403,6 +404,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 				vers = rqstp->rq_vers,
- 				proc = rqstp->rq_proc;
- 	__wsum			csum;
-+	u32 hash = nfsd_cache_hash(xid);
-+	struct nfsd_drc_bucket *b = &drc_hashtbl[hash];
- 	unsigned long		age;
- 	int type = rqstp->rq_cachetype;
- 	int rtn = RC_DOIT;
-@@ -429,7 +432,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	/* go ahead and prune the cache */
- 	prune_cache_entries();
- 
--	found = nfsd_cache_search(rqstp, csum);
-+	found = nfsd_cache_search(b, rqstp, csum);
- 	if (found) {
- 		if (likely(rp))
- 			nfsd_reply_cache_free_locked(rp);
-@@ -454,7 +457,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	rp->c_len = rqstp->rq_arg.len;
- 	rp->c_csum = csum;
- 
--	hash_refile(rp);
-+	hash_refile(b, rp);
- 	lru_put_end(rp);
- 
- 	/* release any buffer */
--- 
-1.9.3
+OK, I will review those codes where calling locks_init_lock().
 
+> 
+>>> For the NLM code, Joe Perches has proposed a patch to remove the
+>>> conflock parameter from lm_grant since the callers always pass in NULL
+>>> anyway. You may want to pull in his patch and rebase yours on top of it
+>>> since it'll remove that __locks_copy_lock call altogether.
+>>>
+>>> Joe, is Andrew merging that patch or do I need to pull it into the
+>>> locks tree?
+>>
+>> I will update this patch based on that patch and your new patch for locks.c.
+>>
+>> thanks,
+>> Kinglong Mee
+>>
+> 
+> Thanks. I wiggled Joe's patch on top of my current set of locking
+> patches and will plan to merge it for v3.18 unless there are any
+> objections.
+
+I saw your patch, thank you very much.
+
+thanks,
+Kinglong Mee
+
+> 
+>>>
+>>>> -
+>>>>  EXPORT_SYMBOL(locks_copy_lock);
+>>>>  
+>>>>  static inline int flock_translate_cmd(int cmd) {
+>>>> @@ -718,7 +705,7 @@ posix_test_lock(struct file *filp, struct file_lock *fl)
+>>>>  			break;
+>>>>  	}
+>>>>  	if (cfl) {
+>>>> -		__locks_copy_lock(fl, cfl);
+>>>> +		locks_copy_lock(fl, cfl);
+>>>>  		if (cfl->fl_nspid)
+>>>>  			fl->fl_pid = pid_vnr(cfl->fl_nspid);
+>>>>  	} else
+>>>> @@ -921,7 +908,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
+>>>>  			if (!posix_locks_conflict(request, fl))
+>>>>  				continue;
+>>>>  			if (conflock)
+>>>> -				__locks_copy_lock(conflock, fl);
+>>>> +				locks_copy_lock(conflock, fl);
+>>>>  			error = -EAGAIN;
+>>>>  			if (!(request->fl_flags & FL_SLEEP))
+>>>>  				goto out;
+>>>> diff --git a/include/linux/fs.h b/include/linux/fs.h
+>>>> index e11d60c..ced023d 100644
+>>>> --- a/include/linux/fs.h
+>>>> +++ b/include/linux/fs.h
+>>>> @@ -941,7 +941,6 @@ void locks_free_lock(struct file_lock *fl);
+>>>>  extern void locks_init_lock(struct file_lock *);
+>>>>  extern struct file_lock * locks_alloc_lock(void);
+>>>>  extern void locks_copy_lock(struct file_lock *, struct file_lock *);
+>>>> -extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
+>>>>  extern void locks_remove_posix(struct file *, fl_owner_t);
+>>>>  extern void locks_remove_file(struct file *);
+>>>>  extern void locks_release_private(struct file_lock *);
+>>>> @@ -1001,11 +1000,6 @@ static inline void locks_init_lock(struct file_lock *fl)
+>>>>  	return;
+>>>>  }
+>>>>  
+>>>> -static inline void __locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+>>>> -{
+>>>> -	return;
+>>>> -}
+>>>> -
+>>>>  static inline void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+>>>>  {
+>>>>  	return;
+>>>
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> 
