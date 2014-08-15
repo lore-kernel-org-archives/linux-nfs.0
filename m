@@ -1,104 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:41383 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751822AbaHCRDR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:17 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so7989468qgf.35
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:16 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 01/11] SUNRPC: Reduce contention in svc_xprt_enqueue()
-Date: Sun,  3 Aug 2014 13:03:03 -0400
-Message-Id: <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:57039 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750916AbaHOAJN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 20:09:13 -0400
+Message-ID: <53ED4F9D.3070103@gmail.com>
+Date: Fri, 15 Aug 2014 08:09:01 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
+Subject: [PATCH 3/5 v3] locks: New ops in file_lock_operations for copy/release
+ owner
+References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com>
+In-Reply-To: <53E791F1.40802@gmail.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that all calls to svc_xprt_enqueue() except svc_xprt_received()
-check the value of XPT_BUSY, before attempting to grab spinlocks etc.
-This is to avoid situations such as the following "perf" trace,
-which shows heavy contention on the pool spinlock:
+NFSD or other lockmanager may increase the owner's reference,
+so adds two new options for copying and releasing owner.
 
-    54.15%            nfsd  [kernel.kallsyms]        [k] _raw_spin_lock_bh
-                      |
-                      --- _raw_spin_lock_bh
-                         |
-                         |--71.43%-- svc_xprt_enqueue
-                         |          |
-                         |          |--50.31%-- svc_reserve
-                         |          |
-                         |          |--31.35%-- svc_xprt_received
-                         |          |
-                         |          |--18.34%-- svc_tcp_data_ready
-...
+v3: same as v2, isn't exist in v1.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- net/sunrpc/svc_xprt.c | 25 +++++++++++++++++--------
- 1 file changed, 17 insertions(+), 8 deletions(-)
+ fs/locks.c         | 12 ++++++++++--
+ include/linux/fs.h |  2 ++
+ 2 files changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index b4737fbdec13..54a761fa6351 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -23,6 +23,7 @@ static int svc_deferred_recv(struct svc_rqst *rqstp);
- static struct cache_deferred_req *svc_defer(struct cache_req *req);
- static void svc_age_temp_xprts(unsigned long closure);
- static void svc_delete_xprt(struct svc_xprt *xprt);
-+static void svc_xprt_do_enqueue(struct svc_xprt *xprt);
+diff --git a/fs/locks.c b/fs/locks.c
+index fe52abb..cbe9b82 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -230,8 +230,12 @@ void locks_release_private(struct file_lock *fl)
+ 			fl->fl_ops->fl_release_private(fl);
+ 		fl->fl_ops = NULL;
+ 	}
+-	fl->fl_lmops = NULL;
  
- /* apparently the "standard" is that clients close
-  * idle connections after 5 minutes, servers after
-@@ -222,11 +223,12 @@ static void svc_xprt_received(struct svc_xprt *xprt)
- 	if (!test_bit(XPT_BUSY, &xprt->xpt_flags))
- 		return;
- 	/* As soon as we clear busy, the xprt could be closed and
--	 * 'put', so we need a reference to call svc_xprt_enqueue with:
-+	 * 'put', so we need a reference to call svc_xprt_do_enqueue with:
- 	 */
- 	svc_xprt_get(xprt);
-+	smp_mb__before_clear_bit();
- 	clear_bit(XPT_BUSY, &xprt->xpt_flags);
--	svc_xprt_enqueue(xprt);
-+	svc_xprt_do_enqueue(xprt);
- 	svc_xprt_put(xprt);
++	if (fl->fl_lmops) {
++		if (fl->fl_lmops->lm_release_owner)
++			fl->fl_lmops->lm_release_owner(fl);
++		fl->fl_lmops = NULL;
++	}
  }
+ EXPORT_SYMBOL_GPL(locks_release_private);
  
-@@ -335,12 +337,7 @@ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
- 	return false;
- }
- 
--/*
-- * Queue up a transport with data pending. If there are idle nfsd
-- * processes, wake 'em up.
-- *
-- */
--void svc_xprt_enqueue(struct svc_xprt *xprt)
-+static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
- {
- 	struct svc_pool *pool;
- 	struct svc_rqst	*rqstp;
-@@ -398,6 +395,18 @@ void svc_xprt_enqueue(struct svc_xprt *xprt)
- out_unlock:
- 	spin_unlock_bh(&pool->sp_lock);
- }
+@@ -274,8 +278,12 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
+ 			fl->fl_ops->fl_copy_lock(new, fl);
+ 		new->fl_ops = fl->fl_ops;
+ 	}
+-	if (fl->fl_lmops)
 +
-+/*
-+ * Queue up a transport with data pending. If there are idle nfsd
-+ * processes, wake 'em up.
-+ *
-+ */
-+void svc_xprt_enqueue(struct svc_xprt *xprt)
-+{
-+	if (test_bit(XPT_BUSY, &xprt->xpt_flags))
-+		return;
-+	svc_xprt_do_enqueue(xprt);
-+}
- EXPORT_SYMBOL_GPL(svc_xprt_enqueue);
++	if (fl->fl_lmops) {
++		if (fl->fl_lmops->lm_copy_owner)
++			fl->fl_lmops->lm_copy_owner(new, fl);
+ 		new->fl_lmops = fl->fl_lmops;
++	}
+ }
  
  /*
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index a383a30..54bf69d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -868,6 +868,8 @@ struct file_lock_operations {
+ struct lock_manager_operations {
+ 	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
+ 	unsigned long (*lm_owner_key)(struct file_lock *);
++	void (*lm_copy_owner)(struct file_lock *, struct file_lock *);
++	void (*lm_release_owner)(struct file_lock *);
+ 	void (*lm_notify)(struct file_lock *);	/* unblock callback */
+ 	int (*lm_grant)(struct file_lock *, int);
+ 	void (*lm_break)(struct file_lock *);
 -- 
 1.9.3
+
 
