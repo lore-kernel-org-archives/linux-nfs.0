@@ -1,96 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.alpinelinux.org ([74.117.189.114]:34407 "EHLO
-	mail.alpinelinux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754190AbaHFG4O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 02:56:14 -0400
-Date: Wed, 6 Aug 2014 08:50:19 +0200
-From: Natanael Copa <ncopa@alpinelinux.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 04/11] exportfs: define _GNU_SOURCE for stat64
-Message-ID: <20140806085019.669421dc@ncopa-desktop.alpinelinux.org>
-In-Reply-To: <53E0F386.3000206@RedHat.com>
-References: <1406719399-1735-1-git-send-email-ncopa@alpinelinux.org>
-	<1406719399-1735-5-git-send-email-ncopa@alpinelinux.org>
-	<20140731113022.22afdefc@notabene.brown>
-	<20140731073441.7e354359@tlielax.poochiereds.net>
-	<53E0F386.3000206@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:64601 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751512AbaHOOp1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:45:27 -0400
+Received: by mail-qc0-f174.google.com with SMTP id l6so2390524qcy.33
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:45:26 -0700 (PDT)
+Received: from tlielax.poochiereds.net ([2001:470:8:d63:3a60:77ff:fe93:a95d])
+        by mx.google.com with ESMTPSA id t107sm3989900qgt.28.2014.08.15.07.45.25
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 15 Aug 2014 07:45:25 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 3/7] nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
+Date: Fri, 15 Aug 2014 10:45:11 -0400
+Message-Id: <1408113915-5573-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
+References: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 05 Aug 2014 11:08:54 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+From: Jeff Layton <jlayton@poochiereds.net>
 
-> 
-> 
-> On 07/31/2014 07:34 AM, Jeff Layton wrote:
-> > On Thu, 31 Jul 2014 11:30:22 +1000
-> > NeilBrown <neilb@suse.de> wrote:
-> > 
-> >> On Wed, 30 Jul 2014 13:23:12 +0200 Natanael Copa <natanael.copa@gmail.com>
-> >> wrote:
-> >>
-> >>> Signed-off-by: Natanael Copa <ncopa@alpinelinux.org>
-> >>> ---
-> >>>  utils/exportfs/exportfs.c | 4 ++++
-> >>>  1 file changed, 4 insertions(+)
-> >>>
-> >>> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> >>> index bf07555..7ab93d1 100644
-> >>> --- a/utils/exportfs/exportfs.c
-> >>> +++ b/utils/exportfs/exportfs.c
-> >>> @@ -12,6 +12,10 @@
-> >>>  #include <config.h>
-> >>>  #endif
-> >>>  
-> >>> +#ifndef _GNU_SOURCE
-> >>> +#define _GNU_SOURCE
-> >>> +#endif
-> >>> +
-> >>>  #include <sys/types.h>
-> >>>  #include <sys/stat.h>
-> >>>  #include <sys/vfs.h>
-> >>
-> >> These all look really sensible!
-> >>
-> >> One small suggestion: it would be really nice to see a comment in the code
-> >> explaining why _GNU_SOURCE is needed.  I suspect such comments get out of
-> >> date quickly, so maybe it wouldn't end up be all that useful.  But having a
-> >> comment is still, in my opinion, more useful than not.
-> >>
-> >> Thanks,
-> >> NeilBrown
-> >>
-> > 
-> > Agreed, they all look pretty sensible. That said, I think the supposed
-> > best way to enable _GNU_SOURCE on autoconf projects is to use
-> > AC_USE_SYSTEM_EXTENSIONS:
-> > 
-> >     https://www.gnu.org/software/autoconf/manual/autoconf-2.64/html_node/Posix-Variants.html
-> > 
-> Its sounds like these requests are mutually exclusive... Meaning
-> if we use the AC_USE_SYSTEM_EXTENSIONS we will not get the
-> comments as to why _GNU_SOURCE is needed because the these 
-> #ifndefs and #define will go away... which I guess is OK...
-> 
-> Natanael, would you mind incorporate AC_USE_SYSTEM_EXTENSIONS as well
-> as fix the typo Jeff pointed out in patch 11? 
-> 
-> Once that happens... I'm good to go on these... 
+Since nfsdcld has been dead for a few years now, clean up the prefixes
+on the constants.
 
-I sent a v2 set with the all the commented issues fixed to the list.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ utils/nfsdcltrack/sqlite.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-With AC_USE_SYSTEM_EXTENSIONS the patch with #include <libgen.h> should
-not be needed in theory. But I kept it anyways as it should make things
-more portable.
-
-We are now working on another patch to make it actually run on musl...
-
-Thanks for your feedback!
-
-
-> 
-> steved.
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index 352f029d55c0..52fcaa4d7ca3 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -50,10 +50,10 @@
+ 
+ #include "xlog.h"
+ 
+-#define CLD_SQLITE_SCHEMA_VERSION 1
++#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 1
+ 
+ /* in milliseconds */
+-#define CLD_SQLITE_BUSY_TIMEOUT 10000
++#define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
+ 
+ /* private data structures */
+ 
+@@ -111,7 +111,7 @@ sqlite_prepare_dbh(const char *topdir)
+ 		return ret;
+ 	}
+ 
+-	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
++	ret = sqlite3_busy_timeout(dbh, CLTRACK_SQLITE_BUSY_TIMEOUT);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
+ 		sqlite3_close(dbh);
+@@ -156,7 +156,7 @@ sqlite_maindb_init(const char *topdir)
+ 	/* insert version into table -- ignore error if it fails */
+ 	ret = snprintf(buf, sizeof(buf),
+ 		       "INSERT OR IGNORE INTO parameters values (\"version\", "
+-		       "\"%d\");", CLD_SQLITE_SCHEMA_VERSION);
++		       "\"%d\");", CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION);
+ 	if (ret < 0) {
+ 		goto out_err;
+ 	} else if ((size_t)ret >= sizeof(buf)) {
+@@ -189,10 +189,10 @@ sqlite_maindb_init(const char *topdir)
+ 
+ 	/* process SELECT result */
+ 	ret = sqlite3_column_int(stmt, 0);
+-	if (ret != CLD_SQLITE_SCHEMA_VERSION) {
++	if (ret != CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION) {
+ 		xlog(L_ERROR, "Unsupported database schema version! "
+ 			"Expected %d, got %d.",
+-			CLD_SQLITE_SCHEMA_VERSION, ret);
++			CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION, ret);
+ 		ret = -EINVAL;
+ 		goto out_err;
+ 	}
+-- 
+1.9.3
 
