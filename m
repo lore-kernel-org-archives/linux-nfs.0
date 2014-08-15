@@ -1,107 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:60900 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751676AbaHSPVk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 11:21:40 -0400
-Message-ID: <53F36B6F.8000601@gmail.com>
-Date: Tue, 19 Aug 2014 23:21:19 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:61829 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751139AbaHOK5n (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 06:57:43 -0400
+Received: by mail-qg0-f46.google.com with SMTP id z60so2054437qgd.33
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 03:57:43 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 15 Aug 2014 06:57:41 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 3/6 v4] locks: Rename __locks_copy_lock() to locks_copy_conflock()
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com>
-In-Reply-To: <53ED5093.6000308@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 1/5 v3] NFSD: Remove duplicate initialization of
+ file_lock
+Message-ID: <20140815065741.42f18ec9@tlielax.poochiereds.net>
+In-Reply-To: <53ED4E2F.2010701@gmail.com>
+References: <53BAAAC5.9000106@gmail.com>
+	<53E22EA5.70708@gmail.com>
+	<20140809065112.700e0ecc@tlielax.poochiereds.net>
+	<53E791F1.40802@gmail.com>
+	<53ED4E2F.2010701@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff advice, " Right now __locks_copy_lock is only used to copy 
-conflocks. It would be good to rename that to something more 
-distinct (i.e.locks_copy_conflock), to make it clear that we're
-generating a conflock there."
+On Fri, 15 Aug 2014 08:02:55 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-v4: a new patch only rename
+> locks_alloc_lock() has initialize struct file_lock,
+> don't need re-initialize it by locks_init_lock().
+> 
+> v3: A new patch isn't exit in v2/v1.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4state.c | 6 ++----
+>  1 file changed, 2 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2e80a59..98edf97 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3759,7 +3759,6 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_file *fp, int flag)
+>  	fl = locks_alloc_lock();
+>  	if (!fl)
+>  		return NULL;
+> -	locks_init_lock(fl);
+>  	fl->fl_lmops = &nfsd_lease_mng_ops;
+>  	fl->fl_flags = FL_DELEG;
+>  	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+> @@ -5210,7 +5209,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	}
+>  
+>  	fp = lock_stp->st_stid.sc_file;
+> -	locks_init_lock(file_lock);
+>  	switch (lock->lk_type) {
+>  		case NFS4_READ_LT:
+>  		case NFS4_READW_LT:
+> @@ -5354,7 +5352,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		status = nfserr_jukebox;
+>  		goto out;
+>  	}
+> -	locks_init_lock(file_lock);
+> +
+>  	switch (lockt->lt_type) {
+>  		case NFS4_READ_LT:
+>  		case NFS4_READW_LT:
+> @@ -5432,7 +5430,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		status = nfserr_jukebox;
+>  		goto fput;
+>  	}
+> -	locks_init_lock(file_lock);
+> +
+>  	file_lock->fl_type = F_UNLCK;
+>  	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
+>  	file_lock->fl_pid = current->tgid;
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/locks.c         | 10 +++++-----
- include/linux/fs.h |  4 ++--
- 2 files changed, 7 insertions(+), 7 deletions(-)
+Bruce, since this is an nfsd patch, do you mind picking this one up?
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 08342e0..c376561 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -289,7 +289,7 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
- /*
-  * Initialize a new lock from an existing file_lock structure.
-  */
--void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
-+void locks_copy_conflock(struct file_lock *new, struct file_lock *fl)
- {
- 	new->fl_owner = fl->fl_owner;
- 	new->fl_pid = fl->fl_pid;
-@@ -301,14 +301,14 @@ void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
- 	new->fl_ops = NULL;
- 	new->fl_lmops = NULL;
- }
--EXPORT_SYMBOL(__locks_copy_lock);
-+EXPORT_SYMBOL(locks_copy_conflock);
- 
- void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
- {
- 	/* "new" must be a freshly-initialized lock */
- 	WARN_ON_ONCE(new->fl_ops);
- 
--	__locks_copy_lock(new, fl);
-+	locks_copy_conflock(new, fl);
- 	new->fl_file = fl->fl_file;
- 	new->fl_ops = fl->fl_ops;
- 	new->fl_lmops = fl->fl_lmops;
-@@ -743,7 +743,7 @@ posix_test_lock(struct file *filp, struct file_lock *fl)
- 			break;
- 	}
- 	if (cfl) {
--		__locks_copy_lock(fl, cfl);
-+		locks_copy_conflock(fl, cfl);
- 		if (cfl->fl_nspid)
- 			fl->fl_pid = pid_vnr(cfl->fl_nspid);
- 	} else
-@@ -949,7 +949,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 			if (!posix_locks_conflict(request, fl))
- 				continue;
- 			if (conflock)
--				__locks_copy_lock(conflock, fl);
-+				locks_copy_conflock(conflock, fl);
- 			error = -EAGAIN;
- 			if (!(request->fl_flags & FL_SLEEP))
- 				goto out;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 6829340..3b07ce2 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -968,7 +968,7 @@ void locks_free_lock(struct file_lock *fl);
- extern void locks_init_lock(struct file_lock *);
- extern struct file_lock * locks_alloc_lock(void);
- extern void locks_copy_lock(struct file_lock *, struct file_lock *);
--extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
-+extern void locks_copy_conflock(struct file_lock *, struct file_lock *);
- extern void locks_remove_posix(struct file *, fl_owner_t);
- extern void locks_remove_file(struct file *);
- extern void locks_release_private(struct file_lock *);
-@@ -1028,7 +1028,7 @@ static inline void locks_init_lock(struct file_lock *fl)
- 	return;
- }
- 
--static inline void __locks_copy_lock(struct file_lock *new, struct file_lock *fl)
-+static inline void locks_copy_conflock(struct file_lock *new, struct file_lock *fl)
- {
- 	return;
- }
--- 
-1.9.3
-
+Reviewed-by: Jeff Layton <jlayton@primarydata.com>
