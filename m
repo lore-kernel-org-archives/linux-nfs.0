@@ -1,121 +1,217 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f177.google.com ([209.85.220.177]:45286 "EHLO
-	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751428AbaHUBm4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 21:42:56 -0400
-Received: by mail-vc0-f177.google.com with SMTP id hy4so9840407vcb.8
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 18:42:55 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140821111100.0fc7e3c9@notabene.brown>
-References: <20140818061727.1449.89101.stgit@notabene.brown>
-	<20140818062254.1449.99502.stgit@notabene.brown>
-	<1408581916.4029.15.camel@leira.trondhjem.org>
-	<20140821111100.0fc7e3c9@notabene.brown>
-Date: Wed, 20 Aug 2014 21:42:55 -0400
-Message-ID: <CAHQdGtTLgD9Xw9T5fKAVK1VYEv+U9m_hKcw2SNvQrYEwnkZauQ@mail.gmail.com>
-Subject: Re: [PATCH 2/2] NFS: avoid deadlocks with loop-back mounted NFS filesystems.
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:64643 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751719AbaHOOpd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:45:33 -0400
+Received: by mail-qc0-f178.google.com with SMTP id x3so2444206qcv.9
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:45:32 -0700 (PDT)
+Received: from tlielax.poochiereds.net ([2001:470:8:d63:3a60:77ff:fe93:a95d])
+        by mx.google.com with ESMTPSA id t107sm3989900qgt.28.2014.08.15.07.45.30
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 15 Aug 2014 07:45:31 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 7/7] nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
+Date: Fri, 15 Aug 2014 10:45:15 -0400
+Message-Id: <1408113915-5573-8-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
+References: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 20, 2014 at 9:11 PM, NeilBrown <neilb@suse.de> wrote:
-> On Wed, 20 Aug 2014 20:45:16 -0400 Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->
->> On Mon, 2014-08-18 at 16:22 +1000, NeilBrown wrote:
->> > Support for loop-back mounted NFS filesystems is useful when NFS is
->> > used to access shared storage in a high-availability cluster.
->> >
->> > If the node running the NFS server fails, some other node can mount the
->> > filesystem and start providing NFS service.  If that node already had
->> > the filesystem NFS mounted, it will now have it loop-back mounted.
->> >
->> > nfsd can suffer a deadlock when allocating memory and entering direct
->> > reclaim.
->> > While direct reclaim does not write to the NFS filesystem it can send
->> > and wait for a COMMIT through nfs_release_page().
->> >
->> > This patch modifies nfs_release_page() and the functions it calls so
->> > that if the COMMIT is sent to the local host (i.e. is routed over the
->> > loop-back interface) then nfs_release_page() will not wait forever for
->> > that COMMIT to complete.  This is achieved using a new flag
->> > FLUSH_COND_CONNECTED.  When this is set the flush is conditional and
->> > will only wait if the client is connected to a non-local server.
->> >
->> > Aborting early should be safe as kswapd uses the same code but never
->> > waits for the COMMIT.
->> >
->> > Always aborting early could upset the balance of memory management so
->> > when the commit was sent to the local host we still wait but with a
->> > 100ms timeout.  This is enough to significantly slow down any process
->> > that is allocating lots of memory and often long enough to let the
->> > commit complete.
->> >
->> > In those rare cases where it is nfsd, or something that nfsd is
->> > waiting for, that is calling nfs_release_page(), 100ms is not so long
->> > that throughput will be seriously affected.
->> >
->> > When fail-over happens a remote (foreign) client will first become
->> > disconnected and then turn into a local client.
->> > To prevent deadlocks from happening at this point, we still have a
->> > timeout when the COMMIT has been sent to a remote client. In this case
->> > the timeout is longer (1 second).
->> >
->> > So when a node that has mounted a remote filesystem loses the
->> > connection, nfs_release_page() will stop blocking and start failing.
->> > Memory allocators will then be able to make progress without blocking
->> > in NFS.  Any process which writes to a file will still be blocked in
->> > balance_dirty_pages().
->> >
->> > This patch makes use of the new 'private' field in
->> > "struct wait_bit_key" to store the start time of a commit, so the
->> > 'action' function called by __wait_on_bit() knows how much longer
->> > it is appropriate to wait.
->> >
->>
->> This puts way too much RPC connection logic in the NFS layer: we really
->> should not have to care. Is there any reason why we could not just use
->> RPC_TASK_SOFTCONN to have the commit fail if the connection is broken?
->
-> I tried to keep as much in the RPC layer as I could....
->
-> There really is a big difference between talking to an 'nfsd' on the same
-> machine and talking to one on a different machine.  In the first case you
-> need to be cautious of deadlocks, in the second you don't.  That is a
-> difference that matters to NFS, not to RPC.
->
-> I guess we could always have a timeout, even when connected to a remote
-> server.  We would just end up blocking somewhere else when the server was not
-> responding.
->
-> I don't think SOFTCONN is really appropriate.  We don't want the COMMIT to
-> stop being retried.  We just don't want the memory reclaim code to block
-> waiting for the COMMIT.
->
->>
->> Note that all this has to come with a huge WARNING: all your data may be
->> lost even if you think you just fsync()ed it. Is there any difference
->> between doing this and using the 'async' export option on the knfsd
->> side?
->>
->
-> I don't think this patch risks losing data at all - that certainly isn't the
-> intent.
-> This patch only affects the behaviour of ->releasepage, and only allows it to
-> fail instead of block.  It is perfectly acceptable for releasepage to fail
-> and it doesn't result in data loss.  It just means that the page is busy.
->
+Allow the fetching of NFSDCLTRACK_GRACE_START out of environment
+variables. If it's present in the "create" or "init" upcalls, then we
+can use that to query the database to see whether there are any clients
+that have not issued a RECLAIM_COMPLETE since that time.
 
-So why not just change the behaviour of ->releasepage() to always
-initiate a non-blocking commit and then wait up to 1 second for the
-PG_private bit to be released?
+If there aren't any, then we know that all reclaim activity is now done
+and we can then cue the kernel to lift the grace period.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ utils/nfsdcltrack/nfsdcltrack.c | 77 ++++++++++++++++++++++++++++++++++++++++-
+ utils/nfsdcltrack/sqlite.c      | 40 +++++++++++++++++++++
+ utils/nfsdcltrack/sqlite.h      |  1 +
+ 3 files changed, 117 insertions(+), 1 deletion(-)
+
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+index cbc98c7edc11..6a6b90a7c1a3 100644
+--- a/utils/nfsdcltrack/nfsdcltrack.c
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -50,6 +50,8 @@
+ #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
+ #endif
+ 
++#define NFSD_END_GRACE_FILE "/proc/fs/nfsd/v4_end_grace"
++
+ /* defined by RFC 3530 */
+ #define NFS4_OPAQUE_LIMIT	1024
+ 
+@@ -211,6 +213,64 @@ cltrack_set_caps(void)
+ 	return ret;
+ }
+ 
++/* Inform the kernel that it's OK to lift lockd's grace period */
++static void
++cltrack_lift_grace_period(void)
++{
++	int fd;
++
++	fd = open(NFSD_END_GRACE_FILE, O_WRONLY);
++	if (fd < 0) {
++		/* Don't warn if file isn't present */
++		if (errno != ENOENT)
++			xlog(L_WARNING, "Unable to open %s: %m",
++				NFSD_END_GRACE_FILE);
++		return;
++	}
++
++	if (write(fd, "Y", 1) < 0)
++		xlog(L_WARNING, "Unable to write to %s: %m",
++				NFSD_END_GRACE_FILE);
++
++	close(fd);
++	return;
++}
++
++/*
++ * Fetch the contents of the NFSDCLTRACK_GRACE_START env var. If it's not set
++ * or there's an error converting it to time_t, then return LONG_MAX.
++ */
++static time_t
++cltrack_get_grace_start(void)
++{
++	time_t grace_start;
++	char *end;
++	char *grace_start_str = getenv("NFSDCLTRACK_GRACE_START");
++
++	if (!grace_start_str)
++		return LONG_MAX;
++
++	errno = 0;
++	grace_start = strtol(grace_start_str, &end, 0);
++	/* Problem converting or value is too large? */
++	if (errno)
++		return LONG_MAX;
++
++	return grace_start;
++}
++
++static bool
++cltrack_reclaims_complete(void)
++{
++	time_t grace_start = cltrack_get_grace_start();
++
++	/* Don't query DB if we didn't get a valid boot time */
++	if (grace_start == LONG_MAX)
++		return false;
++
++	return !sqlite_query_reclaiming(grace_start);
++}
++
+ static int
+ cltrack_init(const char __attribute__((unused)) *unused)
+ {
+@@ -251,7 +311,11 @@ cltrack_init(const char __attribute__((unused)) *unused)
+ 		 * stop upcalling until the problem is resolved.
+ 		 */
+ 		ret = -EACCES;
++	} else {
++		if (cltrack_reclaims_complete())
++			cltrack_lift_grace_period();
+ 	}
++
+ 	return ret;
+ }
+ 
+@@ -284,6 +348,7 @@ cltrack_create(const char *id)
+ {
+ 	int ret;
+ 	ssize_t len;
++	unsigned int minorvers;
+ 
+ 	xlog(D_GENERAL, "%s: create client record.", __func__);
+ 
+@@ -295,8 +360,18 @@ cltrack_create(const char *id)
+ 	if (len < 0)
+ 		return (int)len;
+ 
+-	ret = sqlite_insert_client(blob, len, cltrack_get_minorvers());
++	minorvers = cltrack_get_minorvers();
++	ret = sqlite_insert_client(blob, len, minorvers);
++	if (ret)
++		goto out;
++
++	/* No point in querying the DB if this client was v4.0 */
++	if (minorvers == 0)
++		goto out;
+ 
++	if (cltrack_reclaims_complete())
++		cltrack_lift_grace_period();
++out:
+ 	return ret ? -EREMOTEIO : ret;
+ }
+ 
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index 01084bb6c4d8..17437e48ffaa 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -547,3 +547,43 @@ sqlite_remove_unreclaimed(time_t grace_start)
+ 	sqlite3_free(err);
+ 	return ret;
+ }
++
++/*
++ * Are there any clients that are possibly still reclaiming? Return a positive
++ * integer (usually number of clients) if so. If not, then return 0. On any
++ * error, return non-zero.
++ */
++int
++sqlite_query_reclaiming(const time_t grace_start)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
++				      "reclaim_complete < ?", -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: unable to prepare select statement: %s",
++				__func__, sqlite3_errstr(ret));
++		return ret;
++	}
++
++	ret = sqlite3_bind_int64(stmt, 1, (sqlite3_int64)grace_start);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind int64 failed: %s",
++				__func__, sqlite3_errstr(ret));
++		return ret;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret != SQLITE_ROW) {
++		xlog(L_ERROR, "%s: unexpected return code from select: %s",
++				__func__, sqlite3_errstr(ret));
++		return ret;
++	}
++
++	ret = sqlite3_column_int(stmt, 0);
++	sqlite3_finalize(stmt);
++	xlog(D_GENERAL, "%s: there are %d clients that have not completed "
++			"reclaim", __func__, ret);
++	return ret;
++}
+diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
+index e9cc84cbb294..0e1939198367 100644
+--- a/utils/nfsdcltrack/sqlite.h
++++ b/utils/nfsdcltrack/sqlite.h
+@@ -26,5 +26,6 @@ int sqlite_insert_client(const unsigned char *clname, const size_t namelen,
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_unreclaimed(const time_t grace_start);
++int sqlite_query_reclaiming(const time_t grace_start);
+ 
+ #endif /* _SQLITE_H */
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
