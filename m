@@ -1,213 +1,228 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f169.google.com ([209.85.216.169]:50014 "EHLO
-	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753100AbaHSSuG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:50:06 -0400
-Received: by mail-qc0-f169.google.com with SMTP id c9so6836990qcz.28
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:50:05 -0700 (PDT)
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:60639 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751381AbaHOOox (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:44:53 -0400
+Received: by mail-qc0-f178.google.com with SMTP id x3so2384788qcv.37
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:44:52 -0700 (PDT)
+Received: from tlielax.poochiereds.net ([2001:470:8:d63:3a60:77ff:fe93:a95d])
+        by mx.google.com with ESMTPSA id i2sm9046955qge.27.2014.08.15.07.44.51
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 15 Aug 2014 07:44:51 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 7/7] nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
-Date: Tue, 19 Aug 2014 14:49:49 -0400
-Message-Id: <1408474189-14491-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
-References: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [kernel RFC PATCH 4/4] nfsd: pass extra info in env vars to upcalls to allow for early grace period end
+Date: Fri, 15 Aug 2014 10:44:40 -0400
+Message-Id: <1408113880-5489-5-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408113880-5489-1-git-send-email-jlayton@primarydata.com>
+References: <1408113880-5489-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the fetching of NFSDCLTRACK_GRACE_START out of environment
-variables. If it's present in the "create" or "init" upcalls, then we
-can use that to query the database to see whether there are any clients
-that have not issued a RECLAIM_COMPLETE since that time.
+In order to support lifting the grace period early, we must tell the
+nfsdcltrack what sort of client the "create" upcall is for. We can't
+reliably tell if a v4.0 client has completed reclaiming, so we can only
+lift the grace period once all the v4.1+ clients have issued a
+RECLAIM_COMPLETE and if there are no v4.0 clients.
 
-If there aren't any, then we know that all reclaim activity is now done
-and we can then cue the kernel to lift the grace period.
+Also, in order to lift the grace period, we have to tell userland when
+the grace period started so that it can tell whether a RECLAIM_COMPLETE
+has been issued for each client since then.
+
+Since this is all optional info, we pass it along in environment
+variables to the "init" and "create" upcalls. By doing this, we don't
+need to revise the upcall format. The UMH upcall can simply make use of
+this info if it happens to be present. If it's not then it can just
+avoid lifting the grace period early.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- utils/nfsdcltrack/nfsdcltrack.c | 77 ++++++++++++++++++++++++++++++++++++++++-
- utils/nfsdcltrack/sqlite.c      | 40 +++++++++++++++++++++
- utils/nfsdcltrack/sqlite.h      |  1 +
- 3 files changed, 117 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4recover.c | 90 ++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/nfs4state.c   |  4 +--
+ 2 files changed, 80 insertions(+), 14 deletions(-)
 
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-index cbc98c7edc11..f500216e6021 100644
---- a/utils/nfsdcltrack/nfsdcltrack.c
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -50,6 +50,8 @@
- #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
- #endif
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index a0d2ba956a3f..2b61bcd92b58 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -1062,6 +1062,8 @@ MODULE_PARM_DESC(cltrack_legacy_disable,
  
-+#define NFSD_END_GRACE_FILE "/proc/fs/nfsd/v4_end_grace"
-+
- /* defined by RFC 3530 */
- #define NFS4_OPAQUE_LIMIT	1024
+ #define LEGACY_TOPDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_TOPDIR="
+ #define LEGACY_RECDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_RECDIR="
++#define CLIENT_MINORVERS_ENV_PREFIX "NFSDCLTRACK_CLIENT_MINORVERSION="
++#define GRACE_START_ENV_PREFIX "NFSDCLTRACK_GRACE_START="
  
-@@ -211,6 +213,64 @@ cltrack_set_caps(void)
- 	return ret;
+ static char *
+ nfsd4_cltrack_legacy_topdir(void)
+@@ -1126,10 +1128,60 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
+ 	return result;
  }
  
-+/* Inform the kernel that it's OK to lift nfsd's grace period */
-+static void
-+cltrack_lift_grace_period(void)
++static char *
++nfsd4_cltrack_client_minorversion(struct nfs4_client *clp)
 +{
-+	int fd;
++	int copied;
++	size_t len;
++	char *result;
 +
-+	fd = open(NFSD_END_GRACE_FILE, O_WRONLY);
-+	if (fd < 0) {
-+		/* Don't warn if file isn't present */
-+		if (errno != ENOENT)
-+			xlog(L_WARNING, "Unable to open %s: %m",
-+				NFSD_END_GRACE_FILE);
-+		return;
++	/* prefix + max width of integer string + terminating NULL */
++	len = strlen(CLIENT_MINORVERS_ENV_PREFIX) + 10 + 1;
++
++	result = kmalloc(len, GFP_KERNEL);
++	if (!result)
++		return result;
++
++	copied = snprintf(result, len, CLIENT_MINORVERS_ENV_PREFIX "%u",
++				clp->cl_minorversion);
++	if (copied >= len) {
++		/* just return nothing if output was truncated */
++		kfree(result);
++		return NULL;
 +	}
 +
-+	if (write(fd, "Y", 1) < 0)
-+		xlog(L_WARNING, "Unable to write to %s: %m",
-+				NFSD_END_GRACE_FILE);
-+
-+	close(fd);
-+	return;
++	return result;
 +}
 +
-+/*
-+ * Fetch the contents of the NFSDCLTRACK_GRACE_START env var. If it's not set
-+ * or there's an error converting it to time_t, then return LONG_MAX.
-+ */
-+static time_t
-+cltrack_get_grace_start(void)
++static char *
++nfsd4_cltrack_grace_start(time_t grace_start)
 +{
-+	time_t grace_start;
-+	char *end;
-+	char *grace_start_str = getenv("NFSDCLTRACK_GRACE_START");
++	int copied;
++	size_t len;
++	char *result;
 +
-+	if (!grace_start_str)
-+		return LONG_MAX;
++	/* prefix + max width of int64_t string + terminating NULL */
++	len = strlen(GRACE_START_ENV_PREFIX) + 22 + 1;
 +
-+	errno = 0;
-+	grace_start = strtol(grace_start_str, &end, 0);
-+	/* Problem converting or value is too large? */
-+	if (errno)
-+		return LONG_MAX;
++	result = kmalloc(len, GFP_KERNEL);
++	if (!result)
++		return result;
 +
-+	return grace_start;
-+}
++	copied = snprintf(result, len, GRACE_START_ENV_PREFIX "%ld",
++				grace_start);
++	if (copied >= len) {
++		/* just return nothing if output was truncated */
++		kfree(result);
++		return NULL;
++	}
 +
-+static bool
-+cltrack_reclaims_complete(void)
-+{
-+	time_t grace_start = cltrack_get_grace_start();
-+
-+	/* Don't query DB if we didn't get a valid boot time */
-+	if (grace_start == LONG_MAX)
-+		return false;
-+
-+	return !sqlite_query_reclaiming(grace_start);
++	return result;
 +}
 +
  static int
- cltrack_init(const char __attribute__((unused)) *unused)
+-nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
++nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *env0, char *env1)
  {
-@@ -251,7 +311,11 @@ cltrack_init(const char __attribute__((unused)) *unused)
- 		 * stop upcalling until the problem is resolved.
- 		 */
- 		ret = -EACCES;
-+	} else {
-+		if (cltrack_reclaims_complete())
-+			cltrack_lift_grace_period();
- 	}
-+
- 	return ret;
- }
- 
-@@ -284,6 +348,7 @@ cltrack_create(const char *id)
- {
+-	char *envp[2];
++	char *envp[3];
+ 	char *argv[4];
  	int ret;
- 	ssize_t len;
-+	unsigned int minorvers;
  
- 	xlog(D_GENERAL, "%s: create client record.", __func__);
+@@ -1140,10 +1192,12 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
  
-@@ -295,8 +360,18 @@ cltrack_create(const char *id)
- 	if (len < 0)
- 		return (int)len;
+ 	dprintk("%s: cmd: %s\n", __func__, cmd);
+ 	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
+-	dprintk("%s: legacy: %s\n", __func__, legacy ? legacy : "(null)");
++	dprintk("%s: env0: %s\n", __func__, env0 ? env0 : "(null)");
++	dprintk("%s: env1: %s\n", __func__, env1 ? env1 : "(null)");
  
--	ret = sqlite_insert_client(blob, len, cltrack_get_minorvers());
-+	minorvers = cltrack_get_minorvers();
-+	ret = sqlite_insert_client(blob, len, minorvers);
-+	if (ret)
-+		goto out;
-+
-+	/* No point in querying the DB if this client was v4.0 */
-+	if (minorvers == 0)
-+		goto out;
+-	envp[0] = legacy;
+-	envp[1] = NULL;
++	envp[0] = env0;
++	envp[1] = env1;
++	envp[2] = NULL;
  
-+	if (cltrack_reclaims_complete())
-+		cltrack_lift_grace_period();
-+out:
- 	return ret ? -EREMOTEIO : ret;
+ 	argv[0] = (char *)cltrack_prog;
+ 	argv[1] = cmd;
+@@ -1187,28 +1241,40 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
  }
  
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index 01084bb6c4d8..17437e48ffaa 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -547,3 +547,43 @@ sqlite_remove_unreclaimed(time_t grace_start)
- 	sqlite3_free(err);
- 	return ret;
- }
-+
-+/*
-+ * Are there any clients that are possibly still reclaiming? Return a positive
-+ * integer (usually number of clients) if so. If not, then return 0. On any
-+ * error, return non-zero.
-+ */
-+int
-+sqlite_query_reclaiming(const time_t grace_start)
-+{
+ static int
+-nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
++nfsd4_umh_cltrack_init(struct net *net)
+ {
 +	int ret;
-+	sqlite3_stmt *stmt = NULL;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	char *grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
 +
-+	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
-+				      "reclaim_complete < ?", -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: unable to prepare select statement: %s",
-+				__func__, sqlite3_errstr(ret));
-+		return ret;
-+	}
+ 	/* XXX: The usermode helper s not working in container yet. */
+ 	if (net != &init_net) {
+ 		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
+ 			"tracking in a container!\n");
+ 		return -EINVAL;
+ 	}
+-	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
 +
-+	ret = sqlite3_bind_int64(stmt, 1, (sqlite3_int64)grace_start);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: bind int64 failed: %s",
-+				__func__, sqlite3_errstr(ret));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret != SQLITE_ROW) {
-+		xlog(L_ERROR, "%s: unexpected return code from select: %s",
-+				__func__, sqlite3_errstr(ret));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_column_int(stmt, 0);
-+	sqlite3_finalize(stmt);
-+	xlog(D_GENERAL, "%s: there are %d clients that have not completed "
-+			"reclaim", __func__, ret);
++	ret = nfsd4_umh_cltrack_upcall("init", NULL, grace_start, NULL);
++	kfree(grace_start);
 +	return ret;
-+}
-diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
-index e9cc84cbb294..0e1939198367 100644
---- a/utils/nfsdcltrack/sqlite.h
-+++ b/utils/nfsdcltrack/sqlite.h
-@@ -26,5 +26,6 @@ int sqlite_insert_client(const unsigned char *clname, const size_t namelen,
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
- int sqlite_check_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_unreclaimed(const time_t grace_start);
-+int sqlite_query_reclaiming(const time_t grace_start);
+ }
  
- #endif /* _SQLITE_H */
+ static void
+ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+ {
+-	char *hexid;
++	char *hexid, *minorvers, *grace_start;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
+ 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+ 	if (!hexid) {
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
+-	nfsd4_umh_cltrack_upcall("create", hexid, NULL);
++	minorvers = nfsd4_cltrack_client_minorversion(clp);
++	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
++	nfsd4_umh_cltrack_upcall("create", hexid, minorvers, grace_start);
++	kfree(minorvers);
++	kfree(grace_start);
+ 	kfree(hexid);
+ }
+ 
+@@ -1222,7 +1288,7 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
+-	nfsd4_umh_cltrack_upcall("remove", hexid, NULL);
++	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
+ 	kfree(hexid);
+ }
+ 
+@@ -1238,7 +1304,7 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+ 		return -ENOMEM;
+ 	}
+ 	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
+-	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy);
++	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
+ 	kfree(legacy);
+ 	kfree(hexid);
+ 	return ret;
+@@ -1252,7 +1318,7 @@ nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
+ 
+ 	sprintf(timestr, "%ld", nn->boot_time);
+ 	legacy = nfsd4_cltrack_legacy_topdir();
+-	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
++	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy, NULL);
+ 	kfree(legacy);
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6479c45a17c9..2506a0609b99 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6358,10 +6358,10 @@ nfs4_state_start_net(struct net *net)
+ 	ret = nfs4_state_create_net(net);
+ 	if (ret)
+ 		return ret;
+-	nfsd4_client_tracking_init(net);
+ 	nn->boot_time = get_seconds();
+-	locks_start_grace(net, &nn->nfsd4_manager);
+ 	nn->grace_ended = false;
++	locks_start_grace(net, &nn->nfsd4_manager);
++	nfsd4_client_tracking_init(net);
+ 	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
+ 	       nn->nfsd4_grace, net);
+ 	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
 -- 
 1.9.3
 
