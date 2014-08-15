@@ -1,227 +1,203 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:40456 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754667AbaHLCyj convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Aug 2014 22:54:39 -0400
-Received: by mail-ig0-f170.google.com with SMTP id h3so6687368igd.1
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Aug 2014 19:54:38 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH 3/5] pnfs: find swapped pages on pnfs commit lists too
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <53E8C593.6030705@gmail.com>
-Date: Mon, 11 Aug 2014 22:54:37 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <583CC103-DC3D-495D-8C15-473BB8D2998D@primarydata.com>
-References: <1407510816-7002-1-git-send-email-dros@primarydata.com> <1407510816-7002-4-git-send-email-dros@primarydata.com> <53E8C593.6030705@gmail.com>
-To: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:51309 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751377AbaHOOot (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:44:49 -0400
+Received: by mail-qa0-f45.google.com with SMTP id cm18so2104787qab.4
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:44:48 -0700 (PDT)
+Received: from tlielax.poochiereds.net ([2001:470:8:d63:3a60:77ff:fe93:a95d])
+        by mx.google.com with ESMTPSA id i2sm9046955qge.27.2014.08.15.07.44.47
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 15 Aug 2014 07:44:47 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [kernel RFC PATCH 1/4] lockd: add a /proc/fs/lockd/nlm_end_grace file
+Date: Fri, 15 Aug 2014 10:44:37 -0400
+Message-Id: <1408113880-5489-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408113880-5489-1-git-send-email-jlayton@primarydata.com>
+References: <1408113880-5489-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Anna, I’ll fix it up.
+Add a new procfile that will allow a (privileged) userland process to
+end the NLM grace period early. The basic idea here will be to have
+sm-notify write to this file, if it sent out no NOTIFY requests when
+it runs. In that situation, we can generally expect that there will be
+no reclaim requests so the grace period can be lifted early.
 
--dros
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/lockd/Makefile |  1 +
+ fs/lockd/procfs.c | 76 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/lockd/procfs.h | 28 ++++++++++++++++++++
+ fs/lockd/svc.c    |  9 +++++++
+ 4 files changed, 114 insertions(+)
+ create mode 100644 fs/lockd/procfs.c
+ create mode 100644 fs/lockd/procfs.h
 
-
-
-On Aug 11, 2014, at 9:30 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
-
-> On 08/08/2014 11:13 AM, Weston Andros Adamson wrote:
->> nfs_page_find_head_request_locked looks through the regular nfs commit lists
->> when the page is swapped out, but doesn't look through the pnfs commit lists.
->> 
->> I'm not sure if anyone has hit any issues caused by this.
->> 
->> Suggested-by: Peng Tao <tao.peng@primarydata.com>
->> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->> fs/nfs/filelayout/filelayout.c | 31 ++++++++++++++++++++++++++
->> fs/nfs/pnfs.h                  | 20 +++++++++++++++++
->> fs/nfs/write.c                 | 49 +++++++++++++++++++++++++++++++-----------
->> 3 files changed, 88 insertions(+), 12 deletions(-)
->> 
->> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
->> index 2576d28b..524e66f 100644
->> --- a/fs/nfs/filelayout/filelayout.c
->> +++ b/fs/nfs/filelayout/filelayout.c
->> @@ -1237,6 +1237,36 @@ restart:
->> 	spin_unlock(cinfo->lock);
->> }
->> 
->> +/* filelayout_search_commit_reqs - Search lists in @cinfo for the head reqest
->> + *				   for @page
->> + * @cinfo - commit info for current inode
->> + * @page - page to search for matching head request
->> + *
->> + * Returns a the head request if one is found, otherwise returns NULL.
->> + */
->> +static struct nfs_page *
->> +filelayout_search_commit_reqs(struct nfs_commit_info *cinfo, struct page *page)
->> +{
->> +	struct nfs_page *freq, *t;
->> +	struct pnfs_commit_bucket *b;
->> +	int i;
->> +
->> +	/* Linearly search the commit lists for each bucket until a matching
->> +	 * request is found */
->> +	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
->> +		list_for_each_entry_safe(freq, t, &b->written, wb_list) {
->> +			if (freq->wb_page == page)
->> +				return freq->wb_head;
->> +		}
->> +		list_for_each_entry_safe(freq, t, &b->committing, wb_list) {
->> +			if (freq->wb_page == page)
->> +				return freq->wb_head;
->> +		}
->> +	}
->> +
->> +	return NULL;
->> +}
->> +
->> static void filelayout_retry_commit(struct nfs_commit_info *cinfo, int idx)
->> {
->> 	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
->> @@ -1386,6 +1416,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
->> 	.clear_request_commit	= filelayout_clear_request_commit,
->> 	.scan_commit_lists	= filelayout_scan_commit_lists,
->> 	.recover_commit_reqs	= filelayout_recover_commit_reqs,
->> +	.search_commit_reqs	= filelayout_search_commit_reqs,
->> 	.commit_pagelist	= filelayout_commit_pagelist,
->> 	.read_pagelist		= filelayout_read_pagelist,
->> 	.write_pagelist		= filelayout_write_pagelist,
->> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
->> index 27ddecd..203b6c9 100644
->> --- a/fs/nfs/pnfs.h
->> +++ b/fs/nfs/pnfs.h
->> @@ -104,6 +104,8 @@ struct pnfs_layoutdriver_type {
->> 				  int max);
->> 	void (*recover_commit_reqs) (struct list_head *list,
->> 				     struct nfs_commit_info *cinfo);
->> +	struct nfs_page * (*search_commit_reqs)(struct nfs_commit_info *cinfo,
->> +						struct page *page);
->> 	int (*commit_pagelist)(struct inode *inode,
->> 			       struct list_head *mds_pages,
->> 			       int how,
->> @@ -341,6 +343,17 @@ pnfs_recover_commit_reqs(struct inode *inode, struct list_head *list,
->> 	NFS_SERVER(inode)->pnfs_curr_ld->recover_commit_reqs(list, cinfo);
->> }
->> 
->> +static inline struct nfs_page *
->> +pnfs_search_commit_reqs(struct inode *inode, struct nfs_commit_info *cinfo,
->> +			struct page *page)
->> +{
->> +	struct pnfs_layoutdriver_type *ld = NFS_SERVER(inode)->pnfs_curr_ld;
->> +
->> +	if (ld == NULL || ld->search_commit_reqs == NULL)
->> +		return NULL;
->> +	return ld->search_commit_reqs(cinfo, page);
->> +}
->> +
->> /* Should the pNFS client commit and return the layout upon a setattr */
->> static inline bool
->> pnfs_ld_layoutret_on_setattr(struct inode *inode)
->> @@ -492,6 +505,13 @@ pnfs_recover_commit_reqs(struct inode *inode, struct list_head *list,
->> {
->> }
->> 
->> +static inline struct nfs_page *
->> +pnfs_search_commit_reqs(struct inode *inode, struct nfs_commit_info *cinfo,
->> +			struct page *page)
->> +{
->> +	return NULL;
->> +}
->> +
->> static inline int pnfs_layoutcommit_inode(struct inode *inode, bool sync)
->> {
->> 	return 0;
->> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->> index e6bc5b5..ba41769 100644
->> --- a/fs/nfs/write.c
->> +++ b/fs/nfs/write.c
->> @@ -47,6 +47,8 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
->> static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
->> static const struct nfs_rw_ops nfs_rw_write_ops;
->> static void nfs_clear_request_commit(struct nfs_page *req);
->> +static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
->> +				      struct inode *inode);
->> 
->> static struct kmem_cache *nfs_wdata_cachep;
->> static mempool_t *nfs_wdata_mempool;
->> @@ -93,6 +95,38 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
->> }
->> 
->> /*
->> + * nfs_page_search_commits_for_head_request_locked
->> + *
->> + * Search through commit lists on @inode for the head request for @page.
->> + * Must be called while holding the inode (which is cinfo) lock.
->> + *
->> + * Returns the head request if found, or NULL if not found.
->> + */
->> +static struct nfs_page *
->> +nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
->> +						struct page *page)
->> +{
->> +	struct nfs_page *freq, *t;
->> +	struct nfs_commit_info cinfo;
->> +	struct inode *inode = &nfsi->vfs_inode;
->> +
->> +	nfs_init_cinfo_from_inode(&cinfo, inode);
-> This has a compiler warning when CONFIG_NFS_V4=n, CONFIG_NFS_V3=n, CONFIG_NFS_V2=y:
-> 
-> fs/nfs/write.c: In function ‘nfs_page_find_head_request_locked.isra.16’:
-> include/linux/kernel.h:834:39: error: ‘cinfo.mds’ may be used uninitialized in this function [-Werror=maybe-uninitialized]
->  const typeof( ((type *)0)->member ) *__mptr = (ptr); \
->                                       ^
-> fs/nfs/write.c:110:25: note: ‘cinfo.mds’ was declared here
->  struct nfs_commit_info cinfo;
-> 
-> Probably because nfs_init_cinfo_from_inode() is empty without v3 or v4.
-> 
-> Anna
->> +
->> +	/* search through pnfs commit lists */
->> +	freq = pnfs_search_commit_reqs(inode, &cinfo, page);
->> +	if (freq)
->> +		return freq->wb_head;
->> +
->> +	/* Linearly search the commit list for the correct request */
->> +	list_for_each_entry_safe(freq, t, &cinfo.mds->list, wb_list) {
->> +		if (freq->wb_page == page)
->> +			return freq->wb_head;
->> +	}
->> +
->> +	return NULL;
->> +}
->> +
->> +/*
->>  * nfs_page_find_head_request_locked - find head request associated with @page
->>  *
->>  * must be called while holding the inode lock.
->> @@ -106,21 +140,12 @@ nfs_page_find_head_request_locked(struct nfs_inode *nfsi, struct page *page)
->> 
->> 	if (PagePrivate(page))
->> 		req = (struct nfs_page *)page_private(page);
->> -	else if (unlikely(PageSwapCache(page))) {
->> -		struct nfs_page *freq, *t;
->> -
->> -		/* Linearly search the commit list for the correct req */
->> -		list_for_each_entry_safe(freq, t, &nfsi->commit_info.list, wb_list) {
->> -			if (freq->wb_page == page) {
->> -				req = freq->wb_head;
->> -				break;
->> -			}
->> -		}
->> -	}
->> +	else if (unlikely(PageSwapCache(page)))
->> +		req = nfs_page_search_commits_for_head_request_locked(nfsi,
->> +			page);
->> 
->> 	if (req) {
->> 		WARN_ON_ONCE(req->wb_head != req);
->> -
->> 		kref_get(&req->wb_kref);
->> 	}
+diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
+index ca58d64374ca..bc28fff5d305 100644
+--- a/fs/lockd/Makefile
++++ b/fs/lockd/Makefile
+@@ -7,4 +7,5 @@ obj-$(CONFIG_LOCKD) += lockd.o
+ lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
+ 	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o grace.o
+ lockd-objs-$(CONFIG_LOCKD_V4) += clnt4xdr.o xdr4.o svc4proc.o
++lockd-objs-$(CONFIG_PROC_FS) += procfs.o
+ lockd-objs		      := $(lockd-objs-y)
+diff --git a/fs/lockd/procfs.c b/fs/lockd/procfs.c
+new file mode 100644
+index 000000000000..dfd708fa43a3
+--- /dev/null
++++ b/fs/lockd/procfs.c
+@@ -0,0 +1,76 @@
++/*
++ * Procfs support for lockd
++ *
++ * Copyright (c) 2014 Jeff Layton <jlayton@primarydata.com>
++ */
++
++#include <linux/fs.h>
++#include <linux/proc_fs.h>
++#include <linux/module.h>
++#include <linux/nsproxy.h>
++#include <net/net_namespace.h>
++
++#include "netns.h"
++#include "procfs.h"
++
++/*
++ * Just check to see if the data written is longer than zero length. We
++ * don't really care what's in the data, just that someone wrote something
++ * to the file.
++ */
++static ssize_t
++nlm_end_grace_write(struct file *file, const char __user *buf, size_t size,
++		    loff_t *pos)
++{
++	struct lockd_net *ln = net_generic(current->nsproxy->net_ns, lockd_net_id);
++
++	if (size > 0)
++		locks_end_grace(&ln->lockd_manager);
++
++	return size;
++}
++
++static ssize_t
++nlm_end_grace_read(struct file *file, char __user *buf, size_t size,
++		   loff_t *pos)
++{
++	struct lockd_net *ln = net_generic(current->nsproxy->net_ns, lockd_net_id);
++	char resp[3];
++
++	resp[0] = list_empty(&ln->lockd_manager.list) ? 'Y' : 'N';
++	resp[1] = '\n';
++	resp[2] = '\0';
++
++	return simple_read_from_buffer(buf, size, pos, resp, sizeof(resp));
++}
++
++static const struct file_operations lockd_end_grace_operations = {
++	.write		= nlm_end_grace_write,
++	.read		= nlm_end_grace_read,
++	.llseek		= default_llseek,
++	.owner		= THIS_MODULE,
++};
++
++int __init
++lockd_create_procfs(void)
++{
++	struct proc_dir_entry *entry;
++
++	entry = proc_mkdir("fs/lockd", NULL);
++	if (!entry)
++		return -ENOMEM;
++	entry = proc_create("nlm_end_grace", S_IRUGO|S_IWUSR, entry,
++				 &lockd_end_grace_operations);
++	if (!entry) {
++		remove_proc_entry("fs/lockd", NULL);
++		return -ENOMEM;
++	}
++	return 0;
++}
++
++void __exit
++lockd_remove_procfs(void)
++{
++	remove_proc_entry("fs/lockd/nlm_end_grace", NULL);
++	remove_proc_entry("fs/lockd", NULL);
++}
+diff --git a/fs/lockd/procfs.h b/fs/lockd/procfs.h
+new file mode 100644
+index 000000000000..2257a1311027
+--- /dev/null
++++ b/fs/lockd/procfs.h
+@@ -0,0 +1,28 @@
++/*
++ * Procfs support for lockd
++ *
++ * Copyright (c) 2014 Jeff Layton <jlayton@primarydata.com>
++ */
++#ifndef _LOCKD_PROCFS_H
++#define _LOCKD_PROCFS_H
++
++#include <linux/kconfig.h>
++
++#if IS_ENABLED(CONFIG_PROC_FS)
++int lockd_create_procfs(void);
++void lockd_remove_procfs(void);
++#else
++static inline int
++lockd_create_procfs(void)
++{
++	return 0;
++}
++
++static inline void
++lockd_remove_procfs(void)
++{
++	return;
++}
++#endif /* IS_ENABLED(CONFIG_PROC_FS) */
++
++#endif /* _LOCKD_PROCFS_H */
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 8f27c93f8d2e..21223f15c00e 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -36,6 +36,7 @@
+ #include <linux/nfs.h>
+ 
+ #include "netns.h"
++#include "procfs.h"
+ 
+ #define NLMDBG_FACILITY		NLMDBG_SVC
+ #define LOCKD_BUFSIZE		(1024 + NLMSVC_XDRSIZE)
+@@ -617,8 +618,15 @@ static int __init init_nlm(void)
+ 	err = register_pernet_subsys(&lockd_net_ops);
+ 	if (err)
+ 		goto err_pernet;
++
++	err = lockd_create_procfs();
++	if (err)
++		goto err_procfs;
++
+ 	return 0;
+ 
++err_procfs:
++	unregister_pernet_subsys(&lockd_net_ops);
+ err_pernet:
+ #ifdef CONFIG_SYSCTL
+ 	unregister_sysctl_table(nlm_sysctl_table);
+@@ -631,6 +639,7 @@ static void __exit exit_nlm(void)
+ {
+ 	/* FIXME: delete all NLM clients */
+ 	nlm_shutdown_hosts();
++	lockd_remove_procfs();
+ 	unregister_pernet_subsys(&lockd_net_ops);
+ #ifdef CONFIG_SYSCTL
+ 	unregister_sysctl_table(nlm_sysctl_table);
+-- 
+1.9.3
 
