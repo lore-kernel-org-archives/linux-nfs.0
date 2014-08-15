@@ -1,81 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:51896 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751226AbaHJPmT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Aug 2014 11:42:19 -0400
-Message-ID: <53E792CD.9080503@gmail.com>
-Date: Sun, 10 Aug 2014 23:42:05 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 2/3 v2] fs/locks.c: New ops in file_lock_operations for copying/releasing
- owner
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com>
-In-Reply-To: <53E791F1.40802@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:61935 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751196AbaHOOpb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:45:31 -0400
+Received: by mail-qa0-f42.google.com with SMTP id j15so2147085qaq.15
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:45:30 -0700 (PDT)
+Received: from tlielax.poochiereds.net ([2001:470:8:d63:3a60:77ff:fe93:a95d])
+        by mx.google.com with ESMTPSA id t107sm3989900qgt.28.2014.08.15.07.45.29
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 15 Aug 2014 07:45:29 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 6/7] nfsdcltrack: grab the client minorversion from the env var if it's present
+Date: Fri, 15 Aug 2014 10:45:14 -0400
+Message-Id: <1408113915-5573-7-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
+References: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSD or other lockmanager may increase the owner's reference,
-so adds two new options for copying and releasing owner.
+And set the reclaim_complete field in the DB based on whether it's zero
+or not. We have no way to know for certain when a v4.0 client has
+completed reclaim, so we always set that field in the DB to zero for
+v4.0 clients.
 
-v2: A new patch isn't exist in v1.
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/locks.c         | 12 ++++++++++--
- include/linux/fs.h |  2 ++
- 2 files changed, 12 insertions(+), 2 deletions(-)
+ utils/nfsdcltrack/nfsdcltrack.c | 29 +++++++++++++++++++++++++++--
+ utils/nfsdcltrack/sqlite.c      | 16 ++++++++++++----
+ utils/nfsdcltrack/sqlite.h      |  3 ++-
+ 3 files changed, 41 insertions(+), 7 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 91b0f03..f302a51 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -230,8 +230,12 @@ void locks_release_private(struct file_lock *fl)
- 			fl->fl_ops->fl_release_private(fl);
- 		fl->fl_ops = NULL;
- 	}
--	fl->fl_lmops = NULL;
- 
-+	if (fl->fl_lmops) {
-+		if (fl->fl_lmops->lm_release_owner)
-+			fl->fl_lmops->lm_release_owner(fl);
-+		fl->fl_lmops = NULL;
-+	}
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+index f2813610be73..cbc98c7edc11 100644
+--- a/utils/nfsdcltrack/nfsdcltrack.c
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -37,6 +37,7 @@
+ #include <libgen.h>
+ #include <sys/inotify.h>
+ #include <dirent.h>
++#include <limits.h>
+ #ifdef HAVE_SYS_CAPABILITY_H
+ #include <sys/prctl.h>
+ #include <sys/capability.h>
+@@ -254,6 +255,30 @@ cltrack_init(const char __attribute__((unused)) *unused)
+ 	return ret;
  }
- EXPORT_SYMBOL_GPL(locks_release_private);
  
-@@ -262,8 +266,12 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
- 			fl->fl_ops->fl_copy_lock(new, fl);
- 		new->fl_ops = fl->fl_ops;
- 	}
--	if (fl->fl_lmops)
++/*
++ * Fetch the contents of the NFSDCLTRACK_CLIENT_MINORVERSION env var. If
++ * it's not set or there is an error converting it to an unsigned int
++ * then return 0 (since the minorversion isn't reliable at that point).
++ */
++static unsigned int
++cltrack_get_minorvers(void)
++{
++	unsigned long minorvers;
++	char *end;
++	char *minorvers_str = getenv("NFSDCLTRACK_CLIENT_MINORVERSION");
 +
-+	if (fl->fl_lmops) {
-+		if (fl->fl_lmops->lm_copy_owner)
-+			fl->fl_lmops->lm_copy_owner(new, fl);
- 		new->fl_lmops = fl->fl_lmops;
-+	}
- }
++	if (!minorvers_str)
++		return 0;
++
++	errno = 0;
++	minorvers = strtoul(minorvers_str, &end, 0);
++	/* Problem converting or value is too large? */
++	if (errno || minorvers > UINT_MAX)
++		return 0;
++
++	return (unsigned int)minorvers;
++}
++
+ static int
+ cltrack_create(const char *id)
+ {
+@@ -270,7 +295,7 @@ cltrack_create(const char *id)
+ 	if (len < 0)
+ 		return (int)len;
  
- void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ced023d..622efca 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -843,6 +843,8 @@ struct file_lock_operations {
- struct lock_manager_operations {
- 	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
- 	unsigned long (*lm_owner_key)(struct file_lock *);
-+	void (*lm_copy_owner)(struct file_lock *, struct file_lock *);
-+	void (*lm_release_owner)(struct file_lock *);
- 	void (*lm_notify)(struct file_lock *);	/* unblock callback */
- 	int (*lm_grant)(struct file_lock *, struct file_lock *, int);
- 	void (*lm_break)(struct file_lock *);
+-	ret = sqlite_insert_client(blob, len);
++	ret = sqlite_insert_client(blob, len, cltrack_get_minorvers());
+ 
+ 	return ret ? -EREMOTEIO : ret;
+ }
+@@ -323,7 +348,7 @@ cltrack_check_legacy(const unsigned char *blob, const ssize_t len)
+ 	}
+ 
+ 	/* Dir exists, try to insert record into db */
+-	ret = sqlite_insert_client(blob, len);
++	ret = sqlite_insert_client(blob, len, 0);
+ 	if (ret) {
+ 		xlog(D_GENERAL, "Failed to insert client: %d", ret);
+ 		return -EREMOTEIO;
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index e260e81b1722..01084bb6c4d8 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -369,14 +369,22 @@ out_close:
+  * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
+  */
+ int
+-sqlite_insert_client(const unsigned char *clname, const size_t namelen)
++sqlite_insert_client(const unsigned char *clname, const size_t namelen,
++			const unsigned int minorvers)
+ {
+ 	int ret;
+ 	sqlite3_stmt *stmt = NULL;
+ 
+-	ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients VALUES "
+-					"(?, strftime('%s', 'now'), 0);", -1,
+-					&stmt, NULL);
++	if (minorvers == 0)
++		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
++				"VALUES (?, strftime('%s', 'now'), 0);", -1,
++				&stmt, NULL);
++	else
++		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
++				"VALUES (?, strftime('%s', 'now'), "
++				"strftime('%s', 'now'));", -1,
++				&stmt, NULL);
++
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
+ 			__func__, sqlite3_errmsg(dbh));
+diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
+index 3713bfb66e2f..e9cc84cbb294 100644
+--- a/utils/nfsdcltrack/sqlite.h
++++ b/utils/nfsdcltrack/sqlite.h
+@@ -21,7 +21,8 @@
+ #define _SQLITE_H_
+ 
+ int sqlite_prepare_dbh(const char *topdir);
+-int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
++int sqlite_insert_client(const unsigned char *clname, const size_t namelen,
++				const unsigned int minorvers);
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_unreclaimed(const time_t grace_start);
 -- 
 1.9.3
 
