@@ -1,27 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:34644 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753416AbaHGHM2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Aug 2014 03:12:28 -0400
-Date: Thu, 7 Aug 2014 09:12:24 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Russell King - ARM Linux <linux@arm.linux.org.uk>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        linux-arm-kernel@lists.infradead.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [BUG] nfs3_list_one_acl oops
-Message-ID: <20140807071224.GA17501@lst.de>
-References: <20140726162143.GB20396@n2100.arm.linux.org.uk> <20140727131949.GB32153@infradead.org> <CAHQdGtQhEQiuObg48JrNbK5L6=r0mxfSvErVC0JS4TqxxbJy_w@mail.gmail.com> <20140806223441.GU30282@n2100.arm.linux.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140806223441.GU30282@n2100.arm.linux.org.uk>
+Received: from mail-qa0-f48.google.com ([209.85.216.48]:62609 "EHLO
+	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751377AbaHOOos (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:44:48 -0400
+Received: by mail-qa0-f48.google.com with SMTP id m5so2117485qaj.7
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:44:47 -0700 (PDT)
+Received: from tlielax.poochiereds.net ([2001:470:8:d63:3a60:77ff:fe93:a95d])
+        by mx.google.com with ESMTPSA id i2sm9046955qge.27.2014.08.15.07.44.45
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 15 Aug 2014 07:44:46 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [kernel RFC PATCH 0/4] nfsd: support for lifting grace period early
+Date: Fri, 15 Aug 2014 10:44:36 -0400
+Message-Id: <1408113880-5489-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 06, 2014 at 11:34:41PM +0100, Russell King - ARM Linux wrote:
-> What's happening on this?  Did this get fixed for v3.16?
+One of the huge annoyances in dealing with knfsd is the 90s grace period
+that's imposed when the server reboots. This is not just an annoyance,
+but means a siginificant amount of "downtime" in many production
+environments.
 
-Trond has Andrey's patch queued up for 3.17 with a Cc to stable, so it
-will go into a 3.16 stable kernel as soon as it hits Linus' tree.
+This patchset aimed at reducing this pain. It adds a couple of /proc
+knobs that tell the lockd and nfsd lock managers to lift the grace
+period.
+
+It also changes the UMH upcalls to pass a little bit of extra info in
+the form of environment variables so that the upcall program can
+determine whether there are still any clients that may be in the process
+of reclaiming.
+
+For now, this is an RFC. Does anyone have comments on the general
+approach here?
+
+Jeff Layton (4):
+  lockd: add a /proc/fs/lockd/nlm_end_grace file
+  nfsd: add a v4_end_grace file to /proc/fs/nfsd
+  nfsd: remove redundant boot_time parm from grace_done client tracking
+    op
+  nfsd: pass extra info in env vars to upcalls to allow for early grace
+    period end
+
+ fs/lockd/Makefile     |   1 +
+ fs/lockd/procfs.c     |  76 +++++++++++++++++++++++++++++++++++
+ fs/lockd/procfs.h     |  28 +++++++++++++
+ fs/lockd/svc.c        |   9 +++++
+ fs/nfsd/nfs4recover.c | 107 ++++++++++++++++++++++++++++++++++++++++----------
+ fs/nfsd/nfs4state.c   |   8 ++--
+ fs/nfsd/nfsctl.c      |  35 +++++++++++++++++
+ fs/nfsd/state.h       |   5 ++-
+ 8 files changed, 243 insertions(+), 26 deletions(-)
+ create mode 100644 fs/lockd/procfs.c
+ create mode 100644 fs/lockd/procfs.h
+
+-- 
+1.9.3
 
