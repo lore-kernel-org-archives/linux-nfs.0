@@ -1,183 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:39278 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752358AbaHYFee (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2014 01:34:34 -0400
-Message-ID: <53FACADB.40505@oracle.com>
-Date: Mon, 25 Aug 2014 13:34:19 +0800
-From: Junxiao Bi <junxiao.bi@oracle.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-References: <53F6F772.6020708@oracle.com> <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:63094 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751196AbaHOOpa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:45:30 -0400
+Received: by mail-qc0-f175.google.com with SMTP id w7so2362967qcr.20
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:45:29 -0700 (PDT)
+Received: from tlielax.poochiereds.net ([2001:470:8:d63:3a60:77ff:fe93:a95d])
+        by mx.google.com with ESMTPSA id t107sm3989900qgt.28.2014.08.15.07.45.28
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Fri, 15 Aug 2014 07:45:28 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 5/7] nfsdcltrack: update schema to v2
+Date: Fri, 15 Aug 2014 10:45:13 -0400
+Message-Id: <1408113915-5573-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
+References: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+From: Jeff Layton <jlayton@poochiereds.net>
 
-Thanks for looking into this issue.
+In order to allow knfsd's lock manager to lift its grace period early,
+we need to figure out whether all clients have finished reclaiming
+their state not. Unfortunately, the current code doesn't allow us to
+ascertain this. All we track for each client is a timestamp that tells
+us when the last "check" or "create" operation came in.
 
-PF_FSTRANS is also used in file net/sunrpc/xprtrdma/transport.c -
-xprt_rdma_connect_worker(), do we also add PF_MEMALLOC_NOIO there?
+We need to track the two timestamps separately. Add a new
+"reclaim_complete" column to the database that tells us when the last
+"create" operation came in. For now, we just insert "0" in that column
+but a later patch will make it so that we insert a real timestamp for
+v4.1+ client records.
 
-Also PF_FSTRANS seemed duplicated with PF_MEMALLOC_NOIO, can we directly
-replace it with PF_MEMALLOC_NOIO?
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ utils/nfsdcltrack/sqlite.c | 102 +++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 94 insertions(+), 8 deletions(-)
 
-Thanks,
-Junxiao.
-
-On 08/23/2014 06:49 AM, Trond Myklebust wrote:
-> Junxiao Bi reports seeing the following deadlock:
-> 
-> @ crash> bt 1539
-> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
-> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
-> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
-> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
-> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
-> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
-> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
-> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
-> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
-> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
-> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
-> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
-> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
-> @ #12 [ffff88178f64d978] kmem_getpages at ffffffff8110e18b
-> @ #13 [ffff88178f64d9a8] fallback_alloc at ffffffff8110e35e
-> @ #14 [ffff88178f64da08] ____cache_alloc_node at ffffffff8110e51f
-> @ #15 [ffff88178f64da48] __kmalloc at ffffffff8110efba
-> @ #16 [ffff88178f64da98] xs_setup_xprt at ffffffffa00a563f [sunrpc]
-> @ #17 [ffff88178f64dad8] xs_setup_tcp at ffffffffa00a7648 [sunrpc]
-> @ #18 [ffff88178f64daf8] xprt_create_transport at ffffffffa00a478f [sunrpc]
-> @ #19 [ffff88178f64db18] rpc_create at ffffffffa00a2d7a [sunrpc]
-> @ #20 [ffff88178f64dbf8] rpcb_create at ffffffffa00b026b [sunrpc]
-> @ #21 [ffff88178f64dc98] rpcb_getport_async at ffffffffa00b0c94 [sunrpc]
-> @ #22 [ffff88178f64ddf8] call_bind at ffffffffa00a11f8 [sunrpc]
-> @ #23 [ffff88178f64de18] __rpc_execute at ffffffffa00a88ef [sunrpc]
-> @ #24 [ffff88178f64de58] rpc_async_schedule at ffffffffa00a9187 [sunrpc]
-> @ #25 [ffff88178f64de78] worker_thread at ffffffff81072ed2
-> @ #26 [ffff88178f64dee8] kthread at ffffffff81076df3
-> @ #27 [ffff88178f64df48] kernel_thread at ffffffff81012e2a
-> @ crash>
-> 
-> Junxiao notes that the problem is not limited to the rpcbind client. In
-> fact we can trigger the exact same problem when trying to reconnect to
-> the server, and we find ourselves calling sock_alloc().
-> 
-> The following solution should work for all kernels that support the
-> PF_MEMALLOC_NOIO flag (i.e. Linux 3.9 and newer).
-> 
-> Link: http://lkml.kernel.org/r/53F6F772.6020708@oracle.com
-> Reported-by: Junxiao Bi <junxiao.bi@oracle.com>
-> Cc: stable@vger.kernel.org # 3.9+
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  net/sunrpc/sched.c    |  5 +++--
->  net/sunrpc/xprtsock.c | 15 ++++++++-------
->  2 files changed, 11 insertions(+), 9 deletions(-)
-> 
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> index 9358c79fd589..ab3aff71ff93 100644
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -19,6 +19,7 @@
->  #include <linux/spinlock.h>
->  #include <linux/mutex.h>
->  #include <linux/freezer.h>
-> +#include <linux/sched.h>
->  
->  #include <linux/sunrpc/clnt.h>
->  
-> @@ -821,9 +822,9 @@ void rpc_execute(struct rpc_task *task)
->  
->  static void rpc_async_schedule(struct work_struct *work)
->  {
-> -	current->flags |= PF_FSTRANS;
-> +	current->flags |= PF_FSTRANS | PF_MEMALLOC_NOIO;
->  	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
-> -	current->flags &= ~PF_FSTRANS;
-> +	current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  }
->  
->  /**
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 43cd89eacfab..1d6d4d84b299 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -38,6 +38,7 @@
->  #include <linux/sunrpc/svcsock.h>
->  #include <linux/sunrpc/xprtsock.h>
->  #include <linux/file.h>
-> +#include <linux/sched.h>
->  #ifdef CONFIG_SUNRPC_BACKCHANNEL
->  #include <linux/sunrpc/bc_xprt.h>
->  #endif
-> @@ -1927,7 +1928,7 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
->  	struct socket *sock;
->  	int status = -EIO;
->  
-> -	current->flags |= PF_FSTRANS;
-> +	current->flags |= PF_FSTRANS | PF_MEMALLOC_NOIO;
->  
->  	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
->  	status = __sock_create(xprt->xprt_net, AF_LOCAL,
-> @@ -1968,7 +1969,7 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
->  out:
->  	xprt_clear_connecting(xprt);
->  	xprt_wake_pending_tasks(xprt, status);
-> -	current->flags &= ~PF_FSTRANS;
-> +	current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  	return status;
->  }
->  
-> @@ -2071,7 +2072,7 @@ static void xs_udp_setup_socket(struct work_struct *work)
->  	struct socket *sock = transport->sock;
->  	int status = -EIO;
->  
-> -	current->flags |= PF_FSTRANS;
-> +	current->flags |= PF_FSTRANS | PF_MEMALLOC_NOIO;
->  
->  	/* Start by resetting any existing state */
->  	xs_reset_transport(transport);
-> @@ -2092,7 +2093,7 @@ static void xs_udp_setup_socket(struct work_struct *work)
->  out:
->  	xprt_clear_connecting(xprt);
->  	xprt_wake_pending_tasks(xprt, status);
-> -	current->flags &= ~PF_FSTRANS;
-> +	current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  }
->  
->  /*
-> @@ -2229,7 +2230,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
->  	struct rpc_xprt *xprt = &transport->xprt;
->  	int status = -EIO;
->  
-> -	current->flags |= PF_FSTRANS;
-> +	current->flags |= PF_FSTRANS | PF_MEMALLOC_NOIO;
->  
->  	if (!sock) {
->  		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
-> @@ -2276,7 +2277,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
->  	case -EINPROGRESS:
->  	case -EALREADY:
->  		xprt_clear_connecting(xprt);
-> -		current->flags &= ~PF_FSTRANS;
-> +		current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  		return;
->  	case -EINVAL:
->  		/* Happens, for instance, if the user specified a link
-> @@ -2294,7 +2295,7 @@ out_eagain:
->  out:
->  	xprt_clear_connecting(xprt);
->  	xprt_wake_pending_tasks(xprt, status);
-> -	current->flags &= ~PF_FSTRANS;
-> +	current->flags &= ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
->  }
->  
->  /**
-> 
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index dde2f7ff8621..e260e81b1722 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -29,7 +29,10 @@
+  *
+  * clients: an "id" column containing a BLOB with the long-form clientid as
+  * 	    sent by the client, a "time" column containing a timestamp (in
+- * 	    epoch seconds) of when the record was last updated.
++ * 	    epoch seconds) of when the record was last updated, and a
++ * 	    "reclaim_complete" column containing a timestamp (in epoch seconds)
++ * 	    of when the last "create" operation came in for v4.1+ clients.
++ * 	    v4.0 clients should always have this set to 0.
+  */
+ 
+ #ifdef HAVE_CONFIG_H
+@@ -50,7 +53,7 @@
+ 
+ #include "xlog.h"
+ 
+-#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 1
++#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 2
+ 
+ /* in milliseconds */
+ #define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
+@@ -120,6 +123,81 @@ out:
+ 	return ret;
+ }
+ 
++static int
++sqlite_maindb_update_v1_to_v2(void)
++{
++	int ret, ret2;
++	char *err;
++
++	/* begin transaction */
++	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
++				&err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to begin transaction: %s", err);
++		goto rollback;
++	}
++
++	/*
++	 * Check schema version again. This time, under an exclusive
++	 * transaction to guard against racing DB setup attempts
++	 */
++	ret = sqlite_query_schema_version();
++	switch (ret) {
++	case 1:
++		/* Still at v1 -- do conversion */
++		break;
++	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
++		/* Someone else raced in and set it up */
++		ret = 0;
++		goto rollback;
++	default:
++		/* Something went wrong -- fail! */
++		ret = -EINVAL;
++		goto rollback;
++	}
++
++	/* create v2 clients table */
++	ret = sqlite3_exec(dbh, "ALTER TABLE clients ADD COLUMN "
++				"reclaim_complete INTEGER;",
++				NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to update clients table: %s", err);
++		goto rollback;
++	}
++
++	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
++			"WHERE key = \"version\";",
++			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
++	if (ret < 0) {
++		xlog(L_ERROR, "sprintf failed!");
++		goto rollback;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
++		ret = -EINVAL;
++		goto rollback;
++	}
++
++	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to update schema version: %s", err);
++		goto rollback;
++	}
++
++	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to commit transaction: %s", err);
++		goto rollback;
++	}
++out:
++	sqlite3_free(err);
++	return ret;
++rollback:
++	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	if (ret2 != SQLITE_OK)
++		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
++	goto out;
++}
++
+ /*
+  * Start an exclusive transaction and recheck the DB schema version. If it's
+  * still zero (indicating a new database) then set it up. If that all works,
+@@ -127,9 +205,9 @@ out:
+  * transaction. On any error, rollback the transaction.
+  */
+ int
+-sqlite_maindb_init_v1(void)
++sqlite_maindb_init_v2(void)
+ {
+-	int ret;
++	int ret, ret2;
+ 	char *err = NULL;
+ 
+ 	/* Start a transaction */
+@@ -169,7 +247,7 @@ sqlite_maindb_init_v1(void)
+ 
+ 	/* create the "clients" table */
+ 	ret = sqlite3_exec(dbh, "CREATE TABLE clients (id BLOB PRIMARY KEY, "
+-				"time INTEGER);",
++				"time INTEGER, reclaim_complete INTEGER);",
+ 				NULL, NULL, &err);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "Unable to create clients table: %s", err);
+@@ -207,7 +285,9 @@ out:
+ 
+ rollback:
+ 	/* Attempt to rollback the transaction */
+-	sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	if (ret2 != SQLITE_OK)
++		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+ 	goto out;
+ }
+ 
+@@ -255,9 +335,15 @@ sqlite_prepare_dbh(const char *topdir)
+ 		/* DB is already set up. Do nothing */
+ 		ret = 0;
+ 		break;
++	case 1:
++		/* Old DB -- update to new schema */
++		ret = sqlite_maindb_update_v1_to_v2();
++		if (ret)
++			goto out_close;
++		break;
+ 	case 0:
+ 		/* Query failed -- try to set up new DB */
+-		ret = sqlite_maindb_init_v1();
++		ret = sqlite_maindb_init_v2();
+ 		if (ret)
+ 			goto out_close;
+ 		break;
+@@ -289,7 +375,7 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen)
+ 	sqlite3_stmt *stmt = NULL;
+ 
+ 	ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients VALUES "
+-				      "(?, strftime('%s', 'now'));", -1,
++					"(?, strftime('%s', 'now'), 0);", -1,
+ 					&stmt, NULL);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
+-- 
+1.9.3
 
