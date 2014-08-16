@@ -1,89 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f180.google.com ([209.85.216.180]:37398 "EHLO
-	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751464AbaHOOpY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:45:24 -0400
-Received: by mail-qc0-f180.google.com with SMTP id l6so2376613qcy.39
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:45:23 -0700 (PDT)
-Received: from tlielax.poochiereds.net ([2001:470:8:d63:3a60:77ff:fe93:a95d])
-        by mx.google.com with ESMTPSA id t107sm3989900qgt.28.2014.08.15.07.45.22
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 15 Aug 2014 07:45:22 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils RFC PATCH 1/7] sm-notify: inform the kernel if there were no hosts to notify
-Date: Fri, 15 Aug 2014 10:45:09 -0400
-Message-Id: <1408113915-5573-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
-References: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:47415 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751452AbaHPTg6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Aug 2014 15:36:58 -0400
+From: Cong Wang <xiyou.wangcong@gmail.com>
+To: linux-kernel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, "Eric W. Biederman" <ebiederm@xmission.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dan Aloni <dan@kernelim.com>, Cong Wang <xiyou.wangcong@gmail.com>
+Subject: [PATCH v2] nfs: fix kernel warning when removing proc entry
+Date: Sat, 16 Aug 2014 12:36:46 -0700
+Message-Id: <1408217806-25877-1-git-send-email-xiyou.wangcong@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the event that there no hosts to be notified after a reboot, there's
-no real reason to force lockd to wait the entire grace period before
-handing out locks. We're not expecting any reclaim requests to come in
-that situation.
+I saw the following kernel warning:
 
-Have sm-notify do a write to /proc/fs/lockd/nlm_end_grace if that file
-is present. That informs the kernel that it's OK to go ahead and lift
-lockd's grace period early.
+[ 1852.321222] ------------[ cut here ]------------
+[ 1852.326527] WARNING: CPU: 0 PID: 118 at fs/proc/generic.c:521 remove_proc_entry+0x154/0x16b()
+[ 1852.335630] remove_proc_entry: removing non-empty directory 'fs/nfsfs', leaking at least 'volumes'
+[ 1852.344084] CPU: 0 PID: 118 Comm: kworker/u8:2 Not tainted 3.16.0+ #540
+[ 1852.350036] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[ 1852.354992] Workqueue: netns cleanup_net
+[ 1852.358701]  0000000000000000 ffff880116f2fbd0 ffffffff819c03e9 ffff880116f2fc18
+[ 1852.366474]  ffff880116f2fc08 ffffffff810744ee ffffffff811e0e6e ffff8800d4e96238
+[ 1852.373507]  ffffffff81dbe665 ffff8800d46a5948 0000000000000005 ffff880116f2fc68
+[ 1852.380224] Call Trace:
+[ 1852.381976]  [<ffffffff819c03e9>] dump_stack+0x4d/0x66
+[ 1852.385495]  [<ffffffff810744ee>] warn_slowpath_common+0x7a/0x93
+[ 1852.389869]  [<ffffffff811e0e6e>] ? remove_proc_entry+0x154/0x16b
+[ 1852.393987]  [<ffffffff8107457b>] warn_slowpath_fmt+0x4c/0x4e
+[ 1852.397999]  [<ffffffff811e0e6e>] remove_proc_entry+0x154/0x16b
+[ 1852.402034]  [<ffffffff8129c73d>] nfs_fs_proc_net_exit+0x53/0x56
+[ 1852.406136]  [<ffffffff812a103b>] nfs_net_exit+0x12/0x1d
+[ 1852.409774]  [<ffffffff81785bc9>] ops_exit_list+0x44/0x55
+[ 1852.413529]  [<ffffffff81786389>] cleanup_net+0xee/0x182
+[ 1852.417198]  [<ffffffff81088c9e>] process_one_work+0x209/0x40d
+[ 1852.502320]  [<ffffffff81088bf7>] ? process_one_work+0x162/0x40d
+[ 1852.587629]  [<ffffffff810890c1>] worker_thread+0x1f0/0x2c7
+[ 1852.673291]  [<ffffffff81088ed1>] ? process_scheduled_works+0x2f/0x2f
+[ 1852.759470]  [<ffffffff8108e079>] kthread+0xc9/0xd1
+[ 1852.843099]  [<ffffffff8109427f>] ? finish_task_switch+0x3a/0xce
+[ 1852.926518]  [<ffffffff8108dfb0>] ? __kthread_parkme+0x61/0x61
+[ 1853.008565]  [<ffffffff819cbeac>] ret_from_fork+0x7c/0xb0
+[ 1853.076477]  [<ffffffff8108dfb0>] ? __kthread_parkme+0x61/0x61
+[ 1853.140653] ---[ end trace 69c4c6617f78e32d ]---
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+It looks wrong that we add "/proc/net/nfsfs" in nfs_fs_proc_net_init()
+while remove "/proc/fs/nfsfs" in nfs_fs_proc_net_exit().
+
+Fixes: commit 65b38851a17 (NFS: Fix /proc/fs/nfsfs/servers and /proc/fs/nfsfs/volumes)
+Cc: Eric W. Biederman <ebiederm@xmission.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Dan Aloni <dan@kernelim.com>
+Signed-off-by: Cong Wang <xiyou.wangcong@gmail.com>
 ---
- utils/statd/sm-notify.c | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+v2 - fix nfs_fs_proc_net_init() as well
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 9dbe5d908336..828a6991f8e6 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -42,6 +42,8 @@
- #define NSM_TIMEOUT	2
- #define NSM_MAX_TIMEOUT	120	/* don't make this too big */
+ fs/nfs/client.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 1c5ff6d..c117b96 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -1418,7 +1418,7 @@ int nfs_fs_proc_net_init(struct net *net)
+ error_2:
+ 	remove_proc_entry("servers", nn->proc_nfsfs);
+ error_1:
+-	remove_proc_entry("fs/nfsfs", NULL);
++	remove_proc_entry("nfsfs", net->proc_net);
+ error_0:
+ 	return -ENOMEM;
+ }
+@@ -1429,7 +1429,7 @@ void nfs_fs_proc_net_exit(struct net *net)
  
-+#define NLM_END_GRACE_FILE	"/proc/fs/lockd/nlm_end_grace"
-+
- struct nsm_host {
- 	struct nsm_host *	next;
- 	char *			name;
-@@ -450,6 +452,28 @@ retry:
- 	return sock;
+ 	remove_proc_entry("volumes", nn->proc_nfsfs);
+ 	remove_proc_entry("servers", nn->proc_nfsfs);
+-	remove_proc_entry("fs/nfsfs", NULL);
++	remove_proc_entry("nfsfs", net->proc_net);
  }
  
-+/* Inform the kernel that it's OK to lift lockd's grace period */
-+static void
-+nsm_lift_grace_period(void)
-+{
-+	int fd;
-+
-+	fd = open(NLM_END_GRACE_FILE, O_WRONLY);
-+	if (fd < 0) {
-+		/* Don't warn if file isn't present */
-+		if (errno != ENOENT)
-+			xlog(L_WARNING, "Unable to open %s: %m",
-+				NLM_END_GRACE_FILE);
-+		return;
-+	}
-+
-+	if (write(fd, "Y", 1) < 0)
-+		xlog(L_WARNING, "Unable to write to %s: %m", NLM_END_GRACE_FILE);
-+
-+	close(fd);
-+	return;
-+}
-+
- int
- main(int argc, char **argv)
- {
-@@ -534,6 +558,7 @@ usage:		fprintf(stderr,
- 	(void)nsm_retire_monitored_hosts();
- 	if (nsm_load_notify_list(smn_get_host) == 0) {
- 		xlog(D_GENERAL, "No hosts to notify; exiting");
-+		nsm_lift_grace_period();
- 		return 0;
- 	}
- 
--- 
-1.9.3
-
+ /*
