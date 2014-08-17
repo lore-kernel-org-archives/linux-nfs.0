@@ -1,89 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49570 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754308AbaHKRld (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Aug 2014 13:41:33 -0400
-Date: Mon, 11 Aug 2014 13:41:32 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] nfsd: allow find_any_file to return a fi_deleg_file
- reference
-Message-ID: <20140811174132.GD9095@fieldses.org>
-References: <1407594162-28342-1-git-send-email-jlayton@primarydata.com>
- <1407594162-28342-4-git-send-email-jlayton@primarydata.com>
- <20140811160840.GB9095@fieldses.org>
- <20140811124039.7b57888d@tlielax.poochiereds.net>
- <20140811170937.GC9095@fieldses.org>
- <20140811132053.7f058eb1@tlielax.poochiereds.net>
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:36454 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751170AbaHQNMB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Aug 2014 09:12:01 -0400
+Received: by mail-qg0-f53.google.com with SMTP id z60so204195qgd.26
+        for <linux-nfs@vger.kernel.org>; Sun, 17 Aug 2014 06:12:00 -0700 (PDT)
+Date: Sun, 17 Aug 2014 09:11:56 -0400
+From: Tejun Heo <tj@kernel.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS <linux-nfs@vger.kernel.org>, Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] NFS: state manager thread must stay running.
+Message-ID: <20140817131156.GB7679@mtj.dyndns.org>
+References: <20140813140831.22f3e9c7@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140811132053.7f058eb1@tlielax.poochiereds.net>
+In-Reply-To: <20140813140831.22f3e9c7@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 11, 2014 at 01:20:53PM -0400, Jeff Layton wrote:
-> On Mon, 11 Aug 2014 13:09:37 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Aug 11, 2014 at 12:40:39PM -0400, Jeff Layton wrote:
-> > > On Mon, 11 Aug 2014 12:08:40 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > On Sat, Aug 09, 2014 at 10:22:42AM -0400, Jeff Layton wrote:
-> > > > > It's possible that we'll have a nfs4_file that has nothing in its fds
-> > > > > array, but that has a populated fi_deleg_file field.
-> > > > 
-> > > > Is it really possible?  On a quick skim it looks like this is only used
-> > > > in the presence of lock stateid's, when we should have an open.
-> > > > 
-> > > > OK with the cleanup I'm just not seeing a reason either one way or the
-> > > > other for the fi_deleg_file change.
-> > > > 
-> > > > --b.
-> > > > 
-> > > 
-> > > You're correct. The existing code doesn't specifically require this
-> > > patch since find_any_file is only used with lock stateids. It
-> > > should be harmless but it won't hurt anything to drop it.
-> > > 
-> > > I did however need this when I rebased some pnfsd patches on top of the
-> > > state overhaul, and it seemed like a reasonable change from a
-> > > "future-proofing" standpoint.
-> > 
-> > So layout operations depend on this somehow?  (But layouts can outlast
-> > delegations, so that must not be it.)
-> > 
-> > I'm not opposed to future-proofing as long as we have some evidence
-> > about the future.
-> > 
-> 
-> The code I'm working on does depend on this, but it's may not be
-> correct for any arbitrary filesystem.
-> 
-> This filesystem sets return_on_close, and we automatically return the
-> layout to the fs when all of the open and deleg stateids go away. If
-> the last one to drop its reference happens to be the delegation
-> stateid, then you may have nothing in the fi_fds slots, and no way to
-> get to the inode in order to return the layout.
-> 
-> I've been toying with the idea of keeping an inode reference in the
-> layout state, but I'm not sure if it's the right thing to do...
+Hello, Neil.
 
-OK, makes sense, thanks for the explanation.  But I think I'll drop this
-third patch for now.
+On Wed, Aug 13, 2014 at 02:08:31PM +1000, NeilBrown wrote:
+> There are two interesting requirements for the manager thread:
+> 1/ It must allow SIGKILL, which can abort NFS transactions to
+>    a dead server.
+> 2/ It may continue running after the filesystem is unmounted,
+>    until the server recovers or the thread is SIGKILLed
 
---b.
+Out of curiosity, why is SIGKILL handling necessary at all?  Can't nfs
+just keep the manager running while any mount is active?
 
-> 
-> > > Do you intend to the take the first two in the series? I would like to
-> > > see those go in since they move the lease removal outside of spinlocks.
-> > 
-> > Yes, just waiting for -rc1 comes out to push out a for-3.18 tree.
-> > 
-> 
-> Sounds good -- no rush on them.
-> 
-> Thanks!
-> -- 
-> Jeff Layton <jlayton@primarydata.com>
+Thanks.
+
+-- 
+tejun
