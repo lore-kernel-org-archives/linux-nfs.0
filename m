@@ -1,54 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f171.google.com ([209.85.212.171]:62855 "EHLO
-	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751414AbaHLJf3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 05:35:29 -0400
-Received: by mail-wi0-f171.google.com with SMTP id hi2so5537208wib.10
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 02:35:28 -0700 (PDT)
-Message-ID: <53E9DFDD.50405@gmail.com>
-Date: Tue, 12 Aug 2014 12:35:25 +0300
-From: Boaz Harrosh <openosd@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:56269 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751379AbaHQUGx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 Aug 2014 16:06:53 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1XJ6j6-0006X4-TK
+	for linux-nfs@vger.kernel.org; Sun, 17 Aug 2014 16:06:52 -0400
+Date: Sun, 17 Aug 2014 16:06:52 -0400
+To: linux-nfs@vger.kernel.org
+Subject: nfsd branch for 3.18
+Message-ID: <20140817200652.GA24959@fieldses.org>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
-Subject: Re: pnfs: factor GETDEVICEINFO implementations
-References: <1407787617-26050-1-git-send-email-hch@lst.de>
-In-Reply-To: <1407787617-26050-1-git-send-email-hch@lst.de>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/11/2014 11:06 PM, Christoph Hellwig wrote:
-> This series adds a common implementation of the GETDEVICELIST operation,
-> and switches the block layout driver to use the generic device id cache.
-> 
-> This is mostly done by moving well tested code from the file and block
-> layout drivers to common code.  I've only tested it using the block
-> layout driver, so testing with the other layouts would be greatly
-> appreciated.  I'm mostly concerned about the object layout driver as
-> it had significant differences and missing bug fixes compared to the
-> others.
-> 
-Hi Christoph
+I've started a for-3.18 branch based on 3.17-rc1 which includes Trond's
+scalability patches and a few other things:
 
-Please say what BUGs have you seen in object-layout-drive?
+	git://linux-nfs.org/~bfields/linux.git for-3.18
 
-It should be noted that pnfs-obj's GETDEVICEINFO is very simple and will
-never ever reach a full page. So the code was more simple, that's all.
+--b.
 
-Do you have this on a public tree somewhere? I would like to test it?
+J. Bruce Fields (2):
+      nfsd4: remove obsolete comment
+      nfsd4: reserve adequate space for LOCK op
 
-Thanks
-Boaz
+Jeff Layton (2):
+      nfsd: protect lease-related nfs4_file fields with fi_lock
+      nfsd: call nfs4_put_deleg_lease outside of state_lock
 
-> Note that the last patch requires my previous block layout series, but
-> the others should work fine without it.
-> 
-> This work was sponsored by NetApp, Inc.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> .
-> 
+Ross Lagerwall (1):
+      nfsd3: Check write permission after checking existence
+
+Trond Myklebust (14):
+      SUNRPC: Do not override wspace tests in svc_handle_xprt
+      lockd: Ensure that lockd_start_svc sets the server rq_task...
+      nfs: Ensure that nfs_callback_start_svc sets the server rq_task...
+      SUNRPC: Do not grab pool->sp_lock unnecessarily in svc_get_next_xprt
+      SUNRPC: get rid of the request wait queue
+      SUNRPC: Fix broken kthread_should_stop test in svc_get_next_xprt
+      SUNRPC: More optimisations of svc_xprt_enqueue()
+      SUNRPC: Optimise away svc_recv_available
+      nfsd: Clean up drc cache in preparation for global spinlock elimination
+      nfsd: convert the lru list into a per-bucket thing
+      nfsd: Remove the cache_hash list
+      nfsd: convert num_drc_entries to an atomic_t
+      nfsd: split DRC global spinlock into per-bucket locks
+      nfsd: Reorder nfsd_cache_match to check more powerful discriminators first
 
