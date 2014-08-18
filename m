@@ -1,218 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:36075 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753377AbaHETNi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2014 15:13:38 -0400
-Received: by mail-qa0-f51.google.com with SMTP id k15so1400696qaq.24
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 12:13:37 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
+Received: from cantor2.suse.de ([195.135.220.15]:52117 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750957AbaHRGYq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Aug 2014 02:24:46 -0400
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Mon, 18 Aug 2014 16:22:54 +1000
+Subject: [PATCH 1/2] SUNRPC: track when a client connection is routed to the
+ local host.
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] nfsd: add some comments to the nfsd4 object definitions
-Date: Tue,  5 Aug 2014 15:13:30 -0400
-Message-Id: <1407266010-12697-1-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1406723258-8512-38-git-send-email-jlayton@primarydata.com>
-References: <1406723258-8512-38-git-send-email-jlayton@primarydata.com>
+Message-ID: <20140818062254.1449.26590.stgit@notabene.brown>
+In-Reply-To: <20140818061727.1449.89101.stgit@notabene.brown>
+References: <20140818061727.1449.89101.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add some comments that describe what each of these objects is, and how
-they related to one another.
+If requests are being sent to the local host, then NFS will
+need to take care to avoid deadlocks.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+So keep track when accepting a connection or sending a UDP request
+and set a flag in the svc_xprt when the peer connected to is local.
+
+The interface rpc_is_foreign() is provided to check is a given client
+is connected to a foreign server.  When it returns zero it is either
+not connected or connected to a local server and in either case
+greater care is needed.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/netns.h |   8 +++++
- fs/nfsd/state.h | 100 ++++++++++++++++++++++++++++++++++++++++++++++++++++----
- 2 files changed, 101 insertions(+), 7 deletions(-)
+ include/linux/sunrpc/clnt.h |    1 +
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/clnt.c           |   25 +++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c       |    9 +++++++++
+ 4 files changed, 36 insertions(+)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 3831ef6e5c75..ea6749a32760 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -34,6 +34,14 @@
- struct cld_net;
- struct nfsd4_client_tracking_ops;
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 70736b98c721..cd79b2a28ceb 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -175,6 +175,7 @@ void		rpc_force_rebind(struct rpc_clnt *);
+ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+ const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+ int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
++int		rpc_is_foreign(struct rpc_clnt *);
  
-+/*
-+ * Represents a nfsd "container". With respect to nfsv4 state tracking, the
-+ * fields of interest are the *_id_hashtbls and the *_name_tree. These track
-+ * the nfs4_client objects by either short or long form clientid.
-+ *
-+ * Each nfsd_net runs a nfs4_laundromat workqueue job when necessary to clean
-+ * up expired clients and delegations within the container.
-+ */
- struct nfsd_net {
- 	struct cld_net *cld_net;
+ #endif /* __KERNEL__ */
+ #endif /* _LINUX_SUNRPC_CLNT_H */
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index fcbfe8783243..6a9dffcb9d3f 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -357,6 +357,7 @@ int			xs_swapper(struct rpc_xprt *xprt, int enable);
+ #define XPRT_CONNECTION_ABORT	(7)
+ #define XPRT_CONNECTION_CLOSE	(8)
+ #define XPRT_CONGESTED		(9)
++#define XPRT_LOCAL		(10)
  
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 32a7c290d027..4a89e00d7461 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -72,6 +72,11 @@ struct nfsd4_callback {
- 	bool cb_done;
- };
- 
-+/*
-+ * A core object that represents a "common" stateid. These are generally
-+ * embedded within the different (more specific) stateid objects and contain
-+ * fields that are of general use to any stateid.
-+ */
- struct nfs4_stid {
- 	atomic_t sc_count;
- #define NFS4_OPEN_STID 1
-@@ -89,6 +94,27 @@ struct nfs4_stid {
- 	void (*sc_free)(struct nfs4_stid *);
- };
- 
-+/*
-+ * Represents a delegation stateid. The nfs4_client holds references to these
-+ * and they are put when it is being destroyed or when the delegation is
-+ * returned by the client:
-+ *
-+ * o 1 reference as long as a delegation is still in force (taken when it's
-+ *   alloc'd, put when it's returned or revoked)
-+ *
-+ * o 1 reference as long as a recall rpc is in progress (taken when the lease
-+ *   is broken, put when the rpc exits)
-+ *
-+ * o 1 more ephemeral reference for each nfsd thread currently doing something
-+ *   with that delegation without holding the cl_lock
-+ *
-+ * If the server attempts to recall a delegation and the client doesn't do so
-+ * before a timeout, the server may also revoke the delegation. In that case,
-+ * the object will either be destroyed (v4.0) or moved to a per-client list of
-+ * revoked delegations (v4.1+).
-+ *
-+ * This object is a superset of the nfs4_stid.
-+ */
- struct nfs4_delegation {
- 	struct nfs4_stid	dl_stid; /* must be first field */
- 	struct list_head	dl_perfile;
-@@ -195,6 +221,11 @@ struct nfsd4_conn {
- 	unsigned char cn_flags;
- };
- 
-+/*
-+ * Representation of a v4.1+ session. These are refcounted in a similar fashion
-+ * to the nfs4_client. References are only taken when the server is actively
-+ * working on the object (primarily during the processing of compounds).
-+ */
- struct nfsd4_session {
- 	atomic_t		se_ref;
- 	struct list_head	se_hash;	/* hash by sessionid */
-@@ -224,13 +255,30 @@ struct nfsd4_sessionid {
- 
- /*
-  * struct nfs4_client - one per client.  Clientids live here.
-- * 	o Each nfs4_client is hashed by clientid.
-  *
-- * 	o Each nfs4_clients is also hashed by name 
-- * 	  (the opaque quantity initially sent by the client to identify itself).
-+ * The initial object created by an NFS client using SETCLIENTID (for NFSv4.0)
-+ * or EXCHANGE_ID (for NFSv4.1+). These objects are refcounted and timestamped.
-+ * Each nfsd_net_ns object contains a set of these and they are tracked via
-+ * short and long form clientid. They are hashed and searched for under the
-+ * per-nfsd_net client_lock spinlock.
-+ *
-+ * References to it are only held during the processing of compounds, and in
-+ * certain other operations. In their "resting state" they have a refcount of
-+ * 0. If they are not renewed within a lease period, they become eligible for
-+ * destruction by the laundromat.
-+ *
-+ * These objects can also be destroyed prematurely by the fault injection code,
-+ * or if the client sends certain forms of SETCLIENTID or EXCHANGE_ID updates.
-+ * Care is taken *not* to do this however when the objects have an elevated
-+ * refcount.
-+ *
-+ * o Each nfs4_client is hashed by clientid
-+ *
-+ * o Each nfs4_clients is also hashed by name (the opaque quantity initially
-+ *   sent by the client to identify itself).
-  * 	  
-- *	o cl_perclient list is used to ensure no dangling stateowner references
-- *	  when we expire the nfs4_client
-+ * o cl_perclient list is used to ensure no dangling stateowner references
-+ *   when we expire the nfs4_client
-  */
- struct nfs4_client {
- 	struct list_head	cl_idhash; 	/* hash by cl_clientid.id */
-@@ -340,6 +388,12 @@ struct nfs4_stateowner_operations {
- 	void (*so_free)(struct nfs4_stateowner *);
- };
- 
-+/*
-+ * A core object that represents either an open or lock owner. The object and
-+ * lock owner objects have one of these embedded within them. Refcounts and
-+ * other fields common to both owner types are contained within these
-+ * structures.
-+ */
- struct nfs4_stateowner {
- 	struct list_head			so_strhash;
- 	struct list_head			so_stateids;
-@@ -354,6 +408,12 @@ struct nfs4_stateowner {
- 	bool					so_is_open_owner;
- };
- 
-+/*
-+ * When a file is opened, the client provides an open state owner opaque string
-+ * that indicates the "owner" of that open. These objects are refcounted.
-+ * References to it are held by each open state associated with it. This object
-+ * is a superset of the nfs4_stateowner struct.
-+ */
- struct nfs4_openowner {
- 	struct nfs4_stateowner	oo_owner; /* must be first field */
- 	struct list_head        oo_perclient;
-@@ -371,6 +431,12 @@ struct nfs4_openowner {
- 	unsigned char		oo_flags;
- };
- 
-+/*
-+ * Represents a generic "lockowner". Similar to an openowner. References to it
-+ * are held by the lock stateids that are created on its behalf. This object is
-+ * a superset of the nfs4_stateowner struct (or would be if it needed any extra
-+ * fields).
-+ */
- struct nfs4_lockowner {
- 	struct nfs4_stateowner	lo_owner; /* must be first element */
- };
-@@ -385,7 +451,14 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
- 	return container_of(so, struct nfs4_lockowner, lo_owner);
+ static inline void xprt_set_connected(struct rpc_xprt *xprt)
+ {
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 488ddeed9363..1559d03e468e 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1117,6 +1117,31 @@ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
  }
+ EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
  
--/* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
-+/*
-+ * nfs4_file: a file opened by some number of (open) nfs4_stateowners.
++/**
++ * rpc_is_foreign - report is rpc client was recently connected to
++ *                  remote host
++ * @clnt: RPC client structure
 + *
-+ * These objects are global. nfsd only keeps one instance of a nfs4_file per
-+ * inode (though it may keep multiple file descriptors open per inode). These
-+ * are tracked in the file_hashtbl which is protected by the state_lock
-+ * spinlock.
++ * If the client is not connected, or connected to the local host
++ * (any IP address), then return 0.  Only return non-zero if the
++ * most recent state was a connection to a remote host.
++ * For UDP the client always appears to be connected, and the
++ * remoteness of the host is of the destination of the last transmission.
 + */
- struct nfs4_file {
- 	atomic_t		fi_ref;
- 	spinlock_t		fi_lock;
-@@ -410,7 +483,20 @@ struct nfs4_file {
- 	bool			fi_had_conflict;
- };
++int rpc_is_foreign(struct rpc_clnt *clnt)
++{
++	struct rpc_xprt *xprt;
++	int conn_foreign;
++
++	rcu_read_lock();
++	xprt = rcu_dereference(clnt->cl_xprt);
++	conn_foreign = (xprt && xprt_connected(xprt)
++			&& !test_bit(XPRT_LOCAL, &xprt->state));
++	rcu_read_unlock();
++	return conn_foreign;
++}
++EXPORT_SYMBOL_GPL(rpc_is_foreign);
++
+ static const struct sockaddr_in rpc_inaddr_loopback = {
+ 	.sin_family		= AF_INET,
+ 	.sin_addr.s_addr	= htonl(INADDR_ANY),
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 43cd89eacfab..70942643e88c 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -643,6 +643,11 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 			xdr->len - req->rq_bytes_sent, status);
  
--/* "ol" stands for "Open or Lock".  Better suggestions welcome. */
-+/*
-+ * A generic struct representing either a open or lock stateid. The nfs4_client
-+ * holds a reference to each of these objects, and they in turn hold a
-+ * reference to their respective stateowners. The client's reference is
-+ * released in response to a close or unlock (depending on whether it's an open
-+ * or lock stateid) or when the client is being destroyed.
-+ *
-+ * In the case of v4.0 open stateids, these objects are preserved for a little
-+ * while after close in order to handle CLOSE replays. Those are eventually
-+ * reclaimed via a LRU scheme by the laundromat.
-+ *
-+ * This object is a superset of the nfs4_stid. "ol" stands for "Open or Lock".
-+ * Better suggestions welcome.
-+ */
- struct nfs4_ol_stateid {
- 	struct nfs4_stid    st_stid; /* must be first field */
- 	struct list_head              st_perfile;
--- 
-1.9.3
+ 	if (status >= 0) {
++		if (sock_is_loopback(transport->sock->sk))
++			set_bit(XPRT_LOCAL, &xprt->state);
++		else
++			clear_bit(XPRT_LOCAL, &xprt->state);
++
+ 		req->rq_xmit_bytes_sent += status;
+ 		if (status >= req->rq_slen)
+ 			return 0;
+@@ -1550,6 +1555,10 @@ static void xs_tcp_state_change(struct sock *sk)
+ 
+ 			xprt_wake_pending_tasks(xprt, -EAGAIN);
+ 		}
++		if (sock_is_loopback(sk))
++			set_bit(XPRT_LOCAL, &xprt->state);
++		else
++			clear_bit(XPRT_LOCAL, &xprt->state);
+ 		spin_unlock(&xprt->transport_lock);
+ 		break;
+ 	case TCP_FIN_WAIT1:
+
 
