@@ -1,111 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:45531 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750733AbaHBW7g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 18:59:36 -0400
-Received: by mail-qg0-f45.google.com with SMTP id f51so7401279qge.32
-        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 15:59:36 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Sat, 2 Aug 2014 18:59:33 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Kinglong Mee <kinglongmee@gmail.com>, Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into
- struct nfs4_client
-Message-ID: <20140802185933.64ba0b15@tlielax.poochiereds.net>
-In-Reply-To: <CAHQdGtRNwSbhKkfbop-8NFq6WTS_EmrojC2HyLmkKki94oxSHw@mail.gmail.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-	<1406684083-19736-32-git-send-email-jlayton@primarydata.com>
-	<53DCBFDB.5060808@gmail.com>
-	<CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com>
-	<53DCEAE8.70707@gmail.com>
-	<CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
-	<53DCF3C0.6050201@gmail.com>
-	<CAHQdGtRNwSbhKkfbop-8NFq6WTS_EmrojC2HyLmkKki94oxSHw@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:52494 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750834AbaHRREl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Aug 2014 13:04:41 -0400
+Message-ID: <53F23223.5090904@RedHat.com>
+Date: Mon, 18 Aug 2014 13:04:35 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Mike Frysinger <vapier@gentoo.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH nfs-utils] start-statd: clean up output when systemd is
+ not installed
+References: <1408286648-19031-1-git-send-email-vapier@gentoo.org>
+In-Reply-To: <1408286648-19031-1-git-send-email-vapier@gentoo.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2 Aug 2014 10:47:27 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> On Sat, Aug 2, 2014 at 10:20 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> > On 8/2/2014 22:05, Trond Myklebust wrote:
-> >> On Sat, Aug 2, 2014 at 9:43 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> >>> On 8/2/2014 21:11, Trond Myklebust wrote:
-> >>>> On Sat, Aug 2, 2014 at 6:39 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> >>>>> On 7/30/2014 09:34, Jeff Layton wrote:
-> >>>>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> >>>>>>
-> >>>>>> Preparation for removing the client_mutex.
-> >>>>>>
-> >>>>>> Convert the open owner hash table into a per-client table and protect it
-> >>>>>> using the nfs4_client->cl_lock spin lock.
-> >>>>>>
-> >>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> >>>>>> ---
-> >>>>>>  fs/nfsd/netns.h     |   1 -
-> >>>>>>  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
-> >>>>>>  fs/nfsd/state.h     |   1 +
-> >>>>>>  3 files changed, 86 insertions(+), 103 deletions(-)
-> >>>>>>
-> >>>>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> >>>>>> index a71d14413d39..e1f479c162b5 100644
-> >>>>>> --- a/fs/nfsd/netns.h
-> >>>>>> +++ b/fs/nfsd/netns.h
-> >>>>>> @@ -63,7 +63,6 @@ struct nfsd_net {
-> >>>>>>       struct rb_root conf_name_tree;
-> >>>>>>       struct list_head *unconf_id_hashtbl;
-> >>>>>>       struct rb_root unconf_name_tree;
-> >>>>>> -     struct list_head *ownerstr_hashtbl;
-> >>>>>
-> >>>>> I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
-> >>>>> http://comments.gmane.org/gmane.linux.nfs/64382
-> >>>>>
-> >>>>> nfsd needs the hashtbl to find the lockowner for locking by owner from
-> >>>>> fl->fl_owner stored in struct file_lock, but without nfs_client.
-> >>>>
-> >>>> Why? We're not currently doing that.
-> >>>
-> >>> Although not doing that right now, but there is a bug for getting the right ld_owner
-> >>> in nfs4_set_lock_denied.
-> >>>
-> >>> If denying locks, vfs don't copy fl->fl_lmops to the returned file_lock, so that,
-> >>> fl->fl_lmops always be NULL, nfsd never return the owner who holds the conflock.
-> >>>
-> >>> If we want fix this problem, needs finding the lockowner from struct file_lock.
-> >>
-> >> Do we really care enough about fixing nfs4_set_lock_denied enough to
-> >> do so at the cost of reducing overall scalability of locking state?
-> >
-> > I just report this problem, don't think enough about the scalability.
-> >
-> >> We will always be faking up the clientid etc for local locks. Are
-> >> there any clients out there that actually inspect the clientid on a
-> >> result of NFS4ERR_DENIED and that will break if we give them a fake
-> >> for non-local locks?
-> >
-> > Jeff has point the same problem of a non-nfs4_lockowner.
-> > Maybe we should copy fl_lmops to conflock as before, nfsd can distinguish
-> > the lockowner stored in struct file_lock by checking fl_lmops.
-> >
+
+On 08/17/2014 10:44 AM, Mike Frysinger wrote:
+> If you don't have systemd, then this script dumps:
+> /usr/sbin/start-statd: line 8: systemctl: command not found
 > 
-> Alternatively, set a flag in fl_flags. Back in the days, we used to
-> have a FL_NFSD, perhaps it is time to resurrect that?
+> This isn't terribly useful since we ultimately fall back to running
+> the daemon ourselves, so probe for systemd's existence before we try
+> to use it.
 > 
+> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+Committed... but I used 'rpm -q systemd' instead of 'systemctl --help'
+to test for the existences of systemd
 
-Would we need a similar flag for lockd too?
+ # First try systemd if it's installed.
+-if systemctl --help >/dev/null 2>&1; then
++if rpm -q systemd > /dev/null 2>&1; then
+     # Quit only if the call worked.
+     systemctl start rpc-statd.service && exit
 
-I'm not sure a flag is the correct approach for this. A "fl_lmtype" field
-or something similar might make sense, but I'm not sure that really
-adds much over just ensuring that fl_lmops is set properly for these locks.
 
-That said, we definitely will need to ensure that there are no harmful
-effects from setting fl_lmops on a conflock container. I don't see any
-right offhand, but it's probably reasonable to put something like that
-in -next for a bit of soak time...
+steved.
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+> ---
+>  utils/statd/start-statd | 14 +++++++++-----
+>  1 file changed, 9 insertions(+), 5 deletions(-)
+>  mode change 100644 => 100755 utils/statd/start-statd
+> 
+> diff --git a/utils/statd/start-statd b/utils/statd/start-statd
+> old mode 100644
+> new mode 100755
+> index dcdaf77..ec9383b
+> --- a/utils/statd/start-statd
+> +++ b/utils/statd/start-statd
+> @@ -1,12 +1,16 @@
+> -#!/bin/bash -p
+> +#!/bin/sh
+>  # nfsmount calls this script when mounting a filesystem with locking
+>  # enabled, but when statd does not seem to be running (based on
+>  # /var/run/rpc.statd.pid).
+>  # It should run statd with whatever flags are apropriate for this
+>  # site.
+>  PATH="/sbin:/usr/sbin:/bin:/usr/bin"
+> -if systemctl start rpc-statd.service
+> -then :
+> -else
+> -    exec rpc.statd --no-notify
+> +
+> +# First try systemd if it's installed.
+> +if systemctl --help >/dev/null 2>&1; then
+> +    # Quit only if the call worked.
+> +    systemctl start rpc-statd.service && exit
+>  fi
+> +
+> +# Fall back to launching it ourselves.
+> +exec rpc.statd --no-notify
+> 
