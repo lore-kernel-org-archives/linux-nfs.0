@@ -1,66 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43181 "EHLO mx1.redhat.com"
+Received: from smtp.gentoo.org ([140.211.166.183]:47418 "EHLO smtp.gentoo.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752403AbaHUSTP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Aug 2014 14:19:15 -0400
-Message-ID: <53F63758.70306@redhat.com>
-Date: Thu, 21 Aug 2014 14:15:52 -0400
-From: David Jeffery <djeffery@redhat.com>
+	id S1752272AbaHRX5u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Aug 2014 19:57:50 -0400
+From: Mike Frysinger <vapier@gentoo.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH nfs-utils] start-statd: clean up output when systemd is not installed
+Date: Mon, 18 Aug 2014 19:57:49 -0400
+Message-ID: <1649346.61nAovKFdn@vapier>
+In-Reply-To: <53F23223.5090904@RedHat.com>
+References: <1408286648-19031-1-git-send-email-vapier@gentoo.org> <53F23223.5090904@RedHat.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: Always try and release an NFS file lock, even after
- receiving a SIGKILL
-References: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com>	<1408580933.4029.2.camel@leira.trondhjem.org>	<53F612DC.60006@redhat.com> <CAHQdGtRw0V=mAuXs=UL7aJxxvKo26xqVoyOwR7r+9PrGPNmn_g@mail.gmail.com>
-In-Reply-To: <CAHQdGtRw0V=mAuXs=UL7aJxxvKo26xqVoyOwR7r+9PrGPNmn_g@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="nextPart3009493.oXO231ee2i"; micalg="pgp-sha1"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/21/2014 11:50 AM, Trond Myklebust wrote:
-> On Thu, Aug 21, 2014 at 11:40 AM, David Jeffery <djeffery@redhat.com> wrote:
->> On 08/20/2014 08:28 PM, Trond Myklebust wrote:
->>>
->>> What guarantees that this does not lead to silent corruption of the file
->>> if there are outstanding write requests?
->>>
->>
->> Do you have a particular scenario in mind you are concerned about?
->>
->> Right before the code the patch modifies, nfs_sync_mapping() is called.
->>  Any writes started before the unlock operation began have already been
->> flushed, so we shouldn't have a corruption case of writes from before
->> the unlock began being sent after the unlock is complete.
->>
->> Are you concerned about some other nfs4 writes being started while we
->> initially waited on the counter?  Such a write racing with the unlock
-> 
-> No. I'm worried about the writes that have been started, but which are
-> now completing in the background while the lock is being freed.
-> 
->> going ahead instead of erroring out could initially fail from a wrong
->> state ID, but should retry with the new state.  Is there something I've
->> overlooked?
-> 
-> Loss of lock atomicity due to the fact that the writes are completing
-> after the lock was released.
-> 
 
-I don't think my patches break lock atomicity, unless I've completely
-misunderstood nfs_sync_mapping()'s behavior.
+--nextPart3009493.oXO231ee2i
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
 
-The background writes should have already been waited for by
-nfs_sync_mapping() at the beginning of do_unlk().  nfs_sync_mapping()
-would call nfs_wb_all() which calls sync_inode() with WB_SYNC_ALL, so
-it's going to push out any dirty data and wait for any writes to
-complete.  Only after the writes are complete do we go on to call
-nfs_iocounter_wait().
+On Mon 18 Aug 2014 13:04:35 Steve Dickson wrote:
+> On 08/17/2014 10:44 AM, Mike Frysinger wrote:
+> > If you don't have systemd, then this script dumps:
+> > /usr/sbin/start-statd: line 8: systemctl: command not found
+> >=20
+> > This isn't terribly useful since we ultimately fall back to running=
 
-If there is a write causing us to want to wait in nfs_iocounter_wait()
-and which my patches no longer wait for, the write was done after
-nfs_sync_mapping() started, which means the write occurred after the
-unlock-initiating call began.  Such a write should have no atomicity
-guarantee with holding the lock, and may complete before or after the
-lock is released.  The writes which require atomicity are already
-completed before getting to the call of nfs_iocounter_wait() and the
-code my patch changes.
+> > the daemon ourselves, so probe for systemd's existence before we tr=
+y
+> > to use it.
+> >=20
+> > Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+>=20
+> Committed... but I used 'rpm -q systemd' instead of 'systemctl --help=
+'
+> to test for the existences of systemd
+>=20
+>  # First try systemd if it's installed.
+> -if systemctl --help >/dev/null 2>&1; then
+> +if rpm -q systemd > /dev/null 2>&1; then
+>      # Quit only if the call worked.
+>      systemctl start rpc-statd.service && exit
+
+what about all the other distros not using rpm ?  my version was distro=
+=20
+agnostic.
+=2Dmike
+--nextPart3009493.oXO231ee2i
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part.
+Content-Transfer-Encoding: 7Bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIcBAABAgAGBQJT8pL9AAoJEEFjO5/oN/WBZKkP/1GlM1bHRMCgEx+G2cnRh7MY
+zVWgVrMv6rfbyURQnNQhDCZ8bCnEbimbS6noTEqXzlYEwS48cMpE5PohvLn1KuOd
+JtlT67RqUkmePs/TIbKadmwP8DDLmVV2TEtPEtrin80kIosc2hkJyDa9XT/0z1MN
+L2imrU/4Mr3w1+Jn7nvqMTTTl/HB/Yt9qni7HVmZmP5Y0+7gsmsFMdibK2Z4sa8f
+lpyXuz4AA8bwft+8a8jL/SCzVjv+MrfEEQZ4H53KOdImCbK31JXQVMsUWv+AbctG
+alVO3VheBmKqt1oeZe8ehFAqXPkRHYjdcJ0AB880nt3pbklbNj5EF6pDK9Y4tBAZ
+yQD+6l2XM7HG9P/m2yZ9O3TbgmMjetjD6j5F0JHB0iBIyUAR9mNMtmXXLKl6sH74
+wQva78Z2o+QLlVjrvtHxLwE3GUw6ML71TGu0QneLWplCy/mJUS/aMOfWSN/BUrOc
+84HpK/jldzQChDlSZbavk7MoNe/9GBtXXI3sVz4Ji707KzVQ8JFjL+ZtRMWhQMHz
+DOt6Yx3fy7TkapfiK4NEnWFHmG1qaorIOj2DuezPSDXiaAyZn6vU5gS8HWjrhW+2
+FdmbOvX4eZhbd5ErZIuKVVbWxxmB9DOHPWhZv54L4IsZXqHMQqeEZ7GB48q9vVV+
+LYA1SnTUEe6DnicNTNcG
+=QfHu
+-----END PGP SIGNATURE-----
+
+--nextPart3009493.oXO231ee2i--
+
