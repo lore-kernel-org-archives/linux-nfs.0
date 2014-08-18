@@ -1,54 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:51175 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750854AbaHUQHW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 12:07:22 -0400
-Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XKUtV-00008t-2I
-	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 16:07:21 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/19] pnfs: do not pass uninitialized lsegs to ->free_lseg
-Date: Thu, 21 Aug 2014 11:09:18 -0500
-Message-Id: <1408637375-11343-3-git-send-email-hch@lst.de>
-In-Reply-To: <1408637375-11343-1-git-send-email-hch@lst.de>
-References: <pnfs block layout driver fixes V2>
- <1408637375-11343-1-git-send-email-hch@lst.de>
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:34471 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752210AbaHROaQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Aug 2014 10:30:16 -0400
+Received: by mail-ig0-f177.google.com with SMTP id hn18so7923269igb.4
+        for <linux-nfs@vger.kernel.org>; Mon, 18 Aug 2014 07:30:16 -0700 (PDT)
+Date: Mon, 18 Aug 2014 10:29:19 -0400
+From: Tejun Heo <tj@kernel.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS <linux-nfs@vger.kernel.org>, Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] NFS: state manager thread must stay running.
+Message-ID: <20140818142919.GB17668@mtj.dyndns.org>
+References: <20140813140831.22f3e9c7@notabene.brown>
+ <20140817131156.GB7679@mtj.dyndns.org>
+ <20140818071457.4b345727@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140818071457.4b345727@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure the lsegs are initialized early so that we don't pass an unitialized
-one back to ->free_lseg during error processing.
+Hello, Neil.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/pnfs.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+On Mon, Aug 18, 2014 at 07:14:57AM +1000, NeilBrown wrote:
+> It does.  The manage will even continue after there are no mounts active if
+> it is blocked on a non-responding server.
+> 
+> If there is an outstanding RPC request to a non-responsive server
+> then the only way to abort that request is to send SIGKILL to the thread
+> which is waiting for the request.
+> So if we want things to clean up properly on shutdown it seems best for a
+> sigkill to be able to abort that thread.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a3851de..6e0fa71 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1358,6 +1358,9 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 		goto out;
- 	}
- 
-+	init_lseg(lo, lseg);
-+	lseg->pls_range = res->range;
-+
- 	spin_lock(&ino->i_lock);
- 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags)) {
- 		dprintk("%s forget reply due to recall\n", __func__);
-@@ -1375,8 +1378,6 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	/* Done processing layoutget. Set the layout stateid */
- 	pnfs_set_layout_stateid(lo, &res->stateid, false);
- 
--	init_lseg(lo, lseg);
--	lseg->pls_range = res->range;
- 	pnfs_get_lseg(lseg);
- 	pnfs_layout_insert_lseg(lo, lseg);
- 
+I see.  I'm not convinced SIGKILL is the right way to communicate
+things like this tho.  If this is actually a thing which needs to be
+exposed, we'd be a lot better off with an interface which is more to
+the point rather than meddling with signals to the manager kernel
+thread, which ultimately is an implementation detail.  Given the
+requirement, I don't have objections to the patch but the requirement
+seems rather lopsided.
+
+Thanks.
+
 -- 
-1.9.1
-
+tejun
