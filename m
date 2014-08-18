@@ -1,86 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:58074 "EHLO
-	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753136AbaHYVHX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2014 17:07:23 -0400
-Message-ID: <1409000826.3033.32.camel@deadeye.wl.decadent.org.uk>
-Subject: Re: [PATCH v2] nfs: remove redundant slash from nfs_path
-From: Ben Hutchings <ben@decadent.org.uk>
-To: Xiong Zhou <xzhou@redhat.com>
-Cc: trond myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 25 Aug 2014 14:07:06 -0700
-In-Reply-To: <1859750321.23735105.1408945864304.JavaMail.zimbra@redhat.com>
-References: <1927160445.21851828.1408504000719.JavaMail.zimbra@redhat.com>
-	 <1408576235.2618.47.camel@deadeye.wl.decadent.org.uk>
-	 <1859750321.23735105.1408945864304.JavaMail.zimbra@redhat.com>
-Content-Type: multipart/signed; micalg="pgp-sha512";
-	protocol="application/pgp-signature"; boundary="=-j32SpW4SKORTBFFgN3ZG"
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:59140 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751066AbaHRUE4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Aug 2014 16:04:56 -0400
+Date: Mon, 18 Aug 2014 16:04:56 -0400
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils RFC PATCH 0/7] nfs-utils: support for lifting grace
+ period early
+Message-ID: <20140818200456.GC1096@fieldses.org>
+References: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1408113915-5573-1-git-send-email-jlayton@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thanks for working on this, it's currently a major annoyance!
 
---=-j32SpW4SKORTBFFgN3ZG
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+On Fri, Aug 15, 2014 at 10:45:08AM -0400, Jeff Layton wrote:
+> This patchset adds some support to sm-notify and nfsdcltrack for lifting
+> the grace periods early. Allowing this actually work depends on the
+> companion kernel patchset, but the approach I've taken here should deal
+> properly with userland/kernel mismatch.
+> 
+> There are two main pieces:
+> 
+> sm-notify: in the event that sm-notify isn't sending any NOTIFY
+> requests, we don't expect to see any reclaims from clients. In that
+> case, we should be able to safely lift the lockd grace period early.
+> The first patch in the series implements this (though we'll probably
+> need a bit of selinux work to get that working in Fedora under enforcing
+> mode).
+> 
+> nfsdcltrack: if there are no v4.0 clients and all v4.1+ clients have
+> issued a RECLAIM_COMPLETE, then we can go ahead and end the nfsd grace
+> period. The remainder of the patchset adds the support for this. This
+> requires revving the DB schema for it, and making use of the environment
+> variables that are passed to the upcall by the kernel.
 
-On Mon, 2014-08-25 at 01:51 -0400, Xiong Zhou wrote:
-> When export root dir(/) via nfs, and mount a particular dir under root, e=
-g
-> /nfsexport, there will be defect double slash output in /proc/mounts, lik=
-e
-> localhost://nfsexport. While this patch change it to localhost:/nfsexport=
-.
->=20
-> Signed-off-by: Xiong Zhou <xzhou@redhat.com>
-> ---
->  fs/nfs/namespace.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->=20
-> diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
-> index b5a0afc..24f954e 100644
-> --- a/fs/nfs/namespace.c
-> +++ b/fs/nfs/namespace.c
-> @@ -98,7 +98,7 @@ rename_retry:
->  		return end;
->  	}
->  	namelen =3D strlen(base);
-> -	if (flags & NFS_PATH_CANONICAL) {
-> +	if ((flags & NFS_PATH_CANONICAL) || *end =3D=3D '/') {
->  		/* Strip off excess slashes in base string */
->  		while (namelen > 0 && base[namelen - 1] =3D=3D '/')
->  			namelen--;
+And we get to skip the grace period on first start, and on any restart
+during which no clients hold state, which seem like big improvements on
+their own.
 
-I think this makes sense, though I'm not sure I completely understand
-this function. :-/
+Mostly a pointless digression, but I've been wondering if there are any
+further improvements that are worth it.  I'm feeling skeptical:
 
-Ben.
+As long as nobody uses deny modes we could deal with them with a big
+dumb hammer (e.g. synchronously record something if anyone requests one,
+insist on a full grace period if they do).
 
---=20
-Ben Hutchings
-All extremists should be taken out and shot.
+But we're still stuck blocking all new opens as long as there are
+delegations outstanding.  (Well, maybe only new read opens, until we get
+write delegations.)
 
---=-j32SpW4SKORTBFFgN3ZG
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
+Would it work to record a count of delegations on shutdown, to speed up
+the restart-after-clean-shutdown case?  And if it worked, would it be
+worth the effort?  (Alternatively on shutdown we could stop giving out
+delegations, recall everything, and wait till we had no delegations till
+shutting down completely.  Wonder how painful that would be.)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
+So anyway maybe our best bet is just to hope people upgrade to 4.1 soon.
 
-iQIVAwUAU/ulfue/yOyVhhEJAQrLAA/7BCIRixVgXxva9focAazyzWmaZFy2wa8i
-sBGisv1DkO9/XdmmfgWupPez0886AxcmKJo85IZT+Cm2YDDy8DKmrfWqNpdZ8RDz
-yfQadJL8UJCSWt/dYqe2gKVHEGNSRJzUVrDLnnrzkP6MRDTNxkz737kkaLT9g2r1
-7L5xmMFVfuJhFA92milX592yUC9YC2IXzevFPw4MjQsyIaXtKGc95X8etyYRUBV3
-dcEnYXQ3UKTG6O1IKOKr3iuj0D2ioOK8U9A8fQ5Spv0K/Z3u7DrI6BpKR1liiQks
-rPFLpSwOilSXEMiF5zVlrTBww2y9nr7CYu6nj7FdCvl2xJtqE08LUvHzuCLu9vz5
-8dzaRTfSQflCIHAYGBRL56A9wpiRZgAfp8Up8LcJ1jqrvVYHh/e3ctrMBxRZzrDX
-5/0+g89Ql8b0DrLOzGUrnK8UUCkdklbChfdz9QcfGfQfhg22J1R2Qrgl0dFYhTRC
-xqlE+zoU+1fqG4BsQ3wOmwYbuAAInL6BF3mcn9x8UQRDizC1NjGpPWSMsmJNamG0
-HK7kqY5CKxfgjRmCupe5u0IvSw7qPVkrMy2pbRlvDjRreu/EJJsikD2QkStR/q8S
-54NbwZYAsqftV5kuY3JdKMESiWDedGzIzRFjzu0jLUE9S4gCKaDzjAV8IOCeGean
-zxecfRBpt0o=
-=UP7o
------END PGP SIGNATURE-----
+--b.
 
---=-j32SpW4SKORTBFFgN3ZG--
+> 
+> Again, this is just an RFC set for now. Does anyone have thoughts or
+> comments on the general approach?
+> 
+> Jeff Layton (7):
+>   sm-notify: inform the kernel if there were no hosts to notify
+>   nfsdcltrack: update comments in sqlite.c
+>   nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
+>   nfsdcltrack: overhaul database initializtion
+>   nfsdcltrack: update schema to v2
+>   nfsdcltrack: grab the client minorversion from the env var if it's
+>     present
+>   nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
+> 
+>  utils/nfsdcltrack/nfsdcltrack.c | 106 +++++++++++-
+>  utils/nfsdcltrack/sqlite.c      | 375 ++++++++++++++++++++++++++++++----------
+>  utils/nfsdcltrack/sqlite.h      |   5 +-
+>  utils/statd/sm-notify.c         |  25 +++
+>  4 files changed, 413 insertions(+), 98 deletions(-)
+> 
+> -- 
+> 1.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
