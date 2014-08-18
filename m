@@ -1,25 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:32851 "EHLO newverein.lst.de"
+Received: from mail1.g1.pair.com ([66.39.3.162]:52768 "EHLO mail1.g1.pair.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752817AbaHTWOh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Aug 2014 18:14:37 -0400
-Date: Thu, 21 Aug 2014 00:14:34 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: pnfs block layout driver fixes
-Message-ID: <20140820221434.GA24881@lst.de>
-References: <1407396229-4785-1-git-send-email-hch@lst.de> <20140820144301.23d6aac3@tlielax.poochiereds.net>
+	id S1752099AbaHRKyz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Aug 2014 06:54:55 -0400
+Date: Mon, 18 Aug 2014 12:54:51 +0200
+From: Emmanuel Florac <eflorac@intellique.com>
+To: sheng qiu <herbert1984106@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: how to setup pNFS
+Message-ID: <20140818125451.621b7e62@harpe.intellique.com>
+In-Reply-To: <CAB7xdiku-fviN-oNUJt=Rstr5rWL3ac+anHUEipeyMKySMv4jg@mail.gmail.com>
+References: <CAB7xdikp2ab=oqQKz+DVLh0D5G9aB7EMd4XWttLh3qFE8Fp9qA@mail.gmail.com>
+	<20140723185419.7a947ada@harpe.intellique.com>
+	<CAB7xdiku-fviN-oNUJt=Rstr5rWL3ac+anHUEipeyMKySMv4jg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140820144301.23d6aac3@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 20, 2014 at 02:43:01PM -0400, Jeff Layton wrote:
-> What sort of server are you testing this against?
+Le Wed, 23 Jul 2014 09:56:14 -0700
+sheng qiu <herbert1984106@gmail.com> écrivait:
 
-I've written a new Linux knfsd based one that will be posted here in the
-not too distant future.
+> yes, i compiled the pNFS kernel and boot from that kernel.
+> 
 
+Sorry for the late reply I was on holidays.
+
+What does "lsmod | grep nfs" look like?
+
+-- 
+------------------------------------------------------------------------
+Emmanuel Florac     |   Direction technique
+                    |   Intellique
+                    |	<eflorac@intellique.com>
+                    |   +33 1 78 94 84 02
+------------------------------------------------------------------------
