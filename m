@@ -1,67 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37091 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53772 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753377AbaHETKT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Aug 2014 15:10:19 -0400
-Date: Tue, 5 Aug 2014 15:10:18 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: remove rdma_create_qp() failure recovery logic
-Message-ID: <20140805191018.GU23341@fieldses.org>
-References: <20140731202606.12144.2363.stgit@build.ogc.int>
+	id S1751831AbaHRQSm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Aug 2014 12:18:42 -0400
+Date: Mon, 18 Aug 2014 12:18:36 -0400
+To: kbuild test robot <fengguang.wu@intel.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, kbuild-all@01.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [nfsd:nfsd-next 5/23] net/sunrpc/svc_xprt.c:794:20: error:
+ 'current_task' undeclared
+Message-ID: <20140818161836.GA32603@fieldses.org>
+References: <53f0db34.mtq2J6NaXWKpR15G%fengguang.wu@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140731202606.12144.2363.stgit@build.ogc.int>
+In-Reply-To: <53f0db34.mtq2J6NaXWKpR15G%fengguang.wu@intel.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying for 3.17.--b.
+On Mon, Aug 18, 2014 at 12:41:24AM +0800, kbuild test robot wrote:
+> tree:   git://linux-nfs.org/~bfields/linux.git nfsd-next
+> head:   da8b8f7602ed3b8105c6247a2844455fec72caaa
+> commit: 983c684466e02b21f83c025ea539deee6c0aeac0 [5/23] SUNRPC: get rid of the request wait queue
+> config: make ARCH=xtensa allyesconfig
+> 
+> All error/warnings:
+> 
+>    net/sunrpc/svc_xprt.c: In function 'svc_recv':
+> >> net/sunrpc/svc_xprt.c:794:20: error: 'current_task' undeclared (first use in this function)
+>       rqstp->rq_task = current_task;
+>                        ^
+>    net/sunrpc/svc_xprt.c:794:20: note: each undeclared identifier is reported only once for each function it appears in
+> 
+> vim +/current_task +794 net/sunrpc/svc_xprt.c
+> 
+>    788			printk(KERN_ERR
+>    789				"svc_recv: service %p, transport not NULL!\n",
+>    790				 rqstp);
+>    791	
+>    792		/* Make sure the task pointer is set! */
+>    793		if (WARN_ON_ONCE(!rqstp->rq_task))
+>  > 794			rqstp->rq_task = current_task;
 
-On Thu, Jul 31, 2014 at 03:26:07PM -0500, Steve Wise wrote:
-> In svc_rdma_accept(), if rdma_create_qp() fails, there is useless
-> logic to try and call rdma_create_qp() again with reduced sge depths.
-> The assumption, I guess, was that perhaps the initial sge depths
-> chosen were too big.  However they initial depths are selected based
-> on the rdma device attribute max_sge returned from ib_query_device().
-> If rdma_create_qp() fails, it would not be because the max_send_sge and
-> max_recv_sge values passed in exceed the device's max.  So just remove
-> this code.
+I appreciate the effort to fail gracefully here, but maybe this would be
+a case for simple BUG_ON()?
+
+I don't think there are normally any important locks held here, and I
+can't see any other reason why killing a server thread would bring a box
+down.
+
+And the first developer to forget to set rq_task on a newly created
+server will get an immediate bug, so this should be obvious enough.
+Unless there's fear of a race between starting the thread and setting
+rq_task?
+
+--b.
+
+>    795	
+>    796		err = svc_alloc_arg(rqstp);
+>    797		if (err)
 > 
-> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
 > ---
-> 
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |   19 ++-----------------
->  1 files changed, 2 insertions(+), 17 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index e7323fb..282a43b 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -942,23 +942,8 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
->  
->  	ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd, &qp_attr);
->  	if (ret) {
-> -		/*
-> -		 * XXX: This is a hack. We need a xx_request_qp interface
-> -		 * that will adjust the qp_attr's with a best-effort
-> -		 * number
-> -		 */
-> -		qp_attr.cap.max_send_sge -= 2;
-> -		qp_attr.cap.max_recv_sge -= 2;
-> -		ret = rdma_create_qp(newxprt->sc_cm_id, newxprt->sc_pd,
-> -				     &qp_attr);
-> -		if (ret) {
-> -			dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
-> -			goto errout;
-> -		}
-> -		newxprt->sc_max_sge = qp_attr.cap.max_send_sge;
-> -		newxprt->sc_max_sge = qp_attr.cap.max_recv_sge;
-> -		newxprt->sc_sq_depth = qp_attr.cap.max_send_wr;
-> -		newxprt->sc_max_requests = qp_attr.cap.max_recv_wr;
-> +		dprintk("svcrdma: failed to create QP, ret=%d\n", ret);
-> +		goto errout;
->  	}
->  	newxprt->sc_qp = newxprt->sc_cm_id->qp;
->  
-> 
+> 0-DAY kernel build testing backend              Open Source Technology Center
+> http://lists.01.org/mailman/listinfo/kbuild                 Intel Corporation
