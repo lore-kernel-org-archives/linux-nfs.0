@@ -1,58 +1,213 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail2.candelatech.com ([208.74.158.173]:39653 "EHLO
-	mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752050AbaHMVWv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Aug 2014 17:22:51 -0400
-Message-ID: <53EBD729.2020601@candelatech.com>
-Date: Wed, 13 Aug 2014 14:22:49 -0700
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Killing process in D state on mount to dead NFS server.
-References: <53DA8443.407@candelatech.com> <20140801064217.01852788@notabene.brown> <53DAB307.2000206@candelatech.com> <53EB876A.4090705@candelatech.com> <20140814071827.702b68e4@notabene.brown>
-In-Reply-To: <20140814071827.702b68e4@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f169.google.com ([209.85.216.169]:50014 "EHLO
+	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753100AbaHSSuG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:50:06 -0400
+Received: by mail-qc0-f169.google.com with SMTP id c9so6836990qcz.28
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:50:05 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 7/7] nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
+Date: Tue, 19 Aug 2014 14:49:49 -0400
+Message-Id: <1408474189-14491-8-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
+References: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA1
+Allow the fetching of NFSDCLTRACK_GRACE_START out of environment
+variables. If it's present in the "create" or "init" upcalls, then we
+can use that to query the database to see whether there are any clients
+that have not issued a RECLAIM_COMPLETE since that time.
 
-On 08/13/2014 02:18 PM, NeilBrown wrote:
-> On Wed, 13 Aug 2014 08:42:34 -0700 Ben Greear <greearb@candelatech.com> wrote:
-> 
-> Hello!
-> 
-> Did you get a chance to look at the stacks below?
-> 
->> Yes I did, and I replied on Date: Fri, 1 Aug 2014 07:50:53 +1000
+If there aren't any, then we know that all reclaim activity is now done
+and we can then cue the kernel to lift the grace period.
 
-Hmm, I don't seem to have received that email (or I
-managed to lose it quite thoroughly), but no worries.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ utils/nfsdcltrack/nfsdcltrack.c | 77 ++++++++++++++++++++++++++++++++++++++++-
+ utils/nfsdcltrack/sqlite.c      | 40 +++++++++++++++++++++
+ utils/nfsdcltrack/sqlite.h      |  1 +
+ 3 files changed, 117 insertions(+), 1 deletion(-)
 
->> The problem is that "fsync" and related functions are not killable. I think it is generally agreed that this is a bug, and that a fix would probably be
->> accepted. I started working on one the other day but haven't got very hard yet (lots of other things to work on).
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+index cbc98c7edc11..f500216e6021 100644
+--- a/utils/nfsdcltrack/nfsdcltrack.c
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -50,6 +50,8 @@
+ #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
+ #endif
+ 
++#define NFSD_END_GRACE_FILE "/proc/fs/nfsd/v4_end_grace"
++
+ /* defined by RFC 3530 */
+ #define NFS4_OPAQUE_LIMIT	1024
+ 
+@@ -211,6 +213,64 @@ cltrack_set_caps(void)
+ 	return ret;
+ }
+ 
++/* Inform the kernel that it's OK to lift nfsd's grace period */
++static void
++cltrack_lift_grace_period(void)
++{
++	int fd;
++
++	fd = open(NFSD_END_GRACE_FILE, O_WRONLY);
++	if (fd < 0) {
++		/* Don't warn if file isn't present */
++		if (errno != ENOENT)
++			xlog(L_WARNING, "Unable to open %s: %m",
++				NFSD_END_GRACE_FILE);
++		return;
++	}
++
++	if (write(fd, "Y", 1) < 0)
++		xlog(L_WARNING, "Unable to write to %s: %m",
++				NFSD_END_GRACE_FILE);
++
++	close(fd);
++	return;
++}
++
++/*
++ * Fetch the contents of the NFSDCLTRACK_GRACE_START env var. If it's not set
++ * or there's an error converting it to time_t, then return LONG_MAX.
++ */
++static time_t
++cltrack_get_grace_start(void)
++{
++	time_t grace_start;
++	char *end;
++	char *grace_start_str = getenv("NFSDCLTRACK_GRACE_START");
++
++	if (!grace_start_str)
++		return LONG_MAX;
++
++	errno = 0;
++	grace_start = strtol(grace_start_str, &end, 0);
++	/* Problem converting or value is too large? */
++	if (errno)
++		return LONG_MAX;
++
++	return grace_start;
++}
++
++static bool
++cltrack_reclaims_complete(void)
++{
++	time_t grace_start = cltrack_get_grace_start();
++
++	/* Don't query DB if we didn't get a valid boot time */
++	if (grace_start == LONG_MAX)
++		return false;
++
++	return !sqlite_query_reclaiming(grace_start);
++}
++
+ static int
+ cltrack_init(const char __attribute__((unused)) *unused)
+ {
+@@ -251,7 +311,11 @@ cltrack_init(const char __attribute__((unused)) *unused)
+ 		 * stop upcalling until the problem is resolved.
+ 		 */
+ 		ret = -EACCES;
++	} else {
++		if (cltrack_reclaims_complete())
++			cltrack_lift_grace_period();
+ 	}
++
+ 	return ret;
+ }
+ 
+@@ -284,6 +348,7 @@ cltrack_create(const char *id)
+ {
+ 	int ret;
+ 	ssize_t len;
++	unsigned int minorvers;
+ 
+ 	xlog(D_GENERAL, "%s: create client record.", __func__);
+ 
+@@ -295,8 +360,18 @@ cltrack_create(const char *id)
+ 	if (len < 0)
+ 		return (int)len;
+ 
+-	ret = sqlite_insert_client(blob, len, cltrack_get_minorvers());
++	minorvers = cltrack_get_minorvers();
++	ret = sqlite_insert_client(blob, len, minorvers);
++	if (ret)
++		goto out;
++
++	/* No point in querying the DB if this client was v4.0 */
++	if (minorvers == 0)
++		goto out;
+ 
++	if (cltrack_reclaims_complete())
++		cltrack_lift_grace_period();
++out:
+ 	return ret ? -EREMOTEIO : ret;
+ }
+ 
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index 01084bb6c4d8..17437e48ffaa 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -547,3 +547,43 @@ sqlite_remove_unreclaimed(time_t grace_start)
+ 	sqlite3_free(err);
+ 	return ret;
+ }
++
++/*
++ * Are there any clients that are possibly still reclaiming? Return a positive
++ * integer (usually number of clients) if so. If not, then return 0. On any
++ * error, return non-zero.
++ */
++int
++sqlite_query_reclaiming(const time_t grace_start)
++{
++	int ret;
++	sqlite3_stmt *stmt = NULL;
++
++	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
++				      "reclaim_complete < ?", -1, &stmt, NULL);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: unable to prepare select statement: %s",
++				__func__, sqlite3_errstr(ret));
++		return ret;
++	}
++
++	ret = sqlite3_bind_int64(stmt, 1, (sqlite3_int64)grace_start);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "%s: bind int64 failed: %s",
++				__func__, sqlite3_errstr(ret));
++		return ret;
++	}
++
++	ret = sqlite3_step(stmt);
++	if (ret != SQLITE_ROW) {
++		xlog(L_ERROR, "%s: unexpected return code from select: %s",
++				__func__, sqlite3_errstr(ret));
++		return ret;
++	}
++
++	ret = sqlite3_column_int(stmt, 0);
++	sqlite3_finalize(stmt);
++	xlog(D_GENERAL, "%s: there are %d clients that have not completed "
++			"reclaim", __func__, ret);
++	return ret;
++}
+diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
+index e9cc84cbb294..0e1939198367 100644
+--- a/utils/nfsdcltrack/sqlite.h
++++ b/utils/nfsdcltrack/sqlite.h
+@@ -26,5 +26,6 @@ int sqlite_insert_client(const unsigned char *clname, const size_t namelen,
+ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_check_client(const unsigned char *clname, const size_t namelen);
+ int sqlite_remove_unreclaimed(const time_t grace_start);
++int sqlite_query_reclaiming(const time_t grace_start);
+ 
+ #endif /* _SQLITE_H */
+-- 
+1.9.3
 
-Ok, thanks for the effort so far, and if you do get a patch cooked up,
-I will be happy to test it.
-
-Thanks,
-Ben
-
-- -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.13 (GNU/Linux)
-Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
-
-iQEcBAEBAgAGBQJT69cpAAoJELbHqkYeJT4OL34H/jxncIyX5sD9zm1DmiAJZA/g
-nOpyk2603aMMj3qH91svxv8FCwoXpqnyV77vWUSKInkw+E1sWRsxuAZoKbxNjN4U
-yCpfUlFc1IrDPSVV0Ax7oFs/DbOJRLrtrh3BW/0zBVZfw3RRYKEtR3LGAKtt+VNI
-5RiwqFes/6tJXj6h8vF4WYBJ31J31mqWYh4GcJ2B2w3lYRX4CnTfAuJ75KRfTX3k
-LESaS2w+7B9Ta42Xl9QU6SWsisdxEhYA0R5TbAl1MICjU7RvmLEyeKcuG3/DpPjJ
-TjYoLR5SBcNqCBKab+L+j8jFPta8pE9LR/WWP0PfC/NWgw7+dy2VUFF2se7wSeY=
-=GsQw
------END PGP SIGNATURE-----
