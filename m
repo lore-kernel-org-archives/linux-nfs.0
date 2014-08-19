@@ -1,117 +1,199 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:47372 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933913AbaH0PSG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Aug 2014 11:18:06 -0400
-From: <bjschuma@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/3] NFSD: Create nfs v4.2 decode ops
-Date: Wed, 27 Aug 2014 11:17:57 -0400
-Message-ID: <1409152678-7806-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1409152678-7806-1-git-send-email-bjschuma@netapp.com>
-References: <1409152678-7806-1-git-send-email-bjschuma@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-qc0-f177.google.com ([209.85.216.177]:37170 "EHLO
+	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751576AbaHSSik (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:38:40 -0400
+Received: by mail-qc0-f177.google.com with SMTP id x13so6730734qcv.36
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:38:39 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 2/5] lockd: add a /proc/fs/lockd/nlm_end_grace file
+Date: Tue, 19 Aug 2014 14:38:26 -0400
+Message-Id: <1408473509-14010-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Add a new procfile that will allow a (privileged) userland process to
+end the NLM grace period early. The basic idea here will be to have
+sm-notify write to this file, if it sent out no NOTIFY requests when
+it runs. In that situation, we can generally expect that there will be
+no reclaim requests so the grace period can be lifted early.
 
-It's cleaner to introduce everything at once and have the server reply
-with "not supported" than it would be to introduce extra operations when
-implementing a specific one in the middle of the list.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4xdr.c    | 28 ++++++++++++++++++++++++++++
- include/linux/nfs4.h | 18 ++++++++++++++++--
- 2 files changed, 44 insertions(+), 2 deletions(-)
+ fs/lockd/Makefile |  1 +
+ fs/lockd/procfs.c | 76 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/lockd/procfs.h | 28 ++++++++++++++++++++
+ fs/lockd/svc.c    |  9 +++++++
+ 4 files changed, 114 insertions(+)
+ create mode 100644 fs/lockd/procfs.c
+ create mode 100644 fs/lockd/procfs.h
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f9821ce..94dde7b 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1593,6 +1593,20 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_destroy_clientid,
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
+index 6a0b351ce30e..9b320cc2a8cf 100644
+--- a/fs/lockd/Makefile
++++ b/fs/lockd/Makefile
+@@ -7,4 +7,5 @@ obj-$(CONFIG_LOCKD) += lockd.o
+ lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
+ 	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o
+ lockd-objs-$(CONFIG_LOCKD_V4) += clnt4xdr.o xdr4.o svc4proc.o
++lockd-objs-$(CONFIG_PROC_FS) += procfs.o
+ lockd-objs		      := $(lockd-objs-y)
+diff --git a/fs/lockd/procfs.c b/fs/lockd/procfs.c
+new file mode 100644
+index 000000000000..dfd708fa43a3
+--- /dev/null
++++ b/fs/lockd/procfs.c
+@@ -0,0 +1,76 @@
++/*
++ * Procfs support for lockd
++ *
++ * Copyright (c) 2014 Jeff Layton <jlayton@primarydata.com>
++ */
 +
-+	/* new operations for NFSv4.2 */
-+	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
- };
- 
- static inline bool
-@@ -3822,6 +3836,20 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- 	[OP_WANT_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_DESTROY_CLIENTID]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_enc)nfsd4_encode_noop,
++#include <linux/fs.h>
++#include <linux/proc_fs.h>
++#include <linux/module.h>
++#include <linux/nsproxy.h>
++#include <net/net_namespace.h>
 +
-+	/* NFSv4.2 operations */
-+	[OP_ALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_COPY]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_DEALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_LAYOUTSTATS]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
- };
- 
- /*
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 79b2a0f..cf38224 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -110,6 +110,20 @@ enum nfs_opnum4 {
- 	OP_DESTROY_CLIENTID = 57,
- 	OP_RECLAIM_COMPLETE = 58,
- 
-+	/* nfs42 */
-+	OP_ALLOCATE = 59,
-+	OP_COPY = 60,
-+	OP_COPY_NOTIFY = 61,
-+	OP_DEALLOCATE = 62,
-+	OP_IO_ADVISE = 63,
-+	OP_LAYOUTERROR = 64,
-+	OP_LAYOUTSTATS = 65,
-+	OP_OFFLOAD_CANCEL = 66,
-+	OP_OFFLOAD_STATUS = 67,
-+	OP_READ_PLUS = 68,
-+	OP_SEEK = 69,
-+	OP_WRITE_SAME = 70,
++#include "netns.h"
++#include "procfs.h"
 +
- 	OP_ILLEGAL = 10044,
- };
++/*
++ * Just check to see if the data written is longer than zero length. We
++ * don't really care what's in the data, just that someone wrote something
++ * to the file.
++ */
++static ssize_t
++nlm_end_grace_write(struct file *file, const char __user *buf, size_t size,
++		    loff_t *pos)
++{
++	struct lockd_net *ln = net_generic(current->nsproxy->net_ns, lockd_net_id);
++
++	if (size > 0)
++		locks_end_grace(&ln->lockd_manager);
++
++	return size;
++}
++
++static ssize_t
++nlm_end_grace_read(struct file *file, char __user *buf, size_t size,
++		   loff_t *pos)
++{
++	struct lockd_net *ln = net_generic(current->nsproxy->net_ns, lockd_net_id);
++	char resp[3];
++
++	resp[0] = list_empty(&ln->lockd_manager.list) ? 'Y' : 'N';
++	resp[1] = '\n';
++	resp[2] = '\0';
++
++	return simple_read_from_buffer(buf, size, pos, resp, sizeof(resp));
++}
++
++static const struct file_operations lockd_end_grace_operations = {
++	.write		= nlm_end_grace_write,
++	.read		= nlm_end_grace_read,
++	.llseek		= default_llseek,
++	.owner		= THIS_MODULE,
++};
++
++int __init
++lockd_create_procfs(void)
++{
++	struct proc_dir_entry *entry;
++
++	entry = proc_mkdir("fs/lockd", NULL);
++	if (!entry)
++		return -ENOMEM;
++	entry = proc_create("nlm_end_grace", S_IRUGO|S_IWUSR, entry,
++				 &lockd_end_grace_operations);
++	if (!entry) {
++		remove_proc_entry("fs/lockd", NULL);
++		return -ENOMEM;
++	}
++	return 0;
++}
++
++void __exit
++lockd_remove_procfs(void)
++{
++	remove_proc_entry("fs/lockd/nlm_end_grace", NULL);
++	remove_proc_entry("fs/lockd", NULL);
++}
+diff --git a/fs/lockd/procfs.h b/fs/lockd/procfs.h
+new file mode 100644
+index 000000000000..2257a1311027
+--- /dev/null
++++ b/fs/lockd/procfs.h
+@@ -0,0 +1,28 @@
++/*
++ * Procfs support for lockd
++ *
++ * Copyright (c) 2014 Jeff Layton <jlayton@primarydata.com>
++ */
++#ifndef _LOCKD_PROCFS_H
++#define _LOCKD_PROCFS_H
++
++#include <linux/kconfig.h>
++
++#if IS_ENABLED(CONFIG_PROC_FS)
++int lockd_create_procfs(void);
++void lockd_remove_procfs(void);
++#else
++static inline int
++lockd_create_procfs(void)
++{
++	return 0;
++}
++
++static inline void
++lockd_remove_procfs(void)
++{
++	return;
++}
++#endif /* IS_ENABLED(CONFIG_PROC_FS) */
++
++#endif /* _LOCKD_PROCFS_H */
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 3599c9ca28ae..f01a9aa01dff 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -36,6 +36,7 @@
+ #include <linux/nfs.h>
  
-@@ -117,10 +131,10 @@ enum nfs_opnum4 {
- Needs to be updated if more operations are defined in future.*/
+ #include "netns.h"
++#include "procfs.h"
  
- #define FIRST_NFS4_OP	OP_ACCESS
--#define LAST_NFS4_OP 	OP_RECLAIM_COMPLETE
-+#define LAST_NFS4_OP 	OP_WRITE_SAME
- #define LAST_NFS40_OP	OP_RELEASE_LOCKOWNER
- #define LAST_NFS41_OP	OP_RECLAIM_COMPLETE
--#define LAST_NFS42_OP	OP_RECLAIM_COMPLETE
-+#define LAST_NFS42_OP	OP_WRITE_SAME
+ #define NLMDBG_FACILITY		NLMDBG_SVC
+ #define LOCKD_BUFSIZE		(1024 + NLMSVC_XDRSIZE)
+@@ -616,8 +617,15 @@ static int __init init_nlm(void)
+ 	err = register_pernet_subsys(&lockd_net_ops);
+ 	if (err)
+ 		goto err_pernet;
++
++	err = lockd_create_procfs();
++	if (err)
++		goto err_procfs;
++
+ 	return 0;
  
- enum nfsstat4 {
- 	NFS4_OK = 0,
++err_procfs:
++	unregister_pernet_subsys(&lockd_net_ops);
+ err_pernet:
+ #ifdef CONFIG_SYSCTL
+ 	unregister_sysctl_table(nlm_sysctl_table);
+@@ -630,6 +638,7 @@ static void __exit exit_nlm(void)
+ {
+ 	/* FIXME: delete all NLM clients */
+ 	nlm_shutdown_hosts();
++	lockd_remove_procfs();
+ 	unregister_pernet_subsys(&lockd_net_ops);
+ #ifdef CONFIG_SYSCTL
+ 	unregister_sysctl_table(nlm_sysctl_table);
 -- 
-2.1.0
+1.9.3
 
