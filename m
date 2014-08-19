@@ -1,76 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14799 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52055 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932131AbaH0RvL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 27 Aug 2014 13:51:11 -0400
-Message-ID: <53FE1A8B.7050703@Netapp.com>
-Date: Wed, 27 Aug 2014 13:51:07 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1752642AbaHSOHC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Aug 2014 10:07:02 -0400
+Message-ID: <53F35A03.1070306@RedHat.com>
+Date: Tue, 19 Aug 2014 10:06:59 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Marc Eshel <eshel@us.ibm.com>, Anna Schumaker <Anna.Schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, <linux-nfs-owner@vger.kernel.org>,
-        <Trond.Myklebust@primarydata.com>
-Subject: Re: [PATCH] NFS: Add v4.2 SEEK support
-References: <1409152730-8070-1-git-send-email-Anna.Schumaker@Netapp.com> <OF104D9BE5.8A87880C-ON88257D41.0060A375-88257D41.006110DE@us.ibm.com>
-In-Reply-To: <OF104D9BE5.8A87880C-ON88257D41.0060A375-88257D41.006110DE@us.ibm.com>
-Content-Type: text/plain; charset="utf-8"
+To: Mike Frysinger <vapier@gentoo.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH nfs-utils] start-statd: clean up output when systemd is
+ not installed
+References: <1408286648-19031-1-git-send-email-vapier@gentoo.org> <53F23223.5090904@RedHat.com> <1649346.61nAovKFdn@vapier>
+In-Reply-To: <1649346.61nAovKFdn@vapier>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/27/2014 01:40 PM, Marc Eshel wrote:
-> Hi Anna,
-> Do you have a git tree that I can use to build your latest NFSv4.2 
-> changes?
-Not at the moment, but I can make one!
 
-Anna
-> Thanks, Marc.
->
->
->
-> From:   Anna Schumaker <Anna.Schumaker@netapp.com>
-> To:     <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>, 
-> Date:   08/27/2014 08:19 AM
-> Subject:        [PATCH] NFS: Add v4.2 SEEK support
-> Sent by:        linux-nfs-owner@vger.kernel.org
->
->
->
-> This patch adds support for the NFS v4.2 operation SEEK.
->
-> I think nfs4proc.c and nfs4xdr.c have grown out of control, and I would 
-> like
-> to avoid adding new functions to these files unless absolutely necessary.
-> Therefore, I created nfs4.2proc.c and nfs4.2xdr.h in an attempt to 
-> separate
-> out the new code.
->
-> Questions?  Comments?  Thoughts?
->
-> Anna
->
->
-> Anna Schumaker (1):
->   NFS: Implement SEEK
->
->  fs/nfs/Makefile           |  1 +
->  fs/nfs/inode.c            |  2 +
->  fs/nfs/nfs4.2.h           | 14 +++++++
->  fs/nfs/nfs4.2proc.c       | 39 +++++++++++++++++++
->  fs/nfs/nfs4.2xdr.h        | 98 
-> +++++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfs/nfs4_fs.h          |  7 ++++
->  fs/nfs/nfs4client.c       |  2 +
->  fs/nfs/nfs4file.c         | 68 ++++++++++++++++++++++++++++++++
->  fs/nfs/nfs4proc.c         |  1 -
->  fs/nfs/nfs4xdr.c          |  7 ++++
->  fs/nfsd/nfs4proc.c        |  2 +-
->  include/linux/nfs4.h      |  3 ++
->  include/linux/nfs_fs_sb.h |  1 +
->  include/linux/nfs_xdr.h   | 19 +++++++++
->  14 files changed, 262 insertions(+), 2 deletions(-)
->  create mode 100644 fs/nfs/nfs4.2.h
->  create mode 100644 fs/nfs/nfs4.2proc.c
->  create mode 100644 fs/nfs/nfs4.2xdr.h
->
+
+On 08/18/2014 07:57 PM, Mike Frysinger wrote:
+> On Mon 18 Aug 2014 13:04:35 Steve Dickson wrote:
+>> On 08/17/2014 10:44 AM, Mike Frysinger wrote:
+>>> If you don't have systemd, then this script dumps:
+>>> /usr/sbin/start-statd: line 8: systemctl: command not found
+>>>
+>>> This isn't terribly useful since we ultimately fall back to running
+>>> the daemon ourselves, so probe for systemd's existence before we try
+>>> to use it.
+>>>
+>>> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+>>
+>> Committed... but I used 'rpm -q systemd' instead of 'systemctl --help'
+>> to test for the existences of systemd
+>>
+>>  # First try systemd if it's installed.
+>> -if systemctl --help >/dev/null 2>&1; then
+>> +if rpm -q systemd > /dev/null 2>&1; then
+>>      # Quit only if the call worked.
+>>      systemctl start rpc-statd.service && exit
+> 
+> what about all the other distros not using rpm ?  my version was distro 
+> agnostic.
+Good point... I just committed your original version... Thanks!
+
+steved.
 
