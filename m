@@ -1,46 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19105 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752377AbaHLOwc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Aug 2014 10:52:32 -0400
-Message-ID: <53EA2A1F.7020006@RedHat.com>
-Date: Tue, 12 Aug 2014 10:52:15 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:55410 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751810AbaHSP1H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 11:27:07 -0400
+Message-ID: <53F36CB5.2030707@gmail.com>
+Date: Tue, 19 Aug 2014 23:26:45 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: Mike Frysinger <vapier@gentoo.org>, libtirpc-devel@lists.sourceforge.net
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH [libtirpc]] include stdarg.h when used
-References: <1407827532-31173-1-git-send-email-vapier@gentoo.org>
-In-Reply-To: <1407827532-31173-1-git-send-email-vapier@gentoo.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
+Subject: [PATCH 6/6 v4] NFSD: Increase the reference of lockowner when coping
+ file_lock
+References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com>
+In-Reply-To: <53ED5093.6000308@gmail.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+v4: same as v3, no change
+v3: Update based on Jeff's comments
+v2: Fix bad using of struct file_lock_operations for handle the owner.
 
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4state.c | 34 ++++++++++++++++++++++++++++++----
+ 1 file changed, 30 insertions(+), 4 deletions(-)
 
-On 08/12/2014 03:12 AM, Mike Frysinger wrote:
-> The debug.h header uses va_list but doesn't include stdarg.h which
-> can lead to random build failures.
-> 
-> Signed-off-by: Mike Frysinger <vapier@gentoo.org>
-Committed... 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e087a71..7161111 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4869,9 +4869,31 @@ nfs4_transform_lock_offset(struct file_lock *lock)
+ 		lock->fl_end = OFFSET_MAX;
+ }
+ 
+-/* Hack!: For now, we're defining this just so we can use a pointer to it
+- * as a unique cookie to identify our (NFSv4's) posix locks. */
++static inline struct nfs4_lockowner *
++nfs4_get_lockowner(struct nfs4_lockowner *lo)
++{
++	return lockowner(nfs4_get_stateowner(&lo->lo_owner));
++}
++
++static void nfsd4_fl_get_owner(struct file_lock *dst, struct file_lock *src)
++{
++	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) src->fl_owner;
++	dst->fl_owner = (fl_owner_t) nfs4_get_lockowner(lo);
++}
++
++static void nfsd4_fl_put_owner(struct file_lock *fl)
++{
++	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
++
++	if (lo) {
++		nfs4_put_stateowner(&lo->lo_owner);
++		fl->fl_owner = NULL;
++	}
++}
++
+ static const struct lock_manager_operations nfsd_posix_mng_ops  = {
++	.lm_get_owner = nfsd4_fl_get_owner,
++	.lm_put_owner = nfsd4_fl_put_owner,
+ };
+ 
+ static inline void
+@@ -5236,7 +5258,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfserr_openmode;
+ 		goto out;
+ 	}
+-	file_lock->fl_owner = (fl_owner_t)lock_sop;
++
++	file_lock->fl_owner = (fl_owner_t) nfs4_get_lockowner(lock_sop);
+ 	file_lock->fl_pid = current->tgid;
+ 	file_lock->fl_file = filp;
+ 	file_lock->fl_flags = FL_POSIX;
+@@ -5403,6 +5426,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	struct nfs4_ol_stateid *stp;
+ 	struct file *filp = NULL;
+ 	struct file_lock *file_lock = NULL;
++	struct nfs4_lockowner *lock_sop = NULL;
+ 	__be32 status;
+ 	int err;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+@@ -5424,6 +5448,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		status = nfserr_lock_range;
+ 		goto put_stateid;
+ 	}
++
++	lock_sop = lockowner(stp->st_stateowner);
+ 	file_lock = locks_alloc_lock();
+ 	if (!file_lock) {
+ 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+@@ -5432,7 +5458,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
+ 
+ 	file_lock->fl_type = F_UNLCK;
+-	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
++	file_lock->fl_owner = (fl_owner_t) nfs4_get_lockowner(lock_sop);
+ 	file_lock->fl_pid = current->tgid;
+ 	file_lock->fl_file = filp;
+ 	file_lock->fl_flags = FL_POSIX;
+-- 
+1.9.3
 
-steved.
-> ---
->  src/debug.h | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/src/debug.h b/src/debug.h
-> index afc8d57..c971ac3 100644
-> --- a/src/debug.h
-> +++ b/src/debug.h
-> @@ -21,6 +21,8 @@
->  
->  #ifndef _DEBUG_H
->  #define _DEBUG_H
-> +
-> +#include <stdarg.h>
->  #include <syslog.h>
->  
->  extern int libtirpc_debug_level;
-> 
