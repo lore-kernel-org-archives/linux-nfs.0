@@ -1,59 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:39926 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755037AbaHNVjl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 17:39:41 -0400
-Received: by mail-ig0-f180.google.com with SMTP id l13so221038iga.1
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Aug 2014 14:39:41 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 2/2] nfs: can_coalesce_requests must enforce contiguity
-Date: Thu, 14 Aug 2014 17:39:33 -0400
-Message-Id: <1408052373-4306-3-git-send-email-dros@primarydata.com>
-In-Reply-To: <1408052373-4306-1-git-send-email-dros@primarydata.com>
-References: <1408052373-4306-1-git-send-email-dros@primarydata.com>
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:62263 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751190AbaHSUXr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 16:23:47 -0400
+Received: by mail-qc0-f181.google.com with SMTP id x13so6777699qcv.26
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 13:23:46 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 19 Aug 2014 16:23:44 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 6/6 v4] NFSD: Increase the reference of lockowner when
+ coping file_lock
+Message-ID: <20140819162344.269953bd@tlielax.poochiereds.net>
+In-Reply-To: <53F36CB5.2030707@gmail.com>
+References: <53BAAAC5.9000106@gmail.com>
+	<53E22EA5.70708@gmail.com>
+	<20140809065112.700e0ecc@tlielax.poochiereds.net>
+	<53E791F1.40802@gmail.com>
+	<53ED5093.6000308@gmail.com>
+	<53F36CB5.2030707@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 6094f83864c1d1296566a282cba05ba613f151ee
-"nfs: allow coalescing of subpage requests" got rid of the requirement
-that requests cover whole pages, but it made some incorrect assumptions.
+On Tue, 19 Aug 2014 23:26:45 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-It turns out that callers of this interface can map adjacent requests
-(by file position as seen by req_offset + req->wb_bytes) to different pages,
-even when they could share a page. An example is the direct I/O interface -
-iov_iter_get_pages_alloc may return one segment with a partial page filled
-and the next segment (which is adjacent in the file position) starts with a
-new page.
+> v4: same as v3, no change
+> v3: Update based on Jeff's comments
+> v2: Fix bad using of struct file_lock_operations for handle the owner.
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4state.c | 34 ++++++++++++++++++++++++++++++----
+>  1 file changed, 30 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index e087a71..7161111 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4869,9 +4869,31 @@ nfs4_transform_lock_offset(struct file_lock *lock)
+>  		lock->fl_end = OFFSET_MAX;
+>  }
+>  
+> -/* Hack!: For now, we're defining this just so we can use a pointer to it
+> - * as a unique cookie to identify our (NFSv4's) posix locks. */
+> +static inline struct nfs4_lockowner *
+> +nfs4_get_lockowner(struct nfs4_lockowner *lo)
+> +{
+> +	return lockowner(nfs4_get_stateowner(&lo->lo_owner));
+> +}
+> +
 
-Reported-by: Toralf Förster <toralf.foerster@gmx.de>
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/pagelist.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+I'd probably not bother with this inline function. Just open code that
+into the callers.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 73476df..d512887 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -836,6 +836,14 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
- 			return false;
- 		if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
- 			return false;
-+		if (req->wb_page == prev->wb_page) {
-+			if (req->wb_pgbase != prev->wb_pgbase + prev->wb_bytes)
-+				return false;
-+		} else {
-+			if (req->wb_pgbase != 0 ||
-+			    prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
-+				return false;
-+		}
- 	}
- 	size = pgio->pg_ops->pg_test(pgio, prev, req);
- 	WARN_ON_ONCE(size > req->wb_bytes);
--- 
-1.8.5.2 (Apple Git-48)
+> +static void nfsd4_fl_get_owner(struct file_lock *dst, struct file_lock *src)
+> +{
+> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) src->fl_owner;
+> +	dst->fl_owner = (fl_owner_t) nfs4_get_lockowner(lo);
+> +}
+> +
+> +static void nfsd4_fl_put_owner(struct file_lock *fl)
+> +{
+> +	struct nfs4_lockowner *lo = (struct nfs4_lockowner *) fl->fl_owner;
+> +
+> +	if (lo) {
+> +		nfs4_put_stateowner(&lo->lo_owner);
+> +		fl->fl_owner = NULL;
+> +	}
+> +}
+> +
+>  static const struct lock_manager_operations nfsd_posix_mng_ops  = {
+> +	.lm_get_owner = nfsd4_fl_get_owner,
+> +	.lm_put_owner = nfsd4_fl_put_owner,
+>  };
+>  
+>  static inline void
+> @@ -5236,7 +5258,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		status = nfserr_openmode;
+>  		goto out;
+>  	}
+> -	file_lock->fl_owner = (fl_owner_t)lock_sop;
+> +
+> +	file_lock->fl_owner = (fl_owner_t) nfs4_get_lockowner(lock_sop);
+>  	file_lock->fl_pid = current->tgid;
+>  	file_lock->fl_file = filp;
+>  	file_lock->fl_flags = FL_POSIX;
+> @@ -5403,6 +5426,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	struct nfs4_ol_stateid *stp;
+>  	struct file *filp = NULL;
+>  	struct file_lock *file_lock = NULL;
+> +	struct nfs4_lockowner *lock_sop = NULL;
 
+nit: Probably no need to initialize lock_sop to NULL. Even better, I'd
+just drop that and change the fl_owner assignment below.
+
+>  	__be32 status;
+>  	int err;
+>  	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+> @@ -5424,6 +5448,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		status = nfserr_lock_range;
+>  		goto put_stateid;
+>  	}
+> +
+> +	lock_sop = lockowner(stp->st_stateowner);
+>  	file_lock = locks_alloc_lock();
+>  	if (!file_lock) {
+>  		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+> @@ -5432,7 +5458,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	}
+>  
+>  	file_lock->fl_type = F_UNLCK;
+> -	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
+> +	file_lock->fl_owner = (fl_owner_t) nfs4_get_lockowner(lock_sop);
+
+I'd do this instead and not bother with a nfs4_get_lockowner at all...
+
+	file_lock->fl_owner = (fl_owner_t)lockowner(nfs4_get_stateowner(stp->st_stateowner));
+
+>  	file_lock->fl_pid = current->tgid;
+>  	file_lock->fl_file = filp;
+>  	file_lock->fl_flags = FL_POSIX;
+
+But those are minor nits. This looks fine otherwise.
+
+Bruce, if it's OK by you, I'll just take the whole series once Kinglong
+respins. It does touch some nfsd code, but it hopefully shouldn't cause
+much in the way of conflicts with anything you have queued for v3.18.
+
+Acked-by: Jeff Layton <jlayton@primarydata.com>
