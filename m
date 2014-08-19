@@ -1,176 +1,325 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:25972 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932699AbaH1Iue (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Aug 2014 04:50:34 -0400
-Message-ID: <53FEED2A.2050209@oracle.com>
-Date: Thu, 28 Aug 2014 16:49:46 +0800
-From: Junxiao Bi <junxiao.bi@oracle.com>
+Received: from tus1smtoutpex01.symantec.com ([216.10.195.241]:43109 "EHLO
+	tus1smtoutpex01.symantec.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750789AbaHSHxt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 03:53:49 -0400
+Message-ID: <53F30285.5000304@symantec.com>
+Date: Tue, 19 Aug 2014 13:23:41 +0530
+From: Rajesh Ghanekar <Rajesh_Ghanekar@symantec.com>
 MIME-Version: 1.0
-To: Mel Gorman <mgorman@suse.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Johannes Weiner <hannes@cmpxchg.org>, NeilBrown <neilb@suse.de>,
-        Michal Hocko <mhocko@suse.cz>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
-References: <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com> <20140825164852.50723141@notabene.brown> <20140826105304.GT17696@novell.com> <CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com> <20140826132624.GU17696@novell.com> <20140826231938.GA13889@cmpxchg.org> <CAHQdGtRPsVFVfph5OcsZk_+WYPPJ-MpE2myZfXAb3jq6fuM4zw@mail.gmail.com> <CAHQdGtQPMJNzSM5Wt4RnNqEawBLqmYHycXTmBHhmAt26dz5wCw@mail.gmail.com> <20140827153644.GF12374@novell.com> <CAHQdGtQGqw9H=io0bYGKCCS1DxHZZymGjTCoiRymKnX2i88w_w@mail.gmail.com> <20140828083053.GJ12374@novell.com>
-In-Reply-To: <20140828083053.GJ12374@novell.com>
-Content-Type: text/plain; charset=ISO-8859-15
+To: Abhijit Dey <Abhijit_Dey@symantec.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+CC: Steve Dickson <SteveD@redhat.com>,
+        Rishi Agrawal <Rishi_Agrawal@symantec.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Ram Pandiri <ram_pandiri@symantec.com>,
+        Sreeharsha Sarabu <Sreeharsha_Sarabu@symantec.com>,
+        Tushar Shinde <Tushar_Shinde@symantec.com>,
+        "bfields@redhat.com" <bfields@redhat.com>
+Subject: Re: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
+References: <20AEB6A025F81A4288597093171D1B5719CF5813D2@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM> <53DF992D.6090404@RedHat.com> <20140804152411.GB23341@fieldses.org> <20140804214646.GK23341@fieldses.org> <20140805182134.GQ23341@fieldses.org> <4B8EA414FDE8F8449D981669FD32FD231356A61CFF@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM> <4B8EA414FDE8F8449D981669FD32FD231356A61D08@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM> <20140818211914.GE1096@fieldses.org> <9362E03F43D47440844A0A748033D1651B6AFAE3D1@TUS1XCHEVSPIN42.SYMC.SYMANTEC.COM>
+In-Reply-To: <9362E03F43D47440844A0A748033D1651B6AFAE3D1@TUS1XCHEVSPIN42.SYMC.SYMANTEC.COM>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 08/28/2014 04:30 PM, Mel Gorman wrote:
-> On Wed, Aug 27, 2014 at 12:15:33PM -0400, Trond Myklebust wrote:
->> On Wed, Aug 27, 2014 at 11:36 AM, Mel Gorman <mgorman@suse.com> wrote:
->>> On Tue, Aug 26, 2014 at 08:00:20PM -0400, Trond Myklebust wrote:
->>>> On Tue, Aug 26, 2014 at 7:51 PM, Trond Myklebust
->>>> <trond.myklebust@primarydata.com> wrote:
->>>>> On Tue, Aug 26, 2014 at 7:19 PM, Johannes Weiner <hannes@cmpxchg.org> wrote:
->>>>>> On Tue, Aug 26, 2014 at 02:26:24PM +0100, Mel Gorman wrote:
->>>>>>> On Tue, Aug 26, 2014 at 08:58:36AM -0400, Trond Myklebust wrote:
->>>>>>>> On Tue, Aug 26, 2014 at 6:53 AM, Mel Gorman <mgorman@suse.com> wrote:
->>>>>>>>> On Mon, Aug 25, 2014 at 04:48:52PM +1000, NeilBrown wrote:
->>>>>>>>>> On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
->>>>>>>>>> <trond.myklebust@primarydata.com> wrote:
->>>>>>>>>>
->>>>>>>>>>> Junxiao Bi reports seeing the following deadlock:
->>>>>>>>>>>
->>>>>>>>>>> @ crash> bt 1539
->>>>>>>>>>> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
->>>>>>>>>>> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
->>>>>>>>>>> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
->>>>>>>>>>> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
->>>>>>>>>>> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
->>>>>>>>>>> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
->>>>>>>>>>> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
->>>>>>>>>>> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
->>>>>>>>>>> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
->>>>>>>>>>> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
->>>>>>>>>>> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
->>>>>>>>>>> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
->>>>>>>>>>> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
->>>>>>>>>>
->>>>>>>>>> This stack trace (from 2.6.32) cannot happen in mainline, though it took me a
->>>>>>>>>> while to remember/discover exactly why.
->>>>>>>>>>
->>>>>>>>>> try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
->>>>>>>>>> set to NULL.
->>>>>>>>>> shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
->>>>>>>>>> it is NULL, wait_on_page_writeback is *not* called.
->>>>>>>>>>
->>>>>>>>>
->>>>>>>>> wait_on_page_writeback has a host of other damage associated with it which
->>>>>>>>> is why we don't do it from reclaim any more. If the storage is very slow
->>>>>>>>> then a process can be stalled by unrelated IO to slow storage.  If the
->>>>>>>>> storage is broken and the writeback can never complete then it causes other
->>>>>>>>> issues. That kind of thing.
->>>>>>>>>
->>>>>>>>>> So we can only hit this deadlock if mem-cgroup limits are imposed on a
->>>>>>>>>> process which is using NFS - which is quite possible but probably not common.
->>>>>>>>>>
->>>>>>>>>> The fact that a dead-lock can happen only when memcg limits are imposed seems
->>>>>>>>>> very fragile.  People aren't going to test that case much so there could well
->>>>>>>>>> be other deadlock possibilities lurking.
->>>>>>>>>>
->>>>>>>>>
->>>>>>>>> memcgs still can call wait_on_page_writeback and this is known to be a
->>>>>>>>> hand-grenade to the memcg people but I've never heard of them trying to
->>>>>>>>> tackle the problem.
->>>>>>>>>
->>>>>>>>>> Mel: might there be some other way we could get out of this deadlock?
->>>>>>>>>> Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
->>>>>>>>>> wait or something?  Any other wait out of this deadlock other than setting
->>>>>>>>>> PF_MEMALLOC_NOIO everywhere?
->>>>>>>>>>
->>>>>>>>>
->>>>>>>>> I don't have the full thread as it was not cc'd to lkml so I don't know
->>>>>>>>> what circumstances reached this deadlock in the first place. If this is
->>>>>>>>> on 2.6.32 and the deadline cannot happen during reclaim in mainline then
->>>>>>>>> why is mainline being patched?
->>>>>>>>>
->>>>>>>>> Do not alter wait_on_page_writeback() to timeout as it will blow
->>>>>>>>> up spectacularly -- swap unuse races, data would not longer be synced
->>>>>>>>> correctly to disk, sync IO would be flaky, stable page writes would be
->>>>>>>>> fired out the window etc.
->>>>>>>>
->>>>>>>> Hi Mel,
->>>>>>>>
->>>>>>>> The above stack trace really is the entire deadlock: the rpciod work
->>>>>>>> queue, which drives I/O on behalf of NFS, gets caught in a
->>>>>>>> shrink_page_list() situation where it ends up waiting on page
->>>>>>>> writeback. Boom....
->>>>>>>>
->>>>>>>> Even if this can only happen for non-trivial memcg situations, then it
->>>>>>>> still needs to be addressed: if rpciod blocks, then all NFS I/O will
->>>>>>>> block and we can no longer write out the dirty pages. This is why we
->>>>>>>> need a mainline fix.
->>>>>>>>
->>>>>>>
->>>>>>> In that case I'm adding the memcg people. I recognise that rpciod should
->>>>>>> never block on writeback for similar reasons why flushers should never block.
->>>>>>> memcg blocking on writeback is dangerous for reasons other than NFS but
->>>>>>> adding a variant that times out just means that on occasion processes get
->>>>>>> stalled for long periods of time timing out on these writeback pages. In
->>>>>>> that case, forward progress of rpciod would be painfully slow.
->>>>>>>
->>>>>>> On the other hand, forcing PF_MEMALLOC_NOIO for all rpciod allocations in
->>>>>>> an ideal world is massive overkill and while it will work, there will be
->>>>>>> other consequences -- unable to swap pages for example, unable to release
->>>>>>> buffers to free clean pages etc.
->>>>>>>
->>>>>>> It'd be nice of the memcg people could comment on whether they plan to
->>>>>>> handle the fact that memcg is the only called of wait_on_page_writeback
->>>>>>> in direct reclaim paths.
->>>>>>
->>>>>> wait_on_page_writeback() is a hammer, and we need to be better about
->>>>>> this once we have per-memcg dirty writeback and throttling, but I
->>>>>> think that really misses the point.  Even if memcg writeback waiting
->>>>>> were smarter, any length of time spent waiting for yourself to make
->>>>>> progress is absurd.  We just shouldn't be solving deadlock scenarios
->>>>>> through arbitrary timeouts on one side.  If you can't wait for IO to
->>>>>> finish, you shouldn't be passing __GFP_IO.
->>>>>>
->>>>>> Can't you use mempools like the other IO paths?
->>>>>
->>>>> There is no way to pass any allocation flags at all to an operation
->>>>> such as __sock_create() (which may be needed if the server
->>>>> disconnects). So in general, the answer is no.
->>>>>
->>>>
->>>> Actually, one question that should probably be raised before anything
->>>> else: is it at all possible for a workqueue like rpciod to have a
->>>> non-trivial setting for ->target_mem_cgroup? If not, then the whole
->>>> question is moot.
->>>>
->>>
->>> AFAIK, today it's not possible to add kernel threads (which rpciod is one)
->>> to a memcg so the issue is entirely theoritical at the moment.  Even if
->>> this was to change, it's not clear to me what adding kernel threads to a
->>> memcg would mean as kernel threads have no RSS. Even if kernel resources
->>> were accounted for, I cannot see why a kernel thread would join a memcg.
->>>
->>> I expec that it's currently impossible for rpciod to have a non-trivial
->>> target_mem_cgroup. The memcg folk will correct me if I'm wrong or if there
->>> are plans to change that for some reason.
->>>
->>
->> Thanks! Then I'll assume that the problem is nonexistent in upstream
->> for now, and drop the idea of using PF_MEMALLOC_NOIO. Perhaps we can
->> then encourage Junxiao to look into backporting some of the VM changes
->> in order to fix his Oracle legacy kernel issues?
->>
-> 
-> Sounds like a plan to me. The other alternative would be backporting the
-> handling of wait_on_page_writeback and writeback handling from reclaim but
-> that would be much harder considering the rate of change in vmscan.c and
-> the problems that were experienced with high CPU usage from kswapd during
-> that transition.
-Backport the vm changes may cause a lot of risk due to lots of changes,
-i am thinking to check PF_FSTRANS flag in shrink_page_list() to bypass
-the fs ops in our old kernel. Can this cause other issue?
+On Tuesday 19 August 2014 03:12 AM, Abhijit Dey wrote:
+> Bruce
+>
+> Your change looks appropriate.  Please go ahead.
+>
+> I'd make that:
+>
+> 	"This option will disable READDIRPLUS request handling.  When
+> 	set, READDIRPLUS requests from NFS clients return
+> 	NFS3ERR_NOTSUPP, and clients fall back on READDIR.  This option
+> 	affects only NFSv3 clients."
+>
+> Regards
+> Abhijit
+>
+>
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
+> Sent: Monday, August 18, 2014 2:19 PM
+> To: Rajesh Ghanekar
+> Cc: Steve Dickson; Rishi Agrawal; linux-nfs@vger.kernel.org; Ram Pandiri; Sreeharsha Sarabu; Abhijit Dey; Tushar Shinde; bfields@redhat.com
+> Subject: Re: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
+>
+> On Mon, Aug 18, 2014 at 11:06:03AM -0700, Rajesh Ghanekar wrote:
+>> diff -uprN nfs-utils-1.3.0.old/utils/exportfs/exports.man nfs-utils-1.3.0/utils/exportfs/exports.man
+>> --- nfs-utils-1.3.0.old/utils/exportfs/exports.man	2014-03-25 20:42:07.000000000 +0530
+>> +++ nfs-utils-1.3.0/utils/exportfs/exports.man	2014-08-18 22:27:23.360261358 +0530
+>> @@ -360,6 +360,13 @@ supported so the same configuration can
+>>  kernels alike.
+>>  
+>>  .TP
+>> +.IR nordirplus
+>> +This option will allow disabling READDIRPLUS request handling.
+>> +When enabled, READDIRPLUS requests from NFS client will be returned
+>> +with "not supported" reply. Most of the NFS client implementations
+>> +starts to use READDIR request if READDIRPLUS is returned with
+>> +"not supported" reply. This option is only applicable for NFSv3.
+> I'd make that:
+>
+> 	"This option will disable READDIRPLUS request handling.  When
+> 	set, READDIRPLUS requests from NFS clients return
+> 	NFS3ERR_NOTSUPP, and clients fall back on READDIR.  This option
+> 	affects only NFSv3 clients."
+>
+> --b.
+
+Okay.
+
+From: Rajesh Ghanekar <Rajesh_Ghanekar@symantec.com>
+
+One of our customer's application only needs file names, not file
+attributes. With directories having 10K+ inodes (assuming buffer cache
+has directory blocks cached having file names, but inode cache is
+limited and hence need eviction of older cached inodes), older inodes
+are evicted periodically. So if they keep on doing readdir(2) from NSF
+client on multiple directories, some directory's files are periodically
+removed from inode cache and hence new readdir(2) on same directory
+requires disk access to bring back inodes again to inode cache.
+
+As READDIRPLUS request fetches attributes also, doing getattr on each
+file on server, it causes unnecessary disk accesses. If READDIRPLUS on
+NFS client is returned with -ENOTSUPP, NFS client uses READDIR request
+which just gets the names of the files in a directory, not attributes,
+hence avoiding disk accesses on server.
+
+There's already a corresponding client-side mount option, but an export
+option reduces the need for configuration across multiple clients.
+
+This flag affects NFSv3 only.  If it turns out it's needed for NFSv4 as
+well then we may have to figure out how to extend the behavior to NFSv4,
+but it's not currently obvious how to do that.
+
+-----
+
+Signed-off-by: Rajesh Ghanekar <rajesh_ghanekar@symantec.com>
+
+diff -uprN nfs-utils-1.3.0.old/support/include/nfs/export.h nfs-utils-1.3.0/support/include/nfs/export.h
+--- nfs-utils-1.3.0.old/support/include/nfs/export.h	2014-03-25 20:42:07.000000000 +0530
++++ nfs-utils-1.3.0/support/include/nfs/export.h	2014-08-18 22:28:24.420262810 +0530
+@@ -17,7 +17,8 @@
+ #define NFSEXP_ALLSQUASH	0x0008
+ #define NFSEXP_ASYNC		0x0010
+ #define NFSEXP_GATHERED_WRITES	0x0020
+-/* 40, 80, 100 unused */
++#define NFSEXP_NOREADDIRPLUS	0x0040
++/* 80, 100 unused */
+ #define NFSEXP_NOHIDE		0x0200
+ #define NFSEXP_NOSUBTREECHECK	0x0400
+ #define NFSEXP_NOAUTHNLM	0x0800
+diff -uprN nfs-utils-1.3.0.old/support/nfs/exports.c nfs-utils-1.3.0/support/nfs/exports.c
+--- nfs-utils-1.3.0.old/support/nfs/exports.c	2014-03-25 20:42:07.000000000 +0530
++++ nfs-utils-1.3.0/support/nfs/exports.c	2014-08-18 22:28:24.600262814 +0530
+@@ -273,6 +273,8 @@ putexportent(struct exportent *ep)
+ 		"in" : "");
+ 	fprintf(fp, "%sacl,", (ep->e_flags & NFSEXP_NOACL)?
+ 		"no_" : "");
++	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
++		fprintf(fp, "nordirplus,");
+ 	if (ep->e_flags & NFSEXP_FSID) {
+ 		fprintf(fp, "fsid=%d,", ep->e_fsid);
+ 	}
+@@ -539,6 +541,8 @@ parseopts(char *cp, struct exportent *ep
+ 			clearflags(NFSEXP_ASYNC, active, ep);
+ 		else if (!strcmp(opt, "async"))
+ 			setflags(NFSEXP_ASYNC, active, ep);
++		else if (!strcmp(opt, "nordirplus"))
++			setflags(NFSEXP_NOREADDIRPLUS, active, ep);
+ 		else if (!strcmp(opt, "nohide"))
+ 			setflags(NFSEXP_NOHIDE, active, ep);
+ 		else if (!strcmp(opt, "hide"))
+diff -uprN nfs-utils-1.3.0.old/utils/exportfs/exports.man nfs-utils-1.3.0/utils/exportfs/exports.man
+--- nfs-utils-1.3.0.old/utils/exportfs/exports.man	2014-03-25 20:42:07.000000000 +0530
++++ nfs-utils-1.3.0/utils/exportfs/exports.man	2014-08-19 12:32:30.498780854 +0530
+@@ -360,6 +360,11 @@ supported so the same configuration can
+ kernels alike.
+ 
+ .TP
++.IR nordirplus
++This option will disable READDIRPLUS request handling.  When set,
++READDIRPLUS requests from NFS clients return NFS3ERR_NOTSUPP, and
++clients fall back on READDIR.  This option affects only NFSv3 clients.
++.TP
+ .IR refer= path@host[+host][:path@host[+host]]
+ A client referencing the export point will be directed to choose from
+ the given list an alternative location for the filesystem.
+
+-----
 
 Thanks,
-Junxiao.
-> 
+Rajesh
+
+
+>
+>> +.TP
+>>  .IR refer= path@host[+host][:path@host[+host]]
+>>  A client referencing the export point will be directed to choose from
+>>  the given list an alternative location for the filesystem.
+>>
+>> -----
+>>
+>> Thanks,
+>> Rajesh
+>>
+>>
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Rajesh Ghanekar
+>> Sent: Monday, August 18, 2014 11:17 PM
+>> To: J. Bruce Fields; Steve Dickson
+>> Cc: Rishi Agrawal; linux-nfs@vger.kernel.org; Ram Pandiri; Sreeharsha Sarabu; Abhijit Dey; Tushar Shinde; bfields@redhat.com
+>> Subject: RE: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
+>>
+>> Hi Bruce, Steve,
+>>        Here is the nfs-utils patch reworked. Sorry for top posting, though.
+>> We had to wait for internal legal approval to complete, and hence got delayed. Same "signed-off" by signature can go to nfsd kernel patch which you have reworked. Please let me know if I need to resend (copy from your mail with signed-off added) nfsd kernel patch.
+>>
+>> Signed-off-by: Rajesh Ghanekar <rajesh_ghanekar@symantec.com>
+>>
+>>
+>> diff -uprN nfs-utils-1.3.0.old/support/include/nfs/export.h nfs-utils-1.3.0/support/include/nfs/export.h
+>> --- nfs-utils-1.3.0.old/support/include/nfs/export.h	2014-03-25 20:42:07.000000000 +0530
+>> +++ nfs-utils-1.3.0/support/include/nfs/export.h	2014-08-18 22:28:24.420262810 +0530
+>> @@ -17,7 +17,8 @@
+>>  #define NFSEXP_ALLSQUASH	0x0008
+>>  #define NFSEXP_ASYNC		0x0010
+>>  #define NFSEXP_GATHERED_WRITES	0x0020
+>> -/* 40, 80, 100 unused */
+>> +#define NFSEXP_NOREADDIRPLUS	0x0040
+>> +/* 80, 100 unused */
+>>  #define NFSEXP_NOHIDE		0x0200
+>>  #define NFSEXP_NOSUBTREECHECK	0x0400
+>>  #define NFSEXP_NOAUTHNLM	0x0800
+>> diff -uprN nfs-utils-1.3.0.old/support/nfs/exports.c nfs-utils-1.3.0/support/nfs/exports.c
+>> --- nfs-utils-1.3.0.old/support/nfs/exports.c	2014-03-25 20:42:07.000000000 +0530
+>> +++ nfs-utils-1.3.0/support/nfs/exports.c	2014-08-18 22:28:24.600262814 +0530
+>> @@ -273,6 +273,8 @@ putexportent(struct exportent *ep)
+>>  		"in" : "");
+>>  	fprintf(fp, "%sacl,", (ep->e_flags & NFSEXP_NOACL)?
+>>  		"no_" : "");
+>> +	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
+>> +		fprintf(fp, "nordirplus,");
+>>  	if (ep->e_flags & NFSEXP_FSID) {
+>>  		fprintf(fp, "fsid=%d,", ep->e_fsid);
+>>  	}
+>> @@ -539,6 +541,8 @@ parseopts(char *cp, struct exportent *ep
+>>  			clearflags(NFSEXP_ASYNC, active, ep);
+>>  		else if (!strcmp(opt, "async"))
+>>  			setflags(NFSEXP_ASYNC, active, ep);
+>> +		else if (!strcmp(opt, "nordirplus"))
+>> +			setflags(NFSEXP_NOREADDIRPLUS, active, ep);
+>>  		else if (!strcmp(opt, "nohide"))
+>>  			setflags(NFSEXP_NOHIDE, active, ep);
+>>  		else if (!strcmp(opt, "hide"))
+>> diff -uprN nfs-utils-1.3.0.old/utils/exportfs/exports.man nfs-utils-1.3.0/utils/exportfs/exports.man
+>> --- nfs-utils-1.3.0.old/utils/exportfs/exports.man	2014-03-25 20:42:07.000000000 +0530
+>> +++ nfs-utils-1.3.0/utils/exportfs/exports.man	2014-08-18 22:27:23.360261358 +0530
+>> @@ -360,6 +360,13 @@ supported so the same configuration can  kernels alike.
+>>  
+>>  .TP
+>> +.IR nordirplus
+>> +This option will allow disabling READDIRPLUS request handling.
+>> +When enabled, READDIRPLUS requests from NFS client will be returned 
+>> +with "not supported" reply. Most of the NFS client implementations 
+>> +starts to use READDIR request if READDIRPLUS is returned with "not 
+>> +supported" reply. This option is only applicable for NFSv3.
+>> +.TP
+>>  .IR refer= path@host[+host][:path@host[+host]]
+>>  A client referencing the export point will be directed to choose from  the given list an alternative location for the filesystem.
+>>
+>>
+>> Thanks,
+>> Rajesh
+>>
+>> -----Original Message-----
+>> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+>> Sent: Tuesday, August 05, 2014 11:52 PM
+>> To: Steve Dickson
+>> Cc: Rishi Agrawal; linux-nfs@vger.kernel.org; Rajesh Ghanekar; Ram Pandiri; Sreeharsha Sarabu; Abhijit Dey; Tushar Shinde; bfields@redhat.com
+>> Subject: Re: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
+>>
+>> On Mon, Aug 04, 2014 at 05:46:47PM -0400, J. Bruce Fields wrote:
+>>> On Mon, Aug 04, 2014 at 11:24:11AM -0400, bfields wrote:
+>>>> +static int
+>>>> +nfsd3_is_readdirplus_supported(struct svc_rqst *rqstp, struct 
+>>>> +svc_fh *fhp) {
+>>>> +	struct svc_export *exp;
+>>>> +	int supported = 1; /* fall back to readdirplus supported in case of errors.*/
+>>>> +	int err;
+>>>> +
+>>>> +	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_READ);
+>>>> +	if (err) {
+>>>> +		goto out;
+>>>> +	}
+>>> Actually, this isn't right: errors from fh_verify should be returned 
+>>> to the client or weird things could happen (e.g. what should have been 
+>>> a transient DELAY error could result in the client turning off 
+>>> readdirplus).
+>> Apologies, I misread: as the comment above notes, it falls back on allowing readdirplus when this fails, so I don't think there's a real bug here.
+>>
+>>> And MAY_READ is more than nfsd_readdir actually asks for, I think, 
+>>> probably should just be MAY_NOP here.
+>>>
+>>> I'll fix that up.--b.
+>> But it's probably still better to return the fh_verify error on failure, as follows.
+>>
+>> --b.
+>>
+>> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c index 72ffd7cce3c3..30a739d896ff 100644
+>> --- a/fs/nfsd/export.c
+>> +++ b/fs/nfsd/export.c
+>> @@ -1145,6 +1145,7 @@ static struct flags {
+>>  	{ NFSEXP_ALLSQUASH, {"all_squash", ""}},
+>>  	{ NFSEXP_ASYNC, {"async", "sync"}},
+>>  	{ NFSEXP_GATHERED_WRITES, {"wdelay", "no_wdelay"}},
+>> +	{ NFSEXP_NOREADDIRPLUS, {"nordirplus", ""}},
+>>  	{ NFSEXP_NOHIDE, {"nohide", ""}},
+>>  	{ NFSEXP_CROSSMOUNT, {"crossmnt", ""}},
+>>  	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}}, diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c index fa2525b2e9d7..247b06fb400d 100644
+>> --- a/fs/nfsd/nfs3proc.c
+>> +++ b/fs/nfsd/nfs3proc.c
+>> @@ -471,6 +471,14 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp, struct nfsd3_readdirargs *argp,
+>>  	resp->buflen = resp->count;
+>>  	resp->rqstp = rqstp;
+>>  	offset = argp->cookie;
+>> +
+>> +	nfserr = fh_verify(rqstp, &resp->fh, S_IFDIR, NFSD_MAY_NOP);
+>> +	if (nfserr)
+>> +		RETURN_STATUS(nfserr);
+>> +
+>> +	if (resp->fh.fh_export->ex_flags & NFSEXP_NOREADDIRPLUS)
+>> +		RETURN_STATUS(nfserr_notsupp);
+>> +
+>>  	nfserr = nfsd_readdir(rqstp, &resp->fh,
+>>  				     &offset,
+>>  				     &resp->common,
+>> diff --git a/include/uapi/linux/nfsd/export.h b/include/uapi/linux/nfsd/export.h
+>> index cf47c313794e..584b6ef3a5e8 100644
+>> --- a/include/uapi/linux/nfsd/export.h
+>> +++ b/include/uapi/linux/nfsd/export.h
+>> @@ -28,7 +28,8 @@
+>>  #define NFSEXP_ALLSQUASH	0x0008
+>>  #define NFSEXP_ASYNC		0x0010
+>>  #define NFSEXP_GATHERED_WRITES	0x0020
+>> -/* 40 80 100 currently unused */
+>> +#define NFSEXP_NOREADDIRPLUS    0x0040
+>> +/* 80 100 currently unused */
+>>  #define NFSEXP_NOHIDE		0x0200
+>>  #define NFSEXP_NOSUBTREECHECK	0x0400
+>>  #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
+>> @@ -47,7 +48,7 @@
+>>   */
+>>  #define	NFSEXP_V4ROOT		0x10000
+>>  /* All flags that we claim to support.  (Note we don't support NOACL.) */
+>> -#define NFSEXP_ALLFLAGS		0x17E3F
+>> +#define NFSEXP_ALLFLAGS		0x1FE7F
+>>  
+>>  /* The flags that may vary depending on security flavor: */
+>>  #define NFSEXP_SECINFO_FLAGS	(NFSEXP_READONLY | NFSEXP_ROOTSQUASH \
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
