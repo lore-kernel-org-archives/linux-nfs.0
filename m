@@ -1,117 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:60396 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751812AbaHWOln (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Aug 2014 10:41:43 -0400
-Received: by mail-qa0-f54.google.com with SMTP id k15so10971968qaq.27
-        for <linux-nfs@vger.kernel.org>; Sat, 23 Aug 2014 07:41:42 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: bfields@fieldses.org, hch@infradead.org, cluster-devel@redhat.com,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 10/10] locks: update Documentation/filesystems with lease API changes
-Date: Sat, 23 Aug 2014 10:41:18 -0400
-Message-Id: <1408804878-1331-11-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
-References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:41420 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752351AbaHSBGO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Aug 2014 21:06:14 -0400
+Date: Tue, 19 Aug 2014 11:06:03 +1000
+From: NeilBrown <neilb@suse.de>
+To: Mike Frysinger <vapier@gentoo.org>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH nfs-utils] start-statd: clean up output when systemd is
+ not installed
+Message-ID: <20140819110603.38b92ecb@notabene.brown>
+In-Reply-To: <1649346.61nAovKFdn@vapier>
+References: <1408286648-19031-1-git-send-email-vapier@gentoo.org>
+	<53F23223.5090904@RedHat.com>
+	<1649346.61nAovKFdn@vapier>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/VsO=T5UbBCxC_Wf3odY39vE"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- Documentation/filesystems/Locking | 21 ++++++++++-----------
- Documentation/filesystems/vfs.txt |  7 ++++---
- 2 files changed, 14 insertions(+), 14 deletions(-)
+--Sig_/VsO=T5UbBCxC_Wf3odY39vE
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
-index f1997e9da61f..9e777f9fc859 100644
---- a/Documentation/filesystems/Locking
-+++ b/Documentation/filesystems/Locking
-@@ -349,11 +349,7 @@ prototypes:
- locking rules:
- 			inode->i_lock	may block
- fl_copy_lock:		yes		no
--fl_release_private:	maybe		maybe[1]
--
--[1]:	->fl_release_private for flock or POSIX locks is currently allowed
--to block. Leases however can still be freed while the i_lock is held and
--so fl_release_private called on a lease should not block.
-+fl_release_private:	no		yes
- 
- ----------------------- lock_manager_operations ---------------------------
- prototypes:
-@@ -362,7 +358,8 @@ prototypes:
- 	void (*lm_notify)(struct file_lock *);  /* unblock callback */
- 	int (*lm_grant)(struct file_lock *, struct file_lock *, int);
- 	void (*lm_break)(struct file_lock *); /* break_lease callback */
--	int (*lm_change)(struct file_lock **, int);
-+	int (*lm_change)(struct file_lock **, int, struct list_head *);
-+	void (*lm_setup)(struct file_lock *, void **);
- 
- locking rules:
- 
-@@ -373,6 +370,7 @@ lm_notify:		yes		yes			no
- lm_grant:		no		no			no
- lm_break:		yes		no			no
- lm_change		yes		no			no
-+lm_setup		yes		no			no
- 
- [1]:	->lm_compare_owner and ->lm_owner_key are generally called with
- *an* inode->i_lock held. It may not be the i_lock of the inode
-@@ -464,15 +462,12 @@ prototypes:
- 			size_t, unsigned int);
- 	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *,
- 			size_t, unsigned int);
--	int (*setlease)(struct file *, long, struct file_lock **);
-+	int (*setlease)(struct file *, long, struct file_lock **, void **);
- 	long (*fallocate)(struct file *, int, loff_t, loff_t);
- };
- 
- locking rules:
--	All may block except for ->setlease.
--	No VFS locks held on entry except for ->setlease.
--
--->setlease has the file_list_lock held and must not sleep.
-+	All may block.
- 
- ->llseek() locking has moved from llseek to the individual llseek
- implementations.  If your fs is not using generic_file_llseek, you
-@@ -496,6 +491,10 @@ components. And there are other reasons why the current interface is a mess...
- ->read on directories probably must go away - we should just enforce -EISDIR
- in sys_read() and friends.
- 
-+->setlease operations should call generic_setlease() before or after setting
-+the lease within the individual filesystem to record the result of the
-+operation
-+
- --------------------------- dquot_operations -------------------------------
- prototypes:
- 	int (*write_dquot) (struct dquot *);
-diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
-index 61d65cc65c54..af9441f32a62 100644
---- a/Documentation/filesystems/vfs.txt
-+++ b/Documentation/filesystems/vfs.txt
-@@ -826,7 +826,7 @@ struct file_operations {
- 	int (*flock) (struct file *, int, struct file_lock *);
- 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, size_t, unsigned int);
- 	ssize_t (*splice_read)(struct file *, struct pipe_inode_info *, size_t, unsigned int);
--	int (*setlease)(struct file *, long arg, struct file_lock **);
-+	int (*setlease)(struct file *, long arg, struct file_lock **, void **);
- 	long (*fallocate)(struct file *, int mode, loff_t offset, loff_t len);
- 	int (*show_fdinfo)(struct seq_file *m, struct file *f);
- };
-@@ -895,8 +895,9 @@ otherwise noted.
-   splice_read: called by the VFS to splice data from file to a pipe. This
- 	       method is used by the splice(2) system call
- 
--  setlease: called by the VFS to set or release a file lock lease.
--	    setlease has the file_lock_lock held and must not sleep.
-+  setlease: called by the VFS to set or release a file lock lease. setlease
-+	    implementations should call generic_setlease to record or remove
-+	    the lease in the inode after setting it
- 
-   fallocate: called by the VFS to preallocate blocks or punch a hole.
- 
--- 
-1.9.3
+On Mon, 18 Aug 2014 19:57:49 -0400 Mike Frysinger <vapier@gentoo.org> wrote:
 
+> On Mon 18 Aug 2014 13:04:35 Steve Dickson wrote:
+> > On 08/17/2014 10:44 AM, Mike Frysinger wrote:
+> > > If you don't have systemd, then this script dumps:
+> > > /usr/sbin/start-statd: line 8: systemctl: command not found
+> > >=20
+> > > This isn't terribly useful since we ultimately fall back to running
+> > > the daemon ourselves, so probe for systemd's existence before we try
+> > > to use it.
+> > >=20
+> > > Signed-off-by: Mike Frysinger <vapier@gentoo.org>
+> >=20
+> > Committed... but I used 'rpm -q systemd' instead of 'systemctl --help'
+> > to test for the existences of systemd
+> >=20
+> >  # First try systemd if it's installed.
+> > -if systemctl --help >/dev/null 2>&1; then
+> > +if rpm -q systemd > /dev/null 2>&1; then
+> >      # Quit only if the call worked.
+> >      systemctl start rpc-statd.service && exit
+>=20
+> what about all the other distros not using rpm ?  my version was distro=20
+> agnostic.
+> -mike
+
+distro-agnotic is certainly important.
+I would have gone with:
+
+diff --git a/utils/statd/start-statd b/utils/statd/start-statd
+index dcdaf7763f18..414f73f58096 100644
+--- a/utils/statd/start-statd
++++ b/utils/statd/start-statd
+@@ -5,7 +5,7 @@
+ # It should run statd with whatever flags are apropriate for this
+ # site.
+ PATH=3D"/sbin:/usr/sbin:/bin:/usr/bin"
+-if systemctl start rpc-statd.service
++if systemctl start rpc-statd.service > /dev/null 2>&1
+ then :
+ else
+     exec rpc.statd --no-notify
+
+
+why call systemctl twice (once with --help and once with "start")?
+
+NeilBrown
+
+--Sig_/VsO=T5UbBCxC_Wf3odY39vE
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU/Ki+znsnt1WYoG5AQJLpQ/9F2ZVeiLG7y3rMGmY78D0xxhWwafg0qqU
+7qJgK6mYYTOXgw6LOuCCIKBuXQgBRJGMbKPVaQt3Qk31UAqCxQGA1a4K2S4K3FNY
+W7cDDS1sKTEA3Pg8ImKevJlukF019MLHsSuTgA1+mfyQoW1xCZvp833f1U8Td6iQ
+TjHKEmZ1+XbYLr3CF0VAhQKegR2S7GBwuTOjs/MpqSKXPib+DT3Q01AuPapZHn4q
+5aFVsBYUu9wzjDJz40s0pl0OQjYhgW1kBvoJyf8Upqw+DKabSXW75TbCqOmUAKOo
+/+mj6iTaXb+WnIikXTDYDAhb/Gs4FaRhavUWWAwQkMrU6zFn7sQrbYUtht+ToRcd
+ehxomTXWZfo3UzprJJWCKK/znhRZFGP9rjIwvLgiiNC40+969a6CnBpPhSVQkTrg
+cPjLw2s/0EkooU5H9ZA35lsUpwm6chhjQ/dBK55wyGzNUhSHM2oHRlDEuo4KS7iN
+zBbr4MMX6HjFgo4jBmmqxG8FWFxpSVVUOYkWax6MpxbaaMOO8QRn1f/8L+rTyDtT
+PVdWxBw4zPefKbdEbdO/plNSUl9prD+JXxiqBiLQot+2/6GlX995dhI/wWsCyyLV
+7Ig/LCSpSdMrQ3sdu+el/7RSQdW1Eh8I+oN0RRO3Be1DVxN48KBaj7POifXosQFB
+2Ne34AD704I=
+=a511
+-----END PGP SIGNATURE-----
+
+--Sig_/VsO=T5UbBCxC_Wf3odY39vE--
