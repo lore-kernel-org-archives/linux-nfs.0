@@ -1,71 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:58935 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752923AbaHCRGO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:06:14 -0400
-Received: by mail-qg0-f51.google.com with SMTP id a108so7849708qge.24
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:06:13 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/6] nfsd: Reorder nfsd_cache_match to check more powerful discriminators first
-Date: Sun,  3 Aug 2014 13:06:04 -0400
-Message-Id: <1407085564-3227-7-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407085564-3227-6-git-send-email-trond.myklebust@primarydata.com>
-References: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
- <1407085564-3227-2-git-send-email-trond.myklebust@primarydata.com>
- <1407085564-3227-3-git-send-email-trond.myklebust@primarydata.com>
- <1407085564-3227-4-git-send-email-trond.myklebust@primarydata.com>
- <1407085564-3227-5-git-send-email-trond.myklebust@primarydata.com>
- <1407085564-3227-6-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qc0-f177.google.com ([209.85.216.177]:59285 "EHLO
+	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752575AbaHSTmR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 15:42:17 -0400
+Received: by mail-qc0-f177.google.com with SMTP id x13so6776219qcv.22
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 12:42:15 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 19 Aug 2014 15:42:12 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 2/6 v4] locks: New ops in file_lock_operations for
+ get/put owner
+Message-ID: <20140819154212.4b30603a@tlielax.poochiereds.net>
+In-Reply-To: <53F36AE2.7070507@gmail.com>
+References: <53BAAAC5.9000106@gmail.com>
+	<53E22EA5.70708@gmail.com>
+	<20140809065112.700e0ecc@tlielax.poochiereds.net>
+	<53E791F1.40802@gmail.com>
+	<53ED5093.6000308@gmail.com>
+	<53F36AE2.7070507@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We would normally expect the xid and the checksum to be the best
-discriminators. Check them before looking at the procedure number,
-etc.
+On Tue, 19 Aug 2014 23:18:58 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfscache.c | 18 +++++++++++-------
- 1 file changed, 11 insertions(+), 7 deletions(-)
+> NFSD or other lockmanager may increase the owner's reference,
+> so adds two new options for copying and releasing owner.
+> 
+> v4: rename lm_copy_owner/lm_release_owner to lm_get_owner/lm_put_owner
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/locks.c         | 12 ++++++++++--
+>  include/linux/fs.h |  2 ++
+>  2 files changed, 12 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/locks.c b/fs/locks.c
+> index cb66fb0..08342e0 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -230,8 +230,12 @@ void locks_release_private(struct file_lock *fl)
+>  			fl->fl_ops->fl_release_private(fl);
+>  		fl->fl_ops = NULL;
+>  	}
+> -	fl->fl_lmops = NULL;
+>  
+> +	if (fl->fl_lmops) {
+> +		if (fl->fl_lmops->lm_put_owner)
+> +			fl->fl_lmops->lm_put_owner(fl);
+> +		fl->fl_lmops = NULL;
+> +	}
+>  }
+>  EXPORT_SYMBOL_GPL(locks_release_private);
+>  
+> @@ -274,8 +278,12 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
+>  			fl->fl_ops->fl_copy_lock(new, fl);
+>  		new->fl_ops = fl->fl_ops;
+>  	}
+> -	if (fl->fl_lmops)
+> +
+> +	if (fl->fl_lmops) {
+> +		if (fl->fl_lmops->lm_get_owner)
+> +			fl->fl_lmops->lm_get_owner(new, fl);
+>  		new->fl_lmops = fl->fl_lmops;
+> +	}
+>  }
+>  
+>  /*
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 908af4f..6829340 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -868,6 +868,8 @@ struct file_lock_operations {
+>  struct lock_manager_operations {
+>  	int (*lm_compare_owner)(struct file_lock *, struct file_lock *);
+>  	unsigned long (*lm_owner_key)(struct file_lock *);
+> +	void (*lm_get_owner)(struct file_lock *, struct file_lock *);
+> +	void (*lm_put_owner)(struct file_lock *);
+>  	void (*lm_notify)(struct file_lock *);	/* unblock callback */
+>  	int (*lm_grant)(struct file_lock *, int);
+>  	void (*lm_break)(struct file_lock *);
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 74603654b7f9..122f69185ef5 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -338,20 +338,24 @@ nfsd_cache_csum(struct svc_rqst *rqstp)
- static bool
- nfsd_cache_match(struct svc_rqst *rqstp, __wsum csum, struct svc_cacherep *rp)
- {
--	/* Check RPC header info first */
--	if (rqstp->rq_xid != rp->c_xid || rqstp->rq_proc != rp->c_proc ||
--	    rqstp->rq_prot != rp->c_prot || rqstp->rq_vers != rp->c_vers ||
--	    rqstp->rq_arg.len != rp->c_len ||
--	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
--	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
-+	/* Check RPC XID first */
-+	if (rqstp->rq_xid != rp->c_xid)
- 		return false;
--
- 	/* compare checksum of NFS data */
- 	if (csum != rp->c_csum) {
- 		++payload_misses;
- 		return false;
- 	}
- 
-+	/* Other discriminators */
-+	if (rqstp->rq_proc != rp->c_proc ||
-+	    rqstp->rq_prot != rp->c_prot ||
-+	    rqstp->rq_vers != rp->c_vers ||
-+	    rqstp->rq_arg.len != rp->c_len ||
-+	    !rpc_cmp_addr(svc_addr(rqstp), (struct sockaddr *)&rp->c_addr) ||
-+	    rpc_get_port(svc_addr(rqstp)) != rpc_get_port((struct sockaddr *)&rp->c_addr))
-+		return false;
-+
- 	return true;
- }
- 
--- 
-1.9.3
+Looks good. I'd probably move patch #3 before this one but that's just
+a minor nit.
 
+Reviewed-by: Jeff Layton <jlayton@primarydata.com>
