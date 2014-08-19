@@ -1,116 +1,263 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f181.google.com ([209.85.220.181]:63660 "EHLO
-	mail-vc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750773AbaH1SZd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Aug 2014 14:25:33 -0400
-Received: by mail-vc0-f181.google.com with SMTP id ij19so1283602vcb.26
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Aug 2014 11:25:32 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQxQ_dwPOwpUac2LhN60YHXTYPbNomec6KsZ843DrBGUw@mail.gmail.com>
-References: <CAHVgHyWwoOyguyJa-tmQVQE56c2wSOR2xUnwOzPOfet_nK60Sw@mail.gmail.com>
-	<CAHQdGtQxQ_dwPOwpUac2LhN60YHXTYPbNomec6KsZ843DrBGUw@mail.gmail.com>
-Date: Thu, 28 Aug 2014 14:25:32 -0400
-Message-ID: <CAHVgHyWZkakeJEEuNyPHOR2qipwB_teCEEzOKGYUtVeExSM-yQ@mail.gmail.com>
-Subject: Re: nfsiod work_queue hang issue in RHEL 6.6 pre kernel (2.6.32-459)
-From: Andy Adamson <androsadamson@gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qa0-f50.google.com ([209.85.216.50]:42348 "EHLO
+	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751851AbaHSSii (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:38:38 -0400
+Received: by mail-qa0-f50.google.com with SMTP id s7so6102686qap.9
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:38:38 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/5] lockd: move lockd's grace period handling into its own module
+Date: Tue, 19 Aug 2014 14:38:25 -0400
+Message-Id: <1408473509-14010-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 27, 2014 at 2:51 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Wed, Aug 27, 2014 at 1:35 PM, Andy Adamson <androsadamson@gmail.com> wrote:
->> We are seeing nfsiod hang for 5 to 20+ minutes.
->>
->> This thread hung for 5-10 minutes then cleared.
->>
->> Aug 26 05:10:01 scspr0012063007 kernel: nfsiod        S
->> 0000000000000000     0  4931      2 0x00000080
->> Aug 26 05:05:01 scspr0012063007 kernel: ffff880037891e30
->> 0000000000000046 ffff8800d130d400 ffffffffa01e1030
->> Aug 26 05:05:01 scspr0012063007 kernel: ffff880037891fd8
->> ffffe8ffff608ac8 ffff880037891dc0 ffffffffa0287e8d
->> Aug 26 05:05:01 scspr0012063007 kernel: ffff880104fb5098
->> ffff880037891fd8 000000000000fbc8 ffff880104fb5098
->> Aug 26 05:05:01 scspr0012063007 kernel: Call Trace:
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffffa01e1030>] ?
->> rpc_async_release+0x0/0x20 [sunrpc]
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffffa0287e8d>] ?
->> nfs_writedata_release+0x6d/0x90 [nfs]
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b7fe>] ?
->> prepare_to_wait+0x4e/0x80
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffffa01e1030>] ?
->> rpc_async_release+0x0/0x20 [sunrpc]
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff81094fdc>]
->> worker_thread+0x1fc/0x2a0
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b4d0>] ?
->> autoremove_wake_function+0x0/0x40
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff81094de0>] ?
->> worker_thread+0x0/0x2a0
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b126>] kthread+0x96/0xa0
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8100c20a>] child_rip+0xa/0x20
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b090>] ? kthread+0x0/0xa0
->> Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8100c200>] ?
->> child_rip+0x0/0x20
->>
->> This similar Call Trace, nfsiod hung for 20 minutest, then the client
->> was rebooted.
->>
->> Aug 26 06:00:01 scspr0012063007 kernel: nfsiod        S
->> 0000000000000000     0  1701      2 0x00000000
->> Aug 26 06:00:01 scspr0012063007 kernel: ffff880037a63e30
->> 0000000000000046 ffff880037a62000 ffff880037a62000
->> Aug 26 06:00:01 scspr0012063007 kernel: ffff8800f3421140
->> 0000000000000000 ffff8800f3421140 ffffffffa0316030
->> Aug 26 06:00:01 scspr0012063007 kernel: ffff880100e2f098
->> ffff880037a63fd8 000000000000fbc8 ffff880100e2f098
->> Aug 26 06:00:01 scspr0012063007 kernel: Call Trace:
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffffa0316030>] ?
->> rpc_async_release+0x0/0x20 [sunrpc]
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b7fe>] ?
->> prepare_to_wait+0x4e/0x80
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffffa0316030>] ?
->> rpc_async_release+0x0/0x20 [sunrpc]
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff81094fdc>]
->> worker_thread+0x1fc/0x2a0
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b4d0>] ?
->> autoremove_wake_function+0x0/0x40
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff81094de0>] ?
->> worker_thread+0x0/0x2a0
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b126>] kthread+0x96/0xa0
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8100c20a>] child_rip+0xa/0x20
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b090>] ? kthread+0x0/0xa0
->> Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8100c200>] ?
->> child_rip+0x0/0x20
->>
->
-> Doesn't the "?" beside the stack entries above label them as being
-> unreliable (i.e. they lie outside the stack frame)? If so, it looks to
-> me as if both these 2 threads are just sleeping in the worker_thread()
-> function, which isn't unusual in itself.
+Currently, all of the grace period handling is part of lockd. Eventually
+though we'd like to be able to build v4-only servers, at which point
+we'll need to put all of this elsewhere.
 
-Hi Trond
+Move the code itself into fs/nfs_common and have it build a grace.ko
+module. Then, rejigger the Kconfig options so that both nfsd and lockd
+enable it automatically.
 
-Thanks for looking at this.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/Kconfig                       |  6 +++-
+ fs/lockd/Makefile                |  2 +-
+ fs/lockd/netns.h                 |  1 -
+ fs/lockd/svc.c                   |  1 -
+ fs/nfs_common/Makefile           |  3 +-
+ fs/{lockd => nfs_common}/grace.c | 68 ++++++++++++++++++++++++++++++++++------
+ fs/nfsd/Kconfig                  |  1 +
+ include/linux/proc_fs.h          |  2 ++
+ 8 files changed, 69 insertions(+), 15 deletions(-)
+ rename fs/{lockd => nfs_common}/grace.c (50%)
 
-I hear you - never trust the '?', but so far, this is all I have to go on.
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 312393f32948..db5dc1598716 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -233,9 +233,13 @@ if NETWORK_FILESYSTEMS
+ source "fs/nfs/Kconfig"
+ source "fs/nfsd/Kconfig"
+ 
++config GRACE_PERIOD
++	tristate
++
+ config LOCKD
+ 	tristate
+ 	depends on FILE_LOCKING
++	select GRACE_PERIOD
+ 
+ config LOCKD_V4
+ 	bool
+@@ -249,7 +253,7 @@ config NFS_ACL_SUPPORT
+ 
+ config NFS_COMMON
+ 	bool
+-	depends on NFSD || NFS_FS
++	depends on NFSD || NFS_FS || LOCKD
+ 	default y
+ 
+ source "net/sunrpc/Kconfig"
+diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
+index ca58d64374ca..6a0b351ce30e 100644
+--- a/fs/lockd/Makefile
++++ b/fs/lockd/Makefile
+@@ -5,6 +5,6 @@
+ obj-$(CONFIG_LOCKD) += lockd.o
+ 
+ lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
+-	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o grace.o
++	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o
+ lockd-objs-$(CONFIG_LOCKD_V4) += clnt4xdr.o xdr4.o svc4proc.o
+ lockd-objs		      := $(lockd-objs-y)
+diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+index 5010b55628b4..097bfa3adb1c 100644
+--- a/fs/lockd/netns.h
++++ b/fs/lockd/netns.h
+@@ -11,7 +11,6 @@ struct lockd_net {
+ 
+ 	struct delayed_work grace_period_end;
+ 	struct lock_manager lockd_manager;
+-	struct list_head grace_list;
+ 
+ 	spinlock_t nsm_clnt_lock;
+ 	unsigned int nsm_users;
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 8f27c93f8d2e..3599c9ca28ae 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -583,7 +583,6 @@ static int lockd_init_net(struct net *net)
+ 	struct lockd_net *ln = net_generic(net, lockd_net_id);
+ 
+ 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
+-	INIT_LIST_HEAD(&ln->grace_list);
+ 	spin_lock_init(&ln->nsm_clnt_lock);
+ 	return 0;
+ }
+diff --git a/fs/nfs_common/Makefile b/fs/nfs_common/Makefile
+index f689ed82af3a..d153ca3ea577 100644
+--- a/fs/nfs_common/Makefile
++++ b/fs/nfs_common/Makefile
+@@ -3,5 +3,6 @@
+ #
+ 
+ obj-$(CONFIG_NFS_ACL_SUPPORT) += nfs_acl.o
+-
+ nfs_acl-objs := nfsacl.o
++
++obj-$(CONFIG_GRACE_PERIOD) += grace.o
+diff --git a/fs/lockd/grace.c b/fs/nfs_common/grace.c
+similarity index 50%
+rename from fs/lockd/grace.c
+rename to fs/nfs_common/grace.c
+index 6d1ee7204c88..ae6e58ea4de5 100644
+--- a/fs/lockd/grace.c
++++ b/fs/nfs_common/grace.c
+@@ -1,17 +1,20 @@
+ /*
+  * Common code for control of lockd and nfsv4 grace periods.
++ *
++ * Transplanted from lockd code
+  */
+ 
+ #include <linux/module.h>
+-#include <linux/lockd/bind.h>
+ #include <net/net_namespace.h>
++#include <net/netns/generic.h>
++#include <linux/fs.h>
+ 
+-#include "netns.h"
+-
++static int grace_net_id;
+ static DEFINE_SPINLOCK(grace_lock);
+ 
+ /**
+  * locks_start_grace
++ * @net: net namespace that this lock manager belongs to
+  * @lm: who this grace period is for
+  *
+  * A grace period is a period during which locks should not be given
+@@ -21,18 +24,20 @@ static DEFINE_SPINLOCK(grace_lock);
+  *
+  * This function is called to start a grace period.
+  */
+-void locks_start_grace(struct net *net, struct lock_manager *lm)
++void
++locks_start_grace(struct net *net, struct lock_manager *lm)
+ {
+-	struct lockd_net *ln = net_generic(net, lockd_net_id);
++	struct list_head *grace_list = net_generic(net, grace_net_id);
+ 
+ 	spin_lock(&grace_lock);
+-	list_add(&lm->list, &ln->grace_list);
++	list_add(&lm->list, grace_list);
+ 	spin_unlock(&grace_lock);
+ }
+ EXPORT_SYMBOL_GPL(locks_start_grace);
+ 
+ /**
+  * locks_end_grace
++ * @net: net namespace that this lock manager belongs to
+  * @lm: who this grace period is for
+  *
+  * Call this function to state that the given lock manager is ready to
+@@ -41,7 +46,8 @@ EXPORT_SYMBOL_GPL(locks_start_grace);
+  * Note that callers count on it being safe to call this more than once,
+  * and the second call should be a no-op.
+  */
+-void locks_end_grace(struct lock_manager *lm)
++void
++locks_end_grace(struct lock_manager *lm)
+ {
+ 	spin_lock(&grace_lock);
+ 	list_del_init(&lm->list);
+@@ -56,10 +62,52 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
+  * to answer ordinary lock requests, and when they should accept only
+  * lock reclaims.
+  */
+-int locks_in_grace(struct net *net)
++int
++locks_in_grace(struct net *net)
+ {
+-	struct lockd_net *ln = net_generic(net, lockd_net_id);
++	struct list_head *grace_list = net_generic(net, grace_net_id);
+ 
+-	return !list_empty(&ln->grace_list);
++	return !list_empty(grace_list);
+ }
+ EXPORT_SYMBOL_GPL(locks_in_grace);
++
++static int __net_init
++grace_init_net(struct net *net)
++{
++	struct list_head *grace_list = net_generic(net, grace_net_id);
++
++	INIT_LIST_HEAD(grace_list);
++	return 0;
++}
++
++static void __net_exit
++grace_exit_net(struct net *net)
++{
++	struct list_head *grace_list = net_generic(net, grace_net_id);
++
++	BUG_ON(!list_empty(grace_list));
++}
++
++static struct pernet_operations grace_net_ops = {
++	.init = grace_init_net,
++	.exit = grace_exit_net,
++	.id   = &grace_net_id,
++	.size = sizeof(struct list_head),
++};
++
++static int __init
++init_grace(void)
++{
++	return register_pernet_subsys(&grace_net_ops);
++}
++
++static void __exit
++exit_grace(void)
++{
++	unregister_pernet_subsys(&grace_net_ops);
++}
++
++MODULE_AUTHOR("Jeff Layton <jlayton@primarydata.com>");
++MODULE_LICENSE("GPL");
++module_init(init_grace)
++module_exit(exit_grace)
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index f994e750e0d1..4fa98764de21 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -71,6 +71,7 @@ config NFSD_V4
+ 	select FS_POSIX_ACL
+ 	select SUNRPC_GSS
+ 	select CRYPTO
++	select GRACE_PERIOD
+ 	help
+ 	  This option enables support in your system's NFS server for
+ 	  version 4 of the NFS protocol (RFC 3530).
+diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
+index 9d117f61d976..b97bf2ef996e 100644
+--- a/include/linux/proc_fs.h
++++ b/include/linux/proc_fs.h
+@@ -74,6 +74,8 @@ static inline int remove_proc_subtree(const char *name, struct proc_dir_entry *p
+ 
+ #endif /* CONFIG_PROC_FS */
+ 
++struct net;
++
+ static inline struct proc_dir_entry *proc_net_mkdir(
+ 	struct net *net, const char *name, struct proc_dir_entry *parent)
+ {
+-- 
+1.9.3
 
-This kernel thread dump is taken during a heavy write I/O test. If we
-can even conclude anything from this info, it seems to me that it is
-unusual for an nfsiod worker thread to sleep for 5-20 minutes.
-
-We have not seen this again.
-
--->Andy
-
->
-> Are there any other hints that might help?
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
