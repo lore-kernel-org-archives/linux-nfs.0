@@ -1,76 +1,157 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:35873 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752663AbaHHPBL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:01:11 -0400
-Received: by mail-ie0-f178.google.com with SMTP id rd18so6533789iec.9
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:01:10 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 2/5] nfs: fix nonblocking calls to nfs_page_group_lock
-Date: Fri,  8 Aug 2014 11:00:54 -0400
-Message-Id: <1407510057-6881-3-git-send-email-dros@primarydata.com>
-In-Reply-To: <1407510057-6881-1-git-send-email-dros@primarydata.com>
-References: <1407510057-6881-1-git-send-email-dros@primarydata.com>
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:44128 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751824AbaHSUIl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 16:08:41 -0400
+Received: by mail-qc0-f173.google.com with SMTP id w7so6802943qcr.32
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 13:08:39 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 19 Aug 2014 16:08:36 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 4/6 v4] locks: Copy fl_lmops information for conflock
+ in, locks_copy_conflock()
+Message-ID: <20140819160836.1196c8cb@tlielax.poochiereds.net>
+In-Reply-To: <53F36C27.7050006@gmail.com>
+References: <53BAAAC5.9000106@gmail.com>
+	<53E22EA5.70708@gmail.com>
+	<20140809065112.700e0ecc@tlielax.poochiereds.net>
+	<53E791F1.40802@gmail.com>
+	<53ED5093.6000308@gmail.com>
+	<53F36C27.7050006@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_page_group_lock was calling wait_on_bit_lock even when told not to
-block. Fix by first trying test_and_set_bit, followed by wait_on_bit_lock
-if and only if blocking is allowed.  Return -EAGAIN if nonblocking and the
-test_and_set of the bit was already locked.
+On Tue, 19 Aug 2014 23:24:23 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-Reviewed-by: Peng Tao <tao.peng@primarydata.com>
+> Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
+> fl_lmops field in file_lock for checking nfsd4 lockowner.
+> 
+> But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return
+> of conflicting locks) causes the fl_lmops of conflock always be NULL.
+> 
+> Also, commit 0996905f93 (lockd: posix_test_lock() should not call
+> locks_copy_lock()) caused the fl_lmops of conflock always be NULL too.
+> 
+> Make sure copy the private information by fl_copy_lock() in struct
+> file_lock_operations, merge __locks_copy_lock() to fl_copy_lock().
+> 
+> Jeff advice, "Set fl_lmops on conflocks, but don't set fl_ops.
+> fl_ops are superfluous, since they are callbacks into the filesystem.
+> There should be no need to bother the filesystem at all with info
+> in a conflock. But, lock _ownership_ matters for conflocks and that's
+> indicated by the fl_lmops. So you really do want to copy the fl_lmops
+> for conflocks I think."
+> 
+> v4: only copy fl_lmops for conflock, don't copy fl_ops
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/locks.c | 36 ++++++++++++++++--------------------
+>  1 file changed, 16 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/locks.c b/fs/locks.c
+> index c376561..0ee775d 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -271,21 +271,6 @@ void locks_init_lock(struct file_lock *fl)
+>  
+>  EXPORT_SYMBOL(locks_init_lock);
+>  
+> -static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
+> -{
+> -	if (fl->fl_ops) {
+> -		if (fl->fl_ops->fl_copy_lock)
+> -			fl->fl_ops->fl_copy_lock(new, fl);
+> -		new->fl_ops = fl->fl_ops;
+> -	}
+> -
+> -	if (fl->fl_lmops) {
+> -		if (fl->fl_lmops->lm_get_owner)
+> -			fl->fl_lmops->lm_get_owner(new, fl);
+> -		new->fl_lmops = fl->fl_lmops;
+> -	}
+> -}
+> -
+>  /*
+>   * Initialize a new lock from an existing file_lock structure.
+>   */
+> @@ -298,8 +283,13 @@ void locks_copy_conflock(struct file_lock *new, struct file_lock *fl)
+>  	new->fl_type = fl->fl_type;
+>  	new->fl_start = fl->fl_start;
+>  	new->fl_end = fl->fl_end;
+> +	new->fl_lmops = fl->fl_lmops;
+>  	new->fl_ops = NULL;
+> -	new->fl_lmops = NULL;
+> +
+> +	if (fl->fl_lmops) {
+> +		if (fl->fl_lmops->lm_get_owner)
+> +			fl->fl_lmops->lm_get_owner(new, fl);
+> +	}
+>  }
+>  EXPORT_SYMBOL(locks_copy_conflock);
+>  
+> @@ -309,11 +299,14 @@ void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+>  	WARN_ON_ONCE(new->fl_ops);
+>  
+>  	locks_copy_conflock(new, fl);
+> +
+>  	new->fl_file = fl->fl_file;
+>  	new->fl_ops = fl->fl_ops;
+> -	new->fl_lmops = fl->fl_lmops;
+>  
+> -	locks_copy_private(new, fl);
+> +	if (fl->fl_ops) {
+> +		if (fl->fl_ops->fl_copy_lock)
+> +			fl->fl_ops->fl_copy_lock(new, fl);
+> +	}
+>  }
+>  
+>  EXPORT_SYMBOL(locks_copy_lock);
+> @@ -1989,11 +1982,13 @@ int fcntl_getlk(struct file *filp, unsigned int cmd, struct flock __user *l)
+>  	if (file_lock.fl_type != F_UNLCK) {
+>  		error = posix_lock_to_flock(&flock, &file_lock);
+>  		if (error)
+> -			goto out;
+> +			goto rel_priv;
+>  	}
+>  	error = -EFAULT;
+>  	if (!copy_to_user(l, &flock, sizeof(flock)))
+>  		error = 0;
+> +rel_priv:
+> +	locks_release_private(&file_lock);
+>  out:
+>  	return error;
+>  }
+> @@ -2214,7 +2209,8 @@ int fcntl_getlk64(struct file *filp, unsigned int cmd, struct flock64 __user *l)
+>  	error = -EFAULT;
+>  	if (!copy_to_user(l, &flock, sizeof(flock)))
+>  		error = 0;
+> -  
+> +
+> +	locks_release_private(&file_lock);
+>  out:
+>  	return error;
+>  }
 
----
- fs/nfs/pagelist.c | 23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+Looks good for the most part. I think there is one small piece missing
+though.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 38eaf83..f393c72 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -149,24 +149,29 @@ static int nfs_wait_bit_uninterruptible(void *word)
-  *
-  * this lock must be held if modifying the page group list
-  *
-- * returns result from wait_on_bit_lock: 0 on success, < 0 on error
-+ * return 0 on success, < 0 on error: -EDELAY if nonblocking or the
-+ * result from wait_on_bit_lock
-+ *
-+ * NOTE: calling with nonblock=false should always have set the
-+ *       lock bit (see fs/buffer.c and other uses of wait_on_bit_lock
-+ *       with TASK_UNINTERRUPTIBLE), so there is no need to check the result.
-  */
- int
- nfs_page_group_lock(struct nfs_page *req, bool nonblock)
- {
- 	struct nfs_page *head = req->wb_head;
--	int ret;
- 
- 	WARN_ON_ONCE(head != head->wb_head);
- 
--	do {
--		ret = wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
--			nfs_wait_bit_uninterruptible,
--			TASK_UNINTERRUPTIBLE);
--	} while (!nonblock && ret != 0);
-+	if (!test_and_set_bit(PG_HEADLOCK, &head->wb_flags))
-+		return 0;
- 
--	WARN_ON_ONCE(ret > 0);
--	return ret;
-+	if (!nonblock)
-+		return wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
-+				nfs_wait_bit_uninterruptible,
-+				TASK_UNINTERRUPTIBLE);
-+
-+	return -EAGAIN;
- }
- 
- /*
+There is a vfs_test_lock call in nlmsvc_testlock. The conflock in that
+case is embedded inside a nlm_lock and locks_release_private is not
+called on it (AFAICT). You're not planning to set these new lmops for
+lockd, but someone could in the future.
+
+I think it would be good to go ahead and plumb in a call to
+locks_release_private there as well to help ensure that no one will
+break this in the future. It'll be a no-op for the time being of course.
+
 -- 
-1.8.5.2 (Apple Git-48)
-
+Jeff Layton <jlayton@primarydata.com>
