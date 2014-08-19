@@ -1,57 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:36179 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751586AbaH0Iaf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2014 04:30:35 -0400
-Received: by mail-qc0-f177.google.com with SMTP id x13so16810115qcv.36
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Aug 2014 01:30:34 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140826195033.GB25117@fieldses.org>
-References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
-	<20140710175136.GA26561@fieldses.org>
-	<CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
-	<CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
-	<CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
-	<CAHQdGtS_O3i6fBhW7vTurL=Y7cKmoeGjTXiEMU5mbb3tR3-LjA@mail.gmail.com>
-	<CALtMJEALbP3DKpaL9Bz6tNjj3GHYUo7wb=VRbOcjB1+hOr6GCg@mail.gmail.com>
-	<CAHQdGtS34K6S_59Huvx8EK+mh1QwSrjtUXaNogGYSm5aQZCA=w@mail.gmail.com>
-	<20140826195033.GB25117@fieldses.org>
-Date: Wed, 27 Aug 2014 10:30:34 +0200
-Message-ID: <CALtMJECxo57CXw1=yKDGLm0o+jPLLpj+7rDMAMMJ95uYEC15Xw@mail.gmail.com>
-Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
-From: Andreas Fenkart <afenkart@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Daniel Mack <zonque@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:46411 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751576AbaHSSii (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:38:38 -0400
+Received: by mail-qc0-f179.google.com with SMTP id m20so6607631qcx.38
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:38:37 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/5] nfsd: support for lifting grace period early
+Date: Tue, 19 Aug 2014 14:38:24 -0400
+Message-Id: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
+v2:
+- move grace period handling into its own module
 
-2014-08-26 21:50 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
->>
->> Still not seeing the readdir, but the getattrs are there and all looks OK.
->> Question: the server is knfsd from a Linux 3.14.4 kernel, is that
->> correct? So it does have commit 83b19121522 (nfsd: revert v2 half of
->> "nfsd: don't return high mode bits")?
->
-> Yeah, you can even see the high bits set (correctly) in the stat
-> returns, so he has that patch.
->
-> Andreas, are you still seeing this problem?
+One of the huge annoyances in dealing with knfsd is the 90s grace period
+that's imposed when the server reboots. This is not just an annoyance,
+but means a siginificant amount of "downtime" in many production
+environments.
 
-No it's gone, but I upgraded my (server-)system meanwhile (debian unstable)
-I also tried downgrading my kernel to the version I had back then, but
-the problem doesn't show up anymore.
+This patchset aimed at reducing this pain. It adds a couple of /proc
+knobs that tell the lockd and nfsd lock managers to lift the grace
+period.
 
-sorry the noise
-/Andreas
+It also changes the UMH upcalls to pass a little bit of extra info in
+the form of environment variables so that the upcall program can
+determine whether there are still any clients that may be in the process
+of reclaiming.
 
+There are also a couple of cleanup patches in here that are not strictly
+required. In particular, making a separate grace.ko module doesn't have
+to be done, but I think it's a good idea.
 
-$ cat /proc/version
-Linux version 3.14-1-amd64 (debian-kernel@lists.debian.org) (gcc
-version 4.8.2 (Debian 4.8.2-21) ) #1 SMP Debian 3.14.4-1 (2014-05-13)
+Jeff Layton (5):
+  lockd: move lockd's grace period handling into its own module
+  lockd: add a /proc/fs/lockd/nlm_end_grace file
+  nfsd: add a v4_end_grace file to /proc/fs/nfsd
+  nfsd: remove redundant boot_time parm from grace_done client tracking
+    op
+  nfsd: pass extra info in env vars to upcalls to allow for early grace
+    period end
 
-http://snapshot.debian.org/archive/debian/20140514T103724Z/pool/main/l/linux/linux-image-3.14-1-amd64_3.14.4-1_i386.deb
+ fs/Kconfig                       |   6 ++-
+ fs/lockd/Makefile                |   3 +-
+ fs/lockd/netns.h                 |   1 -
+ fs/lockd/procfs.c                |  76 +++++++++++++++++++++++++++
+ fs/lockd/procfs.h                |  28 ++++++++++
+ fs/lockd/svc.c                   |  10 +++-
+ fs/nfs_common/Makefile           |   3 +-
+ fs/{lockd => nfs_common}/grace.c |  68 +++++++++++++++++++++----
+ fs/nfsd/Kconfig                  |   1 +
+ fs/nfsd/nfs4recover.c            | 107 +++++++++++++++++++++++++++++++--------
+ fs/nfsd/nfs4state.c              |   8 +--
+ fs/nfsd/nfsctl.c                 |  35 +++++++++++++
+ fs/nfsd/state.h                  |   5 +-
+ include/linux/proc_fs.h          |   2 +
+ 14 files changed, 312 insertions(+), 41 deletions(-)
+ create mode 100644 fs/lockd/procfs.c
+ create mode 100644 fs/lockd/procfs.h
+ rename fs/{lockd => nfs_common}/grace.c (50%)
+
+-- 
+1.9.3
+
