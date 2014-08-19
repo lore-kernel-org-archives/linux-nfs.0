@@ -1,151 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:50884 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752368AbaHNN1J convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 09:27:09 -0400
-Received: by mail-ig0-f182.google.com with SMTP id c1so4950724igq.15
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Aug 2014 06:27:09 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: fuzz testing a 32 bit UML guest with NFSv4 gave: BUG kmalloc-256 (Not tainted): Redzone overwritten
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <7B49B65C-3CD6-43AD-AB11-B3DDC52199FA@primarydata.com>
-Date: Wed, 13 Aug 2014 18:00:17 -0400
-Cc: =?windows-1252?Q?Toralf_F=F6rster?= <toralf.foerster@gmx.de>,
-        Weston Andros Adamson <weston.adamson@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <B5E517A7-303C-40B6-99B4-1FEF72EBFEB1@primarydata.com>
-References: <53D4CAA7.2000005@gmx.de> <CAHQdGtRqeQXEP1+VV5UUYSdobwNjWNt8y11HC_Zb891A+t9FFQ@mail.gmail.com> <7B49B65C-3CD6-43AD-AB11-B3DDC52199FA@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:62556 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751576AbaHSSuA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:50:00 -0400
+Received: by mail-qc0-f179.google.com with SMTP id m20so6575721qcx.24
+        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:49:56 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/7] nfs-utils: support for lifting grace period early
+Date: Tue, 19 Aug 2014 14:49:42 -0400
+Message-Id: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm pretty sure I understand the problem now.
+This patchset adds some support to sm-notify and nfsdcltrack for lifting
+the grace periods early. Allowing this to actually work depends on the
+companion kernel patchset, but the approach I've taken here should deal
+properly with userland/kernel mismatches.
 
-This happens when calls to nfs_direct_write_schedule_iovec have multiple iov_iter_get_pages_alloc
-chunks.  The resulting requests (struct nfs_page) that are put on the nfs_pageio_descriptor:pg_list have
-different  ->wb_page pointers even though they are contiguous from the perspective of the file 
-(req_offset(req) == req_offset(prev) + prev->wb_bytes).  The pagecount calculation in nfs_generic_pgio 
-doesn't account for this.
+There are two main pieces:
 
-A similar problem can happen in the read path.
+sm-notify: in the event that sm-notify isn't sending any NOTIFY
+requests, we don't expect to see any reclaims from clients. In that
+case, we should be able to safely lift the lockd grace period early.
+The first patch in the series implements this (though we'll probably
+need a bit of selinux work to get that working in Fedora under enforcing
+mode).
 
-There are two solutions:
+nfsdcltrack: if there are no v4.0 clients and all v4.1+ clients have
+issued a RECLAIM_COMPLETE, then we can go ahead and end the nfsd grace
+period. The remainder of the patchset adds the support for this. This
+requires revving the DB schema for it, and making use of the environment
+variables that are passed to the upcall by the kernel.
 
- 1) introduce a new check in nfs_can_coalesce_requests - basically the same
-    tests as were removed in commit 362251a0eb540cf2537d78d508b2bcd87fe66321, but each with:
-   && req->wb_page != prev->wb_page.
+With an updated kernel and nfs-utils, I typically see the grace period
+being lifted just a few seconds after it starts. It may take a little
+longer with more clients, but this is a vast improvement over having
+to wait 90s after each reboot to get meaningful work done.
 
- 2) change how we calculate pagecount in nfs_generic_pgio - make the vector big enough to hold
-     all unique pages which are counted as we build the list (easy as duplicates must be sequential).
+Assuming that the kernel parts are acceptable to Bruce et. al., then I
+think we'll want this merged around the same time.
 
-Option 2 seems better to me as it really would be nice to coalesce into one NFS write if possible.
+Jeff Layton (7):
+  sm-notify: inform the kernel if there were no hosts to notify
+  nfsdcltrack: update comments in sqlite.c
+  nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
+  nfsdcltrack: overhaul database initializtion
+  nfsdcltrack: update schema to v2
+  nfsdcltrack: grab the client minorversion from the env var if it's
+    present
+  nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
 
-I'm going to test both approaches and report back.  I'll also add a WARN_ON_ONCE
-to nfs_generic_pgio so that we catch this type of thing in the future.
+ utils/nfsdcltrack/nfsdcltrack.c | 106 +++++++++++-
+ utils/nfsdcltrack/sqlite.c      | 375 ++++++++++++++++++++++++++++++----------
+ utils/nfsdcltrack/sqlite.h      |   5 +-
+ utils/statd/sm-notify.c         |  25 +++
+ 4 files changed, 413 insertions(+), 98 deletions(-)
 
-More tomorrow….
-
--dros
-
-
-
-On Jul 29, 2014, at 11:33 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
-
-> On Jul 27, 2014, at 12:06 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
->> On Sun, Jul 27, 2014 at 5:47 AM, Toralf Förster <toralf.foerster@gmx.de> wrote:
->>> with current git kernel version 3.16.0-rc6-00139-g9c55021 I got today from the syslog :
->>> 
->>> 
->>> Jul 26 23:40:18 trinity kernel: NFSD: unable to generate recoverydir name (-2).
->>> Jul 26 23:40:18 trinity kernel: NFSD: disabling legacy clientid tracking. Reboot recovery will not function correctly!
->>> Jul 26 23:40:22 trinity kernel: VFS: Warning: trinity-c1 using old stat() call. Recompile your binary.
->>> Jul 26 23:40:23 trinity kernel: warning: process `trinity-c1' used the deprecated sysctl system call with
->>> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
->>> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c1 using old stat() call. Recompile your binary.
->>> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
->>> Jul 26 23:40:23 trinity kernel: trinity-c0 (1704) uses deprecated remap_file_pages() syscall. See Documentation/vm/remap_file_pages.txt.
->>> Jul 26 23:40:23 trinity kernel: VFS: Warning: trinity-c0 using old stat() call. Recompile your binary.
->>> Jul 26 23:40:25 trinity kernel: =============================================================================
->>> Jul 26 23:40:25 trinity kernel: BUG kmalloc-256 (Not tainted): Redzone overwritten
->>> Jul 26 23:40:25 trinity kernel: -----------------------------------------------------------------------------
->>> Jul 26 23:40:25 trinity kernel:
->>> Jul 26 23:40:25 trinity kernel: Disabling lock debugging due to kernel taint
->>> Jul 26 23:40:25 trinity kernel: INFO: 0x82f0e230-0x82f0e233. First byte 0xa0 instead of 0xcc
->>> Jul 26 23:40:25 trinity kernel: INFO: Allocated in nfs_generic_pgio+0x86/0x2d0 age=0 cpu=0 pid=1705
->>> Jul 26 23:40:25 trinity kernel: INFO: Freed in nfs_pgio_data_release+0x33/0x70 age=0 cpu=0 pid=610
->>> Jul 26 23:40:25 trinity kernel: INFO: Slab 0x0b7228c0 objects=13 used=2 fp=0x82f0e000 flags=0x0080
->>> Jul 26 23:40:25 trinity kernel: INFO: Object 0x82f0e130 @offset=304 fp=0x82f0e000
->>> Jul 26 23:40:25 trinity kernel:
->>> Jul 26 23:40:25 trinity kernel: Bytes b4 82f0e120: a9 06 00 00 52 cf ff ff 5a 5a 5a 5a 5a 5a 5a 5a  ....R...ZZZZZZZZ
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e130: e0 d3 6b 0b 80 e3 6b 0b a0 e3 6b 0b c0 e3 6b 0b  ..k...k...k...k.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e140: e0 e3 6b 0b 80 13 6c 0b a0 13 6c 0b c0 13 6c 0b  ..k...l...l...l.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e150: e0 13 6c 0b 00 12 6c 0b 20 12 6c 0b 40 12 6c 0b  ..l...l. .l.@.l.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e160: 60 12 6c 0b 80 12 6c 0b a0 12 6c 0b c0 12 6c 0b  `.l...l...l...l.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e170: e0 12 6c 0b 00 10 6c 0b 20 10 6c 0b 40 10 6c 0b  ..l...l. .l.@.l.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e180: 60 10 6c 0b 80 10 6c 0b a0 10 6c 0b c0 10 6c 0b  `.l...l...l...l.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e190: e0 10 6c 0b 00 11 6c 0b 20 11 6c 0b 40 11 6c 0b  ..l...l. .l.@.l.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e1a0: 60 11 6c 0b 80 11 6c 0b a0 11 6c 0b 20 a4 70 0b  `.l...l...l. .p.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e1b0: a0 ca 6f 0b c0 ca 6f 0b e0 ca 6f 0b 00 cb 6f 0b  ..o...o...o...o.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e1c0: 20 cb 6f 0b 40 cb 6f 0b 60 cb 6f 0b 80 cb 6f 0b   .o.@.o.`.o...o.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e1d0: a0 cb 6f 0b c0 cb 6f 0b e0 cb 6f 0b 00 cc 6f 0b  ..o...o...o...o.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e1e0: 20 cc 6f 0b 40 cc 6f 0b 60 cc 6f 0b 80 cc 6f 0b   .o.@.o.`.o...o.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e1f0: a0 cc 6f 0b c0 cc 6f 0b e0 cc 6f 0b 00 cd 6f 0b  ..o...o...o...o.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e200: 20 cd 6f 0b 40 cd 6f 0b 60 cd 6f 0b 80 cd 6f 0b   .o.@.o.`.o...o.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e210: a0 cd 6f 0b c0 cd 6f 0b e0 cd 6f 0b 00 ce 6f 0b  ..o...o...o...o.
->>> Jul 26 23:40:25 trinity kernel: Object 82f0e220: 20 ce 6f 0b 40 ce 6f 0b 60 ce 6f 0b 80 ce 6f 0b   .o.@.o.`.o...o.
->>> Jul 26 23:40:25 trinity kernel: Redzone 82f0e230: a0 ce 6f 0b                                      ..o.
->>> Jul 26 23:40:25 trinity kernel: Padding 82f0e258: 5a 5a 5a 5a 5a 5a 5a 5a                          ZZZZZZZZ
->>> Jul 26 23:40:25 trinity kernel: CPU: 0 PID: 610 Comm: kworker/0:2 Tainted: G    B         3.16.0-rc6-00139-g9c55021 #85
->>> Jul 26 23:40:25 trinity kernel: Workqueue: nfsiod rpc_async_release
->>> Jul 26 23:40:25 trinity kernel: Stack:
->>> Jul 26 23:40:25 trinity kernel: 085a296b 085a296b 00000003 086c8547 85449c00 00000128 0b7228c0 8572fd68
->>> Jul 26 23:40:25 trinity kernel: 084e6736 00000000 8572fd3c 8572fda0 080ff083 085b1a4f 085b1a63 00000001
->>> Jul 26 23:40:25 trinity kernel: 00000010 00000001 82f0e258 00000008 00000001 82f0e130 82f0e230 0b7228c0
->>> Jul 26 23:40:25 trinity kernel: Call Trace:
->>> Jul 26 23:40:25 trinity kernel: [<084e6736>] dump_stack+0x26/0x28
->>> Jul 26 23:40:25 trinity kernel: [<080ff083>] print_trailer+0x1e3/0x1f0
->>> Jul 26 23:40:25 trinity kernel: [<080ff989>] check_bytes_and_report+0xa9/0x100
->>> Jul 26 23:40:25 trinity kernel: [<080ffa2c>] check_object+0x4c/0x210
->>> Jul 26 23:40:25 trinity kernel: [<084e4599>] free_debug_processing+0xab/0x238
->>> Jul 26 23:40:25 trinity kernel: [<0846870e>] ? rpc_wake_up_first+0x16e/0x190
->>> Jul 26 23:40:25 trinity kernel: [<08496b55>] ? __gettimeofday+0x15/0x30
->>> Jul 26 23:40:25 trinity kernel: [<084e475f>] __slab_free+0x39/0x223
->>> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
->>> Jul 26 23:40:25 trinity kernel: [<0808119c>] ? __local_bh_enable_ip+0x1c/0xa0
->>> Jul 26 23:40:25 trinity kernel: [<08090293>] ? insert_work+0x73/0x90
->>> Jul 26 23:40:25 trinity kernel: [<080729be>] ? set_signals+0x1e/0x40
->>> Jul 26 23:40:25 trinity kernel: [<08101201>] kfree+0x111/0x150
->>> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
->>> Jul 26 23:40:25 trinity kernel: [<081e1d33>] ? nfs_pgio_data_release+0x33/0x70
->>> Jul 26 23:40:25 trinity kernel: [<081e1d33>] nfs_pgio_data_release+0x33/0x70
->>> Jul 26 23:40:25 trinity kernel: [<081e1d93>] nfs_pgio_release+0x23/0x30
->>> Jul 26 23:40:25 trinity kernel: [<08467c80>] rpc_free_task+0x20/0x60
->>> Jul 26 23:40:25 trinity kernel: [<08467cce>] rpc_async_release+0xe/0x10
->>> Jul 26 23:40:25 trinity kernel: [<08090d11>] process_one_work+0x1a1/0x310
->>> Jul 26 23:40:25 trinity kernel: [<084e7e65>] ? schedule+0x55/0x60
->>> Jul 26 23:40:25 trinity kernel: [<0809116a>] worker_thread+0x2ea/0x530
->>> Jul 26 23:40:25 trinity kernel: [<080729be>] ? set_signals+0x1e/0x40
->>> Jul 26 23:40:25 trinity kernel: [<084e7e65>] ? schedule+0x55/0x60
->>> Jul 26 23:40:25 trinity kernel: [<08090e80>] ? worker_thread+0x0/0x530
->>> Jul 26 23:40:25 trinity kernel: [<08096806>] kthread+0xd6/0xe0
->>> Jul 26 23:40:25 trinity kernel: [<0809dd7d>] ? finish_task_switch.isra.56+0x1d/0x70
->>> Jul 26 23:40:25 trinity kernel: [<0806064b>] new_thread_handler+0x6b/0x90
->>> Jul 26 23:40:25 trinity kernel:
->>> Jul 26 23:40:25 trinity kernel: FIX kmalloc-256: Restoring 0x82f0e230-0x82f0e233=0xcc
->>> Jul 26 23:40:25 trinity kernel:
->>> Jul 26 23:40:26 trinity trinity: Detected kernel tainting. Last seed was 412561049
->>> 
->> 
->> Hi Dros,
->> 
->> It looks to me as if we're overflowing the page array by 1 page
->> pointer. Do you agree?
->> Do we perhaps have to look again at the way we're calculating the array length?
->> 
-> 
-> I think you’re right. Looking at it…
-> 
-> -dros
+-- 
+1.9.3
 
