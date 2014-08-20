@@ -1,97 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:41420 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752351AbaHSBGO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Aug 2014 21:06:14 -0400
-Date: Tue, 19 Aug 2014 11:06:03 +1000
-From: NeilBrown <neilb@suse.de>
-To: Mike Frysinger <vapier@gentoo.org>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH nfs-utils] start-statd: clean up output when systemd is
- not installed
-Message-ID: <20140819110603.38b92ecb@notabene.brown>
-In-Reply-To: <1649346.61nAovKFdn@vapier>
-References: <1408286648-19031-1-git-send-email-vapier@gentoo.org>
-	<53F23223.5090904@RedHat.com>
-	<1649346.61nAovKFdn@vapier>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:34532 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751694AbaHTNEP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 09:04:15 -0400
+Received: by mail-qa0-f52.google.com with SMTP id j15so6854788qaq.39
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 06:04:14 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 20 Aug 2014 09:04:12 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Joe Perches <joe@perches.com>
+Subject: Re: [PATCH] lockd: Remove unused b_fl member from struct nlm_block
+Message-ID: <20140820090412.309b7599@tlielax.poochiereds.net>
+In-Reply-To: <53F4904B.6080204@gmail.com>
+References: <53F47357.7050608@gmail.com>
+	<20140820065826.6def22d5@tlielax.poochiereds.net>
+	<53F4904B.6080204@gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/VsO=T5UbBCxC_Wf3odY39vE"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/VsO=T5UbBCxC_Wf3odY39vE
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Wed, 20 Aug 2014 20:10:51 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-On Mon, 18 Aug 2014 19:57:49 -0400 Mike Frysinger <vapier@gentoo.org> wrote:
+> On 8/20/2014 18:58, Jeff Layton wrote:
+> > On Wed, 20 Aug 2014 18:07:19 +0800
+> > Kinglong Mee <kinglongmee@gmail.com> wrote:
+> > 
+> >> Fix left code by Joe Perches's patch,
+> >> "locks: Remove unused conf argument from lm_grant"
+> >>
+> >> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> >> ---
+> >>  fs/lockd/svclock.c          | 26 +++++---------------------
+> >>  include/linux/lockd/lockd.h |  1 -
+> >>  2 files changed, 5 insertions(+), 22 deletions(-)
+> >>
+> >> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> >> index 2a61701..796e63b 100644
+> >> --- a/fs/lockd/svclock.c
+> >> +++ b/fs/lockd/svclock.c
+> >> @@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
+> >>  	block->b_daemon = rqstp->rq_server;
+> >>  	block->b_host   = host;
+> >>  	block->b_file   = file;
+> >> -	block->b_fl = NULL;
+> >>  	file->f_count++;
+> >>  
+> >>  	/* Add to file's list of blocks */
+> >> @@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
+> >>  	nlmsvc_freegrantargs(block->b_call);
+> >>  	nlmsvc_release_call(block->b_call);
+> >>  	nlm_release_file(block->b_file);
+> >> -	kfree(block->b_fl);
+> >>  	kfree(block);
+> >>  }
+> >>  
+> >> @@ -523,20 +521,13 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+> >>  	block = nlmsvc_lookup_block(file, lock);
+> >>  
+> >>  	if (block == NULL) {
+> >> -		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
+> >> -
+> >> -		if (conf == NULL)
+> >> -			return nlm_granted;
+> >>  		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
+> >> -		if (block == NULL) {
+> >> -			kfree(conf);
+> >> +		if (block == NULL)
+> >>  			return nlm_granted;
+> >> -		}
+> >> -		block->b_fl = conf;
+> > 
+> > NAK. The b_fl member is not unused, as is evidenced by the assignment
+> > above.
+> 
+> Sorry for my bad title, Maybe I should use a good name, sorry!
+> 
+> > 
+> > Joe's patch removed the conflock from the lm_grant callback since the
+> > filesystem never set that parameter in the lm_grant callback. This call
+> > however has nothing to do with lm_grant. It's done when the client
+> > issues a NLM_TEST operation.
+> > 
+> >>  	}
+> >>  	if (block->b_flags & B_QUEUED) {
+> >> -		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
+> >> -			block, block->b_flags, block->b_fl);
+> >> +		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d\n",
+> >> +			block, block->b_flags);
+> >>  		if (block->b_flags & B_TIMED_OUT) {
+> >>  			nlmsvc_unlink_block(block);
+> >>  			ret = nlm_lck_denied;
+> >> @@ -544,14 +535,8 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+> >>  		}
+> >>  		if (block->b_flags & B_GOT_CALLBACK) {
+> >>  			nlmsvc_unlink_block(block);
+> >> -			if (block->b_fl != NULL
+> >> -					&& block->b_fl->fl_type != F_UNLCK) {
+> >> -				lock->fl = *block->b_fl;
+> >> -				goto conf_lock;
+> 
+> block->b_fl = conf just set an all-zero filed structure to block above,
+> and never be updated later.
+> If lockd enter here, lock->fl will contains all filed with zero,
+> I don't know whether is it OK.
+> 
+> thanks,
+> Kinglong Mee
+> 
 
-> On Mon 18 Aug 2014 13:04:35 Steve Dickson wrote:
-> > On 08/17/2014 10:44 AM, Mike Frysinger wrote:
-> > > If you don't have systemd, then this script dumps:
-> > > /usr/sbin/start-statd: line 8: systemctl: command not found
-> > >=20
-> > > This isn't terribly useful since we ultimately fall back to running
-> > > the daemon ourselves, so probe for systemd's existence before we try
-> > > to use it.
-> > >=20
-> > > Signed-off-by: Mike Frysinger <vapier@gentoo.org>
-> >=20
-> > Committed... but I used 'rpm -q systemd' instead of 'systemctl --help'
-> > to test for the existences of systemd
-> >=20
-> >  # First try systemd if it's installed.
-> > -if systemctl --help >/dev/null 2>&1; then
-> > +if rpm -q systemd > /dev/null 2>&1; then
-> >      # Quit only if the call worked.
-> >      systemctl start rpc-statd.service && exit
->=20
-> what about all the other distros not using rpm ?  my version was distro=20
-> agnostic.
-> -mike
+Not quite....You can end up getting back FILE_LOCK_DEFERRED from an
+initial vfs_test_lock request. At that point, a block will be queued
+and we'll end up retrying that until the fs comes back. The result of
+those retries will end up in b_fl and that's what will end up being
+copied to lock->fl.
 
-distro-agnotic is certainly important.
-I would have gone with:
+lockd is one giant Rube Goldberg machine made of baling wire and duct
+tape, but it *basically* works and I don't have much inclination to
+tinker with it. It's legacy code at this point.
 
-diff --git a/utils/statd/start-statd b/utils/statd/start-statd
-index dcdaf7763f18..414f73f58096 100644
---- a/utils/statd/start-statd
-+++ b/utils/statd/start-statd
-@@ -5,7 +5,7 @@
- # It should run statd with whatever flags are apropriate for this
- # site.
- PATH=3D"/sbin:/usr/sbin:/bin:/usr/bin"
--if systemctl start rpc-statd.service
-+if systemctl start rpc-statd.service > /dev/null 2>&1
- then :
- else
-     exec rpc.statd --no-notify
+I'd suggest that we take add the patch I proposed earlier since I think
+it's basically harmless and should help future-proof changes to this
+code.
 
-
-why call systemctl twice (once with --help and once with "start")?
-
-NeilBrown
-
---Sig_/VsO=T5UbBCxC_Wf3odY39vE
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU/Ki+znsnt1WYoG5AQJLpQ/9F2ZVeiLG7y3rMGmY78D0xxhWwafg0qqU
-7qJgK6mYYTOXgw6LOuCCIKBuXQgBRJGMbKPVaQt3Qk31UAqCxQGA1a4K2S4K3FNY
-W7cDDS1sKTEA3Pg8ImKevJlukF019MLHsSuTgA1+mfyQoW1xCZvp833f1U8Td6iQ
-TjHKEmZ1+XbYLr3CF0VAhQKegR2S7GBwuTOjs/MpqSKXPib+DT3Q01AuPapZHn4q
-5aFVsBYUu9wzjDJz40s0pl0OQjYhgW1kBvoJyf8Upqw+DKabSXW75TbCqOmUAKOo
-/+mj6iTaXb+WnIikXTDYDAhb/Gs4FaRhavUWWAwQkMrU6zFn7sQrbYUtht+ToRcd
-ehxomTXWZfo3UzprJJWCKK/znhRZFGP9rjIwvLgiiNC40+969a6CnBpPhSVQkTrg
-cPjLw2s/0EkooU5H9ZA35lsUpwm6chhjQ/dBK55wyGzNUhSHM2oHRlDEuo4KS7iN
-zBbr4MMX6HjFgo4jBmmqxG8FWFxpSVVUOYkWax6MpxbaaMOO8QRn1f/8L+rTyDtT
-PVdWxBw4zPefKbdEbdO/plNSUl9prD+JXxiqBiLQot+2/6GlX995dhI/wWsCyyLV
-7Ig/LCSpSdMrQ3sdu+el/7RSQdW1Eh8I+oN0RRO3Be1DVxN48KBaj7POifXosQFB
-2Ne34AD704I=
-=a511
------END PGP SIGNATURE-----
-
---Sig_/VsO=T5UbBCxC_Wf3odY39vE--
+-- 
+Jeff Layton <jlayton@primarydata.com>
