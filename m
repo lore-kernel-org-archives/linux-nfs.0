@@ -1,82 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f176.google.com ([209.85.220.176]:64791 "EHLO
-	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751944AbaH2T3J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Aug 2014 15:29:09 -0400
-Received: by mail-vc0-f176.google.com with SMTP id ik5so2967106vcb.7
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Aug 2014 12:29:07 -0700 (PDT)
+Received: from mail-vc0-f175.google.com ([209.85.220.175]:46761 "EHLO
+	mail-vc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753122AbaHTX1R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 19:27:17 -0400
+Received: by mail-vc0-f175.google.com with SMTP id ik5so9858331vcb.20
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 16:27:16 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20140829185510.GA13710@fieldses.org>
-References: <20140829185510.GA13710@fieldses.org>
-Date: Fri, 29 Aug 2014 15:29:07 -0400
-Message-ID: <CAHQdGtQyZ0prJLpsDZ_E+qiF9OoxrxEtLOZw7w88eSTejYd=RA@mail.gmail.com>
-Subject: Re: [PATCH] nfsd4: fix rd_dircount enforcement
+In-Reply-To: <87ppfvrdux.fsf@x220.int.ebiederm.org>
+References: <1408217806-25877-1-git-send-email-xiyou.wangcong@gmail.com>
+	<87ppfvrdux.fsf@x220.int.ebiederm.org>
+Date: Wed, 20 Aug 2014 19:27:15 -0400
+Message-ID: <CAHQdGtS41PsfH5SKr2kcpUjnb7QL4CPFey1zSasXmHbhnZqtEQ@mail.gmail.com>
+Subject: Re: [PATCH v2] nfs: fix kernel warning when removing proc entry
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Cong Wang <xiyou.wangcong@gmail.com>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Dan Aloni <dan@kernelim.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 29, 2014 at 2:55 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Aug 20, 2014 at 12:20 AM, Eric W. Biederman
+<ebiederm@xmission.com> wrote:
+> Cong Wang <xiyou.wangcong@gmail.com> writes:
 >
-> Commit 3b299709091b "nfsd4: enforce rd_dircount" totally misunderstood
-> rd_dircount; it refers to total non-attribute bytes returned, not number
-> of directory entries returned.
+>> I saw the following kernel warning:
 >
-> Bring the code into agreement with RFC 3530 section 14.2.24.
+> Cong thanks for finding and tracking this.  I was clearly asleep at the
+> switch when I was testing my fix to the nfs client code :(
 >
-> Cc: stable@kernel.org
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 14 +++++++++++++-
->  1 file changed, 13 insertions(+), 1 deletion(-)
+> I have applied this patch and will push it to Linus after it has a
+> little bit to sit in linux-next.
 >
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index f9821ce6658a..e94457c33ad6 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -2657,6 +2657,7 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
->         struct xdr_stream *xdr = cd->xdr;
->         int start_offset = xdr->buf->len;
->         int cookie_offset;
-> +       u32 name_and_cookie;
->         int entry_bytes;
->         __be32 nfserr = nfserr_toosmall;
->         __be64 wire_offset;
-> @@ -2718,7 +2719,14 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
->         cd->rd_maxcount -= entry_bytes;
->         if (!cd->rd_dircount)
->                 goto fail;
-> -       cd->rd_dircount--;
-> +       /*
-> +        * RFC 3530 14.2.24 describes rd_dircount as only a "hint", so
-> +        * let's always let through the first entry, at least:
-> +        */
-> +       name_and_cookie = 4 * XDR_QUADLEN(namlen) + 8;
-> +       if (name_and_cookie > cd->rd_dircount && cd->cookie_offset)
-> +               goto fail;
-> +       cd->rd_dircount -= min(cd->rd_dircount, name_and_cookie);
->         cd->cookie_offset = cookie_offset;
->  skip_entry:
->         cd->common.err = nfs_ok;
-> @@ -3321,6 +3329,10 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
->         }
->         maxcount = min_t(int, maxcount-16, bytes_left);
->
-> +       /* RFC 3530 14.2.24 allows us to ignore dircount when it's 0: */
-> +       if (!readdir->rd_dircount)
-> +               readdir->rd_dircount = INT_MAX;
-> +
 
-Ah... Time to change the Linux client to always set this value to 0.
-It really is useless in our case.
+This is precisely _WHY_ it is supposed to go through the maintainer,
+and not through arbitrary namespace trees. I'm tired of the namespace
+folks pushing crap and just assuming that a "Cc:" is OK. A "Cc:
+maintainer" means this is an RFC, not something that is to be
+committed.
 
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Trond
