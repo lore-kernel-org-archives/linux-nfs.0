@@ -1,111 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f42.google.com ([209.85.213.42]:58331 "EHLO
-	mail-yh0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S935486AbaH0RfP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2014 13:35:15 -0400
-Received: by mail-yh0-f42.google.com with SMTP id a41so584050yho.15
-        for <linux-nfs@vger.kernel.org>; Wed, 27 Aug 2014 10:35:15 -0700 (PDT)
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:47869 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752775AbaHTXQo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 19:16:44 -0400
+Received: by mail-vc0-f174.google.com with SMTP id la4so9939293vcb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 16:16:43 -0700 (PDT)
 MIME-Version: 1.0
-Date: Wed, 27 Aug 2014 13:35:14 -0400
-Message-ID: <CAHVgHyWwoOyguyJa-tmQVQE56c2wSOR2xUnwOzPOfet_nK60Sw@mail.gmail.com>
-Subject: nfsiod work_queue hang issue in RHEL 6.6 pre kernel (2.6.32-459)
-From: Andy Adamson <androsadamson@gmail.com>
-To: Trond Myklebust <trond.myklebust@fys.uio.no>
-Cc: NFS list <linux-nfs@vger.kernel.org>
+In-Reply-To: <alpine.DEB.2.19.4.1408192222470.2758@trent.utfs.org>
+References: <1408217806-25877-1-git-send-email-xiyou.wangcong@gmail.com>
+	<87ppfvrdux.fsf@x220.int.ebiederm.org>
+	<alpine.DEB.2.19.4.1408192222470.2758@trent.utfs.org>
+Date: Wed, 20 Aug 2014 19:16:43 -0400
+Message-ID: <CAHQdGtQ0_2cnvbuQxYDrU2nuZ2iw1gZtxB5PeR-2QZL008OOwg@mail.gmail.com>
+Subject: Re: [PATCH v2] nfs: fix kernel warning when removing proc entry
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christian Kujau <lists@nerdbynature.de>
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
+        Cong Wang <xiyou.wangcong@gmail.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Dan Aloni <dan@kernelim.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We are seeing nfsiod hang for 5 to 20+ minutes.
+On Wed, Aug 20, 2014 at 1:24 AM, Christian Kujau <lists@nerdbynature.de> wrote:
+> On Tue, 19 Aug 2014 at 21:20, Eric W. Biederman wrote:
+>
+>> Cong Wang <xiyou.wangcong@gmail.com> writes:
+>>
+>> > I saw the following kernel warning:
+>>
+>> Cong thanks for finding and tracking this.  I was clearly asleep at the
+>> switch when I was testing my fix to the nfs client code :(
+>>
+>> I have applied this patch and will push it to Linus after it has a
+>> little bit to sit in linux-next.
+>
+> This made the boot warning go away for me as well:
+> http://lkml.iu.edu/hypermail/linux/kernel/1408.2/01792.html
+>
+> Tested-by: Christian Kujau <lists@nerdbynature.de>
+>
+> Thanks!
+> Christian.
+> --
+> BOFH excuse #182:
+>
+> endothermal recalibration
 
-This thread hung for 5-10 minutes then cleared.
+It is customary (and expected!) to send these patches through the
+maintainer; not to push them yourself.
 
-Aug 26 05:10:01 scspr0012063007 kernel: nfsiod        S
-0000000000000000     0  4931      2 0x00000080
-Aug 26 05:05:01 scspr0012063007 kernel: ffff880037891e30
-0000000000000046 ffff8800d130d400 ffffffffa01e1030
-Aug 26 05:05:01 scspr0012063007 kernel: ffff880037891fd8
-ffffe8ffff608ac8 ffff880037891dc0 ffffffffa0287e8d
-Aug 26 05:05:01 scspr0012063007 kernel: ffff880104fb5098
-ffff880037891fd8 000000000000fbc8 ffff880104fb5098
-Aug 26 05:05:01 scspr0012063007 kernel: Call Trace:
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffffa01e1030>] ?
-rpc_async_release+0x0/0x20 [sunrpc]
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffffa0287e8d>] ?
-nfs_writedata_release+0x6d/0x90 [nfs]
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b7fe>] ?
-prepare_to_wait+0x4e/0x80
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffffa01e1030>] ?
-rpc_async_release+0x0/0x20 [sunrpc]
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff81094fdc>]
-worker_thread+0x1fc/0x2a0
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b4d0>] ?
-autoremove_wake_function+0x0/0x40
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff81094de0>] ?
-worker_thread+0x0/0x2a0
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b126>] kthread+0x96/0xa0
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8100c20a>] child_rip+0xa/0x20
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8109b090>] ? kthread+0x0/0xa0
-Aug 26 05:05:01 scspr0012063007 kernel: [<ffffffff8100c200>] ?
-child_rip+0x0/0x20
+-- 
+Trond Myklebust
 
-This similar Call Trace, nfsiod hung for 20 minutest, then the client
-was rebooted.
+Linux NFS client maintainer, PrimaryData
 
-Aug 26 06:00:01 scspr0012063007 kernel: nfsiod        S
-0000000000000000     0  1701      2 0x00000000
-Aug 26 06:00:01 scspr0012063007 kernel: ffff880037a63e30
-0000000000000046 ffff880037a62000 ffff880037a62000
-Aug 26 06:00:01 scspr0012063007 kernel: ffff8800f3421140
-0000000000000000 ffff8800f3421140 ffffffffa0316030
-Aug 26 06:00:01 scspr0012063007 kernel: ffff880100e2f098
-ffff880037a63fd8 000000000000fbc8 ffff880100e2f098
-Aug 26 06:00:01 scspr0012063007 kernel: Call Trace:
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffffa0316030>] ?
-rpc_async_release+0x0/0x20 [sunrpc]
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b7fe>] ?
-prepare_to_wait+0x4e/0x80
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffffa0316030>] ?
-rpc_async_release+0x0/0x20 [sunrpc]
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff81094fdc>]
-worker_thread+0x1fc/0x2a0
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b4d0>] ?
-autoremove_wake_function+0x0/0x40
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff81094de0>] ?
-worker_thread+0x0/0x2a0
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b126>] kthread+0x96/0xa0
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8100c20a>] child_rip+0xa/0x20
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8109b090>] ? kthread+0x0/0xa0
-Aug 26 06:00:01 scspr0012063007 kernel: [<ffffffff8100c200>] ?
-child_rip+0x0/0x20
-
-rpc_async_release calls rpc_free_task - which is unchanged in the
-upstream kernel. I note this comment:
-
-+/*
-+ * rpc_free_task - release rpc task and perform cleanups
-+ *
-+ * Note that we free up the rpc_task _after_ rpc_release_calldata()
-+ * in order to work around a workqueue dependency issue.
-+ *
-+ * Tejun Heo states:
-+ * "Workqueue currently considers two work items to be the same if they're
-+ * on the same address and won't execute them concurrently - ie. it
-+ * makes a work item which is queued again while being executed wait
-+ * for the previous execution to complete.
-+ *
-+ * If a work function frees the work item, and then waits for an event
-+ * which should be performed by another work item and *that* work item
-+ * recycles the freed work item, it can create a false dependency loop.
-+ * There really is no reliable way to detect this short of verifying
-+ * every memory free."
-+ *
-
-worker_thread calls prepare_to_wait....
-
-Are there changes to the upstream work queue or RPC layer that may be
-worth looking into back porting to help with this issue?
-
-Thanks
-
--->Andy
+trond.myklebust@primarydata.com
