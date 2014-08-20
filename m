@@ -1,54 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx6-phx2.redhat.com ([209.132.183.39]:39358 "EHLO
-	mx6-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754753AbaHEPRG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2014 11:17:06 -0400
-Received: from zmail10.collab.prod.int.phx2.redhat.com (zmail10.collab.prod.int.phx2.redhat.com [10.5.83.12])
-	by mx6-phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s75FH5HR025251
-	for <linux-nfs@vger.kernel.org>; Tue, 5 Aug 2014 11:17:05 -0400
-Date: Tue, 5 Aug 2014 11:17:05 -0400 (EDT)
-From: David Jeffery <djeffery@redhat.com>
-To: linux-nfs@vger.kernel.org
-Message-ID: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com>
-In-Reply-To: <1136742914.14501494.1407251366067.JavaMail.zimbra@redhat.com>
-Subject: [PATCH] nfs: Always try and release an NFS file lock, even after
- receiving a SIGKILL
+Received: from mail-pd0-f171.google.com ([209.85.192.171]:33604 "EHLO
+	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752276AbaHTJ4x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 05:56:53 -0400
+Message-ID: <53F470CA.7000907@gmail.com>
+Date: Wed, 20 Aug 2014 17:56:26 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-fsdevel@vger.kernel.org
+Subject: [PATCH 4/6 v5] locks: Copy fl_lmops information for conflock in locks_copy_conflock()
+References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com> <53F36CB5.2030707@gmail.com>
+In-Reply-To: <53F36CB5.2030707@gmail.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
+fl_lmops field in file_lock for checking nfsd4 lockowner.
 
-If a task holding an NFS file lock is killed with SIGKILL, it can
-error out of do_unlk without ever trying to release the lock on
-the server. This triggers the WARN in locks_remove_file(), while
-also leaving the lock still claimed on the NFS server.  The file's
-lock state is left out of sync between client and server, requiring
-a restart of one or the other in order to release this ghost lock
-on the file.
+But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return
+of conflicting locks) causes the fl_lmops of conflock always be NULL.
 
-do_unlk() should continue on and tell the server to release the
-lock, even if nfs_iocounter_wait() reports an error do to SIGKILL.
+Also, commit 0996905f93 (lockd: posix_test_lock() should not call
+locks_copy_lock()) caused the fl_lmops of conflock always be NULL too.
 
-Signed-off-by: David Jeffery <djeffery@redhat.com>
+Make sure copy the private information by fl_copy_lock() in struct
+file_lock_operations, merge __locks_copy_lock() to fl_copy_lock().
 
+Jeff advice, "Set fl_lmops on conflocks, but don't set fl_ops.
+fl_ops are superfluous, since they are callbacks into the filesystem.
+There should be no need to bother the filesystem at all with info
+in a conflock. But, lock _ownership_ matters for conflocks and that's
+indicated by the fl_lmops. So you really do want to copy the fl_lmops
+for conflocks I think."
+
+v5: add missing calling of locks_release_private() in nlmsvc_testlock()
+v4: only copy fl_lmops for conflock, don't copy fl_ops
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- file.c |    4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ fs/lockd/svclock.c |  1 +
+ fs/locks.c         | 36 ++++++++++++++++--------------------
+ 2 files changed, 17 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 4042ff5..1b09243 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -750,10 +750,8 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 796e63b..2e1b292 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -570,6 +570,7 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	conflock->fl.fl_type = lock->fl.fl_type;
+ 	conflock->fl.fl_start = lock->fl.fl_start;
+ 	conflock->fl.fl_end = lock->fl.fl_end;
++	locks_release_private(&lock->fl);
+ 	ret = nlm_lck_denied;
+ out:
+ 	if (block)
+diff --git a/fs/locks.c b/fs/locks.c
+index c376561..0ee775d 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -271,21 +271,6 @@ void locks_init_lock(struct file_lock *fl)
  
- 	l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
- 	if (!IS_ERR(l_ctx)) {
--		status = nfs_iocounter_wait(&l_ctx->io_count);
-+		nfs_iocounter_wait(&l_ctx->io_count);
- 		nfs_put_lock_context(l_ctx);
--		if (status < 0)
--			return status;
+ EXPORT_SYMBOL(locks_init_lock);
+ 
+-static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
+-{
+-	if (fl->fl_ops) {
+-		if (fl->fl_ops->fl_copy_lock)
+-			fl->fl_ops->fl_copy_lock(new, fl);
+-		new->fl_ops = fl->fl_ops;
+-	}
+-
+-	if (fl->fl_lmops) {
+-		if (fl->fl_lmops->lm_get_owner)
+-			fl->fl_lmops->lm_get_owner(new, fl);
+-		new->fl_lmops = fl->fl_lmops;
+-	}
+-}
+-
+ /*
+  * Initialize a new lock from an existing file_lock structure.
+  */
+@@ -298,8 +283,13 @@ void locks_copy_conflock(struct file_lock *new, struct file_lock *fl)
+ 	new->fl_type = fl->fl_type;
+ 	new->fl_start = fl->fl_start;
+ 	new->fl_end = fl->fl_end;
++	new->fl_lmops = fl->fl_lmops;
+ 	new->fl_ops = NULL;
+-	new->fl_lmops = NULL;
++
++	if (fl->fl_lmops) {
++		if (fl->fl_lmops->lm_get_owner)
++			fl->fl_lmops->lm_get_owner(new, fl);
++	}
+ }
+ EXPORT_SYMBOL(locks_copy_conflock);
+ 
+@@ -309,11 +299,14 @@ void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
+ 	WARN_ON_ONCE(new->fl_ops);
+ 
+ 	locks_copy_conflock(new, fl);
++
+ 	new->fl_file = fl->fl_file;
+ 	new->fl_ops = fl->fl_ops;
+-	new->fl_lmops = fl->fl_lmops;
+ 
+-	locks_copy_private(new, fl);
++	if (fl->fl_ops) {
++		if (fl->fl_ops->fl_copy_lock)
++			fl->fl_ops->fl_copy_lock(new, fl);
++	}
+ }
+ 
+ EXPORT_SYMBOL(locks_copy_lock);
+@@ -1989,11 +1982,13 @@ int fcntl_getlk(struct file *filp, unsigned int cmd, struct flock __user *l)
+ 	if (file_lock.fl_type != F_UNLCK) {
+ 		error = posix_lock_to_flock(&flock, &file_lock);
+ 		if (error)
+-			goto out;
++			goto rel_priv;
  	}
- 
- 	/* NOTE: special case
+ 	error = -EFAULT;
+ 	if (!copy_to_user(l, &flock, sizeof(flock)))
+ 		error = 0;
++rel_priv:
++	locks_release_private(&file_lock);
+ out:
+ 	return error;
+ }
+@@ -2214,7 +2209,8 @@ int fcntl_getlk64(struct file *filp, unsigned int cmd, struct flock64 __user *l)
+ 	error = -EFAULT;
+ 	if (!copy_to_user(l, &flock, sizeof(flock)))
+ 		error = 0;
+-  
++
++	locks_release_private(&file_lock);
+ out:
+ 	return error;
+ }
+-- 
+1.9.3
+
