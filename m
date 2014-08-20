@@ -1,76 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f169.google.com ([209.85.217.169]:59858 "EHLO
-	mail-lb0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754795AbaHFMBb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 08:01:31 -0400
-From: Pavel Shilovsky <pshilovsky@samba.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@samba.org>
-Subject: [PATCH 3/5] Add capability to test SMB 2.0 and higher verions
-Date: Wed,  6 Aug 2014 16:01:10 +0400
-Message-Id: <1407326472-13853-4-git-send-email-pshilovsky@samba.org>
-In-Reply-To: <1407326472-13853-1-git-send-email-pshilovsky@samba.org>
-References: <1407326472-13853-1-git-send-email-pshilovsky@samba.org>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:47908 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750979AbaHTDGr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 23:06:47 -0400
+Date: Tue, 19 Aug 2014 23:06:40 -0400 (EDT)
+From: Xiong Zhou <xzhou@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, ben@decadent.org.uk,
+        linux-kernel@vger.kernel.org
+Message-ID: <1927160445.21851828.1408504000719.JavaMail.zimbra@redhat.com>
+In-Reply-To: <600788954.21849581.1408502615727.JavaMail.zimbra@redhat.com>
+Subject: [PATCH] nfs: use canonical path in nfs_show_devname
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Pavel Shilovsky <pshilovsky@samba.org>
----
- lock/runtests        | 5 +++--
- special/runtests.wrk | 9 +++++++--
- 2 files changed, 10 insertions(+), 4 deletions(-)
 
-diff --git a/lock/runtests b/lock/runtests
-index 006742e..21b09a5 100644
---- a/lock/runtests
-+++ b/lock/runtests
-@@ -36,7 +36,7 @@ case $TESTARG in
- 	-t)	TESTARGS="-r"	;;
- esac
- 
--if echo "$mntopts" | grep vers=2 > /dev/null
-+if [ "$CIFS" != "yes" ] && echo "$mntopts" | grep vers=2 > /dev/null
- then
- 	TESTARGS="-v 2 $TESTARGS"
- fi
-@@ -52,7 +52,8 @@ do
- 		tlock)		echo 'Testing native pre-LFS locking';;
- 		tlocklfs)	echo 'Testing native post-LFS locking';;
- 		tlock64)
--			if echo "$mntopts" | grep vers=2 > /dev/null
-+			if [ "$CIFS" != "yes" ] &&
-+			   echo "$mntopts" | grep vers=2 > /dev/null
- 			then
- 			echo "64-bit locking not supported with NFS v2"
- 				echo " "
-diff --git a/special/runtests.wrk b/special/runtests.wrk
-index a941d33..8f099fa 100644
---- a/special/runtests.wrk
-+++ b/special/runtests.wrk
-@@ -25,7 +25,12 @@ TMPDIR= ./op_unlk
- 
- echo ""
- echo "check for proper open/rename operation"
--TMPDIR= ./op_ren
-+if [ "$CIFS" = "yes" ] && echo $MNTOPTIONS | grep -E "vers=2|vers=3" > /dev/null
-+then
-+	echo "skipping test; not supported by SMB 2.0 and higher versions"
-+else
-+	TMPDIR= ./op_ren
-+fi
- 
- echo ""
- echo "check for proper open/chmod 0 operation"
-@@ -93,7 +98,7 @@ echo "write/read" $size "MB file"
- 
- echo ""
- echo "write/read at 2GB, 4GB edges"
--if echo $MNTOPTIONS | grep vers=2 > /dev/null
-+if [ "$CIFS" != "yes" ] && echo $MNTOPTIONS | grep vers=2 > /dev/null
- then
- 	echo "skipping test; not supported with v2"
- else
+When export root dir(/) via nfs, and mount a particular dir under root, eg
+/nfsexport, there will be defect double slash output in /proc/mounts, like
+localhost://nfsexport.
+
+Signed-off-by: Xiong Zhou <xzhou@redhat.com>
+---
+ fs/nfs/super.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index e4499d5..62b1cab 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -780,7 +780,7 @@ int nfs_show_devname(struct seq_file *m, struct dentry *root)
+ 	int err = 0;
+ 	if (!page)
+ 		return -ENOMEM;
+-	devname = nfs_path(&dummy, root, page, PAGE_SIZE, 0);
++	devname = nfs_path(&dummy, root, page, PAGE_SIZE, 1);
+ 	if (IS_ERR(devname))
+ 		err = PTR_ERR(devname);
+ 	else
 -- 
-1.8.1.2
+1.8.3.1
 
