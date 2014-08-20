@@ -1,113 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:61772 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751400AbaHJMqx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Aug 2014 08:46:53 -0400
-Message-ID: <53E769A7.4010303@gmail.com>
-Date: Sun, 10 Aug 2014 20:46:31 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:58646 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751534AbaHTLQu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 07:16:50 -0400
+Received: by mail-qc0-f171.google.com with SMTP id r5so7491239qcx.16
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 04:16:49 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 20 Aug 2014 07:16:47 -0400
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>, jlayton@redhat.com,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFSD: New FL_NFSD for marking file_lock belongs to
- NFSD
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net>
-In-Reply-To: <20140809065112.700e0ecc@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=windows-1252
+        Joe Perches <joe@perches.com>
+Subject: Re: [PATCH] lockd: Remove unused b_fl member from struct nlm_block
+Message-ID: <20140820071647.2b607e3f@tlielax.poochiereds.net>
+In-Reply-To: <53F47357.7050608@gmail.com>
+References: <53F47357.7050608@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/9/2014 18:51, Jeff Layton wrote:
-> On Wed, 06 Aug 2014 21:33:25 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
->> Using fl_flags instead of fl_lmops for marking file_lock belongs to NFSD.
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  fs/nfsd/nfs4state.c | 15 ++++-----------
->>  include/linux/fs.h  |  1 +
->>  2 files changed, 5 insertions(+), 11 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 2e80a59..24168ae 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -4867,17 +4867,12 @@ nfs4_transform_lock_offset(struct file_lock *lock)
->>  		lock->fl_end = OFFSET_MAX;
->>  }
->>  
->> -/* Hack!: For now, we're defining this just so we can use a pointer to it
->> - * as a unique cookie to identify our (NFSv4's) posix locks. */
->> -static const struct lock_manager_operations nfsd_posix_mng_ops  = {
->> -};
->> -
->>  static inline void
->>  nfs4_set_lock_denied(struct file_lock *fl, struct nfsd4_lock_denied *deny)
->>  {
->>  	struct nfs4_lockowner *lo;
->>  
->> -	if (fl->fl_lmops == &nfsd_posix_mng_ops) {
->> +	if (fl->fl_flags & FL_NFSD) {
->>  		lo = (struct nfs4_lockowner *) fl->fl_owner;
->>  		deny->ld_owner.data = kmemdup(lo->lo_owner.so_owner.data,
->>  					lo->lo_owner.so_owner.len, GFP_KERNEL);
->> @@ -5241,8 +5236,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  	file_lock->fl_owner = (fl_owner_t)lock_sop;
->>  	file_lock->fl_pid = current->tgid;
->>  	file_lock->fl_file = filp;
->> -	file_lock->fl_flags = FL_POSIX;
->> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
->> +	file_lock->fl_flags = FL_POSIX | FL_NFSD;
->>  	file_lock->fl_start = lock->lk_offset;
->>  	file_lock->fl_end = last_byte_offset(lock->lk_offset, lock->lk_length);
->>  	nfs4_transform_lock_offset(file_lock);
->> @@ -5375,7 +5369,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  	if (lo)
->>  		file_lock->fl_owner = (fl_owner_t)lo;
->>  	file_lock->fl_pid = current->tgid;
->> -	file_lock->fl_flags = FL_POSIX;
->> +	file_lock->fl_flags = FL_POSIX | FL_NFSD;
->>  
->>  	file_lock->fl_start = lockt->lt_offset;
->>  	file_lock->fl_end = last_byte_offset(lockt->lt_offset, lockt->lt_length);
->> @@ -5437,8 +5431,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
->>  	file_lock->fl_pid = current->tgid;
->>  	file_lock->fl_file = filp;
->> -	file_lock->fl_flags = FL_POSIX;
->> -	file_lock->fl_lmops = &nfsd_posix_mng_ops;
->> +	file_lock->fl_flags = FL_POSIX | FL_NFSD;
->>  	file_lock->fl_start = locku->lu_offset;
->>  
->>  	file_lock->fl_end = last_byte_offset(locku->lu_offset,
->> diff --git a/include/linux/fs.h b/include/linux/fs.h
->> index e11d60c..4d40097 100644
->> --- a/include/linux/fs.h
->> +++ b/include/linux/fs.h
->> @@ -819,6 +819,7 @@ static inline struct file *get_file(struct file *f)
->>  #define FL_DOWNGRADE_PENDING	256 /* Lease is being downgraded */
->>  #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
->>  #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
->> +#define FL_NFSD		2048	/* NFSD holds this lock */
->>  
->>  /*
->>   * Special return value from posix_lock_file() and vfs_lock_file() for
-> 
-> Honestly, I'd prefer not using a fl_flag for this. Why, might you ask?
-> 
-> Currently, there are two alternate lock managers in the kernel (nfsd
-> and lockd) but there could (in principle) be an arbitrary number of
-> them later. What's so special about knfsd that it warrants its own flag?
-> 
-> I think existing use of an empty lock_manager_operations is a cleaner
-> solution than this for identifying locks owned by knfsd.
+On Wed, 20 Aug 2014 18:07:19 +0800
+Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-Thanks for your explication.
-I will drop this patch in v2.
+> Fix left code by Joe Perches's patch,
+> "locks: Remove unused conf argument from lm_grant"
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/lockd/svclock.c          | 26 +++++---------------------
+>  include/linux/lockd/lockd.h |  1 -
+>  2 files changed, 5 insertions(+), 22 deletions(-)
+> 
+> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> index 2a61701..796e63b 100644
+> --- a/fs/lockd/svclock.c
+> +++ b/fs/lockd/svclock.c
+> @@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
+>  	block->b_daemon = rqstp->rq_server;
+>  	block->b_host   = host;
+>  	block->b_file   = file;
+> -	block->b_fl = NULL;
+>  	file->f_count++;
+>  
+>  	/* Add to file's list of blocks */
+> @@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
+>  	nlmsvc_freegrantargs(block->b_call);
+>  	nlmsvc_release_call(block->b_call);
+>  	nlm_release_file(block->b_file);
+> -	kfree(block->b_fl);
+>  	kfree(block);
+>  }
+>  
+> @@ -523,20 +521,13 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+>  	block = nlmsvc_lookup_block(file, lock);
+>  
+>  	if (block == NULL) {
+> -		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
+> -
 
-thanks,
-Kinglong Mee
+I think the problem here is that we're allocating a file_lock with
+kzalloc instead of using locks_alloc_lock. I think we should change
+this code to use that, and the kfree in nlmsvc_free_block to use
+locks_free_lock. Maybe something like this? (untested, but it compiles).
+
+I'll plan to resend the patch below for 3.18 once I've tested it out and
+Trond, Bruce and I can work out who should merge it.
+
+-------------------------[snip]-------------------------
+
+[PATCH] lockd: switch allocation of conflock to standard lock allocation routines
+
+lockd currently allocates a struct file_lock with kzalloc to use as a
+conflock. Change it to use locks_alloc_lock and locks_free_lock instead.
+
+In the event that someone were to add lm_get_owner/lm_put_owner ops for
+lockd, then this would help ensure that things get cleaned up properly.
+It's also less wasteful with memory since locks_alloc_lock allocates
+from a dedicated slabcache.
+
+Cc: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/lockd/svclock.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 2a6170133c1d..1eb2ae47e6b1 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -295,7 +295,8 @@ static void nlmsvc_free_block(struct kref *kref)
+ 	nlmsvc_freegrantargs(block->b_call);
+ 	nlmsvc_release_call(block->b_call);
+ 	nlm_release_file(block->b_file);
+-	kfree(block->b_fl);
++	if (block->b_fl)
++		locks_free_lock(block->b_fl);
+ 	kfree(block);
+ }
+ 
+@@ -523,13 +524,13 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 	block = nlmsvc_lookup_block(file, lock);
+ 
+ 	if (block == NULL) {
+-		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
++		struct file_lock *conf = locks_alloc_lock();
+ 
+ 		if (conf == NULL)
+ 			return nlm_granted;
+ 		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
+ 		if (block == NULL) {
+-			kfree(conf);
++			locks_free_lock(conf);
+ 			return nlm_granted;
+ 		}
+ 		block->b_fl = conf;
+-- 
+1.9.3
+
+
