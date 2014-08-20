@@ -1,53 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f51.google.com ([74.125.82.51]:63180 "EHLO
-	mail-wg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932132AbaHVOII (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 10:08:08 -0400
-Date: Fri, 22 Aug 2014 17:07:59 +0300
-From: Andreea-Cristina Bernat <bernat.ada@gmail.com>
-To: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc: paulmck@linux.vnet.ibm.com
-Subject: [PATCH] nfs: delegation: Replace rcu_assign_pointer() with
- RCU_INIT_POINTER()
-Message-ID: <20140822140759.GA31775@ada>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:63079 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751823AbaHTSnE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 14:43:04 -0400
+Received: by mail-qc0-f171.google.com with SMTP id r5so8120201qcx.2
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 11:43:02 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 20 Aug 2014 14:43:01 -0400
+To: Christoph Hellwig <hch@lst.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: pnfs block layout driver fixes
+Message-ID: <20140820144301.23d6aac3@tlielax.poochiereds.net>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The use of "rcu_assign_pointer()" is NULLing out the pointer.
-According to RCU_INIT_POINTER()'s block comment:
-"1.   This use of RCU_INIT_POINTER() is NULLing out the pointer"
-it is better to use it instead of rcu_assign_pointer() because it has a
-smaller overhead.
+On Thu,  7 Aug 2014 09:23:32 +0200
+Christoph Hellwig <hch@lst.de> wrote:
 
-The following Coccinelle semantic patch was used:
-@@
-@@
+> This series fixes a wide range of issues with the pnfs block layout driver.
+> 
+> Before this we were seeing frequent silent data corruption, softlockups and
+> kernel crashes when running both user applications and test cases like xfstests.
+> 
+> After this rewrite of the I/O path we've sorted out all issues under normal
+> operations, although error handling in the block layout driver and its
+> interaction with the core nfs and pnfs code still needs further work.
+> 
+> This work was sponsored by NetApp, Inc.
+> 
 
-- rcu_assign_pointer
-+ RCU_INIT_POINTER
-  (..., NULL)
+What sort of server are you testing this against?
 
-Signed-off-by: Andreea-Cristina Bernat <bernat.ada@gmail.com>
----
- fs/nfs/delegation.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 5d8ccec..349e63b 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -249,7 +249,7 @@ nfs_detach_delegation_locked(struct nfs_inode *nfsi,
- 	list_del_rcu(&delegation->super_list);
- 	delegation->inode = NULL;
- 	nfsi->delegation_state = 0;
--	rcu_assign_pointer(nfsi->delegation, NULL);
-+	RCU_INIT_POINTER(nfsi->delegation, NULL);
- 	spin_unlock(&delegation->lock);
- 	return delegation;
- }
 -- 
-1.9.1
-
+Jeff Layton <jlayton@primarydata.com>
