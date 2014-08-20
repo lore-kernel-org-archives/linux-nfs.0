@@ -1,69 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f180.google.com ([209.85.220.180]:45796 "EHLO
-	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754290AbaHLTbo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 15:31:44 -0400
-Received: by mail-vc0-f180.google.com with SMTP id ij19so13792186vcb.39
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 12:31:44 -0700 (PDT)
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:58661 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753229AbaHTWdH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 18:33:07 -0400
+Received: by mail-vc0-f174.google.com with SMTP id la4so9899274vcb.19
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 15:33:06 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20140812191643.GB25914@fieldses.org>
-References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
-	<20140812191643.GB25914@fieldses.org>
-Date: Tue, 12 Aug 2014 15:31:43 -0400
-Message-ID: <CAHQdGtTL9nd_GJyV7Fn9F+YMAHk4EGU5=6OXCke35ymr7jzrrA@mail.gmail.com>
-Subject: Re: [PATCH 04/11] SUNRPC: Do not override wspace tests in svc_handle_xprt
+In-Reply-To: <20140818161836.GA32603@fieldses.org>
+References: <53f0db34.mtq2J6NaXWKpR15G%fengguang.wu@intel.com>
+	<20140818161836.GA32603@fieldses.org>
+Date: Wed, 20 Aug 2014 18:33:06 -0400
+Message-ID: <CAHQdGtQB2cYeMDaVrPF+dcM3Bf2PS=UzrNhJ2-zifTiDj=8ucQ@mail.gmail.com>
+Subject: Re: [nfsd:nfsd-next 5/23] net/sunrpc/svc_xprt.c:794:20: error:
+ 'current_task' undeclared
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: kbuild test robot <fengguang.wu@intel.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, kbuild-all@01.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 12, 2014 at 3:16 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> On Sun, Aug 03, 2014 at 01:03:06PM -0400, Trond Myklebust wrote:
->> We already determined that there was enough wspace when we
->> called svc_xprt_enqueue.
+On Mon, Aug 18, 2014 at 12:18 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Mon, Aug 18, 2014 at 12:41:24AM +0800, kbuild test robot wrote:
+>> tree:   git://linux-nfs.org/~bfields/linux.git nfsd-next
+>> head:   da8b8f7602ed3b8105c6247a2844455fec72caaa
+>> commit: 983c684466e02b21f83c025ea539deee6c0aeac0 [5/23] SUNRPC: get rid of the request wait queue
+>> config: make ARCH=xtensa allyesconfig
+>>
+>> All error/warnings:
+>>
+>>    net/sunrpc/svc_xprt.c: In function 'svc_recv':
+>> >> net/sunrpc/svc_xprt.c:794:20: error: 'current_task' undeclared (first use in this function)
+>>       rqstp->rq_task = current_task;
+>>                        ^
+>>    net/sunrpc/svc_xprt.c:794:20: note: each undeclared identifier is reported only once for each function it appears in
+>>
+>> vim +/current_task +794 net/sunrpc/svc_xprt.c
+>>
+>>    788                        printk(KERN_ERR
+>>    789                                "svc_recv: service %p, transport not NULL!\n",
+>>    790                                 rqstp);
+>>    791
+>>    792                /* Make sure the task pointer is set! */
+>>    793                if (WARN_ON_ONCE(!rqstp->rq_task))
+>>  > 794                        rqstp->rq_task = current_task;
 >
-> So xpo_has_wspace may have returned true then, but I don't see what
-> guarantees it still would now.  Couldn't another server thread have also
-> run svc_recv() and the atomic_add(rqstp->rq_reserved,
-> &xprt->xpt_reserved) between the svc_xprt_enqueue call and now?
-
-The point is that all this is just a heuristic: the TCP send window
-can collapse at any time. So rather than waste cycles doing multiple
-redundant tests that ultimately mean nothing when you call sendmsg(),
-do it once and be damned...
-
-
-> --b.
+> I appreciate the effort to fail gracefully here, but maybe this would be
+> a case for simple BUG_ON()?
 >
->>
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->>  net/sunrpc/svc_xprt.c | 2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
->> index 32647b2a6a34..b731077b6a30 100644
->> --- a/net/sunrpc/svc_xprt.c
->> +++ b/net/sunrpc/svc_xprt.c
->> @@ -744,7 +744,7 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
->>                       svc_add_new_temp_xprt(serv, newxpt);
->>               else
->>                       module_put(xprt->xpt_class->xcl_owner);
->> -     } else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
->> +     } else {
->>               /* XPT_DATA|XPT_DEFERRED case: */
->>               dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
->>                       rqstp, rqstp->rq_pool->sp_id, xprt,
->> --
->> 1.9.3
->>
+> I don't think there are normally any important locks held here, and I
+> can't see any other reason why killing a server thread would bring a box
+> down.
+>
+> And the first developer to forget to set rq_task on a newly created
+> server will get an immediate bug, so this should be obvious enough.
+> Unless there's fear of a race between starting the thread and setting
+> rq_task?
+>
 
+No, there is no fear of a race. I'm fine with removing the above check
+altogether and just letting code Oops if it turns out that we add new
+cases that don't set rq_task.
+
+Ultimately, though, I think we need a better interface for starting
+RPC server threads; something that combines svc_prepare_thread() and
+kthread_run() into a single function call and that can thus set
+rqstp->rq_task correctly.
 
 
 -- 
