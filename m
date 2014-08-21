@@ -1,107 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38187 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:43181 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751641AbaHDVqv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Aug 2014 17:46:51 -0400
-Date: Mon, 4 Aug 2014 17:46:47 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Rishi Agrawal <Rishi_Agrawal@symantec.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Rajesh Ghanekar <Rajesh_Ghanekar@symantec.com>,
-        Ram Pandiri <ram_pandiri@symantec.com>,
-        Sreeharsha Sarabu <Sreeharsha_Sarabu@symantec.com>,
-        Abhijit Dey <Abhijit_Dey@symantec.com>,
-        Tushar Shinde <Tushar_Shinde@symantec.com>,
-        "bfields@redhat.com" <bfields@redhat.com>
-Subject: Re: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
-Message-ID: <20140804214646.GK23341@fieldses.org>
-References: <20AEB6A025F81A4288597093171D1B5719CF5813D2@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM>
- <53DF992D.6090404@RedHat.com>
- <20140804152411.GB23341@fieldses.org>
+	id S1752403AbaHUSTP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Aug 2014 14:19:15 -0400
+Message-ID: <53F63758.70306@redhat.com>
+Date: Thu, 21 Aug 2014 14:15:52 -0400
+From: David Jeffery <djeffery@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140804152411.GB23341@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: Always try and release an NFS file lock, even after
+ receiving a SIGKILL
+References: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com>	<1408580933.4029.2.camel@leira.trondhjem.org>	<53F612DC.60006@redhat.com> <CAHQdGtRw0V=mAuXs=UL7aJxxvKo26xqVoyOwR7r+9PrGPNmn_g@mail.gmail.com>
+In-Reply-To: <CAHQdGtRw0V=mAuXs=UL7aJxxvKo26xqVoyOwR7r+9PrGPNmn_g@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 04, 2014 at 11:24:11AM -0400, bfields wrote:
-> +static int
-> +nfsd3_is_readdirplus_supported(struct svc_rqst *rqstp, struct svc_fh *fhp)
-> +{
-> +	struct svc_export *exp;
-> +	int supported = 1; /* fall back to readdirplus supported in case of errors.*/
-> +	int err;
-> +
-> +	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_READ);
-> +	if (err) {
-> +		goto out;
-> +	}
-
-Actually, this isn't right: errors from fh_verify should be returned to
-the client or weird things could happen (e.g. what should have been a
-transient DELAY error could result in the client turning off
-readdirplus).  And MAY_READ is more than nfsd_readdir actually asks for,
-I think, probably should just be MAY_NOP here.
-
-I'll fix that up.--b.
-
-> +
-> +	exp = fhp->fh_export;
-> +	if (exp->ex_flags & NFSEXP_NOREADDIRPLUS) {
-> +		supported = 0;
-> +	}
-> +out:
-> +	return supported;
-> +}
-> +
->  /*
->   * Read a portion of a directory, including file handles and attrs.
->   * For now, we choose to ignore the dircount parameter.
-> @@ -471,10 +491,16 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp, struct nfsd3_readdirargs *argp,
->  	resp->buflen = resp->count;
->  	resp->rqstp = rqstp;
->  	offset = argp->cookie;
-> -	nfserr = nfsd_readdir(rqstp, &resp->fh,
-> -				     &offset,
-> -				     &resp->common,
-> -				     nfs3svc_encode_entry_plus);
-> +
-> +	if (nfsd3_is_readdirplus_supported(rqstp, &resp->fh)) {
-> +		nfserr = nfsd_readdir(rqstp, &resp->fh,
-> +				&offset,
-> +				&resp->common,
-> +				nfs3svc_encode_entry_plus);
-> +	} else {
-> +		nfserr = nfserrno(-EOPNOTSUPP);
-> +	}
-> +
->  	memcpy(resp->verf, argp->verf, 8);
->  	for (p = rqstp->rq_respages + 1; p < rqstp->rq_next_page; p++) {
->  		page_addr = page_address(*p);
-> diff --git a/include/uapi/linux/nfsd/export.h b/include/uapi/linux/nfsd/export.h
-> index cf47c313794e..584b6ef3a5e8 100644
-> --- a/include/uapi/linux/nfsd/export.h
-> +++ b/include/uapi/linux/nfsd/export.h
-> @@ -28,7 +28,8 @@
->  #define NFSEXP_ALLSQUASH	0x0008
->  #define NFSEXP_ASYNC		0x0010
->  #define NFSEXP_GATHERED_WRITES	0x0020
-> -/* 40 80 100 currently unused */
-> +#define NFSEXP_NOREADDIRPLUS    0x0040
-> +/* 80 100 currently unused */
->  #define NFSEXP_NOHIDE		0x0200
->  #define NFSEXP_NOSUBTREECHECK	0x0400
->  #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
-> @@ -47,7 +48,7 @@
->   */
->  #define	NFSEXP_V4ROOT		0x10000
->  /* All flags that we claim to support.  (Note we don't support NOACL.) */
-> -#define NFSEXP_ALLFLAGS		0x17E3F
-> +#define NFSEXP_ALLFLAGS		0x1FE7F
->  
->  /* The flags that may vary depending on security flavor: */
->  #define NFSEXP_SECINFO_FLAGS	(NFSEXP_READONLY | NFSEXP_ROOTSQUASH \
-> -- 
-> 1.9.3
+On 08/21/2014 11:50 AM, Trond Myklebust wrote:
+> On Thu, Aug 21, 2014 at 11:40 AM, David Jeffery <djeffery@redhat.com> wrote:
+>> On 08/20/2014 08:28 PM, Trond Myklebust wrote:
+>>>
+>>> What guarantees that this does not lead to silent corruption of the file
+>>> if there are outstanding write requests?
+>>>
+>>
+>> Do you have a particular scenario in mind you are concerned about?
+>>
+>> Right before the code the patch modifies, nfs_sync_mapping() is called.
+>>  Any writes started before the unlock operation began have already been
+>> flushed, so we shouldn't have a corruption case of writes from before
+>> the unlock began being sent after the unlock is complete.
+>>
+>> Are you concerned about some other nfs4 writes being started while we
+>> initially waited on the counter?  Such a write racing with the unlock
 > 
+> No. I'm worried about the writes that have been started, but which are
+> now completing in the background while the lock is being freed.
+> 
+>> going ahead instead of erroring out could initially fail from a wrong
+>> state ID, but should retry with the new state.  Is there something I've
+>> overlooked?
+> 
+> Loss of lock atomicity due to the fact that the writes are completing
+> after the lock was released.
+> 
+
+I don't think my patches break lock atomicity, unless I've completely
+misunderstood nfs_sync_mapping()'s behavior.
+
+The background writes should have already been waited for by
+nfs_sync_mapping() at the beginning of do_unlk().  nfs_sync_mapping()
+would call nfs_wb_all() which calls sync_inode() with WB_SYNC_ALL, so
+it's going to push out any dirty data and wait for any writes to
+complete.  Only after the writes are complete do we go on to call
+nfs_iocounter_wait().
+
+If there is a write causing us to want to wait in nfs_iocounter_wait()
+and which my patches no longer wait for, the write was done after
+nfs_sync_mapping() started, which means the write occurred after the
+unlock-initiating call began.  Such a write should have no atomicity
+guarantee with holding the lock, and may complete before or after the
+lock is released.  The writes which require atomicity are already
+completed before getting to the call of nfs_iocounter_wait() and the
+code my patch changes.
