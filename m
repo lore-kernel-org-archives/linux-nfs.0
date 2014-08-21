@@ -1,75 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34253 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752942AbaH2SzL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 29 Aug 2014 14:55:11 -0400
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1XNRKI-0003n9-GI
-	for linux-nfs@vger.kernel.org; Fri, 29 Aug 2014 14:55:10 -0400
-Date: Fri, 29 Aug 2014 14:55:10 -0400
+Received: from casper.infradead.org ([85.118.1.10]:51177 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751694AbaHUQH0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 12:07:26 -0400
+Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XKUtZ-00009H-2F
+	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 16:07:25 +0000
+From: Christoph Hellwig <hch@lst.de>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd4: fix rd_dircount enforcement
-Message-ID: <20140829185510.GA13710@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH 04/19] pnfs: don't check sequence on new stateids in layoutget
+Date: Thu, 21 Aug 2014 11:09:20 -0500
+Message-Id: <1408637375-11343-5-git-send-email-hch@lst.de>
+In-Reply-To: <1408637375-11343-1-git-send-email-hch@lst.de>
+References: <pnfs block layout driver fixes V2>
+ <1408637375-11343-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+When layoutget returns an entirely new layout stateid it should not
+check the generation counter as the new stateid will start with a new
+counter entirely unrelated to old one.
 
-Commit 3b299709091b "nfsd4: enforce rd_dircount" totally misunderstood
-rd_dircount; it refers to total non-attribute bytes returned, not number
-of directory entries returned.
+The current behavior causes constant layoutget failures against a block
+server which allocates a new stateid after an recall that removed all
+outstanding layouts.
 
-Bring the code into agreement with RFC 3530 section 14.2.24.
-
-Cc: stable@kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4xdr.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
+ fs/nfs/pnfs.c | 36 +++++++++++++++++++-----------------
+ 1 file changed, 19 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f9821ce6658a..e94457c33ad6 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2657,6 +2657,7 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
- 	struct xdr_stream *xdr = cd->xdr;
- 	int start_offset = xdr->buf->len;
- 	int cookie_offset;
-+	u32 name_and_cookie;
- 	int entry_bytes;
- 	__be32 nfserr = nfserr_toosmall;
- 	__be64 wire_offset;
-@@ -2718,7 +2719,14 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
- 	cd->rd_maxcount -= entry_bytes;
- 	if (!cd->rd_dircount)
- 		goto fail;
--	cd->rd_dircount--;
-+	/*
-+	 * RFC 3530 14.2.24 describes rd_dircount as only a "hint", so
-+	 * let's always let through the first entry, at least:
-+	 */
-+	name_and_cookie = 4 * XDR_QUADLEN(namlen) + 8;
-+	if (name_and_cookie > cd->rd_dircount && cd->cookie_offset)
-+		goto fail;
-+	cd->rd_dircount -= min(cd->rd_dircount, name_and_cookie);
- 	cd->cookie_offset = cookie_offset;
- skip_entry:
- 	cd->common.err = nfs_ok;
-@@ -3321,6 +3329,10 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 	}
- 	maxcount = min_t(int, maxcount-16, bytes_left);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 242e73f..32a14a6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -685,17 +685,6 @@ static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
+ 	return (s32)(s1 - s2) > 0;
+ }
  
-+	/* RFC 3530 14.2.24 allows us to ignore dircount when it's 0: */
-+	if (!readdir->rd_dircount)
-+		readdir->rd_dircount = INT_MAX;
+-static void
+-pnfs_verify_layout_stateid(struct pnfs_layout_hdr *lo,
+-		const nfs4_stateid *new,
+-		struct list_head *free_me_list)
+-{
+-	if (nfs4_stateid_match_other(&lo->plh_stateid, new))
+-		return;
+-	/* Layout is new! Kill existing layout segments */
+-	pnfs_mark_matching_lsegs_invalid(lo, free_me_list, NULL);
+-}
+-
+ /* update lo->plh_stateid with new if is more recent */
+ void
+ pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
+@@ -1370,16 +1359,29 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
+ 		goto out_forget_reply;
+ 	}
+ 
+-	if (pnfs_layoutgets_blocked(lo, 1) ||
+-	    pnfs_layout_stateid_blocked(lo, &res->stateid)) {
++	if (pnfs_layoutgets_blocked(lo, 1)) {
+ 		dprintk("%s forget reply due to state\n", __func__);
+ 		goto out_forget_reply;
+ 	}
+ 
+-	/* Check that the new stateid matches the old stateid */
+-	pnfs_verify_layout_stateid(lo, &res->stateid, &free_me);
+-	/* Done processing layoutget. Set the layout stateid */
+-	pnfs_set_layout_stateid(lo, &res->stateid, false);
++	if (nfs4_stateid_match_other(&lo->plh_stateid, &res->stateid)) {
++		/* existing state ID, make sure the sequence number matches. */
++		if (pnfs_layout_stateid_blocked(lo, &res->stateid)) {
++			dprintk("%s forget reply due to sequence\n", __func__);
++			goto out_forget_reply;
++		}
++		pnfs_set_layout_stateid(lo, &res->stateid, false);
++	} else {
++		/*
++		 * We got an entirely new state ID.  Mark all segments for the
++		 * inode invalid, and don't bother validating the stateid
++		 * sequence number.
++		 */
++		pnfs_mark_matching_lsegs_invalid(lo, &free_me, NULL);
 +
- 	readdir->xdr = xdr;
- 	readdir->rd_maxcount = maxcount;
- 	readdir->common.err = 0;
++		nfs4_stateid_copy(&lo->plh_stateid, &res->stateid);
++		lo->plh_barrier = be32_to_cpu(res->stateid.seqid);
++	}
+ 
+ 	pnfs_get_lseg(lseg);
+ 	pnfs_layout_insert_lseg(lo, lseg);
 -- 
-1.9.3
+1.9.1
 
