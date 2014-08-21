@@ -1,50 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:49795 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932105AbaHGL6U (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 07:58:20 -0400
-Received: by mail-ig0-f175.google.com with SMTP id uq10so10247987igb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Aug 2014 04:58:19 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140807112754.GB3437@lst.de>
-References: <1407396229-4785-1-git-send-email-hch@lst.de> <1407396229-4785-18-git-send-email-hch@lst.de>
- <CA+a=Yy7EmafqPefCG=xNKz-is8h0FgKNSFJ23RshEcLwr5sZ9A@mail.gmail.com> <20140807112754.GB3437@lst.de>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 7 Aug 2014 19:57:59 +0800
-Message-ID: <CA+a=Yy7oPvuFpGu8WueJrMAp+JTxU1RoCsAWkf2Cy_qz6zVxbg@mail.gmail.com>
-Subject: Re: [PATCH 17/17] pnfs/blocklayout: allocate separate pages for the
- layoutcommit payload
-To: Christoph Hellwig <hch@lst.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linuxnfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:48797 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751479AbaHUA2x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 20:28:53 -0400
+Received: by mail-ie0-f171.google.com with SMTP id at1so3826441iec.30
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 17:28:52 -0700 (PDT)
+Message-ID: <1408580933.4029.2.camel@leira.trondhjem.org>
+Subject: Re: [PATCH] nfs: Always try and release an NFS file lock, even
+ after receiving a SIGKILL
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: David Jeffery <djeffery@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 20 Aug 2014 20:28:53 -0400
+In-Reply-To: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com>
+References: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 7, 2014 at 7:27 PM, Christoph Hellwig <hch@lst.de> wrote:
-> On Thu, Aug 07, 2014 at 07:05:03PM +0800, Peng Tao wrote:
->> On Thu, Aug 7, 2014 at 3:23 PM, Christoph Hellwig <hch@lst.de> wrote:
->> > Instead of overflowing the XDR send buffer with our extent list allocate
->> > pages and pre-encode the layoutupdate payload into them.  We optimistically
->> > allocate a single page use alloc_page and only switch to vmalloc when we
->> > have more extents outstanding.  Currently there is only a single testcase
->> > (xfstests generic/113) which can reproduce large enough extent lists for
->> > this to occur.
->> >
->> depending on how badly the extents are fragmented, it might worth
->> starting an async layoutcommit within blocklayout client when bl_count
->> reaches certain limit, so that we don't send an unlimited amount of
->> extents in one layoutcommit.
->
-> I though about this, but this only reduces the problem and we'd still
-> need to be able to commit all extents for a data integrity operation,
-> so we'd still need someting like the above.
->
-yeah, I wasn't against your patch. What I suggested is a way to limit
-the amount of commit extents such that we don't end up sending more
-that one RPC, whose size is still limited even if we allocate large
-enough XDR buffer.
+On Tue, 2014-08-05 at 11:17 -0400, David Jeffery wrote:
+> If a task holding an NFS file lock is killed with SIGKILL, it can
+> error out of do_unlk without ever trying to release the lock on
+> the server. This triggers the WARN in locks_remove_file(), while
+> also leaving the lock still claimed on the NFS server.  The file's
+> lock state is left out of sync between client and server, requiring
+> a restart of one or the other in order to release this ghost lock
+> on the file.
+> 
+> do_unlk() should continue on and tell the server to release the
+> lock, even if nfs_iocounter_wait() reports an error do to SIGKILL.
+> 
+> Signed-off-by: David Jeffery <djeffery@redhat.com>
+> 
+> ---
+>  file.c |    4 +---
+>  1 file changed, 1 insertion(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 4042ff5..1b09243 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -750,10 +750,8 @@ do_unlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
+>  
+>  	l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
+>  	if (!IS_ERR(l_ctx)) {
+> -		status = nfs_iocounter_wait(&l_ctx->io_count);
+> +		nfs_iocounter_wait(&l_ctx->io_count);
+>  		nfs_put_lock_context(l_ctx);
+> -		if (status < 0)
+> -			return status;
+>  	}
+>  
+>  	/* NOTE: special case
 
-> The other option I considered and prototyped was to send multiple on the
-> wire layoutcommit calls from pnfs_layoutcommit_inode, but that did prove
-> to be even more cumbersome.
+What guarantees that this does not lead to silent corruption of the file
+if there are outstanding write requests?
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
+
