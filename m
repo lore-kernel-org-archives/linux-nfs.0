@@ -1,24 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:58985 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752981AbaHLPca (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 11:32:30 -0400
-Date: Tue, 12 Aug 2014 08:32:29 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls outside
- of i_lock
-Message-ID: <20140812153229.GA15922@infradead.org>
-References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+Received: from casper.infradead.org ([85.118.1.10]:51204 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752526AbaHUQIA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 12:08:00 -0400
+Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XKUu7-0000B6-MR
+	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 16:07:59 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 18/19] pnfs/blocklayout: return layouts on setattr
+Date: Thu, 21 Aug 2014 11:09:34 -0500
+Message-Id: <1408637375-11343-19-git-send-email-hch@lst.de>
+In-Reply-To: <1408637375-11343-1-git-send-email-hch@lst.de>
+References: <pnfs block layout driver fixes V2>
+ <1408637375-11343-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Btw, I might be missing something here, but wouldn't it be better
-to reference count the file_lock structure and grab a reference to
-it where we currently call (__)locks_copy_lock?
+This speads up truncate-heavy workloads like fsx by multiple orders of
+magnitude.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index a7524c4..d5a2b87 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -799,7 +799,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.id				= LAYOUT_BLOCK_VOLUME,
+ 	.name				= "LAYOUT_BLOCK_VOLUME",
+ 	.owner				= THIS_MODULE,
+-	.flags				= PNFS_READ_WHOLE_PAGE,
++	.flags				= PNFS_LAYOUTRET_ON_SETATTR |
++					  PNFS_READ_WHOLE_PAGE,
+ 	.read_pagelist			= bl_read_pagelist,
+ 	.write_pagelist			= bl_write_pagelist,
+ 	.alloc_layout_hdr		= bl_alloc_layout_hdr,
+-- 
+1.9.1
 
