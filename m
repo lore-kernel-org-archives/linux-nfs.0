@@ -1,129 +1,171 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:61059 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750916AbaHOAHY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Aug 2014 20:07:24 -0400
-Message-ID: <53ED4F30.4060308@gmail.com>
-Date: Fri, 15 Aug 2014 08:07:12 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 2/5 v3] locks: Copy all infomation for conflock
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com>
-In-Reply-To: <53E791F1.40802@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:56166 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751656AbaHUPp4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 11:45:56 -0400
+Received: by mail-qc0-f178.google.com with SMTP id x3so9622483qcv.9
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2014 08:45:55 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: cluster-devel@redhat.com, Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH] lockd: rip out deferred lock handling from testlock codepath
+Date: Thu, 21 Aug 2014 11:45:48 -0400
+Message-Id: <1408635948-30481-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
-fl_lmops field in file_lock for checking nfsd4 lockowner.
+As Kinglong points out, the nlm_block->b_fl field is no longer used at
+all. Also, vfs_test_lock in the generic locking code will only return
+FILE_LOCK_DEFERRED if FL_SLEEP is set, and it isn't here.
 
-But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return
-of conflicting locks) causes the fl_lmops of conflock always be NULL.
+The only other place that returns that value is the DLM lock code, but
+it only does that in dlm_posix_lock, never in dlm_posix_get.
 
-Also, commit 0996905f93 (lockd: posix_test_lock() should not call
-locks_copy_lock()) caused the fl_lmops of conflock always be NULL too.
+Remove all of the deferred locking code from the testlock codepath
+since it doesn't appear to ever be used anyway.
 
-Make sure copy the private information by fl_copy_lock() in struct
-file_lock_operations, merge __locks_copy_lock() to fl_copy_lock().
+I do have a small concern that this might cause a behavior change in the
+case where you have a block already sitting on the list when the
+testlock request comes in, but that looks like it doesn't really work
+properly anyway. I think it's best to just pass that down to
+vfs_test_lock and let the filesystem report that instead of trying to
+infer what's going on with the lock by looking at an existing block.
 
-v3: Update based on Joe and Jeff's patch.
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Cc: cluster-devel@redhat.com
+Reported-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/locks.c         | 24 +++++++-----------------
- include/linux/fs.h |  6 ------
- 2 files changed, 7 insertions(+), 23 deletions(-)
+ fs/lockd/svclock.c          | 55 +++++----------------------------------------
+ include/linux/lockd/lockd.h |  1 -
+ 2 files changed, 6 insertions(+), 50 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index cb66fb0..fe52abb 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -281,33 +281,23 @@ static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
- /*
-  * Initialize a new lock from an existing file_lock structure.
-  */
--void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
-+void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
- {
-+	/* "new" must be a freshly-initialized lock */
-+	WARN_ON_ONCE(new->fl_ops);
-+
- 	new->fl_owner = fl->fl_owner;
- 	new->fl_pid = fl->fl_pid;
--	new->fl_file = NULL;
-+	new->fl_file = fl->fl_file;
- 	new->fl_flags = fl->fl_flags;
- 	new->fl_type = fl->fl_type;
- 	new->fl_start = fl->fl_start;
- 	new->fl_end = fl->fl_end;
- 	new->fl_ops = NULL;
- 	new->fl_lmops = NULL;
--}
--EXPORT_SYMBOL(__locks_copy_lock);
--
--void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
--{
--	/* "new" must be a freshly-initialized lock */
--	WARN_ON_ONCE(new->fl_ops);
--
--	__locks_copy_lock(new, fl);
--	new->fl_file = fl->fl_file;
--	new->fl_ops = fl->fl_ops;
--	new->fl_lmops = fl->fl_lmops;
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index acfa94d5b489..13db95f54176 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
+ 	block->b_daemon = rqstp->rq_server;
+ 	block->b_host   = host;
+ 	block->b_file   = file;
+-	block->b_fl = NULL;
+ 	file->f_count++;
  
- 	locks_copy_private(new, fl);
+ 	/* Add to file's list of blocks */
+@@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
+ 	nlmsvc_freegrantargs(block->b_call);
+ 	nlmsvc_release_call(block->b_call);
+ 	nlm_release_file(block->b_file);
+-	kfree(block->b_fl);
+ 	kfree(block);
  }
--
- EXPORT_SYMBOL(locks_copy_lock);
  
- static inline int flock_translate_cmd(int cmd) {
-@@ -735,7 +725,7 @@ posix_test_lock(struct file *filp, struct file_lock *fl)
- 			break;
+@@ -508,7 +506,6 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 		struct nlm_host *host, struct nlm_lock *lock,
+ 		struct nlm_lock *conflock, struct nlm_cookie *cookie)
+ {
+-	struct nlm_block 	*block = NULL;
+ 	int			error;
+ 	__be32			ret;
+ 
+@@ -519,63 +516,26 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+ 				(long long)lock->fl.fl_start,
+ 				(long long)lock->fl.fl_end);
+ 
+-	/* Get existing block (in case client is busy-waiting) */
+-	block = nlmsvc_lookup_block(file, lock);
+-
+-	if (block == NULL) {
+-		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
+-
+-		if (conf == NULL)
+-			return nlm_granted;
+-		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
+-		if (block == NULL) {
+-			kfree(conf);
+-			return nlm_granted;
+-		}
+-		block->b_fl = conf;
+-	}
+-	if (block->b_flags & B_QUEUED) {
+-		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
+-			block, block->b_flags, block->b_fl);
+-		if (block->b_flags & B_TIMED_OUT) {
+-			nlmsvc_unlink_block(block);
+-			ret = nlm_lck_denied;
+-			goto out;
+-		}
+-		if (block->b_flags & B_GOT_CALLBACK) {
+-			nlmsvc_unlink_block(block);
+-			if (block->b_fl != NULL
+-					&& block->b_fl->fl_type != F_UNLCK) {
+-				lock->fl = *block->b_fl;
+-				goto conf_lock;
+-			} else {
+-				ret = nlm_granted;
+-				goto out;
+-			}
+-		}
+-		ret = nlm_drop_reply;
+-		goto out;
+-	}
+-
+ 	if (locks_in_grace(SVC_NET(rqstp))) {
+ 		ret = nlm_lck_denied_grace_period;
+ 		goto out;
  	}
- 	if (cfl) {
--		__locks_copy_lock(fl, cfl);
-+		locks_copy_lock(fl, cfl);
- 		if (cfl->fl_nspid)
- 			fl->fl_pid = pid_vnr(cfl->fl_nspid);
- 	} else
-@@ -941,7 +931,7 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 			if (!posix_locks_conflict(request, fl))
- 				continue;
- 			if (conflock)
--				__locks_copy_lock(conflock, fl);
-+				locks_copy_lock(conflock, fl);
- 			error = -EAGAIN;
- 			if (!(request->fl_flags & FL_SLEEP))
- 				goto out;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 908af4f..a383a30 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -966,7 +966,6 @@ void locks_free_lock(struct file_lock *fl);
- extern void locks_init_lock(struct file_lock *);
- extern struct file_lock * locks_alloc_lock(void);
- extern void locks_copy_lock(struct file_lock *, struct file_lock *);
--extern void __locks_copy_lock(struct file_lock *, const struct file_lock *);
- extern void locks_remove_posix(struct file *, fl_owner_t);
- extern void locks_remove_file(struct file *);
- extern void locks_release_private(struct file_lock *);
-@@ -1026,11 +1025,6 @@ static inline void locks_init_lock(struct file_lock *fl)
- 	return;
++
+ 	error = vfs_test_lock(file->f_file, &lock->fl);
+-	if (error == FILE_LOCK_DEFERRED) {
+-		ret = nlmsvc_defer_lock_rqst(rqstp, block);
+-		goto out;
+-	}
+ 	if (error) {
++		/* We can't currently deal with deferred test requests */
++		if (error == FILE_LOCK_DEFERRED)
++			WARN_ON_ONCE(1);
++
+ 		ret = nlm_lck_denied_nolocks;
+ 		goto out;
+ 	}
++
+ 	if (lock->fl.fl_type == F_UNLCK) {
+ 		ret = nlm_granted;
+ 		goto out;
+ 	}
+ 
+-conf_lock:
+ 	dprintk("lockd: conflicting lock(ty=%d, %Ld-%Ld)\n",
+ 		lock->fl.fl_type, (long long)lock->fl.fl_start,
+ 		(long long)lock->fl.fl_end);
+@@ -589,8 +549,6 @@ conf_lock:
+ 	locks_release_private(&lock->fl);
+ 	ret = nlm_lck_denied;
+ out:
+-	if (block)
+-		nlmsvc_release_block(block);
+ 	return ret;
  }
  
--static inline void __locks_copy_lock(struct file_lock *new, struct file_lock *fl)
--{
--	return;
--}
--
- static inline void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
- {
- 	return;
+@@ -661,7 +619,6 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_file *file, struct nlm_lock *l
+  * This is a callback from the filesystem for VFS file lock requests.
+  * It will be used if lm_grant is defined and the filesystem can not
+  * respond to the request immediately.
+- * For GETLK request it will copy the reply to the nlm_block.
+  * For SETLK or SETLKW request it will get the local posix lock.
+  * In all cases it will move the block to the head of nlm_blocked q where
+  * nlmsvc_retry_blocked() can send back a reply for SETLKW or revisit the
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index 219d79627c05..ff82a32871b5 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -178,7 +178,6 @@ struct nlm_block {
+ 	unsigned char		b_granted;	/* VFS granted lock */
+ 	struct nlm_file *	b_file;		/* file in question */
+ 	struct cache_req *	b_cache_req;	/* deferred request handling */
+-	struct file_lock *	b_fl;		/* set for GETLK */
+ 	struct cache_deferred_req * b_deferred_req;
+ 	unsigned int		b_flags;	/* block flags */
+ #define B_QUEUED		1	/* lock queued */
 -- 
 1.9.3
 
