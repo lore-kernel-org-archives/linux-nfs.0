@@ -1,97 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:34668 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752622AbaHCRD2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:28 -0400
-Received: by mail-qa0-f46.google.com with SMTP id v10so5905168qac.5
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:28 -0700 (PDT)
+Received: from mail-vc0-f182.google.com ([209.85.220.182]:55175 "EHLO
+	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753784AbaHUSlE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 14:41:04 -0400
+Received: by mail-vc0-f182.google.com with SMTP id hy4so11299848vcb.13
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2014 11:41:02 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <53F63758.70306@redhat.com>
+References: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com>
+	<1408580933.4029.2.camel@leira.trondhjem.org>
+	<53F612DC.60006@redhat.com>
+	<CAHQdGtRw0V=mAuXs=UL7aJxxvKo26xqVoyOwR7r+9PrGPNmn_g@mail.gmail.com>
+	<53F63758.70306@redhat.com>
+Date: Thu, 21 Aug 2014 14:41:02 -0400
+Message-ID: <CAHQdGtQT9-YJ=L1jLKc53e7nzdNU0GaUie0RwEdF3EpsJEvPsg@mail.gmail.com>
+Subject: Re: [PATCH] nfs: Always try and release an NFS file lock, even after
+ receiving a SIGKILL
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 11/11] SUNRPC: Optimise away svc_recv_available
-Date: Sun,  3 Aug 2014 13:03:13 -0400
-Message-Id: <1407085393-3175-12-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407085393-3175-11-git-send-email-trond.myklebust@primarydata.com>
-References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-6-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-7-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-8-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-9-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-10-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-11-git-send-email-trond.myklebust@primarydata.com>
+To: David Jeffery <djeffery@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We really do not want to do ioctls in the server's fast path. Instead, let's
-use the fact that we managed to read a full record as the indicator that
-we should try to read the socket again.
+On Thu, Aug 21, 2014 at 2:15 PM, David Jeffery <djeffery@redhat.com> wrote:
+> On 08/21/2014 11:50 AM, Trond Myklebust wrote:
+>> On Thu, Aug 21, 2014 at 11:40 AM, David Jeffery <djeffery@redhat.com> wrote:
+>>> On 08/20/2014 08:28 PM, Trond Myklebust wrote:
+>>>>
+>>>> What guarantees that this does not lead to silent corruption of the file
+>>>> if there are outstanding write requests?
+>>>>
+>>>
+>>> Do you have a particular scenario in mind you are concerned about?
+>>>
+>>> Right before the code the patch modifies, nfs_sync_mapping() is called.
+>>>  Any writes started before the unlock operation began have already been
+>>> flushed, so we shouldn't have a corruption case of writes from before
+>>> the unlock began being sent after the unlock is complete.
+>>>
+>>> Are you concerned about some other nfs4 writes being started while we
+>>> initially waited on the counter?  Such a write racing with the unlock
+>>
+>> No. I'm worried about the writes that have been started, but which are
+>> now completing in the background while the lock is being freed.
+>>
+>>> going ahead instead of erroring out could initially fail from a wrong
+>>> state ID, but should retry with the new state.  Is there something I've
+>>> overlooked?
+>>
+>> Loss of lock atomicity due to the fact that the writes are completing
+>> after the lock was released.
+>>
+>
+> I don't think my patches break lock atomicity, unless I've completely
+> misunderstood nfs_sync_mapping()'s behavior.
+>
+> The background writes should have already been waited for by
+> nfs_sync_mapping() at the beginning of do_unlk().  nfs_sync_mapping()
+> would call nfs_wb_all() which calls sync_inode() with WB_SYNC_ALL, so
+> it's going to push out any dirty data and wait for any writes to
+> complete.  Only after the writes are complete do we go on to call
+> nfs_iocounter_wait().
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/svcsock.c | 23 ++++++-----------------
- 1 file changed, 6 insertions(+), 17 deletions(-)
+What if nfs_wb_all() is interrupted? Currently, that doesn't matter
+precisely because of the call to nfs_iocounter_wait.
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 72597d7fe60a..949bb2bb8f07 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -312,19 +312,6 @@ static int svc_one_sock_name(struct svc_sock *svsk, char *buf, int remaining)
- }
- 
- /*
-- * Check input queue length
-- */
--static int svc_recv_available(struct svc_sock *svsk)
--{
--	struct socket	*sock = svsk->sk_sock;
--	int		avail, err;
--
--	err = kernel_sock_ioctl(sock, TIOCINQ, (unsigned long) &avail);
--
--	return (err >= 0)? avail : err;
--}
--
--/*
-  * Generic recvfrom routine.
-  */
- static int svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr,
-@@ -339,8 +326,14 @@ static int svc_recvfrom(struct svc_rqst *rqstp, struct kvec *iov, int nr,
- 
- 	rqstp->rq_xprt_hlen = 0;
- 
-+	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 	len = kernel_recvmsg(svsk->sk_sock, &msg, iov, nr, buflen,
- 				msg.msg_flags);
-+	/* If we read a full record, then assume there may be more
-+	 * data to read (stream based sockets only!)
-+	 */
-+	if (len == buflen)
-+		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 
- 	dprintk("svc: socket %p recvfrom(%p, %Zu) = %d\n",
- 		svsk, iov[0].iov_base, iov[0].iov_len, len);
-@@ -979,8 +972,6 @@ static int svc_tcp_recv_record(struct svc_sock *svsk, struct svc_rqst *rqstp)
- 	unsigned int want;
- 	int len;
- 
--	clear_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
--
- 	if (svsk->sk_tcplen < sizeof(rpc_fraghdr)) {
- 		struct kvec	iov;
- 
-@@ -1072,8 +1063,6 @@ static int copy_pages_to_kvecs(struct kvec *vec, struct page **pages, int len)
- static void svc_tcp_fragment_received(struct svc_sock *svsk)
- {
- 	/* If we have more data, signal svc_xprt_enqueue() to try again */
--	if (svc_recv_available(svsk) > sizeof(rpc_fraghdr))
--		set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags);
- 	dprintk("svc: TCP %s record (%d bytes)\n",
- 		svc_sock_final_rec(svsk) ? "final" : "nonfinal",
- 		svc_sock_reclen(svsk));
+> If there is a write causing us to want to wait in nfs_iocounter_wait()
+> and which my patches no longer wait for, the write was done after
+> nfs_sync_mapping() started, which means the write occurred after the
+> unlock-initiating call began.  Such a write should have no atomicity
+> guarantee with holding the lock, and may complete before or after the
+> lock is released.  The writes which require atomicity are already
+> completed before getting to the call of nfs_iocounter_wait() and the
+> code my patch changes.
+
+See above.
+
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
