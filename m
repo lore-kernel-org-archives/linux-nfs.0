@@ -1,116 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f178.google.com ([209.85.220.178]:51483 "EHLO
-	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754456AbaHLUJy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 16:09:54 -0400
-Received: by mail-vc0-f178.google.com with SMTP id la4so13829008vcb.23
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 13:09:53 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140812195308.GC25914@fieldses.org>
-References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-6-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-7-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-8-git-send-email-trond.myklebust@primarydata.com>
-	<1407085393-3175-9-git-send-email-trond.myklebust@primarydata.com>
-	<20140812195308.GC25914@fieldses.org>
-Date: Tue, 12 Aug 2014 16:09:52 -0400
-Message-ID: <CAHQdGtR6-yGfuu2WZSD1JpmLbO5XuoU3QoU37e_oVWpYspDxCA@mail.gmail.com>
-Subject: Re: [PATCH 08/11] SUNRPC: get rid of the request wait queue
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:34886 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750809AbaHUAdF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 20:33:05 -0400
+Received: by mail-ie0-f170.google.com with SMTP id rl12so3866407iec.1
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 17:33:03 -0700 (PDT)
+Message-ID: <1408581184.4029.5.camel@leira.trondhjem.org>
+Subject: Re: [PATCH 1/2] SUNRPC: track when a client connection is routed to
+ the local host.
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 20 Aug 2014 20:33:04 -0400
+In-Reply-To: <20140818062254.1449.26590.stgit@notabene.brown>
+References: <20140818061727.1449.89101.stgit@notabene.brown>
+	 <20140818062254.1449.26590.stgit@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 12, 2014 at 3:53 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> On Sun, Aug 03, 2014 at 01:03:10PM -0400, Trond Myklebust wrote:
->> We're always _only_ waking up tasks from within the sp_threads list, so
->> we know that they are enqueued and alive. The rq_wait waitqueue is just
->> a distraction with extra atomic semantics.
->>
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->>  include/linux/sunrpc/svc.h |  1 -
->>  net/sunrpc/svc.c           |  2 --
->>  net/sunrpc/svc_xprt.c      | 32 +++++++++++++++++---------------
->>  3 files changed, 17 insertions(+), 18 deletions(-)
->>
->> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
->> index 1bc7cd05b22e..3ec769b65c7f 100644
->> --- a/include/linux/sunrpc/svc.h
->> +++ b/include/linux/sunrpc/svc.h
->> @@ -280,7 +280,6 @@ struct svc_rqst {
->>       int                     rq_splice_ok;   /* turned off in gss privacy
->>                                                * to prevent encrypting page
->>                                                * cache pages */
->> -     wait_queue_head_t       rq_wait;        /* synchronization */
->>       struct task_struct      *rq_task;       /* service thread */
->>  };
->>
->> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
->> index 5de6801cd924..dfb78c4f3031 100644
->> --- a/net/sunrpc/svc.c
->> +++ b/net/sunrpc/svc.c
->> @@ -612,8 +612,6 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
->>       if (!rqstp)
->>               goto out_enomem;
->>
->> -     init_waitqueue_head(&rqstp->rq_wait);
->> -
->>       serv->sv_nrthreads++;
->>       spin_lock_bh(&pool->sp_lock);
->>       pool->sp_nrthreads++;
->> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
->> index 2c30193c7a13..438e91c12851 100644
->> --- a/net/sunrpc/svc_xprt.c
->> +++ b/net/sunrpc/svc_xprt.c
->> @@ -348,8 +348,6 @@ static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
->>
->>       cpu = get_cpu();
->>       pool = svc_pool_for_cpu(xprt->xpt_server, cpu);
->> -     put_cpu();
->> -
->>       spin_lock_bh(&pool->sp_lock);
->>
->>       if (!list_empty(&pool->sp_threads) &&
->> @@ -382,10 +380,15 @@ static void svc_xprt_do_enqueue(struct svc_xprt *xprt)
->>                       printk(KERN_ERR
->>                               "svc_xprt_enqueue: server %p, rq_xprt=%p!\n",
->>                               rqstp, rqstp->rq_xprt);
->> -             rqstp->rq_xprt = xprt;
->> +             /* Note the order of the following 3 lines:
->> +              * We want to assign xprt to rqstp->rq_xprt only _after_
->> +              * we've woken up the process, so that we don't race with
->> +              * the lockless check in svc_get_next_xprt().
->
-> Sorry, I'm not following this: what exactly is the race?
+On Mon, 2014-08-18 at 16:22 +1000, NeilBrown wrote:
+> If requests are being sent to the local host, then NFS will
+> need to take care to avoid deadlocks.
+> 
+> So keep track when accepting a connection or sending a UDP request
+> and set a flag in the svc_xprt when the peer connected to is local.
+> 
+> The interface rpc_is_foreign() is provided to check is a given client
+> is connected to a foreign server.  When it returns zero it is either
+> not connected or connected to a local server and in either case
+> greater care is needed.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  include/linux/sunrpc/clnt.h |    1 +
+>  include/linux/sunrpc/xprt.h |    1 +
+>  net/sunrpc/clnt.c           |   25 +++++++++++++++++++++++++
+>  net/sunrpc/xprtsock.c       |    9 +++++++++
+>  4 files changed, 36 insertions(+)
+> 
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index 70736b98c721..cd79b2a28ceb 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -175,6 +175,7 @@ void		rpc_force_rebind(struct rpc_clnt *);
+>  size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+>  const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+>  int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
+> +int		rpc_is_foreign(struct rpc_clnt *);
+>  
+>  #endif /* __KERNEL__ */
+>  #endif /* _LINUX_SUNRPC_CLNT_H */
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index fcbfe8783243..6a9dffcb9d3f 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -357,6 +357,7 @@ int			xs_swapper(struct rpc_xprt *xprt, int enable);
+>  #define XPRT_CONNECTION_ABORT	(7)
+>  #define XPRT_CONNECTION_CLOSE	(8)
+>  #define XPRT_CONGESTED		(9)
+> +#define XPRT_LOCAL		(10)
+>  
 
-There are 2 potential races, both due to the lockless check for rqstp->rq_xprt.
-
-1) You need to ensure that the reference count in xprt is bumped
-before assigning to rqstp->rq_xprt, because svc_get_next_xprt() does a
-lockless check for rqstp->rq_xprt != NULL, so there is no lock to
-ensure that the refcount bump occurs before whoever called
-svc_get_next_xprt() calls svc_xprt_put()...
-
-2) You want to ensure that you don't call wake_up_process() after
-exiting svc_get_next_xprt() since you would no longer be guaranteed
-that the task still exists. By calling wake_up_process() before
-setting rqstp->rq_xprt, you ensure that if the task wakes up before
-calling wake_up_process(), then the test for rqstp->rq_xprt == NULL
-forces you into the spin_lock_bh() protected region, where it is safe
-to test rqstp->rq_xprt again and decide whether or not the task is
-still queued on &pool->sp_threads.
-
+Can we please rename that to XPRT_LOOPBACK or something along those
+lines? To me XPRT_LOCAL looks a little too close for comfort to
+AF_LOCAL, which is also a supported transport.
 
 -- 
 Trond Myklebust
-
 Linux NFS client maintainer, PrimaryData
-
 trond.myklebust@primarydata.com
+
+
