@@ -1,40 +1,24 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:63079 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751823AbaHTSnE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 14:43:04 -0400
-Received: by mail-qc0-f171.google.com with SMTP id r5so8120201qcx.2
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 11:43:02 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 20 Aug 2014 14:43:01 -0400
-To: Christoph Hellwig <hch@lst.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: pnfs block layout driver fixes
-Message-ID: <20140820144301.23d6aac3@tlielax.poochiereds.net>
-In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
-References: <1407396229-4785-1-git-send-email-hch@lst.de>
+Received: from verein.lst.de ([213.95.11.211]:34353 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750729AbaHUOqy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Aug 2014 10:46:54 -0400
+Date: Thu, 21 Aug 2014 16:46:51 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Boaz Harrosh <openosd@gmail.com>
+Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/4] pnfs: factor GETDEVICEINFO implementations
+Message-ID: <20140821144651.GA21545@lst.de>
+References: <1407787617-26050-1-git-send-email-hch@lst.de> <1407787617-26050-2-git-send-email-hch@lst.de> <53E9FC57.9010806@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <53E9FC57.9010806@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu,  7 Aug 2014 09:23:32 +0200
-Christoph Hellwig <hch@lst.de> wrote:
+Boaz,
 
-> This series fixes a wide range of issues with the pnfs block layout driver.
-> 
-> Before this we were seeing frequent silent data corruption, softlockups and
-> kernel crashes when running both user applications and test cases like xfstests.
-> 
-> After this rewrite of the I/O path we've sorted out all issues under normal
-> operations, although error handling in the block layout driver and its
-> interaction with the core nfs and pnfs code still needs further work.
-> 
-> This work was sponsored by NetApp, Inc.
-> 
+did you get a chance to test this against and object layout server?
 
-What sort of server are you testing this against?
+Did anyone manage to test it against a file layout server?
 
--- 
-Jeff Layton <jlayton@primarydata.com>
