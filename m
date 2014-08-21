@@ -1,79 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45978 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753519AbaHETPA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Aug 2014 15:15:00 -0400
-Date: Tue, 5 Aug 2014 15:14:58 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        NeilBrown <neilb@suse.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] fs/locks.c: Copy fl_lmops to conflock for nfsd using
-Message-ID: <20140805191458.GV23341@fieldses.org>
-References: <53BAAAC5.9000106@gmail.com>
- <53DCF97D.3000605@gmail.com>
- <20140802190505.442f07b8@tlielax.poochiereds.net>
+Received: from mail-vc0-f169.google.com ([209.85.220.169]:60156 "EHLO
+	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751476AbaHUPbZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 11:31:25 -0400
+Received: by mail-vc0-f169.google.com with SMTP id le20so11061671vcb.28
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2014 08:31:25 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140802190505.442f07b8@tlielax.poochiereds.net>
+In-Reply-To: <1408633667-24177-1-git-send-email-hch@lst.de>
+References: <1408633667-24177-1-git-send-email-hch@lst.de>
+Date: Thu, 21 Aug 2014 11:31:24 -0400
+Message-ID: <CAHQdGtTniQYMUpOnKnG8H8W5WJsAysZA-FYCy1SHGOpFUebJBg@mail.gmail.com>
+Subject: Re: [PATCH] nfs: update time staps on truncate
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 02, 2014 at 07:05:05PM -0400, Jeff Layton wrote:
-> On Sat, 02 Aug 2014 22:45:17 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
-> > Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks)
-> > using fl_lmops field in file_lock for checking nfsd4 lockowner.
-> > 
-> > But, commit 1a747ee0cc (locks: don't call ->copy_lock methods
-> > on return of conflicting locks) causes the fl_lmops of conflock
-> > for nfsd4_lock always be NULL.
-> > 
-> > Also, commit 0996905f93 (lockd: posix_test_lock() should not call
-> > locks_copy_lock()) caused the fl_lmops of conflock for nfsd4_lockt
-> > always be NULL too.
-> > 
-> > So that, nfsd4 lockowner for it always be NULL too.
-> > 
-> > This patch re-coping the fl_lmops to conflock.
-> > 
-> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> > ---
-> >  fs/locks.c | 3 +--
-> >  1 file changed, 1 insertion(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/locks.c b/fs/locks.c
-> > index 717fbc4..cc1219a 100644
-> > --- a/fs/locks.c
-> > +++ b/fs/locks.c
-> > @@ -279,7 +279,7 @@ void __locks_copy_lock(struct file_lock *new, const struct file_lock *fl)
-> >  	new->fl_start = fl->fl_start;
-> >  	new->fl_end = fl->fl_end;
-> >  	new->fl_ops = NULL;
-> > -	new->fl_lmops = NULL;
-> > +	new->fl_lmops = fl->fl_lmops;
-> >  }
-> >  EXPORT_SYMBOL(__locks_copy_lock);
-> >  
-> > @@ -290,7 +290,6 @@ void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
-> >  	__locks_copy_lock(new, fl);
-> >  	new->fl_file = fl->fl_file;
-> >  	new->fl_ops = fl->fl_ops;
-> > -	new->fl_lmops = fl->fl_lmops;
-> >  
-> >  	locks_copy_private(new, fl);
-> >  }
-> 
-> This looks sane to me AFAICT.
-> 
-> I'll run a few tests with it, and put it into I'll plan to pick this up
-> since I have some other fs/locks.c related patches slated for 3.17.
+Hi Christoph,
 
-Looks like your mail and Trond's crossed?  I'd need to go remind myself
-of the __locks_copy_lock callers, but I'm pretty sure Trond's right....
+On Thu, Aug 21, 2014 at 11:07 AM, Christoph Hellwig <hch@lst.de> wrote:
+> The VFS handles attributes on truncate in a strange way, fix NFS to handle
+> it properly by copying a small code sniplet from XFS.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfs/inode.c | 22 +++++++++++++++++++++-
+>  1 file changed, 21 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 577a36f..5bbd991 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -505,8 +505,28 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+>                 attr->ia_valid &= ~ATTR_MODE;
+>
+>         if (attr->ia_valid & ATTR_SIZE) {
+> -               if (!S_ISREG(inode->i_mode) || attr->ia_size == i_size_read(inode))
+> +               if (!S_ISREG(inode->i_mode) ||
+> +                   attr->ia_size == i_size_read(inode))
+>                         attr->ia_valid &= ~ATTR_SIZE;
+> +
+> +               /*
+> +                * Only change the c/mtime if we are changing the size or we
+> +                * are explicitly asked to change it.  This handles the
+> +                * semantic difference between truncate() and ftruncate() as
+> +                * implemented in the VFS.
+> +                *
+> +                * The regular truncate() case without ATTR_CTIME and
+> +                * ATTR_MTIME is a special case where we need to update the
+> +                * times despite not having these flags set.  For all other
+> +                * operations the VFS set these flags explicitly if it wants
+> +                * a timestamp update.
+> +                */
+> +               if (attr->ia_size != i_size_read(inode) &&
+> +                   !(attr->ia_valid & (ATTR_CTIME | ATTR_MTIME))) {
+> +                       attr->ia_ctime = attr->ia_mtime =
+> +                               current_fs_time(inode->i_sb);
+> +                       attr->ia_valid |= ATTR_CTIME | ATTR_MTIME;
+> +               }
+>         }
+>
 
---b.
+We shouldn't need to set attr->ia_ctime/ia_mtime above. We should set
+the file time to the server clock time.
+Also note that instead of checking attr->ia_size !=
+i_size_read(inode), the above should check attr->ia_valid & ATTR_SIZE
+due to the optimisation above.
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
