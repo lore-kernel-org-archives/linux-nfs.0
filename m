@@ -1,81 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from arafel.iwakd.de ([78.46.72.57]:56180 "EHLO arafel.iwakd.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750913AbaHMRv2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Aug 2014 13:51:28 -0400
+Received: from mail-vc0-f170.google.com ([209.85.220.170]:40439 "EHLO
+	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751349AbaHUPuh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 11:50:37 -0400
+Received: by mail-vc0-f170.google.com with SMTP id lf12so10960182vcb.15
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2014 08:50:36 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Wed, 13 Aug 2014 19:45:16 +0200
-From: Christian Seiler <christian@iwakd.de>
-To: Steve Dickson <steved@redhat.com>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] libnfsidmap: respect Nobody-User/Nobody-Group
-In-Reply-To: <53EB962C.5000001@RedHat.com>
-References: <1401794264-3975-1-git-send-email-christian@iwakd.de>
- <53EB962C.5000001@RedHat.com>
-Message-ID: <603dd17035c81999c99b9020b65d8768@iwakd.de>
+In-Reply-To: <53F612DC.60006@redhat.com>
+References: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com>
+	<1408580933.4029.2.camel@leira.trondhjem.org>
+	<53F612DC.60006@redhat.com>
+Date: Thu, 21 Aug 2014 11:50:36 -0400
+Message-ID: <CAHQdGtRw0V=mAuXs=UL7aJxxvKo26xqVoyOwR7r+9PrGPNmn_g@mail.gmail.com>
+Subject: Re: [PATCH] nfs: Always try and release an NFS file lock, even after
+ receiving a SIGKILL
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: David Jeffery <djeffery@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-
-Am 2014-08-13 18:45, schrieb Steve Dickson:
-> On 06/03/2014 07:17 AM, Christian Seiler wrote:
->> Previous behavior of libnfsidmap was to do a name lookup of
->> nobody@DEFAULTDOMAIN (for both user and group), which does not match
->> the behavior of rpc.idmapd.
+On Thu, Aug 21, 2014 at 11:40 AM, David Jeffery <djeffery@redhat.com> wrote:
+> On 08/20/2014 08:28 PM, Trond Myklebust wrote:
 >>
->> This patch makes libnfsidmap respect Nobody-User/Nobody-Group for
->> lookups, thus making the nfsidmap utility properly handle the case 
->> if
->> nobody@DEFAULTDOMAIN does not directly map to any user/group on the
->> system.
+>> What guarantees that this does not lead to silent corruption of the file
+>> if there are outstanding write requests?
 >>
->> Signed-off-by: Christian Seiler <christian@iwakd.de>
-> Wow... This one fell of the radar... sorry about that!
+>
+> Do you have a particular scenario in mind you are concerned about?
+>
+> Right before the code the patch modifies, nfs_sync_mapping() is called.
+>  Any writes started before the unlock operation began have already been
+> flushed, so we shouldn't have a corruption case of writes from before
+> the unlock began being sent after the unlock is complete.
+>
+> Are you concerned about some other nfs4 writes being started while we
+> initially waited on the counter?  Such a write racing with the unlock
 
-No problem. To be honest, I completely forgot about this patch
-myself, because I wrote this patch when I tried to switch from
-idmapd to nfsidmap, but after I had some problems with that, I
-kind of switched back to idmapd, and then kind of put the whole
-thing to the back of my mind.
+No. I'm worried about the writes that have been started, but which are
+now completing in the background while the lock is being freed.
 
-But perhaps you can give me a couple of pointers on how to
-best debug the issue I had with nfsidmap:
+> going ahead instead of erroring out could initially fail from a wrong
+> state ID, but should retry with the new state.  Is there something I've
+> overlooked?
 
-  - nsswitch translation for idmapping, nss_ldapd
-  - nfsv4 sec=krb5 mount (mounted via autofs)
-  - no krb5 ticket: ls doesn't even work (permission denied)
-    (this is expected, not a bug)
-  - with krb5 ticket: ls -l shows correct directory contents,
-    with correct user/group ownership (translation nfs4 ->
-    uid/gid via nfsidmap and then uid/gid -> local names via
-    getpwnam works)
-  - accessing files owned by myself but that are not group/other
-    readable doesn't work (permission denied)
-  - writing to files / directories on which I have write
-    permission (but no other write permission) doesn't work
-  - nfsv4 sec=sys mounts don't have this problem
+Loss of lock atomicity due to the fact that the writes are completing
+after the lock was released.
 
-To me this appears to be a problem that while uids/gids are
-correctly mapped when getting data from the server, they are
-not mapped properly when sending requests to the server, so
-that it always falls back to nobody, therefore giving me
-insufficient permissions.
+-- 
+Trond Myklebust
 
-The problem doesn't occur with rpc.idmapd (and disabled
-nfsidmap).
+Linux NFS client maintainer, PrimaryData
 
-My question would be whether there is an easy way to debug this?
-I tried to have a look at the kernel nfs4 client code / the
-interaction with idmap, but I just don't know enough about that
-area of the kernel to really see through the logic.
-
-> Committed!
-
-Thanks!
-
-Regards,
-Christian
-
+trond.myklebust@primarydata.com
