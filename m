@@ -1,186 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f174.google.com ([209.85.160.174]:63882 "EHLO
-	mail-yk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751190AbaHBBue (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Aug 2014 21:50:34 -0400
-MIME-Version: 1.0
-In-Reply-To: <20140801212120.1ae0eb02@tlielax.poochiereds.net>
-References: <53DA8443.407@candelatech.com> <20140801064217.01852788@notabene.brown>
- <53DAB307.2000206@candelatech.com> <20140801075053.2120cb33@notabene.brown> <20140801212120.1ae0eb02@tlielax.poochiereds.net>
-From: Roger Heflin <rogerheflin@gmail.com>
-Date: Fri, 1 Aug 2014 20:50:13 -0500
-Message-ID: <CAAMCDeeRWTEXu_UTWJ_aC_6Pb3286ijZByeDpwKwAeMqGBAODQ@mail.gmail.com>
-Subject: Re: Killing process in D state on mount to dead NFS server. (when
- process is in fsync)
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: NeilBrown <neilb@suse.de>, Ben Greear <greearb@candelatech.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Kernel development list <linux-kernel@vger.kernel.org>,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:50114 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751017AbaHUPrf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 11:47:35 -0400
+Received: by mail-qg0-f53.google.com with SMTP id z60so5408445qgd.26
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2014 08:47:34 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] locks: remove lock_may_read and lock_may_write
+Date: Thu, 21 Aug 2014 11:47:29 -0400
+Message-Id: <1408636049-30737-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Doesn't NFS have an intr flag to allow kill -9 to work?   Whenever I
-have had that set it has appeared to work after about 30 seconds or
-so...without that kill -9 does not work when the nfs server is
-missing.
+There are no callers of these functions.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/locks.c         | 80 ------------------------------------------------------
+ include/linux/fs.h | 14 ----------
+ 2 files changed, 94 deletions(-)
 
+diff --git a/fs/locks.c b/fs/locks.c
+index 0ee775d691a9..bfd1438b2a2e 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -2597,86 +2597,6 @@ static int __init proc_locks_init(void)
+ module_init(proc_locks_init);
+ #endif
+ 
+-/**
+- *	lock_may_read - checks that the region is free of locks
+- *	@inode: the inode that is being read
+- *	@start: the first byte to read
+- *	@len: the number of bytes to read
+- *
+- *	Emulates Windows locking requirements.  Whole-file
+- *	mandatory locks (share modes) can prohibit a read and
+- *	byte-range POSIX locks can prohibit a read if they overlap.
+- *
+- *	N.B. this function is only ever called
+- *	from knfsd and ownership of locks is never checked.
+- */
+-int lock_may_read(struct inode *inode, loff_t start, unsigned long len)
+-{
+-	struct file_lock *fl;
+-	int result = 1;
+-
+-	spin_lock(&inode->i_lock);
+-	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
+-		if (IS_POSIX(fl)) {
+-			if (fl->fl_type == F_RDLCK)
+-				continue;
+-			if ((fl->fl_end < start) || (fl->fl_start > (start + len)))
+-				continue;
+-		} else if (IS_FLOCK(fl)) {
+-			if (!(fl->fl_type & LOCK_MAND))
+-				continue;
+-			if (fl->fl_type & LOCK_READ)
+-				continue;
+-		} else
+-			continue;
+-		result = 0;
+-		break;
+-	}
+-	spin_unlock(&inode->i_lock);
+-	return result;
+-}
+-
+-EXPORT_SYMBOL(lock_may_read);
+-
+-/**
+- *	lock_may_write - checks that the region is free of locks
+- *	@inode: the inode that is being written
+- *	@start: the first byte to write
+- *	@len: the number of bytes to write
+- *
+- *	Emulates Windows locking requirements.  Whole-file
+- *	mandatory locks (share modes) can prohibit a write and
+- *	byte-range POSIX locks can prohibit a write if they overlap.
+- *
+- *	N.B. this function is only ever called
+- *	from knfsd and ownership of locks is never checked.
+- */
+-int lock_may_write(struct inode *inode, loff_t start, unsigned long len)
+-{
+-	struct file_lock *fl;
+-	int result = 1;
+-
+-	spin_lock(&inode->i_lock);
+-	for (fl = inode->i_flock; fl != NULL; fl = fl->fl_next) {
+-		if (IS_POSIX(fl)) {
+-			if ((fl->fl_end < start) || (fl->fl_start > (start + len)))
+-				continue;
+-		} else if (IS_FLOCK(fl)) {
+-			if (!(fl->fl_type & LOCK_MAND))
+-				continue;
+-			if (fl->fl_type & LOCK_WRITE)
+-				continue;
+-		} else
+-			continue;
+-		result = 0;
+-		break;
+-	}
+-	spin_unlock(&inode->i_lock);
+-	return result;
+-}
+-
+-EXPORT_SYMBOL(lock_may_write);
+-
+ static int __init filelock_init(void)
+ {
+ 	int i;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 3b07ce2698de..458f733c96bd 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -985,8 +985,6 @@ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **);
+ extern int vfs_setlease(struct file *, long, struct file_lock **);
+ extern int lease_modify(struct file_lock **, int);
+-extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+-extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int fcntl_getlk(struct file *file, unsigned int cmd,
+ 			      struct flock __user *user)
+@@ -1117,18 +1115,6 @@ static inline int lease_modify(struct file_lock **before, int arg)
+ {
+ 	return -EINVAL;
+ }
+-
+-static inline int lock_may_read(struct inode *inode, loff_t start,
+-				unsigned long len)
+-{
+-	return 1;
+-}
+-
+-static inline int lock_may_write(struct inode *inode, loff_t start,
+-				 unsigned long len)
+-{
+-	return 1;
+-}
+ #endif /* !CONFIG_FILE_LOCKING */
+ 
+ 
+-- 
+1.9.3
 
-On Fri, Aug 1, 2014 at 8:21 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> On Fri, 1 Aug 2014 07:50:53 +1000
-> NeilBrown <neilb@suse.de> wrote:
->
->> On Thu, 31 Jul 2014 14:20:07 -0700 Ben Greear <greearb@candelatech.com> wrote:
->>
->> > -----BEGIN PGP SIGNED MESSAGE-----
->> > Hash: SHA1
->> >
->> > On 07/31/2014 01:42 PM, NeilBrown wrote:
->> > > On Thu, 31 Jul 2014 11:00:35 -0700 Ben Greear <greearb@candelatech.com> wrote:
->> > >
->> > >> So, this has been asked all over the interweb for years and years, but the best answer I can find is to reboot the system or create a fake NFS server
->> > >> somewhere with the same IP as the gone-away NFS server.
->> > >>
->> > >> The problem is:
->> > >>
->> > >> I have some mounts to an NFS server that no longer exists (crashed/powered down).
->> > >>
->> > >> I have some processes stuck trying to write to files open on these mounts.
->> > >>
->> > >> I want to kill the process and unmount.
->> > >>
->> > >> umount -l will make the mount go a way, sort of.  But process is still hung. umount -f complains: umount2:  Device or resource busy umount.nfs: /mnt/foo:
->> > >> device is busy
->> > >>
->> > >> kill -9 does not work on process.
->> > >
->> > > Kill -1 should work (since about 2.6.25 or so).
->> >
->> > That is -[ONE], right?  Assuming so, it did not work for me.
->>
->> No, it was "-9" .... sorry, I really shouldn't be let out without my proof
->> reader.
->>
->> However the 'stack' is sufficient to see what is going on.
->>
->> The problem is that it is blocked inside the "VM" well away from NFS and
->> there is no way for NFS to say "give up and go home".
->>
->> I'd suggest that is a bug.   I cannot see any justification for fsync to not
->> be killable.
->> It wouldn't be too hard to create a patch to make it so.
->> It would be a little harder to examine all call paths and create a
->> convincing case that the patch was safe.
->> It might be herculean task to convince others that it was the right thing
->> to do.... so let's start with that one.
->>
->> Hi Linux-mm and fs-devel people.  What do people think of making "fsync" and
->> variants "KILLABLE" ??
->>
->> I probably only need a little bit of encouragement to write a patch....
->>
->> Thanks,
->> NeilBrown
->>
->
->
-> It would be good to fix this in some fashion once and for all, and the
-> wait_on_page_writeback wait is a major source of pain for a lot of
-> people.
->
-> So to summarize...
->
-> The problem in a nutshell is that Ben has some cached writes to the
-> NFS server, but the server has gone away (presumably forever). The
-> question is -- how do we communicate to the kernel that that server
-> isn't coming back and that those dirty pages should be invalidated so
-> that we can umount the filesystem?
->
-> Allowing fsync/close to be killable sounds reasonable to me as at least
-> a partial solution. Both close(2) and fsync(2) are allowed to return
-> EINTR according to the POSIX spec. Allowing a kill -9 there seems
-> like it should be fine, and maybe we ought to even consider letting it
-> be susceptible to lesser signals.
->
-> That still leaves some open questions though...
->
-> Is that enough to fix it? You'd still have the dirty pages lingering
-> around, right? Would a umount -f presumably work at that point?
->
->> >
->> > Kernel is 3.14.4+, with some of extra patches, but probably nothing that
->> > influences this particular behaviour.
->> >
->> > [root@lf1005-14010010 ~]# cat /proc/3805/stack
->> > [<ffffffff811371ba>] sleep_on_page+0x9/0xd
->> > [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
->> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
->> > [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
->> > [<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
->> > [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
->> > [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
->> > [<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
->> > [<ffffffff81183e46>] filp_close+0x3f/0x71
->> > [<ffffffff8119c8ae>] __close_fd+0x80/0x98
->> > [<ffffffff81183de5>] SyS_close+0x1c/0x3e
->> > [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
->> > [<ffffffffffffffff>] 0xffffffffffffffff
->> > [root@lf1005-14010010 ~]# kill -1 3805
->> > [root@lf1005-14010010 ~]# cat /proc/3805/stack
->> > [<ffffffff811371ba>] sleep_on_page+0x9/0xd
->> > [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
->> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
->> > [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
->> > [<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
->> > [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
->> > [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
->> > [<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
->> > [<ffffffff81183e46>] filp_close+0x3f/0x71
->> > [<ffffffff8119c8ae>] __close_fd+0x80/0x98
->> > [<ffffffff81183de5>] SyS_close+0x1c/0x3e
->> > [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
->> > [<ffffffffffffffff>] 0xffffffffffffffff
->> >
->> > Thanks,
->> > Ben
->> >
->> > > If it doesn't please report the kernel version and cat /proc/$PID/stack
->> > >
->> > > for some processes that cannot be killed.
->> > >
->> > > NeilBrown
->> > >
->> > >>
->> > >>
->> > >> Aside from bringing a fake NFS server back up on the same IP, is there any other way to get these mounts unmounted and the processes killed without
->> > >> rebooting?
->> > >>
->> > >> Thanks, Ben
->> > >>
->> > >
->> >
->> >
->> > - --
->> > Ben Greear <greearb@candelatech.com>
->> > Candela Technologies Inc  http://www.candelatech.com
->> >
->> > -----BEGIN PGP SIGNATURE-----
->> > Version: GnuPG v1.4.13 (GNU/Linux)
->> > Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
->> >
->> > iQEcBAEBAgAGBQJT2rLiAAoJELbHqkYeJT4OqPgH/0taKW6Be90c1mETZf9yeqZF
->> > YMLZk8XC2wloEd9nVz//mXREmiu18Hc+5p7Upd4Os21J2P4PBMGV6P/9DMxxehwH
->> > YX1HKha0EoAsbO5ILQhbLf83cRXAPEpvJPgYHrq6xjlKB8Q8OxxND37rY7kl19Zz
->> > sdAw6GiqHICF3Hq1ATa/jvixMluDnhER9Dln3wOdAGzmmuFYqpTsV4EwzbKKqInJ
->> > 6C15q+cq/9aYh6usN6z2qJhbHgqM9EWcPL6jOrCwX4PbC1XjKHekpFN0t9oKQClx
->> > qSPuweMQ7fP4IBd2Ke8L/QlyOVblAKSE7t+NdrjfzLmYPzyHTyfLABR/BI053to=
->> > =/9FJ
->> > -----END PGP SIGNATURE-----
->>
->
->
-> --
-> Jeff Layton <jlayton@poochiereds.net>
