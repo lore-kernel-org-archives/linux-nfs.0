@@ -1,42 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f43.google.com ([209.85.215.43]:65088 "EHLO
-	mail-la0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753060AbaHFMB2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 08:01:28 -0400
-From: Pavel Shilovsky <pshilovsky@samba.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@samba.org>, Jeff Layton <jlayton@redhat.com>
-Subject: [PATCH 1/5] tlock: munmap missed before close
-Date: Wed,  6 Aug 2014 16:01:08 +0400
-Message-Id: <1407326472-13853-2-git-send-email-pshilovsky@samba.org>
-In-Reply-To: <1407326472-13853-1-git-send-email-pshilovsky@samba.org>
-References: <1407326472-13853-1-git-send-email-pshilovsky@samba.org>
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:55247 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754552AbaHUNRB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 09:17:01 -0400
+Received: by mail-pd0-f169.google.com with SMTP id y10so13772883pdj.0
+        for <linux-nfs@vger.kernel.org>; Thu, 21 Aug 2014 06:17:00 -0700 (PDT)
+Message-ID: <53F5F12B.1020801@gmail.com>
+Date: Thu, 21 Aug 2014 21:16:27 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Jeff Layton <jeff.layton@primarydata.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Joe Perches <joe@perches.com>, Kinglong Mee <kinglongmee@gmail.com>,
+        eshel@almaden.ibm.com
+Subject: Re: [PATCH] lockd: Remove unused b_fl member from struct nlm_block
+References: <53F47357.7050608@gmail.com>	<20140820065826.6def22d5@tlielax.poochiereds.net>	<53F4904B.6080204@gmail.com> <20140820090412.309b7599@tlielax.poochiereds.net>
+In-Reply-To: <20140820090412.309b7599@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@redhat.com>
+On 8/20/2014 21:04, Jeff Layton wrote:
+> On Wed, 20 Aug 2014 20:10:51 +0800
+> Kinglong Mee <kinglongmee@gmail.com> wrote:
+> 
+>> On 8/20/2014 18:58, Jeff Layton wrote:
+>>> On Wed, 20 Aug 2014 18:07:19 +0800
+>>> Kinglong Mee <kinglongmee@gmail.com> wrote:
+>>>
+>>>> Fix left code by Joe Perches's patch,
+>>>> "locks: Remove unused conf argument from lm_grant"
+>>>>
+>>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>>>> ---
+>>>>  fs/lockd/svclock.c          | 26 +++++---------------------
+>>>>  include/linux/lockd/lockd.h |  1 -
+>>>>  2 files changed, 5 insertions(+), 22 deletions(-)
+>>>>
+>>>> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+>>>> index 2a61701..796e63b 100644
+>>>> --- a/fs/lockd/svclock.c
+>>>> +++ b/fs/lockd/svclock.c
+>>>> @@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
+>>>>  	block->b_daemon = rqstp->rq_server;
+>>>>  	block->b_host   = host;
+>>>>  	block->b_file   = file;
+>>>> -	block->b_fl = NULL;
+>>>>  	file->f_count++;
+>>>>  
+>>>>  	/* Add to file's list of blocks */
+>>>> @@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
+>>>>  	nlmsvc_freegrantargs(block->b_call);
+>>>>  	nlmsvc_release_call(block->b_call);
+>>>>  	nlm_release_file(block->b_file);
+>>>> -	kfree(block->b_fl);
+>>>>  	kfree(block);
+>>>>  }
+>>>>  
+>>>> @@ -523,20 +521,13 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+>>>>  	block = nlmsvc_lookup_block(file, lock);
+>>>>  
+>>>>  	if (block == NULL) {
+>>>> -		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
+>>>> -
+>>>> -		if (conf == NULL)
+>>>> -			return nlm_granted;
+>>>>  		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
+>>>> -		if (block == NULL) {
+>>>> -			kfree(conf);
+>>>> +		if (block == NULL)
+>>>>  			return nlm_granted;
+>>>> -		}
+>>>> -		block->b_fl = conf;
+>>>
+>>> NAK. The b_fl member is not unused, as is evidenced by the assignment
+>>> above.
+>>
+>> Sorry for my bad title, Maybe I should use a good name, sorry!
+>>
+>>>
+>>> Joe's patch removed the conflock from the lm_grant callback since the
+>>> filesystem never set that parameter in the lm_grant callback. This call
+>>> however has nothing to do with lm_grant. It's done when the client
+>>> issues a NLM_TEST operation.
+>>>
+>>>>  	}
+>>>>  	if (block->b_flags & B_QUEUED) {
+>>>> -		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
+>>>> -			block, block->b_flags, block->b_fl);
+>>>> +		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d\n",
+>>>> +			block, block->b_flags);
+>>>>  		if (block->b_flags & B_TIMED_OUT) {
+>>>>  			nlmsvc_unlink_block(block);
+>>>>  			ret = nlm_lck_denied;
+>>>> @@ -544,14 +535,8 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+>>>>  		}
+>>>>  		if (block->b_flags & B_GOT_CALLBACK) {
+>>>>  			nlmsvc_unlink_block(block);
+>>>> -			if (block->b_fl != NULL
+>>>> -					&& block->b_fl->fl_type != F_UNLCK) {
+>>>> -				lock->fl = *block->b_fl;
+>>>> -				goto conf_lock;
+>>
+>> block->b_fl = conf just set an all-zero filed structure to block above,
+>> and never be updated later.
+>> If lockd enter here, lock->fl will contains all filed with zero,
+>> I don't know whether is it OK.
+>>
+>> thanks,
+>> Kinglong Mee
+>>
+> 
+> Not quite....You can end up getting back FILE_LOCK_DEFERRED from an
+> initial vfs_test_lock request. At that point, a block will be queued
+> and we'll end up retrying that until the fs comes back. The result of
+> those retries will end up in b_fl and that's what will end up being
+> copied to lock->fl.
 
-test13 mmaps the testfile, but doesn't munmap it before returning.
+Yes, that's right.
+What I　care is that block->b_fl contains with all zero for all field, 
+block->b_fl->fl_type == 0 == F_RDLCK.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Signed-off-by: Pavel Shilovsky <pshilovsky@samba.org>
----
- lock/tlock.c | 1 +
- 1 file changed, 1 insertion(+)
+For block with b_flags & B_GOT_CALLBACK, block->b_fl will always be non-NULL,
+and block->b_fl->fl_type always be F_RDLCK (Cannot be updated after initial),
+so that, nlmsvc_testlock will return nlm_lck_denied,
+but I think should return nlm_granted.
 
-diff --git a/lock/tlock.c b/lock/tlock.c
-index 39a6ad9..6e19a3d 100644
---- a/lock/tlock.c
-+++ b/lock/tlock.c
-@@ -1509,6 +1509,7 @@ test13()
- 			FATAL);
- 		test(13, 4, F_TLOCK, (off_t)mappedlen - 2, (off_t)END,
- 			lock1err, WARN);
-+		testmunmap();
- 		close_testfile(DO_UNLINK);
- 
- 		childfree(0);
--- 
-1.8.1.2
+So, I think commit 5ea0d75037b9 (lockd: handle test_lock deferrals)
+introduces the bug. After Joe's patch, we should remove b_fl in struct block.
 
+Cc Marc Eshel
+
+506 __be32
+507 nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+508                 struct nlm_host *host, struct nlm_lock *lock,
+509                 struct nlm_lock *conflock, struct nlm_cookie *cookie)
+510 {
+511         struct nlm_block        *block = NULL;
+... ...
+536         }
+537         if (block->b_flags & B_QUEUED) {
+538                 dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
+539                         block, block->b_flags, block->b_fl);
+540                 if (block->b_flags & B_TIMED_OUT) {
+541                         nlmsvc_unlink_block(block);
+542                         ret = nlm_lck_denied;
+543                         goto out;
+544                 }
+545                 if (block->b_flags & B_GOT_CALLBACK) {
+546                         nlmsvc_unlink_block(block);
+547                         if (block->b_fl != NULL
+548                                         && block->b_fl->fl_type != F_UNLCK) {
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+549                                 lock->fl = *block->b_fl;
+550                                 goto conf_lock;
+551                         } else {
+552                                 ret = nlm_granted;
+553                                 goto out;
+554                         }
+555                 }
+
+thanks,
+Kinglong Mee
