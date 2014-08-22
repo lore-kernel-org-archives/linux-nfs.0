@@ -1,67 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:33747 "EHLO
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:46942 "EHLO
 	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752821AbaHHPBM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Aug 2014 11:01:12 -0400
-Received: by mail-ie0-f177.google.com with SMTP id at20so6508187iec.36
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Aug 2014 08:01:11 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 3/5] nfs: use blocking page_group_lock in add_request
-Date: Fri,  8 Aug 2014 11:00:55 -0400
-Message-Id: <1407510057-6881-4-git-send-email-dros@primarydata.com>
-In-Reply-To: <1407510057-6881-1-git-send-email-dros@primarydata.com>
-References: <1407510057-6881-1-git-send-email-dros@primarydata.com>
+	with ESMTP id S1750879AbaHVTLB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 15:11:01 -0400
+Received: by mail-ie0-f177.google.com with SMTP id at20so6977519iec.22
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2014 12:11:00 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/4] NFSD: Always initialize cl_cb_addr
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 22 Aug 2014 15:10:59 -0400
+Message-ID: <20140822191059.3883.7753.stgit@klimt.1015granger.net>
+In-Reply-To: <20140822190835.3883.7581.stgit@klimt.1015granger.net>
+References: <20140822190835.3883.7581.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-__nfs_pageio_add_request was calling nfs_page_group_lock nonblocking, but
-this can return -EAGAIN which would end up passing -EIO to the application.
+A client may not want to use the back channel on a transport it sent
+CREATE_SESSION on, in which case it clears SESSION4_BACK_CHAN.
 
-There is no reason not to block in this path, so change the two calls to
-do so. Also, there is no need to check the return value of
-nfs_page_group_lock when nonblock=false, so remove the error handling code.
+However, cl_cb_addr should be populated anyway, to be used if the
+client binds other connections to this session. If cl_cb_addr is
+not initialized, rpc_create() fails when the server attempts to
+set up a back channel on such secondary transports.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-Reviewed-by: Peng Tao <tao.peng@primarydata.com>
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/pagelist.c | 13 ++-----------
- 1 file changed, 2 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index f393c72..af707e0 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -872,13 +872,8 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 	struct nfs_page *subreq;
- 	unsigned int bytes_left = 0;
- 	unsigned int offset, pgbase;
--	int ret;
+ fs/nfsd/nfs4state.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 2e80a59..a45f244 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1429,7 +1429,7 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
+ 	list_add(&new->se_perclnt, &clp->cl_sessions);
+ 	spin_unlock(&clp->cl_lock);
  
--	ret = nfs_page_group_lock(req, true);
--	if (ret < 0) {
--		desc->pg_error = ret;
--		return 0;
--	}
-+	nfs_page_group_lock(req, false);
- 
- 	subreq = req;
- 	bytes_left = subreq->wb_bytes;
-@@ -900,11 +895,7 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 			if (desc->pg_recoalesce)
- 				return 0;
- 			/* retry add_request for this subreq */
--			ret = nfs_page_group_lock(req, true);
--			if (ret < 0) {
--				desc->pg_error = ret;
--				return 0;
--			}
-+			nfs_page_group_lock(req, false);
- 			continue;
- 		}
- 
--- 
-1.8.5.2 (Apple Git-48)
+-	if (cses->flags & SESSION4_BACK_CHAN) {
++	{
+ 		struct sockaddr *sa = svc_addr(rqstp);
+ 		/*
+ 		 * This is a little silly; with sessions there's no real
 
