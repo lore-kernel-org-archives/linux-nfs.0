@@ -1,59 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:40019 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752314AbaHVWtc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 18:49:32 -0400
-Received: by mail-ie0-f182.google.com with SMTP id y20so7300857ier.27
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2014 15:49:32 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Junxiao Bi <junxiao.bi@oracle.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH v2 2/2] NFS: Ensure that rpciod does not trigger reclaim writebacks
-Date: Fri, 22 Aug 2014 18:49:32 -0400
-Message-Id: <1408747772-37938-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
-References: <53F6F772.6020708@oracle.com>
- <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:60174 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750879AbaHVTKw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 15:10:52 -0400
+Received: by mail-ie0-f171.google.com with SMTP id at1so7026848iec.30
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2014 12:10:52 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/4] sunrpc: fix byte-swapping of displayed XID
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 22 Aug 2014 15:10:50 -0400
+Message-ID: <20140822191050.3883.53374.stgit@klimt.1015granger.net>
+In-Reply-To: <20140822190835.3883.7581.stgit@klimt.1015granger.net>
+References: <20140822190835.3883.7581.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The same rpciod codepaths that can trigger GFP_KERNEL allocations
-are still able to initiate writeback of NFS pages. Avoid this by
-adding an explicit test for PF_FSTRANS in nfs_writepage().
+xprt_lookup_rqst() and bc_send_request() display a byte-swapped XID,
+but receive_cb_reply() does not.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/write.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 175d5d073ccf..b87f681c0e84 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -14,6 +14,7 @@
- #include <linux/writeback.h>
- #include <linux/swap.h>
- #include <linux/migrate.h>
-+#include <linux/sched.h>
+ net/sunrpc/svcsock.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index c24a8ff..6ed8729 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1036,7 +1036,7 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 			"%s: Got unrecognized reply: "
+ 			"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
+ 			__func__, ntohl(calldir),
+-			bc_xprt, xid);
++			bc_xprt, ntohl(xid));
+ 		return -EAGAIN;
+ 	}
  
- #include <linux/sunrpc/clnt.h>
- #include <linux/nfs_fs.h>
-@@ -633,9 +634,14 @@ static int nfs_writepage_locked(struct page *page, struct writeback_control *wbc
- 
- int nfs_writepage(struct page *page, struct writeback_control *wbc)
- {
--	int ret;
-+	int ret = 0;
- 
-+	if (unlikely(current->flags & PF_FSTRANS)) {
-+		redirty_page_for_writepage(wbc, page);
-+		goto unlock;
-+	}
- 	ret = nfs_writepage_locked(page, wbc);
-+unlock:
- 	unlock_page(page);
- 	return ret;
- }
--- 
-1.9.3
 
