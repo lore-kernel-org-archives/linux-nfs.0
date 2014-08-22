@@ -1,59 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:40237 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750886AbaH3AjR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Aug 2014 20:39:17 -0400
-Received: by mail-qa0-f54.google.com with SMTP id x12so2922188qac.27
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Aug 2014 17:39:16 -0700 (PDT)
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:35845 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754425AbaHVIvS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 04:51:18 -0400
+Received: by mail-pa0-f52.google.com with SMTP id bj1so16348289pad.11
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2014 01:51:17 -0700 (PDT)
+Message-ID: <53F7046C.4020306@gmail.com>
+Date: Fri, 22 Aug 2014 16:50:52 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20140829230147.GD7996@ZenIV.linux.org.uk>
-References: <CAHQdGtT4kbPqQvD_fu7c_5_CqK8FCpA5mJsVdh=KxoE9_vXRzw@mail.gmail.com>
- <20140829205817.GB7996@ZenIV.linux.org.uk> <CAHQdGtRBqmsfeVVysTnTEELHuwiPwvsyTHtoRAsfSS0aSyCbfQ@mail.gmail.com>
- <20140829230147.GD7996@ZenIV.linux.org.uk>
-From: Peng Tao <tao.peng@primarydata.com>
-Date: Sat, 30 Aug 2014 08:38:56 +0800
-Message-ID: <CAKVebiWBU3du650yeTMfaFuLr=WLUBc2RukFGyBF6Qgxd6zA8Q@mail.gmail.com>
-Subject: Re: VFS regression: commit aba809cf0944 breaks MNT_SHRINKABLE
- automounted partitions
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org
+CC: cluster-devel@redhat.com, Kinglong Mee <kinglongmee@gmail.com>
+Subject: Re: [PATCH] lockd: rip out deferred lock handling from testlock codepath
+References: <1408635948-30481-1-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408635948-30481-1-git-send-email-jlayton@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 30, 2014 at 7:01 AM, Al Viro <viro@zeniv.linux.org.uk> wrote:
-> On Fri, Aug 29, 2014 at 05:47:58PM -0400, Trond Myklebust wrote:
->
->> Note that the issue happens with NFSv4 or NFSv4.1 (not NFSv3).
->
-> That's what I'd been using for testing.
->
->> Note that on my system, if I call 'umount' a second time after getting
->> the 'device is busy' error, then it succeeds. It looks as if the first
->> call to 'umount /mnt' causes the directory /mnt/export to clear,
->> causing the second 'umount /mnt' to succeeed (unless I try to access
->> /mnt/export again):
-Just to be clear, it is what I saw as well. I did not get permanent
--EBUSY and I could umount /mnt if I run `umount /mnt` twice.
+I'd like this patch.
 
-And I did not do git bisect. I had doubts in the code so I found the
-specific commit to revert it and it worked. But if it is some other
-commit in the middle, I could have missed it.
+Reviewed-by: Kinglong Mee <kinglongmee@gmail.com>
 
-My theory to blame aba809cf0944 is that in
-do_umount()->shrink_submounts()->umount_tree(), it transfers parent
-mnt refcount (held by child mnt) to mnt_ex_mountpoint but that is put
-_after_ do_umount() calls propagate_mount_busy(mnt, 2). So
-propagate_mount_busy() would fail do_refcount_check(). Does it make
-sense to you?
-
->
-> Now, that smells like a different bug - see if commit ab8f2c from -next
-> helps with that one.
->
-I cherri-picked it and it still failed with -EBUSY.
-
-Cheers,
-Tao
+On 8/21/2014 23:45, Jeff Layton wrote:
+> As Kinglong points out, the nlm_block->b_fl field is no longer used at
+> all. Also, vfs_test_lock in the generic locking code will only return
+> FILE_LOCK_DEFERRED if FL_SLEEP is set, and it isn't here.
+> 
+> The only other place that returns that value is the DLM lock code, but
+> it only does that in dlm_posix_lock, never in dlm_posix_get.
+> 
+> Remove all of the deferred locking code from the testlock codepath
+> since it doesn't appear to ever be used anyway.
+> 
+> I do have a small concern that this might cause a behavior change in the
+> case where you have a block already sitting on the list when the
+> testlock request comes in, but that looks like it doesn't really work
+> properly anyway. I think it's best to just pass that down to
+> vfs_test_lock and let the filesystem report that instead of trying to
+> infer what's going on with the lock by looking at an existing block.
+> 
+> Cc: cluster-devel@redhat.com
+> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/lockd/svclock.c          | 55 +++++----------------------------------------
+>  include/linux/lockd/lockd.h |  1 -
+>  2 files changed, 6 insertions(+), 50 deletions(-)
+> 
+> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+> index acfa94d5b489..13db95f54176 100644
+> --- a/fs/lockd/svclock.c
+> +++ b/fs/lockd/svclock.c
+> @@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
+>  	block->b_daemon = rqstp->rq_server;
+>  	block->b_host   = host;
+>  	block->b_file   = file;
+> -	block->b_fl = NULL;
+>  	file->f_count++;
+>  
+>  	/* Add to file's list of blocks */
+> @@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
+>  	nlmsvc_freegrantargs(block->b_call);
+>  	nlmsvc_release_call(block->b_call);
+>  	nlm_release_file(block->b_file);
+> -	kfree(block->b_fl);
+>  	kfree(block);
+>  }
+>  
+> @@ -508,7 +506,6 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+>  		struct nlm_host *host, struct nlm_lock *lock,
+>  		struct nlm_lock *conflock, struct nlm_cookie *cookie)
+>  {
+> -	struct nlm_block 	*block = NULL;
+>  	int			error;
+>  	__be32			ret;
+>  
+> @@ -519,63 +516,26 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
+>  				(long long)lock->fl.fl_start,
+>  				(long long)lock->fl.fl_end);
+>  
+> -	/* Get existing block (in case client is busy-waiting) */
+> -	block = nlmsvc_lookup_block(file, lock);
+> -
+> -	if (block == NULL) {
+> -		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
+> -
+> -		if (conf == NULL)
+> -			return nlm_granted;
+> -		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
+> -		if (block == NULL) {
+> -			kfree(conf);
+> -			return nlm_granted;
+> -		}
+> -		block->b_fl = conf;
+> -	}
+> -	if (block->b_flags & B_QUEUED) {
+> -		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
+> -			block, block->b_flags, block->b_fl);
+> -		if (block->b_flags & B_TIMED_OUT) {
+> -			nlmsvc_unlink_block(block);
+> -			ret = nlm_lck_denied;
+> -			goto out;
+> -		}
+> -		if (block->b_flags & B_GOT_CALLBACK) {
+> -			nlmsvc_unlink_block(block);
+> -			if (block->b_fl != NULL
+> -					&& block->b_fl->fl_type != F_UNLCK) {
+> -				lock->fl = *block->b_fl;
+> -				goto conf_lock;
+> -			} else {
+> -				ret = nlm_granted;
+> -				goto out;
+> -			}
+> -		}
+> -		ret = nlm_drop_reply;
+> -		goto out;
+> -	}
+> -
+>  	if (locks_in_grace(SVC_NET(rqstp))) {
+>  		ret = nlm_lck_denied_grace_period;
+>  		goto out;
+>  	}
+> +
+>  	error = vfs_test_lock(file->f_file, &lock->fl);
+> -	if (error == FILE_LOCK_DEFERRED) {
+> -		ret = nlmsvc_defer_lock_rqst(rqstp, block);
+> -		goto out;
+> -	}
+>  	if (error) {
+> +		/* We can't currently deal with deferred test requests */
+> +		if (error == FILE_LOCK_DEFERRED)
+> +			WARN_ON_ONCE(1);
+> +
+>  		ret = nlm_lck_denied_nolocks;
+>  		goto out;
+>  	}
+> +
+>  	if (lock->fl.fl_type == F_UNLCK) {
+>  		ret = nlm_granted;
+>  		goto out;
+>  	}
+>  
+> -conf_lock:
+>  	dprintk("lockd: conflicting lock(ty=%d, %Ld-%Ld)\n",
+>  		lock->fl.fl_type, (long long)lock->fl.fl_start,
+>  		(long long)lock->fl.fl_end);
+> @@ -589,8 +549,6 @@ conf_lock:
+>  	locks_release_private(&lock->fl);
+>  	ret = nlm_lck_denied;
+>  out:
+> -	if (block)
+> -		nlmsvc_release_block(block);
+>  	return ret;
+>  }
+>  
+> @@ -661,7 +619,6 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_file *file, struct nlm_lock *l
+>   * This is a callback from the filesystem for VFS file lock requests.
+>   * It will be used if lm_grant is defined and the filesystem can not
+>   * respond to the request immediately.
+> - * For GETLK request it will copy the reply to the nlm_block.
+>   * For SETLK or SETLKW request it will get the local posix lock.
+>   * In all cases it will move the block to the head of nlm_blocked q where
+>   * nlmsvc_retry_blocked() can send back a reply for SETLKW or revisit the
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index 219d79627c05..ff82a32871b5 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -178,7 +178,6 @@ struct nlm_block {
+>  	unsigned char		b_granted;	/* VFS granted lock */
+>  	struct nlm_file *	b_file;		/* file in question */
+>  	struct cache_req *	b_cache_req;	/* deferred request handling */
+> -	struct file_lock *	b_fl;		/* set for GETLK */
+>  	struct cache_deferred_req * b_deferred_req;
+>  	unsigned int		b_flags;	/* block flags */
+>  #define B_QUEUED		1	/* lock queued */
+> 
