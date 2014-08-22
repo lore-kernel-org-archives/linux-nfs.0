@@ -1,44 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f175.google.com ([209.85.220.175]:46761 "EHLO
-	mail-vc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753122AbaHTX1R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 19:27:17 -0400
-Received: by mail-vc0-f175.google.com with SMTP id ik5so9858331vcb.20
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 16:27:16 -0700 (PDT)
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:63529 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756564AbaHVOtK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 10:49:10 -0400
+Received: by mail-vc0-f174.google.com with SMTP id la4so12223431vcb.5
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2014 07:49:09 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <87ppfvrdux.fsf@x220.int.ebiederm.org>
-References: <1408217806-25877-1-git-send-email-xiyou.wangcong@gmail.com>
-	<87ppfvrdux.fsf@x220.int.ebiederm.org>
-Date: Wed, 20 Aug 2014 19:27:15 -0400
-Message-ID: <CAHQdGtS41PsfH5SKr2kcpUjnb7QL4CPFey1zSasXmHbhnZqtEQ@mail.gmail.com>
-Subject: Re: [PATCH v2] nfs: fix kernel warning when removing proc entry
+In-Reply-To: <20140822140759.GA31775@ada>
+References: <20140822140759.GA31775@ada>
+Date: Fri, 22 Aug 2014 10:49:09 -0400
+Message-ID: <CAHQdGtQGWBkH23eTF-1=dGcz18QK8atHEom0vy9eWhPXPtCsfg@mail.gmail.com>
+Subject: Re: [PATCH] nfs: delegation: Replace rcu_assign_pointer() with RCU_INIT_POINTER()
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-Cc: Cong Wang <xiyou.wangcong@gmail.com>,
+To: Andreea-Cristina Bernat <bernat.ada@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Dan Aloni <dan@kernelim.com>
+        Paul McKenney <paulmck@linux.vnet.ibm.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 20, 2014 at 12:20 AM, Eric W. Biederman
-<ebiederm@xmission.com> wrote:
-> Cong Wang <xiyou.wangcong@gmail.com> writes:
+On Fri, Aug 22, 2014 at 10:07 AM, Andreea-Cristina Bernat
+<bernat.ada@gmail.com> wrote:
+> The use of "rcu_assign_pointer()" is NULLing out the pointer.
+> According to RCU_INIT_POINTER()'s block comment:
+> "1.   This use of RCU_INIT_POINTER() is NULLing out the pointer"
+> it is better to use it instead of rcu_assign_pointer() because it has a
+> smaller overhead.
 >
->> I saw the following kernel warning:
+> The following Coccinelle semantic patch was used:
+> @@
+> @@
 >
-> Cong thanks for finding and tracking this.  I was clearly asleep at the
-> switch when I was testing my fix to the nfs client code :(
+> - rcu_assign_pointer
+> + RCU_INIT_POINTER
+>   (..., NULL)
 >
-> I have applied this patch and will push it to Linus after it has a
-> little bit to sit in linux-next.
+> Signed-off-by: Andreea-Cristina Bernat <bernat.ada@gmail.com>
+> ---
+>  fs/nfs/delegation.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 >
+> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+> index 5d8ccec..349e63b 100644
+> --- a/fs/nfs/delegation.c
+> +++ b/fs/nfs/delegation.c
+> @@ -249,7 +249,7 @@ nfs_detach_delegation_locked(struct nfs_inode *nfsi,
+>         list_del_rcu(&delegation->super_list);
+>         delegation->inode = NULL;
+>         nfsi->delegation_state = 0;
+> -       rcu_assign_pointer(nfsi->delegation, NULL);
+> +       RCU_INIT_POINTER(nfsi->delegation, NULL);
+>         spin_unlock(&delegation->lock);
+>         return delegation;
+>  }
+> --
+> 1.9.1
 
-This is precisely _WHY_ it is supposed to go through the maintainer,
-and not through arbitrary namespace trees. I'm tired of the namespace
-folks pushing crap and just assuming that a "Cc:" is OK. A "Cc:
-maintainer" means this is an RFC, not something that is to be
-committed.
+Sorry, but NACK.
 
-Trond
+We do need the memory barriers here, as the nfs_inode is globally
+visible, and other threads may be checking nfsi->delegation_state
+and/or delegation->inode in order to conclude whether or not there is
+still a delegation associated with this inode.
+
+Cheers
+  Trond
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
