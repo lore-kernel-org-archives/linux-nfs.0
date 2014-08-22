@@ -1,77 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:39839 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751650AbaHIOWy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Aug 2014 10:22:54 -0400
-Received: by mail-qg0-f41.google.com with SMTP id q107so7313229qgd.28
-        for <linux-nfs@vger.kernel.org>; Sat, 09 Aug 2014 07:22:54 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:45107 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750879AbaHVTLR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 15:11:17 -0400
+Received: by mail-ig0-f175.google.com with SMTP id uq10so158227igb.8
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2014 12:11:17 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/4] nfsd: Assert SEQ4_STATUS_CB_PATH_DOWN_SESSION
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] nfsd: call nfs4_put_deleg_lease outside of state_lock
-Date: Sat,  9 Aug 2014 10:22:41 -0400
-Message-Id: <1407594162-28342-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1407594162-28342-1-git-send-email-jlayton@primarydata.com>
-References: <1407594162-28342-1-git-send-email-jlayton@primarydata.com>
+Date: Fri, 22 Aug 2014 15:11:16 -0400
+Message-ID: <20140822191116.3883.65056.stgit@klimt.1015granger.net>
+In-Reply-To: <20140822190835.3883.7581.stgit@klimt.1015granger.net>
+References: <20140822190835.3883.7581.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we hold the state_lock when releasing the lease. That's
-potentially problematic in the future if we allow for setlease methods
-that can sleep. Move the nfs4_put_deleg_lease call out of the delegation
-unhashing routine (which was always a bit goofy anyway), and into the
-unlocked sections of the callers of unhash_delegation_locked.
+The NFS server should assert both CB_PATH_DOWN and CB_PATH_DOWN_SESSION
+when there is no backchannel.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+RFC 5661 section 18.46.3:
+
+   SEQ4_STATUS_CB_PATH_DOWN
+      When set, indicates that the client has no operational backchannel
+      path for any session associated with the client ID, making it
+      necessary for the client to re-establish one.  This bit remains
+      set on all SEQUENCE responses on all sessions associated with the
+      client ID until at least one backchannel is available on any
+      session associated with the client ID.
+
+
+   SEQ4_STATUS_CB_PATH_DOWN_SESSION
+      When set, indicates that the session has no operational
+      backchannel. . .
+                . . . The SEQ4_STATUS_CB_PATH_DOWN_SESSION bit is the
+      indication to the client that it needs to associate a connection
+      to the session’s backchannel.  This bit remains set on all
+      SEQUENCE responses of the session until a connection is associated
+      with the session’s a backchannel.
+
+The Linux server doesn't currently make a distinction between these
+cases, so both flags should be asserted unconditionally.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+
+ fs/nfsd/nfs4state.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 309ec3b1090a..4356d32479b2 100644
+index d7cfd8b..ea50ac0 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -722,7 +722,6 @@ unhash_delegation_locked(struct nfs4_delegation *dp)
- 	list_del_init(&dp->dl_recall_lru);
- 	list_del_init(&dp->dl_perfile);
- 	spin_unlock(&fp->fi_lock);
--	nfs4_put_deleg_lease(fp);
- }
- 
- static void destroy_delegation(struct nfs4_delegation *dp)
-@@ -730,6 +729,7 @@ static void destroy_delegation(struct nfs4_delegation *dp)
- 	spin_lock(&state_lock);
- 	unhash_delegation_locked(dp);
- 	spin_unlock(&state_lock);
-+	nfs4_put_deleg_lease(dp->dl_stid.sc_file);
- 	nfs4_put_stid(&dp->dl_stid);
- }
- 
-@@ -739,6 +739,8 @@ static void revoke_delegation(struct nfs4_delegation *dp)
- 
- 	WARN_ON(!list_empty(&dp->dl_recall_lru));
- 
-+	nfs4_put_deleg_lease(dp->dl_stid.sc_file);
-+
- 	if (clp->cl_minorversion == 0)
- 		nfs4_put_stid(&dp->dl_stid);
- 	else {
-@@ -1639,6 +1641,7 @@ __destroy_client(struct nfs4_client *clp)
- 	while (!list_empty(&reaplist)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
- 		list_del_init(&dp->dl_recall_lru);
-+		nfs4_put_deleg_lease(dp->dl_stid.sc_file);
- 		nfs4_put_stid(&dp->dl_stid);
- 	}
- 	while (!list_empty(&clp->cl_revoked)) {
-@@ -6406,6 +6409,7 @@ nfs4_state_shutdown_net(struct net *net)
- 	list_for_each_safe(pos, next, &reaplist) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
- 		list_del_init(&dp->dl_recall_lru);
-+		nfs4_put_deleg_lease(dp->dl_stid.sc_file);
- 		nfs4_put_stid(&dp->dl_stid);
- 	}
- 
--- 
-1.9.3
+@@ -2805,7 +2805,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ out:
+ 	switch (clp->cl_cb_state) {
+ 	case NFSD4_CB_DOWN:
+-		seq->status_flags = SEQ4_STATUS_CB_PATH_DOWN;
++		seq->status_flags = SEQ4_STATUS_CB_PATH_DOWN |
++				    SEQ4_STATUS_CB_PATH_DOWN_SESSION;
+ 		break;
+ 	case NFSD4_CB_FAULT:
+ 		seq->status_flags = SEQ4_STATUS_BACKCHANNEL_FAULT;
 
