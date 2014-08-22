@@ -1,103 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:46035 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752389AbaHBOr2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 10:47:28 -0400
-Received: by mail-vc0-f174.google.com with SMTP id la4so8604839vcb.33
-        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 07:47:28 -0700 (PDT)
+Received: from userp1040.oracle.com ([156.151.31.81]:38154 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755265AbaHVHzk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 03:55:40 -0400
+Message-ID: <53F6F772.6020708@oracle.com>
+Date: Fri, 22 Aug 2014 15:55:30 +0800
+From: Junxiao Bi <junxiao.bi@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <53DCF3C0.6050201@gmail.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-	<1406684083-19736-32-git-send-email-jlayton@primarydata.com>
-	<53DCBFDB.5060808@gmail.com>
-	<CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com>
-	<53DCEAE8.70707@gmail.com>
-	<CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
-	<53DCF3C0.6050201@gmail.com>
-Date: Sat, 2 Aug 2014 10:47:27 -0400
-Message-ID: <CAHQdGtRNwSbhKkfbop-8NFq6WTS_EmrojC2HyLmkKki94oxSHw@mail.gmail.com>
-Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into struct nfs4_client
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Jeff Layton <jlayton@primarydata.com>, Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Content-Type: text/plain; charset=UTF-8
+To: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: rpciod deadlock issue
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 2, 2014 at 10:20 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> On 8/2/2014 22:05, Trond Myklebust wrote:
->> On Sat, Aug 2, 2014 at 9:43 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
->>> On 8/2/2014 21:11, Trond Myklebust wrote:
->>>> On Sat, Aug 2, 2014 at 6:39 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
->>>>> On 7/30/2014 09:34, Jeff Layton wrote:
->>>>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
->>>>>>
->>>>>> Preparation for removing the client_mutex.
->>>>>>
->>>>>> Convert the open owner hash table into a per-client table and protect it
->>>>>> using the nfs4_client->cl_lock spin lock.
->>>>>>
->>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>>>>> ---
->>>>>>  fs/nfsd/netns.h     |   1 -
->>>>>>  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
->>>>>>  fs/nfsd/state.h     |   1 +
->>>>>>  3 files changed, 86 insertions(+), 103 deletions(-)
->>>>>>
->>>>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
->>>>>> index a71d14413d39..e1f479c162b5 100644
->>>>>> --- a/fs/nfsd/netns.h
->>>>>> +++ b/fs/nfsd/netns.h
->>>>>> @@ -63,7 +63,6 @@ struct nfsd_net {
->>>>>>       struct rb_root conf_name_tree;
->>>>>>       struct list_head *unconf_id_hashtbl;
->>>>>>       struct rb_root unconf_name_tree;
->>>>>> -     struct list_head *ownerstr_hashtbl;
->>>>>
->>>>> I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
->>>>> http://comments.gmane.org/gmane.linux.nfs/64382
->>>>>
->>>>> nfsd needs the hashtbl to find the lockowner for locking by owner from
->>>>> fl->fl_owner stored in struct file_lock, but without nfs_client.
->>>>
->>>> Why? We're not currently doing that.
->>>
->>> Although not doing that right now, but there is a bug for getting the right ld_owner
->>> in nfs4_set_lock_denied.
->>>
->>> If denying locks, vfs don't copy fl->fl_lmops to the returned file_lock, so that,
->>> fl->fl_lmops always be NULL, nfsd never return the owner who holds the conflock.
->>>
->>> If we want fix this problem, needs finding the lockowner from struct file_lock.
->>
->> Do we really care enough about fixing nfs4_set_lock_denied enough to
->> do so at the cost of reducing overall scalability of locking state?
->
-> I just report this problem, don't think enough about the scalability.
->
->> We will always be faking up the clientid etc for local locks. Are
->> there any clients out there that actually inspect the clientid on a
->> result of NFS4ERR_DENIED and that will break if we give them a fake
->> for non-local locks?
->
-> Jeff has point the same problem of a non-nfs4_lockowner.
-> Maybe we should copy fl_lmops to conflock as before, nfsd can distinguish
-> the lockowner stored in struct file_lock by checking fl_lmops.
->
+Hi All,
 
-Alternatively, set a flag in fl_flags. Back in the days, we used to
-have a FL_NFSD, perhaps it is time to resurrect that?
+I got an nfs hung issue, looks like "rpciod" run into deadlock. Bug is
+reported on 2.6.32, but seems mainline also suffers this bug from the
+source code.
 
-Cheers,
-  Trond
+See the following rpciod trace. rpciod allocated memory using GFP_KERNEL
+in xs_setup_xprt(). That triggered direct reclaim when available memory
+was not enough, where it waited an write-back page done, but that page
+was a nfs page, and it depended on rpciod to write back. So this caused
+a deadlock.
 
+I am not sure how to fix this issue. Replace GFP_KERNEL with GFP_NOFS in
+xs_setup_xprt() can fix this trace, but there are other place allocating
+memory with GFP_KERNEL in rpciod, like
+xs_tcp_setup_socket()->xs_create_sock()->__sock_create()->sock_alloc(),
+there is no way to pass GFP_NOFS to network command code. Also mainline
+has changed to not care ___GFP_FS before waiting page write back done.
+Upstream commit 5cf02d0 (nfs: skip commit in releasepage if we're
+freeing memory for fs-related reasons) uses PF_FSTRANS to avoid another
+deadlock when direct reclaim, i am thinking whether we can check
+PF_FSTRANS flag in shrink_page_list(), if this flag is set, it will not
+wait any page write back done? I saw this flag is also used by xfs, not
+sure whether this will affect xfs.
 
+Any advices is appreciated.
 
--- 
-Trond Myklebust
+@ crash> bt 1539
+@ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
+@  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
+@  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
+@  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
+@  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
+@  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
+@  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
+@  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
+@  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
+@  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
+@  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
+@ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
+@ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
+@ #12 [ffff88178f64d978] kmem_getpages at ffffffff8110e18b
+@ #13 [ffff88178f64d9a8] fallback_alloc at ffffffff8110e35e
+@ #14 [ffff88178f64da08] ____cache_alloc_node at ffffffff8110e51f
+@ #15 [ffff88178f64da48] __kmalloc at ffffffff8110efba
+@ #16 [ffff88178f64da98] xs_setup_xprt at ffffffffa00a563f [sunrpc]
+@ #17 [ffff88178f64dad8] xs_setup_tcp at ffffffffa00a7648 [sunrpc]
+@ #18 [ffff88178f64daf8] xprt_create_transport at ffffffffa00a478f [sunrpc]
+@ #19 [ffff88178f64db18] rpc_create at ffffffffa00a2d7a [sunrpc]
+@ #20 [ffff88178f64dbf8] rpcb_create at ffffffffa00b026b [sunrpc]
+@ #21 [ffff88178f64dc98] rpcb_getport_async at ffffffffa00b0c94 [sunrpc]
+@ #22 [ffff88178f64ddf8] call_bind at ffffffffa00a11f8 [sunrpc]
+@ #23 [ffff88178f64de18] __rpc_execute at ffffffffa00a88ef [sunrpc]
+@ #24 [ffff88178f64de58] rpc_async_schedule at ffffffffa00a9187 [sunrpc]
+@ #25 [ffff88178f64de78] worker_thread at ffffffff81072ed2
+@ #26 [ffff88178f64dee8] kthread at ffffffff81076df3
+@ #27 [ffff88178f64df48] kernel_thread at ffffffff81012e2a
+@ crash>
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Thanks,
+Junxiao.
