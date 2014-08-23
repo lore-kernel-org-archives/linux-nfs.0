@@ -1,100 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f178.google.com ([209.85.160.178]:37904 "EHLO
-	mail-yk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752540AbaHZRyX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 13:54:23 -0400
-Received: by mail-yk0-f178.google.com with SMTP id 142so11760727ykq.9
-        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 10:54:22 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <53FCBE9C.40906@plexistor.com>
-References: <53FCA183.8000605@plexistor.com>
-	<1435166875.78.1409066662291.JavaMail.root@thunderbeast.private.linuxbox.com>
-	<CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>
-	<53FCBC5A.4060304@plexistor.com>
-	<CAHQdGtSghgbrPr=X8O2YLq=vXbKY1y5OuOMisf6vRoj8WeF0YA@mail.gmail.com>
-	<53FCBE9C.40906@plexistor.com>
-Date: Tue, 26 Aug 2014 13:54:22 -0400
-Message-ID: <CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>
-Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Boaz Harrosh <boaz@plexistor.com>
-Cc: "Matt W. Benjamin" <matt@linuxbox.com>, Christoph Hellwig <hch@lst.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "Adam C. Emerson" <aemerson@linuxbox.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:62369 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751477AbaHWOld (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Aug 2014 10:41:33 -0400
+Received: by mail-qc0-f179.google.com with SMTP id m20so11975377qcx.38
+        for <linux-nfs@vger.kernel.org>; Sat, 23 Aug 2014 07:41:32 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: bfields@fieldses.org, hch@infradead.org, cluster-devel@redhat.com,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 03/10] locks: generic_delete_lease doesn't need a file_lock at all
+Date: Sat, 23 Aug 2014 10:41:11 -0400
+Message-Id: <1408804878-1331-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 26, 2014 at 1:06 PM, Boaz Harrosh <boaz@plexistor.com> wrote:
-> On 08/26/2014 07:59 PM, Trond Myklebust wrote:
->> On Tue, Aug 26, 2014 at 12:56 PM, Boaz Harrosh <boaz@plexistor.com> wrote:
->>> On 08/26/2014 06:36 PM, Trond Myklebust wrote:
->>>> On Tue, Aug 26, 2014 at 11:24 AM, Matt W. Benjamin <matt@linuxbox.com> wrote:
->>>>> IIUC, the problem is the forechannel slot count, since the call you want to make synchronously is on the forechannel?
->>>
->>>
->>> Matt no top post on a Linux mailing list ;-)
->>>
->>>> Yep. layoutcommit will be sent on the fore channel, which is why it
->>>> can deadlock with the initial layoutget (or whatever operation that
->>>> triggered the layout recall).
->>>
->>> Trond you said below:
->>>> The above can deadlock if there are no session slots available to send
->>>> the layoutcommit, in which case the recall won't complete, and the
->>>> layoutget won't get a reply (which would free up the slot).
->>>
->>> Why would the layoutget not-get-a-reply ?
->>> This is how it goes with Both ganesha server and knfsd last I tested.
->>>
->>> [1]
->>> The LAYOUT_GET cause LAYOUT_RECALL case: (including the lo_commit)
->>>
->>> client          Server                                     comments
->>> ~~~~~~          ~~~~~~                                     ~~~~~~~~
->>> LAYOUT_GET ==>
->>>            <==   LAYOUT_GET_REPLAY(ERR_RECALL_CONFLICT)
->>>                                                 <--------- fore-channel is free
->>>            <==   RECALL
->>> LAYOUT_COMMIT ==>
->>>             <==  LAYOUT_COMMIT_REPLAY
->>>                                                 <--------- fore-channel is free
->>
->> Beep! No free slots, so this hangs.
->>
->
-> Beep! does not do a very good of a job to explain. Sorry
->
-> What do you mean? which slot? which channel? Just above your text it says
-> "fore-channel is free" so are you saying it is not free? why not.
-> Please use more then one line of text to explain. It might be clear to
-> you but not to me.
+Ensure that it's OK to pass in a NULL file_lock double pointer on
+a F_UNLCK request and convert the vfs_setlease F_UNLCK callers to
+do just that.
 
-The deadlock occurs _if_ the above layout commit  is unable to get a
-slot. You can't guarantee that it will, because the slot table is a
-finite resource and it can be exhausted if you allow fore channel
-calls to trigger synchronous recalls on the back channel that again
-trigger synchronous calls on the fore channel. You're basically saying
-that the client needs to guarantee that it can allocate 2 slots before
-it is allowed to send a layoutget just in case the server needs to
-recall a layout.
+Finally, turn the BUG_ON in generic_setlease into a WARN_ON_ONCE
+with an error return. That's a problem we can handle without
+crashing the box if it occurs.
 
-If, OTOH, the layoutcommit is asynchronous, then there is no
-serialisation and the back channel thread can happily reply to the
-layout recall even if there are no free slots in the fore channel.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/locks.c          | 25 ++++++++-----------------
+ fs/nfsd/nfs4state.c |  2 +-
+ 2 files changed, 9 insertions(+), 18 deletions(-)
 
->>> RECALL_REPLY(NO_MATCHING) =>
->>>                                                 <--------- back-channel is free
->
-> Thanks
-> Boaz
->
-
-
-
+diff --git a/fs/locks.c b/fs/locks.c
+index 58ce8897f2e4..bedb817a5cc4 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1637,20 +1637,18 @@ out:
+ 	return error;
+ }
+ 
+-static int generic_delete_lease(struct file *filp, struct file_lock **flp)
++static int generic_delete_lease(struct file *filp)
+ {
+ 	struct file_lock *fl, **before;
+ 	struct dentry *dentry = filp->f_path.dentry;
+ 	struct inode *inode = dentry->d_inode;
+ 
+-	trace_generic_delete_lease(inode, *flp);
+-
+ 	for (before = &inode->i_flock;
+ 			((fl = *before) != NULL) && IS_LEASE(fl);
+ 			before = &fl->fl_next) {
+ 		if (fl->fl_file != filp)
+ 			continue;
+-		return (*flp)->fl_lmops->lm_change(before, F_UNLCK);
++		return fl->fl_lmops->lm_change(before, F_UNLCK);
+ 	}
+ 	return -EAGAIN;
+ }
+@@ -1682,13 +1680,15 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
+ 
+ 	time_out_leases(inode);
+ 
+-	BUG_ON(!(*flp)->fl_lmops->lm_break);
+-
+ 	switch (arg) {
+ 	case F_UNLCK:
+-		return generic_delete_lease(filp, flp);
++		return generic_delete_lease(filp);
+ 	case F_RDLCK:
+ 	case F_WRLCK:
++		if (!(*flp)->fl_lmops->lm_break) {
++			WARN_ON_ONCE(1);
++			return -ENOLCK;
++		}
+ 		return generic_add_lease(filp, arg, flp);
+ 	default:
+ 		return -EINVAL;
+@@ -1744,15 +1744,6 @@ int vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
+ }
+ EXPORT_SYMBOL_GPL(vfs_setlease);
+ 
+-static int do_fcntl_delete_lease(struct file *filp)
+-{
+-	struct file_lock fl, *flp = &fl;
+-
+-	lease_init(filp, F_UNLCK, flp);
+-
+-	return vfs_setlease(filp, F_UNLCK, &flp);
+-}
+-
+ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
+ {
+ 	struct file_lock *fl, *ret;
+@@ -1809,7 +1800,7 @@ out_unlock:
+ int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
+ {
+ 	if (arg == F_UNLCK)
+-		return do_fcntl_delete_lease(filp);
++		return vfs_setlease(filp, F_UNLCK, NULL);
+ 	return do_fcntl_add_lease(fd, filp, arg);
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 29fac18d9102..0cd252916e1a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -683,7 +683,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
+ 	if (!fp->fi_lease)
+ 		return;
+ 	if (atomic_dec_and_test(&fp->fi_delegees)) {
+-		vfs_setlease(fp->fi_deleg_file, F_UNLCK, &fp->fi_lease);
++		vfs_setlease(fp->fi_deleg_file, F_UNLCK, NULL);
+ 		fp->fi_lease = NULL;
+ 		fput(fp->fi_deleg_file);
+ 		fp->fi_deleg_file = NULL;
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
