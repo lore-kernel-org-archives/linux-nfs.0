@@ -1,85 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:58458 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932258AbaHBOVR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Aug 2014 10:21:17 -0400
-Received: by mail-pd0-f178.google.com with SMTP id w10so7100167pde.23
-        for <linux-nfs@vger.kernel.org>; Sat, 02 Aug 2014 07:21:17 -0700 (PDT)
-Message-ID: <53DCF3C0.6050201@gmail.com>
-Date: Sat, 02 Aug 2014 22:20:48 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Jeff Layton <jlayton@primarydata.com>, Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into struct
- nfs4_client
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>	<1406684083-19736-32-git-send-email-jlayton@primarydata.com>	<53DCBFDB.5060808@gmail.com>	<CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com>	<53DCEAE8.70707@gmail.com> <CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
-In-Reply-To: <CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+Received: from mail-qg0-f43.google.com ([209.85.192.43]:60133 "EHLO
+	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751353AbaHWOla (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Aug 2014 10:41:30 -0400
+Received: by mail-qg0-f43.google.com with SMTP id a108so11409223qge.2
+        for <linux-nfs@vger.kernel.org>; Sat, 23 Aug 2014 07:41:29 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: bfields@fieldses.org, hch@infradead.org, cluster-devel@redhat.com,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 01/10] locks: close potential race in lease_get_mtime
+Date: Sat, 23 Aug 2014 10:41:09 -0400
+Message-Id: <1408804878-1331-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/2/2014 22:05, Trond Myklebust wrote:
-> On Sat, Aug 2, 2014 at 9:43 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
->> On 8/2/2014 21:11, Trond Myklebust wrote:
->>> On Sat, Aug 2, 2014 at 6:39 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
->>>> On 7/30/2014 09:34, Jeff Layton wrote:
->>>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
->>>>>
->>>>> Preparation for removing the client_mutex.
->>>>>
->>>>> Convert the open owner hash table into a per-client table and protect it
->>>>> using the nfs4_client->cl_lock spin lock.
->>>>>
->>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>>>> ---
->>>>>  fs/nfsd/netns.h     |   1 -
->>>>>  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
->>>>>  fs/nfsd/state.h     |   1 +
->>>>>  3 files changed, 86 insertions(+), 103 deletions(-)
->>>>>
->>>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
->>>>> index a71d14413d39..e1f479c162b5 100644
->>>>> --- a/fs/nfsd/netns.h
->>>>> +++ b/fs/nfsd/netns.h
->>>>> @@ -63,7 +63,6 @@ struct nfsd_net {
->>>>>       struct rb_root conf_name_tree;
->>>>>       struct list_head *unconf_id_hashtbl;
->>>>>       struct rb_root unconf_name_tree;
->>>>> -     struct list_head *ownerstr_hashtbl;
->>>>
->>>> I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
->>>> http://comments.gmane.org/gmane.linux.nfs/64382
->>>>
->>>> nfsd needs the hashtbl to find the lockowner for locking by owner from
->>>> fl->fl_owner stored in struct file_lock, but without nfs_client.
->>>
->>> Why? We're not currently doing that.
->>
->> Although not doing that right now, but there is a bug for getting the right ld_owner
->> in nfs4_set_lock_denied.
->>
->> If denying locks, vfs don't copy fl->fl_lmops to the returned file_lock, so that,
->> fl->fl_lmops always be NULL, nfsd never return the owner who holds the conflock.
->>
->> If we want fix this problem, needs finding the lockowner from struct file_lock.
-> 
-> Do we really care enough about fixing nfs4_set_lock_denied enough to
-> do so at the cost of reducing overall scalability of locking state?
+lease_get_mtime is called without the i_lock held, so there's no
+guarantee about the stability of the list. Between the time when we
+assign "flock" and then dereference it to check whether it's a lease
+and for write, the lease could be freed.
 
-I just report this problem, don't think enough about the scalability.
+Ensure that that doesn't occur by taking the i_lock before trying
+to check the lease.
 
-> We will always be faking up the clientid etc for local locks. Are
-> there any clients out there that actually inspect the clientid on a
-> result of NFS4ERR_DENIED and that will break if we give them a fake
-> for non-local locks?
+Cc: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/locks.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-Jeff has point the same problem of a non-nfs4_lockowner.
-Maybe we should copy fl_lmops to conflock as before, nfsd can distinguish
-the lockowner stored in struct file_lock by checking fl_lmops.
-
-thanks,
-Kinglong Mee
+diff --git a/fs/locks.c b/fs/locks.c
+index d7e15a256f8f..58ce8897f2e4 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1456,8 +1456,18 @@ EXPORT_SYMBOL(__break_lease);
+  */
+ void lease_get_mtime(struct inode *inode, struct timespec *time)
+ {
+-	struct file_lock *flock = inode->i_flock;
+-	if (flock && IS_LEASE(flock) && (flock->fl_type == F_WRLCK))
++	bool has_lease = false;
++	struct file_lock *flock;
++
++	if (inode->i_flock) {
++		spin_lock(&inode->i_lock);
++		flock = inode->i_flock;
++		if (flock && IS_LEASE(flock) && (flock->fl_type == F_WRLCK))
++			has_lease = true;
++		spin_unlock(&inode->i_lock);
++	}
++
++	if (has_lease)
+ 		*time = current_fs_time(inode->i_sb);
+ 	else
+ 		*time = inode->i_mtime;
+-- 
+1.9.3
 
