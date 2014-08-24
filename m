@@ -1,62 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:50825 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750861AbaHUPF3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 11:05:29 -0400
-Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XKTvb-0007jC-Qy
-	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 15:05:28 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: update time staps on truncate
-Date: Thu, 21 Aug 2014 10:07:47 -0500
-Message-Id: <1408633667-24177-1-git-send-email-hch@lst.de>
+Received: from bombadil.infradead.org ([198.137.202.9]:58565 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752862AbaHXP66 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Aug 2014 11:58:58 -0400
+Date: Sun, 24 Aug 2014 08:58:58 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org, hch@infradead.org,
+        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/10] locks: define a lm_setup handler for leases
+Message-ID: <20140824155858.GF15908@infradead.org>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+ <1408804878-1331-8-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1408804878-1331-8-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The VFS handles attributes on truncate in a strange way, fix NFS to handle
-it properly by copying a small code sniplet from XFS.
+I like this change a lot!  But one caveat:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/inode.c | 22 +++++++++++++++++++++-
- 1 file changed, 21 insertions(+), 1 deletion(-)
+> +	/*
+> +	 * Despite the fact that it's an int return function, __f_setown never
+> +	 * returns an error. Just ignore any error return here, but spew a
+> +	 * WARN_ON_ONCE in case this ever changes.
+> +	 */
+> +	WARN_ON_ONCE(__f_setown(filp, task_pid(current), PIDTYPE_PID, 0));
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 577a36f..5bbd991 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -505,8 +505,28 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 		attr->ia_valid &= ~ATTR_MODE;
- 
- 	if (attr->ia_valid & ATTR_SIZE) {
--		if (!S_ISREG(inode->i_mode) || attr->ia_size == i_size_read(inode))
-+		if (!S_ISREG(inode->i_mode) ||
-+		    attr->ia_size == i_size_read(inode))
- 			attr->ia_valid &= ~ATTR_SIZE;
-+
-+		/*
-+		 * Only change the c/mtime if we are changing the size or we
-+		 * are explicitly asked to change it.  This handles the
-+		 * semantic difference between truncate() and ftruncate() as
-+		 * implemented in the VFS.
-+		 *
-+		 * The regular truncate() case without ATTR_CTIME and
-+		 * ATTR_MTIME is a special case where we need to update the
-+		 * times despite not having these flags set.  For all other
-+		 * operations the VFS set these flags explicitly if it wants
-+		 * a timestamp update.
-+		 */
-+		if (attr->ia_size != i_size_read(inode) &&
-+		    !(attr->ia_valid & (ATTR_CTIME | ATTR_MTIME))) {
-+			attr->ia_ctime = attr->ia_mtime =
-+				current_fs_time(inode->i_sb);
-+			attr->ia_valid |= ATTR_CTIME | ATTR_MTIME;
-+		}
- 	}
- 
- 	/* Optimization: if the end result is no change, don't RPC */
--- 
-1.9.1
+I don't think this is a good idea.  The errors in __f_setown come from
+the security modules, and they could change easily.  If you can convince
+the LSM people to change their file_set_fowner routine to return void
+we could change __f_setown to return void as well and be done with it,
+but without that this looks too dangerous.
 
