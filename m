@@ -1,75 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56775 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753790AbaHKQIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Aug 2014 12:08:41 -0400
-Date: Mon, 11 Aug 2014 12:08:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] nfsd: allow find_any_file to return a fi_deleg_file
- reference
-Message-ID: <20140811160840.GB9095@fieldses.org>
-References: <1407594162-28342-1-git-send-email-jlayton@primarydata.com>
- <1407594162-28342-4-git-send-email-jlayton@primarydata.com>
+Received: from mail-yh0-f45.google.com ([209.85.213.45]:61279 "EHLO
+	mail-yh0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752416AbaHXKIE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Aug 2014 06:08:04 -0400
+Received: by mail-yh0-f45.google.com with SMTP id 29so10181075yhl.32
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Aug 2014 03:08:04 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sun, 24 Aug 2014 06:08:01 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org,
+        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 06/10] locks: plumb an "aux" pointer into the setlease
+ routines
+Message-ID: <20140824060801.5402880c@synchrony.poochiereds.net>
+In-Reply-To: <20140824013305.GB21609@infradead.org>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+ <1408804878-1331-7-git-send-email-jlayton@primarydata.com>
+ <20140824013305.GB21609@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1407594162-28342-4-git-send-email-jlayton@primarydata.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Aug 09, 2014 at 10:22:42AM -0400, Jeff Layton wrote:
-> It's possible that we'll have a nfs4_file that has nothing in its fds
-> array, but that has a populated fi_deleg_file field.
+On Sat, 23 Aug 2014 18:33:05 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Is it really possible?  On a quick skim it looks like this is only used
-in the presence of lock stateid's, when we should have an open.
-
-OK with the cleanup I'm just not seeing a reason either one way or the
-other for the fi_deleg_file change.
-
---b.
-
-> Since that function
-> is generally happy with any file reference, allow it to find and take
-> a reference to it in that situation. Also, clean up find_any_file for
-> better readability.
+> On Sat, Aug 23, 2014 at 10:41:14AM -0400, Jeff Layton wrote:
+> > In later patches, we're going to add a new lock_manager_operation to
+> > finish setting up the lease while still holding the i_lock.  To do
+> > this, we'll need to pass a little bit of info in the fcntl setlease
+> > case (primarily an fasync structure). Plumb the extra pointer into
+> > there in advance of that.
+> > 
+> > We declare this pointer as a void ** to make it clear that this is
+> > auxillary info, and that the caller isn't required to set this unless
+> > the lm_setup specifically requires it.
 > 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 19 ++++++++++++++-----
->  1 file changed, 14 insertions(+), 5 deletions(-)
+> Can you just return -EEXIST if reusing an existing one and make it a
+> normal private pointer a we use elsewhere?
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 4356d32479b2..5c5873811bd9 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -355,11 +355,20 @@ find_any_file(struct nfs4_file *f)
->  
->  	spin_lock(&f->fi_lock);
->  	ret = __nfs4_get_fd(f, O_RDWR);
-> -	if (!ret) {
-> -		ret = __nfs4_get_fd(f, O_WRONLY);
-> -		if (!ret)
-> -			ret = __nfs4_get_fd(f, O_RDONLY);
-> -	}
-> +	if (ret)
-> +		goto out;
-> +
-> +	ret = __nfs4_get_fd(f, O_WRONLY);
-> +	if (ret)
-> +		goto out;
-> +
-> +	ret = __nfs4_get_fd(f, O_RDONLY);
-> +	if (ret)
-> +		goto out;
-> +
-> +	if (f->fi_deleg_file)
-> +		ret = get_file(f->fi_deleg_file);
-> +out:
->  	spin_unlock(&f->fi_lock);
->  	return ret;
->  }
-> -- 
-> 1.9.3
+
+That sounds a little confusing...
+
+We have two pointers we pass down to generic_setlease: the file_lock
+itself and with this patch, the "aux" pointer. We can end up using
+either, neither or both during a call to generic_setlease.
+
+A simple error code can't properly indicate which of the two pointers
+got used. It might be clearer to turn the file_lock into a normal
+pointer and return -EEXIST if we reused it, but leave aux as a double
+pointer.
+
+
+> Btw, two things I came up with to make the lease filesystem API nicer:
 > 
+>  - bypass vfs_setlease/->setlease for deletes and just call directly
+>    into the lease code.  no one does anything special for it (except
+>    cifs, which forgets about it), and then rename the method to
+>    ->add_lease.
+>  - provide a no_add_lease for nfs/gfs to centralize the no-op version
+>    in a single place (similar no no_lseek).
+> 
+> Otherwise this looks really nice.
+
+
+Both of those sound good. I'll plan to roll those changes in with the
+next iteration.
+
+Thanks!
+-- 
+Jeff Layton <jlayton@primarydata.com>
