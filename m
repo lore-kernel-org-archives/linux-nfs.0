@@ -1,80 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:36224 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752050AbaHCRDY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:24 -0400
-Received: by mail-qg0-f41.google.com with SMTP id q107so7830467qgd.0
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:23 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 07/11] SUNRPC: Do not grab pool->sp_lock unnecessarily in svc_get_next_xprt
-Date: Sun,  3 Aug 2014 13:03:09 -0400
-Message-Id: <1407085393-3175-8-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407085393-3175-7-git-send-email-trond.myklebust@primarydata.com>
-References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-6-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-7-git-send-email-trond.myklebust@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:58751 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752951AbaHXQLe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Aug 2014 12:11:34 -0400
+Date: Sun, 24 Aug 2014 09:11:34 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org, hch@infradead.org,
+        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/10] locks: move i_lock acquisition into
+ generic_*_lease handlers
+Message-ID: <20140824161134.GJ15908@infradead.org>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+ <1408804878-1331-9-git-send-email-jlayton@primarydata.com>
+ <20140824160634.GG15908@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140824160634.GG15908@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/svc_xprt.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
+On Sun, Aug 24, 2014 at 09:06:34AM -0700, Christoph Hellwig wrote:
+> We really should split a lm_release from lm_change, the way it is
+> used is highly confusing.  In addition I think a lot of code
+> currently in lease_modify should move here instead, e.g. something like:
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index b731077b6a30..2c30193c7a13 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -651,8 +651,8 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
- 	} else {
- 		if (pool->sp_task_pending) {
- 			pool->sp_task_pending = 0;
--			spin_unlock_bh(&pool->sp_lock);
--			return ERR_PTR(-EAGAIN);
-+			xprt = ERR_PTR(-EAGAIN);
-+			goto out;
- 		}
- 		/* No data pending. Go to sleep */
- 		svc_thread_enqueue(pool, rqstp);
-@@ -672,8 +672,8 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
- 		 */
- 		if (kthread_should_stop()) {
- 			set_current_state(TASK_RUNNING);
--			spin_unlock_bh(&pool->sp_lock);
--			return ERR_PTR(-EINTR);
-+			xprt = ERR_PTR(-EINTR);
-+			goto out;
- 		}
- 
- 		add_wait_queue(&rqstp->rq_wait, &wait);
-@@ -683,8 +683,12 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
- 
- 		try_to_freeze();
- 
--		spin_lock_bh(&pool->sp_lock);
- 		remove_wait_queue(&rqstp->rq_wait, &wait);
-+		xprt = rqstp->rq_xprt;
-+		if (xprt != NULL)
-+			return xprt;
-+
-+		spin_lock_bh(&pool->sp_lock);
- 		if (!time_left)
- 			pool->sp_stats.threads_timedout++;
- 
-@@ -699,6 +703,7 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
- 				return ERR_PTR(-EAGAIN);
- 		}
- 	}
-+out:
- 	spin_unlock_bh(&pool->sp_lock);
- 	return xprt;
- }
--- 
-1.9.3
+At this point the old lm_change actually becomes superflous if we
+simply disallow changes for delegation.
 
