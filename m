@@ -1,55 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f176.google.com ([209.85.192.176]:52350 "EHLO
-	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754420AbaHGCPX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Aug 2014 22:15:23 -0400
-Received: by mail-pd0-f176.google.com with SMTP id y10so4289074pdj.7
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Aug 2014 19:15:22 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>
-Subject: [PATCH 2/2] nfs/filelayout: set layoutcommit depending on write verifier
-Date: Thu,  7 Aug 2014 10:15:03 +0800
-Message-Id: <1407377703-6593-2-git-send-email-tao.peng@primarydata.com>
-In-Reply-To: <1407377703-6593-1-git-send-email-tao.peng@primarydata.com>
-References: <1407377703-6593-1-git-send-email-tao.peng@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:49705 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750854AbaHXBdG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Aug 2014 21:33:06 -0400
+Date: Sat, 23 Aug 2014 18:33:05 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org, hch@infradead.org,
+        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 06/10] locks: plumb an "aux" pointer into the setlease
+ routines
+Message-ID: <20140824013305.GB21609@infradead.org>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+ <1408804878-1331-7-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1408804878-1331-7-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Following http://www.rfc-editor.org/errata_search.php?rfc=5661&eid=2751
-Don't set layoutcommit for commit_through_mds case.
-For FILE_SYNC writes, don't set layoutcommit.
-For DATA_SYNC wirtes, set layout commit right after wirtes done.
-For UNSTABLE writes, set layout commit when commit done.
+On Sat, Aug 23, 2014 at 10:41:14AM -0400, Jeff Layton wrote:
+> In later patches, we're going to add a new lock_manager_operation to
+> finish setting up the lease while still holding the i_lock.  To do
+> this, we'll need to pass a little bit of info in the fcntl setlease
+> case (primarily an fasync structure). Plumb the extra pointer into
+> there in advance of that.
+> 
+> We declare this pointer as a void ** to make it clear that this is
+> auxillary info, and that the caller isn't required to set this unless
+> the lm_setup specifically requires it.
 
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
----
- fs/nfs/filelayout/filelayout.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+Can you just return -EEXIST if reusing an existing one and make it a
+normal private pointer a we use elsewhere?
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 1359c4a..e8720ec 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -265,7 +265,7 @@ filelayout_set_layoutcommit(struct nfs_pgio_header *hdr)
- {
- 
- 	if (FILELAYOUT_LSEG(hdr->lseg)->commit_through_mds ||
--	    hdr->res.verf->committed == NFS_FILE_SYNC)
-+	    hdr->res.verf->committed != NFS_DATA_SYNC)
- 		return;
- 
- 	pnfs_set_layoutcommit(hdr);
-@@ -403,6 +403,9 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
- 		return -EAGAIN;
- 	}
- 
-+	if (data->verf.committed == NFS_UNSTABLE)
-+		pnfs_commit_set_layoutcommit(data);
-+
- 	return 0;
- }
- 
--- 
-1.9.1
+Btw, two things I came up with to make the lease filesystem API nicer:
 
+ - bypass vfs_setlease/->setlease for deletes and just call directly
+   into the lease code.  no one does anything special for it (except
+   cifs, which forgets about it), and then rename the method to
+   ->add_lease.
+ - provide a no_add_lease for nfs/gfs to centralize the no-op version
+   in a single place (similar no no_lseek).
+
+Otherwise this looks really nice.
