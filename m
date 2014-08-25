@@ -1,47 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53476 "EHLO fieldses.org"
+Received: from verein.lst.de ([213.95.11.211]:40813 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753741AbaHESqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Aug 2014 14:46:55 -0400
-Date: Tue, 5 Aug 2014 14:46:44 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Jeffrey Layton <jeff.layton@primarydata.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Kinglong Mee <kinglongmee@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into
- struct nfs4_client
-Message-ID: <20140805184644.GR23341@fieldses.org>
-References: <1406684083-19736-32-git-send-email-jlayton@primarydata.com>
- <53DCBFDB.5060808@gmail.com>
- <CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com>
- <53DCEAE8.70707@gmail.com>
- <CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
- <53DCF3C0.6050201@gmail.com>
- <CAHQdGtRNwSbhKkfbop-8NFq6WTS_EmrojC2HyLmkKki94oxSHw@mail.gmail.com>
- <20140802185933.64ba0b15@tlielax.poochiereds.net>
- <CAHQdGtS+X1KABsr5buxKqC5VNpyWBrJYMD74HzWtF=fDOs19bg@mail.gmail.com>
- <CAPakX04ctGujqpJ48WqT1-r5=q0T8D1Ji=q1P5UTuwdw_hTsGg@mail.gmail.com>
+	id S932233AbaHYOJy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Aug 2014 10:09:54 -0400
+Date: Mon, 25 Aug 2014 16:09:52 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/19] pnfs: add return_range method
+Message-ID: <20140825140952.GA13911@lst.de>
+References: <1408637375-11343-1-git-send-email-hch@lst.de> <1408637375-11343-9-git-send-email-hch@lst.de> <53FB3F2A.409@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAPakX04ctGujqpJ48WqT1-r5=q0T8D1Ji=q1P5UTuwdw_hTsGg@mail.gmail.com>
+In-Reply-To: <53FB3F2A.409@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Aug 03, 2014 at 07:35:37AM -0400, Jeffrey Layton wrote:
-> Agreed. That's a significant bit of nastiness, and I think you're
-> correct that the client_mutex removal will exacerbate the problem. The
-> only way I can see to properly fix that would be to make it so that
-> the conflock holds a reference to the lockowner, and then put it when
-> the conflock is freed.
-> 
-> That will require some new fl_ops or fl_lmops. It would also be good
-> to clean up conflock generation a bit, and turn it into a more
-> explicit process.  __locks_copy_lock doesn't really fully describe
-> what's going on there, IMO...
+On Mon, Aug 25, 2014 at 09:50:34AM -0400, Anna Schumaker wrote:
+> > +	} else {
+> > +		if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
+> > +			NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo,
+> > +				&args->cbl_range);
+> > +		}
+> >  	}
+> Is there a reason you're nesting the else-if here?
 
-Or do the work of nfs4_set_lock_denied under the i_lock in some sort of
-callback from the locking code?
+To catch the intent - the first two clauses find excuses why we can't return
+quite yet, while this if is for an optional feature in the actual return
+path. If I wasn't updating but newly writing the function I'd actually
+do something like:
 
---b.
+	...
+
+	rv = NFS4ERR_DELAY;
+	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags))
+		goto out_set_stateid;
+
+	if (pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
+			&args->cbl_range)) {
+		need_commit = true;
+		goto out_set_stateid;
+	}
+
+	rv = NFS4ERR_NOMATCHING_LAYOUT;
+	if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
+		NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo,
+				&args->cbl_range);
+	}
+
+out_set_stateid:
+	...
+
