@@ -1,131 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:34532 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751694AbaHTNEP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 09:04:15 -0400
-Received: by mail-qa0-f52.google.com with SMTP id j15so6854788qaq.39
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 06:04:14 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 20 Aug 2014 09:04:12 -0400
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Joe Perches <joe@perches.com>
-Subject: Re: [PATCH] lockd: Remove unused b_fl member from struct nlm_block
-Message-ID: <20140820090412.309b7599@tlielax.poochiereds.net>
-In-Reply-To: <53F4904B.6080204@gmail.com>
-References: <53F47357.7050608@gmail.com>
-	<20140820065826.6def22d5@tlielax.poochiereds.net>
-	<53F4904B.6080204@gmail.com>
+Received: from c2bthomr09.btconnect.com ([213.123.20.127]:2635 "EHLO
+	mail.btconnect.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752168AbaHYKEA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2014 06:04:00 -0400
+From: "lux-integ" <lux-integ@btconnect.com>
+To: linux-nfs@vger.kernel.org
+Subject: nfs4/KINK/racoon2/linux-3.x  series kernels
+Date: Mon, 25 Aug 2014 10:57:38 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain;
+  charset="us-ascii"
+Message-Id: <201408251057.38218.lux-integ@btconnect.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 20 Aug 2014 20:10:51 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+Greetings
 
-> On 8/20/2014 18:58, Jeff Layton wrote:
-> > On Wed, 20 Aug 2014 18:07:19 +0800
-> > Kinglong Mee <kinglongmee@gmail.com> wrote:
-> > 
-> >> Fix left code by Joe Perches's patch,
-> >> "locks: Remove unused conf argument from lm_grant"
-> >>
-> >> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> >> ---
-> >>  fs/lockd/svclock.c          | 26 +++++---------------------
-> >>  include/linux/lockd/lockd.h |  1 -
-> >>  2 files changed, 5 insertions(+), 22 deletions(-)
-> >>
-> >> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> >> index 2a61701..796e63b 100644
-> >> --- a/fs/lockd/svclock.c
-> >> +++ b/fs/lockd/svclock.c
-> >> @@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
-> >>  	block->b_daemon = rqstp->rq_server;
-> >>  	block->b_host   = host;
-> >>  	block->b_file   = file;
-> >> -	block->b_fl = NULL;
-> >>  	file->f_count++;
-> >>  
-> >>  	/* Add to file's list of blocks */
-> >> @@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
-> >>  	nlmsvc_freegrantargs(block->b_call);
-> >>  	nlmsvc_release_call(block->b_call);
-> >>  	nlm_release_file(block->b_file);
-> >> -	kfree(block->b_fl);
-> >>  	kfree(block);
-> >>  }
-> >>  
-> >> @@ -523,20 +521,13 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
-> >>  	block = nlmsvc_lookup_block(file, lock);
-> >>  
-> >>  	if (block == NULL) {
-> >> -		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
-> >> -
-> >> -		if (conf == NULL)
-> >> -			return nlm_granted;
-> >>  		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
-> >> -		if (block == NULL) {
-> >> -			kfree(conf);
-> >> +		if (block == NULL)
-> >>  			return nlm_granted;
-> >> -		}
-> >> -		block->b_fl = conf;
-> > 
-> > NAK. The b_fl member is not unused, as is evidenced by the assignment
-> > above.
-> 
-> Sorry for my bad title, Maybe I should use a good name, sorry!
-> 
-> > 
-> > Joe's patch removed the conflock from the lm_grant callback since the
-> > filesystem never set that parameter in the lm_grant callback. This call
-> > however has nothing to do with lm_grant. It's done when the client
-> > issues a NLM_TEST operation.
-> > 
-> >>  	}
-> >>  	if (block->b_flags & B_QUEUED) {
-> >> -		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
-> >> -			block, block->b_flags, block->b_fl);
-> >> +		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d\n",
-> >> +			block, block->b_flags);
-> >>  		if (block->b_flags & B_TIMED_OUT) {
-> >>  			nlmsvc_unlink_block(block);
-> >>  			ret = nlm_lck_denied;
-> >> @@ -544,14 +535,8 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
-> >>  		}
-> >>  		if (block->b_flags & B_GOT_CALLBACK) {
-> >>  			nlmsvc_unlink_block(block);
-> >> -			if (block->b_fl != NULL
-> >> -					&& block->b_fl->fl_type != F_UNLCK) {
-> >> -				lock->fl = *block->b_fl;
-> >> -				goto conf_lock;
-> 
-> block->b_fl = conf just set an all-zero filed structure to block above,
-> and never be updated later.
-> If lockd enter here, lock->fl will contains all filed with zero,
-> I don't know whether is it OK.
-> 
-> thanks,
-> Kinglong Mee
-> 
+I have an application for NFS4 over IPv6/IPsec tunnel(s).  And it is THIS: (A 
+remote user login to kerberised NFS4 server) In this instance  the remote user 
+logs in to  an Ipsec gateway which is connected to another gateway to a 
+kerberised  nfs4 server. )
 
-Not quite....You can end up getting back FILE_LOCK_DEFERRED from an
-initial vfs_test_lock request. At that point, a block will be queued
-and we'll end up retrying that until the fs comes back. The result of
-those retries will end up in b_fl and that's what will end up being
-copied to lock->fl.
+I would like to know if this is possible.    Having   the gateway as a kdc 
+might help and I looked at   racoon2 ( http://www.racoon2.wide.ad.jp/w/ )
+but it  seems to be implemented for the linux-2.6x series kernel only.  I 
+would be graeful  to know if this or any other similar kerberos  
+implementations  is  available for linux-3.x  (particularly linux-3.1x )  
+series  kernels.
 
-lockd is one giant Rube Goldberg machine made of baling wire and duct
-tape, but it *basically* works and I don't have much inclination to
-tinker with it. It's legacy code at this point.
+Any other advice on  how my application  (THIS above ) might be carried out 
+will be gratefully received.
 
-I'd suggest that we take add the patch I proposed earlier since I think
-it's basically harmless and should help future-proof changes to this
-code.
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+sincerely
+
+luxInteg
