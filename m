@@ -1,68 +1,239 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:46411 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751576AbaHSSii (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:38:38 -0400
-Received: by mail-qc0-f179.google.com with SMTP id m20so6607631qcx.38
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:38:37 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/5] nfsd: support for lifting grace period early
-Date: Tue, 19 Aug 2014 14:38:24 -0400
-Message-Id: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:34199 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753273AbaHYGtC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Aug 2014 02:49:02 -0400
+Date: Mon, 25 Aug 2014 16:48:52 +1000
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Junxiao Bi <junxiao.bi@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, Mel Gorman <mgorman@suse.com>
+Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
+Message-ID: <20140825164852.50723141@notabene.brown>
+In-Reply-To: <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
+References: <53F6F772.6020708@oracle.com>
+	<1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/Msmo3U9lW5aeckjbCXwnaz_"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-- move grace period handling into its own module
+--Sig_/Msmo3U9lW5aeckjbCXwnaz_
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-One of the huge annoyances in dealing with knfsd is the 90s grace period
-that's imposed when the server reboots. This is not just an annoyance,
-but means a siginificant amount of "downtime" in many production
-environments.
+On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
 
-This patchset aimed at reducing this pain. It adds a couple of /proc
-knobs that tell the lockd and nfsd lock managers to lift the grace
-period.
+> Junxiao Bi reports seeing the following deadlock:
+>=20
+> @ crash> bt 1539
+> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
+> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
+> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
+> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
+> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
+> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
+> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
+> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
+> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
+> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
+> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
+> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
+> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
 
-It also changes the UMH upcalls to pass a little bit of extra info in
-the form of environment variables so that the upcall program can
-determine whether there are still any clients that may be in the process
-of reclaiming.
+This stack trace (from 2.6.32) cannot happen in mainline, though it took me=
+ a
+while to remember/discover exactly why.
 
-There are also a couple of cleanup patches in here that are not strictly
-required. In particular, making a separate grace.ko module doesn't have
-to be done, but I think it's a good idea.
+try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
+set to NULL.
+shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
+it is NULL, wait_on_page_writeback is *not* called.
 
-Jeff Layton (5):
-  lockd: move lockd's grace period handling into its own module
-  lockd: add a /proc/fs/lockd/nlm_end_grace file
-  nfsd: add a v4_end_grace file to /proc/fs/nfsd
-  nfsd: remove redundant boot_time parm from grace_done client tracking
-    op
-  nfsd: pass extra info in env vars to upcalls to allow for early grace
-    period end
+So we can only hit this deadlock if mem-cgroup limits are imposed on a
+process which is using NFS - which is quite possible but probably not commo=
+n.
 
- fs/Kconfig                       |   6 ++-
- fs/lockd/Makefile                |   3 +-
- fs/lockd/netns.h                 |   1 -
- fs/lockd/procfs.c                |  76 +++++++++++++++++++++++++++
- fs/lockd/procfs.h                |  28 ++++++++++
- fs/lockd/svc.c                   |  10 +++-
- fs/nfs_common/Makefile           |   3 +-
- fs/{lockd => nfs_common}/grace.c |  68 +++++++++++++++++++++----
- fs/nfsd/Kconfig                  |   1 +
- fs/nfsd/nfs4recover.c            | 107 +++++++++++++++++++++++++++++++--------
- fs/nfsd/nfs4state.c              |   8 +--
- fs/nfsd/nfsctl.c                 |  35 +++++++++++++
- fs/nfsd/state.h                  |   5 +-
- include/linux/proc_fs.h          |   2 +
- 14 files changed, 312 insertions(+), 41 deletions(-)
- create mode 100644 fs/lockd/procfs.c
- create mode 100644 fs/lockd/procfs.h
- rename fs/{lockd => nfs_common}/grace.c (50%)
+The fact that a dead-lock can happen only when memcg limits are imposed see=
+ms
+very fragile.  People aren't going to test that case much so there could we=
+ll
+be other deadlock possibilities lurking.
 
--- 
-1.9.3
+Mel: might there be some other way we could get out of this deadlock?
+Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
+wait or something?  Any other wait out of this deadlock other than setting
+PF_MEMALLOC_NOIO everywhere?
 
+Thanks,
+NeilBrown
+
+
+
+> @ #12 [ffff88178f64d978] kmem_getpages at ffffffff8110e18b
+> @ #13 [ffff88178f64d9a8] fallback_alloc at ffffffff8110e35e
+> @ #14 [ffff88178f64da08] ____cache_alloc_node at ffffffff8110e51f
+> @ #15 [ffff88178f64da48] __kmalloc at ffffffff8110efba
+> @ #16 [ffff88178f64da98] xs_setup_xprt at ffffffffa00a563f [sunrpc]
+> @ #17 [ffff88178f64dad8] xs_setup_tcp at ffffffffa00a7648 [sunrpc]
+> @ #18 [ffff88178f64daf8] xprt_create_transport at ffffffffa00a478f [sunrp=
+c]
+> @ #19 [ffff88178f64db18] rpc_create at ffffffffa00a2d7a [sunrpc]
+> @ #20 [ffff88178f64dbf8] rpcb_create at ffffffffa00b026b [sunrpc]
+> @ #21 [ffff88178f64dc98] rpcb_getport_async at ffffffffa00b0c94 [sunrpc]
+> @ #22 [ffff88178f64ddf8] call_bind at ffffffffa00a11f8 [sunrpc]
+> @ #23 [ffff88178f64de18] __rpc_execute at ffffffffa00a88ef [sunrpc]
+> @ #24 [ffff88178f64de58] rpc_async_schedule at ffffffffa00a9187 [sunrpc]
+> @ #25 [ffff88178f64de78] worker_thread at ffffffff81072ed2
+> @ #26 [ffff88178f64dee8] kthread at ffffffff81076df3
+> @ #27 [ffff88178f64df48] kernel_thread at ffffffff81012e2a
+> @ crash>
+>=20
+> Junxiao notes that the problem is not limited to the rpcbind client. In
+> fact we can trigger the exact same problem when trying to reconnect to
+> the server, and we find ourselves calling sock_alloc().
+>=20
+> The following solution should work for all kernels that support the
+> PF_MEMALLOC_NOIO flag (i.e. Linux 3.9 and newer).
+>=20
+> Link: http://lkml.kernel.org/r/53F6F772.6020708@oracle.com
+> Reported-by: Junxiao Bi <junxiao.bi@oracle.com>
+> Cc: stable@vger.kernel.org # 3.9+
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/sched.c    |  5 +++--
+>  net/sunrpc/xprtsock.c | 15 ++++++++-------
+>  2 files changed, 11 insertions(+), 9 deletions(-)
+>=20
+> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+> index 9358c79fd589..ab3aff71ff93 100644
+> --- a/net/sunrpc/sched.c
+> +++ b/net/sunrpc/sched.c
+> @@ -19,6 +19,7 @@
+>  #include <linux/spinlock.h>
+>  #include <linux/mutex.h>
+>  #include <linux/freezer.h>
+> +#include <linux/sched.h>
+> =20
+>  #include <linux/sunrpc/clnt.h>
+> =20
+> @@ -821,9 +822,9 @@ void rpc_execute(struct rpc_task *task)
+> =20
+>  static void rpc_async_schedule(struct work_struct *work)
+>  {
+> -	current->flags |=3D PF_FSTRANS;
+> +	current->flags |=3D PF_FSTRANS | PF_MEMALLOC_NOIO;
+>  	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
+> -	current->flags &=3D ~PF_FSTRANS;
+> +	current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
+>  }
+> =20
+>  /**
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 43cd89eacfab..1d6d4d84b299 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -38,6 +38,7 @@
+>  #include <linux/sunrpc/svcsock.h>
+>  #include <linux/sunrpc/xprtsock.h>
+>  #include <linux/file.h>
+> +#include <linux/sched.h>
+>  #ifdef CONFIG_SUNRPC_BACKCHANNEL
+>  #include <linux/sunrpc/bc_xprt.h>
+>  #endif
+> @@ -1927,7 +1928,7 @@ static int xs_local_setup_socket(struct sock_xprt *=
+transport)
+>  	struct socket *sock;
+>  	int status =3D -EIO;
+> =20
+> -	current->flags |=3D PF_FSTRANS;
+> +	current->flags |=3D PF_FSTRANS | PF_MEMALLOC_NOIO;
+> =20
+>  	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+>  	status =3D __sock_create(xprt->xprt_net, AF_LOCAL,
+> @@ -1968,7 +1969,7 @@ static int xs_local_setup_socket(struct sock_xprt *=
+transport)
+>  out:
+>  	xprt_clear_connecting(xprt);
+>  	xprt_wake_pending_tasks(xprt, status);
+> -	current->flags &=3D ~PF_FSTRANS;
+> +	current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
+>  	return status;
+>  }
+> =20
+> @@ -2071,7 +2072,7 @@ static void xs_udp_setup_socket(struct work_struct =
+*work)
+>  	struct socket *sock =3D transport->sock;
+>  	int status =3D -EIO;
+> =20
+> -	current->flags |=3D PF_FSTRANS;
+> +	current->flags |=3D PF_FSTRANS | PF_MEMALLOC_NOIO;
+> =20
+>  	/* Start by resetting any existing state */
+>  	xs_reset_transport(transport);
+> @@ -2092,7 +2093,7 @@ static void xs_udp_setup_socket(struct work_struct =
+*work)
+>  out:
+>  	xprt_clear_connecting(xprt);
+>  	xprt_wake_pending_tasks(xprt, status);
+> -	current->flags &=3D ~PF_FSTRANS;
+> +	current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
+>  }
+> =20
+>  /*
+> @@ -2229,7 +2230,7 @@ static void xs_tcp_setup_socket(struct work_struct =
+*work)
+>  	struct rpc_xprt *xprt =3D &transport->xprt;
+>  	int status =3D -EIO;
+> =20
+> -	current->flags |=3D PF_FSTRANS;
+> +	current->flags |=3D PF_FSTRANS | PF_MEMALLOC_NOIO;
+> =20
+>  	if (!sock) {
+>  		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+> @@ -2276,7 +2277,7 @@ static void xs_tcp_setup_socket(struct work_struct =
+*work)
+>  	case -EINPROGRESS:
+>  	case -EALREADY:
+>  		xprt_clear_connecting(xprt);
+> -		current->flags &=3D ~PF_FSTRANS;
+> +		current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
+>  		return;
+>  	case -EINVAL:
+>  		/* Happens, for instance, if the user specified a link
+> @@ -2294,7 +2295,7 @@ out_eagain:
+>  out:
+>  	xprt_clear_connecting(xprt);
+>  	xprt_wake_pending_tasks(xprt, status);
+> -	current->flags &=3D ~PF_FSTRANS;
+> +	current->flags &=3D ~(PF_FSTRANS | PF_MEMALLOC_NOIO);
+>  }
+> =20
+>  /**
+
+
+--Sig_/Msmo3U9lW5aeckjbCXwnaz_
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU/rcVDnsnt1WYoG5AQLIRg//Y6AK9WfNX+Xbmci3KOFwuKcJlRnipjBS
+HuaPoaA5Hzd8X7QyOAe7sPugbckjXyw03cs5qh2XEZKjxmvw1iE/KqrVQUd5cZjx
+9xbIEOZaxECFZIafFIgaHnQTn85OrIZNs2xL8dg/3ahQ8P+/madgxFGfb1WtFDly
+2QK5cxMm8iYvPEIDozN74TXDoOP/GeViROhQxFNorjw1UUvi4YBfM9JZfl5JjA2T
+6F1x2Anb4ZlU8rPVWxZT5U2NgYdUfbZu3HbYkV2TKQl8vQ1oDnF3Oc2qZkywqQPl
+Rl/pY/Zqg2NIAXGH2dGOZ91MTXUD6ie8gJvaH1IhmFpXksNn42z8J9a48cUBra1r
+S7fUTpc7zt4ffIPovpt0XsFhhOEMAl20E2vOXoUUdzM0T2wziUQQ2/54OBhXFVQh
+NBt0r7TKUB8N3HgBcpdxNWkkc2LHSnFQ4vgtaGJQdetDcBXERc/9TURBf3nAV5oW
+OZSVLyShbzLbUY5U4CP9uuS2ftCyzgwu1ZpBYHz2L1H77PqWrCtb7PsAlhtjDeek
+aPr2JJaXCoclSIohVnZtD9VqXycswcP1wX7mm+P/OSbPqJ0XjO009JA9GNi8OBQk
+f9DCH9oRYJE3PrQp9b3t9NXBliEvq7NilVdnMOObRjOSYvVE5XLm2lcR2AwbOalI
+sSCD/OXTVpg=
+=sWVh
+-----END PGP SIGNATURE-----
+
+--Sig_/Msmo3U9lW5aeckjbCXwnaz_--
