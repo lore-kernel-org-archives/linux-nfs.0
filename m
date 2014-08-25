@@ -1,45 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:65250 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753064AbaHLOsU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 10:48:20 -0400
-Received: by mail-qg0-f46.google.com with SMTP id z60so9658162qgd.33
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 07:48:20 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] locks: don't call locks_release_private from locks_copy_lock
-Date: Tue, 12 Aug 2014 10:48:09 -0400
-Message-Id: <1407854893-2698-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
-References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-yh0-f42.google.com ([209.85.213.42]:57910 "EHLO
+	mail-yh0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753088AbaHYBT4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Aug 2014 21:19:56 -0400
+Received: by mail-yh0-f42.google.com with SMTP id a41so10397429yho.15
+        for <linux-nfs@vger.kernel.org>; Sun, 24 Aug 2014 18:19:55 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sun, 24 Aug 2014 21:19:53 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org,
+        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/10] locks: define a lm_setup handler for leases
+Message-ID: <20140824211953.1dfd7f77@synchrony.poochiereds.net>
+In-Reply-To: <20140824155858.GF15908@infradead.org>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+	<1408804878-1331-8-git-send-email-jlayton@primarydata.com>
+	<20140824155858.GF15908@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All callers of locks_copy_lock pass in a brand new file_lock struct, so
-there's no need to calls locks_release_private on it. Replace that with
-a warning that fires in the event that we receive a target lock that
-doesn't look like it's properly initialized.
+On Sun, 24 Aug 2014 08:58:58 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/locks.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+> I like this change a lot!  But one caveat:
+> 
+> > +	/*
+> > +	 * Despite the fact that it's an int return function, __f_setown never
+> > +	 * returns an error. Just ignore any error return here, but spew a
+> > +	 * WARN_ON_ONCE in case this ever changes.
+> > +	 */
+> > +	WARN_ON_ONCE(__f_setown(filp, task_pid(current), PIDTYPE_PID, 0));
+> 
+> I don't think this is a good idea.  The errors in __f_setown come from
+> the security modules, and they could change easily.  If you can convince
+> the LSM people to change their file_set_fowner routine to return void
+> we could change __f_setown to return void as well and be done with it,
+> but without that this looks too dangerous.
+> 
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 356667a434c1..2c2d4f5022a7 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -285,7 +285,8 @@ EXPORT_SYMBOL(__locks_copy_lock);
- 
- void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
- {
--	locks_release_private(new);
-+	/* "new" must be a freshly-initialized lock */
-+	WARN_ON_ONCE(new->fl_ops);
- 
- 	__locks_copy_lock(new, fl);
- 	new->fl_file = fl->fl_file;
+Understood. I figured that this might not be acceptable. I can make
+this propagate the error back up, but cleaning up the mess may not be
+easy. I'll see what I can do.
+
+Note that the error handling in the existing code looks wrong to me
+too. The lease gets added to the list (or updated), the fasync handler
+gets set up. Then, if __f_setown returns an error, the code just
+returns that error without unwinding anything.
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
