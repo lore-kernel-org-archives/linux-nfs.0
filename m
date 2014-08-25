@@ -1,102 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45804 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752936AbaHGHYb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:24:31 -0400
-Received: from [83.175.99.196] (helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XFI3q-0006ze-5e
-	for linux-nfs@vger.kernel.org; Thu, 07 Aug 2014 07:24:30 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] blkmapd: fix broken multipath handling
-Date: Thu,  7 Aug 2014 09:26:48 +0200
-Message-Id: <1407396409-5036-2-git-send-email-hch@lst.de>
-In-Reply-To: <1407396409-5036-1-git-send-email-hch@lst.de>
-References: <1407396409-5036-1-git-send-email-hch@lst.de>
+Received: from fieldses.org ([174.143.236.118]:54274 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932420AbaHYULt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Aug 2014 16:11:49 -0400
+Date: Mon, 25 Aug 2014 16:11:46 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jlayton@primarydata.com>, linux-fsdevel@vger.kernel.org,
+        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 04/10] locks: clean up vfs_setlease kerneldoc comments
+Message-ID: <20140825201146.GC21957@fieldses.org>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+ <1408804878-1331-5-git-send-email-jlayton@primarydata.com>
+ <20140824155117.GC15908@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140824155117.GC15908@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We do want to use the dm-multipath device if it exists, which the
-code is generally prepared for, except that this check excludes them
-early.  In addition this will also add the passive path to the device
-list, which is harmless if an active one exists as that or the multipath
-device will be preferred, and at least allows us to work if it doesn't.
+On Sun, Aug 24, 2014 at 08:51:17AM -0700, Christoph Hellwig wrote:
+> On Sat, Aug 23, 2014 at 10:41:12AM -0400, Jeff Layton wrote:
+> > Some of the latter paragraphs seem ambiguous and just plain wrong.
+> > In particular the break_lease comment makes no sense. We call
+> > break_lease (and break_deleg) from all sorts of vfs-layer functions,
+> > so there is clearly such a method.
 
-Also fix up the check if an path needs to be updated to remove the silly
-partition check - pNFS block offset are relative to the device so partion
-should never match it instead of the full device.  On the other hand the
-simplistic check easily creates false positives, e.g. dm-10 is considered
-a partition of dm-1.
+Right, but there's no f_op->break_lease.  Anyway:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- utils/blkmapd/device-discovery.c | 27 ++++-----------------------
- 1 file changed, 4 insertions(+), 23 deletions(-)
+> > Also, we are close to being able to allow for "real" filesystem
+> > setlease methods so remove the final comment about it not being a
+> > full implementation yet.
+> 
+> I'd remove even more:
+> 
+> > + *
+> > + * This will call the filesystem's setlease file method, if defined. Note that
+> > + * there is no getlease method; instead, the filesystem setlease method should
+> > + * call back to generic_setlease() to add a lease to the inode's lease list,
+> > + * where fcntl_getlease() can find it.  Since fcntl_getlease() only reports
+> > + * whether the current task holds a lease, a cluster filesystem need only do
+> > + * this for leases held by processes on this node.
+> >   */
+> 
+> If we'd ever want a full implementation I think we'd absolutely need
+> the getlease method.  But instead of hypothetizing about future
+> implementation I'd rather leave it to those actually implementing such
+> support, if that ever happens.
 
-diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-index df4627e..bcfb060 100644
---- a/utils/blkmapd/device-discovery.c
-+++ b/utils/blkmapd/device-discovery.c
-@@ -77,16 +77,6 @@ struct bl_disk_path *bl_get_path(const char *filepath,
- 	return tmp;
- }
- 
--/* Check whether valid_path is a substring(partition) of path */
--int bl_is_partition(struct bl_disk_path *valid_path, struct bl_disk_path *path)
--{
--	if (!strncmp(valid_path->full_path, path->full_path,
--		     strlen(valid_path->full_path)))
--		return 1;
--
--	return 0;
--}
--
- /*
-  * For multipath devices, devices state could be PASSIVE/ACTIVE/PSEUDO,
-  * where PSEUDO > ACTIVE > PASSIVE. Device with highest state is used to
-@@ -95,19 +85,13 @@ int bl_is_partition(struct bl_disk_path *valid_path, struct bl_disk_path *path)
-  * If device-mapper multipath support is a must, pseudo devices should
-  * exist for each multipath device. If not, active device path will be
-  * chosen for device creation.
-- * Treat partition as invalid path.
-  */
--int bl_update_path(struct bl_disk_path *path, enum bl_path_state_e state,
--		   struct bl_disk *disk)
-+int bl_update_path(enum bl_path_state_e state, struct bl_disk *disk)
- {
- 	struct bl_disk_path *valid_path = disk->valid_path;
- 
--	if (valid_path) {
--		if (valid_path->state >= state) {
--			if (bl_is_partition(valid_path, path))
--				return 0;
--		}
--	}
-+	if (valid_path && valid_path->state >= state)
-+		return 0;
- 	return 1;
- }
- 
-@@ -170,9 +154,6 @@ void bl_add_disk(char *filepath)
- 		ap_state = bldev_read_ap_state(fd);
- 	close(fd);
- 
--	if (ap_state != BL_PATH_STATE_ACTIVE)
--		return;
--
- 	for (disk = visible_disk_list; disk != NULL; disk = disk->next) {
- 		/* Already scanned or a partition?
- 		 * XXX: if released each time, maybe not need to compare
-@@ -216,7 +197,7 @@ void bl_add_disk(char *filepath)
- 		path->next = disk->paths;
- 		disk->paths = path;
- 		/* check whether we need to update disk info */
--		if (bl_update_path(path, path->state, disk)) {
-+		if (bl_update_path(path->state, disk)) {
- 			disk->dev = dev;
- 			disk->size = size;
- 			disk->valid_path = path;
--- 
-1.9.1
+I agree, that makes sense.
 
+--b.
