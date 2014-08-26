@@ -1,45 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f43.google.com ([209.85.216.43]:50498 "EHLO
-	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751822AbaHCRDU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:20 -0400
-Received: by mail-qa0-f43.google.com with SMTP id w8so5995412qac.30
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:19 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 04/11] SUNRPC: Do not override wspace tests in svc_handle_xprt
-Date: Sun,  3 Aug 2014 13:03:06 -0400
-Message-Id: <1407085393-3175-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
-References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-4-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:56286 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753081AbaHZULP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Aug 2014 16:11:15 -0400
+Message-ID: <53FCE9DF.1050407@Netapp.com>
+Date: Tue, 26 Aug 2014 16:11:11 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        <linux-nfs@vger.kernel.org>
+CC: James Drews <drews@engr.wisc.edu>, <jrs@world.std.com>
+Subject: Re: [PATCH v2 1/2] NFSv4: Fix problems with close in the presence
+ of a delegation
+References: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We already determined that there was enough wspace when we
-called svc_xprt_enqueue.
+On 08/26/2014 02:30 PM, Trond Myklebust wrote:
+> In the presence of delegations, we can no longer assume that the
+> state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
+> stateid share mode, and so we need to need to calculate the initial
+Nit:  Remove the duplicate "need to" (above).
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/svc_xprt.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> value for calldata->arg.fmode using the state->flags.
+>
+> Reported-by: James Drews <drews@engr.wisc.edu>
+> Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
+> Cc: stable@vger.kernel.org # 2.6.33+
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4proc.c | 19 +++++++++++++------
+>  1 file changed, 13 insertions(+), 6 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 75ae8d22f067..7d67d5b332d4 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2601,6 +2601,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+>  	struct nfs4_closedata *calldata = data;
+>  	struct nfs4_state *state = calldata->state;
+>  	struct inode *inode = calldata->inode;
+> +	bool is_rdonly, is_wronly, is_rdwr;
+>  	int call_close = 0;
+>  
+>  	dprintk("%s: begin!\n", __func__);
+> @@ -2608,24 +2609,30 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+>  		goto out_wait;
+>  
+>  	task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_DOWNGRADE];
+> -	calldata->arg.fmode = FMODE_READ|FMODE_WRITE;
+>  	spin_lock(&state->owner->so_lock);
+> +	is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
+> +	is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
+> +	is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
+> +	spin_unlock(&state->owner->so_lock);
+> +	/* Calculate the current open share mode */
+> +	calldata->arg.fmode = 0;
+> +	if (is_rdonly || is_rdwr)
+> +		calldata->arg.fmode |= FMODE_READ;
+> +	if (is_wronly || is_rdwr)
+> +		calldata->arg.fmode |= FMODE_WRITE;
+>  	/* Calculate the change in open mode */
+>  	if (state->n_rdwr == 0) {
+Do we need the owner lock for reading state->n_rdwr, n_rdonly, and n_wronly?
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 32647b2a6a34..b731077b6a30 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -744,7 +744,7 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
- 			svc_add_new_temp_xprt(serv, newxpt);
- 		else
- 			module_put(xprt->xpt_class->xcl_owner);
--	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
-+	} else {
- 		/* XPT_DATA|XPT_DEFERRED case: */
- 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
- 			rqstp, rqstp->rq_pool->sp_id, xprt,
--- 
-1.9.3
+Anna
+>  		if (state->n_rdonly == 0) {
+> -			call_close |= test_bit(NFS_O_RDONLY_STATE, &state->flags);
+> -			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
+> +			call_close |= is_rdonly || is_rdwr;
+>  			calldata->arg.fmode &= ~FMODE_READ;
+>  		}
+>  		if (state->n_wronly == 0) {
+> -			call_close |= test_bit(NFS_O_WRONLY_STATE, &state->flags);
+> -			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
+> +			call_close |= is_wronly || is_rdwr;
+>  			calldata->arg.fmode &= ~FMODE_WRITE;
+>  		}
+>  	}
+>  	if (!nfs4_valid_open_stateid(state))
+>  		call_close = 0;
+> -	spin_unlock(&state->owner->so_lock);
+>  
+>  	if (!call_close) {
+>  		/* Note: exit _without_ calling nfs4_close_done */
 
