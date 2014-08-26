@@ -1,42 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:57218 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751705AbaH2XBu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Aug 2014 19:01:50 -0400
-Date: Sat, 30 Aug 2014 00:01:47 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Tao Peng <tao.peng@primarydata.com>
-Subject: Re: VFS regression: commit aba809cf0944 breaks MNT_SHRINKABLE
- automounted partitions
-Message-ID: <20140829230147.GD7996@ZenIV.linux.org.uk>
-References: <CAHQdGtT4kbPqQvD_fu7c_5_CqK8FCpA5mJsVdh=KxoE9_vXRzw@mail.gmail.com>
- <20140829205817.GB7996@ZenIV.linux.org.uk>
- <CAHQdGtRBqmsfeVVysTnTEELHuwiPwvsyTHtoRAsfSS0aSyCbfQ@mail.gmail.com>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:50288 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752222AbaHZTqw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 15:46:52 -0400
+Received: by mail-ig0-f180.google.com with SMTP id l13so5054936iga.1
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 12:46:51 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtRBqmsfeVVysTnTEELHuwiPwvsyTHtoRAsfSS0aSyCbfQ@mail.gmail.com>
+In-Reply-To: <CAHQdGtRi_jA8+RkDqh+VBKwHhTpxygSEBWaDScqozyxVSPKAtg@mail.gmail.com>
+References: <53FCA183.8000605@plexistor.com>
+	<1435166875.78.1409066662291.JavaMail.root@thunderbeast.private.linuxbox.com>
+	<CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>
+	<53FCBC5A.4060304@plexistor.com>
+	<CAHQdGtSghgbrPr=X8O2YLq=vXbKY1y5OuOMisf6vRoj8WeF0YA@mail.gmail.com>
+	<53FCBE9C.40906@plexistor.com>
+	<CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>
+	<53FCCFBD.3080305@plexistor.com>
+	<CAHQdGtRi_jA8+RkDqh+VBKwHhTpxygSEBWaDScqozyxVSPKAtg@mail.gmail.com>
+Date: Tue, 26 Aug 2014 15:46:51 -0400
+Message-ID: <CAHQdGtQM5uCyKLNBeU0ZENf-Jvki7TvJGbPt-FEAMLQi0jnYLg@mail.gmail.com>
+Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Boaz Harrosh <boaz@plexistor.com>
+Cc: "Matt W. Benjamin" <matt@linuxbox.com>, Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Adam C. Emerson" <aemerson@linuxbox.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 29, 2014 at 05:47:58PM -0400, Trond Myklebust wrote:
+On Tue, Aug 26, 2014 at 2:41 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> On Tue, Aug 26, 2014 at 2:19 PM, Boaz Harrosh <boaz@plexistor.com> wrote:
+>> On 08/26/2014 08:54 PM, Trond Myklebust wrote:
+>>> On Tue, Aug 26, 2014 at 1:06 PM, Boaz Harrosh <boaz@plexistor.com> wrote:
+>>
+>>>
+>>> The deadlock occurs _if_ the above layout commit  is unable to get a
+>>> slot. You can't guarantee that it will, because the slot table is a
+>>> finite resource and it can be exhausted
+>>
+>> Yes all I ever seen is 1 slot in any of the clients/servers I've
+>> seen so I assume 1 slot ever
+>>
+>>> if you allow fore channel
+>>> calls to trigger synchronous recalls on the back channel
+>>
+>> Beep! but this is exactly what I'm trying to say. The STD specifically
+>> forbids that. The server is not allowed to wait here, it must return
+>> imitatively, with an error that frees the slot and then later issue the
+>> RECALL.
+>>
+>> This is what I said exactly three times in my mail, and what I have
+>> depicted in my flow:
+>>         Server async operation (mandated by the STD)
+>>         Client back-channel can be sync with for channel (Not mentioned by the STD)
+>>
+>>> that again trigger synchronous calls on the fore channel.
+>>
+>>
+>>> You're basically saying
+>>> that the client needs to guarantee that it can allocate 2 slots before
+>>> it is allowed to send a layoutget just in case the server needs to
+>>> recall a layout.
+>>>
+>>
+>> No I am not saying that, please count. Since the Server is not allowed
+>> sync operation then one slot is enough and the client can do sync lo_commit
+>> while in recall.
+>>
+>>> If, OTOH, the layoutcommit is asynchronous, then there is no
+>>> serialisation and the back channel thread can happily reply to the
+>>> layout recall even if there are no free slots in the fore channel.
+>>>
+>>
+>> Sure that will work as well, but not optimally, and for no good reason.
+>>
+>> Please go back to my flow with the 3 cases. See how the server never waits
+>> for anything and will always imitatively reply to the layout_get.
+>> Since the server is not allowed a sync operation and is mandated by the
+>> RFC text to not wait, then the client is allowed and can do sync operations
+>> because it is enough that only one do async.
+>>
+>> BTW: If what you are saying is true than there is a bug in the slot code
+>> because this patch does work, and everything flows past this situation.
+>> I have a reproducer test that fails 100% of the time without this patch
+>> and only fails much later at some other place, but not at this deadlock,
+>> with this patch applied.
+>>
+>> Cheers
+>> Boaz
+>>
+>
+> Whether or not your particular server allows it or not is irrelevant.
+> We're not coding the client to a particular implementation. None of
+> the other callbacks do synchronous RPC calls, and that's very
+> intentional.
+>
 
-> Note that the issue happens with NFSv4 or NFSv4.1 (not NFSv3).
+So to return to the original question: could we please change the
+layoutcommit in your patch so that it is asynchronous?
 
-That's what I'd been using for testing.
+-- 
+Trond Myklebust
 
-> Note that on my system, if I call 'umount' a second time after getting
-> the 'device is busy' error, then it succeeds. It looks as if the first
-> call to 'umount /mnt' causes the directory /mnt/export to clear,
-> causing the second 'umount /mnt' to succeeed (unless I try to access
-> /mnt/export again):
+Linux NFS client maintainer, PrimaryData
 
-Now, that smells like a different bug - see if commit ab8f2c from -next
-helps with that one.
-
-Anyway, I think I see what's going on; moreover, I have a kinda-sorta
-solution for the current tree, but it's not something that'll be fun
-to backport and I'd prefer to look for alternative solutions before going
-for that one.  Hopefully I'll have something postable by tomorrow morning...
+trond.myklebust@primarydata.com
