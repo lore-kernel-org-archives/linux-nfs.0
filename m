@@ -1,63 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:42366 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751181AbaHDLpt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Aug 2014 07:45:49 -0400
-Received: by mail-qg0-f45.google.com with SMTP id f51so8440349qge.4
-        for <linux-nfs@vger.kernel.org>; Mon, 04 Aug 2014 04:45:48 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 4 Aug 2014 07:45:46 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/6] NFS DRC scalability patches
-Message-ID: <20140804074546.7c63e725@tlielax.poochiereds.net>
-In-Reply-To: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1407085564-3227-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-yh0-f53.google.com ([209.85.213.53]:44177 "EHLO
+	mail-yh0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752070AbaHZSlk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 14:41:40 -0400
+Received: by mail-yh0-f53.google.com with SMTP id c41so12267793yho.40
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 11:41:40 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <53FCCFBD.3080305@plexistor.com>
+References: <53FCA183.8000605@plexistor.com>
+	<1435166875.78.1409066662291.JavaMail.root@thunderbeast.private.linuxbox.com>
+	<CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>
+	<53FCBC5A.4060304@plexistor.com>
+	<CAHQdGtSghgbrPr=X8O2YLq=vXbKY1y5OuOMisf6vRoj8WeF0YA@mail.gmail.com>
+	<53FCBE9C.40906@plexistor.com>
+	<CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>
+	<53FCCFBD.3080305@plexistor.com>
+Date: Tue, 26 Aug 2014 14:41:39 -0400
+Message-ID: <CAHQdGtRi_jA8+RkDqh+VBKwHhTpxygSEBWaDScqozyxVSPKAtg@mail.gmail.com>
+Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Boaz Harrosh <boaz@plexistor.com>
+Cc: "Matt W. Benjamin" <matt@linuxbox.com>, Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Adam C. Emerson" <aemerson@linuxbox.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun,  3 Aug 2014 13:05:58 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On Tue, Aug 26, 2014 at 2:19 PM, Boaz Harrosh <boaz@plexistor.com> wrote:
+> On 08/26/2014 08:54 PM, Trond Myklebust wrote:
+>> On Tue, Aug 26, 2014 at 1:06 PM, Boaz Harrosh <boaz@plexistor.com> wrote:
+>
+>>
+>> The deadlock occurs _if_ the above layout commit  is unable to get a
+>> slot. You can't guarantee that it will, because the slot table is a
+>> finite resource and it can be exhausted
+>
+> Yes all I ever seen is 1 slot in any of the clients/servers I've
+> seen so I assume 1 slot ever
+>
+>> if you allow fore channel
+>> calls to trigger synchronous recalls on the back channel
+>
+> Beep! but this is exactly what I'm trying to say. The STD specifically
+> forbids that. The server is not allowed to wait here, it must return
+> imitatively, with an error that frees the slot and then later issue the
+> RECALL.
+>
+> This is what I said exactly three times in my mail, and what I have
+> depicted in my flow:
+>         Server async operation (mandated by the STD)
+>         Client back-channel can be sync with for channel (Not mentioned by the STD)
+>
+>> that again trigger synchronous calls on the fore channel.
+>
+>
+>> You're basically saying
+>> that the client needs to guarantee that it can allocate 2 slots before
+>> it is allowed to send a layoutget just in case the server needs to
+>> recall a layout.
+>>
+>
+> No I am not saying that, please count. Since the Server is not allowed
+> sync operation then one slot is enough and the client can do sync lo_commit
+> while in recall.
+>
+>> If, OTOH, the layoutcommit is asynchronous, then there is no
+>> serialisation and the back channel thread can happily reply to the
+>> layout recall even if there are no free slots in the fore channel.
+>>
+>
+> Sure that will work as well, but not optimally, and for no good reason.
+>
+> Please go back to my flow with the 3 cases. See how the server never waits
+> for anything and will always imitatively reply to the layout_get.
+> Since the server is not allowed a sync operation and is mandated by the
+> RFC text to not wait, then the client is allowed and can do sync operations
+> because it is enough that only one do async.
+>
+> BTW: If what you are saying is true than there is a bug in the slot code
+> because this patch does work, and everything flows past this situation.
+> I have a reproducer test that fails 100% of the time without this patch
+> and only fails much later at some other place, but not at this deadlock,
+> with this patch applied.
+>
+> Cheers
+> Boaz
+>
 
-> Hi Bruce,
-> 
-> The following patchset is again more an FYI than a must have, but it
-> addresses a significant scalability problem for NFSv3 when running
-> over 10GigE and 40GigE networks. At one point, I was seeing >60% CPU
-> spinning on the DRC global spinlock...
-> 
-> The one thing to note is that because the statistics are moved outside
-> spinlocking, then their accuracy is slightly reduced (I do convert the
-> number of entries into an atomic, so that is still 100% correct). The
-> right thing to do there is probably to convert those into per-cpu
-> counters, however I've not had time to do so for now.
-> 
+Whether or not your particular server allows it or not is irrelevant.
+We're not coding the client to a particular implementation. None of
+the other callbacks do synchronous RPC calls, and that's very
+intentional.
 
-Consider adding some FIXME comments to that effect? While not terribly
-important, it would be good to fix them at some point.
+-- 
+Trond Myklebust
 
-> Cheers,
->   Trond
-> 
-> Trond Myklebust (6):
->   nfsd: Clean up drc cache in preparation for global spinlock
->     elimination
->   nfsd: convert the lru list into a per-bucket thing
->   nfsd: Remove the cache_hash list
->   nfsd: convert num_drc_entries to an atomic_t
->   nfsd: split DRC global spinlock into per-bucket locks
->   nfsd: Reorder nfsd_cache_match to check more powerful discriminators
->     first
-> 
->  fs/nfsd/cache.h    |   1 -
->  fs/nfsd/nfscache.c | 205 +++++++++++++++++++++++++++++------------------------
->  2 files changed, 113 insertions(+), 93 deletions(-)
-> 
+Linux NFS client maintainer, PrimaryData
 
-Looks good. Nice work! You can add this to each since they all look
-good to me. It would be good to fix up the stats collection and the
-comments, but I wouldn't want to hold up this work for that.
-
-    Reviewed-by: Jeff Layton <jlayton@primarydata.com>
+trond.myklebust@primarydata.com
