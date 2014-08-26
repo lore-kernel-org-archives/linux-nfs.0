@@ -1,71 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:51198 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752248AbaHUQHo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 12:07:44 -0400
-Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XKUtq-0000Ak-SW
-	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 16:07:43 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 13/19] pnfs/blocklayout: correctly decrement extent length
-Date: Thu, 21 Aug 2014 11:09:29 -0500
-Message-Id: <1408637375-11343-14-git-send-email-hch@lst.de>
-In-Reply-To: <1408637375-11343-1-git-send-email-hch@lst.de>
-References: <pnfs block layout driver fixes V2>
- <1408637375-11343-1-git-send-email-hch@lst.de>
+Received: from mail-yh0-f48.google.com ([209.85.213.48]:58841 "EHLO
+	mail-yh0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754115AbaHZUPQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 16:15:16 -0400
+Received: by mail-yh0-f48.google.com with SMTP id i57so12346061yha.7
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 13:15:15 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <53FCE9DF.1050407@Netapp.com>
+References: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>
+	<53FCE9DF.1050407@Netapp.com>
+Date: Tue, 26 Aug 2014 16:15:15 -0400
+Message-ID: <CAHQdGtQNOJveS3wK3nxvv43jXBHC_0Z3Bo+TSVPmHz9qRtZNUw@mail.gmail.com>
+Subject: Re: [PATCH v2 1/2] NFSv4: Fix problems with close in the presence of
+ a delegation
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        James Drews <drews@engr.wisc.edu>, jrs@world.std.com
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we do non-page sized reads we can underflow the extent_length variable
-and read incorrect data.  Fix the extent_length calculation and change to
-defensive <= checks for the extent length in the read and write path.
+On Tue, Aug 26, 2014 at 4:11 PM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> On 08/26/2014 02:30 PM, Trond Myklebust wrote:
+>> In the presence of delegations, we can no longer assume that the
+>> state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
+>> stateid share mode, and so we need to need to calculate the initial
+> Nit:  Remove the duplicate "need to" (above).
+>
+>> value for calldata->arg.fmode using the state->flags.
+>>
+>> Reported-by: James Drews <drews@engr.wisc.edu>
+>> Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
+>> Cc: stable@vger.kernel.org # 2.6.33+
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>>  fs/nfs/nfs4proc.c | 19 +++++++++++++------
+>>  1 file changed, 13 insertions(+), 6 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 75ae8d22f067..7d67d5b332d4 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -2601,6 +2601,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+>>       struct nfs4_closedata *calldata = data;
+>>       struct nfs4_state *state = calldata->state;
+>>       struct inode *inode = calldata->inode;
+>> +     bool is_rdonly, is_wronly, is_rdwr;
+>>       int call_close = 0;
+>>
+>>       dprintk("%s: begin!\n", __func__);
+>> @@ -2608,24 +2609,30 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+>>               goto out_wait;
+>>
+>>       task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_DOWNGRADE];
+>> -     calldata->arg.fmode = FMODE_READ|FMODE_WRITE;
+>>       spin_lock(&state->owner->so_lock);
+>> +     is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
+>> +     is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
+>> +     is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
+>> +     spin_unlock(&state->owner->so_lock);
+>> +     /* Calculate the current open share mode */
+>> +     calldata->arg.fmode = 0;
+>> +     if (is_rdonly || is_rdwr)
+>> +             calldata->arg.fmode |= FMODE_READ;
+>> +     if (is_wronly || is_rdwr)
+>> +             calldata->arg.fmode |= FMODE_WRITE;
+>>       /* Calculate the change in open mode */
+>>       if (state->n_rdwr == 0) {
+> Do we need the owner lock for reading state->n_rdwr, n_rdonly, and n_wronly?
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+Duh, yes, you're right. I'll revert that part of the change.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 5427ae7..87a633d 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -272,7 +272,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 	isect = (sector_t) (f_offset >> SECTOR_SHIFT);
- 	/* Code assumes extents are page-aligned */
- 	for (i = pg_index; i < hdr->page_array.npages; i++) {
--		if (!extent_length) {
-+		if (extent_length <= 0) {
- 			/* We've used up the previous extent */
- 			bl_put_extent(be);
- 			bl_put_extent(cow_read);
-@@ -303,6 +303,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 			f_offset += pg_len;
- 			bytes_left -= pg_len;
- 			isect += (pg_offset >> SECTOR_SHIFT);
-+			extent_length -= (pg_offset >> SECTOR_SHIFT);
- 		} else {
- 			pg_offset = 0;
- 			pg_len = PAGE_CACHE_SIZE;
-@@ -333,7 +334,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 			}
- 		}
- 		isect += (pg_len >> SECTOR_SHIFT);
--		extent_length -= PAGE_CACHE_SECTORS;
-+		extent_length -= (pg_len >> SECTOR_SHIFT);
- 	}
- 	if ((isect << SECTOR_SHIFT) >= header->inode->i_size) {
- 		hdr->res.eof = 1;
-@@ -797,7 +798,7 @@ next_page:
- 	/* Middle pages */
- 	pg_index = header->args.pgbase >> PAGE_CACHE_SHIFT;
- 	for (i = pg_index; i < header->page_array.npages; i++) {
--		if (!extent_length) {
-+		if (extent_length <= 0) {
- 			/* We've used up the previous extent */
- 			bl_put_extent(be);
- 			bl_put_extent(cow_read);
+> Anna
+>>               if (state->n_rdonly == 0) {
+>> -                     call_close |= test_bit(NFS_O_RDONLY_STATE, &state->flags);
+>> -                     call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
+>> +                     call_close |= is_rdonly || is_rdwr;
+>>                       calldata->arg.fmode &= ~FMODE_READ;
+>>               }
+>>               if (state->n_wronly == 0) {
+>> -                     call_close |= test_bit(NFS_O_WRONLY_STATE, &state->flags);
+>> -                     call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
+>> +                     call_close |= is_wronly || is_rdwr;
+>>                       calldata->arg.fmode &= ~FMODE_WRITE;
+>>               }
+>>       }
+>>       if (!nfs4_valid_open_stateid(state))
+>>               call_close = 0;
+>> -     spin_unlock(&state->owner->so_lock);
+>>
+>>       if (!call_close) {
+>>               /* Note: exit _without_ calling nfs4_close_done */
+>
+
+
+
 -- 
-1.9.1
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
