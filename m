@@ -1,72 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f176.google.com ([209.85.192.176]:61800 "EHLO
-	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751143AbaHCPYN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 11:24:13 -0400
-Received: by mail-pd0-f176.google.com with SMTP id y10so8223240pdj.7
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 08:24:12 -0700 (PDT)
-Message-ID: <53DE53FF.4000506@gmail.com>
-Date: Sun, 03 Aug 2014 23:23:43 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:55128 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754986AbaHZN7V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 09:59:21 -0400
+Date: Tue, 26 Aug 2014 06:59:20 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        bfields@fieldses.org, cluster-devel@redhat.com,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/10] locks/nfsd: internal lease API overhaul
+Message-ID: <20140826135920.GB18599@infradead.org>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+ <20140824161046.GI15908@infradead.org>
+ <20140824214301.61019123@synchrony.poochiereds.net>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFS: Don't restart release lockowner RPC if getting expired error
-References: <53DE4C33.1040509@gmail.com>
-In-Reply-To: <53DE4C33.1040509@gmail.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140824214301.61019123@synchrony.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please ignore this version, I found some problems of it.
-A new patch will be send later.
+On Sun, Aug 24, 2014 at 09:43:01PM -0400, Jeff Layton wrote:
+> >  - add a return value to lm_break so that the lock manager can tell the
+> >    core code "you can delete this lease right now".  That gets rid of
+> >    the games with the timeout which require all kinds of race avoidance
+> >    code in the users.
+> > 
+> 
+> I'm not sure I understand what you're suggesting here. Isn't it just as
+> simple to have lm_break call lease_modify to just remove the lease?
 
-thanks,
-Kinglong Mee
-
-On 8/3/2014 22:50, Kinglong Mee wrote:
-> Fix Commit 60ea681299 (NFS: Migration support for RELEASE_LOCKOWNER)
-> If getting expired error, client will enter a infinite loop as,
-> 
-> client                            server
->    RELEASE_LOCKOWNER(old clid) ----->
->                 <--- expired error
->    RENEW(old clid)             ----->
->                 <--- expired error
->    SETCLIENTID                 ----->
->                 <--- a new clid
->    SETCLIENTID_CONFIRM (new clid) -->
->                 <--- ok
->    RELEASE_LOCKOWNER(old clid) ----->
->                 <--- expired error
->    RENEW(new clid)             ----->
->                 <-- ok
->    RELEASE_LOCKOWNER(old clid) ----->
->                 <--- expired error
->    RENEW(new clid)             ----->
->                 <-- ok
->                 ... ...
-> 
-> This patch just handle the expired error to register clientid,
-> but not restart a release lockowner RPC.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfs/nfs4proc.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 285ad53..902aadf 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -5852,6 +5852,8 @@ static void nfs4_release_lockowner_done(struct rpc_task *task, void *calldata)
->  		break;
->  	case -NFS4ERR_STALE_CLIENTID:
->  	case -NFS4ERR_EXPIRED:
-> +		nfs4_async_handle_error(task, server, NULL);
-> +		break;
->  	case -NFS4ERR_LEASE_MOVED:
->  	case -NFS4ERR_DELAY:
->  		if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN)
-> 
+Unfortunately it's not.  lm_break gets a pointer to the file_lock,
+and lease_modify needs a pointer to the list position of the file_lock.
