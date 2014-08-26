@@ -1,67 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45781 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754072AbaHGHVk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Aug 2014 03:21:40 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 11/17] pnfs/blocklayout: correctly decrement extent length
-Date: Thu,  7 Aug 2014 09:23:43 +0200
-Message-Id: <1407396229-4785-12-git-send-email-hch@lst.de>
-In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
-References: <1407396229-4785-1-git-send-email-hch@lst.de>
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:60682 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755379AbaHZCqc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2014 22:46:32 -0400
+Received: by mail-ig0-f178.google.com with SMTP id uq10so3806062igb.17
+        for <linux-nfs@vger.kernel.org>; Mon, 25 Aug 2014 19:46:31 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] NFSv4: Don't clear the open state when we just did an OPEN_DOWNGRADE
+Date: Mon, 25 Aug 2014 22:46:32 -0400
+Message-Id: <1409021192-12706-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1409021192-12706-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1409021192-12706-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we do non-page sized reads we can underflow the extent_length variable
-and read incorrect data.  Fix the extent_length calculation and change to
-defensive <= checks for the extent length in the read and write path.
+If we did an OPEN_DOWNGRADE, then the right thing to do on success, is
+to apply the new open mode to the struct nfs4_state. Instead, we were
+unconditionally clearing the state, making it appear to our state
+machinery as if we had just performed a CLOSE.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Fixes: 226056c5c312b (NFSv4: Use correct locking when updating nfs4_state...)
+Cc: stable@vger.kernel.org # 3.15+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/blocklayout/blocklayout.c | 7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ fs/nfs/nfs4proc.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 5427ae7..87a633d 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -272,7 +272,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 	isect = (sector_t) (f_offset >> SECTOR_SHIFT);
- 	/* Code assumes extents are page-aligned */
- 	for (i = pg_index; i < hdr->page_array.npages; i++) {
--		if (!extent_length) {
-+		if (extent_length <= 0) {
- 			/* We've used up the previous extent */
- 			bl_put_extent(be);
- 			bl_put_extent(cow_read);
-@@ -303,6 +303,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 			f_offset += pg_len;
- 			bytes_left -= pg_len;
- 			isect += (pg_offset >> SECTOR_SHIFT);
-+			extent_length -= (pg_offset >> SECTOR_SHIFT);
- 		} else {
- 			pg_offset = 0;
- 			pg_len = PAGE_CACHE_SIZE;
-@@ -333,7 +334,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index caf838b4edbd..742a8327a7b6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2560,6 +2560,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	struct nfs4_closedata *calldata = data;
+ 	struct nfs4_state *state = calldata->state;
+ 	struct nfs_server *server = NFS_SERVER(calldata->inode);
++	nfs4_stateid *res_stateid = NULL;
+ 
+ 	dprintk("%s: begin!\n", __func__);
+ 	if (!nfs4_sequence_done(task, &calldata->res.seq_res))
+@@ -2570,11 +2571,13 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	 */
+ 	switch (task->tk_status) {
+ 		case 0:
++			res_stateid = &calldata->res.stateid;
++			renew_lease(server, calldata->timestamp);
++			if (calldata->arg.fmode != 0)
++				break;
+ 			if (calldata->roc)
+ 				pnfs_roc_set_barrier(state->inode,
+ 						     calldata->roc_barrier);
+-			nfs_clear_open_stateid(state, &calldata->res.stateid, 0);
+-			renew_lease(server, calldata->timestamp);
+ 			goto out_release;
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_STALE_STATEID:
+@@ -2589,7 +2592,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 				goto out_release;
  			}
- 		}
- 		isect += (pg_len >> SECTOR_SHIFT);
--		extent_length -= PAGE_CACHE_SECTORS;
-+		extent_length -= (pg_len >> SECTOR_SHIFT);
  	}
- 	if ((isect << SECTOR_SHIFT) >= header->inode->i_size) {
- 		hdr->res.eof = 1;
-@@ -797,7 +798,7 @@ next_page:
- 	/* Middle pages */
- 	pg_index = header->args.pgbase >> PAGE_CACHE_SHIFT;
- 	for (i = pg_index; i < header->page_array.npages; i++) {
--		if (!extent_length) {
-+		if (extent_length <= 0) {
- 			/* We've used up the previous extent */
- 			bl_put_extent(be);
- 			bl_put_extent(cow_read);
+-	nfs_clear_open_stateid(state, NULL, calldata->arg.fmode);
++	nfs_clear_open_stateid(state, res_stateid, calldata->arg.fmode);
+ out_release:
+ 	nfs_release_seqid(calldata->arg.seqid);
+ 	nfs_refresh_inode(calldata->inode, calldata->res.fattr);
 -- 
-1.9.1
+1.9.3
 
