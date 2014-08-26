@@ -1,80 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:51203 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752528AbaHUQH6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 12:07:58 -0400
-Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XKUu5-0000B2-Np
-	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 16:07:57 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 17/19] pnfs/blocklayout: implement the return_range method
-Date: Thu, 21 Aug 2014 11:09:33 -0500
-Message-Id: <1408637375-11343-18-git-send-email-hch@lst.de>
-In-Reply-To: <1408637375-11343-1-git-send-email-hch@lst.de>
-References: <pnfs block layout driver fixes V2>
- <1408637375-11343-1-git-send-email-hch@lst.de>
+Received: from mx12.netapp.com ([216.240.18.77]:54928 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753330AbaHZUVT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Aug 2014 16:21:19 -0400
+Message-ID: <53FCEC3C.80909@Netapp.com>
+Date: Tue, 26 Aug 2014 16:21:16 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        James Drews <drews@engr.wisc.edu>, <jrs@world.std.com>
+Subject: Re: [PATCH v2 1/2] NFSv4: Fix problems with close in the presence
+ of a delegation
+References: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>	<53FCE9DF.1050407@Netapp.com> <CAHQdGtQNOJveS3wK3nxvv43jXBHC_0Z3Bo+TSVPmHz9qRtZNUw@mail.gmail.com>
+In-Reply-To: <CAHQdGtQNOJveS3wK3nxvv43jXBHC_0Z3Bo+TSVPmHz9qRtZNUw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This allows removing extents from the extent tree especially on truncate
-operations, and thus fixing reads from truncated and re-extended that
-previously returned stale data.
+On 08/26/2014 04:15 PM, Trond Myklebust wrote:
+> On Tue, Aug 26, 2014 at 4:11 PM, Anna Schumaker
+> <Anna.Schumaker@netapp.com> wrote:
+>> On 08/26/2014 02:30 PM, Trond Myklebust wrote:
+>>> In the presence of delegations, we can no longer assume that the
+>>> state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
+>>> stateid share mode, and so we need to need to calculate the initial
+>> Nit:  Remove the duplicate "need to" (above).
+>>
+>>> value for calldata->arg.fmode using the state->flags.
+>>>
+>>> Reported-by: James Drews <drews@engr.wisc.edu>
+>>> Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
+>>> Cc: stable@vger.kernel.org # 2.6.33+
+>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>> ---
+>>>  fs/nfs/nfs4proc.c | 19 +++++++++++++------
+>>>  1 file changed, 13 insertions(+), 6 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index 75ae8d22f067..7d67d5b332d4 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -2601,6 +2601,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+>>>       struct nfs4_closedata *calldata = data;
+>>>       struct nfs4_state *state = calldata->state;
+>>>       struct inode *inode = calldata->inode;
+>>> +     bool is_rdonly, is_wronly, is_rdwr;
+>>>       int call_close = 0;
+>>>
+>>>       dprintk("%s: begin!\n", __func__);
+>>> @@ -2608,24 +2609,30 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+>>>               goto out_wait;
+>>>
+>>>       task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_DOWNGRADE];
+>>> -     calldata->arg.fmode = FMODE_READ|FMODE_WRITE;
+>>>       spin_lock(&state->owner->so_lock);
+>>> +     is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
+>>> +     is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
+>>> +     is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
+>>> +     spin_unlock(&state->owner->so_lock);
+>>> +     /* Calculate the current open share mode */
+>>> +     calldata->arg.fmode = 0;
+>>> +     if (is_rdonly || is_rdwr)
+>>> +             calldata->arg.fmode |= FMODE_READ;
+>>> +     if (is_wronly || is_rdwr)
+>>> +             calldata->arg.fmode |= FMODE_WRITE;
+>>>       /* Calculate the change in open mode */
+>>>       if (state->n_rdwr == 0) {
+>> Do we need the owner lock for reading state->n_rdwr, n_rdonly, and n_wronly?
+> 
+> Duh, yes, you're right. I'll revert that part of the change.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+I could be wrong!  I checked for other uses, and nfs4proc.c:can_open_cached() reads these values without a lock.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 42b6f9c..a7524c4 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -470,6 +470,35 @@ static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
- }
- 
- static void
-+bl_return_range(struct pnfs_layout_hdr *lo,
-+		struct pnfs_layout_range *range)
-+{
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
-+	sector_t offset = range->offset >> SECTOR_SHIFT, end;
-+	int err;
-+
-+	if (range->offset % 8) {
-+		dprintk("%s: offset %lld not block size aligned\n",
-+			__func__, range->offset);
-+		return;
-+	}
-+
-+	if (range->length != NFS4_MAX_UINT64) {
-+		if (range->length % 8) {
-+			dprintk("%s: length %lld not block size aligned\n",
-+				__func__, range->length);
-+			return;
-+		}
-+
-+		end = offset + (range->length >> SECTOR_SHIFT);
-+	} else {
-+		end = round_down(NFS4_MAX_UINT64, PAGE_SIZE);
-+	}
-+
-+	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
-+}
-+
-+static void
- bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
- 		       const struct nfs4_layoutcommit_args *arg)
- {
-@@ -777,6 +806,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.free_layout_hdr		= bl_free_layout_hdr,
- 	.alloc_lseg			= bl_alloc_lseg,
- 	.free_lseg			= bl_free_lseg,
-+	.return_range			= bl_return_range,
- 	.encode_layoutcommit		= bl_encode_layoutcommit,
- 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
- 	.set_layoutdriver		= bl_set_layoutdriver,
--- 
-1.9.1
+Anna
+
+> 
+>> Anna
+>>>               if (state->n_rdonly == 0) {
+>>> -                     call_close |= test_bit(NFS_O_RDONLY_STATE, &state->flags);
+>>> -                     call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
+>>> +                     call_close |= is_rdonly || is_rdwr;
+>>>                       calldata->arg.fmode &= ~FMODE_READ;
+>>>               }
+>>>               if (state->n_wronly == 0) {
+>>> -                     call_close |= test_bit(NFS_O_WRONLY_STATE, &state->flags);
+>>> -                     call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
+>>> +                     call_close |= is_wronly || is_rdwr;
+>>>                       calldata->arg.fmode &= ~FMODE_WRITE;
+>>>               }
+>>>       }
+>>>       if (!nfs4_valid_open_stateid(state))
+>>>               call_close = 0;
+>>> -     spin_unlock(&state->owner->so_lock);
+>>>
+>>>       if (!call_close) {
+>>>               /* Note: exit _without_ calling nfs4_close_done */
+>>
+> 
+> 
+> 
 
