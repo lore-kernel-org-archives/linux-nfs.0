@@ -1,63 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f179.google.com ([209.85.220.179]:47998 "EHLO
-	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753453AbaHYVRb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2014 17:17:31 -0400
-Received: by mail-vc0-f179.google.com with SMTP id hq11so15822853vcb.38
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Aug 2014 14:17:30 -0700 (PDT)
+Received: from mail-wg0-f43.google.com ([74.125.82.43]:50418 "EHLO
+	mail-wg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755462AbaHZOxB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 10:53:01 -0400
+Received: by mail-wg0-f43.google.com with SMTP id l18so14456067wgh.2
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 07:53:00 -0700 (PDT)
+Message-ID: <53FC9F4A.5070007@gmail.com>
+Date: Tue, 26 Aug 2014 17:52:58 +0300
+From: Boaz Harrosh <openosd@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <1409000826.3033.32.camel@deadeye.wl.decadent.org.uk>
-References: <1927160445.21851828.1408504000719.JavaMail.zimbra@redhat.com>
-	<1408576235.2618.47.camel@deadeye.wl.decadent.org.uk>
-	<1859750321.23735105.1408945864304.JavaMail.zimbra@redhat.com>
-	<1409000826.3033.32.camel@deadeye.wl.decadent.org.uk>
-Date: Mon, 25 Aug 2014 17:17:30 -0400
-Message-ID: <CAHQdGtT0WhB38XYToS8ceiepW2v_stKZcVYsktBG26iBS4KHAg@mail.gmail.com>
-Subject: Re: [PATCH v2] nfs: remove redundant slash from nfs_path
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Ben Hutchings <ben@decadent.org.uk>
-Cc: Xiong Zhou <xzhou@redhat.com>,
+To: Boaz Harrosh <boaz@plexistor.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Christoph Hellwig <hch@lst.de>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+        Matt Benjamin <matt@linuxbox.com>
+Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
+References: <1408637375-11343-1-git-send-email-hch@lst.de>	<1408637375-11343-4-git-send-email-hch@lst.de>	<53FA259C.9050807@gmail.com>	<20140824191839.GA9717@lst.de>	<53FC9545.4000800@plexistor.com> <CAHQdGtQNDvofWVzn9CmtmbDRSj39BLT_gNDyY34uUFw_nEDe0Q@mail.gmail.com> <53FC9BB1.2020007@plexistor.com>
+In-Reply-To: <53FC9BB1.2020007@plexistor.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 25, 2014 at 5:07 PM, Ben Hutchings <ben@decadent.org.uk> wrote:
-> On Mon, 2014-08-25 at 01:51 -0400, Xiong Zhou wrote:
->> When export root dir(/) via nfs, and mount a particular dir under root, eg
->> /nfsexport, there will be defect double slash output in /proc/mounts, like
->> localhost://nfsexport. While this patch change it to localhost:/nfsexport.
+On 08/26/2014 05:37 PM, Boaz Harrosh wrote:
+> On 08/26/2014 05:26 PM, Trond Myklebust wrote:
+>> On Tue, Aug 26, 2014 at 10:10 AM, Boaz Harrosh <boaz@plexistor.com> wrote:
+>>> +
+>>> +       /* kick out any segs held by need to commit */
+>>> +       pnfs_layoutcommit_inode(ino, true);
 >>
->> Signed-off-by: Xiong Zhou <xzhou@redhat.com>
->> ---
->>  fs/nfs/namespace.c | 2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
+>> Making this call synchronous could deadlock the entire back channel.
+>> Is there any reason why it can't just be made asynchonous?
 >>
->> diff --git a/fs/nfs/namespace.c b/fs/nfs/namespace.c
->> index b5a0afc..24f954e 100644
->> --- a/fs/nfs/namespace.c
->> +++ b/fs/nfs/namespace.c
->> @@ -98,7 +98,7 @@ rename_retry:
->>               return end;
->>       }
->>       namelen = strlen(base);
->> -     if (flags & NFS_PATH_CANONICAL) {
->> +     if ((flags & NFS_PATH_CANONICAL) || *end == '/') {
->>               /* Strip off excess slashes in base string */
->>               while (namelen > 0 && base[namelen - 1] == '/')
->>                       namelen--;
->
-> I think this makes sense, though I'm not sure I completely understand
-> this function. :-/
->
+> 
+> We were just talking about that.
+> 
+> So the logic here is that we want to save round trips and make this
+> as efficient as possible with no extra round trips for the server
+> recall. A single RECALL => LAYOUT_COMMIT => LAYOUT_COMMIT_REPLAY
+> REACLL_REPLAY_NO_MATCHING.
+> 
+> Please explain the deadlock you foresee. The worst is that the
+> mal-behaving server will time-out and after a long time the
+> RECALL_REPLAY will return with ERR. But why do you say deadlock
+> how can this deadlock?
+> 
+> Otherwise Christoph's version of this patch does the asynchonous
+> way which will always cause another poll of the RECALL and more delays
+> for every RECALL operation, which I was trying to avoid.
+> 
 
-It breaks the function's guarantee concerning NFS_PATH_CANONICAL; that
-"if unset, the original name is returned verbatim".
+Also, for any client there is only a single server on it's backchannel
 
--- 
-Trond Myklebust
+do you mean that ANY recall from any server can only come on a single
+thread? I did not know that I thought it was from a pool of RPC threads.
 
-Linux NFS client maintainer, PrimaryData
+So are you saying that waiting on this server operation will cause
+any other server's recall to some other mounts stall until the
+operation is complete for this server?
 
-trond.myklebust@primarydata.com
+Thanks
+Boaz
+
