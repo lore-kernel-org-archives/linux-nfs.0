@@ -1,69 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f43.google.com ([209.85.216.43]:57219 "EHLO
-	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751858AbaHAQwg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Aug 2014 12:52:36 -0400
-Received: by mail-qa0-f43.google.com with SMTP id w8so4177712qac.16
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Aug 2014 09:52:36 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 1 Aug 2014 12:52:34 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH v3 21/38] nfsd: Add reference counting to state owners
-Message-ID: <20140801125234.6732cc91@tlielax.poochiereds.net>
-In-Reply-To: <20140801164843.GB32749@fieldses.org>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-	<1406684083-19736-22-git-send-email-jlayton@primarydata.com>
-	<20140801164843.GB32749@fieldses.org>
+Received: from mail-yh0-f47.google.com ([209.85.213.47]:39310 "EHLO
+	mail-yh0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755843AbaHZO02 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 10:26:28 -0400
+Received: by mail-yh0-f47.google.com with SMTP id f10so11795459yha.6
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 07:26:27 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <53FC9545.4000800@plexistor.com>
+References: <1408637375-11343-1-git-send-email-hch@lst.de>
+	<1408637375-11343-4-git-send-email-hch@lst.de>
+	<53FA259C.9050807@gmail.com>
+	<20140824191839.GA9717@lst.de>
+	<53FC9545.4000800@plexistor.com>
+Date: Tue, 26 Aug 2014 10:26:27 -0400
+Message-ID: <CAHQdGtQNDvofWVzn9CmtmbDRSj39BLT_gNDyY34uUFw_nEDe0Q@mail.gmail.com>
+Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Boaz Harrosh <boaz@plexistor.com>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Matt Benjamin <matt@linuxbox.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 1 Aug 2014 12:48:43 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Tue, Aug 26, 2014 at 10:10 AM, Boaz Harrosh <boaz@plexistor.com> wrote:
+> From: Boaz Harrosh <boaz@plexistor.com>
+>
+> This fixes a dead-lock in the pnfs recall processing
+>
+> pnfs_layoutcommit_inode() is called through update_inode()
+> called from VFS. By setting set_inode_dirty during
+> pnfs write IO.
+>
+> But the VFS will not schedule another update_inode()
+> If it is already inside an update_inode() or an sb-writeback
+>
+> As part of writeback pnfs code might get stuck in LAYOUT_GET
+> with the server returning ERR_RECALL_CONFLICT because some
+> operation has caused the server to RECALL all layouts, including
+> those from our client.
+>
+> So the RECALL is received, but our client is returning ERR_DELAY
+> because its write-segments need a LAYOUT_COMMIT, but
+> pnfs_layoutcommit_inode will never come because it is scheduled
+> behind the LAYOUT_GET which is stuck waiting for the recall to
+> finish
+>
+> Hence the deadlock, client is stuck polling LAYOUT_GET receiving
+> ERR_RECALL_CONFLICT. Server is stuck polling RECALL receiving
+> ERR_DELAY.
+>
+> With pnfs-objects the above condition can easily happen, when
+> a file grows beyond a group of devices. The pnfs-objects-server
+> will RECALL all layouts because the file-objects-map will
+> change and all old layouts will have stale attributes, therefor
+> the RECALL is initiated as part of a LAYOUT_GET, and this can
+> be triggered from within a single client operation.
+>
+> A simple solution is to kick out a pnfs_layoutcommit_inode()
+> from within the recall, to free any need-to-commit segments
+> and let the client return success on the RECALL, so streaming
+> can continue.
+>
+> This patch Is based on 3.17-rc1. It is completely UNTESTED.
+> I have tested a version of this patch at around the 3.12 Kernel
+> at which point the deadlock was resolved but I hit some race
+> conditions on pnfs state management farther on, so the actual
+> overall processing was not fixed. But hopefully these were fixed
+> by Trond and Christoph, and it should work better now.
+>
+> Signed-off-by: Boaz Harrosh <boaz@plexistor.com>
+> ---
+>  fs/nfs/callback_proc.c | 9 ++++++++-
+>  1 file changed, 8 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index 41db525..8660f96 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -171,6 +171,14 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>                 goto out;
+>
+>         ino = lo->plh_inode;
+> +
+> +       spin_lock(&ino->i_lock);
+> +       pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+> +       spin_unlock(&ino->i_lock);
+> +
+> +       /* kick out any segs held by need to commit */
+> +       pnfs_layoutcommit_inode(ino, true);
 
-> On Tue, Jul 29, 2014 at 09:34:26PM -0400, Jeff Layton wrote:
-> >  struct nfs4_stateowner {
-> > -	struct list_head        so_strhash;   /* hash by op_name */
-> > -	struct list_head        so_stateids;
-> > -	struct nfs4_client *    so_client;
-> > +	struct list_head			so_strhash;
-> > +	struct list_head			so_stateids;
-> > +	struct nfs4_client			*so_client;
-> > +	const struct nfs4_stateowner_operations	*so_ops;
-> >  	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
-> >  	 * sequence id expected from the client: */
-> 
-> Uh, that could use updating--applying below.
-> 
-> Anyway, the stateowner reference counting makes sense to me.
-> 
-> --b.
-> 
-> commit 84a46922ea90
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Thu Jul 31 16:10:08 2014 -0400
-> 
->     nfsd4: fix out of date comment
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index 73a209dc352b..0b234500f104 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -345,7 +345,7 @@ struct nfs4_stateowner {
->  	struct list_head			so_stateids;
->  	struct nfs4_client			*so_client;
->  	const struct nfs4_stateowner_operations	*so_ops;
-> -	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
-> +	/* after increment in nfsd4_bump_seqid, represents the next
->  	 * sequence id expected from the client: */
->  	atomic_t				so_count;
->  	u32					so_seqid;
+Making this call synchronous could deadlock the entire back channel.
+Is there any reason why it can't just be made asynchonous?
 
-Ahh yeah, I meant to update that comment and never got around to it.
-Thanks!
+> +
+>         spin_lock(&ino->i_lock);
+>         if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+>             pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
+> @@ -178,7 +186,6 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>                 rv = NFS4ERR_DELAY;
+>         else
+>                 rv = NFS4ERR_NOMATCHING_LAYOUT;
+> -       pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+>         spin_unlock(&ino->i_lock);
+>         pnfs_free_lseg_list(&free_me_list);
+>         pnfs_put_layout_hdr(lo);
+> --
+> 1.9.3
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Acked-by: Jeff Layton <jlayton@primarydata.com>
+
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
