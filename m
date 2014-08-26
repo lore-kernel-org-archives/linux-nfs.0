@@ -1,124 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:65329 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752636AbaHSPZy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 11:25:54 -0400
-Message-ID: <53F36C6C.3050600@gmail.com>
-Date: Tue, 19 Aug 2014 23:25:32 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:34875 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754287AbaHZGV4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Aug 2014 02:21:56 -0400
+Date: Tue, 26 Aug 2014 16:21:38 +1000
+From: NeilBrown <neilb@suse.de>
+To: Junxiao Bi <junxiao.bi@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Mel Gorman <mgorman@suse.com>
+Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
+Message-ID: <20140826162138.5df2f8a3@notabene.brown>
+In-Reply-To: <53FC1E93.2060800@oracle.com>
+References: <53F6F772.6020708@oracle.com>
+	<1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
+	<20140825164852.50723141@notabene.brown>
+	<53FC1E93.2060800@oracle.com>
 MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 5/6 v4] NFSD: New helper nfs4_get_stateowner() for atomic_inc
- sop reference
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com>
-In-Reply-To: <53ED5093.6000308@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/ioh5G0sbw/l36kjHgl5dAel"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v4: same as v3
+--Sig_/ioh5G0sbw/l36kjHgl5dAel
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4state.c | 32 ++++++++++++++++----------------
- 1 file changed, 16 insertions(+), 16 deletions(-)
+On Tue, 26 Aug 2014 13:43:47 +0800 Junxiao Bi <junxiao.bi@oracle.com> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 98edf97..e087a71 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -216,6 +216,13 @@ static void nfsd4_put_session(struct nfsd4_session *ses)
- 	spin_unlock(&nn->client_lock);
- }
- 
-+static inline struct nfs4_stateowner *
-+nfs4_get_stateowner(struct nfs4_stateowner *sop)
-+{
-+	atomic_inc(&sop->so_count);
-+	return sop;
-+}
-+
- static int
- same_owner_str(struct nfs4_stateowner *sop, struct xdr_netobj *owner)
- {
-@@ -235,10 +242,8 @@ find_openstateowner_str_locked(unsigned int hashval, struct nfsd4_open *open,
- 			    so_strhash) {
- 		if (!so->so_is_open_owner)
- 			continue;
--		if (same_owner_str(so, &open->op_owner)) {
--			atomic_inc(&so->so_count);
--			return openowner(so);
--		}
-+		if (same_owner_str(so, &open->op_owner))
-+			return openowner(nfs4_get_stateowner(so));
- 	}
- 	return NULL;
- }
-@@ -1644,7 +1649,7 @@ __destroy_client(struct nfs4_client *clp)
- 	}
- 	while (!list_empty(&clp->cl_openowners)) {
- 		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
--		atomic_inc(&oo->oo_owner.so_count);
-+		nfs4_get_stateowner(&oo->oo_owner);
- 		release_openowner(oo);
- 	}
- 	nfsd4_shutdown_callback(clp);
-@@ -3125,8 +3130,7 @@ static void nfsd4_cstate_assign_replay(struct nfsd4_compound_state *cstate,
- {
- 	if (!nfsd4_has_session(cstate)) {
- 		mutex_lock(&so->so_replay.rp_mutex);
--		cstate->replay_owner = so;
--		atomic_inc(&so->so_count);
-+		cstate->replay_owner = nfs4_get_stateowner(so);
- 	}
- }
- 
-@@ -3225,8 +3229,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	atomic_inc(&stp->st_stid.sc_count);
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_locks);
--	stp->st_stateowner = &oo->oo_owner;
--	atomic_inc(&stp->st_stateowner->so_count);
-+	stp->st_stateowner = nfs4_get_stateowner(&oo->oo_owner);
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
- 	stp->st_access_bmap = 0;
-@@ -4914,10 +4917,8 @@ find_lockowner_str_locked(clientid_t *clid, struct xdr_netobj *owner,
- 			    so_strhash) {
- 		if (so->so_is_open_owner)
- 			continue;
--		if (!same_owner_str(so, owner))
--			continue;
--		atomic_inc(&so->so_count);
--		return lockowner(so);
-+		if (same_owner_str(so, owner))
-+			return lockowner(nfs4_get_stateowner(so));
- 	}
- 	return NULL;
- }
-@@ -4996,8 +4997,7 @@ init_lock_stateid(struct nfs4_ol_stateid *stp, struct nfs4_lockowner *lo,
- 
- 	atomic_inc(&stp->st_stid.sc_count);
- 	stp->st_stid.sc_type = NFS4_LOCK_STID;
--	stp->st_stateowner = &lo->lo_owner;
--	atomic_inc(&lo->lo_owner.so_count);
-+	stp->st_stateowner = nfs4_get_stateowner(&lo->lo_owner);
- 	get_nfs4_file(fp);
- 	stp->st_stid.sc_file = fp;
- 	stp->st_stid.sc_free = nfs4_free_lock_stateid;
-@@ -5539,7 +5539,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			}
- 		}
- 
--		atomic_inc(&sop->so_count);
-+		nfs4_get_stateowner(sop);
- 		break;
- 	}
- 	spin_unlock(&clp->cl_lock);
--- 
-1.9.3
+> On 08/25/2014 02:48 PM, NeilBrown wrote:
+> > On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
+> > <trond.myklebust@primarydata.com> wrote:
+> >=20
+> >> Junxiao Bi reports seeing the following deadlock:
+> >>
+> >> @ crash> bt 1539
+> >> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
+> >> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
+> >> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
+> >> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
+> >> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
+> >> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
+> >> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
+> >> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
+> >> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
+> >> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
+> >> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
+> >> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
+> >> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
+> >=20
+> > This stack trace (from 2.6.32) cannot happen in mainline, though it too=
+k me a
+> > while to remember/discover exactly why.
+> >=20
+> > try_to_free_pages() creates a 'struct scan_control' with ->target_mem_c=
+group
+> > set to NULL.
+> > shrink_page_list() checks ->target_mem_cgroup using global_reclaim() an=
+d if
+> > it is NULL, wait_on_page_writeback is *not* called.
+> >=20
+> > So we can only hit this deadlock if mem-cgroup limits are imposed on a
+> > process which is using NFS - which is quite possible but probably not c=
+ommon.
+> >=20
+> > The fact that a dead-lock can happen only when memcg limits are imposed=
+ seems
+> > very fragile.  People aren't going to test that case much so there coul=
+d well
+> > be other deadlock possibilities lurking.
+> >=20
+> > Mel: might there be some other way we could get out of this deadlock?
+> > Could the wait_on_page_writeback() in shrink_page_list() be made a time=
+d-out
+> > wait or something?  Any other wait out of this deadlock other than sett=
+ing
+> > PF_MEMALLOC_NOIO everywhere?
+>=20
+> Not only the wait_on_page_writeback() cause the deadlock but also the
+> next pageout()-> (mapping->a_ops->writepage), Trond's second patch fix
+> this. So fix the wait_on_page_writeback is not enough to fix deadlock.
 
+Shortly before the only place that pageout() is called there is this code:
+
+			if (page_is_file_cache(page) &&
+					(!current_is_kswapd() ||
+					 !zone_is_reclaim_dirty(zone))) {
+                                .....
+				goto keep_locked;
+
+
+So pageout() only gets called by kswapd() .... or for swap. swap-over-NFS is
+already very cautious about memory allocations, and uses nfs_direct_IO, not
+nfs_writepage.
+
+So nfs_writepage will never get called during direct reclaim.  There is no
+memory-allocate deadlock risk there.
+
+NeilBrown
+
+--Sig_/ioh5G0sbw/l36kjHgl5dAel
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU/wneTnsnt1WYoG5AQJNRg/+NFJuPBdxCpPWpMM3YNZr9qTGFs+Pb1Ml
+NFZ/lj4VzQh0wq8A8pNQWRy/U2k1lX8hrc/oumwuT/3Woghowx5SOj9G3osraElo
+6ID9erLeoXFGxL8MLrUbBdu6OZOgxGlqLz/YOmzEvwZYYYDUj0Zy+mNo63LDDZmR
+YnbOVeegAZ0/Ilw/gIFGiPt0du6wUeJGJozW5zxhLCs0kMUCwW1t/MKSbWbXl/WY
+o4bLPXxr6gJrwvZK/CET/aIi2Q6Q4tdBzEWwbItH92rr3Z6Go2/4KfZjz2/gZCZz
+pQma1GsapGDYkCWlmYTZGFqqcesVueN6xHntwfjFXaxvUhuoqx/huiwumYdz41M0
+OSVVCXM/YHvqeFaHAIsMQuhY4qAZGhHEPqYiA9EeDRsTU7QlM4rBJznZ6h5rel5Y
+uyYqExQvlz3yfpobDgKrJ7BbakxS1NLCmlbXIXFJ5Rz0h5ZlXU04A5+AUv/M+g4r
+c8jA8daNVMklRRirFTYlXXUwt/WrPAXaUxLcEEMPkjPlsrTTqmPdHXbrmkRXJIPD
+8jMAsunMo18FX6qcyJ+ixxjuxIjyI3puDsq3ToNkTzl+mVc/9xsaivBOJXDm8jAi
+QC6NeXpmg2D8lmVEcVP+zcg/f0zIryIC54OTrtFJRUVdDTIWz8CL/FtLS7m7ROxi
+f6K/ASizO/U=
+=2Oak
+-----END PGP SIGNATURE-----
+
+--Sig_/ioh5G0sbw/l36kjHgl5dAel--
