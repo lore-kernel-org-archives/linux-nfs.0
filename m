@@ -1,157 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f180.google.com ([209.85.160.180]:53004 "EHLO
-	mail-yk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750874AbaH2VWU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Aug 2014 17:22:20 -0400
-Received: by mail-yk0-f180.google.com with SMTP id 9so1775766ykp.25
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Aug 2014 14:22:19 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 29 Aug 2014 17:22:16 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        Nikita Yushchenko <nyushchenko@dev.rtsoft.ru>, stable@vger.kernel.org,
-        Raphos <raphoszap@laposte.net>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        "'Alexey Lugovskoy'" <lugovskoy@dev.rtsoft.ru>,
-        Konstantin Kholopov <kkholopov@dev.rtsoft.ru>,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: 3.10.y regression caused by:  lockd: ensure we tear down any
- live sockets when socket creation fails during lockd_up
-Message-ID: <20140829172216.18aac86a@synchrony.poochiereds.net>
-In-Reply-To: <20140829202532.GA8204@pad.redhat.com>
-References: <53A4177B.6060300@dev.rtsoft.ru>
-	<20140707222721.GC11171@kroah.com>
-	<20140829202532.GA8204@pad.redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:44694 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758063AbaHZN03 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 26 Aug 2014 09:26:29 -0400
+Date: Tue, 26 Aug 2014 14:26:24 +0100
+From: Mel Gorman <mgorman@suse.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: NeilBrown <neilb@suse.de>, Junxiao Bi <junxiao.bi@oracle.com>,
+        Johannes Weiner <hannes@cmpxchg.org>, Michal Hocko <mhocko@suse.cz>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
+Message-ID: <20140826132624.GU17696@novell.com>
+References: <53F6F772.6020708@oracle.com>
+ <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>
+ <20140825164852.50723141@notabene.brown>
+ <20140826105304.GT17696@novell.com>
+ <CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 29 Aug 2014 16:25:33 -0400
-"J. Bruce Fields" <bfields@redhat.com> wrote:
-
-> On Mon, Jul 07, 2014 at 03:27:21PM -0700, Greg Kroah-Hartman wrote:
-> > On Fri, Jun 20, 2014 at 03:14:03PM +0400, Nikita Yushchenko wrote:
-> > > With current 3.10.y, if kernel is booted with init=/bin/sh and then nfs mount
-> > > is attempted (without portmap or rpcbind running) using busybox mount, following
-> > > OOPS happen:
-> > > 
-> > > # mount -t nfs 10.30.130.21:/opt /mnt
-> > > svc: failed to register lockdv1 RPC service (errno 111).
-> > > lockd_up: makesock failed, error=-111
-> > > Unable to handle kernel paging request for data at address 0x00000030
-> > > Faulting instruction address: 0xc055e65c
-> > > Oops: Kernel access of bad area, sig: 11 [#1]
-> > > MPC85xx CDS
-> > > Modules linked in:
-> > > CPU: 0 PID: 1338 Comm: mount Not tainted 3.10.44.cge #117
-> > > task: cf29cea0 ti: cf35c000 task.ti: cf35c000
-> > > NIP: c055e65c LR: c0566490 CTR: c055e648
-> > > REGS: cf35dad0 TRAP: 0300   Not tainted  (3.10.44.cge)
-> > > MSR: 00029000 <CE,EE,ME>  CR: 22442488  XER: 20000000
-> > > DEAR: 00000030, ESR: 00000000
-> > > 
-> > > GPR00: c05606f4 cf35db80 cf29cea0 cf0ded80 cf0dedb8 00000001 1dec3086 00000000 
-> > > GPR08: 00000000 c07b1640 00000007 1dec3086 22442482 100b9758 00000000 10090ae8 
-> > > GPR16: 00000000 000186a5 00000000 00000000 100c3018 bfa46edc 100b0000 bfa46ef0 
-> > > GPR24: cf386ae0 c07834f0 00000000 c0565f88 00000001 cf0dedb8 00000000 cf0ded80 
-> > > NIP [c055e65c] call_start+0x14/0x34
-> > > LR [c0566490] __rpc_execute+0x70/0x250
-> > > Call Trace:
-> > > [cf35db80] [00000080] 0x80 (unreliable)
-> > > [cf35dbb0] [c05606f4] rpc_run_task+0x9c/0xc4
-> > > [cf35dbc0] [c0560840] rpc_call_sync+0x50/0xb8
-> > > [cf35dbf0] [c056ee90] rpcb_register_call+0x54/0x84
-> > > [cf35dc10] [c056f24c] rpcb_register+0xf8/0x10c
-> > > [cf35dc70] [c0569e18] svc_unregister.isra.23+0x100/0x108
-> > > [cf35dc90] [c0569e38] svc_rpcb_cleanup+0x18/0x30
-> > > [cf35dca0] [c0198c5c] lockd_up+0x1dc/0x2e0
-> > > [cf35dcd0] [c0195348] nlmclnt_init+0x2c/0xc8
-> > > [cf35dcf0] [c015bb5c] nfs_start_lockd+0x98/0xec
-> > > [cf35dd20] [c015ce6c] nfs_create_server+0x1e8/0x3f4
-> > > [cf35dd90] [c0171590] nfs3_create_server+0x10/0x44
-> > > [cf35dda0] [c016528c] nfs_try_mount+0x158/0x1e4
-> > > [cf35de20] [c01670d0] nfs_fs_mount+0x434/0x8c8
-> > > [cf35de70] [c00cd3bc] mount_fs+0x20/0xbc
-> > > [cf35de90] [c00e4f88] vfs_kern_mount+0x50/0x104
-> > > [cf35dec0] [c00e6e0c] do_mount+0x1d0/0x8e0
-> > > [cf35df10] [c00e75ac] SyS_mount+0x90/0xd0
-> > > [cf35df40] [c000ccf4] ret_from_syscall+0x0/0x3c
-> > > --- Exception: c01 at 0xff2acc4
-> > >     LR = 0x10048ab8
-> > > Instruction dump:
-> > > 3d20c056 3929e648 91230028 38600001 4e800020 38600000 4e800020 81230014 
-> > > 8103000c 81490014 394a0001 91490014 <81280030> 81490018 394a0001 91490018 
-> > > ---[ end trace 033b5b4715cb5452 ]---
-> > > 
-> > > 
-> > > This does not happen if
-> > > 
-> > > commit 72a6e594497032bd911bd187a88fae4b4473abb3
-> > > Author: Jeff Layton <jlayton@redhat.com>
-> > > Date:   Tue Mar 25 11:55:26 2014 -0700
-> > > 
-> > >     lockd: ensure we tear down any live sockets when socket creation fails during lockd_up
-> > >     
-> > >     commit 679b033df48422191c4cac52b610d9980e019f9b upstream.
-> > > 
-> > > is reverted:
-> > > 
-> > > # mount -t nfs 10.30.130.21:/opt /mnt
-> > > svc: failed to register lockdv1 RPC service (errno 111).
-> > > lockd_up: makesock failed, error=-111
-> > > mount: mounting 10.30.130.21:/opt on /mnt failed: Connection refused
-> > > #
-> > > 
-> > > 
-> > > Physical reason of the OOPS is that:
-> > > 
-> > > - addition of svc_shutdown_net() call to error path of make_socks() causes
-> > > double call of svc_rpcb_cleanup():
-> > >   - first call is from within svc_shutdown_net(), because serv->sv_shutdown
-> > > points to svc_rpcb_cleanup() at this time,
-> > >   - immediately followed by second call from lockd_up_net()'s error path
-> > > 
-> > > - when second svc_rpcb_cleanup() is executed, then at
-> > >   svc_unregister() -> __svc_unregister() -> rpcb_register() -> rpcb_register_call()
-> > > call path, rpcb_register_call() is called with clnt=NULL.
-> > 
-> > So, Jeff, what should I do here?  Drop this patch from 3.10?  Add
-> > something else to fix it up?  Something else entirely?
+On Tue, Aug 26, 2014 at 08:58:36AM -0400, Trond Myklebust wrote:
+> On Tue, Aug 26, 2014 at 6:53 AM, Mel Gorman <mgorman@suse.com> wrote:
+> > On Mon, Aug 25, 2014 at 04:48:52PM +1000, NeilBrown wrote:
+> >> On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
+> >> <trond.myklebust@primarydata.com> wrote:
+> >>
+> >> > Junxiao Bi reports seeing the following deadlock:
+> >> >
+> >> > @ crash> bt 1539
+> >> > @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
+> >> > @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
+> >> > @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
+> >> > @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
+> >> > @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
+> >> > @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
+> >> > @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
+> >> > @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
+> >> > @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
+> >> > @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
+> >> > @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
+> >> > @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
+> >> > @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
+> >>
+> >> This stack trace (from 2.6.32) cannot happen in mainline, though it took me a
+> >> while to remember/discover exactly why.
+> >>
+> >> try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
+> >> set to NULL.
+> >> shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
+> >> it is NULL, wait_on_page_writeback is *not* called.
+> >>
+> >
+> > wait_on_page_writeback has a host of other damage associated with it which
+> > is why we don't do it from reclaim any more. If the storage is very slow
+> > then a process can be stalled by unrelated IO to slow storage.  If the
+> > storage is broken and the writeback can never complete then it causes other
+> > issues. That kind of thing.
+> >
+> >> So we can only hit this deadlock if mem-cgroup limits are imposed on a
+> >> process which is using NFS - which is quite possible but probably not common.
+> >>
+> >> The fact that a dead-lock can happen only when memcg limits are imposed seems
+> >> very fragile.  People aren't going to test that case much so there could well
+> >> be other deadlock possibilities lurking.
+> >>
+> >
+> > memcgs still can call wait_on_page_writeback and this is known to be a
+> > hand-grenade to the memcg people but I've never heard of them trying to
+> > tackle the problem.
+> >
+> >> Mel: might there be some other way we could get out of this deadlock?
+> >> Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
+> >> wait or something?  Any other wait out of this deadlock other than setting
+> >> PF_MEMALLOC_NOIO everywhere?
+> >>
+> >
+> > I don't have the full thread as it was not cc'd to lkml so I don't know
+> > what circumstances reached this deadlock in the first place. If this is
+> > on 2.6.32 and the deadline cannot happen during reclaim in mainline then
+> > why is mainline being patched?
+> >
+> > Do not alter wait_on_page_writeback() to timeout as it will blow
+> > up spectacularly -- swap unuse races, data would not longer be synced
+> > correctly to disk, sync IO would be flaky, stable page writes would be
+> > fired out the window etc.
 > 
-> Sorry this got ignored.  Adding more useful addressess....
+> Hi Mel,
 > 
-> So looks like the new svc_shutdown_net made lockd_up_net's cleanup
-> redundant, and just removing it might do the job?
+> The above stack trace really is the entire deadlock: the rpciod work
+> queue, which drives I/O on behalf of NFS, gets caught in a
+> shrink_page_list() situation where it ends up waiting on page
+> writeback. Boom....
 > 
-> --b.
+> Even if this can only happen for non-trivial memcg situations, then it
+> still needs to be addressed: if rpciod blocks, then all NFS I/O will
+> block and we can no longer write out the dirty pages. This is why we
+> need a mainline fix.
 > 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 673668a9eec1..685e953c5103 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -253,13 +253,11 @@ static int lockd_up_net(struct svc_serv *serv, struct net *net)
->  
->  	error = make_socks(serv, net);
->  	if (error < 0)
-> -		goto err_socks;
-> +		goto err_bind;
->  	set_grace_period(net);
->  	dprintk("lockd_up_net: per-net data created; net=%p\n", net);
->  	return 0;
->  
-> -err_socks:
-> -	svc_rpcb_cleanup(serv, net);
->  err_bind:
->  	ln->nlmsvc_users--;
->  	return error;
 
-Oof -- sorry I missed this. Must have gotten lost in the shuffle with my
-email address change...
+In that case I'm adding the memcg people. I recognise that rpciod should
+never block on writeback for similar reasons why flushers should never block.
+memcg blocking on writeback is dangerous for reasons other than NFS but
+adding a variant that times out just means that on occasion processes get
+stalled for long periods of time timing out on these writeback pages. In
+that case, forward progress of rpciod would be painfully slow.
 
-Yeah, that patch looks correct to me. I do wish the whole svc
-setup/shutdown codepath weren't so godawful complicated, but that's not
-a trivial thing to untangle at this point (particularly not in the
-context of -stable).
+On the other hand, forcing PF_MEMALLOC_NOIO for all rpciod allocations in
+an ideal world is massive overkill and while it will work, there will be
+other consequences -- unable to swap pages for example, unable to release
+buffers to free clean pages etc.
 
-Acked-by: Jeff Layton <jlayton@primarydata.com>
+It'd be nice of the memcg people could comment on whether they plan to
+handle the fact that memcg is the only called of wait_on_page_writeback
+in direct reclaim paths.
+
+-- 
+Mel Gorman
+SUSE Labs
