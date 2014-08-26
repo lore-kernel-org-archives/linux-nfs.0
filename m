@@ -1,92 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:36851 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752003AbaHCRDR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 13:03:17 -0400
-Received: by mail-qg0-f46.google.com with SMTP id z60so7873117qgd.19
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 10:03:17 -0700 (PDT)
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:40983 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752222AbaHZSa5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 14:30:57 -0400
+Received: by mail-ie0-f170.google.com with SMTP id rl12so12127595iec.29
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 11:30:56 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/11] SUNRPC: svc_tcp_write_space: don't clear SOCK_NOSPACE prematurely
-Date: Sun,  3 Aug 2014 13:03:04 -0400
-Message-Id: <1407085393-3175-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1407085393-3175-1-git-send-email-trond.myklebust@primarydata.com>
- <1407085393-3175-2-git-send-email-trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: James Drews <drews@engr.wisc.edu>, jrs@world.std.com
+Subject: [PATCH v2 1/2] NFSv4: Fix problems with close in the presence of a delegation
+Date: Tue, 26 Aug 2014 14:30:52 -0400
+Message-Id: <1409077853-15680-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If requests are queued in the socket inbuffer waiting for an
-svc_tcp_has_wspace() requirement to be satisfied, then we do not want
-to clear the SOCK_NOSPACE flag until we've satisfied that requirement.
+In the presence of delegations, we can no longer assume that the
+state->n_rdwr, state->n_rdonly, state->n_wronly reflect the open
+stateid share mode, and so we need to need to calculate the initial
+value for calldata->arg.fmode using the state->flags.
 
+Reported-by: James Drews <drews@engr.wisc.edu>
+Fixes: 88069f77e1ac5 (NFSv41: Fix a potential state leakage when...)
+Cc: stable@vger.kernel.org # 2.6.33+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/svcsock.c | 39 +++++++++++++++++++++------------------
- 1 file changed, 21 insertions(+), 18 deletions(-)
+ fs/nfs/nfs4proc.c | 19 +++++++++++++------
+ 1 file changed, 13 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index b507cd327d9b..7322ea1164fd 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -446,11 +446,31 @@ static void svc_write_space(struct sock *sk)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 75ae8d22f067..7d67d5b332d4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2601,6 +2601,7 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 	struct nfs4_closedata *calldata = data;
+ 	struct nfs4_state *state = calldata->state;
+ 	struct inode *inode = calldata->inode;
++	bool is_rdonly, is_wronly, is_rdwr;
+ 	int call_close = 0;
+ 
+ 	dprintk("%s: begin!\n", __func__);
+@@ -2608,24 +2609,30 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 		goto out_wait;
+ 
+ 	task->tk_msg.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OPEN_DOWNGRADE];
+-	calldata->arg.fmode = FMODE_READ|FMODE_WRITE;
+ 	spin_lock(&state->owner->so_lock);
++	is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
++	is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
++	is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
++	spin_unlock(&state->owner->so_lock);
++	/* Calculate the current open share mode */
++	calldata->arg.fmode = 0;
++	if (is_rdonly || is_rdwr)
++		calldata->arg.fmode |= FMODE_READ;
++	if (is_wronly || is_rdwr)
++		calldata->arg.fmode |= FMODE_WRITE;
+ 	/* Calculate the change in open mode */
+ 	if (state->n_rdwr == 0) {
+ 		if (state->n_rdonly == 0) {
+-			call_close |= test_bit(NFS_O_RDONLY_STATE, &state->flags);
+-			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
++			call_close |= is_rdonly || is_rdwr;
+ 			calldata->arg.fmode &= ~FMODE_READ;
+ 		}
+ 		if (state->n_wronly == 0) {
+-			call_close |= test_bit(NFS_O_WRONLY_STATE, &state->flags);
+-			call_close |= test_bit(NFS_O_RDWR_STATE, &state->flags);
++			call_close |= is_wronly || is_rdwr;
+ 			calldata->arg.fmode &= ~FMODE_WRITE;
+ 		}
  	}
- }
+ 	if (!nfs4_valid_open_stateid(state))
+ 		call_close = 0;
+-	spin_unlock(&state->owner->so_lock);
  
-+static int svc_tcp_has_wspace(struct svc_xprt *xprt)
-+{
-+	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
-+	struct svc_serv *serv = svsk->sk_xprt.xpt_server;
-+	int required;
-+
-+	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
-+		return 1;
-+	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
-+	if (sk_stream_wspace(svsk->sk_sk) >= required ||
-+	    (sk_stream_min_wspace(svsk->sk_sk) == 0 &&
-+	     atomic_read(&xprt->xpt_reserved) == 0))
-+		return 1;
-+	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
-+	return 0;
-+}
-+
- static void svc_tcp_write_space(struct sock *sk)
- {
-+	struct svc_sock *svsk = (struct svc_sock *)(sk->sk_user_data);
- 	struct socket *sock = sk->sk_socket;
- 
--	if (sk_stream_is_writeable(sk) && sock)
-+	if (!sk_stream_is_writeable(sk) || !sock)
-+		return;
-+	if (!svsk || svc_tcp_has_wspace(&svsk->sk_xprt))
- 		clear_bit(SOCK_NOSPACE, &sock->flags);
- 	svc_write_space(sk);
- }
-@@ -1197,23 +1217,6 @@ static void svc_tcp_prep_reply_hdr(struct svc_rqst *rqstp)
- 	svc_putnl(resv, 0);
- }
- 
--static int svc_tcp_has_wspace(struct svc_xprt *xprt)
--{
--	struct svc_sock *svsk =	container_of(xprt, struct svc_sock, sk_xprt);
--	struct svc_serv *serv = svsk->sk_xprt.xpt_server;
--	int required;
--
--	if (test_bit(XPT_LISTENER, &xprt->xpt_flags))
--		return 1;
--	required = atomic_read(&xprt->xpt_reserved) + serv->sv_max_mesg;
--	if (sk_stream_wspace(svsk->sk_sk) >= required ||
--	    (sk_stream_min_wspace(svsk->sk_sk) == 0 &&
--	     atomic_read(&xprt->xpt_reserved) == 0))
--		return 1;
--	set_bit(SOCK_NOSPACE, &svsk->sk_sock->flags);
--	return 0;
--}
--
- static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
- 				       struct net *net,
- 				       struct sockaddr *sa, int salen,
+ 	if (!call_close) {
+ 		/* Note: exit _without_ calling nfs4_close_done */
 -- 
 1.9.3
 
