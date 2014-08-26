@@ -1,141 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:58262 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753494AbaHUBLK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Aug 2014 21:11:10 -0400
-Date: Thu, 21 Aug 2014 11:11:00 +1000
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] NFS: avoid deadlocks with loop-back mounted NFS
- filesystems.
-Message-ID: <20140821111100.0fc7e3c9@notabene.brown>
-In-Reply-To: <1408581916.4029.15.camel@leira.trondhjem.org>
-References: <20140818061727.1449.89101.stgit@notabene.brown>
-	<20140818062254.1449.99502.stgit@notabene.brown>
-	<1408581916.4029.15.camel@leira.trondhjem.org>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:55930 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755234AbaHZOKR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 10:10:17 -0400
+Received: by mail-wi0-f174.google.com with SMTP id d1so4278974wiv.1
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 07:10:15 -0700 (PDT)
+Message-ID: <53FC9545.4000800@plexistor.com>
+Date: Tue, 26 Aug 2014 17:10:13 +0300
+From: Boaz Harrosh <boaz@plexistor.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/IQM=WVGvJ.VZoNswHshEwxv"; protocol="application/pgp-signature"
+To: Christoph Hellwig <hch@lst.de>
+CC: linux-nfs@vger.kernel.org, Matt Benjamin <matt@linuxbox.com>
+Subject: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
+References: <1408637375-11343-1-git-send-email-hch@lst.de> <1408637375-11343-4-git-send-email-hch@lst.de> <53FA259C.9050807@gmail.com> <20140824191839.GA9717@lst.de>
+In-Reply-To: <20140824191839.GA9717@lst.de>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/IQM=WVGvJ.VZoNswHshEwxv
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: Boaz Harrosh <boaz@plexistor.com>
 
-On Wed, 20 Aug 2014 20:45:16 -0400 Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
+This fixes a dead-lock in the pnfs recall processing
 
-> On Mon, 2014-08-18 at 16:22 +1000, NeilBrown wrote:
-> > Support for loop-back mounted NFS filesystems is useful when NFS is
-> > used to access shared storage in a high-availability cluster.
-> >=20
-> > If the node running the NFS server fails, some other node can mount the
-> > filesystem and start providing NFS service.  If that node already had
-> > the filesystem NFS mounted, it will now have it loop-back mounted.
-> >=20
-> > nfsd can suffer a deadlock when allocating memory and entering direct
-> > reclaim.
-> > While direct reclaim does not write to the NFS filesystem it can send
-> > and wait for a COMMIT through nfs_release_page().
-> >=20
-> > This patch modifies nfs_release_page() and the functions it calls so
-> > that if the COMMIT is sent to the local host (i.e. is routed over the
-> > loop-back interface) then nfs_release_page() will not wait forever for
-> > that COMMIT to complete.  This is achieved using a new flag
-> > FLUSH_COND_CONNECTED.  When this is set the flush is conditional and
-> > will only wait if the client is connected to a non-local server.
-> >=20
-> > Aborting early should be safe as kswapd uses the same code but never
-> > waits for the COMMIT.
-> >=20
-> > Always aborting early could upset the balance of memory management so
-> > when the commit was sent to the local host we still wait but with a
-> > 100ms timeout.  This is enough to significantly slow down any process
-> > that is allocating lots of memory and often long enough to let the
-> > commit complete.
-> >=20
-> > In those rare cases where it is nfsd, or something that nfsd is
-> > waiting for, that is calling nfs_release_page(), 100ms is not so long
-> > that throughput will be seriously affected.
-> >=20
-> > When fail-over happens a remote (foreign) client will first become
-> > disconnected and then turn into a local client.
-> > To prevent deadlocks from happening at this point, we still have a
-> > timeout when the COMMIT has been sent to a remote client. In this case
-> > the timeout is longer (1 second).
-> >=20
-> > So when a node that has mounted a remote filesystem loses the
-> > connection, nfs_release_page() will stop blocking and start failing.
-> > Memory allocators will then be able to make progress without blocking
-> > in NFS.  Any process which writes to a file will still be blocked in
-> > balance_dirty_pages().
-> >=20
-> > This patch makes use of the new 'private' field in
-> > "struct wait_bit_key" to store the start time of a commit, so the
-> > 'action' function called by __wait_on_bit() knows how much longer
-> > it is appropriate to wait.
-> >=20
->=20
-> This puts way too much RPC connection logic in the NFS layer: we really
-> should not have to care. Is there any reason why we could not just use
-> RPC_TASK_SOFTCONN to have the commit fail if the connection is broken?
+pnfs_layoutcommit_inode() is called through update_inode()
+called from VFS. By setting set_inode_dirty during
+pnfs write IO.
 
-I tried to keep as much in the RPC layer as I could....
+But the VFS will not schedule another update_inode()
+If it is already inside an update_inode() or an sb-writeback
 
-There really is a big difference between talking to an 'nfsd' on the same
-machine and talking to one on a different machine.  In the first case you
-need to be cautious of deadlocks, in the second you don't.  That is a
-difference that matters to NFS, not to RPC.
+As part of writeback pnfs code might get stuck in LAYOUT_GET
+with the server returning ERR_RECALL_CONFLICT because some
+operation has caused the server to RECALL all layouts, including
+those from our client.
 
-I guess we could always have a timeout, even when connected to a remote
-server.  We would just end up blocking somewhere else when the server was n=
-ot
-responding.
+So the RECALL is received, but our client is returning ERR_DELAY
+because its write-segments need a LAYOUT_COMMIT, but
+pnfs_layoutcommit_inode will never come because it is scheduled
+behind the LAYOUT_GET which is stuck waiting for the recall to
+finish
 
-I don't think SOFTCONN is really appropriate.  We don't want the COMMIT to
-stop being retried.  We just don't want the memory reclaim code to block
-waiting for the COMMIT.
+Hence the deadlock, client is stuck polling LAYOUT_GET receiving
+ERR_RECALL_CONFLICT. Server is stuck polling RECALL receiving
+ERR_DELAY.
 
->=20
-> Note that all this has to come with a huge WARNING: all your data may be
-> lost even if you think you just fsync()ed it. Is there any difference
-> between doing this and using the 'async' export option on the knfsd
-> side?
->=20
+With pnfs-objects the above condition can easily happen, when
+a file grows beyond a group of devices. The pnfs-objects-server
+will RECALL all layouts because the file-objects-map will
+change and all old layouts will have stale attributes, therefor
+the RECALL is initiated as part of a LAYOUT_GET, and this can
+be triggered from within a single client operation.
 
-I don't think this patch risks losing data at all - that certainly isn't the
-intent.
-This patch only affects the behaviour of ->releasepage, and only allows it =
-to
-fail instead of block.  It is perfectly acceptable for releasepage to fail
-and it doesn't result in data loss.  It just means that the page is busy.
+A simple solution is to kick out a pnfs_layoutcommit_inode()
+from within the recall, to free any need-to-commit segments
+and let the client return success on the RECALL, so streaming
+can continue.
+
+This patch Is based on 3.17-rc1. It is completely UNTESTED.
+I have tested a version of this patch at around the 3.12 Kernel
+at which point the deadlock was resolved but I hit some race
+conditions on pnfs state management farther on, so the actual
+overall processing was not fixed. But hopefully these were fixed
+by Trond and Christoph, and it should work better now.
+
+Signed-off-by: Boaz Harrosh <boaz@plexistor.com>
+---
+ fs/nfs/callback_proc.c | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 41db525..8660f96 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -171,6 +171,14 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 		goto out;
+ 
+ 	ino = lo->plh_inode;
++
++	spin_lock(&ino->i_lock);
++	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
++	spin_unlock(&ino->i_lock);
++
++	/* kick out any segs held by need to commit */
++	pnfs_layoutcommit_inode(ino, true);
++
+ 	spin_lock(&ino->i_lock);
+ 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+ 	    pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
+@@ -178,7 +186,6 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 		rv = NFS4ERR_DELAY;
+ 	else
+ 		rv = NFS4ERR_NOMATCHING_LAYOUT;
+-	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&free_me_list);
+ 	pnfs_put_layout_hdr(lo);
+-- 
+1.9.3
 
 
-Thanks,
-NeilBrown
-
---Sig_/IQM=WVGvJ.VZoNswHshEwxv
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU/VHJDnsnt1WYoG5AQLtvw/+Ofb5rMGThNRbiVjPN/uh+m6DAKDRMAVE
-/aKxteQCg9rPUIjmSehx7atQvq3DWUMfsOmbbqeLnkp5DamkcJdjSGlKH0PfMAWT
-WIcQMUUcdyKkSMMZg25vWLiaziN9XVXEkGVajXzR8tovmh4nCSnCE4W/IxbEk4/k
-ml/GM//2zA7mWvP6XSlbrvW8pFctFTbdFAd6NAU5K1bJ4rFEJkYD3iniN/ZjbVMb
-WhtBxSGB6eM+cM1+z8oQTPAzrLDBPjHq5keUxdMM7w30IGJVTz0Jrew4lgLX0ThA
-j8r0+CONZhTZ9JvjXbvuHPTUF7jhtHRukF3/yKVZvtZ784VhdUopHSA7RfXIdnAW
-fEInicfZs67Gt8dFIHkGuNzBc45COp/0W93zD+cIc3wJLyRa7ek7/sM/dJc66tsp
-RNz0EubQGrrMfKA40dygswDYo67ZTrCP6l1WP2mCMvRDUpfvnnKXdw3jDMicVh1K
-rE5YjwqRQEQleLEh3aOdgXNAx0ZFaF0wu8X02ecCFFkBci1gUkdNqr7hg74tCvG1
-S+3P1xANQ3yQalgo85v1COzsMbK1ISacNN7fCSrxwPYZGJPxbErvup4NFxwqA7kg
-p357Sfv3iwfq6cAtq5EnP/X+aq/fshicGSaaxNz6wG75YJTJ6gtGCHPXJa1zX3P1
-UmbSg1vq4dc=
-=QV/b
------END PGP SIGNATURE-----
-
---Sig_/IQM=WVGvJ.VZoNswHshEwxv--
