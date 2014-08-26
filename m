@@ -1,66 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53772 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751831AbaHRQSm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Aug 2014 12:18:42 -0400
-Date: Mon, 18 Aug 2014 12:18:36 -0400
-To: kbuild test robot <fengguang.wu@intel.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, kbuild-all@01.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [nfsd:nfsd-next 5/23] net/sunrpc/svc_xprt.c:794:20: error:
- 'current_task' undeclared
-Message-ID: <20140818161836.GA32603@fieldses.org>
-References: <53f0db34.mtq2J6NaXWKpR15G%fengguang.wu@intel.com>
+Received: from mail-we0-f173.google.com ([74.125.82.173]:40291 "EHLO
+	mail-we0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750996AbaHZQ5C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 12:57:02 -0400
+Received: by mail-we0-f173.google.com with SMTP id q58so15059307wes.4
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 09:57:00 -0700 (PDT)
+Message-ID: <53FCBC5A.4060304@plexistor.com>
+Date: Tue, 26 Aug 2014 19:56:58 +0300
+From: Boaz Harrosh <boaz@plexistor.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53f0db34.mtq2J6NaXWKpR15G%fengguang.wu@intel.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "Matt W. Benjamin" <matt@linuxbox.com>
+CC: Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Adam C. Emerson" <aemerson@linuxbox.com>
+Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
+References: <53FCA183.8000605@plexistor.com>	<1435166875.78.1409066662291.JavaMail.root@thunderbeast.private.linuxbox.com> <CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>
+In-Reply-To: <CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 18, 2014 at 12:41:24AM +0800, kbuild test robot wrote:
-> tree:   git://linux-nfs.org/~bfields/linux.git nfsd-next
-> head:   da8b8f7602ed3b8105c6247a2844455fec72caaa
-> commit: 983c684466e02b21f83c025ea539deee6c0aeac0 [5/23] SUNRPC: get rid of the request wait queue
-> config: make ARCH=xtensa allyesconfig
-> 
-> All error/warnings:
-> 
->    net/sunrpc/svc_xprt.c: In function 'svc_recv':
-> >> net/sunrpc/svc_xprt.c:794:20: error: 'current_task' undeclared (first use in this function)
->       rqstp->rq_task = current_task;
->                        ^
->    net/sunrpc/svc_xprt.c:794:20: note: each undeclared identifier is reported only once for each function it appears in
-> 
-> vim +/current_task +794 net/sunrpc/svc_xprt.c
-> 
->    788			printk(KERN_ERR
->    789				"svc_recv: service %p, transport not NULL!\n",
->    790				 rqstp);
->    791	
->    792		/* Make sure the task pointer is set! */
->    793		if (WARN_ON_ONCE(!rqstp->rq_task))
->  > 794			rqstp->rq_task = current_task;
+On 08/26/2014 06:36 PM, Trond Myklebust wrote:
+> On Tue, Aug 26, 2014 at 11:24 AM, Matt W. Benjamin <matt@linuxbox.com> wrote:
+>> IIUC, the problem is the forechannel slot count, since the call you want to make synchronously is on the forechannel?
 
-I appreciate the effort to fail gracefully here, but maybe this would be
-a case for simple BUG_ON()?
 
-I don't think there are normally any important locks held here, and I
-can't see any other reason why killing a server thread would bring a box
-down.
+Matt no top post on a Linux mailing list ;-)
 
-And the first developer to forget to set rq_task on a newly created
-server will get an immediate bug, so this should be obvious enough.
-Unless there's fear of a race between starting the thread and setting
-rq_task?
+> Yep. layoutcommit will be sent on the fore channel, which is why it
+> can deadlock with the initial layoutget (or whatever operation that
+> triggered the layout recall).
 
---b.
+Trond you said below:
+> The above can deadlock if there are no session slots available to send
+> the layoutcommit, in which case the recall won't complete, and the
+> layoutget won't get a reply (which would free up the slot).
 
->    795	
->    796		err = svc_alloc_arg(rqstp);
->    797		if (err)
-> 
-> ---
-> 0-DAY kernel build testing backend              Open Source Technology Center
-> http://lists.01.org/mailman/listinfo/kbuild                 Intel Corporation
+Why would the layoutget not-get-a-reply ?
+This is how it goes with Both ganesha server and knfsd last I tested.
+
+[1]
+The LAYOUT_GET cause LAYOUT_RECALL case: (including the lo_commit)
+
+client		Server                                     comments
+~~~~~~          ~~~~~~                                     ~~~~~~~~
+LAYOUT_GET ==> 	
+           <==   LAYOUT_GET_REPLAY(ERR_RECALL_CONFLICT)
+						<--------- fore-channel is free
+           <==   RECALL
+LAYOUT_COMMIT ==>
+	    <==  LAYOUT_COMMIT_REPLAY
+						<--------- fore-channel is free
+RECALL_REPLY(NO_MATCHING) =>
+						<--------- back-channel is free
+
+Note that in this case the server is to send the RECALL only after
+the error reply to LAYOUT_GET, specifically it is not aloud to get stuck
+inside LAYOUT_GET and wait for the RECALL. (mandated by STD)
+
+[2]
+The LAYOUT_GET sent all the while a RECALL is on the wire:
+client		Server                                     comments
+~~~~~~          ~~~~~~                                     ~~~~~~~~
+           <== RECALL
+LAYOUT_GET ==> 	
+           <== LAYOUT_GET_REPLAY(ERR_RECALL_CONFLICT)
+						<--------- fore-channel is free
+LAYOUT_COMMIT ==>
+		LAYOUT_COMMIT_REPLAY
+						<--------- fore-channel is free
+RECALL_REPLY(NO_MATCHING) =>
+						<--------- back-channel is free
+
+
+[3]
+Or the worst case that lo_commit needs to wait for the channel Similar
+to [2] above:
+
+client		Server                                     comments
+~~~~~~          ~~~~~~                                     ~~~~~~~~
+           <== RECALL
+LAYOUT_GET ==> 	
+initiate_lo_commit   ==>  slot is taken needs to wait
+
+           <== LAYOUT_GET_REPLAY(ERR_RECALL_CONFLICT)
+						<--------- fore-channel is free
+LAYOUT_COMMIT ==>                               slot is now free lo_commit goes through
+	   <== LAYOUT_COMMIT_REPLAY
+						<--------- fore-channel is free
+RECALL_REPLY(NO_MATCHING) =>
+						<--------- back-channel is free
+
+So the most important is that the server must not get stuck in lo_get
+and since there is a slot for each channel the lo_commit can be sent
+from within the recall.
+
+What am I missing?
+
+Thanks
+Boaz
+
