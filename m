@@ -1,208 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:58201 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751190AbaHBCHj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Aug 2014 22:07:39 -0400
-Received: by mail-qa0-f44.google.com with SMTP id f12so4765662qad.31
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Aug 2014 19:07:39 -0700 (PDT)
-Date: Fri, 1 Aug 2014 22:07:34 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Roger Heflin <rogerheflin@gmail.com>
-Cc: NeilBrown <neilb@suse.de>, Ben Greear <greearb@candelatech.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Kernel development list <linux-kernel@vger.kernel.org>,
-        linux-mm@kvack.org, linux-fsdevel@vger.kernel.org
-Subject: Re: Killing process in D state on mount to dead NFS server. (when
- process is in fsync)
-Message-ID: <20140801220734.29cbc332@tlielax.poochiereds.net>
-In-Reply-To: <CAAMCDeeRWTEXu_UTWJ_aC_6Pb3286ijZByeDpwKwAeMqGBAODQ@mail.gmail.com>
-References: <53DA8443.407@candelatech.com>
-	<20140801064217.01852788@notabene.brown>
-	<53DAB307.2000206@candelatech.com>
-	<20140801075053.2120cb33@notabene.brown>
-	<20140801212120.1ae0eb02@tlielax.poochiereds.net>
-	<CAAMCDeeRWTEXu_UTWJ_aC_6Pb3286ijZByeDpwKwAeMqGBAODQ@mail.gmail.com>
+Received: from mail-wg0-f46.google.com ([74.125.82.46]:52793 "EHLO
+	mail-wg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753017AbaHZSTo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 14:19:44 -0400
+Received: by mail-wg0-f46.google.com with SMTP id m15so14888329wgh.29
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Aug 2014 11:19:43 -0700 (PDT)
+Message-ID: <53FCCFBD.3080305@plexistor.com>
+Date: Tue, 26 Aug 2014 21:19:41 +0300
+From: Boaz Harrosh <boaz@plexistor.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: "Matt W. Benjamin" <matt@linuxbox.com>, Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Adam C. Emerson" <aemerson@linuxbox.com>
+Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
+References: <53FCA183.8000605@plexistor.com>	<1435166875.78.1409066662291.JavaMail.root@thunderbeast.private.linuxbox.com>	<CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>	<53FCBC5A.4060304@plexistor.com>	<CAHQdGtSghgbrPr=X8O2YLq=vXbKY1y5OuOMisf6vRoj8WeF0YA@mail.gmail.com>	<53FCBE9C.40906@plexistor.com> <CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>
+In-Reply-To: <CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 1 Aug 2014 20:50:13 -0500
-Roger Heflin <rogerheflin@gmail.com> wrote:
-
-> Doesn't NFS have an intr flag to allow kill -9 to work?   Whenever I
-> have had that set it has appeared to work after about 30 seconds or
-> so...without that kill -9 does not work when the nfs server is
-> missing.
-> 
-> 
-
-Not anymore. That mount option has been deprecated (and ignored) for
-years. The code in the RPC engine will generally give up in the face of
-fatal signals. In this case though, we're in uninterruptible sleep in
-the bowels of the writeback code.
-
-The problem here is not really specific to NFS, per-se -- it just
-happens to be the filesystem that most people notice it on.
+On 08/26/2014 08:54 PM, Trond Myklebust wrote:
+> On Tue, Aug 26, 2014 at 1:06 PM, Boaz Harrosh <boaz@plexistor.com> wrote:
 
 > 
-> On Fri, Aug 1, 2014 at 8:21 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> > On Fri, 1 Aug 2014 07:50:53 +1000
-> > NeilBrown <neilb@suse.de> wrote:
-> >
-> >> On Thu, 31 Jul 2014 14:20:07 -0700 Ben Greear <greearb@candelatech.com> wrote:
-> >>
-> >> > -----BEGIN PGP SIGNED MESSAGE-----
-> >> > Hash: SHA1
-> >> >
-> >> > On 07/31/2014 01:42 PM, NeilBrown wrote:
-> >> > > On Thu, 31 Jul 2014 11:00:35 -0700 Ben Greear <greearb@candelatech.com> wrote:
-> >> > >
-> >> > >> So, this has been asked all over the interweb for years and years, but the best answer I can find is to reboot the system or create a fake NFS server
-> >> > >> somewhere with the same IP as the gone-away NFS server.
-> >> > >>
-> >> > >> The problem is:
-> >> > >>
-> >> > >> I have some mounts to an NFS server that no longer exists (crashed/powered down).
-> >> > >>
-> >> > >> I have some processes stuck trying to write to files open on these mounts.
-> >> > >>
-> >> > >> I want to kill the process and unmount.
-> >> > >>
-> >> > >> umount -l will make the mount go a way, sort of.  But process is still hung. umount -f complains: umount2:  Device or resource busy umount.nfs: /mnt/foo:
-> >> > >> device is busy
-> >> > >>
-> >> > >> kill -9 does not work on process.
-> >> > >
-> >> > > Kill -1 should work (since about 2.6.25 or so).
-> >> >
-> >> > That is -[ONE], right?  Assuming so, it did not work for me.
-> >>
-> >> No, it was "-9" .... sorry, I really shouldn't be let out without my proof
-> >> reader.
-> >>
-> >> However the 'stack' is sufficient to see what is going on.
-> >>
-> >> The problem is that it is blocked inside the "VM" well away from NFS and
-> >> there is no way for NFS to say "give up and go home".
-> >>
-> >> I'd suggest that is a bug.   I cannot see any justification for fsync to not
-> >> be killable.
-> >> It wouldn't be too hard to create a patch to make it so.
-> >> It would be a little harder to examine all call paths and create a
-> >> convincing case that the patch was safe.
-> >> It might be herculean task to convince others that it was the right thing
-> >> to do.... so let's start with that one.
-> >>
-> >> Hi Linux-mm and fs-devel people.  What do people think of making "fsync" and
-> >> variants "KILLABLE" ??
-> >>
-> >> I probably only need a little bit of encouragement to write a patch....
-> >>
-> >> Thanks,
-> >> NeilBrown
-> >>
-> >
-> >
-> > It would be good to fix this in some fashion once and for all, and the
-> > wait_on_page_writeback wait is a major source of pain for a lot of
-> > people.
-> >
-> > So to summarize...
-> >
-> > The problem in a nutshell is that Ben has some cached writes to the
-> > NFS server, but the server has gone away (presumably forever). The
-> > question is -- how do we communicate to the kernel that that server
-> > isn't coming back and that those dirty pages should be invalidated so
-> > that we can umount the filesystem?
-> >
-> > Allowing fsync/close to be killable sounds reasonable to me as at least
-> > a partial solution. Both close(2) and fsync(2) are allowed to return
-> > EINTR according to the POSIX spec. Allowing a kill -9 there seems
-> > like it should be fine, and maybe we ought to even consider letting it
-> > be susceptible to lesser signals.
-> >
-> > That still leaves some open questions though...
-> >
-> > Is that enough to fix it? You'd still have the dirty pages lingering
-> > around, right? Would a umount -f presumably work at that point?
-> >
-> >> >
-> >> > Kernel is 3.14.4+, with some of extra patches, but probably nothing that
-> >> > influences this particular behaviour.
-> >> >
-> >> > [root@lf1005-14010010 ~]# cat /proc/3805/stack
-> >> > [<ffffffff811371ba>] sleep_on_page+0x9/0xd
-> >> > [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
-> >> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
-> >> > [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
-> >> > [<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
-> >> > [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
-> >> > [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
-> >> > [<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
-> >> > [<ffffffff81183e46>] filp_close+0x3f/0x71
-> >> > [<ffffffff8119c8ae>] __close_fd+0x80/0x98
-> >> > [<ffffffff81183de5>] SyS_close+0x1c/0x3e
-> >> > [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
-> >> > [<ffffffffffffffff>] 0xffffffffffffffff
-> >> > [root@lf1005-14010010 ~]# kill -1 3805
-> >> > [root@lf1005-14010010 ~]# cat /proc/3805/stack
-> >> > [<ffffffff811371ba>] sleep_on_page+0x9/0xd
-> >> > [<ffffffff8113738e>] wait_on_page_bit+0x71/0x78
-> >> > [<ffffffff8113769a>] filemap_fdatawait_range+0xa2/0x16d
-> >> > [<ffffffff8113780e>] filemap_write_and_wait_range+0x3b/0x77
-> >> > [<ffffffffa0f04734>] nfs_file_fsync+0x37/0x83 [nfs]
-> >> > [<ffffffff811a8d32>] vfs_fsync_range+0x19/0x1b
-> >> > [<ffffffff811a8d4b>] vfs_fsync+0x17/0x19
-> >> > [<ffffffffa0f05305>] nfs_file_flush+0x6b/0x6f [nfs]
-> >> > [<ffffffff81183e46>] filp_close+0x3f/0x71
-> >> > [<ffffffff8119c8ae>] __close_fd+0x80/0x98
-> >> > [<ffffffff81183de5>] SyS_close+0x1c/0x3e
-> >> > [<ffffffff815c55f9>] system_call_fastpath+0x16/0x1b
-> >> > [<ffffffffffffffff>] 0xffffffffffffffff
-> >> >
-> >> > Thanks,
-> >> > Ben
-> >> >
-> >> > > If it doesn't please report the kernel version and cat /proc/$PID/stack
-> >> > >
-> >> > > for some processes that cannot be killed.
-> >> > >
-> >> > > NeilBrown
-> >> > >
-> >> > >>
-> >> > >>
-> >> > >> Aside from bringing a fake NFS server back up on the same IP, is there any other way to get these mounts unmounted and the processes killed without
-> >> > >> rebooting?
-> >> > >>
-> >> > >> Thanks, Ben
-> >> > >>
-> >> > >
-> >> >
-> >> >
-> >> > - --
-> >> > Ben Greear <greearb@candelatech.com>
-> >> > Candela Technologies Inc  http://www.candelatech.com
-> >> >
-> >> > -----BEGIN PGP SIGNATURE-----
-> >> > Version: GnuPG v1.4.13 (GNU/Linux)
-> >> > Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
-> >> >
-> >> > iQEcBAEBAgAGBQJT2rLiAAoJELbHqkYeJT4OqPgH/0taKW6Be90c1mETZf9yeqZF
-> >> > YMLZk8XC2wloEd9nVz//mXREmiu18Hc+5p7Upd4Os21J2P4PBMGV6P/9DMxxehwH
-> >> > YX1HKha0EoAsbO5ILQhbLf83cRXAPEpvJPgYHrq6xjlKB8Q8OxxND37rY7kl19Zz
-> >> > sdAw6GiqHICF3Hq1ATa/jvixMluDnhER9Dln3wOdAGzmmuFYqpTsV4EwzbKKqInJ
-> >> > 6C15q+cq/9aYh6usN6z2qJhbHgqM9EWcPL6jOrCwX4PbC1XjKHekpFN0t9oKQClx
-> >> > qSPuweMQ7fP4IBd2Ke8L/QlyOVblAKSE7t+NdrjfzLmYPzyHTyfLABR/BI053to=
-> >> > =/9FJ
-> >> > -----END PGP SIGNATURE-----
-> >>
-> >
-> >
-> > --
-> > Jeff Layton <jlayton@poochiereds.net>
+> The deadlock occurs _if_ the above layout commit  is unable to get a
+> slot. You can't guarantee that it will, because the slot table is a
+> finite resource and it can be exhausted 
+
+Yes all I ever seen is 1 slot in any of the clients/servers I've
+seen so I assume 1 slot ever
+
+> if you allow fore channel
+> calls to trigger synchronous recalls on the back channel 
+
+Beep! but this is exactly what I'm trying to say. The STD specifically
+forbids that. The server is not allowed to wait here, it must return
+imitatively, with an error that frees the slot and then later issue the
+RECALL.
+
+This is what I said exactly three times in my mail, and what I have
+depicted in my flow:
+	Server async operation (mandated by the STD)
+	Client back-channel can be sync with for channel (Not mentioned by the STD)
+
+> that again trigger synchronous calls on the fore channel. 
 
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+> You're basically saying
+> that the client needs to guarantee that it can allocate 2 slots before
+> it is allowed to send a layoutget just in case the server needs to
+> recall a layout.
+> 
+
+No I am not saying that, please count. Since the Server is not allowed
+sync operation then one slot is enough and the client can do sync lo_commit
+while in recall.
+
+> If, OTOH, the layoutcommit is asynchronous, then there is no
+> serialisation and the back channel thread can happily reply to the
+> layout recall even if there are no free slots in the fore channel.
+> 
+
+Sure that will work as well, but not optimally, and for no good reason.
+
+Please go back to my flow with the 3 cases. See how the server never waits
+for anything and will always imitatively reply to the layout_get.
+Since the server is not allowed a sync operation and is mandated by the
+RFC text to not wait, then the client is allowed and can do sync operations
+because it is enough that only one do async.
+
+BTW: If what you are saying is true than there is a bug in the slot code
+because this patch does work, and everything flows past this situation.
+I have a reproducer test that fails 100% of the time without this patch
+and only fails much later at some other place, but not at this deadlock,
+with this patch applied.
+
+Cheers
+Boaz
+
