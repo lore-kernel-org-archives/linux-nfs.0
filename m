@@ -1,115 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:55827 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752020AbaHENod (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Aug 2014 09:44:33 -0400
-Received: by mail-qg0-f52.google.com with SMTP id f51so965262qge.25
-        for <linux-nfs@vger.kernel.org>; Tue, 05 Aug 2014 06:44:32 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 5 Aug 2014 09:44:30 -0400
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSD: Put the reference of nfs4_file when freeing stid
-Message-ID: <20140805094430.332ffc66@tlielax.poochiereds.net>
-In-Reply-To: <53E0DA1B.2020705@gmail.com>
-References: <53E0DA1B.2020705@gmail.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:48680 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755617AbaHZGtk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Aug 2014 02:49:40 -0400
+Message-ID: <53FC2DDD.9050705@oracle.com>
+Date: Tue, 26 Aug 2014 14:49:01 +0800
+From: Junxiao Bi <junxiao.bi@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: NeilBrown <neilb@suse.de>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Mel Gorman <mgorman@suse.com>
+Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
+References: <53F6F772.6020708@oracle.com>	<1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com>	<20140825164852.50723141@notabene.brown>	<53FC1E93.2060800@oracle.com> <20140826162138.5df2f8a3@notabene.brown>
+In-Reply-To: <20140826162138.5df2f8a3@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 05 Aug 2014 21:20:27 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+On 08/26/2014 02:21 PM, NeilBrown wrote:
+> On Tue, 26 Aug 2014 13:43:47 +0800 Junxiao Bi <junxiao.bi@oracle.com> wrote:
+> 
+>> On 08/25/2014 02:48 PM, NeilBrown wrote:
+>>> On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
+>>> <trond.myklebust@primarydata.com> wrote:
+>>>
+>>>> Junxiao Bi reports seeing the following deadlock:
+>>>>
+>>>> @ crash> bt 1539
+>>>> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
+>>>> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
+>>>> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
+>>>> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
+>>>> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
+>>>> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
+>>>> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
+>>>> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
+>>>> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
+>>>> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
+>>>> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
+>>>> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
+>>>> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
+>>>
+>>> This stack trace (from 2.6.32) cannot happen in mainline, though it took me a
+>>> while to remember/discover exactly why.
+>>>
+>>> try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
+>>> set to NULL.
+>>> shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
+>>> it is NULL, wait_on_page_writeback is *not* called.
+>>>
+>>> So we can only hit this deadlock if mem-cgroup limits are imposed on a
+>>> process which is using NFS - which is quite possible but probably not common.
+>>>
+>>> The fact that a dead-lock can happen only when memcg limits are imposed seems
+>>> very fragile.  People aren't going to test that case much so there could well
+>>> be other deadlock possibilities lurking.
+>>>
+>>> Mel: might there be some other way we could get out of this deadlock?
+>>> Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
+>>> wait or something?  Any other wait out of this deadlock other than setting
+>>> PF_MEMALLOC_NOIO everywhere?
+>>
+>> Not only the wait_on_page_writeback() cause the deadlock but also the
+>> next pageout()-> (mapping->a_ops->writepage), Trond's second patch fix
+>> this. So fix the wait_on_page_writeback is not enough to fix deadlock.
+> 
+> Shortly before the only place that pageout() is called there is this code:
+> 
+> 			if (page_is_file_cache(page) &&
+> 					(!current_is_kswapd() ||
+> 					 !zone_is_reclaim_dirty(zone))) {
+>                                 .....
+> 				goto keep_locked;
+> 
+> 
+> So pageout() only gets called by kswapd() .... or for swap. swap-over-NFS is
+> already very cautious about memory allocations, and uses nfs_direct_IO, not
+> nfs_writepage.
+> 
+> So nfs_writepage will never get called during direct reclaim.  There is no
+> memory-allocate deadlock risk there.
+Yes, thanks for explaining this.
+But is it possible rpciod blocked somewhere by memory allocation using
+GFP_KERNEL and kswapd is trying to pageout nfs dirty pages and blocked
+by rpciod?
 
-> After testing nfs4 lock, I restart the nfsd service, got messages as,
-> 
-> [ 5677.403419] nfsd: last server has exited, flushing export cache
-> [ 5677.463728] =============================================================================
-> [ 5677.463942] BUG nfsd4_files (Tainted: G    B      OE): Objects remaining in nfsd4_files on kmem_cache_close()
-> [ 5677.464055] -----------------------------------------------------------------------------
-> 
-> [ 5677.464203] INFO: Slab 0xffffea0000233400 objects=28 used=1 fp=0xffff880008cd3d98 flags=0x3ffc0000004080
-> [ 5677.464318] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
-> [ 5677.464420] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
-> [ 5677.464538]  0000000000000000 0000000036af2c9f ffff88000ce97d68 ffffffff816eacfa
-> [ 5677.464643]  ffffea0000233400 ffff88000ce97e40 ffffffff811cda44 ffffffff00000020
-> [ 5677.464774]  ffff88000ce97e50 ffff88000ce97e00 656a624f00000008 616d657220737463
-> [ 5677.464875] Call Trace:
-> [ 5677.464925]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
-> [ 5677.464983]  [<ffffffff811cda44>] slab_err+0xb4/0xe0
-> [ 5677.465040]  [<ffffffff811d0457>] ? __kmalloc+0x117/0x290
-> [ 5677.465099]  [<ffffffff81100eec>] ? on_each_cpu_cond+0xac/0xf0
-> [ 5677.465158]  [<ffffffff811d1bc0>] ? kmem_cache_close+0x110/0x2e0
-> [ 5677.465218]  [<ffffffff811d1be0>] kmem_cache_close+0x130/0x2e0
-> [ 5677.465279]  [<ffffffff8135a0c1>] ? kobject_cleanup+0x91/0x1b0
-> [ 5677.465338]  [<ffffffff811d22be>] __kmem_cache_shutdown+0xe/0x10
-> [ 5677.465399]  [<ffffffff8119bd28>] kmem_cache_destroy+0x48/0x100
-> [ 5677.465466]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
-> [ 5677.465530]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
-> [ 5677.465589]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
-> [ 5677.465649]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
-> [ 5677.465759]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
-> [ 5677.465822] INFO: Object 0xffff880008cd0000 @offset=0
-> [ 5677.465882] INFO: Allocated in nfsd4_process_open1+0x61/0x350 [nfsd] age=7599 cpu=0 pid=3253
-> [ 5677.466115]  __slab_alloc+0x3b0/0x4b1
-> [ 5677.466166]  kmem_cache_alloc+0x1e4/0x240
-> [ 5677.466220]  nfsd4_process_open1+0x61/0x350 [nfsd]
-> [ 5677.466276]  nfsd4_open+0xee/0x860 [nfsd]
-> [ 5677.466329]  nfsd4_proc_compound+0x4d7/0x7f0 [nfsd]
-> [ 5677.466384]  nfsd_dispatch+0xbb/0x200 [nfsd]
-> [ 5677.466447]  svc_process_common+0x453/0x6f0 [sunrpc]
-> [ 5677.466506]  svc_process+0x103/0x170 [sunrpc]
-> [ 5677.466559]  nfsd+0x117/0x190 [nfsd]
-> [ 5677.466609]  kthread+0xd8/0xf0
-> [ 5677.466656]  ret_from_fork+0x7c/0xb0
-> [ 5677.466775] kmem_cache_destroy nfsd4_files: Slab cache still has objects
-> [ 5677.466839] CPU: 0 PID: 3772 Comm: rmmod Tainted: G    B      OE 3.16.0-rc2+ #29
-> [ 5677.466937] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
-> [ 5677.467049]  0000000000000000 0000000036af2c9f ffff88000ce97eb0 ffffffff816eacfa
-> [ 5677.467150]  ffff880020bb2d00 ffff88000ce97ed0 ffffffff8119bdd9 0000000000000000
-> [ 5677.467250]  ffffffffa06065c0 ffff88000ce97ee0 ffffffffa05ef78d ffff88000ce97ef0
-> [ 5677.467351] Call Trace:
-> [ 5677.467397]  [<ffffffff816eacfa>] dump_stack+0x45/0x56
-> [ 5677.467454]  [<ffffffff8119bdd9>] kmem_cache_destroy+0xf9/0x100
-> [ 5677.467516]  [<ffffffffa05ef78d>] nfsd4_free_slabs+0x2d/0x50 [nfsd]
-> [ 5677.467579]  [<ffffffffa05fa987>] exit_nfsd+0x34/0x6ad [nfsd]
-> [ 5677.467639]  [<ffffffff81104ac2>] SyS_delete_module+0x162/0x200
-> [ 5677.467765]  [<ffffffff81013b69>] ? do_notify_resume+0x59/0x90
-> [ 5677.467826]  [<ffffffff816f2369>] system_call_fastpath+0x16/0x1b
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 4 ++++
->  1 file changed, 4 insertions(+)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 56999cb..e87005d 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1037,6 +1037,7 @@ static void
->  free_ol_stateid_reaplist(struct list_head *reaplist)
->  {
->  	struct nfs4_ol_stateid *stp;
-> +	struct nfs4_file *fp;
->  
->  	might_sleep();
->  
-> @@ -1044,7 +1045,10 @@ free_ol_stateid_reaplist(struct list_head *reaplist)
->  		stp = list_first_entry(reaplist, struct nfs4_ol_stateid,
->  				       st_locks);
->  		list_del(&stp->st_locks);
-> +		fp = stp->st_stid.sc_file;
->  		stp->st_stid.sc_free(&stp->st_stid);
-> +		if (fp)
-> +			put_nfs4_file(fp);
->  	}
->  }
->  
+Thanks,
+Junxiao.
 
-Well spotted. I missed that when moved the nfs4_file handling out of
-sc_free.
+> 
+> NeilBrown
+> 
 
-Reviewed-by: Jeff Layton <jlayton@primarydata.com>
