@@ -1,66 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:34429 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753920AbaHLRnP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 13:43:15 -0400
-Received: by mail-qg0-f51.google.com with SMTP id a108so10001039qge.10
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 10:43:15 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 12 Aug 2014 13:43:13 -0400
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        trond.myklebust@primarydata.com
-Subject: Re: [PATCH 0/5] locks: move most locks_release_private calls
- outside of i_lock
-Message-ID: <20140812134313.1273dc63@tlielax.poochiereds.net>
-In-Reply-To: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
-References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:47372 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933913AbaH0PSE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Aug 2014 11:18:04 -0400
+From: <bjschuma@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/3] NFSD: Update error codes
+Date: Wed, 27 Aug 2014 11:17:56 -0400
+Message-ID: <1409152678-7806-2-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1409152678-7806-1-git-send-email-bjschuma@netapp.com>
+References: <1409152678-7806-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 12 Aug 2014 10:48:08 -0400
-Jeff Layton <jlayton@primarydata.com> wrote:
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-> In the days of yore, the file locking code was primarily protected by
-> the BKL. That changed in commit 72f98e72551fa (locks: turn lock_flocks
-> into a spinlock), at which point the code was changed to be protected
-> by a conventional spinlock (mostly due to a push to finally eliminate
-> the BKL). Since then, the code has been changed to use the i_lock
-> instead of a global spinlock, but it's still under a spinlock.
-> 
-> With that change, several functions now no longer can block when they
-> originally could. This is a particular problem with the
-> fl_release_private operation. In NFSv4, that operation is used to kick
-> off a RELEASE_LOCKOWNER or FREE_STATEID call, and that requires being
-> able to do an allocation.
-> 
-> This was reported by Josh Stone here:
-> 
->     https://bugzilla.redhat.com/show_bug.cgi?id=1089092
-> 
-> My initial stab at fixing this involved moving this to a workqueue, but
-> Trond pointed out the above change was technically a regression with the
-> way the spinlocking in the file locking code works, and suggested an
-> alternate approach to fixing it.
-> 
-> This set focuses on moving most of the locks_release_private calls
-> outside of the inode->i_lock. There are still a few that are done
-> under the i_lock in the lease handling code. Cleaning up the use of
-> the i_lock in the lease code is a larger project which we'll have to
-> tackle at some point, but there are some other cleanups that will
-> need to happen first.
-> 
-> Absent any objections, I'll plan to merge these for 3.18.
-> 
+Recent NFS v4.2 drafts have removed NFS4ERR_METADATA_NOTSUPP and
+reassigned the error code to NFS4ERR_UNION_NOTSUPP.
 
-Erm...make that v3.17...
+I also add in the NFS4ERR_OFFLOAD_NO_REQS error code.
 
-As Trond points out, the fact that we end up doing sleeping allocations
-under spinlock can allow an unprivileged user to crash a NFSv4 client.
-So I may see about merging these sooner rather than later after they've
-had a little soak time in linux-next.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfsd/nfsd.h       | 2 +-
+ include/linux/nfs4.h | 3 ++-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 847daf3..747f3b95 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -251,7 +251,7 @@ void		nfsd_lockd_shutdown(void);
+ #define nfserr_deleg_revoked		cpu_to_be32(NFS4ERR_DELEG_REVOKED)
+ #define nfserr_partner_notsupp		cpu_to_be32(NFS4ERR_PARTNER_NOTSUPP)
+ #define nfserr_partner_no_auth		cpu_to_be32(NFS4ERR_PARTNER_NO_AUTH)
+-#define nfserr_metadata_notsupp		cpu_to_be32(NFS4ERR_METADATA_NOTSUPP)
++#define nfserr_union_notsupp		cpu_to_be32(NFS4ERR_UNION_NOTSUPP)
+ #define nfserr_offload_denied		cpu_to_be32(NFS4ERR_OFFLOAD_DENIED)
+ #define nfserr_wrong_lfs		cpu_to_be32(NFS4ERR_WRONG_LFS)
+ #define nfserr_badlabel		cpu_to_be32(NFS4ERR_BADLABEL)
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index a1e3064..79b2a0f 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -235,10 +235,11 @@ enum nfsstat4 {
+ 	/* nfs42 */
+ 	NFS4ERR_PARTNER_NOTSUPP	= 10088,
+ 	NFS4ERR_PARTNER_NO_AUTH	= 10089,
+-	NFS4ERR_METADATA_NOTSUPP = 10090,
++	NFS4ERR_UNION_NOTSUPP = 10090,
+ 	NFS4ERR_OFFLOAD_DENIED = 10091,
+ 	NFS4ERR_WRONG_LFS = 10092,
+ 	NFS4ERR_BADLABEL = 10093,
++	NFS4ERR_OFFLOAD_NO_REQS = 10094,
+ };
+ 
+ static inline bool seqid_mutating_err(u32 err)
 -- 
-Jeff Layton <jlayton@primarydata.com>
+2.1.0
+
