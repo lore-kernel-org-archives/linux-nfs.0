@@ -1,76 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:55109 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753692AbaHKPJZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Aug 2014 11:09:25 -0400
-Date: Mon, 11 Aug 2014 08:09:24 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, trond.myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 2/3] nfs4: queue free_lock_state job submission to
- nfsiod
-Message-ID: <20140811150924.GA3683@infradead.org>
-References: <1398940127-31150-1-git-send-email-jlayton@poochiereds.net>
- <1398940127-31150-3-git-send-email-jlayton@poochiereds.net>
- <20140811104253.GA4747@infradead.org>
- <20140811075013.77e0a29e@tlielax.poochiereds.net>
- <20140811090417.0287b32b@tlielax.poochiereds.net>
+Received: from smtp5-g21.free.fr ([212.27.42.5]:57959 "EHLO smtp5-g21.free.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933257AbaH0NG2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Aug 2014 09:06:28 -0400
+Date: Wed, 27 Aug 2014 15:06:22 +0200
+From: Sabrina Dubroca <sd@queasysnail.net>
+To: linux-kernel@vger.kernel.org
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org, davej@redhat.com
+Subject: BUG: sleeping function called from invalid context at
+ arch/x86/mm/fault.c:1177
+Message-ID: <20140827130622.GA31728@kria>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140811090417.0287b32b@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
-I managed to hit a similar but different issue with your patch applied (note
-the slab poisoning pattern in rax):
+While fuzzing with trinity on next-20140827, I ran into this:
 
-generic/089 409s ...[  399.057379] general protection fault: 0000 [#1]
-SMP 
-[  399.059137] Modules linked in:
-[  399.060089] CPU: 2 PID: 4367 Comm: kworker/2:2 Not tainted 3.16.0-rc6+ #1153
-[  399.060617] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
-[  399.060617] Workqueue: nfsiod free_lock_state_work
-[  399.060617] task: ffff88007ab68810 ti: ffff88007c3b4000 task.ti: ffff88007c3b4000
-[  399.060617] RIP: 0010:[<ffffffff8134e5bb>]  [<ffffffff8134e5bb>] nfs41_free_lock_state+0x2b/0x70
-[  399.060617] RSP: 0018:ffff88007c3b7d18  EFLAGS: 00010286
-[  399.060617] RAX: 6b6b6b6b6b6b6b6b RBX: ffff88007cdd3800 RCX: 0000000000000000
-[  399.060617] RDX: ffffffff81e04c60 RSI: ffff88007cdd39a0 RDI: ffff880079e5a000
-[  399.060617] RBP: ffff88007c3b7d38 R08: ffffffff832df6d0 R09: 000001c90f100000
-[  399.060617] R10: 0000000000000000 R11: 00000000000656f0 R12: ffff880079e5a000
-[  399.060617] R13: ffff88007fd18b00 R14: ffff88007cdd39c0 R15: 0000000000000000
-[  399.060617] FS:  0000000000000000(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
-[  399.060617] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[  399.060617] CR2: 00007f5ac2f56800 CR3: 000000007a95b000 CR4: 00000000000006e0
-[  399.060617] Stack:
-[  399.060617]  000000007fd13240 ffff88007a8f7800 ffff88007fd13240 ffff88007fd18b00
-[  399.060617]  ffff88007c3b7d58 ffffffff813621ae ffff88007cdd39c0 ffff88007a4d0c40
-[  399.060617]  ffff88007c3b7dd8 ffffffff810cc877 ffffffff810cc80d ffff88007fd13258
-[  399.060617] Call Trace:
-[  399.060617]  [<ffffffff813621ae>] free_lock_state_work+0x2e/0x40
-[  399.060617]  [<ffffffff810cc877>] process_one_work+0x1c7/0x490
-[  399.060617]  [<ffffffff810cc80d>] ? process_one_work+0x15d/0x490
-[  399.060617]  [<ffffffff810cd569>] worker_thread+0x119/0x4f0
-[  399.060617]  [<ffffffff810fbbad>] ? trace_hardirqs_on+0xd/0x10
-[  399.060617]  [<ffffffff810cd450>] ? init_pwq+0x190/0x190
-[  399.060617]  [<ffffffff810d3c6f>] kthread+0xdf/0x100
-[  399.060617]  [<ffffffff810d3b90>] ? __init_kthread_worker+0x70/0x70
-[  399.060617]  [<ffffffff81d9873c>] ret_from_fork+0x7c/0xb0
-[  399.060617]  [<ffffffff810d3b90>] ? __init_kthread_worker+0x70/0x70
-
-(gdb) l *(nfs41_free_lock_state+0x2b)
-0xffffffff8134e5bb is in nfs41_free_lock_state (fs/nfs/nfs4proc.c:8313).
-8308	nfs41_free_lock_state(struct nfs_server *server, struct
-nfs4_lock_state *lsp)
-8309	{
-8310		struct rpc_task *task;
-8311		struct rpc_cred *cred = lsp->ls_state->owner->so_cred;
-8312	
-8313		task = _nfs41_free_stateid(server, &lsp->ls_stateid,
-cred, false);
-8314		nfs4_free_lock_state(server, lsp);
-8315		if (IS_ERR(task))
-8316			return;
-8317		rpc_put_task(task);
-
+[ 2059.161014] BUG: sleeping function called from invalid context at arch/x86/mm/fault.c:1177
+[ 2059.162968] in_atomic(): 0, irqs_disabled(): 1, pid: 3225, name: trinity-c0
+[ 2059.163142] INFO: lockdep is turned off.
+[ 2059.163142] irq event stamp: 0
+[ 2059.163142] CPU: 0 PID: 3225 Comm: trinity-c0 Not tainted 3.17.0-rc2-next-20140827 #112
+[ 2059.163142] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140617_173321-var-lib-archbuild-testing-x86_64-tobias 04/01/2014
+[ 2059.173190] Call Trace:
+[ 2059.173190]  [<ffffffff815caba9>] dump_stack+0x4e/0x7a
+[ 2059.173190]  [<ffffffff810a5b52>] __might_sleep+0x182/0x2b0
+[ 2059.173190]  [<ffffffff81068a04>] __do_page_fault+0x114/0x680
+[ 2059.173190]  [<ffffffff81191bbb>] ? __alloc_pages_nodemask+0x1eb/0xcf0
+[ 2059.173190]  [<ffffffff81327523>] ? __radix_tree_preload+0x63/0xf0
+[ 2059.173190]  [<ffffffff81068ff5>] trace_do_page_fault+0x45/0x270
+[ 2059.173190]  [<ffffffff8106063b>] do_async_page_fault+0x5b/0x90
+[ 2059.173190]  [<ffffffff815d6d58>] async_page_fault+0x28/0x30
+[ 2059.173190]  [<ffffffff8106ebf2>] ? gup_pte_range+0xb2/0x170
+[ 2059.173190]  [<ffffffff8106ede8>] gup_pud_range+0x138/0x210
+[ 2059.173190]  [<ffffffff8106f11a>] get_user_pages_fast+0xba/0x1d0
+[ 2059.173190]  [<ffffffff811e95ae>] ? __kmalloc+0x2e/0x3c0
+[ 2059.173190]  [<ffffffff811b50e2>] iov_iter_get_pages_alloc+0xb2/0x1c0
+[ 2059.173190]  [<ffffffffa02f6dac>] nfs_direct_read_schedule_iovec+0xbc/0x2e0 [nfs]
+[ 2059.173190]  [<ffffffffa02f1b5f>] ? nfs_get_lock_context+0x4f/0x120 [nfs]
+[ 2059.173190]  [<ffffffffa02f77a6>] nfs_file_direct_read+0x1d6/0x2b0 [nfs]
+[ 2059.173190]  [<ffffffff8120ada0>] ? do_sync_readv_writev+0x80/0x80
+[ 2059.173190]  [<ffffffffa02edbf6>] nfs_file_read+0x56/0x90 [nfs]
+[ 2059.173190]  [<ffffffff8120af62>] do_iter_readv_writev+0x62/0x90
+[ 2059.173190]  [<ffffffff8120b837>] compat_do_readv_writev+0xd7/0x260
+[ 2059.173190]  [<ffffffffa02edba0>] ? nfs_file_release+0x30/0x30 [nfs]
+[ 2059.173190]  [<ffffffff810c9b2d>] ? trace_hardirqs_on+0xd/0x10
+[ 2059.173190]  [<ffffffff815cff65>] ? mutex_lock_nested+0x2e5/0x620
+[ 2059.173190]  [<ffffffff8122d479>] ? __fdget_pos+0x49/0x50
+[ 2059.173190]  [<ffffffff810c9b2d>] ? trace_hardirqs_on+0xd/0x10
+[ 2059.173190]  [<ffffffff8116507c>] ? perf_syscall_enter+0x1c/0x1d0
+[ 2059.173190]  [<ffffffff810f98b7>] ? do_setitimer+0x137/0x2f0
+[ 2059.173190]  [<ffffffff8120ba13>] compat_readv+0x53/0x70
+[ 2059.173190]  [<ffffffff8120cba9>] compat_SyS_readv+0x49/0xb0
+[ 2059.173190]  [<ffffffff815d7989>] ia32_do_call+0x13/0x13
+[ 2059.173190] BUG: unable to handle kernel NULL pointer dereference at 0000000000000010
+[ 2059.173190] IP: [<ffffffff8106ebf2>] gup_pte_range+0xb2/0x170
+[ 2059.173190] PGD 79409067 PUD 74b5c067 PMD 0 
+[ 2059.173190] Oops: 0002 [#1] PREEMPT SMP DEBUG_PAGEALLOC
+[ 2059.173190] Modules linked in: sctp crc32c_generic libcrc32c ipx p8023 psnap p8022 llc auth_rpcgss nfsv4 9p netconsole e1000 cirrus syscopyarea sysfillrect ppdev sysimgblt drm_kms_helper ttm drm psmouse evdev microcode i2c_piix4 parport_pc serio_raw parport intel_agp button intel_gtt processor pcspkr nfs lockd sunrpc ipv6 ext4 crc16 mbcache jbd2 sd_mod sr_mod cdrom ata_generic pata_acpi ata_piix 9pnet_virtio libata 9pnet scsi_mod
+[ 2059.173190] CPU: 0 PID: 3225 Comm: trinity-c0 Not tainted 3.17.0-rc2-next-20140827 #112
+[ 2059.173190] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.7.5-20140617_173321-var-lib-archbuild-testing-x86_64-tobias 04/01/2014
+[ 2059.173190] task: ffff88007a5d4350 ti: ffff880004f28000 task.ti: ffff880004f28000
+[ 2059.173190] RIP: 0010:[<ffffffff8106ebf2>]  [<ffffffff8106ebf2>] gup_pte_range+0xb2/0x170
+[ 2059.173190] RSP: 0000:ffff880004f2ba98  EFLAGS: 00010086
+[ 2059.173190] RAX: 0000000000000000 RBX: ffffea0001e2ffc0 RCX: 0000000000000207
+[ 2059.173190] RDX: 000000004085a000 RSI: ffffea0000000000 RDI: 8000000078bff067
+[ 2059.173190] RBP: ffff880004f2bae8 R08: 0000000000000010 R09: ffff880004f2bb94
+[ 2059.173190] R10: 0000000040a00000 R11: 0000000080000000 R12: ffff880004e8e2d8
+[ 2059.173190] R13: 000000004085b000 R14: 0000000000000007 R15: 00003ffffffff000
+[ 2059.173190] FS:  00007f6133060700(0000) GS:ffff88007f600000(0000) knlGS:0000000000000000
+[ 2059.173190] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[ 2059.173190] CR2: 0000000000000010 CR3: 000000003ab44000 CR4: 00000000001407f0
+[ 2059.173190] Stack:
+[ 2059.173190]  ffff88007cc00618 ffff88007cc00650 ffffea0001e4d6a0 0000000100140010
+[ 2059.173190]  0000000180140011 ffff880004ebf020 0000000040859fff 000000004085a000
+[ 2059.173190]  000000004085a000 ffff880004f2bb94 ffff880004f2bb58 ffffffff8106ede8
+[ 2059.173190] Call Trace:
+[ 2059.173190]  [<ffffffff8106ede8>] gup_pud_range+0x138/0x210
+[ 2059.173190]  [<ffffffff8106f11a>] get_user_pages_fast+0xba/0x1d0
+[ 2059.173190]  [<ffffffff811e95ae>] ? __kmalloc+0x2e/0x3c0
+[ 2059.173190]  [<ffffffff811b50e2>] iov_iter_get_pages_alloc+0xb2/0x1c0
+[ 2059.173190]  [<ffffffffa02f6dac>] nfs_direct_read_schedule_iovec+0xbc/0x2e0 [nfs]
+[ 2059.173190]  [<ffffffffa02f1b5f>] ? nfs_get_lock_context+0x4f/0x120 [nfs]
+[ 2059.173190]  [<ffffffffa02f77a6>] nfs_file_direct_read+0x1d6/0x2b0 [nfs]
+[ 2059.173190]  [<ffffffff8120ada0>] ? do_sync_readv_writev+0x80/0x80
+[ 2059.173190]  [<ffffffffa02edbf6>] nfs_file_read+0x56/0x90 [nfs]
+[ 2059.173190]  [<ffffffff8120af62>] do_iter_readv_writev+0x62/0x90
+[ 2059.173190]  [<ffffffff8120b837>] compat_do_readv_writev+0xd7/0x260
+[ 2059.173190]  [<ffffffffa02edba0>] ? nfs_file_release+0x30/0x30 [nfs]
+[ 2059.173190]  [<ffffffff810c9b2d>] ? trace_hardirqs_on+0xd/0x10
+[ 2059.173190]  [<ffffffff815cff65>] ? mutex_lock_nested+0x2e5/0x620
+[ 2059.173190]  [<ffffffff8122d479>] ? __fdget_pos+0x49/0x50
+[ 2059.173190]  [<ffffffff810c9b2d>] ? trace_hardirqs_on+0xd/0x10
+[ 2059.173190]  [<ffffffff8116507c>] ? perf_syscall_enter+0x1c/0x1d0
+[ 2059.173190]  [<ffffffff810f98b7>] ? do_setitimer+0x137/0x2f0
+[ 2059.173190]  [<ffffffff8120ba13>] compat_readv+0x53/0x70
+[ 2059.173190]  [<ffffffff8120cba9>] compat_SyS_readv+0x49/0xb0
+[ 2059.173190]  [<ffffffff815d7989>] ia32_do_call+0x13/0x13
+[ 2059.173190] Code: 4c 21 f8 48 89 c3 48 c1 eb 06 48 01 f3 48 8b 03 f6 c4 80 75 54 f0 ff 43 1c f0 80 0b 04 49 63 01 49 81 c5 00 10 00 00 49 83 c4 08 <49> 89 1c c0 41 83 01 01 49 39 d5 0f 84 85 00 00 00 49 8b 3c 24 
+[ 2059.173190] RIP  [<ffffffff8106ebf2>] gup_pte_range+0xb2/0x170
+[ 2059.173190]  RSP <ffff880004f2ba98>
+[ 2059.173190] CR2: 0000000000000010
+[ 2059.173190] ---[ end trace 97335fea424ce4de ]---
