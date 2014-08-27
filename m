@@ -1,45 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:51204 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752526AbaHUQIA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Aug 2014 12:08:00 -0400
-Received: from ip-64-134-168-64.public.wayport.net ([64.134.168.64] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XKUu7-0000B6-MR
-	for linux-nfs@vger.kernel.org; Thu, 21 Aug 2014 16:07:59 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 18/19] pnfs/blocklayout: return layouts on setattr
-Date: Thu, 21 Aug 2014 11:09:34 -0500
-Message-Id: <1408637375-11343-19-git-send-email-hch@lst.de>
-In-Reply-To: <1408637375-11343-1-git-send-email-hch@lst.de>
-References: <pnfs block layout driver fixes V2>
- <1408637375-11343-1-git-send-email-hch@lst.de>
+Received: from mail-wg0-f48.google.com ([74.125.82.48]:52285 "EHLO
+	mail-wg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751986AbaH0IWo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2014 04:22:44 -0400
+Received: by mail-wg0-f48.google.com with SMTP id x13so15507630wgg.19
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Aug 2014 01:22:43 -0700 (PDT)
+Message-ID: <53FD9550.5010605@gmail.com>
+Date: Wed, 27 Aug 2014 11:22:40 +0300
+From: Boaz Harrosh <openosd@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Boaz Harrosh <boaz@plexistor.com>
+CC: "Matt W. Benjamin" <matt@linuxbox.com>, Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Adam C. Emerson" <aemerson@linuxbox.com>
+Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
+References: <53FCA183.8000605@plexistor.com>	<1435166875.78.1409066662291.JavaMail.root@thunderbeast.private.linuxbox.com>	<CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>	<53FCBC5A.4060304@plexistor.com>	<CAHQdGtSghgbrPr=X8O2YLq=vXbKY1y5OuOMisf6vRoj8WeF0YA@mail.gmail.com>	<53FCBE9C.40906@plexistor.com>	<CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>	<53FCCFBD.3080305@plexistor.com> <CAHQdGtRi_jA8+RkDqh+VBKwHhTpxygSEBWaDScqozyxVSPKAtg@mail.gmail.com>
+In-Reply-To: <CAHQdGtRi_jA8+RkDqh+VBKwHhTpxygSEBWaDScqozyxVSPKAtg@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This speads up truncate-heavy workloads like fsx by multiple orders of
-magnitude.
+On 08/26/2014 09:41 PM, Trond Myklebust wrote:
+<> 
+> Whether or not your particular server allows it or not is irrelevant.
+> We're not coding the client to a particular implementation. 
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+God, No this is not up to any particular server implementation
+it is stated clearly in the draft text. The Server is specifically
+forbidden to wait in lo_get and device_info/device_list actually
+any resource that is recallable.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index a7524c4..d5a2b87 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -799,7 +799,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.id				= LAYOUT_BLOCK_VOLUME,
- 	.name				= "LAYOUT_BLOCK_VOLUME",
- 	.owner				= THIS_MODULE,
--	.flags				= PNFS_READ_WHOLE_PAGE,
-+	.flags				= PNFS_LAYOUTRET_ON_SETATTR |
-+					  PNFS_READ_WHOLE_PAGE,
- 	.read_pagelist			= bl_read_pagelist,
- 	.write_pagelist			= bl_write_pagelist,
- 	.alloc_layout_hdr		= bl_alloc_layout_hdr,
--- 
-1.9.1
+This is the STD exactly for those reasons you stated.
+
+> None of
+> the other callbacks do synchronous RPC calls, and that's very
+> intentional.
+> 
+
+Because none of the other callbacks have the protection of the STD
+that forbids the server of synchronous operations, so the client
+have to.
+
+Thanks
+Boaz
 
