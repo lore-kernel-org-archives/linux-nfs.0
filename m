@@ -1,129 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:38284 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752208AbaHTK63 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 06:58:29 -0400
-Received: by mail-qg0-f44.google.com with SMTP id e89so7203570qgf.17
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 03:58:28 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 20 Aug 2014 06:58:26 -0400
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from fieldses.org ([174.143.236.118]:47885 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933592AbaH0N0O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Aug 2014 09:26:14 -0400
+Date: Wed, 27 Aug 2014 09:26:07 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andreas Fenkart <afenkart@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Joe Perches <joe@perches.com>
-Subject: Re: [PATCH] lockd: Remove unused b_fl member from struct nlm_block
-Message-ID: <20140820065826.6def22d5@tlielax.poochiereds.net>
-In-Reply-To: <53F47357.7050608@gmail.com>
-References: <53F47357.7050608@gmail.com>
+        Daniel Mack <zonque@gmail.com>
+Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
+Message-ID: <20140827132607.GA12766@fieldses.org>
+References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
+ <20140710175136.GA26561@fieldses.org>
+ <CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
+ <CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
+ <CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
+ <CAHQdGtS_O3i6fBhW7vTurL=Y7cKmoeGjTXiEMU5mbb3tR3-LjA@mail.gmail.com>
+ <CALtMJEALbP3DKpaL9Bz6tNjj3GHYUo7wb=VRbOcjB1+hOr6GCg@mail.gmail.com>
+ <CAHQdGtS34K6S_59Huvx8EK+mh1QwSrjtUXaNogGYSm5aQZCA=w@mail.gmail.com>
+ <20140826195033.GB25117@fieldses.org>
+ <CALtMJECxo57CXw1=yKDGLm0o+jPLLpj+7rDMAMMJ95uYEC15Xw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CALtMJECxo57CXw1=yKDGLm0o+jPLLpj+7rDMAMMJ95uYEC15Xw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 20 Aug 2014 18:07:19 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
-
-> Fix left code by Joe Perches's patch,
-> "locks: Remove unused conf argument from lm_grant"
+On Wed, Aug 27, 2014 at 10:30:34AM +0200, Andreas Fenkart wrote:
+> Hi
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/lockd/svclock.c          | 26 +++++---------------------
->  include/linux/lockd/lockd.h |  1 -
->  2 files changed, 5 insertions(+), 22 deletions(-)
+> 2014-08-26 21:50 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+> >>
+> >> Still not seeing the readdir, but the getattrs are there and all looks OK.
+> >> Question: the server is knfsd from a Linux 3.14.4 kernel, is that
+> >> correct? So it does have commit 83b19121522 (nfsd: revert v2 half of
+> >> "nfsd: don't return high mode bits")?
+> >
+> > Yeah, you can even see the high bits set (correctly) in the stat
+> > returns, so he has that patch.
+> >
+> > Andreas, are you still seeing this problem?
 > 
-> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> index 2a61701..796e63b 100644
-> --- a/fs/lockd/svclock.c
-> +++ b/fs/lockd/svclock.c
-> @@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
->  	block->b_daemon = rqstp->rq_server;
->  	block->b_host   = host;
->  	block->b_file   = file;
-> -	block->b_fl = NULL;
->  	file->f_count++;
->  
->  	/* Add to file's list of blocks */
-> @@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
->  	nlmsvc_freegrantargs(block->b_call);
->  	nlmsvc_release_call(block->b_call);
->  	nlm_release_file(block->b_file);
-> -	kfree(block->b_fl);
->  	kfree(block);
->  }
->  
-> @@ -523,20 +521,13 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->  	block = nlmsvc_lookup_block(file, lock);
->  
->  	if (block == NULL) {
-> -		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
-> -
-> -		if (conf == NULL)
-> -			return nlm_granted;
->  		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
-> -		if (block == NULL) {
-> -			kfree(conf);
-> +		if (block == NULL)
->  			return nlm_granted;
-> -		}
-> -		block->b_fl = conf;
+> No it's gone, but I upgraded my (server-)system meanwhile (debian unstable)
+> I also tried downgrading my kernel to the version I had back then, but
+> the problem doesn't show up anymore.
 
-NAK. The b_fl member is not unused, as is evidenced by the assignment
-above.
+Well, maybe there was a server bug in the old server that this change
+just happened to expose.
 
-Joe's patch removed the conflock from the lm_grant callback since the
-filesystem never set that parameter in the lm_grant callback. This call
-however has nothing to do with lm_grant. It's done when the client
-issues a NLM_TEST operation.
+What was the server upgrade, out of curiosity?  (From what kernel
+version, to what kernel version?)
 
->  	}
->  	if (block->b_flags & B_QUEUED) {
-> -		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
-> -			block, block->b_flags, block->b_fl);
-> +		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d\n",
-> +			block, block->b_flags);
->  		if (block->b_flags & B_TIMED_OUT) {
->  			nlmsvc_unlink_block(block);
->  			ret = nlm_lck_denied;
-> @@ -544,14 +535,8 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->  		}
->  		if (block->b_flags & B_GOT_CALLBACK) {
->  			nlmsvc_unlink_block(block);
-> -			if (block->b_fl != NULL
-> -					&& block->b_fl->fl_type != F_UNLCK) {
-> -				lock->fl = *block->b_fl;
-> -				goto conf_lock;
-> -			} else {
-> -				ret = nlm_granted;
-> -				goto out;
-> -			}
-> +			ret = nlm_granted;
-> +			goto out;
->  		}
->  		ret = nlm_drop_reply;
->  		goto out;
-> @@ -575,7 +560,6 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->  		goto out;
->  	}
->  
-> -conf_lock:
->  	dprintk("lockd: conflicting lock(ty=%d, %Ld-%Ld)\n",
->  		lock->fl.fl_type, (long long)lock->fl.fl_start,
->  		(long long)lock->fl.fl_end);
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index 219d796..ff82a32 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -178,7 +178,6 @@ struct nlm_block {
->  	unsigned char		b_granted;	/* VFS granted lock */
->  	struct nlm_file *	b_file;		/* file in question */
->  	struct cache_req *	b_cache_req;	/* deferred request handling */
-> -	struct file_lock *	b_fl;		/* set for GETLK */
->  	struct cache_deferred_req * b_deferred_req;
->  	unsigned int		b_flags;	/* block flags */
->  #define B_QUEUED		1	/* lock queued */
-
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+--b.
