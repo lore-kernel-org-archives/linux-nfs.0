@@ -1,129 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:58460 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751381AbaHOOow (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Aug 2014 10:44:52 -0400
-Received: by mail-qc0-f176.google.com with SMTP id m20so2386111qcx.7
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Aug 2014 07:44:51 -0700 (PDT)
-Received: from tlielax.poochiereds.net ([2001:470:8:d63:3a60:77ff:fe93:a95d])
-        by mx.google.com with ESMTPSA id i2sm9046955qge.27.2014.08.15.07.44.49
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 15 Aug 2014 07:44:50 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [kernel RFC PATCH 3/4] nfsd: remove redundant boot_time parm from grace_done client tracking op
-Date: Fri, 15 Aug 2014 10:44:39 -0400
-Message-Id: <1408113880-5489-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408113880-5489-1-git-send-email-jlayton@primarydata.com>
-References: <1408113880-5489-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-wg0-f46.google.com ([74.125.82.46]:59800 "EHLO
+	mail-wg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755684AbaH0Iuo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2014 04:50:44 -0400
+Received: by mail-wg0-f46.google.com with SMTP id m15so15501312wgh.17
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Aug 2014 01:50:43 -0700 (PDT)
+Message-ID: <53FD9BDF.6090400@gmail.com>
+Date: Wed, 27 Aug 2014 11:50:39 +0300
+From: Boaz Harrosh <openosd@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Boaz Harrosh <boaz@plexistor.com>
+CC: "Matt W. Benjamin" <matt@linuxbox.com>, Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "Adam C. Emerson" <aemerson@linuxbox.com>
+Subject: Re: [PATCH] pnfs: Kick a pnfs_layoutcommit_inode on recall
+References: <53FCA183.8000605@plexistor.com>	<1435166875.78.1409066662291.JavaMail.root@thunderbeast.private.linuxbox.com>	<CAHQdGtT-B7NTP8T7ETgTJD1+84k_KW_5aOfrYjLpA04hoR3YsA@mail.gmail.com>	<53FCBC5A.4060304@plexistor.com>	<CAHQdGtSghgbrPr=X8O2YLq=vXbKY1y5OuOMisf6vRoj8WeF0YA@mail.gmail.com>	<53FCBE9C.40906@plexistor.com>	<CAHQdGtTgcGiWbcZyAsaOzdB=RpdUx17vHcw1yxg7vS56BfwY+A@mail.gmail.com>	<53FCCFBD.3080305@plexistor.com>	<CAHQdGtRi_jA8+RkDqh+VBKwHhTpxygSEBWaDScqozyxVSPKAtg@mail.gmail.com> <CAHQdGtQM5uCyKLNBeU0ZENf-Jvki7TvJGbPt-FEAMLQi0jnYLg@mail.gmail.com>
+In-Reply-To: <CAHQdGtQM5uCyKLNBeU0ZENf-Jvki7TvJGbPt-FEAMLQi0jnYLg@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since it's stored in nfsd_net, we don't need to pass it in separately.
+On 08/26/2014 10:46 PM, Trond Myklebust wrote:
+<>
+> 
+> So to return to the original question: could we please change the
+> layoutcommit in your patch so that it is asynchronous?
+> 
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4recover.c | 17 ++++++++---------
- fs/nfsd/nfs4state.c   |  2 +-
- fs/nfsd/state.h       |  2 +-
- 3 files changed, 10 insertions(+), 11 deletions(-)
+There is nothing change. The original message at the head of
+this thread, is Christoph's patch with the asynchronous layoutcommit.
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 9c271f42604a..a0d2ba956a3f 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -58,7 +58,7 @@ struct nfsd4_client_tracking_ops {
- 	void (*create)(struct nfs4_client *);
- 	void (*remove)(struct nfs4_client *);
- 	int (*check)(struct nfs4_client *);
--	void (*grace_done)(struct nfsd_net *, time_t);
-+	void (*grace_done)(struct nfsd_net *);
- };
- 
- /* Globals */
-@@ -392,7 +392,7 @@ purge_old(struct dentry *parent, struct dentry *child, struct nfsd_net *nn)
- }
- 
- static void
--nfsd4_recdir_purge_old(struct nfsd_net *nn, time_t boot_time)
-+nfsd4_recdir_purge_old(struct nfsd_net *nn)
- {
- 	int status;
- 
-@@ -1016,7 +1016,7 @@ nfsd4_cld_check(struct nfs4_client *clp)
- }
- 
- static void
--nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
-+nfsd4_cld_grace_done(struct nfsd_net *nn)
- {
- 	int ret;
- 	struct cld_upcall *cup;
-@@ -1029,7 +1029,7 @@ nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
- 	}
- 
- 	cup->cu_msg.cm_cmd = Cld_GraceDone;
--	cup->cu_msg.cm_u.cm_gracetime = (int64_t)boot_time;
-+	cup->cu_msg.cm_u.cm_gracetime = (int64_t)nn->boot_time;
- 	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
- 	if (!ret)
- 		ret = cup->cu_msg.cm_status;
-@@ -1245,13 +1245,12 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
- }
- 
- static void
--nfsd4_umh_cltrack_grace_done(struct nfsd_net __attribute__((unused)) *nn,
--				time_t boot_time)
-+nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
- {
- 	char *legacy;
- 	char timestr[22]; /* FIXME: better way to determine max size? */
- 
--	sprintf(timestr, "%ld", boot_time);
-+	sprintf(timestr, "%ld", nn->boot_time);
- 	legacy = nfsd4_cltrack_legacy_topdir();
- 	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
- 	kfree(legacy);
-@@ -1356,10 +1355,10 @@ nfsd4_client_record_check(struct nfs4_client *clp)
- }
- 
- void
--nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time)
-+nfsd4_record_grace_done(struct nfsd_net *nn)
- {
- 	if (nn->client_tracking_ops)
--		nn->client_tracking_ops->grace_done(nn, boot_time);
-+		nn->client_tracking_ops->grace_done(nn);
- }
- 
- static int
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index de6bea769b24..6479c45a17c9 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4132,7 +4132,7 @@ nfsd4_end_grace(struct nfsd_net *nn)
- 
- 	dprintk("NFSD: end of grace period\n");
- 	nn->grace_ended = true;
--	nfsd4_record_grace_done(nn, nn->boot_time);
-+	nfsd4_record_grace_done(nn);
- 	locks_end_grace(&nn->nfsd4_manager);
- 	/*
- 	 * Now that every NFSv4 client has had the chance to recover and
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index ecf579904892..854f0c574ccf 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -554,7 +554,7 @@ extern void nfsd4_client_tracking_exit(struct net *net);
- extern void nfsd4_client_record_create(struct nfs4_client *clp);
- extern void nfsd4_client_record_remove(struct nfs4_client *clp);
- extern int nfsd4_client_record_check(struct nfs4_client *clp);
--extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
-+extern void nfsd4_record_grace_done(struct nfsd_net *nn);
- 
- /* nfs fault injection functions */
- #ifdef CONFIG_NFSD_FAULT_INJECTION
--- 
-1.9.3
+As a reply I posted what I had in my tree, with a sync operation.
+Because I wanted the recall to take 500 micro-seconds instead of like
+300-1000 mili-seconds.
+
+When the STD supports my model specifically I do not see why not
+
+Don't you guys have recalls on the hot path?
+
+Sigh, another nail in the coffin of what was suppose to be a dam
+good STD.
+
+Thinking about it from day one you had a personal agenda against
+RECALLS. For some reason, which you never told me, you decided to
+crash and burn any proper use of LO_RECALLS. With that dreaded
+*synchronous* polling driven, forgetful--model recall.
+(One day we'll sit on a Bear and you will tell me why? I really
+ want to know)
+
+Now that there is the last ever chance to make an half dissent
+citizen out of what was left of recalls, you are all on your
+back feet, against it. With religious mantras, when you have
+never sat and actually stared at the prints and experienced
+recalls for yourself. Your words
+
+Christoph I have a deja-vu its principles against good science
+again. Lets revert to your patch.
+
+Reviewed-by: Boaz Harrosh <bharrosh@panasas.com>
 
