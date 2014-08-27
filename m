@@ -1,167 +1,251 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:33566 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751783AbaHCOtT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Aug 2014 10:49:19 -0400
-Received: by mail-qa0-f48.google.com with SMTP id m5so5820171qaj.21
-        for <linux-nfs@vger.kernel.org>; Sun, 03 Aug 2014 07:49:18 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Sun, 3 Aug 2014 10:49:15 -0400
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Jeffrey Layton <jeff.layton@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH v3 31/38] nfsd: Move the open owner hash table into
- struct nfs4_client
-Message-ID: <20140803104915.5e1b7aaf@tlielax.poochiereds.net>
-In-Reply-To: <53DE43E9.9030704@gmail.com>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
-	<1406684083-19736-32-git-send-email-jlayton@primarydata.com>
-	<53DCBFDB.5060808@gmail.com>
-	<CAHQdGtTGNZsqZTCQhUboG1kE+bzb7p3K+5BxmusFG+qWMrVJzg@mail.gmail.com>
-	<53DCEAE8.70707@gmail.com>
-	<CAHQdGtT4qb_KkLYcM64z8=YY-J3pheKBb_-pvVQvpVmpWFh=1A@mail.gmail.com>
-	<53DCF3C0.6050201@gmail.com>
-	<CAHQdGtRNwSbhKkfbop-8NFq6WTS_EmrojC2HyLmkKki94oxSHw@mail.gmail.com>
-	<20140802185933.64ba0b15@tlielax.poochiereds.net>
-	<CAHQdGtS+X1KABsr5buxKqC5VNpyWBrJYMD74HzWtF=fDOs19bg@mail.gmail.com>
-	<CAPakX04ctGujqpJ48WqT1-r5=q0T8D1Ji=q1P5UTuwdw_hTsGg@mail.gmail.com>
-	<53DE43E9.9030704@gmail.com>
+Received: from mx11.netapp.com ([216.240.18.76]:49997 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933852AbaH0PSH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Aug 2014 11:18:07 -0400
+From: <bjschuma@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/3] NFSD: Implement SEEK
+Date: Wed, 27 Aug 2014 11:17:58 -0400
+Message-ID: <1409152678-7806-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1409152678-7806-1-git-send-email-bjschuma@netapp.com>
+References: <1409152678-7806-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 03 Aug 2014 22:15:05 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-> On 8/3/2014 19:35, Jeffrey Layton wrote:
-> > On Sat, Aug 2, 2014 at 9:59 PM, Trond Myklebust <trond.myklebust@primarydata.com <mailto:trond.myklebust@primarydata.com>> wrote:
-> > 
-> >     On Sat, Aug 2, 2014 at 6:59 PM, Jeff Layton <jeff.layton@primarydata.com <mailto:jeff.layton@primarydata.com>> wrote:
-> >     > On Sat, 2 Aug 2014 10:47:27 -0400
-> >     > Trond Myklebust <trond.myklebust@primarydata.com <mailto:trond.myklebust@primarydata.com>> wrote:
-> >     >
-> >     >> On Sat, Aug 2, 2014 at 10:20 AM, Kinglong Mee <kinglongmee@gmail.com <mailto:kinglongmee@gmail.com>> wrote:
-> >     >> > On 8/2/2014 22:05, Trond Myklebust wrote:
-> >     >> >> On Sat, Aug 2, 2014 at 9:43 AM, Kinglong Mee <kinglongmee@gmail.com <mailto:kinglongmee@gmail.com>> wrote:
-> >     >> >>> On 8/2/2014 21:11, Trond Myklebust wrote:
-> >     >> >>>> On Sat, Aug 2, 2014 at 6:39 AM, Kinglong Mee <kinglongmee@gmail.com <mailto:kinglongmee@gmail.com>> wrote:
-> >     >> >>>>> On 7/30/2014 09:34, Jeff Layton wrote:
-> >     >> >>>>>> From: Trond Myklebust <trond.myklebust@primarydata.com <mailto:trond.myklebust@primarydata.com>>
-> >     >> >>>>>>
-> >     >> >>>>>> Preparation for removing the client_mutex.
-> >     >> >>>>>>
-> >     >> >>>>>> Convert the open owner hash table into a per-client table and protect it
-> >     >> >>>>>> using the nfs4_client->cl_lock spin lock.
-> >     >> >>>>>>
-> >     >> >>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com <mailto:trond.myklebust@primarydata.com>>
-> >     >> >>>>>> ---
-> >     >> >>>>>>  fs/nfsd/netns.h     |   1 -
-> >     >> >>>>>>  fs/nfsd/nfs4state.c | 187 ++++++++++++++++++++++++----------------------------
-> >     >> >>>>>>  fs/nfsd/state.h     |   1 +
-> >     >> >>>>>>  3 files changed, 86 insertions(+), 103 deletions(-)
-> >     >> >>>>>>
-> >     >> >>>>>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> >     >> >>>>>> index a71d14413d39..e1f479c162b5 100644
-> >     >> >>>>>> --- a/fs/nfsd/netns.h
-> >     >> >>>>>> +++ b/fs/nfsd/netns.h
-> >     >> >>>>>> @@ -63,7 +63,6 @@ struct nfsd_net {
-> >     >> >>>>>>       struct rb_root conf_name_tree;
-> >     >> >>>>>>       struct list_head *unconf_id_hashtbl;
-> >     >> >>>>>>       struct rb_root unconf_name_tree;
-> >     >> >>>>>> -     struct list_head *ownerstr_hashtbl;
-> >     >> >>>>>
-> >     >> >>>>> I send a patch "NFSD: Rervert "knfsd: locks: flag NFSv4-owned locks"" before,
-> >     >> >>>>> http://comments.gmane.org/gmane.linux.nfs/64382
-> >     >> >>>>>
-> >     >> >>>>> nfsd needs the hashtbl to find the lockowner for locking by owner from
-> >     >> >>>>> fl->fl_owner stored in struct file_lock, but without nfs_client.
-> >     >> >>>>
-> >     >> >>>> Why? We're not currently doing that.
-> >     >> >>>
-> >     >> >>> Although not doing that right now, but there is a bug for getting the right ld_owner
-> >     >> >>> in nfs4_set_lock_denied.
-> >     >> >>>
-> >     >> >>> If denying locks, vfs don't copy fl->fl_lmops to the returned file_lock, so that,
-> >     >> >>> fl->fl_lmops always be NULL, nfsd never return the owner who holds the conflock.
-> >     >> >>>
-> >     >> >>> If we want fix this problem, needs finding the lockowner from struct file_lock.
-> >     >> >>
-> >     >> >> Do we really care enough about fixing nfs4_set_lock_denied enough to
-> >     >> >> do so at the cost of reducing overall scalability of locking state?
-> >     >> >
-> >     >> > I just report this problem, don't think enough about the scalability.
-> >     >> >
-> >     >> >> We will always be faking up the clientid etc for local locks. Are
-> >     >> >> there any clients out there that actually inspect the clientid on a
-> >     >> >> result of NFS4ERR_DENIED and that will break if we give them a fake
-> >     >> >> for non-local locks?
-> >     >> >
-> >     >> > Jeff has point the same problem of a non-nfs4_lockowner.
-> >     >> > Maybe we should copy fl_lmops to conflock as before, nfsd can distinguish
-> >     >> > the lockowner stored in struct file_lock by checking fl_lmops.
-> >     >> >
-> >     >>
-> >     >> Alternatively, set a flag in fl_flags. Back in the days, we used to
-> >     >> have a FL_NFSD, perhaps it is time to resurrect that?
-> >     >>
-> >     >
-> >     > Would we need a similar flag for lockd too?
-> >     >
-> >     > I'm not sure a flag is the correct approach for this. A "fl_lmtype" field
-> >     > or something similar might make sense, but I'm not sure that really
-> >     > adds much over just ensuring that fl_lmops is set properly for these locks.
-> > 
-> >     It avoids adding an extra copy of fl_lmops that would only be useful
-> >     to knfsd as a flag.
-> > 
-> >     > That said, we definitely will need to ensure that there are no harmful
-> >     > effects from setting fl_lmops on a conflock container. I don't see any
-> >     > right offhand, but it's probably reasonable to put something like that
-> >     > in -next for a bit of soak time...
-> > 
-> >     The real problem here is that you are copying the lock, and then
-> >     trying to dereference the copied pointer without ensuring that the
-> >     thing the pointer is referencing still exists. Given that we're
-> >     removing the global state mutex, then it is now perfectly possible for
-> >     a competing knfsd thread to free the conflicting lock and the
-> >     lockowner pointed to by fl->fl_owner before your thread hits
-> >     nfs4_set_lock_denied.
-> >     The check for fl_lmtype does nothing to fix that race (nor does FL_NFSD).
-> > 
-> >     Cheers
-> >       Trond
-> > 
-> > 
-> > Agreed. That's a significant bit of nastiness, and I think you're correct that the
-> > client_mutex removal will exacerbate the problem. The only way I can see to
-> > properly fix that would be to make it so that the conflock holds a reference to the
-> > lockowner, and then put it when the conflock is freed.
-> > 
-> 
-> I will check the reference to lockowner in nfsd, and try to simulate client-id expire.
-> 
+This patch adds server support for the NFS v4.2 operation SEEK, which
+returns the position of the next hole or data segment in a file.  This
+operation is off by default, and needs CONFIG_NFSD_V4_2_SEEK=y to be
+compiled.
 
-You shouldn't need to do anything special there. It should be
-sufficient to simply take a reference to the lockowner when you copy
-the data to the conflock, and then put that reference when you go to
-free it.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfsd/Kconfig      | 12 ++++++++++++
+ fs/nfsd/nfs4proc.c   | 47 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c    | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/xdr4.h       | 14 ++++++++++++++
+ include/linux/nfs4.h |  5 +++++
+ 5 files changed, 123 insertions(+)
 
-> > That will require some new fl_ops or fl_lmops. It would also be good to clean up
-> > conflock generation a bit, and turn it into a more explicit process.
-> > __locks_copy_lock doesn't really fully describe what's going on there, IMO...
-> 
-> I will have a try.
-> 
-> thanks,
-> Kinglong Mee
-
-Thanks. For now, I'm going to drop the patch that you proposed
-yesterday since Trond's quite correct that there's more work needed in
-this area before that's really safe.
-
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index f994e75..804b20a 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -81,6 +81,18 @@ config NFSD_V4
+ 
+ 	  If unsure, say N.
+ 
++config NFSD_V4_2_SEEK
++	bool "Enable SEEK support for the NFS v4.2 server"
++	depends on NFSD_V4
++	help
++	  Say Y here if you want to enable support for the NFS v4.2 operation
++	  SEEK, which adds in SEEK_HOLE and SEEK_DATA support.
++
++	  WARNING: there is still a chance of backwards-incompatible protocol
++	  changes.  This feature is targeted at developers and testers only.
++
++	  If unsure, say N.
++
+ config NFSD_V4_SECURITY_LABEL
+ 	bool "Provide Security Label support for NFSv4 server"
+ 	depends on NFSD_V4 && SECURITY
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 5e0dc52..f555eb2 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1013,6 +1013,45 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	return status;
+ }
+ 
++#ifdef CONFIG_NFSD_V4_2_SEEK
++static __be32
++nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		struct nfsd4_seek *seek)
++{
++	struct file *file;
++	__be32 status = nfs_ok;
++
++	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
++					    &seek->seek_stateid,
++					    RD_STATE | WR_STATE, &file);
++	if (status) {
++		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
++		return status;
++	}
++
++	switch (seek->seek_whence) {
++	case NFS4_CONTENT_DATA:
++		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
++		break;
++	case NFS4_CONTENT_HOLE:
++		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
++		break;
++	default:
++		status = nfserr_union_notsupp;
++		goto out;
++	}
++
++	if (seek->seek_pos < 0)
++		status = nfserrno(seek->seek_pos);
++	else if (seek->seek_pos >= i_size_read(file_inode(file)))
++		seek->seek_eof = true;
++
++out:
++	fput(file);
++	return status;
++}
++#endif /* CONFIG_NFSD_V4_2_SEEK */
++
+ /* This routine never returns NFS_OK!  If there are no other errors, it
+  * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
+  * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
+@@ -1881,6 +1920,14 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
++
++	/* NFSv4.2 operations */
++#ifdef CONFIG_NFSD_V4_2_SEEK
++	[OP_SEEK] = {
++		.op_func = (nfsd4op_func)nfsd4_seek,
++		.op_name = "OP_SEEK",
++	},
++#endif /* CONFIG_NFSD_V4_2_SEEK */
+ };
+ 
+ int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 94dde7b..5bedeb3 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1520,6 +1520,24 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ 	DECODE_TAIL;
+ }
+ 
++#ifdef CONFIG_NFSD_V4_2_SEEK
++static __be32
++nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
++{
++	DECODE_HEAD;
++
++	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
++	if (status)
++		return status;
++
++	READ_BUF(12);
++	p = xdr_decode_hyper(p, &seek->seek_offset);
++	seek->seek_whence = be32_to_cpup(p);
++
++	DECODE_TAIL;
++}
++#endif /* CONFIG_NFSD_V4_2_SEEK */
++
+ static __be32
+ nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
+ {
+@@ -1605,7 +1623,11 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
++#ifdef CONFIG_NFSD_V4_2_SEEK
++	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
++#else
+ 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
++#endif /* CONFIG_NFSD_V4_2_SEEK */
+ 	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ };
+ 
+@@ -3764,6 +3786,24 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	return nfserr;
+ }
+ 
++#ifdef CONFIG_NFSD_V4_2_SEEK
++static __be32
++nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
++		  struct nfsd4_seek *seek)
++{
++	__be32 *p;
++
++	if (nfserr)
++		return nfserr;
++
++	p = xdr_reserve_space(&resp->xdr, 12);
++	*p++ = cpu_to_be32(seek->seek_eof);
++	p = xdr_encode_hyper(p, seek->seek_pos);
++
++	return nfserr;
++}
++#endif /* CONFIG_NFSD_V4_2_SEEK */
++
+ static __be32
+ nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
+ {
+@@ -3848,8 +3888,13 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
++#ifdef CONFIG_NFSD_V4_2_SEEK
++	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
++#else
+ 	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
++#endif /* CONFIG_NFSD_V4_2_SEEK */
+ 	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
+ };
+ 
+ /*
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 465e779..5720e94 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -428,6 +428,17 @@ struct nfsd4_reclaim_complete {
+ 	u32 rca_one_fs;
+ };
+ 
++struct nfsd4_seek {
++	/* request */
++	stateid_t	seek_stateid;
++	loff_t		seek_offset;
++	u32		seek_whence;
++
++	/* response */
++	u32		seek_eof;
++	loff_t		seek_pos;
++};
++
+ struct nfsd4_op {
+ 	int					opnum;
+ 	__be32					status;
+@@ -473,6 +484,9 @@ struct nfsd4_op {
+ 		struct nfsd4_reclaim_complete	reclaim_complete;
+ 		struct nfsd4_test_stateid	test_stateid;
+ 		struct nfsd4_free_stateid	free_stateid;
++
++		/* NFSv4.2 */
++		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+ };
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index cf38224..026b0c0 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -550,4 +550,9 @@ struct nfs4_deviceid {
+ 	char data[NFS4_DEVICEID4_SIZE];
+ };
+ 
++enum data_content4 {
++	NFS4_CONTENT_DATA		= 0,
++	NFS4_CONTENT_HOLE		= 1,
++};
++
+ #endif
 -- 
-Jeff Layton <jlayton@primarydata.com>
+2.1.0
+
