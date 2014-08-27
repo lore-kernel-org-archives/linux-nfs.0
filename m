@@ -1,70 +1,286 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19750 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:8236 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752628AbaHENwD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Aug 2014 09:52:03 -0400
-Message-ID: <1407246721.4455.32.camel@dwysocha-rhel7-t530.usersys.redhat.com>
-Subject: Re: [PATCH] nfs: reject changes to resvport and sharecache during
- remount
-From: Dave Wysochanski <dwysocha@redhat.com>
-Reply-To: dwysocha@redhat.com
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Date: Tue, 05 Aug 2014 09:52:01 -0400
-In-Reply-To: <1407188247-3050-1-git-send-email-smayhew@redhat.com>
-References: <1407188247-3050-1-git-send-email-smayhew@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S933812AbaH0TVc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Aug 2014 15:21:32 -0400
+Message-ID: <53FE2FB2.3040606@Netapp.com>
+Date: Wed, 27 Aug 2014 15:21:22 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>, <bjschuma@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] NFSD: Implement SEEK
+References: <1409152678-7806-1-git-send-email-bjschuma@netapp.com> <1409152678-7806-4-git-send-email-bjschuma@netapp.com> <20140827190940.GD13910@fieldses.org>
+In-Reply-To: <20140827190940.GD13910@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2014-08-04 at 17:37 -0400, Scott Mayhew wrote:
-> Commit c8e47028 made it possible to change resvport/noresvport and
-> sharecache/nosharecache via a remount operation, neither of which should be
-> allowed.
+On 08/27/2014 03:09 PM, J. Bruce Fields wrote:
+> On Wed, Aug 27, 2014 at 11:17:58AM -0400, bjschuma@netapp.com wrote:
+>> From: Anna Schumaker <Anna.Schumaker@netapp.com>
+>>
+>> This patch adds server support for the NFS v4.2 operation SEEK, which
+>> returns the position of the next hole or data segment in a file.  This
+>> operation is off by default, and needs CONFIG_NFSD_V4_2_SEEK=y to be
+>> compiled.
+>>
+>> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+>> ---
+>>  fs/nfsd/Kconfig      | 12 ++++++++++++
+>>  fs/nfsd/nfs4proc.c   | 47 +++++++++++++++++++++++++++++++++++++++++++++++
+>>  fs/nfsd/nfs4xdr.c    | 45 +++++++++++++++++++++++++++++++++++++++++++++
+>>  fs/nfsd/xdr4.h       | 14 ++++++++++++++
+>>  include/linux/nfs4.h |  5 +++++
+>>  5 files changed, 123 insertions(+)
+>>
+>> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+>> index f994e75..804b20a 100644
+>> --- a/fs/nfsd/Kconfig
+>> +++ b/fs/nfsd/Kconfig
+>> @@ -81,6 +81,18 @@ config NFSD_V4
+>>  
+>>  	  If unsure, say N.
+>>  
+>> +config NFSD_V4_2_SEEK
+>> +	bool "Enable SEEK support for the NFS v4.2 server"
+>> +	depends on NFSD_V4
+>> +	help
+>> +	  Say Y here if you want to enable support for the NFS v4.2 operation
+>> +	  SEEK, which adds in SEEK_HOLE and SEEK_DATA support.
+>> +
+>> +	  WARNING: there is still a chance of backwards-incompatible protocol
+>> +	  changes.  This feature is targeted at developers and testers only.
 > 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfs/super.c | 9 +++++----
->  1 file changed, 5 insertions(+), 4 deletions(-)
+> I think now that we should instead confirm with the working group that
+> backwards-incompatible changes are done, and skip this warning.
 > 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 084af10..3fd8332 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -2180,7 +2180,7 @@ out_no_address:
->  	return -EINVAL;
->  }
->  
-> -#define NFS_MOUNT_CMP_FLAGMASK ~(NFS_MOUNT_INTR \
-> +#define NFS_REMOUNT_CMP_FLAGMASK ~(NFS_MOUNT_INTR \
->  		| NFS_MOUNT_SECURE \
->  		| NFS_MOUNT_TCP \
->  		| NFS_MOUNT_VER3 \
-> @@ -2188,15 +2188,16 @@ out_no_address:
->  		| NFS_MOUNT_NONLM \
->  		| NFS_MOUNT_BROKEN_SUID \
->  		| NFS_MOUNT_STRICTLOCK \
-> -		| NFS_MOUNT_UNSHARED \
-> -		| NFS_MOUNT_NORESVPORT \
->  		| NFS_MOUNT_LEGACY_INTERFACE)
->  
-> +#define NFS_MOUNT_CMP_FLAGMASK (NFS_REMOUNT_CMP_FLAGMASK & \
-> +		~(NFS_MOUNT_UNSHARED | NFS_MOUNT_NORESVPORT))
-> +
->  static int
->  nfs_compare_remount_data(struct nfs_server *nfss,
->  			 struct nfs_parsed_mount_data *data)
->  {
-> -	if ((data->flags ^ nfss->flags) & NFS_MOUNT_CMP_FLAGMASK ||
-> +	if ((data->flags ^ nfss->flags) & NFS_REMOUNT_CMP_FLAGMASK ||
->  	    data->rsize != nfss->rsize ||
->  	    data->wsize != nfss->wsize ||
->  	    data->version != nfss->nfs_client->rpc_ops->version ||
+> I'll remove it in the labeled NFS case, which we've decided is "done"
+> even if the rest of the 4.2 draft isn't.
+> 
+> I also wonder if we should ditch these configuration options, or keep
+> them only temporarily.  It's not much code, so I think the only reason
+> to allow configuring it out is to temporarily protect people from
+> immature code.
 
-I reviewed this and it looks good to me.
+I was expecting them to be temporary, and to get removed when the draft becomes an RFC.
 
-Reviewed-by: Dave Wysochanski <dwysocha@redhat.com>
+> 
+>> +
+>> +	  If unsure, say N.
+>> +
+>>  config NFSD_V4_SECURITY_LABEL
+>>  	bool "Provide Security Label support for NFSv4 server"
+>>  	depends on NFSD_V4 && SECURITY
+>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> index 5e0dc52..f555eb2 100644
+>> --- a/fs/nfsd/nfs4proc.c
+>> +++ b/fs/nfsd/nfs4proc.c
+>> @@ -1013,6 +1013,45 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>  	return status;
+>>  }
+>>  
+>> +#ifdef CONFIG_NFSD_V4_2_SEEK
+>> +static __be32
+>> +nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>> +		struct nfsd4_seek *seek)
+>> +{
+>> +	struct file *file;
+>> +	__be32 status = nfs_ok;
+>> +
+>> +	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
+>> +					    &seek->seek_stateid,
+>> +					    RD_STATE | WR_STATE, &file);
+> 
+> I think that should be just RD_STATE.
 
+I was trying to cover the case where an application does:
 
+	open(WRITE);
+	seek(HOLE);
+	write("blah");
+
+I can change the code if that's not the way people use SEEK_HOLE / SEEK_DATA ...
+
+Anna
+
+> 
+> --b.
+> 
+> 
+>> +	if (status) {
+>> +		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
+>> +		return status;
+>> +	}
+>> +
+>> +	switch (seek->seek_whence) {
+>> +	case NFS4_CONTENT_DATA:
+>> +		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
+>> +		break;
+>> +	case NFS4_CONTENT_HOLE:
+>> +		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
+>> +		break;
+>> +	default:
+>> +		status = nfserr_union_notsupp;
+>> +		goto out;
+>> +	}
+>> +
+>> +	if (seek->seek_pos < 0)
+>> +		status = nfserrno(seek->seek_pos);
+>> +	else if (seek->seek_pos >= i_size_read(file_inode(file)))
+>> +		seek->seek_eof = true;
+>> +
+>> +out:
+>> +	fput(file);
+>> +	return status;
+>> +}
+>> +#endif /* CONFIG_NFSD_V4_2_SEEK */
+>> +
+>>  /* This routine never returns NFS_OK!  If there are no other errors, it
+>>   * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
+>>   * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
+>> @@ -1881,6 +1920,14 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>>  		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
+>>  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+>>  	},
+>> +
+>> +	/* NFSv4.2 operations */
+>> +#ifdef CONFIG_NFSD_V4_2_SEEK
+>> +	[OP_SEEK] = {
+>> +		.op_func = (nfsd4op_func)nfsd4_seek,
+>> +		.op_name = "OP_SEEK",
+>> +	},
+>> +#endif /* CONFIG_NFSD_V4_2_SEEK */
+>>  };
+>>  
+>>  int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index 94dde7b..5bedeb3 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -1520,6 +1520,24 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+>>  	DECODE_TAIL;
+>>  }
+>>  
+>> +#ifdef CONFIG_NFSD_V4_2_SEEK
+>> +static __be32
+>> +nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
+>> +{
+>> +	DECODE_HEAD;
+>> +
+>> +	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
+>> +	if (status)
+>> +		return status;
+>> +
+>> +	READ_BUF(12);
+>> +	p = xdr_decode_hyper(p, &seek->seek_offset);
+>> +	seek->seek_whence = be32_to_cpup(p);
+>> +
+>> +	DECODE_TAIL;
+>> +}
+>> +#endif /* CONFIG_NFSD_V4_2_SEEK */
+>> +
+>>  static __be32
+>>  nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
+>>  {
+>> @@ -1605,7 +1623,11 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>>  	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>>  	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>>  	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>> +#ifdef CONFIG_NFSD_V4_2_SEEK
+>> +	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
+>> +#else
+>>  	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>> +#endif /* CONFIG_NFSD_V4_2_SEEK */
+>>  	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>>  };
+>>  
+>> @@ -3764,6 +3786,24 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
+>>  	return nfserr;
+>>  }
+>>  
+>> +#ifdef CONFIG_NFSD_V4_2_SEEK
+>> +static __be32
+>> +nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
+>> +		  struct nfsd4_seek *seek)
+>> +{
+>> +	__be32 *p;
+>> +
+>> +	if (nfserr)
+>> +		return nfserr;
+>> +
+>> +	p = xdr_reserve_space(&resp->xdr, 12);
+>> +	*p++ = cpu_to_be32(seek->seek_eof);
+>> +	p = xdr_encode_hyper(p, seek->seek_pos);
+>> +
+>> +	return nfserr;
+>> +}
+>> +#endif /* CONFIG_NFSD_V4_2_SEEK */
+>> +
+>>  static __be32
+>>  nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
+>>  {
+>> @@ -3848,8 +3888,13 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+>>  	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
+>>  	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
+>>  	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
+>> +#ifdef CONFIG_NFSD_V4_2_SEEK
+>> +	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
+>> +#else
+>>  	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
+>> +#endif /* CONFIG_NFSD_V4_2_SEEK */
+>>  	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
+>> +	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
+>>  };
+>>  
+>>  /*
+>> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+>> index 465e779..5720e94 100644
+>> --- a/fs/nfsd/xdr4.h
+>> +++ b/fs/nfsd/xdr4.h
+>> @@ -428,6 +428,17 @@ struct nfsd4_reclaim_complete {
+>>  	u32 rca_one_fs;
+>>  };
+>>  
+>> +struct nfsd4_seek {
+>> +	/* request */
+>> +	stateid_t	seek_stateid;
+>> +	loff_t		seek_offset;
+>> +	u32		seek_whence;
+>> +
+>> +	/* response */
+>> +	u32		seek_eof;
+>> +	loff_t		seek_pos;
+>> +};
+>> +
+>>  struct nfsd4_op {
+>>  	int					opnum;
+>>  	__be32					status;
+>> @@ -473,6 +484,9 @@ struct nfsd4_op {
+>>  		struct nfsd4_reclaim_complete	reclaim_complete;
+>>  		struct nfsd4_test_stateid	test_stateid;
+>>  		struct nfsd4_free_stateid	free_stateid;
+>> +
+>> +		/* NFSv4.2 */
+>> +		struct nfsd4_seek		seek;
+>>  	} u;
+>>  	struct nfs4_replay *			replay;
+>>  };
+>> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+>> index cf38224..026b0c0 100644
+>> --- a/include/linux/nfs4.h
+>> +++ b/include/linux/nfs4.h
+>> @@ -550,4 +550,9 @@ struct nfs4_deviceid {
+>>  	char data[NFS4_DEVICEID4_SIZE];
+>>  };
+>>  
+>> +enum data_content4 {
+>> +	NFS4_CONTENT_DATA		= 0,
+>> +	NFS4_CONTENT_HOLE		= 1,
+>> +};
+>> +
+>>  #endif
+>> -- 
+>> 2.1.0
+>>
 
