@@ -1,79 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:53918 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751576AbaHSSuD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 14:50:03 -0400
-Received: by mail-qa0-f44.google.com with SMTP id f12so6097387qad.3
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Aug 2014 11:50:00 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/7] nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
-Date: Tue, 19 Aug 2014 14:49:45 -0400
-Message-Id: <1408474189-14491-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
-References: <1408474189-14491-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f177.google.com ([209.85.216.177]:36179 "EHLO
+	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751586AbaH0Iaf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Aug 2014 04:30:35 -0400
+Received: by mail-qc0-f177.google.com with SMTP id x13so16810115qcv.36
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Aug 2014 01:30:34 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140826195033.GB25117@fieldses.org>
+References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
+	<20140710175136.GA26561@fieldses.org>
+	<CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
+	<CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
+	<CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
+	<CAHQdGtS_O3i6fBhW7vTurL=Y7cKmoeGjTXiEMU5mbb3tR3-LjA@mail.gmail.com>
+	<CALtMJEALbP3DKpaL9Bz6tNjj3GHYUo7wb=VRbOcjB1+hOr6GCg@mail.gmail.com>
+	<CAHQdGtS34K6S_59Huvx8EK+mh1QwSrjtUXaNogGYSm5aQZCA=w@mail.gmail.com>
+	<20140826195033.GB25117@fieldses.org>
+Date: Wed, 27 Aug 2014 10:30:34 +0200
+Message-ID: <CALtMJECxo57CXw1=yKDGLm0o+jPLLpj+7rDMAMMJ95uYEC15Xw@mail.gmail.com>
+Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
+From: Andreas Fenkart <afenkart@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Daniel Mack <zonque@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@poochiereds.net>
+Hi
 
-Since nfsdcld has been dead for a few years now, clean up the prefixes
-on the constants.
+2014-08-26 21:50 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+>>
+>> Still not seeing the readdir, but the getattrs are there and all looks OK.
+>> Question: the server is knfsd from a Linux 3.14.4 kernel, is that
+>> correct? So it does have commit 83b19121522 (nfsd: revert v2 half of
+>> "nfsd: don't return high mode bits")?
+>
+> Yeah, you can even see the high bits set (correctly) in the stat
+> returns, so he has that patch.
+>
+> Andreas, are you still seeing this problem?
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- utils/nfsdcltrack/sqlite.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+No it's gone, but I upgraded my (server-)system meanwhile (debian unstable)
+I also tried downgrading my kernel to the version I had back then, but
+the problem doesn't show up anymore.
 
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index 352f029d55c0..52fcaa4d7ca3 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -50,10 +50,10 @@
- 
- #include "xlog.h"
- 
--#define CLD_SQLITE_SCHEMA_VERSION 1
-+#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 1
- 
- /* in milliseconds */
--#define CLD_SQLITE_BUSY_TIMEOUT 10000
-+#define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
- 
- /* private data structures */
- 
-@@ -111,7 +111,7 @@ sqlite_prepare_dbh(const char *topdir)
- 		return ret;
- 	}
- 
--	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
-+	ret = sqlite3_busy_timeout(dbh, CLTRACK_SQLITE_BUSY_TIMEOUT);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
- 		sqlite3_close(dbh);
-@@ -156,7 +156,7 @@ sqlite_maindb_init(const char *topdir)
- 	/* insert version into table -- ignore error if it fails */
- 	ret = snprintf(buf, sizeof(buf),
- 		       "INSERT OR IGNORE INTO parameters values (\"version\", "
--		       "\"%d\");", CLD_SQLITE_SCHEMA_VERSION);
-+		       "\"%d\");", CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION);
- 	if (ret < 0) {
- 		goto out_err;
- 	} else if ((size_t)ret >= sizeof(buf)) {
-@@ -189,10 +189,10 @@ sqlite_maindb_init(const char *topdir)
- 
- 	/* process SELECT result */
- 	ret = sqlite3_column_int(stmt, 0);
--	if (ret != CLD_SQLITE_SCHEMA_VERSION) {
-+	if (ret != CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION) {
- 		xlog(L_ERROR, "Unsupported database schema version! "
- 			"Expected %d, got %d.",
--			CLD_SQLITE_SCHEMA_VERSION, ret);
-+			CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION, ret);
- 		ret = -EINVAL;
- 		goto out_err;
- 	}
--- 
-1.9.3
+sorry the noise
+/Andreas
 
+
+$ cat /proc/version
+Linux version 3.14-1-amd64 (debian-kernel@lists.debian.org) (gcc
+version 4.8.2 (Debian 4.8.2-21) ) #1 SMP Debian 3.14.4-1 (2014-05-13)
+
+http://snapshot.debian.org/archive/debian/20140514T103724Z/pool/main/l/linux/linux-image-3.14-1-amd64_3.14.4-1_i386.deb
