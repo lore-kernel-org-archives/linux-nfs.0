@@ -1,154 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:63653 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753505AbaHLTD3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 15:03:29 -0400
-Received: by mail-qg0-f50.google.com with SMTP id q108so9770328qgd.23
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 12:03:27 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 12 Aug 2014 15:03:26 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, Anna.Schumaker@netapp.com
-Subject: Re: [PATCH] nfsd: mark CONFIG_NFSD_FAULT_INJECTION as deprecated
-Message-ID: <20140812150326.6d738022@tlielax.poochiereds.net>
-In-Reply-To: <20140812184849.GA25914@fieldses.org>
-References: <1407351771-11435-1-git-send-email-jlayton@primarydata.com>
-	<20140812184849.GA25914@fieldses.org>
+Received: from mx12.netapp.com ([216.240.18.77]:26631 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934425AbaH0PTW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 27 Aug 2014 11:19:22 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS: Add v4.2 SEEK support
+Date: Wed, 27 Aug 2014 11:18:49 -0400
+Message-ID: <1409152730-8070-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 12 Aug 2014 14:48:49 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+This patch adds support for the NFS v4.2 operation SEEK.
 
-> On Wed, Aug 06, 2014 at 03:02:51PM -0400, Jeff Layton wrote:
-> > The fault injection code is shaky at best. If you have a lot of stateful
-> > objects, then you can end up overflowing the client's refcount. The code
-> > is not widely used and is starting to become a maintenance burden mark
-> > it DEPRECATED and document that we'll remove it in v3.19.
-> 
-> I doubt anyone will notice a config text change on upgrade.
-> 
-> If we think a deprecation warning's necessary then it would be more
-> useful to put it in a printk() that fires the first time somebody uses
-> one of these.
-> 
-> --b.
-> 
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > ---
-> >  fs/nfsd/Kconfig | 5 ++++-
-> >  1 file changed, 4 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-> > index f994e750e0d1..aad734c0b48a 100644
-> > --- a/fs/nfsd/Kconfig
-> > +++ b/fs/nfsd/Kconfig
-> > @@ -98,11 +98,14 @@ config NFSD_V4_SECURITY_LABEL
-> >  	For now we recommend "Y" only for developers and testers.
-> >  
-> >  config NFSD_FAULT_INJECTION
-> > -	bool "NFS server manual fault injection"
-> > +	bool "NFS server manual fault injection (DEPRECATED)"
-> >  	depends on NFSD_V4 && DEBUG_KERNEL
-> >  	help
-> >  	  This option enables support for manually injecting faults
-> >  	  into the NFS server.  This is intended to be used for
-> >  	  testing error recovery on the NFS client.
-> >  
-> > +	  This feature should not be enabled on production systems
-> > +	  and will be removed in v3.19.
-> > +
-> >  	  If unsure, say N.
-> > -- 
-> > 1.9.3
-> > 
+I think nfs4proc.c and nfs4xdr.c have grown out of control, and I would like
+to avoid adding new functions to these files unless absolutely necessary.
+Therefore, I created nfs4.2proc.c and nfs4.2xdr.h in an attempt to separate
+out the new code.
 
-Good point. Maybe something like this patch then? The printk is a
-little sparse, but I'm not sure what else we should say there...
+Questions?  Comments?  Thoughts?
 
------------------------[snip]--------------------------
+Anna
 
-[PATCH] nfsd: mark CONFIG_NFSD_FAULT_INJECTION as deprecated
 
-The fault injection code is shaky at best. If you have a lot of stateful
-objects, then you can end up overflowing the client's refcount. The code
-is not widely used and is starting to become a maintenance burden. Mark
-it DEPRECATED and document that we'll remove it in v3.19.
+Anna Schumaker (1):
+  NFS: Implement SEEK
 
-Also add a printk that will fire once whenever someone tries to use this
-facility.
+ fs/nfs/Makefile           |  1 +
+ fs/nfs/inode.c            |  2 +
+ fs/nfs/nfs4.2.h           | 14 +++++++
+ fs/nfs/nfs4.2proc.c       | 39 +++++++++++++++++++
+ fs/nfs/nfs4.2xdr.h        | 98 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4_fs.h          |  7 ++++
+ fs/nfs/nfs4client.c       |  2 +
+ fs/nfs/nfs4file.c         | 68 ++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c         |  1 -
+ fs/nfs/nfs4xdr.c          |  7 ++++
+ fs/nfsd/nfs4proc.c        |  2 +-
+ include/linux/nfs4.h      |  3 ++
+ include/linux/nfs_fs_sb.h |  1 +
+ include/linux/nfs_xdr.h   | 19 +++++++++
+ 14 files changed, 262 insertions(+), 2 deletions(-)
+ create mode 100644 fs/nfs/nfs4.2.h
+ create mode 100644 fs/nfs/nfs4.2proc.c
+ create mode 100644 fs/nfs/nfs4.2xdr.h
 
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/Kconfig        |  5 ++++-
- fs/nfsd/fault_inject.c | 16 ++++++++++++++++
- 2 files changed, 20 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index f994e750e0d1..aad734c0b48a 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -98,11 +98,14 @@ config NFSD_V4_SECURITY_LABEL
- 	For now we recommend "Y" only for developers and testers.
- 
- config NFSD_FAULT_INJECTION
--	bool "NFS server manual fault injection"
-+	bool "NFS server manual fault injection (DEPRECATED)"
- 	depends on NFSD_V4 && DEBUG_KERNEL
- 	help
- 	  This option enables support for manually injecting faults
- 	  into the NFS server.  This is intended to be used for
- 	  testing error recovery on the NFS client.
- 
-+	  This feature should not be enabled on production systems
-+	  and will be removed in v3.19.
-+
- 	  If unsure, say N.
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index c16bf5af6831..91874de13ae4 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -24,6 +24,18 @@ struct nfsd_fault_inject_op {
- 
- static struct dentry *debug_dir;
- 
-+static void
-+warn_deprecated(void)
-+{
-+	static bool warned = false;
-+
-+	if (!warned) {
-+		pr_notice("nfsd: the NFSD fault injection framework is "
-+			  "scheduled for removal in v3.19.\n");
-+		warned = true;
-+	}
-+}
-+
- static ssize_t fault_inject_read(struct file *file, char __user *buf,
- 				 size_t len, loff_t *ppos)
- {
-@@ -33,6 +45,8 @@ static ssize_t fault_inject_read(struct file *file, char __user *buf,
- 	loff_t pos = *ppos;
- 	struct nfsd_fault_inject_op *op = file_inode(file)->i_private;
- 
-+	warn_deprecated();
-+
- 	if (!pos)
- 		val = op->get();
- 	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
-@@ -51,6 +65,8 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
- 	u64 val;
- 	char *nl;
- 
-+	warn_deprecated();
-+
- 	if (copy_from_user(write_buf, buf, size))
- 		return -EFAULT;
- 	write_buf[size] = '\0';
 -- 
-1.9.3
+2.1.0
 
