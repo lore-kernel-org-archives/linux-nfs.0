@@ -1,147 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f171.google.com ([209.85.192.171]:33604 "EHLO
-	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752276AbaHTJ4x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 05:56:53 -0400
-Message-ID: <53F470CA.7000907@gmail.com>
-Date: Wed, 20 Aug 2014 17:56:26 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:52625 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751072AbaH1HmX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Aug 2014 03:42:23 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so399714qcx.27
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Aug 2014 00:42:23 -0700 (PDT)
 MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
+In-Reply-To: <20140827132607.GA12766@fieldses.org>
+References: <CALtMJECmW-yYgD3W5FUxQZJVZkb5NSJpQ5V9Q3ZE=1NKeCDtOA@mail.gmail.com>
+	<20140710175136.GA26561@fieldses.org>
+	<CALtMJECLdEOsmuW4AOnNsAyY+OMr3MtFN9W71DRw3tpidKrU8A@mail.gmail.com>
+	<CAHQdGtQAgKyFgwp+6w64vXkcKkBQ=YVfiH0jgaonAMumHoTutg@mail.gmail.com>
+	<CALtMJEDT=jCWMR0Akjo72fL3SW63dEmDTQbdg5Pv_DV5Oggz_g@mail.gmail.com>
+	<CAHQdGtS_O3i6fBhW7vTurL=Y7cKmoeGjTXiEMU5mbb3tR3-LjA@mail.gmail.com>
+	<CALtMJEALbP3DKpaL9Bz6tNjj3GHYUo7wb=VRbOcjB1+hOr6GCg@mail.gmail.com>
+	<CAHQdGtS34K6S_59Huvx8EK+mh1QwSrjtUXaNogGYSm5aQZCA=w@mail.gmail.com>
+	<20140826195033.GB25117@fieldses.org>
+	<CALtMJECxo57CXw1=yKDGLm0o+jPLLpj+7rDMAMMJ95uYEC15Xw@mail.gmail.com>
+	<20140827132607.GA12766@fieldses.org>
+Date: Thu, 28 Aug 2014 09:42:22 +0200
+Message-ID: <CALtMJEDvU2M=gMd1gfivd2c3p--QQHmMx-8ed2YJspFjfV4x3A@mail.gmail.com>
+Subject: Re: `ls` shows no files in mounted nfs folder, but ls 'file' works
+From: Andreas Fenkart <afenkart@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH 4/6 v5] locks: Copy fl_lmops information for conflock in locks_copy_conflock()
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com> <53F36CB5.2030707@gmail.com>
-In-Reply-To: <53F36CB5.2030707@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+        Daniel Mack <zonque@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit d5b9026a67 ([PATCH] knfsd: locks: flag NFSv4-owned locks) using
-fl_lmops field in file_lock for checking nfsd4 lockowner.
+Hi Bruce,
 
-But, commit 1a747ee0cc (locks: don't call ->copy_lock methods on return
-of conflicting locks) causes the fl_lmops of conflock always be NULL.
+http://snapshot.debian.org/package/linux/3.14.4-1/#linux-image-3.14-1-amd64_3.14.4-1
+  <- version when reporting bug
+http://snapshot.debian.org/package/linux/3.14.15-2/#linux-image-3.14-2-amd64_3.14.15-2
+<- current version
 
-Also, commit 0996905f93 (lockd: posix_test_lock() should not call
-locks_copy_lock()) caused the fl_lmops of conflock always be NULL too.
+even when downgrading to the previous version, I can't reproduce the
+bug anymore...
+just realized that I didn't mention the tip of my embedded system
+kernel, bad me, but it was some 3.16 rc,
 
-Make sure copy the private information by fl_copy_lock() in struct
-file_lock_operations, merge __locks_copy_lock() to fl_copy_lock().
+/Andreas
 
-Jeff advice, "Set fl_lmops on conflocks, but don't set fl_ops.
-fl_ops are superfluous, since they are callbacks into the filesystem.
-There should be no need to bother the filesystem at all with info
-in a conflock. But, lock _ownership_ matters for conflocks and that's
-indicated by the fl_lmops. So you really do want to copy the fl_lmops
-for conflocks I think."
 
-v5: add missing calling of locks_release_private() in nlmsvc_testlock()
-v4: only copy fl_lmops for conflock, don't copy fl_ops
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/lockd/svclock.c |  1 +
- fs/locks.c         | 36 ++++++++++++++++--------------------
- 2 files changed, 17 insertions(+), 20 deletions(-)
-
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 796e63b..2e1b292 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -570,6 +570,7 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
- 	conflock->fl.fl_type = lock->fl.fl_type;
- 	conflock->fl.fl_start = lock->fl.fl_start;
- 	conflock->fl.fl_end = lock->fl.fl_end;
-+	locks_release_private(&lock->fl);
- 	ret = nlm_lck_denied;
- out:
- 	if (block)
-diff --git a/fs/locks.c b/fs/locks.c
-index c376561..0ee775d 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -271,21 +271,6 @@ void locks_init_lock(struct file_lock *fl)
- 
- EXPORT_SYMBOL(locks_init_lock);
- 
--static void locks_copy_private(struct file_lock *new, struct file_lock *fl)
--{
--	if (fl->fl_ops) {
--		if (fl->fl_ops->fl_copy_lock)
--			fl->fl_ops->fl_copy_lock(new, fl);
--		new->fl_ops = fl->fl_ops;
--	}
--
--	if (fl->fl_lmops) {
--		if (fl->fl_lmops->lm_get_owner)
--			fl->fl_lmops->lm_get_owner(new, fl);
--		new->fl_lmops = fl->fl_lmops;
--	}
--}
--
- /*
-  * Initialize a new lock from an existing file_lock structure.
-  */
-@@ -298,8 +283,13 @@ void locks_copy_conflock(struct file_lock *new, struct file_lock *fl)
- 	new->fl_type = fl->fl_type;
- 	new->fl_start = fl->fl_start;
- 	new->fl_end = fl->fl_end;
-+	new->fl_lmops = fl->fl_lmops;
- 	new->fl_ops = NULL;
--	new->fl_lmops = NULL;
-+
-+	if (fl->fl_lmops) {
-+		if (fl->fl_lmops->lm_get_owner)
-+			fl->fl_lmops->lm_get_owner(new, fl);
-+	}
- }
- EXPORT_SYMBOL(locks_copy_conflock);
- 
-@@ -309,11 +299,14 @@ void locks_copy_lock(struct file_lock *new, struct file_lock *fl)
- 	WARN_ON_ONCE(new->fl_ops);
- 
- 	locks_copy_conflock(new, fl);
-+
- 	new->fl_file = fl->fl_file;
- 	new->fl_ops = fl->fl_ops;
--	new->fl_lmops = fl->fl_lmops;
- 
--	locks_copy_private(new, fl);
-+	if (fl->fl_ops) {
-+		if (fl->fl_ops->fl_copy_lock)
-+			fl->fl_ops->fl_copy_lock(new, fl);
-+	}
- }
- 
- EXPORT_SYMBOL(locks_copy_lock);
-@@ -1989,11 +1982,13 @@ int fcntl_getlk(struct file *filp, unsigned int cmd, struct flock __user *l)
- 	if (file_lock.fl_type != F_UNLCK) {
- 		error = posix_lock_to_flock(&flock, &file_lock);
- 		if (error)
--			goto out;
-+			goto rel_priv;
- 	}
- 	error = -EFAULT;
- 	if (!copy_to_user(l, &flock, sizeof(flock)))
- 		error = 0;
-+rel_priv:
-+	locks_release_private(&file_lock);
- out:
- 	return error;
- }
-@@ -2214,7 +2209,8 @@ int fcntl_getlk64(struct file *filp, unsigned int cmd, struct flock64 __user *l)
- 	error = -EFAULT;
- 	if (!copy_to_user(l, &flock, sizeof(flock)))
- 		error = 0;
--  
-+
-+	locks_release_private(&file_lock);
- out:
- 	return error;
- }
--- 
-1.9.3
-
+2014-08-27 15:26 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+> On Wed, Aug 27, 2014 at 10:30:34AM +0200, Andreas Fenkart wrote:
+>> Hi
+>>
+>> 2014-08-26 21:50 GMT+02:00 J. Bruce Fields <bfields@fieldses.org>:
+>> >>
+>> >> Still not seeing the readdir, but the getattrs are there and all looks OK.
+>> >> Question: the server is knfsd from a Linux 3.14.4 kernel, is that
+>> >> correct? So it does have commit 83b19121522 (nfsd: revert v2 half of
+>> >> "nfsd: don't return high mode bits")?
+>> >
+>> > Yeah, you can even see the high bits set (correctly) in the stat
+>> > returns, so he has that patch.
+>> >
+>> > Andreas, are you still seeing this problem?
+>>
+>> No it's gone, but I upgraded my (server-)system meanwhile (debian unstable)
+>> I also tried downgrading my kernel to the version I had back then, but
+>> the problem doesn't show up anymore.
+>
+> Well, maybe there was a server bug in the old server that this change
+> just happened to expose.
+>
+> What was the server upgrade, out of curiosity?  (From what kernel
+> version, to what kernel version?)
+>
+> --b.
