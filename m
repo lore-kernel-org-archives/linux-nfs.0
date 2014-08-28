@@ -1,69 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:51761 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751812AbaHYOzc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Aug 2014 10:55:32 -0400
-Received: by mail-ie0-f174.google.com with SMTP id rp18so9571445iec.5
-        for <linux-nfs@vger.kernel.org>; Mon, 25 Aug 2014 07:55:31 -0700 (PDT)
-Message-ID: <1408978530.6599.1.camel@leira.trondhjem.org>
-Subject: [GIT PULL] Please pull NFS client fixes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Date: Mon, 25 Aug 2014 10:55:30 -0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:42049 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752513AbaH1Twe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Aug 2014 15:52:34 -0400
+Date: Thu, 28 Aug 2014 15:52:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: kbuild test robot <fengguang.wu@intel.com>,
+        "J. Bruce Fields" <bfields@redhat.com>, kbuild-all@01.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [nfsd:nfsd-next 5/23] net/sunrpc/svc_xprt.c:794:20: error:
+ 'current_task' undeclared
+Message-ID: <20140828195231.GA25203@fieldses.org>
+References: <53f0db34.mtq2J6NaXWKpR15G%fengguang.wu@intel.com>
+ <20140818161836.GA32603@fieldses.org>
+ <CAHQdGtQB2cYeMDaVrPF+dcM3Bf2PS=UzrNhJ2-zifTiDj=8ucQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtQB2cYeMDaVrPF+dcM3Bf2PS=UzrNhJ2-zifTiDj=8ucQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Wed, Aug 20, 2014 at 06:33:06PM -0400, Trond Myklebust wrote:
+> On Mon, Aug 18, 2014 at 12:18 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Mon, Aug 18, 2014 at 12:41:24AM +0800, kbuild test robot wrote:
+> >> tree:   git://linux-nfs.org/~bfields/linux.git nfsd-next
+> >> head:   da8b8f7602ed3b8105c6247a2844455fec72caaa
+> >> commit: 983c684466e02b21f83c025ea539deee6c0aeac0 [5/23] SUNRPC: get rid of the request wait queue
+> >> config: make ARCH=xtensa allyesconfig
+> >>
+> >> All error/warnings:
+> >>
+> >>    net/sunrpc/svc_xprt.c: In function 'svc_recv':
+> >> >> net/sunrpc/svc_xprt.c:794:20: error: 'current_task' undeclared (first use in this function)
+> >>       rqstp->rq_task = current_task;
+> >>                        ^
+> >>    net/sunrpc/svc_xprt.c:794:20: note: each undeclared identifier is reported only once for each function it appears in
+> >>
+> >> vim +/current_task +794 net/sunrpc/svc_xprt.c
+> >>
+> >>    788                        printk(KERN_ERR
+> >>    789                                "svc_recv: service %p, transport not NULL!\n",
+> >>    790                                 rqstp);
+> >>    791
+> >>    792                /* Make sure the task pointer is set! */
+> >>    793                if (WARN_ON_ONCE(!rqstp->rq_task))
+> >>  > 794                        rqstp->rq_task = current_task;
+> >
+> > I appreciate the effort to fail gracefully here, but maybe this would be
+> > a case for simple BUG_ON()?
+> >
+> > I don't think there are normally any important locks held here, and I
+> > can't see any other reason why killing a server thread would bring a box
+> > down.
+> >
+> > And the first developer to forget to set rq_task on a newly created
+> > server will get an immediate bug, so this should be obvious enough.
+> > Unless there's fear of a race between starting the thread and setting
+> > rq_task?
+> 
+> No, there is no fear of a race. I'm fine with removing the above check
+> altogether and just letting code Oops if it turns out that we add new
+> cases that don't set rq_task.
 
-The following changes since commit 451fd72219dd6f3355e2d036c598544c760ee532:
+OK, I'll remove it entirely.
 
-  Merge tag 'pwm/for-3.17-rc2' of git://git.kernel.org/pub/scm/linux/kernel/git/thierry.reding/linux-pwm (2014-08-22 14:50:21 -0700)
+> Ultimately, though, I think we need a better interface for starting
+> RPC server threads; something that combines svc_prepare_thread() and
+> kthread_run() into a single function call and that can thus set
+> rqstp->rq_task correctly.
 
-are available in the git repository at:
+Sounds good.
 
-
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.17-2
-
-for you to fetch changes up to 92a56555bd576c61b27a5cab9f38a33a1e9a1df5:
-
-  nfs: Don't busy-wait on SIGKILL in __nfs_iocounter_wait (2014-08-22 18:04:44 -0400)
-
-----------------------------------------------------------------
-NFS client fixes for 3.17
-
-Highlights:
-
-- More fixes for read/write codepath regressions
-  - Sleeping while holding the inode lock
-  - Stricter enforcement of page contiguity when coalescing requests
-  - Fix up error handling in the page coalescing code
-- Don't busy wait on SIGKILL in the file locking code
-
-----------------------------------------------------------------
-David Jeffery (1):
-      nfs: Don't busy-wait on SIGKILL in __nfs_iocounter_wait
-
-Weston Andros Adamson (7):
-      nfs: change nfs_page_group_lock argument
-      nfs: fix nonblocking calls to nfs_page_group_lock
-      nfs: use blocking page_group_lock in add_request
-      nfs: fix error handling in lock_and_join_requests
-      nfs: don't sleep with inode lock in lock_and_join_requests
-      nfs: disallow duplicate pages in pgio page vectors
-      nfs: can_coalesce_requests must enforce contiguity
-
- fs/nfs/pagelist.c        | 84 ++++++++++++++++++++++++++++++++++--------------
- fs/nfs/write.c           | 21 +++++++++---
- include/linux/nfs_page.h |  1 +
- 3 files changed, 77 insertions(+), 29 deletions(-)
-
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
+--b.
