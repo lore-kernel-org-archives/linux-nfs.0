@@ -1,139 +1,176 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:33911 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754573AbaHTMLV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Aug 2014 08:11:21 -0400
-Received: by mail-pd0-f174.google.com with SMTP id fp1so11657943pdb.5
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Aug 2014 05:11:17 -0700 (PDT)
-Message-ID: <53F4904B.6080204@gmail.com>
-Date: Wed, 20 Aug 2014 20:10:51 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:25972 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932699AbaH1Iue (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Aug 2014 04:50:34 -0400
+Message-ID: <53FEED2A.2050209@oracle.com>
+Date: Thu, 28 Aug 2014 16:49:46 +0800
+From: Junxiao Bi <junxiao.bi@oracle.com>
 MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
+To: Mel Gorman <mgorman@suse.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Johannes Weiner <hannes@cmpxchg.org>, NeilBrown <neilb@suse.de>,
+        Michal Hocko <mhocko@suse.cz>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Joe Perches <joe@perches.com>, Kinglong Mee <kinglongmee@gmail.com>
-Subject: Re: [PATCH] lockd: Remove unused b_fl member from struct nlm_block
-References: <53F47357.7050608@gmail.com> <20140820065826.6def22d5@tlielax.poochiereds.net>
-In-Reply-To: <20140820065826.6def22d5@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=windows-1252
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
+References: <1408747772-37938-1-git-send-email-trond.myklebust@primarydata.com> <20140825164852.50723141@notabene.brown> <20140826105304.GT17696@novell.com> <CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com> <20140826132624.GU17696@novell.com> <20140826231938.GA13889@cmpxchg.org> <CAHQdGtRPsVFVfph5OcsZk_+WYPPJ-MpE2myZfXAb3jq6fuM4zw@mail.gmail.com> <CAHQdGtQPMJNzSM5Wt4RnNqEawBLqmYHycXTmBHhmAt26dz5wCw@mail.gmail.com> <20140827153644.GF12374@novell.com> <CAHQdGtQGqw9H=io0bYGKCCS1DxHZZymGjTCoiRymKnX2i88w_w@mail.gmail.com> <20140828083053.GJ12374@novell.com>
+In-Reply-To: <20140828083053.GJ12374@novell.com>
+Content-Type: text/plain; charset=ISO-8859-15
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 8/20/2014 18:58, Jeff Layton wrote:
-> On Wed, 20 Aug 2014 18:07:19 +0800
-> Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
->> Fix left code by Joe Perches's patch,
->> "locks: Remove unused conf argument from lm_grant"
+On 08/28/2014 04:30 PM, Mel Gorman wrote:
+> On Wed, Aug 27, 2014 at 12:15:33PM -0400, Trond Myklebust wrote:
+>> On Wed, Aug 27, 2014 at 11:36 AM, Mel Gorman <mgorman@suse.com> wrote:
+>>> On Tue, Aug 26, 2014 at 08:00:20PM -0400, Trond Myklebust wrote:
+>>>> On Tue, Aug 26, 2014 at 7:51 PM, Trond Myklebust
+>>>> <trond.myklebust@primarydata.com> wrote:
+>>>>> On Tue, Aug 26, 2014 at 7:19 PM, Johannes Weiner <hannes@cmpxchg.org> wrote:
+>>>>>> On Tue, Aug 26, 2014 at 02:26:24PM +0100, Mel Gorman wrote:
+>>>>>>> On Tue, Aug 26, 2014 at 08:58:36AM -0400, Trond Myklebust wrote:
+>>>>>>>> On Tue, Aug 26, 2014 at 6:53 AM, Mel Gorman <mgorman@suse.com> wrote:
+>>>>>>>>> On Mon, Aug 25, 2014 at 04:48:52PM +1000, NeilBrown wrote:
+>>>>>>>>>> On Fri, 22 Aug 2014 18:49:31 -0400 Trond Myklebust
+>>>>>>>>>> <trond.myklebust@primarydata.com> wrote:
+>>>>>>>>>>
+>>>>>>>>>>> Junxiao Bi reports seeing the following deadlock:
+>>>>>>>>>>>
+>>>>>>>>>>> @ crash> bt 1539
+>>>>>>>>>>> @ PID: 1539   TASK: ffff88178f64a040  CPU: 1   COMMAND: "rpciod/1"
+>>>>>>>>>>> @  #0 [ffff88178f64d2c0] schedule at ffffffff8145833a
+>>>>>>>>>>> @  #1 [ffff88178f64d348] io_schedule at ffffffff8145842c
+>>>>>>>>>>> @  #2 [ffff88178f64d368] sync_page at ffffffff810d8161
+>>>>>>>>>>> @  #3 [ffff88178f64d378] __wait_on_bit at ffffffff8145895b
+>>>>>>>>>>> @  #4 [ffff88178f64d3b8] wait_on_page_bit at ffffffff810d82fe
+>>>>>>>>>>> @  #5 [ffff88178f64d418] wait_on_page_writeback at ffffffff810e2a1a
+>>>>>>>>>>> @  #6 [ffff88178f64d438] shrink_page_list at ffffffff810e34e1
+>>>>>>>>>>> @  #7 [ffff88178f64d588] shrink_list at ffffffff810e3dbe
+>>>>>>>>>>> @  #8 [ffff88178f64d6f8] shrink_zone at ffffffff810e425e
+>>>>>>>>>>> @  #9 [ffff88178f64d7b8] do_try_to_free_pages at ffffffff810e4978
+>>>>>>>>>>> @ #10 [ffff88178f64d828] try_to_free_pages at ffffffff810e4c31
+>>>>>>>>>>> @ #11 [ffff88178f64d8c8] __alloc_pages_nodemask at ffffffff810de370
+>>>>>>>>>>
+>>>>>>>>>> This stack trace (from 2.6.32) cannot happen in mainline, though it took me a
+>>>>>>>>>> while to remember/discover exactly why.
+>>>>>>>>>>
+>>>>>>>>>> try_to_free_pages() creates a 'struct scan_control' with ->target_mem_cgroup
+>>>>>>>>>> set to NULL.
+>>>>>>>>>> shrink_page_list() checks ->target_mem_cgroup using global_reclaim() and if
+>>>>>>>>>> it is NULL, wait_on_page_writeback is *not* called.
+>>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>> wait_on_page_writeback has a host of other damage associated with it which
+>>>>>>>>> is why we don't do it from reclaim any more. If the storage is very slow
+>>>>>>>>> then a process can be stalled by unrelated IO to slow storage.  If the
+>>>>>>>>> storage is broken and the writeback can never complete then it causes other
+>>>>>>>>> issues. That kind of thing.
+>>>>>>>>>
+>>>>>>>>>> So we can only hit this deadlock if mem-cgroup limits are imposed on a
+>>>>>>>>>> process which is using NFS - which is quite possible but probably not common.
+>>>>>>>>>>
+>>>>>>>>>> The fact that a dead-lock can happen only when memcg limits are imposed seems
+>>>>>>>>>> very fragile.  People aren't going to test that case much so there could well
+>>>>>>>>>> be other deadlock possibilities lurking.
+>>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>> memcgs still can call wait_on_page_writeback and this is known to be a
+>>>>>>>>> hand-grenade to the memcg people but I've never heard of them trying to
+>>>>>>>>> tackle the problem.
+>>>>>>>>>
+>>>>>>>>>> Mel: might there be some other way we could get out of this deadlock?
+>>>>>>>>>> Could the wait_on_page_writeback() in shrink_page_list() be made a timed-out
+>>>>>>>>>> wait or something?  Any other wait out of this deadlock other than setting
+>>>>>>>>>> PF_MEMALLOC_NOIO everywhere?
+>>>>>>>>>>
+>>>>>>>>>
+>>>>>>>>> I don't have the full thread as it was not cc'd to lkml so I don't know
+>>>>>>>>> what circumstances reached this deadlock in the first place. If this is
+>>>>>>>>> on 2.6.32 and the deadline cannot happen during reclaim in mainline then
+>>>>>>>>> why is mainline being patched?
+>>>>>>>>>
+>>>>>>>>> Do not alter wait_on_page_writeback() to timeout as it will blow
+>>>>>>>>> up spectacularly -- swap unuse races, data would not longer be synced
+>>>>>>>>> correctly to disk, sync IO would be flaky, stable page writes would be
+>>>>>>>>> fired out the window etc.
+>>>>>>>>
+>>>>>>>> Hi Mel,
+>>>>>>>>
+>>>>>>>> The above stack trace really is the entire deadlock: the rpciod work
+>>>>>>>> queue, which drives I/O on behalf of NFS, gets caught in a
+>>>>>>>> shrink_page_list() situation where it ends up waiting on page
+>>>>>>>> writeback. Boom....
+>>>>>>>>
+>>>>>>>> Even if this can only happen for non-trivial memcg situations, then it
+>>>>>>>> still needs to be addressed: if rpciod blocks, then all NFS I/O will
+>>>>>>>> block and we can no longer write out the dirty pages. This is why we
+>>>>>>>> need a mainline fix.
+>>>>>>>>
+>>>>>>>
+>>>>>>> In that case I'm adding the memcg people. I recognise that rpciod should
+>>>>>>> never block on writeback for similar reasons why flushers should never block.
+>>>>>>> memcg blocking on writeback is dangerous for reasons other than NFS but
+>>>>>>> adding a variant that times out just means that on occasion processes get
+>>>>>>> stalled for long periods of time timing out on these writeback pages. In
+>>>>>>> that case, forward progress of rpciod would be painfully slow.
+>>>>>>>
+>>>>>>> On the other hand, forcing PF_MEMALLOC_NOIO for all rpciod allocations in
+>>>>>>> an ideal world is massive overkill and while it will work, there will be
+>>>>>>> other consequences -- unable to swap pages for example, unable to release
+>>>>>>> buffers to free clean pages etc.
+>>>>>>>
+>>>>>>> It'd be nice of the memcg people could comment on whether they plan to
+>>>>>>> handle the fact that memcg is the only called of wait_on_page_writeback
+>>>>>>> in direct reclaim paths.
+>>>>>>
+>>>>>> wait_on_page_writeback() is a hammer, and we need to be better about
+>>>>>> this once we have per-memcg dirty writeback and throttling, but I
+>>>>>> think that really misses the point.  Even if memcg writeback waiting
+>>>>>> were smarter, any length of time spent waiting for yourself to make
+>>>>>> progress is absurd.  We just shouldn't be solving deadlock scenarios
+>>>>>> through arbitrary timeouts on one side.  If you can't wait for IO to
+>>>>>> finish, you shouldn't be passing __GFP_IO.
+>>>>>>
+>>>>>> Can't you use mempools like the other IO paths?
+>>>>>
+>>>>> There is no way to pass any allocation flags at all to an operation
+>>>>> such as __sock_create() (which may be needed if the server
+>>>>> disconnects). So in general, the answer is no.
+>>>>>
+>>>>
+>>>> Actually, one question that should probably be raised before anything
+>>>> else: is it at all possible for a workqueue like rpciod to have a
+>>>> non-trivial setting for ->target_mem_cgroup? If not, then the whole
+>>>> question is moot.
+>>>>
+>>>
+>>> AFAIK, today it's not possible to add kernel threads (which rpciod is one)
+>>> to a memcg so the issue is entirely theoritical at the moment.  Even if
+>>> this was to change, it's not clear to me what adding kernel threads to a
+>>> memcg would mean as kernel threads have no RSS. Even if kernel resources
+>>> were accounted for, I cannot see why a kernel thread would join a memcg.
+>>>
+>>> I expec that it's currently impossible for rpciod to have a non-trivial
+>>> target_mem_cgroup. The memcg folk will correct me if I'm wrong or if there
+>>> are plans to change that for some reason.
+>>>
 >>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  fs/lockd/svclock.c          | 26 +++++---------------------
->>  include/linux/lockd/lockd.h |  1 -
->>  2 files changed, 5 insertions(+), 22 deletions(-)
+>> Thanks! Then I'll assume that the problem is nonexistent in upstream
+>> for now, and drop the idea of using PF_MEMALLOC_NOIO. Perhaps we can
+>> then encourage Junxiao to look into backporting some of the VM changes
+>> in order to fix his Oracle legacy kernel issues?
 >>
->> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
->> index 2a61701..796e63b 100644
->> --- a/fs/lockd/svclock.c
->> +++ b/fs/lockd/svclock.c
->> @@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
->>  	block->b_daemon = rqstp->rq_server;
->>  	block->b_host   = host;
->>  	block->b_file   = file;
->> -	block->b_fl = NULL;
->>  	file->f_count++;
->>  
->>  	/* Add to file's list of blocks */
->> @@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
->>  	nlmsvc_freegrantargs(block->b_call);
->>  	nlmsvc_release_call(block->b_call);
->>  	nlm_release_file(block->b_file);
->> -	kfree(block->b_fl);
->>  	kfree(block);
->>  }
->>  
->> @@ -523,20 +521,13 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->>  	block = nlmsvc_lookup_block(file, lock);
->>  
->>  	if (block == NULL) {
->> -		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
->> -
->> -		if (conf == NULL)
->> -			return nlm_granted;
->>  		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
->> -		if (block == NULL) {
->> -			kfree(conf);
->> +		if (block == NULL)
->>  			return nlm_granted;
->> -		}
->> -		block->b_fl = conf;
 > 
-> NAK. The b_fl member is not unused, as is evidenced by the assignment
-> above.
+> Sounds like a plan to me. The other alternative would be backporting the
+> handling of wait_on_page_writeback and writeback handling from reclaim but
+> that would be much harder considering the rate of change in vmscan.c and
+> the problems that were experienced with high CPU usage from kswapd during
+> that transition.
+Backport the vm changes may cause a lot of risk due to lots of changes,
+i am thinking to check PF_FSTRANS flag in shrink_page_list() to bypass
+the fs ops in our old kernel. Can this cause other issue?
 
-Sorry for my bad title, Maybe I should use a good name, sorry!
-
+Thanks,
+Junxiao.
 > 
-> Joe's patch removed the conflock from the lm_grant callback since the
-> filesystem never set that parameter in the lm_grant callback. This call
-> however has nothing to do with lm_grant. It's done when the client
-> issues a NLM_TEST operation.
-> 
->>  	}
->>  	if (block->b_flags & B_QUEUED) {
->> -		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
->> -			block, block->b_flags, block->b_fl);
->> +		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d\n",
->> +			block, block->b_flags);
->>  		if (block->b_flags & B_TIMED_OUT) {
->>  			nlmsvc_unlink_block(block);
->>  			ret = nlm_lck_denied;
->> @@ -544,14 +535,8 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->>  		}
->>  		if (block->b_flags & B_GOT_CALLBACK) {
->>  			nlmsvc_unlink_block(block);
->> -			if (block->b_fl != NULL
->> -					&& block->b_fl->fl_type != F_UNLCK) {
->> -				lock->fl = *block->b_fl;
->> -				goto conf_lock;
 
-block->b_fl = conf just set an all-zero filed structure to block above,
-and never be updated later.
-If lockd enter here, lock->fl will contains all filed with zero,
-I don't know whether is it OK.
-
-thanks,
-Kinglong Mee
-
->> -			} else {
->> -				ret = nlm_granted;
->> -				goto out;
->> -			}
->> +			ret = nlm_granted;
->> +			goto out;
->>  		}
->>  		ret = nlm_drop_reply;
->>  		goto out;
->> @@ -575,7 +560,6 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->>  		goto out;
->>  	}
->>  
->> -conf_lock:
->>  	dprintk("lockd: conflicting lock(ty=%d, %Ld-%Ld)\n",
->>  		lock->fl.fl_type, (long long)lock->fl.fl_start,
->>  		(long long)lock->fl.fl_end);
->> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
->> index 219d796..ff82a32 100644
->> --- a/include/linux/lockd/lockd.h
->> +++ b/include/linux/lockd/lockd.h
->> @@ -178,7 +178,6 @@ struct nlm_block {
->>  	unsigned char		b_granted;	/* VFS granted lock */
->>  	struct nlm_file *	b_file;		/* file in question */
->>  	struct cache_req *	b_cache_req;	/* deferred request handling */
->> -	struct file_lock *	b_fl;		/* set for GETLK */
->>  	struct cache_deferred_req * b_deferred_req;
->>  	unsigned int		b_flags;	/* block flags */
->>  #define B_QUEUED		1	/* lock queued */
-> 
-> 
