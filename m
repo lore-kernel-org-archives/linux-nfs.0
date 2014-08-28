@@ -1,178 +1,292 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:35845 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754425AbaHVIvS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Aug 2014 04:51:18 -0400
-Received: by mail-pa0-f52.google.com with SMTP id bj1so16348289pad.11
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Aug 2014 01:51:17 -0700 (PDT)
-Message-ID: <53F7046C.4020306@gmail.com>
-Date: Fri, 22 Aug 2014 16:50:52 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:34224 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752017AbaH1UYo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Aug 2014 16:24:44 -0400
+Date: Thu, 28 Aug 2014 16:24:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 1/5] lockd: move lockd's grace period handling into
+ its own module
+Message-ID: <20140828202442.GC25203@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+ <1408473509-14010-2-git-send-email-jlayton@primarydata.com>
+ <20140828200059.GB25203@fieldses.org>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@primarydata.com>, linux-nfs@vger.kernel.org
-CC: cluster-devel@redhat.com, Kinglong Mee <kinglongmee@gmail.com>
-Subject: Re: [PATCH] lockd: rip out deferred lock handling from testlock codepath
-References: <1408635948-30481-1-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1408635948-30481-1-git-send-email-jlayton@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140828200059.GB25203@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'd like this patch.
+On Thu, Aug 28, 2014 at 04:01:00PM -0400, J. Bruce Fields wrote:
+> On Tue, Aug 19, 2014 at 02:38:25PM -0400, Jeff Layton wrote:
+> > Currently, all of the grace period handling is part of lockd. Eventually
+> > though we'd like to be able to build v4-only servers, at which point
+> > we'll need to put all of this elsewhere.
+> > 
+> > Move the code itself into fs/nfs_common and have it build a grace.ko
+> > module. Then, rejigger the Kconfig options so that both nfsd and lockd
+> > enable it automatically.
+> 
+> Thanks, applying this one for 3.18 indepedently of the others.
 
-Reviewed-by: Kinglong Mee <kinglongmee@gmail.com>
+This code should also be fixed, though.
 
-On 8/21/2014 23:45, Jeff Layton wrote:
-> As Kinglong points out, the nlm_block->b_fl field is no longer used at
-> all. Also, vfs_test_lock in the generic locking code will only return
-> FILE_LOCK_DEFERRED if FL_SLEEP is set, and it isn't here.
+Currently nfsd is recording the grace period as done when its own timer
+runs out, but then it continuing to accept reclaims until lockd is also
+done.
+
+This is an unusual bug to actually hit in part because lockd's grace
+period is by default less than nfsd's.
+
+Your code introduces new cases when nfsd's grace period could end before
+lockd's, but in all of them future reclaims would be denied (because the
+only clients active on last shutdown would be 4.1 clients that have all
+issued RECLAIM_COMPLETE, so reclaims are all going to be denied).
+
+So maybe it's not urgent.
+
+--b.
+
 > 
-> The only other place that returns that value is the DLM lock code, but
-> it only does that in dlm_posix_lock, never in dlm_posix_get.
+> --b.
 > 
-> Remove all of the deferred locking code from the testlock codepath
-> since it doesn't appear to ever be used anyway.
-> 
-> I do have a small concern that this might cause a behavior change in the
-> case where you have a block already sitting on the list when the
-> testlock request comes in, but that looks like it doesn't really work
-> properly anyway. I think it's best to just pass that down to
-> vfs_test_lock and let the filesystem report that instead of trying to
-> infer what's going on with the lock by looking at an existing block.
-> 
-> Cc: cluster-devel@redhat.com
-> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/lockd/svclock.c          | 55 +++++----------------------------------------
->  include/linux/lockd/lockd.h |  1 -
->  2 files changed, 6 insertions(+), 50 deletions(-)
-> 
-> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> index acfa94d5b489..13db95f54176 100644
-> --- a/fs/lockd/svclock.c
-> +++ b/fs/lockd/svclock.c
-> @@ -245,7 +245,6 @@ nlmsvc_create_block(struct svc_rqst *rqstp, struct nlm_host *host,
->  	block->b_daemon = rqstp->rq_server;
->  	block->b_host   = host;
->  	block->b_file   = file;
-> -	block->b_fl = NULL;
->  	file->f_count++;
->  
->  	/* Add to file's list of blocks */
-> @@ -295,7 +294,6 @@ static void nlmsvc_free_block(struct kref *kref)
->  	nlmsvc_freegrantargs(block->b_call);
->  	nlmsvc_release_call(block->b_call);
->  	nlm_release_file(block->b_file);
-> -	kfree(block->b_fl);
->  	kfree(block);
->  }
->  
-> @@ -508,7 +506,6 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->  		struct nlm_host *host, struct nlm_lock *lock,
->  		struct nlm_lock *conflock, struct nlm_cookie *cookie)
->  {
-> -	struct nlm_block 	*block = NULL;
->  	int			error;
->  	__be32			ret;
->  
-> @@ -519,63 +516,26 @@ nlmsvc_testlock(struct svc_rqst *rqstp, struct nlm_file *file,
->  				(long long)lock->fl.fl_start,
->  				(long long)lock->fl.fl_end);
->  
-> -	/* Get existing block (in case client is busy-waiting) */
-> -	block = nlmsvc_lookup_block(file, lock);
-> -
-> -	if (block == NULL) {
-> -		struct file_lock *conf = kzalloc(sizeof(*conf), GFP_KERNEL);
-> -
-> -		if (conf == NULL)
-> -			return nlm_granted;
-> -		block = nlmsvc_create_block(rqstp, host, file, lock, cookie);
-> -		if (block == NULL) {
-> -			kfree(conf);
-> -			return nlm_granted;
-> -		}
-> -		block->b_fl = conf;
-> -	}
-> -	if (block->b_flags & B_QUEUED) {
-> -		dprintk("lockd: nlmsvc_testlock deferred block %p flags %d fl %p\n",
-> -			block, block->b_flags, block->b_fl);
-> -		if (block->b_flags & B_TIMED_OUT) {
-> -			nlmsvc_unlink_block(block);
-> -			ret = nlm_lck_denied;
-> -			goto out;
-> -		}
-> -		if (block->b_flags & B_GOT_CALLBACK) {
-> -			nlmsvc_unlink_block(block);
-> -			if (block->b_fl != NULL
-> -					&& block->b_fl->fl_type != F_UNLCK) {
-> -				lock->fl = *block->b_fl;
-> -				goto conf_lock;
-> -			} else {
-> -				ret = nlm_granted;
-> -				goto out;
-> -			}
-> -		}
-> -		ret = nlm_drop_reply;
-> -		goto out;
-> -	}
-> -
->  	if (locks_in_grace(SVC_NET(rqstp))) {
->  		ret = nlm_lck_denied_grace_period;
->  		goto out;
->  	}
-> +
->  	error = vfs_test_lock(file->f_file, &lock->fl);
-> -	if (error == FILE_LOCK_DEFERRED) {
-> -		ret = nlmsvc_defer_lock_rqst(rqstp, block);
-> -		goto out;
-> -	}
->  	if (error) {
-> +		/* We can't currently deal with deferred test requests */
-> +		if (error == FILE_LOCK_DEFERRED)
-> +			WARN_ON_ONCE(1);
-> +
->  		ret = nlm_lck_denied_nolocks;
->  		goto out;
->  	}
-> +
->  	if (lock->fl.fl_type == F_UNLCK) {
->  		ret = nlm_granted;
->  		goto out;
->  	}
->  
-> -conf_lock:
->  	dprintk("lockd: conflicting lock(ty=%d, %Ld-%Ld)\n",
->  		lock->fl.fl_type, (long long)lock->fl.fl_start,
->  		(long long)lock->fl.fl_end);
-> @@ -589,8 +549,6 @@ conf_lock:
->  	locks_release_private(&lock->fl);
->  	ret = nlm_lck_denied;
->  out:
-> -	if (block)
-> -		nlmsvc_release_block(block);
->  	return ret;
->  }
->  
-> @@ -661,7 +619,6 @@ nlmsvc_cancel_blocked(struct net *net, struct nlm_file *file, struct nlm_lock *l
->   * This is a callback from the filesystem for VFS file lock requests.
->   * It will be used if lm_grant is defined and the filesystem can not
->   * respond to the request immediately.
-> - * For GETLK request it will copy the reply to the nlm_block.
->   * For SETLK or SETLKW request it will get the local posix lock.
->   * In all cases it will move the block to the head of nlm_blocked q where
->   * nlmsvc_retry_blocked() can send back a reply for SETLKW or revisit the
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index 219d79627c05..ff82a32871b5 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -178,7 +178,6 @@ struct nlm_block {
->  	unsigned char		b_granted;	/* VFS granted lock */
->  	struct nlm_file *	b_file;		/* file in question */
->  	struct cache_req *	b_cache_req;	/* deferred request handling */
-> -	struct file_lock *	b_fl;		/* set for GETLK */
->  	struct cache_deferred_req * b_deferred_req;
->  	unsigned int		b_flags;	/* block flags */
->  #define B_QUEUED		1	/* lock queued */
-> 
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > ---
+> >  fs/Kconfig                       |  6 +++-
+> >  fs/lockd/Makefile                |  2 +-
+> >  fs/lockd/netns.h                 |  1 -
+> >  fs/lockd/svc.c                   |  1 -
+> >  fs/nfs_common/Makefile           |  3 +-
+> >  fs/{lockd => nfs_common}/grace.c | 68 ++++++++++++++++++++++++++++++++++------
+> >  fs/nfsd/Kconfig                  |  1 +
+> >  include/linux/proc_fs.h          |  2 ++
+> >  8 files changed, 69 insertions(+), 15 deletions(-)
+> >  rename fs/{lockd => nfs_common}/grace.c (50%)
+> > 
+> > diff --git a/fs/Kconfig b/fs/Kconfig
+> > index 312393f32948..db5dc1598716 100644
+> > --- a/fs/Kconfig
+> > +++ b/fs/Kconfig
+> > @@ -233,9 +233,13 @@ if NETWORK_FILESYSTEMS
+> >  source "fs/nfs/Kconfig"
+> >  source "fs/nfsd/Kconfig"
+> >  
+> > +config GRACE_PERIOD
+> > +	tristate
+> > +
+> >  config LOCKD
+> >  	tristate
+> >  	depends on FILE_LOCKING
+> > +	select GRACE_PERIOD
+> >  
+> >  config LOCKD_V4
+> >  	bool
+> > @@ -249,7 +253,7 @@ config NFS_ACL_SUPPORT
+> >  
+> >  config NFS_COMMON
+> >  	bool
+> > -	depends on NFSD || NFS_FS
+> > +	depends on NFSD || NFS_FS || LOCKD
+> >  	default y
+> >  
+> >  source "net/sunrpc/Kconfig"
+> > diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
+> > index ca58d64374ca..6a0b351ce30e 100644
+> > --- a/fs/lockd/Makefile
+> > +++ b/fs/lockd/Makefile
+> > @@ -5,6 +5,6 @@
+> >  obj-$(CONFIG_LOCKD) += lockd.o
+> >  
+> >  lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
+> > -	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o grace.o
+> > +	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o
+> >  lockd-objs-$(CONFIG_LOCKD_V4) += clnt4xdr.o xdr4.o svc4proc.o
+> >  lockd-objs		      := $(lockd-objs-y)
+> > diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+> > index 5010b55628b4..097bfa3adb1c 100644
+> > --- a/fs/lockd/netns.h
+> > +++ b/fs/lockd/netns.h
+> > @@ -11,7 +11,6 @@ struct lockd_net {
+> >  
+> >  	struct delayed_work grace_period_end;
+> >  	struct lock_manager lockd_manager;
+> > -	struct list_head grace_list;
+> >  
+> >  	spinlock_t nsm_clnt_lock;
+> >  	unsigned int nsm_users;
+> > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> > index 8f27c93f8d2e..3599c9ca28ae 100644
+> > --- a/fs/lockd/svc.c
+> > +++ b/fs/lockd/svc.c
+> > @@ -583,7 +583,6 @@ static int lockd_init_net(struct net *net)
+> >  	struct lockd_net *ln = net_generic(net, lockd_net_id);
+> >  
+> >  	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
+> > -	INIT_LIST_HEAD(&ln->grace_list);
+> >  	spin_lock_init(&ln->nsm_clnt_lock);
+> >  	return 0;
+> >  }
+> > diff --git a/fs/nfs_common/Makefile b/fs/nfs_common/Makefile
+> > index f689ed82af3a..d153ca3ea577 100644
+> > --- a/fs/nfs_common/Makefile
+> > +++ b/fs/nfs_common/Makefile
+> > @@ -3,5 +3,6 @@
+> >  #
+> >  
+> >  obj-$(CONFIG_NFS_ACL_SUPPORT) += nfs_acl.o
+> > -
+> >  nfs_acl-objs := nfsacl.o
+> > +
+> > +obj-$(CONFIG_GRACE_PERIOD) += grace.o
+> > diff --git a/fs/lockd/grace.c b/fs/nfs_common/grace.c
+> > similarity index 50%
+> > rename from fs/lockd/grace.c
+> > rename to fs/nfs_common/grace.c
+> > index 6d1ee7204c88..ae6e58ea4de5 100644
+> > --- a/fs/lockd/grace.c
+> > +++ b/fs/nfs_common/grace.c
+> > @@ -1,17 +1,20 @@
+> >  /*
+> >   * Common code for control of lockd and nfsv4 grace periods.
+> > + *
+> > + * Transplanted from lockd code
+> >   */
+> >  
+> >  #include <linux/module.h>
+> > -#include <linux/lockd/bind.h>
+> >  #include <net/net_namespace.h>
+> > +#include <net/netns/generic.h>
+> > +#include <linux/fs.h>
+> >  
+> > -#include "netns.h"
+> > -
+> > +static int grace_net_id;
+> >  static DEFINE_SPINLOCK(grace_lock);
+> >  
+> >  /**
+> >   * locks_start_grace
+> > + * @net: net namespace that this lock manager belongs to
+> >   * @lm: who this grace period is for
+> >   *
+> >   * A grace period is a period during which locks should not be given
+> > @@ -21,18 +24,20 @@ static DEFINE_SPINLOCK(grace_lock);
+> >   *
+> >   * This function is called to start a grace period.
+> >   */
+> > -void locks_start_grace(struct net *net, struct lock_manager *lm)
+> > +void
+> > +locks_start_grace(struct net *net, struct lock_manager *lm)
+> >  {
+> > -	struct lockd_net *ln = net_generic(net, lockd_net_id);
+> > +	struct list_head *grace_list = net_generic(net, grace_net_id);
+> >  
+> >  	spin_lock(&grace_lock);
+> > -	list_add(&lm->list, &ln->grace_list);
+> > +	list_add(&lm->list, grace_list);
+> >  	spin_unlock(&grace_lock);
+> >  }
+> >  EXPORT_SYMBOL_GPL(locks_start_grace);
+> >  
+> >  /**
+> >   * locks_end_grace
+> > + * @net: net namespace that this lock manager belongs to
+> >   * @lm: who this grace period is for
+> >   *
+> >   * Call this function to state that the given lock manager is ready to
+> > @@ -41,7 +46,8 @@ EXPORT_SYMBOL_GPL(locks_start_grace);
+> >   * Note that callers count on it being safe to call this more than once,
+> >   * and the second call should be a no-op.
+> >   */
+> > -void locks_end_grace(struct lock_manager *lm)
+> > +void
+> > +locks_end_grace(struct lock_manager *lm)
+> >  {
+> >  	spin_lock(&grace_lock);
+> >  	list_del_init(&lm->list);
+> > @@ -56,10 +62,52 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
+> >   * to answer ordinary lock requests, and when they should accept only
+> >   * lock reclaims.
+> >   */
+> > -int locks_in_grace(struct net *net)
+> > +int
+> > +locks_in_grace(struct net *net)
+> >  {
+> > -	struct lockd_net *ln = net_generic(net, lockd_net_id);
+> > +	struct list_head *grace_list = net_generic(net, grace_net_id);
+> >  
+> > -	return !list_empty(&ln->grace_list);
+> > +	return !list_empty(grace_list);
+> >  }
+> >  EXPORT_SYMBOL_GPL(locks_in_grace);
+> > +
+> > +static int __net_init
+> > +grace_init_net(struct net *net)
+> > +{
+> > +	struct list_head *grace_list = net_generic(net, grace_net_id);
+> > +
+> > +	INIT_LIST_HEAD(grace_list);
+> > +	return 0;
+> > +}
+> > +
+> > +static void __net_exit
+> > +grace_exit_net(struct net *net)
+> > +{
+> > +	struct list_head *grace_list = net_generic(net, grace_net_id);
+> > +
+> > +	BUG_ON(!list_empty(grace_list));
+> > +}
+> > +
+> > +static struct pernet_operations grace_net_ops = {
+> > +	.init = grace_init_net,
+> > +	.exit = grace_exit_net,
+> > +	.id   = &grace_net_id,
+> > +	.size = sizeof(struct list_head),
+> > +};
+> > +
+> > +static int __init
+> > +init_grace(void)
+> > +{
+> > +	return register_pernet_subsys(&grace_net_ops);
+> > +}
+> > +
+> > +static void __exit
+> > +exit_grace(void)
+> > +{
+> > +	unregister_pernet_subsys(&grace_net_ops);
+> > +}
+> > +
+> > +MODULE_AUTHOR("Jeff Layton <jlayton@primarydata.com>");
+> > +MODULE_LICENSE("GPL");
+> > +module_init(init_grace)
+> > +module_exit(exit_grace)
+> > diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+> > index f994e750e0d1..4fa98764de21 100644
+> > --- a/fs/nfsd/Kconfig
+> > +++ b/fs/nfsd/Kconfig
+> > @@ -71,6 +71,7 @@ config NFSD_V4
+> >  	select FS_POSIX_ACL
+> >  	select SUNRPC_GSS
+> >  	select CRYPTO
+> > +	select GRACE_PERIOD
+> >  	help
+> >  	  This option enables support in your system's NFS server for
+> >  	  version 4 of the NFS protocol (RFC 3530).
+> > diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
+> > index 9d117f61d976..b97bf2ef996e 100644
+> > --- a/include/linux/proc_fs.h
+> > +++ b/include/linux/proc_fs.h
+> > @@ -74,6 +74,8 @@ static inline int remove_proc_subtree(const char *name, struct proc_dir_entry *p
+> >  
+> >  #endif /* CONFIG_PROC_FS */
+> >  
+> > +struct net;
+> > +
+> >  static inline struct proc_dir_entry *proc_net_mkdir(
+> >  	struct net *net, const char *name, struct proc_dir_entry *parent)
+> >  {
+> > -- 
+> > 1.9.3
+> > 
