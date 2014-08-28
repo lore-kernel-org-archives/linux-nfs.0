@@ -1,74 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:51932 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753011AbaHSPQ4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 11:16:56 -0400
-Message-ID: <53F36A4C.60301@gmail.com>
-Date: Tue, 19 Aug 2014 23:16:28 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
+Received: from cantor2.suse.de ([195.135.220.15]:51512 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S965124AbaH1JZR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 28 Aug 2014 05:25:17 -0400
+Date: Thu, 28 Aug 2014 10:25:10 +0100
+From: Mel Gorman <mgorman@suse.com>
+To: Junxiao Bi <junxiao.bi@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Johannes Weiner <hannes@cmpxchg.org>, NeilBrown <neilb@suse.de>,
+        Michal Hocko <mhocko@suse.cz>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-fsdevel@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 1/6 v4] NFSD: Remove the duplicate initialize of file_lock
-References: <53BAAAC5.9000106@gmail.com>	<53E22EA5.70708@gmail.com> <20140809065112.700e0ecc@tlielax.poochiereds.net> <53E791F1.40802@gmail.com> <53ED5093.6000308@gmail.com>
-In-Reply-To: <53ED5093.6000308@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
+Message-ID: <20140828092510.GK12374@novell.com>
+References: <20140826105304.GT17696@novell.com>
+ <CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com>
+ <20140826132624.GU17696@novell.com>
+ <20140826231938.GA13889@cmpxchg.org>
+ <CAHQdGtRPsVFVfph5OcsZk_+WYPPJ-MpE2myZfXAb3jq6fuM4zw@mail.gmail.com>
+ <CAHQdGtQPMJNzSM5Wt4RnNqEawBLqmYHycXTmBHhmAt26dz5wCw@mail.gmail.com>
+ <20140827153644.GF12374@novell.com>
+ <CAHQdGtQGqw9H=io0bYGKCCS1DxHZZymGjTCoiRymKnX2i88w_w@mail.gmail.com>
+ <20140828083053.GJ12374@novell.com>
+ <53FEED2A.2050209@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-15
+In-Reply-To: <53FEED2A.2050209@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-locks_alloc_lock() has initialize the struct file_lock,
-so, don't need re-initialize it by locks_init_lock().
+On Thu, Aug 28, 2014 at 04:49:46PM +0800, Junxiao Bi wrote:
+> >>>>>> <SNIP>
+> >>>>>> Can't you use mempools like the other IO paths?
+> >>>>>
+> >>>>> There is no way to pass any allocation flags at all to an operation
+> >>>>> such as __sock_create() (which may be needed if the server
+> >>>>> disconnects). So in general, the answer is no.
+> >>>>>
+> >>>>
+> >>>> Actually, one question that should probably be raised before anything
+> >>>> else: is it at all possible for a workqueue like rpciod to have a
+> >>>> non-trivial setting for ->target_mem_cgroup? If not, then the whole
+> >>>> question is moot.
+> >>>>
+> >>>
+> >>> AFAIK, today it's not possible to add kernel threads (which rpciod is one)
+> >>> to a memcg so the issue is entirely theoritical at the moment.  Even if
+> >>> this was to change, it's not clear to me what adding kernel threads to a
+> >>> memcg would mean as kernel threads have no RSS. Even if kernel resources
+> >>> were accounted for, I cannot see why a kernel thread would join a memcg.
+> >>>
+> >>> I expec that it's currently impossible for rpciod to have a non-trivial
+> >>> target_mem_cgroup. The memcg folk will correct me if I'm wrong or if there
+> >>> are plans to change that for some reason.
+> >>>
+> >>
+> >> Thanks! Then I'll assume that the problem is nonexistent in upstream
+> >> for now, and drop the idea of using PF_MEMALLOC_NOIO. Perhaps we can
+> >> then encourage Junxiao to look into backporting some of the VM changes
+> >> in order to fix his Oracle legacy kernel issues?
+> >>
+> > 
+> > Sounds like a plan to me. The other alternative would be backporting the
+> > handling of wait_on_page_writeback and writeback handling from reclaim but
+> > that would be much harder considering the rate of change in vmscan.c and
+> > the problems that were experienced with high CPU usage from kswapd during
+> > that transition.
+>
+> Backport the vm changes may cause a lot of risk due to lots of changes,
+> i am thinking to check PF_FSTRANS flag in shrink_page_list() to bypass
+> the fs ops in our old kernel. Can this cause other issue?
+> 
 
-v4: same as v3, only cleanup
+I'm afraid that depends on exactly how the kernel you are
+backporting to interprets PF_FSTRANS. Your original bug was related
+to wait_on_page_writeback so you'll need to check if PF_FSTRANS is
+interpreted as !may_enter_fs in reclaim context in your kernel to avoid
+the wait_on_page_writeback.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-Reviewed-by: Jeff Layton <jlayton@primarydata.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2e80a59..98edf97 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3759,7 +3759,6 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_file *fp, int flag)
- 	fl = locks_alloc_lock();
- 	if (!fl)
- 		return NULL;
--	locks_init_lock(fl);
- 	fl->fl_lmops = &nfsd_lease_mng_ops;
- 	fl->fl_flags = FL_DELEG;
- 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
-@@ -5210,7 +5209,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 
- 	fp = lock_stp->st_stid.sc_file;
--	locks_init_lock(file_lock);
- 	switch (lock->lk_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
-@@ -5354,7 +5352,7 @@ nfsd4_lockt(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_jukebox;
- 		goto out;
- 	}
--	locks_init_lock(file_lock);
-+
- 	switch (lockt->lt_type) {
- 		case NFS4_READ_LT:
- 		case NFS4_READW_LT:
-@@ -5432,7 +5430,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_jukebox;
- 		goto fput;
- 	}
--	locks_init_lock(file_lock);
-+
- 	file_lock->fl_type = F_UNLCK;
- 	file_lock->fl_owner = (fl_owner_t)lockowner(stp->st_stateowner);
- 	file_lock->fl_pid = current->tgid;
 -- 
-1.9.3
-
+Mel Gorman
+SUSE Labs
