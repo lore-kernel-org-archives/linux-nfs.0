@@ -1,67 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35730 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751239AbaHLUiv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Aug 2014 16:38:51 -0400
-Date: Tue, 12 Aug 2014 16:38:50 -0400
-From: Bruce Fields <bfields@fieldses.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:55923 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751012AbaH2U6T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 29 Aug 2014 16:58:19 -0400
+Date: Fri, 29 Aug 2014 21:58:17 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/6] NFS DRC scalability patches
-Message-ID: <20140812203850.GG25914@fieldses.org>
-References: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
+Cc: Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Tao Peng <tao.peng@primarydata.com>
+Subject: Re: VFS regression: commit aba809cf0944 breaks MNT_SHRINKABLE
+ automounted partitions
+Message-ID: <20140829205817.GB7996@ZenIV.linux.org.uk>
+References: <CAHQdGtT4kbPqQvD_fu7c_5_CqK8FCpA5mJsVdh=KxoE9_vXRzw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1407347065-17463-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <CAHQdGtT4kbPqQvD_fu7c_5_CqK8FCpA5mJsVdh=KxoE9_vXRzw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Aug 06, 2014 at 01:44:19PM -0400, Trond Myklebust wrote:
-> Hi Bruce,
+On Fri, Aug 29, 2014 at 12:27:53PM -0400, Trond Myklebust wrote:
+> Hi Al,
 > 
-> Rebased onto your nfsd-next branch
+> Our internal testing shows that commit aba809cf0944 (namespace.c: get
+> rid of mnt_ghosts) appears to break the NFS automounter functionality.
+> When unmounting, the user now gets a permanent -EBUSY, presumably due
+> to a refcounting issue with the patch.
+> 
+> The reproducer is as follows:
+> 
+> On the server, set up an export of the form:
+> 
+> % showmount -e 192.168.214.128
+> Export list for 192.168.214.128:
+> /export *
+> 
+> On the client:
+> 
+> [fedora19@~]$sudo mount 192.168.214.128:/ /mnt/
+> [fedora19@~]$df
+> Filesystem               Size  Used Avail Use% Mounted on
+> /dev/mapper/fedora-root   38G   15G   24G  38% /
+> devtmpfs                 229M     0  229M   0% /dev
+> tmpfs                    242M   80K  242M   1% /dev/shm
+> tmpfs                    242M  1.5M  241M   1% /run
+> tmpfs                    242M     0  242M   0% /sys/fs/cgroup
+> tmpfs                    242M  4.0K  242M   1% /tmp
+> /dev/sda1                1.5G  248M  1.3G  17% /boot
+> 192.168.214.128:/         28G   25G  1.1G  96% /mnt
+> [fedora19@~]$ls /mnt/export/
+> [fedora19@~]$df
+> Filesystem               Size  Used Avail Use% Mounted on
+> /dev/mapper/fedora-root   38G   15G   24G  38% /
+> devtmpfs                 229M     0  229M   0% /dev
+> tmpfs                    242M   80K  242M   1% /dev/shm
+> tmpfs                    242M  1.5M  241M   1% /run
+> tmpfs                    242M     0  242M   0% /sys/fs/cgroup
+> tmpfs                    242M  4.0K  242M   1% /tmp
+> /dev/sda1                1.5G  248M  1.3G  17% /boot
+> 192.168.214.128:/         28G   25G  1.1G  96% /mnt
+> 192.168.214.128:/export   28G   25G  1.1G  96% /mnt/export
+> [fedora19@~]$sudo umount /mnt
+> umount.nfs4: /mnt: device is busy
+> [fedora19@~]$df
+> Filesystem               Size  Used Avail Use% Mounted on
+> /dev/mapper/fedora-root   38G   15G   24G  38% /
+> devtmpfs                 229M     0  229M   0% /dev
+> tmpfs                    242M   80K  242M   1% /dev/shm
+> tmpfs                    242M  1.5M  241M   1% /run
+> tmpfs                    242M     0  242M   0% /sys/fs/cgroup
+> tmpfs                    242M  4.0K  242M   1% /tmp
+> /dev/sda1                1.5G  248M  1.3G  17% /boot
+> 192.168.214.128:/         28G   25G  1.1G  96% /mnt
+> 
+> Reverting commit aba809cf0944 fixes the problem for us on a 3.14.15
+> client kernel.
 
-Thanks, I'm applying these (but won't actually publish that branch till
--rc1 is out.)
+Can't reproduce on a debian client with 3.12 kernel (which contains the
+commit in question); it'll take a bit to get Fedora setup - I have it as KVM
+image, but it's sandboxed to hell and back and certainly not allowed to play
+with NFS traffic...
 
---b.
-
-> 
-> Cheers
->   Trond
-> 
-> ---------------------------
-> 
-> Hi Bruce,
-> 
-> The following patchset is again more an FYI than a must have, but it
-> addresses a significant scalability problem for NFSv3 when running
-> over 10GigE and 40GigE networks. At one point, I was seeing >60% CPU
-> spinning on the DRC global spinlock...
-> 
-> The one thing to note is that because the statistics are moved outside
-> spinlocking, then their accuracy is slightly reduced (I do convert the
-> number of entries into an atomic, so that is still 100% correct). The
-> right thing to do there is probably to convert those into per-cpu
-> counters, however I've not had time to do so for now.
-> 
-> Cheers,
->   Trond
-> 
-> Trond Myklebust (6):
->   nfsd: Clean up drc cache in preparation for global spinlock
->     elimination
->   nfsd: convert the lru list into a per-bucket thing
->   nfsd: Remove the cache_hash list
->   nfsd: convert num_drc_entries to an atomic_t
->   nfsd: split DRC global spinlock into per-bucket locks
->   nfsd: Reorder nfsd_cache_match to check more powerful discriminators
->     first
-> 
->  fs/nfsd/cache.h    |   1 -
->  fs/nfsd/nfscache.c | 214 ++++++++++++++++++++++++++++-------------------------
->  2 files changed, 113 insertions(+), 102 deletions(-)
-> 
-> -- 
-> 1.9.3
-> 
+In the meanwhile, if you have a reproducer setup...  Could you verify that
+fuser -m /mnt does come empty?  Another thing: does mount --make-rprivate /
+done before that umount /mnt change behaviour?  IOW, I wonder if it could
+be affected by shared-subtree setup; that might be the relevant difference
+between the working box and F19 one in this case.  Could you at least post
+the contents of /proc/*/mountinfo from all namespaces?  Output of
+grep . `md5sum /proc/*/mountinfo|sort|uniq -w32|awk '{print $2}'`
+would do...
