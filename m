@@ -1,70 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f43.google.com ([209.85.192.43]:46376 "EHLO
-	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753126AbaHLOsW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Aug 2014 10:48:22 -0400
-Received: by mail-qg0-f43.google.com with SMTP id a108so9783129qge.30
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Aug 2014 07:48:21 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/5] locks: don't reuse file_lock in __posix_lock_file
-Date: Tue, 12 Aug 2014 10:48:10 -0400
-Message-Id: <1407854893-2698-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
-References: <1407854893-2698-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:36630 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753482AbaH2Pe4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Aug 2014 11:34:56 -0400
+Date: Fri, 29 Aug 2014 11:34:52 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+cc: David Jeffery <djeffery@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: Always try and release an NFS file lock, even after
+ receiving a SIGKILL
+In-Reply-To: <CAHQdGtQT9-YJ=L1jLKc53e7nzdNU0GaUie0RwEdF3EpsJEvPsg@mail.gmail.com>
+Message-ID: <alpine.LRH.2.11.1408291128050.26449@bcodding-csb.redhat.com>
+References: <1438879608.14503585.1407251825405.JavaMail.zimbra@redhat.com> <1408580933.4029.2.camel@leira.trondhjem.org> <53F612DC.60006@redhat.com> <CAHQdGtRw0V=mAuXs=UL7aJxxvKo26xqVoyOwR7r+9PrGPNmn_g@mail.gmail.com> <53F63758.70306@redhat.com>
+ <CAHQdGtQT9-YJ=L1jLKc53e7nzdNU0GaUie0RwEdF3EpsJEvPsg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently in the case where a new file lock completely replaces the old
-one, we end up overwriting the existing lock with the new info. This
-means that we have to call fl_release_private inside i_lock. Change the
-code to instead copy the info to new_fl, insert that lock into the
-correct spot and then delete the old lock. In a later patch, we'll defer
-the freeing of the old lock until after the i_lock has been dropped.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/locks.c | 25 ++++++++++++++-----------
- 1 file changed, 14 insertions(+), 11 deletions(-)
+On Thu, 21 Aug 2014, Trond Myklebust wrote:
+> On Thu, Aug 21, 2014 at 2:15 PM, David Jeffery <djeffery@redhat.com> wrote:
+>> On 08/21/2014 11:50 AM, Trond Myklebust wrote:
+>>> On Thu, Aug 21, 2014 at 11:40 AM, David Jeffery <djeffery@redhat.com> wrote:
+>>>> On 08/20/2014 08:28 PM, Trond Myklebust wrote:
+>>>>>
+>>>>> What guarantees that this does not lead to silent corruption of the file
+>>>>> if there are outstanding write requests?
+>>>>>
+>>>>
+>>>> Do you have a particular scenario in mind you are concerned about?
+>>>>
+>>>> Right before the code the patch modifies, nfs_sync_mapping() is called.
+>>>>  Any writes started before the unlock operation began have already been
+>>>> flushed, so we shouldn't have a corruption case of writes from before
+>>>> the unlock began being sent after the unlock is complete.
+>>>>
+>>>> Are you concerned about some other nfs4 writes being started while we
+>>>> initially waited on the counter?  Such a write racing with the unlock
+>>>
+>>> No. I'm worried about the writes that have been started, but which are
+>>> now completing in the background while the lock is being freed.
+>>>
+>>>> going ahead instead of erroring out could initially fail from a wrong
+>>>> state ID, but should retry with the new state.  Is there something I've
+>>>> overlooked?
+>>>
+>>> Loss of lock atomicity due to the fact that the writes are completing
+>>> after the lock was released.
+>>>
+>>
+>> I don't think my patches break lock atomicity, unless I've completely
+>> misunderstood nfs_sync_mapping()'s behavior.
+>>
+>> The background writes should have already been waited for by
+>> nfs_sync_mapping() at the beginning of do_unlk().  nfs_sync_mapping()
+>> would call nfs_wb_all() which calls sync_inode() with WB_SYNC_ALL, so
+>> it's going to push out any dirty data and wait for any writes to
+>> complete.  Only after the writes are complete do we go on to call
+>> nfs_iocounter_wait().
+>
+> What if nfs_wb_all() is interrupted? Currently, that doesn't matter
+> precisely because of the call to nfs_iocounter_wait.
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 2c2d4f5022a7..7dd4defb4d8d 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1022,18 +1022,21 @@ static int __posix_lock_file(struct inode *inode, struct file_lock *request, str
- 					locks_delete_lock(before);
- 					continue;
- 				}
--				/* Replace the old lock with the new one.
--				 * Wake up anybody waiting for the old one,
--				 * as the change in lock type might satisfy
--				 * their needs.
-+				/*
-+				 * Replace the old lock with new_fl, and
-+				 * remove the old one. It's safe to do the
-+				 * insert here since we know that we won't be
-+				 * using new_fl later, and that the lock is
-+				 * just replacing an existing lock.
- 				 */
--				locks_wake_up_blocks(fl);
--				fl->fl_start = request->fl_start;
--				fl->fl_end = request->fl_end;
--				fl->fl_type = request->fl_type;
--				locks_release_private(fl);
--				locks_copy_private(fl, request);
--				request = fl;
-+				error = -ENOLCK;
-+				if (!new_fl)
-+					goto out;
-+				locks_copy_lock(new_fl, request);
-+				request = new_fl;
-+				new_fl = NULL;
-+				locks_delete_lock(before);
-+				locks_insert_lock(before, request);
- 				added = true;
- 			}
- 		}
--- 
-1.9.3
+Hi Trond, it looks like the intent of:
 
+577b423 NFS: Add functionality to allow waiting on all outstanding reads..
+7a8203d NFS: Ensure that NFS file unlock waits for readahead to complete..
+
+was to wait for readahead, not to avoid releasing the lock if nfs_wb_all()
+is interrupted.  What was the underlying reason for waiting for readahead to
+complete?  I know there was one issue where the NFS server would release the
+lockowner before processing the reads - was that what these were trying to
+avoid?  I ask because if we're only worried about outstanding writes we
+could just wait on the writes, not the reads.
+
+Would it be better to use TASK_UNINTERRUPTIBLE instead of TASK_KILLABLE in
+__nfs_iocounter_wait?
+
+Ben
