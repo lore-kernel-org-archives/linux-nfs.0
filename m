@@ -1,325 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tus1smtoutpex01.symantec.com ([216.10.195.241]:43109 "EHLO
-	tus1smtoutpex01.symantec.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750789AbaHSHxt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Aug 2014 03:53:49 -0400
-Message-ID: <53F30285.5000304@symantec.com>
-Date: Tue, 19 Aug 2014 13:23:41 +0530
-From: Rajesh Ghanekar <Rajesh_Ghanekar@symantec.com>
+Received: from mx1.redhat.com ([209.132.183.28]:49826 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750761AbaH2U0T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Aug 2014 16:26:19 -0400
+Date: Fri, 29 Aug 2014 16:25:33 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Cc: Nikita Yushchenko <nyushchenko@dev.rtsoft.ru>, stable@vger.kernel.org,
+        Raphos <raphoszap@laposte.net>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        "'Alexey Lugovskoy'" <lugovskoy@dev.rtsoft.ru>,
+        Konstantin Kholopov <kkholopov@dev.rtsoft.ru>,
+        linux-kernel@vger.kernel.org, jlayton@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: 3.10.y regression caused by:  lockd: ensure we tear down any
+ live sockets when socket creation fails during lockd_up
+Message-ID: <20140829202532.GA8204@pad.redhat.com>
+References: <53A4177B.6060300@dev.rtsoft.ru>
+ <20140707222721.GC11171@kroah.com>
 MIME-Version: 1.0
-To: Abhijit Dey <Abhijit_Dey@symantec.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: Steve Dickson <SteveD@redhat.com>,
-        Rishi Agrawal <Rishi_Agrawal@symantec.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Ram Pandiri <ram_pandiri@symantec.com>,
-        Sreeharsha Sarabu <Sreeharsha_Sarabu@symantec.com>,
-        Tushar Shinde <Tushar_Shinde@symantec.com>,
-        "bfields@redhat.com" <bfields@redhat.com>
-Subject: Re: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
-References: <20AEB6A025F81A4288597093171D1B5719CF5813D2@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM> <53DF992D.6090404@RedHat.com> <20140804152411.GB23341@fieldses.org> <20140804214646.GK23341@fieldses.org> <20140805182134.GQ23341@fieldses.org> <4B8EA414FDE8F8449D981669FD32FD231356A61CFF@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM> <4B8EA414FDE8F8449D981669FD32FD231356A61D08@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM> <20140818211914.GE1096@fieldses.org> <9362E03F43D47440844A0A748033D1651B6AFAE3D1@TUS1XCHEVSPIN42.SYMC.SYMANTEC.COM>
-In-Reply-To: <9362E03F43D47440844A0A748033D1651B6AFAE3D1@TUS1XCHEVSPIN42.SYMC.SYMANTEC.COM>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140707222721.GC11171@kroah.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tuesday 19 August 2014 03:12 AM, Abhijit Dey wrote:
-> Bruce
->
-> Your change looks appropriate.  Please go ahead.
->
-> I'd make that:
->
-> 	"This option will disable READDIRPLUS request handling.  When
-> 	set, READDIRPLUS requests from NFS clients return
-> 	NFS3ERR_NOTSUPP, and clients fall back on READDIR.  This option
-> 	affects only NFSv3 clients."
->
-> Regards
-> Abhijit
->
->
-> -----Original Message-----
-> From: J. Bruce Fields [mailto:bfields@fieldses.org] 
-> Sent: Monday, August 18, 2014 2:19 PM
-> To: Rajesh Ghanekar
-> Cc: Steve Dickson; Rishi Agrawal; linux-nfs@vger.kernel.org; Ram Pandiri; Sreeharsha Sarabu; Abhijit Dey; Tushar Shinde; bfields@redhat.com
-> Subject: Re: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
->
-> On Mon, Aug 18, 2014 at 11:06:03AM -0700, Rajesh Ghanekar wrote:
->> diff -uprN nfs-utils-1.3.0.old/utils/exportfs/exports.man nfs-utils-1.3.0/utils/exportfs/exports.man
->> --- nfs-utils-1.3.0.old/utils/exportfs/exports.man	2014-03-25 20:42:07.000000000 +0530
->> +++ nfs-utils-1.3.0/utils/exportfs/exports.man	2014-08-18 22:27:23.360261358 +0530
->> @@ -360,6 +360,13 @@ supported so the same configuration can
->>  kernels alike.
->>  
->>  .TP
->> +.IR nordirplus
->> +This option will allow disabling READDIRPLUS request handling.
->> +When enabled, READDIRPLUS requests from NFS client will be returned
->> +with "not supported" reply. Most of the NFS client implementations
->> +starts to use READDIR request if READDIRPLUS is returned with
->> +"not supported" reply. This option is only applicable for NFSv3.
-> I'd make that:
->
-> 	"This option will disable READDIRPLUS request handling.  When
-> 	set, READDIRPLUS requests from NFS clients return
-> 	NFS3ERR_NOTSUPP, and clients fall back on READDIR.  This option
-> 	affects only NFSv3 clients."
->
-> --b.
+On Mon, Jul 07, 2014 at 03:27:21PM -0700, Greg Kroah-Hartman wrote:
+> On Fri, Jun 20, 2014 at 03:14:03PM +0400, Nikita Yushchenko wrote:
+> > With current 3.10.y, if kernel is booted with init=/bin/sh and then nfs mount
+> > is attempted (without portmap or rpcbind running) using busybox mount, following
+> > OOPS happen:
+> > 
+> > # mount -t nfs 10.30.130.21:/opt /mnt
+> > svc: failed to register lockdv1 RPC service (errno 111).
+> > lockd_up: makesock failed, error=-111
+> > Unable to handle kernel paging request for data at address 0x00000030
+> > Faulting instruction address: 0xc055e65c
+> > Oops: Kernel access of bad area, sig: 11 [#1]
+> > MPC85xx CDS
+> > Modules linked in:
+> > CPU: 0 PID: 1338 Comm: mount Not tainted 3.10.44.cge #117
+> > task: cf29cea0 ti: cf35c000 task.ti: cf35c000
+> > NIP: c055e65c LR: c0566490 CTR: c055e648
+> > REGS: cf35dad0 TRAP: 0300   Not tainted  (3.10.44.cge)
+> > MSR: 00029000 <CE,EE,ME>  CR: 22442488  XER: 20000000
+> > DEAR: 00000030, ESR: 00000000
+> > 
+> > GPR00: c05606f4 cf35db80 cf29cea0 cf0ded80 cf0dedb8 00000001 1dec3086 00000000 
+> > GPR08: 00000000 c07b1640 00000007 1dec3086 22442482 100b9758 00000000 10090ae8 
+> > GPR16: 00000000 000186a5 00000000 00000000 100c3018 bfa46edc 100b0000 bfa46ef0 
+> > GPR24: cf386ae0 c07834f0 00000000 c0565f88 00000001 cf0dedb8 00000000 cf0ded80 
+> > NIP [c055e65c] call_start+0x14/0x34
+> > LR [c0566490] __rpc_execute+0x70/0x250
+> > Call Trace:
+> > [cf35db80] [00000080] 0x80 (unreliable)
+> > [cf35dbb0] [c05606f4] rpc_run_task+0x9c/0xc4
+> > [cf35dbc0] [c0560840] rpc_call_sync+0x50/0xb8
+> > [cf35dbf0] [c056ee90] rpcb_register_call+0x54/0x84
+> > [cf35dc10] [c056f24c] rpcb_register+0xf8/0x10c
+> > [cf35dc70] [c0569e18] svc_unregister.isra.23+0x100/0x108
+> > [cf35dc90] [c0569e38] svc_rpcb_cleanup+0x18/0x30
+> > [cf35dca0] [c0198c5c] lockd_up+0x1dc/0x2e0
+> > [cf35dcd0] [c0195348] nlmclnt_init+0x2c/0xc8
+> > [cf35dcf0] [c015bb5c] nfs_start_lockd+0x98/0xec
+> > [cf35dd20] [c015ce6c] nfs_create_server+0x1e8/0x3f4
+> > [cf35dd90] [c0171590] nfs3_create_server+0x10/0x44
+> > [cf35dda0] [c016528c] nfs_try_mount+0x158/0x1e4
+> > [cf35de20] [c01670d0] nfs_fs_mount+0x434/0x8c8
+> > [cf35de70] [c00cd3bc] mount_fs+0x20/0xbc
+> > [cf35de90] [c00e4f88] vfs_kern_mount+0x50/0x104
+> > [cf35dec0] [c00e6e0c] do_mount+0x1d0/0x8e0
+> > [cf35df10] [c00e75ac] SyS_mount+0x90/0xd0
+> > [cf35df40] [c000ccf4] ret_from_syscall+0x0/0x3c
+> > --- Exception: c01 at 0xff2acc4
+> >     LR = 0x10048ab8
+> > Instruction dump:
+> > 3d20c056 3929e648 91230028 38600001 4e800020 38600000 4e800020 81230014 
+> > 8103000c 81490014 394a0001 91490014 <81280030> 81490018 394a0001 91490018 
+> > ---[ end trace 033b5b4715cb5452 ]---
+> > 
+> > 
+> > This does not happen if
+> > 
+> > commit 72a6e594497032bd911bd187a88fae4b4473abb3
+> > Author: Jeff Layton <jlayton@redhat.com>
+> > Date:   Tue Mar 25 11:55:26 2014 -0700
+> > 
+> >     lockd: ensure we tear down any live sockets when socket creation fails during lockd_up
+> >     
+> >     commit 679b033df48422191c4cac52b610d9980e019f9b upstream.
+> > 
+> > is reverted:
+> > 
+> > # mount -t nfs 10.30.130.21:/opt /mnt
+> > svc: failed to register lockdv1 RPC service (errno 111).
+> > lockd_up: makesock failed, error=-111
+> > mount: mounting 10.30.130.21:/opt on /mnt failed: Connection refused
+> > #
+> > 
+> > 
+> > Physical reason of the OOPS is that:
+> > 
+> > - addition of svc_shutdown_net() call to error path of make_socks() causes
+> > double call of svc_rpcb_cleanup():
+> >   - first call is from within svc_shutdown_net(), because serv->sv_shutdown
+> > points to svc_rpcb_cleanup() at this time,
+> >   - immediately followed by second call from lockd_up_net()'s error path
+> > 
+> > - when second svc_rpcb_cleanup() is executed, then at
+> >   svc_unregister() -> __svc_unregister() -> rpcb_register() -> rpcb_register_call()
+> > call path, rpcb_register_call() is called with clnt=NULL.
+> 
+> So, Jeff, what should I do here?  Drop this patch from 3.10?  Add
+> something else to fix it up?  Something else entirely?
 
-Okay.
+Sorry this got ignored.  Adding more useful addressess....
 
-From: Rajesh Ghanekar <Rajesh_Ghanekar@symantec.com>
+So looks like the new svc_shutdown_net made lockd_up_net's cleanup
+redundant, and just removing it might do the job?
 
-One of our customer's application only needs file names, not file
-attributes. With directories having 10K+ inodes (assuming buffer cache
-has directory blocks cached having file names, but inode cache is
-limited and hence need eviction of older cached inodes), older inodes
-are evicted periodically. So if they keep on doing readdir(2) from NSF
-client on multiple directories, some directory's files are periodically
-removed from inode cache and hence new readdir(2) on same directory
-requires disk access to bring back inodes again to inode cache.
+--b.
 
-As READDIRPLUS request fetches attributes also, doing getattr on each
-file on server, it causes unnecessary disk accesses. If READDIRPLUS on
-NFS client is returned with -ENOTSUPP, NFS client uses READDIR request
-which just gets the names of the files in a directory, not attributes,
-hence avoiding disk accesses on server.
-
-There's already a corresponding client-side mount option, but an export
-option reduces the need for configuration across multiple clients.
-
-This flag affects NFSv3 only.  If it turns out it's needed for NFSv4 as
-well then we may have to figure out how to extend the behavior to NFSv4,
-but it's not currently obvious how to do that.
-
------
-
-Signed-off-by: Rajesh Ghanekar <rajesh_ghanekar@symantec.com>
-
-diff -uprN nfs-utils-1.3.0.old/support/include/nfs/export.h nfs-utils-1.3.0/support/include/nfs/export.h
---- nfs-utils-1.3.0.old/support/include/nfs/export.h	2014-03-25 20:42:07.000000000 +0530
-+++ nfs-utils-1.3.0/support/include/nfs/export.h	2014-08-18 22:28:24.420262810 +0530
-@@ -17,7 +17,8 @@
- #define NFSEXP_ALLSQUASH	0x0008
- #define NFSEXP_ASYNC		0x0010
- #define NFSEXP_GATHERED_WRITES	0x0020
--/* 40, 80, 100 unused */
-+#define NFSEXP_NOREADDIRPLUS	0x0040
-+/* 80, 100 unused */
- #define NFSEXP_NOHIDE		0x0200
- #define NFSEXP_NOSUBTREECHECK	0x0400
- #define NFSEXP_NOAUTHNLM	0x0800
-diff -uprN nfs-utils-1.3.0.old/support/nfs/exports.c nfs-utils-1.3.0/support/nfs/exports.c
---- nfs-utils-1.3.0.old/support/nfs/exports.c	2014-03-25 20:42:07.000000000 +0530
-+++ nfs-utils-1.3.0/support/nfs/exports.c	2014-08-18 22:28:24.600262814 +0530
-@@ -273,6 +273,8 @@ putexportent(struct exportent *ep)
- 		"in" : "");
- 	fprintf(fp, "%sacl,", (ep->e_flags & NFSEXP_NOACL)?
- 		"no_" : "");
-+	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
-+		fprintf(fp, "nordirplus,");
- 	if (ep->e_flags & NFSEXP_FSID) {
- 		fprintf(fp, "fsid=%d,", ep->e_fsid);
- 	}
-@@ -539,6 +541,8 @@ parseopts(char *cp, struct exportent *ep
- 			clearflags(NFSEXP_ASYNC, active, ep);
- 		else if (!strcmp(opt, "async"))
- 			setflags(NFSEXP_ASYNC, active, ep);
-+		else if (!strcmp(opt, "nordirplus"))
-+			setflags(NFSEXP_NOREADDIRPLUS, active, ep);
- 		else if (!strcmp(opt, "nohide"))
- 			setflags(NFSEXP_NOHIDE, active, ep);
- 		else if (!strcmp(opt, "hide"))
-diff -uprN nfs-utils-1.3.0.old/utils/exportfs/exports.man nfs-utils-1.3.0/utils/exportfs/exports.man
---- nfs-utils-1.3.0.old/utils/exportfs/exports.man	2014-03-25 20:42:07.000000000 +0530
-+++ nfs-utils-1.3.0/utils/exportfs/exports.man	2014-08-19 12:32:30.498780854 +0530
-@@ -360,6 +360,11 @@ supported so the same configuration can
- kernels alike.
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 673668a9eec1..685e953c5103 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -253,13 +253,11 @@ static int lockd_up_net(struct svc_serv *serv, struct net *net)
  
- .TP
-+.IR nordirplus
-+This option will disable READDIRPLUS request handling.  When set,
-+READDIRPLUS requests from NFS clients return NFS3ERR_NOTSUPP, and
-+clients fall back on READDIR.  This option affects only NFSv3 clients.
-+.TP
- .IR refer= path@host[+host][:path@host[+host]]
- A client referencing the export point will be directed to choose from
- the given list an alternative location for the filesystem.
-
------
-
-Thanks,
-Rajesh
-
-
->
->> +.TP
->>  .IR refer= path@host[+host][:path@host[+host]]
->>  A client referencing the export point will be directed to choose from
->>  the given list an alternative location for the filesystem.
->>
->> -----
->>
->> Thanks,
->> Rajesh
->>
->>
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Rajesh Ghanekar
->> Sent: Monday, August 18, 2014 11:17 PM
->> To: J. Bruce Fields; Steve Dickson
->> Cc: Rishi Agrawal; linux-nfs@vger.kernel.org; Ram Pandiri; Sreeharsha Sarabu; Abhijit Dey; Tushar Shinde; bfields@redhat.com
->> Subject: RE: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
->>
->> Hi Bruce, Steve,
->>        Here is the nfs-utils patch reworked. Sorry for top posting, though.
->> We had to wait for internal legal approval to complete, and hence got delayed. Same "signed-off" by signature can go to nfsd kernel patch which you have reworked. Please let me know if I need to resend (copy from your mail with signed-off added) nfsd kernel patch.
->>
->> Signed-off-by: Rajesh Ghanekar <rajesh_ghanekar@symantec.com>
->>
->>
->> diff -uprN nfs-utils-1.3.0.old/support/include/nfs/export.h nfs-utils-1.3.0/support/include/nfs/export.h
->> --- nfs-utils-1.3.0.old/support/include/nfs/export.h	2014-03-25 20:42:07.000000000 +0530
->> +++ nfs-utils-1.3.0/support/include/nfs/export.h	2014-08-18 22:28:24.420262810 +0530
->> @@ -17,7 +17,8 @@
->>  #define NFSEXP_ALLSQUASH	0x0008
->>  #define NFSEXP_ASYNC		0x0010
->>  #define NFSEXP_GATHERED_WRITES	0x0020
->> -/* 40, 80, 100 unused */
->> +#define NFSEXP_NOREADDIRPLUS	0x0040
->> +/* 80, 100 unused */
->>  #define NFSEXP_NOHIDE		0x0200
->>  #define NFSEXP_NOSUBTREECHECK	0x0400
->>  #define NFSEXP_NOAUTHNLM	0x0800
->> diff -uprN nfs-utils-1.3.0.old/support/nfs/exports.c nfs-utils-1.3.0/support/nfs/exports.c
->> --- nfs-utils-1.3.0.old/support/nfs/exports.c	2014-03-25 20:42:07.000000000 +0530
->> +++ nfs-utils-1.3.0/support/nfs/exports.c	2014-08-18 22:28:24.600262814 +0530
->> @@ -273,6 +273,8 @@ putexportent(struct exportent *ep)
->>  		"in" : "");
->>  	fprintf(fp, "%sacl,", (ep->e_flags & NFSEXP_NOACL)?
->>  		"no_" : "");
->> +	if (ep->e_flags & NFSEXP_NOREADDIRPLUS)
->> +		fprintf(fp, "nordirplus,");
->>  	if (ep->e_flags & NFSEXP_FSID) {
->>  		fprintf(fp, "fsid=%d,", ep->e_fsid);
->>  	}
->> @@ -539,6 +541,8 @@ parseopts(char *cp, struct exportent *ep
->>  			clearflags(NFSEXP_ASYNC, active, ep);
->>  		else if (!strcmp(opt, "async"))
->>  			setflags(NFSEXP_ASYNC, active, ep);
->> +		else if (!strcmp(opt, "nordirplus"))
->> +			setflags(NFSEXP_NOREADDIRPLUS, active, ep);
->>  		else if (!strcmp(opt, "nohide"))
->>  			setflags(NFSEXP_NOHIDE, active, ep);
->>  		else if (!strcmp(opt, "hide"))
->> diff -uprN nfs-utils-1.3.0.old/utils/exportfs/exports.man nfs-utils-1.3.0/utils/exportfs/exports.man
->> --- nfs-utils-1.3.0.old/utils/exportfs/exports.man	2014-03-25 20:42:07.000000000 +0530
->> +++ nfs-utils-1.3.0/utils/exportfs/exports.man	2014-08-18 22:27:23.360261358 +0530
->> @@ -360,6 +360,13 @@ supported so the same configuration can  kernels alike.
->>  
->>  .TP
->> +.IR nordirplus
->> +This option will allow disabling READDIRPLUS request handling.
->> +When enabled, READDIRPLUS requests from NFS client will be returned 
->> +with "not supported" reply. Most of the NFS client implementations 
->> +starts to use READDIR request if READDIRPLUS is returned with "not 
->> +supported" reply. This option is only applicable for NFSv3.
->> +.TP
->>  .IR refer= path@host[+host][:path@host[+host]]
->>  A client referencing the export point will be directed to choose from  the given list an alternative location for the filesystem.
->>
->>
->> Thanks,
->> Rajesh
->>
->> -----Original Message-----
->> From: J. Bruce Fields [mailto:bfields@fieldses.org]
->> Sent: Tuesday, August 05, 2014 11:52 PM
->> To: Steve Dickson
->> Cc: Rishi Agrawal; linux-nfs@vger.kernel.org; Rajesh Ghanekar; Ram Pandiri; Sreeharsha Sarabu; Abhijit Dey; Tushar Shinde; bfields@redhat.com
->> Subject: Re: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
->>
->> On Mon, Aug 04, 2014 at 05:46:47PM -0400, J. Bruce Fields wrote:
->>> On Mon, Aug 04, 2014 at 11:24:11AM -0400, bfields wrote:
->>>> +static int
->>>> +nfsd3_is_readdirplus_supported(struct svc_rqst *rqstp, struct 
->>>> +svc_fh *fhp) {
->>>> +	struct svc_export *exp;
->>>> +	int supported = 1; /* fall back to readdirplus supported in case of errors.*/
->>>> +	int err;
->>>> +
->>>> +	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_READ);
->>>> +	if (err) {
->>>> +		goto out;
->>>> +	}
->>> Actually, this isn't right: errors from fh_verify should be returned 
->>> to the client or weird things could happen (e.g. what should have been 
->>> a transient DELAY error could result in the client turning off 
->>> readdirplus).
->> Apologies, I misread: as the comment above notes, it falls back on allowing readdirplus when this fails, so I don't think there's a real bug here.
->>
->>> And MAY_READ is more than nfsd_readdir actually asks for, I think, 
->>> probably should just be MAY_NOP here.
->>>
->>> I'll fix that up.--b.
->> But it's probably still better to return the fh_verify error on failure, as follows.
->>
->> --b.
->>
->> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c index 72ffd7cce3c3..30a739d896ff 100644
->> --- a/fs/nfsd/export.c
->> +++ b/fs/nfsd/export.c
->> @@ -1145,6 +1145,7 @@ static struct flags {
->>  	{ NFSEXP_ALLSQUASH, {"all_squash", ""}},
->>  	{ NFSEXP_ASYNC, {"async", "sync"}},
->>  	{ NFSEXP_GATHERED_WRITES, {"wdelay", "no_wdelay"}},
->> +	{ NFSEXP_NOREADDIRPLUS, {"nordirplus", ""}},
->>  	{ NFSEXP_NOHIDE, {"nohide", ""}},
->>  	{ NFSEXP_CROSSMOUNT, {"crossmnt", ""}},
->>  	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}}, diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c index fa2525b2e9d7..247b06fb400d 100644
->> --- a/fs/nfsd/nfs3proc.c
->> +++ b/fs/nfsd/nfs3proc.c
->> @@ -471,6 +471,14 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp, struct nfsd3_readdirargs *argp,
->>  	resp->buflen = resp->count;
->>  	resp->rqstp = rqstp;
->>  	offset = argp->cookie;
->> +
->> +	nfserr = fh_verify(rqstp, &resp->fh, S_IFDIR, NFSD_MAY_NOP);
->> +	if (nfserr)
->> +		RETURN_STATUS(nfserr);
->> +
->> +	if (resp->fh.fh_export->ex_flags & NFSEXP_NOREADDIRPLUS)
->> +		RETURN_STATUS(nfserr_notsupp);
->> +
->>  	nfserr = nfsd_readdir(rqstp, &resp->fh,
->>  				     &offset,
->>  				     &resp->common,
->> diff --git a/include/uapi/linux/nfsd/export.h b/include/uapi/linux/nfsd/export.h
->> index cf47c313794e..584b6ef3a5e8 100644
->> --- a/include/uapi/linux/nfsd/export.h
->> +++ b/include/uapi/linux/nfsd/export.h
->> @@ -28,7 +28,8 @@
->>  #define NFSEXP_ALLSQUASH	0x0008
->>  #define NFSEXP_ASYNC		0x0010
->>  #define NFSEXP_GATHERED_WRITES	0x0020
->> -/* 40 80 100 currently unused */
->> +#define NFSEXP_NOREADDIRPLUS    0x0040
->> +/* 80 100 currently unused */
->>  #define NFSEXP_NOHIDE		0x0200
->>  #define NFSEXP_NOSUBTREECHECK	0x0400
->>  #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
->> @@ -47,7 +48,7 @@
->>   */
->>  #define	NFSEXP_V4ROOT		0x10000
->>  /* All flags that we claim to support.  (Note we don't support NOACL.) */
->> -#define NFSEXP_ALLFLAGS		0x17E3F
->> +#define NFSEXP_ALLFLAGS		0x1FE7F
->>  
->>  /* The flags that may vary depending on security flavor: */
->>  #define NFSEXP_SECINFO_FLAGS	(NFSEXP_READONLY | NFSEXP_ROOTSQUASH \
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+ 	error = make_socks(serv, net);
+ 	if (error < 0)
+-		goto err_socks;
++		goto err_bind;
+ 	set_grace_period(net);
+ 	dprintk("lockd_up_net: per-net data created; net=%p\n", net);
+ 	return 0;
+ 
+-err_socks:
+-	svc_rpcb_cleanup(serv, net);
+ err_bind:
+ 	ln->nlmsvc_users--;
+ 	return error;
