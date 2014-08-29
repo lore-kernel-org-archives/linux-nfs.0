@@ -1,115 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35547 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:36342 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753760AbaHESVf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 5 Aug 2014 14:21:35 -0400
-Date: Tue, 5 Aug 2014 14:21:34 -0400
+	id S1753996AbaH2TqZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 29 Aug 2014 15:46:25 -0400
+Date: Fri, 29 Aug 2014 15:46:24 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Rishi Agrawal <Rishi_Agrawal@symantec.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Rajesh Ghanekar <Rajesh_Ghanekar@symantec.com>,
-        Ram Pandiri <ram_pandiri@symantec.com>,
-        Sreeharsha Sarabu <Sreeharsha_Sarabu@symantec.com>,
-        Abhijit Dey <Abhijit_Dey@symantec.com>,
-        Tushar Shinde <Tushar_Shinde@symantec.com>,
-        "bfields@redhat.com" <bfields@redhat.com>
-Subject: Re: [PATCH] nfsd: allow turning off nfsv3 readdir_plus
-Message-ID: <20140805182134.GQ23341@fieldses.org>
-References: <20AEB6A025F81A4288597093171D1B5719CF5813D2@APJ1XCHEVSPIN35.SYMC.SYMANTEC.COM>
- <53DF992D.6090404@RedHat.com>
- <20140804152411.GB23341@fieldses.org>
- <20140804214646.GK23341@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd4: fix rd_dircount enforcement
+Message-ID: <20140829194624.GB13710@fieldses.org>
+References: <20140829185510.GA13710@fieldses.org>
+ <CAHQdGtQyZ0prJLpsDZ_E+qiF9OoxrxEtLOZw7w88eSTejYd=RA@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140804214646.GK23341@fieldses.org>
+In-Reply-To: <CAHQdGtQyZ0prJLpsDZ_E+qiF9OoxrxEtLOZw7w88eSTejYd=RA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 04, 2014 at 05:46:47PM -0400, J. Bruce Fields wrote:
-> On Mon, Aug 04, 2014 at 11:24:11AM -0400, bfields wrote:
-> > +static int
-> > +nfsd3_is_readdirplus_supported(struct svc_rqst *rqstp, struct svc_fh *fhp)
-> > +{
-> > +	struct svc_export *exp;
-> > +	int supported = 1; /* fall back to readdirplus supported in case of errors.*/
-> > +	int err;
+On Fri, Aug 29, 2014 at 03:29:07PM -0400, Trond Myklebust wrote:
+> On Fri, Aug 29, 2014 at 2:55 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> >
+> > Commit 3b299709091b "nfsd4: enforce rd_dircount" totally misunderstood
+> > rd_dircount; it refers to total non-attribute bytes returned, not number
+> > of directory entries returned.
+> >
+> > Bring the code into agreement with RFC 3530 section 14.2.24.
+> >
+> > Cc: stable@kernel.org
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/nfsd/nfs4xdr.c | 14 +++++++++++++-
+> >  1 file changed, 13 insertions(+), 1 deletion(-)
+> >
+> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > index f9821ce6658a..e94457c33ad6 100644
+> > --- a/fs/nfsd/nfs4xdr.c
+> > +++ b/fs/nfsd/nfs4xdr.c
+> > @@ -2657,6 +2657,7 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
+> >         struct xdr_stream *xdr = cd->xdr;
+> >         int start_offset = xdr->buf->len;
+> >         int cookie_offset;
+> > +       u32 name_and_cookie;
+> >         int entry_bytes;
+> >         __be32 nfserr = nfserr_toosmall;
+> >         __be64 wire_offset;
+> > @@ -2718,7 +2719,14 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
+> >         cd->rd_maxcount -= entry_bytes;
+> >         if (!cd->rd_dircount)
+> >                 goto fail;
+> > -       cd->rd_dircount--;
+> > +       /*
+> > +        * RFC 3530 14.2.24 describes rd_dircount as only a "hint", so
+> > +        * let's always let through the first entry, at least:
+> > +        */
+> > +       name_and_cookie = 4 * XDR_QUADLEN(namlen) + 8;
+> > +       if (name_and_cookie > cd->rd_dircount && cd->cookie_offset)
+> > +               goto fail;
+> > +       cd->rd_dircount -= min(cd->rd_dircount, name_and_cookie);
+> >         cd->cookie_offset = cookie_offset;
+> >  skip_entry:
+> >         cd->common.err = nfs_ok;
+> > @@ -3321,6 +3329,10 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+> >         }
+> >         maxcount = min_t(int, maxcount-16, bytes_left);
+> >
+> > +       /* RFC 3530 14.2.24 allows us to ignore dircount when it's 0: */
+> > +       if (!readdir->rd_dircount)
+> > +               readdir->rd_dircount = INT_MAX;
 > > +
-> > +	err = fh_verify(rqstp, fhp, S_IFDIR, NFSD_MAY_READ);
-> > +	if (err) {
-> > +		goto out;
-> > +	}
 > 
-> Actually, this isn't right: errors from fh_verify should be returned to
-> the client or weird things could happen (e.g. what should have been a
-> transient DELAY error could result in the client turning off
-> readdirplus).
+> Ah... Time to change the Linux client to always set this value to 0.
+> It really is useless in our case.
 
-Apologies, I misread: as the comment above notes, it falls back on
-allowing readdirplus when this fails, so I don't think there's a real
-bug here.
+I didn't look at the client.  Hm:
 
-> And MAY_READ is more than nfsd_readdir actually asks for,
-> I think, probably should just be MAY_NOP here.
-> 
-> I'll fix that up.--b.
+	uint32_t dircount = readdir->count >> 1
+	...
+	*p++ = cpu_to_be32(dircount);
+	*p++ = cpu_to_be32(readdir->count);
 
-But it's probably still better to return the fh_verify error on failure,
-as follows.
+Yeah, that's kind of arbitrary.  This dircount thing is just inherently
+weird.  We could just revert the server back to ignoring it completely
+like it used to--the spec only says it's a "hint", whatever that means.
+But presumably somebody must have thought they had a use for it.
 
 --b.
-
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 72ffd7cce3c3..30a739d896ff 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -1145,6 +1145,7 @@ static struct flags {
- 	{ NFSEXP_ALLSQUASH, {"all_squash", ""}},
- 	{ NFSEXP_ASYNC, {"async", "sync"}},
- 	{ NFSEXP_GATHERED_WRITES, {"wdelay", "no_wdelay"}},
-+	{ NFSEXP_NOREADDIRPLUS, {"nordirplus", ""}},
- 	{ NFSEXP_NOHIDE, {"nohide", ""}},
- 	{ NFSEXP_CROSSMOUNT, {"crossmnt", ""}},
- 	{ NFSEXP_NOSUBTREECHECK, {"no_subtree_check", ""}},
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index fa2525b2e9d7..247b06fb400d 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -471,6 +471,14 @@ nfsd3_proc_readdirplus(struct svc_rqst *rqstp, struct nfsd3_readdirargs *argp,
- 	resp->buflen = resp->count;
- 	resp->rqstp = rqstp;
- 	offset = argp->cookie;
-+
-+	nfserr = fh_verify(rqstp, &resp->fh, S_IFDIR, NFSD_MAY_NOP);
-+	if (nfserr)
-+		RETURN_STATUS(nfserr);
-+
-+	if (resp->fh.fh_export->ex_flags & NFSEXP_NOREADDIRPLUS)
-+		RETURN_STATUS(nfserr_notsupp);
-+
- 	nfserr = nfsd_readdir(rqstp, &resp->fh,
- 				     &offset,
- 				     &resp->common,
-diff --git a/include/uapi/linux/nfsd/export.h b/include/uapi/linux/nfsd/export.h
-index cf47c313794e..584b6ef3a5e8 100644
---- a/include/uapi/linux/nfsd/export.h
-+++ b/include/uapi/linux/nfsd/export.h
-@@ -28,7 +28,8 @@
- #define NFSEXP_ALLSQUASH	0x0008
- #define NFSEXP_ASYNC		0x0010
- #define NFSEXP_GATHERED_WRITES	0x0020
--/* 40 80 100 currently unused */
-+#define NFSEXP_NOREADDIRPLUS    0x0040
-+/* 80 100 currently unused */
- #define NFSEXP_NOHIDE		0x0200
- #define NFSEXP_NOSUBTREECHECK	0x0400
- #define	NFSEXP_NOAUTHNLM	0x0800		/* Don't authenticate NLM requests - just trust */
-@@ -47,7 +48,7 @@
-  */
- #define	NFSEXP_V4ROOT		0x10000
- /* All flags that we claim to support.  (Note we don't support NOACL.) */
--#define NFSEXP_ALLFLAGS		0x17E3F
-+#define NFSEXP_ALLFLAGS		0x1FE7F
- 
- /* The flags that may vary depending on security flavor: */
- #define NFSEXP_SECINFO_FLAGS	(NFSEXP_READONLY | NFSEXP_ROOTSQUASH \
