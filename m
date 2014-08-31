@@ -1,58 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40642 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752571AbaHAQsr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Aug 2014 12:48:47 -0400
-Date: Fri, 1 Aug 2014 12:48:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: Re: [PATCH v3 21/38] nfsd: Add reference counting to state owners
-Message-ID: <20140801164843.GB32749@fieldses.org>
-References: <1406684083-19736-1-git-send-email-jlayton@primarydata.com>
- <1406684083-19736-22-git-send-email-jlayton@primarydata.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:42981 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751123AbaHaOvY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Aug 2014 10:51:24 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so4507700qcx.27
+        for <linux-nfs@vger.kernel.org>; Sun, 31 Aug 2014 07:51:24 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sun, 31 Aug 2014 10:51:21 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, bfields@fieldses.org,
+        cluster-devel@redhat.com, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 08/10] locks: move i_lock acquisition into
+ generic_*_lease handlers
+Message-ID: <20140831105121.65086ded@tlielax.poochiereds.net>
+In-Reply-To: <20140824161134.GJ15908@infradead.org>
+References: <1408804878-1331-1-git-send-email-jlayton@primarydata.com>
+	<1408804878-1331-9-git-send-email-jlayton@primarydata.com>
+	<20140824160634.GG15908@infradead.org>
+	<20140824161134.GJ15908@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1406684083-19736-22-git-send-email-jlayton@primarydata.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 29, 2014 at 09:34:26PM -0400, Jeff Layton wrote:
->  struct nfs4_stateowner {
-> -	struct list_head        so_strhash;   /* hash by op_name */
-> -	struct list_head        so_stateids;
-> -	struct nfs4_client *    so_client;
-> +	struct list_head			so_strhash;
-> +	struct list_head			so_stateids;
-> +	struct nfs4_client			*so_client;
-> +	const struct nfs4_stateowner_operations	*so_ops;
->  	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
->  	 * sequence id expected from the client: */
+On Sun, 24 Aug 2014 09:11:34 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Uh, that could use updating--applying below.
+> On Sun, Aug 24, 2014 at 09:06:34AM -0700, Christoph Hellwig wrote:
+> > We really should split a lm_release from lm_change, the way it is
+> > used is highly confusing.  In addition I think a lot of code
+> > currently in lease_modify should move here instead, e.g. something like:
+> 
+> At this point the old lm_change actually becomes superflous if we
+> simply disallow changes for delegation.
+> 
 
-Anyway, the stateowner reference counting makes sense to me.
+This sounds like a reasonable change, but I think it'll be easier to
+implement a little later once we've done some cleanup and change how
+file locks are handled. I'm going to leave this out of this current
+patchset, but I'll keep it in mind for a later cleanup.
 
---b.
-
-commit 84a46922ea90
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Jul 31 16:10:08 2014 -0400
-
-    nfsd4: fix out of date comment
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 73a209dc352b..0b234500f104 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -345,7 +345,7 @@ struct nfs4_stateowner {
- 	struct list_head			so_stateids;
- 	struct nfs4_client			*so_client;
- 	const struct nfs4_stateowner_operations	*so_ops;
--	/* after increment in ENCODE_SEQID_OP_TAIL, represents the next
-+	/* after increment in nfsd4_bump_seqid, represents the next
- 	 * sequence id expected from the client: */
- 	atomic_t				so_count;
- 	u32					so_seqid;
+-- 
+Jeff Layton <jlayton@primarydata.com>
