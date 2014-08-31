@@ -1,36 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2571 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751429AbaHMTS6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Aug 2014 15:18:58 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s7DJIvaS027216
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Aug 2014 15:18:57 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-55-121.rdu2.redhat.com [10.10.55.121])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s7DJIu7E023385
-	for <linux-nfs@vger.kernel.org>; Wed, 13 Aug 2014 15:18:56 -0400
-Message-ID: <53EBBA1F.4010907@RedHat.com>
-Date: Wed, 13 Aug 2014 15:18:55 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:60446 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750705AbaHaEJN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Aug 2014 00:09:13 -0400
+Date: Sun, 31 Aug 2014 05:09:10 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Peng Tao <tao.peng@primarydata.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: VFS regression: commit aba809cf0944 breaks MNT_SHRINKABLE
+ automounted partitions
+Message-ID: <20140831040910.GH7996@ZenIV.linux.org.uk>
+References: <CAHQdGtT4kbPqQvD_fu7c_5_CqK8FCpA5mJsVdh=KxoE9_vXRzw@mail.gmail.com>
+ <20140829205817.GB7996@ZenIV.linux.org.uk>
+ <CAHQdGtRBqmsfeVVysTnTEELHuwiPwvsyTHtoRAsfSS0aSyCbfQ@mail.gmail.com>
+ <20140829230147.GD7996@ZenIV.linux.org.uk>
+ <CAKVebiWBU3du650yeTMfaFuLr=WLUBc2RukFGyBF6Qgxd6zA8Q@mail.gmail.com>
+ <20140830173638.GE7996@ZenIV.linux.org.uk>
+ <20140830232755.GG7996@ZenIV.linux.org.uk>
+ <CAKVebiV8erTbK6ZA1g2X+xsKRBG2n61XBoqc04NvzSGTZRhTgw@mail.gmail.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: ANNOUNCE: libnfsidmap-0.26  release.
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKVebiV8erTbK6ZA1g2X+xsKRBG2n61XBoqc04NvzSGTZRhTgw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The majority in this release is bug fixes and clean up
+On Sun, Aug 31, 2014 at 08:31:47AM +0800, Peng Tao wrote:
+> On Sun, Aug 31, 2014 at 7:27 AM, Al Viro <viro@zeniv.linux.org.uk> wrote:
+> >         Could you check if vfs.git#for-linus fixes that crap?
+> The related commits are the top two of vfs.git#for-linus, right? I
+> cherry-picked them to 3.14.15 and they fixed the bug instantly. Thank
+> you for the quick fix!
 
-The tarballs can be found at
-  https://fedorapeople.org/~steved/libnfsidmap/0.26/
-
-The change log is at 
-   https://fedorapeople.org/~steved/libnfsidmap/libnfsidmap/0.26/0.26-Changelog
-
-The git tree is at:
-  git://linux-nfs.org/~steved/libnfsidmap
-  
-Please send comments/bugs to linux-nfs@vger.kernel.org
-
-steved.
+Folks, could somebody put together an xfstests (or LTP, for that matter)
+patch adding that testcase?  Which regression suite is normally used
+for NFS work, BTW?  It's not, strictly speaking, an NFS-specific bug
+(you can trigger the same thing on AFS and CIFS as well), but NFS is
+by far the most common of those three, so...
