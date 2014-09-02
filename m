@@ -1,109 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59223 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756204AbaISOg0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Sep 2014 10:36:26 -0400
-Message-ID: <541C3F67.7000300@RedHat.com>
-Date: Fri, 19 Sep 2014 10:36:23 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:36246 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753526AbaIBQFx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 12:05:53 -0400
+Message-ID: <5405EADC.6080302@gmail.com>
+Date: Tue, 02 Sep 2014 19:05:48 +0300
+From: Boaz Harrosh <openosd@gmail.com>
 MIME-Version: 1.0
-To: Todd Vierling <todd.vierling@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] exportfs: Properly parse IPv6 literal strings with
- null termination
-References: <1411060744-14328-1-git-send-email-todd.vierling@oracle.com>
-In-Reply-To: <1411060744-14328-1-git-send-email-todd.vierling@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Bruce Fields <bfields@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Shakil A Khan <shakilk1729@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        Peter Zijlstra <peterz@infradead.org>,
+        Paul McKenney <paulmck@linux.vnet.ibm.com>,
+        William Andros Adamson <andros@netapp.com>,
+        Jeffrey Layton <jlayton@primarydata.com>,
+        "David S. Miller" <davem@davemloft.net>
+Subject: Re: [PATCH] Next branch: authgss: authgss.c: Fix warnings for uninitizlized
+ variable expire
+References: <1409571154-50408-1-git-send-email-shakilk1729@gmail.com> <CAHQdGtQAwp_QuQE-xmjJNkcxbu7g4QtYQv8qrPT_qWpkym1GZg@mail.gmail.com> <5405A15F.2060002@gmail.com> <20140902132140.GA31793@fieldses.org> <5405CD51.9020601@gmail.com> <20140902141739.GB31793@fieldses.org>
+In-Reply-To: <20140902141739.GB31793@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 09/02/2014 05:17 PM, Bruce Fields wrote:
+> On Tue, Sep 02, 2014 at 04:59:45PM +0300, Boaz Harrosh wrote:
+>> uninitialized_var was made to be a friend not an enemy, in the face of real
+>> ugliness it is the best we can do. And that is what it should communicate to
+>> everyone. Why has it become everyone's favorite blasphemy I do not know.
+> 
+> Not personally claiming it should never be used, just that this
+> particular case is kind of extreme, since unless I'm missing a real
+> compilication it's basically just:
+> 
+> 	if (ctx)
+> 		assign to expire
+> 	...
+> 	if (ctx)
+> 		use expire
+> 
+> A compiler wouldn't have to be that smart to actually prove to itself
+> that expire is initialized at the last step, and that it's not only
+> failing to do that but actually flagging it as possibly unitialized is
+> weird.
 
+Actually that is a complicated case for a compiler. Because of the two
+different scopes. I think it only optimizes that on higher optimization
+values. Cross scope analysis is not done at parsing time but more on
+code generation time, the "warning" is more of the former phase.
 
-On 09/18/2014 01:19 PM, Todd Vierling wrote:
-> The original implementation was using strncpy() with a truncation
-> length to an uninitialized stack buffer, leaving a string that
-> was only null terminated by luck.
-> 
-> While here, change to use no-copy semantics (no extra buffer) to
-> avoid buffer overflows altogether. exportfs already modifies argv
-> contents elsewhere, so this doesn't break anything anew.
-> 
-> Fixes: 4663c648 (exportfs: Support raw IPv6 addresses with "client:/path")
-> 
-> Signed-off-by: Todd Vierling <todd.vierling@oracle.com>
-> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Committed... 
+Perhaps change the code, if possible, so the assign and use of "expire"
+is under the last if (or the first)? That would be also easier on the
+reader.
 
-steved.
+BTW: You are most probably right though, because here I do not have this
+     problem. I guess it is the case of an old compiler with a certain
+     compilation environment.
 
-> ---
->  utils/exportfs/exportfs.c | 18 ++++++++----------
->  1 file changed, 8 insertions(+), 10 deletions(-)
+Thanks
+Boaz
+
 > 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index e7d1ac8..bdea12b 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -351,16 +351,15 @@ static int exportfs_generic(char *arg, char *options, int verbose)
->  
->  static int exportfs_ipv6(char *arg, char *options, int verbose)
->  {
-> -	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
-> +	char *path, *c;
->  
->  	arg++;
->  	c = strchr(arg, ']');
->  	if (c == NULL)
->  		return 1;
-> -	strncpy(hname, arg, c - arg);
->  
->  	/* no colon means this is a wildcarded DNS hostname */
-> -	if (strchr(hname, ':') == NULL)
-> +	if (memchr(arg, ':', c - arg) == NULL)
->  		return exportfs_generic(--arg, options, verbose);
->  
->  	path = strstr(c, ":/");
-> @@ -370,9 +369,9 @@ static int exportfs_ipv6(char *arg, char *options, int verbose)
->  
->  	/* if there's anything between the closing brace and the
->  	 * path separator, it's probably a prefix length */
-> -	strcat(hname, ++c);
-> +	memmove(c, c + 1, path - c);
->  
-> -	exportfs_parsed(hname, path, options, verbose);
-> +	exportfs_parsed(arg, path, options, verbose);
->  	return 0;
->  }
->  
-> @@ -458,16 +457,15 @@ static int unexportfs_generic(char *arg, int verbose)
->  
->  static int unexportfs_ipv6(char *arg, int verbose)
->  {
-> -	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
-> +	char *path, *c;
->  
->  	arg++;
->  	c = strchr(arg, ']');
->  	if (c == NULL)
->  		return 1;
-> -	strncpy(hname, arg, c - arg);
->  
->  	/* no colon means this is a wildcarded DNS hostname */
-> -	if (strchr(hname, ':') == NULL)
-> +	if (memchr(arg, ':', c - arg) == NULL)
->  		return unexportfs_generic(--arg, verbose);
->  
->  	path = strstr(c, ":/");
-> @@ -477,9 +475,9 @@ static int unexportfs_ipv6(char *arg, int verbose)
->  
->  	/* if there's anything between the closing brace and the
->  	 * path separator, it's probably a prefix length */
-> -	strcat(hname, ++c);
-> +	memmove(c, c + 1, path - c);
->  
-> -	unexportfs_parsed(hname, path, verbose);
-> +	unexportfs_parsed(arg, path, verbose);
->  	return 0;
->  }
->  
+> --b.
 > 
+
