@@ -1,62 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54309 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755873AbaIWQFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 12:05:40 -0400
-Date: Tue, 23 Sep 2014 12:05:39 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Simo Sorce <simo@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140923160539.GE29932@fieldses.org>
-References: <54207BCD.70101@RedHat.com>
- <20140922204401.GI26763@fieldses.org>
- <5420911D.6080506@RedHat.com>
- <20140922223423.GA29932@fieldses.org>
- <5420B78D.6040704@RedHat.com>
- <20140922202655.5e308e58@willson.usersys.redhat.com>
- <20140923015549.GB32712@fieldses.org>
- <54218C85.6040005@RedHat.com>
- <20140923151621.GB29932@fieldses.org>
- <5421972C.4080006@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5421972C.4080006@RedHat.com>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:54280 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754033AbaIBR7H (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 13:59:07 -0400
+Received: by mail-ie0-f176.google.com with SMTP id x19so8149124ier.21
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Sep 2014 10:59:06 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] lockd: Do not start the lockd thread before we've set nlmsvc_rqst->rq_task
+Date: Tue,  2 Sep 2014 13:58:57 -0400
+Message-Id: <1409680738-12491-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 23, 2014 at 11:52:12AM -0400, Steve Dickson wrote:
-> On 09/23/2014 11:16 AM, J. Bruce Fields wrote:
-> > On Tue, Sep 23, 2014 at 11:06:45AM -0400, Steve Dickson wrote:
-> >> > 
-> >> > 
-> >> > On 09/22/2014 09:55 PM, J. Bruce Fields wrote:
-> >>> > > On Mon, Sep 22, 2014 at 08:26:55PM -0400, Simo Sorce wrote:
-> >>>> > >> No, starting before those service in itself achieves nothing.\
-> >>>> > >> I think what may cause the module to load maybe the fact
-> >>>> > >> gssproxy.service includes:
-> >>>> > >> Requires=proc-fs-nfsd.mount
-> >>> > > 
-> >>> > > I'd expect that to only load the nfsd module.
-> >>> > > 
-> >>> > > Hm, I think nfsd actually has a dependency on auth_rpcgss.  I wonder if
-> >>> > > that's correct.  Maybe that's what's doing it.
-> >> > It is... In another thread I clearly showed that....
-> > The dependency of nfsd on auth_rpcgss looks to me like an implementation
-> > detail.  The client module doesn't have the same dependency.  
-> It does... auth_rpcgss and friends are loaded during the mount
+This fixes an Oopsable race when starting lockd.
 
-They get loaded for other reasons.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/lockd/svc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-The nfs module does not have any static dependency on the auth_rpcgss
-module that I can see.
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 673668a9eec1..c35cd43a06e6 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -306,7 +306,7 @@ static int lockd_start_svc(struct svc_serv *serv)
+ 	svc_sock_update_bufs(serv);
+ 	serv->sv_maxconn = nlm_max_connections;
+ 
+-	nlmsvc_task = kthread_run(lockd, nlmsvc_rqst, "%s", serv->sv_name);
++	nlmsvc_task = kthread_create(lockd, nlmsvc_rqst, "%s", serv->sv_name);
+ 	if (IS_ERR(nlmsvc_task)) {
+ 		error = PTR_ERR(nlmsvc_task);
+ 		printk(KERN_WARNING
+@@ -314,6 +314,7 @@ static int lockd_start_svc(struct svc_serv *serv)
+ 		goto out_task;
+ 	}
+ 	nlmsvc_rqst->rq_task = nlmsvc_task;
++	wake_up_process(nlmsvc_task);
+ 
+ 	dprintk("lockd_up: service started\n");
+ 	return 0;
+-- 
+1.9.3
 
-> > We definitely shouldn't depend on it, as the dependency could get removed
-> > some day.
-> Well if that dependency gets removed (which I can't see why it ever would)
-> we'll deal with the then...
-
-No, please don't depend on this implementation detail.
-
---b.
