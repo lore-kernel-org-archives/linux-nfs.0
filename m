@@ -1,56 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49614 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751092AbaILRzo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Sep 2014 13:55:44 -0400
-Date: Fri, 12 Sep 2014 13:55:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFSv2/3 vs v4 error codes?
-Message-ID: <20140912175543.GA32359@fieldses.org>
-References: <20140910221650.GD29452@infradead.org>
- <20140911190345.GA20501@fieldses.org>
- <20140911200214.GA21392@infradead.org>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:45255 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753707AbaIBOLV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 10:11:21 -0400
+Received: by mail-pa0-f49.google.com with SMTP id kq14so14714266pab.22
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Sep 2014 07:11:20 -0700 (PDT)
+Message-ID: <5405CFE4.9060407@gmail.com>
+Date: Tue, 02 Sep 2014 22:10:44 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140911200214.GA21392@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH 1/6] NFSD: Put file after ima_file_check fail in nfsd_open()
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 11, 2014 at 01:02:14PM -0700, Christoph Hellwig wrote:
-> On Thu, Sep 11, 2014 at 03:03:45PM -0400, J. Bruce Fields wrote:
-> > On Wed, Sep 10, 2014 at 03:16:50PM -0700, Christoph Hellwig wrote:
-> > > As a followup to the fallocate discussion I checked what we map ENODEV
-> > > to in nfsd.  Turns out we map it to NFSERR_NODEV, which doesn't exist
-> > > in eiter NFSv4.0 nor NFSv4.1 despite the comment in
-> > > include/uapi/linux/nfs.h claiming otherwise.
-> > 
-> > That's interesting.  Is there a reasonable alternative, or is this a
-> > protocol bug?
-> 
-> I still haven't figured this out.  RFC1813 mentions NFS3ERR_NODEV, but
-> doesn't actually reference it anywhere.
-> 
-> In general it seems to me like the use of ENODEV in fallocate is the
-> bug, as we don't really return it from any other filesystem operation.
-> 
-> > > I also just ran into another issue where nfserrno translates a large
-> > > lits of errors into NFSERR_JUKEBOX, but for v4 we'd really want
-> > > NFSERR_DELAY instead for most of them.
-> > 
-> > The distinction is academic as they're both 10008.
-> 
-> Oh, right.  I missed to spot that.
-> 
-> > > Is it time for a version specific errno mapping?
-> > 
-> > I'm certainly not opposed if it turns out to be necessary.
-> 
-> A start might be to move nfserrno out of the NFSv2-specific nfsproc
-> file..
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/vfs.c | 20 +++++++++++++-------
+ 1 file changed, 13 insertions(+), 7 deletions(-)
 
-The current location's a little confusing.   But I don't have strong
-feelings about it.
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index f501a9b..a994c50 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -649,6 +649,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
+ {
+ 	struct path	path;
+ 	struct inode	*inode;
++	struct file	*file;
+ 	int		flags = O_RDONLY|O_LARGEFILE;
+ 	__be32		err;
+ 	int		host_err = 0;
+@@ -703,17 +704,22 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
+ 		else
+ 			flags = O_WRONLY|O_LARGEFILE;
+ 	}
+-	*filp = dentry_open(&path, flags, current_cred());
+-	if (IS_ERR(*filp)) {
+-		host_err = PTR_ERR(*filp);
+-		*filp = NULL;
++
++	file = dentry_open(&path, flags, current_cred());
++	if (IS_ERR(file)) {
++		host_err = PTR_ERR(file);
+ 	} else {
+-		host_err = ima_file_check(*filp, may_flags);
++		host_err = ima_file_check(file, may_flags);
++		if (host_err) {
++			nfsd_close(file);
++			goto out_nfserr;
++		}
+ 
+ 		if (may_flags & NFSD_MAY_64BIT_COOKIE)
+-			(*filp)->f_mode |= FMODE_64BITHASH;
++			(file)->f_mode |= FMODE_64BITHASH;
+ 		else
+-			(*filp)->f_mode |= FMODE_32BITHASH;
++			(file)->f_mode |= FMODE_32BITHASH;
++		*filp = file;
+ 	}
+ 
+ out_nfserr:
+-- 
+1.9.3
 
---b.
