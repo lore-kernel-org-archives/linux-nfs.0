@@ -1,207 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:58142 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754616AbaIHQai (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 12:30:38 -0400
-Received: by mail-qc0-f181.google.com with SMTP id i17so16045270qcy.12
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 09:30:38 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: [PATCH v3 7/7] nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
-Date: Mon,  8 Sep 2014 12:30:21 -0400
-Message-Id: <1410193821-25109-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
-References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:7958 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754183AbaIBTqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Sep 2014 15:46:21 -0400
+Date: Tue, 2 Sep 2014 15:45:56 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfs: do not start the callback thread until we set
+ rqstp->rq_task
+Message-ID: <20140902194556.GG17218@pad.redhat.com>
+References: <1409680738-12491-1-git-send-email-trond.myklebust@primarydata.com>
+ <1409680738-12491-2-git-send-email-trond.myklebust@primarydata.com>
+ <20140902192328.GA3873@infradead.org>
+ <CAHQdGtRcyphAktKfdx8PKzbcExOmJsNCkCYFu9syfGjmS+J+TQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtRcyphAktKfdx8PKzbcExOmJsNCkCYFu9syfGjmS+J+TQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the fetching of NFSDCLTRACK_GRACE_START out of environment
-variables. If it's present in the "create" or "init" upcalls, then we
-can use that to query the database to see whether there are any clients
-that have not issued a RECLAIM_COMPLETE since that time.
+On Tue, Sep 02, 2014 at 03:32:55PM -0400, Trond Myklebust wrote:
+> On Tue, Sep 2, 2014 at 3:23 PM, Christoph Hellwig <hch@infradead.org> wrote:
+> > On Tue, Sep 02, 2014 at 01:58:58PM -0400, Trond Myklebust wrote:
+> >> This fixes an Oopsable race when starting up the callback server.
+> >>
+> >> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> >> ---
+> >>  fs/nfs/callback.c | 3 ++-
+> >>  1 file changed, 2 insertions(+), 1 deletion(-)
+> >>
+> >> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> >> index e3dd1cd175d9..b8fb3a4ef649 100644
+> >> --- a/fs/nfs/callback.c
+> >> +++ b/fs/nfs/callback.c
+> >> @@ -235,7 +235,7 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
+> >>
+> >>       cb_info->serv = serv;
+> >>       cb_info->rqst = rqstp;
+> >> -     cb_info->task = kthread_run(callback_svc, cb_info->rqst,
+> >> +     cb_info->task = kthread_create(callback_svc, cb_info->rqst,
+> >>                                   "nfsv4.%u-svc", minorversion);
+> >>       if (IS_ERR(cb_info->task)) {
+> >>               ret = PTR_ERR(cb_info->task);
+> >> @@ -245,6 +245,7 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
+> >>               return ret;
+> >>       }
+> >>       rqstp->rq_task = cb_info->task;
+> >> +     wake_up_process(cb_info->task);
+> >
+> > Wouldn't it be cleaner to do something like:
+> >
+> > -       cb_info->task = kthread_run(callback_svc, cb_info->rqst,
+> > +       cb_info->task = rqstp->rq_run =
+> > +               kthread_create(callback_svc, cb_info->rqst,
+> >
+> > or am I missing something subtile that the changelog didn't mention?
+> 
+> The above is fine if you call kthread_create(), but if you stick with
+> kthread_run(), then there is still the same atomicity issue that the
+> thread can be started before we've initialised cb_info->task and
+> rqstp->rq_run.
+> 
+> Internal testing has shown that this can lead to an oops when starting
+> lockd.
 
-If there aren't any, then we know that all reclaim activity is now done
-and we can then cue the kernel to lift the grace period.
+The oops seen in practice were probably after applying 983c684466e0
+"SUNRPC: get rid of the request wait queue"?
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- utils/nfsdcltrack/nfsdcltrack.c | 72 ++++++++++++++++++++++++++++++++++++++++-
- utils/nfsdcltrack/sqlite.c      | 40 +++++++++++++++++++++++
- utils/nfsdcltrack/sqlite.h      |  1 +
- 3 files changed, 112 insertions(+), 1 deletion(-)
+Though it was a bug before then too, of course.
 
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-index 873b1fae056d..7d20f7d27d1a 100644
---- a/utils/nfsdcltrack/nfsdcltrack.c
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -50,6 +50,8 @@
- #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
- #endif
- 
-+#define NFSD_END_GRACE_FILE "/proc/fs/nfsd/v4_end_grace"
-+
- /* defined by RFC 3530 */
- #define NFS4_OPAQUE_LIMIT	1024
- 
-@@ -211,6 +213,64 @@ cltrack_set_caps(void)
- 	return ret;
- }
- 
-+/* Inform the kernel that it's OK to lift nfsd's grace period */
-+static void
-+cltrack_lift_grace_period(void)
-+{
-+	int fd;
-+
-+	fd = open(NFSD_END_GRACE_FILE, O_WRONLY);
-+	if (fd < 0) {
-+		/* Don't warn if file isn't present */
-+		if (errno != ENOENT)
-+			xlog(L_WARNING, "Unable to open %s: %m",
-+				NFSD_END_GRACE_FILE);
-+		return;
-+	}
-+
-+	if (write(fd, "Y", 1) < 0)
-+		xlog(L_WARNING, "Unable to write to %s: %m",
-+				NFSD_END_GRACE_FILE);
-+
-+	close(fd);
-+	return;
-+}
-+
-+/*
-+ * Fetch the contents of the NFSDCLTRACK_GRACE_START env var. If it's not set
-+ * or there's an error converting it to time_t, then return LONG_MAX.
-+ */
-+static time_t
-+cltrack_get_grace_start(void)
-+{
-+	time_t grace_start;
-+	char *end;
-+	char *grace_start_str = getenv("NFSDCLTRACK_GRACE_START");
-+
-+	if (!grace_start_str)
-+		return LONG_MAX;
-+
-+	errno = 0;
-+	grace_start = strtol(grace_start_str, &end, 0);
-+	/* Problem converting or value is too large? */
-+	if (errno)
-+		return LONG_MAX;
-+
-+	return grace_start;
-+}
-+
-+static bool
-+cltrack_reclaims_complete(void)
-+{
-+	time_t grace_start = cltrack_get_grace_start();
-+
-+	/* Don't query DB if we didn't get a valid boot time */
-+	if (grace_start == LONG_MAX)
-+		return false;
-+
-+	return !sqlite_query_reclaiming(grace_start);
-+}
-+
- static int
- cltrack_init(const char __attribute__((unused)) *unused)
- {
-@@ -251,7 +311,11 @@ cltrack_init(const char __attribute__((unused)) *unused)
- 		 * stop upcalling until the problem is resolved.
- 		 */
- 		ret = -EACCES;
-+	} else {
-+		if (cltrack_reclaims_complete())
-+			cltrack_lift_grace_period();
- 	}
-+
- 	return ret;
- }
- 
-@@ -276,6 +340,7 @@ cltrack_create(const char *id)
- {
- 	int ret;
- 	ssize_t len;
-+	bool reclaim_complete;
- 
- 	xlog(D_GENERAL, "%s: create client record.", __func__);
- 
-@@ -287,7 +352,12 @@ cltrack_create(const char *id)
- 	if (len < 0)
- 		return (int)len;
- 
--	ret = sqlite_insert_client(blob, len, cltrack_get_reclaim_complete());
-+	reclaim_complete = cltrack_get_reclaim_complete();
-+
-+	ret = sqlite_insert_client(blob, len, reclaim_complete);
-+
-+	if (!ret && reclaim_complete && cltrack_reclaims_complete())
-+		cltrack_lift_grace_period();
- 
- 	return ret ? -EREMOTEIO : ret;
- }
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index e2a860f4b924..616a5e59d528 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -547,3 +547,43 @@ sqlite_remove_unreclaimed(time_t grace_start)
- 	sqlite3_free(err);
- 	return ret;
- }
-+
-+/*
-+ * Are there any clients that are possibly still reclaiming? Return a positive
-+ * integer (usually number of clients) if so. If not, then return 0. On any
-+ * error, return non-zero.
-+ */
-+int
-+sqlite_query_reclaiming(const time_t grace_start)
-+{
-+	int ret;
-+	sqlite3_stmt *stmt = NULL;
-+
-+	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
-+				      "reclaim_complete < ?", -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: unable to prepare select statement: %s",
-+				__func__, sqlite3_errstr(ret));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_bind_int64(stmt, 1, (sqlite3_int64)grace_start);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: bind int64 failed: %s",
-+				__func__, sqlite3_errstr(ret));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret != SQLITE_ROW) {
-+		xlog(L_ERROR, "%s: unexpected return code from select: %s",
-+				__func__, sqlite3_errstr(ret));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_column_int(stmt, 0);
-+	sqlite3_finalize(stmt);
-+	xlog(D_GENERAL, "%s: there are %d clients that have not completed "
-+			"reclaim", __func__, ret);
-+	return ret;
-+}
-diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
-index 9d7357bcf832..32b92d799b4a 100644
---- a/utils/nfsdcltrack/sqlite.h
-+++ b/utils/nfsdcltrack/sqlite.h
-@@ -26,5 +26,6 @@ int sqlite_insert_client(const unsigned char *clname, const size_t namelen,
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
- int sqlite_check_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_unreclaimed(const time_t grace_start);
-+int sqlite_query_reclaiming(const time_t grace_start);
- 
- #endif /* _SQLITE_H */
--- 
-1.9.3
+--b.
 
+> I'm therefore assuming that the same thing can happen with the
+> NFS client callback channel.
+> 
+> -- 
+> Trond Myklebust
+> 
+> Linux NFS client maintainer, PrimaryData
+> 
+> trond.myklebust@primarydata.com
