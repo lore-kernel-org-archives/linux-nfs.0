@@ -1,125 +1,209 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f169.google.com ([209.85.216.169]:62647 "EHLO
-	mail-qc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754214AbaIHOrD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:03 -0400
-Received: by mail-qc0-f169.google.com with SMTP id l6so15912332qcy.14
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:47:01 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: [PATCH v3 2/8] nfsd: remove redundant boot_time parm from grace_done client tracking op
-Date: Mon,  8 Sep 2014 10:46:43 -0400
-Message-Id: <1410187609-10319-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
-References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:15461 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754125AbaIBRap (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Sep 2014 13:30:45 -0400
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 2/2] NFSD: Implement SEEK
+Date: Tue, 2 Sep 2014 13:30:38 -0400
+Message-ID: <1409679038-32179-3-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1409679038-32179-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1409679038-32179-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since it's stored in nfsd_net, we don't need to pass it in separately.
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+This patch adds server support for the NFS v4.2 operation SEEK, which
+returns the position of the next hole or data segment in a file.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfsd/nfs4recover.c | 17 ++++++++---------
- fs/nfsd/nfs4state.c   |  2 +-
- fs/nfsd/state.h       |  2 +-
- 3 files changed, 10 insertions(+), 11 deletions(-)
+ fs/nfsd/nfs4proc.c   | 43 +++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c    | 36 ++++++++++++++++++++++++++++++++++--
+ fs/nfsd/xdr4.h       | 14 ++++++++++++++
+ include/linux/nfs4.h |  5 +++++
+ 4 files changed, 96 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 9c271f42604a..a0d2ba956a3f 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -58,7 +58,7 @@ struct nfsd4_client_tracking_ops {
- 	void (*create)(struct nfs4_client *);
- 	void (*remove)(struct nfs4_client *);
- 	int (*check)(struct nfs4_client *);
--	void (*grace_done)(struct nfsd_net *, time_t);
-+	void (*grace_done)(struct nfsd_net *);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 5e0dc52..aed5b88 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1013,6 +1013,43 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	return status;
+ }
+ 
++static __be32
++nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		struct nfsd4_seek *seek)
++{
++	struct file *file;
++	__be32 status = nfs_ok;
++
++	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
++					    &seek->seek_stateid,
++					    RD_STATE, &file);
++	if (status) {
++		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
++		return status;
++	}
++
++	switch (seek->seek_whence) {
++	case NFS4_CONTENT_DATA:
++		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
++		break;
++	case NFS4_CONTENT_HOLE:
++		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
++		break;
++	default:
++		status = nfserr_union_notsupp;
++		goto out;
++	}
++
++	if (seek->seek_pos < 0)
++		status = nfserrno(seek->seek_pos);
++	else if (seek->seek_pos >= i_size_read(file_inode(file)))
++		seek->seek_eof = true;
++
++out:
++	fput(file);
++	return status;
++}
++
+ /* This routine never returns NFS_OK!  If there are no other errors, it
+  * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
+  * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
+@@ -1881,6 +1918,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
++
++	/* NFSv4.2 operations */
++	[OP_SEEK] = {
++		.op_func = (nfsd4op_func)nfsd4_seek,
++		.op_name = "OP_SEEK",
++	},
  };
  
- /* Globals */
-@@ -392,7 +392,7 @@ purge_old(struct dentry *parent, struct dentry *child, struct nfsd_net *nn)
+ int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 94dde7b..57b3973 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1521,6 +1521,22 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
  }
  
- static void
--nfsd4_recdir_purge_old(struct nfsd_net *nn, time_t boot_time)
-+nfsd4_recdir_purge_old(struct nfsd_net *nn)
+ static __be32
++nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
++{
++	DECODE_HEAD;
++
++	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
++	if (status)
++		return status;
++
++	READ_BUF(12);
++	p = xdr_decode_hyper(p, &seek->seek_offset);
++	seek->seek_whence = be32_to_cpup(p);
++
++	DECODE_TAIL;
++}
++
++static __be32
+ nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
  {
- 	int status;
+ 	return nfs_ok;
+@@ -1605,7 +1621,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
+ 	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ };
  
-@@ -1016,7 +1016,7 @@ nfsd4_cld_check(struct nfs4_client *clp)
+@@ -3765,6 +3781,22 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
  }
  
- static void
--nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
-+nfsd4_cld_grace_done(struct nfsd_net *nn)
+ static __be32
++nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
++		  struct nfsd4_seek *seek)
++{
++	__be32 *p;
++
++	if (nfserr)
++		return nfserr;
++
++	p = xdr_reserve_space(&resp->xdr, 12);
++	*p++ = cpu_to_be32(seek->seek_eof);
++	p = xdr_encode_hyper(p, seek->seek_pos);
++
++	return nfserr;
++}
++
++static __be32
+ nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
  {
- 	int ret;
- 	struct cld_upcall *cup;
-@@ -1029,7 +1029,7 @@ nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
- 	}
+ 	return nfserr;
+@@ -3848,7 +3880,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
+-	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
+ 	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
+ };
  
- 	cup->cu_msg.cm_cmd = Cld_GraceDone;
--	cup->cu_msg.cm_u.cm_gracetime = (int64_t)boot_time;
-+	cup->cu_msg.cm_u.cm_gracetime = (int64_t)nn->boot_time;
- 	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
- 	if (!ret)
- 		ret = cup->cu_msg.cm_status;
-@@ -1245,13 +1245,12 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
- }
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 465e779..5720e94 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -428,6 +428,17 @@ struct nfsd4_reclaim_complete {
+ 	u32 rca_one_fs;
+ };
  
- static void
--nfsd4_umh_cltrack_grace_done(struct nfsd_net __attribute__((unused)) *nn,
--				time_t boot_time)
-+nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
- {
- 	char *legacy;
- 	char timestr[22]; /* FIXME: better way to determine max size? */
++struct nfsd4_seek {
++	/* request */
++	stateid_t	seek_stateid;
++	loff_t		seek_offset;
++	u32		seek_whence;
++
++	/* response */
++	u32		seek_eof;
++	loff_t		seek_pos;
++};
++
+ struct nfsd4_op {
+ 	int					opnum;
+ 	__be32					status;
+@@ -473,6 +484,9 @@ struct nfsd4_op {
+ 		struct nfsd4_reclaim_complete	reclaim_complete;
+ 		struct nfsd4_test_stateid	test_stateid;
+ 		struct nfsd4_free_stateid	free_stateid;
++
++		/* NFSv4.2 */
++		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+ };
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index cf38224..026b0c0 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -550,4 +550,9 @@ struct nfs4_deviceid {
+ 	char data[NFS4_DEVICEID4_SIZE];
+ };
  
--	sprintf(timestr, "%ld", boot_time);
-+	sprintf(timestr, "%ld", nn->boot_time);
- 	legacy = nfsd4_cltrack_legacy_topdir();
- 	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
- 	kfree(legacy);
-@@ -1356,10 +1355,10 @@ nfsd4_client_record_check(struct nfs4_client *clp)
- }
- 
- void
--nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time)
-+nfsd4_record_grace_done(struct nfsd_net *nn)
- {
- 	if (nn->client_tracking_ops)
--		nn->client_tracking_ops->grace_done(nn, boot_time);
-+		nn->client_tracking_ops->grace_done(nn);
- }
- 
- static int
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 8597fbeea3bb..422b1df4bb00 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4118,7 +4118,7 @@ nfsd4_end_grace(struct nfsd_net *nn)
- 
- 	dprintk("NFSD: end of grace period\n");
- 	nn->grace_ended = true;
--	nfsd4_record_grace_done(nn, nn->boot_time);
-+	nfsd4_record_grace_done(nn);
- 	locks_end_grace(&nn->nfsd4_manager);
- 	/*
- 	 * Now that every NFSv4 client has had the chance to recover and
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 64f291a25a8c..5f8a500a58bf 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -550,7 +550,7 @@ extern void nfsd4_client_tracking_exit(struct net *net);
- extern void nfsd4_client_record_create(struct nfs4_client *clp);
- extern void nfsd4_client_record_remove(struct nfs4_client *clp);
- extern int nfsd4_client_record_check(struct nfs4_client *clp);
--extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
-+extern void nfsd4_record_grace_done(struct nfsd_net *nn);
- 
- /* nfs fault injection functions */
- #ifdef CONFIG_NFSD_FAULT_INJECTION
++enum data_content4 {
++	NFS4_CONTENT_DATA		= 0,
++	NFS4_CONTENT_HOLE		= 1,
++};
++
+ #endif
 -- 
-1.9.3
+2.1.0
 
