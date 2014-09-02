@@ -1,34 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f176.google.com ([209.85.220.176]:37726 "EHLO
-	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752010AbaIGU7d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Sep 2014 16:59:33 -0400
-Received: by mail-vc0-f176.google.com with SMTP id ik5so14202706vcb.7
-        for <linux-nfs@vger.kernel.org>; Sun, 07 Sep 2014 13:59:32 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:58745 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754848AbaIBTKr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Sep 2014 15:10:47 -0400
+Date: Tue, 2 Sep 2014 15:10:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna.Schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/2] NFSD: Add v4.2 SEEK support
+Message-ID: <20140902191043.GD31793@fieldses.org>
+References: <1409679038-32179-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <20140907165703.GA21500@lst.de>
-References: <1410104201-32517-1-git-send-email-hch@lst.de>
-	<1410104201-32517-2-git-send-email-hch@lst.de>
-	<CAHQdGtTe_mi_0N6hGApfrx_3TtL7=btWZNc9wd3hrkMdLRVfzQ@mail.gmail.com>
-	<20140907165703.GA21500@lst.de>
-Date: Sun, 7 Sep 2014 15:59:31 -0500
-Message-ID: <CAHQdGtTGdt8THhFRzx7KkwbbxOmBvXLbWozC8zzZeU0L6p+4pw@mail.gmail.com>
-Subject: Re: [PATCH 2/2] nfs: update time staps on truncate
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1409679038-32179-1-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Sep 7, 2014 at 11:57 AM, Christoph Hellwig <hch@lst.de> wrote:
-> [patch 1 in the series still seems worthwhile for the client, though]
+On Tue, Sep 02, 2014 at 01:30:36PM -0400, Anna.Schumaker@netapp.com wrote:
+> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> 
+> These patches add server support for the NFS v4.2 operation SEEK.  The first
+> patch adds basic NFS v4.2 infrastructure that all future operations will rely
+> on.  The second patch adds the SEEK operation.
+> 
+> Changes in v2:
+> - Remove CONFIG_NFSD_V4_2_SEEK.
+> - Change the call to preprocess_stateid_op() to only use RD_STATE instead of
+>   RD_STATE | WR_STATE.
+> 
+> These patches and the corresponding client patch are avaliable in the [seek]
+> branch of:
+> 
+> 	git://git.linux-nfs.org/projects/anna/linux-nfs.git
+> 
+> 
+> Questions?  Comments?  Thoughts?
 
-Agreed, and I plan to apply that.
+They look OK to me.  I'll probably merge them once there's evidence
+they're likely to be merged on the client side too.
 
--- 
-Trond Myklebust
+Also: has anyone done wireshark support for this yet?
 
-Linux NFS client maintainer, PrimaryData
+--b.
 
-trond.myklebust@primarydata.com
+> 
+> Anna
+> 
+> 
+> Anna Schumaker (2):
+>   NFSD: Add generic v4.2 infrastructure
+>   NFSD: Implement SEEK
+> 
+>  fs/nfsd/nfs4proc.c   | 43 +++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/nfs4xdr.c    | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/xdr4.h       | 14 ++++++++++++
+>  include/linux/nfs4.h | 23 ++++++++++++++++++--
+>  4 files changed, 138 insertions(+), 2 deletions(-)
+> 
+> -- 
+> 2.1.0
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
