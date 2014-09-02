@@ -1,46 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f173.google.com ([209.85.220.173]:45315 "EHLO
-	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750827AbaIIEwF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 00:52:05 -0400
-Received: by mail-vc0-f173.google.com with SMTP id le20so2387329vcb.4
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 21:52:03 -0700 (PDT)
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:49485 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750752AbaIBOPp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 10:15:45 -0400
+Received: by mail-pa0-f47.google.com with SMTP id hz1so14794428pad.20
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Sep 2014 07:15:43 -0700 (PDT)
+Message-ID: <5405D0FE.70008@gmail.com>
+Date: Tue, 02 Sep 2014 22:15:26 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <1408637375-11343-20-git-send-email-hch@lst.de>
-References: <1408637375-11343-1-git-send-email-hch@lst.de>
-	<1408637375-11343-20-git-send-email-hch@lst.de>
-Date: Mon, 8 Sep 2014 21:52:03 -0700
-Message-ID: <CAHQdGtRb_YcVWTnQR3cAkU=CT7X5NyKLphcN-9bxuu_JozBzsQ@mail.gmail.com>
-Subject: Re: [PATCH 19/19] pnfs/blocklayout: allocate separate pages for the
- layoutcommit payload
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Kinglong Mee <kinglongmee@gmail.com>
+Subject: [PATCH 6/6] NFSD: Put export if prepare_creds() fail
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 21, 2014 at 9:09 AM, Christoph Hellwig <hch@lst.de> wrote:
-> Instead of overflowing the XDR send buffer with our extent list allocate
-> pages and pre-encode the layoutupdate payload into them.  We optimistically
-> allocate a single page use alloc_page and only switch to vmalloc when we
-> have more extents outstanding.  Currently there is only a single testcase
-> (xfstests generic/113) which can reproduce large enough extent lists for
-> this to occur.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfs/blocklayout/blocklayout.c |  15 ++----
->  fs/nfs/blocklayout/blocklayout.h |   8 ++--
->  fs/nfs/blocklayout/extent_tree.c | 100 +++++++++++++++++++++++++++++++--------
->  3 files changed, 90 insertions(+), 33 deletions(-)
->
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfsfh.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-Holding due to dependencies on unapplied patches.
-
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index e883a58..88026fc 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -209,8 +209,10 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 		 * fix that case easily.
+ 		 */
+ 		struct cred *new = prepare_creds();
+-		if (!new)
+-			return nfserrno(-ENOMEM);
++		if (!new) {
++			error =  nfserrno(-ENOMEM);
++			goto out;
++		}
+ 		new->cap_effective =
+ 			cap_raise_nfsd_set(new->cap_effective,
+ 					   new->cap_permitted);
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
