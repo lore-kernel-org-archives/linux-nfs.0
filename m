@@ -1,98 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16252 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751638AbaIWMpn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 08:45:43 -0400
-Date: Tue, 23 Sep 2014 08:45:30 -0400
-From: Simo Sorce <simo@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140923084530.548a7f04@willson.usersys.redhat.com>
-In-Reply-To: <20140923114229.0a9e294f@notabene.brown>
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>
-	<1411413608-16462-2-git-send-email-steved@redhat.com>
-	<20140922194057.GE26763@fieldses.org>
-	<20140922154642.779189c8@willson.usersys.redhat.com>
-	<54207E4A.7010300@RedHat.com>
-	<20140922160050.0b85f044@willson.usersys.redhat.com>
-	<20140923114229.0a9e294f@notabene.brown>
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:62602 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754088AbaIBSNO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 14:13:14 -0400
+Received: by mail-qg0-f47.google.com with SMTP id z60so6897682qgd.20
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Sep 2014 11:13:13 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 2 Sep 2014 14:13:08 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Bruce Fields <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] lockd: Do not start the lockd thread before we've
+ set nlmsvc_rqst->rq_task
+Message-ID: <20140902141308.24a1aebc@tlielax.poochiereds.net>
+In-Reply-To: <1409680738-12491-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1409680738-12491-1-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 23 Sep 2014 11:42:29 +1000
-NeilBrown <neilb@suse.de> wrote:
+On Tue,  2 Sep 2014 13:58:57 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> On Mon, 22 Sep 2014 16:00:50 -0400 Simo Sorce <simo@redhat.com> wrote:
+> This fixes an Oopsable race when starting lockd.
 > 
-> > On Mon, 22 Sep 2014 15:53:46 -0400
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> > > 
-> > > 
-> > > On 09/22/2014 03:46 PM, Simo Sorce wrote:
-> > > > On Mon, 22 Sep 2014 15:40:57 -0400
-> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > 
-> > > >> On Mon, Sep 22, 2014 at 03:20:07PM -0400, Steve Dickson wrote:
-> > > >>> Added the gssproxy.service to both the Wants= and
-> > > >>> Atfers= lines, before the rpc-svcgssd.service. There
-> > > >>> are  ConditionPathExists= lines in the rpc-svcgssd.service
-> > > >>> unit which will stop the rpc.svcgssd daemon from
-> > > >>> starting when the gssproxy daemon is already running.
-> > > >>
-> > > >> That should read "when the kernel supports gssproxy", not
-> > > >> "when the gssproxy daemon is already running."
-> > > > 
-> > > > Actually the language is currently correct but it is another
-> > > > bug, the systemd/rpc-svcgssd.service file still includes
-> > > > "ConditionPathExists=|!/run/gssproxy.pid"
-> > > > This line should be removed in this patch.
-> > > 
-> > > I left that on purpose because isn't that ConditionPathExists
-> > > seeing if /run/gssproxy.pid exists and if it does 
-> > > it means gssproxy is already running so rpc.svcgssd 
-> > > should not start?
-> > 
-> > No.
-> > First of all the fact gss-proxy is running does not mean it is
-> > serving nfsd necessarily, it may be running on an older kernel
-> > where it servers apache or some other process (remember gssproxy is
-> > not just for nfsd).
-> > Second you already have
-> > "ConditionPathExists=|!/proc/net/rpc/use-gss-proxy" which is the
-> > correct trigger to decide which of the two to use.
-> > 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/lockd/svc.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
 > 
-> Surely gssproxy is only serving nfsd requests if
-> both /run/gssproxy.pid exists and /proc/net/rpc/use-gss-proxy exists.
-> If either of those files is missing, then rpc.svcgssd needs to run.
-> In one case, the gssproxy daemon isn't available for some reason.  In
-> the other case the kernel cannot make use of it.
-> 
-> Is that not correct?
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index 673668a9eec1..c35cd43a06e6 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -306,7 +306,7 @@ static int lockd_start_svc(struct svc_serv *serv)
+>  	svc_sock_update_bufs(serv);
+>  	serv->sv_maxconn = nlm_max_connections;
+>  
+> -	nlmsvc_task = kthread_run(lockd, nlmsvc_rqst, "%s", serv->sv_name);
+> +	nlmsvc_task = kthread_create(lockd, nlmsvc_rqst, "%s", serv->sv_name);
+>  	if (IS_ERR(nlmsvc_task)) {
+>  		error = PTR_ERR(nlmsvc_task);
+>  		printk(KERN_WARNING
+> @@ -314,6 +314,7 @@ static int lockd_start_svc(struct svc_serv *serv)
+>  		goto out_task;
+>  	}
+>  	nlmsvc_rqst->rq_task = nlmsvc_task;
+> +	wake_up_process(nlmsvc_task);
+>  
+>  	dprintk("lockd_up: service started\n");
+>  	return 0;
 
-At the moment it is not, as there is no ordering between the 2
-starting /run/gssproxy.pid may simply not be available "yet", also if
-it is available it doesn't mean rpc.svcgssd should not start.
-GSS-Proxy may be running but /proc/net/rpc/use-gss-proxy may not be
-present.
-So in general gssproxy.pid is not an indication of whether rpc.svcgssd
-should start or not.
 
-> That is exactly the rule that I (tried to) encode in the service file
-> with these two conditions.
-
-Then you also need to add After: gssproxy.service to
-rpc-svcgssd.service so you give it a chance to start and create the pid
-file. But again the mere existence of the pid file is not enough if the
-proc file is not there.
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
+Reviewed-by: Jeff Layton <jlayton@primarydata.com>
