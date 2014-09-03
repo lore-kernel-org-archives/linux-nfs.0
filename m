@@ -1,161 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f54.google.com ([209.85.192.54]:38981 "EHLO
-	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932147AbaIIMVQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 08:21:16 -0400
-Received: by mail-qg0-f54.google.com with SMTP id z60so1730634qgd.41
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 05:21:15 -0700 (PDT)
-Date: Tue, 9 Sep 2014 08:21:11 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: [PATCH v3 4/8] nfsd: add a v4_end_grace file to /proc/fs/nfsd
-Message-ID: <20140909082111.44854912@tlielax.poochiereds.net>
-In-Reply-To: <1410187609-10319-5-git-send-email-jlayton@primarydata.com>
-References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
-	<1410187609-10319-5-git-send-email-jlayton@primarydata.com>
+Received: from mx11.netapp.com ([216.240.18.76]:55320 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751193AbaICQTd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2014 12:19:33 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/4] NFS: Move v3 declarations out of internal.h
+Date: Wed, 3 Sep 2014 12:19:08 -0400
+Message-ID: <1409761150-30257-3-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1409761150-30257-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1409761150-30257-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon,  8 Sep 2014 10:46:45 -0400
-Jeff Layton <jlayton@primarydata.com> wrote:
+I am generally against the "one big header file" approach, and
+everything in the client includes this file.  Let's move all the NFS v3
+declarations into a v3-only header file.
 
-> Allow a privileged userland process to end the v4 grace period early.
-> Any write to the file will cause the v4 grace period to be lifted.
-> The basic idea with this will be to allow the userland client tracking
-> program to lift the grace period once it knows that no more clients
-> will be reclaiming state.
-> 
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/internal.h |  7 -------
+ fs/nfs/nfs3_fs.h  | 15 +++++++++++++++
+ fs/nfs/nfs3proc.c |  1 +
+ 3 files changed, 16 insertions(+), 7 deletions(-)
+ create mode 100644 fs/nfs/nfs3_fs.h
 
-Oof...sorry!
-
-The patch does what you requested, (accept only "Y", "y" or "1" as a
-sign to lift the grace period), but I missed updating the patch
-description above. If there's another respin needed for other reasons,
-then I'll fix the text in it. Otherwise, let me know if you want me to
-resend.
-
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c |  2 +-
->  fs/nfsd/nfsctl.c    | 45 +++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/state.h     |  3 +++
->  3 files changed, 49 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 422b1df4bb00..ae380e90e372 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4109,7 +4109,7 @@ out:
->  	return status;
->  }
->  
-> -static void
-> +void
->  nfsd4_end_grace(struct nfsd_net *nn)
->  {
->  	/* do nothing if grace period already ended */
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 4e042105fb6e..ca73ca79a0ee 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -49,6 +49,7 @@ enum {
->  	NFSD_Leasetime,
->  	NFSD_Gracetime,
->  	NFSD_RecoveryDir,
-> +	NFSD_V4EndGrace,
->  #endif
->  };
->  
-> @@ -68,6 +69,7 @@ static ssize_t write_maxconn(struct file *file, char *buf, size_t size);
->  static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
->  static ssize_t write_gracetime(struct file *file, char *buf, size_t size);
->  static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
-> +static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size);
->  #endif
->  
->  static ssize_t (*write_op[])(struct file *, char *, size_t) = {
-> @@ -84,6 +86,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
->  	[NFSD_Leasetime] = write_leasetime,
->  	[NFSD_Gracetime] = write_gracetime,
->  	[NFSD_RecoveryDir] = write_recoverydir,
-> +	[NFSD_V4EndGrace] = write_v4_end_grace,
->  #endif
->  };
->  
-> @@ -1077,6 +1080,47 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
->  	return rv;
->  }
->  
-> +/**
-> + * write_v4_end_grace - release grace period for nfsd's v4.x lock manager
-> + *
-> + * Input:
-> + *			buf:		ignored
-> + *			size:		zero
-> + * OR
-> + *
-> + * Input:
-> + * 			buf:		any value
-> + *			size:		non-zero length of C string in @buf
-> + * Output:
-> + *			passed-in buffer filled with "Y" or "N" with a newline
-> + *			and NULL-terminated C string. This indicates whether
-> + *			the grace period has ended in the current net
-> + *			namespace. Return code is the size in bytes of the
-> + *			string. Writing a string that starts with 'Y', 'y', or
-> + *			'1' to the file will end the grace period for nfsd's v4
-> + *			lock manager.
-> + */
-> +static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
-> +{
-> +	struct net *net = file->f_dentry->d_sb->s_fs_info;
-> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> +
-> +	if (size > 0) {
-> +		switch(buf[0]) {
-> +		case 'Y':
-> +		case 'y':
-> +		case '1':
-> +			nfsd4_end_grace(nn);
-> +			break;
-> +		default:
-> +			return -EINVAL;
-> +		}
-> +	}
-> +
-> +	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%c\n",
-> +			 nn->grace_ended ? 'Y' : 'N');
-> +}
-> +
->  #endif
->  
->  /*----------------------------------------------------------------------------*/
-> @@ -1110,6 +1154,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
->  		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
->  		[NFSD_Gracetime] = {"nfsv4gracetime", &transaction_ops, S_IWUSR|S_IRUSR},
->  		[NFSD_RecoveryDir] = {"nfsv4recoverydir", &transaction_ops, S_IWUSR|S_IRUSR},
-> +		[NFSD_V4EndGrace] = {"v4_end_grace", &transaction_ops, S_IWUSR|S_IRUGO},
->  #endif
->  		/* last one */ {""}
->  	};
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index 5f8a500a58bf..10bfda710f71 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -544,6 +544,9 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
->  							struct nfsd_net *nn);
->  extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
->  
-> +/* grace period management */
-> +void nfsd4_end_grace(struct nfsd_net *nn);
-> +
->  /* nfs4recover operations */
->  extern int nfsd4_client_tracking_init(struct net *net);
->  extern void nfsd4_client_tracking_exit(struct net *net);
-
-
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9056622..14ae6f2 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -218,13 +218,6 @@ static inline void nfs_fs_proc_exit(void)
+ int nfs_sockaddr_match_ipaddr(const struct sockaddr *, const struct sockaddr *);
+ #endif
+ 
+-/* nfs3client.c */
+-#if IS_ENABLED(CONFIG_NFS_V3)
+-struct nfs_server *nfs3_create_server(struct nfs_mount_info *, struct nfs_subversion *);
+-struct nfs_server *nfs3_clone_server(struct nfs_server *, struct nfs_fh *,
+-				     struct nfs_fattr *, rpc_authflavor_t);
+-#endif
+-
+ /* callback_xdr.c */
+ extern struct svc_version nfs4_callback_version1;
+ extern struct svc_version nfs4_callback_version4;
+diff --git a/fs/nfs/nfs3_fs.h b/fs/nfs/nfs3_fs.h
+new file mode 100644
+index 0000000..6599e0d
+--- /dev/null
++++ b/fs/nfs/nfs3_fs.h
+@@ -0,0 +1,15 @@
++/*
++ * Copyright (C) 2014 Anna Schumaker.
++ *
++ * NFSv3-specific filesystem definitions and declarations
++ */
++#ifndef __LINUX_FS_NFS_NFS3_FS_H
++#define __LINUX_FS_NFS_NFS3_FS_H
++
++/* nfs3client.c */
++struct nfs_server *nfs3_create_server(struct nfs_mount_info *, struct nfs_subversion *);
++struct nfs_server *nfs3_clone_server(struct nfs_server *, struct nfs_fh *,
++				     struct nfs_fattr *, rpc_authflavor_t);
++
++
++#endif /* __LINUX_FS_NFS_NFS3_FS_H */
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 809670e..524f9f8 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -22,6 +22,7 @@
+ 
+ #include "iostat.h"
+ #include "internal.h"
++#include "nfs3_fs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PROC
+ 
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+2.1.0
+
