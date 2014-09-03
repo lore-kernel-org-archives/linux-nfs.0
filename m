@@ -1,71 +1,443 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f169.google.com ([209.85.212.169]:49949 "EHLO
-	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750752AbaIBN7u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 09:59:50 -0400
-Message-ID: <5405CD51.9020601@gmail.com>
-Date: Tue, 02 Sep 2014 16:59:45 +0300
-From: Boaz Harrosh <openosd@gmail.com>
-MIME-Version: 1.0
-To: Bruce Fields <bfields@fieldses.org>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Shakil A Khan <shakilk1729@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        Peter Zijlstra <peterz@infradead.org>,
-        Paul McKenney <paulmck@linux.vnet.ibm.com>,
-        William Andros Adamson <andros@netapp.com>,
-        Jeffrey Layton <jlayton@primarydata.com>,
-        "David S. Miller" <davem@davemloft.net>
-Subject: Re: [PATCH] Next branch: authgss: authgss.c: Fix warnings for uninitizlized
- variable expire
-References: <1409571154-50408-1-git-send-email-shakilk1729@gmail.com> <CAHQdGtQAwp_QuQE-xmjJNkcxbu7g4QtYQv8qrPT_qWpkym1GZg@mail.gmail.com> <5405A15F.2060002@gmail.com> <20140902132140.GA31793@fieldses.org>
-In-Reply-To: <20140902132140.GA31793@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from casper.infradead.org ([85.118.1.10]:37636 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751543AbaICEga (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2014 00:36:30 -0400
+Received: from [64.134.221.109] (helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XP2J2-0003bY-C7
+	for linux-nfs@vger.kernel.org; Wed, 03 Sep 2014 04:36:29 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/6] pnfs/blocklayout: move extent processing to blocklayout.c
+Date: Tue,  2 Sep 2014 21:38:35 -0700
+Message-Id: <1409719119-2110-3-git-send-email-hch@lst.de>
+In-Reply-To: <1409719119-2110-1-git-send-email-hch@lst.de>
+References: <1409719119-2110-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/02/2014 04:21 PM, Bruce Fields wrote:
-> 
-> You'd rather avoid sprinkling that all over, though.  If nothing else it
-> increases the chances you'll suppress a legimate warning some day.
-> 
+This isn't device(id) related, so move it into the main file.  Simple move
+for now, the next commit will clean it up a bit.
 
-But this is exactly why it was created.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c    | 186 ++++++++++++++++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h    |   2 -
+ fs/nfs/blocklayout/blocklayoutdev.c | 186 ------------------------------------
+ 3 files changed, 186 insertions(+), 188 deletions(-)
 
-If you do the "= 0" then it is gone forever. If you have missed a legitimate
-needed assignment, it will be missed as well.
-
-But if you do the uninitialized_var() dance then there is a make option that turns
-it off and every once in a while people do a make with it to see if it still
-holds.
-
-The diff between foo = 0; and uninitialized_var(foo) is that the programmer is
-communicating to his friends that:
-	"I have encountered a bogus compiler, this is falsely initialized"
-
-As opposed to =0 the compiler bug is covered up and forgotten
-
-> And unless I'm missing something this one really does look like an
-> unambiguous compiler bug.
-> 
-
-Right! so that is how you specify this in code at Linux: uninitialized_var(foo);
-
-Putting =0 is way way worse, because it will never be revised and specially
-not automatically with a make switch.
-
-And leaving the warning on is even worse because two three of these and people
-start to ignore warnings.
-
-> --b.
-> 
-
-uninitialized_var was made to be a friend not an enemy, in the face of real
-ugliness it is the best we can do. And that is what it should communicate to
-everyone. Why has it become everyone's favorite blasphemy I do not know.
-
-Cheers
-Boaz
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index ff8b43b..df8c567 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -446,6 +446,192 @@ static void bl_free_lseg(struct pnfs_layout_segment *lseg)
+ 	kfree(lseg);
+ }
+ 
++/* Tracks info needed to ensure extents in layout obey constraints of spec */
++struct layout_verification {
++	u32 mode;	/* R or RW */
++	u64 start;	/* Expected start of next non-COW extent */
++	u64 inval;	/* Start of INVAL coverage */
++	u64 cowread;	/* End of COW read coverage */
++};
++
++/* Verify the extent meets the layout requirements of the pnfs-block draft,
++ * section 2.3.1.
++ */
++static int verify_extent(struct pnfs_block_extent *be,
++			 struct layout_verification *lv)
++{
++	if (lv->mode == IOMODE_READ) {
++		if (be->be_state == PNFS_BLOCK_READWRITE_DATA ||
++		    be->be_state == PNFS_BLOCK_INVALID_DATA)
++			return -EIO;
++		if (be->be_f_offset != lv->start)
++			return -EIO;
++		lv->start += be->be_length;
++		return 0;
++	}
++	/* lv->mode == IOMODE_RW */
++	if (be->be_state == PNFS_BLOCK_READWRITE_DATA) {
++		if (be->be_f_offset != lv->start)
++			return -EIO;
++		if (lv->cowread > lv->start)
++			return -EIO;
++		lv->start += be->be_length;
++		lv->inval = lv->start;
++		return 0;
++	} else if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
++		if (be->be_f_offset != lv->start)
++			return -EIO;
++		lv->start += be->be_length;
++		return 0;
++	} else if (be->be_state == PNFS_BLOCK_READ_DATA) {
++		if (be->be_f_offset > lv->start)
++			return -EIO;
++		if (be->be_f_offset < lv->inval)
++			return -EIO;
++		if (be->be_f_offset < lv->cowread)
++			return -EIO;
++		/* It looks like you might want to min this with lv->start,
++		 * but you really don't.
++		 */
++		lv->inval = lv->inval + be->be_length;
++		lv->cowread = be->be_f_offset + be->be_length;
++		return 0;
++	} else
++		return -EIO;
++}
++
++static int decode_sector_number(__be32 **rp, sector_t *sp)
++{
++	uint64_t s;
++
++	*rp = xdr_decode_hyper(*rp, &s);
++	if (s & 0x1ff) {
++		printk(KERN_WARNING "NFS: %s: sector not aligned\n", __func__);
++		return -1;
++	}
++	*sp = s >> SECTOR_SHIFT;
++	return 0;
++}
++
++/* XDR decode pnfs_block_layout4 structure */
++static int
++nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
++			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++{
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
++	int i, status = -EIO;
++	uint32_t count;
++	struct pnfs_block_extent *be = NULL, *save;
++	struct xdr_stream stream;
++	struct xdr_buf buf;
++	struct page *scratch;
++	__be32 *p;
++	struct layout_verification lv = {
++		.mode = lgr->range.iomode,
++		.start = lgr->range.offset >> SECTOR_SHIFT,
++		.inval = lgr->range.offset >> SECTOR_SHIFT,
++		.cowread = lgr->range.offset >> SECTOR_SHIFT,
++	};
++	LIST_HEAD(extents);
++
++	dprintk("---> %s\n", __func__);
++
++	scratch = alloc_page(gfp_flags);
++	if (!scratch)
++		return -ENOMEM;
++
++	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
++	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
++
++	p = xdr_inline_decode(&stream, 4);
++	if (unlikely(!p))
++		goto out_err;
++
++	count = be32_to_cpup(p++);
++
++	dprintk("%s enter, number of extents %i\n", __func__, count);
++	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
++	if (unlikely(!p))
++		goto out_err;
++
++	/* Decode individual extents, putting them in temporary
++	 * staging area until whole layout is decoded to make error
++	 * recovery easier.
++	 */
++	for (i = 0; i < count; i++) {
++		struct nfs4_deviceid id;
++
++		be = kzalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
++		if (!be) {
++			status = -ENOMEM;
++			goto out_err;
++		}
++		memcpy(&id, p, NFS4_DEVICEID4_SIZE);
++		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
++
++		be->be_device =
++			nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &id,
++						lo->plh_lc_cred, gfp_flags);
++		if (!be->be_device)
++			goto out_err;
++
++		/* The next three values are read in as bytes,
++		 * but stored as 512-byte sector lengths
++		 */
++		if (decode_sector_number(&p, &be->be_f_offset) < 0)
++			goto out_err;
++		if (decode_sector_number(&p, &be->be_length) < 0)
++			goto out_err;
++		if (decode_sector_number(&p, &be->be_v_offset) < 0)
++			goto out_err;
++		be->be_state = be32_to_cpup(p++);
++		if (verify_extent(be, &lv)) {
++			dprintk("%s verify failed\n", __func__);
++			goto out_err;
++		}
++		list_add_tail(&be->be_list, &extents);
++	}
++	if (lgr->range.offset + lgr->range.length !=
++			lv.start << SECTOR_SHIFT) {
++		dprintk("%s Final length mismatch\n", __func__);
++		be = NULL;
++		goto out_err;
++	}
++	if (lv.start < lv.cowread) {
++		dprintk("%s Final uncovered COW extent\n", __func__);
++		be = NULL;
++		goto out_err;
++	}
++	/* Extents decoded properly, now try to merge them in to
++	 * existing layout extents.
++	 */
++	list_for_each_entry_safe(be, save, &extents, be_list) {
++		list_del(&be->be_list);
++
++		status = ext_tree_insert(bl, be);
++		if (status)
++			goto out_free_list;
++	}
++	status = 0;
++ out:
++	__free_page(scratch);
++	dprintk("%s returns %i\n", __func__, status);
++	return status;
++
++ out_err:
++	nfs4_put_deviceid_node(be->be_device);
++	kfree(be);
++ out_free_list:
++	while (!list_empty(&extents)) {
++		be = list_first_entry(&extents, struct pnfs_block_extent,
++				      be_list);
++		list_del(&be->be_list);
++		nfs4_put_deviceid_node(be->be_device);
++		kfree(be);
++	}
++	goto out;
++}
++
+ /* We pretty much ignore lseg, and store all data layout wide, so we
+  * can correctly merge.
+  */
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 9757f3e..00c11eb 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -113,8 +113,6 @@ struct bl_msg_hdr {
+ /* blocklayoutdev.c */
+ ssize_t bl_pipe_downcall(struct file *, const char __user *, size_t);
+ void bl_pipe_destroy_msg(struct rpc_pipe_msg *);
+-int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+-				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
+ 
+ struct nfs4_deviceid_node *bl_alloc_deviceid_node(struct nfs_server *server,
+ 		struct pnfs_device *pdev, gfp_t gfp_mask);
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index d6527d2..2b54e29 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -40,19 +40,6 @@
+ 
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 
+-static int decode_sector_number(__be32 **rp, sector_t *sp)
+-{
+-	uint64_t s;
+-
+-	*rp = xdr_decode_hyper(*rp, &s);
+-	if (s & 0x1ff) {
+-		printk(KERN_WARNING "NFS: %s: sector not aligned\n", __func__);
+-		return -1;
+-	}
+-	*sp = s >> SECTOR_SHIFT;
+-	return 0;
+-}
+-
+ ssize_t bl_pipe_downcall(struct file *filp, const char __user *src,
+ 			 size_t mlen)
+ {
+@@ -183,176 +170,3 @@ bl_free_deviceid_node(struct nfs4_deviceid_node *d)
+ 
+ 	kfree(dev);
+ }
+-
+-/* Tracks info needed to ensure extents in layout obey constraints of spec */
+-struct layout_verification {
+-	u32 mode;	/* R or RW */
+-	u64 start;	/* Expected start of next non-COW extent */
+-	u64 inval;	/* Start of INVAL coverage */
+-	u64 cowread;	/* End of COW read coverage */
+-};
+-
+-/* Verify the extent meets the layout requirements of the pnfs-block draft,
+- * section 2.3.1.
+- */
+-static int verify_extent(struct pnfs_block_extent *be,
+-			 struct layout_verification *lv)
+-{
+-	if (lv->mode == IOMODE_READ) {
+-		if (be->be_state == PNFS_BLOCK_READWRITE_DATA ||
+-		    be->be_state == PNFS_BLOCK_INVALID_DATA)
+-			return -EIO;
+-		if (be->be_f_offset != lv->start)
+-			return -EIO;
+-		lv->start += be->be_length;
+-		return 0;
+-	}
+-	/* lv->mode == IOMODE_RW */
+-	if (be->be_state == PNFS_BLOCK_READWRITE_DATA) {
+-		if (be->be_f_offset != lv->start)
+-			return -EIO;
+-		if (lv->cowread > lv->start)
+-			return -EIO;
+-		lv->start += be->be_length;
+-		lv->inval = lv->start;
+-		return 0;
+-	} else if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
+-		if (be->be_f_offset != lv->start)
+-			return -EIO;
+-		lv->start += be->be_length;
+-		return 0;
+-	} else if (be->be_state == PNFS_BLOCK_READ_DATA) {
+-		if (be->be_f_offset > lv->start)
+-			return -EIO;
+-		if (be->be_f_offset < lv->inval)
+-			return -EIO;
+-		if (be->be_f_offset < lv->cowread)
+-			return -EIO;
+-		/* It looks like you might want to min this with lv->start,
+-		 * but you really don't.
+-		 */
+-		lv->inval = lv->inval + be->be_length;
+-		lv->cowread = be->be_f_offset + be->be_length;
+-		return 0;
+-	} else
+-		return -EIO;
+-}
+-
+-/* XDR decode pnfs_block_layout4 structure */
+-int
+-nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+-			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
+-{
+-	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
+-	int i, status = -EIO;
+-	uint32_t count;
+-	struct pnfs_block_extent *be = NULL, *save;
+-	struct xdr_stream stream;
+-	struct xdr_buf buf;
+-	struct page *scratch;
+-	__be32 *p;
+-	struct layout_verification lv = {
+-		.mode = lgr->range.iomode,
+-		.start = lgr->range.offset >> SECTOR_SHIFT,
+-		.inval = lgr->range.offset >> SECTOR_SHIFT,
+-		.cowread = lgr->range.offset >> SECTOR_SHIFT,
+-	};
+-	LIST_HEAD(extents);
+-
+-	dprintk("---> %s\n", __func__);
+-
+-	scratch = alloc_page(gfp_flags);
+-	if (!scratch)
+-		return -ENOMEM;
+-
+-	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
+-	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
+-
+-	p = xdr_inline_decode(&stream, 4);
+-	if (unlikely(!p))
+-		goto out_err;
+-
+-	count = be32_to_cpup(p++);
+-
+-	dprintk("%s enter, number of extents %i\n", __func__, count);
+-	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
+-	if (unlikely(!p))
+-		goto out_err;
+-
+-	/* Decode individual extents, putting them in temporary
+-	 * staging area until whole layout is decoded to make error
+-	 * recovery easier.
+-	 */
+-	for (i = 0; i < count; i++) {
+-		struct nfs4_deviceid id;
+-
+-		be = kzalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
+-		if (!be) {
+-			status = -ENOMEM;
+-			goto out_err;
+-		}
+-		memcpy(&id, p, NFS4_DEVICEID4_SIZE);
+-		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
+-
+-		be->be_device =
+-			nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &id,
+-						lo->plh_lc_cred, gfp_flags);
+-		if (!be->be_device)
+-			goto out_err;
+-
+-		/* The next three values are read in as bytes,
+-		 * but stored as 512-byte sector lengths
+-		 */
+-		if (decode_sector_number(&p, &be->be_f_offset) < 0)
+-			goto out_err;
+-		if (decode_sector_number(&p, &be->be_length) < 0)
+-			goto out_err;
+-		if (decode_sector_number(&p, &be->be_v_offset) < 0)
+-			goto out_err;
+-		be->be_state = be32_to_cpup(p++);
+-		if (verify_extent(be, &lv)) {
+-			dprintk("%s verify failed\n", __func__);
+-			goto out_err;
+-		}
+-		list_add_tail(&be->be_list, &extents);
+-	}
+-	if (lgr->range.offset + lgr->range.length !=
+-			lv.start << SECTOR_SHIFT) {
+-		dprintk("%s Final length mismatch\n", __func__);
+-		be = NULL;
+-		goto out_err;
+-	}
+-	if (lv.start < lv.cowread) {
+-		dprintk("%s Final uncovered COW extent\n", __func__);
+-		be = NULL;
+-		goto out_err;
+-	}
+-	/* Extents decoded properly, now try to merge them in to
+-	 * existing layout extents.
+-	 */
+-	list_for_each_entry_safe(be, save, &extents, be_list) {
+-		list_del(&be->be_list);
+-
+-		status = ext_tree_insert(bl, be);
+-		if (status)
+-			goto out_free_list;
+-	}
+-	status = 0;
+- out:
+-	__free_page(scratch);
+-	dprintk("%s returns %i\n", __func__, status);
+-	return status;
+-
+- out_err:
+-	nfs4_put_deviceid_node(be->be_device);
+-	kfree(be);
+- out_free_list:
+-	while (!list_empty(&extents)) {
+-		be = list_first_entry(&extents, struct pnfs_block_extent,
+-				      be_list);
+-		list_del(&be->be_list);
+-		nfs4_put_deviceid_node(be->be_device);
+-		kfree(be);
+-	}
+-	goto out;
+-}
+-- 
+1.9.1
 
