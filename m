@@ -1,38 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp5-g21.free.fr ([212.27.42.5]:55873 "EHLO smtp5-g21.free.fr"
+Received: from verein.lst.de ([213.95.11.211]:34838 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753284AbaIZHvr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 03:51:47 -0400
-Date: Fri, 26 Sep 2014 09:52:20 +0200
-From: Emmanuel Florac <eflorac@intellique.com>
-To: MJ Jenkins <mack.jenkins@eas.gatech.edu>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: NFS Share To OS X
-Message-ID: <20140926095220.61235200@galadriel.home>
-In-Reply-To: <54245661.8010107@eas.gatech.edu>
-References: <5424156C.8080602@eas.gatech.edu>
-	<20140925183034.432731eb@harpe.intellique.com>
-	<54245661.8010107@eas.gatech.edu>
+	id S936230AbaICXes (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2014 19:34:48 -0400
+Date: Thu, 4 Sep 2014 01:34:45 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/4] pnfs: add a common GETDEVICELIST implementation
+Message-ID: <20140903233445.GB22921@lst.de>
+References: <1409718480-1529-1-git-send-email-hch@lst.de> <1409718480-1529-3-git-send-email-hch@lst.de> <540764A5.7030400@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <540764A5.7030400@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Le Thu, 25 Sep 2014 13:52:33 -0400 vous écriviez:
+On Wed, Sep 03, 2014 at 02:57:41PM -0400, Anna Schumaker wrote:
+> On 09/03/2014 12:27 AM, Christoph Hellwig wrote:
+> > At a simple helper to issue a GETDEVICELIST operation and pre-load
+> > the device id cache based on the result.
+> >
+> > Signed-off-by: Christoph Hellwig <hch@lst.de>
+> > ---
+> >  fs/nfs/pnfs.h     |  2 ++
+> >  fs/nfs/pnfs_dev.c | 29 +++++++++++++++++++++++++++++
+> >  2 files changed, 31 insertions(+)
+> >
+> > diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> > index c5f90e7..bf4e87d 100644
+> > --- a/fs/nfs/pnfs.h
+> > +++ b/fs/nfs/pnfs.h
+> > @@ -276,6 +276,8 @@ bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+> >  void nfs4_mark_deviceid_unavailable(struct nfs4_deviceid_node *node);
+> >  bool nfs4_test_deviceid_unavailable(struct nfs4_deviceid_node *node);
+> >  void nfs4_deviceid_purge_client(const struct nfs_client *);
+> > +int nfs4_deviceid_getdevicelist(struct nfs_server *server,
+> > +		const struct nfs_fh *fh);
+> >  
+> >  static inline struct pnfs_layout_segment *
+> >  pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+> > diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+> > index 791f8b3..82c2836 100644
+> > --- a/fs/nfs/pnfs_dev.c
+> > +++ b/fs/nfs/pnfs_dev.c
+> > @@ -359,3 +359,32 @@ nfs4_deviceid_mark_client_invalid(struct nfs_client *clp)
+> >  	rcu_read_unlock();
+> >  }
+> >  
+> > +int
+> > +nfs4_deviceid_getdevicelist(struct nfs_server *server,
+> > +		const struct nfs_fh *fh)
+> > +{
+> > +	struct pnfs_devicelist *dlist;
+> > +	struct nfs4_deviceid_node *d;
+> > +	int error = 0, i;
+> > +
+> > +	dlist = kzalloc(sizeof(struct pnfs_devicelist), GFP_NOFS);
+> > +	if (!dlist)
+> > +		return -ENOMEM;
+> > +
+> > +	while (!dlist->eof) {
+> > +		error = nfs4_proc_getdevicelist(server, fh, dlist);
+> > +		if (error)
+> > +			break;
+> > +
+> > +		for (i = 0; i < dlist->num_devs; i++) {
+> > +			d = nfs4_find_get_deviceid(server, &dlist->dev_id[i],
+> > +					NULL, GFP_NOFS);
+> > +			if (d)
+> > +				nfs4_put_deviceid_node(d);
+> 
+> I think you need to change nfs4xdr.c:encode_getdevicelist() to use a stored cookie value for the GETDEVICELIST operation, otherwise we will always be reading from the beginning of the device list and the while loop might never exit.
 
-> 192.168.129.169(rw,all_squash,no_subtree_check,insecure,anonuid=0) 
+Just like the existing GETDEVICELIST implementation in the block layout code
+did.  I don't really know what people were smoking when they came up with that
+cookie mess, but before adding more complications to the GETDEVICELIST
+implementation I'd rather just drop it entirely.
 
-Well you're squashing every user (all_squash) to the anonymous uid 0
-(which is root). So you obtain the expected behaviour. Why did you put
-these options in the first place?
-
-The only special option you need is "insecure" for BSD (including Mac OS
-X) clients.
-
--- 
-------------------------------------------------------------------------
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
-------------------------------------------------------------------------
