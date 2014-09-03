@@ -1,110 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:65533 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751229AbaIPLro (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Sep 2014 07:47:44 -0400
-Received: by mail-qa0-f46.google.com with SMTP id k15so5283918qaq.5
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Sep 2014 04:47:43 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 16 Sep 2014 07:47:41 -0400
-To: NeilBrown <neilb@suse.de>
-Cc: Peter Zijlstra <peterz@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Jeff Layton <jeff.layton@primarydata.com>
-Subject: Re: [PATCH 0/4] Remove possible deadlocks in nfs_release_page()
-Message-ID: <20140916074741.1de870c5@tlielax.poochiereds.net>
-In-Reply-To: <20140916051911.22257.24658.stgit@notabene.brown>
-References: <20140916051911.22257.24658.stgit@notabene.brown>
+Received: from mx11.netapp.com ([216.240.18.76]:53169 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753991AbaICS6L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2014 14:58:11 -0400
+Message-ID: <540764A5.7030400@Netapp.com>
+Date: Wed, 3 Sep 2014 14:57:41 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Christoph Hellwig <hch@lst.de>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/4] pnfs: add a common GETDEVICELIST implementation
+References: <1409718480-1529-1-git-send-email-hch@lst.de> <1409718480-1529-3-git-send-email-hch@lst.de>
+In-Reply-To: <1409718480-1529-3-git-send-email-hch@lst.de>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 16 Sep 2014 15:31:34 +1000
-NeilBrown <neilb@suse.de> wrote:
-
-> Because nfs_release_page() submits a 'COMMIT' nfs request and waits
-> for it to complete, and does this during memory reclaim, it is
-> susceptible to deadlocks if memory allocation happens anywhere in
-> sending the COMMIT message.  If the NFS server is on the same host
-> (i.e. loop-back NFS), then any memory allocations in the NFS server
-> can also cause deadlocks.
-> 
-> nfs_release_page() already has some code to avoid deadlocks in some
-> circumstances, but these are not sufficient for loopback NFS.
-> 
-> This patch set changes the approach to deadlock avoidance.  Rather
-> than detecting cases that could deadlock and avoiding the COMMIT, it
-> always tries the COMMIT, but only waits a short time (1 second).
-> This avoid any deadlock possibility at the expense of not waiting
-> longer than 1 second even if no deadlock is pending.
-> 
-> nfs_release_page() does not *need* to wait longer - all callers that
-> matter handle a failure gracefully - they move on to other pages.
-> 
-> This set:
->  - adds some "_timeout()" functions to "wait_on_bit".  Only a
->    wait_on_page version is actually used.
->  - exports page wake_up support.  NFS knows that the COMMIT is complete
->    when PG_private is clear.  So nfs_release_page will use
->    wait_on_page_bit_killable_timeout to wait for the bit to clear,
->    and needs access to wake_up_page()
->  - changes nfs_release_page() to use
->     wait_on_page_bit_killable_timeout()
->  - removes the other deadlock avoidance mechanisms from
->    nfs_release_page, so that PF_FSTRANS is again only used
->    by XFS.
-> 
-> As such, it needs buy-in from sched people, mm people, and NFS people.
-> Assuming I get that buy-in, suggests for how these patches can flow
-> into mainline would be appreciated ... I daren't hope they can all go
-> in through one tree....
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
+On 09/03/2014 12:27 AM, Christoph Hellwig wrote:
+> At a simple helper to issue a GETDEVICELIST operation and pre-load
+> the device id cache based on the result.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 > ---
-> 
-> NeilBrown (4):
->       SCHED: add some "wait..on_bit...timeout()" interfaces.
->       MM: export page_wakeup functions
->       NFS: avoid deadlocks with loop-back mounted NFS filesystems.
->       NFS/SUNRPC: Remove other deadlock-avoidance mechanisms in nfs_release_page()
-> 
-> 
->  fs/nfs/file.c                   |   22 ++++++++++++----------
->  fs/nfs/write.c                  |    2 ++
->  include/linux/pagemap.h         |   12 ++++++++++--
->  include/linux/wait.h            |    5 ++++-
->  kernel/sched/wait.c             |   36 ++++++++++++++++++++++++++++++++++++
->  mm/filemap.c                    |   21 +++++++++++++++------
->  net/sunrpc/sched.c              |    2 --
->  net/sunrpc/xprtrdma/transport.c |    2 --
->  net/sunrpc/xprtsock.c           |   10 ----------
->  9 files changed, 79 insertions(+), 33 deletions(-)
-> 
+>  fs/nfs/pnfs.h     |  2 ++
+>  fs/nfs/pnfs_dev.c | 29 +++++++++++++++++++++++++++++
+>  2 files changed, 31 insertions(+)
+>
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index c5f90e7..bf4e87d 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -276,6 +276,8 @@ bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+>  void nfs4_mark_deviceid_unavailable(struct nfs4_deviceid_node *node);
+>  bool nfs4_test_deviceid_unavailable(struct nfs4_deviceid_node *node);
+>  void nfs4_deviceid_purge_client(const struct nfs_client *);
+> +int nfs4_deviceid_getdevicelist(struct nfs_server *server,
+> +		const struct nfs_fh *fh);
+>  
+>  static inline struct pnfs_layout_segment *
+>  pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+> index 791f8b3..82c2836 100644
+> --- a/fs/nfs/pnfs_dev.c
+> +++ b/fs/nfs/pnfs_dev.c
+> @@ -359,3 +359,32 @@ nfs4_deviceid_mark_client_invalid(struct nfs_client *clp)
+>  	rcu_read_unlock();
+>  }
+>  
+> +int
+> +nfs4_deviceid_getdevicelist(struct nfs_server *server,
+> +		const struct nfs_fh *fh)
+> +{
+> +	struct pnfs_devicelist *dlist;
+> +	struct nfs4_deviceid_node *d;
+> +	int error = 0, i;
+> +
+> +	dlist = kzalloc(sizeof(struct pnfs_devicelist), GFP_NOFS);
+> +	if (!dlist)
+> +		return -ENOMEM;
+> +
+> +	while (!dlist->eof) {
+> +		error = nfs4_proc_getdevicelist(server, fh, dlist);
+> +		if (error)
+> +			break;
+> +
+> +		for (i = 0; i < dlist->num_devs; i++) {
+> +			d = nfs4_find_get_deviceid(server, &dlist->dev_id[i],
+> +					NULL, GFP_NOFS);
+> +			if (d)
+> +				nfs4_put_deviceid_node(d);
 
-On balance, I like the NFS parts of this set -- particular the fact
-that we get rid of the PF_FSTRANS abortion, and simplify the code quite
-a bit. My only real concern is that you could end up stalling in this
-code in situations where you really can't release the page.
+I think you need to change nfs4xdr.c:encode_getdevicelist() to use a stored cookie value for the GETDEVICELIST operation, otherwise we will always be reading from the beginning of the device list and the while loop might never exit.
 
-For instance, suppose you're trying to reconnect the socket to the
-server (a'la xs_tcp_setup_socket). The VM is low on memory and tries to
-release a page that needs that socket in order to issue a COMMIT. That
-situation is going to end up with the page unable to be released, but
-you'll still wait 1s before returning. If the VM tries to release a
-bunch of pages like this, then those waits could add up.
+Anna
+> +		}
+> +	}
+> +
+> +	kfree(dlist);
+> +	return error;
+> +}
+> +EXPORT_SYMBOL_GPL(nfs4_deviceid_getdevicelist);
 
-Also, we call things like invalidate_complete_page2 from the cache
-invalidation code. Will we end up with potential problems now that we
-have a stronger possibility that a page might not be freeable when it
-calls releasepage? (no idea on this -- I'm just spitballing)
-
--- 
-Jeff Layton <jlayton@primarydata.com>
