@@ -1,209 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:15461 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754125AbaIBRap (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Sep 2014 13:30:45 -0400
-From: <Anna.Schumaker@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 2/2] NFSD: Implement SEEK
-Date: Tue, 2 Sep 2014 13:30:38 -0400
-Message-ID: <1409679038-32179-3-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1409679038-32179-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1409679038-32179-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from casper.infradead.org ([85.118.1.10]:37589 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751495AbaICEZ4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2014 00:25:56 -0400
+Received: from [64.134.221.109] (helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XP28p-0003VL-E8
+	for linux-nfs@vger.kernel.org; Wed, 03 Sep 2014 04:25:55 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/4] pnfs: add a common GETDEVICELIST implementation
+Date: Tue,  2 Sep 2014 21:27:58 -0700
+Message-Id: <1409718480-1529-3-git-send-email-hch@lst.de>
+In-Reply-To: <1409718480-1529-1-git-send-email-hch@lst.de>
+References: <1409718480-1529-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+At a simple helper to issue a GETDEVICELIST operation and pre-load
+the device id cache based on the result.
 
-This patch adds server support for the NFS v4.2 operation SEEK, which
-returns the position of the next hole or data segment in a file.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4proc.c   | 43 +++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c    | 36 ++++++++++++++++++++++++++++++++++--
- fs/nfsd/xdr4.h       | 14 ++++++++++++++
- include/linux/nfs4.h |  5 +++++
- 4 files changed, 96 insertions(+), 2 deletions(-)
+ fs/nfs/pnfs.h     |  2 ++
+ fs/nfs/pnfs_dev.c | 29 +++++++++++++++++++++++++++++
+ 2 files changed, 31 insertions(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 5e0dc52..aed5b88 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1013,6 +1013,43 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	return status;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index c5f90e7..bf4e87d 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -276,6 +276,8 @@ bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
+ void nfs4_mark_deviceid_unavailable(struct nfs4_deviceid_node *node);
+ bool nfs4_test_deviceid_unavailable(struct nfs4_deviceid_node *node);
+ void nfs4_deviceid_purge_client(const struct nfs_client *);
++int nfs4_deviceid_getdevicelist(struct nfs_server *server,
++		const struct nfs_fh *fh);
+ 
+ static inline struct pnfs_layout_segment *
+ pnfs_get_lseg(struct pnfs_layout_segment *lseg)
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 791f8b3..82c2836 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -359,3 +359,32 @@ nfs4_deviceid_mark_client_invalid(struct nfs_client *clp)
+ 	rcu_read_unlock();
  }
  
-+static __be32
-+nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		struct nfsd4_seek *seek)
++int
++nfs4_deviceid_getdevicelist(struct nfs_server *server,
++		const struct nfs_fh *fh)
 +{
-+	struct file *file;
-+	__be32 status = nfs_ok;
++	struct pnfs_devicelist *dlist;
++	struct nfs4_deviceid_node *d;
++	int error = 0, i;
 +
-+	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
-+					    &seek->seek_stateid,
-+					    RD_STATE, &file);
-+	if (status) {
-+		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
-+		return status;
++	dlist = kzalloc(sizeof(struct pnfs_devicelist), GFP_NOFS);
++	if (!dlist)
++		return -ENOMEM;
++
++	while (!dlist->eof) {
++		error = nfs4_proc_getdevicelist(server, fh, dlist);
++		if (error)
++			break;
++
++		for (i = 0; i < dlist->num_devs; i++) {
++			d = nfs4_find_get_deviceid(server, &dlist->dev_id[i],
++					NULL, GFP_NOFS);
++			if (d)
++				nfs4_put_deviceid_node(d);
++		}
 +	}
 +
-+	switch (seek->seek_whence) {
-+	case NFS4_CONTENT_DATA:
-+		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
-+		break;
-+	case NFS4_CONTENT_HOLE:
-+		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
-+		break;
-+	default:
-+		status = nfserr_union_notsupp;
-+		goto out;
-+	}
-+
-+	if (seek->seek_pos < 0)
-+		status = nfserrno(seek->seek_pos);
-+	else if (seek->seek_pos >= i_size_read(file_inode(file)))
-+		seek->seek_eof = true;
-+
-+out:
-+	fput(file);
-+	return status;
++	kfree(dlist);
++	return error;
 +}
-+
- /* This routine never returns NFS_OK!  If there are no other errors, it
-  * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
-  * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
-@@ -1881,6 +1918,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
-+
-+	/* NFSv4.2 operations */
-+	[OP_SEEK] = {
-+		.op_func = (nfsd4op_func)nfsd4_seek,
-+		.op_name = "OP_SEEK",
-+	},
- };
- 
- int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 94dde7b..57b3973 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1521,6 +1521,22 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
- }
- 
- static __be32
-+nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
-+{
-+	DECODE_HEAD;
-+
-+	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
-+	if (status)
-+		return status;
-+
-+	READ_BUF(12);
-+	p = xdr_decode_hyper(p, &seek->seek_offset);
-+	seek->seek_whence = be32_to_cpup(p);
-+
-+	DECODE_TAIL;
-+}
-+
-+static __be32
- nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
- {
- 	return nfs_ok;
-@@ -1605,7 +1621,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
- 	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
- };
- 
-@@ -3765,6 +3781,22 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
- }
- 
- static __be32
-+nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
-+		  struct nfsd4_seek *seek)
-+{
-+	__be32 *p;
-+
-+	if (nfserr)
-+		return nfserr;
-+
-+	p = xdr_reserve_space(&resp->xdr, 12);
-+	*p++ = cpu_to_be32(seek->seek_eof);
-+	p = xdr_encode_hyper(p, seek->seek_pos);
-+
-+	return nfserr;
-+}
-+
-+static __be32
- nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
- {
- 	return nfserr;
-@@ -3848,7 +3880,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- 	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
--	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
- 	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 465e779..5720e94 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -428,6 +428,17 @@ struct nfsd4_reclaim_complete {
- 	u32 rca_one_fs;
- };
- 
-+struct nfsd4_seek {
-+	/* request */
-+	stateid_t	seek_stateid;
-+	loff_t		seek_offset;
-+	u32		seek_whence;
-+
-+	/* response */
-+	u32		seek_eof;
-+	loff_t		seek_pos;
-+};
-+
- struct nfsd4_op {
- 	int					opnum;
- 	__be32					status;
-@@ -473,6 +484,9 @@ struct nfsd4_op {
- 		struct nfsd4_reclaim_complete	reclaim_complete;
- 		struct nfsd4_test_stateid	test_stateid;
- 		struct nfsd4_free_stateid	free_stateid;
-+
-+		/* NFSv4.2 */
-+		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
- };
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index cf38224..026b0c0 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -550,4 +550,9 @@ struct nfs4_deviceid {
- 	char data[NFS4_DEVICEID4_SIZE];
- };
- 
-+enum data_content4 {
-+	NFS4_CONTENT_DATA		= 0,
-+	NFS4_CONTENT_HOLE		= 1,
-+};
-+
- #endif
++EXPORT_SYMBOL_GPL(nfs4_deviceid_getdevicelist);
 -- 
-2.1.0
+1.9.1
 
