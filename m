@@ -1,99 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:36218 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753449AbaIXSUb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 14:20:31 -0400
-Received: by mail-ig0-f176.google.com with SMTP id hn15so7049812igb.3
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 11:20:31 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:49054 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751389AbaICScH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2014 14:32:07 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s83IW6pM004151
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 3 Sep 2014 14:32:06 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s83IW6iZ010514
+	for <linux-nfs@vger.kernel.org>; Wed, 3 Sep 2014 14:32:06 -0400
+Message-ID: <54075EA6.60703@RedHat.com>
+Date: Wed, 03 Sep 2014 14:32:06 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
-References: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
-	<CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
-Date: Wed, 24 Sep 2014 14:20:31 -0400
-Message-ID: <CAN-5tyE8zt5iUQUFp+2iz9oP37HJhQ54YtSgesWs6Cu66A6qZw@mail.gmail.com>
-Subject: Re: nfs4_lock_delegation_recall() improperly handles errors such as ERROR_GRACE
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting: Tomorrow - Thur 09/4/14
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+Hello,
 
-nfs_delegation_claim_opens() return EAGAIN to nfs_end_delegation_return().
-issync is always 0 (as its called by the
-nfs_client_return_marked_delegations) and it breaks out of the loop...
-as a result the error just doesn't get handled.
+Its been a while and a few things have happen and
+a few things to talk about... 
 
-Would it be useful to provide you with a pcap trace?
+So the Linux NFS town hall meeting is tomorrow
+   *Thur Sept 7 at 01:00 pm EST (10:00am PST)*
 
-The easiest way to trigger it is to enable the return of inactive
-delegation and have simple get a delegation and local lock, sleep and
-reboot the server and see the lock recovery error with err_grace.
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Time: 10:00 am PST (01:00 pm EST)
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
 
 
-On Wed, Sep 24, 2014 at 2:02 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> Hi Olga,
->
-> On Wed, Sep 24, 2014 at 1:47 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> There exists a problem in the code that was easily reproducible prior
->> to the commit b757144fd77cf5512f5b60179ba5ca8dcc5184b4 ("NFSv4 Be less
->> aggressive about returning delegations"). The same code is used during
->> delegation return and is still reproducible (with highly coordinated
->> setup of triggering just the right actions).
->>
->> The problem lies in the call of nfs4_lock_delegation_recall(). In the
->> nutshell, when the LOCK op gets an error such as ERR_GRACE, the error
->> is unhanded which leaves the client in incorrect state assuming that
->> it has 'successfully' acquired a lock that was locally acquired while
->> holding a delegation.
->>
->> I believe the problem stems from the fact that
->> nfs4_lock_delegation_recall(), unlike normal version of LOCK
->> nfs4_proc_getlk(), lacks the do { handle_error(do_proc())} while(err)
->> structure.
->>
->> I believe the problem should be fixed by something like the following:
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 6ca0c8e..78d088c 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -5936,11 +5936,12 @@ int nfs4_lock_delegation_recall(struct
->> file_lock *fl, struct nfs4_state *state,
->>         struct nfs_server *server = NFS_SERVER(state->inode);
->>         int err;
->>
->> -       err = nfs4_set_lock_state(state, fl);
->> -       if (err != 0)
->> -               return err;
->> -       err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
->> -       return nfs4_handle_delegation_recall_error(server, state, stateid, err);
->> +       do {
->> +               err = nfs4_handle_delegation_recall_error(server, state,
->> +                       stateid, _nfs4_do_setlk(state, F_SETLK, fl,
->> +                               NFS_LOCK_NEW));
->> +       } while (err == -EAGAIN);
->> +       return err;
->>  }
->>
->>  struct nfs_release_lockowner_data {
->>
->> Is this an acceptable solution?
->>
->
-> In the current code, I expect the EAGAIN from
-> nfs4_handle_delegation_recall_error() to be propagated back to
-> nfs_end_delegation_return(). It should then result in the client
-> waiting for state recovery to complete followed by a loop back to
-> nfs_delegation_claim_opens().
-> Could you explain why that isn't working for your case?
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
+steved.
+
