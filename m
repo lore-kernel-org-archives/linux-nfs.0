@@ -1,107 +1,51 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f169.google.com ([209.85.220.169]:61098 "EHLO
-	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751077AbaIIEsE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 00:48:04 -0400
-Received: by mail-vc0-f169.google.com with SMTP id hq11so16825819vcb.28
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 21:48:03 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1408637375-11343-16-git-send-email-hch@lst.de>
-References: <1408637375-11343-1-git-send-email-hch@lst.de>
-	<1408637375-11343-16-git-send-email-hch@lst.de>
-Date: Mon, 8 Sep 2014 21:48:03 -0700
-Message-ID: <CAHQdGtTOGYhYuULJA4eTZkv3ppgG2OH_K=wZ1RKpnkmj+hhgPg@mail.gmail.com>
-Subject: Re: [PATCH 15/19] pnfs/blocklayout: don't set pages uptodate
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+From: Husam Al Sayed <oscar55-azLpJcbXd5U@public.gmane.org>
+Subject: FROM: Husam Al Sayed.
+Date: Wed, 3 Sep 2014 20:39:32 +0200 (CEST)
+Message-ID: <898332341.347172.1409769572535.JavaMail.root@mbox05>
+Reply-To: "alsayedhusa@hotmail.com" <alsayedhusa@hotmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Cc: sameo@linux.intel.com, linux-nfc@ml01.01.org,
+	trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
+	konishi.ryusuke@lab.ntt.co.jp, linux-nilfs@vger.kernel.org,
+	gotom-8fiUuRrzOP3bmG5+kqVDhQ@public.gmane.org, yokota-clLcdqhGaiqhL56FKahb/Dp3QUdN9ktZ@public.gmane.org,
+	jon.mason@intel.com, anton@tuxera.com,
+	linux-ntfs-dev@lists.sourceforge.net,
+	linux-nvme@lists.infradead.org, tony-4v6yS6AI5VpBDgjK7y7TUQ@public.gmane.org, rnayak@ti.com,
+	jarkko.nikula-FVTvWyuFUl3QT0dZR+AlfA@public.gmane.org, tomi.valkeinen@ti.com,
+	jarkko.lavinen@nokia.com, balajitk@ti.com, dsaxena-k7pgMgclrJvR7s880joybQ@public.gmane.org,
+	paul@pwsan.com, bcousson-rdvid1DuHRBWk0Htik3J/w@public.gmane.org, santosh.shilimkar@ti.com,
+	mpfj-2FZW7xY0fHgqdlJmJB21zg@public.gmane.org, linux-omap@vger.kernel.org, me-aXfl/3sk2vNUbtYUoyoikg@public.gmane.org,
+	linux-karma-devel@lists.sourceforge.net, corbet-T1hC0tSOHrs@public.gmane.org,
+	osst-BKTAy3DeTVvYtjvyW6yDsg@public.gmane.org, osst-users@lists.sourceforge.net,
+	grant.likely@linaro.org
+To: unlisted-recipients:; (no To-header on input)
+Return-path: <linux-nilfs-owner@vger.kernel.org>
+Sender: linux-nilfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 21, 2014 at 9:09 AM, Christoph Hellwig <hch@lst.de> wrote:
-> The core nfs code handles setting pages uptodate on reads, no need to mess
-> with the pageflags outselves.  Also remove a debug function to dump page
-> flags.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfs/blocklayout/blocklayout.c | 24 +-----------------------
->  1 file changed, 1 insertion(+), 23 deletions(-)
->
-> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-> index 6484b9f..92be984 100644
-> --- a/fs/nfs/blocklayout/blocklayout.c
-> +++ b/fs/nfs/blocklayout/blocklayout.c
-> @@ -49,20 +49,6 @@ MODULE_LICENSE("GPL");
->  MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
->  MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
->
-> -static void print_page(struct page *page)
-> -{
-> -       dprintk("PRINTPAGE page %p\n", page);
-> -       dprintk("       PagePrivate %d\n", PagePrivate(page));
-> -       dprintk("       PageUptodate %d\n", PageUptodate(page));
-> -       dprintk("       PageError %d\n", PageError(page));
-> -       dprintk("       PageDirty %d\n", PageDirty(page));
-> -       dprintk("       PageReferenced %d\n", PageReferenced(page));
-> -       dprintk("       PageLocked %d\n", PageLocked(page));
-> -       dprintk("       PageWriteback %d\n", PageWriteback(page));
-> -       dprintk("       PageMappedToDisk %d\n", PageMappedToDisk(page));
-> -       dprintk("\n");
-> -}
-> -
->  /* Given the be associated with isect, determine if page data needs to be
->   * initialized.
->   */
-> @@ -187,16 +173,9 @@ retry:
->         return bio;
->  }
->
-> -/* This is basically copied from mpage_end_io_read */
->  static void bl_end_io_read(struct bio *bio, int err)
->  {
->         struct parallel_io *par = bio->bi_private;
-> -       struct bio_vec *bvec;
-> -       int i;
-> -
-> -       if (!err)
-> -               bio_for_each_segment_all(bvec, bio, i)
-> -                       SetPageUptodate(bvec->bv_page);
->
->         if (err) {
->                 struct nfs_pgio_header *header = par->data;
-> @@ -205,6 +184,7 @@ static void bl_end_io_read(struct bio *bio, int err)
->                         header->pnfs_error = -EIO;
->                 pnfs_set_lo_fail(header->lseg);
->         }
-> +
->         bio_put(bio);
->         put_parallel(par);
->  }
-> @@ -304,8 +284,6 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
->                         /* Fill hole w/ zeroes w/o accessing device */
->                         dprintk("%s Zeroing page for hole\n", __func__);
->                         zero_user_segment(pages[i], pg_offset, pg_len);
-> -                       print_page(pages[i]);
-> -                       SetPageUptodate(pages[i]);
->                 } else {
->                         struct pnfs_block_extent *be_read;
->
-> --
-> 1.9.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+FROM: Husam Al Sayed.
 
-Depends on "[PATCH 14/19] pnfs/blocklayout: remove read-modify-write
-handling in bl_write_pagelist". Holding for now.
+EMAIL:alsayedhusa@hotmail.com
+ 
+Hello,
+ 
+I decided to write you this proposal in good faith, believing that you will
+not betray me. I am Mr. Husam Al Sayed, a Bank officer here in U.A.E.
+ 
+One Mr. Peter Adams, a citizen of your country and Crude Oil dealer made a fixed deposit with my bank in 2005 for 108 calendar months, valued at US$30,000,000.00 (Thirty Million United State Dollars) the due date for this deposit contract was last 22nd of January 2014. Sadly Peter was among the death victims in the May 27 2006 Earthquake disaster in Java, Indonesia that killed over 5,000 people. He was in Indonesia on a business trip and that was how he met his untimely end. My bank management is yet to know about his death, I knew about it because he was my friend and I am his Account Officer. Peter did not mention any Next of Kin/ Heir when the account was opened, he was not married and no children. Last week my Bank Management requested that Peter should give instructions on what to do 
+ about his funds, if to renew the contract.
+ 
+I know this will happen and that is why I have been looking for a means to handle the situation, because if my Bank Directors happens to know that Peter is dead and do not have any Heir, they will take the funds for their personal use, so I don't want such to happen. That is why I am seeking your co-operation to present you as the Next of Kin/ Heir to the account, since you are a foreigner and my bank head quarters will release the account to you. There is no risk involved; the transaction will be executed under a legitimate arrangement that will protect us from any breach of law. It is better that we claim the money, than allowing the Bank Directors to take it, they are rich already. I am not a greedy person, so I am suggesting we share the funds in this ratio, 50/50%, equal sharing. Let 
+ me know your mind on this and please do treat this information highly confidential. We shall go over the details once I receive your urgent response. Please Urgently get back to me through this email address as soon as possible:
+ 
+ 
+ 
+Have a nice day and God bless. Anticipating your communication.
+ 
+Regards,
+FROM: Husam Al Sayed.
+EMAIL: alsayedhusa@hotmail.com
+_____________________________________________________________________
 
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+http://ad.sme.sk/ Reklama na Sme.sk vam prinasa viac. Sledujte Novinky o inzercii na Sme.sk.
