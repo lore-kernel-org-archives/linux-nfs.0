@@ -1,287 +1,212 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:41188 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751980AbaIDMjK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:10 -0400
-Received: by mail-qg0-f51.google.com with SMTP id i50so9708626qgf.38
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:09 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 08/17] locks: plumb a "priv" pointer into the setlease routines
-Date: Thu,  4 Sep 2014 08:38:34 -0400
-Message-Id: <1409834323-7171-9-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:17054 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751193AbaICQTR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2014 12:19:17 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/4] NFS: Unconditionally enable commit code
+Date: Wed, 3 Sep 2014 12:19:07 -0400
+Message-ID: <1409761150-30257-2-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1409761150-30257-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1409761150-30257-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In later patches, we're going to add a new lock_manager_operation to
-finish setting up the lease while still holding the i_lock.  To do
-this, we'll need to pass a little bit of info in the fcntl setlease
-case (primarily an fasync structure). Plumb the extra pointer into
-there in advance of that.
+The goal is to create a generic NFS module with code that does not
+depend on what versions of NFS are enabled.
 
-We declare this pointer as a void ** to make it clear that this is
-private info, and that the caller isn't required to set this unless
-the lm_setup specifically requires it.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/cifs/cifsfs.c    |  7 ++++---
- fs/libfs.c          |  4 +++-
- fs/locks.c          | 32 ++++++++++++++++++++------------
- fs/nfsd/nfs4state.c |  4 ++--
- include/linux/fs.h  | 12 ++++++------
- 5 files changed, 35 insertions(+), 24 deletions(-)
+ fs/nfs/direct.c        | 14 -------------
+ fs/nfs/write.c         | 54 --------------------------------------------------
+ include/linux/nfs_fs.h |  8 --------
+ 3 files changed, 76 deletions(-)
 
-diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
-index 889b98455750..9d7996e8e793 100644
---- a/fs/cifs/cifsfs.c
-+++ b/fs/cifs/cifsfs.c
-@@ -813,7 +813,8 @@ static loff_t cifs_llseek(struct file *file, loff_t offset, int whence)
- 	return generic_file_llseek(file, offset, whence);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 65ef6e0..dda4b86 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -178,7 +178,6 @@ static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
+ 	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
  }
  
--static int cifs_setlease(struct file *file, long arg, struct file_lock **lease)
-+static int
-+cifs_setlease(struct file *file, long arg, struct file_lock **lease, void **priv)
+-#if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+ /*
+  * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
+  * @dreq - direct request possibly spanning multiple servers
+@@ -197,7 +196,6 @@ static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+ 	WARN_ON_ONCE(verfp->committed < 0);
+ 	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
+ }
+-#endif
+ 
+ /**
+  * nfs_direct_IO - NFS address space operation for direct I/O
+@@ -576,7 +574,6 @@ out:
+ 	return result;
+ }
+ 
+-#if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
  {
- 	/*
- 	 * Note that this is called by vfs setlease with i_lock held to
-@@ -829,7 +830,7 @@ static int cifs_setlease(struct file *file, long arg, struct file_lock **lease)
- 	if (arg == F_UNLCK ||
- 	    ((arg == F_RDLCK) && CIFS_CACHE_READ(CIFS_I(inode))) ||
- 	    ((arg == F_WRLCK) && CIFS_CACHE_WRITE(CIFS_I(inode))))
--		return generic_setlease(file, arg, lease);
-+		return generic_setlease(file, arg, lease, priv);
- 	else if (tlink_tcon(cfile->tlink)->local_lease &&
- 		 !CIFS_CACHE_READ(CIFS_I(inode)))
- 		/*
-@@ -840,7 +841,7 @@ static int cifs_setlease(struct file *file, long arg, struct file_lock **lease)
- 		 * knows that the file won't be changed on the server by anyone
- 		 * else.
- 		 */
--		return generic_setlease(file, arg, lease);
-+		return generic_setlease(file, arg, lease, priv);
- 	else
- 		return -EAGAIN;
+ 	struct nfs_pageio_descriptor desc;
+@@ -700,17 +697,6 @@ static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode
+ 	schedule_work(&dreq->work); /* Calls nfs_direct_write_schedule_work */
  }
-diff --git a/fs/libfs.c b/fs/libfs.c
-index 29012a303ef8..171d2846f2a3 100644
---- a/fs/libfs.c
-+++ b/fs/libfs.c
-@@ -1081,12 +1081,14 @@ EXPORT_SYMBOL(alloc_anon_inode);
-  * @filp: file pointer
-  * @arg: type of lease to obtain
-  * @flp: new lease supplied for insertion
-+ * @priv: private data for lm_setup operation
-  *
-  * Generic helper for filesystems that do not wish to allow leases to be set.
-  * All arguments are ignored and it just returns -EINVAL.
-  */
- int
--simple_nosetlease(struct file *filp, long arg, struct file_lock **flp)
-+simple_nosetlease(struct file *filp, long arg, struct file_lock **flp,
-+		  void **priv)
- {
- 	return -EINVAL;
- }
-diff --git a/fs/locks.c b/fs/locks.c
-index 81a4628f5594..7162a5836dba 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1297,7 +1297,6 @@ int lease_modify(struct file_lock **before, int arg)
- 	}
- 	return 0;
- }
+ 
+-#else
+-static void nfs_direct_write_schedule_work(struct work_struct *work)
+-{
+-}
 -
- EXPORT_SYMBOL(lease_modify);
+-static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
+-{
+-	nfs_direct_complete(dreq, true);
+-}
+-#endif
+-
+ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_direct_req *dreq = hdr->dreq;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 175d5d0..70a6f03 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -749,7 +749,6 @@ nfs_mark_request_dirty(struct nfs_page *req)
+ 	__set_page_dirty_nobuffers(req->wb_page);
+ }
  
- static bool past_time(unsigned long then)
-@@ -1543,7 +1542,8 @@ check_conflicting_open(const struct dentry *dentry, const long arg)
+-#if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+ /**
+  * nfs_request_add_commit_list - add request to a commit list
+  * @req: pointer to a struct nfs_page
+@@ -867,36 +866,6 @@ int nfs_write_need_commit(struct nfs_pgio_header *hdr)
+ 	return hdr->verf.committed != NFS_FILE_SYNC;
+ }
+ 
+-#else
+-static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
+-				      struct inode *inode)
+-{
+-}
+-
+-void nfs_init_cinfo(struct nfs_commit_info *cinfo,
+-		    struct inode *inode,
+-		    struct nfs_direct_req *dreq)
+-{
+-}
+-
+-void
+-nfs_mark_request_commit(struct nfs_page *req, struct pnfs_layout_segment *lseg,
+-			struct nfs_commit_info *cinfo)
+-{
+-}
+-
+-static void
+-nfs_clear_request_commit(struct nfs_page *req)
+-{
+-}
+-
+-int nfs_write_need_commit(struct nfs_pgio_header *hdr)
+-{
+-	return 0;
+-}
+-
+-#endif
+-
+ static void nfs_write_completion(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_commit_info cinfo;
+@@ -932,7 +901,6 @@ out:
+ 	hdr->release(hdr);
+ }
+ 
+-#if  IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+ unsigned long
+ nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
+ {
+@@ -989,19 +957,6 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst,
  	return ret;
  }
  
--static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp)
-+static int
-+generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **priv)
- {
- 	struct file_lock *fl, **before, **my_before = NULL, *lease;
- 	struct dentry *dentry = filp->f_path.dentry;
-@@ -1630,11 +1630,14 @@ static int generic_add_lease(struct file *filp, long arg, struct file_lock **flp
- 	smp_mb();
- 	error = check_conflicting_open(dentry, arg);
- 	if (error)
--		locks_unlink_lock(before);
-+		goto out_unlink;
- out:
- 	if (is_deleg)
- 		mutex_unlock(&inode->i_mutex);
- 	return error;
-+out_unlink:
-+	locks_unlink_lock(before);
-+	goto out;
- }
+-#else
+-unsigned long nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
+-{
+-	return 0;
+-}
+-
+-int nfs_scan_commit(struct inode *inode, struct list_head *dst,
+-		    struct nfs_commit_info *cinfo)
+-{
+-	return 0;
+-}
+-#endif
+-
+ /*
+  * Search for an existing write request, and attempt to update
+  * it to reflect a new dirty region on a given page.
+@@ -1394,7 +1349,6 @@ static int nfs_writeback_done(struct rpc_task *task,
+ 		return status;
+ 	nfs_add_stats(inode, NFSIOS_SERVERWRITTENBYTES, hdr->res.count);
  
- static int generic_delete_lease(struct file *filp)
-@@ -1661,13 +1664,15 @@ static int generic_delete_lease(struct file *filp)
-  *	@filp: file pointer
-  *	@arg: type of lease to obtain
-  *	@flp: input - file_lock to use, output - file_lock inserted
-+ *	@priv: private data for lm_setup
-  *
-  *	The (input) flp->fl_lmops->lm_break function is required
-  *	by break_lease().
-  *
-  *	Called with inode->i_lock held.
-  */
--int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
-+int generic_setlease(struct file *filp, long arg, struct file_lock **flp,
-+			void **priv)
- {
- 	struct dentry *dentry = filp->f_path.dentry;
- 	struct inode *inode = dentry->d_inode;
-@@ -1692,19 +1697,20 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp)
- 			WARN_ON_ONCE(1);
- 			return -ENOLCK;
+-#if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+ 	if (hdr->res.verf->committed < hdr->args.stable &&
+ 	    task->tk_status >= 0) {
+ 		/* We tried a write call, but the server did not
+@@ -1416,7 +1370,6 @@ static int nfs_writeback_done(struct rpc_task *task,
+ 			complain = jiffies + 300 * HZ;
  		}
--		return generic_add_lease(filp, arg, flp);
-+		return generic_add_lease(filp, arg, flp, priv);
- 	default:
- 		return -EINVAL;
  	}
- }
- EXPORT_SYMBOL(generic_setlease);
+-#endif
  
--static int __vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
-+static int
-+__vfs_setlease(struct file *filp, long arg, struct file_lock **lease, void **priv)
+ 	/* Deal with the suid/sgid bit corner case */
+ 	if (nfs_should_remove_suid(inode))
+@@ -1469,7 +1422,6 @@ static void nfs_writeback_result(struct rpc_task *task,
+ }
+ 
+ 
+-#if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+ static int nfs_commit_set_lock(struct nfs_inode *nfsi, int may_wait)
  {
- 	if (filp->f_op->setlease)
--		return filp->f_op->setlease(filp, arg, lease);
-+		return filp->f_op->setlease(filp, arg, lease, priv);
- 	else
--		return generic_setlease(filp, arg, lease);
-+		return generic_setlease(filp, arg, lease, priv);
+ 	int ret;
+@@ -1778,12 +1730,6 @@ out_mark_dirty:
+ 	__mark_inode_dirty(inode, I_DIRTY_DATASYNC);
+ 	return ret;
  }
+-#else
+-static int nfs_commit_unstable_pages(struct inode *inode, struct writeback_control *wbc)
+-{
+-	return 0;
+-}
+-#endif
  
- /**
-@@ -1712,6 +1718,7 @@ static int __vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
-  * @filp: file pointer
-  * @arg: type of lease to obtain
-  * @lease: file_lock to use when adding a lease
-+ * @priv: private info for lm_setup when adding a lease
-  *
-  * Call this to establish a lease on the file. The "lease" argument is not
-  * used for F_UNLCK requests and may be NULL. For commands that set or alter
-@@ -1720,13 +1727,14 @@ static int __vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
-  * stack trace).
-  */
- 
--int vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
-+int
-+vfs_setlease(struct file *filp, long arg, struct file_lock **lease, void **priv)
+ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
  {
- 	struct inode *inode = file_inode(filp);
- 	int error;
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 5180a7e..fd334d4 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -529,17 +529,9 @@ extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned
+ extern int nfs_wb_all(struct inode *inode);
+ extern int nfs_wb_page(struct inode *inode, struct page* page);
+ extern int nfs_wb_page_cancel(struct inode *inode, struct page* page);
+-#if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+ extern int  nfs_commit_inode(struct inode *, int);
+ extern struct nfs_commit_data *nfs_commitdata_alloc(void);
+ extern void nfs_commit_free(struct nfs_commit_data *data);
+-#else
+-static inline int
+-nfs_commit_inode(struct inode *inode, int how)
+-{
+-	return 0;
+-}
+-#endif
  
- 	spin_lock(&inode->i_lock);
--	error = __vfs_setlease(filp, arg, lease);
-+	error = __vfs_setlease(filp, arg, lease, priv);
- 	spin_unlock(&inode->i_lock);
- 
- 	return error;
-@@ -1751,7 +1759,7 @@ static int do_fcntl_add_lease(unsigned int fd, struct file *filp, long arg)
- 	}
- 	ret = fl;
- 	spin_lock(&inode->i_lock);
--	error = __vfs_setlease(filp, arg, &ret);
-+	error = __vfs_setlease(filp, arg, &ret, NULL);
- 	if (error)
- 		goto out_unlock;
- 	if (ret == fl)
-@@ -1789,7 +1797,7 @@ out_unlock:
- int fcntl_setlease(unsigned int fd, struct file *filp, long arg)
- {
- 	if (arg == F_UNLCK)
--		return vfs_setlease(filp, F_UNLCK, NULL);
-+		return vfs_setlease(filp, F_UNLCK, NULL, NULL);
- 	return do_fcntl_add_lease(fd, filp, arg);
- }
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d0a6e8e022a2..d964a41c9151 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -683,7 +683,7 @@ static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- 	if (!fp->fi_deleg_file)
- 		return;
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
--		vfs_setlease(fp->fi_deleg_file, F_UNLCK, NULL);
-+		vfs_setlease(fp->fi_deleg_file, F_UNLCK, NULL, NULL);
- 		fput(fp->fi_deleg_file);
- 		fp->fi_deleg_file = NULL;
- 	}
-@@ -3788,7 +3788,7 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	}
- 	fl->fl_file = filp;
- 	ret = fl;
--	status = vfs_setlease(filp, fl->fl_type, &ret);
-+	status = vfs_setlease(filp, fl->fl_type, &fl, NULL);
- 	if (status) {
- 		locks_free_lock(fl);
- 		goto out_fput;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 96528f73dda4..f1870eb67b02 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -982,8 +982,8 @@ extern int vfs_cancel_lock(struct file *filp, struct file_lock *fl);
- extern int flock_lock_file_wait(struct file *filp, struct file_lock *fl);
- extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int type);
- extern void lease_get_mtime(struct inode *, struct timespec *time);
--extern int generic_setlease(struct file *, long, struct file_lock **);
--extern int vfs_setlease(struct file *, long, struct file_lock **);
-+extern int generic_setlease(struct file *, long, struct file_lock **, void **priv);
-+extern int vfs_setlease(struct file *, long, struct file_lock **, void **);
- extern int lease_modify(struct file_lock **, int);
- #else /* !CONFIG_FILE_LOCKING */
- static inline int fcntl_getlk(struct file *file, unsigned int cmd,
-@@ -1100,13 +1100,13 @@ static inline void lease_get_mtime(struct inode *inode, struct timespec *time)
- }
- 
- static inline int generic_setlease(struct file *filp, long arg,
--				    struct file_lock **flp)
-+				    struct file_lock **flp, void **priv)
- {
- 	return -EINVAL;
- }
- 
- static inline int vfs_setlease(struct file *filp, long arg,
--			       struct file_lock **lease)
-+			       struct file_lock **lease, void **priv)
- {
- 	return -EINVAL;
- }
-@@ -1494,7 +1494,7 @@ struct file_operations {
- 	int (*flock) (struct file *, int, struct file_lock *);
- 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, loff_t *, size_t, unsigned int);
- 	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *, size_t, unsigned int);
--	int (*setlease)(struct file *, long, struct file_lock **);
-+	int (*setlease)(struct file *, long, struct file_lock **, void **);
- 	long (*fallocate)(struct file *file, int mode, loff_t offset,
- 			  loff_t len);
- 	int (*show_fdinfo)(struct seq_file *m, struct file *f);
-@@ -2599,7 +2599,7 @@ extern int simple_write_end(struct file *file, struct address_space *mapping,
- 			struct page *page, void *fsdata);
- extern int always_delete_dentry(const struct dentry *);
- extern struct inode *alloc_anon_inode(struct super_block *);
--extern int simple_nosetlease(struct file *, long, struct file_lock **);
-+extern int simple_nosetlease(struct file *, long, struct file_lock **, void **);
- extern const struct dentry_operations simple_dentry_operations;
- 
- extern struct dentry *simple_lookup(struct inode *, struct dentry *, unsigned int flags);
+ static inline int
+ nfs_have_writebacks(struct inode *inode)
 -- 
-1.9.3
+2.1.0
 
