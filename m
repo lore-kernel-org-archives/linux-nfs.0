@@ -1,132 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15948 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753486AbaIVMoY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 08:44:24 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8MCiOOS008804
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 08:44:24 -0400
-Received: from mmyllyne.csb (vpn1-7-112.ams2.redhat.com [10.36.7.112])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8MCiNet029532
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 08:44:24 -0400
-Message-ID: <542019A7.8020504@redhat.com>
-Date: Mon, 22 Sep 2014 15:44:23 +0300
-From: Marko Myllynen <myllynen@redhat.com>
-Reply-To: myllynen@redhat.com
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:34676 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755151AbaICLAv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2014 07:00:51 -0400
+Received: by mail-qa0-f49.google.com with SMTP id s7so3619145qap.22
+        for <linux-nfs@vger.kernel.org>; Wed, 03 Sep 2014 04:00:50 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 3 Sep 2014 07:00:48 -0400
+To: Chris Perl <chris.perl@gmail.com>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount
+ failures
+Message-ID: <20140903070048.56201d1d@tlielax.poochiereds.net>
+In-Reply-To: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
+References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] nfsstat: add server ra cache stats
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From 7a5072efd524f5537a0b38808420bea8c0e45b01 Mon Sep 17 00:00:00 2001
-From: Marko Myllynen <myllynen@redhat.com>
-Date: Mon, 22 Sep 2014 15:31:04 +0300
-Subject: [PATCH v2] nfsstat: add server ra cache stats
+On Tue, 2 Sep 2014 12:51:06 -0400
+Chris Perl <chris.perl@gmail.com> wrote:
 
-Add server read ahead cache statistics to nfsstat.
+> I've noticed that mount.nfs calls bind (in `nfs_bind' in
+> support/nfs/rpc_socket.c) before ultimately calling connect when
+> trying to get a tcp connection to talk to the remote portmapper
+> service (called from `nfs_get_tcpclient' which is called from
+> `nfs_gp_get_rpcbclient').
+> 
+> Unfortunately, this means you need to find a local ephemeral port such
+> that said ephemeral port is not a part of *any* existing TCP
+> connection (i.e. you're looking for a unique 2 tuple of (socket_type,
+> local_port) where socket_type is either SOCK_STREAM or SOCK_DGRAM, but
+> in this case specifically SOCK_STREAM).
+> 
+> If you were to just call connect without calling bind first, then
+> you'd need to find a unique 5 tuple of (socket_type, local_ip,
+> loacl_port, remote_ip, remote_port).
+> 
+> The end result is a misbehaving application that creates many
+> connections to some service, using all ephemeral ports, can cause
+> attempts to mount remote NFS filesystems to fail with EADDRINUSE.
+> 
+> Don't get me wrong, I think we should fix our application, (and we
+> are) but I don't see any reason why mount.nfs couldn't just call
+> connect without calling bind first (thereby allowing it to happen
+> implicitly) and allowing mount.nfs to continue to work in this
+> situation.
+> 
+> I think an example may help explain what I'm talking about.
+> 
+> Lets take a Linux machine running CentOS 6.5
+> (2.6.32-431.1.2.0.1.el6.x86_64) and restrict the number of available
+> ephemeral ports to just 10:
+> 
+> [cperl@localhost ~]$ cat /proc/sys/net/ipv4/ip_local_port_range
+> 60000   60009
+> 
+> Then create a TCP connection to a remote service which will just hold
+> that connection open:
+> 
+> [cperl@localhost ~]$ for in in {0..9}; do socat -u
+> tcp:192.168.1.12:9990 file:/dev/null & done
+> [1] 21578
+> [2] 21579
+> [3] 21580
+> [4] 21581
+> [5] 21582
+> [6] 21583
+> [7] 21584
+> [8] 21585
+> [9] 21586
+> [10] 21587
+> 
+> [cperl@localhost ~]$ netstat -n --tcp | awk '$6 ~ /ESTABLISHED/ && $5
+> ~/:999[0-9]$/ {print $1, $4, $5}' | sort | column -t
+> tcp  192.168.1.11:60000  192.168.1.12:9990
+> tcp  192.168.1.11:60001  192.168.1.12:9990
+> tcp  192.168.1.11:60002  192.168.1.12:9990
+> tcp  192.168.1.11:60003  192.168.1.12:9990
+> tcp  192.168.1.11:60004  192.168.1.12:9990
+> tcp  192.168.1.11:60005  192.168.1.12:9990
+> tcp  192.168.1.11:60006  192.168.1.12:9990
+> tcp  192.168.1.11:60007  192.168.1.12:9990
+> tcp  192.168.1.11:60008  192.168.1.12:9990
+> tcp  192.168.1.11:60009  192.168.1.12:9990
+> 
+> And now try to mount an NFS export:
+> 
+> [cperl@localhost ~]$ sudo mount 192.168.1.100:/export/a /tmp/a
+> mount.nfs: Address already in use
+> 
+> As mentioned before, this is because bind is trying to find a unique 2
+> tuple of (socket_type, local_port) (really I believe its the 3 tuple
+> (socket_type, local_ip, local_port), but calling bind with INADDR_ANY
+> as `nfs_bind' does reduces it to the 2 tuple), which it cannot do.
+> 
+> However, just calling connect allows local ephemeral ports to be
+> "reused" (i.e. it looks for the unique 5 tuple of (socket_type,
+> local_ip, local_port, remote_ip, remote_port)).
+> 
+> For example, notice how the local ephemeral ports 60003 and 60004 are
+> "reused" below (because socat is just calling connect, not bind,
+> although we can make socat call bind with an option if we want and see
+> it fail like mount.nfs did above):
+> 
+> [cperl@localhost ~]$ socat -u tcp:192.168.1.12:9991 file:/dev/null &
+> [11] 22433
+> [cperl@localhost ~]$ socat -u tcp:192.168.1.13:9990 file:/dev/null &
+> [12] 22499
+> [cperl@localhost ~]$ netstat -n --tcp | awk '$6 ~ /ESTABLISHED/ && $5
+> ~/:999[0-9]$/ {print $1, $4, $5}' | sort | column -t
+> tcp  192.168.0.11:60000  192.168.1.12:9990
+> tcp  192.168.0.11:60001  192.168.1.12:9990
+> tcp  192.168.0.11:60002  192.168.1.12:9990
+> tcp  192.168.0.11:60003  192.168.1.12:9990
+> tcp  192.168.0.11:60003  192.168.1.12:9991
+> tcp  192.168.0.11:60004  192.168.1.12:9990
+> tcp  192.168.0.11:60004  192.168.1.13:9990
+> tcp  192.168.0.11:60005  192.168.1.12:9990
+> tcp  192.168.0.11:60006  192.168.1.12:9990
+> tcp  192.168.0.11:60007  192.168.1.12:9990
+> tcp  192.168.0.11:60008  192.168.1.12:9990
+> tcp  192.168.0.11:60009  192.168.1.12:9990
+> 
+> Is there any reason we couldn't modify `nfs_get_tcpclient' to not bind
+> in the case where its not using a reserved port?
+> 
+> For some color, this is particularly annoying for me because I have
+> extensive automount maps and this failure leads to attempts to access
+> a given automounted path returning ENOENT.  Furthermore, automount
+> caches this failure and continues to return ENOENT for the duration of
+> whatever its negative cache timeout is.
+> 
+> For UDP, I don't think "bind before connect" matters as much.  I
+> believe the difference is just in the error you'll get from either
+> bind or connect (if all ephemeral ports are used).  If you attempt to
+> bind when all local ports are in use you seem to get EADDRINUSE,
+> whereas when you connect when all local ports are in use you get
+> EAGAIN.
+> 
+> It could be I'm missing something totally obvious for why this is.  If
+> so, please let me know!
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Signed-off-by: Marko Myllynen <myllynen@redhat.com>
----
- utils/nfsstat/nfsstat.c |   29 +++++++++++++++++++++++++----
- 1 files changed, 25 insertions(+), 4 deletions(-)
+(cc'ing Chuck since he wrote a lot of that code)
 
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index 83bde9d..8e165a8 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -96,6 +96,11 @@ static unsigned int	srvioinfo[3], srvioinfo_old[3];		/* 0  bytes read
- 								 * 1  bytes written
- 								 */
- 
-+static unsigned int	srvrainfo[13], srvrainfo_old[13];	/* 0  ra cache size
-+								 * 1..11 depth of ra cache hit
-+								 * 12 ra cache misses
-+								 */
-+
- static const char *	nfsv2name[SRVPROC2_SZ] = {
- 	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
- 	"read", "wrcache", "write",   "create", "remove",  "rename",
-@@ -172,6 +177,7 @@ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
- #define LABEL_srvrc		"Server reply cache:\n"
- #define LABEL_srvfh		"Server file handle cache:\n"
- #define LABEL_srvio		"Server io stats:\n"
-+#define LABEL_srvra		"Server read ahead cache:\n"
- #define LABEL_srvproc2		"Server nfs v2:\n"
- #define LABEL_srvproc3		"Server nfs v3:\n"
- #define LABEL_srvproc4		"Server nfs v4:\n"
-@@ -204,6 +210,7 @@ typedef struct statinfo {
- 					SRV(rc,s), \
- 					SRV(fh,s), \
- 					SRV(io,s), \
-+					SRV(ra,s), \
- 					SRV(proc2,s), \
- 					SRV(proc3,s),\
- 					SRV(proc4,s), \
-@@ -256,6 +263,7 @@ static time_t		starttime;
- #define PRNT_FH		0x0008
- #define PRNT_RC		0x0010
- #define PRNT_IO		0x0020
-+#define PRNT_RA		0x0040
- #define PRNT_AUTO	0x1000
- #define PRNT_V2		0x2000
- #define PRNT_V3		0x4000
-@@ -283,8 +291,9 @@ void usage(char *name)
-      rpc		General RPC information\n\
-      net		Network layer statistics\n\
-      fh			Usage information on the server's file handle cache\n\
--     rc			Usage information on the server's request reply cache\n\
-      io			Usage information on the server's io statistics\n\
-+     ra			Usage information on the server's read ahead cache\n\
-+     rc			Usage information on the server's request reply cache\n\
-      all		Select all of the above\n\
-   -v, --verbose, --all	Same as '-o all'\n\
-   -r, --rpc		Show RPC statistics\n\
-@@ -376,8 +385,10 @@ main(int argc, char **argv)
- 				opt_prt |= PRNT_FH;
- 			else if (!strcmp(optarg, "io"))
- 				opt_prt |= PRNT_IO;
-+			else if (!strcmp(optarg, "ra"))
-+				opt_prt |= PRNT_RA;
- 			else if (!strcmp(optarg, "all"))
--				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO;
-+				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO | PRNT_RA;
- 			else {
- 				fprintf(stderr, "nfsstat: unknown category: "
- 						"%s\n", optarg);
-@@ -445,9 +456,9 @@ main(int argc, char **argv)
- 	if (!(opt_prt & 0xe000)) {
- 		opt_prt |= PRNT_AUTO;
- 	}
--	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO)) && !opt_srv) {
-+	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO|PRNT_RA)) && !opt_srv) {
- 		fprintf(stderr,
--			"You requested io, file handle, or request cache "
-+			"You requested fh/io/ra/rc "
- 			"statistics while using the -c option.\n"
- 			"This information is available only for the NFS "
- 			"server.\n");
-@@ -572,6 +583,16 @@ print_server_stats(int opt_prt)
- 			printf("\n");
- 		}
- 	}
-+	if (opt_prt & PRNT_RA) {
-+		if (opt_sleep && !has_rpcstats(srvrainfo, 3)) {
-+			;
-+		} else {
-+			print_numbers(LABEL_srvra
-+				"size       0-10%      10-20%     20-30%     30-40%     40-50%     50-60%     60-70%     70-80%     80-90%     90-100%    notfound\n",
-+				srvrainfo, 12);
-+			printf("\n");
-+		}
-+	}
- 
- 	/*
- 	 * 2.2 puts all fh-related info after the 'rc' header
+I'm not sure either. If there was a reason for that, it's likely lost
+to antiquity. In some cases, we really are expected to use reserved
+ports and I think you do have to bind() in order to get one. In the
+non-reserved case though it's likely we could skip binding altogether.
+
+What would probably be best is to roll up a patch that changes it, and
+propose it on the list.
+
 -- 
-1.7.1
-
--- 
-Marko Myllynen
+Jeff Layton <jlayton@primarydata.com>
