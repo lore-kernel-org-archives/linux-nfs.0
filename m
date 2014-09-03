@@ -1,68 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:37561 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756752AbaIWWLX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 18:11:23 -0400
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH V3] svcrdma: advertise the correct max payload
-To: fields@fieldses.org
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 23 Sep 2014 17:11:22 -0500
-Message-ID: <20140923221122.24227.91718.stgit@build.ogc.int>
+Received: from fieldses.org ([174.143.236.118]:39659 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756691AbaICVgJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2014 17:36:09 -0400
+Date: Wed, 3 Sep 2014 17:36:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 6/6] NFSD: Put export if prepare_creds() fail
+Message-ID: <20140903213608.GD25363@fieldses.org>
+References: <5405D0FE.70008@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5405D0FE.70008@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Svcrdma currently advertises 1MB, which is too large.  The correct value
-is the minimum of RPCSVC_MAXPAYLOAD and the max scatter-gather allowed
-in an NFSRDMA IO chunk * the host page size. This bug is usually benign
-because the Linux X64 NFSRDMA client correctly limits the payload size to
-the correct value (64*4096 = 256KB).  But if the Linux client is PPC64
-with a 64KB page size, then the client will indeed use a payload size
-that will overflow the server.
+Thanks, applying all 6 for 3.18.
 
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
----
+--b.
 
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
- net/sunrpc/xprtrdma/xprt_rdma.h          |    7 +++++++
- 2 files changed, 8 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 374feb4..4e61880 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -91,7 +91,7 @@ struct svc_xprt_class svc_rdma_class = {
- 	.xcl_name = "rdma",
- 	.xcl_owner = THIS_MODULE,
- 	.xcl_ops = &svc_rdma_ops,
--	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_RDMA,
- 	.xcl_ident = XPRT_TRANSPORT_RDMA,
- };
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c419498..ac7fc9a 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -51,6 +51,7 @@
- #include <linux/sunrpc/clnt.h> 		/* rpc_xprt */
- #include <linux/sunrpc/rpc_rdma.h> 	/* RPC/RDMA protocol */
- #include <linux/sunrpc/xprtrdma.h> 	/* xprt parameters */
-+#include <linux/sunrpc/svc.h>		/* RPCSVC_MAXPAYLOAD */
- 
- #define RDMA_RESOLVE_TIMEOUT	(5000)	/* 5 seconds */
- #define RDMA_CONNECT_RETRY_MAX	(2)	/* retries if no listener backlog */
-@@ -392,4 +393,10 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
- /* Workqueue created in svc_rdma.c */
- extern struct workqueue_struct *svc_rdma_wq;
- 
-+#if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
-+#define RPCSVC_MAXPAYLOAD_RDMA RPCSVC_MAXPAYLOAD
-+#else
-+#define RPCSVC_MAXPAYLOAD_RDMA (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
-+#endif
-+
- #endif				/* _LINUX_SUNRPC_XPRT_RDMA_H */
-
+On Tue, Sep 02, 2014 at 10:15:26PM +0800, Kinglong Mee wrote:
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfsfh.c | 6 ++++--
+>  1 file changed, 4 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+> index e883a58..88026fc 100644
+> --- a/fs/nfsd/nfsfh.c
+> +++ b/fs/nfsd/nfsfh.c
+> @@ -209,8 +209,10 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
+>  		 * fix that case easily.
+>  		 */
+>  		struct cred *new = prepare_creds();
+> -		if (!new)
+> -			return nfserrno(-ENOMEM);
+> +		if (!new) {
+> +			error =  nfserrno(-ENOMEM);
+> +			goto out;
+> +		}
+>  		new->cap_effective =
+>  			cap_raise_nfsd_set(new->cap_effective,
+>  					   new->cap_permitted);
+> -- 
+> 1.9.3
+> 
