@@ -1,243 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:51001 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751768AbaIJPVr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 11:21:47 -0400
-Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRjiL-00007j-UU
-	for linux-nfs@vger.kernel.org; Wed, 10 Sep 2014 15:21:46 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 9/9] pnfs/blocklayout: allocate separate pages for the layoutcommit payload
-Date: Wed, 10 Sep 2014 08:23:37 -0700
-Message-Id: <1410362617-28018-10-git-send-email-hch@lst.de>
-In-Reply-To: <1410362617-28018-1-git-send-email-hch@lst.de>
-References: <1410362617-28018-1-git-send-email-hch@lst.de>
+Received: from mx11.netapp.com ([216.240.18.76]:55320 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753437AbaICQTe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 3 Sep 2014 12:19:34 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 4/4] NFS: Move NFS v3 acl functions to nfs3_fs.h
+Date: Wed, 3 Sep 2014 12:19:10 -0400
+Message-ID: <1409761150-30257-5-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1409761150-30257-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1409761150-30257-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of overflowing the XDR send buffer with our extent list allocate
-pages and pre-encode the layoutupdate payload into them.  We optimistically
-allocate a single page use alloc_page and only switch to vmalloc when we
-have more extents outstanding.  Currently there is only a single testcase
-(xfstests generic/113) which can reproduce large enough extent lists for
-this to occur.
+This code is internal to the v3 module, so other parts of the client
+shouldn't have any knowledge of it.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+nfs3_getxattr(), nfs3_setxattr(), and nfs3_removexattr() no longer exist
+anywhere so I remove the declarations while I'm here.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/blocklayout/blocklayout.c |  15 ++----
- fs/nfs/blocklayout/blocklayout.h |   8 ++--
- fs/nfs/blocklayout/extent_tree.c | 100 +++++++++++++++++++++++++++++++--------
- 3 files changed, 90 insertions(+), 33 deletions(-)
+ fs/nfs/nfs3_fs.h       | 19 +++++++++++++++++++
+ fs/nfs/nfs3super.c     |  1 +
+ include/linux/nfs_fs.h | 33 ---------------------------------
+ 3 files changed, 20 insertions(+), 33 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index d5a2b87..fdc065c 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -498,21 +498,16 @@ bl_return_range(struct pnfs_layout_hdr *lo,
- 	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
- }
+diff --git a/fs/nfs/nfs3_fs.h b/fs/nfs/nfs3_fs.h
+index 6599e0d..333ae40 100644
+--- a/fs/nfs/nfs3_fs.h
++++ b/fs/nfs/nfs3_fs.h
+@@ -6,6 +6,25 @@
+ #ifndef __LINUX_FS_NFS_NFS3_FS_H
+ #define __LINUX_FS_NFS_NFS3_FS_H
  
--static void
--bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
--		       const struct nfs4_layoutcommit_args *arg)
-+static int
-+bl_prepare_layoutcommit(struct nfs4_layoutcommit_args *arg)
- {
--	dprintk("%s enter\n", __func__);
--	ext_tree_encode_commit(BLK_LO2EXT(lo), xdr);
-+	return ext_tree_prepare_commit(arg);
- }
- 
- static void
- bl_cleanup_layoutcommit(struct nfs4_layoutcommit_data *lcdata)
- {
--	struct pnfs_layout_hdr *lo = NFS_I(lcdata->args.inode)->layout;
--
--	dprintk("%s enter\n", __func__);
--	ext_tree_mark_committed(BLK_LO2EXT(lo), lcdata->res.status);
-+	ext_tree_mark_committed(&lcdata->args, lcdata->res.status);
- }
- 
- static void free_blk_mountid(struct block_mount_id *mid)
-@@ -808,7 +803,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.alloc_lseg			= bl_alloc_lseg,
- 	.free_lseg			= bl_free_lseg,
- 	.return_range			= bl_return_range,
--	.encode_layoutcommit		= bl_encode_layoutcommit,
-+	.prepare_layoutcommit		= bl_prepare_layoutcommit,
- 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
- 	.set_layoutdriver		= bl_set_layoutdriver,
- 	.clear_layoutdriver		= bl_clear_layoutdriver,
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index b4f66d8..6f3a550 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -80,6 +80,9 @@ struct pnfs_block_extent {
- 	unsigned int	be_tag;
- };
- 
-+/* on the wire size of the extent */
-+#define BL_EXTENT_SIZE	(7 * sizeof(__be32) + NFS4_DEVICEID4_SIZE)
-+
- struct pnfs_block_layout {
- 	struct pnfs_layout_hdr	bl_layout;
- 	struct rb_root		bl_ext_rw;
-@@ -138,8 +141,7 @@ int ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
- 		sector_t len);
- bool ext_tree_lookup(struct pnfs_block_layout *bl, sector_t isect,
- 		struct pnfs_block_extent *ret, bool rw);
--int ext_tree_encode_commit(struct pnfs_block_layout *bl,
--		struct xdr_stream *xdr);
--void ext_tree_mark_committed(struct pnfs_block_layout *bl, int status);
-+int ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg);
-+void ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status);
- 
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
-index c8c59a5..20c12b6 100644
---- a/fs/nfs/blocklayout/extent_tree.c
-+++ b/fs/nfs/blocklayout/extent_tree.c
-@@ -467,19 +467,25 @@ out:
- 	return err;
- }
- 
--int
--ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
-+static void ext_tree_free_commitdata(struct nfs4_layoutcommit_args *arg,
-+		size_t buffer_size)
- {
--	struct pnfs_block_extent *be;
--	unsigned int count = 0;
--	__be32 *p, *xdr_start;
--	int ret = 0;
-+	if (arg->layoutupdate_pages != &arg->layoutupdate_page) {
-+		int nr_pages = DIV_ROUND_UP(buffer_size, PAGE_SIZE), i;
- 
--	dprintk("%s enter\n", __func__);
-+		for (i = 0; i < nr_pages; i++)
-+			put_page(arg->layoutupdate_pages[i]);
-+		kfree(arg->layoutupdate_pages);
-+	} else {
-+		put_page(arg->layoutupdate_page);
-+	}
-+}
- 
--	xdr_start = xdr_reserve_space(xdr, 8);
--	if (!xdr_start)
--		return -ENOSPC;
-+static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
-+		size_t buffer_size, size_t *count)
++/*
++ * nfs3acl.c
++ */
++#ifdef CONFIG_NFS_V3_ACL
++extern struct posix_acl *nfs3_get_acl(struct inode *inode, int type);
++extern int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type);
++extern int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
++		struct posix_acl *dfacl);
++extern ssize_t nfs3_listxattr(struct dentry *, char *, size_t);
++extern const struct xattr_handler *nfs3_xattr_handlers[];
++#else
++static inline int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
++		struct posix_acl *dfacl)
 +{
-+	struct pnfs_block_extent *be;
-+	int ret = 0;
- 
- 	spin_lock(&bl->bl_ext_lock);
- 	for (be = ext_tree_first(&bl->bl_ext_rw); be; be = ext_tree_next(be)) {
-@@ -487,12 +493,11 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
- 		    be->be_tag != EXTENT_WRITTEN)
- 			continue;
- 
--		p = xdr_reserve_space(xdr, 7 * sizeof(__be32) +
--					NFS4_DEVICEID4_SIZE);
--		if (!p) {
--			printk("%s: out of space for extent list\n", __func__);
-+		(*count)++;
-+		if (*count * BL_EXTENT_SIZE > buffer_size) {
-+			/* keep counting.. */
- 			ret = -ENOSPC;
--			break;
-+			continue;
- 		}
- 
- 		p = xdr_encode_opaque_fixed(p, be->be_devid.data,
-@@ -503,25 +508,80 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
- 		*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
- 
- 		be->be_tag = EXTENT_COMMITTING;
--		count++;
- 	}
- 	spin_unlock(&bl->bl_ext_lock);
- 
--	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
--	xdr_start[1] = cpu_to_be32(count);
-+	return ret;
-+}
-+
-+int
-+ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg)
-+{
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
-+	size_t count = 0, buffer_size = PAGE_SIZE;
-+	__be32 *start_p;
-+	int ret;
-+
-+	dprintk("%s enter\n", __func__);
-+
-+	arg->layoutupdate_page = alloc_page(GFP_NOFS);
-+	if (!arg->layoutupdate_page)
-+		return -ENOMEM;
-+	start_p = page_address(arg->layoutupdate_page);
-+	arg->layoutupdate_pages = &arg->layoutupdate_page;
-+
-+retry:
-+	ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count);
-+	if (unlikely(ret)) {
-+		ext_tree_free_commitdata(arg, buffer_size);
-+
-+		buffer_size = sizeof(__be32) + BL_EXTENT_SIZE * count;
-+		count = 0;
-+
-+		arg->layoutupdate_pages =
-+			kcalloc(DIV_ROUND_UP(buffer_size, PAGE_SIZE),
-+				sizeof(struct page *), GFP_NOFS);
-+		if (!arg->layoutupdate_pages)
-+			return -ENOMEM;
-+
-+		start_p = __vmalloc(buffer_size, GFP_NOFS, PAGE_KERNEL);
-+		if (!start_p) {
-+			kfree(arg->layoutupdate_pages);
-+			return -ENOMEM;
-+		}
-+
-+		goto retry;
-+	}
-+
-+	*start_p = cpu_to_be32(count);
-+	arg->layoutupdate_len = sizeof(__be32) + BL_EXTENT_SIZE * count;
-+
-+	if (unlikely(arg->layoutupdate_pages != &arg->layoutupdate_page)) {
-+		__be32 *p = start_p;
-+		int i = 0;
-+
-+		for (p = start_p;
-+		     p < start_p + arg->layoutupdate_len;
-+		     p += PAGE_SIZE) {
-+			arg->layoutupdate_pages[i++] = vmalloc_to_page(p);
-+		}
-+	}
- 
- 	dprintk("%s found %i ranges\n", __func__, count);
--	return ret;
 +	return 0;
++}
++#define nfs3_listxattr NULL
++#endif /* CONFIG_NFS_V3_ACL */
++
+ /* nfs3client.c */
+ struct nfs_server *nfs3_create_server(struct nfs_mount_info *, struct nfs_subversion *);
+ struct nfs_server *nfs3_clone_server(struct nfs_server *, struct nfs_fh *,
+diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
+index d6a9894..6af29c2 100644
+--- a/fs/nfs/nfs3super.c
++++ b/fs/nfs/nfs3super.c
+@@ -4,6 +4,7 @@
+ #include <linux/module.h>
+ #include <linux/nfs_fs.h>
+ #include "internal.h"
++#include "nfs3_fs.h"
+ #include "nfs.h"
+ 
+ static struct nfs_subversion nfs_v3 = {
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index fd334d4..28d6490 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -443,22 +443,6 @@ static inline struct rpc_cred *nfs_file_cred(struct file *file)
  }
  
- void
--ext_tree_mark_committed(struct pnfs_block_layout *bl, int status)
-+ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status)
- {
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
- 	struct rb_root *root = &bl->bl_ext_rw;
- 	struct pnfs_block_extent *be;
+ /*
+- * linux/fs/nfs/xattr.c
+- */
+-#ifdef CONFIG_NFS_V3_ACL
+-extern ssize_t nfs3_listxattr(struct dentry *, char *, size_t);
+-extern ssize_t nfs3_getxattr(struct dentry *, const char *, void *, size_t);
+-extern int nfs3_setxattr(struct dentry *, const char *,
+-			const void *, size_t, int);
+-extern int nfs3_removexattr (struct dentry *, const char *name);
+-#else
+-# define nfs3_listxattr NULL
+-# define nfs3_getxattr NULL
+-# define nfs3_setxattr NULL
+-# define nfs3_removexattr NULL
+-#endif
+-
+-/*
+  * linux/fs/nfs/direct.c
+  */
+ extern ssize_t nfs_direct_IO(int, struct kiocb *, struct iov_iter *, loff_t);
+@@ -549,23 +533,6 @@ extern int  nfs_readpage_async(struct nfs_open_context *, struct inode *,
+ 			       struct page *);
  
- 	dprintk("%s status %d\n", __func__, status);
+ /*
+- * linux/fs/nfs3proc.c
+- */
+-#ifdef CONFIG_NFS_V3_ACL
+-extern struct posix_acl *nfs3_get_acl(struct inode *inode, int type);
+-extern int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type);
+-extern int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+-		struct posix_acl *dfacl);
+-extern const struct xattr_handler *nfs3_xattr_handlers[];
+-#else
+-static inline int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+-		struct posix_acl *dfacl)
+-{
+-	return 0;
+-}
+-#endif /* CONFIG_NFS_V3_ACL */
+-
+-/*
+  * inline functions
+  */
  
-+	ext_tree_free_commitdata(arg, arg->layoutupdate_len);
-+
- 	spin_lock(&bl->bl_ext_lock);
- 	for (be = ext_tree_first(root); be; be = ext_tree_next(be)) {
- 		if (be->be_state != PNFS_BLOCK_INVALID_DATA ||
 -- 
-1.9.1
+2.1.0
 
