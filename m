@@ -1,42 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:6551 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750821AbaIXWLb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2014 18:11:31 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] Fixing lease renewal
-Date: Wed, 24 Sep 2014 18:11:28 -0400
-Message-ID: <1411596688-21347-1-git-send-email-kolga@netapp.com>
+Received: from mail-pd0-f182.google.com ([209.85.192.182]:36922 "EHLO
+	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753940AbaICAQo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 20:16:44 -0400
+Received: by mail-pd0-f182.google.com with SMTP id fp1so9710878pdb.41
+        for <linux-nfs@vger.kernel.org>; Tue, 02 Sep 2014 17:16:44 -0700 (PDT)
+Message-ID: <54065DDC.7080302@gmail.com>
+Date: Wed, 03 Sep 2014 08:16:28 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: Christoph Hellwig <hch@infradead.org>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/6] NFSD: Put file after ima_file_check fail in nfsd_open()
+References: <5405CFE4.9060407@gmail.com> <20140902155755.GA14472@infradead.org>
+In-Reply-To: <20140902155755.GA14472@infradead.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit c9fdeb28 removed a 'continue' after checking if the lease needs
-to be renewed. However, if client hasn't moved, the code falls down to
-starting reboot recovery erroneously (ie., sends open reclaim and gets
-back stale_clientid error) before recovering from getting stale_clientid
-on the renew operation.
+On 9/2/2014 23:57, Christoph Hellwig wrote:
+>> +	file = dentry_open(&path, flags, current_cred());
+>> +	if (IS_ERR(file)) {
+>> +		host_err = PTR_ERR(file);
+>>  	} else {
+> 
+> The is_err case should have a
+> 
+> 	goto out_nfserr;
+> 
+> which would allow you to drop the following indentation if you
+> change the whole function anyway.
+> 
+>>  		if (may_flags & NFSD_MAY_64BIT_COOKIE)
+>> -			(*filp)->f_mode |= FMODE_64BITHASH;
+>> +			(file)->f_mode |= FMODE_64BITHASH;
+>>  		else
+>> -			(*filp)->f_mode |= FMODE_32BITHASH;
+>> +			(file)->f_mode |= FMODE_32BITHASH;
+> 
+> no need for the braces around file here.
+> 
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4state.c | 1 +
- 1 file changed, 1 insertion(+)
+Thanks for your review.
+A new version of this patch has be sent.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 22fe351..6678769 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -2345,6 +2345,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 			status = nfs4_check_lease(clp);
- 			if (status < 0)
- 				goto out_error;
-+			continue;
- 		}
- 
- 		if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
--- 
-1.8.5.2 (Apple Git-48)
-
+thanks,
+Kinglong Mee
