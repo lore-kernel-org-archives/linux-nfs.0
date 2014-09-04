@@ -1,145 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38801 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755242AbaIVW5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 18:57:13 -0400
-Message-ID: <5420A946.4090805@RedHat.com>
-Date: Mon, 22 Sep 2014 18:57:10 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>	<1411413608-16462-2-git-send-email-steved@redhat.com>	<20140922152603.75005941@willson.usersys.redhat.com>	<54207BCD.70101@RedHat.com>	<20140922204401.GI26763@fieldses.org>	<5420911D.6080506@RedHat.com> <20140922173239.05c17b2a@willson.usersys.redhat.com>
-In-Reply-To: <20140922173239.05c17b2a@willson.usersys.redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:60193 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752825AbaIDMjM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:12 -0400
+Received: by mail-qc0-f171.google.com with SMTP id x3so10152490qcv.2
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:12 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 10/17] locks: move i_lock acquisition into generic_*_lease handlers
+Date: Thu,  4 Sep 2014 08:38:36 -0400
+Message-Id: <1409834323-7171-11-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Now that we have a saner internal API for managing leases, we no longer
+need to mandate that the inode->i_lock be held over most of the lease
+code. Push it down into generic_add_lease and generic_delete_lease.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/locks.c | 21 +++++++++------------
+ 1 file changed, 9 insertions(+), 12 deletions(-)
 
-On 09/22/2014 05:32 PM, Simo Sorce wrote:
-> On Mon, 22 Sep 2014 17:14:05 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
->>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
->>>>
->>>>
->>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
->>>>> On Mon, 22 Sep 2014 15:20:07 -0400
->>>>> Steve Dickson <steved@redhat.com> wrote:
->>>>>
->>>>>> Added the gssproxy.service to both the Wants= and
->>>>>> Atfers= lines, before the rpc-svcgssd.service. There
->>>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
->>>>>> unit which will stop the rpc.svcgssd daemon from
->>>>>> starting when the gssproxy daemon is already running.
->>>>>>
->>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>>>> ---
->>>>>>  systemd/nfs-server.service | 5 +++--
->>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
->>>>>>
->>>>>> diff --git a/systemd/nfs-server.service
->>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
->>>>>> --- a/systemd/nfs-server.service
->>>>>> +++ b/systemd/nfs-server.service
->>>>>> @@ -2,12 +2,13 @@
->>>>>>  Description=NFS server and services
->>>>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
->>>>>>  Requires= nfs-mountd.service
->>>>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
->>>>>> rpc-svcgssd.service +Wants=rpc-statd.service nfs-idmapd.service 
->>>>>> +Wants=rpc-gssd.service  
->>>>>>  Wants=rpc-statd-notify.service
->>>>>>  
->>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
->>>>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
->>>>>> -After= rpc-gssd.service rpc-svcgssd.service
->>>>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
->>>>>>  Before= rpc-statd-notify.service
->>>>>>  
->>>>>>  Wants=nfs-config.service
->>>>>
->>>>> I think you really need to insure that the modules are loaded
->>>>> before any of the server services are started, perhaps adding a
->>>>> unit file that exec's modprobe and has "Before: gssproxy.service
->>>>>  " in it ?
->>>> I really don't think its needed... From my testing it appears 
->>>> gssproxy is always being started and rpc.svcgssd is not... 
->>>
->>> Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount as
->>> both "Requires=" and "After=", so rpc-svcgssd.service will never run
->>> without first running var-lib-nfs-rpc_pipefs.mount, which will load
->>> sunrpc.  But I don't see where auth_rpcgss is getting loaded.  And I
->>> don't see what ensures anything happening before gssproxy runs.
->> It happens during the mount on the client and when the server
->> is started. 
->>
->>>
->>> We want to make sure your testing's not just getting lucky on the
->>> startup order.
->> The reason it working is because rpc.gssd is being started on the
->> server these days for callbacks and the After= line in
->> rpc-svcgssd.service is being executed before the ConditionPathExists
->> which cause rpc.svcgssd not to start.
-> 
-> This guarantees ordering (to some degree) between rpc.gssd and
-> rpoc.svcgssd, but says nothing about gssproxy ...
-The question was how is the auth_rpcgss module being loaded. Since
-both rpc-svcgssd.service and rpc-gssd.service service have
-a After=var-lib-nfs-rpc_pipefs.mount and gssproxy is requiring 
-them, that's how auth_rpcgss is being loaded. 
+diff --git a/fs/locks.c b/fs/locks.c
+index a5ed4a1f73ca..5bc61091263f 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1330,6 +1330,8 @@ static void time_out_leases(struct inode *inode)
+ 	struct file_lock **before;
+ 	struct file_lock *fl;
+ 
++	lockdep_assert_held(&inode->i_lock);
++
+ 	before = &inode->i_flock;
+ 	while ((fl = *before) && IS_LEASE(fl) && lease_breaking(fl)) {
+ 		trace_time_out_leases(inode, fl);
+@@ -1590,6 +1592,8 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
+ 		return -EINVAL;
+ 	}
+ 
++	spin_lock(&inode->i_lock);
++	time_out_leases(inode);
+ 	error = check_conflicting_open(dentry, arg);
+ 	if (error)
+ 		goto out;
+@@ -1655,6 +1659,7 @@ out_setup:
+ 	if (lease->fl_lmops->lm_setup)
+ 		lease->fl_lmops->lm_setup(lease, priv);
+ out:
++	spin_unlock(&inode->i_lock);
+ 	if (is_deleg)
+ 		mutex_unlock(&inode->i_mutex);
+ 	if (!error && !my_before)
+@@ -1672,6 +1677,7 @@ static int generic_delete_lease(struct file *filp)
+ 	struct dentry *dentry = filp->f_path.dentry;
+ 	struct inode *inode = dentry->d_inode;
+ 
++	spin_lock(&inode->i_lock);
+ 	for (before = &inode->i_flock;
+ 			((fl = *before) != NULL) && IS_LEASE(fl);
+ 			before = &fl->fl_next) {
+@@ -1681,6 +1687,7 @@ static int generic_delete_lease(struct file *filp)
+ 	trace_generic_delete_lease(inode, fl);
+ 	if (fl)
+ 		error = fl->fl_lmops->lm_change(before, F_UNLCK);
++	spin_unlock(&inode->i_lock);
+ 	return error;
+ }
+ 
+@@ -1694,8 +1701,6 @@ static int generic_delete_lease(struct file *filp)
+  *
+  *	The (input) flp->fl_lmops->lm_break function is required
+  *	by break_lease().
+- *
+- *	Called with inode->i_lock held.
+  */
+ int generic_setlease(struct file *filp, long arg, struct file_lock **flp,
+ 			void **priv)
+@@ -1712,8 +1717,6 @@ int generic_setlease(struct file *filp, long arg, struct file_lock **flp,
+ 	if (error)
+ 		return error;
+ 
+-	time_out_leases(inode);
+-
+ 	switch (arg) {
+ 	case F_UNLCK:
+ 		return generic_delete_lease(filp);
+@@ -1750,16 +1753,10 @@ EXPORT_SYMBOL(generic_setlease);
+ int
+ vfs_setlease(struct file *filp, long arg, struct file_lock **lease, void **priv)
+ {
+-	struct inode *inode = file_inode(filp);
+-	int error;
+-
+-	spin_lock(&inode->i_lock);
+ 	if (filp->f_op->setlease)
+-		error = filp->f_op->setlease(filp, arg, lease, priv);
++		return filp->f_op->setlease(filp, arg, lease, priv);
+ 	else
+-		error = generic_setlease(filp, arg, lease, priv);
+-	spin_unlock(&inode->i_lock);
+-	return error;
++		return generic_setlease(filp, arg, lease, priv);
+ }
+ EXPORT_SYMBOL_GPL(vfs_setlease);
+ 
+-- 
+1.9.3
 
-If you only in enable gssproxy (not nfs-server or nfs-client) the 
-module still get loaded via gssproxy,service file 
-
->> So when gssproxy.service does it's "Before=nfs-secure.service
->> nfs-secure-server.service" line everything is loaded before gssproxy
->> start... 
->>
->> I'm think gssproxy.service just needs to the put the Wants and After=
->> var-lib-nfs-rpc_pipefs.mount lines, instead of that Before line.. 
-> 
-> Maybe we should add "Before: gssproxy.service rpc-svcgssd.service"
-> to var-lib-nfs-rpc_pipefs.mount instead (and also drop any mention of
-> nfs services in gssproxy unit file so you have complete control of the
-> dependencies ?
-No. 
-The loading of sunrpc and the mounting of the file system has nothing to
-do with starting up the gssd daemons.
-
-I would suggest gssproxy does to two things:
-
-1) Add a Requires: nfs-utils to the spec file since you are requiring 
-   services from  nfs-utils
-
-2) Add a After=var-lib-nfs-rpc_pipefs.mount to the gssproxy.service 
-   file since gssproxy could careless about either rpc.gssd or rpc.svcgssd
-   daemons. All it is looking for is the sunrpc and auth_rpcgss kernel
-   modules.
-
-steved.
-
-> 
->>>
->>>> Plus, from my understanding...  loading module from a service 
->>>> file is a big no no! People were having problems with
->>>> way back when... 
->>>
->>> Any pointers?  Google's not finding me anything.
->> Search the the Fedora bz's when systemd first came out... 
->> There were a number of "colorful" discussion on how things
->> were so broken until systemd came along and saved humanity!  ;-) 
-> 
-> This doesn't help really, I see no reason why we could not have a pre
-> exec statement to modprobe rpc_authgss in a unit file (whether that is
-> var-lib-nfs-rpc_pipefs.mount or something else), to guarantee correct
-> ordering.
-> 
-> Simo.
-> 
