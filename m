@@ -1,52 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:2209 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755222AbaIZR6b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2014 13:58:31 -0400
-From: <Anna.Schumaker@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 0/2] NFSD: Add v4.2 SEEK support
-Date: Fri, 26 Sep 2014 13:58:25 -0400
-Message-ID: <1411754307-18457-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:32780 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754174AbaIDRun (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 13:50:43 -0400
+Date: Thu, 4 Sep 2014 10:50:43 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 12/17] locks: update Documentation/filesystems with
+ new setlease semantics
+Message-ID: <20140904175043.GF16935@infradead.org>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+ <1409834323-7171-13-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1409834323-7171-13-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Looks good, but I'd rather merge it into the patch that changes the
+semantics.
 
-These patches add server support for the NFS v4.2 operation SEEK.  The first
-patch adds basic NFS v4.2 infrastructure that all future operations will rely
-on.  The second patch adds the SEEK operation.
-
-Changes in v3:
-- Rework the switch statement in nfsd4_seek() so we only call vfs_llseek()
-  from one place.
-- Change XDR encode and decode functions to A + B notation for calculating
-  byte counts.
-
-These patches and the corresponding client patch are avaliable in the [seek]
-branch of:
-
-	git://git.linux-nfs.org/projects/anna/linux-nfs.git
-
-
-Questions?  Comments?  Thoughts?
-
-Anna
-
-
-Anna Schumaker (2):
-  NFSD: Add generic v4.2 infrastructure
-  NFSD: Implement SEEK
-
- fs/nfsd/nfs4proc.c   | 49 ++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c    | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/xdr4.h       | 14 ++++++++++++
- include/linux/nfs4.h | 23 ++++++++++++++++++--
- 4 files changed, 144 insertions(+), 2 deletions(-)
-
--- 
-2.1.0
-
+Reviewed-by: Christoph Hellwig <hch@lst.de>
