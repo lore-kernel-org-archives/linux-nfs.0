@@ -1,54 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44154 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753863AbaIPNah (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Sep 2014 09:30:37 -0400
-Message-ID: <54183B7A.3060209@RedHat.com>
-Date: Tue, 16 Sep 2014 09:30:34 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:35311 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753872AbaIDJE2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 05:04:28 -0400
+Received: by mail-ie0-f172.google.com with SMTP id rd18so11232857iec.31
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 02:04:28 -0700 (PDT)
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@primarydata.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] gssd: ensure that preferred_realm is non-NULL before
- passing it to strcmp
-References: <1410194154-25567-1-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410194154-25567-1-git-send-email-jlayton@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Date: Thu, 4 Sep 2014 11:04:27 +0200
+Message-ID: <CALXu0Ue9z-xbFk9hhsvu4c38qqmd0Wwupk2LvL99rwoAcRMqOw@mail.gmail.com>
+Subject: How to use NFS with multiple principals in different realms?
+From: Cedric Blancher <cedric.blancher@gmail.com>
+To: "<kerberos@mit.edu>" <kerberos@mit.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+How can I use NFS with kerberos krb5p auth when I want to use NFS
+filesystems which come from different realms?
 
+I know klist -A can show all tickets I got from all realms I kinit to
+- but how can NFS use them?
 
-On 09/08/2014 12:35 PM, Jeff Layton wrote:
-> It's possible for "preferred_realm" to be NULL, in which case we
-> don't want to pass it to strcmp. Other places that use this variable
-> test whether it's NULL first -- we need to do the same here.
-> 
-> This should fix the gssd crash reported here:
-> 
->     https://bugzilla.redhat.com/show_bug.cgi?id=1108615
-> 
-> Reported-by: Brian J. Murrell <brian@interlinx.bc.ca>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Committed... 
+OS is RHEL7
 
-steved.
-
-> ---
->  utils/gssd/krb5_util.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index 8369fdf0ed27..f1ebc0d09731 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -876,7 +876,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
->  	i = 0;
->  	realm = realmnames[i];
->  
-> -	if (strcmp (realm, preferred_realm) != 0) {
-> +	if (preferred_realm && strcmp (realm, preferred_realm) != 0) {
->  		realm = preferred_realm;
->  		/* resetting the realmnames index */
->  		i = -1;
-> 
+Ced
+-- 
+Cedric Blancher <cedric.blancher@gmail.com>
+Institute Pasteur
