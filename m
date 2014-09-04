@@ -1,107 +1,255 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45888 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754464AbaIIQil (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:38:41 -0400
-Received: from [50.247.105.171] (helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRORD-00080e-QN
-	for linux-nfs@vger.kernel.org; Tue, 09 Sep 2014 16:38:40 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/9] pnfs: add flag to force read-modify-write in ->write_begin
-Date: Tue,  9 Sep 2014 09:40:46 -0700
-Message-Id: <1410280853-3964-3-git-send-email-hch@lst.de>
-In-Reply-To: <1410280853-3964-1-git-send-email-hch@lst.de>
-References: <1410280853-3964-1-git-send-email-hch@lst.de>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:37405 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752864AbaIDMjO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:14 -0400
+Received: by mail-qa0-f46.google.com with SMTP id w8so9208491qac.19
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:13 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 11/17] locks: move freeing of leases outside of i_lock
+Date: Thu,  4 Sep 2014 08:38:37 -0400
+Message-Id: <1409834323-7171-12-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Like all block based filesystems, the pNFS block layout driver can't read
-or write at a byte granularity and thus has to perform read-modify-write
-cycles on writes smaller than this granularity.
+There was only one place where we still could free a file_lock while
+holding the i_lock -- lease_modify. Add a new list_head argument to the
+lm_change operation, pass in a private list when calling it, and fix
+those callers to dispose of the list once the lock has been dropped.
 
-Add a flag so that the core NFS code always reads a whole page when
-starting a smaller write, so that we can do it in the place where the VFS
-expects it instead of doing in very deadlock prone way in the writeback
-handler.
-
-Note that in theory we could do less than page size reads here for disks
-that have a smaller sector size which are server by a server with a smaller
-pnfs block size.  But so far that doesn't seem like a worthwhile
-optimization.
-
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/file.c |  7 +++++++
- fs/nfs/pnfs.h | 15 +++++++++++++++
- 2 files changed, 22 insertions(+)
+ fs/locks.c          | 34 ++++++++++++++++++++++------------
+ fs/nfsd/nfs4state.c |  6 +++---
+ include/linux/fs.h  |  7 ++++---
+ 3 files changed, 29 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 524dd80..05ef7dc 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -36,6 +36,7 @@
- #include "internal.h"
- #include "iostat.h"
- #include "fscache.h"
-+#include "pnfs.h"
+diff --git a/fs/locks.c b/fs/locks.c
+index 5bc61091263f..dc2e9e18f32d 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1292,7 +1292,7 @@ static void lease_clear_pending(struct file_lock *fl, int arg)
+ }
  
- #include "nfstrace.h"
+ /* We already had a lease on this file; just change its type */
+-int lease_modify(struct file_lock **before, int arg)
++int lease_modify(struct file_lock **before, int arg, struct list_head *dispose)
+ {
+ 	struct file_lock *fl = *before;
+ 	int error = assign_type(fl, arg);
+@@ -1311,7 +1311,7 @@ int lease_modify(struct file_lock **before, int arg)
+ 			printk(KERN_ERR "locks_delete_lock: fasync == %p\n", fl->fl_fasync);
+ 			fl->fl_fasync = NULL;
+ 		}
+-		locks_delete_lock(before, NULL);
++		locks_delete_lock(before, dispose);
+ 	}
+ 	return 0;
+ }
+@@ -1325,7 +1325,7 @@ static bool past_time(unsigned long then)
+ 	return time_after(jiffies, then);
+ }
  
-@@ -327,6 +328,12 @@ static int nfs_want_read_modify_write(struct file *file, struct page *page,
- 	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
- 	unsigned int end = offset + len;
+-static void time_out_leases(struct inode *inode)
++static void time_out_leases(struct inode *inode, struct list_head *dispose)
+ {
+ 	struct file_lock **before;
+ 	struct file_lock *fl;
+@@ -1336,9 +1336,9 @@ static void time_out_leases(struct inode *inode)
+ 	while ((fl = *before) && IS_LEASE(fl) && lease_breaking(fl)) {
+ 		trace_time_out_leases(inode, fl);
+ 		if (past_time(fl->fl_downgrade_time))
+-			lease_modify(before, F_RDLCK);
++			lease_modify(before, F_RDLCK, dispose);
+ 		if (past_time(fl->fl_break_time))
+-			lease_modify(before, F_UNLCK);
++			lease_modify(before, F_UNLCK, dispose);
+ 		if (fl == *before)	/* lease_modify may have freed fl */
+ 			before = &fl->fl_next;
+ 	}
+@@ -1373,6 +1373,7 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ 	int i_have_this_lease = 0;
+ 	bool lease_conflict = false;
+ 	int want_write = (mode & O_ACCMODE) != O_RDONLY;
++	LIST_HEAD(dispose);
  
-+	if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
-+		if (!PageUptodate(page))
-+			return 1;
-+		return 0;
-+	}
-+
- 	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
- 	    !PageUptodate(page) &&		/* Uptodate? */
- 	    !PagePrivate(page) &&		/* i/o request already? */
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 8835b5a..a4c530e 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -72,6 +72,7 @@ enum layoutdriver_policy_flags {
- 	/* Should the pNFS client commit and return the layout upon a setattr */
- 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
- 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
-+	PNFS_READ_WHOLE_PAGE		= 1 << 2,
+ 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
+ 	if (IS_ERR(new_fl))
+@@ -1381,7 +1382,7 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
+ 
+ 	spin_lock(&inode->i_lock);
+ 
+-	time_out_leases(inode);
++	time_out_leases(inode, &dispose);
+ 
+ 	flock = inode->i_flock;
+ 	if ((flock == NULL) || !IS_LEASE(flock))
+@@ -1436,6 +1437,7 @@ restart:
+ 	locks_insert_block(flock, new_fl);
+ 	trace_break_lease_block(inode, new_fl);
+ 	spin_unlock(&inode->i_lock);
++	locks_dispose_list(&dispose);
+ 	error = wait_event_interruptible_timeout(new_fl->fl_wait,
+ 						!new_fl->fl_next, break_time);
+ 	spin_lock(&inode->i_lock);
+@@ -1443,7 +1445,7 @@ restart:
+ 	locks_delete_block(new_fl);
+ 	if (error >= 0) {
+ 		if (error == 0)
+-			time_out_leases(inode);
++			time_out_leases(inode, &dispose);
+ 		/*
+ 		 * Wait for the next conflicting lease that has not been
+ 		 * broken yet
+@@ -1458,6 +1460,7 @@ restart:
+ 
+ out:
+ 	spin_unlock(&inode->i_lock);
++	locks_dispose_list(&dispose);
+ 	locks_free_lock(new_fl);
+ 	return error;
+ }
+@@ -1522,9 +1525,10 @@ int fcntl_getlease(struct file *filp)
+ 	struct file_lock *fl;
+ 	struct inode *inode = file_inode(filp);
+ 	int type = F_UNLCK;
++	LIST_HEAD(dispose);
+ 
+ 	spin_lock(&inode->i_lock);
+-	time_out_leases(file_inode(filp));
++	time_out_leases(file_inode(filp), &dispose);
+ 	for (fl = file_inode(filp)->i_flock; fl && IS_LEASE(fl);
+ 			fl = fl->fl_next) {
+ 		if (fl->fl_file == filp) {
+@@ -1533,6 +1537,7 @@ int fcntl_getlease(struct file *filp)
+ 		}
+ 	}
+ 	spin_unlock(&inode->i_lock);
++	locks_dispose_list(&dispose);
+ 	return type;
+ }
+ 
+@@ -1570,6 +1575,7 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
+ 	struct inode *inode = dentry->d_inode;
+ 	bool is_deleg = (*flp)->fl_flags & FL_DELEG;
+ 	int error;
++	LIST_HEAD(dispose);
+ 
+ 	lease = *flp;
+ 	trace_generic_add_lease(inode, lease);
+@@ -1593,7 +1599,7 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
+ 	}
+ 
+ 	spin_lock(&inode->i_lock);
+-	time_out_leases(inode);
++	time_out_leases(inode, &dispose);
+ 	error = check_conflicting_open(dentry, arg);
+ 	if (error)
+ 		goto out;
+@@ -1630,7 +1636,7 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
+ 
+ 	if (my_before != NULL) {
+ 		lease = *my_before;
+-		error = lease->fl_lmops->lm_change(my_before, arg);
++		error = lease->fl_lmops->lm_change(my_before, arg, &dispose);
+ 		if (error)
+ 			goto out;
+ 		goto out_setup;
+@@ -1660,6 +1666,7 @@ out_setup:
+ 		lease->fl_lmops->lm_setup(lease, priv);
+ out:
+ 	spin_unlock(&inode->i_lock);
++	locks_dispose_list(&dispose);
+ 	if (is_deleg)
+ 		mutex_unlock(&inode->i_mutex);
+ 	if (!error && !my_before)
+@@ -1676,8 +1683,10 @@ static int generic_delete_lease(struct file *filp)
+ 	struct file_lock *fl, **before;
+ 	struct dentry *dentry = filp->f_path.dentry;
+ 	struct inode *inode = dentry->d_inode;
++	LIST_HEAD(dispose);
+ 
+ 	spin_lock(&inode->i_lock);
++	time_out_leases(inode, &dispose);
+ 	for (before = &inode->i_flock;
+ 			((fl = *before) != NULL) && IS_LEASE(fl);
+ 			before = &fl->fl_next) {
+@@ -1686,8 +1695,9 @@ static int generic_delete_lease(struct file *filp)
+ 	}
+ 	trace_generic_delete_lease(inode, fl);
+ 	if (fl)
+-		error = fl->fl_lmops->lm_change(before, F_UNLCK);
++		error = fl->fl_lmops->lm_change(before, F_UNLCK, &dispose);
+ 	spin_unlock(&inode->i_lock);
++	locks_dispose_list(&dispose);
+ 	return error;
+ }
+ 
+@@ -2375,7 +2385,7 @@ void locks_remove_file(struct file *filp)
+ 	while ((fl = *before) != NULL) {
+ 		if (fl->fl_file == filp) {
+ 			if (IS_LEASE(fl)) {
+-				lease_modify(before, F_UNLCK);
++				lease_modify(before, F_UNLCK, &dispose);
+ 				continue;
+ 			}
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 86eebf13b3d0..44e04d6be676 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3423,11 +3423,11 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+ 	spin_unlock(&fp->fi_lock);
+ }
+ 
+-static
+-int nfsd_change_deleg_cb(struct file_lock **onlist, int arg)
++static int
++nfsd_change_deleg_cb(struct file_lock **onlist, int arg, struct list_head *dispose)
+ {
+ 	if (arg & F_UNLCK)
+-		return lease_modify(onlist, arg);
++		return lease_modify(onlist, arg, dispose);
+ 	else
+ 		return -EAGAIN;
+ }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9a6d56154dd5..f419f718e447 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -873,7 +873,7 @@ struct lock_manager_operations {
+ 	void (*lm_notify)(struct file_lock *);	/* unblock callback */
+ 	int (*lm_grant)(struct file_lock *, int);
+ 	void (*lm_break)(struct file_lock *);
+-	int (*lm_change)(struct file_lock **, int);
++	int (*lm_change)(struct file_lock **, int, struct list_head *);
+ 	void (*lm_setup)(struct file_lock *, void **);
  };
  
- struct nfs4_deviceid_node;
-@@ -370,6 +371,14 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+@@ -985,7 +985,7 @@ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int t
+ extern void lease_get_mtime(struct inode *, struct timespec *time);
+ extern int generic_setlease(struct file *, long, struct file_lock **, void **priv);
+ extern int vfs_setlease(struct file *, long, struct file_lock **, void **);
+-extern int lease_modify(struct file_lock **, int);
++extern int lease_modify(struct file_lock **, int, struct list_head *);
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int fcntl_getlk(struct file *file, unsigned int cmd,
+ 			      struct flock __user *user)
+@@ -1112,7 +1112,8 @@ static inline int vfs_setlease(struct file *filp, long arg,
+ 	return -EINVAL;
  }
  
- static inline bool
-+pnfs_ld_read_whole_page(struct inode *inode)
-+{
-+	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
-+		return false;
-+	return NFS_SERVER(inode)->pnfs_curr_ld->flags & PNFS_READ_WHOLE_PAGE;
-+}
-+
-+static inline bool
- pnfs_layoutcommit_outstanding(struct inode *inode)
+-static inline int lease_modify(struct file_lock **before, int arg)
++static inline int lease_modify(struct file_lock **before, int arg,
++			       struct list_head *dispose)
  {
- 	struct nfs_inode *nfsi = NFS_I(inode);
-@@ -445,6 +454,12 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+ 	return -EINVAL;
  }
- 
- static inline bool
-+pnfs_ld_read_whole_page(struct inode *inode)
-+{
-+	return false;
-+}
-+
-+static inline bool
- pnfs_roc(struct inode *ino)
- {
- 	return false;
 -- 
-1.9.1
+1.9.3
 
