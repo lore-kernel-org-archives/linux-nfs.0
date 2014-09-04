@@ -1,52 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.g1.pair.com ([66.39.3.162]:62780 "EHLO mail1.g1.pair.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932366AbaICNbX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2014 09:31:23 -0400
-Date: Wed, 3 Sep 2014 15:31:24 +0200
-From: Emmanuel Florac <eflorac@intellique.com>
-To: Cedric Blancher <cedric.blancher@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Accessing alternate data streams on NFSv4 server?
-Message-ID: <20140903153124.18da9ad3@harpe.intellique.com>
-In-Reply-To: <CALXu0Ue8mn5ERuDM0J7YNYcubm9NDf-bHKqvYXZgTn7Uz7LEDA@mail.gmail.com>
-References: <CALXu0Ue8mn5ERuDM0J7YNYcubm9NDf-bHKqvYXZgTn7Uz7LEDA@mail.gmail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:59313 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754893AbaIDRqN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 13:46:13 -0400
+Date: Thu, 4 Sep 2014 10:46:12 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Steven Whitehouse <swhiteho@redhat.com>, cluster-devel@redhat.com
+Subject: Re: [PATCH v2 01/17] locks: consolidate "nolease" routines
+Message-ID: <20140904174612.GA16935@infradead.org>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+ <1409834323-7171-2-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1409834323-7171-2-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Le Wed, 3 Sep 2014 11:14:13 +0200
-Cedric Blancher <cedric.blancher@gmail.com> écrivait:
+On Thu, Sep 04, 2014 at 08:38:27AM -0400, Jeff Layton wrote:
+> GFS2 and NFS have setlease routines that always just return -EINVAL.
+> Turn that into a generic routine that can live in fs/libfs.c.
 
-> is there any utility which can be used to access alternate data
-> streams (which can be accessed on Solaris via O_XATTR or newer
-> bash/ksh versions via cd -@) on Linux?
-> 
+Looks good,
 
-Extended attributes work fine on various Linux filesystems, and are
-accessible through samba and NFS. However AFAIK only Solaris supports
-full alternate data streams (bigger than 64K). BTW from a quick google
-search it looks like you're about the only one in the world using this
-very idiosyncratic feature ;) -- all other references to this problem
-comes from you on FreeBSD lists :)
-
-I guess it would be too much work to implement in either Linux or
-FreeBSD as the VFS doesn't really provide anything to support that
-properly.
-
-So your best bet is to check with preferably SmartOS, or
-eventually OmniOS/IllumOS (all of them OpenSolaris forks);
-
-or to write a samba module as a horrid hack to emulate the API and
-store the big XATTRs into alternate files /alla/ .AppleDouble
-(.SolarisDouble anyone?). I know, I know; it's ugly as sin but it seems
-actually quite doable, if not actually easy.
-
--- 
-------------------------------------------------------------------------
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
-------------------------------------------------------------------------
+Reviewed-by: Christoph Hellwig <hch@lst.de>
