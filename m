@@ -1,215 +1,233 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24408 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:49057 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754973AbaIWMtB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 08:49:01 -0400
-Date: Tue, 23 Sep 2014 08:48:54 -0400
-From: Simo Sorce <simo@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140923084854.6c67d401@willson.usersys.redhat.com>
-In-Reply-To: <20140923120804.51dbcc2e@notabene.brown>
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>
-	<1411413608-16462-2-git-send-email-steved@redhat.com>
-	<20140922152603.75005941@willson.usersys.redhat.com>
-	<54207BCD.70101@RedHat.com>
-	<20140922204401.GI26763@fieldses.org>
-	<5420911D.6080506@RedHat.com>
-	<20140922223423.GA29932@fieldses.org>
-	<5420B78D.6040704@RedHat.com>
-	<20140922202655.5e308e58@willson.usersys.redhat.com>
-	<20140923015549.GB32712@fieldses.org>
-	<20140923120804.51dbcc2e@notabene.brown>
+	id S1755194AbaIDT7P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Sep 2014 15:59:15 -0400
+Date: Thu, 4 Sep 2014 15:59:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 5/5] nfsd: pass extra info in env vars to upcalls to
+ allow for early grace period end
+Message-ID: <20140904195914.GD14576@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+ <1408473509-14010-6-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1408473509-14010-6-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 23 Sep 2014 12:08:04 +1000
-NeilBrown <neilb@suse.de> wrote:
+On Tue, Aug 19, 2014 at 02:38:29PM -0400, Jeff Layton wrote:
+> In order to support lifting the grace period early, we must tell
+> nfsdcltrack what sort of client the "create" upcall is for. We can't
+> reliably tell if a v4.0 client has completed reclaiming, so we can only
+> lift the grace period once all the v4.1+ clients have issued a
+> RECLAIM_COMPLETE and if there are no v4.0 clients.
 
-> On Mon, 22 Sep 2014 21:55:49 -0400 "J. Bruce Fields"
-> <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Sep 22, 2014 at 08:26:55PM -0400, Simo Sorce wrote:
-> > > On Mon, 22 Sep 2014 19:58:05 -0400
-> > > Steve Dickson <SteveD@redhat.com> wrote:
-> > > 
-> > > > 
-> > > > 
-> > > > On 09/22/2014 06:34 PM, J. Bruce Fields wrote:
-> > > > > On Mon, Sep 22, 2014 at 05:14:05PM -0400, Steve Dickson wrote:
-> > > > >>
-> > > > >>
-> > > > >> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
-> > > > >>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson
-> > > > >>> wrote:
-> > > > >>>>
-> > > > >>>>
-> > > > >>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
-> > > > >>>>> On Mon, 22 Sep 2014 15:20:07 -0400
-> > > > >>>>> Steve Dickson <steved@redhat.com> wrote:
-> > > > >>>>>
-> > > > >>>>>> Added the gssproxy.service to both the Wants= and
-> > > > >>>>>> Atfers= lines, before the rpc-svcgssd.service. There
-> > > > >>>>>> are  ConditionPathExists= lines in the
-> > > > >>>>>> rpc-svcgssd.service unit which will stop the rpc.svcgssd
-> > > > >>>>>> daemon from starting when the gssproxy daemon is already
-> > > > >>>>>> running.
-> > > > >>>>>>
-> > > > >>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
-> > > > >>>>>> ---
-> > > > >>>>>>  systemd/nfs-server.service | 5 +++--
-> > > > >>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
-> > > > >>>>>>
-> > > > >>>>>> diff --git a/systemd/nfs-server.service
-> > > > >>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2
-> > > > >>>>>> 100644 --- a/systemd/nfs-server.service
-> > > > >>>>>> +++ b/systemd/nfs-server.service
-> > > > >>>>>> @@ -2,12 +2,13 @@
-> > > > >>>>>>  Description=NFS server and services
-> > > > >>>>>>  Requires= network.target proc-fs-nfsd.mount
-> > > > >>>>>> rpcbind.target Requires= nfs-mountd.service
-> > > > >>>>>> -Wants=rpc-statd.service nfs-idmapd.service
-> > > > >>>>>> rpc-gssd.service rpc-svcgssd.service
-> > > > >>>>>> +Wants=rpc-statd.service nfs-idmapd.service
-> > > > >>>>>> +Wants=rpc-gssd.service Wants=rpc-statd-notify.service
-> > > > >>>>>>  
-> > > > >>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
-> > > > >>>>>> nfs-mountd.service After= nfs-idmapd.service
-> > > > >>>>>> rpc-statd.service -After= rpc-gssd.service
-> > > > >>>>>> rpc-svcgssd.service +After= rpc-gssd.service
-> > > > >>>>>> gssproxy.service rpc-svcgssd.service Before=
-> > > > >>>>>> rpc-statd-notify.service 
-> > > > >>>>>>  Wants=nfs-config.service
-> > > > >>>>>
-> > > > >>>>> I think you really need to insure that the modules are
-> > > > >>>>> loaded before any of the server services are started,
-> > > > >>>>> perhaps adding a unit file that exec's modprobe and has
-> > > > >>>>> "Before: gssproxy.service rpc-svcgssd.service" in it ?
-> > > > >>>> I really don't think its needed... From my testing it
-> > > > >>>> appears gssproxy is always being started and rpc.svcgssd
-> > > > >>>> is not... 
-> > > > >>>
-> > > > >>> Huh.  Well rpc-svcgssd.service has
-> > > > >>> var-lib-nfs-rpc_pipefs.mount as both "Requires=" and
-> > > > >>> "After=", so rpc-svcgssd.service will never run without
-> > > > >>> first running var-lib-nfs-rpc_pipefs.mount, which will load
-> > > > >>> sunrpc.  But I don't see where auth_rpcgss is getting
-> > > > >>> loaded.  And I don't see what ensures anything happening
-> > > > >>> before gssproxy runs.
-> > > > >> It happens during the mount on the client and when the server
-> > > > >> is started. 
-> > > > >>
-> > > > >>>
-> > > > >>> We want to make sure your testing's not just getting lucky
-> > > > >>> on the startup order.
-> > > > >> The reason it working is because rpc.gssd is being started
-> > > > >> on the server these days for callbacks and the After= line in
-> > > > >> rpc-svcgssd.service is being executed before the
-> > > > >> ConditionPathExists which cause rpc.svcgssd not to start.
-> > > > > 
-> > > > > nfs-utils$ grep After systemd/rpc-svcgssd.service 
-> > > > > After=var-lib-nfs-rpc_pipefs.mount
-> > > > > After=gssproxy.service
-> > > > > After=nfs-config.service
-> > > > > 
-> > > > > There doesn't seem to be an After= line referring to rpc.gssd.
-> > > > No, why should there be? There is After= line referring to
-> > > > rpc.gssd in nfs-server.service
-> > > > 
-> > > > grep After systemd/nfs-server.service 
-> > > > After= network.target proc-fs-nfsd.mount rpcbind.target
-> > > > nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
-> > > > After= rpc-gssd.service rpc-svcgssd.service
-> > > > After=nfs-config.service
-> > > > 
-> > > > So when the server starts,rpc.gssd will start and rpc.svcgssd
-> > > > will start if gssproxy is not enable and there is a key tab. 
-> > > 
-> > > They can start in parallel, there is nothing in that line that
-> > > makes one start before the other.
-> > > 
-> > > If you are relying on this you are relying on luck.
-> > > 
-> > > > >> So when gssproxy.service does it's "Before=nfs-secure.service
-> > > > >> nfs-secure-server.service" line everything is loaded before
-> > > > >> gssproxy start... 
-> > > > > 
-> > > > > That line only makes gss-proxy start before those other
-> > > > > things.
-> > > > Right, which will load the sunrpc modules.
-> > > 
-> > > No, starting before those service in itself achieves nothing.\
-> > > I think what may cause the module to load maybe the fact
-> > > gssproxy.service includes:
-> > > Requires=proc-fs-nfsd.mount
-> > 
-> > I'd expect that to only load the nfsd module.
-> > 
-> > Hm, I think nfsd actually has a dependency on auth_rpcgss.  I
-> > wonder if that's correct.  Maybe that's what's doing it.
-> > 
-> > > But to be honest this was a hack to deal with broken nfs service
-> > > files, gss-proxy should not require nfsd, the dependency should
-> > > be the other way around, as gss-proxy can run on machines where
-> > > there is no nfs service whatsoever, as it stand this is a bug in
-> > > gssproxy.service and I'd like to fix it.
-> > 
-> > So, something like this?  (Untested, no idea if I'm doing this
-> > right.)
-> > 
-> > --b.
-> > 
-> > diff --git a/systemd/auth-rpcgss-module.service
-> > b/systemd/auth-rpcgss-module.service new file mode 100644
-> > index 000000000000..252545b458fd
-> > --- /dev/null
-> > +++ b/systemd/auth-rpcgss-module.service
-> > @@ -0,0 +1,15 @@
-> > +# We want to start gss-proxy on kernels that support it and
-> > rpc.svcgssd +# on those that don't.  Those services check for
-> > support by checking +# for existence of the
-> > path /proc/net/rpc/use-gss-proxy.  Before they +# can perform that
-> > check, they need this module loaded.  (Unless +# rpcsec_gss is
-> > built directly into the kernel, in which case this unit +# will
-> > fail.  But that's OK.) +[Unit]
-> > +Description=Kernel Module supporting RPCSEC_GSS
-> > +Before=gssproxy.service rpc-svcgssd.service
-> > +
-> > +[Service]
-> > +ExecStart=/sbin/modprobe -q auth_rpcgss
-> 
-> I think you need
->    Type=oneshot
-> 
-> else systemd won't wait for the modprobe to complete before running
-> the other services.
-> 
-> > +
-> > +[Install]
-> > +WantedBy=gssproxy.service rpc-svcgssd.service
-> 
-> I don't think you want an install section.  That means the service
-> has to be explicitly enabled, which is a pain.
-> I think nfs-server.service should Want= this.
-> I also think 
-> 
->   ConditionPathExists=/etc/krb5.keytab
-> 
-> would be appropriate.
+We really only care about 4.0 vs 4.1 clients.  Maybe
+NFSDCLTRACK_CLIENT_WILL_RECLAIM_COMPLETE=Y|N would be better.
 
-If GSS-Proxy is in use the administrator may choose to use a keytab in
-a different location, so I am not entirely sure we should depend
-on /etc/krb5.keytab, however it is also ok to decide that if the admin
-wants to use a different place that they create a custom unit file.
-Up to you.
+--b.
 
-Simo.
-
-
--- 
-Simo Sorce * Red Hat, Inc * New York
+> 
+> Also, in order to lift the grace period, we have to tell userland when
+> the grace period started so that it can tell whether a RECLAIM_COMPLETE
+> has been issued for each client since then.
+> 
+> Since this is all optional info, we pass it along in environment
+> variables to the "init" and "create" upcalls. By doing this, we don't
+> need to revise the upcall format. The UMH upcall can simply make use of
+> this info if it happens to be present. If it's not then it can just
+> avoid lifting the grace period early.
+> 
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/nfs4recover.c | 90 ++++++++++++++++++++++++++++++++++++++++++++-------
+>  fs/nfsd/nfs4state.c   |  4 +--
+>  2 files changed, 80 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> index a0d2ba956a3f..2b61bcd92b58 100644
+> --- a/fs/nfsd/nfs4recover.c
+> +++ b/fs/nfsd/nfs4recover.c
+> @@ -1062,6 +1062,8 @@ MODULE_PARM_DESC(cltrack_legacy_disable,
+>  
+>  #define LEGACY_TOPDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_TOPDIR="
+>  #define LEGACY_RECDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_RECDIR="
+> +#define CLIENT_MINORVERS_ENV_PREFIX "NFSDCLTRACK_CLIENT_MINORVERSION="
+> +#define GRACE_START_ENV_PREFIX "NFSDCLTRACK_GRACE_START="
+>  
+>  static char *
+>  nfsd4_cltrack_legacy_topdir(void)
+> @@ -1126,10 +1128,60 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
+>  	return result;
+>  }
+>  
+> +static char *
+> +nfsd4_cltrack_client_minorversion(struct nfs4_client *clp)
+> +{
+> +	int copied;
+> +	size_t len;
+> +	char *result;
+> +
+> +	/* prefix + max width of integer string + terminating NULL */
+> +	len = strlen(CLIENT_MINORVERS_ENV_PREFIX) + 10 + 1;
+> +
+> +	result = kmalloc(len, GFP_KERNEL);
+> +	if (!result)
+> +		return result;
+> +
+> +	copied = snprintf(result, len, CLIENT_MINORVERS_ENV_PREFIX "%u",
+> +				clp->cl_minorversion);
+> +	if (copied >= len) {
+> +		/* just return nothing if output was truncated */
+> +		kfree(result);
+> +		return NULL;
+> +	}
+> +
+> +	return result;
+> +}
+> +
+> +static char *
+> +nfsd4_cltrack_grace_start(time_t grace_start)
+> +{
+> +	int copied;
+> +	size_t len;
+> +	char *result;
+> +
+> +	/* prefix + max width of int64_t string + terminating NULL */
+> +	len = strlen(GRACE_START_ENV_PREFIX) + 22 + 1;
+> +
+> +	result = kmalloc(len, GFP_KERNEL);
+> +	if (!result)
+> +		return result;
+> +
+> +	copied = snprintf(result, len, GRACE_START_ENV_PREFIX "%ld",
+> +				grace_start);
+> +	if (copied >= len) {
+> +		/* just return nothing if output was truncated */
+> +		kfree(result);
+> +		return NULL;
+> +	}
+> +
+> +	return result;
+> +}
+> +
+>  static int
+> -nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
+> +nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *env0, char *env1)
+>  {
+> -	char *envp[2];
+> +	char *envp[3];
+>  	char *argv[4];
+>  	int ret;
+>  
+> @@ -1140,10 +1192,12 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
+>  
+>  	dprintk("%s: cmd: %s\n", __func__, cmd);
+>  	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
+> -	dprintk("%s: legacy: %s\n", __func__, legacy ? legacy : "(null)");
+> +	dprintk("%s: env0: %s\n", __func__, env0 ? env0 : "(null)");
+> +	dprintk("%s: env1: %s\n", __func__, env1 ? env1 : "(null)");
+>  
+> -	envp[0] = legacy;
+> -	envp[1] = NULL;
+> +	envp[0] = env0;
+> +	envp[1] = env1;
+> +	envp[2] = NULL;
+>  
+>  	argv[0] = (char *)cltrack_prog;
+>  	argv[1] = cmd;
+> @@ -1187,28 +1241,40 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
+>  }
+>  
+>  static int
+> -nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
+> +nfsd4_umh_cltrack_init(struct net *net)
+>  {
+> +	int ret;
+> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> +	char *grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
+> +
+>  	/* XXX: The usermode helper s not working in container yet. */
+>  	if (net != &init_net) {
+>  		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
+>  			"tracking in a container!\n");
+>  		return -EINVAL;
+>  	}
+> -	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
+> +
+> +	ret = nfsd4_umh_cltrack_upcall("init", NULL, grace_start, NULL);
+> +	kfree(grace_start);
+> +	return ret;
+>  }
+>  
+>  static void
+>  nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+>  {
+> -	char *hexid;
+> +	char *hexid, *minorvers, *grace_start;
+> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+>  
+>  	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+>  	if (!hexid) {
+>  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+>  		return;
+>  	}
+> -	nfsd4_umh_cltrack_upcall("create", hexid, NULL);
+> +	minorvers = nfsd4_cltrack_client_minorversion(clp);
+> +	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
+> +	nfsd4_umh_cltrack_upcall("create", hexid, minorvers, grace_start);
+> +	kfree(minorvers);
+> +	kfree(grace_start);
+>  	kfree(hexid);
+>  }
+>  
+> @@ -1222,7 +1288,7 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+>  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+>  		return;
+>  	}
+> -	nfsd4_umh_cltrack_upcall("remove", hexid, NULL);
+> +	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
+>  	kfree(hexid);
+>  }
+>  
+> @@ -1238,7 +1304,7 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+>  		return -ENOMEM;
+>  	}
+>  	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
+> -	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy);
+> +	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
+>  	kfree(legacy);
+>  	kfree(hexid);
+>  	return ret;
+> @@ -1252,7 +1318,7 @@ nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
+>  
+>  	sprintf(timestr, "%ld", nn->boot_time);
+>  	legacy = nfsd4_cltrack_legacy_topdir();
+> -	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
+> +	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy, NULL);
+>  	kfree(legacy);
+>  }
+>  
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 21becb29dae1..5b04353bf2ec 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -6342,10 +6342,10 @@ nfs4_state_start_net(struct net *net)
+>  	ret = nfs4_state_create_net(net);
+>  	if (ret)
+>  		return ret;
+> -	nfsd4_client_tracking_init(net);
+>  	nn->boot_time = get_seconds();
+> -	locks_start_grace(net, &nn->nfsd4_manager);
+>  	nn->grace_ended = false;
+> +	locks_start_grace(net, &nn->nfsd4_manager);
+> +	nfsd4_client_tracking_init(net);
+>  	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
+>  	       nn->nfsd4_grace, net);
+>  	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
+> -- 
+> 1.9.3
+> 
