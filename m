@@ -1,74 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:50487 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757480AbaIRGKJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Sep 2014 02:10:09 -0400
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Thu, 18 Sep 2014 16:09:27 +1000
-Subject: [PATCH 2/2] NFS: don't use STABLE writes during writeback.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20140918060927.24098.78914.stgit@notabene.brown>
-In-Reply-To: <20140918060551.24098.72288.stgit@notabene.brown>
-References: <20140918060551.24098.72288.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:52089 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753083AbaIDMjR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:17 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so10481485qcx.27
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:17 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 03/17] locks: close potential race in lease_get_mtime
+Date: Thu,  4 Sep 2014 08:38:29 -0400
+Message-Id: <1409834323-7171-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit b31268ac793fd300da66b9c28bbf0a200339ab96
-  FS: Use stable writes when not doing a bulk flush
+lease_get_mtime is called without the i_lock held, so there's no
+guarantee about the stability of the list. Between the time when we
+assign "flock" and then dereference it to check whether it's a lease
+and for write, the lease could be freed.
 
-was a bit heavy handed.
-The particular problem that lead to this patch was that
-small writes to an O_SYNC file we being written as UNSTABLE writes
-followed by a commit.
-This is appropriate for large writes (which require multiple NFS
-requests) but for small writes (single NFS request), using
-NFS_FILE_SYNC is more efficient.
+Ensure that that doesn't occur by taking the i_lock before trying
+to check the lease.
 
-So that patch causes the code to select between the two methods
-depending on how many nfs requests get generated.
-
-Unfortunately this ends up applying to non O_SYNC writes as well.
-In particular if you memory-map a file and update random pages, then
-when they are eventually written out by writeback they will go as
-NFS_FILE_SYNC.  This is inefficient and slows down the application.
-
-
-So: only set FLUSH_COND_STABLE when wbc->sync_mode is WB_SYNC_ALL.
-With this patch:
- O_SYNC writes are NFS_FILE_SYNC for single requests, and NFS_UNSTABLE
-    followed by COMMIT for multiple requests
- Writing immediately before close of fsync follow the same pattern.
- Non-O_SYNC writes without an fsync of close eventually get flushed
- out as UNSTABLE and a commit follows eventually as appropriate.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
+Cc: J. Bruce Fields <bfields@fieldses.org>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfs/write.c |    7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/locks.c | 14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 3066c7fcb565..8d4aae9d977a 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -271,11 +271,14 @@ static void nfs_mark_uptodate(struct nfs_page *req)
- 
- static int wb_priority(struct writeback_control *wbc)
+diff --git a/fs/locks.c b/fs/locks.c
+index 18e87f11a25f..4031324e6cca 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1456,8 +1456,18 @@ EXPORT_SYMBOL(__break_lease);
+  */
+ void lease_get_mtime(struct inode *inode, struct timespec *time)
  {
-+	int ret = 0;
- 	if (wbc->for_reclaim)
- 		return FLUSH_HIGHPRI | FLUSH_STABLE;
-+	if (wbc->sync_mode == WB_SYNC_ALL)
-+		ret = FLUSH_COND_STABLE;
- 	if (wbc->for_kupdate || wbc->for_background)
--		return FLUSH_LOWPRI | FLUSH_COND_STABLE;
--	return FLUSH_COND_STABLE;
-+		ret |= FLUSH_LOWPRI;
-+	return ret;
- }
- 
- /*
-
+-	struct file_lock *flock = inode->i_flock;
+-	if (flock && IS_LEASE(flock) && (flock->fl_type == F_WRLCK))
++	bool has_lease = false;
++	struct file_lock *flock;
++
++	if (inode->i_flock) {
++		spin_lock(&inode->i_lock);
++		flock = inode->i_flock;
++		if (flock && IS_LEASE(flock) && (flock->fl_type == F_WRLCK))
++			has_lease = true;
++		spin_unlock(&inode->i_lock);
++	}
++
++	if (has_lease)
+ 		*time = current_fs_time(inode->i_sb);
+ 	else
+ 		*time = inode->i_mtime;
+-- 
+1.9.3
 
