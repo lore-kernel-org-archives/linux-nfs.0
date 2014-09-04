@@ -1,114 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:42466 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751781AbaIHOrI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:08 -0400
-Received: by mail-qc0-f171.google.com with SMTP id x3so15967050qcv.30
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:47:07 -0700 (PDT)
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:48590 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750744AbaIDMiy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:38:54 -0400
+Received: by mail-qa0-f42.google.com with SMTP id dc16so5473632qab.29
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:38:53 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: [PATCH v3 6/8] nfsd: serialize nfsdcltrack upcalls for a particular client
-Date: Mon,  8 Sep 2014 10:46:47 -0400
-Message-Id: <1410187609-10319-7-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
-References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 00/17] locks: internal lease API overhaul
+Date: Thu,  4 Sep 2014 08:38:26 -0400
+Message-Id: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In a later patch, we want to add a flag that will allow us to reduce the
-need for upcalls. In order to handle that correctly, we'll need to
-ensure that racing upcalls for the same client can't occur. In practice
-it should be rare for this to occur with a well-behaved client, but it
-is possible.
+v2:
+- cleanups and fixes in response to HCH's review
+- make security_file_set_fowner a void return operation
+- consolidate "nosetlease" routines
+- remove "deadlock protection" from generic_add_lease routine
+- add return value to lm_break op to allow for direct lease removal
 
-Convert one of the bits in the cl_flags field to be an upcall bitlock,
-and use it to ensure that upcalls for the same client are serialized.
+The internal "API" for handling leases has a lot of problems. The main
+one is that on success it can return a pointer to a lease that sits on
+the inode's i_flock list. That pointer is only guaranteed to be valid
+until the i_lock is dropped, which makes it a bit dangerous to use.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4recover.c | 29 +++++++++++++++++++++++++++++
- fs/nfsd/state.h       |  1 +
- 2 files changed, 30 insertions(+)
+Also, the i_lock is held over much too much of the code, which
+precludes any hope of ever adding proper support for leases to
+distributed filesystems.
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 5b69f0684060..ae313861a6f5 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1260,6 +1260,22 @@ nfsd4_umh_cltrack_init(struct net *net)
- }
- 
- static void
-+nfsd4_cltrack_upcall_lock(struct nfs4_client *clp)
-+{
-+	wait_on_bit_lock(&clp->cl_flags, NFSD4_CLIENT_UPCALL_LOCK,
-+			 TASK_UNINTERRUPTIBLE);
-+}
-+
-+static void
-+nfsd4_cltrack_upcall_unlock(struct nfs4_client *clp)
-+{
-+	smp_mb__before_atomic();
-+	clear_bit(NFSD4_CLIENT_UPCALL_LOCK, &clp->cl_flags);
-+	smp_mb__after_atomic();
-+	wake_up_bit(&clp->cl_flags, NFSD4_CLIENT_UPCALL_LOCK);
-+}
-+
-+static void
- nfsd4_umh_cltrack_create(struct nfs4_client *clp)
- {
- 	char *hexid, *reclaim_complete, *grace_start;
-@@ -1270,9 +1286,14 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
- 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
- 		return;
- 	}
-+
- 	reclaim_complete = nfsd4_cltrack_reclaim_complete(clp);
- 	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
-+
-+	nfsd4_cltrack_upcall_lock(clp);
- 	nfsd4_umh_cltrack_upcall("create", hexid, reclaim_complete, grace_start);
-+	nfsd4_cltrack_upcall_unlock(clp);
-+
- 	kfree(reclaim_complete);
- 	kfree(grace_start);
- 	kfree(hexid);
-@@ -1288,7 +1309,11 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
- 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
- 		return;
- 	}
-+
-+	nfsd4_cltrack_upcall_lock(clp);
- 	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
-+	nfsd4_cltrack_upcall_unlock(clp);
-+
- 	kfree(hexid);
- }
- 
-@@ -1304,7 +1329,11 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
- 		return -ENOMEM;
- 	}
- 	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
-+
-+	nfsd4_cltrack_upcall_lock(clp);
- 	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
-+	nfsd4_cltrack_upcall_unlock(clp);
-+
- 	kfree(legacy);
- 	kfree(hexid);
- 	return ret;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 10bfda710f71..a0ed18f00dcb 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -306,6 +306,7 @@ struct nfs4_client {
- #define NFSD4_CLIENT_STABLE		(2)	/* client on stable storage */
- #define NFSD4_CLIENT_RECLAIM_COMPLETE	(3)	/* reclaim_complete done */
- #define NFSD4_CLIENT_CONFIRMED		(4)	/* client is confirmed */
-+#define NFSD4_CLIENT_UPCALL_LOCK	(5)	/* upcall serialization */
- #define NFSD4_CLIENT_CB_FLAG_MASK	(1 << NFSD4_CLIENT_CB_UPDATE | \
- 					 1 << NFSD4_CLIENT_CB_KILL)
- 	unsigned long		cl_flags;
+This patchset is a cleanup and overhaul of the internal lease API, and a
+few stray locking-related patches. It fixes a number of problems in that
+code and makes an attempt at making that API more sane to use.
+
+The only real consumer of that API is knfsd, but this should make it
+easier for others to do so, reduce and clarify the spinlocking involved
+in handling leases, and get us a step closer toward allowing lease
+implementations that can block.
+
+I'm targeting this work for v3.18. Review would be welcome...
+
+Jeff Layton (17):
+  locks: consolidate "nolease" routines
+  security: make security_file_set_fowner, f_setown and __f_setown void
+    return
+  locks: close potential race in lease_get_mtime
+  nfsd: fix potential lease memory leak in nfs4_setlease
+  locks: generic_delete_lease doesn't need a file_lock at all
+  locks: clean up vfs_setlease kerneldoc comments
+  nfsd: don't keep a pointer to the lease in nfs4_file
+  locks: plumb a "priv" pointer into the setlease routines
+  locks: define a lm_setup handler for leases
+  locks: move i_lock acquisition into generic_*_lease handlers
+  locks: move freeing of leases outside of i_lock
+  locks: update Documentation/filesystems with new setlease semantics
+  locks: remove i_have_this_lease check from __break_lease
+  locks: __break_lease cleanup in preparation of allowing direct removal
+    of leases
+  locks: give lm_break a return value
+  locks: set fl_owner for leases to filp instead of current->files
+  locks: clean up comments over fl_owner_t definition
+
+ Documentation/filesystems/Locking |  11 +-
+ Documentation/filesystems/vfs.txt |   7 +-
+ drivers/net/tun.c                 |   4 +-
+ drivers/tty/tty_io.c              |   3 +-
+ fs/cifs/cifsfs.c                  |   7 +-
+ fs/fcntl.c                        |  21 +--
+ fs/gfs2/file.c                    |  22 +--
+ fs/libfs.c                        |  18 +++
+ fs/locks.c                        | 297 ++++++++++++++++++++------------------
+ fs/nfs/file.c                     |  13 +-
+ fs/nfs/internal.h                 |   1 -
+ fs/nfs/nfs4file.c                 |   2 +-
+ fs/nfsd/nfs4state.c               |  44 +++---
+ fs/nfsd/state.h                   |   1 -
+ fs/notify/dnotify/dnotify.c       |   8 +-
+ include/linux/fs.h                |  41 ++++--
+ include/linux/security.h          |   8 +-
+ include/trace/events/filelock.h   |  14 +-
+ net/socket.c                      |   3 +-
+ security/capability.c             |   4 +-
+ security/security.c               |   2 +-
+ security/selinux/hooks.c          |   4 +-
+ security/smack/smack_lsm.c        |   3 +-
+ 23 files changed, 269 insertions(+), 269 deletions(-)
+
 -- 
 1.9.3
 
