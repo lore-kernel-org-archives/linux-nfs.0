@@ -1,40 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:32738 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41350 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750877AbaICSPp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Sep 2014 14:15:45 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS: Fix state owner lock usage
-Date: Wed, 3 Sep 2014 14:15:39 -0400
-Message-ID: <1409768140-3826-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1754470AbaIDTwm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Sep 2014 15:52:42 -0400
+Date: Thu, 4 Sep 2014 15:52:38 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 2/5] lockd: add a /proc/fs/lockd/nlm_end_grace file
+Message-ID: <20140904195237.GA14576@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+ <1408473509-14010-3-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1408473509-14010-3-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The function can_open_cached() is used to determine if we can open a file
-using cached information.  It does this by reading values from the state
-structure, which I think means we need to be holding the so_lock to get the
-right answer.  The current code calls this function twice - once without the
-lock, and then a second time with the lock to check the answer.  I think
-this is technically correct, since false positives are verified and false
-negatives lead to the normal open code.
+On Tue, Aug 19, 2014 at 02:38:26PM -0400, Jeff Layton wrote:
+> Add a new procfile that will allow a (privileged) userland process to
+> end the NLM grace period early. The basic idea here will be to have
+> sm-notify write to this file, if it sent out no NOTIFY requests when
+> it runs. In that situation, we can generally expect that there will be
+> no reclaim requests so the grace period can be lifted early.
+> 
+> +static ssize_t
+> +nlm_end_grace_write(struct file *file, const char __user *buf, size_t size,
+> +		    loff_t *pos)
+> +{
+> +	struct lockd_net *ln = net_generic(current->nsproxy->net_ns, lockd_net_id);
+> +
+> +	if (size > 0)
 
-Even if the code is correct, it's not immediately obvious to me why it works
-so I think it's worth taking a second look at.
+I'd rather we expect some particular string ("Y\n"?) and return -EINVAL
+otherwise, just in case we want to extend this some day.
 
-What do you all think?
-
-Anna
-
-
-Anna Schumaker (1):
-  NFS: Clear up state owner lock usage
-
- fs/nfs/nfs4proc.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
-
--- 
-2.1.0
-
+--b.
