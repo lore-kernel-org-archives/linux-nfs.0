@@ -1,37 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29529 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:43924 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756002AbaISRKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Sep 2014 13:10:25 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8JHAPXV011885
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 13:10:25 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Simo Sorce <simo@redhat.com>
-Subject: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials (v2)
-Date: Fri, 19 Sep 2014 13:10:19 -0400
-Message-Id: <1411146621-18797-1-git-send-email-steved@redhat.com>
+	id S1754865AbaIDTyV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 4 Sep 2014 15:54:21 -0400
+Date: Thu, 4 Sep 2014 15:54:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 3/5] nfsd: add a v4_end_grace file to /proc/fs/nfsd
+Message-ID: <20140904195420.GB14576@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+ <1408473509-14010-4-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1408473509-14010-4-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The gssproxy(8) daemon will now be used to manage the GSSAPI 
-credentials on the server.  
+On Tue, Aug 19, 2014 at 02:38:27PM -0400, Jeff Layton wrote:
+> Allow a privileged userland process to end the v4 grace period early.
+> Any write to the file will cause the v4 grace period to be lifted.
+> The basic idea with this will be to allow the userland client tracking
+> program to lift the grace period once it knows that no more clients
+> will be reclaiming state.
+...
+> +/**
+> + * write_v4_end_grace - release grace period for nfsd's v4.x lock manager
+> + *
+> + * Input:
+> + *			buf:		ignored
+> + *			size:		zero
+> + * OR
+> + *
+> + * Input:
+> + * 			buf:		any value
+> + *			size:		non-zero length of C string in @buf
+> + * Output:
+> + *			passed-in buffer filled with "Y" or "N" with a newline
+> + *			and NULL-terminated C string. This indicates whether
+> + *			the grace period has ended in the current net
+> + *			namespace. Return code is the size in bytes of the
+> + *			string. Writing to the file will end the grace period
+> + *			for nfsd's v4 lock manager.
+> + */
+> +static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
+> +{
+> +	struct net *net = file->f_dentry->d_sb->s_fs_info;
+> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> +
+> +	if (size > 0)
+> +		nfsd4_end_grace(nn);
 
-The nfs-server systemd script will now start gssproxy and
-the building/installing of rpc.svcgssd is now off by
-default.
+Ditto for this one.
 
-Steve Dickson (2):
-  nfs-server: Replace rpc.svcgssd with gssproxy in systemd script
-  rpc.svcgssd: the build of rpc.svcgssd is off by default
+Do we really need separate files for nlm and nfsd?
 
- configure.ac               | 23 +++++++++++++++++++----
- systemd/nfs-server.service |  4 ++--
- utils/gssd/Makefile.am     | 11 +++++++++--
- 3 files changed, 30 insertions(+), 8 deletions(-)
+I think the separate nlm and nfsd grace periods may just be a historical
+mistake.
 
--- 
-1.9.3
-
+--b.
