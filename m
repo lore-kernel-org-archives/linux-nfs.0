@@ -1,84 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57049 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754854AbaIVUoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 16:44:03 -0400
-Date: Mon, 22 Sep 2014 16:44:01 -0400
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Simo Sorce <simo@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140922204401.GI26763@fieldses.org>
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>
- <1411413608-16462-2-git-send-email-steved@redhat.com>
- <20140922152603.75005941@willson.usersys.redhat.com>
- <54207BCD.70101@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <54207BCD.70101@RedHat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-qc0-f180.google.com ([209.85.216.180]:58245 "EHLO
+	mail-qc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753532AbaIDMjX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:23 -0400
+Received: by mail-qc0-f180.google.com with SMTP id c9so10451335qcz.11
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:21 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 16/17] locks: set fl_owner for leases to filp instead of current->files
+Date: Thu,  4 Sep 2014 08:38:42 -0400
+Message-Id: <1409834323-7171-17-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
-> 
-> 
-> On 09/22/2014 03:26 PM, Simo Sorce wrote:
-> > On Mon, 22 Sep 2014 15:20:07 -0400
-> > Steve Dickson <steved@redhat.com> wrote:
-> > 
-> >> Added the gssproxy.service to both the Wants= and
-> >> Atfers= lines, before the rpc-svcgssd.service. There
-> >> are  ConditionPathExists= lines in the rpc-svcgssd.service
-> >> unit which will stop the rpc.svcgssd daemon from
-> >> starting when the gssproxy daemon is already running.
-> >>
-> >> Signed-off-by: Steve Dickson <steved@redhat.com>
-> >> ---
-> >>  systemd/nfs-server.service | 5 +++--
-> >>  1 file changed, 3 insertions(+), 2 deletions(-)
-> >>
-> >> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-> >> index 2fa7387..c740fa2 100644
-> >> --- a/systemd/nfs-server.service
-> >> +++ b/systemd/nfs-server.service
-> >> @@ -2,12 +2,13 @@
-> >>  Description=NFS server and services
-> >>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
-> >>  Requires= nfs-mountd.service
-> >> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
-> >> rpc-svcgssd.service +Wants=rpc-statd.service nfs-idmapd.service 
-> >> +Wants=rpc-gssd.service  
-> >>  Wants=rpc-statd-notify.service
-> >>  
-> >>  After= network.target proc-fs-nfsd.mount rpcbind.target
-> >> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
-> >> -After= rpc-gssd.service rpc-svcgssd.service
-> >> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
-> >>  Before= rpc-statd-notify.service
-> >>  
-> >>  Wants=nfs-config.service
-> > 
-> > I think you really need to insure that the modules are loaded before
-> > any of the server services are started, perhaps adding a unit file that
-> > exec's modprobe and has "Before: gssproxy.service rpc-svcgssd.service"
-> > in it ?
-> I really don't think its needed... From my testing it appears 
-> gssproxy is always being started and rpc.svcgssd is not... 
+Like flock locks, leases are owned by the file description. Now that the
+i_have_this_lease check in __break_lease is gone, we don't actually use
+the fl_owner for leases for anything. So, it's now safe to set this more
+appropriately to the same value as the fl_file.
 
-Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount as both
-"Requires=" and "After=", so rpc-svcgssd.service will never run
-without first running var-lib-nfs-rpc_pipefs.mount, which will load
-sunrpc.  But I don't see where auth_rpcgss is getting loaded.  And I
-don't see what ensures anything happening before gssproxy runs.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/locks.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-We want to make sure your testing's not just getting lucky on the
-startup order.
+diff --git a/fs/locks.c b/fs/locks.c
+index 5a97e7c4e7f2..735b8d3fa78c 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -465,7 +465,7 @@ static int lease_init(struct file *filp, long type, struct file_lock *fl)
+ 	if (assign_type(fl, type) != 0)
+ 		return -EINVAL;
+ 
+-	fl->fl_owner = current->files;
++	fl->fl_owner = filp;
+ 	fl->fl_pid = current->tgid;
+ 
+ 	fl->fl_file = filp;
+-- 
+1.9.3
 
-> Plus, from my understanding...  loading module from a service 
-> file is a big no no! People were having problems with
-> way back when... 
-
-Any pointers?  Google's not finding me anything.
-
---b.
