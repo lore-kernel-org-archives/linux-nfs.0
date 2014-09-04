@@ -1,90 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45891 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757230AbaIIQiu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:38:50 -0400
-Received: from [50.247.105.171] (helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRORN-000819-6F
-	for linux-nfs@vger.kernel.org; Tue, 09 Sep 2014 16:38:49 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/9] pnfs/blocklayout: don't set pages uptodate
-Date: Tue,  9 Sep 2014 09:40:49 -0700
-Message-Id: <1410280853-3964-6-git-send-email-hch@lst.de>
-In-Reply-To: <1410280853-3964-1-git-send-email-hch@lst.de>
-References: <1410280853-3964-1-git-send-email-hch@lst.de>
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:36215 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752873AbaIDMjP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:15 -0400
+Received: by mail-qc0-f170.google.com with SMTP id r5so10348570qcx.15
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:15 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 12/17] locks: update Documentation/filesystems with new setlease semantics
+Date: Thu,  4 Sep 2014 08:38:38 -0400
+Message-Id: <1409834323-7171-13-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The core nfs code handles setting pages uptodate on reads, no need to mess
-with the pageflags outselves.  Also remove a debug function to dump page
-flags.
-
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfs/blocklayout/blocklayout.c | 24 +-----------------------
- 1 file changed, 1 insertion(+), 23 deletions(-)
+ Documentation/filesystems/Locking | 11 ++++++-----
+ Documentation/filesystems/vfs.txt |  7 ++++---
+ 2 files changed, 10 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 6484b9f..92be984 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -49,20 +49,6 @@ MODULE_LICENSE("GPL");
- MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
- MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
+diff --git a/Documentation/filesystems/Locking b/Documentation/filesystems/Locking
+index f1997e9da61f..94d93b1f8b53 100644
+--- a/Documentation/filesystems/Locking
++++ b/Documentation/filesystems/Locking
+@@ -464,15 +464,12 @@ prototypes:
+ 			size_t, unsigned int);
+ 	ssize_t (*splice_read)(struct file *, loff_t *, struct pipe_inode_info *,
+ 			size_t, unsigned int);
+-	int (*setlease)(struct file *, long, struct file_lock **);
++	int (*setlease)(struct file *, long, struct file_lock **, void **);
+ 	long (*fallocate)(struct file *, int, loff_t, loff_t);
+ };
  
--static void print_page(struct page *page)
--{
--	dprintk("PRINTPAGE page %p\n", page);
--	dprintk("	PagePrivate %d\n", PagePrivate(page));
--	dprintk("	PageUptodate %d\n", PageUptodate(page));
--	dprintk("	PageError %d\n", PageError(page));
--	dprintk("	PageDirty %d\n", PageDirty(page));
--	dprintk("	PageReferenced %d\n", PageReferenced(page));
--	dprintk("	PageLocked %d\n", PageLocked(page));
--	dprintk("	PageWriteback %d\n", PageWriteback(page));
--	dprintk("	PageMappedToDisk %d\n", PageMappedToDisk(page));
--	dprintk("\n");
--}
+ locking rules:
+-	All may block except for ->setlease.
+-	No VFS locks held on entry except for ->setlease.
 -
- /* Given the be associated with isect, determine if page data needs to be
-  * initialized.
-  */
-@@ -187,16 +173,9 @@ retry:
- 	return bio;
- }
+-->setlease has the file_list_lock held and must not sleep.
++	All may block.
  
--/* This is basically copied from mpage_end_io_read */
- static void bl_end_io_read(struct bio *bio, int err)
- {
- 	struct parallel_io *par = bio->bi_private;
--	struct bio_vec *bvec;
--	int i;
--
--	if (!err)
--		bio_for_each_segment_all(bvec, bio, i)
--			SetPageUptodate(bvec->bv_page);
+ ->llseek() locking has moved from llseek to the individual llseek
+ implementations.  If your fs is not using generic_file_llseek, you
+@@ -496,6 +493,10 @@ components. And there are other reasons why the current interface is a mess...
+ ->read on directories probably must go away - we should just enforce -EISDIR
+ in sys_read() and friends.
  
- 	if (err) {
- 		struct nfs_pgio_header *header = par->data;
-@@ -205,6 +184,7 @@ static void bl_end_io_read(struct bio *bio, int err)
- 			header->pnfs_error = -EIO;
- 		pnfs_set_lo_fail(header->lseg);
- 	}
++->setlease operations should call generic_setlease() before or after setting
++the lease within the individual filesystem to record the result of the
++operation
 +
- 	bio_put(bio);
- 	put_parallel(par);
- }
-@@ -304,8 +284,6 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 			/* Fill hole w/ zeroes w/o accessing device */
- 			dprintk("%s Zeroing page for hole\n", __func__);
- 			zero_user_segment(pages[i], pg_offset, pg_len);
--			print_page(pages[i]);
--			SetPageUptodate(pages[i]);
- 		} else {
- 			struct pnfs_block_extent *be_read;
+ --------------------------- dquot_operations -------------------------------
+ prototypes:
+ 	int (*write_dquot) (struct dquot *);
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index 61d65cc65c54..af9441f32a62 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -826,7 +826,7 @@ struct file_operations {
+ 	int (*flock) (struct file *, int, struct file_lock *);
+ 	ssize_t (*splice_write)(struct pipe_inode_info *, struct file *, size_t, unsigned int);
+ 	ssize_t (*splice_read)(struct file *, struct pipe_inode_info *, size_t, unsigned int);
+-	int (*setlease)(struct file *, long arg, struct file_lock **);
++	int (*setlease)(struct file *, long arg, struct file_lock **, void **);
+ 	long (*fallocate)(struct file *, int mode, loff_t offset, loff_t len);
+ 	int (*show_fdinfo)(struct seq_file *m, struct file *f);
+ };
+@@ -895,8 +895,9 @@ otherwise noted.
+   splice_read: called by the VFS to splice data from file to a pipe. This
+ 	       method is used by the splice(2) system call
+ 
+-  setlease: called by the VFS to set or release a file lock lease.
+-	    setlease has the file_lock_lock held and must not sleep.
++  setlease: called by the VFS to set or release a file lock lease. setlease
++	    implementations should call generic_setlease to record or remove
++	    the lease in the inode after setting it
+ 
+   fallocate: called by the VFS to preallocate blocks or punch a hole.
  
 -- 
-1.9.1
+1.9.3
 
