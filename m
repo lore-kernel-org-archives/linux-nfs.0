@@ -1,57 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60071 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753247AbaI2Scr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Sep 2014 14:32:47 -0400
-Date: Mon, 29 Sep 2014 14:32:46 -0400
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs-client.target: Removed a ordering cycle with
- nfs-server.service
-Message-ID: <20140929183245.GI30691@fieldses.org>
-References: <1412004817-14432-1-git-send-email-steved@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:36705 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751449AbaIDSIT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 14:08:19 -0400
+Date: Thu, 4 Sep 2014 11:08:18 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 15/17] locks: give lm_break a return value
+Message-ID: <20140904180818.GB11232@infradead.org>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+ <1409834323-7171-16-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1412004817-14432-1-git-send-email-steved@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1409834323-7171-16-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 29, 2014 at 11:33:37AM -0400, Steve Dickson wrote:
-> On a VM that boots very fast and with out kerberos
-> enabled a systemd ordering cycle happens between
-> nfs-client and nfs-server units when both were
-> enabled.
+On Thu, Sep 04, 2014 at 08:38:41AM -0400, Jeff Layton wrote:
+> Christoph suggests:
 > 
-> Having nfs-client start the gssd daemons in the
-> same matter as the nfs-server does ('After=') seemed
-> to eliminated the ordering cycle.
+>    "Add a return value to lm_break so that the lock manager can tell the
+>     core code "you can delete this lease right now".  That gets rid of
+>     the games with the timeout which require all kinds of race avoidance
+>     code in the users."
+> 
+> Do that here and have the nfsd lease break routine use it when it detects
+> that there was a race between setting up the lease and it being broken.
 
-ACK.--b.
+Looks good,
 
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  systemd/nfs-client.target | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/systemd/nfs-client.target b/systemd/nfs-client.target
-> index 474f5e9..87a1ce8 100644
-> --- a/systemd/nfs-client.target
-> +++ b/systemd/nfs-client.target
-> @@ -7,7 +7,7 @@ Wants=remote-fs-pre.target
->  # start that on demand if needed.
->  Wants=rpc-gssd.service rpc-svcgssd.service auth-rpcgss-module.service
->  Wants=nfs-blkmap.service rpc-statd-notify.service
-> -Before=rpc-gssd.service rpc-svcgssd.service nfs-blkmap.service
-> +After=rpc-gssd.service rpc-svcgssd.service nfs-blkmap.service
->  
->  [Install]
->  WantedBy=multi-user.target
-> -- 
-> 1.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Reviewed-by: Christoph Hellwig <hch@lst.de>
