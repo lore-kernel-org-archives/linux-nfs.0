@@ -1,61 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:65139 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752045AbaIKPCp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 11:02:45 -0400
-Received: by mail-pa0-f51.google.com with SMTP id kx10so10031144pab.10
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Sep 2014 08:02:45 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Peng Tao <tao.peng@primarydata.com>, Christoph Hellwig <hch@lst.de>,
-        Boaz Harrosh <boaz@plexistor.com>
-Subject: [PATCH] nfs41: change PNFS_LAYOUTRET_ON_SETATTR to only return on chown/truncate
-Date: Thu, 11 Sep 2014 23:02:32 +0800
-Message-Id: <1410447752-11288-1-git-send-email-tao.peng@primarydata.com>
+Received: from mail-vc0-f175.google.com ([209.85.220.175]:41489 "EHLO
+	mail-vc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753140AbaIDVBY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 17:01:24 -0400
+Received: by mail-vc0-f175.google.com with SMTP id lf12so11240807vcb.20
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 14:01:23 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140821213421.GA5474@fieldses.org>
+References: <20140821213421.GA5474@fieldses.org>
+Date: Thu, 4 Sep 2014 17:01:23 -0400
+Message-ID: <CAHQdGtRZ43npC---LK1-kZy91V9PCk63g_QAR_5DsrfFM-2u4Q@mail.gmail.com>
+Subject: Re: kernel not recovering from statd port change
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Both blocks layout and objects layout want to use it to avoid CB_LAYOUTRECALL
-but that should only happen if client is doing chown or truncate. So change
-PNFS_LAYOUTRET_ON_SETATTR to follow the logic and not to send layoutreturn
-unnecessarily.
+On Thu, Aug 21, 2014 at 5:34 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> While testing server restart somebody noticed that knfsd can't recover
+> from statd restarting with a new port.
+>
+> From only a very quick skim of the code it looked like creating the nsm
+> client with RPC_CLNT_CREATE_AUTOBIND should cause us to call rpcbind
+> again on connection failures, but that doesn't seem to be working.
+>
+> Any ideas?  I'll keep looking....
+>
+> --b.
+>
+> commit 2c9fb5570fe2
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Wed Aug 20 17:21:32 2014 -0400
+>
+>     lockd: allow rebinding to statd
+>
+>     During normal operation statd isn't restarted, but it may be if, for
+>     example, the server is shut down and restarted to simulate a shutdown or
+>     perform some kind of failover.  In that case the kernel may need to
+>     query rpcbind again to get statd's new port number.
+>
+>     Symptoms were locking failures after a manual server restart (without
+>     rebooting the machine), and loopback network traces showing the new
+>     kernel nfsd attempting to contact statd at its old port number.
+>
+>     This was probably introduced by cb7323fffa85, which first allowed
+>     reusing the statd rpc client, but it looks like a reference count may
+>     typically have prevented any symptoms until e498daa81295 "LOCKD: Clear
+>     ln->nsm_clnt only when ln->nsm_users is zero".
+>
+>     Fixes: cb7323fffa85 "lockd: create and use per-net NSM RPC clients on MON/UNMON requests"
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 1812f026960c..3bce1d318435 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -80,7 +80,8 @@ static struct rpc_clnt *nsm_create(struct net *net)
+>                 .program                = &nsm_program,
+>                 .version                = NSM_VERSION,
+>                 .authflavor             = RPC_AUTH_NULL,
+> -               .flags                  = RPC_CLNT_CREATE_NOPING,
+> +               .flags                  = RPC_CLNT_CREATE_NOPING|
 
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: Boaz Harrosh <boaz@plexistor.com>
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
----
- fs/nfs/nfs4proc.c | 3 ++-
- fs/nfs/pnfs.h     | 3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+RPC_CLNT_CREATE_HARDRTRY |
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7dd8aca..e55bd0f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3213,7 +3213,8 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	struct nfs4_label *label = NULL;
- 	int status;
- 
--	if (pnfs_ld_layoutret_on_setattr(inode))
-+	if (pnfs_ld_layoutret_on_setattr(inode) &&
-+	    sattr->ia_valid & (ATTR_UID|ATTR_GID|ATTR_SIZE))
- 		pnfs_commit_and_return_layout(inode);
- 
- 	nfs_fattr_init(fattr);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index aca3dff..1765ea8 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -68,7 +68,8 @@ enum {
- };
- 
- enum layoutdriver_policy_flags {
--	/* Should the pNFS client commit and return the layout upon a setattr */
-+	/* Should the pNFS client commit and return the layout upon a setattr
-+	 * that changes uid/gid/size. */
- 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
- 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
- };
+> +                                         RPC_CLNT_CREATE_AUTOBIND,
+>         };
+>
+>         return rpc_create(&args);
+
+
 -- 
-1.9.1
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
