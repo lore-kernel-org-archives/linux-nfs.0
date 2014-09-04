@@ -1,87 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8978 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753179AbaIYNEo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 09:04:44 -0400
-From: David Howells <dhowells@redhat.com>
-To: trond.myklebust@primarydata.com
-cc: dhowells@redhat.com, linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: NMI/soft lockup in nfs_delegation_need_return()
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Thu, 25 Sep 2014 14:04:38 +0100
-Message-ID: <28059.1411650278@warthog.procyon.org.uk>
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:35325 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751286AbaIDMjG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:06 -0400
+Received: by mail-qg0-f41.google.com with SMTP id i50so9999723qgf.28
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:05 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: [PATCH v2 06/17] locks: clean up vfs_setlease kerneldoc comments
+Date: Thu,  4 Sep 2014 08:38:32 -0400
+Message-Id: <1409834323-7171-7-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[Let me put a subject in this time]
+Some of the latter paragraphs seem ambiguous and just plain wrong.
+In particular the break_lease comment makes no sense. We call
+break_lease (and break_deleg) from all sorts of vfs-layer functions,
+so there is clearly such a method.
 
-Hi Trond,
+Also get rid of some of the other comments about what's needed for
+a full implementation.
 
-I'm seeing the soft lockup below occasionally.  I'm using the head of Linus's
-master branch (005f800508eb391480f463dad3d54e5b4ec67d57).  Plus a pair of
-cachefiles patches that should have no bearing on the matter.  I'm seeing the
-lockup both with and without a cache.  I did the following:
-
-	insmod /tmp/sunrpc.ko
-	mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs
-	insmod /tmp/lockd.ko
-	insmod /tmp/nfs_acl.ko
-	insmod /tmp/auth_rpcgss.ko
-	insmod /tmp/fscache.ko
-	insmod /tmp/nfs.ko
-	insmod /tmp/nfsv2.ko
-	insmod /tmp/nfsv3.ko
-	insmod /tmp/nfsv4.ko
-	mount warthog:/warthog /warthog -o async,intr
-	tar cf - /warthog/fs/linux-2.6-fscache | cat >/dev/null
-
-where the directory being tar'd is a kernel tree with a couple of builds in
-there plus a load of git data (about 3GB worth).
-
-The RIP points here:
-
-   0x0000000000010e81 <+141>:   lea    0x48(%r12),%rdx
-   0x0000000000010e86 <+146>:   lock btrl $0x1,0x48(%r12)
-   0x0000000000010e8e <+154>:   jb     0x10e95 <nfs_client_return_marked_delegations+161>
-
-and it appears to be the first test_and_clear_bit() in
-nfs_delegation_need_return() which seems to have been inlined.
-
-I got at least three barks from the watchdog the last time I ran it before I
-killed it.
-
-David
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
-NMI watchdog: BUG: soft lockup - CPU#1 stuck for 22s! [90.155.74.18-ma:2776]
-Modules linked in: nfsv4 nfsv3 nfsv2 nfs fscache auth_rpcgss nfs_acl lockd sunrpc
-irq event stamp: 134630
-hardirqs last  enabled at (134629): [<ffffffff81088a54>] __call_rcu+0x203/0x212
-hardirqs last disabled at (134630): [<ffffffff8151133a>] apic_timer_interrupt+0x6a/0x80
-softirqs last  enabled at (134618): [<ffffffff8103de29>] __do_softirq+0x243/0x305
-softirqs last disabled at (134613): [<ffffffff8103e106>] irq_exit+0x61/0xda
-CPU: 1 PID: 2776 Comm: 90.155.74.18-ma Tainted: G        W      3.17.0-rc6-fsdevel+ #794
-Hardware name:                  /DG965RY, BIOS MQ96510J.86A.0816.2006.0716.2308 07/16/2006
-task: ffff880012ab6250 ti: ffff8800129e8000 task.ti: ffff8800129e8000
-RIP: 0010:[<ffffffffa00fde8e>]  [<ffffffffa00fde8e>] nfs_client_return_marked_delegations+0x9a/0x1aa [nfsv4]
-RSP: 0018:ffff8800129ebde8  EFLAGS: 00000202
-RAX: ffff880020bfd4c0 RBX: ffff8800129ebdd0 RCX: 0000000000000000
-RDX: ffff880020bfd508 RSI: ffff880012ab6250 RDI: ffff880012ab6250
-RBP: ffff8800129ebe28 R08: 0000000000000000 R09: 0000000000000000
-R10: ffff8800129ebd78 R11: 0000000000000000 R12: 0000000000000000
-R13: 0000000000000000 R14: ffffffff81a43340 R15: ffff8800129ebd78
-FS:  0000000000000000(0000) GS:ffff88003db00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000a62418 CR3: 00000000060f1000 CR4: 00000000000007e0
-Stack:
- ffff8800065e58c8 ffff88000610f7f0 ffff880020bfd4c0 ffff8800065e5800
- ffff8800065e5800 ffff8800065e5930 0000000000000000 0000000000000000
- ffff8800129ebe68 ffffffffa00fc180 000000000000000b ffff8800062f8e80
-Call Trace:
- [<ffffffffa00fc180>] nfs4_run_state_manager+0x614/0x619 [nfsv4]
- [<ffffffffa00fbb6c>] ? nfs4_do_reclaim+0x527/0x527 [nfsv4]
- [<ffffffff81053a97>] kthread+0xfa/0x102
- [<ffffffff8105399d>] ? kthread_create_on_node+0x1ca/0x1ca
- [<ffffffff8151036c>] ret_from_fork+0x7c/0xb0
- [<ffffffff8105399d>] ? kthread_create_on_node+0x1ca/0x1ca
-Code: 00 48 89 45 d0 4c 8b 65 d0 48 8d 83 f0 07 00 00 48 89 45 c8 4c 3b 65 c8 0f 84 d7 00 00 00 49 8d 54 24 48 f0 41 0f ba 74 24 48 01 <72> 05 45 31 f6 eb 03 41 b6 01 f0 0f ba 32 02 72 02 eb 36 45 84 
+ fs/locks.c | 34 ++++++++++------------------------
+ 1 file changed, 10 insertions(+), 24 deletions(-)
+
+diff --git a/fs/locks.c b/fs/locks.c
+index 1289b74fffbf..81a4628f5594 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1708,30 +1708,16 @@ static int __vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
+ }
+ 
+ /**
+- *	vfs_setlease        -       sets a lease on an open file
+- *	@filp: file pointer
+- *	@arg: type of lease to obtain
+- *	@lease: file_lock to use
+- *
+- *	Call this to establish a lease on the file.
+- *	The (*lease)->fl_lmops->lm_break operation must be set; if not,
+- *	break_lease will oops!
+- *
+- *	This will call the filesystem's setlease file method, if
+- *	defined.  Note that there is no getlease method; instead, the
+- *	filesystem setlease method should call back to setlease() to
+- *	add a lease to the inode's lease list, where fcntl_getlease() can
+- *	find it.  Since fcntl_getlease() only reports whether the current
+- *	task holds a lease, a cluster filesystem need only do this for
+- *	leases held by processes on this node.
+- *
+- *	There is also no break_lease method; filesystems that
+- *	handle their own leases should break leases themselves from the
+- *	filesystem's open, create, and (on truncate) setattr methods.
+- *
+- *	Warning: the only current setlease methods exist only to disable
+- *	leases in certain cases.  More vfs changes may be required to
+- *	allow a full filesystem lease implementation.
++ * vfs_setlease        -       sets a lease on an open file
++ * @filp: file pointer
++ * @arg: type of lease to obtain
++ * @lease: file_lock to use when adding a lease
++ *
++ * Call this to establish a lease on the file. The "lease" argument is not
++ * used for F_UNLCK requests and may be NULL. For commands that set or alter
++ * an existing lease, the (*lease)->fl_lmops->lm_break operation must be set;
++ * if not, this function will return -ENOLCK (and generate a scary-looking
++ * stack trace).
+  */
+ 
+ int vfs_setlease(struct file *filp, long arg, struct file_lock **lease)
+-- 
+1.9.3
+
