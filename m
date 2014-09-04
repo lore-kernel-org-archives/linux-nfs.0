@@ -1,94 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40653 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752039AbaIRNN6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Sep 2014 09:13:58 -0400
-Message-ID: <541ADA94.6010503@RedHat.com>
-Date: Thu, 18 Sep 2014 09:13:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:33110 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753217AbaIDRvd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 13:51:33 -0400
+Date: Thu, 4 Sep 2014 10:51:32 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 13/17] locks: remove i_have_this_lease check from
+ __break_lease
+Message-ID: <20140904175132.GG16935@infradead.org>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+ <1409834323-7171-14-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: nfs4_state_manager() vs. nfs_server_remove_lists()
-References: <1410965448-6110-1-git-send-email-steved@redhat.com> <CAHQdGtQv4BPmD5s77=sFmyjT+64+65A8j3nEu_z-woNOGkGAng@mail.gmail.com>
-In-Reply-To: <CAHQdGtQv4BPmD5s77=sFmyjT+64+65A8j3nEu_z-woNOGkGAng@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1409834323-7171-14-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 09/17/2014 10:55 AM, Trond Myklebust wrote:
-> On Wed, Sep 17, 2014 at 10:50 AM, Steve Dickson <steved@redhat.com> wrote:
->> There is a race between nfs4_state_manager() and
->> nfs_server_remove_lists() that happens during a nfsv3 mount.
->>
->> The v3 mount notices there is already a supper block so
->> nfs_server_remove_lists() called which uses the nfs_client_lock
->> spin lock to synchronize access to the client list.
->>
->> At the same time nfs4_state_manager() is running through
->> the client list looking for work to do, using the same
->> lock. When nfs4_state_manager() wins the race to the
->> list, a v3 client pointer is found and not ignored
->> properly which causes the panic.
->>
->> Moving some protocol checks before the state checking
->> avoids the panic.
->>
->> CC: Stable Tree <stable@vger.kernel.org>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  fs/nfs/nfs4client.c | 19 ++++++++++---------
->>  1 file changed, 10 insertions(+), 9 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
->> index 53e435a..7ff4c02 100644
->> --- a/fs/nfs/nfs4client.c
->> +++ b/fs/nfs/nfs4client.c
->> @@ -622,6 +622,16 @@ int nfs41_walk_client_list(struct nfs_client *new,
->>
->>         spin_lock(&nn->nfs_client_lock);
->>         list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
->> +
->> +               if (pos->rpc_ops != new->rpc_ops)
->> +                       continue;
->> +
->> +               if (pos->cl_proto != new->cl_proto)
->> +                       continue;
->> +
->> +               if (pos->cl_minorversion != new->cl_minorversion)
->> +                       continue;
->> +
->>                 /* If "pos" isn't marked ready, we can't trust the
->>                  * remaining fields in "pos", especially the client
->>                  * ID and serverowner fields.  Wait for CREATE_SESSION
->> @@ -647,15 +657,6 @@ int nfs41_walk_client_list(struct nfs_client *new,
->>                 if (pos->cl_cons_state != NFS_CS_READY)
->>                         continue;
->>
->> -               if (pos->rpc_ops != new->rpc_ops)
->> -                       continue;
->> -
->> -               if (pos->cl_proto != new->cl_proto)
->> -                       continue;
->> -
->> -               if (pos->cl_minorversion != new->cl_minorversion)
->> -                       continue;
->> -
->>                 if (!nfs4_match_clientids(pos, new))
->>                         continue;
->>
->> --
->> 1.8.3.1
->>
+On Thu, Sep 04, 2014 at 08:38:39AM -0400, Jeff Layton wrote:
+> I think that the intent of this code was to ensure that a process won't
+> deadlock if it has one fd open with a lease on it and then breaks that
+> lease by opening another fd. In that case it'll treat the __break_lease
+> call as if it were non-blocking.
 > 
-> Don't we need the same fix in nfs40_walk_client_list?
-Yes... Just posted version 2...
+> This seems wrong -- the process could (for instance) be multithreaded
+> and managing different fds via different threads. I also don't see any
+> mention of this limitation in the (somewhat sketchy) documentation.
+> 
+> Remove the check and the non-blocking behavior when i_have_this_lease
+> is true.
 
-steved.
- 
-> 
-> Cheers
->   Trond
-> 
+This looks reasonable to me, but I'm always very worried about changing
+userspace exposed behavior..
+
