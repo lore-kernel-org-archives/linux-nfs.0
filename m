@@ -1,42 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:48293 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751355AbaIKOOw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 10:14:52 -0400
-Message-ID: <5411AE56.1070404@oracle.com>
-Date: Thu, 11 Sep 2014 07:14:46 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
+Received: from mail-vc0-f177.google.com ([209.85.220.177]:42262 "EHLO
+	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750906AbaIEUEz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 16:04:55 -0400
+Received: by mail-vc0-f177.google.com with SMTP id hq11so12638420vcb.8
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 13:04:54 -0700 (PDT)
 MIME-Version: 1.0
-To: linux-rdma <linux-rdma@vger.kernel.org>,
+In-Reply-To: <CAHQdGtRpD03KHJyu1MtxA=21pu4z_YAG4XA-8Bu+t4xeUefaNQ@mail.gmail.com>
+References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
+ <20140903070048.56201d1d@tlielax.poochiereds.net> <70D58138-CB00-433C-8BF8-01584E6460F0@oracle.com>
+ <CA+Tkd6WV9K4oZPVGkqL_y6OcD9Pmj6x0roo9n839QD8RXDsCwA@mail.gmail.com>
+ <CA+Tkd6WYkkVbY2YsmRNHB4+9AFg5UjC1xoycLTZQOYrtFCT_2w@mail.gmail.com> <CAHQdGtRpD03KHJyu1MtxA=21pu4z_YAG4XA-8Bu+t4xeUefaNQ@mail.gmail.com>
+From: Chris Perl <chris.perl@gmail.com>
+Date: Fri, 5 Sep 2014 16:04:34 -0400
+Message-ID: <CA+Tkd6WBuMkCmsjUpjrAR38Ri6QK_B4BhgNr0gzHBTG1ytjO6Q@mail.gmail.com>
+Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount failures
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Layton <jeff.layton@primarydata.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: NFSoRDMA developers bi-weekly meeting (every other Thursday)
-References: <8fd50e62-a5e7-4e45-8dd1-a5c87b83f2fc@default>
-In-Reply-To: <8fd50e62-a5e7-4e45-8dd1-a5c87b83f2fc@default>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSoRDMA bi-weekly meetings have rescheduled from every other Wed to Thurs starting from today.
+I tried to send them to the list, but I guess they didn't come through
+because my sender was set to chris.perl@gmail.com, but I ran `git
+send-email' from work, so the smtp sender ip wouldn't authorized.
 
-Agenda today:
+I'll figure out a way to send them now.
 
-- merge plans for 3.18 and 3.19
-- linux-stable tree is not stable: :) what can we do better? (3.17-rc was unbootable with IPoIB for over a month)
-- performance issues arising
-- update from everyone
-
-Thanks
-Shirley
-
-Meeting Reminder NFSoRDMA developers bi-weekly meeting 
-Date: Thu, Sep 11, 2014
-Time: 6:30 AM PST - 7:30 AM PST
-Location: Audio Conference
-Organizer: Shirley Ma
-Attendees: Devesh.Sharma@emulex.com; Anna.Schumaker@netapp.com; dledford@redhat.com; Chuck Lever; Shirley Ma; ... 
-Description: @7:30am PST @8:30am MST @9:30am CST @10:30am EST @Bangalore @8:00pm @Israel @5:30pm Duration: 1 hour Call-in number: Israel: +972 37219638 Bangalore: +91 8039890080 (180030109800)
-France Colombes +33 1 5760 2222 +33 176728936
-US: 8666824770, 408-7744073
-Conference Code: 2308833 Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember) 
-
-
+On Fri, Sep 5, 2014 at 4:03 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> On Fri, Sep 5, 2014 at 3:40 PM, Chris Perl <chris.perl@gmail.com> wrote:
+>> I just submitted two patches, one for nfs-utils and one for linux-nfs.
+>>
+>> As I said in my previous email, the patch to nfs-utils was enough to
+>> get us farther along, but we failed inside mount(2) with EIO (with a
+>> decidedly more confusing error message).
+>>
+>> So, I've also submitted a patch for the rpc code in the kernel that
+>> also avoids bind when asking for a random ephemeral port.  I've tested
+>> the combination of these two patches with my system while in the
+>> situation I originally outlined.  I can continue to successfully mount
+>> NFS filesystems using both of these patches.
+>>
+>> I don't particularly love the kernel patch, as it makes `xs_bind' not
+>> actually bind in all circumstances, which seems confusing.  However, I
+>> thought trying to rework things in a larger way would cause more
+>> issues given that I'm not very familiar with this code.  If everyone
+>> hates it, I can try something else.
+>
+> To whom did you submit these patches? I don't see anything in the
+> linux-nfs mailing list.
+>
+> --
+> Trond Myklebust
+>
+> Linux NFS client maintainer, PrimaryData
+>
+> trond.myklebust@primarydata.com
