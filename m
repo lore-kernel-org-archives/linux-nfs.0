@@ -1,58 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29841 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753090AbaIWTkl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 15:40:41 -0400
-Date: Tue, 23 Sep 2014 15:40:36 -0400
-From: Simo Sorce <simo@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140923154036.23e0e639@willson.usersys.redhat.com>
-In-Reply-To: <20140923192909.GJ29932@fieldses.org>
-References: <1411413608-16462-2-git-send-email-steved@redhat.com>
-	<20140922152603.75005941@willson.usersys.redhat.com>
-	<54207BCD.70101@RedHat.com>
-	<20140922204401.GI26763@fieldses.org>
-	<5420911D.6080506@RedHat.com>
-	<20140922173239.05c17b2a@willson.usersys.redhat.com>
-	<5420A946.4090805@RedHat.com>
-	<20140922201927.36fae05c@willson.usersys.redhat.com>
-	<5420CA96.6090409@RedHat.com>
-	<20140923085245.007533b6@willson.usersys.redhat.com>
-	<20140923192909.GJ29932@fieldses.org>
+Received: from mail-vc0-f182.google.com ([209.85.220.182]:54871 "EHLO
+	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750891AbaIEUUt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 16:20:49 -0400
+Received: by mail-vc0-f182.google.com with SMTP id im17so13230842vcb.27
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 13:20:48 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <CA+Tkd6WBuMkCmsjUpjrAR38Ri6QK_B4BhgNr0gzHBTG1ytjO6Q@mail.gmail.com>
+References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
+ <20140903070048.56201d1d@tlielax.poochiereds.net> <70D58138-CB00-433C-8BF8-01584E6460F0@oracle.com>
+ <CA+Tkd6WV9K4oZPVGkqL_y6OcD9Pmj6x0roo9n839QD8RXDsCwA@mail.gmail.com>
+ <CA+Tkd6WYkkVbY2YsmRNHB4+9AFg5UjC1xoycLTZQOYrtFCT_2w@mail.gmail.com>
+ <CAHQdGtRpD03KHJyu1MtxA=21pu4z_YAG4XA-8Bu+t4xeUefaNQ@mail.gmail.com> <CA+Tkd6WBuMkCmsjUpjrAR38Ri6QK_B4BhgNr0gzHBTG1ytjO6Q@mail.gmail.com>
+From: Chris Perl <chris.perl@gmail.com>
+Date: Fri, 5 Sep 2014 16:20:28 -0400
+Message-ID: <CA+Tkd6UjfJmjG0WE1F2bsB068rXkEUHhOq6S+F5e=OVA_wxeMw@mail.gmail.com>
+Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount failures
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 23 Sep 2014 15:29:09 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+It looks like they may have come through after all, unfortunately I
+already sent them again.  Apologies for the spam.
 
-> On Tue, Sep 23, 2014 at 08:52:45AM -0400, Simo Sorce wrote:
-> > It will not, but right now gssproxy.service also has:
-> >  Requires=proc-fs-nfsd.mount
-> > 
-> > I want to drop this one.
-> 
-> By the way, I think all you actually want is After=proc-fs-nfsd.mount.
-> 
-> You don't actually want to bail out if fs-nfsd.mount fails, in fact
-> you don't care if it's activated at all, all you care about is that
-> *if* it's already activated (because nfsd is), then you want it to
-> start before you.
-> 
-> And in fact we could instead replace that with a
-> Before=gssproxy.service in proc-fs-nfsd.mount if you preferred.  I
-> don't know how to decide which place it goes, or if it matters.
-
-Given we are already messing with service files I wouldn't object to
-moving the depenecy chain creation in nfs-util by adding a
-Before=gssproxy.service directive in proc-fs-nfsd.mount and dropping
-the Reuire from gssproxy.service
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
+On Fri, Sep 5, 2014 at 4:04 PM, Chris Perl <chris.perl@gmail.com> wrote:
+> I tried to send them to the list, but I guess they didn't come through
+> because my sender was set to chris.perl@gmail.com, but I ran `git
+> send-email' from work, so the smtp sender ip wouldn't authorized.
+>
+> I'll figure out a way to send them now.
+>
+> On Fri, Sep 5, 2014 at 4:03 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> On Fri, Sep 5, 2014 at 3:40 PM, Chris Perl <chris.perl@gmail.com> wrote:
+>>> I just submitted two patches, one for nfs-utils and one for linux-nfs.
+>>>
+>>> As I said in my previous email, the patch to nfs-utils was enough to
+>>> get us farther along, but we failed inside mount(2) with EIO (with a
+>>> decidedly more confusing error message).
+>>>
+>>> So, I've also submitted a patch for the rpc code in the kernel that
+>>> also avoids bind when asking for a random ephemeral port.  I've tested
+>>> the combination of these two patches with my system while in the
+>>> situation I originally outlined.  I can continue to successfully mount
+>>> NFS filesystems using both of these patches.
+>>>
+>>> I don't particularly love the kernel patch, as it makes `xs_bind' not
+>>> actually bind in all circumstances, which seems confusing.  However, I
+>>> thought trying to rework things in a larger way would cause more
+>>> issues given that I'm not very familiar with this code.  If everyone
+>>> hates it, I can try something else.
+>>
+>> To whom did you submit these patches? I don't see anything in the
+>> linux-nfs mailing list.
+>>
+>> --
+>> Trond Myklebust
+>>
+>> Linux NFS client maintainer, PrimaryData
+>>
+>> trond.myklebust@primarydata.com
