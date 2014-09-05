@@ -1,82 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:53169 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753991AbaICS6L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Sep 2014 14:58:11 -0400
-Message-ID: <540764A5.7030400@Netapp.com>
-Date: Wed, 3 Sep 2014 14:57:41 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:57276 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932401AbaIENfJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 09:35:09 -0400
+Received: by mail-qc0-f182.google.com with SMTP id m20so12056214qcx.41
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 06:35:08 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 5 Sep 2014 09:35:04 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 14/17] locks: __break_lease cleanup in preparation of
+ allowing direct removal of leases
+Message-ID: <20140905093504.215b288f@tlielax.poochiereds.net>
+In-Reply-To: <20140904180725.GA11232@infradead.org>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+	<1409834323-7171-15-git-send-email-jlayton@primarydata.com>
+	<20140904180725.GA11232@infradead.org>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@lst.de>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/4] pnfs: add a common GETDEVICELIST implementation
-References: <1409718480-1529-1-git-send-email-hch@lst.de> <1409718480-1529-3-git-send-email-hch@lst.de>
-In-Reply-To: <1409718480-1529-3-git-send-email-hch@lst.de>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/03/2014 12:27 AM, Christoph Hellwig wrote:
-> At a simple helper to issue a GETDEVICELIST operation and pre-load
-> the device id cache based on the result.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfs/pnfs.h     |  2 ++
->  fs/nfs/pnfs_dev.c | 29 +++++++++++++++++++++++++++++
->  2 files changed, 31 insertions(+)
->
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index c5f90e7..bf4e87d 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -276,6 +276,8 @@ bool nfs4_put_deviceid_node(struct nfs4_deviceid_node *);
->  void nfs4_mark_deviceid_unavailable(struct nfs4_deviceid_node *node);
->  bool nfs4_test_deviceid_unavailable(struct nfs4_deviceid_node *node);
->  void nfs4_deviceid_purge_client(const struct nfs_client *);
-> +int nfs4_deviceid_getdevicelist(struct nfs_server *server,
-> +		const struct nfs_fh *fh);
->  
->  static inline struct pnfs_layout_segment *
->  pnfs_get_lseg(struct pnfs_layout_segment *lseg)
-> diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-> index 791f8b3..82c2836 100644
-> --- a/fs/nfs/pnfs_dev.c
-> +++ b/fs/nfs/pnfs_dev.c
-> @@ -359,3 +359,32 @@ nfs4_deviceid_mark_client_invalid(struct nfs_client *clp)
->  	rcu_read_unlock();
->  }
->  
-> +int
-> +nfs4_deviceid_getdevicelist(struct nfs_server *server,
-> +		const struct nfs_fh *fh)
-> +{
-> +	struct pnfs_devicelist *dlist;
-> +	struct nfs4_deviceid_node *d;
-> +	int error = 0, i;
-> +
-> +	dlist = kzalloc(sizeof(struct pnfs_devicelist), GFP_NOFS);
-> +	if (!dlist)
-> +		return -ENOMEM;
-> +
-> +	while (!dlist->eof) {
-> +		error = nfs4_proc_getdevicelist(server, fh, dlist);
-> +		if (error)
-> +			break;
-> +
-> +		for (i = 0; i < dlist->num_devs; i++) {
-> +			d = nfs4_find_get_deviceid(server, &dlist->dev_id[i],
-> +					NULL, GFP_NOFS);
-> +			if (d)
-> +				nfs4_put_deviceid_node(d);
+On Thu, 4 Sep 2014 11:07:25 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-I think you need to change nfs4xdr.c:encode_getdevicelist() to use a stored cookie value for the GETDEVICELIST operation, otherwise we will always be reading from the beginning of the device list and the while loop might never exit.
+> On Thu, Sep 04, 2014 at 08:38:40AM -0400, Jeff Layton wrote:
+> > Eliminate an unneeded "flock" variable. We can use "fl" as a loop cursor
+> > everywhere. Add a any_leases_conflict helper function as well to
+> > consolidate a bit of code.
+> 
+> Looks good,
+> 
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> 
+> One thing that came to mind after starring at this code for a while and
+> then seeing your cleanup:
+> 
+> the sleep/wake patterns in __break_lease seem highly suboptimal, as
+> we always wait for the break time on the first least found, why
+> don't we simply take the max of the lease break times, and wait for
+> that?
+> 
+> I guess the case of lots of read leases just isn't common enough to
+> bother..
 
-Anna
-> +		}
-> +	}
-> +
-> +	kfree(dlist);
-> +	return error;
-> +}
-> +EXPORT_SYMBOL_GPL(nfs4_deviceid_getdevicelist);
+That would make more sense. I've no objection to changing it to do that
+though it's probably outside the scope of this patchset.
 
+-- 
+Jeff Layton <jlayton@primarydata.com>
