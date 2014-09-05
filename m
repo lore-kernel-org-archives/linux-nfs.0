@@ -1,41 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35894 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755694AbaIWVPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 17:15:23 -0400
-Message-ID: <5421E2E6.7000409@RedHat.com>
-Date: Tue, 23 Sep 2014 17:15:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:34889 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757010AbaIELkN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 07:40:13 -0400
+Received: by mail-qc0-f178.google.com with SMTP id x13so11890036qcv.23
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 04:40:13 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 5 Sep 2014 07:40:10 -0400
 To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NeilBrown <neilb@suse.de>, Simo Sorce <simo@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-References: <20140922204401.GI26763@fieldses.org> <5420911D.6080506@RedHat.com> <20140922223423.GA29932@fieldses.org> <5420B78D.6040704@RedHat.com> <20140922202655.5e308e58@willson.usersys.redhat.com> <20140923015549.GB32712@fieldses.org> <20140923120804.51dbcc2e@notabene.brown> <20140923021110.GB1409@fieldses.org> <20140923192311.GI29932@fieldses.org> <5421D55B.8040403@RedHat.com> <20140923202514.GO29932@fieldses.org>
-In-Reply-To: <20140923202514.GO29932@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 3/5] nfsd: add a v4_end_grace file to /proc/fs/nfsd
+Message-ID: <20140905074010.0ebc7f3f@tlielax.poochiereds.net>
+In-Reply-To: <20140904195420.GB14576@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+	<1408473509-14010-4-git-send-email-jlayton@primarydata.com>
+	<20140904195420.GB14576@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 4 Sep 2014 15:54:20 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-On 09/23/2014 04:25 PM, J. Bruce Fields wrote:
->> I through this into my test world
-> Thanks!
+> On Tue, Aug 19, 2014 at 02:38:27PM -0400, Jeff Layton wrote:
+> > Allow a privileged userland process to end the v4 grace period early.
+> > Any write to the file will cause the v4 grace period to be lifted.
+> > The basic idea with this will be to allow the userland client tracking
+> > program to lift the grace period once it knows that no more clients
+> > will be reclaiming state.
+> ...
+> > +/**
+> > + * write_v4_end_grace - release grace period for nfsd's v4.x lock manager
+> > + *
+> > + * Input:
+> > + *			buf:		ignored
+> > + *			size:		zero
+> > + * OR
+> > + *
+> > + * Input:
+> > + * 			buf:		any value
+> > + *			size:		non-zero length of C string in @buf
+> > + * Output:
+> > + *			passed-in buffer filled with "Y" or "N" with a newline
+> > + *			and NULL-terminated C string. This indicates whether
+> > + *			the grace period has ended in the current net
+> > + *			namespace. Return code is the size in bytes of the
+> > + *			string. Writing to the file will end the grace period
+> > + *			for nfsd's v4 lock manager.
+> > + */
+> > +static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
+> > +{
+> > +	struct net *net = file->f_dentry->d_sb->s_fs_info;
+> > +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> > +
+> > +	if (size > 0)
+> > +		nfsd4_end_grace(nn);
 > 
->> > and one side effect of this patch
->> > is both rpc.gssd and rpc.svcgssd daemons are *always* started when 
->> > a key tab exists (/etc/krb5.keytab) and *all* the services (nfs-client,
->> > nfs-server, rpc-gssd, and rpc-svcgssd) are disabled, which is not 
->> > good... Those daemons don't need to be started when both sides 
->> > are disabled...  But the auth_rpcgss is loaded! ;-) 
-> Weird.  I can't see how this patch on its own would have any effect on
-> that.
-I agree... I was surprised myself... Unfortunately I'm sure how to
-debug what/how/when systemd starts things...  But I moving
-the key tab out of the way stop the daemons from starting.
-Moving it back in place caused the daemons to start again,
-which didn't happen with the current f21 nfs-utils.
+> Ditto for this one.
+> 
 
-Maybe its a bug in some other unit file... 
+Sure. I'll fix that up in the next iteration.
 
-steved.
+> Do we really need separate files for nlm and nfsd?
+> 
+> I think the separate nlm and nfsd grace periods may just be a historical
+> mistake.
+> 
+
+statd and nfsdcltrack are separate programs, and both will need to
+"sign off" before we can lift the grace period. With the way that grace
+period management works today, I don't see a way to do this without
+separate files. If you have an idea in mind for how to unify this
+interface then I'm happy to entertain it however...
+
+-- 
+Jeff Layton <jlayton@primarydata.com>
