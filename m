@@ -1,86 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45887 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754464AbaIIQii (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:38:38 -0400
-Received: from [50.247.105.171] (helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRORA-00080Z-Te
-	for linux-nfs@vger.kernel.org; Tue, 09 Sep 2014 16:38:37 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/9] pnfs: force a layout commit when encountering busy segments during recall
-Date: Tue,  9 Sep 2014 09:40:45 -0700
-Message-Id: <1410280853-3964-2-git-send-email-hch@lst.de>
-In-Reply-To: <1410280853-3964-1-git-send-email-hch@lst.de>
-References: <1410280853-3964-1-git-send-email-hch@lst.de>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:53452 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932069AbaIELsa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 07:48:30 -0400
+Received: by mail-qc0-f171.google.com with SMTP id x3so12094259qcv.16
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 04:48:29 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 5 Sep 2014 07:48:27 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        cluster-devel <cluster-devel@redhat.com>,
+        samba-technical@lists.samba.org
+Subject: Re: [PATCH v2 01/17] locks: consolidate "nolease" routines
+Message-ID: <20140905074827.62a5048a@tlielax.poochiereds.net>
+In-Reply-To: <20140904201200.GA26054@infradead.org>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+	<1409834323-7171-2-git-send-email-jlayton@primarydata.com>
+	<CAHQdGtTqG8aW-cte2PW6pVw+OeCXATgr1BZwdhponuWMjzNg8g@mail.gmail.com>
+	<20140904084938.2664bf0a@tlielax.poochiereds.net>
+	<CAABAsM6v3-f_7cco8f_F5Wpy7PWJOUywQHH7A=mZ-LyHRASZ7Q@mail.gmail.com>
+	<20140904201200.GA26054@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Expedite layout recall processing by forcing a layout commit when
-we see busy segments.  Without it the layout recall might have to wait
-until the VM decided to start writeback for the file, which can introduce
-long delays.
+On Thu, 4 Sep 2014 13:12:00 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/callback_proc.c | 10 +++++++++-
- fs/nfs/pnfs.c          |  4 ++++
- 2 files changed, 13 insertions(+), 1 deletion(-)
+> On Thu, Sep 04, 2014 at 02:25:35PM -0400, Trond Myklebust wrote:
+> > Actually, it looks as if when you compile with !CONFIG_FILE_LOCKING,
+> > then fcntl_setlease() returns the value '0' (which would be
+> > "success!"). The word "confusing" only begins to describe it all.
+> 
+> That's incorrect for sure, we should agree on a single sensible code
+> for:
+> 
+>  1) !CONFIG_FILE_LOCKING
+>  2) !lease_enable
+>  3) filesystem doesn't support leases.
+> 
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 41db525..35f2712 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -171,6 +171,13 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 		goto out;
- 
- 	ino = lo->plh_inode;
-+
-+	spin_lock(&ino->i_lock);
-+	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
-+	spin_unlock(&ino->i_lock);
-+
-+	pnfs_layoutcommit_inode(ino, false);
-+
- 	spin_lock(&ino->i_lock);
- 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
- 	    pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
-@@ -178,10 +185,11 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 		rv = NFS4ERR_DELAY;
- 	else
- 		rv = NFS4ERR_NOMATCHING_LAYOUT;
--	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
- 	spin_unlock(&ino->i_lock);
-+
- 	pnfs_free_lseg_list(&free_me_list);
- 	pnfs_put_layout_hdr(lo);
-+
- 	iput(ino);
- out:
- 	return rv;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 8827ab1..04050eb 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -594,6 +594,9 @@ pnfs_layout_free_bulk_destroy_list(struct list_head *layout_list,
- 		dprintk("%s freeing layout for inode %lu\n", __func__,
- 			lo->plh_inode->i_ino);
- 		inode = lo->plh_inode;
-+
-+		pnfs_layoutcommit_inode(inode, false);
-+
- 		spin_lock(&inode->i_lock);
- 		list_del_init(&lo->plh_bulk_destroy);
- 		lo->plh_block_lgets++; /* permanently block new LAYOUTGETs */
-@@ -604,6 +607,7 @@ pnfs_layout_free_bulk_destroy_list(struct list_head *layout_list,
- 		spin_unlock(&inode->i_lock);
- 		pnfs_free_lseg_list(&lseg_list);
- 		pnfs_put_layout_hdr(lo);
-+
- 		iput(inode);
- 	}
- 	return ret;
+Agreed. I think -ENOLCK is really better than -EINVAL.
+
+I usually take -EINVAL to mean "you sent me something bogus". Whereas
+-ENOLCK just says "locking doesn't work". -ENOLCK seems closer to the
+situation in all 3 cases above.
+
+That said, this is a user-visible change. The main userland consumer of
+leases (AFAIK) is samba, so I'll take a peek at that code and run it by
+them before merging anything.
+
 -- 
-1.9.1
-
+Jeff Layton <jlayton@primarydata.com>
