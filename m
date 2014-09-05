@@ -1,58 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:35475 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754631AbaIVUFs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2014 16:05:48 -0400
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH V2] svcrdma: Advertise the correct max payload
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 22 Sep 2014 15:05:47 -0500
-Message-ID: <20140922200547.19909.68196.stgit@build.ogc.int>
+Received: from mail-vc0-f169.google.com ([209.85.220.169]:44829 "EHLO
+	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751684AbaIEWfG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 18:35:06 -0400
+Received: by mail-vc0-f169.google.com with SMTP id hq11so13133891vcb.14
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 15:35:05 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <44C76FD6-5333-402B-9DA4-D38065AAA15F@primarydata.com>
+References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
+ <20140903070048.56201d1d@tlielax.poochiereds.net> <70D58138-CB00-433C-8BF8-01584E6460F0@oracle.com>
+ <CA+Tkd6WV9K4oZPVGkqL_y6OcD9Pmj6x0roo9n839QD8RXDsCwA@mail.gmail.com>
+ <CA+Tkd6WYkkVbY2YsmRNHB4+9AFg5UjC1xoycLTZQOYrtFCT_2w@mail.gmail.com>
+ <CAHQdGtRpD03KHJyu1MtxA=21pu4z_YAG4XA-8Bu+t4xeUefaNQ@mail.gmail.com>
+ <CA+Tkd6WBuMkCmsjUpjrAR38Ri6QK_B4BhgNr0gzHBTG1ytjO6Q@mail.gmail.com>
+ <CA+Tkd6UjfJmjG0WE1F2bsB068rXkEUHhOq6S+F5e=OVA_wxeMw@mail.gmail.com> <44C76FD6-5333-402B-9DA4-D38065AAA15F@primarydata.com>
+From: Chris Perl <chris.perl@gmail.com>
+Date: Fri, 5 Sep 2014 18:34:44 -0400
+Message-ID: <CA+Tkd6VhFr7txTTrVF_WrUsTCudr=BspZKN5j-WYVjv=VkkU+w@mail.gmail.com>
+Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount failures
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Jeffrey Layton <jeff.layton@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Svcrdma currently advertises 1MB, which is too large.  The correct value
-is the minimum of RPCSVC_MAXPAYLOAD and the max scatter-gather allowed
-in an NFSRDMA IO chunk * the host page size. This bug is usually benign
-because the Linux X64 NFSRDMA client correctly limits the payload size to
-the correct value (64*4096 = 256KB).  But if the Linux client is PPC64
-with a 64KB page size, then the client will indeed use a payload size
-that will overflow the server.
+> Do these patches require one another?
+>
+> What happens if I have a patched nfs-utils, but not a patched kernel or the other way around?
 
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
----
+They don't require each other per se.
 
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
- net/sunrpc/xprtrdma/xprt_rdma.h          |    4 ++++
- 2 files changed, 5 insertions(+), 1 deletions(-)
+If you have a patched kernel without a patched nfs-utils, then
+attempts to mount when all ephemeral ports are already a part of at
+least 1 TCP connection will fail with an EADDRINUSE from mount.nfs(8)
+attempting to call bind(2).  It will never get around to calling
+mount(2) and never enter the kernel RPC code.
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 374feb4..4e61880 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -91,7 +91,7 @@ struct svc_xprt_class svc_rdma_class = {
- 	.xcl_name = "rdma",
- 	.xcl_owner = THIS_MODULE,
- 	.xcl_ops = &svc_rdma_ops,
--	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_RDMA,
- 	.xcl_ident = XPRT_TRANSPORT_RDMA,
- };
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index c419498..a9cf5c3 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -392,4 +392,8 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
- /* Workqueue created in svc_rdma.c */
- extern struct workqueue_struct *svc_rdma_wq;
- 
-+#define RPCSVC_MAXPAYLOAD_RDMA \
-+	(RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT) ? \
-+	 RPCSVC_MAXPAYLOAD : (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT))
-+
- #endif				/* _LINUX_SUNRPC_XPRT_RDMA_H */
+If you have a patched nfs-utils without a patched kernel, its a little
+unfortunate in that mount.nfs(8) will call mount(2), but that will
+give an EIO when `xs_bind' tries to call `kernel_bind' which returns
+EADDRINUSE.
 
+I say unfortunate because in this scenario you get the less helpful
+EIO back from mount(2) rather than the EADDRINUSE from bind(2),
+meaning the end user sees "input/output error" rather than "address
+already in use," where the latter is the real issue.
