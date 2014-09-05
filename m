@@ -1,69 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:49548 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753147AbaIHOpZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:45:25 -0400
-Received: from hch by bombadil.infradead.org with local (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XR0C5-0007iL-EB
-	for linux-nfs@vger.kernel.org; Mon, 08 Sep 2014 14:45:25 +0000
-Date: Mon, 8 Sep 2014 07:45:25 -0700
-From: Christoph Hellwig <hch@infradead.org>
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:51709 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752053AbaIEURd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 16:17:33 -0400
+Received: by mail-ie0-f169.google.com with SMTP id tr6so14961616ieb.28
+        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 13:17:33 -0700 (PDT)
+From: Chris Perl <chris.perl@gmail.com>
 To: linux-nfs@vger.kernel.org
-Subject: kernel BUG in fs/dcache.c running nfs
-Message-ID: <20140908144525.GB19811@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Cc: Chris Perl <chris.perl@gmail.com>
+Subject: [PATCH] rpc: xs_bind - do not bind when requesting a random ephemeral port
+Date: Fri,  5 Sep 2014 16:17:31 -0400
+Message-Id: <1409948251-6507-1-git-send-email-chris.perl@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've reproduced a BUG in dcache.c twice now when running xfstests, once
-without the "nfs4: queue free_lock_state job submission to nfsiod" and
-once with that revert in.
+When attempting to establish a local ephemeral endpoint for a TCP or UDP
+socket, do not explicitly call bind, instead let it happen implicilty when the
+socket is first used.
 
-Both runs are using v4.1 against a Linux server with XFS on the same
-host.
+The main motivating factor for this change is when TCP runs out of unique
+ephemeral ports (i.e.  cannot find any ephemeral ports which are not a part of
+*any* TCP connection).  In this situation if you explicitly call bind, then the
+call will fail with EADDRINUSE.  However, if you allow the allocation of an
+ephemeral port to happen implicitly as part of connect (or other functions),
+then ephemeral ports can be reused, so long as the combination of (local_ip,
+local_port, remote_ip, remote_port) is unique for TCP sockets on the system.
 
-generic/089 199s ...
-[ 5497.402293] ------------[ cut here ]------------
-[ 5497.403150] kernel BUG at ../fs/dcache.c:1620!
-[ 5497.403974] invalid opcode: 0000 [#1] SMP 
-[ 5497.404826] Modules linked in:
-[ 5497.405280] CPU: 1 PID: 14691 Comm: t_mtab Not tainted 3.17.0-rc3+ #264
-[ 5497.405585] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
-[ 5497.405585] task: ffff88007ac801d0 ti: ffff8800670a4000 task.ti: ffff8800670a4000
-[ 5497.405585] RIP: 0010:[<ffffffff811d1345>]  [<ffffffff811d1345>] d_instantiate+0x75/0x80
-[ 5497.405585] RSP: 0018:ffff8800670a7a68  EFLAGS: 00010286
-[ 5497.405585] RAX: 0000000000000001 RBX: ffff880066c399d8 RCX: ffff88007ac80990
-[ 5497.405585] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff880066c399d8
-[ 5497.405585] RBP: ffff8800670a7a88 R08: 0000000000000001 R09: 0000000000000000
-[ 5497.405585] R10: ffff880072f45000 R11: 000000000003fdf0 R12: ffff880066c399d8
-[ 5497.405585] R13: ffff88007a684800 R14: ffff88007acbc280 R15: ffff8800670de000
-[ 5497.405585] FS:  00007f6db6aae700(0000) GS:ffff88007fc80000(0000) knlGS:0000000000000000
-[ 5497.405585] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 5497.405585] CR2: 00007f6db5f56800 CR3: 000000007ac9e000 CR4: 00000000000006e0
-[ 5497.405585] Stack:
-[ 5497.405585]  ffff8800670a7a88 ffff880066c399d8 ffff88007a684800 ffff88007a684800
-[ 5497.405585]  ffff8800670a7b68 ffffffff8135d0c1 ffffffff00000004 ffff8800000000d0
-[ 5497.405585]  ffff88007d400180 0000000000000246 ffff8800fffffffe ffff880072f45000
-[ 5497.405585] Call Trace:
-[ 5497.405585]  [<ffffffff8135d0c1>] nfs4_do_open.constprop.84+0x681/0x960
-[ 5497.405585]  [<ffffffff8135d459>] nfs4_atomic_open+0x9/0x20
-[ 5497.405585]  [<ffffffff8136cc3d>] nfs4_file_open+0xcd/0x1b0
-[ 5497.405585]  [<ffffffff81d9ee56>] ? _raw_spin_unlock+0x26/0x30
-[ 5497.405585]  [<ffffffff8176b73d>] ? lockref_get+0x1d/0x30
-[ 5497.405585]  [<ffffffff8136cb70>] ? nfs4_file_fsync+0xb0/0xb0
-[ 5497.405585]  [<ffffffff811b8092>] do_dentry_open.isra.13+0x1f2/0x320
-[ 5497.405585]  [<ffffffff81336f52>] ? nfs_permission+0x62/0x1d0
-[ 5497.405585]  [<ffffffff811b82ad>] finish_open+0x1d/0x30
-[ 5497.405585]  [<ffffffff811c91be>] do_last.isra.63+0x62e/0xca0
-[ 5497.405585]  [<ffffffff811c5703>] ? inode_permission+0x13/0x50
-[ 5497.405585]  [<ffffffff811c5bde>] ? link_path_walk+0x23e/0x850
-[ 5497.405585]  [<ffffffff811c98e9>] path_openat+0xb9/0x670
-[ 5497.405585]  [<ffffffff811b366b>] ? poison_obj+0x2b/0x40
-[ 5497.405585]  [<ffffffff811ca26e>] do_filp_open+0x3e/0xa0
-[ 5497.405585]  [<ffffffff811d7da1>] ? __alloc_fd+0xd1/0x120
-[ 5497.405585]  [<ffffffff811b95cc>] do_sys_open+0x13c/0x230
-[ 5497.405585]  [<ffffffff810f5bbd>] ? trace_hardirqs_on_caller+0x10d/0x1d0
-[ 5497.405585]  [<ffffffff811b96dd>] SyS_open+0x1d/0x20
-[ 5497.405585]  [<ffffffff81d9f5a9>] system_call_fastpath+0x16/0x1b
+This doesn't matter for UDP sockets, but it seemed easiest to treat TCP and UDP
+sockets the same.
+
+This can allow mount.nfs(8) to continue to function successfully, even in the
+face of misbehaving applications which are creating a large number of TCP
+connections.
+
+Signed-off-by: Chris Perl <chris.perl@gmail.com>
+---
+ net/sunrpc/xprtsock.c | 20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 43cd89e..7ed47b4 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1746,13 +1746,29 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+ 	unsigned short port = xs_get_srcport(transport);
+ 	unsigned short last;
+ 
++	/*
++	 * If we are asking for any ephemeral port (i.e. port == 0 &&
++	 * transport->xprt.resvport == 0), don't bind.  Let the local
++	 * port selection happen implicitly when the socket is used
++	 * (for example at connect time).
++	 *
++	 * This ensures that we can continue to establish TCP
++	 * connections even when all local ephemeral ports are already
++	 * a part of some TCP connection.  This makes no difference
++	 * for UDP sockets, but also doens't harm them.
++	 *
++	 * If we're asking for any reserved port (i.e. port == 0 &&
++	 * transport->xprt.resvport == 1) xs_get_srcport above will
++	 * ensure that port is non-zero and we will bind as needed.
++	 */
++	if (port == 0)
++		return 0;
++
+ 	memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
+ 	do {
+ 		rpc_set_port((struct sockaddr *)&myaddr, port);
+ 		err = kernel_bind(sock, (struct sockaddr *)&myaddr,
+ 				transport->xprt.addrlen);
+-		if (port == 0)
+-			break;
+ 		if (err == 0) {
+ 			transport->srcport = port;
+ 			break;
+-- 
+1.8.3.1
 
