@@ -1,58 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:35045 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753543AbaIDMjY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:24 -0400
-Received: by mail-qg0-f50.google.com with SMTP id q108so9630745qgd.23
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:23 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 17/17] locks: clean up comments over fl_owner_t definition
-Date: Thu,  4 Sep 2014 08:38:43 -0400
-Message-Id: <1409834323-7171-18-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:42105 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751065AbaIEJVJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 05:21:09 -0400
+Date: Fri, 5 Sep 2014 10:21:05 +0100
+From: Luis Henriques <luis.henriques@canonical.com>
+To: NeilBrown <neilb@suse.de>
+Cc: stable@vger.kernel.org, NFS <linux-nfs@vger.kernel.org>,
+        Lars Behrens <lars.behrens@pi.uka.de>, Willy Tarreau <w@1wt.eu>
+Subject: Re: Incorrect backport to 2.6.32-stable - NFSD regression.
+Message-ID: <20140905092105.GA6614@hercules>
+References: <20140903112843.66bcd6dd@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20140903112843.66bcd6dd@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The contents of an fl_owner_t have morphed a bit over the years, fix up
-the comments to account for the changes.
+(Adding Willy to the CC list, in case he misses this email.)
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- include/linux/fs.h | 16 ++++++++++++----
- 1 file changed, 12 insertions(+), 4 deletions(-)
+On Wed, Sep 03, 2014 at 11:28:43AM +1000, NeilBrown wrote:
+> 
+> 2.6.32.30 contains:
+> 
+> commit 63d059e73ff4574b79bd8aa252b5fc00b6326ddf
+> Author: NeilBrown <neilb@suse.de>
+> Date:   Wed Feb 16 13:08:35 2011 +1100
+> 
+>     nfsd: correctly handle return value from nfsd_map_name_to_*
+>     
+>     commit 47c85291d3dd1a51501555000b90f8e281a0458e upstream.
+>     
+>     These functions return an nfs status, not a host_err.  So don't
+>     try to convert  before returning.
+>     
+>     This is a regression introduced by
+>     3c726023402a2f3b28f49b9d90ebf9e71151157d; I fixed up two of the callers,
+>     but missed these two.
+>     
+>     Reported-by: Herbert Poetzl <herbert@13thfloor.at>
+>     Signed-off-by: NeilBrown <neilb@suse.de>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>     Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+> 
+> 
+> But it does *not* contain a backport of
+> 3c726023402a2f3b28f49b9d90ebf9e71151157d.
+> 
+> So rather an fixing a regression, it introduces one.
+> 
+> This patch should be reverted.
+> 
+> See also https://bugzilla.novell.com/show_bug.cgi?id=893787
+> 
+> NeilBrown
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index ed4e1897099c..a51be79b7dc3 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -852,11 +852,19 @@ static inline struct file *get_file(struct file *f)
- #define FILE_LOCK_DEFERRED 1
- 
- /*
-- * The POSIX file lock owner is determined by
-- * the "struct files_struct" in the thread group
-- * (or NULL for no owner - BSD locks).
-+ * A generic "file lock owner" value. This is set differently for different
-+ * types of locks.
-  *
-- * Lockd stuffs a "host" pointer into this.
-+ * The POSIX file lock owner is determined by the "struct files_struct" in the
-+ * thread group.
-+ *
-+ * Flock (BSD) locks, OFD locks and leases set the fl_owner to the
-+ * file description pointer.
-+ *
-+ * lockd stuffs a "host" pointer into this
-+ *
-+ * nfsd stuffs a * nfs4_file pointer into this for leases, and a lockowner
-+ * pointer into it for v4 locks.
-  */
- typedef void *fl_owner_t;
- 
--- 
-1.9.3
+Thanks a lot for reporting this here, Neil.  I'll make sure we revert
+it from the Ubuntu 10.04 LTS kernel.
 
+Cheers,
+--
+Luís
