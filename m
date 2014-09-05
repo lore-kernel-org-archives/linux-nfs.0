@@ -1,53 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:41870 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752875AbaIZCYJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 22:24:09 -0400
-Received: by mail-ig0-f173.google.com with SMTP id l13so9597704iga.12
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Sep 2014 19:24:08 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Ensure rpc_fill_super sets sb->s_fs_info before calling notifiers
-Date: Thu, 25 Sep 2014 22:24:02 -0400
-Message-Id: <1411698242-126323-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:51724 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751272AbaIEA33 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 20:29:29 -0400
+Received: by mail-qc0-f171.google.com with SMTP id x3so11501372qcv.16
+        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 17:29:29 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 4 Sep 2014 20:29:26 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH v2 05/17] locks: generic_delete_lease doesn't need a
+ file_lock at all
+Message-ID: <20140904202926.74c76ee2@tlielax.poochiereds.net>
+In-Reply-To: <20140904201424.GB26054@infradead.org>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+	<1409834323-7171-6-git-send-email-jlayton@primarydata.com>
+	<20140904201424.GB26054@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The rpc_pipefs event handlers expect the sb->s_fs_info field to contain
-the net namespace. Ensure that we set it before we call the notifier list.
+On Thu, 4 Sep 2014 13:14:24 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Fixes: 2d00131acc64 (SUNRPC: send notification events on pipefs sb creation...)
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/rpc_pipe.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+> On Thu, Sep 04, 2014 at 08:38:31AM -0400, Jeff Layton wrote:
+> > Ensure that it's OK to pass in a NULL file_lock double pointer on
+> > a F_UNLCK request and convert the vfs_setlease F_UNLCK callers to
+> > do just that.
+> > 
+> > Finally, turn the BUG_ON in generic_setlease into a WARN_ON_ONCE
+> > with an error return. That's a problem we can handle without
+> > crashing the box if it occurs.
+> 
+> Can we just make generic_delete_lease (maye renamed to vfs_delete_lease)
+> the interface for deleting leases instead of going through a useless
+> multiplex and file operation?
+> 
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 2d12b76b5a64..17d685680c46 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1414,12 +1414,12 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 		net, NET_NAME(net));
- 	mutex_lock(&sn->pipefs_sb_lock);
- 	sn->pipefs_sb = sb;
-+	sb->s_fs_info = get_net(net);
- 	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
- 					   RPC_PIPEFS_MOUNT,
- 					   sb);
- 	if (err)
- 		goto err_depopulate;
--	sb->s_fs_info = get_net(net);
- 	mutex_unlock(&sn->pipefs_sb_lock);
- 	return 0;
- 
-@@ -1431,6 +1431,7 @@ err_depopulate:
- 	sn->pipefs_sb = NULL;
- 	__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
- 	mutex_unlock(&sn->pipefs_sb_lock);
-+	put_net(net);
- 	return err;
- }
- 
+I'm not sure that change really makes sense to me at this point.
+
+Suppose we have an exportable filesystem with a ->setlease
+implementation [1]. We end up calling into it to set up a lease and it
+calls generic_add_lease. If we make the change you're suggesting, then
+we'll have no parallel to a ->setlease op when removing that lease.
+
+We could of course make a ->dellease op or something, but I'd rather
+not introduce that change until I've had a chance to do some other
+cleanup to the file locking infrastructure.
+
+So...I'm not opposed to doing what you suggest, but I'd rather not do it
+just yet until I've gotten a little farther with some other cleanup of
+how we deal with locks in general. I think it'll be easier to do that
+once some other changes have gone in.
+
+I'll post a draft patchset based on those changes "real soon now" as an
+RFC. Hopefully at that point my rationale will make a bit more sense...
+
+[1]: of course, only cifs has a non-trivial one for now and it's pretty
+half-assed...
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
