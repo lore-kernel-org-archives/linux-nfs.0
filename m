@@ -1,99 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f172.google.com ([209.85.213.172]:54322 "EHLO
-	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751505AbaIXS3R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 14:29:17 -0400
-Received: by mail-ig0-f172.google.com with SMTP id a13so7048203igq.17
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 11:29:16 -0700 (PDT)
+Received: from mail-vc0-f180.google.com ([209.85.220.180]:45329 "EHLO
+	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752509AbaIGQoH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Sep 2014 12:44:07 -0400
+Received: by mail-vc0-f180.google.com with SMTP id lf12so14308269vcb.39
+        for <linux-nfs@vger.kernel.org>; Sun, 07 Sep 2014 09:44:05 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtTfUYoU+0LRqS6eao5Z-uVqHoGkXO9HcU+Wmo=vZobvew@mail.gmail.com>
-References: <1411574911-19269-1-git-send-email-kolga@netapp.com>
-	<CAHQdGtTfUYoU+0LRqS6eao5Z-uVqHoGkXO9HcU+Wmo=vZobvew@mail.gmail.com>
-Date: Wed, 24 Sep 2014 14:29:16 -0400
-Message-ID: <CAN-5tyHhXMzJd60ASes1zMYSEaSiwAqry5_4zE=LHZw_3Lbv9w@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Fixing lease renewal
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
+In-Reply-To: <20140907153935.GA12618@infradead.org>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
+	<20140907153935.GA12618@infradead.org>
+Date: Sun, 7 Sep 2014 12:44:05 -0400
+Message-ID: <CAHQdGtR6p=husgm54vtnybH5Po_MRRKHqdK409a=S23T25SHDA@mail.gmail.com>
+Subject: Re: pnfs block layout driver fixes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Christoph Hellwig <hch@lst.de>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Before I go ahead with the change, does it make sense to move "both"
-of the migration sections NFS4CLNT_MOVED and NFS4CLNT_LEASE_MOVED
-before the check lease section?
+On Sun, Sep 7, 2014 at 11:39 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> This series has been out for a Month now with a repost with 2 additional
+> patches.  Any chance to get reviewing it (or at least the core patches
+> as there seems little interest in the block layout) and merging it
+> expedited?
+>
 
-On Wed, Sep 24, 2014 at 2:05 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> Hi Olga,
->
-> On Wed, Sep 24, 2014 at 12:08 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
->> Commit c9fdeb28 removed a 'continue' after checking if the lease needs
->> to be renewed. However, if client hasn't moved, the code falls down to
->> starting reboot recovery erroneously (ie., sends open reclaim and gets
->> back stale_clientid error) before recovering from getting stale_clientid
->> on the renew operation.
->>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->>  fs/nfs/nfs4state.c | 4 +++-
->>  1 file changed, 3 insertions(+), 1 deletion(-)
->>
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 22fe351..4616598 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -2340,11 +2340,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
->>                         continue;
->>                 }
->>
->> -               if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
->> +               if (!test_bit(NFS4CLNT_MOVED, &clp->cl_state) &&
->> +                    test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
->>                         section = "check lease";
->>                         status = nfs4_check_lease(clp);
->>                         if (status < 0)
->>                                 goto out_error;
->> +                       continue;
->>                 }
->>
->>                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
->> --
->> 1.8.5.2 (Apple Git-48)
->>
->
-> I think you misunderstood me. I was proposing that we move the entire
-> code section that currently reads
->
->                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
->                         section = "migration";
->                         status = nfs4_handle_migration(clp);
->                         if (status < 0)
->                                 goto out_error;
->                 }
->
-> so that it occurs before the section
->
->                 if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
->                         section = "check lease";
->                         status = nfs4_check_lease(clp);
->                         if (status < 0)
->                                 goto out_error;
-> +                      continue;
->                 }
->
-> That way we only need to test once for NFS4CLNT_MOVED.
->
-> Cheers
->   Trond
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes. I've been planning on merging it, but I've been a little out of
+sorts due to illness and travel. Will get to it in the next few days.
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
