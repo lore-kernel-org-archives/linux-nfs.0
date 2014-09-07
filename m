@@ -1,38 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41350 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754470AbaIDTwm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Sep 2014 15:52:42 -0400
-Date: Thu, 4 Sep 2014 15:52:38 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:46094 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752542AbaIGRu2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Sep 2014 13:50:28 -0400
+Date: Sun, 7 Sep 2014 10:50:28 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Christoph Hellwig <hch@lst.de>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 2/5] lockd: add a /proc/fs/lockd/nlm_end_grace file
-Message-ID: <20140904195237.GA14576@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
- <1408473509-14010-3-git-send-email-jlayton@primarydata.com>
+Subject: Re: [PATCH 1/6] pnfs: enable CB_NOTIFY_DEVICEID support
+Message-ID: <20140907175028.GA27934@infradead.org>
+References: <1409719119-2110-1-git-send-email-hch@lst.de>
+ <1409719119-2110-2-git-send-email-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1408473509-14010-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1409719119-2110-2-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 19, 2014 at 02:38:26PM -0400, Jeff Layton wrote:
-> Add a new procfile that will allow a (privileged) userland process to
-> end the NLM grace period early. The basic idea here will be to have
-> sm-notify write to this file, if it sent out no NOTIFY requests when
-> it runs. In that situation, we can generally expect that there will be
-> no reclaim requests so the grace period can be lifted early.
+On Tue, Sep 02, 2014 at 09:38:34PM -0700, Christoph Hellwig wrote:
+> This code has been around for a while, but never was enabled.  Turns out it
+> really does work out of the box at least for the block layout driver, so
+> we just need to wire it up, and in case of NOTIFY_DEVICEID4_CHANGE remove
+> a conditional that returns an error.
 > 
-> +static ssize_t
-> +nlm_end_grace_write(struct file *file, const char __user *buf, size_t size,
-> +		    loff_t *pos)
-> +{
-> +	struct lockd_net *ln = net_generic(current->nsproxy->net_ns, lockd_net_id);
-> +
-> +	if (size > 0)
+> Note that we implement NOTIFY_DEVICEID4_CHANGE identical to
+> NOTIFY_DEVICEID4_DELETE.  Given that in either case we can't do anything
+> but preventing further lookups of a given device ID there isn't much difference
+> in semantics for the two.  For the delete case the server MUST ensure that
+> there are no outstanding layouts, while for the change case it doesn't, but
+> that has little relevance to the client.
 
-I'd rather we expect some particular string ("Y\n"?) and return -EINVAL
-otherwise, just in case we want to extend this some day.
+I got a comment that we should probably just enable CB_NOTIFY_DEVICEID
+for all layout types unconditionally as there really isn't anything
+layout type specific in it.  I'm tempted to agree, so if anyone
+disagrees speak up now, or I'll resend it that way in a few days.
 
---b.
