@@ -1,51 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:35014 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750796AbaIDBiY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Sep 2014 21:38:24 -0400
-Date: Thu, 4 Sep 2014 03:38:21 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Anna Schumaker <schumaker.anna@gmail.com>
-Cc: Christoph Hellwig <hch@lst.de>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/6] pnfs/blocklayout: in-kernel GETDEVICEINFO XDR
-	parsing
-Message-ID: <20140904013821.GB24783@lst.de>
-References: <1409719119-2110-1-git-send-email-hch@lst.de> <1409719119-2110-6-git-send-email-hch@lst.de> <54076C7B.2010400@gmail.com>
+Received: from mail-vc0-f178.google.com ([209.85.220.178]:65457 "EHLO
+	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752509AbaIGQl3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Sep 2014 12:41:29 -0400
+Received: by mail-vc0-f178.google.com with SMTP id la4so14347289vcb.37
+        for <linux-nfs@vger.kernel.org>; Sun, 07 Sep 2014 09:41:28 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <54076C7B.2010400@gmail.com>
+In-Reply-To: <1410104201-32517-2-git-send-email-hch@lst.de>
+References: <1410104201-32517-1-git-send-email-hch@lst.de>
+	<1410104201-32517-2-git-send-email-hch@lst.de>
+Date: Sun, 7 Sep 2014 12:41:28 -0400
+Message-ID: <CAHQdGtTe_mi_0N6hGApfrx_3TtL7=btWZNc9wd3hrkMdLRVfzQ@mail.gmail.com>
+Subject: Re: [PATCH 2/2] nfs: update time staps on truncate
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > +static void
-> > +bl_free_device(struct pnfs_block_dev *dev)
-> > +{
-> > +	if (dev->nr_children) {
-> > +		int i;
-> > +
-> > +		for (i = 0; i < dev->nr_children; i++)
-> > +			bl_free_device(&dev->children[i]);
-> > +		kfree(dev->children);
-> > +	} else {
-> > +		if (dev->bdev)
-> > +			blkdev_put(dev->bdev, FMODE_READ);
-> 
-> else if (dev->bdev)? :)
+On Sun, Sep 7, 2014 at 11:36 AM, Christoph Hellwig <hch@lst.de> wrote:
+> The VFS handles attributes on truncate in a strange way, fix NFS to
+> properly update timestamps on truncate().
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfs/inode.c | 12 ++++++++++++
+>  1 file changed, 12 insertions(+)
+>
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 141c9f4..97bc485 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -507,8 +507,20 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
+>         if (attr->ia_valid & ATTR_SIZE) {
+>                 BUG_ON(!S_ISREG(inode->i_mode));
+>
+> +               /*
+> +                * Calling conventions are a little "unconventional" for
+> +                * truncate:
+> +                *  - for truncate() the VFS does not set ATTR_CTIME and
+> +                *    ATTR_MTIME, but we still need need to update the time
+> +                *    stamps if we change the file size.
+> +                *  - for ftruncate() the VFS sets ATTR_CTIME and ATTR_MTIME,
+> +                *    and we always need to change the time stamp, even if
+> +                *    the size does not change.
+> +                */
+>                 if (attr->ia_size == i_size_read(inode))
+>                         attr->ia_valid &= ~ATTR_SIZE;
+> +               else if (!(attr->ia_valid & (ATTR_CTIME | ATTR_MTIME)))
+> +                       attr->ia_valid |= ATTR_CTIME | ATTR_MTIME;
+>         }
+>
+>         /* Optimization: if the end result is no change, don't RPC */
+> --
+>
 
-This was ver ymuch intentional to make it clear there's a leaf device and
-non-leaf device case.
+I'm still confused as to why we need this change to the client. In
+RFC5661, Section 18.30.4 there is wording to the effect that:
 
-> Can you make each of these cases a helper function?
+   Changing the size of a file with SETATTR indirectly changes the
+   time_modify and change attributes.  A client must account for this as
+   size changes can result in data deletion.
 
-I could - in fact I had it that way earlier, but it increased code size and
-decreased readability so I merged it back together.
+There is similar wording in RFC3530 and even in RFC1813 (see section
+3.3.2). Without this sort of guarantee by the server, you could, for
+instance, get into nasty situations where the file changes, but the
+NFSv3 client doesn't detect it.
 
-> > +static int
-> > +bl_parse_deviceid(struct nfs_server *server, struct pnfs_block_dev *d,
-> > +		struct pnfs_block_volume *volumes, int idx, gfp_t gfp_mask);
-> 
-> Why put the declaration in the middle of the file?
+So basically, I interpret the spec is saying that we should be able to
+rely on the server figuring this out all by itself. I agree that we
+have the special corner case of ftruncate(), but the VFS is still
+setting the ATTR_CTIME|ATTR_MTIME flags for us in that case, right?
 
-No good reason - this is about where we start to need it.  I can move
-it to the top.
+-- 
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
