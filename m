@@ -1,33 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59556 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751449AbaIDRrF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 13:47:05 -0400
-Date: Thu, 4 Sep 2014 10:47:04 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org,
-        linux-security-module@vger.kernel.org
-Subject: Re: [PATCH v2 02/17] security: make security_file_set_fowner,
- f_setown and __f_setown void return
-Message-ID: <20140904174704.GB16935@infradead.org>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
- <1409834323-7171-3-git-send-email-jlayton@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:41785 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752537AbaIGQ5H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 7 Sep 2014 12:57:07 -0400
+Date: Sun, 7 Sep 2014 18:57:03 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfs: update time staps on truncate
+Message-ID: <20140907165703.GA21500@lst.de>
+References: <1410104201-32517-1-git-send-email-hch@lst.de> <1410104201-32517-2-git-send-email-hch@lst.de> <CAHQdGtTe_mi_0N6hGApfrx_3TtL7=btWZNc9wd3hrkMdLRVfzQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1409834323-7171-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <CAHQdGtTe_mi_0N6hGApfrx_3TtL7=btWZNc9wd3hrkMdLRVfzQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 04, 2014 at 08:38:28AM -0400, Jeff Layton wrote:
-> security_file_set_fowner always returns 0, so make it f_setown and
-> __f_setown void return functions and fix up the error handling in the
-> callers.
+On Sun, Sep 07, 2014 at 12:41:28PM -0400, Trond Myklebust wrote:
+> I'm still confused as to why we need this change to the client. In
+> RFC5661, Section 18.30.4 there is wording to the effect that:
+> 
+>    Changing the size of a file with SETATTR indirectly changes the
+>    time_modify and change attributes.  A client must account for this as
+>    size changes can result in data deletion.
+> 
+> There is similar wording in RFC3530 and even in RFC1813 (see section
+> 3.3.2). Without this sort of guarantee by the server, you could, for
+> instance, get into nasty situations where the file changes, but the
+> NFSv3 client doesn't detect it.
+> 
+> So basically, I interpret the spec is saying that we should be able to
+> rely on the server figuring this out all by itself. I agree that we
+> have the special corner case of ftruncate(), but the VFS is still
+> setting the ATTR_CTIME|ATTR_MTIME flags for us in that case, right?
 
-All the LSMs seems to use this purely for setting up pointers, and not
-having to handle errors in the locking code for it will make life a lot
-simpler.  I like this a lot.
+Yes.  Looks like the problem is on the server side indeed.  nfsd_setattr
+adds a non-conditional ATTR_CTIME for all calls, but never adds ATTR_MTIME
+for ATTR_SIZE requests.  I'll send a server patch instead.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+[patch 1 in the series still seems worthwhile for the client, though]
