@@ -1,41 +1,24 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:44166 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:44082 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754073AbaIBP55 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 11:57:57 -0400
-Date: Tue, 2 Sep 2014 08:57:55 -0700
+	with ESMTP id S1752375AbaIGPji (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Sep 2014 11:39:38 -0400
+Date: Sun, 7 Sep 2014 08:39:35 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/6] NFSD: Put file after ima_file_check fail in
- nfsd_open()
-Message-ID: <20140902155755.GA14472@infradead.org>
-References: <5405CFE4.9060407@gmail.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: pnfs block layout driver fixes
+Message-ID: <20140907153935.GA12618@infradead.org>
+References: <1407396229-4785-1-git-send-email-hch@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5405CFE4.9060407@gmail.com>
+In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> +	file = dentry_open(&path, flags, current_cred());
-> +	if (IS_ERR(file)) {
-> +		host_err = PTR_ERR(file);
->  	} else {
-
-The is_err case should have a
-
-	goto out_nfserr;
-
-which would allow you to drop the following indentation if you
-change the whole function anyway.
-
->  		if (may_flags & NFSD_MAY_64BIT_COOKIE)
-> -			(*filp)->f_mode |= FMODE_64BITHASH;
-> +			(file)->f_mode |= FMODE_64BITHASH;
->  		else
-> -			(*filp)->f_mode |= FMODE_32BITHASH;
-> +			(file)->f_mode |= FMODE_32BITHASH;
-
-no need for the braces around file here.
+This series has been out for a Month now with a repost with 2 additional
+patches.  Any chance to get reviewing it (or at least the core patches
+as there seems little interest in the block layout) and merging it
+expedited?
 
