@@ -1,44 +1,224 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54934 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752355AbaIBKxY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 2 Sep 2014 06:53:24 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s82ArNDN007246
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Tue, 2 Sep 2014 06:53:23 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-48-69.rdu2.redhat.com [10.10.48.69])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s82ArMHD008808
-	for <linux-nfs@vger.kernel.org>; Tue, 2 Sep 2014 06:53:23 -0400
-Message-ID: <5405A1A2.2090604@RedHat.com>
-Date: Tue, 02 Sep 2014 06:53:22 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Oct  2014 Bakeathon (Reminder)
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:34178 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752925AbaIHOrI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:08 -0400
+Received: by mail-qc0-f179.google.com with SMTP id l6so15705767qcy.10
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:47:05 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: [PATCH v3 5/8] nfsd: pass extra info in env vars to upcalls to allow for early grace period end
+Date: Mon,  8 Sep 2014 10:46:46 -0400
+Message-Id: <1410187609-10319-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+In order to support lifting the grace period early, we must tell
+nfsdcltrack what sort of client the "create" upcall is for. We can't
+reliably tell if a v4.0 client has completed reclaiming, so we can only
+lift the grace period once all the v4.1+ clients have issued a
+RECLAIM_COMPLETE and if there are no v4.0 clients.
 
-Just a quick reminder the block rates for both hotels 
+Also, in order to lift the grace period, we have to tell userland when
+the grace period started so that it can tell whether a RECLAIM_COMPLETE
+has been issued for each client since then.
 
-Hampton Inn & Suites Westford
-   http://hamptoninn.hilton.com/en/hp/groups/personalized/B/BOSWFHX-RED-20141006/index.jhtml
+Since this is all optional info, we pass it along in environment
+variables to the "init" and "create" upcalls. By doing this, we don't
+need to revise the upcall format. The UMH upcall can simply make use of
+this info if it happens to be present. If it's not then it can just
+avoid lifting the grace period early.
 
-and the Westford Regency Inn
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4recover.c | 90 ++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/nfs4state.c   |  4 +--
+ 2 files changed, 80 insertions(+), 14 deletions(-)
 
-   http://westfordregency.com/
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index a0d2ba956a3f..5b69f0684060 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -1062,6 +1062,8 @@ MODULE_PARM_DESC(cltrack_legacy_disable,
+ 
+ #define LEGACY_TOPDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_TOPDIR="
+ #define LEGACY_RECDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_RECDIR="
++#define RECLAIM_COMPLETE_ENV_PREFIX "NFSDCLTRACK_RECLAIM_COMPLETE="
++#define GRACE_START_ENV_PREFIX "NFSDCLTRACK_GRACE_START="
+ 
+ static char *
+ nfsd4_cltrack_legacy_topdir(void)
+@@ -1126,10 +1128,60 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
+ 	return result;
+ }
+ 
++static char *
++nfsd4_cltrack_reclaim_complete(struct nfs4_client *clp)
++{
++	int copied;
++	size_t len;
++	char *result;
++
++	/* prefix + max width of integer string + terminating NULL */
++	len = strlen(RECLAIM_COMPLETE_ENV_PREFIX) + 10 + 1;
++
++	result = kmalloc(len, GFP_KERNEL);
++	if (!result)
++		return result;
++
++	copied = snprintf(result, len, RECLAIM_COMPLETE_ENV_PREFIX "%c",
++				clp->cl_minorversion ? 'Y' : 'N');
++	if (copied >= len) {
++		/* just return nothing if output was truncated */
++		kfree(result);
++		return NULL;
++	}
++
++	return result;
++}
++
++static char *
++nfsd4_cltrack_grace_start(time_t grace_start)
++{
++	int copied;
++	size_t len;
++	char *result;
++
++	/* prefix + max width of int64_t string + terminating NULL */
++	len = strlen(GRACE_START_ENV_PREFIX) + 22 + 1;
++
++	result = kmalloc(len, GFP_KERNEL);
++	if (!result)
++		return result;
++
++	copied = snprintf(result, len, GRACE_START_ENV_PREFIX "%ld",
++				grace_start);
++	if (copied >= len) {
++		/* just return nothing if output was truncated */
++		kfree(result);
++		return NULL;
++	}
++
++	return result;
++}
++
+ static int
+-nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
++nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *env0, char *env1)
+ {
+-	char *envp[2];
++	char *envp[3];
+ 	char *argv[4];
+ 	int ret;
+ 
+@@ -1140,10 +1192,12 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
+ 
+ 	dprintk("%s: cmd: %s\n", __func__, cmd);
+ 	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
+-	dprintk("%s: legacy: %s\n", __func__, legacy ? legacy : "(null)");
++	dprintk("%s: env0: %s\n", __func__, env0 ? env0 : "(null)");
++	dprintk("%s: env1: %s\n", __func__, env1 ? env1 : "(null)");
+ 
+-	envp[0] = legacy;
+-	envp[1] = NULL;
++	envp[0] = env0;
++	envp[1] = env1;
++	envp[2] = NULL;
+ 
+ 	argv[0] = (char *)cltrack_prog;
+ 	argv[1] = cmd;
+@@ -1187,28 +1241,40 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
+ }
+ 
+ static int
+-nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
++nfsd4_umh_cltrack_init(struct net *net)
+ {
++	int ret;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	char *grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
++
+ 	/* XXX: The usermode helper s not working in container yet. */
+ 	if (net != &init_net) {
+ 		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
+ 			"tracking in a container!\n");
+ 		return -EINVAL;
+ 	}
+-	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
++
++	ret = nfsd4_umh_cltrack_upcall("init", NULL, grace_start, NULL);
++	kfree(grace_start);
++	return ret;
+ }
+ 
+ static void
+ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+ {
+-	char *hexid;
++	char *hexid, *reclaim_complete, *grace_start;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
+ 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+ 	if (!hexid) {
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
+-	nfsd4_umh_cltrack_upcall("create", hexid, NULL);
++	reclaim_complete = nfsd4_cltrack_reclaim_complete(clp);
++	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
++	nfsd4_umh_cltrack_upcall("create", hexid, reclaim_complete, grace_start);
++	kfree(reclaim_complete);
++	kfree(grace_start);
+ 	kfree(hexid);
+ }
+ 
+@@ -1222,7 +1288,7 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
+-	nfsd4_umh_cltrack_upcall("remove", hexid, NULL);
++	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
+ 	kfree(hexid);
+ }
+ 
+@@ -1238,7 +1304,7 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+ 		return -ENOMEM;
+ 	}
+ 	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
+-	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy);
++	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
+ 	kfree(legacy);
+ 	kfree(hexid);
+ 	return ret;
+@@ -1252,7 +1318,7 @@ nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
+ 
+ 	sprintf(timestr, "%ld", nn->boot_time);
+ 	legacy = nfsd4_cltrack_legacy_topdir();
+-	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
++	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy, NULL);
+ 	kfree(legacy);
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ae380e90e372..951c882b1581 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6357,10 +6357,10 @@ nfs4_state_start_net(struct net *net)
+ 	ret = nfs4_state_create_net(net);
+ 	if (ret)
+ 		return ret;
+-	nfsd4_client_tracking_init(net);
+ 	nn->boot_time = get_seconds();
+-	locks_start_grace(net, &nn->nfsd4_manager);
+ 	nn->grace_ended = false;
++	locks_start_grace(net, &nn->nfsd4_manager);
++	nfsd4_client_tracking_init(net);
+ 	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
+ 	       nn->nfsd4_grace, net);
+ 	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
+-- 
+1.9.3
 
-will expire in 4 days (Sept 6th).. 
-
-Also I uploaded the current list of attendees to nfsv4bat.org
-   http://www.nfsv4bat.org/Events/2014/October/Bakeathon-attedance-14.pdf
-
-Please make sure you are on the list if you coming and if you 
-are coming and you are not on the list please let me know that
-as well... Finally please make sure the list is accurate as far
-as t-shirt size and email addresses..  
-
-steved.
