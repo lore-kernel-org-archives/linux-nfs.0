@@ -1,24 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:44082 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752375AbaIGPji (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Sep 2014 11:39:38 -0400
-Date: Sun, 7 Sep 2014 08:39:35 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: pnfs block layout driver fixes
-Message-ID: <20140907153935.GA12618@infradead.org>
-References: <1407396229-4785-1-git-send-email-hch@lst.de>
+Received: from mail.isquareit.edu.in ([115.254.72.43]:49236 "EHLO
+	mail.isquareit.edu.in" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752010AbaIGSOQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 7 Sep 2014 14:14:16 -0400
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1407396229-4785-1-git-send-email-hch@lst.de>
+Subject: Financing 
+To: Recipients <info23@outlook.com>
+From: <info23@outlook.com>
+Date: Sun, 07 Sep 2014 21:26:11 -1200
+Reply-To: spainfofinev@libero.it
+Message-Id: <20140907173305.26F921B3035C@mail.isquareit.edu.in>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This series has been out for a Month now with a repost with 2 additional
-patches.  Any chance to get reviewing it (or at least the core patches
-as there seems little interest in the block layout) and merging it
-expedited?
-
+We give out loan to any individual and company at 3% interest rate yearly. Our Investors also fund projects . For more information, Contact Us via Email: asp.omfinan@contractor.net
