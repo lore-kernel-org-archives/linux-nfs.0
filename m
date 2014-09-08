@@ -1,78 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46025 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:60329 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755731AbaIWCLM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 22:11:12 -0400
-Date: Mon, 22 Sep 2014 22:11:10 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Simo Sorce <simo@redhat.com>, Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140923021110.GB1409@fieldses.org>
-References: <1411413608-16462-2-git-send-email-steved@redhat.com>
- <20140922152603.75005941@willson.usersys.redhat.com>
- <54207BCD.70101@RedHat.com>
- <20140922204401.GI26763@fieldses.org>
- <5420911D.6080506@RedHat.com>
- <20140922223423.GA29932@fieldses.org>
- <5420B78D.6040704@RedHat.com>
- <20140922202655.5e308e58@willson.usersys.redhat.com>
- <20140923015549.GB32712@fieldses.org>
- <20140923120804.51dbcc2e@notabene.brown>
+	id S1753826AbaIHRHd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Sep 2014 13:07:33 -0400
+Date: Mon, 8 Sep 2014 13:07:32 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: nfsd bugfixes for 3.17
+Message-ID: <20140908170732.GA1776@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140923120804.51dbcc2e@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 23, 2014 at 12:08:04PM +1000, NeilBrown wrote:
-> On Mon, 22 Sep 2014 21:55:49 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> > So, something like this?  (Untested, no idea if I'm doing this right.)
-> > 
-> > --b.
-> > 
-> > diff --git a/systemd/auth-rpcgss-module.service b/systemd/auth-rpcgss-module.service
-> > new file mode 100644
-> > index 000000000000..252545b458fd
-> > --- /dev/null
-> > +++ b/systemd/auth-rpcgss-module.service
-> > @@ -0,0 +1,15 @@
-> > +# We want to start gss-proxy on kernels that support it and rpc.svcgssd
-> > +# on those that don't.  Those services check for support by checking
-> > +# for existence of the path /proc/net/rpc/use-gss-proxy.  Before they
-> > +# can perform that check, they need this module loaded.  (Unless
-> > +# rpcsec_gss is built directly into the kernel, in which case this unit
-> > +# will fail.  But that's OK.)
-> > +[Unit]
-> > +Description=Kernel Module supporting RPCSEC_GSS
-> > +Before=gssproxy.service rpc-svcgssd.service
-> > +
-> > +[Service]
-> > +ExecStart=/sbin/modprobe -q auth_rpcgss
-> 
-> I think you need
->    Type=oneshot
-> 
-> else systemd won't wait for the modprobe to complete before running the other
-> services.
+Please pull a couple minor nfsd bugfixes from:
 
-Whoops, yes, thought I'd done that but I guess not.
-
-> > +
-> > +[Install]
-> > +WantedBy=gssproxy.service rpc-svcgssd.service
-> 
-> I don't think you want an install section.  That means the service has to be
-> explicitly enabled, which is a pain.
-> I think nfs-server.service should Want= this.
-> I also think 
-> 
->   ConditionPathExists=/etc/krb5.keytab
-> 
-> would be appropriate.
-
-OK.
+  git://linux-nfs.org/~bfields/linux.git for-3.17
 
 --b.
+
+----------------------------------------------------------------
+J. Bruce Fields (2):
+      nfsd4: fix rd_dircount enforcement
+      lockd: fix rpcbind crash on lockd startup failure
+
+ fs/lockd/svc.c    |  4 +---
+ fs/nfsd/nfs4xdr.c | 14 +++++++++++++-
+ 2 files changed, 14 insertions(+), 4 deletions(-)
