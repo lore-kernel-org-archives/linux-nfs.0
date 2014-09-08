@@ -1,25 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:34142 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753535AbaIOVLR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Sep 2014 17:11:17 -0400
-Date: Mon, 15 Sep 2014 23:11:13 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Daniel Gryniewicz <dang@linuxbox.com>
-Cc: Benny Halevy <bhalevy@primarydata.com>, linux-nfs@vger.kernel.org,
-        Boaz Harrosh <boaz@plexistor.com>
-Subject: Re: layoutcommit space reservation for the objlayout driver
-Message-ID: <20140915211113.GA30397@lst.de>
-References: <1538636805.101.1410805338811.JavaMail.root@thunderbeast.private.linuxbox.com> <933718474.103.1410805353074.JavaMail.root@thunderbeast.private.linuxbox.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <933718474.103.1410805353074.JavaMail.root@thunderbeast.private.linuxbox.com>
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:39048 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754520AbaIHQab (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 12:30:31 -0400
+Received: by mail-qa0-f42.google.com with SMTP id dc16so10340211qab.1
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 09:30:29 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: [PATCH v3 0/7] nfs-utils: support for lifting grace period early
+Date: Mon,  8 Sep 2014 12:30:14 -0400
+Message-Id: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 15, 2014 at 02:22:33PM -0400, Daniel Gryniewicz wrote:
-> This is probably the case, then.  The object layout layoutupdate is only 16 bytes long and is fixed size, so it wouldn't take much extra space for it to never hit.
+v3:
+- account for change to NFSDCLTRACK_RECLAIM_COMPLETE env var
 
-Yes, I suspect at the moment we just overallocate the XDR buffer due
-to slab or nfs implementation details, which are bound to chance as some
-point without notice.
+This patchset adds some support to sm-notify and nfsdcltrack for lifting
+the grace periods early. Allowing this to actually work depends on the
+companion kernel patchset, but the approach I've taken here should deal
+properly with userland/kernel mismatches.
+
+There are two main pieces:
+
+sm-notify: in the event that sm-notify isn't sending any NOTIFY
+requests, we don't expect to see any reclaims from clients. In that
+case, we should be able to safely lift the lockd grace period early.
+The first patch in the series implements this (though we'll probably
+need a bit of selinux work to get that working in Fedora under enforcing
+mode).
+
+nfsdcltrack: if there are no v4.0 clients and all v4.1+ clients have
+issued a RECLAIM_COMPLETE, then we can go ahead and end the nfsd grace
+period. The remainder of the patchset adds the support for this. This
+requires revving the DB schema for it, and making use of the environment
+variables that are passed to the upcall by the kernel.
+
+With an updated kernel and nfs-utils, I typically see the grace period
+being lifted just a few seconds after it starts. It may take a little
+longer with more clients, but this is a vast improvement over having
+to wait 90s after each reboot to get meaningful work done.
+
+Assuming that the kernel parts are acceptable to Bruce et. al., then I
+think we'll want this merged around the same time.
+
+Jeff Layton (7):
+  sm-notify: inform the kernel if there were no hosts to notify
+  nfsdcltrack: update comments in sqlite.c
+  nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
+  nfsdcltrack: overhaul database initializtion
+  nfsdcltrack: update schema to v2
+  nfsdcltrack: grab the NFSDCLTRACK_RECLAIM_COMPLETE env var if it's
+    present
+  nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
+
+ utils/nfsdcltrack/nfsdcltrack.c |  93 +++++++++-
+ utils/nfsdcltrack/sqlite.c      | 375 ++++++++++++++++++++++++++++++----------
+ utils/nfsdcltrack/sqlite.h      |   5 +-
+ utils/statd/sm-notify.c         |  25 +++
+ 4 files changed, 400 insertions(+), 98 deletions(-)
+
+-- 
+1.9.3
+
