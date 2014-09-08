@@ -1,55 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:45053 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753193AbaIPIcY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Sep 2014 04:32:24 -0400
-Received: by mail-pa0-f47.google.com with SMTP id ey11so8436383pad.6
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Sep 2014 01:32:22 -0700 (PDT)
-Message-ID: <5417F590.7020708@plexistor.com>
-Date: Tue, 16 Sep 2014 11:32:16 +0300
-From: Boaz Harrosh <boaz@plexistor.com>
+Received: from mail-qg0-f42.google.com ([209.85.192.42]:48604 "EHLO
+	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754195AbaIHU0V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 16:26:21 -0400
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@lst.de>
-CC: Benny Halevy <bhalevy@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: layoutcommit space reservation for the objlayout driver
-References: <20140914164655.GB13467@lst.de> <5416ABF3.3040403@plexistor.com> <20140915171212.GA23765@lst.de>
-In-Reply-To: <20140915171212.GA23765@lst.de>
+In-Reply-To: <20140908185039.GA1616@whiteoak.sf.office.twttr.net>
+References: <1408217806-25877-1-git-send-email-xiyou.wangcong@gmail.com>
+	<87ppfvrdux.fsf@x220.int.ebiederm.org>
+	<20140908185039.GA1616@whiteoak.sf.office.twttr.net>
+Date: Mon, 8 Sep 2014 13:26:20 -0700
+Message-ID: <CAADnVQLTRq=GyCYFXUWGiRm=1hgi4s4kA4SS5rtVSCHHud1uTg@mail.gmail.com>
+Subject: Re: [PATCH v2] nfs: fix kernel warning when removing proc entry
+From: Alexei Starovoitov <alexei.starovoitov@gmail.com>
+To: "Eric W. Biederman" <ebiederm@xmission.com>,
+        Cong Wang <xiyou.wangcong@gmail.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dan Aloni <dan@kernelim.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/15/2014 08:12 PM, Christoph Hellwig wrote:
-> On Mon, Sep 15, 2014 at 12:05:55PM +0300, Boaz Harrosh wrote:
->> I do not understand. This used to work just fine. Please point me to
->> the patch that broke it?
->> (And since when are we allowed to brake old code?)
-> 
-> I bet it still works the same way it does as commited, which doesn't
-> make it right.  The way the NFS XDR buffer allocations work seems to be
-> that you can actually slightly overun it without things falling apart,
-> but that doesn't make it right.  E.g. it took a fairly larger overrun
-> in the block layout driver to finally find the issues, and most of the
-> time it was just silent truncations, real corruption happened less
-> often.
-> 
-> But to make sure things work properly in the long run you'd really want
-> to have the proper allocation.
-> 
+On Mon, Sep 8, 2014 at 11:50 AM, Matt Mullins <mmullins@twopensource.com> wrote:
+> On Tue, Aug 19, 2014 at 09:20:38PM -0700, Eric W. Biederman wrote:
+>> I have applied this patch and will push it to Linus after it has a
+>> little bit to sit in linux-next.
 
-Thanks Christoph for explaining. OK make sense what you said. Actually I
-know why it works. You know that extra page we have at nfs-xdr for if
-a struct spans two pages than the xdr code will memcpy it it a spare
-buffer contiguous and return that. Ha, no, that is for decoding.
-
-But I bet for encoding there is spare buffers as well.
-
-I will try to push for a two 64bit growth at the core reservation for
-pnf-obj. No point in adding a full page for extra 16 bytes. I bet it
-will not change anything because of the reserved space.
-
-I'm not familiar with this code, I'll try to find where
-core reservation is allocated for layout update?
-
-Thanks
-Boaz
-
+what's the status of this patch?
+It's rc4 already and I keep seeing it every boot:
+[    7.730034] WARNING: CPU: 3 PID: 103 at ../fs/proc/generic.c:521
+remove_proc_entry+0x1a4/0x1b0()
+[    7.730036] remove_proc_entry: removing non-empty directory
+'fs/nfsfs', leaking at least 'volumes'
+[    7.730037] Modules linked in: ...
+[    7.730063] CPU: 3 PID: 103 Comm: kworker/u8:15 Not tainted 3.17.0-rc4+ #196
