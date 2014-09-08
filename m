@@ -1,233 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49057 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755194AbaIDT7P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Sep 2014 15:59:15 -0400
-Date: Thu, 4 Sep 2014 15:59:14 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 5/5] nfsd: pass extra info in env vars to upcalls to
- allow for early grace period end
-Message-ID: <20140904195914.GD14576@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
- <1408473509-14010-6-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:49548 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753147AbaIHOpZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:45:25 -0400
+Received: from hch by bombadil.infradead.org with local (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XR0C5-0007iL-EB
+	for linux-nfs@vger.kernel.org; Mon, 08 Sep 2014 14:45:25 +0000
+Date: Mon, 8 Sep 2014 07:45:25 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: linux-nfs@vger.kernel.org
+Subject: kernel BUG in fs/dcache.c running nfs
+Message-ID: <20140908144525.GB19811@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1408473509-14010-6-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 19, 2014 at 02:38:29PM -0400, Jeff Layton wrote:
-> In order to support lifting the grace period early, we must tell
-> nfsdcltrack what sort of client the "create" upcall is for. We can't
-> reliably tell if a v4.0 client has completed reclaiming, so we can only
-> lift the grace period once all the v4.1+ clients have issued a
-> RECLAIM_COMPLETE and if there are no v4.0 clients.
+I've reproduced a BUG in dcache.c twice now when running xfstests, once
+without the "nfs4: queue free_lock_state job submission to nfsiod" and
+once with that revert in.
 
-We really only care about 4.0 vs 4.1 clients.  Maybe
-NFSDCLTRACK_CLIENT_WILL_RECLAIM_COMPLETE=Y|N would be better.
+Both runs are using v4.1 against a Linux server with XFS on the same
+host.
 
---b.
+generic/089 199s ...
+[ 5497.402293] ------------[ cut here ]------------
+[ 5497.403150] kernel BUG at ../fs/dcache.c:1620!
+[ 5497.403974] invalid opcode: 0000 [#1] SMP 
+[ 5497.404826] Modules linked in:
+[ 5497.405280] CPU: 1 PID: 14691 Comm: t_mtab Not tainted 3.17.0-rc3+ #264
+[ 5497.405585] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
+[ 5497.405585] task: ffff88007ac801d0 ti: ffff8800670a4000 task.ti: ffff8800670a4000
+[ 5497.405585] RIP: 0010:[<ffffffff811d1345>]  [<ffffffff811d1345>] d_instantiate+0x75/0x80
+[ 5497.405585] RSP: 0018:ffff8800670a7a68  EFLAGS: 00010286
+[ 5497.405585] RAX: 0000000000000001 RBX: ffff880066c399d8 RCX: ffff88007ac80990
+[ 5497.405585] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff880066c399d8
+[ 5497.405585] RBP: ffff8800670a7a88 R08: 0000000000000001 R09: 0000000000000000
+[ 5497.405585] R10: ffff880072f45000 R11: 000000000003fdf0 R12: ffff880066c399d8
+[ 5497.405585] R13: ffff88007a684800 R14: ffff88007acbc280 R15: ffff8800670de000
+[ 5497.405585] FS:  00007f6db6aae700(0000) GS:ffff88007fc80000(0000) knlGS:0000000000000000
+[ 5497.405585] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 5497.405585] CR2: 00007f6db5f56800 CR3: 000000007ac9e000 CR4: 00000000000006e0
+[ 5497.405585] Stack:
+[ 5497.405585]  ffff8800670a7a88 ffff880066c399d8 ffff88007a684800 ffff88007a684800
+[ 5497.405585]  ffff8800670a7b68 ffffffff8135d0c1 ffffffff00000004 ffff8800000000d0
+[ 5497.405585]  ffff88007d400180 0000000000000246 ffff8800fffffffe ffff880072f45000
+[ 5497.405585] Call Trace:
+[ 5497.405585]  [<ffffffff8135d0c1>] nfs4_do_open.constprop.84+0x681/0x960
+[ 5497.405585]  [<ffffffff8135d459>] nfs4_atomic_open+0x9/0x20
+[ 5497.405585]  [<ffffffff8136cc3d>] nfs4_file_open+0xcd/0x1b0
+[ 5497.405585]  [<ffffffff81d9ee56>] ? _raw_spin_unlock+0x26/0x30
+[ 5497.405585]  [<ffffffff8176b73d>] ? lockref_get+0x1d/0x30
+[ 5497.405585]  [<ffffffff8136cb70>] ? nfs4_file_fsync+0xb0/0xb0
+[ 5497.405585]  [<ffffffff811b8092>] do_dentry_open.isra.13+0x1f2/0x320
+[ 5497.405585]  [<ffffffff81336f52>] ? nfs_permission+0x62/0x1d0
+[ 5497.405585]  [<ffffffff811b82ad>] finish_open+0x1d/0x30
+[ 5497.405585]  [<ffffffff811c91be>] do_last.isra.63+0x62e/0xca0
+[ 5497.405585]  [<ffffffff811c5703>] ? inode_permission+0x13/0x50
+[ 5497.405585]  [<ffffffff811c5bde>] ? link_path_walk+0x23e/0x850
+[ 5497.405585]  [<ffffffff811c98e9>] path_openat+0xb9/0x670
+[ 5497.405585]  [<ffffffff811b366b>] ? poison_obj+0x2b/0x40
+[ 5497.405585]  [<ffffffff811ca26e>] do_filp_open+0x3e/0xa0
+[ 5497.405585]  [<ffffffff811d7da1>] ? __alloc_fd+0xd1/0x120
+[ 5497.405585]  [<ffffffff811b95cc>] do_sys_open+0x13c/0x230
+[ 5497.405585]  [<ffffffff810f5bbd>] ? trace_hardirqs_on_caller+0x10d/0x1d0
+[ 5497.405585]  [<ffffffff811b96dd>] SyS_open+0x1d/0x20
+[ 5497.405585]  [<ffffffff81d9f5a9>] system_call_fastpath+0x16/0x1b
 
-> 
-> Also, in order to lift the grace period, we have to tell userland when
-> the grace period started so that it can tell whether a RECLAIM_COMPLETE
-> has been issued for each client since then.
-> 
-> Since this is all optional info, we pass it along in environment
-> variables to the "init" and "create" upcalls. By doing this, we don't
-> need to revise the upcall format. The UMH upcall can simply make use of
-> this info if it happens to be present. If it's not then it can just
-> avoid lifting the grace period early.
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4recover.c | 90 ++++++++++++++++++++++++++++++++++++++++++++-------
->  fs/nfsd/nfs4state.c   |  4 +--
->  2 files changed, 80 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index a0d2ba956a3f..2b61bcd92b58 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -1062,6 +1062,8 @@ MODULE_PARM_DESC(cltrack_legacy_disable,
->  
->  #define LEGACY_TOPDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_TOPDIR="
->  #define LEGACY_RECDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_RECDIR="
-> +#define CLIENT_MINORVERS_ENV_PREFIX "NFSDCLTRACK_CLIENT_MINORVERSION="
-> +#define GRACE_START_ENV_PREFIX "NFSDCLTRACK_GRACE_START="
->  
->  static char *
->  nfsd4_cltrack_legacy_topdir(void)
-> @@ -1126,10 +1128,60 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
->  	return result;
->  }
->  
-> +static char *
-> +nfsd4_cltrack_client_minorversion(struct nfs4_client *clp)
-> +{
-> +	int copied;
-> +	size_t len;
-> +	char *result;
-> +
-> +	/* prefix + max width of integer string + terminating NULL */
-> +	len = strlen(CLIENT_MINORVERS_ENV_PREFIX) + 10 + 1;
-> +
-> +	result = kmalloc(len, GFP_KERNEL);
-> +	if (!result)
-> +		return result;
-> +
-> +	copied = snprintf(result, len, CLIENT_MINORVERS_ENV_PREFIX "%u",
-> +				clp->cl_minorversion);
-> +	if (copied >= len) {
-> +		/* just return nothing if output was truncated */
-> +		kfree(result);
-> +		return NULL;
-> +	}
-> +
-> +	return result;
-> +}
-> +
-> +static char *
-> +nfsd4_cltrack_grace_start(time_t grace_start)
-> +{
-> +	int copied;
-> +	size_t len;
-> +	char *result;
-> +
-> +	/* prefix + max width of int64_t string + terminating NULL */
-> +	len = strlen(GRACE_START_ENV_PREFIX) + 22 + 1;
-> +
-> +	result = kmalloc(len, GFP_KERNEL);
-> +	if (!result)
-> +		return result;
-> +
-> +	copied = snprintf(result, len, GRACE_START_ENV_PREFIX "%ld",
-> +				grace_start);
-> +	if (copied >= len) {
-> +		/* just return nothing if output was truncated */
-> +		kfree(result);
-> +		return NULL;
-> +	}
-> +
-> +	return result;
-> +}
-> +
->  static int
-> -nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
-> +nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *env0, char *env1)
->  {
-> -	char *envp[2];
-> +	char *envp[3];
->  	char *argv[4];
->  	int ret;
->  
-> @@ -1140,10 +1192,12 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
->  
->  	dprintk("%s: cmd: %s\n", __func__, cmd);
->  	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
-> -	dprintk("%s: legacy: %s\n", __func__, legacy ? legacy : "(null)");
-> +	dprintk("%s: env0: %s\n", __func__, env0 ? env0 : "(null)");
-> +	dprintk("%s: env1: %s\n", __func__, env1 ? env1 : "(null)");
->  
-> -	envp[0] = legacy;
-> -	envp[1] = NULL;
-> +	envp[0] = env0;
-> +	envp[1] = env1;
-> +	envp[2] = NULL;
->  
->  	argv[0] = (char *)cltrack_prog;
->  	argv[1] = cmd;
-> @@ -1187,28 +1241,40 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
->  }
->  
->  static int
-> -nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
-> +nfsd4_umh_cltrack_init(struct net *net)
->  {
-> +	int ret;
-> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> +	char *grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
-> +
->  	/* XXX: The usermode helper s not working in container yet. */
->  	if (net != &init_net) {
->  		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
->  			"tracking in a container!\n");
->  		return -EINVAL;
->  	}
-> -	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
-> +
-> +	ret = nfsd4_umh_cltrack_upcall("init", NULL, grace_start, NULL);
-> +	kfree(grace_start);
-> +	return ret;
->  }
->  
->  static void
->  nfsd4_umh_cltrack_create(struct nfs4_client *clp)
->  {
-> -	char *hexid;
-> +	char *hexid, *minorvers, *grace_start;
-> +	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
->  
->  	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
->  	if (!hexid) {
->  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
->  		return;
->  	}
-> -	nfsd4_umh_cltrack_upcall("create", hexid, NULL);
-> +	minorvers = nfsd4_cltrack_client_minorversion(clp);
-> +	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
-> +	nfsd4_umh_cltrack_upcall("create", hexid, minorvers, grace_start);
-> +	kfree(minorvers);
-> +	kfree(grace_start);
->  	kfree(hexid);
->  }
->  
-> @@ -1222,7 +1288,7 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
->  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
->  		return;
->  	}
-> -	nfsd4_umh_cltrack_upcall("remove", hexid, NULL);
-> +	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
->  	kfree(hexid);
->  }
->  
-> @@ -1238,7 +1304,7 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
->  		return -ENOMEM;
->  	}
->  	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
-> -	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy);
-> +	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
->  	kfree(legacy);
->  	kfree(hexid);
->  	return ret;
-> @@ -1252,7 +1318,7 @@ nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
->  
->  	sprintf(timestr, "%ld", nn->boot_time);
->  	legacy = nfsd4_cltrack_legacy_topdir();
-> -	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
-> +	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy, NULL);
->  	kfree(legacy);
->  }
->  
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 21becb29dae1..5b04353bf2ec 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -6342,10 +6342,10 @@ nfs4_state_start_net(struct net *net)
->  	ret = nfs4_state_create_net(net);
->  	if (ret)
->  		return ret;
-> -	nfsd4_client_tracking_init(net);
->  	nn->boot_time = get_seconds();
-> -	locks_start_grace(net, &nn->nfsd4_manager);
->  	nn->grace_ended = false;
-> +	locks_start_grace(net, &nn->nfsd4_manager);
-> +	nfsd4_client_tracking_init(net);
->  	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
->  	       nn->nfsd4_grace, net);
->  	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
-> -- 
-> 1.9.3
-> 
