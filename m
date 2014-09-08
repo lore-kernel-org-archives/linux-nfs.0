@@ -1,53 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:32928 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751568AbaIWTs0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 15:48:26 -0400
-Date: Tue, 23 Sep 2014 15:48:25 -0400
-From: "'J. Bruce Fields'" <bfields@fieldses.org>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: "'Chuck Lever'" <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH V2] svcrdma: Advertise the correct max payload
-Message-ID: <20140923194825.GL29932@fieldses.org>
-References: <20140922200547.19909.68196.stgit@build.ogc.int>
- <465554E1-802A-4D37-8032-4E99B96B8BFB@oracle.com>
- <00a701cfd766$855044e0$8ff0cea0$@opengridcomputing.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <00a701cfd766$855044e0$8ff0cea0$@opengridcomputing.com>
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:63173 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753739AbaIHQgA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 12:36:00 -0400
+Received: by mail-qc0-f181.google.com with SMTP id i17so16055271qcy.12
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 09:35:59 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] gssd: ensure that preferred_realm is non-NULL before passing it to strcmp
+Date: Mon,  8 Sep 2014 12:35:54 -0400
+Message-Id: <1410194154-25567-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 23, 2014 at 02:42:34PM -0500, Steve Wise wrote:
-> 
-> > > diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> > > index c419498..a9cf5c3 100644
-> > > --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> > > +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> > > @@ -392,4 +392,8 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
-> > > /* Workqueue created in svc_rdma.c */
-> > > extern struct workqueue_struct *svc_rdma_wq;
-> > >
-> > > +#define RPCSVC_MAXPAYLOAD_RDMA \
-> > > +	(RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT) ? \
-> > > +	 RPCSVC_MAXPAYLOAD : (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT))
-> > > +
-> > 
-> > Couldn't you use:
-> > 
-> > #if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
-> > #define RPCSVC_MAXPAYLOAD_RDMA RPC_MAXPAYLOAD
-> > #else
-> > #define RPCSVC_MAXPAYLOAD_RDMA (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
-> > #endif
-> > 
-> > That seems more idiomatic.
-> 
-> Sure.  That makes it easier to read in my opinion too.
-> 
-> I'll send out V3 with this change.
+It's possible for "preferred_realm" to be NULL, in which case we
+don't want to pass it to strcmp. Other places that use this variable
+test whether it's NULL first -- we need to do the same here.
 
-While we're bikeshedding, why not use min()?
+This should fix the gssd crash reported here:
 
---b.
+    https://bugzilla.redhat.com/show_bug.cgi?id=1108615
+
+Reported-by: Brian J. Murrell <brian@interlinx.bc.ca>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ utils/gssd/krb5_util.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 8369fdf0ed27..f1ebc0d09731 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -876,7 +876,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+ 	i = 0;
+ 	realm = realmnames[i];
+ 
+-	if (strcmp (realm, preferred_realm) != 0) {
++	if (preferred_realm && strcmp (realm, preferred_realm) != 0) {
+ 		realm = preferred_realm;
+ 		/* resetting the realmnames index */
+ 		i = -1;
+-- 
+1.9.3
+
