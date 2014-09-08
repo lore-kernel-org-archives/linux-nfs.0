@@ -1,68 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:65083 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752793AbaIOOBP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 10:01:15 -0400
-Received: by mail-qa0-f44.google.com with SMTP id w8so3751700qac.17
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 07:01:14 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v4 0/7] nfs-utils: support for lifting grace period early
-Date: Mon, 15 Sep 2014 10:00:58 -0400
-Message-Id: <1410789665-19745-1-git-send-email-jlayton@primarydata.com>
+Received: from e39.co.us.ibm.com ([32.97.110.160]:44382 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755372AbaIHXLz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 19:11:55 -0400
+Received: from /spool/local
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 8 Sep 2014 17:11:55 -0600
+Received: from b03cxnp08028.gho.boulder.ibm.com (b03cxnp08028.gho.boulder.ibm.com [9.17.130.20])
+	by d03dlp03.boulder.ibm.com (Postfix) with ESMTP id 5E9EA19D8039
+	for <linux-nfs@vger.kernel.org>; Mon,  8 Sep 2014 17:11:39 -0600 (MDT)
+Received: from b03eismtpcl100.ahe.boulder.ibm.com (b03eismtpcl100.ahe.boulder.ibm.com [9.17.195.167])
+	by b03cxnp08028.gho.boulder.ibm.com (8.14.9/8.14.9/NCO v10.0) with ESMTP id s88NBqYA29163528
+	for <linux-nfs@vger.kernel.org>; Tue, 9 Sep 2014 01:11:52 +0200
+Received: from b03eismtpcl100.ahe.boulder.ibm.com (localhost [127.0.0.1])
+	by b03eismtpcl100.ahe.boulder.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id s88NBphN003450
+	for <linux-nfs@vger.kernel.org>; Mon, 8 Sep 2014 17:11:52 -0600
+Date: Mon, 8 Sep 2014 18:11:51 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: Andrew Martin <amartin@xes-inc.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Clarification on client "async" option
+Message-ID: <20140908231150.GA11508@us.ibm.com>
+References: <2124227602.386654.1409868802614.JavaMail.zimbra@xes-inc.com>
+ <584874869.387720.1409869399398.JavaMail.zimbra@xes-inc.com>
+ <CAHQdGtT3iwdTXB3ecKSbao=yErOzv8NREPta1A5mOtwYxmRb8Q@mail.gmail.com>
+ <2037985632.307306.1410202186698.JavaMail.zimbra@xes-inc.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2037985632.307306.1410202186698.JavaMail.zimbra@xes-inc.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v4:
-- replace "reclaim_complete" timestamp column with "has_session" boolean
-- change to use NFSDCLTRACK_CLIENT_HAS_SESSION environment variable
-- only set timestamp on "has_session" clients during "create" op
+Andrew Martin [amartin@xes-inc.com] wrote:
+> ----- Original Message -----
+> > From: "Trond Myklebust" <trond.myklebust@primarydata.com>
+> > > This shows that a temporary filename is written and then closed, however
+> > > the
+> > > file is then chmodded and renamed to the final destination filename. Do the
+> > > chmod(2) and rename(2) calls force a COMMIT to be sent, flushing these
+> > > changes
+> > > to stable storage on the NFS server? Or, is there a possibility that during
+> > > a
+> > > power failure of both client and server, the file would remain as
+> > > .dest.y4ihWF
+> > > on the server?
+> > 
+> > In NFSv3, the close() will cause the client to flush all data to stable
+> > storage.
+> > The client will also flush data to stable storage on a chmod, since
+> > that could potentially affect its ability to write back the data. It
+> > will not bother to do so for rename.
+> > An application should normally be able to rely on the data being
+> > safely on disk in both these situations provided that the server
+> > honours the NFS protocol (with a caveat that an ill-timed 'kill -9'
+> > could interrupt the process of flushing).
+> > 
+> > All metadata operations such as create, chmod, rename, etc. will cause
+> > the server to flush the file metadata to disk assuming that you set
+> > the (highly recommended) "sync" export option. If "sync" is set, the
+> > server will also honour COMMIT requests by flushing the data to stable
+> > storage.
+> 
+> Thanks for the clarification - I will use "sync" on the server side and
+> "async" on the client side, since I know now that this combination will
+> provide both data and metadata safety.
 
-v3:
-- account for change to NFSDCLTRACK_RECLAIM_COMPLETE env var
-
-This is v4 of the patchset to allow the lifting of the grace period
-early. The changes in this set are a bit more substantial than the kernel
-piece.
-
-Last week Bruce noted that we have an existing bug in how nfsdcltrack
-works with v4.1+ clients. It updates the timestamp for v4.1+ clients
-on a "check" operation, which can lead to the server handing out
-conflicting locks if the v4.1+ client never sends a RECLAIM_COMPLETE.
-
-To fix this, the program must be able to distingush between v4.0 and
-v4.1+ clients during both the create and check operations. This set adds
-the ability for it to do so by looking for the correct environment
-variables as passed by the kernel.
-
-Historically, nfsdcltrack has not distinguished between v4.0 and v4.1+
-clients at alli and has basically applied the v4.0 rules to all clients.
-On a DB upgrade, the kernel assumes that all clients are v4.0. Once
-the kernel sends a "create" upcall that indicates that it's a v4.1
-client it will update the DB accordingly.
-
-Thus, fixing the bug that Bruce spotted requires both an updated
-nfs-utils and kernel. With only one or the other, things should
-basically work as they have so far (with all clients being treated
-as v4.0 clients).
-
-Jeff Layton (7):
-  sm-notify: inform the kernel if there were no hosts to notify
-  nfsdcltrack: update comments in sqlite.c
-  nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
-  nfsdcltrack: overhaul database initializtion
-  nfsdcltrack: update schema to v2
-  nfsdcltrack: grab the NFSDCLTRACK_CLIENT_HAS_SESSION env var if it's
-    present
-  nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
-
- utils/nfsdcltrack/nfsdcltrack.c | 103 ++++++++++-
- utils/nfsdcltrack/sqlite.c      | 388 ++++++++++++++++++++++++++++++----------
- utils/nfsdcltrack/sqlite.h      |   8 +-
- utils/statd/sm-notify.c         |  25 +++
- 4 files changed, 421 insertions(+), 103 deletions(-)
-
--- 
-1.9.3
+That should be the default too.
 
