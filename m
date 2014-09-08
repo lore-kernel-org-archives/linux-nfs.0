@@ -1,61 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:61980 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:51595 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752408AbaIITRv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Sep 2014 15:17:51 -0400
-Message-ID: <540F5259.1090203@Netapp.com>
-Date: Tue, 9 Sep 2014 15:17:45 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1752989AbaIHPAt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Sep 2014 11:00:49 -0400
+Date: Mon, 8 Sep 2014 11:00:48 -0400
+To: Christoph Hellwig <hch@lst.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: update mtime on truncate
+Message-ID: <20140908150048.GA31967@fieldses.org>
+References: <1410117352-28443-1-git-send-email-hch@lst.de>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 2/2] NFSD: Implement SEEK
-References: <1409679038-32179-1-git-send-email-Anna.Schumaker@Netapp.com> <1409679038-32179-3-git-send-email-Anna.Schumaker@Netapp.com> <20140909175607.GB10399@infradead.org>
-In-Reply-To: <20140909175607.GB10399@infradead.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1410117352-28443-1-git-send-email-hch@lst.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/09/2014 01:56 PM, Christoph Hellwig wrote:
->> +	switch (seek->seek_whence) {
->> +	case NFS4_CONTENT_DATA:
->> +		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
->> +		break;
->> +	case NFS4_CONTENT_HOLE:
->> +		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
->> +		break;
->> +	default:
->> +		status = nfserr_union_notsupp;
->> +		goto out;
->> +	}
-> 
-> nipick: maybe just assign pos in the switch, and have a single
-> vfs_llseek call?
-> 
-> Also this might want a comment that vfs_llseek is changing file->f_pos,
-> but nothing in NFSD should ever rely on file->f_pos.
+On Sun, Sep 07, 2014 at 12:15:52PM -0700, Christoph Hellwig wrote:
+> This fixes a failure in xfstests generic/313 because nfs doesn't update
+> mtime on a truncate.  The protocol requires this to be done implicity
+> for a size changing setattr.
 
-Sure.
+Thanks,  Intending just to queue up for 3.18 unless you see a reason
+it's more urgent.
+
+--b.
 
 > 
->>  static __be32
->> +nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
->> +		  struct nfsd4_seek *seek)
->> +{
->> +	__be32 *p;
->> +
->> +	if (nfserr)
->> +		return nfserr;
->> +
->> +	p = xdr_reserve_space(&resp->xdr, 12);
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfsd/vfs.c | 10 ++++++++++
+>  1 file changed, 10 insertions(+)
 > 
-> nipick: can you replace the 12 by a "4 + 8"?  I think having one
-> literal for each field later encoded helps reading the XDR code a lot.
-> And although it might not matter for a trivial encoder like this it
-> set standards for future copy and paste code.
-
-I can change that, too.  Thanks for looking!
-
-Anna
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index f501a9b..60ed117 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -445,6 +445,16 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+>  		if (err)
+>  			goto out;
+>  		size_change = 1;
+> +
+> +		/*
+> +		 * RFC5661, Section 18.30.4:
+> +		 *   Changing the size of a file with SETATTR indirectly
+> +		 *   changes the time_modify and change attributes.
+> +		 *
+> +		 * (and similar for the older RFCs)
+> +		 */
+> +		if (iap->ia_size != i_size_read(inode))
+> +			iap->ia_valid |= ATTR_MTIME;
+>  	}
+>  
+>  	iap->ia_valid |= ATTR_CTIME;
+> -- 
+> 1.9.1
 > 
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
