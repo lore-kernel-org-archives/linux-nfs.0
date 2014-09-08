@@ -1,77 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:44080 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751481AbaIEVXw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 17:23:52 -0400
-Received: by mail-ie0-f174.google.com with SMTP id at20so14947417iec.33
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 14:23:51 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount failures
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <CA+Tkd6UjfJmjG0WE1F2bsB068rXkEUHhOq6S+F5e=OVA_wxeMw@mail.gmail.com>
-Date: Fri, 5 Sep 2014 17:23:49 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jeffrey Layton <jeff.layton@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <44C76FD6-5333-402B-9DA4-D38065AAA15F@primarydata.com>
-References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com> <20140903070048.56201d1d@tlielax.poochiereds.net> <70D58138-CB00-433C-8BF8-01584E6460F0@oracle.com> <CA+Tkd6WV9K4oZPVGkqL_y6OcD9Pmj6x0roo9n839QD8RXDsCwA@mail.gmail.com> <CA+Tkd6WYkkVbY2YsmRNHB4+9AFg5UjC1xoycLTZQOYrtFCT_2w@mail.gmail.com> <CAHQdGtRpD03KHJyu1MtxA=21pu4z_YAG4XA-8Bu+t4xeUefaNQ@mail.gmail.com> <CA+Tkd6WBuMkCmsjUpjrAR38Ri6QK_B4BhgNr0gzHBTG1ytjO6Q@mail.gmail.com> <CA+Tkd6UjfJmjG0WE1F2bsB068rXkEUHhOq6S+F5e=OVA_wxeMw@mail.gmail.com>
-To: Chris Perl <chris.perl@gmail.com>
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:64889 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754104AbaIHOrC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:02 -0400
+Received: by mail-qa0-f45.google.com with SMTP id v10so2335911qac.32
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:46:58 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: [PATCH v3 0/8] nfsd: support for lifting grace period early
+Date: Mon,  8 Sep 2014 10:46:41 -0400
+Message-Id: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Do these patches require one another?
+v3:
+- only accept Y/y/1 in new procfile writes
+- turn minorversion env var into a "reclaim complete" boolean
+- serialize nfsdcltrack upcalls for a client
+- reduce duplicate upcalls via NFSD4_CLIENT_STABLE flag
+- don't allow reclaims after RECLAIM_COMPLETE
 
-What happens if I have a patched nfs-utils, but not a patched kernel or the other way around?
+v2:
+- move grace period handling into its own module
 
--dros
+Here's a respin of the patches to reduce the grace period. A respun
+version of the nfs-utils patches will be posted separately (needed due
+to the minorversion to reclaim complete boolean change). I also threw
+in some other patches that clean up the upcall handling a bit and
+that prevent the client from being able to reclaim after sending a
+RECLAIM_COMPLETE.
 
+Original cover letter follows:
 
-On Sep 5, 2014, at 4:20 PM, Chris Perl <chris.perl@gmail.com> wrote:
+One of the huge annoyances in dealing with knfsd is the 90s grace period
+that's imposed when the server reboots. This is not just an annoyance,
+but means a siginificant amount of "downtime" in many production
+environments.
 
-> It looks like they may have come through after all, unfortunately I
-> already sent them again.  Apologies for the spam.
-> 
-> On Fri, Sep 5, 2014 at 4:04 PM, Chris Perl <chris.perl@gmail.com> wrote:
->> I tried to send them to the list, but I guess they didn't come through
->> because my sender was set to chris.perl@gmail.com, but I ran `git
->> send-email' from work, so the smtp sender ip wouldn't authorized.
->> 
->> I'll figure out a way to send them now.
->> 
->> On Fri, Sep 5, 2014 at 4:03 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->>> On Fri, Sep 5, 2014 at 3:40 PM, Chris Perl <chris.perl@gmail.com> wrote:
->>>> I just submitted two patches, one for nfs-utils and one for linux-nfs.
->>>> 
->>>> As I said in my previous email, the patch to nfs-utils was enough to
->>>> get us farther along, but we failed inside mount(2) with EIO (with a
->>>> decidedly more confusing error message).
->>>> 
->>>> So, I've also submitted a patch for the rpc code in the kernel that
->>>> also avoids bind when asking for a random ephemeral port.  I've tested
->>>> the combination of these two patches with my system while in the
->>>> situation I originally outlined.  I can continue to successfully mount
->>>> NFS filesystems using both of these patches.
->>>> 
->>>> I don't particularly love the kernel patch, as it makes `xs_bind' not
->>>> actually bind in all circumstances, which seems confusing.  However, I
->>>> thought trying to rework things in a larger way would cause more
->>>> issues given that I'm not very familiar with this code.  If everyone
->>>> hates it, I can try something else.
->>> 
->>> To whom did you submit these patches? I don't see anything in the
->>> linux-nfs mailing list.
->>> 
->>> --
->>> Trond Myklebust
->>> 
->>> Linux NFS client maintainer, PrimaryData
->>> 
->>> trond.myklebust@primarydata.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This patchset aimed at reducing this pain. It adds a couple of /proc
+knobs that tell the lockd and nfsd lock managers to lift the grace
+period.
+
+It also changes the UMH upcalls to pass a little bit of extra info in
+the form of environment variables so that the upcall program can
+determine whether there are still any clients that may be in the process
+of reclaiming.
+
+There are also a couple of cleanup patches in here that are not strictly
+required. In particular, making a separate grace.ko module doesn't have
+to be done, but I think it's a good idea.
+
+Jeff Layton (8):
+  lockd: move lockd's grace period handling into its own module
+  nfsd: remove redundant boot_time parm from grace_done client tracking
+    op
+  lockd: add a /proc/fs/lockd/nlm_end_grace file
+  nfsd: add a v4_end_grace file to /proc/fs/nfsd
+  nfsd: pass extra info in env vars to upcalls to allow for early grace
+    period end
+  nfsd: serialize nfsdcltrack upcalls for a particular client
+  nfsd: set and test NFSD4_CLIENT_STABLE bit to reduce nfsdcltrack
+    upcalls
+  nfsd: reject reclaim request when client has already sent
+    RECLAIM_COMPLETE
+
+ fs/Kconfig              |   6 +-
+ fs/lockd/Makefile       |   3 +-
+ fs/lockd/grace.c        |  65 ---------------------
+ fs/lockd/netns.h        |   1 -
+ fs/lockd/procfs.c       |  92 +++++++++++++++++++++++++++++
+ fs/lockd/procfs.h       |  28 +++++++++
+ fs/lockd/svc.c          |  10 +++-
+ fs/nfs_common/Makefile  |   3 +-
+ fs/nfs_common/grace.c   | 113 ++++++++++++++++++++++++++++++++++++
+ fs/nfsd/Kconfig         |   1 +
+ fs/nfsd/nfs4recover.c   | 150 +++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/nfs4state.c     |  11 ++--
+ fs/nfsd/nfsctl.c        |  45 +++++++++++++++
+ fs/nfsd/state.h         |   6 +-
+ include/linux/proc_fs.h |   2 +
+ 15 files changed, 440 insertions(+), 96 deletions(-)
+ delete mode 100644 fs/lockd/grace.c
+ create mode 100644 fs/lockd/procfs.c
+ create mode 100644 fs/lockd/procfs.h
+ create mode 100644 fs/nfs_common/grace.c
+
+-- 
+1.9.3
 
