@@ -1,73 +1,215 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f173.google.com ([209.85.160.173]:44592 "EHLO
-	mail-yk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750980AbaI0Sk6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 14:40:58 -0400
-Received: by mail-yk0-f173.google.com with SMTP id 131so927940ykp.32
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 11:40:58 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Sat, 27 Sep 2014 14:40:55 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: "nfsv4@ietf.org" <nfsv4@ietf.org>, linux-nfs@vger.kernel.org
-Subject: Re: [nfsv4] Could somebody please enlighten me as to what is
- supposed to happen in this situation?
-Message-ID: <20140927144056.2d303755@synchrony.poochiereds.net>
-In-Reply-To: <CAABAsM4zDuzjapXfLUrminwM1FV7iwN+oEzxgzaQ60m93gBBug@mail.gmail.com>
-References: <CAABAsM4zDuzjapXfLUrminwM1FV7iwN+oEzxgzaQ60m93gBBug@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:44530 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754217AbaIHOrD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:03 -0400
+Received: by mail-qc0-f174.google.com with SMTP id i17so15507208qcy.19
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:47:02 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: [PATCH v3 3/8] lockd: add a /proc/fs/lockd/nlm_end_grace file
+Date: Mon,  8 Sep 2014 10:46:44 -0400
+Message-Id: <1410187609-10319-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 27 Sep 2014 11:22:29 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Add a new procfile that will allow a (privileged) userland process to
+end the NLM grace period early. The basic idea here will be to have
+sm-notify write to this file, if it sent out no NOTIFY requests when
+it runs. In that situation, we can generally expect that there will be
+no reclaim requests so the grace period can be lifted early.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/lockd/Makefile |  1 +
+ fs/lockd/procfs.c | 92 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/lockd/procfs.h | 28 +++++++++++++++++
+ fs/lockd/svc.c    |  9 ++++++
+ 4 files changed, 130 insertions(+)
+ create mode 100644 fs/lockd/procfs.c
+ create mode 100644 fs/lockd/procfs.h
 
-My take (quite possibly wrong, but...)
-
-> The scenario is this:
->                                        Server
->                                        ======
->                                        boot (B1)
-> Client
-> ======
-> EXCHANGE_ID
-> CREATE_SESSION
-> OPEN(reclaim)
-> LOCK(reclaim)
-> RECLAIM_COMPLETE
->                                        (lift GRACE period)
-
-At this point, we'd deny reclaim from any client that has not issued a
-RECLAIM_COMPLETE. In the case of the Linux server with nfsdcltrack, we
-clean out any client records that have not issued a RECLAIM_COMPLETE.
-
->                                        reboot (B2)
-> EXCHANGE_ID
-> CREATE_SESSION
-> OPEN(reclaim)
->                                         reboot (while GRACE period
-> still being enforced) (B3)
-> EXCHANGE_ID
-> CREATE_SESSION
-> OPEN(reclaim)
-> 
-> What should be the server response to the above OPEN(reclaim) from the
-> client after reboot (B3)?
-> 
-
-My expectation is that it would be granted. There was a
-RECLAIM_COMPLETE issued during the boot where the grace period was last
-lifted, and that should be enough to allow the client to issue reclaims
-on any subsequent reboot, until the grace period is lifted again.
-
-Doing anything else would be a pretty unfriendly way for the server to
-behave. In the face of rapid reboots (a not-uncommon occurrence when
-patching, etc), you'd lose state unless the client just happened to get
-in there quickly enough to issue a RECLAIM_COMPLETE between each reboot.
-
-That was the situation with the legacy client tracker in knfsd. When
-testing, it was trivial to reboot the machine quickly twice and on the
-second reboot nothing could be reclaimed.
+diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
+index 6a0b351ce30e..9b320cc2a8cf 100644
+--- a/fs/lockd/Makefile
++++ b/fs/lockd/Makefile
+@@ -7,4 +7,5 @@ obj-$(CONFIG_LOCKD) += lockd.o
+ lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
+ 	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o
+ lockd-objs-$(CONFIG_LOCKD_V4) += clnt4xdr.o xdr4.o svc4proc.o
++lockd-objs-$(CONFIG_PROC_FS) += procfs.o
+ lockd-objs		      := $(lockd-objs-y)
+diff --git a/fs/lockd/procfs.c b/fs/lockd/procfs.c
+new file mode 100644
+index 000000000000..2a0a98480e39
+--- /dev/null
++++ b/fs/lockd/procfs.c
+@@ -0,0 +1,92 @@
++/*
++ * Procfs support for lockd
++ *
++ * Copyright (c) 2014 Jeff Layton <jlayton@primarydata.com>
++ */
++
++#include <linux/fs.h>
++#include <linux/proc_fs.h>
++#include <linux/module.h>
++#include <linux/nsproxy.h>
++#include <net/net_namespace.h>
++
++#include "netns.h"
++#include "procfs.h"
++
++/*
++ * We only allow strings that start with 'Y', 'y', or '1'.
++ */
++static ssize_t
++nlm_end_grace_write(struct file *file, const char __user *buf, size_t size,
++		    loff_t *pos)
++{
++	char *data;
++	struct lockd_net *ln = net_generic(current->nsproxy->net_ns,
++					   lockd_net_id);
++
++	if (size < 1)
++		return -EINVAL;
++
++	data = simple_transaction_get(file, buf, size);
++	if (IS_ERR(data))
++		return PTR_ERR(data);
++
++	switch(data[0]) {
++	case 'Y':
++	case 'y':
++	case '1':
++		locks_end_grace(&ln->lockd_manager);
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return size;
++}
++
++static ssize_t
++nlm_end_grace_read(struct file *file, char __user *buf, size_t size,
++		   loff_t *pos)
++{
++	struct lockd_net *ln = net_generic(current->nsproxy->net_ns,
++					   lockd_net_id);
++	char resp[3];
++
++	resp[0] = list_empty(&ln->lockd_manager.list) ? 'Y' : 'N';
++	resp[1] = '\n';
++	resp[2] = '\0';
++
++	return simple_read_from_buffer(buf, size, pos, resp, sizeof(resp));
++}
++
++static const struct file_operations lockd_end_grace_operations = {
++	.write		= nlm_end_grace_write,
++	.read		= nlm_end_grace_read,
++	.llseek		= default_llseek,
++	.release	= simple_transaction_release,
++	.owner		= THIS_MODULE,
++};
++
++int __init
++lockd_create_procfs(void)
++{
++	struct proc_dir_entry *entry;
++
++	entry = proc_mkdir("fs/lockd", NULL);
++	if (!entry)
++		return -ENOMEM;
++	entry = proc_create("nlm_end_grace", S_IRUGO|S_IWUSR, entry,
++				 &lockd_end_grace_operations);
++	if (!entry) {
++		remove_proc_entry("fs/lockd", NULL);
++		return -ENOMEM;
++	}
++	return 0;
++}
++
++void __exit
++lockd_remove_procfs(void)
++{
++	remove_proc_entry("fs/lockd/nlm_end_grace", NULL);
++	remove_proc_entry("fs/lockd", NULL);
++}
+diff --git a/fs/lockd/procfs.h b/fs/lockd/procfs.h
+new file mode 100644
+index 000000000000..2257a1311027
+--- /dev/null
++++ b/fs/lockd/procfs.h
+@@ -0,0 +1,28 @@
++/*
++ * Procfs support for lockd
++ *
++ * Copyright (c) 2014 Jeff Layton <jlayton@primarydata.com>
++ */
++#ifndef _LOCKD_PROCFS_H
++#define _LOCKD_PROCFS_H
++
++#include <linux/kconfig.h>
++
++#if IS_ENABLED(CONFIG_PROC_FS)
++int lockd_create_procfs(void);
++void lockd_remove_procfs(void);
++#else
++static inline int
++lockd_create_procfs(void)
++{
++	return 0;
++}
++
++static inline void
++lockd_remove_procfs(void)
++{
++	return;
++}
++#endif /* IS_ENABLED(CONFIG_PROC_FS) */
++
++#endif /* _LOCKD_PROCFS_H */
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 3599c9ca28ae..f01a9aa01dff 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -36,6 +36,7 @@
+ #include <linux/nfs.h>
+ 
+ #include "netns.h"
++#include "procfs.h"
+ 
+ #define NLMDBG_FACILITY		NLMDBG_SVC
+ #define LOCKD_BUFSIZE		(1024 + NLMSVC_XDRSIZE)
+@@ -616,8 +617,15 @@ static int __init init_nlm(void)
+ 	err = register_pernet_subsys(&lockd_net_ops);
+ 	if (err)
+ 		goto err_pernet;
++
++	err = lockd_create_procfs();
++	if (err)
++		goto err_procfs;
++
+ 	return 0;
+ 
++err_procfs:
++	unregister_pernet_subsys(&lockd_net_ops);
+ err_pernet:
+ #ifdef CONFIG_SYSCTL
+ 	unregister_sysctl_table(nlm_sysctl_table);
+@@ -630,6 +638,7 @@ static void __exit exit_nlm(void)
+ {
+ 	/* FIXME: delete all NLM clients */
+ 	nlm_shutdown_hosts();
++	lockd_remove_procfs();
+ 	unregister_pernet_subsys(&lockd_net_ops);
+ #ifdef CONFIG_SYSCTL
+ 	unregister_sysctl_table(nlm_sysctl_table);
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
