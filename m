@@ -1,31 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:50755 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:46748 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756891AbaIIPuW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 11:50:22 -0400
-Date: Tue, 9 Sep 2014 08:50:19 -0700
+	with ESMTP id S1753794AbaIHOmY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:42:24 -0400
+Date: Mon, 8 Sep 2014 07:42:23 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: Anna.Schumaker@netapp.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] VFS: Rename do_fallocate() to vfs_fallocate()
-Message-ID: <20140909155019.GA21928@infradead.org>
-References: <1410274182-30740-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1410274182-30740-2-git-send-email-Anna.Schumaker@Netapp.com>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] nfs: revert "nfs4: queue free_lock_state job submission
+ to nfsiod"
+Message-ID: <20140908144223.GA19811@infradead.org>
+References: <20140907153534.GA7026@infradead.org>
+ <1410179161-18418-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1410274182-30740-2-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1410179161-18418-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 09, 2014 at 10:49:40AM -0400, Anna.Schumaker@netapp.com wrote:
-> From: Anna Schumaker <Anna.Schumaker@netapp.com>
+On Mon, Sep 08, 2014 at 08:26:01AM -0400, Jeff Layton wrote:
+> The original reason for this patch was because the fl_release_private
+> operation couldn't sleep. With commit ed9814d85810 (locks: defer freeing
+> locks in locks_delete_lock until after i_lock has been dropped), this is
+> no longer a problem so we can revert this patch.
 > 
-> This function needs to be exported so it can be used by the NFSD module
-> when responding to ALLOCATE and DEALLOCATE operations.  Christoph Hellwig
-> suggested renaming the function to match how other vfs functions are named.
-> 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> Reported-by: Christoph Hellwig <hch@infradead.org>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 
-Looks good,
+Looks good, I tested an equivalent revert for about half a dozen runs
+of xfstests yesterday and couldn't reproduce this bug with it.
 
 Reviewed-by: Christoph Hellwig <hch@lst.de>
+Tested-by: Christoph Hellwig <hch@lst.de>
