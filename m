@@ -1,45 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailrelay008.isp.belgacom.be ([195.238.6.174]:32391 "EHLO
-	mailrelay008.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753877AbaIXQ4R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 12:56:17 -0400
-From: Fabian Frederick <fabf@skynet.be>
-To: linux-kernel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        ebiederm@xmission.com, Fabian Frederick <fabf@skynet.be>
-Subject: [PATCH 1/1 linux-next] nfs: fix duplicate proc entries
-Date: Wed, 24 Sep 2014 18:56:11 +0200
-Message-Id: <1411577771-9474-1-git-send-email-fabf@skynet.be>
+Received: from mx1.redhat.com ([209.132.183.28]:48213 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754477AbaIHPaC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 8 Sep 2014 11:30:02 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s88FU2WF022555
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 8 Sep 2014 11:30:02 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-61-206.rdu2.redhat.com [10.10.61.206])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s88FU1XR012394
+	for <linux-nfs@vger.kernel.org>; Mon, 8 Sep 2014 11:30:01 -0400
+Message-ID: <540DCB79.4000501@RedHat.com>
+Date: Mon, 08 Sep 2014 11:30:01 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: NFS/RDMA conclave at this fall's NFS bake-a-thon
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 65b38851a174
-("NFS: Fix /proc/fs/nfsfs/servers and /proc/fs/nfsfs/volumes")
+Hello,
 
-updated the following function:
-static int nfs_volume_list_open(struct inode *inode, struct file *file)
+I just updated the nfsv4bat.org website 
+   http://www.nfsv4bat.org/Events/2014/October/BAT/index.html
 
-it used &nfs_server_list_ops instead of &nfs_volume_list_ops
-which means cat /proc/fs/nfsfs/volumes = /proc/fs/nfsfs/servers
+with information on the RDMA Conclave will be having at
+this fall's Bakeathon... If interested please check it
+out... There are call in numbers in case you are not
+coming to the bakeathon but still want to attend..
 
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
----
- fs/nfs/client.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+I also update the Attendance list:
+    http://www.nfsv4bat.org/Events/2014/October/Bakeathon-attedance-14.pdf
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 8052020..f9f4845 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1320,7 +1320,7 @@ static int nfs_server_list_show(struct seq_file *m, void *v)
-  */
- static int nfs_volume_list_open(struct inode *inode, struct file *file)
- {
--	return seq_open_net(inode, file, &nfs_server_list_ops,
-+	return seq_open_net(inode, file, &nfs_volume_list_ops,
- 			   sizeof(struct seq_net_private));
- }
- 
--- 
-1.9.3
+Please let me know if its accurate... 
 
+steved.
