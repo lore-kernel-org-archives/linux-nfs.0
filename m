@@ -1,66 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:1056 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750959AbaIIRsi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Sep 2014 13:48:38 -0400
-Message-ID: <540F3D01.10006@Netapp.com>
-Date: Tue, 9 Sep 2014 13:46:41 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Marc Eshel <eshel@us.ibm.com>, Anna Schumaker <Anna.Schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, <linux-nfs-owner@vger.kernel.org>,
-        <Trond.Myklebust@primarydata.com>
-Subject: Re: [PATCH 0/2] NFS: Add ALLOCATE and DEALLOCATE support
-References: <1410274196-30841-1-git-send-email-Anna.Schumaker@Netapp.com> <OFCC7C8976.B925FBA7-ON88257D4E.00604587-88257D4E.0060D8A0@us.ibm.com>
-In-Reply-To: <OFCC7C8976.B925FBA7-ON88257D4E.00604587-88257D4E.0060D8A0@us.ibm.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:49030 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753988AbaIHOrF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:05 -0400
+Received: by mail-qa0-f45.google.com with SMTP id v10so2336057qac.32
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:47:04 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: [PATCH v3 4/8] nfsd: add a v4_end_grace file to /proc/fs/nfsd
+Date: Mon,  8 Sep 2014 10:46:45 -0400
+Message-Id: <1410187609-10319-5-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/09/2014 01:37 PM, Marc Eshel wrote:
-> Hi Anna,
->
-> Did you get a chance to set up a git tree with all your changes, at least 
-> for the client side, maybe Trond will include it in his tree?
-I did for SEEK.  I haven't updated it to include these patches yet, but I will after making the changes that Trond and Christoph are asking for.
+Allow a privileged userland process to end the v4 grace period early.
+Any write to the file will cause the v4 grace period to be lifted.
+The basic idea with this will be to allow the userland client tracking
+program to lift the grace period once it knows that no more clients
+will be reclaiming state.
 
-git://git.linux-nfs.org/projects/anna/linux-nfs.git  (see the "seek" branch)
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4state.c |  2 +-
+ fs/nfsd/nfsctl.c    | 45 +++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/state.h     |  3 +++
+ 3 files changed, 49 insertions(+), 1 deletion(-)
 
-Anna
->
-> Thanks, Marc. 
->
->
-> From:   Anna Schumaker <Anna.Schumaker@netapp.com>
-> To:     <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>, 
-> Date:   09/09/2014 07:50 AM
-> Subject:        [PATCH 0/2] NFS: Add ALLOCATE and DEALLOCATE support
-> Sent by:        linux-nfs-owner@vger.kernel.org
->
->
->
-> These patches add client support for the ALLOCATE and DEALLOCATE 
-> operations
-> part of NFS v4.2.
->
-> These operations are triggered by a vfs_fallocate() call, and we determine
-> which to use based on if the FALLOC_FL_PUNCH_HOLE flag is set.
->
-> Anna Schumaker (2):
->   nfs: Add ALLOCATE support
->   nfs: Add DEALLOCATE support
->
->  fs/nfs/nfs42proc.c        |  74 +++++++++++++++++++++++++
->  fs/nfs/nfs42xdr.h         | 136 
-> ++++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfs/nfs4_fs.h          |   3 +
->  fs/nfs/nfs4client.c       |   2 +-
->  fs/nfs/nfs4file.c         |  47 ++++++++++++++++
->  fs/nfs/nfs4proc.c         |   2 +-
->  fs/nfs/nfs4xdr.c          |   2 +
->  include/linux/nfs4.h      |   2 +
->  include/linux/nfs_fs_sb.h |   2 +
->  include/linux/nfs_xdr.h   |  28 ++++++++++
->  10 files changed, 296 insertions(+), 2 deletions(-)
->
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 422b1df4bb00..ae380e90e372 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4109,7 +4109,7 @@ out:
+ 	return status;
+ }
+ 
+-static void
++void
+ nfsd4_end_grace(struct nfsd_net *nn)
+ {
+ 	/* do nothing if grace period already ended */
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 4e042105fb6e..ca73ca79a0ee 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -49,6 +49,7 @@ enum {
+ 	NFSD_Leasetime,
+ 	NFSD_Gracetime,
+ 	NFSD_RecoveryDir,
++	NFSD_V4EndGrace,
+ #endif
+ };
+ 
+@@ -68,6 +69,7 @@ static ssize_t write_maxconn(struct file *file, char *buf, size_t size);
+ static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
+ static ssize_t write_gracetime(struct file *file, char *buf, size_t size);
+ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
++static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size);
+ #endif
+ 
+ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
+@@ -84,6 +86,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
+ 	[NFSD_Leasetime] = write_leasetime,
+ 	[NFSD_Gracetime] = write_gracetime,
+ 	[NFSD_RecoveryDir] = write_recoverydir,
++	[NFSD_V4EndGrace] = write_v4_end_grace,
+ #endif
+ };
+ 
+@@ -1077,6 +1080,47 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
+ 	return rv;
+ }
+ 
++/**
++ * write_v4_end_grace - release grace period for nfsd's v4.x lock manager
++ *
++ * Input:
++ *			buf:		ignored
++ *			size:		zero
++ * OR
++ *
++ * Input:
++ * 			buf:		any value
++ *			size:		non-zero length of C string in @buf
++ * Output:
++ *			passed-in buffer filled with "Y" or "N" with a newline
++ *			and NULL-terminated C string. This indicates whether
++ *			the grace period has ended in the current net
++ *			namespace. Return code is the size in bytes of the
++ *			string. Writing a string that starts with 'Y', 'y', or
++ *			'1' to the file will end the grace period for nfsd's v4
++ *			lock manager.
++ */
++static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
++{
++	struct net *net = file->f_dentry->d_sb->s_fs_info;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++
++	if (size > 0) {
++		switch(buf[0]) {
++		case 'Y':
++		case 'y':
++		case '1':
++			nfsd4_end_grace(nn);
++			break;
++		default:
++			return -EINVAL;
++		}
++	}
++
++	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%c\n",
++			 nn->grace_ended ? 'Y' : 'N');
++}
++
+ #endif
+ 
+ /*----------------------------------------------------------------------------*/
+@@ -1110,6 +1154,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ 		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_Gracetime] = {"nfsv4gracetime", &transaction_ops, S_IWUSR|S_IRUSR},
+ 		[NFSD_RecoveryDir] = {"nfsv4recoverydir", &transaction_ops, S_IWUSR|S_IRUSR},
++		[NFSD_V4EndGrace] = {"v4_end_grace", &transaction_ops, S_IWUSR|S_IRUGO},
+ #endif
+ 		/* last one */ {""}
+ 	};
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 5f8a500a58bf..10bfda710f71 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -544,6 +544,9 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
+ extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+ 
++/* grace period management */
++void nfsd4_end_grace(struct nfsd_net *nn);
++
+ /* nfs4recover operations */
+ extern int nfsd4_client_tracking_init(struct net *net);
+ extern void nfsd4_client_tracking_exit(struct net *net);
+-- 
+1.9.3
 
