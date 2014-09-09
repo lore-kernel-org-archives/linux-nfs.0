@@ -1,126 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55556 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753000AbaIVVcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 17:32:43 -0400
-Date: Mon, 22 Sep 2014 17:32:39 -0400
-From: Simo Sorce <simo@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140922173239.05c17b2a@willson.usersys.redhat.com>
-In-Reply-To: <5420911D.6080506@RedHat.com>
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>
-	<1411413608-16462-2-git-send-email-steved@redhat.com>
-	<20140922152603.75005941@willson.usersys.redhat.com>
-	<54207BCD.70101@RedHat.com>
-	<20140922204401.GI26763@fieldses.org>
-	<5420911D.6080506@RedHat.com>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:38718 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757030AbaIIO7V (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 10:59:21 -0400
+Received: by mail-qa0-f53.google.com with SMTP id w8so15446442qac.26
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 07:59:20 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 9 Sep 2014 10:59:18 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: kernel BUG in fs/dcache.c running nfs
+Message-ID: <20140909105918.59477ee3@tlielax.poochiereds.net>
+In-Reply-To: <20140908144525.GB19811@infradead.org>
+References: <20140908144525.GB19811@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 22 Sep 2014 17:14:05 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+On Mon, 8 Sep 2014 07:45:25 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
 
+> I've reproduced a BUG in dcache.c twice now when running xfstests, once
+> without the "nfs4: queue free_lock_state job submission to nfsiod" and
+> once with that revert in.
 > 
+> Both runs are using v4.1 against a Linux server with XFS on the same
+> host.
 > 
-> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
-> > On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
-> >>
-> >>
-> >> On 09/22/2014 03:26 PM, Simo Sorce wrote:
-> >>> On Mon, 22 Sep 2014 15:20:07 -0400
-> >>> Steve Dickson <steved@redhat.com> wrote:
-> >>>
-> >>>> Added the gssproxy.service to both the Wants= and
-> >>>> Atfers= lines, before the rpc-svcgssd.service. There
-> >>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
-> >>>> unit which will stop the rpc.svcgssd daemon from
-> >>>> starting when the gssproxy daemon is already running.
-> >>>>
-> >>>> Signed-off-by: Steve Dickson <steved@redhat.com>
-> >>>> ---
-> >>>>  systemd/nfs-server.service | 5 +++--
-> >>>>  1 file changed, 3 insertions(+), 2 deletions(-)
-> >>>>
-> >>>> diff --git a/systemd/nfs-server.service
-> >>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
-> >>>> --- a/systemd/nfs-server.service
-> >>>> +++ b/systemd/nfs-server.service
-> >>>> @@ -2,12 +2,13 @@
-> >>>>  Description=NFS server and services
-> >>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
-> >>>>  Requires= nfs-mountd.service
-> >>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
-> >>>> rpc-svcgssd.service +Wants=rpc-statd.service nfs-idmapd.service 
-> >>>> +Wants=rpc-gssd.service  
-> >>>>  Wants=rpc-statd-notify.service
-> >>>>  
-> >>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
-> >>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
-> >>>> -After= rpc-gssd.service rpc-svcgssd.service
-> >>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
-> >>>>  Before= rpc-statd-notify.service
-> >>>>  
-> >>>>  Wants=nfs-config.service
-> >>>
-> >>> I think you really need to insure that the modules are loaded
-> >>> before any of the server services are started, perhaps adding a
-> >>> unit file that exec's modprobe and has "Before: gssproxy.service
-> >>>  " in it ?
-> >> I really don't think its needed... From my testing it appears 
-> >> gssproxy is always being started and rpc.svcgssd is not... 
-> > 
-> > Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount as
-> > both "Requires=" and "After=", so rpc-svcgssd.service will never run
-> > without first running var-lib-nfs-rpc_pipefs.mount, which will load
-> > sunrpc.  But I don't see where auth_rpcgss is getting loaded.  And I
-> > don't see what ensures anything happening before gssproxy runs.
-> It happens during the mount on the client and when the server
-> is started. 
+> generic/089 199s ...
+> [ 5497.402293] ------------[ cut here ]------------
+> [ 5497.403150] kernel BUG at ../fs/dcache.c:1620!
+> [ 5497.403974] invalid opcode: 0000 [#1] SMP 
+> [ 5497.404826] Modules linked in:
+> [ 5497.405280] CPU: 1 PID: 14691 Comm: t_mtab Not tainted 3.17.0-rc3+ #264
+> [ 5497.405585] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
+> [ 5497.405585] task: ffff88007ac801d0 ti: ffff8800670a4000 task.ti: ffff8800670a4000
+> [ 5497.405585] RIP: 0010:[<ffffffff811d1345>]  [<ffffffff811d1345>] d_instantiate+0x75/0x80
+> [ 5497.405585] RSP: 0018:ffff8800670a7a68  EFLAGS: 00010286
+> [ 5497.405585] RAX: 0000000000000001 RBX: ffff880066c399d8 RCX: ffff88007ac80990
+> [ 5497.405585] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff880066c399d8
+> [ 5497.405585] RBP: ffff8800670a7a88 R08: 0000000000000001 R09: 0000000000000000
+> [ 5497.405585] R10: ffff880072f45000 R11: 000000000003fdf0 R12: ffff880066c399d8
+> [ 5497.405585] R13: ffff88007a684800 R14: ffff88007acbc280 R15: ffff8800670de000
+> [ 5497.405585] FS:  00007f6db6aae700(0000) GS:ffff88007fc80000(0000) knlGS:0000000000000000
+> [ 5497.405585] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> [ 5497.405585] CR2: 00007f6db5f56800 CR3: 000000007ac9e000 CR4: 00000000000006e0
+> [ 5497.405585] Stack:
+> [ 5497.405585]  ffff8800670a7a88 ffff880066c399d8 ffff88007a684800 ffff88007a684800
+> [ 5497.405585]  ffff8800670a7b68 ffffffff8135d0c1 ffffffff00000004 ffff8800000000d0
+> [ 5497.405585]  ffff88007d400180 0000000000000246 ffff8800fffffffe ffff880072f45000
+> [ 5497.405585] Call Trace:
+> [ 5497.405585]  [<ffffffff8135d0c1>] nfs4_do_open.constprop.84+0x681/0x960
+> [ 5497.405585]  [<ffffffff8135d459>] nfs4_atomic_open+0x9/0x20
+> [ 5497.405585]  [<ffffffff8136cc3d>] nfs4_file_open+0xcd/0x1b0
+> [ 5497.405585]  [<ffffffff81d9ee56>] ? _raw_spin_unlock+0x26/0x30
+> [ 5497.405585]  [<ffffffff8176b73d>] ? lockref_get+0x1d/0x30
+> [ 5497.405585]  [<ffffffff8136cb70>] ? nfs4_file_fsync+0xb0/0xb0
+> [ 5497.405585]  [<ffffffff811b8092>] do_dentry_open.isra.13+0x1f2/0x320
+> [ 5497.405585]  [<ffffffff81336f52>] ? nfs_permission+0x62/0x1d0
+> [ 5497.405585]  [<ffffffff811b82ad>] finish_open+0x1d/0x30
+> [ 5497.405585]  [<ffffffff811c91be>] do_last.isra.63+0x62e/0xca0
+> [ 5497.405585]  [<ffffffff811c5703>] ? inode_permission+0x13/0x50
+> [ 5497.405585]  [<ffffffff811c5bde>] ? link_path_walk+0x23e/0x850
+> [ 5497.405585]  [<ffffffff811c98e9>] path_openat+0xb9/0x670
+> [ 5497.405585]  [<ffffffff811b366b>] ? poison_obj+0x2b/0x40
+> [ 5497.405585]  [<ffffffff811ca26e>] do_filp_open+0x3e/0xa0
+> [ 5497.405585]  [<ffffffff811d7da1>] ? __alloc_fd+0xd1/0x120
+> [ 5497.405585]  [<ffffffff811b95cc>] do_sys_open+0x13c/0x230
+> [ 5497.405585]  [<ffffffff810f5bbd>] ? trace_hardirqs_on_caller+0x10d/0x1d0
+> [ 5497.405585]  [<ffffffff811b96dd>] SyS_open+0x1d/0x20
+> [ 5497.405585]  [<ffffffff81d9f5a9>] system_call_fastpath+0x16/0x1b
 > 
-> > 
-> > We want to make sure your testing's not just getting lucky on the
-> > startup order.
-> The reason it working is because rpc.gssd is being started on the
-> server these days for callbacks and the After= line in
-> rpc-svcgssd.service is being executed before the ConditionPathExists
-> which cause rpc.svcgssd not to start.
 
-This guarantees ordering (to some degree) between rpc.gssd and
-rpoc.svcgssd, but says nothing about gssproxy ...
+Odd...
 
-> So when gssproxy.service does it's "Before=nfs-secure.service
-> nfs-secure-server.service" line everything is loaded before gssproxy
-> start... 
-> 
-> I'm think gssproxy.service just needs to the put the Wants and After=
-> var-lib-nfs-rpc_pipefs.mount lines, instead of that Before line.. 
+It looks like you hit the BUG() in d_instantiate.
 
-Maybe we should add "Before: gssproxy.service rpc-svcgssd.service"
-to var-lib-nfs-rpc_pipefs.mount instead (and also drop any mention of
-nfs services in gssproxy unit file so you have complete control of the
-dependencies ?
+I don't see any calls to d_instantiate in the current nfs_code (aside
+from the one in nfs_lookup, and I don't think that's getting called
+here). d_instantiate is called by d_add though, and that gets called
+from nfs_atomic_open. Is that what happened here?
 
-> > 
-> >> Plus, from my understanding...  loading module from a service 
-> >> file is a big no no! People were having problems with
-> >> way back when... 
-> > 
-> > Any pointers?  Google's not finding me anything.
-> Search the the Fedora bz's when systemd first came out... 
-> There were a number of "colorful" discussion on how things
-> were so broken until systemd came along and saved humanity!  ;-) 
-
-This doesn't help really, I see no reason why we could not have a pre
-exec statement to modprobe rpc_authgss in a unit file (whether that is
-var-lib-nfs-rpc_pipefs.mount or something else), to guarantee correct
-ordering.
-
-Simo.
+Maybe you can use gdb to figure out what line of code
+"nfs4_do_open.constprop.84+0x681" actually is?
 
 -- 
-Simo Sorce * Red Hat, Inc * New York
+Jeff Layton <jlayton@primarydata.com>
