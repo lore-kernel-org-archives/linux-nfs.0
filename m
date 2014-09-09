@@ -1,86 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53254 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753084AbaIPFcs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Sep 2014 01:32:48 -0400
-From: NeilBrown <neilb@suse.de>
-To: Peter Zijlstra <peterz@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>
-Date: Tue, 16 Sep 2014 15:31:35 +1000
-Subject: [PATCH 2/4] MM: export page_wakeup functions
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jeff Layton <jeff.layton@primarydata.com>
-Message-ID: <20140916053135.22257.22693.stgit@notabene.brown>
-In-Reply-To: <20140916051911.22257.24658.stgit@notabene.brown>
-References: <20140916051911.22257.24658.stgit@notabene.brown>
+Received: from mail-vc0-f178.google.com ([209.85.220.178]:52043 "EHLO
+	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754679AbaIIDuO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 23:50:14 -0400
+Received: by mail-vc0-f178.google.com with SMTP id hy4so1777288vcb.37
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 20:50:13 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1408637375-11343-8-git-send-email-hch@lst.de>
+References: <1408637375-11343-1-git-send-email-hch@lst.de>
+	<1408637375-11343-8-git-send-email-hch@lst.de>
+Date: Mon, 8 Sep 2014 20:50:13 -0700
+Message-ID: <CAHQdGtQcukSsVFxHwYyjeHk9RkwyT4+qR1buwydULgciAtrndA@mail.gmail.com>
+Subject: Re: [PATCH 07/19] pnfs: add flag to force read-modify-write in ->write_begin
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will allow NFS to wait for PG_private to be cleared and,
-particularly, to send a wake-up when it is.
+On Thu, Aug 21, 2014 at 9:09 AM, Christoph Hellwig <hch@lst.de> wrote:
+> Like all block based filesystems, the pNFS block layout driver can't read
+> or write at a byte granularity and thus has to perform read-modify-write
+> cycles on writes smaller than this granularity.
+>
+> Add a flag so that the core NFS code always reads a whole page when
+> starting a smaller write, so that we can do it in the place where the VFS
+> expects it instead of doing in very deadlock prone way in the writeback
+> handler.
+>
+> Note that in theory we could do less than page size reads here for disks
+> that have a smaller sector size which are server by a server with a smaller
+> pnfs block size.  But so far that doesn't seem like a worthwhile
+> optimization.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfs/file.c | 9 +++++++++
+>  fs/nfs/pnfs.h | 1 +
+>  2 files changed, 10 insertions(+)
+>
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 524dd80..58566e9 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -36,6 +36,7 @@
+>  #include "internal.h"
+>  #include "iostat.h"
+>  #include "fscache.h"
+> +#include "pnfs.h"
+>
+>  #include "nfstrace.h"
+>
+> @@ -323,10 +324,18 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+>  static int nfs_want_read_modify_write(struct file *file, struct page *page,
+>                         loff_t pos, unsigned len)
+>  {
+> +       struct nfs_server *server = NFS_SERVER(file->f_mapping->host);
+>         unsigned int pglen = nfs_page_length(page);
+>         unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
+>         unsigned int end = offset + len;
+>
+> +       if (server->pnfs_curr_ld &&
+> +           (server->pnfs_curr_ld->flags & PNFS_READ_WHOLE_PAGE)) {
+> +               if (!PageUptodate(page))
+> +                       return 1;
+> +               return 0;
+> +       }
+> +
+>         if ((file->f_mode & FMODE_READ) &&      /* open for read? */
+>             !PageUptodate(page) &&              /* Uptodate? */
+>             !PagePrivate(page) &&               /* i/o request already? */
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 16cd14f..302b279 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -72,6 +72,7 @@ enum layoutdriver_policy_flags {
+>         /* Should the pNFS client commit and return the layout upon a setattr */
+>         PNFS_LAYOUTRET_ON_SETATTR       = 1 << 0,
+>         PNFS_LAYOUTRET_ON_ERROR         = 1 << 1,
+> +       PNFS_READ_WHOLE_PAGE            = 1 << 2,
+>  };
+>
+>  struct nfs4_deviceid_node;
+>
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- include/linux/pagemap.h |   10 ++++++++--
- mm/filemap.c            |    8 ++------
- 2 files changed, 10 insertions(+), 8 deletions(-)
+This doesn't look as if it will compile without IS_ENABLED(CONFIG_NFS_V4).
 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 87f9e4230d3a..2dca0cef3506 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -496,8 +496,8 @@ static inline int lock_page_or_retry(struct page *page, struct mm_struct *mm,
- }
- 
- /*
-- * This is exported only for wait_on_page_locked/wait_on_page_writeback.
-- * Never use this directly!
-+ * This is exported only for wait_on_page_locked/wait_on_page_writeback,
-+ * and for filesystems which need to wait on PG_private.
-  */
- extern void wait_on_page_bit(struct page *page, int bit_nr);
- 
-@@ -512,6 +512,12 @@ static inline int wait_on_page_locked_killable(struct page *page)
- 	return 0;
- }
- 
-+extern wait_queue_head_t *page_waitqueue(struct page *page);
-+static inline void wake_up_page(struct page *page, int bit)
-+{
-+	__wake_up_bit(page_waitqueue(page), &page->flags, bit);
-+}
-+
- /* 
-  * Wait for a page to be unlocked.
-  *
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 4a19c084bdb1..c9ba09f2ad3c 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -670,17 +670,13 @@ EXPORT_SYMBOL(__page_cache_alloc);
-  * at a cost of "thundering herd" phenomena during rare hash
-  * collisions.
-  */
--static wait_queue_head_t *page_waitqueue(struct page *page)
-+wait_queue_head_t *page_waitqueue(struct page *page)
- {
- 	const struct zone *zone = page_zone(page);
- 
- 	return &zone->wait_table[hash_ptr(page, zone->wait_table_bits)];
- }
--
--static inline void wake_up_page(struct page *page, int bit)
--{
--	__wake_up_bit(page_waitqueue(page), &page->flags, bit);
--}
-+EXPORT_SYMBOL(page_waitqueue);
- 
- void wait_on_page_bit(struct page *page, int bit_nr)
- {
+-- 
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
 
+trond.myklebust@primarydata.com
