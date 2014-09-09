@@ -1,89 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from api.opinsys.fi ([217.112.254.4]:57842 "EHLO mail.opinsys.fi"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751598AbaICHJM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2014 03:09:12 -0400
-Date: Wed, 3 Sep 2014 07:01:32 +0000 (UTC)
-From: Tuomas =?utf-8?B?UsOkc8OkbmVu?= <tuomasjjrasanen@opinsys.fi>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>, linux-nfs@vger.kernel.org
-Message-ID: <927052272.63158.1409727692986.JavaMail.zimbra@opinsys.fi>
-In-Reply-To: <1726881404.72983.1402308693418.JavaMail.zimbra@opinsys.fi>
-References: <199810131.34257.1400570367382.JavaMail.zimbra@opinsys.fi> <1176115795.34522.1400575248541.JavaMail.zimbra@opinsys.fi> <20140520102117.2582abac@tlielax.poochiereds.net> <2137177707.38241.1400684149690.JavaMail.zimbra@opinsys.fi> <20140521165304.4331255d@tlielax.poochiereds.net> <1726881404.72983.1402308693418.JavaMail.zimbra@opinsys.fi>
-Subject: Re: Soft lockups on kerberised NFSv4.0 clients
+Received: from mail-qg0-f45.google.com ([209.85.192.45]:62974 "EHLO
+	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753452AbaIIQMt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:12:49 -0400
+Received: by mail-qg0-f45.google.com with SMTP id j107so4262724qga.4
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 09:12:48 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 9 Sep 2014 12:12:44 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: kernel BUG in fs/dcache.c running nfs
+Message-ID: <20140909121244.610f297d@tlielax.poochiereds.net>
+In-Reply-To: <20140909154211.GA6614@infradead.org>
+References: <20140908144525.GB19811@infradead.org>
+	<20140909105918.59477ee3@tlielax.poochiereds.net>
+	<20140909154211.GA6614@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message -----
-> From: "Tuomas Räsänen" <tuomasjjrasanen@opinsys.fi>
-> 
-> ----- Original Message -----
-> > From: "Jeff Layton" <jlayton@poochiereds.net>
+On Tue, 9 Sep 2014 08:42:11 -0700
+Christoph Hellwig <hch@infradead.org> wrote:
+
+> On Tue, Sep 09, 2014 at 10:59:18AM -0400, Jeff Layton wrote:
+> > > [ 5497.405585]  [<ffffffff8135d0c1>] nfs4_do_open.constprop.84+0x681/0x960
+> > > [ 5497.405585]  [<ffffffff8135d459>] nfs4_atomic_open+0x9/0x20
+> > > [ 5497.405585]  [<ffffffff8136cc3d>] nfs4_file_open+0xcd/0x1b0
+> > > [ 5497.405585]  [<ffffffff811b8092>] do_dentry_open.isra.13+0x1f2/0x320
+> > > [ 5497.405585]  [<ffffffff811b82ad>] finish_open+0x1d/0x30
+> > > [ 5497.405585]  [<ffffffff811c98e9>] path_openat+0xb9/0x670
+> > > [ 5497.405585]  [<ffffffff811ca26e>] do_filp_open+0x3e/0xa0
+> > > [ 5497.405585]  [<ffffffff811b95cc>] do_sys_open+0x13c/0x230
+> > > [ 5497.405585]  [<ffffffff811b96dd>] SyS_open+0x1d/0x20
+> > > [ 5497.405585]  [<ffffffff81d9f5a9>] system_call_fastpath+0x16/0x1b
+> > > 
 > > 
-> > Ok, now that I look closer at your stack trace the problem appears to
-> > be that the unlock code is waiting for the lock context's io_count to
-> > drop to zero before allowing the unlock to proceed.
+> > Odd...
 > > 
-> > That likely means that there is some outstanding I/O that isn't
-> > completing, but it's possible that the problem is the CB_RECALL is
-> > being ignored. This will probably require some analysis of wire captures.
+> > It looks like you hit the BUG() in d_instantiate.
+> > 
+> > I don't see any calls to d_instantiate in the current nfs_code (aside
+> > from the one in nfs_lookup, and I don't think that's getting called
+> > here). d_instantiate is called by d_add though, and that gets called
+> > from nfs_atomic_open. Is that what happened here?
+> > 
+> > Maybe you can use gdb to figure out what line of code
+> > "nfs4_do_open.constprop.84+0x681" actually is?
 > 
-> The lockup mechnism seems to be as follows: the process (which is always
-> firefox) is killed, and it tries to unlock the file (which is always a
-> mmapped sqlite3 WAL index) which still has some pending IOs going on. The
-> return value of nfs_wait_bit_killable() (-ERESTARTSYS from
-> fatal_signal_pending(current)) is ignored and the process just keeps looṕing
-> because io_count seems to be stuck at 1 (I still don't know why..). This
-> raised few questions:
+> My gdb can't cope with these constprop expressions unfortunately.
 > 
-> Why the return value of nfs_wait_bit_killable() is not handled? Should it be
-> handled and if yes, how?
+> But when you remove the questionable symbols as I've done above it's
+> pretty clear that this must be the
 > 
-> Why the whole iocounter wait is not just implemented using wait_on_bit()?
+> nfs4_atomic_open
+>  -> nfs4_do_open
+>    -> _nfs4_do_open
+>      -> _nfs4_open_and_get_state
+>        -> d_add
+>          -> d_instantiate
 > 
-> I changed do_unlk() to use wait_on_bit() instead of nfs_iocounter_wait() and
-> softlockups seem to have disappeared:
-> 
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 284ca90..eb41b32 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -781,7 +781,11 @@ do_unlk(struct file *filp, int cmd, struct file_lock
-> *fl, int is_local)
->  
->         l_ctx = nfs_get_lock_context(nfs_file_open_context(filp));
->         if (!IS_ERR(l_ctx)) {
-> -               status = nfs_iocounter_wait(&l_ctx->io_count);
-> +               struct nfs_io_counter *io_count = &l_ctx->io_count;
-> +               status = wait_on_bit(&io_count->flags,
-> +                                    NFS_IO_INPROGRESS,
-> +                                    nfs_wait_bit_killable,
-> +                                    TASK_KILLABLE);
->                 nfs_put_lock_context(l_ctx);
->                 if (status < 0)
->                         return status;
-> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> index 2ffebf2..6b9089c 100644
-> --- a/fs/nfs/pagelist.c
-> +++ b/fs/nfs/pagelist.c
-> @@ -87,6 +87,7 @@ nfs_page_free(struct nfs_page *p)
->  static void
->  nfs_iocounter_inc(struct nfs_io_counter *c)
->  {
-> +       set_bit(NFS_IO_INPROGRESS, &c->flags);
->         atomic_inc(&c->io_count);
->  }
->  
-> Any thoughts? I really want to understand the issue at hand and to help
-> fixing it properly.
+> call chain. There is heavy inlining going on inside nfs4file.c, and
+> d_add now is a simple inline around d_instantiate and d_rehash.
 
-The same kind of patch was proposed by David Jeffery in http://www.spinics.net/lists/linux-nfs/msg45806.html and the discussion in that thread answered lot of my questions.
+Ok. So I'm guessing that means that the current scheme of doing a
+d_drop/d_add is not valid. d_drop doesn't remove the dentry from the
+i_alias list.
 
-The proposed patch was not accepted but David's another patch fixes the softlockup symptom (as tested with jam.c) as well: http://www.spinics.net/lists/linux-nfs/msg45807.html
-
-Case closed.
-
+It looks like the first call there should just be doing a d_delete
+instead, since it's trying to turn the thing into a negative dentry.
 -- 
-Tuomas
+Jeff Layton <jlayton@primarydata.com>
