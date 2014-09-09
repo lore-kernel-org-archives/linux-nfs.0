@@ -1,57 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oi0-f53.google.com ([209.85.218.53]:54953 "EHLO
-	mail-oi0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755198AbaIIC7J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 22:59:09 -0400
+Received: from mail-vc0-f177.google.com ([209.85.220.177]:47941 "EHLO
+	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750850AbaIIEMB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 00:12:01 -0400
+Received: by mail-vc0-f177.google.com with SMTP id hq11so16157846vcb.22
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 21:12:01 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtSkHuw22tLecFmo+aRafMM3CXDME-tU_5xoWLgstEnEZw@mail.gmail.com>
-References: <1408217806-25877-1-git-send-email-xiyou.wangcong@gmail.com>
-	<87ppfvrdux.fsf@x220.int.ebiederm.org>
-	<20140828014123.GF18016@ZenIV.linux.org.uk>
-	<CAHQdGtSkHuw22tLecFmo+aRafMM3CXDME-tU_5xoWLgstEnEZw@mail.gmail.com>
-Date: Mon, 8 Sep 2014 19:59:08 -0700
-Message-ID: <CAM_iQpUfHGvHfC9Omew7QM-npbSNs67cmpEgZW_q_r6+qQfU4g@mail.gmail.com>
-Subject: Re: [PATCH v2] nfs: fix kernel warning when removing proc entry
-From: Cong Wang <xiyou.wangcong@gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Dan Aloni <dan@kernelim.com>
+In-Reply-To: <20140821161338.GA31352@infradead.org>
+References: <1408637375-11343-1-git-send-email-hch@lst.de>
+	<20140821161338.GA31352@infradead.org>
+Date: Mon, 8 Sep 2014 21:12:01 -0700
+Message-ID: <CAHQdGtToLV08oRhfnEMwvxAsL3CeiU55GUxYC9iZvyuUDZ9fCA@mail.gmail.com>
+Subject: Re: pnfs block layout driver fixes V2
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 8, 2014 at 4:54 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Wed, Aug 27, 2014 at 6:41 PM, Al Viro <viro@zeniv.linux.org.uk> wrote:
->> On Tue, Aug 19, 2014 at 09:20:38PM -0700, Eric W. Biederman wrote:
->>> Cong Wang <xiyou.wangcong@gmail.com> writes:
->>>
->>> > I saw the following kernel warning:
->>>
->>> Cong thanks for finding and tracking this.  I was clearly asleep at the
->>> switch when I was testing my fix to the nfs client code :(
->>>
->>> I have applied this patch and will push it to Linus after it has a
->>> little bit to sit in linux-next.
+On Thu, Aug 21, 2014 at 9:13 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> For some reason the subject of the mail got lost, fixed it.
+>
+> On Thu, Aug 21, 2014 at 11:09:16AM -0500, Christoph Hellwig wrote:
+>> This series fixes a wide range of issues with the pnfs block layout driver.
 >>
->>         Why does that code wank with one-by-one remove_proc_entry(), BTW?
->> remove_proc_subtree("nfsfs", net->proc_net) will take care of the whole pile
->> just fine, TYVM...  While we are it, there's no need to keep ->proc_nfsfs
->> at all - just have it in a local variable in nfs_fs_proc_net_init().
->
-> Since nobody sent me an updated version with the remove_proc_subtree
-> fix, I went ahead and edited the patch myself (see attachment). Cong,
-> please let me know if you disagree with that change, otherwise, that
-> will be the final patch sent upstream and Cc: stable # 3.4+.
->
-> I'll schedule cleanup patches to make the same changes to the original
-> nfs_fs_proc_exit() and nfs_fs_proc_init() and to remove (struct
-> nfs_net)->proc_nfsfs for merging in 3.18.
->
+>> Before this we were seeing frequent silent data corruption, softlockups and
+>> kernel crashes when running both user applications and test cases like xfstests.
+>>
+>> After this rewrite of the I/O path we've sorted out all issues under normal
+>> operations, although error handling in the block layout driver and its
+>> interaction with the core nfs and pnfs code still needs further work.
+>>
+>> It was pointed out that the requirement for blocksizes smaller or equal to
+>> the page size conflicts with existing servers.  From the state of the code
+>> I'm very sure it was never used for real against those servers, but as
+>> soon as someone signs up to testing and fix support for these servers I'm
+>> happy to land a helping hand, although rock solid support probably is
+>> imposible.
+>>
+>> This work was sponsored by NetApp, Inc.
+>>
+>> Changes since V1:
+>>  - added two more layout stateid handling fixes
+>>  - change the layoutget path so that the layout driver is responsible for
+>>    freeing the spliced in payload.
+>>
 
-Oops, I missed Al's reply and didn't know remove_proc_subtree() either.
+Applying all patches except the ones for which I explicitly sent you
+an email with questions and/or a notification of a dependency on a
+questioned patch.
 
-Thanks for the update and it definitely looks good to me!
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
