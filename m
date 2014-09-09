@@ -1,147 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54542 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753225AbaIZCZh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Sep 2014 22:25:37 -0400
-Date: Fri, 26 Sep 2014 12:25:27 +1000
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Add missing support for
- RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT
-Message-ID: <20140926122527.19ee6931@notabene.brown>
-In-Reply-To: <CAHQdGtRrpRxDi5FFjNhvptVnh+nqEyAREQA_6eSoExoW9_CsfA@mail.gmail.com>
-References: <1411613479-8803-1-git-send-email-trond.myklebust@primarydata.com>
-	<20140926111005.3124f859@notabene.brown>
-	<CAHQdGtRrpRxDi5FFjNhvptVnh+nqEyAREQA_6eSoExoW9_CsfA@mail.gmail.com>
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:44418 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751155AbaIIU47 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 16:56:59 -0400
+Received: by mail-qg0-f41.google.com with SMTP id a108so4410813qge.28
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 13:56:58 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 9 Sep 2014 16:56:51 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH v3 7/8] nfsd: set and test NFSD4_CLIENT_STABLE bit to
+ reduce nfsdcltrack upcalls
+Message-ID: <20140909165651.3f373521@tlielax.poochiereds.net>
+In-Reply-To: <20140909204617.GC17979@fieldses.org>
+References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+	<1410187609-10319-8-git-send-email-jlayton@primarydata.com>
+	<20140909204617.GC17979@fieldses.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/KtK70r9Fou7uRLcjPuG9Y.9"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/KtK70r9Fou7uRLcjPuG9Y.9
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Tue, 9 Sep 2014 16:46:17 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-On Thu, 25 Sep 2014 21:23:35 -0400 Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
+> On Mon, Sep 08, 2014 at 10:46:48AM -0400, Jeff Layton wrote:
+> > The nfsdcltrack upcall doesn't utilize the NFSD4_CLIENT_STABLE flag,
+> > which basically results in an upcall every time we call into the client
+> > tracking ops.
+> > 
+> > Change it to set this bit on a successful "check" or "create" request,
+> > and clear it on a "remove" request.  Also, check to see if that bit is
+> > set before upcalling on a "check" or "remove" request, and skip
+> > upcalling appropriately, depending on its state.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > ---
+> >  fs/nfsd/nfs4recover.c | 22 ++++++++++++++++++----
+> >  1 file changed, 18 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+> > index ae313861a6f5..5697e9d2e875 100644
+> > --- a/fs/nfsd/nfs4recover.c
+> > +++ b/fs/nfsd/nfs4recover.c
+> > @@ -1291,7 +1291,8 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+> >  	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
+> >  
+> >  	nfsd4_cltrack_upcall_lock(clp);
+> > -	nfsd4_umh_cltrack_upcall("create", hexid, reclaim_complete, grace_start);
+> > +	if (!nfsd4_umh_cltrack_upcall("create", hexid, reclaim_complete, grace_start))
+> > +		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
+> 
+> Don't you also want to skip the upcall when STABLE is set?
+> 
+> (Not a big deal in the 4.1 case as it's only called once per client (in
+> RECLAIM_COMPLETE) but annoying in the 4.0 case where it's called on
+> every OPEN_CONFIRM.)
+> 
+> --b.
+> 
 
-> On Thu, Sep 25, 2014 at 9:10 PM, NeilBrown <neilb@suse.de> wrote:
-> > On Wed, 24 Sep 2014 22:51:19 -0400 Trond Myklebust
-> > <trond.myklebust@primarydata.com> wrote:
-> >
-> >> The flag RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT was intended introduced in
-> >> order to allow NFSv4 clients to disable resend timeouts. Since those
-> >> cause the RPC layer to break the connection, they mess up the duplicate
-> >> reply caches that remain indexed on the port number in NFSv4..
-> >>
-> >> This patch includes the code that was missing in the original to
-> >> set the appropriate flag in struct rpc_clnt, when the caller of
-> >> rpc_create() sets RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT.
-> >>
-> >> Fixes: 8a19a0b6cb2e (SUNRPC: Add RPC task and client level options to.=
-..)
-> >> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> >> ---
-> >>  net/sunrpc/clnt.c | 2 ++
-> >>  1 file changed, 2 insertions(+)
-> >>
-> >> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> >> index 488ddeed9363..841565450354 100644
-> >> --- a/net/sunrpc/clnt.c
-> >> +++ b/net/sunrpc/clnt.c
-> >> @@ -461,6 +461,8 @@ struct rpc_clnt *rpc_create_xprt(struct rpc_create=
-_args *args,
-> >>
-> >>       if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
-> >>               clnt->cl_autobind =3D 1;
-> >> +     if (args->flags & RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT)
-> >> +             clnt->cl_noretranstimeo =3D 1;
-> >>       if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
-> >>               clnt->cl_discrtry =3D 1;
-> >>       if (!(args->flags & RPC_CLNT_CREATE_QUIET))
-> >
-> > Hi Trond,
-> >  do this relate to my observation in
-> >     Subject: Re: NFS auto-reconnect tuning
-> >
-> >  that NFSv4 closes a connections after the first timeout?
-> >  This patch seems to be a step towards changing that behaviour, though =
-it
-> >  doesn't succeed.
-> >
-> > You would need
-> >
-> > @@ -580,6 +582,7 @@ static struct rpc_clnt *__rpc_clone_client(struct r=
-pc_create_args *args,
-> >         new->cl_autobind =3D 0;
-> >         new->cl_softrtry =3D clnt->cl_softrtry;
-> >         new->cl_discrtry =3D clnt->cl_discrtry;
-> > +       new->cl_noretranstimeo =3D clnt->cl_noretranstimeo;
->=20
-> D'oh! Yes, of course that is correct.
->=20
-> >         new->cl_chatty =3D clnt->cl_chatty;
-> >         return new;
-> >
-> > as well.
-> >
-> > What do you think of having the client close the connection more quickl=
-y when
-> > there is a timeout?  There does seem to be a case for closing sooner th=
-an 30
-> > minutes...
-> >
-> > I must admit I'm a bit confused by these flags so I might be missing
-> > something important.
->=20
-> Actually, the whole idea is to stop the client from disconnecting when
-> it doesn't need to. Disconnect =3D=3D very bad, since it typically breaks
-> the duplicate reply cache semantics and it can interrupt RPC calls
-> that may be in progress on the server.
-> Furthermore, the NFSv4 server is supposed to guarantee to us that it
-> will always reply to an RPC call (provided that the connection stays
-> up), so the whole business of disconnecting was misguided in the first
-> place. The only thing we need is to detect accidental disconnections
-> (i.e. network partitions), and the way to do that is to use TCP
-> keepalive. The new code will therefore interpret the NFSv4 'timeo'
-> mount parameter as the TCP keepalive timeout rather than as a
-> retransmission timeout.
->=20
+Ahh right, I was thinking that we'd only get one OPEN_CONFIRM per
+client, but you have to do it for each openowner...
 
-OK - that makes sense.
+No, we can't do that. Consider the case where we might do some "check"
+ops before the "create" operation (i.e. we need to do some reclaims).
 
-A problem is that TCP keepalives don't help when you change the local IP
-address.
-tcp_keepalive_timer() sees that tcp_send_head() is always non-NULL
-(presumably a packet that it is trying to send but cannot be) and so it just
-keeps waiting.
-I guess I should raise this on net-dev ....
+The "check" will set the STABLE flag, and then the create operation
+gets skipped. That means that the grace period won't get lifted early
+even when the RECLAIM_COMPLETE comes in since the reclaim_complete
+field in the DB didn't get updated.
 
-Thanks,
-NeilBrown
+We could (in principle) add a new flag that indicates whether a
+"create" has already been done for a client, and use that to skip
+subsequent "create" ops. Sound reasonable?
 
---Sig_/KtK70r9Fou7uRLcjPuG9Y.9
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+> >  	nfsd4_cltrack_upcall_unlock(clp);
+> >  
+> >  	kfree(reclaim_complete);
+> > @@ -1304,6 +1305,9 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+> >  {
+> >  	char *hexid;
+> >  
+> > +	if (!test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
+> > +		return;
+> > +
+> >  	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+> >  	if (!hexid) {
+> >  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+> > @@ -1311,7 +1315,9 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+> >  	}
+> >  
+> >  	nfsd4_cltrack_upcall_lock(clp);
+> > -	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
+> > +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags) &&
+> > +	    nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL) == 0)
+> > +		clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
+> >  	nfsd4_cltrack_upcall_unlock(clp);
+> >  
+> >  	kfree(hexid);
+> > @@ -1323,6 +1329,9 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+> >  	int ret;
+> >  	char *hexid, *legacy;
+> >  
+> > +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
+> > +		return 0;
+> > +
+> >  	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+> >  	if (!hexid) {
+> >  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+> > @@ -1331,9 +1340,14 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+> >  	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
+> >  
+> >  	nfsd4_cltrack_upcall_lock(clp);
+> > -	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
+> > +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags)) {
+> > +		ret = 0;
+> > +	} else {
+> > +		ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
+> > +		if (!ret)
+> > +			set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
+> > +	}
+> >  	nfsd4_cltrack_upcall_unlock(clp);
+> > -
+> >  	kfree(legacy);
+> >  	kfree(hexid);
+> >  	return ret;
+> > -- 
+> > 1.9.3
+> > 
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
 
-iQIVAwUBVCTOmDnsnt1WYoG5AQKNpw/8DfdUSiRHa1UecVmumVN0NKsRcW3LuSGv
-3l5noaUh+eqUFj4r6fEXb279/RvE2aUFlcakIY2rqq7OnUXW2bNRGp1I71ioNlDT
-tQhimgT2wVvt8LaZ0EQvJK0n45tOkvD1sAvWJwsqh2Iei66hRSBaIMYH8QmB5LpY
-Y/+cWYw0KUTeGnuQ9oT+kJ1QtHrKjlz1ELb5eMsS9xw8jmfZtCvfe+aponoL2Zgb
-viLz6sddjMhKXSXmK+Bt7h6HAfYAH3L0JWfxdOiudEq8AC5bZqf18H5SkBhkxOGa
-Rs6SypkXYI80scwYVdt4RBwPC199de6cbSEJDzDcydD4clZ/qQYqo4YFJig3CDXy
-PJmp4UkGZtj6dZyWYyN3gN0TE/zDsSeZFxXx2v+DtAGOgzICzqHKeB09OlFFfMdq
-3cF92LiG0VlQdiqj6MKvm1qwvPm7rpQOMq7IXT+/J9kA80JjBy19OsLncOZhP5MD
-LovhhjEdNTyrVMZDmoIQNBuc/StAe0xsXZIt5+nTD6iY64cQs84hk67fHFfGAkvb
-lXLUwOH4a7Bqh9U1rRwOKa6+uyokydX/dkjxuplAcFDdDHxj7uY66omANPYJh1qU
-6MES2QwVKU1mNUs/WJB2KU9NB8f9E7ECgS0fXpfC2JR772CE+VBkCO6Y+UHoI3hJ
-ziF/qdhUVO8=
-=f6+E
------END PGP SIGNATURE-----
-
---Sig_/KtK70r9Fou7uRLcjPuG9Y.9--
+-- 
+Jeff Layton <jlayton@primarydata.com>
