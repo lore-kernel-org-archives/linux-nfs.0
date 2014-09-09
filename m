@@ -1,70 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:43907 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752993AbaIDMjR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:17 -0400
-Received: by mail-qg0-f41.google.com with SMTP id i50so10022510qgf.14
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:16 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 13/17] locks: remove i_have_this_lease check from __break_lease
-Date: Thu,  4 Sep 2014 08:38:39 -0400
-Message-Id: <1409834323-7171-14-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-vc0-f178.google.com ([209.85.220.178]:52890 "EHLO
+	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756395AbaIIOks (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 10:40:48 -0400
+Received: by mail-vc0-f178.google.com with SMTP id hy4so2393150vcb.23
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 07:40:48 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140909055402.GB12536@lst.de>
+References: <1408637375-11343-1-git-send-email-hch@lst.de>
+	<20140821161338.GA31352@infradead.org>
+	<CAHQdGtToLV08oRhfnEMwvxAsL3CeiU55GUxYC9iZvyuUDZ9fCA@mail.gmail.com>
+	<20140909055402.GB12536@lst.de>
+Date: Tue, 9 Sep 2014 07:40:47 -0700
+Message-ID: <CAHQdGtTpzjuOYeUtn9yYSuXho_oWDDDLaYg5VYMMRwo2gS__8g@mail.gmail.com>
+Subject: Re: pnfs block layout driver fixes V2
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I think that the intent of this code was to ensure that a process won't
-deadlock if it has one fd open with a lease on it and then breaks that
-lease by opening another fd. In that case it'll treat the __break_lease
-call as if it were non-blocking.
+On Mon, Sep 8, 2014 at 10:54 PM, Christoph Hellwig <hch@lst.de> wrote:
+> On Mon, Sep 08, 2014 at 09:12:01PM -0700, Trond Myklebust wrote:
+>> Applying all patches except the ones for which I explicitly sent you
+>> an email with questions and/or a notification of a dependency on a
+>> questioned patch.
+>
+> Might be easier to just resend the whole series as there's quite a few
+> dependencies.  But if you push out a tree with the applied patches I can
+> just rebase against that.
+>
 
-This seems wrong -- the process could (for instance) be multithreaded
-and managing different fds via different threads. I also don't see any
-mention of this limitation in the (somewhat sketchy) documentation.
+Done. Please see
+git://git.linux-nfs.org/projects/trondmy/linux-nfs.git with branch
+linux-next.
 
-Remove the check and the non-blocking behavior when i_have_this_lease
-is true.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/locks.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
-
-diff --git a/fs/locks.c b/fs/locks.c
-index dc2e9e18f32d..011812490c92 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1370,7 +1370,6 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- 	struct file_lock *new_fl, *flock;
- 	struct file_lock *fl;
- 	unsigned long break_time;
--	int i_have_this_lease = 0;
- 	bool lease_conflict = false;
- 	int want_write = (mode & O_ACCMODE) != O_RDONLY;
- 	LIST_HEAD(dispose);
-@@ -1391,8 +1390,7 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- 	for (fl = flock; fl && IS_LEASE(fl); fl = fl->fl_next) {
- 		if (leases_conflict(fl, new_fl)) {
- 			lease_conflict = true;
--			if (fl->fl_owner == current->files)
--				i_have_this_lease = 1;
-+			break;
- 		}
- 	}
- 	if (!lease_conflict)
-@@ -1422,7 +1420,7 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- 		fl->fl_lmops->lm_break(fl);
- 	}
- 
--	if (i_have_this_lease || (mode & O_NONBLOCK)) {
-+	if (mode & O_NONBLOCK) {
- 		trace_break_lease_noblock(inode, new_fl);
- 		error = -EWOULDBLOCK;
- 		goto out;
+Cheers
+  Trond
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
