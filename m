@@ -1,187 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:32815 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751923AbaI0U5I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 16:57:08 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so355957qgf.21
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 13:57:07 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Sat, 27 Sep 2014 16:57:04 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] Could somebody please enlighten me as to what is
- supposed to happen in this situation?
-Message-ID: <20140927165704.59be4981@synchrony.poochiereds.net>
-In-Reply-To: <CAHQdGtSc8+5k-U=5NB7gYEhh5Qd4jq2BqpzQ_0wA_YH637q97g@mail.gmail.com>
-References: <CAABAsM4zDuzjapXfLUrminwM1FV7iwN+oEzxgzaQ60m93gBBug@mail.gmail.com>
-	<20140927144056.2d303755@synchrony.poochiereds.net>
-	<CAHQdGtQBNpBO+xv_uk+bkue6zoSKMhU72xjKaeOb2gEHY012Ew@mail.gmail.com>
-	<20140927155045.76ce1149@synchrony.poochiereds.net>
-	<CAHQdGtSc8+5k-U=5NB7gYEhh5Qd4jq2BqpzQ_0wA_YH637q97g@mail.gmail.com>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:42927 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755070AbaIID5d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 23:57:33 -0400
+Received: by mail-vc0-f174.google.com with SMTP id hy10so2080441vcb.19
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 20:57:32 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <1408637375-11343-9-git-send-email-hch@lst.de>
+References: <1408637375-11343-1-git-send-email-hch@lst.de>
+	<1408637375-11343-9-git-send-email-hch@lst.de>
+Date: Mon, 8 Sep 2014 20:57:32 -0700
+Message-ID: <CAHQdGtQQEN3AP3NdeBS38cDCNW8fQii4aZRNd33LBre5zYH4Ag@mail.gmail.com>
+Subject: Re: [PATCH 08/19] pnfs: add return_range method
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 27 Sep 2014 16:27:15 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On Thu, Aug 21, 2014 at 9:09 AM, Christoph Hellwig <hch@lst.de> wrote:
+> If a layout driver keeps per-inode state outside of the layout segments it
+> needs to be notified of any layout returns or recalls on an inode, and not
+> just about the freeing of layout segments.  Add a method to acomplish this,
+> which will allow the block layout driver to handle the case of truncated
+> and re-expanded files properly.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfs/callback_proc.c |  6 +++++-
+>  fs/nfs/pnfs.c          | 10 ++++++++++
+>  fs/nfs/pnfs.h          |  3 +++
+>  3 files changed, 18 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index bf017b0..86541e0 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -179,8 +179,12 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>                         &args->cbl_range)) {
+>                 need_commit = true;
+>                 rv = NFS4ERR_DELAY;
+> +       } else {
+> +               if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
+> +                       NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo,
+> +                               &args->cbl_range);
+> +               }
+>         }
+> -
+>         pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+>         spin_unlock(&ino->i_lock);
+>         pnfs_free_lseg_list(&free_me_list);
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index bce7f1b..e481d1c 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -857,6 +857,16 @@ _pnfs_return_layout(struct inode *ino)
+>         empty = list_empty(&lo->plh_segs);
+>         pnfs_clear_layoutcommit(ino, &tmp_list);
+>         pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
+> +
+> +       if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
+> +               struct pnfs_layout_range range = {
+> +                       .iomode         = IOMODE_ANY,
+> +                       .offset         = 0,
+> +                       .length         = NFS4_MAX_UINT64,
+> +               };
+> +               NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo, &range);
+> +       }
+> +
+>         /* Don't send a LAYOUTRETURN if list was initially empty */
+>         if (empty) {
+>                 spin_unlock(&ino->i_lock);
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 302b279..044c071 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -94,6 +94,9 @@ struct pnfs_layoutdriver_type {
+>         struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
+>         void (*free_lseg) (struct pnfs_layout_segment *lseg);
+>
+> +       void (*return_range) (struct pnfs_layout_hdr *lo,
+> +                             struct pnfs_layout_range *range);
+> +
+>         /* test for nfs page cache coalescing */
+>         const struct nfs_pageio_ops *pg_read_ops;
+>         const struct nfs_pageio_ops *pg_write_ops;
 
-> On Sat, Sep 27, 2014 at 3:50 PM, Jeff Layton
-> <jeff.layton@primarydata.com> wrote:
-> > On Sat, 27 Sep 2014 15:25:12 -0400
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> >
-> >> On Sat, Sep 27, 2014 at 2:40 PM, Jeff Layton
-> >> <jeff.layton@primarydata.com> wrote:
-> >> > On Sat, 27 Sep 2014 11:22:29 -0400
-> >> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> >> >
-> >> >
-> >> > My take (quite possibly wrong, but...)
-> >> >
-> >> >> The scenario is this:
-> >> >>                                        Server
-> >> >>                                        ======
-> >> >>                                        boot (B1)
-> >> >> Client
-> >> >> ======
-> >> >> EXCHANGE_ID
-> >> >> CREATE_SESSION
-> >> >> OPEN(reclaim)
-> >> >> LOCK(reclaim)
-> >> >> RECLAIM_COMPLETE
-> >> >>                                        (lift GRACE period)
-> >> >
-> >> > At this point, we'd deny reclaim from any client that has not issued a
-> >> > RECLAIM_COMPLETE. In the case of the Linux server with nfsdcltrack, we
-> >> > clean out any client records that have not issued a RECLAIM_COMPLETE.
-> >> >
-> >> >>                                        reboot (B2)
-> >> >> EXCHANGE_ID
-> >> >> CREATE_SESSION
-> >> >> OPEN(reclaim)
-> >> >>                                         reboot (while GRACE period
-> >> >> still being enforced) (B3)
-> >> >> EXCHANGE_ID
-> >> >> CREATE_SESSION
-> >> >> OPEN(reclaim)
-> >> >>
-> >> >> What should be the server response to the above OPEN(reclaim) from the
-> >> >> client after reboot (B3)?
-> >> >>
-> >> >
-> >> > My expectation is that it would be granted. There was a
-> >> > RECLAIM_COMPLETE issued during the boot where the grace period was last
-> >> > lifted, and that should be enough to allow the client to issue reclaims
-> >> > on any subsequent reboot, until the grace period is lifted again.
-> >> >
-> >> > Doing anything else would be a pretty unfriendly way for the server to
-> >> > behave. In the face of rapid reboots (a not-uncommon occurrence when
-> >> > patching, etc), you'd lose state unless the client just happened to get
-> >> > in there quickly enough to issue a RECLAIM_COMPLETE between each reboot.
-> 
-> Where is the evidence that this is a problem for NFS and for NFS
-> client recovery?
-> 
-
-I don't have any other than my own experience with it. That said,
-reclaim problems tend to be "silent killers". It's often hard to notice
-when things go wrong as it's not necessarily a problem.
-
-> >> > That was the situation with the legacy client tracker in knfsd. When
-> >> > testing, it was trivial to reboot the machine quickly twice and on the
-> >> > second reboot nothing could be reclaimed.
-> >>
-> >> So now, what if the following scenario:
-> >>
-> >>                                        Server
-> >>                                        ======
-> >>                                        boot (B1')
-> >> Client
-> >> ======
-> >> EXCHANGE_ID
-> >> CREATE_SESSION
-> >> OPEN(reclaim)
-> >> LOCK(reclaim)
-> >> RECLAIM_COMPLETE
-> >>                                        (lift GRACE period (G1))
-> >>                                        reboot (B2')
-> >> EXCHANGE_ID
-> >> CREATE_SESSION
-> >> OPEN(reclaim)
-> >>                                        (lift GRACE period (G2))
-> >>                                        reboot (B3')
-> >> EXCHANGE_ID
-> >> CREATE_SESSION
-> >> OPEN(reclaim)
-> >>
-> >> What should happen to the OPEN(reclaim) in (B3')?
-> >>
-> >
-> > (Let's call the lifting of grace periods 'G1' and 'G2'...)
-> >
-> > Denied.
-> >
-> > There was no RECLAIM_COMPLETE issued between B2 and G2. It's possible
-> > that client2 could creep in between G2 and B3 and acquire locks that
-> > conflict with ones that were not reclaimed by client1 between B2 and
-> > G2. So, we can't allow any reclaims for client1 after B3.
-> 
-> Why should the possibility that clients might steal locks that were
-> not reclaimed, affect reboot recovery of locks that were successfully
-> reclaimed? There is no way for client 2 to steal those unless the
-> lease expires, in which case client 1 will be blocked from recovering
-> state anyway.
-> 
-
-Well, the server could allow it, but relying on the client to limit
-what it reclaims in that case seems a bit sketchy. The question is:
-
-    Can the client could lose its lease while the grace period is still
-    in effect?
-
-If so, then the client might reclaim some, but not all locks, and then
-lose its lease. It gets a new lease and the reclaims only the ones that
-it reclaimed before, even though it could have reclaimed all of them
-since the grace period is still in effect.
-
-I'm not sure which is worse. :-/
-
-> So you are saying that the client should be able to reclaim all locks
-> or nothing? If this is really the case then, could we please fix the
-> spec?
-> 
-
-I'm saying that if the client wants to to be able to reclaim anything
-on the next reboot, then it should issue a RECLAIM_COMPLETE during the
-current one.
-
-The exception there is if the server never gets to lift the grace
-period before the next reboot occurs. In that case, we'll still want to
-allow the client to reclaim on the next reboot (since we know that no
-new state can have been established).
-
-> > I should add a clarification here too. I'm assuming that the server in
-> > this case just tracks the minimum required to allow state to be
-> > reclaimed. If it (for instance) tracked on stable storage all of the
-> > locks that it ever granted such that it knows that there were no
-> > conflicts, then it could be more lenient about allowing client1 to
-> > reclaim after B3.
-> 
-> No. A server doesn't need to do all that in order to allow the client
-> to recover some of the locks.
-> 
-> All it needs to do is to be able to tell the client that it shouldn't
-> reclaim locks that were not reclaimed in (B2'). A simple SEQUENCE
-> status flag would suffice to let the client know that it failed to
-> reclaim all its locks in the last valid grace period.
-> 
-
-It is required with the current protocol. If you're talking about
-extending the protocol to allow it, then that's a different matter
-entirely.
+Holding off applying this patch for now until we figure out the right
+behaviour for "[PATCH 03/19] pnfs: force a layout commit when
+encountering busy segments during recall". There is a small dependency
+in initiate_file_draining().
 
 -- 
-Jeff Layton <jlayton@primarydata.com>
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
