@@ -1,58 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9222 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753611AbaIXPay (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2014 11:30:54 -0400
-Message-ID: <5422E3A8.4050506@RedHat.com>
-Date: Wed, 24 Sep 2014 11:30:48 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-vc0-f181.google.com ([209.85.220.181]:59631 "EHLO
+	mail-vc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750972AbaIIEDc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 00:03:32 -0400
+Received: by mail-vc0-f181.google.com with SMTP id ij19so2703691vcb.40
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 21:03:31 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: NeilBrown <neilb@suse.de>, Simo Sorce <simo@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-References: <5420B78D.6040704@RedHat.com> <20140922202655.5e308e58@willson.usersys.redhat.com> <20140923015549.GB32712@fieldses.org> <20140923120804.51dbcc2e@notabene.brown> <20140923021110.GB1409@fieldses.org> <20140923192311.GI29932@fieldses.org> <5421D55B.8040403@RedHat.com> <20140923202514.GO29932@fieldses.org> <5421E2E6.7000409@RedHat.com> <5422DE24.9050608@RedHat.com> <20140924152333.GB3365@fieldses.org>
-In-Reply-To: <20140924152333.GB3365@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <1408637375-11343-18-git-send-email-hch@lst.de>
+References: <1408637375-11343-1-git-send-email-hch@lst.de>
+	<1408637375-11343-18-git-send-email-hch@lst.de>
+Date: Mon, 8 Sep 2014 21:03:31 -0700
+Message-ID: <CAHQdGtQpDs+oGpwmOgFxx=Yk8N=6cFd_Wmcrr-OYLo4GeXsVUA@mail.gmail.com>
+Subject: Re: [PATCH 17/19] pnfs/blocklayout: implement the return_range method
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Aug 21, 2014 at 9:09 AM, Christoph Hellwig <hch@lst.de> wrote:
+> This allows removing extents from the extent tree especially on truncate
+> operations, and thus fixing reads from truncated and re-extended that
+> previously returned stale data.
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfs/blocklayout/blocklayout.c | 30 ++++++++++++++++++++++++++++++
+>  1 file changed, 30 insertions(+)
+>
+> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+> index 42b6f9c..a7524c4 100644
+> --- a/fs/nfs/blocklayout/blocklayout.c
+> +++ b/fs/nfs/blocklayout/blocklayout.c
+> @@ -470,6 +470,35 @@ static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+>  }
+>
+>  static void
+> +bl_return_range(struct pnfs_layout_hdr *lo,
+> +               struct pnfs_layout_range *range)
+> +{
+> +       struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
+> +       sector_t offset = range->offset >> SECTOR_SHIFT, end;
+> +       int err;
+> +
+> +       if (range->offset % 8) {
+> +               dprintk("%s: offset %lld not block size aligned\n",
+> +                       __func__, range->offset);
+> +               return;
+> +       }
+> +
+> +       if (range->length != NFS4_MAX_UINT64) {
+> +               if (range->length % 8) {
+> +                       dprintk("%s: length %lld not block size aligned\n",
+> +                               __func__, range->length);
+> +                       return;
+> +               }
+> +
+> +               end = offset + (range->length >> SECTOR_SHIFT);
+> +       } else {
+> +               end = round_down(NFS4_MAX_UINT64, PAGE_SIZE);
+> +       }
+> +
+> +       err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
+> +}
+> +
+> +static void
+>  bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
+>                        const struct nfs4_layoutcommit_args *arg)
+>  {
+> @@ -777,6 +806,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+>         .free_layout_hdr                = bl_free_layout_hdr,
+>         .alloc_lseg                     = bl_alloc_lseg,
+>         .free_lseg                      = bl_free_lseg,
+> +       .return_range                   = bl_return_range,
+>         .encode_layoutcommit            = bl_encode_layoutcommit,
+>         .cleanup_layoutcommit           = bl_cleanup_layoutcommit,
+>         .set_layoutdriver               = bl_set_layoutdriver,
+> --
+> 1.9.1
+>
 
+Again, holding until we resolve [3/19] and apply the patch that
+introduces ->return_range()
 
-On 09/24/2014 11:23 AM, J. Bruce Fields wrote:
-> On Wed, Sep 24, 2014 at 11:07:16AM -0400, Steve Dickson wrote:
->> On 09/23/2014 05:15 PM, Steve Dickson wrote:
->>>
->>> On 09/23/2014 04:25 PM, J. Bruce Fields wrote:
->>>>> I through this into my test world
->>>> Thanks!
->>>>
->>>>>> and one side effect of this patch
->>>>>> is both rpc.gssd and rpc.svcgssd daemons are *always* started when 
->>>>>> a key tab exists (/etc/krb5.keytab) and *all* the services (nfs-client,
->>>>>> nfs-server, rpc-gssd, and rpc-svcgssd) are disabled, which is not 
->>>>>> good... Those daemons don't need to be started when both sides 
->>>>>> are disabled...  But the auth_rpcgss is loaded! ;-) 
->>>> Weird.  I can't see how this patch on its own would have any effect on
->>>> that.
->> It turns out I must have had the nfs-client.target enabled... 
->>
->> I just realize 'systemctl disable nfs-client' does not fail, 
->> but it does not do anything either. :-( I would think 
->> it should fail with some type of "unit not found", but it
->> does not... 
-> 
-> Huh, yes, that seems kind of unhelpful.
-> 
-> 	# systemctl disable dighdfdij
-> 	# echo $?
-> 	0
+-- 
+Trond Myklebust
 
-yup... that's what bit me in the original testing...
+Linux NFS client maintainer, PrimaryData
 
-The wonderful world of systemd!!! :-P
-
-Your patch has been committed... 
-
-steved
-
+trond.myklebust@primarydata.com
