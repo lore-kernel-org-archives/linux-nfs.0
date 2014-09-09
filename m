@@ -1,125 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3233 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751039AbaIVFVW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 01:21:22 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LMFa019185
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:22 -0400
-Received: from mmyllyne.csb (vpn1-7-35.ams2.redhat.com [10.36.7.35])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LK7V006797
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:21 -0400
-Message-ID: <541FB1D0.503@redhat.com>
-Date: Mon, 22 Sep 2014 08:21:20 +0300
-From: Marko Myllynen <myllynen@redhat.com>
-Reply-To: myllynen@redhat.com
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:54966 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752877AbaIIOlc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 10:41:32 -0400
+Received: by mail-vc0-f174.google.com with SMTP id hy10so2707456vcb.5
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 07:41:31 -0700 (PDT)
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsstat: add server io stats
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <20140909055307.GA12536@lst.de>
+References: <1408637375-11343-1-git-send-email-hch@lst.de>
+	<1408637375-11343-8-git-send-email-hch@lst.de>
+	<CAHQdGtQcukSsVFxHwYyjeHk9RkwyT4+qR1buwydULgciAtrndA@mail.gmail.com>
+	<20140909055307.GA12536@lst.de>
+Date: Tue, 9 Sep 2014 07:41:31 -0700
+Message-ID: <CAHQdGtS0YL=bk2EYW3z-n1dnfCNbaUjjnvLS6ZTi0sNQP8sNrQ@mail.gmail.com>
+Subject: Re: [PATCH 07/19] pnfs: add flag to force read-modify-write in ->write_begin
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From 15fc547d8deb3d1975d160deacc05a0f5bec0845 Mon Sep 17 00:00:00 2001
-From: Marko Myllynen <myllynen@redhat.com>
-Date: Mon, 22 Sep 2014 08:02:17 +0300
-Subject: [PATCH] nfsstat: add server io stats
+On Mon, Sep 8, 2014 at 10:53 PM, Christoph Hellwig <hch@lst.de> wrote:
+> On Mon, Sep 08, 2014 at 08:50:13PM -0700, Trond Myklebust wrote:
+>> This doesn't look as if it will compile without IS_ENABLED(CONFIG_NFS_V4).
+>
+> Indeed it doesn't.  I've added an inline wrapper similar to the other
+> PNFS layoutdriver checks.
+>
 
----
- utils/nfsstat/nfsstat.c |   26 +++++++++++++++++++++++---
- 1 files changed, 23 insertions(+), 3 deletions(-)
-
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index 298adcf..83bde9d 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -92,6 +92,10 @@ static unsigned int	srvfhinfo[7], srvfhinfo_old[7];		/* (for kernels >= 2.4.0)
- 								 *    compatability.
- 								 */
- 
-+static unsigned int	srvioinfo[3], srvioinfo_old[3];		/* 0  bytes read
-+								 * 1  bytes written
-+								 */
-+
- static const char *	nfsv2name[SRVPROC2_SZ] = {
- 	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
- 	"read", "wrcache", "write",   "create", "remove",  "rename",
-@@ -167,6 +171,7 @@ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
- #define LABEL_srvrpc		"Server rpc stats:\n"
- #define LABEL_srvrc		"Server reply cache:\n"
- #define LABEL_srvfh		"Server file handle cache:\n"
-+#define LABEL_srvio		"Server io stats:\n"
- #define LABEL_srvproc2		"Server nfs v2:\n"
- #define LABEL_srvproc3		"Server nfs v3:\n"
- #define LABEL_srvproc4		"Server nfs v4:\n"
-@@ -198,6 +203,7 @@ typedef struct statinfo {
- 					SRV(rpc,s), \
- 					SRV(rc,s), \
- 					SRV(fh,s), \
-+					SRV(io,s), \
- 					SRV(proc2,s), \
- 					SRV(proc3,s),\
- 					SRV(proc4,s), \
-@@ -249,6 +255,7 @@ static time_t		starttime;
- #define PRNT_NET	0x0004
- #define PRNT_FH		0x0008
- #define PRNT_RC		0x0010
-+#define PRNT_IO		0x0020
- #define PRNT_AUTO	0x1000
- #define PRNT_V2		0x2000
- #define PRNT_V3		0x4000
-@@ -277,6 +284,7 @@ void usage(char *name)
-      net		Network layer statistics\n\
-      fh			Usage information on the server's file handle cache\n\
-      rc			Usage information on the server's request reply cache\n\
-+     io			Usage information on the server's io statistics\n\
-      all		Select all of the above\n\
-   -v, --verbose, --all	Same as '-o all'\n\
-   -r, --rpc		Show RPC statistics\n\
-@@ -366,8 +374,10 @@ main(int argc, char **argv)
- 				opt_prt |= PRNT_RC;
- 			else if (!strcmp(optarg, "fh"))
- 				opt_prt |= PRNT_FH;
-+			else if (!strcmp(optarg, "io"))
-+				opt_prt |= PRNT_IO;
- 			else if (!strcmp(optarg, "all"))
--				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH;
-+				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO;
- 			else {
- 				fprintf(stderr, "nfsstat: unknown category: "
- 						"%s\n", optarg);
-@@ -435,9 +445,9 @@ main(int argc, char **argv)
- 	if (!(opt_prt & 0xe000)) {
- 		opt_prt |= PRNT_AUTO;
- 	}
--	if ((opt_prt & (PRNT_FH|PRNT_RC)) && !opt_srv) {
-+	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO)) && !opt_srv) {
- 		fprintf(stderr,
--			"You requested file handle or request cache "
-+			"You requested io, file handle, or request cache "
- 			"statistics while using the -c option.\n"
- 			"This information is available only for the NFS "
- 			"server.\n");
-@@ -552,6 +562,16 @@ print_server_stats(int opt_prt)
- 			printf("\n");
- 		}
- 	}
-+	if (opt_prt & PRNT_IO) {
-+		if (opt_sleep && !has_rpcstats(srvioinfo, 3)) {
-+			;
-+		} else {
-+			print_numbers(LABEL_srvio
-+				"read       write\n",
-+				srvioinfo, 2);
-+			printf("\n");
-+		}
-+	}
- 
- 	/*
- 	 * 2.2 puts all fh-related info after the 'rc' header
--- 
-1.7.1
+Cool. Thanks!
 
 -- 
-Marko Myllynen
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
