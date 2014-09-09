@@ -1,41 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cam-admin0.cambridge.arm.com ([217.140.96.50]:52697 "EHLO
-	cam-admin0.cambridge.arm.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755942AbaIWPZz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 11:25:55 -0400
-Date: Tue, 23 Sep 2014 16:25:58 +0100
-From: Will Deacon <will.deacon@arm.com>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: Peng Tao <tao.peng@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: WARNING at fs/nfs/write.c:743 nfs_inode_remove_request with -rc6
-Message-ID: <20140923152558.GG28608@arm.com>
-References: <20140923130352.GK26472@arm.com>
- <2A327753-3E60-46AC-8220-3FF0FF61F08F@primarydata.com>
- <20140923135938.GB28608@arm.com>
- <20140923145356.GD28608@arm.com>
- <5294BEB2-F20F-4E3E-BFB2-E41806A4F85A@primarydata.com>
- <FA11FBE3-42E7-46B9-B9DA-FAE368DCE96B@primarydata.com>
- <F632C770-3E3D-4FC5-BBF3-69BB1CCA8F0D@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <F632C770-3E3D-4FC5-BBF3-69BB1CCA8F0D@primarydata.com>
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:61806 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752047AbaIIVvv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 17:51:51 -0400
+Received: by mail-ig0-f181.google.com with SMTP id h15so5342080igd.2
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 14:51:51 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH] pnfs: fix filelayout_retry_commit when idx > 0
+Date: Tue,  9 Sep 2014 17:51:47 -0400
+Message-Id: <1410299507-10339-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 23, 2014 at 04:08:36PM +0100, Weston Andros Adamson wrote:
-> On Sep 23, 2014, at 11:02 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
-> > Wait a second - the whole point of this extra reference (that the
-> > WARN_ON_ONCE is related to) is to handle the pass off to commit lists.
-> > 
-> > Maybe I’m just doing the wrong thing here with NFSv2!
-> > 
-> > More soon.
-> 
-> Actually, can you see if this is reproducible with NFSv3?
+filelayout_retry_commit was recently split out from alloc_ds_commits,
+but was done in such a way that the bucket pointer always starts at
+index 0 no matter what the @idx argument is set to.
 
-Just tried that, and I'm unable to trigger the problem with NFSv3.
+The intention of the @idx argument is to retry commits starting at
+bucket @idx. This is called when alloc_ds_commits fails for a bucket.
 
-Will
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/filelayout/filelayout.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 1359c4a27393..90978075f730 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -1269,11 +1269,12 @@ filelayout_search_commit_reqs(struct nfs_commit_info *cinfo, struct page *page)
+ static void filelayout_retry_commit(struct nfs_commit_info *cinfo, int idx)
+ {
+ 	struct pnfs_ds_commit_info *fl_cinfo = cinfo->ds;
+-	struct pnfs_commit_bucket *bucket = fl_cinfo->buckets;
++	struct pnfs_commit_bucket *bucket;
+ 	struct pnfs_layout_segment *freeme;
+ 	int i;
+ 
+-	for (i = idx; i < fl_cinfo->nbuckets; i++, bucket++) {
++	for (i = idx; i < fl_cinfo->nbuckets; i++) {
++		bucket = &fl_cinfo->buckets[i];
+ 		if (list_empty(&bucket->committing))
+ 			continue;
+ 		nfs_retry_commit(&bucket->committing, bucket->clseg, cinfo);
+-- 
+1.8.5.2 (Apple Git-48)
+
