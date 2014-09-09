@@ -1,133 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:40864 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751228AbaIXWb4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 18:31:56 -0400
-Received: by mail-ie0-f172.google.com with SMTP id rp18so10645979iec.3
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 15:31:55 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQ6WYe0qgn7b7s2TW_HFsq2ZCwyMuMW8PO_10xLh79QFQ@mail.gmail.com>
-References: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
-	<CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
-	<CAN-5tyE8zt5iUQUFp+2iz9oP37HJhQ54YtSgesWs6Cu66A6qZw@mail.gmail.com>
-	<CAHQdGtQ6WYe0qgn7b7s2TW_HFsq2ZCwyMuMW8PO_10xLh79QFQ@mail.gmail.com>
-Date: Wed, 24 Sep 2014 18:31:55 -0400
-Message-ID: <CAN-5tyFKhmHOzV6gmgKJkjSL-cgd_uK0ef6kHXWER7JBvbwTjw@mail.gmail.com>
-Subject: Re: nfs4_lock_delegation_recall() improperly handles errors such as ERROR_GRACE
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from casper.infradead.org ([85.118.1.10]:45889 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754464AbaIIQio (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:38:44 -0400
+Received: from [50.247.105.171] (helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRORG-00080l-OH
+	for linux-nfs@vger.kernel.org; Tue, 09 Sep 2014 16:38:43 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/9] pnfs: add return_range method
+Date: Tue,  9 Sep 2014 09:40:47 -0700
+Message-Id: <1410280853-3964-4-git-send-email-hch@lst.de>
+In-Reply-To: <1410280853-3964-1-git-send-email-hch@lst.de>
+References: <1410280853-3964-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 24, 2014 at 3:57 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> Hi Olga,
->
-> On Wed, Sep 24, 2014 at 2:20 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> Hi Trond,
->>
->> nfs_delegation_claim_opens() return EAGAIN to nfs_end_delegation_return().
->> issync is always 0 (as its called by the
->> nfs_client_return_marked_delegations) and it breaks out of the loop...
->> as a result the error just doesn't get handled.
->
-> Ah. OK, so this is being called from
-> nfs_client_return_marked_delegations. That makes sense.
->
-> So for that case, I'd expect the call to return to the loop in
-> nfs4_state_manager(), and then to retry through that after doing
-> whatever is needed to recover.
-> Essentially, we should be setting NFS4CLNT_DELEGRETURN again, and then
-> bouncing back into nfs_client_return_marked_delegations (after all the
-> recovery work has been done).
+If a layout driver keeps per-inode state outside of the layout segments it
+needs to be notified of any layout returns or recalls on an inode, and not
+just about the freeing of layout segments.  Add a method to acomplish this,
+which will allow the block layout driver to handle the case of truncated
+and re-expanded files properly.
 
-Yes I don't fully understand what it should be. It never does anything
-about recovering from the lock error and simply returns the
-delegation. Ok I don't know if it means anything to you, but the 2nd
-time around (when it returns the delegation even though it hasn't
-recovered the lock), it never goes into the
-nfs4_open_delegation_recall() because stateid condition doesn't hold
-true.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/callback_proc.c | 12 +++++++++---
+ fs/nfs/pnfs.c          | 10 ++++++++++
+ fs/nfs/pnfs.h          |  3 +++
+ 3 files changed, 22 insertions(+), 3 deletions(-)
 
-If it's not too much trouble, could you explain why lock error
-shouldn't be handled as I suggested instead of resending the open with
-claim_cur over again. As I understand in your case, it'll be a series
-of successful open with claim_cur paired with a failed lock with
-err_grace. In my case, it'll be one open with claim_cur and a number
-of lock with err_grace.
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 35f2712..226e206 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -181,10 +181,16 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 	spin_lock(&ino->i_lock);
+ 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
+ 	    pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
+-					&args->cbl_range))
++					&args->cbl_range)) {
+ 		rv = NFS4ERR_DELAY;
+-	else
+-		rv = NFS4ERR_NOMATCHING_LAYOUT;
++		goto unlock;
++	}
++
++	if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
++		NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo,
++			&args->cbl_range);
++	}
++unlock:
+ 	spin_unlock(&ino->i_lock);
+ 
+ 	pnfs_free_lseg_list(&free_me_list);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 04050eb..8bd2dc2 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -858,6 +858,16 @@ _pnfs_return_layout(struct inode *ino)
+ 	empty = list_empty(&lo->plh_segs);
+ 	pnfs_clear_layoutcommit(ino, &tmp_list);
+ 	pnfs_mark_matching_lsegs_invalid(lo, &tmp_list, NULL);
++
++	if (NFS_SERVER(ino)->pnfs_curr_ld->return_range) {
++		struct pnfs_layout_range range = {
++			.iomode		= IOMODE_ANY,
++			.offset		= 0,
++			.length		= NFS4_MAX_UINT64,
++		};
++		NFS_SERVER(ino)->pnfs_curr_ld->return_range(lo, &range);
++	}
++
+ 	/* Don't send a LAYOUTRETURN if list was initially empty */
+ 	if (empty) {
+ 		spin_unlock(&ino->i_lock);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index a4c530e..2c24942 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -94,6 +94,9 @@ struct pnfs_layoutdriver_type {
+ 	struct pnfs_layout_segment * (*alloc_lseg) (struct pnfs_layout_hdr *layoutid, struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
+ 	void (*free_lseg) (struct pnfs_layout_segment *lseg);
+ 
++	void (*return_range) (struct pnfs_layout_hdr *lo,
++			      struct pnfs_layout_range *range);
++
+ 	/* test for nfs page cache coalescing */
+ 	const struct nfs_pageio_ops *pg_read_ops;
+ 	const struct nfs_pageio_ops *pg_write_ops;
+-- 
+1.9.1
 
->> Would it be useful to provide you with a pcap trace?
->>
->> The easiest way to trigger it is to enable the return of inactive
->> delegation and have simple get a delegation and local lock, sleep and
->> reboot the server and see the lock recovery error with err_grace.
->
-> Thanks for the reproducer! I'll see if I can get round to testing. ;-p
->
->> On Wed, Sep 24, 2014 at 2:02 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->>> Hi Olga,
->>>
->>> On Wed, Sep 24, 2014 at 1:47 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>> There exists a problem in the code that was easily reproducible prior
->>>> to the commit b757144fd77cf5512f5b60179ba5ca8dcc5184b4 ("NFSv4 Be less
->>>> aggressive about returning delegations"). The same code is used during
->>>> delegation return and is still reproducible (with highly coordinated
->>>> setup of triggering just the right actions).
->>>>
->>>> The problem lies in the call of nfs4_lock_delegation_recall(). In the
->>>> nutshell, when the LOCK op gets an error such as ERR_GRACE, the error
->>>> is unhanded which leaves the client in incorrect state assuming that
->>>> it has 'successfully' acquired a lock that was locally acquired while
->>>> holding a delegation.
->>>>
->>>> I believe the problem stems from the fact that
->>>> nfs4_lock_delegation_recall(), unlike normal version of LOCK
->>>> nfs4_proc_getlk(), lacks the do { handle_error(do_proc())} while(err)
->>>> structure.
->>>>
->>>> I believe the problem should be fixed by something like the following:
->>>>
->>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>> index 6ca0c8e..78d088c 100644
->>>> --- a/fs/nfs/nfs4proc.c
->>>> +++ b/fs/nfs/nfs4proc.c
->>>> @@ -5936,11 +5936,12 @@ int nfs4_lock_delegation_recall(struct
->>>> file_lock *fl, struct nfs4_state *state,
->>>>         struct nfs_server *server = NFS_SERVER(state->inode);
->>>>         int err;
->>>>
->>>> -       err = nfs4_set_lock_state(state, fl);
->>>> -       if (err != 0)
->>>> -               return err;
->>>> -       err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
->>>> -       return nfs4_handle_delegation_recall_error(server, state, stateid, err);
->>>> +       do {
->>>> +               err = nfs4_handle_delegation_recall_error(server, state,
->>>> +                       stateid, _nfs4_do_setlk(state, F_SETLK, fl,
->>>> +                               NFS_LOCK_NEW));
->>>> +       } while (err == -EAGAIN);
->>>> +       return err;
->>>>  }
->>>>
->>>>  struct nfs_release_lockowner_data {
->>>>
->>>> Is this an acceptable solution?
->>>>
->>>
->>> In the current code, I expect the EAGAIN from
->>> nfs4_handle_delegation_recall_error() to be propagated back to
->>> nfs_end_delegation_return(). It should then result in the client
->>> waiting for state recovery to complete followed by a loop back to
->>> nfs_delegation_claim_opens().
->>> Could you explain why that isn't working for your case?
->>>
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
