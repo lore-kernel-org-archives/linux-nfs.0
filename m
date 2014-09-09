@@ -1,105 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43187 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:1056 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756002AbaISRK1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Sep 2014 13:10:27 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8JHARJL021070
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 13:10:27 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Simo Sorce <simo@redhat.com>
-Subject: [PATCH 2/2] rpc.svcgssd: the build of rpc.svcgssd is off by default
-Date: Fri, 19 Sep 2014 13:10:21 -0400
-Message-Id: <1411146621-18797-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1411146621-18797-1-git-send-email-steved@redhat.com>
-References: <1411146621-18797-1-git-send-email-steved@redhat.com>
+	id S1750959AbaIIRsi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Sep 2014 13:48:38 -0400
+Message-ID: <540F3D01.10006@Netapp.com>
+Date: Tue, 9 Sep 2014 13:46:41 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: Marc Eshel <eshel@us.ibm.com>, Anna Schumaker <Anna.Schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, <linux-nfs-owner@vger.kernel.org>,
+        <Trond.Myklebust@primarydata.com>
+Subject: Re: [PATCH 0/2] NFS: Add ALLOCATE and DEALLOCATE support
+References: <1410274196-30841-1-git-send-email-Anna.Schumaker@Netapp.com> <OFCC7C8976.B925FBA7-ON88257D4E.00604587-88257D4E.0060D8A0@us.ibm.com>
+In-Reply-To: <OFCC7C8976.B925FBA7-ON88257D4E.00604587-88257D4E.0060D8A0@us.ibm.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Due to the fact the gssproxy is not managing the
-GASSAPI credentials, on the server, there is
-no need to build/install rpc.svcgssd.
+On 09/09/2014 01:37 PM, Marc Eshel wrote:
+> Hi Anna,
+>
+> Did you get a chance to set up a git tree with all your changes, at least 
+> for the client side, maybe Trond will include it in his tree?
+I did for SEEK.  I haven't updated it to include these patches yet, but I will after making the changes that Trond and Christoph are asking for.
 
-To re-enable the build use the --enable-svcgss
-configure flag
+git://git.linux-nfs.org/projects/anna/linux-nfs.git  (see the "seek" branch)
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- configure.ac           | 23 +++++++++++++++++++----
- utils/gssd/Makefile.am | 11 +++++++++--
- 2 files changed, 28 insertions(+), 6 deletions(-)
-
-diff --git a/configure.ac b/configure.ac
-index bc48373..6767190 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -90,21 +90,36 @@ AC_ARG_ENABLE(nfsv41,
- 
- AC_ARG_ENABLE(gss,
- 	[AC_HELP_STRING([--enable-gss],
--                        [enable support for rpcsec_gss @<:@default=yes@:>@])],
-+              [enable client support for rpcsec_gss @<:@default=yes@:>@])],
- 	enable_gss=$enableval,
- 	enable_gss=yes)
- 	if test "$enable_gss" = yes; then
- 		GSSD=gssd
--		SVCGSSD=svcgssd
- 	else
- 		enable_gss=
- 		GSSD=
--		SVCGSSD=
- 	fi
- 	AC_SUBST(GSSD)
--	AC_SUBST(SVCGSSD)
- 	AC_SUBST(enable_gss)
- 	AM_CONDITIONAL(CONFIG_GSS, [test "$enable_gss" = "yes"])
-+
-+AC_ARG_ENABLE(svcgss,
-+	[AC_HELP_STRING([--enable-svcgss],
-+              [enable server support for rpcsec_gss @<:@default=no@:>@])],
-+	enable_svcgss=$enableval,
-+	enable_svcgss=no)
-+	if test "$enable_gss" = yes; then
-+		if "enable_svcgss" = yes; then
-+			SVCGSSD=svcgssd
-+		fi
-+	else
-+		enable_svcgss=
-+		SVCGSSD=
-+	fi
-+	AC_SUBST(SVCGSSD)
-+	AC_SUBST(enable_svcgss)
-+	AM_CONDITIONAL(CONFIG_SVCGSS, [test "$enable_svcgss" = "yes"])
-+
- AC_ARG_ENABLE(kprefix,
- 	[AC_HELP_STRING([--enable-kprefix], [install progs as rpc.knfsd etc])],
- 	test "$enableval" = "yes" && kprefix=k,
-diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
-index af59791..9835117 100644
---- a/utils/gssd/Makefile.am
-+++ b/utils/gssd/Makefile.am
-@@ -1,10 +1,17 @@
- ## Process this file with automake to produce Makefile.in
- 
--man8_MANS	= gssd.man svcgssd.man
-+man8_MANS	= gssd.man
-+if CONFIG_SVCGSS
-+man8_MANS	+= svcgssd.man
-+endif
- 
- RPCPREFIX	= rpc.
- KPREFIX		= @kprefix@
--sbin_PREFIXED	= gssd svcgssd
-+sbin_PREFIXED	= gssd
-+if CONFIG_SVCGSS
-+sbin_PREFIXED	+= svcgssd
-+endif
-+
- sbin_PROGRAMS	= $(sbin_PREFIXED)
- 
- EXTRA_DIST = \
--- 
-1.9.3
+Anna
+>
+> Thanks, Marc. 
+>
+>
+> From:   Anna Schumaker <Anna.Schumaker@netapp.com>
+> To:     <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>, 
+> Date:   09/09/2014 07:50 AM
+> Subject:        [PATCH 0/2] NFS: Add ALLOCATE and DEALLOCATE support
+> Sent by:        linux-nfs-owner@vger.kernel.org
+>
+>
+>
+> These patches add client support for the ALLOCATE and DEALLOCATE 
+> operations
+> part of NFS v4.2.
+>
+> These operations are triggered by a vfs_fallocate() call, and we determine
+> which to use based on if the FALLOC_FL_PUNCH_HOLE flag is set.
+>
+> Anna Schumaker (2):
+>   nfs: Add ALLOCATE support
+>   nfs: Add DEALLOCATE support
+>
+>  fs/nfs/nfs42proc.c        |  74 +++++++++++++++++++++++++
+>  fs/nfs/nfs42xdr.h         | 136 
+> ++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfs/nfs4_fs.h          |   3 +
+>  fs/nfs/nfs4client.c       |   2 +-
+>  fs/nfs/nfs4file.c         |  47 ++++++++++++++++
+>  fs/nfs/nfs4proc.c         |   2 +-
+>  fs/nfs/nfs4xdr.c          |   2 +
+>  include/linux/nfs4.h      |   2 +
+>  include/linux/nfs_fs_sb.h |   2 +
+>  include/linux/nfs_xdr.h   |  28 ++++++++++
+>  10 files changed, 296 insertions(+), 2 deletions(-)
+>
 
