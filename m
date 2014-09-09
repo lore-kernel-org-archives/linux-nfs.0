@@ -1,45 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from prod-mail-xrelay07.akamai.com ([72.246.2.115]:28419 "EHLO
-	prod-mail-xrelay07.akamai.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751254AbaIRTvs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 15:51:48 -0400
-To: trond.myklebust@primarydata.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <cover.1411068259.git.jbaron@akamai.com>
-From: Jason Baron <jbaron@akamai.com>
-Subject: [PATCH 0/2] rpc: resolve softlockup in presence of iptables drop rule
-Date: Thu, 18 Sep 2014 19:51:47 +0000 (GMT)
+Received: from fieldses.org ([174.143.236.118]:36391 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751684AbaIITAk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Sep 2014 15:00:40 -0400
+Date: Tue, 9 Sep 2014 15:00:35 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Anna.Schumaker@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] NFSD: Add ALLOCATE and DEALLOCATE support
+Message-ID: <20140909190035.GA17979@fieldses.org>
+References: <1410274182-30740-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <20140909181302.GA17155@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140909181302.GA17155@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Tue, Sep 09, 2014 at 11:13:02AM -0700, Christoph Hellwig wrote:
+> Sorry to hijack this thread, but talking about 4.2 server features, did
+> anyone into looking into implementing the change_attr_type attribute,
+> which should be fairly low hanging fruit?
 
-We've found a softlockup on the nfsv3 client (udp), while testing an iptables
-rule, which simply drops traffic destined for the nfs server. The softlockup
-occurs because xs_sendpages() returns a positive result (resulting in an
--EAGAIN), masking out the -EPERM that the lower level ip code returns.
+I haven't seen anything.  Agreed that it should be easy (on the server
+side--the client's use might be more complicated?).
 
-The first patch restructures xs_sendpages() such that it can return a 'sent'
-value in addition to an error value. It no longer over-loads the return value
-as both a 'sent' and 'error' value. In this way the 'higher' level code can
-make more informed decisions. This patch is intended to be a no-op.
+--b.
 
-The second patch makes use of the new return value to propagate the -EPERM
-up instead of the -EAGAIN.
-
-Thanks,
-
--Jason
-
-
-Jason Baron (2):
-  rpc: return sent and err from xs_sendpages()
-  rpc: Add -EPERM processing for xs_udp_send_request()
-
- net/sunrpc/clnt.c     |  2 ++
- net/sunrpc/xprtsock.c | 86 ++++++++++++++++++++++++++++-----------------------
- 2 files changed, 49 insertions(+), 39 deletions(-)
-
--- 
-1.8.2.rc2
-
+> 
+> Also someone with interest in btrfs might want to look into implementing
+> the space_freed attribute with a call into the filesystem.
+> 
