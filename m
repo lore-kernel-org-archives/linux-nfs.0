@@ -1,133 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43926 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755076AbaIDTyo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Sep 2014 15:54:44 -0400
-Date: Thu, 4 Sep 2014 15:54:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 4/5] nfsd: remove redundant boot_time parm from
- grace_done client tracking op
-Message-ID: <20140904195443.GC14576@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
- <1408473509-14010-5-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1408473509-14010-5-git-send-email-jlayton@primarydata.com>
+Received: from casper.infradead.org ([85.118.1.10]:45891 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757230AbaIIQiu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:38:50 -0400
+Received: from [50.247.105.171] (helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRORN-000819-6F
+	for linux-nfs@vger.kernel.org; Tue, 09 Sep 2014 16:38:49 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/9] pnfs/blocklayout: don't set pages uptodate
+Date: Tue,  9 Sep 2014 09:40:49 -0700
+Message-Id: <1410280853-3964-6-git-send-email-hch@lst.de>
+In-Reply-To: <1410280853-3964-1-git-send-email-hch@lst.de>
+References: <1410280853-3964-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 19, 2014 at 02:38:28PM -0400, Jeff Layton wrote:
-> Since it's stored in nfsd_net, we don't need to pass it in separately.
+The core nfs code handles setting pages uptodate on reads, no need to mess
+with the pageflags outselves.  Also remove a debug function to dump page
+flags.
 
-OK.  I may as well take this for 3.18 now, I guess.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c | 24 +-----------------------
+ 1 file changed, 1 insertion(+), 23 deletions(-)
 
---b.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 6484b9f..92be984 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -49,20 +49,6 @@ MODULE_LICENSE("GPL");
+ MODULE_AUTHOR("Andy Adamson <andros@citi.umich.edu>");
+ MODULE_DESCRIPTION("The NFSv4.1 pNFS Block layout driver");
+ 
+-static void print_page(struct page *page)
+-{
+-	dprintk("PRINTPAGE page %p\n", page);
+-	dprintk("	PagePrivate %d\n", PagePrivate(page));
+-	dprintk("	PageUptodate %d\n", PageUptodate(page));
+-	dprintk("	PageError %d\n", PageError(page));
+-	dprintk("	PageDirty %d\n", PageDirty(page));
+-	dprintk("	PageReferenced %d\n", PageReferenced(page));
+-	dprintk("	PageLocked %d\n", PageLocked(page));
+-	dprintk("	PageWriteback %d\n", PageWriteback(page));
+-	dprintk("	PageMappedToDisk %d\n", PageMappedToDisk(page));
+-	dprintk("\n");
+-}
+-
+ /* Given the be associated with isect, determine if page data needs to be
+  * initialized.
+  */
+@@ -187,16 +173,9 @@ retry:
+ 	return bio;
+ }
+ 
+-/* This is basically copied from mpage_end_io_read */
+ static void bl_end_io_read(struct bio *bio, int err)
+ {
+ 	struct parallel_io *par = bio->bi_private;
+-	struct bio_vec *bvec;
+-	int i;
+-
+-	if (!err)
+-		bio_for_each_segment_all(bvec, bio, i)
+-			SetPageUptodate(bvec->bv_page);
+ 
+ 	if (err) {
+ 		struct nfs_pgio_header *header = par->data;
+@@ -205,6 +184,7 @@ static void bl_end_io_read(struct bio *bio, int err)
+ 			header->pnfs_error = -EIO;
+ 		pnfs_set_lo_fail(header->lseg);
+ 	}
++
+ 	bio_put(bio);
+ 	put_parallel(par);
+ }
+@@ -304,8 +284,6 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
+ 			/* Fill hole w/ zeroes w/o accessing device */
+ 			dprintk("%s Zeroing page for hole\n", __func__);
+ 			zero_user_segment(pages[i], pg_offset, pg_len);
+-			print_page(pages[i]);
+-			SetPageUptodate(pages[i]);
+ 		} else {
+ 			struct pnfs_block_extent *be_read;
+ 
+-- 
+1.9.1
 
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4recover.c | 17 ++++++++---------
->  fs/nfsd/nfs4state.c   |  2 +-
->  fs/nfsd/state.h       |  2 +-
->  3 files changed, 10 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index 9c271f42604a..a0d2ba956a3f 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -58,7 +58,7 @@ struct nfsd4_client_tracking_ops {
->  	void (*create)(struct nfs4_client *);
->  	void (*remove)(struct nfs4_client *);
->  	int (*check)(struct nfs4_client *);
-> -	void (*grace_done)(struct nfsd_net *, time_t);
-> +	void (*grace_done)(struct nfsd_net *);
->  };
->  
->  /* Globals */
-> @@ -392,7 +392,7 @@ purge_old(struct dentry *parent, struct dentry *child, struct nfsd_net *nn)
->  }
->  
->  static void
-> -nfsd4_recdir_purge_old(struct nfsd_net *nn, time_t boot_time)
-> +nfsd4_recdir_purge_old(struct nfsd_net *nn)
->  {
->  	int status;
->  
-> @@ -1016,7 +1016,7 @@ nfsd4_cld_check(struct nfs4_client *clp)
->  }
->  
->  static void
-> -nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
-> +nfsd4_cld_grace_done(struct nfsd_net *nn)
->  {
->  	int ret;
->  	struct cld_upcall *cup;
-> @@ -1029,7 +1029,7 @@ nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
->  	}
->  
->  	cup->cu_msg.cm_cmd = Cld_GraceDone;
-> -	cup->cu_msg.cm_u.cm_gracetime = (int64_t)boot_time;
-> +	cup->cu_msg.cm_u.cm_gracetime = (int64_t)nn->boot_time;
->  	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
->  	if (!ret)
->  		ret = cup->cu_msg.cm_status;
-> @@ -1245,13 +1245,12 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
->  }
->  
->  static void
-> -nfsd4_umh_cltrack_grace_done(struct nfsd_net __attribute__((unused)) *nn,
-> -				time_t boot_time)
-> +nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
->  {
->  	char *legacy;
->  	char timestr[22]; /* FIXME: better way to determine max size? */
->  
-> -	sprintf(timestr, "%ld", boot_time);
-> +	sprintf(timestr, "%ld", nn->boot_time);
->  	legacy = nfsd4_cltrack_legacy_topdir();
->  	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
->  	kfree(legacy);
-> @@ -1356,10 +1355,10 @@ nfsd4_client_record_check(struct nfs4_client *clp)
->  }
->  
->  void
-> -nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time)
-> +nfsd4_record_grace_done(struct nfsd_net *nn)
->  {
->  	if (nn->client_tracking_ops)
-> -		nn->client_tracking_ops->grace_done(nn, boot_time);
-> +		nn->client_tracking_ops->grace_done(nn);
->  }
->  
->  static int
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 711280e0e4ac..21becb29dae1 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4116,7 +4116,7 @@ nfsd4_end_grace(struct nfsd_net *nn)
->  
->  	dprintk("NFSD: end of grace period\n");
->  	nn->grace_ended = true;
-> -	nfsd4_record_grace_done(nn, nn->boot_time);
-> +	nfsd4_record_grace_done(nn);
->  	locks_end_grace(&nn->nfsd4_manager);
->  	/*
->  	 * Now that every NFSv4 client has had the chance to recover and
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index ecf579904892..854f0c574ccf 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -554,7 +554,7 @@ extern void nfsd4_client_tracking_exit(struct net *net);
->  extern void nfsd4_client_record_create(struct nfs4_client *clp);
->  extern void nfsd4_client_record_remove(struct nfs4_client *clp);
->  extern int nfsd4_client_record_check(struct nfs4_client *clp);
-> -extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
-> +extern void nfsd4_record_grace_done(struct nfsd_net *nn);
->  
->  /* nfs fault injection functions */
->  #ifdef CONFIG_NFSD_FAULT_INJECTION
-> -- 
-> 1.9.3
-> 
