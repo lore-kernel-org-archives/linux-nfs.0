@@ -1,39 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f177.google.com ([209.85.220.177]:39951 "EHLO
-	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750881AbaIIEnT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 00:43:19 -0400
-Received: by mail-vc0-f177.google.com with SMTP id hq11so16179994vcb.22
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 21:43:18 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1408637375-11343-15-git-send-email-hch@lst.de>
-References: <1408637375-11343-1-git-send-email-hch@lst.de>
-	<1408637375-11343-15-git-send-email-hch@lst.de>
-Date: Mon, 8 Sep 2014 21:43:18 -0700
-Message-ID: <CAHQdGtQ9UBeMUFd5qbLe0VkpUGy9SKARbgbcBO_1BrWyjbMs7A@mail.gmail.com>
-Subject: Re: [PATCH 14/19] pnfs/blocklayout: remove read-modify-write handling
- in bl_write_pagelist
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from casper.infradead.org ([85.118.1.10]:45894 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757230AbaIIQjB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:39:01 -0400
+Received: from [50.247.105.171] (helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRORX-00081Z-Vq
+	for linux-nfs@vger.kernel.org; Tue, 09 Sep 2014 16:39:00 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 8/9] pnfs/blocklayout: return layouts on setattr
+Date: Tue,  9 Sep 2014 09:40:52 -0700
+Message-Id: <1410280853-3964-9-git-send-email-hch@lst.de>
+In-Reply-To: <1410280853-3964-1-git-send-email-hch@lst.de>
+References: <1410280853-3964-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 21, 2014 at 9:09 AM, Christoph Hellwig <hch@lst.de> wrote:
-> Use the new PNFS_READ_WHOLE_PAGE flag to offload read-modify-write
-> handling to core nfs code, and remove a huge chunk of deadlock prone
-> mess from the block layout writeback path.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
+This speads up truncate-heavy workloads like fsx by multiple orders of
+magnitude.
 
-This also depends on "[PATCH 07/19] pnfs: add flag to force
-read-modify-write in ->write_begin". Holding pending resolution.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index a7524c4..d5a2b87 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -799,7 +799,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.id				= LAYOUT_BLOCK_VOLUME,
+ 	.name				= "LAYOUT_BLOCK_VOLUME",
+ 	.owner				= THIS_MODULE,
+-	.flags				= PNFS_READ_WHOLE_PAGE,
++	.flags				= PNFS_LAYOUTRET_ON_SETATTR |
++					  PNFS_READ_WHOLE_PAGE,
+ 	.read_pagelist			= bl_read_pagelist,
+ 	.write_pagelist			= bl_write_pagelist,
+ 	.alloc_layout_hdr		= bl_alloc_layout_hdr,
 -- 
-Trond Myklebust
+1.9.1
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
