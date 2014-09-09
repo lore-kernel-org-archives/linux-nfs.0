@@ -1,48 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:32297 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751020AbaIXVNM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 17:13:12 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH V3] svcrdma: advertise the correct max payload
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5422B14C.3040502@dev.mellanox.co.il>
-Date: Wed, 24 Sep 2014 14:12:58 -0700
-Cc: Steve Wise <swise@opengridcomputing.com>, fields@fieldses.org,
-        linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <55D3FB7C-3DDD-42B0-96F7-8134096F745C@oracle.com>
-References: <20140923221122.24227.91718.stgit@build.ogc.int> <5422B14C.3040502@dev.mellanox.co.il>
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from mail-vc0-f176.google.com ([209.85.220.176]:49784 "EHLO
+	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753533AbaIIAIN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 20:08:13 -0400
+Received: by mail-vc0-f176.google.com with SMTP id la4so204502vcb.35
+        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 17:08:12 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1409946021-839-1-git-send-email-chris.perl@gmail.com>
+References: <1409946021-839-1-git-send-email-chris.perl@gmail.com>
+Date: Mon, 8 Sep 2014 17:08:12 -0700
+Message-ID: <CAHQdGtTd+QSOK1J6JOFR+_A_KuGvin2xwA8pNv5n2r_KQXnPWQ@mail.gmail.com>
+Subject: Re: [PATCH] rpc: xs_bind - do not bind when requesting a random
+ ephemeral port
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Chris Perl <chris.perl@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Sep 5, 2014 at 12:40 PM, Chris Perl <chris.perl@gmail.com> wrote:
+> When attempting to establish a local ephemeral endpoint for a TCP or UDP
+> socket, do not explicitly call bind, instead let it happen implicilty when the
+> socket is first used.
+>
+> The main motivating factor for this change is when TCP runs out of unique
+> ephemeral ports (i.e.  cannot find any ephemeral ports which are not a part of
+> *any* TCP connection).  In this situation if you explicitly call bind, then the
+> call will fail with EADDRINUSE.  However, if you allow the allocation of an
+> ephemeral port to happen implicitly as part of connect (or other functions),
+> then ephemeral ports can be reused, so long as the combination of (local_ip,
+> local_port, remote_ip, remote_port) is unique for TCP sockets on the system.
+>
+> This doesn't matter for UDP sockets, but it seemed easiest to treat TCP and UDP
+> sockets the same.
+>
+> This can allow mount.nfs(8) to continue to function successfully, even in the
+> face of misbehaving applications which are creating a large number of TCP
+> connections.
+>
+> Signed-off-by: Chris Perl <chris.perl@gmail.com>
+> ---
+>  net/sunrpc/xprtsock.c | 20 ++++++++++++++++++--
+>  1 file changed, 18 insertions(+), 2 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 43cd89e..7ed47b4 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1746,13 +1746,29 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
+>         unsigned short port = xs_get_srcport(transport);
+>         unsigned short last;
+>
+> +       /*
+> +        * If we are asking for any ephemeral port (i.e. port == 0 &&
+> +        * transport->xprt.resvport == 0), don't bind.  Let the local
+> +        * port selection happen implicitly when the socket is used
+> +        * (for example at connect time).
+> +        *
+> +        * This ensures that we can continue to establish TCP
+> +        * connections even when all local ephemeral ports are already
+> +        * a part of some TCP connection.  This makes no difference
+> +        * for UDP sockets, but also doens't harm them.
+> +        *
+> +        * If we're asking for any reserved port (i.e. port == 0 &&
+> +        * transport->xprt.resvport == 1) xs_get_srcport above will
+> +        * ensure that port is non-zero and we will bind as needed.
+> +        */
+> +       if (port == 0)
+> +               return 0;
+> +
+>         memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
+>         do {
+>                 rpc_set_port((struct sockaddr *)&myaddr, port);
+>                 err = kernel_bind(sock, (struct sockaddr *)&myaddr,
+>                                 transport->xprt.addrlen);
+> -               if (port == 0)
+> -                       break;
+>                 if (err == 0) {
+>                         transport->srcport = port;
+>                         break;
+> --
+> 1.8.3.1
+>
 
-On Sep 24, 2014, at 4:55 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+This change looks harmless to me, but since we've lived with the
+current situation for several years, I'm not prepared to consider it a
+must-fix for 3.17 quite yet. If it's OK with you, I'll therefore queue
+it for 3.18.
 
-> On 9/24/2014 1:11 AM, Steve Wise wrote:
->> Svcrdma currently advertises 1MB, which is too large.  The correct value
->> is the minimum of RPCSVC_MAXPAYLOAD and the max scatter-gather allowed
->> in an NFSRDMA IO chunk * the host page size. This bug is usually benign
->> because the Linux X64 NFSRDMA client correctly limits the payload size to
->> the correct value (64*4096 = 256KB).  But if the Linux client is PPC64
->> with a 64KB page size, then the client will indeed use a payload size
->> that will overflow the server.
->> 
-> 
-> Maybe I'm a bit late with this, but can you explain why SG table is
-> limited to 64 (fastreg MR and page_list probably bound it). Where is it
-> coming from? Naturally it needs to be bound by some figure, but why 64?
+-- 
+Trond Myklebust
 
-It’s arbitrary, AFAIK. It has been used to allocate some data structures
-on the stack, for example, so it can’t be too large.
+Linux NFS client maintainer, PrimaryData
 
-It’s something we need to look at.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+trond.myklebust@primarydata.com
