@@ -1,77 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f180.google.com ([209.85.220.180]:35057 "EHLO
-	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751367AbaIIEuc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 00:50:32 -0400
-Received: by mail-vc0-f180.google.com with SMTP id lf12so16025380vcb.25
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 21:50:32 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:49143 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753718AbaIIOtt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 9 Sep 2014 10:49:49 -0400
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/3] VFS: Rename do_fallocate() to vfs_fallocate()
+Date: Tue, 9 Sep 2014 10:49:40 -0400
+Message-ID: <1410274182-30740-2-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1410274182-30740-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1410274182-30740-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <1408637375-11343-17-git-send-email-hch@lst.de>
-References: <1408637375-11343-1-git-send-email-hch@lst.de>
-	<1408637375-11343-17-git-send-email-hch@lst.de>
-Date: Mon, 8 Sep 2014 21:50:32 -0700
-Message-ID: <CAHQdGtT+e8Wb4P8KJc428DUn52xeuKvToFKHQSMCiqcXQq4Vsw@mail.gmail.com>
-Subject: Re: [PATCH 16/19] pnfs/blocklayout: rewrite extent tracking
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 21, 2014 at 9:09 AM, Christoph Hellwig <hch@lst.de> wrote:
-> Currently the block layout driver tracks extents in three separate
-> data structures:
->
->  - the two list of pnfs_block_extent structures returned by the server
->  - the list of sectors that were in invalid state but have been written to
->  - a list of pnfs_block_short_extent structures for LAYOUTCOMMIT
->
-> All of these share the property that they are not only highly inefficient
-> data structures, but also that operations on them are even more inefficient
-> than nessecary.
->
-> In addition there are various implementation defects like:
->
->  - using an int to track sectors, causing corruption for large offsets
->  - incorrect normalization of page or block granularity ranges
->  - insufficient error handling
->  - incorrect synchronization as extents can be modified while they are in
->    use
->
-> This patch replace all three data with a single unified rbtree structure
-> tracking all extents, as well as their in-memory state, although we still
-> need to instance for read-only and read-write extent due to the arcane
-> client side COW feature in the block layouts spec.
->
-> To fix the problem of extent possibly being modified while in use we make
-> sure to return a copy of the extent for use in the write path - the
-> extent can only be invalidated by a layout recall or return which has
-> to wait until the I/O operations finished due to refcounts on the layout
-> segment.
->
-> The new extent tree work similar to the schemes used by block based
-> filesystems like XFS or ext4.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfs/blocklayout/Makefile         |   3 +-
->  fs/nfs/blocklayout/blocklayout.c    | 258 +++-------
->  fs/nfs/blocklayout/blocklayout.h    | 112 +----
->  fs/nfs/blocklayout/blocklayoutdev.c |  35 +-
->  fs/nfs/blocklayout/extent_tree.c    | 545 ++++++++++++++++++++++
->  fs/nfs/blocklayout/extents.c        | 908 ------------------------------------
->  6 files changed, 649 insertions(+), 1212 deletions(-)
->  create mode 100644 fs/nfs/blocklayout/extent_tree.c
->  delete mode 100644 fs/nfs/blocklayout/extents.c
->
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-Holding due to dependencies on unapplied patches in the series.
+This function needs to be exported so it can be used by the NFSD module
+when responding to ALLOCATE and DEALLOCATE operations.  Christoph Hellwig
+suggested renaming the function to match how other vfs functions are named.
 
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ drivers/staging/android/ashmem.c | 2 +-
+ fs/ioctl.c                       | 2 +-
+ fs/open.c                        | 5 +++--
+ include/linux/fs.h               | 2 +-
+ mm/madvise.c                     | 2 +-
+ 5 files changed, 7 insertions(+), 6 deletions(-)
 
+diff --git a/drivers/staging/android/ashmem.c b/drivers/staging/android/ashmem.c
+index 713a972..9c799987 100644
+--- a/drivers/staging/android/ashmem.c
++++ b/drivers/staging/android/ashmem.c
+@@ -446,7 +446,7 @@ ashmem_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+ 		loff_t start = range->pgstart * PAGE_SIZE;
+ 		loff_t end = (range->pgend + 1) * PAGE_SIZE;
+ 
+-		do_fallocate(range->asma->file,
++		vfs_fallocate(range->asma->file,
+ 				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+ 				start, end - start);
+ 		range->purged = ASHMEM_WAS_PURGED;
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index 8ac3fad..0bd61421 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -443,7 +443,7 @@ int ioctl_preallocate(struct file *filp, void __user *argp)
+ 		return -EINVAL;
+ 	}
+ 
+-	return do_fallocate(filp, FALLOC_FL_KEEP_SIZE, sr.l_start, sr.l_len);
++	return vfs_fallocate(filp, FALLOC_FL_KEEP_SIZE, sr.l_start, sr.l_len);
+ }
+ 
+ static int file_ioctl(struct file *filp, unsigned int cmd,
+diff --git a/fs/open.c b/fs/open.c
+index d6fd3ac..c94449b 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -222,7 +222,7 @@ SYSCALL_DEFINE2(ftruncate64, unsigned int, fd, loff_t, length)
+ #endif /* BITS_PER_LONG == 32 */
+ 
+ 
+-int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
++int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	long ret;
+@@ -298,6 +298,7 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	sb_end_write(inode->i_sb);
+ 	return ret;
+ }
++EXPORT_SYMBOL_GPL(vfs_fallocate);
+ 
+ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
+ {
+@@ -305,7 +306,7 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
+ 	int error = -EBADF;
+ 
+ 	if (f.file) {
+-		error = do_fallocate(f.file, mode, offset, len);
++		error = vfs_fallocate(f.file, mode, offset, len);
+ 		fdput(f);
+ 	}
+ 	return error;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9418772..476f555 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2049,7 +2049,7 @@ struct filename {
+ extern long vfs_truncate(struct path *, loff_t);
+ extern int do_truncate(struct dentry *, loff_t start, unsigned int time_attrs,
+ 		       struct file *filp);
+-extern int do_fallocate(struct file *file, int mode, loff_t offset,
++extern int vfs_fallocate(struct file *file, int mode, loff_t offset,
+ 			loff_t len);
+ extern long do_sys_open(int dfd, const char __user *filename, int flags,
+ 			umode_t mode);
+diff --git a/mm/madvise.c b/mm/madvise.c
+index 0938b30..a271adc 100644
+--- a/mm/madvise.c
++++ b/mm/madvise.c
+@@ -326,7 +326,7 @@ static long madvise_remove(struct vm_area_struct *vma,
+ 	 */
+ 	get_file(f);
+ 	up_read(&current->mm->mmap_sem);
+-	error = do_fallocate(f,
++	error = vfs_fallocate(f,
+ 				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+ 				offset, end - start);
+ 	fput(f);
 -- 
-Trond Myklebust
+2.1.0
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
