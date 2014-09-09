@@ -1,207 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:61369 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756716AbaISNxH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Sep 2014 09:53:07 -0400
-Received: by mail-qa0-f47.google.com with SMTP id cm18so2579112qab.20
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 06:53:06 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 7/7] nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
-Date: Fri, 19 Sep 2014 09:52:50 -0400
-Message-Id: <1411134770-2409-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
-References: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:38981 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932147AbaIIMVQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 08:21:16 -0400
+Received: by mail-qg0-f54.google.com with SMTP id z60so1730634qgd.41
+        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 05:21:15 -0700 (PDT)
+Date: Tue, 9 Sep 2014 08:21:11 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: [PATCH v3 4/8] nfsd: add a v4_end_grace file to /proc/fs/nfsd
+Message-ID: <20140909082111.44854912@tlielax.poochiereds.net>
+In-Reply-To: <1410187609-10319-5-git-send-email-jlayton@primarydata.com>
+References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+	<1410187609-10319-5-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the fetching of NFSDCLTRACK_GRACE_START out of environment
-variables. If it's present in the "create" or "init" upcalls, then we
-can use that to query the database to see whether there are any clients
-that have not issued a RECLAIM_COMPLETE since that time.
+On Mon,  8 Sep 2014 10:46:45 -0400
+Jeff Layton <jlayton@primarydata.com> wrote:
 
-If there aren't any, then we know that all reclaim activity is now done
-and we can then cue the kernel to lift the grace period.
+> Allow a privileged userland process to end the v4 grace period early.
+> Any write to the file will cause the v4 grace period to be lifted.
+> The basic idea with this will be to allow the userland client tracking
+> program to lift the grace period once it knows that no more clients
+> will be reclaiming state.
+> 
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- utils/nfsdcltrack/nfsdcltrack.c | 72 ++++++++++++++++++++++++++++++++++++++++-
- utils/nfsdcltrack/sqlite.c      | 40 +++++++++++++++++++++++
- utils/nfsdcltrack/sqlite.h      |  1 +
- 3 files changed, 112 insertions(+), 1 deletion(-)
+Oof...sorry!
 
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-index 80e7e456306e..fcdda7f66b8b 100644
---- a/utils/nfsdcltrack/nfsdcltrack.c
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -50,6 +50,8 @@
- #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
- #endif
- 
-+#define NFSD_END_GRACE_FILE "/proc/fs/nfsd/v4_end_grace"
-+
- /* defined by RFC 3530 */
- #define NFS4_OPAQUE_LIMIT	1024
- 
-@@ -211,6 +213,64 @@ cltrack_set_caps(void)
- 	return ret;
- }
- 
-+/* Inform the kernel that it's OK to lift nfsd's grace period */
-+static void
-+cltrack_lift_grace_period(void)
-+{
-+	int fd;
-+
-+	fd = open(NFSD_END_GRACE_FILE, O_WRONLY);
-+	if (fd < 0) {
-+		/* Don't warn if file isn't present */
-+		if (errno != ENOENT)
-+			xlog(L_WARNING, "Unable to open %s: %m",
-+				NFSD_END_GRACE_FILE);
-+		return;
-+	}
-+
-+	if (write(fd, "Y", 1) < 0)
-+		xlog(L_WARNING, "Unable to write to %s: %m",
-+				NFSD_END_GRACE_FILE);
-+
-+	close(fd);
-+	return;
-+}
-+
-+/*
-+ * Fetch the contents of the NFSDCLTRACK_GRACE_START env var. If it's not set
-+ * or there's an error converting it to time_t, then return LONG_MAX.
-+ */
-+static time_t
-+cltrack_get_grace_start(void)
-+{
-+	time_t grace_start;
-+	char *end;
-+	char *grace_start_str = getenv("NFSDCLTRACK_GRACE_START");
-+
-+	if (!grace_start_str)
-+		return LONG_MAX;
-+
-+	errno = 0;
-+	grace_start = strtol(grace_start_str, &end, 0);
-+	/* Problem converting or value is too large? */
-+	if (errno)
-+		return LONG_MAX;
-+
-+	return grace_start;
-+}
-+
-+static bool
-+cltrack_reclaims_complete(void)
-+{
-+	time_t grace_start = cltrack_get_grace_start();
-+
-+	/* Don't query DB if we didn't get a valid boot time */
-+	if (grace_start == LONG_MAX)
-+		return false;
-+
-+	return !sqlite_query_reclaiming(grace_start);
-+}
-+
- static int
- cltrack_init(const char __attribute__((unused)) *unused)
- {
-@@ -251,7 +311,11 @@ cltrack_init(const char __attribute__((unused)) *unused)
- 		 * stop upcalling until the problem is resolved.
- 		 */
- 		ret = -EACCES;
-+	} else {
-+		if (cltrack_reclaims_complete())
-+			cltrack_lift_grace_period();
- 	}
-+
- 	return ret;
- }
- 
-@@ -276,6 +340,7 @@ cltrack_create(const char *id)
- {
- 	int ret;
- 	ssize_t len;
-+	bool has_session;
- 
- 	xlog(D_GENERAL, "%s: create client record.", __func__);
- 
-@@ -287,7 +352,12 @@ cltrack_create(const char *id)
- 	if (len < 0)
- 		return (int)len;
- 
--	ret = sqlite_insert_client(blob, len, cltrack_client_has_session(), false);
-+	has_session = cltrack_client_has_session();
-+
-+	ret = sqlite_insert_client(blob, len, has_session, false);
-+
-+	if (!ret && has_session && cltrack_reclaims_complete())
-+		cltrack_lift_grace_period();
- 
- 	return ret ? -EREMOTEIO : ret;
- }
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index 4ff0a37b30e9..fb45c4af5edb 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -558,3 +558,43 @@ sqlite_remove_unreclaimed(time_t grace_start)
- 	sqlite3_free(err);
- 	return ret;
- }
-+
-+/*
-+ * Are there any clients that are possibly still reclaiming? Return a positive
-+ * integer (usually number of clients) if so. If not, then return 0. On any
-+ * error, return non-zero.
-+ */
-+int
-+sqlite_query_reclaiming(const time_t grace_start)
-+{
-+	int ret;
-+	sqlite3_stmt *stmt = NULL;
-+
-+	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
-+				      "time < ? OR has_session != 1", -1, &stmt, NULL);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: unable to prepare select statement: %s",
-+				__func__, sqlite3_errstr(ret));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_bind_int64(stmt, 1, (sqlite3_int64)grace_start);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "%s: bind int64 failed: %s",
-+				__func__, sqlite3_errstr(ret));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_step(stmt);
-+	if (ret != SQLITE_ROW) {
-+		xlog(L_ERROR, "%s: unexpected return code from select: %s",
-+				__func__, sqlite3_errstr(ret));
-+		return ret;
-+	}
-+
-+	ret = sqlite3_column_int(stmt, 0);
-+	sqlite3_finalize(stmt);
-+	xlog(D_GENERAL, "%s: there are %d clients that have not completed "
-+			"reclaim", __func__, ret);
-+	return ret;
-+}
-diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
-index bf4ba352b99e..06e7c044a330 100644
---- a/utils/nfsdcltrack/sqlite.h
-+++ b/utils/nfsdcltrack/sqlite.h
-@@ -27,5 +27,6 @@ int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
- int sqlite_check_client(const unsigned char *clname, const size_t namelen,
- 				const bool has_session);
- int sqlite_remove_unreclaimed(const time_t grace_start);
-+int sqlite_query_reclaiming(const time_t grace_start);
- 
- #endif /* _SQLITE_H */
+The patch does what you requested, (accept only "Y", "y" or "1" as a
+sign to lift the grace period), but I missed updating the patch
+description above. If there's another respin needed for other reasons,
+then I'll fix the text in it. Otherwise, let me know if you want me to
+resend.
+
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c |  2 +-
+>  fs/nfsd/nfsctl.c    | 45 +++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/state.h     |  3 +++
+>  3 files changed, 49 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 422b1df4bb00..ae380e90e372 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4109,7 +4109,7 @@ out:
+>  	return status;
+>  }
+>  
+> -static void
+> +void
+>  nfsd4_end_grace(struct nfsd_net *nn)
+>  {
+>  	/* do nothing if grace period already ended */
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 4e042105fb6e..ca73ca79a0ee 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -49,6 +49,7 @@ enum {
+>  	NFSD_Leasetime,
+>  	NFSD_Gracetime,
+>  	NFSD_RecoveryDir,
+> +	NFSD_V4EndGrace,
+>  #endif
+>  };
+>  
+> @@ -68,6 +69,7 @@ static ssize_t write_maxconn(struct file *file, char *buf, size_t size);
+>  static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
+>  static ssize_t write_gracetime(struct file *file, char *buf, size_t size);
+>  static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
+> +static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size);
+>  #endif
+>  
+>  static ssize_t (*write_op[])(struct file *, char *, size_t) = {
+> @@ -84,6 +86,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
+>  	[NFSD_Leasetime] = write_leasetime,
+>  	[NFSD_Gracetime] = write_gracetime,
+>  	[NFSD_RecoveryDir] = write_recoverydir,
+> +	[NFSD_V4EndGrace] = write_v4_end_grace,
+>  #endif
+>  };
+>  
+> @@ -1077,6 +1080,47 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
+>  	return rv;
+>  }
+>  
+> +/**
+> + * write_v4_end_grace - release grace period for nfsd's v4.x lock manager
+> + *
+> + * Input:
+> + *			buf:		ignored
+> + *			size:		zero
+> + * OR
+> + *
+> + * Input:
+> + * 			buf:		any value
+> + *			size:		non-zero length of C string in @buf
+> + * Output:
+> + *			passed-in buffer filled with "Y" or "N" with a newline
+> + *			and NULL-terminated C string. This indicates whether
+> + *			the grace period has ended in the current net
+> + *			namespace. Return code is the size in bytes of the
+> + *			string. Writing a string that starts with 'Y', 'y', or
+> + *			'1' to the file will end the grace period for nfsd's v4
+> + *			lock manager.
+> + */
+> +static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
+> +{
+> +	struct net *net = file->f_dentry->d_sb->s_fs_info;
+> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> +
+> +	if (size > 0) {
+> +		switch(buf[0]) {
+> +		case 'Y':
+> +		case 'y':
+> +		case '1':
+> +			nfsd4_end_grace(nn);
+> +			break;
+> +		default:
+> +			return -EINVAL;
+> +		}
+> +	}
+> +
+> +	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%c\n",
+> +			 nn->grace_ended ? 'Y' : 'N');
+> +}
+> +
+>  #endif
+>  
+>  /*----------------------------------------------------------------------------*/
+> @@ -1110,6 +1154,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+>  		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
+>  		[NFSD_Gracetime] = {"nfsv4gracetime", &transaction_ops, S_IWUSR|S_IRUSR},
+>  		[NFSD_RecoveryDir] = {"nfsv4recoverydir", &transaction_ops, S_IWUSR|S_IRUSR},
+> +		[NFSD_V4EndGrace] = {"v4_end_grace", &transaction_ops, S_IWUSR|S_IRUGO},
+>  #endif
+>  		/* last one */ {""}
+>  	};
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 5f8a500a58bf..10bfda710f71 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -544,6 +544,9 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+>  							struct nfsd_net *nn);
+>  extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+>  
+> +/* grace period management */
+> +void nfsd4_end_grace(struct nfsd_net *nn);
+> +
+>  /* nfs4recover operations */
+>  extern int nfsd4_client_tracking_init(struct net *net);
+>  extern void nfsd4_client_tracking_exit(struct net *net);
+
+
 -- 
-1.9.3
-
+Jeff Layton <jlayton@poochiereds.net>
