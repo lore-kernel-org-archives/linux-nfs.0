@@ -1,96 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:37541 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751750AbaIQXso (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2014 19:48:44 -0400
-Received: from ucsinet22.oracle.com (ucsinet22.oracle.com [156.151.31.94])
-	by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id s8HNmfTb010756
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 17 Sep 2014 23:48:42 GMT
-From: Todd Vierling <todd.vierling@oracle.com>
+Received: from casper.infradead.org ([85.118.1.10]:45888 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754464AbaIIQil (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:38:41 -0400
+Received: from [50.247.105.171] (helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRORD-00080e-QN
+	for linux-nfs@vger.kernel.org; Tue, 09 Sep 2014 16:38:40 +0000
+From: Christoph Hellwig <hch@lst.de>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] exportfs: Properly parse IPv6 literal strings with null termination
-Date: Wed, 17 Sep 2014 19:48:39 -0400
-Message-Id: <1410997719-17913-1-git-send-email-todd.vierling@oracle.com>
+Subject: [PATCH 2/9] pnfs: add flag to force read-modify-write in ->write_begin
+Date: Tue,  9 Sep 2014 09:40:46 -0700
+Message-Id: <1410280853-3964-3-git-send-email-hch@lst.de>
+In-Reply-To: <1410280853-3964-1-git-send-email-hch@lst.de>
+References: <1410280853-3964-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The original implementation was using strncpy() with a truncation
-length to an uninitialized stack buffer, leaving a string that
-was only null terminated by luck.
+Like all block based filesystems, the pNFS block layout driver can't read
+or write at a byte granularity and thus has to perform read-modify-write
+cycles on writes smaller than this granularity.
 
-While here, change to use no-copy semantics (no extra buffer) to
-avoid buffer overflows altogether.
+Add a flag so that the core NFS code always reads a whole page when
+starting a smaller write, so that we can do it in the place where the VFS
+expects it instead of doing in very deadlock prone way in the writeback
+handler.
+
+Note that in theory we could do less than page size reads here for disks
+that have a smaller sector size which are server by a server with a smaller
+pnfs block size.  But so far that doesn't seem like a worthwhile
+optimization.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- utils/exportfs/exportfs.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+ fs/nfs/file.c |  7 +++++++
+ fs/nfs/pnfs.h | 15 +++++++++++++++
+ 2 files changed, 22 insertions(+)
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index e7d1ac8..bdea12b 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -351,16 +351,15 @@ static int exportfs_generic(char *arg, char *options, int verbose)
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 524dd80..05ef7dc 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -36,6 +36,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
++#include "pnfs.h"
  
- static int exportfs_ipv6(char *arg, char *options, int verbose)
- {
--	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
-+	char *path, *c;
+ #include "nfstrace.h"
  
- 	arg++;
- 	c = strchr(arg, ']');
- 	if (c == NULL)
- 		return 1;
--	strncpy(hname, arg, c - arg);
+@@ -327,6 +328,12 @@ static int nfs_want_read_modify_write(struct file *file, struct page *page,
+ 	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
+ 	unsigned int end = offset + len;
  
- 	/* no colon means this is a wildcarded DNS hostname */
--	if (strchr(hname, ':') == NULL)
-+	if (memchr(arg, ':', c - arg) == NULL)
- 		return exportfs_generic(--arg, options, verbose);
++	if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
++		if (!PageUptodate(page))
++			return 1;
++		return 0;
++	}
++
+ 	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
+ 	    !PageUptodate(page) &&		/* Uptodate? */
+ 	    !PagePrivate(page) &&		/* i/o request already? */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 8835b5a..a4c530e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -72,6 +72,7 @@ enum layoutdriver_policy_flags {
+ 	/* Should the pNFS client commit and return the layout upon a setattr */
+ 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
+ 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
++	PNFS_READ_WHOLE_PAGE		= 1 << 2,
+ };
  
- 	path = strstr(c, ":/");
-@@ -370,9 +369,9 @@ static int exportfs_ipv6(char *arg, char *options, int verbose)
- 
- 	/* if there's anything between the closing brace and the
- 	 * path separator, it's probably a prefix length */
--	strcat(hname, ++c);
-+	memmove(c, c + 1, path - c);
- 
--	exportfs_parsed(hname, path, options, verbose);
-+	exportfs_parsed(arg, path, options, verbose);
- 	return 0;
+ struct nfs4_deviceid_node;
+@@ -370,6 +371,14 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
  }
  
-@@ -458,16 +457,15 @@ static int unexportfs_generic(char *arg, int verbose)
- 
- static int unexportfs_ipv6(char *arg, int verbose)
+ static inline bool
++pnfs_ld_read_whole_page(struct inode *inode)
++{
++	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
++		return false;
++	return NFS_SERVER(inode)->pnfs_curr_ld->flags & PNFS_READ_WHOLE_PAGE;
++}
++
++static inline bool
+ pnfs_layoutcommit_outstanding(struct inode *inode)
  {
--	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
-+	char *path, *c;
- 
- 	arg++;
- 	c = strchr(arg, ']');
- 	if (c == NULL)
- 		return 1;
--	strncpy(hname, arg, c - arg);
- 
- 	/* no colon means this is a wildcarded DNS hostname */
--	if (strchr(hname, ':') == NULL)
-+	if (memchr(arg, ':', c - arg) == NULL)
- 		return unexportfs_generic(--arg, verbose);
- 
- 	path = strstr(c, ":/");
-@@ -477,9 +475,9 @@ static int unexportfs_ipv6(char *arg, int verbose)
- 
- 	/* if there's anything between the closing brace and the
- 	 * path separator, it's probably a prefix length */
--	strcat(hname, ++c);
-+	memmove(c, c + 1, path - c);
- 
--	unexportfs_parsed(hname, path, verbose);
-+	unexportfs_parsed(arg, path, verbose);
- 	return 0;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -445,6 +454,12 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
  }
  
+ static inline bool
++pnfs_ld_read_whole_page(struct inode *inode)
++{
++	return false;
++}
++
++static inline bool
+ pnfs_roc(struct inode *ino)
+ {
+ 	return false;
 -- 
-1.8.3.1
+1.9.1
 
