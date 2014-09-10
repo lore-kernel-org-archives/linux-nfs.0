@@ -1,115 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:43525 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751110AbaIXT51 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 15:57:27 -0400
-Received: by mail-vc0-f174.google.com with SMTP id hy10so7021428vcb.5
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 12:57:26 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:52476 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751109AbaIJX5z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Sep 2014 19:57:55 -0400
+Date: Thu, 11 Sep 2014 09:57:43 +1000
+From: NeilBrown <neilb@suse.de>
+To: Michal Hocko <mhocko@suse.cz>
+Cc: Mel Gorman <mgorman@suse.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Junxiao Bi <junxiao.bi@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
+Message-ID: <20140911095743.1ed87519@notabene.brown>
+In-Reply-To: <20140910134842.GG25219@dhcp22.suse.cz>
+References: <20140825164852.50723141@notabene.brown>
+	<20140826105304.GT17696@novell.com>
+	<CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com>
+	<20140826132624.GU17696@novell.com>
+	<20140826231938.GA13889@cmpxchg.org>
+	<CAHQdGtRPsVFVfph5OcsZk_+WYPPJ-MpE2myZfXAb3jq6fuM4zw@mail.gmail.com>
+	<CAHQdGtQPMJNzSM5Wt4RnNqEawBLqmYHycXTmBHhmAt26dz5wCw@mail.gmail.com>
+	<20140827153644.GF12374@novell.com>
+	<20140904135427.GA14548@dhcp22.suse.cz>
+	<20140909123346.434f0443@notabene.brown>
+	<20140910134842.GG25219@dhcp22.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyE8zt5iUQUFp+2iz9oP37HJhQ54YtSgesWs6Cu66A6qZw@mail.gmail.com>
-References: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
-	<CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
-	<CAN-5tyE8zt5iUQUFp+2iz9oP37HJhQ54YtSgesWs6Cu66A6qZw@mail.gmail.com>
-Date: Wed, 24 Sep 2014 15:57:26 -0400
-Message-ID: <CAHQdGtQ6WYe0qgn7b7s2TW_HFsq2ZCwyMuMW8PO_10xLh79QFQ@mail.gmail.com>
-Subject: Re: nfs4_lock_delegation_recall() improperly handles errors such as ERROR_GRACE
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/3rkqSz4FoZ6s=BZMMkDRh6O"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Olga,
+--Sig_/3rkqSz4FoZ6s=BZMMkDRh6O
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-On Wed, Sep 24, 2014 at 2:20 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> Hi Trond,
->
-> nfs_delegation_claim_opens() return EAGAIN to nfs_end_delegation_return().
-> issync is always 0 (as its called by the
-> nfs_client_return_marked_delegations) and it breaks out of the loop...
-> as a result the error just doesn't get handled.
+On Wed, 10 Sep 2014 15:48:43 +0200 Michal Hocko <mhocko@suse.cz> wrote:
 
-Ah. OK, so this is being called from
-nfs_client_return_marked_delegations. That makes sense.
+> On Tue 09-09-14 12:33:46, Neil Brown wrote:
+> > On Thu, 4 Sep 2014 15:54:27 +0200 Michal Hocko <mhocko@suse.cz> wrote:
+> >=20
+> > > [Sorry for jumping in so late - I've been busy last days]
+> > >=20
+> > > On Wed 27-08-14 16:36:44, Mel Gorman wrote:
+> > > > On Tue, Aug 26, 2014 at 08:00:20PM -0400, Trond Myklebust wrote:
+> > > > > On Tue, Aug 26, 2014 at 7:51 PM, Trond Myklebust
+> > > > > <trond.myklebust@primarydata.com> wrote:
+> > > > > > On Tue, Aug 26, 2014 at 7:19 PM, Johannes Weiner <hannes@cmpxch=
+g.org> wrote:
+> > > [...]
+> > > > > >> wait_on_page_writeback() is a hammer, and we need to be better=
+ about
+> > > > > >> this once we have per-memcg dirty writeback and throttling, bu=
+t I
+> > > > > >> think that really misses the point.  Even if memcg writeback w=
+aiting
+> > > > > >> were smarter, any length of time spent waiting for yourself to=
+ make
+> > > > > >> progress is absurd.  We just shouldn't be solving deadlock sce=
+narios
+> > > > > >> through arbitrary timeouts on one side.  If you can't wait for=
+ IO to
+> > > > > >> finish, you shouldn't be passing __GFP_IO.
+> > >=20
+> > > Exactly!
+> >=20
+> > This is overly simplistic.
+> > The code that cannot wait may be further up the call chain and not in a
+> > position to avoid passing __GFP_IO.
+> > In many case it isn't that "you can't wait for IO" in general, but that=
+ you
+> > cannot wait for one specific IO request.
+>=20
+> Could you be more specific, please? Why would a particular IO make any
+> difference to general IO from the same path? My understanding was that
+> once the page is marked PG_writeback then it is about to be written to
+> its destination and if there is any need for memory allocation it should
+> better not allow IO from reclaim.
 
-So for that case, I'd expect the call to return to the loop in
-nfs4_state_manager(), and then to retry through that after doing
-whatever is needed to recover.
-Essentially, we should be setting NFS4CLNT_DELEGRETURN again, and then
-bouncing back into nfs_client_return_marked_delegations (after all the
-recovery work has been done).
+The more complex the filesystem, the harder it is to "not allow IO from
+reclaim".
+For NFS (which started this thread) there might be a need to open a new
+connection - so allocating in the networking code would all need to be
+careful.
+And it isn't impossible that a 'gss' credential needs to be re-negotiated,
+and that might even need user-space interaction (not sure of details).
 
-> Would it be useful to provide you with a pcap trace?
->
-> The easiest way to trigger it is to enable the return of inactive
-> delegation and have simple get a delegation and local lock, sleep and
-> reboot the server and see the lock recovery error with err_grace.
+What you say certainly used to be the case, and very often still is.  But it
+doesn't really scale with complexity of filesystems.
 
-Thanks for the reproducer! I'll see if I can get round to testing. ;-p
+I don't think there is (yet) any need to optimised for allocations that don=
+'t
+disallow IO happening in the writeout path.  But I do think waiting
+indefinitely for a particular IO is unjustifiable.
 
-> On Wed, Sep 24, 2014 at 2:02 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> Hi Olga,
->>
->> On Wed, Sep 24, 2014 at 1:47 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>> There exists a problem in the code that was easily reproducible prior
->>> to the commit b757144fd77cf5512f5b60179ba5ca8dcc5184b4 ("NFSv4 Be less
->>> aggressive about returning delegations"). The same code is used during
->>> delegation return and is still reproducible (with highly coordinated
->>> setup of triggering just the right actions).
->>>
->>> The problem lies in the call of nfs4_lock_delegation_recall(). In the
->>> nutshell, when the LOCK op gets an error such as ERR_GRACE, the error
->>> is unhanded which leaves the client in incorrect state assuming that
->>> it has 'successfully' acquired a lock that was locally acquired while
->>> holding a delegation.
->>>
->>> I believe the problem stems from the fact that
->>> nfs4_lock_delegation_recall(), unlike normal version of LOCK
->>> nfs4_proc_getlk(), lacks the do { handle_error(do_proc())} while(err)
->>> structure.
->>>
->>> I believe the problem should be fixed by something like the following:
->>>
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index 6ca0c8e..78d088c 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -5936,11 +5936,12 @@ int nfs4_lock_delegation_recall(struct
->>> file_lock *fl, struct nfs4_state *state,
->>>         struct nfs_server *server = NFS_SERVER(state->inode);
->>>         int err;
->>>
->>> -       err = nfs4_set_lock_state(state, fl);
->>> -       if (err != 0)
->>> -               return err;
->>> -       err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
->>> -       return nfs4_handle_delegation_recall_error(server, state, stateid, err);
->>> +       do {
->>> +               err = nfs4_handle_delegation_recall_error(server, state,
->>> +                       stateid, _nfs4_do_setlk(state, F_SETLK, fl,
->>> +                               NFS_LOCK_NEW));
->>> +       } while (err == -EAGAIN);
->>> +       return err;
->>>  }
->>>
->>>  struct nfs_release_lockowner_data {
->>>
->>> Is this an acceptable solution?
->>>
->>
->> In the current code, I expect the EAGAIN from
->> nfs4_handle_delegation_recall_error() to be propagated back to
->> nfs_end_delegation_return(). It should then result in the client
->> waiting for state recovery to complete followed by a loop back to
->> nfs_delegation_claim_opens().
->> Could you explain why that isn't working for your case?
->>
+>=20
+> > wait_on_page_writeback() waits for a specific IO and so is dangerous.
+> > congestion_wait() or similar waits for IO in general and so is much saf=
+er.
+>=20
+> congestion_wait was actually not sufficient to prevent from OOM with
+> heavy writer in a small memcg. We simply do not know how long will the
+> IO last so any "wait for a random timeout" will end up causing some
+> troubles.
 
--- 
-Trond Myklebust
+I certainly accept that "congestion_wait" isn't a sufficient solution.
+The thing I like about it is that it combines a timeout with a measure of
+activity.
+As long as writebacks are completing, it is reasonable to
+wait_on_page_writeback().  But if no writebacks have completed for a while,
+then it seems pointless waiting on this page any more.  Best to try to make
+forward progress with whatever memory you can find.
 
-Linux NFS client maintainer, PrimaryData
+NeilBrown
 
-trond.myklebust@primarydata.com
+--Sig_/3rkqSz4FoZ6s=BZMMkDRh6O
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBVBDldznsnt1WYoG5AQJ1yBAAi/bqgwRk8XkT5lBr+BjfvGTATVdkoMBl
+pS2hWIA/90Aym4Q63tIW1ZYPSCPs7MvrQx3eVFh1soHTzEWZILd6m02ihb1f3RMI
+AhSFbj1NmGUAYrmyW0llgPWTbxDENreZloswsuhtB43jv+d49WyGDC5YpSkPFPNI
+4TJVKHwnw4fe+BOOVLzwrj5wm3C9JbGWmWqgYVlndmvGh2EeEbYfFhmUsWf4/9Iu
+9kPMJ9GK0f3KDbZHN/LHSxmftgHjDmDufCrmwR4278Wk9AccS/s40o4+ob71dMyw
+1gzqf5ts652Dw3CbhhfzZUkqOOk+uPwDkklC3dtZ2H8qwp2io4T6lZ5xAO//3OnQ
+hdw96o2zAvkiVopn0ClA7N8TUejgrxgNgFC1tZzzO7uIasE7TvdNVBIGpAXJKoJw
+G4aIBNFA+6kduFi0SBMY3IcfseMaP67AlUF5mL1+ng8dBrU6K2m2M3pdujUDHz5g
+jB96757hGNJVtUXQy64ZcXefJb2e4sr4kZ4gZmv/5yMdvyEVFge3Bcqizc4CxaDB
+B9wm6CXuZ39ktORe1qqBF430MihCyaGUt4EpXfmxhPdlqIbTFWdwXsyOBZ+/CJt/
+EM7JZFQKcHsKTEmOGssToM9nnXO2nQlqFhhGa0af0PhxAGCA5GIc/dS333xHf8tW
+IP5J7GHkGwM=
+=ZKBC
+-----END PGP SIGNATURE-----
+
+--Sig_/3rkqSz4FoZ6s=BZMMkDRh6O--
