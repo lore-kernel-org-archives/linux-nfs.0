@@ -1,41 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:58495 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754342AbaI2QcP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Sep 2014 12:32:15 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 3 0/1] NFSv4.1: Fix an NFSv4.1 state renewal regression
-Date: Mon, 29 Sep 2014 12:31:56 -0400
-Message-ID: <1412008317-36182-1-git-send-email-andros@netapp.com>
+Received: from mail-bl2on0058.outbound.protection.outlook.com ([65.55.169.58]:46923
+	"EHLO na01-bl2-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750719AbaIJDug convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 23:50:36 -0400
+From: "Nordgren, Bryce L -FS" <bnordgren@fs.fed.us>
+To: Cedric Blancher <cedric.blancher@gmail.com>, Simo Sorce <simo@redhat.com>
+CC: Steve Dickson <steved@redhat.com>, Jurjen Bokma <j.bokma@rug.nl>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>,
+        "<kerberos@mit.edu>" <kerberos@mit.edu>
+Subject: RE: How to use NFS with multiple principals in different realms?
+Date: Wed, 10 Sep 2014 02:18:13 +0000
+Message-ID: <82E7C9A01FD0764CACDD35D10F5DFB6E72376E@001FSN2MPN1-044.001f.mgd2.msft.net>
+References: <CALXu0Ue9z-xbFk9hhsvu4c38qqmd0Wwupk2LvL99rwoAcRMqOw@mail.gmail.com>
+	<540831FE.1010208@rug.nl>
+	<CALXu0Ufa166-PocKOOMBSF6yONaMxyUMHQmLA8NuSda9sE8PVQ@mail.gmail.com>
+	<54085BF3.60802@rug.nl>	<1409855758.8703.48.camel@willson.usersys.redhat.com>
+ <CALXu0UeX=KRD949z8QX0-XoHQucP5X=0ERmTdMrSxSjQFJatsQ@mail.gmail.com>
+In-Reply-To: <CALXu0UeX=KRD949z8QX0-XoHQucP5X=0ERmTdMrSxSjQFJatsQ@mail.gmail.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
 
-Version 3 responds to a review request by Trond:
+> Per Oracle support this is not quite correct: if you have multiple tickets in a
+> DIR: then the NFS client is either required to negotiate with the server (RFC
+> 3530) or try the credentials in order until one works.
 
-The problem here isn't that we're failing to send a SEQUENCE in a
-situation where we're not required to do so by the spec. The problem
-is that we're failing to rearm renewd when we skip that SEQUENCE call.
+"negotiate" appears to mean select a security mechanism, such as Kerberos vs. something else. Is there actually an "intra-mechanism" requirement?
 
-Instead of removing them, could you rather please modify the above
-lines to return an error, and then have nfs4_renew_state() respond by
-calling nfs4_schedule_state_renewal(), instead of just skipping it as
-we do today. In fact, AFAICS we want to do the same when the renew
-call fails due to ENOMEM (but not when it returns EIO, since that
-signals that the nfs_client is in the process of shutting down).
+> Still it has to try all options, i.e. negotiate. This is what the reference
+> implementation for NFS (Solaris) does.
 
-Andy Adamson (1):
-  NFSv4.1: Fix an NFSv4.1 state renewal      regression
 
- fs/nfs/nfs4proc.c   |  2 +-
- fs/nfs/nfs4renewd.c | 14 ++++++++++++--
- 2 files changed, 13 insertions(+), 3 deletions(-)
+What are "all the options"? It could try nfs/fqdn@REALM for each REALM present in your ticket cache. It could maintain a separate list of realms not in your cache to be tried. It could let the user specify a principal to try. This has nothing to do with client/server communication and more with probing the Kerberos trust network to see if there is a path to walk from one of the credentials in your cache to one of the potential service principals.
 
--- 
-1.8.3.1
+I think what you're saying is that after the negotiation has settled on Kerberos, you want more aggressive probing.
 
+Alternatively, in lieu of aggressive probing (which would yield shared Kerberos user principal trustable by both client and server), you want the id mapper on the NFS client and on the NFS server to map the same NFS id to different Kerberos principals. And then the client system should also know what Kerberos principal the server system has mapped to the relevant NFS ID (server-wide? For a particular mount point?). And both client-recognized and server-recognized Kerberos principals must be in the user's cache. And trust that the two principals are the same ultimately stems from the fact that they're in the same user's Kerberos cache, which is presumably under the control of one human. But I think there still has to be a trust path from NFS client to NFS server. Or no?
+
+Do NFS ID mappers talk to one another?  How would they negotiate? I think I need a picture to nail down all the moving parts.
+
+Bryce
+
+
+
+
+
+This electronic message contains information generated by the USDA solely for the intended recipients. Any unauthorized interception of this message or the use or disclosure of the information it contains may violate the law and subject the violator to civil or criminal penalties. If you believe you have received this message in error, please notify the sender and delete the email immediately.
