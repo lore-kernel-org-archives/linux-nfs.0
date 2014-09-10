@@ -1,90 +1,193 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:54675 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751518AbaIJAbB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 20:31:01 -0400
-Received: by mail-ie0-f181.google.com with SMTP id lx4so157779iec.40
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 17:31:01 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:36915 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752446AbaIJUTG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Sep 2014 16:19:06 -0400
+Date: Wed, 10 Sep 2014 16:19:05 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna.Schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] nfsd: Add DEALLOCATE support
+Message-ID: <20140910201905.GH4210@fieldses.org>
+References: <1410274182-30740-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1410274182-30740-4-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <1409855758.8703.48.camel@willson.usersys.redhat.com>
-References: <CALXu0Ue9z-xbFk9hhsvu4c38qqmd0Wwupk2LvL99rwoAcRMqOw@mail.gmail.com>
-	<540831FE.1010208@rug.nl>
-	<CALXu0Ufa166-PocKOOMBSF6yONaMxyUMHQmLA8NuSda9sE8PVQ@mail.gmail.com>
-	<54085BF3.60802@rug.nl>
-	<1409855758.8703.48.camel@willson.usersys.redhat.com>
-Date: Wed, 10 Sep 2014 02:31:00 +0200
-Message-ID: <CALXu0UeX=KRD949z8QX0-XoHQucP5X=0ERmTdMrSxSjQFJatsQ@mail.gmail.com>
-Subject: Re: How to use NFS with multiple principals in different realms?
-From: Cedric Blancher <cedric.blancher@gmail.com>
-To: Simo Sorce <simo@redhat.com>
-Cc: Jurjen Bokma <j.bokma@rug.nl>, "<kerberos@mit.edu>" <kerberos@mit.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1410274182-30740-4-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4 September 2014 20:35, Simo Sorce <simo@redhat.com> wrote:
-> On Thu, 2014-09-04 at 14:32 +0200, Jurjen Bokma wrote:
->> On 09/04/2014 01:25 PM, Cedric Blancher wrote:
->> > On 4 September 2014 11:33, Jurjen Bokma <j.bokma@rug.nl> wrote:
->> >> You use cross realm authentication, so that your NFS client may obtain
->> >> tickets for servers that are not in its own realm.
->> >
->> > What if I cannot use cross realm authentication? For example if both
->> > realms do not like each other?
->> > What if I really have to kinit into multiple realms? Kerberos since
->> > 1.10 can do that and klist now has a new flag -A to list all entries
->> > if KRB5CCNAME points to a directory, e.g.
->> > KRB5CCNAME=DIR:/tmp/krbcc$UID/
->> >
->> > Ced
->> >
->> I tried that about a year ago, and failed to make it work.
->
-> The problem is that the server can only have one set of credentials from
-> the POV of the client, and that's: nfs@fqdn (a GSSAPI name), that gets
-> converted into a principal of the form nfs/fqdn@REALM (where REALM is
-> determined by a mapping of the form domain_name->REALM in the client
-> usually).
+On Tue, Sep 09, 2014 at 10:49:42AM -0400, Anna.Schumaker@netapp.com wrote:
+> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> 
+> The DEALLOCATE operation is used to punch holes in a file.
+> 
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 31 ++++++++++++++++++++++++++++++-
+>  fs/nfsd/nfs4xdr.c  | 19 ++++++++++++++++++-
+>  fs/nfsd/vfs.c      |  8 ++++++--
+>  fs/nfsd/vfs.h      |  2 +-
+>  fs/nfsd/xdr4.h     |  8 ++++++++
+>  5 files changed, 63 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index f9d8fac..ac18be6 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1028,7 +1028,7 @@ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		return status;
+>  	}
+>  
+> -	status = nfsd4_vfs_fallocate(&cstate->current_fh, file,
+> +	status = nfsd4_vfs_fallocate(&cstate->current_fh, file, false,
+>  				     allocate->alloc_offset,
+>  				     allocate->alloc_length);
+>  	fput(file);
+> @@ -1036,6 +1036,28 @@ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  }
+>  
+>  static __be32
+> +nfsd4_deallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> +		struct nfsd4_deallocate *deallocate)
+> +{
+> +	__be32 status = nfserr_notsupp;
+> +	struct file *file;
+> +
+> +	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
+> +					    &deallocate->dealloc_stateid,
+> +					    WR_STATE, &file);
+> +	if (status != nfs_ok) {
+> +		dprintk("NFSD: nfsd4_deallocate: couldn't process stateid!\n");
+> +		return status;
+> +	}
+> +
+> +	status = nfsd4_vfs_fallocate(&cstate->current_fh, file, true,
+> +				     deallocate->dealloc_offset,
+> +				     deallocate->dealloc_length);
 
-Per Oracle support this is not quite correct: if you have multiple
-tickets in a DIR: then the NFS client is either required to negotiate
-with the server (RFC 3530) or try the credentials in order until one
-works.
+Same comment as in allocate case.
 
->> As far as I know, gssd always picks the same key to authenticate with. I
->
-> When rpc.gssd (potentially interposed by gss-proxy) then uses GSSAPI to
-> obtain a ticket for the server it will choose the credentials that match
-> the same REALM in preference, even if you have multiple credentials.
+--b.
 
-But that can't be right if you have tickets originating from more than
-one realm in a DIR:, can it?
-
->
-> The client has no way to know that you want to use a different set of
-> credentials, because it doesn't even know (IIRC) what you are trying to
-> access on the server when this call is made.
-
-Still it has to try all options, i.e. negotiate. This is what the
-reference implementation for NFS (Solaris) does.
-
->
->> did offer a patch on this list a couple of weeks ago that uses a
->> krb5.conf appdefaults option to configure *which* key, but that one
->> still doesn't make it possible to pick a different key for different shares.
->
-> It allows you to choose a different key for the *machine* principal, but
-> does nothing for authenticating users using different credentials.
->
-> Simo.
->
-> --
-> Simo Sorce * Red Hat, Inc * New York
->
-
-Ced
--- 
-Cedric Blancher <cedric.blancher@gmail.com>
-Institute Pasteur
+> +	fput(file);
+> +	return status;
+> +}
+> +
+> +static __be32
+>  nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		struct nfsd4_seek *seek)
+>  {
+> @@ -1949,6 +1971,13 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+>  		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
+>  	},
+> +	[OP_DEALLOCATE] = {
+> +		.op_func = (nfsd4op_func)nfsd4_deallocate,
+> +		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+> +		.op_name = "OP_DEALLOCATE",
+> +		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+> +		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
+> +	},
+>  	[OP_SEEK] = {
+>  		.op_func = (nfsd4op_func)nfsd4_seek,
+>  		.op_name = "OP_SEEK",
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index a55aa3b..e1059ce 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1538,6 +1538,23 @@ nfsd4_decode_allocate(struct nfsd4_compoundargs *argp,
+>  }
+>  
+>  static __be32
+> +nfsd4_decode_deallocate(struct nfsd4_compoundargs *argp,
+> +		      struct nfsd4_deallocate *deallocate)
+> +{
+> +	DECODE_HEAD;
+> +
+> +	status = nfsd4_decode_stateid(argp, &deallocate->dealloc_stateid);
+> +	if (status)
+> +		return status;
+> +
+> +	READ_BUF(16);
+> +	p = xdr_decode_hyper(p, &deallocate->dealloc_offset);
+> +	xdr_decode_hyper(p, &deallocate->dealloc_length);
+> +
+> +	DECODE_TAIL;
+> +}
+> +
+> +static __be32
+>  nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
+>  {
+>  	DECODE_HEAD;
+> @@ -1631,7 +1648,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_allocate,
+>  	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_deallocate,
+>  	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 4b1dba0..2bf5263 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -525,9 +525,13 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  #endif
+>  
+>  __be32 nfsd4_vfs_fallocate(struct svc_fh *fhp, struct file *file,
+> -			   loff_t offset, loff_t len)
+> +			   bool punch, loff_t offset, loff_t len)
+>  {
+> -	int error = vfs_fallocate(file, 0, offset, len);
+> +	int error, mode = 0;
+> +	if (punch)
+> +		mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
+> +
+> +	error = vfs_fallocate(file, mode, offset, len);
+>  	if (error < 0)
+>  		return nfserrno(error);
+>  	return nfserrno(commit_metadata(fhp));
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index 9d88c88..9301e8e 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -54,7 +54,7 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
+>  #ifdef CONFIG_NFSD_V4
+>  __be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
+>  		    struct xdr_netobj *);
+> -__be32		nfsd4_vfs_fallocate(struct svc_fh *, struct file *, loff_t, loff_t);
+> +__be32		nfsd4_vfs_fallocate(struct svc_fh *, struct file *, bool, loff_t, loff_t);
+>  #endif /* CONFIG_NFSD_V4 */
+>  __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
+>  				char *name, int len, struct iattr *attrs,
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 4a01fa8..2866921 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -435,6 +435,13 @@ struct nfsd4_allocate {
+>  	u64		alloc_length;
+>  };
+>  
+> +struct nfsd4_deallocate {
+> +	/* request */
+> +	stateid_t	dealloc_stateid;
+> +	loff_t		dealloc_offset;
+> +	u64		dealloc_length;
+> +};
+> +
+>  struct nfsd4_seek {
+>  	/* request */
+>  	stateid_t	seek_stateid;
+> @@ -494,6 +501,7 @@ struct nfsd4_op {
+>  
+>  		/* NFSv4.2 */
+>  		struct nfsd4_allocate		allocate;
+> +		struct nfsd4_deallocate		deallocate;
+>  		struct nfsd4_seek		seek;
+>  	} u;
+>  	struct nfs4_replay *			replay;
+> -- 
+> 2.1.0
+> 
