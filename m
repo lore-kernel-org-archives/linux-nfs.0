@@ -1,54 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:56117 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750931AbaIEUDM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 16:03:12 -0400
-Received: by mail-vc0-f174.google.com with SMTP id hy4so13020920vcb.33
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 13:03:11 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CA+Tkd6WYkkVbY2YsmRNHB4+9AFg5UjC1xoycLTZQOYrtFCT_2w@mail.gmail.com>
-References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
-	<20140903070048.56201d1d@tlielax.poochiereds.net>
-	<70D58138-CB00-433C-8BF8-01584E6460F0@oracle.com>
-	<CA+Tkd6WV9K4oZPVGkqL_y6OcD9Pmj6x0roo9n839QD8RXDsCwA@mail.gmail.com>
-	<CA+Tkd6WYkkVbY2YsmRNHB4+9AFg5UjC1xoycLTZQOYrtFCT_2w@mail.gmail.com>
-Date: Fri, 5 Sep 2014 16:03:11 -0400
-Message-ID: <CAHQdGtRpD03KHJyu1MtxA=21pu4z_YAG4XA-8Bu+t4xeUefaNQ@mail.gmail.com>
-Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount failures
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Chris Perl <chris.perl@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from casper.infradead.org ([85.118.1.10]:50999 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751341AbaIJPVl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 11:21:41 -0400
+Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRjiF-00007Z-VN
+	for linux-nfs@vger.kernel.org; Wed, 10 Sep 2014 15:21:40 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/9] pnfs/blocklayout: implement the return_range method
+Date: Wed, 10 Sep 2014 08:23:35 -0700
+Message-Id: <1410362617-28018-8-git-send-email-hch@lst.de>
+In-Reply-To: <1410362617-28018-1-git-send-email-hch@lst.de>
+References: <1410362617-28018-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 5, 2014 at 3:40 PM, Chris Perl <chris.perl@gmail.com> wrote:
-> I just submitted two patches, one for nfs-utils and one for linux-nfs.
->
-> As I said in my previous email, the patch to nfs-utils was enough to
-> get us farther along, but we failed inside mount(2) with EIO (with a
-> decidedly more confusing error message).
->
-> So, I've also submitted a patch for the rpc code in the kernel that
-> also avoids bind when asking for a random ephemeral port.  I've tested
-> the combination of these two patches with my system while in the
-> situation I originally outlined.  I can continue to successfully mount
-> NFS filesystems using both of these patches.
->
-> I don't particularly love the kernel patch, as it makes `xs_bind' not
-> actually bind in all circumstances, which seems confusing.  However, I
-> thought trying to rework things in a larger way would cause more
-> issues given that I'm not very familiar with this code.  If everyone
-> hates it, I can try something else.
+This allows removing extents from the extent tree especially on truncate
+operations, and thus fixing reads from truncated and re-extended that
+previously returned stale data.
 
-To whom did you submit these patches? I don't see anything in the
-linux-nfs mailing list.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c | 30 ++++++++++++++++++++++++++++++
+ 1 file changed, 30 insertions(+)
 
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 42b6f9c..a7524c4 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -470,6 +470,35 @@ static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+ }
+ 
+ static void
++bl_return_range(struct pnfs_layout_hdr *lo,
++		struct pnfs_layout_range *range)
++{
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
++	sector_t offset = range->offset >> SECTOR_SHIFT, end;
++	int err;
++
++	if (range->offset % 8) {
++		dprintk("%s: offset %lld not block size aligned\n",
++			__func__, range->offset);
++		return;
++	}
++
++	if (range->length != NFS4_MAX_UINT64) {
++		if (range->length % 8) {
++			dprintk("%s: length %lld not block size aligned\n",
++				__func__, range->length);
++			return;
++		}
++
++		end = offset + (range->length >> SECTOR_SHIFT);
++	} else {
++		end = round_down(NFS4_MAX_UINT64, PAGE_SIZE);
++	}
++
++	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
++}
++
++static void
+ bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
+ 		       const struct nfs4_layoutcommit_args *arg)
+ {
+@@ -777,6 +806,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.free_layout_hdr		= bl_free_layout_hdr,
+ 	.alloc_lseg			= bl_alloc_lseg,
+ 	.free_lseg			= bl_free_lseg,
++	.return_range			= bl_return_range,
+ 	.encode_layoutcommit		= bl_encode_layoutcommit,
+ 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
+ 	.set_layoutdriver		= bl_set_layoutdriver,
 -- 
-Trond Myklebust
+1.9.1
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
