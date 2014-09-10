@@ -1,66 +1,194 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:51374 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754713AbaIDSZg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 14:25:36 -0400
+Received: from fieldses.org ([174.143.236.118]:36912 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752446AbaIJUSO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 10 Sep 2014 16:18:14 -0400
+Date: Wed, 10 Sep 2014 16:18:12 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna.Schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] nfsd: Add ALLOCATE support
+Message-ID: <20140910201812.GG4210@fieldses.org>
+References: <1410274182-30740-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1410274182-30740-3-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <20140904084938.2664bf0a@tlielax.poochiereds.net>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-	<1409834323-7171-2-git-send-email-jlayton@primarydata.com>
-	<CAHQdGtTqG8aW-cte2PW6pVw+OeCXATgr1BZwdhponuWMjzNg8g@mail.gmail.com>
-	<20140904084938.2664bf0a@tlielax.poochiereds.net>
-Date: Thu, 4 Sep 2014 14:25:35 -0400
-Message-ID: <CAABAsM6v3-f_7cco8f_F5Wpy7PWJOUywQHH7A=mZ-LyHRASZ7Q@mail.gmail.com>
-Subject: Re: [PATCH v2 01/17] locks: consolidate "nolease" routines
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        cluster-devel <cluster-devel@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1410274182-30740-3-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 4, 2014 at 8:49 AM, Jeff Layton <jeff.layton@primarydata.com> wrote:
-> On Thu, 4 Sep 2014 08:41:51 -0400
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->
->> On Thu, Sep 4, 2014 at 8:38 AM, Jeff Layton <jlayton@primarydata.com> wrote:
->> > GFS2 and NFS have setlease routines that always just return -EINVAL.
->> > Turn that into a generic routine that can live in fs/libfs.c.
->> >
->> > Cc: Trond Myklebust <trond.myklebust@primarydata.com>
->> > Cc: <linux-nfs@vger.kernel.org>
->> > Cc: Steven Whitehouse <swhiteho@redhat.com>
->> > Cc: <cluster-devel@redhat.com>
->> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
->> > ---
->> >  fs/gfs2/file.c     | 22 +---------------------
->> >  fs/libfs.c         | 16 ++++++++++++++++
->> >  fs/nfs/file.c      | 13 +------------
->> >  fs/nfs/internal.h  |  1 -
->> >  fs/nfs/nfs4file.c  |  2 +-
->> >  include/linux/fs.h |  1 +
->> >  6 files changed, 20 insertions(+), 35 deletions(-)
->>
->> Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>
->
-> Thanks. While spinning this up, I did have a momentary pause to wonder
-> if -ENOLCK would be a better return value here.
->
-> It would make it easier to distinguish this from from "oops, I passed
-> in bogus arguments". For now, I'll leave it as -EINVAL, but it's
-> something to consider...
->
+On Tue, Sep 09, 2014 at 10:49:41AM -0400, Anna.Schumaker@netapp.com wrote:
+> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> 
+> The ALLOCATE operation is used to preallocate space in a file.  I use
+> vfs_fallocate() to do the actual preallocation.
+> 
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 29 +++++++++++++++++++++++++++++
+>  fs/nfsd/nfs4xdr.c  | 19 ++++++++++++++++++-
+>  fs/nfsd/vfs.c      |  9 +++++++++
+>  fs/nfsd/vfs.h      |  1 +
+>  fs/nfsd/xdr4.h     |  8 ++++++++
+>  5 files changed, 65 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 9fd2b78..f9d8fac 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1014,6 +1014,28 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  }
+>  
+>  static __be32
+> +nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> +		struct nfsd4_allocate *allocate)
+> +{
+> +	__be32 status = nfserr_notsupp;
+> +	struct file *file;
+> +
+> +	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
+> +					    &allocate->alloc_stateid,
+> +					    WR_STATE, &file);
 
-Actually, it looks as if when you compile with !CONFIG_FILE_LOCKING,
-then fcntl_setlease() returns the value '0' (which would be
-"success!"). The word "confusing" only begins to describe it all.
+This checks that the stateid's openmode is write but not that the caller
+has permission to write.  I think you want an nfsd_permission() check in
+nfsd4_vfs_allocate.
 
-Cheers
-  Trond
+(Incidentally, the spec doesn't say anything about checking either, I
+wonder if it should?)
+
+> +	if (status != nfs_ok) {
+> +		dprintk("NFSD: nfsd4_allocate: couldn't process stateid!\n");
+> +		return status;
+> +	}
+> +
+> +	status = nfsd4_vfs_fallocate(&cstate->current_fh, file,
+> +				     allocate->alloc_offset,
+> +				     allocate->alloc_length);
+> +	fput(file);
+> +	return status;
+> +}
+> +
+> +static __be32
+>  nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		struct nfsd4_seek *seek)
+>  {
+> @@ -1920,6 +1942,13 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>  	},
+>  
+>  	/* NFSv4.2 operations */
+> +	[OP_ALLOCATE] = {
+> +		.op_func = (nfsd4op_func)nfsd4_allocate,
+> +		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+> +		.op_name = "OP_ALLOCATE",
+> +		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+> +		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
+> +	},
+>  	[OP_SEEK] = {
+>  		.op_func = (nfsd4op_func)nfsd4_seek,
+>  		.op_name = "OP_SEEK",
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 57b3973..a55aa3b 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1521,6 +1521,23 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+>  }
+>  
+>  static __be32
+> +nfsd4_decode_allocate(struct nfsd4_compoundargs *argp,
+> +		      struct nfsd4_allocate *allocate)
+> +{
+> +	DECODE_HEAD;
+> +
+> +	status = nfsd4_decode_stateid(argp, &allocate->alloc_stateid);
+> +	if (status)
+> +		return status;
+> +
+> +	READ_BUF(16);
+> +	p = xdr_decode_hyper(p, &allocate->alloc_offset);
+> +	xdr_decode_hyper(p, &allocate->alloc_length);
+> +
+> +	DECODE_TAIL;
+> +}
+> +
+> +static __be32
+>  nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
+>  {
+>  	DECODE_HEAD;
+> @@ -1611,7 +1628,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+>  
+>  	/* new operations for NFSv4.2 */
+> -	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_allocate,
+>  	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index f501a9b..4b1dba0 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -16,6 +16,7 @@
+>  #include <linux/fs.h>
+>  #include <linux/file.h>
+>  #include <linux/splice.h>
+> +#include <linux/falloc.h>
+>  #include <linux/fcntl.h>
+>  #include <linux/namei.h>
+>  #include <linux/delay.h>
+> @@ -523,6 +524,14 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  }
+>  #endif
+>  
+> +__be32 nfsd4_vfs_fallocate(struct svc_fh *fhp, struct file *file,
+> +			   loff_t offset, loff_t len)
+> +{
+> +	int error = vfs_fallocate(file, 0, offset, len);
+> +	if (error < 0)
+> +		return nfserrno(error);
+> +	return nfserrno(commit_metadata(fhp));
+> +}
+>  #endif /* defined(CONFIG_NFSD_V4) */
+>  
+>  #ifdef CONFIG_NFSD_V3
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index c2ff3f1..9d88c88 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -54,6 +54,7 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
+>  #ifdef CONFIG_NFSD_V4
+>  __be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
+>  		    struct xdr_netobj *);
+> +__be32		nfsd4_vfs_fallocate(struct svc_fh *, struct file *, loff_t, loff_t);
+>  #endif /* CONFIG_NFSD_V4 */
+>  __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
+>  				char *name, int len, struct iattr *attrs,
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 5720e94..4a01fa8 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -428,6 +428,13 @@ struct nfsd4_reclaim_complete {
+>  	u32 rca_one_fs;
+>  };
+>  
+> +struct nfsd4_allocate {
+> +	/* request */
+> +	stateid_t	alloc_stateid;
+> +	loff_t		alloc_offset;
+> +	u64		alloc_length;
+> +};
+> +
+>  struct nfsd4_seek {
+>  	/* request */
+>  	stateid_t	seek_stateid;
+> @@ -486,6 +493,7 @@ struct nfsd4_op {
+>  		struct nfsd4_free_stateid	free_stateid;
+>  
+>  		/* NFSv4.2 */
+> +		struct nfsd4_allocate		allocate;
+>  		struct nfsd4_seek		seek;
+>  	} u;
+>  	struct nfs4_replay *			replay;
+> -- 
+> 2.1.0
+> 
