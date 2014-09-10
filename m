@@ -1,171 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:50276 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757416AbaIRGEd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Sep 2014 02:04:33 -0400
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 18 Sep 2014 16:03:17 +1000
-Subject: [PATCH 4/4] NFS/SUNRPC: Remove other deadlock-avoidance mechanisms
- in nfs_release_page()
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20140918060317.23854.22489.stgit@notabene.brown>
-In-Reply-To: <20140918055907.23854.32118.stgit@notabene.brown>
-References: <20140918055907.23854.32118.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from casper.infradead.org ([85.118.1.10]:50994 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751916AbaIJPVY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 11:21:24 -0400
+Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRjhz-000077-Ct
+	for linux-nfs@vger.kernel.org; Wed, 10 Sep 2014 15:21:23 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/9] pnfs: add flag to force read-modify-write in ->write_begin
+Date: Wed, 10 Sep 2014 08:23:30 -0700
+Message-Id: <1410362617-28018-3-git-send-email-hch@lst.de>
+In-Reply-To: <1410362617-28018-1-git-send-email-hch@lst.de>
+References: <1410362617-28018-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that nfs_release_page() doesn't block indefinitely, other deadlock
-avoidance mechanisms aren't needed.
- - it doesn't hurt for kswapd to block occasionally.  If it doesn't
-   want to block it would clear __GFP_WAIT.  The current_is_kswapd()
-   was only added to avoid deadlocks and we have a new approach for
-   that.
- - memory allocation in the SUNRPC layer can very rarely try to
-   ->releasepage() a page it is trying to handle.  The deadlock
-   is removed as nfs_release_page() doesn't block indefinitely.
+Like all block based filesystems, the pNFS block layout driver can't read
+or write at a byte granularity and thus has to perform read-modify-write
+cycles on writes smaller than this granularity.
 
-So we don't need to set PF_FSTRANS for sunrpc network operations any
-more.
+Add a flag so that the core NFS code always reads a whole page when
+starting a smaller write, so that we can do it in the place where the VFS
+expects it instead of doing in very deadlock prone way in the writeback
+handler.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
+Note that in theory we could do less than page size reads here for disks
+that have a smaller sector size which are served by a server with a smaller
+pnfs block size.  But so far that doesn't seem like a worthwhile
+optimization.
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfs/file.c                   |   14 ++++++--------
- net/sunrpc/sched.c              |    2 --
- net/sunrpc/xprtrdma/transport.c |    2 --
- net/sunrpc/xprtsock.c           |   10 ----------
- 4 files changed, 6 insertions(+), 22 deletions(-)
+ fs/nfs/file.c |  7 +++++++
+ fs/nfs/pnfs.h | 15 +++++++++++++++
+ 2 files changed, 22 insertions(+)
 
 diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index febba950d8a6..3c032b1f1b75 100644
+index 524dd80..05ef7dc 100644
 --- a/fs/nfs/file.c
 +++ b/fs/nfs/file.c
-@@ -469,20 +469,18 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
- 	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
+@@ -36,6 +36,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
++#include "pnfs.h"
  
- 	/* Always try to initiate a 'commit' if relevant, but only
--	 * wait for it if __GFP_WAIT is set and the calling process is
--	 * allowed to block.  Even then, only wait 1 second and only
--	 * if the 'bdi' is not congested.
-+	 * wait for it if __GFP_WAIT is set.  Even then, only wait 1
-+	 * second and only if the 'bdi' is not congested.
- 	 * Waiting indefinitely can cause deadlocks when the NFS
--	 * server is on this machine, and there is no particular need
--	 * to wait extensively here.  A short wait has the benefit
--	 * that someone else can worry about the freezer.
-+	 * server is on this machine, when a new TCP connection is
-+	 * needed and in other rare cases.  There is no particular
-+	 * need to wait extensively here.  A short wait has the
-+	 * benefit that someone else can worry about the freezer.
- 	 */
- 	if (mapping) {
- 		struct nfs_server *nfss = NFS_SERVER(mapping->host);
- 		nfs_commit_inode(mapping->host, 0);
- 		if ((gfp & __GFP_WAIT) &&
--		    !current_is_kswapd() &&
--		    !(current->flags & PF_FSTRANS) &&
- 		    !bdi_write_congested(&nfss->backing_dev_info))
- 			wait_on_page_bit_killable_timeout(page, PG_private,
- 							  HZ);
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 9358c79fd589..fe3441abdbe5 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -821,9 +821,7 @@ void rpc_execute(struct rpc_task *task)
+ #include "nfstrace.h"
  
- static void rpc_async_schedule(struct work_struct *work)
+@@ -327,6 +328,12 @@ static int nfs_want_read_modify_write(struct file *file, struct page *page,
+ 	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
+ 	unsigned int end = offset + len;
+ 
++	if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
++		if (!PageUptodate(page))
++			return 1;
++		return 0;
++	}
++
+ 	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
+ 	    !PageUptodate(page) &&		/* Uptodate? */
+ 	    !PagePrivate(page) &&		/* i/o request already? */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 8835b5a..a4c530e 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -72,6 +72,7 @@ enum layoutdriver_policy_flags {
+ 	/* Should the pNFS client commit and return the layout upon a setattr */
+ 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
+ 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
++	PNFS_READ_WHOLE_PAGE		= 1 << 2,
+ };
+ 
+ struct nfs4_deviceid_node;
+@@ -370,6 +371,14 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+ }
+ 
+ static inline bool
++pnfs_ld_read_whole_page(struct inode *inode)
++{
++	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
++		return false;
++	return NFS_SERVER(inode)->pnfs_curr_ld->flags & PNFS_READ_WHOLE_PAGE;
++}
++
++static inline bool
+ pnfs_layoutcommit_outstanding(struct inode *inode)
  {
--	current->flags |= PF_FSTRANS;
- 	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
--	current->flags &= ~PF_FSTRANS;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -445,6 +454,12 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
  }
  
- /**
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 2faac4940563..6a4615dd0261 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -205,7 +205,6 @@ xprt_rdma_connect_worker(struct work_struct *work)
- 	struct rpc_xprt *xprt = &r_xprt->xprt;
- 	int rc = 0;
- 
--	current->flags |= PF_FSTRANS;
- 	xprt_clear_connected(xprt);
- 
- 	dprintk("RPC:       %s: %sconnect\n", __func__,
-@@ -216,7 +215,6 @@ xprt_rdma_connect_worker(struct work_struct *work)
- 
- 	dprintk("RPC:       %s: exit\n", __func__);
- 	xprt_clear_connecting(xprt);
--	current->flags &= ~PF_FSTRANS;
- }
- 
- /*
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 43cd89eacfab..4707c0c8568b 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1927,8 +1927,6 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
- 	struct socket *sock;
- 	int status = -EIO;
- 
--	current->flags |= PF_FSTRANS;
--
- 	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
- 	status = __sock_create(xprt->xprt_net, AF_LOCAL,
- 					SOCK_STREAM, 0, &sock, 1);
-@@ -1968,7 +1966,6 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
--	current->flags &= ~PF_FSTRANS;
- 	return status;
- }
- 
-@@ -2071,8 +2068,6 @@ static void xs_udp_setup_socket(struct work_struct *work)
- 	struct socket *sock = transport->sock;
- 	int status = -EIO;
- 
--	current->flags |= PF_FSTRANS;
--
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
- 	sock = xs_create_sock(xprt, transport,
-@@ -2092,7 +2087,6 @@ static void xs_udp_setup_socket(struct work_struct *work)
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
--	current->flags &= ~PF_FSTRANS;
- }
- 
- /*
-@@ -2229,8 +2223,6 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 	struct rpc_xprt *xprt = &transport->xprt;
- 	int status = -EIO;
- 
--	current->flags |= PF_FSTRANS;
--
- 	if (!sock) {
- 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
- 		sock = xs_create_sock(xprt, transport,
-@@ -2276,7 +2268,6 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 	case -EINPROGRESS:
- 	case -EALREADY:
- 		xprt_clear_connecting(xprt);
--		current->flags &= ~PF_FSTRANS;
- 		return;
- 	case -EINVAL:
- 		/* Happens, for instance, if the user specified a link
-@@ -2294,7 +2285,6 @@ out_eagain:
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
--	current->flags &= ~PF_FSTRANS;
- }
- 
- /**
-
+ static inline bool
++pnfs_ld_read_whole_page(struct inode *inode)
++{
++	return false;
++}
++
++static inline bool
+ pnfs_roc(struct inode *ino)
+ {
+ 	return false;
+-- 
+1.9.1
 
