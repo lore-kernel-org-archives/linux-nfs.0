@@ -1,99 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:37682 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754156AbaIKLPZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 07:15:25 -0400
-Received: by mail-qa0-f50.google.com with SMTP id cm18so18467733qab.23
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Sep 2014 04:15:24 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 11 Sep 2014 07:15:21 -0400
-To: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: remove BUG possibility in nfs4_open_and_get_state
-Message-ID: <20140911071521.71bcc537@tlielax.poochiereds.net>
-In-Reply-To: <20140911161937.29dd4a31@notabene.brown>
-References: <20140911161937.29dd4a31@notabene.brown>
+Received: from verein.lst.de ([213.95.11.211]:52907 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751091AbaIKPgd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Sep 2014 11:36:33 -0400
+Date: Thu, 11 Sep 2014 17:36:31 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Peng Tao <bergwolf@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/9] pnfs: add return_range method
+Message-ID: <20140911153631.GA8039@lst.de>
+References: <1410362617-28018-1-git-send-email-hch@lst.de> <1410362617-28018-4-git-send-email-hch@lst.de> <CAKVebiVvenTsjwBTB1=-HO1w5=7WEKEpj6hQkQP9XQJcuWMgag@mail.gmail.com> <20140911152058.GA6690@lst.de> <CAKVebiXPaxN5hayCYAdd22vThFk=c+Vf0nHmWAnNssMQzyiLPw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/0HlqVcY+T6GUPwSlVrlcF3f"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAKVebiXPaxN5hayCYAdd22vThFk=c+Vf0nHmWAnNssMQzyiLPw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/0HlqVcY+T6GUPwSlVrlcF3f
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Thu, Sep 11, 2014 at 11:30:50PM +0800, Peng Tao wrote:
+> It looks dangerous to have extents lurking around without matching
+> layout segments. One example is NFS4ERR_EXPIRED and
+> NFS4ERR_BAD_STATEID in nfs4_layoutget_done(), client needs to drop all
+> layout segments but may keep the layout header, in which case blocks
+> layout would still hold all extents at hand.
 
-On Thu, 11 Sep 2014 16:19:37 +1000
-NeilBrown <neilb@suse.de> wrote:
+We never do I/O without a valid layout, but we keep the extents around
+because we need to keep state like that it's been written to or has
+a commit pending in a single place, and also need to keep it if a layout
+goes away temporarily.
 
->=20
->=20
-> commit 4fa2c54b5198d09607a534e2fd436581064587ed
->     NFS: nfs4_do_open should add negative results to the dcache.
->=20
-> used "d_drop(); d_add();" to ensure that a dentry was hashed
-> as a negative cached entry.
-> This is not safe if the dentry has an non-NULL ->d_inode.
-> It will trigger a BUG_ON in d_instantiate().
-> In that case, d_delete() is needed.
->=20
-> Also, only d_add if the dentry is currently unhashed, it seems
-> pointless removed and re-adding it unchanged.
->=20
-> Reported-by: Christoph Hellwig <hch@infradead.org>
-> Fixes: 4fa2c54b5198d09607a534e2fd436581064587ed
-> Cc: Jeff Layton <jeff.layton@primarydata.com>
-> Link: http://lkml.kernel.org/r/20140908144525.GB19811@infradead.org
-> Signed-off-by: NeilBrown <neilb@suse.de>
->=20
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 7dd8aca31c29..ac2dd953fc18 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2226,9 +2226,13 @@ static int _nfs4_open_and_get_state(struct nfs4_op=
-endata *opendata,
->  	ret =3D _nfs4_proc_open(opendata);
->  	if (ret !=3D 0) {
->  		if (ret =3D=3D -ENOENT) {
-> -			d_drop(opendata->dentry);
-> -			d_add(opendata->dentry, NULL);
-> -			nfs_set_verifier(opendata->dentry,
-> +			dentry =3D opendata->dentry;
-> +			if (dentry->d_inode)
-> +				d_delete(dentry);
-> +			else if (d_unhashed(dentry))
-> +				d_add(dentry, NULL);
-> +
-> +			nfs_set_verifier(dentry,
->  					 nfs_save_change_attribute(opendata->dir->d_inode));
->  		}
->  		goto out;
-
-Acked-by: Jeff Layton <jlayton@primarydata.com>
-
---Sig_/0HlqVcY+T6GUPwSlVrlcF3f
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIcBAEBAgAGBQJUEYRJAAoJEAAOaEEZVoIVE5IP/1UfVPOik0ZKv6rYVAf8nhkt
-b4fDkDUgXXBMH3DLTw+sB/CKDjyWMlBNBivESlSd9aGOHmRiKORXJGejJlnOJJIn
-Jd5oPmD5pMaVj7a0oNnWCjPfuVQcaCxTmhirFEJ/7snHisFhso09RIBJfBDx0Rha
-y7sgckUY0uXScSsnpcrpeAlcLQaAfMu/Umm9pjSt1NPBpxpywkV9917L0nmn293g
-Xk+5k73uCKKKi0JJSy5Ys1Pkfd/QX/E+y43glVaFAaw9cPoF9DA2ER91U1ImAU4z
-T1VURitzc3fG+EdCZE6vt98t91oljjKFAKsLY3JDWac4gRXjj5VqTT5ioSAZvpVC
-SiZF9oDeKvf6QaEvnq+treu6bim+7pmrJBKoEENHEtjnf10R8AbMjB88uFZ8JAGN
-sPZQo0oOleE78/L6gMmsPLvqt6HLhfWOKOybxxpz8xCzIznXnRVhsaARlEXpQudp
-mGeoJ1S3rE24smsKLJ5MEMZ3O5PxUN1xNHg/M3kd1KGmnOjawWp4DDQZmaI2XgKU
-9xH4rq5gsd2v0ydXg8W+lfW9K91vPo+0/DgaHGH4vACera1542V4Q/MmkruAeiPv
-Bk+3qzykS7EK5l3RZa6DLUhkxFA7gMBugsBjqBGh8xyv2p7jVxfw6io8qBhEWTKF
-TXXLC7ZHty5LUwrX2LfM
-=/xoc
------END PGP SIGNATURE-----
-
---Sig_/0HlqVcY+T6GUPwSlVrlcF3f--
+I hate the way it has been done in the old client, and tried moving the
+extent tracking to a per-layout basis, and spent way too much time on it
+but still couldn't get it to work, so I finally gave up.  I think we're
+between a rock (the idiocy on rfc5663 that it tracks data in extents and not
+in layouts) and a hard place (the forgetful Linux client and it's lose layout
+coherency) here.
