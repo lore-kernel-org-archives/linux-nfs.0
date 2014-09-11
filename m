@@ -1,79 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:38658 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751730AbaIVTQY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2014 15:16:24 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] svcrdma: Advertise the correct max payload
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140922185550.GC26763@fieldses.org>
-Date: Mon, 22 Sep 2014 12:16:12 -0700
-Cc: Steve Wise <swise@opengridcomputing.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Message-Id: <0E95FC1E-753A-484C-B961-329720A657D8@oracle.com>
-References: <20140922183653.19376.14276.stgit@build.ogc.int> <20140922183922.GB26763@fieldses.org> <54206D7F.6070603@opengridcomputing.com> <20140922185550.GC26763@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from casper.infradead.org ([85.118.1.10]:53143 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753891AbaIKAfZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:35:25 -0400
+Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRsM8-00084C-Kf
+	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:35:24 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/5] pnfs: enable CB_NOTIFY_DEVICEID support
+Date: Wed, 10 Sep 2014 17:37:28 -0700
+Message-Id: <1410395848-2437-6-git-send-email-hch@lst.de>
+In-Reply-To: <1410395848-2437-1-git-send-email-hch@lst.de>
+References: <1410395848-2437-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This code has been around for a while, but never was enabled, although
+it is in a working shape.
 
-On Sep 22, 2014, at 11:55 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+Note that we implement NOTIFY_DEVICEID4_CHANGE identical to
+NOTIFY_DEVICEID4_DELETE.  Given that in either case we can't do anything
+but preventing further lookups of a given device ID there isn't much difference
+in semantics for the two.  For the delete case the server MUST ensure that
+there are no outstanding layouts, while for the change case it doesn't, but
+that has little relevance to the client.
 
-> On Mon, Sep 22, 2014 at 01:42:07PM -0500, Steve Wise wrote:
->> On 9/22/2014 1:39 PM, J. Bruce Fields wrote:
->>> On Mon, Sep 22, 2014 at 01:36:53PM -0500, Steve Wise wrote:
->>>> Svcrdma currently advertises 1MB, which is too large.  The correct value
->>>> is the max scatter-gather allowed in an NFSRDMA IO chunk * the host page
->>>> size. This bug is usually benign because the Linux X64 NFSRDMA client
->>>> correctly limits the payload size to the correct value (64*4096 = 256KB).
->>>> But if the Linux client is PPC64 with a 64KB page size, then the client
->>>> will indeed use a payload size that will overflow the server.
->>>> 
->>>> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
->>>> ---
->>>> 
->>>> net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
->>>> net/sunrpc/xprtrdma/xprt_rdma.h          |    2 ++
->>>> 2 files changed, 3 insertions(+), 1 deletions(-)
->>>> 
->>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>> index 374feb4..4e61880 100644
->>>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
->>>> @@ -91,7 +91,7 @@ struct svc_xprt_class svc_rdma_class = {
->>>> 	.xcl_name = "rdma",
->>>> 	.xcl_owner = THIS_MODULE,
->>>> 	.xcl_ops = &svc_rdma_ops,
->>>> -	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
->>>> +	.xcl_max_payload = RPCSVC_MAXPAYLOAD_RDMA,
->>>> 	.xcl_ident = XPRT_TRANSPORT_RDMA,
->>>> };
->>>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> index c419498..467a77c 100644
->>>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> @@ -392,4 +392,6 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
->>>> /* Workqueue created in svc_rdma.c */
->>>> extern struct workqueue_struct *svc_rdma_wq;
->>>> +#define RPCSVC_MAXPAYLOAD_RDMA	(RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
->>> Do you want to define this as the minimum of this and
->>> RPCSVC_MAXPAYLOAD_TCP, in case RPCRDMA_MAX_DATA_SEGS gets increased some
->>> day?
->> 
->> Why would it need to be limited by MAXPAYLOAD_TCP?
-> 
-> Because you're also limited by the size of the rq_pages array, which is
-> determined by RPCSVC_MAXPAGES, calculated from RPCSVC_MAXPAYLOAD.
-> 
-> (Actually you probably want RPCSVC_MAXPAYLOAD, not MAXPAYLOAD_TCP.)
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/callback_proc.c |  3 ---
+ fs/nfs/nfs4xdr.c       | 31 +++++++++++++++++++++++--------
+ 2 files changed, 23 insertions(+), 11 deletions(-)
 
-Agree with this last bit.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 56bd0ea..73466b9 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -289,9 +289,6 @@ __be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
+ 		}
+ 
+ 	found:
+-		if (dev->cbd_notify_type == NOTIFY_DEVICEID4_CHANGE)
+-			dprintk("%s: NOTIFY_DEVICEID4_CHANGE not supported, "
+-				"deleting instead\n", __func__);
+ 		nfs4_delete_deviceid(server->pnfs_curr_ld, clp, &dev->cbd_dev_id);
+ 	}
+ 
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index b8165ea..005d03c 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -362,14 +362,19 @@ static int nfs4_stat_to_errno(int);
+ 				XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5)
+ #define encode_reclaim_complete_maxsz	(op_encode_hdr_maxsz + 4)
+ #define decode_reclaim_complete_maxsz	(op_decode_hdr_maxsz + 4)
+-#define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + 4 + \
+-				XDR_QUADLEN(NFS4_DEVICEID4_SIZE))
++#define encode_getdeviceinfo_maxsz (op_encode_hdr_maxsz + \
++				XDR_QUADLEN(NFS4_DEVICEID4_SIZE) + \
++				1 /* layout type */ + \
++				1 /* maxcount */ + \
++				1 /* bitmap size */ + \
++				1 /* notification bitmap length */ + \
++				1 /* notification bitmap, word 0 */)
+ #define decode_getdeviceinfo_maxsz (op_decode_hdr_maxsz + \
+ 				1 /* layout type */ + \
+ 				1 /* opaque devaddr4 length */ + \
+ 				  /* devaddr4 payload is read into page */ \
+ 				1 /* notification bitmap length */ + \
+-				1 /* notification bitmap */)
++				1 /* notification bitmap, word 0 */)
+ #define encode_layoutget_maxsz	(op_encode_hdr_maxsz + 10 + \
+ 				encode_stateid_maxsz)
+ #define decode_layoutget_maxsz	(op_decode_hdr_maxsz + 8 + \
+@@ -1918,12 +1923,15 @@ encode_getdeviceinfo(struct xdr_stream *xdr,
+ 	__be32 *p;
+ 
+ 	encode_op_hdr(xdr, OP_GETDEVICEINFO, decode_getdeviceinfo_maxsz, hdr);
+-	p = reserve_space(xdr, 12 + NFS4_DEVICEID4_SIZE);
++	p = reserve_space(xdr, NFS4_DEVICEID4_SIZE + 4 + 4);
+ 	p = xdr_encode_opaque_fixed(p, args->pdev->dev_id.data,
+ 				    NFS4_DEVICEID4_SIZE);
+ 	*p++ = cpu_to_be32(args->pdev->layout_type);
+ 	*p++ = cpu_to_be32(args->pdev->maxcount);	/* gdia_maxcount */
+-	*p++ = cpu_to_be32(0);				/* bitmap length 0 */
++
++	p = reserve_space(xdr, 4 + 4);
++	*p++ = cpu_to_be32(1);			/* bitmap length */
++	*p++ = cpu_to_be32(NOTIFY_DEVICEID4_CHANGE | NOTIFY_DEVICEID4_DELETE);
+ }
+ 
+ static void
+@@ -5767,9 +5775,16 @@ static int decode_getdeviceinfo(struct xdr_stream *xdr,
+ 		p = xdr_inline_decode(xdr, 4 * len);
+ 		if (unlikely(!p))
+ 			goto out_overflow;
+-		for (i = 0; i < len; i++, p++) {
+-			if (be32_to_cpup(p)) {
+-				dprintk("%s: notifications not supported\n",
++
++		if (be32_to_cpup(p++) &
++		    ~(NOTIFY_DEVICEID4_CHANGE | NOTIFY_DEVICEID4_DELETE)) {
++			dprintk("%s: unsupported notification\n",
++				__func__);
++		}
++
++		for (i = 1; i < len; i++) {
++			if (be32_to_cpup(p++)) {
++				dprintk("%s: unsupported notification\n",
+ 					__func__);
+ 				return -EIO;
+ 			}
+-- 
+1.9.1
 
