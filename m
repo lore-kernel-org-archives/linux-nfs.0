@@ -1,95 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:57515 "EHLO
-	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752310AbaIYKWA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 06:22:00 -0400
-From: =?utf-8?B?U3Ryw7Zzc2VyLCBCb2Rv?= <bodo.stroesser@ts.fujitsu.com>
-To: NeilBrown <neilb@suse.de>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Date: Thu, 25 Sep 2014 12:21:57 +0200
-Subject: RE: rpc.mountd can be blocked by a bad client
-Message-ID: <8B06D1E6480A6747B23FEC34909D2B5EA819D7E002@ABGEX70E.FSC.NET>
-References: <8B06D1E6480A6747B23FEC34909D2B5EA819D7DCA4@ABGEX70E.FSC.NET>
- <20140925103210.5423676f@notabene.brown>
-In-Reply-To: <20140925103210.5423676f@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+Received: from aserp1040.oracle.com ([141.146.126.69]:23425 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751053AbaIKRLS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 13:11:18 -0400
+Message-ID: <5411D79A.4000908@oracle.com>
+Date: Thu, 11 Sep 2014 10:10:50 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
+To: "Charles EDWARD Lever" <chuck.lever@oracle.com>,
+        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "Devesh.Sharma@emulex.com" <Devesh.Sharma@emulex.com>,
+        "dledford@redhat.com" <dledford@redhat.com>,
+        "dominique.martinet@cea.fr" <dominique.martinet@cea.fr>,
+        "jeffrey.c.becker@nasa.gov" <jeffrey.c.becker@nasa.gov>,
+        "rsdance@soft-forge.com" <rsdance@soft-forge.com>,
+        "skc@lanl.gov" <skc@lanl.gov>,
+        "sprabhu@redhat.com" <sprabhu@redhat.com>,
+        "SteveD@redhat.com" <SteveD@redhat.com>,
+        "swise@opengridcomputing.com" <swise@opengridcomputing.com>,
+        "wendy.cheng@intel.com" <wendy.cheng@intel.com>,
+        "yanb@mellanox.com" <yanb@mellanox.com>
+CC: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: NFSoRDMA developers bi-weekly meeting minutes (9/11)
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPiBGcm9tOiBOZWlsQnJvd24gW21haWx0bzpu
-ZWlsYkBzdXNlLmRlXQ0KPiBTZW50OiBUaHVyc2RheSwgU2VwdGVtYmVyIDI1LCAyMDE0IDI6MzIg
-QU0NCj4gVG86IFN0csO2c3NlciwgQm9kbw0KPiBDYzogbGludXgtbmZzQHZnZXIua2VybmVsLm9y
-ZzsgYmZpZWxkc0BmaWVsZHNlcy5vcmcNCj4gU3ViamVjdDogUmU6IHJwYy5tb3VudGQgY2FuIGJl
-IGJsb2NrZWQgYnkgYSBiYWQgY2xpZW50DQo+IA0KPiBPbiBXZWQsIDI0IFNlcCAyMDE0IDEyOjU3
-OjA5ICswMjAwICJTdHLDtnNzZXIsIEJvZG8iDQo+IDxib2RvLnN0cm9lc3NlckB0cy5mdWppdHN1
-LmNvbT4gd3JvdGU6DQo+IA0KPiA+IEhlbGxvLA0KPiA+DQo+ID4gYSBmZXcgZGF5cyBhZ28gd2Ug
-aGFkIHNvbWUgdHJvdWJsZSB3aXRoIGEgTkZTIHNlcnZlci4gVGhlIGNsaWVudHMgbW9zdCBvZiB0
-aGUgdGltZSBubw0KPiBsb25nZXINCj4gPiBjb3VsZCBtb3VudCBhbnkgc2hhcmVzLCBidXQgaW4g
-cmFyZSBjYXNlcyB0aGV5IGhhZCBzdWNjZXNzLg0KPiA+DQo+ID4gV2UgZm91bmQgb3V0LCB0aGF0
-IGR1cmluZyB0aGUgdGltZXMgd2hlbiBtb3VudHMgZmFpbGVkLCBycGMubW91bnRkIGh1bmcgb24g
-YSB3cml0ZSgpIHRvDQo+IGEgVENQDQo+ID4gc29ja2V0LiBuZXRzdGF0IHNob3dlZCwgdGhhdCBT
-ZW5kLVEgd2FzIGZ1bGwgYW5kIFJlY3YtUSBjb3VudGVkIHVwIHNsb3dseS4gQWZ0ZXIgYSBsb25n
-DQo+IHRpbWUNCj4gPiB0aGUgd3JpdGUgZW5kZWQgd2l0aCBhbiBlcnJvciAoIlRDUCB0aW1lb3V0
-IiBJSVJDKSBhbmQgcnBjLm1vdW50ZCB3b3JrZWQgbm9ybWFsbHkgZm9yIGENCj4gc2hvcnQNCj4g
-PiB3aGlsZSB1bnRpbCBpdCBhZ2FpbiBodW5nIG9uIHdyaXRlKCkgZm9yIHRoZSBzYW1lIHJlYXNv
-bi4gVGhlIHByb2JsZW0gd2FzIGNhdXNlZCBieSBhDQo+IE1UVSBzaXplDQo+ID4gY29uZmlndXJl
-ZCB3cm9uZy4gU28sIG9uZSBzaW5nbGUgYmFkIGNsaWVudCAob3IgYXMgbXVjaCBjbGllbnRzIGFz
-IHRoZSBudW1iZXIgb2YgdGhyZWFkcw0KPiB1c2VkDQo+ID4gYnkgcnBjLm1vdW50ZCkgY2FuIGJs
-b2NrIHJwYy5tb3VudGQgZW50aXJlbHkuDQo+ID4NCj4gPiBCdXQgd2hhdCB3aWxsIGhhcHBlbiwg
-aWYgc29tZW9uZSBpbnRlbnRpb25hbGx5IHNlbmRzIFJQQyByZXF1ZXN0cywgYnV0IGRvZXNuJ3Qg
-cmVhZCgpDQo+IHRoZQ0KPiA+IGFuc3dlcnM/IEkgd3JvdGUgYSBzbWFsbCB0b29sIHRvIHRlc3Qg
-dGhpcyBzaXR1YXRpb24uIEl0IGZpcmVzIERVTVAgcmVxdWVzdHMgdG8NCj4gcnBjLm1vdW50ZCBh
-cw0KPiA+IGZhc3QgYXMgcG9zc2libGUsIGJ1dCBkb2VzIG5vdCByZWFkIGZyb20gdGhlIHNvY2tl
-dC4gVGhlIHJlc3VsdCBpcyB0aGUgc2FtZSBhcyB3aXRoIHRoZQ0KPiA+IHByb2JsZW0gYWJvdmU6
-IHJwYy5tb3VudGQgaGFuZ3MgaW4gd3JpdGUoKSBhbmQgbm8gbG9uZ2VyIHJlc3BvbmRzIHRvIG90
-aGVyIHJlcXVlc3RzDQo+IHdoaWxlIG5vDQo+ID4gVENQIHRpbWVvdXQgYnJlYWtzIHVwIHRoaXMg
-c2l0dWF0aW9uLg0KPiA+DQo+ID4gU28gaXQncyBxdWl0ZSBlYXN5IHRvIGludGVudGlvbmFsbHkg
-YmxvY2sgcnBjLm1vdW50ZCBmcm9tIHJlbW90ZS4NCj4gDQo+IFRoYXQncyByYXRoZXIgbmFzdHku
-DQo+IFdlIGNvdWxkIHBvc3NpYmx5IHNldCB0aGUgc29ja2V0IHRvIGJlIG5vbi1ibG9ja2luZywg
-b3Igd2UgY291bGQgc2V0IGFuIGFsYXJtDQo+IGp1c3QgYmVmb3JlIGhhbmRsaW5nIGEgcmVxdWVz
-dC4NCj4gUHJvYmFibHkgcnBjX2Rpc3BhdGNoKCkgaW4gc3VwcG9ydC9uZnMvcnBjZGlzcGF0Y2gu
-YyB3b3VsZCBiZSB0aGUgYmVzdCBwbGFjZQ0KPiB0byBwdXQgdGhlIHRpbWVvdXQuDQo+ICBjYXRj
-aCBTSUdBTFJNIChkb24ndCBzZXQgU0FfUkVTVEFSVCkNCj4gIGFsYXJtKDEwKTsNCj4gIGNhbGwg
-c3ZjX3NlbmRyZXBseQ0KPiAgYWxhcm0oMCk7DQo+IA0KDQpJIGFsc28gdGhvdWdodCBhYm91dCBj
-aGFuZ2luZyB0aGUgc29ja2V0IHRvIG5vbi1ibG9ja2luZy4gQnV0IEknbSBub3Qgc3VyZTogaXMg
-aXQNCnBvc3NpYmxlIHRvIGhhdmUgc3VjaCBiaWcgUlBDIHJlcGxpZXMsIHRoYXQgdGhleSBkb24n
-dCBmaXQgaW50byB0aGUgc29ja2V0DQpidWZmZXI/IElmIHNvLCB3cml0ZSgpIHdvdWxkIHB1dCB0
-aGUgZmlyc3QgcGFydCBpbnRvIHRoZSBidWZmZXIgYW5kIGEgc2Vjb25kDQp3cml0ZSBmb3IgdGhl
-IHJlc3Qgd291bGQgZmFpbCwgYXMgcHJvYmFibHkgdGhlIGZpcnN0IHBhcnQgaXNuJ3QgYWNrZWQg
-eWV0LCByaWdodD8NClNvLCBub24tYmxvY2tpbmcgbmVlZHMgdG8gYmUgY29tYmluZWQgd2l0aCBh
-IGhhbmRsaW5nIG9mIGJ1ZmZlci1mdWxsIHNpdHVhdGlvbnMsDQpJIGd1ZXNzLiBTdWNoIGEgaGFu
-ZGxpbmcgdG9nZXRoZXIgd2l0aCBhIHRpbWVvdXQgZm9yIHN0YXJ2aW5nIGNvbm5lY3Rpb25zIHdv
-dWxkDQpiZSBhIGNsZWFuIHNvbHV0aW9uLg0KVG8gZG8gdGhhdCwgb25lIHdvdWxkIGhhdmUgdG8g
-cmVwbGFjZSB0aGUgdGNwIHdyaXRlIHJvdXRpbmUgb2YgdGhlIHJwYyBsaWJyYXJ5Lg0KVGhhdCBt
-ZWFucyB0byBjaGFuZ2UgdGhlIHhkcnMncyBwb2ludGVyIHRvIHRoZSB3cml0ZSBmdW5jdGlvbi4g
-SSBkb24ndCBrbm93LA0Kd2hldGhlciB0aGF0IGNhbiBiZSBkb25lIGluIGEgcG9ydGFibGUgd2F5
-LCB3aGljaCB3b3JrcyBhdCB0aGUgZGlmZmVyZW50IHBsYXRmb3Jtcy4NCg0KQWJvdXQgc2V0dGlu
-ZyBhIGFsYXJtIHRpbWVvdXQ6IEknbSBub3Qgc3VyZSwgdGhhdCBycGNfZGlzcGF0Y2goKSBpcyB0
-aGUgcmlnaHQNCnBsYWNlIGZvciBpdC4gbW91bnRkIHVzZXMgbW91bnRfZGlzcGF0Y2goKSB3aGlj
-aCBoYXMgYW4gZXhpdCB2aWEgc3ZjZXJyX2F1dGgoKSwNCnRoYXQgYWdhaW4gc2VuZHMgYSByZXBs
-eS4gU28gdGhlIHRpbWVvdXQgeW91IHN1Z2dlc3Qgc2hvdWxkIGJlIGluc2VydGVkIGluDQptb3Vu
-dF9kaXNwYXRjaCgpLCBJIHRoaW5rLg0KT1RPSCwgYSB0aW1lb3V0IHdpbGwgc2hvcnRlbiB0aGUg
-aGFuZywgYnV0IGJhZCBjbGllbnRzIGNhbiBzdGlsbCBzbG93IGRvd24gbW91bnRkDQpleHRyZW1l
-bHkuDQoNCkJUVzogQUZBSUNTIG9uIExpbnV4IHdpdGggbGlidGlycGMsIHVzaW5nIHRoZSBjb250
-cm9sIFNWQ0dFVF9DT05OTUFYUkVDLCB0aGUgc29ja2V0DQppbmRpcmVjdGx5IGNhbiBzZXQgdG8g
-bm9uLWJsb2NraW5nLiBUaGF0IHNlZW1zIHRvIHJlc3VsdCBpbiB3cml0ZV92YygpIGRvaW5nIGEg
-bWF4Lg0KMiBzZWNvbmQgbG9vcCBvZiB3cml0ZSgpIHVudGlsIGl0IGdpdmVzIHVwLg0KDQpPbmUg
-b3RoZXIgcG9pbnQ6IEFGQUlDUyBvbiBMaW51eCB3aXRoIGxpYnRpcnBjIHRoZSBsaXN0ZW5pbmcg
-c29ja2V0IG9mIG1vdW50ZCBpcw0KaW4gYmxvY2tpbmcgbW9kZS4gV291bGQgdGhhdCBiZSBhIHBy
-b2JsZW0gd2hlbiBydW5uaW5nIG11bHRpcGxlICJ0aHJlYWRzIj8NClRoZSBjb21tZW50IGluIHN2
-Y19zb2NrZXQuYy9zdmNfc29ja2V0KCksIHdoZXJlIHRoZSBsaXN0ZW5pbmcgc29ja2V0IGlzIHNl
-dCB0bw0Kbm9uLWJsb2NraW5nLCBzb3VuZHMgdmVyeSByZWFzb25hYmxlLiBCdXQgQUZBSUNTIGlm
-IGxpYnRpcnBjIGlzIHVzZWQsIE9fTk9OQkxPQ0sNCmN1cnJlbnRseSBpc24ndCBzZXQuDQoNCkJv
-ZG8gU3Ryb2Vzc2VyDQoNCg0KPiBpZiB0aGUgYWxhcm0gZmlyZXMgd2hpbGUgc3ZjX3NlbmRyZXBs
-eSBpcyB3cml0aW5nIHRvIHRoZSBzb2NrZXQgaXQgc2hvdWxkIGdldA0KPiBhbiBlcnJvciBhbmQg
-Y2xvc2UgdGhlIGNvbm5lY3Rpb24uDQo+IA0KPiBUaGlzIHdvdWxkIG9ubHkgZml4IG1vdW50ZCAo
-YXMgaXQgaXMgdGhlIG9ubHkgcHJvY2VzcyB0byB1c2UgcnBjX2Rpc3BhdGNoKS4NCj4gSXMgYSBz
-aW1pbGFyIHRoaW5nIG5lZWRlZCBmb3Igc3RhdGQgSSB3b25kZXI/PyAgSXQgaXNuJ3Qgc28gaW1w
-b3J0YW50Lg0KPiANCj4gTmVpbEJyb3duDQo+IA0KPiA+DQo+ID4gUGxlYXNlIENDIG1lLCBJJ20g
-bm90IG9uIHRoZSBsaXN0Lg0KPiA+DQo+ID4gQmVzdCByZWdhcmRzLA0KPiA+IEJvZG8NCj4gPiAt
-LQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1
-YnNjcmliZSBsaW51eC1uZnMiIGluDQo+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9y
-ZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8v
-dmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0K
+Attendees:
+
+Yan Burman (Mellanox)
+Wendy Cheng (Intel)
+Rupert Dance (Soft Forge)
+Steve Dickson (Red Hat)
+Chuck Lever (Oracle)
+Doug Ledford (RedHat)
+Shirley Ma (Oracle)
+Devesh Sharma (Emulex)
+Anna Schumaker (Net App)
+Steve Wise (OpenGridComputing, Chelsio)
+Dominique Martinet(CEA France)
+
+Moderator:
+Shirley Ma (Oracle)
+
+NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA development and test effort from different resources to speed up NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools development. Hopefully the quality of NFSoRDMA upstream patches can be improved by being tested with a quorum of HW vendors.
+
+Today's meeting notes:
+1. Merge plan for 3.18, 3.19 (Chuck, Steve):
+-- Bug fixes from NFSoRDMA bugzilla 
+	- https://bugzilla.linux-nfs.org/buglist.cgi?quicksearch=rdma
+	- shutdown issue problem from unmount point (Devesh/Chuck)
+-- NFS 4.1 support: 
+	- Server and client are under testing, Oracle is doing client/server interoperability test
+	- Bi-directional RPCs
+	- backchannel, second transport TCP
+
+2. Linux development tree unbootable with IPoIB for nearly one month. (Chuck,Doug/SteveD,Yan)
+-- How to help upstream test and stable
+	- Any vendors can fund UNH to zero-day Linux upstream test?
+	- Allocate Engineer resource to help reviewing code to speed up upstream acceptance?
+-- Discussed about NFSoRDMA dependency of IPoIB (Wendy)
+
+3. Performance issues arising (SteveW, Shirley)
+-- Scalability test for 4 - 16 clients, each client has 4 mount points
+-- Single eventQ bottle neck after splitting send/recv queue completion, two eventQ per QP
+-- How to avoid inconsistent performance evaluation: hyper threads, NUMA, cache ...
+-- RDMA vs. IPoIB iWARP, ROCE performance test
+
+4. UNL interoperability bug discussion between PPC (64K page) and X86 (4K page) (Rupert, Chuck, SteveW)
+-- http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2494
+   - cloned https://bugzilla.linux-nfs.org/show_bug.cgi?id=270
+	
+Actions:
+1. Chuck talks to Oracle for possibility to join OFLG and fund UNH for linux development tree test
+2. Allocate Engineer resource to help reviewing upstream code and speed up the process: RedHat (Doug), Mellanox(Yan),Oracle(Chuck)
+
+Feel free to reply here for anything missing. See you 9/25.
+
+9/11/2014
+@7:30am PDT
+@8:30am MDT
+@9:30am CDT
+@10:30am EDT
+@Bangalore @8:00pm
+@Israel @5:30pm
+
+Duration: 1 hour
+
+Call-in number:
+Israel: +972 37219638
+Bangalore: +91 8039890080 (180030109800)
+France  Colombes +33 1 5760 2222    +33 176728936
+US: 8666824770,  408-7744073
+
+Conference Code: 2308833
+Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
+
+Thanks everyone for joining the call and providing valuable inputs/work to the community to make NFSoRDMA better.
+
+Shirley
