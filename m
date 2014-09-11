@@ -1,169 +1,243 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f45.google.com ([74.125.82.45]:58729 "EHLO
-	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754508AbaIZOoU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 10:44:20 -0400
-Received: by mail-wg0-f45.google.com with SMTP id x13so9227329wgg.4
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2014 07:44:18 -0700 (PDT)
-Received: from [192.168.1.188] (ipbcc2b967.dynamic.kabel-deutschland.de. [188.194.185.103])
-        by mx.google.com with ESMTPSA id lu12sm2457482wic.4.2014.09.26.07.44.17
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 26 Sep 2014 07:44:17 -0700 (PDT)
-Message-ID: <54257BC0.9040806@gmail.com>
-Date: Fri, 26 Sep 2014 16:44:16 +0200
-From: Andreas Reis <andreas.reis@gmail.com>
-MIME-Version: 1.0
+Received: from casper.infradead.org ([85.118.1.10]:53135 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752019AbaIKAeX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:34:23 -0400
+Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRsL7-000837-SL
+	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:34:22 +0000
+From: Christoph Hellwig <hch@lst.de>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH] exportfs: Completely unexport directory by path alone
-Content-Type: text/plain; charset=utf-8
+Subject: [PATCH 3/4] pnfs/blocklayout: allocate separate pages for the layoutcommit payload
+Date: Wed, 10 Sep 2014 17:36:30 -0700
+Message-Id: <1410395791-2385-4-git-send-email-hch@lst.de>
+In-Reply-To: <1410395791-2385-1-git-send-email-hch@lst.de>
+References: <1410395791-2385-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Patch to allow complete unexport of a directory without having to state each of its clients.
+Instead of overflowing the XDR send buffer with our extent list allocate
+pages and pre-encode the layoutupdate payload into them.  We optimistically
+allocate a single page use alloc_page and only switch to vmalloc when we
+have more extents outstanding.  Currently there is only a single testcase
+(xfstests generic/113) which can reproduce large enough extent lists for
+this to occur.
 
-Ie, "exportfs -u /foo/bar" unexports all entries matching that path.
-
-Useful when one doesn't want to / can't do the bookkeeping required otherwise.
-
-Signed-off-by: Andreas Reis <andreas.reis@gmail.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index bdea12b..ae90808 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -393,65 +393,90 @@ unexportfs_parsed(char *hname, char *path, int verbose)
- {
- 	nfs_export	*exp;
- 	struct addrinfo *ai = NULL;
--	int		htype;
--	int		success = 0;
--
--	if ((htype = client_gettype(hname)) == MCL_FQDN) {
--		ai = host_addrinfo(hname);
--		if (ai)
--			hname = ai->ai_canonname;
-+	int		htype = 0;
-+	bool		success = false;
-+
-+	if(hname) {
-+		if ((htype = client_gettype(hname)) == MCL_FQDN) {
-+			ai = host_addrinfo(hname);
-+			if (ai)
-+				hname = ai->ai_canonname;
-+		}
- 	}
- 
--	for (exp = exportlist[htype].p_head; exp; exp = exp->m_next) {
--		if (path && strcmp(path, exp->m_export.e_path))
--			continue;
--		if (htype != exp->m_client->m_type)
--			continue;
--		if (htype == MCL_FQDN
--		    && !matchhostname(exp->m_export.e_hostname,
--					  hname))
--			continue;
--		if (htype != MCL_FQDN
--		    && strcasecmp(exp->m_export.e_hostname, hname))
--			continue;
--		if (verbose) {
--#if 0
--			if (exp->m_exported) {
--				printf("unexporting %s:%s from kernel\n",
--				       exp->m_client->m_hostname,
--				       exp->m_export.e_path);
-+	do {
-+
-+		for (exp = exportlist[htype].p_head; exp; exp = exp->m_next) {
-+			if (path && strcmp(path, exp->m_export.e_path))
-+				continue;
-+			if (htype != exp->m_client->m_type)
-+				continue;
-+			if (hname) {
-+				if (htype == MCL_FQDN
-+				    && !matchhostname(exp->m_export.e_hostname,
-+							  hname))
-+					continue;
-+				if (htype != MCL_FQDN
-+				    && strcasecmp(exp->m_export.e_hostname, hname))
-+					continue;
- 			}
--			else
-+			if (verbose) {
-+#if 0
-+				if (exp->m_exported) {
-+					printf("unexporting %s:%s from kernel\n",
-+					       exp->m_client->m_hostname,
-+					       exp->m_export.e_path);
-+				}
-+				else
- #endif
--				printf("unexporting %s:%s\n",
--					exp->m_client->m_hostname,
--					exp->m_export.e_path);
--		}
-+					printf("unexporting %s:%s\n",
-+						exp->m_client->m_hostname,
-+						exp->m_export.e_path);
-+			}
- #if 0
--		if (exp->m_exported && !export_unexport(exp))
--			error(exp, errno);
-+			if (exp->m_exported && !export_unexport(exp))
-+				error(exp, errno);
- #endif
--		exp->m_xtabent = 0;
--		exp->m_mayexport = 0;
--		success = 1;
-+			exp->m_xtabent = 0;
-+			exp->m_mayexport = 0;
-+			success = true;
-+		}
-+
-+		if(hname)
-+			break;
-+ 		else
-+			++htype;
-+
-+	} while(htype < MCL_MAXTYPES);
-+
-+	if (!success) {
-+		if(hname)
-+			xlog(L_ERROR, "Could not find '%s:%s' to unexport.", hname, path);
-+		else
-+			xlog(L_ERROR, "No clients of '%s' found to unexport.", path);
- 	}
--	if (!success)
--		xlog(L_ERROR, "Could not find '%s:%s' to unexport.", hname, path);
- 
--	freeaddrinfo(ai);
-+	if(hname)
-+		freeaddrinfo(ai);
+ fs/nfs/blocklayout/blocklayout.c |  15 ++----
+ fs/nfs/blocklayout/blocklayout.h |   8 ++--
+ fs/nfs/blocklayout/extent_tree.c | 100 +++++++++++++++++++++++++++++++--------
+ 3 files changed, 90 insertions(+), 33 deletions(-)
+
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 25ba9e0..900eb09 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -500,21 +500,16 @@ bl_return_range(struct pnfs_layout_hdr *lo,
+ 	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
  }
  
- static int unexportfs_generic(char *arg, int verbose)
+-static void
+-bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
+-		       const struct nfs4_layoutcommit_args *arg)
++static int
++bl_prepare_layoutcommit(struct nfs4_layoutcommit_args *arg)
  {
--	char *path;
-+	char *path = strchr(arg, ':');
+-	dprintk("%s enter\n", __func__);
+-	ext_tree_encode_commit(BLK_LO2EXT(lo), xdr);
++	return ext_tree_prepare_commit(arg);
+ }
  
--	if ((path = strchr(arg, ':')) != NULL)
-+	if (path) {
- 		*path++ = '\0';
-+		if (*path != '/')
-+			return 1;
-+		unexportfs_parsed(arg, path, verbose);
+ static void
+ bl_cleanup_layoutcommit(struct nfs4_layoutcommit_data *lcdata)
+ {
+-	struct pnfs_layout_hdr *lo = NFS_I(lcdata->args.inode)->layout;
+-
+-	dprintk("%s enter\n", __func__);
+-	ext_tree_mark_committed(BLK_LO2EXT(lo), lcdata->res.status);
++	ext_tree_mark_committed(&lcdata->args, lcdata->res.status);
+ }
+ 
+ static int
+@@ -670,7 +665,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+ 	.alloc_lseg			= bl_alloc_lseg,
+ 	.free_lseg			= bl_free_lseg,
+ 	.return_range			= bl_return_range,
+-	.encode_layoutcommit		= bl_encode_layoutcommit,
++	.prepare_layoutcommit		= bl_prepare_layoutcommit,
+ 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
+ 	.set_layoutdriver		= bl_set_layoutdriver,
+ 	.alloc_deviceid_node		= bl_alloc_deviceid_node,
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 19fae5e..9757f3e 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -72,6 +72,9 @@ struct pnfs_block_extent {
+ 	unsigned int	be_tag;
+ };
+ 
++/* on the wire size of the extent */
++#define BL_EXTENT_SIZE	(7 * sizeof(__be32) + NFS4_DEVICEID4_SIZE)
++
+ struct pnfs_block_layout {
+ 	struct pnfs_layout_hdr	bl_layout;
+ 	struct rb_root		bl_ext_rw;
+@@ -129,8 +132,7 @@ int ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
+ 		sector_t len);
+ bool ext_tree_lookup(struct pnfs_block_layout *bl, sector_t isect,
+ 		struct pnfs_block_extent *ret, bool rw);
+-int ext_tree_encode_commit(struct pnfs_block_layout *bl,
+-		struct xdr_stream *xdr);
+-void ext_tree_mark_committed(struct pnfs_block_layout *bl, int status);
++int ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg);
++void ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status);
+ 
+ #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index 43e891b..2a2c261 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -462,19 +462,25 @@ out:
+ 	return err;
+ }
+ 
+-int
+-ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
++static void ext_tree_free_commitdata(struct nfs4_layoutcommit_args *arg,
++		size_t buffer_size)
+ {
+-	struct pnfs_block_extent *be;
+-	unsigned int count = 0;
+-	__be32 *p, *xdr_start;
+-	int ret = 0;
++	if (arg->layoutupdate_pages != &arg->layoutupdate_page) {
++		int nr_pages = DIV_ROUND_UP(buffer_size, PAGE_SIZE), i;
+ 
+-	dprintk("%s enter\n", __func__);
++		for (i = 0; i < nr_pages; i++)
++			put_page(arg->layoutupdate_pages[i]);
++		kfree(arg->layoutupdate_pages);
 +	} else {
-+		// unqualified unexport
-+		if (*arg != '/')
-+			return 1;
-+		// NULL as signal
-+		unexportfs_parsed(NULL, arg, verbose);
++		put_page(arg->layoutupdate_page);
++	}
++}
+ 
+-	xdr_start = xdr_reserve_space(xdr, 8);
+-	if (!xdr_start)
+-		return -ENOSPC;
++static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
++		size_t buffer_size, size_t *count)
++{
++	struct pnfs_block_extent *be;
++	int ret = 0;
+ 
+ 	spin_lock(&bl->bl_ext_lock);
+ 	for (be = ext_tree_first(&bl->bl_ext_rw); be; be = ext_tree_next(be)) {
+@@ -482,12 +488,11 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
+ 		    be->be_tag != EXTENT_WRITTEN)
+ 			continue;
+ 
+-		p = xdr_reserve_space(xdr, 7 * sizeof(__be32) +
+-					NFS4_DEVICEID4_SIZE);
+-		if (!p) {
+-			printk("%s: out of space for extent list\n", __func__);
++		(*count)++;
++		if (*count * BL_EXTENT_SIZE > buffer_size) {
++			/* keep counting.. */
+ 			ret = -ENOSPC;
+-			break;
++			continue;
+ 		}
+ 
+ 		p = xdr_encode_opaque_fixed(p, be->be_device->deviceid.data,
+@@ -498,25 +503,80 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
+ 		*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
+ 
+ 		be->be_tag = EXTENT_COMMITTING;
+-		count++;
+ 	}
+ 	spin_unlock(&bl->bl_ext_lock);
+ 
+-	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
+-	xdr_start[1] = cpu_to_be32(count);
++	return ret;
++}
++
++int
++ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg)
++{
++	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
++	size_t count = 0, buffer_size = PAGE_SIZE;
++	__be32 *start_p;
++	int ret;
++
++	dprintk("%s enter\n", __func__);
++
++	arg->layoutupdate_page = alloc_page(GFP_NOFS);
++	if (!arg->layoutupdate_page)
++		return -ENOMEM;
++	start_p = page_address(arg->layoutupdate_page);
++	arg->layoutupdate_pages = &arg->layoutupdate_page;
++
++retry:
++	ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count);
++	if (unlikely(ret)) {
++		ext_tree_free_commitdata(arg, buffer_size);
++
++		buffer_size = sizeof(__be32) + BL_EXTENT_SIZE * count;
++		count = 0;
++
++		arg->layoutupdate_pages =
++			kcalloc(DIV_ROUND_UP(buffer_size, PAGE_SIZE),
++				sizeof(struct page *), GFP_NOFS);
++		if (!arg->layoutupdate_pages)
++			return -ENOMEM;
++
++		start_p = __vmalloc(buffer_size, GFP_NOFS, PAGE_KERNEL);
++		if (!start_p) {
++			kfree(arg->layoutupdate_pages);
++			return -ENOMEM;
++		}
++
++		goto retry;
++	}
++
++	*start_p = cpu_to_be32(count);
++	arg->layoutupdate_len = sizeof(__be32) + BL_EXTENT_SIZE * count;
++
++	if (unlikely(arg->layoutupdate_pages != &arg->layoutupdate_page)) {
++		__be32 *p = start_p;
++		int i = 0;
++
++		for (p = start_p;
++		     p < start_p + arg->layoutupdate_len;
++		     p += PAGE_SIZE) {
++			arg->layoutupdate_pages[i++] = vmalloc_to_page(p);
++		}
 +	}
  
--	if (!path || *path != '/')
--		return 1;
--
--	unexportfs_parsed(arg, path, verbose);
- 	return 0;
+ 	dprintk("%s found %i ranges\n", __func__, count);
+-	return ret;
++	return 0;
  }
  
+ void
+-ext_tree_mark_committed(struct pnfs_block_layout *bl, int status)
++ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status)
+ {
++	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
+ 	struct rb_root *root = &bl->bl_ext_rw;
+ 	struct pnfs_block_extent *be;
+ 
+ 	dprintk("%s status %d\n", __func__, status);
+ 
++	ext_tree_free_commitdata(arg, arg->layoutupdate_len);
++
+ 	spin_lock(&bl->bl_ext_lock);
+ 	for (be = ext_tree_first(root); be; be = ext_tree_next(be)) {
+ 		if (be->be_state != PNFS_BLOCK_INVALID_DATA ||
+-- 
+1.9.1
+
