@@ -1,76 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f181.google.com ([209.85.220.181]:41720 "EHLO
-	mail-vc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750725AbaIXWpy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 18:45:54 -0400
-Received: by mail-vc0-f181.google.com with SMTP id hq12so868143vcb.12
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 15:45:53 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:60938 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750860AbaIKQAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Sep 2014 12:00:43 -0400
+Message-ID: <5411C6EE.7080500@Netapp.com>
+Date: Thu, 11 Sep 2014 11:59:42 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyFKhmHOzV6gmgKJkjSL-cgd_uK0ef6kHXWER7JBvbwTjw@mail.gmail.com>
-References: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
-	<CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
-	<CAN-5tyE8zt5iUQUFp+2iz9oP37HJhQ54YtSgesWs6Cu66A6qZw@mail.gmail.com>
-	<CAHQdGtQ6WYe0qgn7b7s2TW_HFsq2ZCwyMuMW8PO_10xLh79QFQ@mail.gmail.com>
-	<CAN-5tyFKhmHOzV6gmgKJkjSL-cgd_uK0ef6kHXWER7JBvbwTjw@mail.gmail.com>
-Date: Wed, 24 Sep 2014 18:45:53 -0400
-Message-ID: <CAHQdGtQN=0aitE=nSOSdA0ROZMfdchnshQoe-EkeoHBdbFBjsg@mail.gmail.com>
-Subject: Re: nfs4_lock_delegation_recall() improperly handles errors such as ERROR_GRACE
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Christoph Hellwig <hch@lst.de>, Anna Schumaker <Anna.Schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] pnfs/blocklayout: allocate separate pages for the
+ layoutcommit payload
+References: <1410395791-2385-1-git-send-email-hch@lst.de> <1410395791-2385-4-git-send-email-hch@lst.de> <5411AED8.4020204@Netapp.com> <20140911152743.GE6690@lst.de>
+In-Reply-To: <20140911152743.GE6690@lst.de>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 24, 2014 at 6:31 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> On Wed, Sep 24, 2014 at 3:57 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> Hi Olga,
->>
->> On Wed, Sep 24, 2014 at 2:20 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>> Hi Trond,
->>>
->>> nfs_delegation_claim_opens() return EAGAIN to nfs_end_delegation_return().
->>> issync is always 0 (as its called by the
->>> nfs_client_return_marked_delegations) and it breaks out of the loop...
->>> as a result the error just doesn't get handled.
->>
->> Ah. OK, so this is being called from
->> nfs_client_return_marked_delegations. That makes sense.
->>
->> So for that case, I'd expect the call to return to the loop in
->> nfs4_state_manager(), and then to retry through that after doing
->> whatever is needed to recover.
->> Essentially, we should be setting NFS4CLNT_DELEGRETURN again, and then
->> bouncing back into nfs_client_return_marked_delegations (after all the
->> recovery work has been done).
+On 09/11/2014 11:27 AM, Christoph Hellwig wrote:
+> On Thu, Sep 11, 2014 at 10:16:56AM -0400, Anna Schumaker wrote:
+>>> +		arg->layoutupdate_pages =
+>>> +			kcalloc(DIV_ROUND_UP(buffer_size, PAGE_SIZE),
+>>> +				sizeof(struct page *), GFP_NOFS);
+>> I don't think I've seen kcalloc() before.  What does it do?
+> The same as calloc(3) in userspace - allocate an array of nent entries
+> of size, and zero the result that is returned.
+I haven't run across it in userspace either ... thanks for answering! :)
 >
-> Yes I don't fully understand what it should be. It never does anything
-> about recovering from the lock error and simply returns the
-> delegation. Ok I don't know if it means anything to you, but the 2nd
-> time around (when it returns the delegation even though it hasn't
-> recovered the lock), it never goes into the
-> nfs4_open_delegation_recall() because stateid condition doesn't hold
-> true.
+>>>  	dprintk("%s found %i ranges\n", __func__, count);
+>> I'm getting this:
+>>
+>> fs/nfs/blocklayout/extent_tree.c: In function ‘ext_tree_prepare_commit’:
+>> fs/nfs/blocklayout/extent_tree.c:565:2: warning: format ‘%i’ expects argument of type ‘int’, but argument 3 has type ‘size_t’ [-Wformat=]
+>>   dprintk("%s found %i ranges\n", __func__, count);
+> For some reason I haven't managed to trigger this warning even after
+> turning on CONFIG_SUNRPC_DEBUG, but it should be easy to fix up..
+
+Thanks. I'm not sure what I have set differently, but it's consistently showing up in my compile logs.
+
+Anna
 >
-> If it's not too much trouble, could you explain why lock error
-> shouldn't be handled as I suggested instead of resending the open with
-> claim_cur over again. As I understand in your case, it'll be a series
-> of successful open with claim_cur paired with a failed lock with
-> err_grace. In my case, it'll be one open with claim_cur and a number
-> of lock with err_grace.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-There is only 1 state manager thread allowed per nfs_client (i.e. per
-server) and so we want to avoid having it busy wait in any one state
-handler. Doing so would basically mean that all other state recovery
-on that nfs_client is on hold; i.e. we could not deal with exceptions
-like ADMIN_REVOKED, CB_PATH_DOWN, etc until the busy wait is over.
-This is why that code has been designed to fall all the way back to
-nfs4_state_manager() in the event of any error/exception.
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
