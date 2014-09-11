@@ -1,94 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:49618 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754473AbaILNgE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 09:36:04 -0400
-Received: by mail-qc0-f171.google.com with SMTP id x3so800203qcv.16
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 06:36:03 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 12 Sep 2014 09:36:00 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 5/7] nfsdcltrack: update schema to v2
-Message-ID: <20140912093600.50dfa9bc@tlielax.poochiereds.net>
-In-Reply-To: <20140911162836.70056390@tlielax.poochiereds.net>
-References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
-	<1410193821-25109-6-git-send-email-jlayton@primarydata.com>
-	<20140911195547.GA21296@fieldses.org>
-	<20140911162836.70056390@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from casper.infradead.org ([85.118.1.10]:53133 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752019AbaIKAeR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:34:17 -0400
+Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRsL1-00082t-PG
+	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:34:16 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/4] pnfs/blocklayout: remove some debugging
+Date: Wed, 10 Sep 2014 17:36:28 -0700
+Message-Id: <1410395791-2385-2-git-send-email-hch@lst.de>
+In-Reply-To: <1410395791-2385-1-git-send-email-hch@lst.de>
+References: <1410395791-2385-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 11 Sep 2014 16:28:36 -0400
-Jeff Layton <jeff.layton@primarydata.com> wrote:
+The kbuild test robot complained that we got the printk format wrong.
+Let's just kill these printks instead of fixing them as there is not
+point after the initial tree algorithm debugging.
 
-> On Thu, 11 Sep 2014 15:55:47 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Mon, Sep 08, 2014 at 12:30:19PM -0400, Jeff Layton wrote:
-> > > From: Jeff Layton <jlayton@poochiereds.net>
-> > > 
-> > > In order to allow knfsd's lock manager to lift its grace period early,
-> > > we need to figure out whether all clients have finished reclaiming
-> > > their state not. Unfortunately, the current code doesn't allow us to
-> > > ascertain this. All we track for each client is a timestamp that tells
-> > > us when the last "check" or "create" operation came in.
-> > > 
-> > > We need to track the two timestamps separately. Add a new
-> > > "reclaim_complete" column to the database that tells us when the last
-> > > "create" operation came in. For now, we just insert "0" in that column
-> > > but a later patch will make it so that we insert a real timestamp for
-> > > v4.1+ client records.
-> > 
-> > If I understand correctly, then nfsdcltrack has a bug here: we shouldn't
-> > be counting a 4.1 client as allowed to reclaim on the next boot until we
-> > get the RECLAIM_COMPLETE, but nfsdcltrack is allowing a 4.1 client to
-> > reclaim if all we got the previous boot was a reclaim open (a "check"
-> > operation).
-> > 
-> > --b.
-> > 
-> 
-> Yeah, I guess so, with a bit of a clarification I think...
-> 
-> We don't want to allow a v4.1 client to reclaim if it didn't send a
-> RECLAIM_COMPLETE prior to the last reboot *and* the grace period ended
-> prior to the last reboot.
-> 
-> IOW, in the case where the reboot occurs before the grace period ends,
-> we don't want to clean out the and deny reclaims. FWIW, the legacy
-> client tracker got this very wrong -- if you did a couple of rapid
-> reboots in succession you couldn't reclaim once everything was back up.
-> 
-> I'll have to ponder how best to fix that. Given that the logic required
-> is quite different between v4.0 and v4.1 clients, we may have to add yet
-> another column to the DB to track what sort of client this is.
-> 
+Reported-by: kbuild test robot <fengguang.wu@intel.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/extent_tree.c | 8 --------
+ 1 file changed, 8 deletions(-)
 
-This new requirement complicates things quite a bit. I'll have to
-respin both patchsets.
-
-I think we can fix this by ensuring that we clean out any v4.1+ clients
-that have not done a "create" since the start of the grace period
-during a "grace_done" upcall. For v4.0 clients, we can't do that of
-course since a v4.0 client may reclaim opens but never do a new one
-(and so may never send a "create" at all).
-
-That means that we'll need also to send something in the "check" upcall
-that indicates the client's minorversion. The good news is that we
-won't need a new column in the DB since the only timestamp that matters
-for v4.1+ clients is the "create" time. We can just avoid setting the
-time field for v4.1+ clients on the "check" upcall.
-
-Now that we need to send info about the minorversion in a "check", I
-may go back to sending an actual minorversion in the upcall's
-environment vars. It doesn't make sense to me to send a boolean about
-RECLAIM_COMPLETE when the client hasn't actually sent one.
-
-I'll get started on reworking this but I have no idea on an ETA just
-yet. Hopefully I can have something that works by next week sometime.
+diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
+index f34f61d..43e891b 100644
+--- a/fs/nfs/blocklayout/extent_tree.c
++++ b/fs/nfs/blocklayout/extent_tree.c
+@@ -370,9 +370,6 @@ ext_tree_split(struct rb_root *root, struct pnfs_block_extent *be,
+ 	struct pnfs_block_extent *new;
+ 	sector_t orig_len = be->be_length;
  
+-	dprintk("%s: need split for 0x%lx:0x%lx at 0x%lx\n",
+-		__func__, be->be_f_offset, ext_f_end(be), split);
+-
+ 	new = kzalloc(sizeof(*new), GFP_ATOMIC);
+ 	if (!new)
+ 		return -ENOMEM;
+@@ -387,11 +384,6 @@ ext_tree_split(struct rb_root *root, struct pnfs_block_extent *be,
+ 	new->be_tag = be->be_tag;
+ 	new->be_device = nfs4_get_deviceid(be->be_device);
+ 
+-	dprintk("%s: got 0x%lx:0x%lx!\n",
+-		__func__, be->be_f_offset, ext_f_end(be));
+-	dprintk("%s: got 0x%lx:0x%lx!\n",
+-		__func__, new->be_f_offset, ext_f_end(new));
+-
+ 	__ext_tree_insert(root, new, false);
+ 	return 0;
+ }
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.1
+
