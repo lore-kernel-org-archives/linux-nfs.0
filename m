@@ -1,89 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54678 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750996AbaIKGTt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Sep 2014 02:19:49 -0400
-Date: Thu, 11 Sep 2014 16:19:37 +1000
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS: remove BUG possibility in nfs4_open_and_get_state
-Message-ID: <20140911161937.29dd4a31@notabene.brown>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:38391 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751166AbaIKOnE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 10:43:04 -0400
+Received: by mail-pa0-f42.google.com with SMTP id lj1so8875009pab.1
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Sep 2014 07:43:03 -0700 (PDT)
+Message-ID: <5411B4F2.2020006@plexistor.com>
+Date: Thu, 11 Sep 2014 17:42:58 +0300
+From: Boaz Harrosh <boaz@plexistor.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/aBR75OEoUytIL/g_/_5U9wl"; protocol="application/pgp-signature"
+To: Peng Tao <bergwolf@primarydata.com>, Christoph Hellwig <hch@lst.de>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 8/9] pnfs/blocklayout: return layouts on setattr
+References: <1410362617-28018-1-git-send-email-hch@lst.de> <1410362617-28018-9-git-send-email-hch@lst.de> <CAKVebiUqhCVy4jyzccBOXcHo3dkQNXjF0WsP1sHkOMkdnEAG9Q@mail.gmail.com>
+In-Reply-To: <CAKVebiUqhCVy4jyzccBOXcHo3dkQNXjF0WsP1sHkOMkdnEAG9Q@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/aBR75OEoUytIL/g_/_5U9wl
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On 09/11/2014 05:24 PM, Peng Tao wrote:
+> On Wed, Sep 10, 2014 at 11:23 PM, Christoph Hellwig <hch@lst.de> wrote:
+>> This speads up truncate-heavy workloads like fsx by multiple orders of
+>> magnitude.
+>>
+>> Signed-off-by: Christoph Hellwig <hch@lst.de>
+>> ---
+>>  fs/nfs/blocklayout/blocklayout.c | 3 ++-
+>>  1 file changed, 2 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+>> index a7524c4..d5a2b87 100644
+>> --- a/fs/nfs/blocklayout/blocklayout.c
+>> +++ b/fs/nfs/blocklayout/blocklayout.c
+>> @@ -799,7 +799,8 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
+>>         .id                             = LAYOUT_BLOCK_VOLUME,
+>>         .name                           = "LAYOUT_BLOCK_VOLUME",
+>>         .owner                          = THIS_MODULE,
+>> -       .flags                          = PNFS_READ_WHOLE_PAGE,
+>> +       .flags                          = PNFS_LAYOUTRET_ON_SETATTR |
+>> +                                         PNFS_READ_WHOLE_PAGE,
+> The reason I didn't add it was because PNFS_LAYOUTRET_ON_SETATTR is
+> too much for blocks layout. What we really want is to return layouts
+> on truncate and chown, instead of _all_ setattr requests.
+> 
+> Boaz, does object layout require return on setattr for other reasons?
+> If not, I'd suggest we change PNFS_LAYOUTRET_ON_SETATTR to return only
+> on chown/truncate events.
+> 
 
+ACK. chown/truncate
 
+> Thanks,
+> Tao
+> 
 
-commit 4fa2c54b5198d09607a534e2fd436581064587ed
-    NFS: nfs4_do_open should add negative results to the dcache.
-
-used "d_drop(); d_add();" to ensure that a dentry was hashed
-as a negative cached entry.
-This is not safe if the dentry has an non-NULL ->d_inode.
-It will trigger a BUG_ON in d_instantiate().
-In that case, d_delete() is needed.
-
-Also, only d_add if the dentry is currently unhashed, it seems
-pointless removed and re-adding it unchanged.
-
-Reported-by: Christoph Hellwig <hch@infradead.org>
-Fixes: 4fa2c54b5198d09607a534e2fd436581064587ed
-Cc: Jeff Layton <jeff.layton@primarydata.com>
-Link: http://lkml.kernel.org/r/20140908144525.GB19811@infradead.org
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7dd8aca31c29..ac2dd953fc18 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2226,9 +2226,13 @@ static int _nfs4_open_and_get_state(struct nfs4_open=
-data *opendata,
- 	ret =3D _nfs4_proc_open(opendata);
- 	if (ret !=3D 0) {
- 		if (ret =3D=3D -ENOENT) {
--			d_drop(opendata->dentry);
--			d_add(opendata->dentry, NULL);
--			nfs_set_verifier(opendata->dentry,
-+			dentry =3D opendata->dentry;
-+			if (dentry->d_inode)
-+				d_delete(dentry);
-+			else if (d_unhashed(dentry))
-+				d_add(dentry, NULL);
-+
-+			nfs_set_verifier(dentry,
- 					 nfs_save_change_attribute(opendata->dir->d_inode));
- 		}
- 		goto out;
-
---Sig_/aBR75OEoUytIL/g_/_5U9wl
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBVBE++Tnsnt1WYoG5AQIXhw/+J53TN+kqv853R2RxZjJLu4cmR9v9zGrV
-wRZhmvzb9eVz+dizfodp8J6VeWJ/+zU8PNa6Q8OsFl518Vh/Fk9JoijLfuoIkJCk
-+Vso360YkDS+mc1SxerAQcEZUCZ5FSn8Z01ol6mIobUVr5zBeLZumJy4GUrh4Z9u
-EoxxtevaNb1viM2ZVitD9xA5gYfW0laTKKyv7JkL8/RVbeGK0Ulh5dwu28brlZht
-EwWlNrV58XJlAJw1XgU+S+WQilvwnHs0pzDYh0eRgVfladL3Jrm7Q0OVSNXGaXtc
-LvyszuqJPBc0W6vL+dR9nbk8k8BKp/qr7bQRwY9mc/9BzwfLUzaOfakkH+KQTZfd
-T6qOntt92b8JYWLeHHhPfrk2fH9uLtDHaS5pSto42yhynjWGFKQSksXLFqxIv4il
-NB8ek4AWkEf8GJ0m1lX0D6RMAGn88yU0ea20D5vxZNrFceB+mkai5efjKZhi9CUa
-J5suCoRb9lgMSDY5l4UIM2rXdoh9twmmPBOsmZQVWF0bRq8FzUmPYk7KN26PekdI
-br8irCpfHtRPKd4LZrhhja6/T/RVTu/DTL8IqdNMuDaj+nvQfF2BVX0FewGlUWb4
-3FeyFSrUrNuC0PofkYLAA7lWxExzSWLkaU/tXIKpFyccTNH8lGFjFCvlOT/DbS4g
-7jBrD2UxlVI=
-=tuAR
------END PGP SIGNATURE-----
-
---Sig_/aBR75OEoUytIL/g_/_5U9wl--
+Thanks
+Boaz
