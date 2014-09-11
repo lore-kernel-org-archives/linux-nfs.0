@@ -1,88 +1,284 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:44850 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754416AbaIOSPA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 14:15:00 -0400
-Received: by mail-ie0-f169.google.com with SMTP id rl12so5181806iec.28
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 11:14:59 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: stable@vger.kernel.org
-Cc: Weston Andros Adamson <dros@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 09/14] nfs: fix nonblocking calls to nfs_page_group_lock
-Date: Mon, 15 Sep 2014 14:14:40 -0400
-Message-Id: <1410804885-17228-10-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1410804885-17228-9-git-send-email-trond.myklebust@primarydata.com>
-References: <1410804885-17228-1-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-2-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-3-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-4-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-5-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-6-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-7-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-8-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-9-git-send-email-trond.myklebust@primarydata.com>
+Received: from casper.infradead.org ([85.118.1.10]:53140 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753891AbaIKAfQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:35:16 -0400
+Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRsLy-000840-Cs
+	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:35:14 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/5] pnfs/blocklayout: refactor extent processing
+Date: Wed, 10 Sep 2014 17:37:25 -0700
+Message-Id: <1410395848-2437-3-git-send-email-hch@lst.de>
+In-Reply-To: <1410395848-2437-1-git-send-email-hch@lst.de>
+References: <1410395848-2437-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Weston Andros Adamson <dros@primarydata.com>
+Factor out a helper for all per-extent work, and merge the now trivial
+functions for lseg allocation and parsing.
 
-commit bc8a309e88a86205fc3e17f06e42a2e56fc6f807 upstream.
-
-nfs_page_group_lock was calling wait_on_bit_lock even when told not to
-block. Fix by first trying test_and_set_bit, followed by wait_on_bit_lock
-if and only if blocking is allowed.  Return -EAGAIN if nonblocking and the
-test_and_set of the bit was already locked.
-
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-Reviewed-by: Peng Tao <tao.peng@primarydata.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfs/pagelist.c | 23 ++++++++++++++---------
- 1 file changed, 14 insertions(+), 9 deletions(-)
+ fs/nfs/blocklayout/blocklayout.c | 207 ++++++++++++++++++++-------------------
+ 1 file changed, 105 insertions(+), 102 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index b4ebd4d7d976..c27a05c27c11 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -149,24 +149,29 @@ static int nfs_wait_bit_uninterruptible(void *word)
-  *
-  * this lock must be held if modifying the page group list
-  *
-- * returns result from wait_on_bit_lock: 0 on success, < 0 on error
-+ * return 0 on success, < 0 on error: -EDELAY if nonblocking or the
-+ * result from wait_on_bit_lock
-+ *
-+ * NOTE: calling with nonblock=false should always have set the
-+ *       lock bit (see fs/buffer.c and other uses of wait_on_bit_lock
-+ *       with TASK_UNINTERRUPTIBLE), so there is no need to check the result.
-  */
- int
- nfs_page_group_lock(struct nfs_page *req, bool nonblock)
- {
- 	struct nfs_page *head = req->wb_head;
--	int ret;
- 
- 	WARN_ON_ONCE(head != head->wb_head);
- 
--	do {
--		ret = wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
--			nfs_wait_bit_uninterruptible,
--			TASK_UNINTERRUPTIBLE);
--	} while (!nonblock && ret != 0);
-+	if (!test_and_set_bit(PG_HEADLOCK, &head->wb_flags))
-+		return 0;
- 
--	WARN_ON_ONCE(ret > 0);
--	return ret;
-+	if (!nonblock)
-+		return wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
-+				nfs_wait_bit_uninterruptible,
-+				TASK_UNINTERRUPTIBLE);
-+
-+	return -EAGAIN;
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 61a858c..76ec017 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -513,144 +513,147 @@ static int decode_sector_number(__be32 **rp, sector_t *sp)
+ 	return 0;
  }
  
- /*
+-/* XDR decode pnfs_block_layout4 structure */
+ static int
+-nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+-			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++bl_alloc_extent(struct xdr_stream *xdr, struct pnfs_layout_hdr *lo,
++		struct layout_verification *lv, struct list_head *extents,
++		gfp_t gfp_mask)
+ {
+-	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
+-	int i, status = -EIO;
+-	uint32_t count;
+-	struct pnfs_block_extent *be = NULL, *save;
+-	struct xdr_stream stream;
+-	struct xdr_buf buf;
+-	struct page *scratch;
++	struct pnfs_block_extent *be;
++	struct nfs4_deviceid id;
++	int error;
+ 	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 28 + NFS4_DEVICEID4_SIZE);
++	if (!p)
++		return -EIO;
++
++	be = kzalloc(sizeof(*be), GFP_NOFS);
++	if (!be)
++		return -ENOMEM;
++
++	memcpy(&id, p, NFS4_DEVICEID4_SIZE);
++	p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
++
++	error = -EIO;
++	be->be_device = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &id,
++						lo->plh_lc_cred, gfp_mask);
++	if (!be->be_device)
++		goto out_free_be;
++
++	/*
++	 * The next three values are read in as bytes, but stored in the
++	 * extent structure in 512-byte granularity.
++	 */
++	if (decode_sector_number(&p, &be->be_f_offset) < 0)
++		goto out_put_deviceid;
++	if (decode_sector_number(&p, &be->be_length) < 0)
++		goto out_put_deviceid;
++	if (decode_sector_number(&p, &be->be_v_offset) < 0)
++		goto out_put_deviceid;
++	be->be_state = be32_to_cpup(p++);
++
++	error = verify_extent(be, lv);
++	if (error) {
++		dprintk("%s: extent verification failed\n", __func__);
++		goto out_put_deviceid;
++	}
++
++	list_add_tail(&be->be_list, extents);
++	return 0;
++
++out_put_deviceid:
++	nfs4_put_deviceid_node(be->be_device);
++out_free_be:
++	kfree(be);
++	return error;
++}
++
++static struct pnfs_layout_segment *
++bl_alloc_lseg(struct pnfs_layout_hdr *lo, struct nfs4_layoutget_res *lgr,
++		gfp_t gfp_mask)
++{
+ 	struct layout_verification lv = {
+ 		.mode = lgr->range.iomode,
+ 		.start = lgr->range.offset >> SECTOR_SHIFT,
+ 		.inval = lgr->range.offset >> SECTOR_SHIFT,
+ 		.cowread = lgr->range.offset >> SECTOR_SHIFT,
+ 	};
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
++	struct pnfs_layout_segment *lseg;
++	struct xdr_buf buf;
++	struct xdr_stream xdr;
++	struct page *scratch;
++	int status, i;
++	uint32_t count;
++	__be32 *p;
+ 	LIST_HEAD(extents);
+ 
+ 	dprintk("---> %s\n", __func__);
+ 
+-	scratch = alloc_page(gfp_flags);
++	lseg = kzalloc(sizeof(*lseg), gfp_mask);
++	if (!lseg)
++		return ERR_PTR(-ENOMEM);
++
++	status = -ENOMEM;
++	scratch = alloc_page(gfp_mask);
+ 	if (!scratch)
+-		return -ENOMEM;
++		goto out;
+ 
+-	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
+-	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
++	xdr_init_decode_pages(&xdr, &buf,
++			lgr->layoutp->pages, lgr->layoutp->len);
++	xdr_set_scratch_buffer(&xdr, page_address(scratch), PAGE_SIZE);
+ 
+-	p = xdr_inline_decode(&stream, 4);
++	status = -EIO;
++	p = xdr_inline_decode(&xdr, 4);
+ 	if (unlikely(!p))
+-		goto out_err;
++		goto out_free_scratch;
+ 
+ 	count = be32_to_cpup(p++);
++	dprintk("%s: number of extents %d\n", __func__, count);
+ 
+-	dprintk("%s enter, number of extents %i\n", __func__, count);
+-	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
+-	if (unlikely(!p))
+-		goto out_err;
+-
+-	/* Decode individual extents, putting them in temporary
+-	 * staging area until whole layout is decoded to make error
+-	 * recovery easier.
++	/*
++	 * Decode individual extents, putting them in temporary staging area
++	 * until whole layout is decoded to make error recovery easier.
+ 	 */
+ 	for (i = 0; i < count; i++) {
+-		struct nfs4_deviceid id;
+-
+-		be = kzalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
+-		if (!be) {
+-			status = -ENOMEM;
+-			goto out_err;
+-		}
+-		memcpy(&id, p, NFS4_DEVICEID4_SIZE);
+-		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
+-
+-		be->be_device =
+-			nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &id,
+-						lo->plh_lc_cred, gfp_flags);
+-		if (!be->be_device)
+-			goto out_err;
+-
+-		/* The next three values are read in as bytes,
+-		 * but stored as 512-byte sector lengths
+-		 */
+-		if (decode_sector_number(&p, &be->be_f_offset) < 0)
+-			goto out_err;
+-		if (decode_sector_number(&p, &be->be_length) < 0)
+-			goto out_err;
+-		if (decode_sector_number(&p, &be->be_v_offset) < 0)
+-			goto out_err;
+-		be->be_state = be32_to_cpup(p++);
+-		if (verify_extent(be, &lv)) {
+-			dprintk("%s verify failed\n", __func__);
+-			goto out_err;
+-		}
+-		list_add_tail(&be->be_list, &extents);
++		status = bl_alloc_extent(&xdr, lo, &lv, &extents, gfp_mask);
++		if (status)
++			goto process_extents;
+ 	}
++
+ 	if (lgr->range.offset + lgr->range.length !=
+ 			lv.start << SECTOR_SHIFT) {
+ 		dprintk("%s Final length mismatch\n", __func__);
+-		be = NULL;
+-		goto out_err;
++		status = -EIO;
++		goto process_extents;
+ 	}
++
+ 	if (lv.start < lv.cowread) {
+ 		dprintk("%s Final uncovered COW extent\n", __func__);
+-		be = NULL;
+-		goto out_err;
+-	}
+-	/* Extents decoded properly, now try to merge them in to
+-	 * existing layout extents.
+-	 */
+-	list_for_each_entry_safe(be, save, &extents, be_list) {
+-		list_del(&be->be_list);
+-
+-		status = ext_tree_insert(bl, be);
+-		if (status)
+-			goto out_free_list;
++		status = -EIO;
+ 	}
+-	status = 0;
+- out:
+-	__free_page(scratch);
+-	dprintk("%s returns %i\n", __func__, status);
+-	return status;
+ 
+- out_err:
+-	nfs4_put_deviceid_node(be->be_device);
+-	kfree(be);
+- out_free_list:
++process_extents:
+ 	while (!list_empty(&extents)) {
+-		be = list_first_entry(&extents, struct pnfs_block_extent,
+-				      be_list);
++		struct pnfs_block_extent *be =
++			list_first_entry(&extents, struct pnfs_block_extent,
++					 be_list);
+ 		list_del(&be->be_list);
+-		nfs4_put_deviceid_node(be->be_device);
+-		kfree(be);
+-	}
+-	goto out;
+-}
+ 
+-/* We pretty much ignore lseg, and store all data layout wide, so we
+- * can correctly merge.
+- */
+-static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
+-						 struct nfs4_layoutget_res *lgr,
+-						 gfp_t gfp_flags)
+-{
+-	struct pnfs_layout_segment *lseg;
+-	int status;
++		if (!status)
++			status = ext_tree_insert(bl, be);
+ 
+-	dprintk("%s enter\n", __func__);
+-	lseg = kzalloc(sizeof(*lseg), gfp_flags);
+-	if (!lseg)
+-		return ERR_PTR(-ENOMEM);
+-	status = nfs4_blk_process_layoutget(lo, lgr, gfp_flags);
++		if (status) {
++			nfs4_put_deviceid_node(be->be_device);
++			kfree(be);
++		}
++	}
++
++out_free_scratch:
++	__free_page(scratch);
++out:
++	dprintk("%s returns %d\n", __func__, status);
+ 	if (status) {
+-		/* We don't want to call the full-blown bl_free_lseg,
+-		 * since on error extents were not touched.
+-		 */
+ 		kfree(lseg);
+ 		return ERR_PTR(status);
+ 	}
 -- 
-1.9.3
+1.9.1
 
