@@ -1,103 +1,443 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:62441 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752856AbaIZBXg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 21:23:36 -0400
-Received: by mail-ig0-f171.google.com with SMTP id hn15so9509130igb.10
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Sep 2014 18:23:35 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140926111005.3124f859@notabene.brown>
-References: <1411613479-8803-1-git-send-email-trond.myklebust@primarydata.com>
-	<20140926111005.3124f859@notabene.brown>
-Date: Thu, 25 Sep 2014 21:23:35 -0400
-Message-ID: <CAHQdGtRrpRxDi5FFjNhvptVnh+nqEyAREQA_6eSoExoW9_CsfA@mail.gmail.com>
-Subject: Re: [PATCH] SUNRPC: Add missing support for RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from casper.infradead.org ([85.118.1.10]:53139 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753891AbaIKAfM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:35:12 -0400
+Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRsLv-00083w-3W
+	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:35:11 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/5] pnfs/blocklayout: move extent processing to blocklayout.c
+Date: Wed, 10 Sep 2014 17:37:24 -0700
+Message-Id: <1410395848-2437-2-git-send-email-hch@lst.de>
+In-Reply-To: <1410395848-2437-1-git-send-email-hch@lst.de>
+References: <1410395848-2437-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 25, 2014 at 9:10 PM, NeilBrown <neilb@suse.de> wrote:
-> On Wed, 24 Sep 2014 22:51:19 -0400 Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->
->> The flag RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT was intended introduced in
->> order to allow NFSv4 clients to disable resend timeouts. Since those
->> cause the RPC layer to break the connection, they mess up the duplicate
->> reply caches that remain indexed on the port number in NFSv4..
->>
->> This patch includes the code that was missing in the original to
->> set the appropriate flag in struct rpc_clnt, when the caller of
->> rpc_create() sets RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT.
->>
->> Fixes: 8a19a0b6cb2e (SUNRPC: Add RPC task and client level options to...)
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->>  net/sunrpc/clnt.c | 2 ++
->>  1 file changed, 2 insertions(+)
->>
->> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->> index 488ddeed9363..841565450354 100644
->> --- a/net/sunrpc/clnt.c
->> +++ b/net/sunrpc/clnt.c
->> @@ -461,6 +461,8 @@ struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
->>
->>       if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
->>               clnt->cl_autobind = 1;
->> +     if (args->flags & RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT)
->> +             clnt->cl_noretranstimeo = 1;
->>       if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
->>               clnt->cl_discrtry = 1;
->>       if (!(args->flags & RPC_CLNT_CREATE_QUIET))
->
-> Hi Trond,
->  do this relate to my observation in
->     Subject: Re: NFS auto-reconnect tuning
->
->  that NFSv4 closes a connections after the first timeout?
->  This patch seems to be a step towards changing that behaviour, though it
->  doesn't succeed.
->
-> You would need
->
-> @@ -580,6 +582,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
->         new->cl_autobind = 0;
->         new->cl_softrtry = clnt->cl_softrtry;
->         new->cl_discrtry = clnt->cl_discrtry;
-> +       new->cl_noretranstimeo = clnt->cl_noretranstimeo;
+This isn't device(id) related, so move it into the main file.  Simple move
+for now, the next commit will clean it up a bit.
 
-D'oh! Yes, of course that is correct.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/blocklayout/blocklayout.c    | 186 ++++++++++++++++++++++++++++++++++++
+ fs/nfs/blocklayout/blocklayout.h    |   2 -
+ fs/nfs/blocklayout/blocklayoutdev.c | 186 ------------------------------------
+ 3 files changed, 186 insertions(+), 188 deletions(-)
 
->         new->cl_chatty = clnt->cl_chatty;
->         return new;
->
-> as well.
->
-> What do you think of having the client close the connection more quickly when
-> there is a timeout?  There does seem to be a case for closing sooner than 30
-> minutes...
->
-> I must admit I'm a bit confused by these flags so I might be missing
-> something important.
-
-Actually, the whole idea is to stop the client from disconnecting when
-it doesn't need to. Disconnect == very bad, since it typically breaks
-the duplicate reply cache semantics and it can interrupt RPC calls
-that may be in progress on the server.
-Furthermore, the NFSv4 server is supposed to guarantee to us that it
-will always reply to an RPC call (provided that the connection stays
-up), so the whole business of disconnecting was misguided in the first
-place. The only thing we need is to detect accidental disconnections
-(i.e. network partitions), and the way to do that is to use TCP
-keepalive. The new code will therefore interpret the NFSv4 'timeo'
-mount parameter as the TCP keepalive timeout rather than as a
-retransmission timeout.
-
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index cf10a6e..61a858c 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -446,6 +446,192 @@ static void bl_free_lseg(struct pnfs_layout_segment *lseg)
+ 	kfree(lseg);
+ }
+ 
++/* Tracks info needed to ensure extents in layout obey constraints of spec */
++struct layout_verification {
++	u32 mode;	/* R or RW */
++	u64 start;	/* Expected start of next non-COW extent */
++	u64 inval;	/* Start of INVAL coverage */
++	u64 cowread;	/* End of COW read coverage */
++};
++
++/* Verify the extent meets the layout requirements of the pnfs-block draft,
++ * section 2.3.1.
++ */
++static int verify_extent(struct pnfs_block_extent *be,
++			 struct layout_verification *lv)
++{
++	if (lv->mode == IOMODE_READ) {
++		if (be->be_state == PNFS_BLOCK_READWRITE_DATA ||
++		    be->be_state == PNFS_BLOCK_INVALID_DATA)
++			return -EIO;
++		if (be->be_f_offset != lv->start)
++			return -EIO;
++		lv->start += be->be_length;
++		return 0;
++	}
++	/* lv->mode == IOMODE_RW */
++	if (be->be_state == PNFS_BLOCK_READWRITE_DATA) {
++		if (be->be_f_offset != lv->start)
++			return -EIO;
++		if (lv->cowread > lv->start)
++			return -EIO;
++		lv->start += be->be_length;
++		lv->inval = lv->start;
++		return 0;
++	} else if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
++		if (be->be_f_offset != lv->start)
++			return -EIO;
++		lv->start += be->be_length;
++		return 0;
++	} else if (be->be_state == PNFS_BLOCK_READ_DATA) {
++		if (be->be_f_offset > lv->start)
++			return -EIO;
++		if (be->be_f_offset < lv->inval)
++			return -EIO;
++		if (be->be_f_offset < lv->cowread)
++			return -EIO;
++		/* It looks like you might want to min this with lv->start,
++		 * but you really don't.
++		 */
++		lv->inval = lv->inval + be->be_length;
++		lv->cowread = be->be_f_offset + be->be_length;
++		return 0;
++	} else
++		return -EIO;
++}
++
++static int decode_sector_number(__be32 **rp, sector_t *sp)
++{
++	uint64_t s;
++
++	*rp = xdr_decode_hyper(*rp, &s);
++	if (s & 0x1ff) {
++		printk(KERN_WARNING "NFS: %s: sector not aligned\n", __func__);
++		return -1;
++	}
++	*sp = s >> SECTOR_SHIFT;
++	return 0;
++}
++
++/* XDR decode pnfs_block_layout4 structure */
++static int
++nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
++			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
++{
++	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
++	int i, status = -EIO;
++	uint32_t count;
++	struct pnfs_block_extent *be = NULL, *save;
++	struct xdr_stream stream;
++	struct xdr_buf buf;
++	struct page *scratch;
++	__be32 *p;
++	struct layout_verification lv = {
++		.mode = lgr->range.iomode,
++		.start = lgr->range.offset >> SECTOR_SHIFT,
++		.inval = lgr->range.offset >> SECTOR_SHIFT,
++		.cowread = lgr->range.offset >> SECTOR_SHIFT,
++	};
++	LIST_HEAD(extents);
++
++	dprintk("---> %s\n", __func__);
++
++	scratch = alloc_page(gfp_flags);
++	if (!scratch)
++		return -ENOMEM;
++
++	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
++	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
++
++	p = xdr_inline_decode(&stream, 4);
++	if (unlikely(!p))
++		goto out_err;
++
++	count = be32_to_cpup(p++);
++
++	dprintk("%s enter, number of extents %i\n", __func__, count);
++	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
++	if (unlikely(!p))
++		goto out_err;
++
++	/* Decode individual extents, putting them in temporary
++	 * staging area until whole layout is decoded to make error
++	 * recovery easier.
++	 */
++	for (i = 0; i < count; i++) {
++		struct nfs4_deviceid id;
++
++		be = kzalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
++		if (!be) {
++			status = -ENOMEM;
++			goto out_err;
++		}
++		memcpy(&id, p, NFS4_DEVICEID4_SIZE);
++		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
++
++		be->be_device =
++			nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &id,
++						lo->plh_lc_cred, gfp_flags);
++		if (!be->be_device)
++			goto out_err;
++
++		/* The next three values are read in as bytes,
++		 * but stored as 512-byte sector lengths
++		 */
++		if (decode_sector_number(&p, &be->be_f_offset) < 0)
++			goto out_err;
++		if (decode_sector_number(&p, &be->be_length) < 0)
++			goto out_err;
++		if (decode_sector_number(&p, &be->be_v_offset) < 0)
++			goto out_err;
++		be->be_state = be32_to_cpup(p++);
++		if (verify_extent(be, &lv)) {
++			dprintk("%s verify failed\n", __func__);
++			goto out_err;
++		}
++		list_add_tail(&be->be_list, &extents);
++	}
++	if (lgr->range.offset + lgr->range.length !=
++			lv.start << SECTOR_SHIFT) {
++		dprintk("%s Final length mismatch\n", __func__);
++		be = NULL;
++		goto out_err;
++	}
++	if (lv.start < lv.cowread) {
++		dprintk("%s Final uncovered COW extent\n", __func__);
++		be = NULL;
++		goto out_err;
++	}
++	/* Extents decoded properly, now try to merge them in to
++	 * existing layout extents.
++	 */
++	list_for_each_entry_safe(be, save, &extents, be_list) {
++		list_del(&be->be_list);
++
++		status = ext_tree_insert(bl, be);
++		if (status)
++			goto out_free_list;
++	}
++	status = 0;
++ out:
++	__free_page(scratch);
++	dprintk("%s returns %i\n", __func__, status);
++	return status;
++
++ out_err:
++	nfs4_put_deviceid_node(be->be_device);
++	kfree(be);
++ out_free_list:
++	while (!list_empty(&extents)) {
++		be = list_first_entry(&extents, struct pnfs_block_extent,
++				      be_list);
++		list_del(&be->be_list);
++		nfs4_put_deviceid_node(be->be_device);
++		kfree(be);
++	}
++	goto out;
++}
++
+ /* We pretty much ignore lseg, and store all data layout wide, so we
+  * can correctly merge.
+  */
+diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
+index 9757f3e..00c11eb 100644
+--- a/fs/nfs/blocklayout/blocklayout.h
++++ b/fs/nfs/blocklayout/blocklayout.h
+@@ -113,8 +113,6 @@ struct bl_msg_hdr {
+ /* blocklayoutdev.c */
+ ssize_t bl_pipe_downcall(struct file *, const char __user *, size_t);
+ void bl_pipe_destroy_msg(struct rpc_pipe_msg *);
+-int nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+-				struct nfs4_layoutget_res *lgr, gfp_t gfp_flags);
+ 
+ struct nfs4_deviceid_node *bl_alloc_deviceid_node(struct nfs_server *server,
+ 		struct pnfs_device *pdev, gfp_t gfp_mask);
+diff --git a/fs/nfs/blocklayout/blocklayoutdev.c b/fs/nfs/blocklayout/blocklayoutdev.c
+index d6527d2..2b54e29 100644
+--- a/fs/nfs/blocklayout/blocklayoutdev.c
++++ b/fs/nfs/blocklayout/blocklayoutdev.c
+@@ -40,19 +40,6 @@
+ 
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 
+-static int decode_sector_number(__be32 **rp, sector_t *sp)
+-{
+-	uint64_t s;
+-
+-	*rp = xdr_decode_hyper(*rp, &s);
+-	if (s & 0x1ff) {
+-		printk(KERN_WARNING "NFS: %s: sector not aligned\n", __func__);
+-		return -1;
+-	}
+-	*sp = s >> SECTOR_SHIFT;
+-	return 0;
+-}
+-
+ ssize_t bl_pipe_downcall(struct file *filp, const char __user *src,
+ 			 size_t mlen)
+ {
+@@ -183,176 +170,3 @@ bl_free_deviceid_node(struct nfs4_deviceid_node *d)
+ 
+ 	kfree(dev);
+ }
+-
+-/* Tracks info needed to ensure extents in layout obey constraints of spec */
+-struct layout_verification {
+-	u32 mode;	/* R or RW */
+-	u64 start;	/* Expected start of next non-COW extent */
+-	u64 inval;	/* Start of INVAL coverage */
+-	u64 cowread;	/* End of COW read coverage */
+-};
+-
+-/* Verify the extent meets the layout requirements of the pnfs-block draft,
+- * section 2.3.1.
+- */
+-static int verify_extent(struct pnfs_block_extent *be,
+-			 struct layout_verification *lv)
+-{
+-	if (lv->mode == IOMODE_READ) {
+-		if (be->be_state == PNFS_BLOCK_READWRITE_DATA ||
+-		    be->be_state == PNFS_BLOCK_INVALID_DATA)
+-			return -EIO;
+-		if (be->be_f_offset != lv->start)
+-			return -EIO;
+-		lv->start += be->be_length;
+-		return 0;
+-	}
+-	/* lv->mode == IOMODE_RW */
+-	if (be->be_state == PNFS_BLOCK_READWRITE_DATA) {
+-		if (be->be_f_offset != lv->start)
+-			return -EIO;
+-		if (lv->cowread > lv->start)
+-			return -EIO;
+-		lv->start += be->be_length;
+-		lv->inval = lv->start;
+-		return 0;
+-	} else if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
+-		if (be->be_f_offset != lv->start)
+-			return -EIO;
+-		lv->start += be->be_length;
+-		return 0;
+-	} else if (be->be_state == PNFS_BLOCK_READ_DATA) {
+-		if (be->be_f_offset > lv->start)
+-			return -EIO;
+-		if (be->be_f_offset < lv->inval)
+-			return -EIO;
+-		if (be->be_f_offset < lv->cowread)
+-			return -EIO;
+-		/* It looks like you might want to min this with lv->start,
+-		 * but you really don't.
+-		 */
+-		lv->inval = lv->inval + be->be_length;
+-		lv->cowread = be->be_f_offset + be->be_length;
+-		return 0;
+-	} else
+-		return -EIO;
+-}
+-
+-/* XDR decode pnfs_block_layout4 structure */
+-int
+-nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
+-			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
+-{
+-	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
+-	int i, status = -EIO;
+-	uint32_t count;
+-	struct pnfs_block_extent *be = NULL, *save;
+-	struct xdr_stream stream;
+-	struct xdr_buf buf;
+-	struct page *scratch;
+-	__be32 *p;
+-	struct layout_verification lv = {
+-		.mode = lgr->range.iomode,
+-		.start = lgr->range.offset >> SECTOR_SHIFT,
+-		.inval = lgr->range.offset >> SECTOR_SHIFT,
+-		.cowread = lgr->range.offset >> SECTOR_SHIFT,
+-	};
+-	LIST_HEAD(extents);
+-
+-	dprintk("---> %s\n", __func__);
+-
+-	scratch = alloc_page(gfp_flags);
+-	if (!scratch)
+-		return -ENOMEM;
+-
+-	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
+-	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
+-
+-	p = xdr_inline_decode(&stream, 4);
+-	if (unlikely(!p))
+-		goto out_err;
+-
+-	count = be32_to_cpup(p++);
+-
+-	dprintk("%s enter, number of extents %i\n", __func__, count);
+-	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
+-	if (unlikely(!p))
+-		goto out_err;
+-
+-	/* Decode individual extents, putting them in temporary
+-	 * staging area until whole layout is decoded to make error
+-	 * recovery easier.
+-	 */
+-	for (i = 0; i < count; i++) {
+-		struct nfs4_deviceid id;
+-
+-		be = kzalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
+-		if (!be) {
+-			status = -ENOMEM;
+-			goto out_err;
+-		}
+-		memcpy(&id, p, NFS4_DEVICEID4_SIZE);
+-		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
+-
+-		be->be_device =
+-			nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &id,
+-						lo->plh_lc_cred, gfp_flags);
+-		if (!be->be_device)
+-			goto out_err;
+-
+-		/* The next three values are read in as bytes,
+-		 * but stored as 512-byte sector lengths
+-		 */
+-		if (decode_sector_number(&p, &be->be_f_offset) < 0)
+-			goto out_err;
+-		if (decode_sector_number(&p, &be->be_length) < 0)
+-			goto out_err;
+-		if (decode_sector_number(&p, &be->be_v_offset) < 0)
+-			goto out_err;
+-		be->be_state = be32_to_cpup(p++);
+-		if (verify_extent(be, &lv)) {
+-			dprintk("%s verify failed\n", __func__);
+-			goto out_err;
+-		}
+-		list_add_tail(&be->be_list, &extents);
+-	}
+-	if (lgr->range.offset + lgr->range.length !=
+-			lv.start << SECTOR_SHIFT) {
+-		dprintk("%s Final length mismatch\n", __func__);
+-		be = NULL;
+-		goto out_err;
+-	}
+-	if (lv.start < lv.cowread) {
+-		dprintk("%s Final uncovered COW extent\n", __func__);
+-		be = NULL;
+-		goto out_err;
+-	}
+-	/* Extents decoded properly, now try to merge them in to
+-	 * existing layout extents.
+-	 */
+-	list_for_each_entry_safe(be, save, &extents, be_list) {
+-		list_del(&be->be_list);
+-
+-		status = ext_tree_insert(bl, be);
+-		if (status)
+-			goto out_free_list;
+-	}
+-	status = 0;
+- out:
+-	__free_page(scratch);
+-	dprintk("%s returns %i\n", __func__, status);
+-	return status;
+-
+- out_err:
+-	nfs4_put_deviceid_node(be->be_device);
+-	kfree(be);
+- out_free_list:
+-	while (!list_empty(&extents)) {
+-		be = list_first_entry(&extents, struct pnfs_block_extent,
+-				      be_list);
+-		list_del(&be->be_list);
+-		nfs4_put_deviceid_node(be->be_device);
+-		kfree(be);
+-	}
+-	goto out;
+-}
 -- 
-Trond Myklebust
+1.9.1
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
