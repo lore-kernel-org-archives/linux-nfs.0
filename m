@@ -1,49 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cam-admin0.cambridge.arm.com ([217.140.96.50]:51646 "EHLO
-	cam-admin0.cambridge.arm.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756280AbaIWOxw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 10:53:52 -0400
-Date: Tue, 23 Sep 2014 15:53:56 +0100
-From: Will Deacon <will.deacon@arm.com>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: Peng Tao <tao.peng@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: WARNING at fs/nfs/write.c:743 nfs_inode_remove_request with -rc6
-Message-ID: <20140923145356.GD28608@arm.com>
-References: <20140923130352.GK26472@arm.com>
- <2A327753-3E60-46AC-8220-3FF0FF61F08F@primarydata.com>
- <20140923135938.GB28608@arm.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20140923135938.GB28608@arm.com>
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:65139 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752045AbaIKPCp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 11:02:45 -0400
+Received: by mail-pa0-f51.google.com with SMTP id kx10so10031144pab.10
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Sep 2014 08:02:45 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Peng Tao <tao.peng@primarydata.com>, Christoph Hellwig <hch@lst.de>,
+        Boaz Harrosh <boaz@plexistor.com>
+Subject: [PATCH] nfs41: change PNFS_LAYOUTRET_ON_SETATTR to only return on chown/truncate
+Date: Thu, 11 Sep 2014 23:02:32 +0800
+Message-Id: <1410447752-11288-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 23, 2014 at 02:59:38PM +0100, Will Deacon wrote:
-> On Tue, Sep 23, 2014 at 02:33:06PM +0100, Weston Andros Adamson wrote:
-> > Any more info on how to reproduce this would be really great. Unfortunately I don’t
-> > have access to an arm64 system.
-> 
-> I've not spotted a pattern other than using 64k pages, yet. If I manage to
-> get a reproducer, I'll let you know.
-> 
-> > If it’s possible, could we get a packet trace around when this happens? This is pure
-> > speculation, but this might have something to do the resend path - a commit fails
-> > and all the requests on the commit list have to be resent.
-> 
-> Sure, once I can reproduce it reliably, then I'll try to do that.
+Both blocks layout and objects layout want to use it to avoid CB_LAYOUTRECALL
+but that should only happen if client is doing chown or truncate. So change
+PNFS_LAYOUTRET_ON_SETATTR to follow the logic and not to send layoutreturn
+unnecessarily.
 
-Right, a bunch of DDing from /dev/zero over an ssh session triggers this
-very quickly. I've put a binary tcpdump here:
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Boaz Harrosh <boaz@plexistor.com>
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 3 ++-
+ fs/nfs/pnfs.h     | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-  http://www.willdeacon.ukfsn.org/bitbucket/oopsen/nfs/tcpdump.bin
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7dd8aca..e55bd0f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3213,7 +3213,8 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct nfs4_label *label = NULL;
+ 	int status;
+ 
+-	if (pnfs_ld_layoutret_on_setattr(inode))
++	if (pnfs_ld_layoutret_on_setattr(inode) &&
++	    sattr->ia_valid & (ATTR_UID|ATTR_GID|ATTR_SIZE))
+ 		pnfs_commit_and_return_layout(inode);
+ 
+ 	nfs_fattr_init(fattr);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index aca3dff..1765ea8 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -68,7 +68,8 @@ enum {
+ };
+ 
+ enum layoutdriver_policy_flags {
+-	/* Should the pNFS client commit and return the layout upon a setattr */
++	/* Should the pNFS client commit and return the layout upon a setattr
++	 * that changes uid/gid/size. */
+ 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
+ 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
+ };
+-- 
+1.9.1
 
-You may want to filter out the ssh packets. The only `interesting' thing to
-me is a retransmission about half way through, but I don't know what I'm
-looking for.
-
-The NFS server is 10.1.203.204 and the client is 10.1.203.24.
-
-Will
