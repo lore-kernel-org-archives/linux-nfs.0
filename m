@@ -1,50 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58253 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751601AbaI2Pew (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Sep 2014 11:34:52 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8TFYp6J005746
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 29 Sep 2014 11:34:51 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-58-57.rdu2.redhat.com [10.10.58.57])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8TFYLO0023219
-	for <linux-nfs@vger.kernel.org>; Mon, 29 Sep 2014 11:34:43 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] nfs-client.target: Removed a ordering cycle with nfs-server.service
-Date: Mon, 29 Sep 2014 11:33:37 -0400
-Message-Id: <1412004817-14432-1-git-send-email-steved@redhat.com>
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:55097 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752522AbaIKOME (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 10:12:04 -0400
+Received: by mail-qc0-f173.google.com with SMTP id w7so21102679qcr.18
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Sep 2014 07:12:04 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1410362617-28018-7-git-send-email-hch@lst.de>
+References: <1410362617-28018-1-git-send-email-hch@lst.de> <1410362617-28018-7-git-send-email-hch@lst.de>
+From: Peng Tao <bergwolf@primarydata.com>
+Date: Thu, 11 Sep 2014 22:11:42 +0800
+Message-ID: <CAKVebiV==2PwNaHJY57sP4oFjUqAzPCLZgx+k9bRf+oiVSeXVw@mail.gmail.com>
+Subject: Re: [PATCH 6/9] pnfs/blocklayout: rewrite extent tracking
+To: Christoph Hellwig <hch@lst.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On a VM that boots very fast and with out kerberos
-enabled a systemd ordering cycle happens between
-nfs-client and nfs-server units when both were
-enabled.
+Hi Christoph,
 
-Having nfs-client start the gssd daemons in the
-same matter as the nfs-server does ('After=') seemed
-to eliminated the ordering cycle.
+I really like your refactoring. It looks a lot better than the
+original lists-every-where code. One minor comment below:
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- systemd/nfs-client.target | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+<snip..>
+>  static void bl_write_cleanup(struct work_struct *work)
+>  {
+> -       struct rpc_task *task;
+> -       struct nfs_pgio_header *hdr;
+> +       struct rpc_task *task = container_of(work, struct rpc_task, u.tk_work);
+> +       struct nfs_pgio_header *hdr =
+> +                       container_of(task, struct nfs_pgio_header, task);
+> +
+>         dprintk("%s enter\n", __func__);
+> -       task = container_of(work, struct rpc_task, u.tk_work);
+> -       hdr = container_of(task, struct nfs_pgio_header, task);
+> +
+>         if (likely(!hdr->pnfs_error)) {
+> -               /* Marks for LAYOUTCOMMIT */
+> -               mark_extents_written(BLK_LSEG2EXT(hdr->lseg),
+> -                                    hdr->args.offset, hdr->args.count);
+> +               struct pnfs_block_layout *bl = BLK_LSEG2EXT(hdr->lseg);
+> +               u64 start = hdr->args.offset & (loff_t)PAGE_CACHE_MASK;
+> +               u64 end = (hdr->args.offset + hdr->args.count +
+> +                       PAGE_CACHE_SIZE - 1) & (loff_t)PAGE_CACHE_MASK;
+> +
+> +               ext_tree_mark_written(bl, start >> SECTOR_SHIFT,
+> +                                       (end - start) >> SECTOR_SHIFT);
+The old code works in a way that mark_extents_written() always
+succeeds. Now that ext_tree_mark_written() may fail, it should check
+for the return value and resend to MDS if failed, otherwise there may
+be silent data corruption.
 
-diff --git a/systemd/nfs-client.target b/systemd/nfs-client.target
-index 474f5e9..87a1ce8 100644
---- a/systemd/nfs-client.target
-+++ b/systemd/nfs-client.target
-@@ -7,7 +7,7 @@ Wants=remote-fs-pre.target
- # start that on demand if needed.
- Wants=rpc-gssd.service rpc-svcgssd.service auth-rpcgss-module.service
- Wants=nfs-blkmap.service rpc-statd-notify.service
--Before=rpc-gssd.service rpc-svcgssd.service nfs-blkmap.service
-+After=rpc-gssd.service rpc-svcgssd.service nfs-blkmap.service
- 
- [Install]
- WantedBy=multi-user.target
--- 
-1.9.3
-
+Thanks,
+Tao
