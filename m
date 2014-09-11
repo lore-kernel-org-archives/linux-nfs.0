@@ -1,61 +1,26 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43924 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754865AbaIDTyV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Sep 2014 15:54:21 -0400
-Date: Thu, 4 Sep 2014 15:54:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 3/5] nfsd: add a v4_end_grace file to /proc/fs/nfsd
-Message-ID: <20140904195420.GB14576@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
- <1408473509-14010-4-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1408473509-14010-4-git-send-email-jlayton@primarydata.com>
+Received: from casper.infradead.org ([85.118.1.10]:53132 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752019AbaIKAeM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:34:12 -0400
+Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
+	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1XRsKx-00082S-AA
+	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:34:11 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: a few more pnfs/blocklayout fixes
+Date: Wed, 10 Sep 2014 17:36:27 -0700
+Message-Id: <1410395791-2385-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 19, 2014 at 02:38:27PM -0400, Jeff Layton wrote:
-> Allow a privileged userland process to end the v4 grace period early.
-> Any write to the file will cause the v4 grace period to be lifted.
-> The basic idea with this will be to allow the userland client tracking
-> program to lift the grace period once it knows that no more clients
-> will be reclaiming state.
-...
-> +/**
-> + * write_v4_end_grace - release grace period for nfsd's v4.x lock manager
-> + *
-> + * Input:
-> + *			buf:		ignored
-> + *			size:		zero
-> + * OR
-> + *
-> + * Input:
-> + * 			buf:		any value
-> + *			size:		non-zero length of C string in @buf
-> + * Output:
-> + *			passed-in buffer filled with "Y" or "N" with a newline
-> + *			and NULL-terminated C string. This indicates whether
-> + *			the grace period has ended in the current net
-> + *			namespace. Return code is the size in bytes of the
-> + *			string. Writing to the file will end the grace period
-> + *			for nfsd's v4 lock manager.
-> + */
-> +static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
-> +{
-> +	struct net *net = file->f_dentry->d_sb->s_fs_info;
-> +	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> +
-> +	if (size > 0)
-> +		nfsd4_end_grace(nn);
+Thanks for merging the first two sets of blocklayout patches!
 
-Ditto for this one.
+Here are a few more patches to sort out the fallout.
 
-Do we really need separate files for nlm and nfsd?
+The first two fix up warnings reported from the kbuild robot.
+The third patch didn't make it in for some reason, but is needed
+for reliable operation.  The fourth removes the GETDEVICELIST
+implementation, which was slightly buggy and unessecary.
 
-I think the separate nlm and nfsd grace periods may just be a historical
-mistake.
-
---b.
