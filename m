@@ -1,123 +1,216 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f169.google.com ([209.85.220.169]:65281 "EHLO
-	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751044AbaILQ3D (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 12:29:03 -0400
-Received: by mail-vc0-f169.google.com with SMTP id ij19so953993vcb.0
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 09:29:01 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140912120737.385fdf6c@tlielax.poochiereds.net>
-References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
-	<1410193821-25109-6-git-send-email-jlayton@primarydata.com>
-	<20140911195547.GA21296@fieldses.org>
-	<20140911162836.70056390@tlielax.poochiereds.net>
-	<20140912093600.50dfa9bc@tlielax.poochiereds.net>
-	<20140912102153.09d58de7@tlielax.poochiereds.net>
-	<20140912143621.GA28915@fieldses.org>
-	<20140912152142.GB28915@fieldses.org>
-	<CAABAsM7JoG1tQuyOZ1uU66jz9RKCoung8jdP1LXuDbExfqqWKg@mail.gmail.com>
-	<20140912120737.385fdf6c@tlielax.poochiereds.net>
-Date: Fri, 12 Sep 2014 12:29:01 -0400
-Message-ID: <CAHQdGtSGaN0NL_NP45i-4Qw6GN9uFPRj=W+8yjBimqk3_7m_oA@mail.gmail.com>
+Received: from fieldses.org ([174.143.236.118]:45907 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752075AbaIKTzs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 11 Sep 2014 15:55:48 -0400
+Date: Thu, 11 Sep 2014 15:55:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
 Subject: Re: [PATCH v3 5/7] nfsdcltrack: update schema to v2
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Trond Myklebust <trondmy@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Message-ID: <20140911195547.GA21296@fieldses.org>
+References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
+ <1410193821-25109-6-git-send-email-jlayton@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1410193821-25109-6-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 12, 2014 at 12:07 PM, Jeff Layton
-<jeff.layton@primarydata.com> wrote:
-> On Fri, 12 Sep 2014 11:54:17 -0400
-> Trond Myklebust <trondmy@gmail.com> wrote:
->
->> On Fri, Sep 12, 2014 at 11:21 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> > On Fri, Sep 12, 2014 at 10:36:21AM -0400, J. Bruce Fields wrote:
->> >> On Fri, Sep 12, 2014 at 10:21:53AM -0400, Jeff Layton wrote:
->> >> > Grace period
->> >> > eventually ends, and its record is purged from the DB.
->> >> >
->> >> > Now we have a client that has reclaimed some files but that has no
->> >> > record on stable storage.
->> >> >
->> >> > One possibility is to prematurely expire v4.1+ clients that have not
->> >> > sent a RECLAIM_COMPLETE when the grace period ends.
->> >> >
->> >> > That seems problematic though -- what about clients that just happen to
->> >> > do an EXCHANGE_ID just before the grace period is going to end, and
->> >> > that get expired before they can issue their RECLAIM_COMPLETE. Will
->> >> > that be a problem for them?
->> >>
->> >> In that case a client will send a reclaim, get back a NO_GRACE error,
->> >> mark the rest of its state as unrecoverable, send the RECLAIM_COMPLETE,
->> >> and continue normally.  (To the extent it can--signalling affected
->> >> processes or EIOing further attempts to use the unreclaimed state, or
->> >> whatever.)
->> >
->> > The one thing the server *could* do in this sort of case is extend the
->> > grace period by a little--I seem to recall the spec giving some leeway
->> > for this kind of thing.
->>
->>
->> Section 8.4.2.1.
->>
->> > So for example the server could have a heuristics like: extend the grace
->> > period by another second each time we notice there's been an EXCHANGE_ID
->> > or reclaim in the previous second, up to some maximum.  And I suppose it
->> > could also delay the grace period until someone actually attempts a
->> > non-reclaim open.
->> >
->> > In isolation a single client slipping in the end like that sounds like a
->> > freak event, but if there's a ton of state to reclaim perhaps it could
->> > become more likely.
->> >
->> > I don't think that's a priority, we might just want to make sure we know
->> > how to do that in the future.
->> >
->> > But now that I think about it I don't see the existing or proposed
->> > nfsdcltrack stuff tying our hands in any way here.  It just gives the
->> > kernel some extra information, and the kernel still has discretion about
->> > when exactly it wants to end the grace period.
->> >
->>
->> It is even allowed to grant reclaim lock attempts after the grace
->> period has ended _if_ and only if it can guarantee that no conflicting
->> locks were issued.
->>
->> However note that the NFSv4.1 client is not actually allowed to issue
->> non-reclaim lock requests before it has issued a RECLAIM_COMPLETE. I
->> dunno how religiously we stick to that in Linux (I think we do), but
->> the point is that the server can and should rely on the client
->> _always_ sending a RECLAIM_COMPLETE if it is going to establish new
->> locks.
->
-> Yeah, I'm pretty sure that bit is enforced. The problem situation that
-> I think Bruce was referring to is this:
->
-> Server reboots. Client1 reclaims some of its locks (but not all) and
-> never sends a RECLAIM_COMPLETE. Grace period ends and then server
-> hands out a lock to client2 that was previously held by client1 but
-> that didn't get reclaimed.
->
-> Server reboots again, prior to the client1 expiring (so its record is
-> still in the DB). Now client1 comes back and starts reclaiming again.
-> This time it reclaims all of its locks and we have a conflict between
-> it and client2.
->
-> It's a solvable problem, but I'll need to work through how best to do
-> so.
->
-> --
+On Mon, Sep 08, 2014 at 12:30:19PM -0400, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@poochiereds.net>
+> 
+> In order to allow knfsd's lock manager to lift its grace period early,
+> we need to figure out whether all clients have finished reclaiming
+> their state not. Unfortunately, the current code doesn't allow us to
+> ascertain this. All we track for each client is a timestamp that tells
+> us when the last "check" or "create" operation came in.
+> 
+> We need to track the two timestamps separately. Add a new
+> "reclaim_complete" column to the database that tells us when the last
+> "create" operation came in. For now, we just insert "0" in that column
+> but a later patch will make it so that we insert a real timestamp for
+> v4.1+ client records.
 
-That's the first edge condition described in section 8.4.3.
+If I understand correctly, then nfsdcltrack has a bug here: we shouldn't
+be counting a 4.1 client as allowed to reclaim on the next boot until we
+get the RECLAIM_COMPLETE, but nfsdcltrack is allowing a 4.1 client to
+reclaim if all we got the previous boot was a reclaim open (a "check"
+operation).
 
--- 
-Trond Myklebust
+--b.
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+> 
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  utils/nfsdcltrack/sqlite.c | 102 +++++++++++++++++++++++++++++++++++++++++----
+>  1 file changed, 94 insertions(+), 8 deletions(-)
+> 
+> diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+> index dde2f7ff8621..e260e81b1722 100644
+> --- a/utils/nfsdcltrack/sqlite.c
+> +++ b/utils/nfsdcltrack/sqlite.c
+> @@ -29,7 +29,10 @@
+>   *
+>   * clients: an "id" column containing a BLOB with the long-form clientid as
+>   * 	    sent by the client, a "time" column containing a timestamp (in
+> - * 	    epoch seconds) of when the record was last updated.
+> + * 	    epoch seconds) of when the record was last updated, and a
+> + * 	    "reclaim_complete" column containing a timestamp (in epoch seconds)
+> + * 	    of when the last "create" operation came in for v4.1+ clients.
+> + * 	    v4.0 clients should always have this set to 0.
+>   */
+>  
+>  #ifdef HAVE_CONFIG_H
+> @@ -50,7 +53,7 @@
+>  
+>  #include "xlog.h"
+>  
+> -#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 1
+> +#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 2
+>  
+>  /* in milliseconds */
+>  #define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
+> @@ -120,6 +123,81 @@ out:
+>  	return ret;
+>  }
+>  
+> +static int
+> +sqlite_maindb_update_v1_to_v2(void)
+> +{
+> +	int ret, ret2;
+> +	char *err;
+> +
+> +	/* begin transaction */
+> +	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
+> +				&err);
+> +	if (ret != SQLITE_OK) {
+> +		xlog(L_ERROR, "Unable to begin transaction: %s", err);
+> +		goto rollback;
+> +	}
+> +
+> +	/*
+> +	 * Check schema version again. This time, under an exclusive
+> +	 * transaction to guard against racing DB setup attempts
+> +	 */
+> +	ret = sqlite_query_schema_version();
+> +	switch (ret) {
+> +	case 1:
+> +		/* Still at v1 -- do conversion */
+> +		break;
+> +	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
+> +		/* Someone else raced in and set it up */
+> +		ret = 0;
+> +		goto rollback;
+> +	default:
+> +		/* Something went wrong -- fail! */
+> +		ret = -EINVAL;
+> +		goto rollback;
+> +	}
+> +
+> +	/* create v2 clients table */
+> +	ret = sqlite3_exec(dbh, "ALTER TABLE clients ADD COLUMN "
+> +				"reclaim_complete INTEGER;",
+> +				NULL, NULL, &err);
+> +	if (ret != SQLITE_OK) {
+> +		xlog(L_ERROR, "Unable to update clients table: %s", err);
+> +		goto rollback;
+> +	}
+> +
+> +	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
+> +			"WHERE key = \"version\";",
+> +			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
+> +	if (ret < 0) {
+> +		xlog(L_ERROR, "sprintf failed!");
+> +		goto rollback;
+> +	} else if ((size_t)ret >= sizeof(buf)) {
+> +		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+> +		ret = -EINVAL;
+> +		goto rollback;
+> +	}
+> +
+> +	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+> +	if (ret != SQLITE_OK) {
+> +		xlog(L_ERROR, "Unable to update schema version: %s", err);
+> +		goto rollback;
+> +	}
+> +
+> +	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
+> +	if (ret != SQLITE_OK) {
+> +		xlog(L_ERROR, "Unable to commit transaction: %s", err);
+> +		goto rollback;
+> +	}
+> +out:
+> +	sqlite3_free(err);
+> +	return ret;
+> +rollback:
+> +	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+> +	if (ret2 != SQLITE_OK)
+> +		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+> +	goto out;
+> +}
+> +
+>  /*
+>   * Start an exclusive transaction and recheck the DB schema version. If it's
+>   * still zero (indicating a new database) then set it up. If that all works,
+> @@ -127,9 +205,9 @@ out:
+>   * transaction. On any error, rollback the transaction.
+>   */
+>  int
+> -sqlite_maindb_init_v1(void)
+> +sqlite_maindb_init_v2(void)
+>  {
+> -	int ret;
+> +	int ret, ret2;
+>  	char *err = NULL;
+>  
+>  	/* Start a transaction */
+> @@ -169,7 +247,7 @@ sqlite_maindb_init_v1(void)
+>  
+>  	/* create the "clients" table */
+>  	ret = sqlite3_exec(dbh, "CREATE TABLE clients (id BLOB PRIMARY KEY, "
+> -				"time INTEGER);",
+> +				"time INTEGER, reclaim_complete INTEGER);",
+>  				NULL, NULL, &err);
+>  	if (ret != SQLITE_OK) {
+>  		xlog(L_ERROR, "Unable to create clients table: %s", err);
+> @@ -207,7 +285,9 @@ out:
+>  
+>  rollback:
+>  	/* Attempt to rollback the transaction */
+> -	sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+> +	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+> +	if (ret2 != SQLITE_OK)
+> +		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+>  	goto out;
+>  }
+>  
+> @@ -255,9 +335,15 @@ sqlite_prepare_dbh(const char *topdir)
+>  		/* DB is already set up. Do nothing */
+>  		ret = 0;
+>  		break;
+> +	case 1:
+> +		/* Old DB -- update to new schema */
+> +		ret = sqlite_maindb_update_v1_to_v2();
+> +		if (ret)
+> +			goto out_close;
+> +		break;
+>  	case 0:
+>  		/* Query failed -- try to set up new DB */
+> -		ret = sqlite_maindb_init_v1();
+> +		ret = sqlite_maindb_init_v2();
+>  		if (ret)
+>  			goto out_close;
+>  		break;
+> @@ -289,7 +375,7 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen)
+>  	sqlite3_stmt *stmt = NULL;
+>  
+>  	ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients VALUES "
+> -				      "(?, strftime('%s', 'now'));", -1,
+> +					"(?, strftime('%s', 'now'), 0);", -1,
+>  					&stmt, NULL);
+>  	if (ret != SQLITE_OK) {
+>  		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
+> -- 
+> 1.9.3
+> 
