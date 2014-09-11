@@ -1,85 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41839 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751351AbaIYNAN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 09:00:13 -0400
-From: David Howells <dhowells@redhat.com>
-To: trond.myklebust@primarydata.com
-cc: dhowells@redhat.com, linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: 
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:43847 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751629AbaIKIuv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 04:50:51 -0400
+Date: Thu, 11 Sep 2014 10:50:47 +0200
+From: Michal Hocko <mhocko@suse.cz>
+To: NeilBrown <neilb@suse.de>
+Cc: Mel Gorman <mgorman@suse.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Junxiao Bi <junxiao.bi@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH v2 1/2] SUNRPC: Fix memory reclaim deadlocks in rpciod
+Message-ID: <20140911085046.GC22042@dhcp22.suse.cz>
+References: <CAHQdGtRMFuH9MsJBj5YsOrJW+qFLFp_-X=b_gZPVmgVQ22swqQ@mail.gmail.com>
+ <20140826132624.GU17696@novell.com>
+ <20140826231938.GA13889@cmpxchg.org>
+ <CAHQdGtRPsVFVfph5OcsZk_+WYPPJ-MpE2myZfXAb3jq6fuM4zw@mail.gmail.com>
+ <CAHQdGtQPMJNzSM5Wt4RnNqEawBLqmYHycXTmBHhmAt26dz5wCw@mail.gmail.com>
+ <20140827153644.GF12374@novell.com>
+ <20140904135427.GA14548@dhcp22.suse.cz>
+ <20140909123346.434f0443@notabene.brown>
+ <20140910134842.GG25219@dhcp22.suse.cz>
+ <20140911095743.1ed87519@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Thu, 25 Sep 2014 14:00:07 +0100
-Message-ID: <27998.1411650007@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140911095743.1ed87519@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+On Thu 11-09-14 09:57:43, Neil Brown wrote:
+> On Wed, 10 Sep 2014 15:48:43 +0200 Michal Hocko <mhocko@suse.cz> wrote:
+> 
+> > On Tue 09-09-14 12:33:46, Neil Brown wrote:
+> > > On Thu, 4 Sep 2014 15:54:27 +0200 Michal Hocko <mhocko@suse.cz> wrote:
+> > > 
+> > > > [Sorry for jumping in so late - I've been busy last days]
+> > > > 
+> > > > On Wed 27-08-14 16:36:44, Mel Gorman wrote:
+> > > > > On Tue, Aug 26, 2014 at 08:00:20PM -0400, Trond Myklebust wrote:
+> > > > > > On Tue, Aug 26, 2014 at 7:51 PM, Trond Myklebust
+> > > > > > <trond.myklebust@primarydata.com> wrote:
+> > > > > > > On Tue, Aug 26, 2014 at 7:19 PM, Johannes Weiner <hannes@cmpxchg.org> wrote:
+> > > > [...]
+> > > > > > >> wait_on_page_writeback() is a hammer, and we need to be better about
+> > > > > > >> this once we have per-memcg dirty writeback and throttling, but I
+> > > > > > >> think that really misses the point.  Even if memcg writeback waiting
+> > > > > > >> were smarter, any length of time spent waiting for yourself to make
+> > > > > > >> progress is absurd.  We just shouldn't be solving deadlock scenarios
+> > > > > > >> through arbitrary timeouts on one side.  If you can't wait for IO to
+> > > > > > >> finish, you shouldn't be passing __GFP_IO.
+> > > > 
+> > > > Exactly!
+> > > 
+> > > This is overly simplistic.
+> > > The code that cannot wait may be further up the call chain and not in a
+> > > position to avoid passing __GFP_IO.
+> > > In many case it isn't that "you can't wait for IO" in general, but that you
+> > > cannot wait for one specific IO request.
+> > 
+> > Could you be more specific, please? Why would a particular IO make any
+> > difference to general IO from the same path? My understanding was that
+> > once the page is marked PG_writeback then it is about to be written to
+> > its destination and if there is any need for memory allocation it should
+> > better not allow IO from reclaim.
+> 
+> The more complex the filesystem, the harder it is to "not allow IO from
+> reclaim".
+> For NFS (which started this thread) there might be a need to open a new
+> connection - so allocating in the networking code would all need to be
+> careful.
 
-I'm seeing the soft lockup below occasionally.  I'm using the head of Linus's
-master branch (005f800508eb391480f463dad3d54e5b4ec67d57).  Plus a pair of
-cachefiles patches that should have no bearing on the matter.  I'm seeing the
-lockup both with and without a cache.  I did the following:
+memalloc_noio_{save,restor} might help in that regards.
 
-	insmod /tmp/sunrpc.ko
-	mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs
-	insmod /tmp/lockd.ko
-	insmod /tmp/nfs_acl.ko
-	insmod /tmp/auth_rpcgss.ko
-	insmod /tmp/fscache.ko
-	insmod /tmp/nfs.ko
-	insmod /tmp/nfsv2.ko
-	insmod /tmp/nfsv3.ko
-	insmod /tmp/nfsv4.ko
-	mount warthog:/warthog /warthog -o async,intr
-	tar cf - /warthog/fs/linux-2.6-fscache | cat >/dev/null
+> And it isn't impossible that a 'gss' credential needs to be re-negotiated,
+> and that might even need user-space interaction (not sure of details).
 
-where the directory being tar'd is a kernel tree with a couple of builds in
-there plus a load of git data (about 3GB worth).
+OK, so if I understand you correctly all those allocations tmight happen
+_after_ the page has been marked PG_writeback. This would be bad indeed
+if such a path could appear in the memcg limit reclaim. The outcome of
+the previous discussion was that this doesn't happen in practice for
+nfs code, though, because the real flushing doesn't happen from a user
+context. The issue was reported for an old kernel where the flushing
+happened from the user context. It would be a huge problem to have a
+flusher within a restricted environment not only because of this path.
 
-The RIP points here:
+> What you say certainly used to be the case, and very often still is.  But it
+> doesn't really scale with complexity of filesystems.
+> 
+> I don't think there is (yet) any need to optimised for allocations that don't
+> disallow IO happening in the writeout path.  But I do think waiting
+> indefinitely for a particular IO is unjustifiable.
 
-   0x0000000000010e81 <+141>:   lea    0x48(%r12),%rdx
-   0x0000000000010e86 <+146>:   lock btrl $0x1,0x48(%r12)
-   0x0000000000010e8e <+154>:   jb     0x10e95 <nfs_client_return_marked_delegations+161>
+Well, as Johannes already pointed out. The right way to fix memcg
+reclaim is to implement proper memcg aware dirty pages throttling and
+flushing. This is a song of distant future I am afraid. Until then we
+have to live with workarounds. I would be happy to make this one more
+robust but timeout based solutions just sound too fragile and triggering
+OOM is a big risk.
 
-and it appears to be the first test_and_clear_bit() in
-nfs_delegation_need_return() which seems to have been inlined.
+Maybe we can disbale waiting if current->flags & PF_LESS_THROTTLE. I
+would be even tempted to WARN_ON(current->flags & PF_LESS_THROTTLE) in
+that path to catch a potential misconfiguration when the flusher is a
+part of restricted environment. The only real user of the flag is nfsd
+though and it runs from a kernel thread so this wouldn't help much to
+catch potentialy buggy code. So I am not really sure how much of an
+improvement this would be.
 
-I got at least three barks from the watchdog the last time I ran it before I
-killed it.
-
-David
----
-NMI watchdog: BUG: soft lockup - CPU#1 stuck for 22s! [90.155.74.18-ma:2776]
-Modules linked in: nfsv4 nfsv3 nfsv2 nfs fscache auth_rpcgss nfs_acl lockd sunrpc
-irq event stamp: 134630
-hardirqs last  enabled at (134629): [<ffffffff81088a54>] __call_rcu+0x203/0x212
-hardirqs last disabled at (134630): [<ffffffff8151133a>] apic_timer_interrupt+0x6a/0x80
-softirqs last  enabled at (134618): [<ffffffff8103de29>] __do_softirq+0x243/0x305
-softirqs last disabled at (134613): [<ffffffff8103e106>] irq_exit+0x61/0xda
-CPU: 1 PID: 2776 Comm: 90.155.74.18-ma Tainted: G        W      3.17.0-rc6-fsdevel+ #794
-Hardware name:                  /DG965RY, BIOS MQ96510J.86A.0816.2006.0716.2308 07/16/2006
-task: ffff880012ab6250 ti: ffff8800129e8000 task.ti: ffff8800129e8000
-RIP: 0010:[<ffffffffa00fde8e>]  [<ffffffffa00fde8e>] nfs_client_return_marked_delegations+0x9a/0x1aa [nfsv4]
-RSP: 0018:ffff8800129ebde8  EFLAGS: 00000202
-RAX: ffff880020bfd4c0 RBX: ffff8800129ebdd0 RCX: 0000000000000000
-RDX: ffff880020bfd508 RSI: ffff880012ab6250 RDI: ffff880012ab6250
-RBP: ffff8800129ebe28 R08: 0000000000000000 R09: 0000000000000000
-R10: ffff8800129ebd78 R11: 0000000000000000 R12: 0000000000000000
-R13: 0000000000000000 R14: ffffffff81a43340 R15: ffff8800129ebd78
-FS:  0000000000000000(0000) GS:ffff88003db00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 0000000000a62418 CR3: 00000000060f1000 CR4: 00000000000007e0
-Stack:
- ffff8800065e58c8 ffff88000610f7f0 ffff880020bfd4c0 ffff8800065e5800
- ffff8800065e5800 ffff8800065e5930 0000000000000000 0000000000000000
- ffff8800129ebe68 ffffffffa00fc180 000000000000000b ffff8800062f8e80
-Call Trace:
- [<ffffffffa00fc180>] nfs4_run_state_manager+0x614/0x619 [nfsv4]
- [<ffffffffa00fbb6c>] ? nfs4_do_reclaim+0x527/0x527 [nfsv4]
- [<ffffffff81053a97>] kthread+0xfa/0x102
- [<ffffffff8105399d>] ? kthread_create_on_node+0x1ca/0x1ca
- [<ffffffff8151036c>] ret_from_fork+0x7c/0xb0
- [<ffffffff8105399d>] ? kthread_create_on_node+0x1ca/0x1ca
-Code: 00 48 89 45 d0 4c 8b 65 d0 48 8d 83 f0 07 00 00 48 89 45 c8 4c 3b 65 c8 0f 84 d7 00 00 00 49 8d 54 24 48 f0 41 0f ba 74 24 48 01 <72> 05 45 31 f6 eb 03 41 b6 01 f0 0f ba 32 02 72 02 eb 36 45 84 
+-- 
+Michal Hocko
+SUSE Labs
