@@ -1,46 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:35202 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751100AbaILCWc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 22:22:32 -0400
-Received: by mail-qg0-f41.google.com with SMTP id a108so95010qge.0
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Sep 2014 19:22:31 -0700 (PDT)
+Received: from mail-vc0-f173.google.com ([209.85.220.173]:63644 "EHLO
+	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752056AbaILQba (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 12:31:30 -0400
+Received: by mail-vc0-f173.google.com with SMTP id le20so944405vcb.18
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 09:31:29 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20140911153631.GA8039@lst.de>
-References: <1410362617-28018-1-git-send-email-hch@lst.de> <1410362617-28018-4-git-send-email-hch@lst.de>
- <CAKVebiVvenTsjwBTB1=-HO1w5=7WEKEpj6hQkQP9XQJcuWMgag@mail.gmail.com>
- <20140911152058.GA6690@lst.de> <CAKVebiXPaxN5hayCYAdd22vThFk=c+Vf0nHmWAnNssMQzyiLPw@mail.gmail.com>
- <20140911153631.GA8039@lst.de>
-From: Peng Tao <bergwolf@primarydata.com>
-Date: Fri, 12 Sep 2014 10:22:11 +0800
-Message-ID: <CAKVebiX9S1zHVxNNnBguD8BKqyJJVOm3n+XJUhAxcM+8FD5dgg@mail.gmail.com>
-Subject: Re: [PATCH 3/9] pnfs: add return_range method
-To: Christoph Hellwig <hch@lst.de>
+In-Reply-To: <54131DFE.9020708@gmail.com>
+References: <54131DFE.9020708@gmail.com>
+Date: Fri, 12 Sep 2014 12:31:29 -0400
+Message-ID: <CAHQdGtRVfNQs7bBDbY8yH2Fzq3MyFyBBxbuTDH63w6WTqs4zPQ@mail.gmail.com>
+Subject: Re: NFSv4 O_DIRECT with 3.16.2 kernel issue (qemu kvm cache=none /
+ RHEL5 guest)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Zdenek Kaspar <zkaspar82@gmail.com>
 Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 11, 2014 at 11:36 PM, Christoph Hellwig <hch@lst.de> wrote:
-> On Thu, Sep 11, 2014 at 11:30:50PM +0800, Peng Tao wrote:
->> It looks dangerous to have extents lurking around without matching
->> layout segments. One example is NFS4ERR_EXPIRED and
->> NFS4ERR_BAD_STATEID in nfs4_layoutget_done(), client needs to drop all
->> layout segments but may keep the layout header, in which case blocks
->> layout would still hold all extents at hand.
+On Fri, Sep 12, 2014 at 12:23 PM, Zdenek Kaspar <zkaspar82@gmail.com> wrote:
+> Hello everyone, got this specific problem with RHEL5 guest under KVM
+> hypervisor.
 >
-> We never do I/O without a valid layout, but we keep the extents around
-> because we need to keep state like that it's been written to or has
-> a commit pending in a single place, and also need to keep it if a layout
-> goes away temporarily.
-We don't know if layout goes away temporarily or permanently. If
-server happens to move the file's data (enterprise NAS does that for a
-lot of reasons) in between, next time client does layoutget, it will
-get a different extent mapping. I'm not sure if the new extent
-tracking code is able to cope with it. The old code will certainly
-fail though.
+> client/server kernel version: 3.16.2
+>
+> /etc/exports: rw,async,no_subtree_check,no_root_squash
+> /proc/mounts: nfs4 rw,relatime,vers=4.0,rsize=524288,wsize=524288,
+>               namlen=255,hard,proto=tcp,port=0,
+>               timeo=600,retrans=2,sec=sys,clientaddr=xxx.xxx.xxx.xxx,
+>               local_lock=none,addr=xxx.xxx.xxx.yyy 0 0
+>
+> CONFIG_NFS_FS=m
+> # CONFIG_NFS_V2 is not set
+> CONFIG_NFS_V3=m
+> # CONFIG_NFS_V3_ACL is not set
+> CONFIG_NFS_V4=m
+> # CONFIG_NFS_SWAP is not set
+> # CONFIG_NFS_V4_1 is not set
+> # CONFIG_NFS_USE_LEGACY_DNS is not set
+> CONFIG_NFS_USE_KERNEL_DNS=y
+> CONFIG_NFSD=m
+> CONFIG_NFSD_V3=y
+> # CONFIG_NFSD_V3_ACL is not set
+> CONFIG_NFSD_V4=y
+> # CONFIG_NFSD_FAULT_INJECTION is not set
+> CONFIG_NFS_COMMON=y
+>
+> CentOS-5.10-i386-bin-1of8.iso -- did not test everything on centos,
+> behaved same as RHEL5. So let's use it as VM reproducer:
+>
+> dd if=/dev/zero of=kvm-test1.img bs=1M count=2048
+>
+> start VM using:
+> file=kvm-test1.img,cache=writeback,aio=native,if=virtio,boot=on
+>
+> create custom layout: /dev/vda1 / ext3 max size primary
+> unselect Desktop-Gnome, select Customize now
+> use only: Base System/Base and install it..
+>
+> [root@test1 ~]# find / >/dev/null
+> everything works as expected with writeback
+>
+> shutdown, backup kvm-test1.img (fs will explode)
+> start VM using:
+> file=kvm-test1.img,cache=none,aio=native,if=virtio,boot=on
+>
+> [root@test1 ~]# find / >/dev/null
+> and check dmesg, reboot etc, ie:
+> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
+> directory #460317: rec_len is smaller than minimal - offset=0, inode=0,
+> rec_len=0, name_len=0
+> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
+> directory #98503: rec_len is smaller than minimal - offset=0, inode=0,
+> rec_len=0, name_len=0
+>
+> Tested locally on ext4, xfs          - WORK
+> Tested on NFSv4 share with ext4, xfs - FAIL
+> Tested NFSv4 share sync, async       - FAIL
+> Tested on NFSv3 share with xfs       - WORK
+> KVM with qemu rhel-6.5, 2.1.1        - SAME RESULTS
+>
+> NOTE: it seems just the rhel5 guest triggers it easily..
+>
+> HTH, Z.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-If your concern is current layoutreturn implementation that ignores
-pending layoutcommit (and inflight IOs), that needs to be fixed. I
-have a patchset to fix it and it is still under internal QA. I'll post
-it once it passes testing.
+Don't use 3.16.x kernels with NFS yet. There are known bugs in the
+read/write code that need a stable backport of a set of fixes that are
+in 3.17-rc.
+
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
