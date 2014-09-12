@@ -1,39 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail1.g1.pair.com ([66.39.3.162]:34886 "EHLO mail1.g1.pair.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753386AbaIYQ1o convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 12:27:44 -0400
-Date: Thu, 25 Sep 2014 18:30:34 +0200
-From: Emmanuel Florac <eflorac@intellique.com>
-To: MJ Jenkins <mack.jenkins@eas.gatech.edu>
-Cc: <linux-nfs@vger.kernel.org>
-Subject: Re: NFS Share To OS X
-Message-ID: <20140925183034.432731eb@harpe.intellique.com>
-In-Reply-To: <5424156C.8080602@eas.gatech.edu>
-References: <5424156C.8080602@eas.gatech.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:35855 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753495AbaILDEW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 23:04:22 -0400
+Received: by mail-pa0-f45.google.com with SMTP id rd3so235453pab.4
+        for <linux-nfs@vger.kernel.org>; Thu, 11 Sep 2014 20:04:21 -0700 (PDT)
+From: Peng Tao <tao.peng@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Peng Tao <tao.peng@primarydata.com>, Christoph Hellwig <hch@lst.de>,
+        Boaz Harrosh <boaz@plexistor.com>
+Subject: [PATCH v2] nfs41: change PNFS_LAYOUTRET_ON_SETATTR to only return on truncation to smaller size
+Date: Fri, 12 Sep 2014 11:04:10 +0800
+Message-Id: <1410491050-12858-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Le Thu, 25 Sep 2014 09:15:24 -0400
-MJ Jenkins <mack.jenkins@eas.gatech.edu> écrivait:
+Both blocks layout and objects layout want to use it to avoid CB_LAYOUTRECALL
+but that should only happen if client is doing truncation to a smaller size.
+For other cases, we let server decide if it wants to recall client's layouts.
+Change PNFS_LAYOUTRET_ON_SETATTR to follow the logic and not to send
+layoutreturn unnecessarily.
 
-> The problem comes in when the user on the Mac writes files to the NFS 
-> share.  On the RHEL side the files are owned by user root and group 
-> nfsnobody.  Has anyone else run into this issue?  I'm not sure if the 
-> issue is how I am exporting the share to the Mac, or how I have the 
-> share mounted on the Mac.
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Boaz Harrosh <boaz@plexistor.com>
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 4 +++-
+ fs/nfs/pnfs.h     | 3 ++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
 
-Without the content of your /etc/exports, it's impossible to know
-what's happening. Mac behave like regular NFS clients. Maybe you have
-"all_squash,anonuid=0,anongid=5" in your export parameter, maybe it's
-something else entirely.
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7dd8aca..63a5b80 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3213,7 +3213,9 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
+ 	struct nfs4_label *label = NULL;
+ 	int status;
+ 
+-	if (pnfs_ld_layoutret_on_setattr(inode))
++	if (pnfs_ld_layoutret_on_setattr(inode) &&
++	    sattr->ia_valid & ATTR_SIZE &&
++	    sattr->ia_size < i_size_read(inode))
+ 		pnfs_commit_and_return_layout(inode);
+ 
+ 	nfs_fattr_init(fattr);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index aca3dff..04a3646 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -68,7 +68,8 @@ enum {
+ };
+ 
+ enum layoutdriver_policy_flags {
+-	/* Should the pNFS client commit and return the layout upon a setattr */
++	/* Should the pNFS client commit and return the layout upon truncate to
++	 * a smaller size */
+ 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
+ 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
+ };
 -- 
-------------------------------------------------------------------------
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
-------------------------------------------------------------------------
+1.9.1
+
