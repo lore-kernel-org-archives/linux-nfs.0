@@ -1,334 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:42641 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752169AbaIONOU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 09:14:20 -0400
-Received: by mail-qc0-f173.google.com with SMTP id i8so3681617qcq.4
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 06:14:19 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v4 1/9] lockd: move lockd's grace period handling into its own module
-Date: Mon, 15 Sep 2014 09:14:02 -0400
-Message-Id: <1410786850-18194-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
-References: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:58009 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752469AbaILQdP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 12:33:15 -0400
+Received: by mail-qa0-f44.google.com with SMTP id w8so996565qac.3
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 09:33:14 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 12 Sep 2014 12:33:11 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Trond Myklebust <trondmy@gmail.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 5/7] nfsdcltrack: update schema to v2
+Message-ID: <20140912123311.7f17b96f@tlielax.poochiereds.net>
+In-Reply-To: <CAHQdGtSGaN0NL_NP45i-4Qw6GN9uFPRj=W+8yjBimqk3_7m_oA@mail.gmail.com>
+References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
+	<1410193821-25109-6-git-send-email-jlayton@primarydata.com>
+	<20140911195547.GA21296@fieldses.org>
+	<20140911162836.70056390@tlielax.poochiereds.net>
+	<20140912093600.50dfa9bc@tlielax.poochiereds.net>
+	<20140912102153.09d58de7@tlielax.poochiereds.net>
+	<20140912143621.GA28915@fieldses.org>
+	<20140912152142.GB28915@fieldses.org>
+	<CAABAsM7JoG1tQuyOZ1uU66jz9RKCoung8jdP1LXuDbExfqqWKg@mail.gmail.com>
+	<20140912120737.385fdf6c@tlielax.poochiereds.net>
+	<CAHQdGtSGaN0NL_NP45i-4Qw6GN9uFPRj=W+8yjBimqk3_7m_oA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, all of the grace period handling is part of lockd. Eventually
-though we'd like to be able to build v4-only servers, at which point
-we'll need to put all of this elsewhere.
+On Fri, 12 Sep 2014 12:29:01 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-Move the code itself into fs/nfs_common and have it build a grace.ko
-module. Then, rejigger the Kconfig options so that both nfsd and lockd
-enable it automatically.
+> On Fri, Sep 12, 2014 at 12:07 PM, Jeff Layton
+> <jeff.layton@primarydata.com> wrote:
+> > On Fri, 12 Sep 2014 11:54:17 -0400
+> > Trond Myklebust <trondmy@gmail.com> wrote:
+> >
+> >> On Fri, Sep 12, 2014 at 11:21 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >> > On Fri, Sep 12, 2014 at 10:36:21AM -0400, J. Bruce Fields wrote:
+> >> >> On Fri, Sep 12, 2014 at 10:21:53AM -0400, Jeff Layton wrote:
+> >> >> > Grace period
+> >> >> > eventually ends, and its record is purged from the DB.
+> >> >> >
+> >> >> > Now we have a client that has reclaimed some files but that has no
+> >> >> > record on stable storage.
+> >> >> >
+> >> >> > One possibility is to prematurely expire v4.1+ clients that have not
+> >> >> > sent a RECLAIM_COMPLETE when the grace period ends.
+> >> >> >
+> >> >> > That seems problematic though -- what about clients that just happen to
+> >> >> > do an EXCHANGE_ID just before the grace period is going to end, and
+> >> >> > that get expired before they can issue their RECLAIM_COMPLETE. Will
+> >> >> > that be a problem for them?
+> >> >>
+> >> >> In that case a client will send a reclaim, get back a NO_GRACE error,
+> >> >> mark the rest of its state as unrecoverable, send the RECLAIM_COMPLETE,
+> >> >> and continue normally.  (To the extent it can--signalling affected
+> >> >> processes or EIOing further attempts to use the unreclaimed state, or
+> >> >> whatever.)
+> >> >
+> >> > The one thing the server *could* do in this sort of case is extend the
+> >> > grace period by a little--I seem to recall the spec giving some leeway
+> >> > for this kind of thing.
+> >>
+> >>
+> >> Section 8.4.2.1.
+> >>
+> >> > So for example the server could have a heuristics like: extend the grace
+> >> > period by another second each time we notice there's been an EXCHANGE_ID
+> >> > or reclaim in the previous second, up to some maximum.  And I suppose it
+> >> > could also delay the grace period until someone actually attempts a
+> >> > non-reclaim open.
+> >> >
+> >> > In isolation a single client slipping in the end like that sounds like a
+> >> > freak event, but if there's a ton of state to reclaim perhaps it could
+> >> > become more likely.
+> >> >
+> >> > I don't think that's a priority, we might just want to make sure we know
+> >> > how to do that in the future.
+> >> >
+> >> > But now that I think about it I don't see the existing or proposed
+> >> > nfsdcltrack stuff tying our hands in any way here.  It just gives the
+> >> > kernel some extra information, and the kernel still has discretion about
+> >> > when exactly it wants to end the grace period.
+> >> >
+> >>
+> >> It is even allowed to grant reclaim lock attempts after the grace
+> >> period has ended _if_ and only if it can guarantee that no conflicting
+> >> locks were issued.
+> >>
+> >> However note that the NFSv4.1 client is not actually allowed to issue
+> >> non-reclaim lock requests before it has issued a RECLAIM_COMPLETE. I
+> >> dunno how religiously we stick to that in Linux (I think we do), but
+> >> the point is that the server can and should rely on the client
+> >> _always_ sending a RECLAIM_COMPLETE if it is going to establish new
+> >> locks.
+> >
+> > Yeah, I'm pretty sure that bit is enforced. The problem situation that
+> > I think Bruce was referring to is this:
+> >
+> > Server reboots. Client1 reclaims some of its locks (but not all) and
+> > never sends a RECLAIM_COMPLETE. Grace period ends and then server
+> > hands out a lock to client2 that was previously held by client1 but
+> > that didn't get reclaimed.
+> >
+> > Server reboots again, prior to the client1 expiring (so its record is
+> > still in the DB). Now client1 comes back and starts reclaiming again.
+> > This time it reclaims all of its locks and we have a conflict between
+> > it and client2.
+> >
+> > It's a solvable problem, but I'll need to work through how best to do
+> > so.
+> >
+> > --
+> 
+> That's the first edge condition described in section 8.4.3.
+> 
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/Kconfig              |   6 ++-
- fs/lockd/Makefile       |   2 +-
- fs/lockd/grace.c        |  65 ----------------------------
- fs/lockd/netns.h        |   1 -
- fs/lockd/svc.c          |   1 -
- fs/nfs_common/Makefile  |   3 +-
- fs/nfs_common/grace.c   | 113 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/Kconfig         |   1 +
- include/linux/proc_fs.h |   2 +
- 9 files changed, 124 insertions(+), 70 deletions(-)
- delete mode 100644 fs/lockd/grace.c
- create mode 100644 fs/nfs_common/grace.c
+Actually, it's case #2 I think...
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 312393f32948..db5dc1598716 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -233,9 +233,13 @@ if NETWORK_FILESYSTEMS
- source "fs/nfs/Kconfig"
- source "fs/nfsd/Kconfig"
- 
-+config GRACE_PERIOD
-+	tristate
-+
- config LOCKD
- 	tristate
- 	depends on FILE_LOCKING
-+	select GRACE_PERIOD
- 
- config LOCKD_V4
- 	bool
-@@ -249,7 +253,7 @@ config NFS_ACL_SUPPORT
- 
- config NFS_COMMON
- 	bool
--	depends on NFSD || NFS_FS
-+	depends on NFSD || NFS_FS || LOCKD
- 	default y
- 
- source "net/sunrpc/Kconfig"
-diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
-index ca58d64374ca..6a0b351ce30e 100644
---- a/fs/lockd/Makefile
-+++ b/fs/lockd/Makefile
-@@ -5,6 +5,6 @@
- obj-$(CONFIG_LOCKD) += lockd.o
- 
- lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
--	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o grace.o
-+	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o
- lockd-objs-$(CONFIG_LOCKD_V4) += clnt4xdr.o xdr4.o svc4proc.o
- lockd-objs		      := $(lockd-objs-y)
-diff --git a/fs/lockd/grace.c b/fs/lockd/grace.c
-deleted file mode 100644
-index 6d1ee7204c88..000000000000
---- a/fs/lockd/grace.c
-+++ /dev/null
-@@ -1,65 +0,0 @@
--/*
-- * Common code for control of lockd and nfsv4 grace periods.
-- */
--
--#include <linux/module.h>
--#include <linux/lockd/bind.h>
--#include <net/net_namespace.h>
--
--#include "netns.h"
--
--static DEFINE_SPINLOCK(grace_lock);
--
--/**
-- * locks_start_grace
-- * @lm: who this grace period is for
-- *
-- * A grace period is a period during which locks should not be given
-- * out.  Currently grace periods are only enforced by the two lock
-- * managers (lockd and nfsd), using the locks_in_grace() function to
-- * check when they are in a grace period.
-- *
-- * This function is called to start a grace period.
-- */
--void locks_start_grace(struct net *net, struct lock_manager *lm)
--{
--	struct lockd_net *ln = net_generic(net, lockd_net_id);
--
--	spin_lock(&grace_lock);
--	list_add(&lm->list, &ln->grace_list);
--	spin_unlock(&grace_lock);
--}
--EXPORT_SYMBOL_GPL(locks_start_grace);
--
--/**
-- * locks_end_grace
-- * @lm: who this grace period is for
-- *
-- * Call this function to state that the given lock manager is ready to
-- * resume regular locking.  The grace period will not end until all lock
-- * managers that called locks_start_grace() also call locks_end_grace().
-- * Note that callers count on it being safe to call this more than once,
-- * and the second call should be a no-op.
-- */
--void locks_end_grace(struct lock_manager *lm)
--{
--	spin_lock(&grace_lock);
--	list_del_init(&lm->list);
--	spin_unlock(&grace_lock);
--}
--EXPORT_SYMBOL_GPL(locks_end_grace);
--
--/**
-- * locks_in_grace
-- *
-- * Lock managers call this function to determine when it is OK for them
-- * to answer ordinary lock requests, and when they should accept only
-- * lock reclaims.
-- */
--int locks_in_grace(struct net *net)
--{
--	struct lockd_net *ln = net_generic(net, lockd_net_id);
--
--	return !list_empty(&ln->grace_list);
--}
--EXPORT_SYMBOL_GPL(locks_in_grace);
-diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
-index 5010b55628b4..097bfa3adb1c 100644
---- a/fs/lockd/netns.h
-+++ b/fs/lockd/netns.h
-@@ -11,7 +11,6 @@ struct lockd_net {
- 
- 	struct delayed_work grace_period_end;
- 	struct lock_manager lockd_manager;
--	struct list_head grace_list;
- 
- 	spinlock_t nsm_clnt_lock;
- 	unsigned int nsm_users;
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 09857b48d0c3..c35cd43a06e6 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -586,7 +586,6 @@ static int lockd_init_net(struct net *net)
- 	struct lockd_net *ln = net_generic(net, lockd_net_id);
- 
- 	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
--	INIT_LIST_HEAD(&ln->grace_list);
- 	spin_lock_init(&ln->nsm_clnt_lock);
- 	return 0;
- }
-diff --git a/fs/nfs_common/Makefile b/fs/nfs_common/Makefile
-index f689ed82af3a..d153ca3ea577 100644
---- a/fs/nfs_common/Makefile
-+++ b/fs/nfs_common/Makefile
-@@ -3,5 +3,6 @@
- #
- 
- obj-$(CONFIG_NFS_ACL_SUPPORT) += nfs_acl.o
--
- nfs_acl-objs := nfsacl.o
-+
-+obj-$(CONFIG_GRACE_PERIOD) += grace.o
-diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
-new file mode 100644
-index 000000000000..ae6e58ea4de5
---- /dev/null
-+++ b/fs/nfs_common/grace.c
-@@ -0,0 +1,113 @@
-+/*
-+ * Common code for control of lockd and nfsv4 grace periods.
-+ *
-+ * Transplanted from lockd code
-+ */
-+
-+#include <linux/module.h>
-+#include <net/net_namespace.h>
-+#include <net/netns/generic.h>
-+#include <linux/fs.h>
-+
-+static int grace_net_id;
-+static DEFINE_SPINLOCK(grace_lock);
-+
-+/**
-+ * locks_start_grace
-+ * @net: net namespace that this lock manager belongs to
-+ * @lm: who this grace period is for
-+ *
-+ * A grace period is a period during which locks should not be given
-+ * out.  Currently grace periods are only enforced by the two lock
-+ * managers (lockd and nfsd), using the locks_in_grace() function to
-+ * check when they are in a grace period.
-+ *
-+ * This function is called to start a grace period.
-+ */
-+void
-+locks_start_grace(struct net *net, struct lock_manager *lm)
-+{
-+	struct list_head *grace_list = net_generic(net, grace_net_id);
-+
-+	spin_lock(&grace_lock);
-+	list_add(&lm->list, grace_list);
-+	spin_unlock(&grace_lock);
-+}
-+EXPORT_SYMBOL_GPL(locks_start_grace);
-+
-+/**
-+ * locks_end_grace
-+ * @net: net namespace that this lock manager belongs to
-+ * @lm: who this grace period is for
-+ *
-+ * Call this function to state that the given lock manager is ready to
-+ * resume regular locking.  The grace period will not end until all lock
-+ * managers that called locks_start_grace() also call locks_end_grace().
-+ * Note that callers count on it being safe to call this more than once,
-+ * and the second call should be a no-op.
-+ */
-+void
-+locks_end_grace(struct lock_manager *lm)
-+{
-+	spin_lock(&grace_lock);
-+	list_del_init(&lm->list);
-+	spin_unlock(&grace_lock);
-+}
-+EXPORT_SYMBOL_GPL(locks_end_grace);
-+
-+/**
-+ * locks_in_grace
-+ *
-+ * Lock managers call this function to determine when it is OK for them
-+ * to answer ordinary lock requests, and when they should accept only
-+ * lock reclaims.
-+ */
-+int
-+locks_in_grace(struct net *net)
-+{
-+	struct list_head *grace_list = net_generic(net, grace_net_id);
-+
-+	return !list_empty(grace_list);
-+}
-+EXPORT_SYMBOL_GPL(locks_in_grace);
-+
-+static int __net_init
-+grace_init_net(struct net *net)
-+{
-+	struct list_head *grace_list = net_generic(net, grace_net_id);
-+
-+	INIT_LIST_HEAD(grace_list);
-+	return 0;
-+}
-+
-+static void __net_exit
-+grace_exit_net(struct net *net)
-+{
-+	struct list_head *grace_list = net_generic(net, grace_net_id);
-+
-+	BUG_ON(!list_empty(grace_list));
-+}
-+
-+static struct pernet_operations grace_net_ops = {
-+	.init = grace_init_net,
-+	.exit = grace_exit_net,
-+	.id   = &grace_net_id,
-+	.size = sizeof(struct list_head),
-+};
-+
-+static int __init
-+init_grace(void)
-+{
-+	return register_pernet_subsys(&grace_net_ops);
-+}
-+
-+static void __exit
-+exit_grace(void)
-+{
-+	unregister_pernet_subsys(&grace_net_ops);
-+}
-+
-+MODULE_AUTHOR("Jeff Layton <jlayton@primarydata.com>");
-+MODULE_LICENSE("GPL");
-+module_init(init_grace)
-+module_exit(exit_grace)
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index f3586b645d7d..73395156bdb4 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -71,6 +71,7 @@ config NFSD_V4
- 	select FS_POSIX_ACL
- 	select SUNRPC_GSS
- 	select CRYPTO
-+	select GRACE_PERIOD
- 	help
- 	  This option enables support in your system's NFS server for
- 	  version 4 of the NFS protocol (RFC 3530).
-diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
-index 9d117f61d976..b97bf2ef996e 100644
---- a/include/linux/proc_fs.h
-+++ b/include/linux/proc_fs.h
-@@ -74,6 +74,8 @@ static inline int remove_proc_subtree(const char *name, struct proc_dir_entry *p
- 
- #endif /* CONFIG_PROC_FS */
- 
-+struct net;
-+
- static inline struct proc_dir_entry *proc_net_mkdir(
- 	struct net *net, const char *name, struct proc_dir_entry *parent)
- {
 -- 
-1.9.3
-
+Jeff Layton <jlayton@primarydata.com>
