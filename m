@@ -1,52 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60714 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:49614 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756232AbaISP5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Sep 2014 11:57:34 -0400
-Date: Fri, 19 Sep 2014 11:57:33 -0400
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Subject: Re: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials
-Message-ID: <20140919155733.GA16658@fieldses.org>
-References: <1411131103-17254-1-git-send-email-steved@redhat.com>
+	id S1751092AbaILRzo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Sep 2014 13:55:44 -0400
+Date: Fri, 12 Sep 2014 13:55:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFSv2/3 vs v4 error codes?
+Message-ID: <20140912175543.GA32359@fieldses.org>
+References: <20140910221650.GD29452@infradead.org>
+ <20140911190345.GA20501@fieldses.org>
+ <20140911200214.GA21392@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1411131103-17254-1-git-send-email-steved@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20140911200214.GA21392@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 19, 2014 at 08:51:41AM -0400, Steve Dickson wrote:
-> The gssproxy(8) daemon is now how the managing of GSSAPI 
-> credentials should be done. 
+On Thu, Sep 11, 2014 at 01:02:14PM -0700, Christoph Hellwig wrote:
+> On Thu, Sep 11, 2014 at 03:03:45PM -0400, J. Bruce Fields wrote:
+> > On Wed, Sep 10, 2014 at 03:16:50PM -0700, Christoph Hellwig wrote:
+> > > As a followup to the fallocate discussion I checked what we map ENODEV
+> > > to in nfsd.  Turns out we map it to NFSERR_NODEV, which doesn't exist
+> > > in eiter NFSv4.0 nor NFSv4.1 despite the comment in
+> > > include/uapi/linux/nfs.h claiming otherwise.
+> > 
+> > That's interesting.  Is there a reasonable alternative, or is this a
+> > protocol bug?
 > 
-> These to patches has the nfs-server systemd script start 
-> gssproxy instead of rpc.svcgssd and removes the building 
-> and installation of rpc.svcgssd.
+> I still haven't figured this out.  RFC1813 mentions NFS3ERR_NODEV, but
+> doesn't actually reference it anywhere.
 > 
-> For now I'm leaving the source files... Just in case... ;-)
+> In general it seems to me like the use of ENODEV in fallocate is the
+> bug, as we don't really return it from any other filesystem operation.
+> 
+> > > I also just ran into another issue where nfserrno translates a large
+> > > lits of errors into NFSERR_JUKEBOX, but for v4 we'd really want
+> > > NFSERR_DELAY instead for most of them.
+> > 
+> > The distinction is academic as they're both 10008.
+> 
+> Oh, right.  I missed to spot that.
+> 
+> > > Is it time for a version specific errno mapping?
+> > 
+> > I'm certainly not opposed if it turns out to be necessary.
+> 
+> A start might be to move nfserrno out of the NFSv2-specific nfsproc
+> file..
 
-If nothing else, we'd like to keep support for older kernels for a
-while.
+The current location's a little confusing.   But I don't have strong
+feelings about it.
 
 --b.
-
-> 
-> Steve Dickson (2):
->   nfs-server: Replace rpc.svcgssd with gssproxy
->   svcgssd: Remove rules from the Makefile.am
-> 
->  systemd/nfs-server.service  |  4 ++--
->  systemd/rpc-svcgssd.service | 19 -------------------
->  utils/gssd/Makefile.am      | 25 ++-----------------------
->  3 files changed, 4 insertions(+), 44 deletions(-)
->  delete mode 100644 systemd/rpc-svcgssd.service
-> 
-> -- 
-> 1.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
