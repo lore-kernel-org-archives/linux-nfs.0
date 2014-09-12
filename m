@@ -1,238 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from prod-mail-xrelay02.akamai.com ([72.246.2.14]:43179 "EHLO
-	prod-mail-xrelay02.akamai.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753106AbaIXSIB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 14:08:01 -0400
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, Anna.Schumaker@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <99b680ad6d5b87583f01ef68c4690c9d5bb573e9.1411580799.git.jbaron@akamai.com>
-In-Reply-To: <cover.1411580799.git.jbaron@akamai.com>
-References: <cover.1411580799.git.jbaron@akamai.com>
-From: Jason Baron <jbaron@akamai.com>
-Subject: [PATCH v2 1/2] rpc: return sent and err from xs_sendpages()
-Date: Wed, 24 Sep 2014 18:08:00 +0000 (GMT)
+Received: from fieldses.org ([174.143.236.118]:49533 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751822AbaILQF7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Sep 2014 12:05:59 -0400
+Date: Fri, 12 Sep 2014 12:05:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@gmail.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 5/7] nfsdcltrack: update schema to v2
+Message-ID: <20140912160556.GD28915@fieldses.org>
+References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
+ <1410193821-25109-6-git-send-email-jlayton@primarydata.com>
+ <20140911195547.GA21296@fieldses.org>
+ <20140911162836.70056390@tlielax.poochiereds.net>
+ <20140912093600.50dfa9bc@tlielax.poochiereds.net>
+ <20140912102153.09d58de7@tlielax.poochiereds.net>
+ <20140912143621.GA28915@fieldses.org>
+ <20140912152142.GB28915@fieldses.org>
+ <CAABAsM7JoG1tQuyOZ1uU66jz9RKCoung8jdP1LXuDbExfqqWKg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAABAsM7JoG1tQuyOZ1uU66jz9RKCoung8jdP1LXuDbExfqqWKg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If an error is returned after the first bits of a packet have already been
-successfully queued, xs_sendpages() will return a positive 'int' value
-indicating success. Callers seem to treat this as -EAGAIN.
+On Fri, Sep 12, 2014 at 11:54:17AM -0400, Trond Myklebust wrote:
+> On Fri, Sep 12, 2014 at 11:21 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Fri, Sep 12, 2014 at 10:36:21AM -0400, J. Bruce Fields wrote:
+> >> On Fri, Sep 12, 2014 at 10:21:53AM -0400, Jeff Layton wrote:
+> >> > Grace period
+> >> > eventually ends, and its record is purged from the DB.
+> >> >
+> >> > Now we have a client that has reclaimed some files but that has no
+> >> > record on stable storage.
+> >> >
+> >> > One possibility is to prematurely expire v4.1+ clients that have not
+> >> > sent a RECLAIM_COMPLETE when the grace period ends.
+> >> >
+> >> > That seems problematic though -- what about clients that just happen to
+> >> > do an EXCHANGE_ID just before the grace period is going to end, and
+> >> > that get expired before they can issue their RECLAIM_COMPLETE. Will
+> >> > that be a problem for them?
+> >>
+> >> In that case a client will send a reclaim, get back a NO_GRACE error,
+> >> mark the rest of its state as unrecoverable, send the RECLAIM_COMPLETE,
+> >> and continue normally.  (To the extent it can--signalling affected
+> >> processes or EIOing further attempts to use the unreclaimed state, or
+> >> whatever.)
+> >
+> > The one thing the server *could* do in this sort of case is extend the
+> > grace period by a little--I seem to recall the spec giving some leeway
+> > for this kind of thing.
+> 
+> 
+> Section 8.4.2.1.
 
-However, there are cases where its not a question of waiting for the write
-queue to drain. For example, when there is an iptables rule dropping packets
-to the destination, the lower level code can return -EPERM only after parts
-of the packet have been successfully queued. In this case, we can end up
-continuously retrying resulting in a kernel softlockup.
+Thanks!
 
-This patch is intended to make no changes in behavior but is in preparation for
-subsequent patches that can make decisions based on both on the number of bytes
-sent by xs_sendpages() and any errors that may have be returned.
+	http://tools.ietf.org/html/rfc5661#section-8.4.2.1
 
-Signed-off-by: Jason Baron <jbaron@akamai.com>
----
- net/sunrpc/xprtsock.c | 81 ++++++++++++++++++++++++++-------------------------
- 1 file changed, 42 insertions(+), 39 deletions(-)
+	"Some additional time in order to allow a client to establish a
+	new client ID and session and to effect lock reclaims may be
+	added to the lease time."
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 43cd89e..348c786 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -399,13 +399,13 @@ static int xs_send_kvec(struct socket *sock, struct sockaddr *addr, int addrlen,
- 	return kernel_sendmsg(sock, &msg, NULL, 0, 0);
- }
- 
--static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more, bool zerocopy)
-+static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more, bool zerocopy, int *sent_p)
- {
- 	ssize_t (*do_sendpage)(struct socket *sock, struct page *page,
- 			int offset, size_t size, int flags);
- 	struct page **ppage;
- 	unsigned int remainder;
--	int err, sent = 0;
-+	int err;
- 
- 	remainder = xdr->page_len - base;
- 	base += xdr->page_base;
-@@ -424,15 +424,15 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
- 		err = do_sendpage(sock, *ppage, base, len, flags);
- 		if (remainder == 0 || err != len)
- 			break;
--		sent += err;
-+		*sent_p += err;
- 		ppage++;
- 		base = 0;
- 	}
--	if (sent == 0)
--		return err;
--	if (err > 0)
--		sent += err;
--	return sent;
-+	if (err > 0) {
-+		*sent_p += err;
-+		err = 0;
-+	}
-+	return err;
- }
- 
- /**
-@@ -443,12 +443,14 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
-  * @xdr: buffer containing this request
-  * @base: starting position in the buffer
-  * @zerocopy: true if it is safe to use sendpage()
-+ * @sent_p: return the total number of bytes successfully queued for sending
-  *
-  */
--static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base, bool zerocopy)
-+static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base, bool zerocopy, int *sent_p)
- {
- 	unsigned int remainder = xdr->len - base;
--	int err, sent = 0;
-+	int err = 0;
-+	int sent = 0;
- 
- 	if (unlikely(!sock))
- 		return -ENOTSOCK;
-@@ -465,7 +467,7 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
- 		err = xs_send_kvec(sock, addr, addrlen, &xdr->head[0], base, remainder != 0);
- 		if (remainder == 0 || err != len)
- 			goto out;
--		sent += err;
-+		*sent_p += err;
- 		base = 0;
- 	} else
- 		base -= xdr->head[0].iov_len;
-@@ -473,23 +475,23 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
- 	if (base < xdr->page_len) {
- 		unsigned int len = xdr->page_len - base;
- 		remainder -= len;
--		err = xs_send_pagedata(sock, xdr, base, remainder != 0, zerocopy);
--		if (remainder == 0 || err != len)
-+		err = xs_send_pagedata(sock, xdr, base, remainder != 0, zerocopy, &sent);
-+		*sent_p += sent;
-+		if (remainder == 0 || sent != len)
- 			goto out;
--		sent += err;
- 		base = 0;
- 	} else
- 		base -= xdr->page_len;
- 
- 	if (base >= xdr->tail[0].iov_len)
--		return sent;
-+		return 0;
- 	err = xs_send_kvec(sock, NULL, 0, &xdr->tail[0], base, 0);
- out:
--	if (sent == 0)
--		return err;
--	if (err > 0)
--		sent += err;
--	return sent;
-+	if (err > 0) {
-+		*sent_p += err;
-+		err = 0;
-+	}
-+	return err;
- }
- 
- static void xs_nospace_callback(struct rpc_task *task)
-@@ -573,19 +575,20 @@ static int xs_local_send_request(struct rpc_task *task)
- 				container_of(xprt, struct sock_xprt, xprt);
- 	struct xdr_buf *xdr = &req->rq_snd_buf;
- 	int status;
-+	int sent = 0;
- 
- 	xs_encode_stream_record_marker(&req->rq_snd_buf);
- 
- 	xs_pktdump("packet data:",
- 			req->rq_svec->iov_base, req->rq_svec->iov_len);
- 
--	status = xs_sendpages(transport->sock, NULL, 0,
--						xdr, req->rq_bytes_sent, true);
-+	status = xs_sendpages(transport->sock, NULL, 0, xdr, req->rq_bytes_sent,
-+			      true, &sent);
- 	dprintk("RPC:       %s(%u) = %d\n",
- 			__func__, xdr->len - req->rq_bytes_sent, status);
--	if (likely(status >= 0)) {
--		req->rq_bytes_sent += status;
--		req->rq_xmit_bytes_sent += status;
-+	if (likely(sent > 0) || status == 0) {
-+		req->rq_bytes_sent += sent;
-+		req->rq_xmit_bytes_sent += sent;
- 		if (likely(req->rq_bytes_sent >= req->rq_slen)) {
- 			req->rq_bytes_sent = 0;
- 			return 0;
-@@ -626,6 +629,7 @@ static int xs_udp_send_request(struct rpc_task *task)
- 	struct rpc_xprt *xprt = req->rq_xprt;
- 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
- 	struct xdr_buf *xdr = &req->rq_snd_buf;
-+	int sent = 0;
- 	int status;
- 
- 	xs_pktdump("packet data:",
-@@ -634,17 +638,15 @@ static int xs_udp_send_request(struct rpc_task *task)
- 
- 	if (!xprt_bound(xprt))
- 		return -ENOTCONN;
--	status = xs_sendpages(transport->sock,
--			      xs_addr(xprt),
--			      xprt->addrlen, xdr,
--			      req->rq_bytes_sent, true);
-+	status = xs_sendpages(transport->sock, xs_addr(xprt), xprt->addrlen,
-+			      xdr, req->rq_bytes_sent, true, &sent);
- 
- 	dprintk("RPC:       xs_udp_send_request(%u) = %d\n",
- 			xdr->len - req->rq_bytes_sent, status);
- 
--	if (status >= 0) {
--		req->rq_xmit_bytes_sent += status;
--		if (status >= req->rq_slen)
-+	if (sent > 0 || status == 0) {
-+		req->rq_xmit_bytes_sent += sent;
-+		if (sent >= req->rq_slen)
- 			return 0;
- 		/* Still some bytes left; set up for a retry later. */
- 		status = -EAGAIN;
-@@ -713,6 +715,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 	struct xdr_buf *xdr = &req->rq_snd_buf;
- 	bool zerocopy = true;
- 	int status;
-+	int sent;
- 
- 	xs_encode_stream_record_marker(&req->rq_snd_buf);
- 
-@@ -730,26 +733,26 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 	 * to cope with writespace callbacks arriving _after_ we have
- 	 * called sendmsg(). */
- 	while (1) {
--		status = xs_sendpages(transport->sock,
--					NULL, 0, xdr, req->rq_bytes_sent,
--					zerocopy);
-+		sent = 0;
-+		status = xs_sendpages(transport->sock, NULL, 0, xdr,
-+				      req->rq_bytes_sent, zerocopy, &sent);
- 
- 		dprintk("RPC:       xs_tcp_send_request(%u) = %d\n",
- 				xdr->len - req->rq_bytes_sent, status);
- 
--		if (unlikely(status < 0))
-+		if (unlikely(sent == 0 && status < 0))
- 			break;
- 
- 		/* If we've sent the entire packet, immediately
- 		 * reset the count of bytes sent. */
--		req->rq_bytes_sent += status;
--		req->rq_xmit_bytes_sent += status;
-+		req->rq_bytes_sent += sent;
-+		req->rq_xmit_bytes_sent += sent;
- 		if (likely(req->rq_bytes_sent >= req->rq_slen)) {
- 			req->rq_bytes_sent = 0;
- 			return 0;
- 		}
- 
--		if (status != 0)
-+		if (sent != 0)
- 			continue;
- 		status = -EAGAIN;
- 		break;
--- 
-1.8.2.rc2
+I thought there was something else but I actually must have been
+remembering the "diligently flushing" language describing delegation
+recalls.  Anyway.
 
+> 
+> > So for example the server could have a heuristics like: extend the grace
+> > period by another second each time we notice there's been an EXCHANGE_ID
+> > or reclaim in the previous second, up to some maximum.  And I suppose it
+> > could also delay the grace period until someone actually attempts a
+> > non-reclaim open.
+> >
+> > In isolation a single client slipping in the end like that sounds like a
+> > freak event, but if there's a ton of state to reclaim perhaps it could
+> > become more likely.
+> >
+> > I don't think that's a priority, we might just want to make sure we know
+> > how to do that in the future.
+> >
+> > But now that I think about it I don't see the existing or proposed
+> > nfsdcltrack stuff tying our hands in any way here.  It just gives the
+> > kernel some extra information, and the kernel still has discretion about
+> > when exactly it wants to end the grace period.
+> >
+> 
+> It is even allowed to grant reclaim lock attempts after the grace
+> period has ended _if_ and only if it can guarantee that no conflicting
+> locks were issued.
+> 
+> However note that the NFSv4.1 client is not actually allowed to issue
+> non-reclaim lock requests before it has issued a RECLAIM_COMPLETE. I
+> dunno how religiously we stick to that in Linux (I think we do),
+
+Yes, the server strictly enforces this so we'd know if the client
+skipped the RECLAIM_COMPLETE.  (Any open would fail over 4.1.)
+
+> but the point is that the server can and should rely on the client
+> _always_ sending a RECLAIM_COMPLETE if it is going to establish new
+> locks.
+
+Yes.
+
+--b.
