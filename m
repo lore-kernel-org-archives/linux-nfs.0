@@ -1,62 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:41484 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753660AbaIIPmM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 11:42:12 -0400
-Date: Tue, 9 Sep 2014 08:42:11 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: kernel BUG in fs/dcache.c running nfs
-Message-ID: <20140909154211.GA6614@infradead.org>
-References: <20140908144525.GB19811@infradead.org>
- <20140909105918.59477ee3@tlielax.poochiereds.net>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:53730 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751653AbaILPyR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 11:54:17 -0400
+Received: by mail-ie0-f175.google.com with SMTP id at20so1118975iec.6
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 08:54:17 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140909105918.59477ee3@tlielax.poochiereds.net>
+In-Reply-To: <20140912152142.GB28915@fieldses.org>
+References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
+	<1410193821-25109-6-git-send-email-jlayton@primarydata.com>
+	<20140911195547.GA21296@fieldses.org>
+	<20140911162836.70056390@tlielax.poochiereds.net>
+	<20140912093600.50dfa9bc@tlielax.poochiereds.net>
+	<20140912102153.09d58de7@tlielax.poochiereds.net>
+	<20140912143621.GA28915@fieldses.org>
+	<20140912152142.GB28915@fieldses.org>
+Date: Fri, 12 Sep 2014 11:54:17 -0400
+Message-ID: <CAABAsM7JoG1tQuyOZ1uU66jz9RKCoung8jdP1LXuDbExfqqWKg@mail.gmail.com>
+Subject: Re: [PATCH v3 5/7] nfsdcltrack: update schema to v2
+From: Trond Myklebust <trondmy@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 09, 2014 at 10:59:18AM -0400, Jeff Layton wrote:
-> > [ 5497.405585]  [<ffffffff8135d0c1>] nfs4_do_open.constprop.84+0x681/0x960
-> > [ 5497.405585]  [<ffffffff8135d459>] nfs4_atomic_open+0x9/0x20
-> > [ 5497.405585]  [<ffffffff8136cc3d>] nfs4_file_open+0xcd/0x1b0
-> > [ 5497.405585]  [<ffffffff811b8092>] do_dentry_open.isra.13+0x1f2/0x320
-> > [ 5497.405585]  [<ffffffff811b82ad>] finish_open+0x1d/0x30
-> > [ 5497.405585]  [<ffffffff811c98e9>] path_openat+0xb9/0x670
-> > [ 5497.405585]  [<ffffffff811ca26e>] do_filp_open+0x3e/0xa0
-> > [ 5497.405585]  [<ffffffff811b95cc>] do_sys_open+0x13c/0x230
-> > [ 5497.405585]  [<ffffffff811b96dd>] SyS_open+0x1d/0x20
-> > [ 5497.405585]  [<ffffffff81d9f5a9>] system_call_fastpath+0x16/0x1b
-> > 
-> 
-> Odd...
-> 
-> It looks like you hit the BUG() in d_instantiate.
-> 
-> I don't see any calls to d_instantiate in the current nfs_code (aside
-> from the one in nfs_lookup, and I don't think that's getting called
-> here). d_instantiate is called by d_add though, and that gets called
-> from nfs_atomic_open. Is that what happened here?
-> 
-> Maybe you can use gdb to figure out what line of code
-> "nfs4_do_open.constprop.84+0x681" actually is?
+On Fri, Sep 12, 2014 at 11:21 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Sep 12, 2014 at 10:36:21AM -0400, J. Bruce Fields wrote:
+>> On Fri, Sep 12, 2014 at 10:21:53AM -0400, Jeff Layton wrote:
+>> > Grace period
+>> > eventually ends, and its record is purged from the DB.
+>> >
+>> > Now we have a client that has reclaimed some files but that has no
+>> > record on stable storage.
+>> >
+>> > One possibility is to prematurely expire v4.1+ clients that have not
+>> > sent a RECLAIM_COMPLETE when the grace period ends.
+>> >
+>> > That seems problematic though -- what about clients that just happen to
+>> > do an EXCHANGE_ID just before the grace period is going to end, and
+>> > that get expired before they can issue their RECLAIM_COMPLETE. Will
+>> > that be a problem for them?
+>>
+>> In that case a client will send a reclaim, get back a NO_GRACE error,
+>> mark the rest of its state as unrecoverable, send the RECLAIM_COMPLETE,
+>> and continue normally.  (To the extent it can--signalling affected
+>> processes or EIOing further attempts to use the unreclaimed state, or
+>> whatever.)
+>
+> The one thing the server *could* do in this sort of case is extend the
+> grace period by a little--I seem to recall the spec giving some leeway
+> for this kind of thing.
 
-My gdb can't cope with these constprop expressions unfortunately.
 
-But when you remove the questionable symbols as I've done above it's
-pretty clear that this must be the
+Section 8.4.2.1.
 
-nfs4_atomic_open
- -> nfs4_do_open
-   -> _nfs4_do_open
-     -> _nfs4_open_and_get_state
-       -> d_add
-         -> d_instantiate
+> So for example the server could have a heuristics like: extend the grace
+> period by another second each time we notice there's been an EXCHANGE_ID
+> or reclaim in the previous second, up to some maximum.  And I suppose it
+> could also delay the grace period until someone actually attempts a
+> non-reclaim open.
+>
+> In isolation a single client slipping in the end like that sounds like a
+> freak event, but if there's a ton of state to reclaim perhaps it could
+> become more likely.
+>
+> I don't think that's a priority, we might just want to make sure we know
+> how to do that in the future.
+>
+> But now that I think about it I don't see the existing or proposed
+> nfsdcltrack stuff tying our hands in any way here.  It just gives the
+> kernel some extra information, and the kernel still has discretion about
+> when exactly it wants to end the grace period.
+>
 
-call chain. There is heavy inlining going on inside nfs4file.c, and
-d_add now is a simple inline around d_instantiate and d_rehash.
-> 
-> -- 
-> Jeff Layton <jlayton@primarydata.com>
----end quoted text---
+It is even allowed to grant reclaim lock attempts after the grace
+period has ended _if_ and only if it can guarantee that no conflicting
+locks were issued.
+
+However note that the NFSv4.1 client is not actually allowed to issue
+non-reclaim lock requests before it has issued a RECLAIM_COMPLETE. I
+dunno how religiously we stick to that in Linux (I think we do), but
+the point is that the server can and should rely on the client
+_always_ sending a RECLAIM_COMPLETE if it is going to establish new
+locks.
