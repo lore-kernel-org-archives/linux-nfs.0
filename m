@@ -1,85 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53234 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750813AbaIPFca (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Sep 2014 01:32:30 -0400
-From: NeilBrown <neilb@suse.de>
-To: Peter Zijlstra <peterz@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>
-Date: Tue, 16 Sep 2014 15:31:34 +1000
-Subject: [PATCH 0/4] Remove possible deadlocks in nfs_release_page()
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jeff Layton <jeff.layton@primarydata.com>
-Message-ID: <20140916051911.22257.24658.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:49152 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751185AbaILStY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 14:49:24 -0400
+Received: by mail-ie0-f178.google.com with SMTP id tp5so1496019ieb.9
+        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 11:49:24 -0700 (PDT)
+From: Chris Perl <chris.perl@gmail.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, Chris Perl <chris.perl@gmail.com>
+Subject: [PATCH] nfs-utils: nfs_get_tcpclient/nfs_get_udpclient - make bind(2) implicit
+Date: Fri, 12 Sep 2014 14:49:22 -0400
+Message-Id: <1410547762-27285-1-git-send-email-chris.perl@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Because nfs_release_page() submits a 'COMMIT' nfs request and waits
-for it to complete, and does this during memory reclaim, it is
-susceptible to deadlocks if memory allocation happens anywhere in
-sending the COMMIT message.  If the NFS server is on the same host
-(i.e. loop-back NFS), then any memory allocations in the NFS server
-can also cause deadlocks.
+When attempting to establish a local ephemeral endpoint for a TCP or UDP
+socket, do not explicitly call bind(2), instead let it happen implicilty when
+the socket is first used.
 
-nfs_release_page() already has some code to avoid deadlocks in some
-circumstances, but these are not sufficient for loopback NFS.
+The main motivating factor for this change is when TCP runs out of unique
+ephemeral ports (i.e.  cannot find any ephemeral ports which are not a part of
+*any* TCP connection).  In this situation if you explicitly call bind(2), then
+the call will fail with EADDRINUSE.  However, if you allow the allocation of an
+ephemeral port to happen implicitly as part of connect(2) (or other functions),
+then ephemeral ports can be reused, so long as the combination of (local_ip,
+local_port, remote_ip, remote_port) is unique for TCP sockets on the system.
 
-This patch set changes the approach to deadlock avoidance.  Rather
-than detecting cases that could deadlock and avoiding the COMMIT, it
-always tries the COMMIT, but only waits a short time (1 second).
-This avoid any deadlock possibility at the expense of not waiting
-longer than 1 second even if no deadlock is pending.
+This doesn't matter for UDP sockets, but it seemed easiest to treat TCP and UDP
+sockets the same.
 
-nfs_release_page() does not *need* to wait longer - all callers that
-matter handle a failure gracefully - they move on to other pages.
+This can allow mount.nfs(8) to continue to function successfully, even in the
+face of misbehaving applications which are creating a large number of TCP
+connections.
 
-This set:
- - adds some "_timeout()" functions to "wait_on_bit".  Only a
-   wait_on_page version is actually used.
- - exports page wake_up support.  NFS knows that the COMMIT is complete
-   when PG_private is clear.  So nfs_release_page will use
-   wait_on_page_bit_killable_timeout to wait for the bit to clear,
-   and needs access to wake_up_page()
- - changes nfs_release_page() to use
-    wait_on_page_bit_killable_timeout()
- - removes the other deadlock avoidance mechanisms from
-   nfs_release_page, so that PF_FSTRANS is again only used
-   by XFS.
-
-As such, it needs buy-in from sched people, mm people, and NFS people.
-Assuming I get that buy-in, suggests for how these patches can flow
-into mainline would be appreciated ... I daren't hope they can all go
-in through one tree....
-
-Thanks,
-NeilBrown
-
-
+Signed-off-by: Chris Perl <chris.perl@gmail.com>
 ---
+ support/nfs/rpc_socket.c | 68 ++++++++++++++----------------------------------
+ 1 file changed, 20 insertions(+), 48 deletions(-)
 
-NeilBrown (4):
-      SCHED: add some "wait..on_bit...timeout()" interfaces.
-      MM: export page_wakeup functions
-      NFS: avoid deadlocks with loop-back mounted NFS filesystems.
-      NFS/SUNRPC: Remove other deadlock-avoidance mechanisms in nfs_release_page()
-
-
- fs/nfs/file.c                   |   22 ++++++++++++----------
- fs/nfs/write.c                  |    2 ++
- include/linux/pagemap.h         |   12 ++++++++++--
- include/linux/wait.h            |    5 ++++-
- kernel/sched/wait.c             |   36 ++++++++++++++++++++++++++++++++++++
- mm/filemap.c                    |   21 +++++++++++++++------
- net/sunrpc/sched.c              |    2 --
- net/sunrpc/xprtrdma/transport.c |    2 --
- net/sunrpc/xprtsock.c           |   10 ----------
- 9 files changed, 79 insertions(+), 33 deletions(-)
-
+diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+index 7896cd2..2900d18 100644
+--- a/support/nfs/rpc_socket.c
++++ b/support/nfs/rpc_socket.c
+@@ -106,36 +106,6 @@ static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
+ 	return client;
+ }
+ 
+-/*
+- * Bind a socket using an unused ephemeral source port.
+- *
+- * Returns zero on success, or returns -1 on error.  errno is
+- * set to reflect the nature of the error.
+- */
+-static int nfs_bind(const int sock, const sa_family_t family)
+-{
+-	struct sockaddr_in sin = {
+-		.sin_family		= AF_INET,
+-		.sin_addr.s_addr	= htonl(INADDR_ANY),
+-	};
+-	struct sockaddr_in6 sin6 = {
+-		.sin6_family		= AF_INET6,
+-		.sin6_addr		= IN6ADDR_ANY_INIT,
+-	};
+-
+-	switch (family) {
+-	case AF_INET:
+-		return bind(sock, (struct sockaddr *)(char *)&sin,
+-					(socklen_t)sizeof(sin));
+-	case AF_INET6:
+-		return bind(sock, (struct sockaddr *)(char *)&sin6,
+-					(socklen_t)sizeof(sin6));
+-	}
+-
+-	errno = EAFNOSUPPORT;
+-	return -1;
+-}
+-
+ #ifdef HAVE_LIBTIRPC
+ 
+ /*
+@@ -276,7 +246,8 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
+ 				 const int resvport)
+ {
+ 	CLIENT *client;
+-	int ret, sock;
++	int ret = 0;
++	int sock = 0;
+ #ifdef HAVE_LIBTIRPC
+ 	struct sockaddr_storage address;
+ 	const struct netbuf nbuf = {
+@@ -300,15 +271,15 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
+ 		return NULL;
+ 	}
+ 
+-	if (resvport)
++	if (resvport) {
+ 		ret = nfs_bindresvport(sock, sap->sa_family);
+-	else
+-		ret = nfs_bind(sock, sap->sa_family);
+-	if (ret < 0) {
+-		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+-		rpc_createerr.cf_error.re_errno = errno;
+-		(void)close(sock);
+-		return NULL;
++
++		if (ret < 0) {
++			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++			rpc_createerr.cf_error.re_errno = errno;
++			(void)close(sock);
++			return NULL;
++		}
+ 	}
+ 
+ 	if (timeout->tv_sec == -1)
+@@ -358,7 +329,8 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
+ 				 const int resvport)
+ {
+ 	CLIENT *client;
+-	int ret, sock;
++	int ret = 0;
++	int sock = 0;
+ #ifdef HAVE_LIBTIRPC
+ 	struct sockaddr_storage address;
+ 	const struct netbuf nbuf = {
+@@ -382,15 +354,15 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
+ 		return NULL;
+ 	}
+ 
+-	if (resvport)
++	if (resvport) {
+ 		ret = nfs_bindresvport(sock, sap->sa_family);
+-	else
+-		ret = nfs_bind(sock, sap->sa_family);
+-	if (ret < 0) {
+-		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+-		rpc_createerr.cf_error.re_errno = errno;
+-		(void)close(sock);
+-		return NULL;
++
++		if (ret < 0) {
++			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
++			rpc_createerr.cf_error.re_errno = errno;
++			(void)close(sock);
++			return NULL;
++		}
+ 	}
+ 
+ 	if (timeout->tv_sec == -1)
 -- 
-Signature
+1.8.3.1
 
