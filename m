@@ -1,49 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:36922 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753940AbaICAQo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 20:16:44 -0400
-Received: by mail-pd0-f182.google.com with SMTP id fp1so9710878pdb.41
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Sep 2014 17:16:44 -0700 (PDT)
-Message-ID: <54065DDC.7080302@gmail.com>
-Date: Wed, 03 Sep 2014 08:16:28 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:36874 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750981AbaILPVo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 12 Sep 2014 11:21:44 -0400
+Date: Fri, 12 Sep 2014 11:21:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 5/7] nfsdcltrack: update schema to v2
+Message-ID: <20140912152142.GB28915@fieldses.org>
+References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
+ <1410193821-25109-6-git-send-email-jlayton@primarydata.com>
+ <20140911195547.GA21296@fieldses.org>
+ <20140911162836.70056390@tlielax.poochiereds.net>
+ <20140912093600.50dfa9bc@tlielax.poochiereds.net>
+ <20140912102153.09d58de7@tlielax.poochiereds.net>
+ <20140912143621.GA28915@fieldses.org>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/6] NFSD: Put file after ima_file_check fail in nfsd_open()
-References: <5405CFE4.9060407@gmail.com> <20140902155755.GA14472@infradead.org>
-In-Reply-To: <20140902155755.GA14472@infradead.org>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140912143621.GA28915@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 9/2/2014 23:57, Christoph Hellwig wrote:
->> +	file = dentry_open(&path, flags, current_cred());
->> +	if (IS_ERR(file)) {
->> +		host_err = PTR_ERR(file);
->>  	} else {
+On Fri, Sep 12, 2014 at 10:36:21AM -0400, J. Bruce Fields wrote:
+> On Fri, Sep 12, 2014 at 10:21:53AM -0400, Jeff Layton wrote:
+> > Grace period
+> > eventually ends, and its record is purged from the DB.
+> > 
+> > Now we have a client that has reclaimed some files but that has no
+> > record on stable storage.
+> > 
+> > One possibility is to prematurely expire v4.1+ clients that have not
+> > sent a RECLAIM_COMPLETE when the grace period ends.
+> > 
+> > That seems problematic though -- what about clients that just happen to
+> > do an EXCHANGE_ID just before the grace period is going to end, and
+> > that get expired before they can issue their RECLAIM_COMPLETE. Will
+> > that be a problem for them?
 > 
-> The is_err case should have a
-> 
-> 	goto out_nfserr;
-> 
-> which would allow you to drop the following indentation if you
-> change the whole function anyway.
-> 
->>  		if (may_flags & NFSD_MAY_64BIT_COOKIE)
->> -			(*filp)->f_mode |= FMODE_64BITHASH;
->> +			(file)->f_mode |= FMODE_64BITHASH;
->>  		else
->> -			(*filp)->f_mode |= FMODE_32BITHASH;
->> +			(file)->f_mode |= FMODE_32BITHASH;
-> 
-> no need for the braces around file here.
-> 
+> In that case a client will send a reclaim, get back a NO_GRACE error,
+> mark the rest of its state as unrecoverable, send the RECLAIM_COMPLETE,
+> and continue normally.  (To the extent it can--signalling affected
+> processes or EIOing further attempts to use the unreclaimed state, or
+> whatever.)
 
-Thanks for your review.
-A new version of this patch has be sent.
+The one thing the server *could* do in this sort of case is extend the
+grace period by a little--I seem to recall the spec giving some leeway
+for this kind of thing.
 
-thanks,
-Kinglong Mee
+So for example the server could have a heuristics like: extend the grace
+period by another second each time we notice there's been an EXCHANGE_ID
+or reclaim in the previous second, up to some maximum.  And I suppose it
+could also delay the grace period until someone actually attempts a
+non-reclaim open.
+
+In isolation a single client slipping in the end like that sounds like a
+freak event, but if there's a ton of state to reclaim perhaps it could
+become more likely.
+
+I don't think that's a priority, we might just want to make sure we know
+how to do that in the future.
+
+But now that I think about it I don't see the existing or proposed
+nfsdcltrack stuff tying our hands in any way here.  It just gives the
+kernel some extra information, and the kernel still has discretion about
+when exactly it wants to end the grace period.
+
+--b.
