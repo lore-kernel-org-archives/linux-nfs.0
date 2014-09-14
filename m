@@ -1,84 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f47.google.com ([209.85.215.47]:48146 "EHLO
-	mail-la0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751597AbaIMHFe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 13 Sep 2014 03:05:34 -0400
-Received: by mail-la0-f47.google.com with SMTP id mc6so2157710lab.34
-        for <linux-nfs@vger.kernel.org>; Sat, 13 Sep 2014 00:05:32 -0700 (PDT)
-Date: Sat, 13 Sep 2014 10:05:09 +0300
-From: Timo Teras <timo.teras@iki.fi>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, ncopa@alpinelinux.org
-Subject: Re: [PATCH nfs-utils] rework access to /proc/net/rpc
-Message-ID: <20140913100509.4efa7d82@vostro>
-In-Reply-To: <54132690.4090908@RedHat.com>
-References: <1407478301-9912-1-git-send-email-timo.teras@iki.fi>
-	<54132690.4090908@RedHat.com>
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:34216 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752534AbaINOQd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Sep 2014 10:16:33 -0400
+Received: by mail-ig0-f170.google.com with SMTP id l13so1293726iga.3
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Sep 2014 07:16:33 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <54159D6E.7010507@plexistor.com>
+References: <1410362617-28018-1-git-send-email-hch@lst.de>
+	<1410362617-28018-9-git-send-email-hch@lst.de>
+	<CAKVebiUqhCVy4jyzccBOXcHo3dkQNXjF0WsP1sHkOMkdnEAG9Q@mail.gmail.com>
+	<20140911152553.GD6690@lst.de>
+	<CAHQdGtT79qxn6ka4erSr3bxpZCr91+DVe6xtV6kMPD9QUDLL7w@mail.gmail.com>
+	<20140911154834.GA9280@lst.de>
+	<CAHQdGtR9gVaw7wG0R6JfXHb8W+M3LnqXcwWyuCXe4=oNbXFGMA@mail.gmail.com>
+	<5415740E.6030202@gmail.com>
+	<CAABAsM4sAecHt291APP6AZ9e5QvNCRK74WFF-tyje50CNCcY1g@mail.gmail.com>
+	<54159D6E.7010507@plexistor.com>
+Date: Sun, 14 Sep 2014 10:16:32 -0400
+Message-ID: <CAABAsM4SxAXtBv=1XtUVyOa=jRYK9zTjYoYU9B_0ch9zmqFiaA@mail.gmail.com>
+Subject: Re: [PATCH 8/9] pnfs/blocklayout: return layouts on setattr
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Boaz Harrosh <boaz@plexistor.com>
+Cc: Boaz Harrosh <openosd@gmail.com>, Christoph Hellwig <hch@lst.de>,
+        Peng Tao <bergwolf@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 12 Sep 2014 13:00:00 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
-
-> Hello,
-> 
-> On 08/08/2014 02:11 AM, Timo Teräs wrote:
-> > The kernel support only access by read() and write() with exactly
-> > one line in the buffer. FILE can be implemented with readv() and
-> > writev(), and the mapping to syscalls is not guaranteed. The code
-> > already does lot of extra work setvbuf() and fflush() calls to try
-> > to ensure this, but it relays on implementation details and is
-> > non-portable. And e.g. with musl library the current hacks do not
-> > work at all.
-> > 
-> > Remove the FILE based qword_* API as it's fundamentally broken,
-> > and replace it with explicitly caching one line at a time. The
-> > qword API should probable improved to do the line caching
-> > internally, and this is the first step towards that.
-> > 
-> > Signed-off-by: Timo Teräs <timo.teras@iki.fi>
-> > ---
-> > This along with Natanael Copa's patchset makes nfs-utils somewhat
-> > usable with musl c-library.
-> First of all, I apologize for taking so long to get this patch.
-> 
-> Second of all, I'm going to NAK this patch because it breaks v3
-> mounts. (Note: this patch was applied after Natanael patchset).
+On Sun, Sep 14, 2014 at 9:51 AM, Boaz Harrosh <boaz@plexistor.com> wrote:
+> On 09/14/2014 04:24 PM, Trond Myklebust wrote:
+>> On Sun, Sep 14, 2014 at 6:55 AM, Boaz Harrosh <openosd@gmail.com> wrote:
+> <>
+>>
+>> No Boaz. I mean that it is utterly pointless and stupid to return a
+>> layout that doesn't preallocate any resources when it isn't necessary
+>> to do so.
+>>
 >
-> Using a Fedora 20 server, Fedora 20 clients fail with 
->    mount.nfs: Unknown error 521 
-> and Fedora 21 clients fail with 
->    mount.nfs: an incorrect mount option was specified
+> "preallocate any resources" where? at the client it might not but the server
+> might have allocated resources per lo-segment.
+> For example a CEPH server allocates a device_id per file-lo-segment. If you
+> lo_return a truncated segment it might be able to free that device_id.
+>
 
-Thanks for the testing and feedback. We had issues with nfs3 on musl
-too and were uncertain if our broke something, or if it's just
-something additional to be fixed.
+There is no requirement anywhere in RFC5661 to state that a truncate
+must be prefixed by a layout return. Not in section 12 (Parallel NFS)
+nor in section 13 (NFSv4.1 as a Storage Protocol in pNFS: the File
+Layout Type), nor in the ERRATA. Existing pNFS files servers (i.e.
+NetApp) don't need it either.
 
-Did you test Natanaels patch set individually first? I'm wonderinf
-which patch set breaks nfs3.
-
-> Also the following warnings occur after the patch is applied:
-> 
-> cache.c:128:21: warning: ignoring return value of 'write', declared
-> with attribute warn_unused_result [-Wunused-result] cache.c:1495:21:
-> warning: ignoring return value of 'write', declared with attribute
-> warn_unused_result [-Wunused-result] nfssvc.c:71:8: warning: ignoring
-> return value of 'system', declared with attribute warn_unused_result
-> [-Wunused-result] nfssvc.c:325:9: warning: ignoring return value of
-> 'write', declared with attribute warn_unused_result [-Wunused-result]
-
-My patch seems introduce few of these, but I think some of this come
-from Natanaels patch set.
-
-> My suggestion is to break the patch up into several small patches
-> which would help with debugging the problem.
-
-Yes. Might be a good idea.
- 
-> I'll be more than willing to reconsider this change when it
-> stop braking v3 mounts and there are no warnings. 
-
-Thanks for review, testing and feedback.
-
+If a future CEPH server wants to add its own requirements, then it is
+free to issue a layoutrecall. However my understanding from
+conversations with Matt (the Ganesha release notes appear to confirm)
+was that the CRUSH algorithm is pretty much impossible to implement as
+a files layout type, so I'm confused as to why it would be a problem
+in the first place.
