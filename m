@@ -1,35 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53729 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755314AbaIDUOZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 16:14:25 -0400
-Date: Thu, 4 Sep 2014 13:14:24 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 05/17] locks: generic_delete_lease doesn't need a
- file_lock at all
-Message-ID: <20140904201424.GB26054@infradead.org>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
- <1409834323-7171-6-git-send-email-jlayton@primarydata.com>
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:56538 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752426AbaINKzO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Sep 2014 06:55:14 -0400
+Received: by mail-pa0-f44.google.com with SMTP id kx10so4572870pab.31
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Sep 2014 03:55:14 -0700 (PDT)
+Message-ID: <5415740E.6030202@gmail.com>
+Date: Sun, 14 Sep 2014 13:55:10 +0300
+From: Boaz Harrosh <openosd@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1409834323-7171-6-git-send-email-jlayton@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Christoph Hellwig <hch@lst.de>
+CC: Peng Tao <bergwolf@primarydata.com>, Boaz Harrosh <boaz@plexistor.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 8/9] pnfs/blocklayout: return layouts on setattr
+References: <1410362617-28018-1-git-send-email-hch@lst.de>	<1410362617-28018-9-git-send-email-hch@lst.de>	<CAKVebiUqhCVy4jyzccBOXcHo3dkQNXjF0WsP1sHkOMkdnEAG9Q@mail.gmail.com>	<20140911152553.GD6690@lst.de>	<CAHQdGtT79qxn6ka4erSr3bxpZCr91+DVe6xtV6kMPD9QUDLL7w@mail.gmail.com>	<20140911154834.GA9280@lst.de> <CAHQdGtR9gVaw7wG0R6JfXHb8W+M3LnqXcwWyuCXe4=oNbXFGMA@mail.gmail.com>
+In-Reply-To: <CAHQdGtR9gVaw7wG0R6JfXHb8W+M3LnqXcwWyuCXe4=oNbXFGMA@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 04, 2014 at 08:38:31AM -0400, Jeff Layton wrote:
-> Ensure that it's OK to pass in a NULL file_lock double pointer on
-> a F_UNLCK request and convert the vfs_setlease F_UNLCK callers to
-> do just that.
+On 09/11/2014 07:14 PM, Trond Myklebust wrote:
+<>
+> In the files layout case, it is actually quite common for the server
+> to hand out an "infinite" sized layout in response to a LAYOUTGET. It
+> means that the client doesn't need to ask for a new layout in order to
+> append to the file.
 > 
-> Finally, turn the BUG_ON in generic_setlease into a WARN_ON_ONCE
-> with an error return. That's a problem we can handle without
-> crashing the box if it occurs.
 
-Can we just make generic_delete_lease (maye renamed to vfs_delete_lease)
-the interface for deleting leases instead of going through a useless
-multiplex and file operation?
+You mean to say that: "The Linux files-layout driver only supports infinite
+ sized layout, so it is pointless to return a layout which will be returned
+ again, exactly the same"
+
+Because I agree that "an infinite sized layout" need not be returned but
+an none-infinite should, only we do not have any.
+
+Cheers
+Boaz
 
