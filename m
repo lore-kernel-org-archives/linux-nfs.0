@@ -1,52 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63740 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.211]:58954 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754654AbaIZOFI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2014 10:05:08 -0400
-Message-ID: <54257293.2060604@RedHat.com>
-Date: Fri, 26 Sep 2014 10:05:07 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752658AbaINQnb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 14 Sep 2014 12:43:31 -0400
+Date: Sun, 14 Sep 2014 18:43:28 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Boaz Harrosh <boaz@plexistor.com>
+Cc: Peng Tao <tao.peng@primarydata.com>, linux-nfs@vger.kernel.org,
+        Christoph Hellwig <hch@lst.de>
+Subject: Re: [PATCH v2] nfs41: change PNFS_LAYOUTRET_ON_SETATTR to only
+	return on truncation to smaller size
+Message-ID: <20140914164328.GA13467@lst.de>
+References: <1410491050-12858-1-git-send-email-tao.peng@primarydata.com> <541572BE.6000504@plexistor.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: ANNOUNCE: nfs-utils-1.3.1 released.
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <541572BE.6000504@plexistor.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Sun, Sep 14, 2014 at 01:49:34PM +0300, Boaz Harrosh wrote:
+> This is in violation of the pnf-objects draft.
 
-The major feature in this release is the addition 
-of gssproxy support in the systemd scripts. 
+Ithought that's an RFC by now? :)
 
-When gssproxy is installed and and a key tab 
-(/etc/krb5.keytab) exists, the gssproxy daemon 
-will be started and the NFS server will use 
-that daemon to manage the GSSAPI creds instead 
-of rpc.svcgssd.
+> We are obliged
+> on chown to return layouts because of how the CAPs work, they
+> have an embedded CAPs version which might increment when chown
+> is changed, and also the credential keys. Which means that using
+> the old layout will return an E_ACCESS from the OSD.
 
-Rpc.svcgssd will continue to be used when gssproxy 
-does not exist and a key tab does. 
+This is a good enough argument to just split the flags into one
+for chown and one for truncate.  Can you confirm that any other
+setattr but a truncate to a smaller size or chown is fine with
+your interpretation of RFC5664?
 
-One thing not addressed in this release is the tcp wrapper
-changes to the mountd man page. I'm going to let distros
-deal with that as they may.... I'm in favor of ripping 
-all that code out, but I didn't want that to get in the 
-way of this release.
+> But..
+> 
+> I will agree with this patch. The above is true in an OSD
+> protocol higher then NO_SEC. But none of the current implementation
+> support anything other then NO_SEC.
+> 
+> Second also with none-NO_SEC once a client does a chown the server
+> needs to RECALL all other clients, so as Peng says above the Server
+> should/can also recall from us.
+> 
+> But some good sole needs to make an errata at the RFC draft so to
+> explain.
 
-The tarballs can be found in
-  http://kernel.org/pub/linux/utils/nfs-utils/1.3.1/
-or
-  http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.1
-
-The change log is in
-   http://kernel.org/pub/linux/utils/nfs-utils/1.3.1/1.3.1-ChangeLog
-or
-   http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.1/
-
-The git tree is at:
-   git://linux-nfs.org/nfs-utils
-
-Please send comments/bugs to linux-nfs@vger.kernel.org
-
-steved.
+I'd rather not violate the existing RFC unless we have a good reason for it
+and an errata out.  Having a flag to return on chown for the object layout
+seems like the easier way to go forward.
