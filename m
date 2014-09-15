@@ -1,40 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f178.google.com ([209.85.220.178]:40353 "EHLO
-	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751420AbaI2Qx0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Sep 2014 12:53:26 -0400
-Received: by mail-vc0-f178.google.com with SMTP id la4so1878298vcb.9
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Sep 2014 09:53:25 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140929164425.GF30691@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
-	<20140926183949.GC27412@fieldses.org>
-	<20140926145446.21a99698@tlielax.poochiereds.net>
-	<20140926194616.GE27412@fieldses.org>
-	<20140927090458.62806936@synchrony.poochiereds.net>
-	<20140929164425.GF30691@fieldses.org>
-Date: Mon, 29 Sep 2014 12:53:24 -0400
-Message-ID: <CAHQdGtSo8y4wfGK=xnpP3grygKotz64tpvUEZy47Wo9b-tn2Vw@mail.gmail.com>
-Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:61690 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753683AbaIONOc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 09:14:32 -0400
+Received: by mail-qg0-f54.google.com with SMTP id z60so3888977qgd.27
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 06:14:31 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v4 9/9] nfsd: skip subsequent UMH "create" operations after the first one for v4.0 clients
+Date: Mon, 15 Sep 2014 09:14:10 -0400
+Message-Id: <1410786850-18194-10-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
+References: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 29, 2014 at 12:44 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> Oh, look, Trond and you have written a pile more of text on this on the
-> ietf list.  Should I even try to catch up, or would be better off just
-> spending the rest of my day back in bed?
->
+In the case of v4.0 clients, we may call into the "create" client
+tracking operation multiple times (once for each openowner). Upcalling
+for each one of those is wasteful and slow however. We can skip doing
+further "create" operations after the first one if we know that one has
+already been done.
 
-Sleep, Bruce...
+v4.1+ clients generally only call into this function once (on
+RECLAIM_COMPLETE), and we can't skip upcalling on the create even if the
+STABLE bit is set. Doing so would make it impossible for nfsdcltrack to
+lift the grace period early since the timestamp has a different meaning
+in the case where the client is expected to issue a RECLAIM_COMPLETE.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4recover.c | 16 ++++++++++++++++
+ 1 file changed, 16 insertions(+)
+
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 41f3efbfd1df..29b4e3fc59f4 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -1281,6 +1281,22 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+ 	char *hexid, *has_session, *grace_start;
+ 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
++	/*
++	 * With v4.0 clients, there's little difference in outcome between a
++	 * create and check operation, and we can end up calling into this
++	 * function multiple times per client (once for each openowner). So,
++	 * for v4.0 clients skip upcalling once the client has been recorded
++	 * on stable storage.
++	 *
++	 * For v4.1+ clients, the outcome of the two operations is different,
++	 * so we must ensure that we upcall for the create operation. v4.1+
++	 * clients call this on RECLAIM_COMPLETE though, so we should only end
++	 * up doing a single create upcall per client.
++	 */
++	if (clp->cl_minorversion == 0 &&
++	    test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
++		return;
++
+ 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+ 	if (!hexid) {
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
