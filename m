@@ -1,129 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59302 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751039AbaIVFV2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 01:21:28 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LRAH005156
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:28 -0400
-Received: from mmyllyne.csb (vpn1-7-35.ams2.redhat.com [10.36.7.35])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LQFa016396
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:27 -0400
-Message-ID: <541FB1D6.9040000@redhat.com>
-Date: Mon, 22 Sep 2014 08:21:26 +0300
-From: Marko Myllynen <myllynen@redhat.com>
-Reply-To: myllynen@redhat.com
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsstat: add server ra cache stats
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:65095 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754409AbaIOSOz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 14:14:55 -0400
+Received: by mail-ig0-f175.google.com with SMTP id h15so4410462igd.8
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 11:14:55 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: stable@vger.kernel.org
+Cc: Weston Andros Adamson <dros@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH 06/14] pnfs: add pnfs_put_lseg_async
+Date: Mon, 15 Sep 2014 14:14:37 -0400
+Message-Id: <1410804885-17228-7-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1410804885-17228-6-git-send-email-trond.myklebust@primarydata.com>
+References: <1410804885-17228-1-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-2-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-3-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-4-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-5-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-6-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From 7a5072efd524f5537a0b38808420bea8c0e45b01 Mon Sep 17 00:00:00 2001
-From: Marko Myllynen <myllynen@redhat.com>
-Date: Mon, 22 Sep 2014 08:13:04 +0300
-Subject: [PATCH] nfsstat: add server ra cache stats
+From: Weston Andros Adamson <dros@primarydata.com>
 
+commit e6cf82d1830f5e16a10d566f58db70f297ba5da8 upstream.
+
+This is useful when lsegs need to be released while holding locks.
+
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- utils/nfsstat/nfsstat.c |   29 +++++++++++++++++++++++++----
- 1 files changed, 25 insertions(+), 4 deletions(-)
+ fs/nfs/pnfs.c | 17 +++++++++++++++++
+ fs/nfs/pnfs.h |  7 +++++++
+ 2 files changed, 24 insertions(+)
 
-diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-index 83bde9d..8e165a8 100644
---- a/utils/nfsstat/nfsstat.c
-+++ b/utils/nfsstat/nfsstat.c
-@@ -96,6 +96,11 @@ static unsigned int	srvioinfo[3], srvioinfo_old[3];		/* 0  bytes read
- 								 * 1  bytes written
- 								 */
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ecbed4632d11..5f3eb3df7c59 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -361,6 +361,23 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_put_lseg);
  
-+static unsigned int	srvrainfo[13], srvrainfo_old[13];	/* 0  ra cache size
-+								 * 1..11 depth of ra cache hit
-+								 * 12 ra cache misses
-+								 */
++static void pnfs_put_lseg_async_work(struct work_struct *work)
++{
++	struct pnfs_layout_segment *lseg;
 +
- static const char *	nfsv2name[SRVPROC2_SZ] = {
- 	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
- 	"read", "wrcache", "write",   "create", "remove",  "rename",
-@@ -172,6 +177,7 @@ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
- #define LABEL_srvrc		"Server reply cache:\n"
- #define LABEL_srvfh		"Server file handle cache:\n"
- #define LABEL_srvio		"Server io stats:\n"
-+#define LABEL_srvra		"Server read ahead cache:\n"
- #define LABEL_srvproc2		"Server nfs v2:\n"
- #define LABEL_srvproc3		"Server nfs v3:\n"
- #define LABEL_srvproc4		"Server nfs v4:\n"
-@@ -204,6 +210,7 @@ typedef struct statinfo {
- 					SRV(rc,s), \
- 					SRV(fh,s), \
- 					SRV(io,s), \
-+					SRV(ra,s), \
- 					SRV(proc2,s), \
- 					SRV(proc3,s),\
- 					SRV(proc4,s), \
-@@ -256,6 +263,7 @@ static time_t		starttime;
- #define PRNT_FH		0x0008
- #define PRNT_RC		0x0010
- #define PRNT_IO		0x0020
-+#define PRNT_RA		0x0040
- #define PRNT_AUTO	0x1000
- #define PRNT_V2		0x2000
- #define PRNT_V3		0x4000
-@@ -283,8 +291,9 @@ void usage(char *name)
-      rpc		General RPC information\n\
-      net		Network layer statistics\n\
-      fh			Usage information on the server's file handle cache\n\
--     rc			Usage information on the server's request reply cache\n\
-      io			Usage information on the server's io statistics\n\
-+     ra			Usage information on the server's read ahead cache\n\
-+     rc			Usage information on the server's request reply cache\n\
-      all		Select all of the above\n\
-   -v, --verbose, --all	Same as '-o all'\n\
-   -r, --rpc		Show RPC statistics\n\
-@@ -376,8 +385,10 @@ main(int argc, char **argv)
- 				opt_prt |= PRNT_FH;
- 			else if (!strcmp(optarg, "io"))
- 				opt_prt |= PRNT_IO;
-+			else if (!strcmp(optarg, "ra"))
-+				opt_prt |= PRNT_RA;
- 			else if (!strcmp(optarg, "all"))
--				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO;
-+				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO | PRNT_RA;
- 			else {
- 				fprintf(stderr, "nfsstat: unknown category: "
- 						"%s\n", optarg);
-@@ -445,9 +456,9 @@ main(int argc, char **argv)
- 	if (!(opt_prt & 0xe000)) {
- 		opt_prt |= PRNT_AUTO;
- 	}
--	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO)) && !opt_srv) {
-+	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO|PRNT_RA)) && !opt_srv) {
- 		fprintf(stderr,
--			"You requested io, file handle, or request cache "
-+			"You requested fh/io/ra/rc "
- 			"statistics while using the -c option.\n"
- 			"This information is available only for the NFS "
- 			"server.\n");
-@@ -572,6 +583,16 @@ print_server_stats(int opt_prt)
- 			printf("\n");
- 		}
- 	}
-+	if (opt_prt & PRNT_RA) {
-+		if (opt_sleep && !has_rpcstats(srvrainfo, 3)) {
-+			;
-+		} else {
-+			print_numbers(LABEL_srvra
-+				"size       0-10%      10-20%     20-30%     30-40%     40-50%     50-60%     60-70%     70-80%     80-90%     90-100%    notfound\n",
-+				srvrainfo, 12);
-+			printf("\n");
-+		}
-+	}
++	lseg = container_of(work, struct pnfs_layout_segment, pls_work);
++
++	pnfs_put_lseg(lseg);
++}
++
++void
++pnfs_put_lseg_async(struct pnfs_layout_segment *lseg)
++{
++	INIT_WORK(&lseg->pls_work, pnfs_put_lseg_async_work);
++	schedule_work(&lseg->pls_work);
++}
++EXPORT_SYMBOL_GPL(pnfs_put_lseg_async);
++
+ static u64
+ end_offset(u64 start, u64 len)
+ {
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index a4a58be94064..ae22a9ccc1b9 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -32,6 +32,7 @@
  
- 	/*
- 	 * 2.2 puts all fh-related info after the 'rc' header
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
++#include <linux/workqueue.h>
+ 
+ enum {
+ 	NFS_LSEG_VALID = 0,	/* cleared when lseg is recalled/returned */
+@@ -46,6 +47,7 @@ struct pnfs_layout_segment {
+ 	atomic_t pls_refcount;
+ 	unsigned long pls_flags;
+ 	struct pnfs_layout_hdr *pls_layout;
++	struct work_struct pls_work;
+ };
+ 
+ enum pnfs_try_status {
+@@ -179,6 +181,7 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+ /* pnfs.c */
+ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
++void pnfs_put_lseg_async(struct pnfs_layout_segment *lseg);
+ 
+ void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+@@ -410,6 +413,10 @@ static inline void pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+ {
+ }
+ 
++static inline void pnfs_put_lseg_async(struct pnfs_layout_segment *lseg)
++{
++}
++
+ static inline int pnfs_return_layout(struct inode *ino)
+ {
+ 	return 0;
 -- 
-1.7.1
+1.9.3
 
--- 
-Marko Myllynen
