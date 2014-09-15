@@ -1,181 +1,218 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45338 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:56845 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753282AbaI2Apb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 28 Sep 2014 20:45:31 -0400
-Date: Mon, 29 Sep 2014 10:45:05 +1000
-From: NeilBrown <neilb@suse.de>
-To: netdev@vger.kernel.org
-Cc: lkml <linux-kernel@vger.kernel.org>, NFS <linux-nfs@vger.kernel.org>,
-        Benjamin ESTRABAUD <be@mpstor.com>
-Subject: Connection timeout problem - keepalives or USER_TIMEOUT not
- working.
-Message-ID: <20140929104505.0b1ff172@notabene.brown>
+	id S1755161AbaIOWJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Sep 2014 18:09:40 -0400
+Date: Mon, 15 Sep 2014 18:09:39 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 1/5] lockd: move lockd's grace period handling into
+ its own module
+Message-ID: <20140915220939.GD31157@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+ <1408473509-14010-2-git-send-email-jlayton@primarydata.com>
+ <20140828200059.GB25203@fieldses.org>
+ <20140828202442.GC25203@fieldses.org>
+ <20140915220813.GC31157@fieldses.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/ms1jjF.y7Ch+q5roUwibdzy"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140915220813.GC31157@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/ms1jjF.y7Ch+q5roUwibdzy
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Mon, Sep 15, 2014 at 06:08:13PM -0400, J. Bruce Fields wrote:
+> On Thu, Aug 28, 2014 at 04:24:43PM -0400, J. Bruce Fields wrote:
+> > On Thu, Aug 28, 2014 at 04:01:00PM -0400, J. Bruce Fields wrote:
+> > > On Tue, Aug 19, 2014 at 02:38:25PM -0400, Jeff Layton wrote:
+> > > > Currently, all of the grace period handling is part of lockd. Eventually
+> > > > though we'd like to be able to build v4-only servers, at which point
+> > > > we'll need to put all of this elsewhere.
+> > > > 
+> > > > Move the code itself into fs/nfs_common and have it build a grace.ko
+> > > > module. Then, rejigger the Kconfig options so that both nfsd and lockd
+> > > > enable it automatically.
+> > > 
+> > > Thanks, applying this one for 3.18 indepedently of the others.
+> > 
+> > This code should also be fixed, though.
+> > 
+> > Currently nfsd is recording the grace period as done when its own timer
+> > runs out, but then it continuing to accept reclaims until lockd is also
+> > done.
+> 
+> I sat down to fix this today then decided there's not a real bug:
+> 
+> All the grace_done upcall really does is throw away any previous clients
+> that haven't reclaimed yet.
+> 
+> It's legal to do that as soon as the correct amount of time has passed.
+> It's actually OK to continue to allow the grace period to run past that
+> point, the only requirement is that all reclaims precede all new opens,
+> which the code still does enforce.
+> 
+> So I think it might just be worth a little extra explanation.
 
+I considered doing something like the following anyway (total
+off-the-cuff draft, not tested), but I think it's overkill.
 
-Suppose I have a TCP connection to a remote machine and have configured TCP
-keep-alive and the new TCP_USER_TIMEOUT so that the connection should close
-after a few minutes of not being able to contact the server.
+--b.
 
-Suppose further that I change my local IP address and then write to the TCP
-connection.
+commit 675121da48fb4d7d85b58467c7f79dd3a6964879
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Mon Sep 15 17:42:14 2014 -0400
 
-What should happen?
+    nfsd4: end grace only when last grace period ends
+    
+    In the case both lockd and nfsd4 are running, or when we have multiple
+    containers exporting the same filesystem, there may be multiple grace
+    periods.  In that case the grace period doesn't really end till the last
+    one does and though it's harmless to do the grace_done upcall before
+    then, it would probably be better not to.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-
-My first thought was that the keep-alive mechanism would not see a reply and
-would close the connection.
-TCP_KEEPIDLE and TCP_KEEPINTVL are both 60 seconds, KEEPCNT is 3.
-So 3/4 minute should be all I have to wait ... but no.
-
-Due to
-
-	/* It is alive without keepalive 8) */
-	if (tp->packets_out || tcp_send_head(sk))
-		goto resched;
-
-in tcp_keepalive_timer(), and due to tcp_send_head(sk) being non-NULL,
-no keep-alives are sent (which is reasonable) and we never check if packets
-have been received recently (which I'm less sure is reasonable).
-I tried the patch below and it made a difference, but not quite the
-difference I wanted ... I'll get back to that.
-
-Then I found the TCP_USER_TIMEOUT socket opt.  That seemed to be exactly wh=
-at
-I wanted.  After all keep-alive is for keeping the connection alive when
-nothing is being written.  I want to make it die even when something is..
-
-So I tried setting TCP_USER_TIMEOUT to 60*3 as milliseconds, so 180,000.
-No luck.
-
-There are two places where icsk_user_timeout is considered.
-One is in the keep-alive processing which, as discussed above, is disabled
-when then it a packet on the way out.
-The other is in tcp_write_timeout from tcp_retransmit_timer().  I don't know
-why that isn't being called .. maybe the packet isn't being transmitted
-because there is no local interface associated with that flow any more???
-(tcp_write_wakeup returns -113: EHOSTUNREACH)
-
-The connection eventually breaks after about 20 minutes thanks, I think, to
-tcp_retries2.
-
-Is there a bug here?  Where is it?  How can I get the connection to break?
-
-This was discovered by mounting an NFSv3 filesystem (via tcp, the default),
-changing the local IP address, and writing to an open file.
-NFS sets the keep-alive to match the timeo and retrans option.
-I added code to set TCP_USER_TIMEOUT as well.
-+		unsigned int keeptotal =3D
-+			jiffies_to_msecs(xprt->timeout->to_initval)
-+			* keepcnt;
-...
-+		kernel_setsockopt(sock, SOL_TCP, TCP_USER_TIMEOUT,
-+				  (char *)&keeptotal, sizeof(keeptotal));
-
-
-Now I was going to tell you why this patch didn't do what I wanted.
-With this patch, we don't bother sending a keep-alive if there are outstand=
-ing packets,
-but it still triggers a timeout after the appropriate number of probes.
-However icsk_probes_out increments much more quickly, thanks to tcp_send_pr=
-obe0().
-So this makes the timeout happen too soon.  I guess the confirms that the k=
-eep-alive timeout
-should be considered irrelevant when there are pending outgoing packets??
-
-Ahh.. Just had another thought.  I've added another patch at the end which =
-might
-be a bit closer to the "right" approach. Maybe.
-
-Thanks,
-NeilBrown
-
-diff --git a/net/ipv4/tcp_timer.c b/net/ipv4/tcp_timer.c
-index df90cd1ce37f..51e8a89c7619 100644
---- a/net/ipv4/tcp_timer.c
-+++ b/net/ipv4/tcp_timer.c
-@@ -597,12 +597,6 @@ static void tcp_keepalive_timer (unsigned long data)
- 	if (!sock_flag(sk, SOCK_KEEPOPEN) || sk->sk_state =3D=3D TCP_CLOSE)
- 		goto out;
-=20
--	elapsed =3D keepalive_time_when(tp);
--
--	/* It is alive without keepalive 8) */
--	if (tp->packets_out || tcp_send_head(sk))
--		goto resched;
--
- 	elapsed =3D keepalive_time_elapsed(tp);
-=20
- 	if (elapsed >=3D keepalive_time_when(tp)) {
-@@ -618,7 +612,9 @@ static void tcp_keepalive_timer (unsigned long data)
- 			tcp_write_err(sk);
- 			goto out;
- 		}
--		if (tcp_write_wakeup(sk) <=3D 0) {
-+		if (tp->packets_out =3D=3D 0 &&
-+		    tcp_send_head(sk) =3D=3D NULL &&
-+		    tcp_write_wakeup(sk) <=3D 0) {
- 			icsk->icsk_probes_out++;
- 			elapsed =3D keepalive_intvl_when(tp);
- 		} else {
-@@ -634,7 +630,6 @@ static void tcp_keepalive_timer (unsigned long data)
-=20
- 	sk_mem_reclaim(sk);
-=20
--resched:
- 	inet_csk_reset_keepalive_timer (sk, elapsed);
- 	goto out;
-=20
-
-
-
-Other patch to extend effect of USER_TIMEOUT
-
-diff --git a/net/ipv4/tcp_timer.c b/net/ipv4/tcp_timer.c
-index df90cd1ce37f..3158cc115a60 100644
---- a/net/ipv4/tcp_timer.c
-+++ b/net/ipv4/tcp_timer.c
-@@ -303,7 +303,8 @@ static void tcp_probe_timer(struct sock *sk)
- 			return;
- 	}
-=20
--	if (icsk->icsk_probes_out > max_probes) {
-+	if (icsk->icsk_probes_out > max_probes ||
-+	    (icsk->icsk_user_timeout && icsk->icsk_user_timeout < keepalive_time_=
-elapsed(tp))) {
- 		tcp_write_err(sk);
- 	} else {
- 		/* Only send another probe if we didn't close things up. */
-
---Sig_/ms1jjF.y7Ch+q5roUwibdzy
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBVCirkTnsnt1WYoG5AQIDyw//RWrL+U5ea/TlzsuEdZYjgmjt9LGGECuX
-AlwHsEea3v/fhMtujpXMh75fdKNVQkwgjd+znqOnxFgL0gWpOVbC2u3EpmraOJzy
-5TZ4yqjvUx7bBDNrwPBKpWBtDXLteYZGMn1XebX1VyASDINbr5Dn5kMpiwap7eE/
-weQ0Nj0r7THnBI56It8mWOiS0ywhRj1PUItVJQt+WvG7q4ujkZKFrR+Ol3eUyE3r
-vBBsoPm54mW3i8C0Q6kpKzhpyWRhqTQKq+MToNwydid0w0jJqb7aJ3smjuOeVk3O
-YjN/uUgxcHpoSyrYUzS6fvkzz0yDmMKVlbB9FRdXtHmi34aoR8512L+TbHpUkee5
-pDveeecwHvj/vMPntNN2PW+42dw4dqk7QYu3ZxtVPWWj9DMyPNLqn80SEj29eUMj
-Fp644MWMoYb4aoEdZfc7MDb1xuaegwP6oCtqACsuOfPj7/OruLie6i9aaVJykBNn
-t+ExNb2HCso3GokaRi6mBmxuDvCsBjnjzpwj5Ej5qF3Fz7VkVxcwXetVTQrwt68H
-uSZ/TboqFFy6qyvph5q0FBKTM3so6dZN5CBTisSS77orIXtyyQYcSoDyEO+QKc01
-D1lX7N2xCyRVO0MxLNdusbaK2CFQhkY5sGQDRfg8ViViSDcyktS5RgQ2D/VPp8sR
-gh5av7mD4MU=
-=JeG9
------END PGP SIGNATURE-----
-
---Sig_/ms1jjF.y7Ch+q5roUwibdzy--
+diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
+index ae6e58e..dc67e5d 100644
+--- a/fs/nfs_common/grace.c
++++ b/fs/nfs_common/grace.c
+@@ -12,6 +12,11 @@
+ static int grace_net_id;
+ static DEFINE_SPINLOCK(grace_lock);
+ 
++struct grace_net {
++	struct list_head *grace_list;
++	bool in_grace;
++};
++
+ /**
+  * locks_start_grace
+  * @net: net namespace that this lock manager belongs to
+@@ -27,10 +32,10 @@ static DEFINE_SPINLOCK(grace_lock);
+ void
+ locks_start_grace(struct net *net, struct lock_manager *lm)
+ {
+-	struct list_head *grace_list = net_generic(net, grace_net_id);
++	struct list_head *gn = net_generic(net, grace_net_id);
+ 
+ 	spin_lock(&grace_lock);
+-	list_add(&lm->list, grace_list);
++	list_add(&lm->list, &gn->grace_list);
+ 	spin_unlock(&grace_lock);
+ }
+ EXPORT_SYMBOL_GPL(locks_start_grace);
+@@ -49,9 +54,31 @@ EXPORT_SYMBOL_GPL(locks_start_grace);
+ void
+ locks_end_grace(struct lock_manager *lm)
+ {
++	struct list_head *gn = net_generic(net, grace_net_id);
++
++	if (list_empty(&lm->list))
++		return;
+ 	spin_lock(&grace_lock);
+ 	list_del_init(&lm->list);
+ 	spin_unlock(&grace_lock);
++	if (list_empty(&gn->grace_list))
++		return;
++	/*
++	 * If the server goes down again right now, an NFSv4
++	 * client will still be reclaim after it comes back up, even if
++	 * it hasn't yet had a chance to reclaim state this time.
++	 */
++	lm->finish_grace(lm);
++	/*
++	 * At this point, NFSv4 clients can still reclaim.  But if the
++	 * server crashes, any that have not yet reclaimed will be out
++	 * of luck on the next boot.
++	 */
++	ln->in_grace = false;
++	/*
++	 * At this point, no reclaims are permitted.  Regular locking
++	 * can resume.
++	 */
+ }
+ EXPORT_SYMBOL_GPL(locks_end_grace);
+ 
+@@ -65,27 +92,28 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
+ int
+ locks_in_grace(struct net *net)
+ {
+-	struct list_head *grace_list = net_generic(net, grace_net_id);
++	struct list_head *gn = net_generic(net, grace_net_id);
+ 
+-	return !list_empty(grace_list);
++	return gn->in_grace;
+ }
+ EXPORT_SYMBOL_GPL(locks_in_grace);
+ 
+ static int __net_init
+ grace_init_net(struct net *net)
+ {
+-	struct list_head *grace_list = net_generic(net, grace_net_id);
++	struct list_head *gn = net_generic(net, grace_net_id);
+ 
+-	INIT_LIST_HEAD(grace_list);
++	INIT_LIST_HEAD(&gn->grace_list);
++	gn->in_grace = true;
+ 	return 0;
+ }
+ 
+ static void __net_exit
+ grace_exit_net(struct net *net)
+ {
+-	struct list_head *grace_list = net_generic(net, grace_net_id);
++	struct list_head *gn = net_generic(net, grace_net_id);
+ 
+-	BUG_ON(!list_empty(grace_list));
++	BUG_ON(!list_empty(&gn->grace_list));
+ }
+ 
+ static struct pernet_operations grace_net_ops = {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fc88b57..968acd0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4122,7 +4122,6 @@ nfsd4_end_grace(struct nfsd_net *nn)
+ 
+ 	dprintk("NFSD: end of grace period\n");
+ 	nn->grace_ended = true;
+-	nfsd4_record_grace_done(nn);
+ 	locks_end_grace(&nn->nfsd4_manager);
+ 	/*
+ 	 * Now that every NFSv4 client has had the chance to recover and
+@@ -6341,6 +6340,13 @@ nfs4_state_destroy_net(struct net *net)
+ 	put_net(net);
+ }
+ 
++void nfsd4_finish_grace(struct lock_manager *lm)
++{
++	struct nfsd_net *nn = lm->private;
++
++	nfsd4_record_grace_done(nn);
++}
++
+ int
+ nfs4_state_start_net(struct net *net)
+ {
+@@ -6352,6 +6358,8 @@ nfs4_state_start_net(struct net *net)
+ 		return ret;
+ 	nn->boot_time = get_seconds();
+ 	nn->grace_ended = false;
++	nn->nfsd4_manager.finish_grace = nfsd4_finish_grace;
++	nn->nfsd4_manager.private = nn;
+ 	locks_start_grace(net, &nn->nfsd4_manager);
+ 	nfsd4_client_tracking_init(net);
+ 	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9418772..0e33e7c 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -876,6 +876,8 @@ struct lock_manager_operations {
+ 
+ struct lock_manager {
+ 	struct list_head list;
++	void (*finish_grace)(struct lock_manager *lm);
++	void *private;
+ };
+ 
+ struct net;
