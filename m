@@ -1,60 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28532 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756755AbaISQbU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Sep 2014 12:31:20 -0400
-Message-ID: <541C5A55.7010403@RedHat.com>
-Date: Fri, 19 Sep 2014 12:31:17 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Subject: Re: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials
-References: <1411131103-17254-1-git-send-email-steved@redhat.com> <20140919155733.GA16658@fieldses.org>
-In-Reply-To: <20140919155733.GA16658@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:37151 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754440AbaIOSPE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 14:15:04 -0400
+Received: by mail-ig0-f182.google.com with SMTP id h18so4436171igc.15
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 11:15:03 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: stable@vger.kernel.org
+Cc: Weston Andros Adamson <dros@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH 12/14] nfs: don't sleep with inode lock in lock_and_join_requests
+Date: Mon, 15 Sep 2014 14:14:43 -0400
+Message-Id: <1410804885-17228-13-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1410804885-17228-12-git-send-email-trond.myklebust@primarydata.com>
+References: <1410804885-17228-1-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-2-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-3-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-4-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-5-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-6-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-7-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-8-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-9-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-10-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-11-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-12-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Weston Andros Adamson <dros@primarydata.com>
 
+commit 7c3af975257383ece54b83c0505d3e0656cb7daf upstream.
 
-On 09/19/2014 11:57 AM, J. Bruce Fields wrote:
-> On Fri, Sep 19, 2014 at 08:51:41AM -0400, Steve Dickson wrote:
->> The gssproxy(8) daemon is now how the managing of GSSAPI 
->> credentials should be done. 
->>
->> These to patches has the nfs-server systemd script start 
->> gssproxy instead of rpc.svcgssd and removes the building 
->> and installation of rpc.svcgssd.
->>
->> For now I'm leaving the source files... Just in case... ;-)
-> 
-> If nothing else, we'd like to keep support for older kernels for a
-> while.
-Good point... I should probably make this a configurable...
-something like --enable_svcgssd and have it off by default...
+This handles the 'nonblock=false' case in nfs_lock_and_join_requests.
+If the group is already locked and blocking is allowed, drop the inode lock
+and wait for the group lock to be cleared before trying it all again.
+This should fix warnings found in peterz's tree (sched/wait branch), where
+might_sleep() checks are added to wait.[ch].
 
-steved.
+Reported-by: Fengguang Wu <fengguang.wu@intel.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Reviewed-by: Peng Tao <tao.peng@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/pagelist.c        | 18 ++++++++++++++++++
+ fs/nfs/write.c           | 12 +++++++++++-
+ include/linux/nfs_page.h |  1 +
+ 3 files changed, 30 insertions(+), 1 deletion(-)
 
-> 
-> --b.
-> 
->>
->> Steve Dickson (2):
->>   nfs-server: Replace rpc.svcgssd with gssproxy
->>   svcgssd: Remove rules from the Makefile.am
->>
->>  systemd/nfs-server.service  |  4 ++--
->>  systemd/rpc-svcgssd.service | 19 -------------------
->>  utils/gssd/Makefile.am      | 25 ++-----------------------
->>  3 files changed, 4 insertions(+), 44 deletions(-)
->>  delete mode 100644 systemd/rpc-svcgssd.service
->>
->> -- 
->> 1.9.3
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index ab96711d518f..f56b6351b660 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -175,6 +175,24 @@ nfs_page_group_lock(struct nfs_page *req, bool nonblock)
+ }
+ 
+ /*
++ * nfs_page_group_lock_wait - wait for the lock to clear, but don't grab it
++ * @req - a request in the group
++ *
++ * This is a blocking call to wait for the group lock to be cleared.
++ */
++void
++nfs_page_group_lock_wait(struct nfs_page *req)
++{
++	struct nfs_page *head = req->wb_head;
++
++	WARN_ON_ONCE(head != head->wb_head);
++
++	wait_on_bit(&head->wb_flags, PG_HEADLOCK,
++		nfs_wait_bit_uninterruptible,
++		TASK_UNINTERRUPTIBLE);
++}
++
++/*
+  * nfs_page_group_unlock - unlock the head of the page group
+  * @req - request in group that is to be unlocked
+  */
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 014d23c7d16e..ecb0f9fd5632 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -453,13 +453,23 @@ try_again:
+ 		return NULL;
+ 	}
+ 
+-	/* lock each request in the page group */
++	/* holding inode lock, so always make a non-blocking call to try the
++	 * page group lock */
+ 	ret = nfs_page_group_lock(head, true);
+ 	if (ret < 0) {
+ 		spin_unlock(&inode->i_lock);
++
++		if (!nonblock && ret == -EAGAIN) {
++			nfs_page_group_lock_wait(head);
++			nfs_release_request(head);
++			goto try_again;
++		}
++
+ 		nfs_release_request(head);
+ 		return ERR_PTR(ret);
+ 	}
++
++	/* lock each request in the page group */
+ 	subreq = head;
+ 	do {
+ 		/*
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index c18c315db126..55a486421fdd 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -121,6 +121,7 @@ extern  int nfs_wait_on_request(struct nfs_page *);
+ extern	void nfs_unlock_request(struct nfs_page *req);
+ extern	void nfs_unlock_and_release_request(struct nfs_page *);
+ extern int nfs_page_group_lock(struct nfs_page *, bool);
++extern void nfs_page_group_lock_wait(struct nfs_page *);
+ extern void nfs_page_group_unlock(struct nfs_page *);
+ extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
+ 
+-- 
+1.9.3
+
