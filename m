@@ -1,51 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f180.google.com ([209.85.220.180]:62186 "EHLO
-	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755864AbaIRUvN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 16:51:13 -0400
-Received: by mail-vc0-f180.google.com with SMTP id hq11so1205705vcb.25
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 13:51:12 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <d143828a73125846d583f4c606061109d22869f7.1411068259.git.jbaron@akamai.com>
-References: <cover.1411068259.git.jbaron@akamai.com>
-	<d143828a73125846d583f4c606061109d22869f7.1411068259.git.jbaron@akamai.com>
-Date: Thu, 18 Sep 2014 16:51:12 -0400
-Message-ID: <CAHQdGtQOoop=CShDx9dTXSjo47KzWoRqkM9PNx1Si-pFSXg-_w@mail.gmail.com>
-Subject: Re: [PATCH 2/2] rpc: Add -EPERM processing for xs_udp_send_request()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jason Baron <jbaron@akamai.com>
-Cc: Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:63226 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752807AbaIOOBP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 10:01:15 -0400
+Received: by mail-qc0-f171.google.com with SMTP id x13so1733454qcv.30
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 07:01:14 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: steved@redhat.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v4 1/7] sm-notify: inform the kernel if there were no hosts to notify
+Date: Mon, 15 Sep 2014 10:00:59 -0400
+Message-Id: <1410789665-19745-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410789665-19745-1-git-send-email-jlayton@primarydata.com>
+References: <1410789665-19745-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 18, 2014 at 3:51 PM, Jason Baron <jbaron@akamai.com> wrote:
-> If an iptables drop rule is added for an nfs server, the client can end up in
-> a softlockup. Because of the way that xs_sendpages() is structured, the -EPERM
-> is ignored since the prior bits of the packet may have been successfully queued
-> and thus xs_sendpages() returns a non-zero value. Then, xs_udp_send_request()
-> thinks that because some bits were queued it should return -EAGAIN. We then try
-> the request and again and a softlockup occurs. The test sequence is simply:
->
-> 1) open a file on the nfs server '/nfs/foo' (mounted using udp)
-> 2) iptables -A OUTPUT -d <nfs server ip> -j DROP
-> 3) write to /nfs/foo
-> 4) close /nfs/foo
-> 5) iptables -D OUTPUT -d <nfs server ip> -j DROP
->
-> The softlockup occurs in step 4 above.
+In the event that there no hosts to be notified after a reboot, there's
+no real reason to force lockd to wait the entire grace period before
+handing out locks. We're not expecting any reclaim requests to come in
+that situation.
 
-For UDP, the expected and documented behaviour in the case above is as follows:
-- if the mount is soft, then return EIO on the first major timeout.
-- if the mount is hard, then retry indefinitely on timeout.
+Have sm-notify do a write to /proc/fs/lockd/nlm_end_grace if that file
+is present. That informs the kernel that it's OK to go ahead and lift
+lockd's grace period early.
 
-Won't these 2 patches end up propagating an EPERM to the application?
-That would be a definite violation of both hard and soft semantics.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ utils/statd/sm-notify.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 9dbe5d908336..828a6991f8e6 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -42,6 +42,8 @@
+ #define NSM_TIMEOUT	2
+ #define NSM_MAX_TIMEOUT	120	/* don't make this too big */
+ 
++#define NLM_END_GRACE_FILE	"/proc/fs/lockd/nlm_end_grace"
++
+ struct nsm_host {
+ 	struct nsm_host *	next;
+ 	char *			name;
+@@ -450,6 +452,28 @@ retry:
+ 	return sock;
+ }
+ 
++/* Inform the kernel that it's OK to lift lockd's grace period */
++static void
++nsm_lift_grace_period(void)
++{
++	int fd;
++
++	fd = open(NLM_END_GRACE_FILE, O_WRONLY);
++	if (fd < 0) {
++		/* Don't warn if file isn't present */
++		if (errno != ENOENT)
++			xlog(L_WARNING, "Unable to open %s: %m",
++				NLM_END_GRACE_FILE);
++		return;
++	}
++
++	if (write(fd, "Y", 1) < 0)
++		xlog(L_WARNING, "Unable to write to %s: %m", NLM_END_GRACE_FILE);
++
++	close(fd);
++	return;
++}
++
+ int
+ main(int argc, char **argv)
+ {
+@@ -534,6 +558,7 @@ usage:		fprintf(stderr,
+ 	(void)nsm_retire_monitored_hosts();
+ 	if (nsm_load_notify_list(smn_get_host) == 0) {
+ 		xlog(D_GENERAL, "No hosts to notify; exiting");
++		nsm_lift_grace_period();
+ 		return 0;
+ 	}
+ 
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
