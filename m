@@ -1,85 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:63420 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753922AbaIHQa3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 12:30:29 -0400
-Received: by mail-qc0-f175.google.com with SMTP id c9so15823456qcz.6
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 09:30:28 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: [PATCH v3 1/7] sm-notify: inform the kernel if there were no hosts to notify
-Date: Mon,  8 Sep 2014 12:30:15 -0400
-Message-Id: <1410193821-25109-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
-References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:47157 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754226AbaIOSPD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 14:15:03 -0400
+Received: by mail-ie0-f180.google.com with SMTP id rd18so5130749iec.11
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 11:15:02 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: stable@vger.kernel.org
+Cc: Weston Andros Adamson <dros@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH 11/14] nfs: fix error handling in lock_and_join_requests
+Date: Mon, 15 Sep 2014 14:14:42 -0400
+Message-Id: <1410804885-17228-12-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1410804885-17228-11-git-send-email-trond.myklebust@primarydata.com>
+References: <1410804885-17228-1-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-2-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-3-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-4-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-5-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-6-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-7-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-8-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-9-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-10-git-send-email-trond.myklebust@primarydata.com>
+ <1410804885-17228-11-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the event that there no hosts to be notified after a reboot, there's
-no real reason to force lockd to wait the entire grace period before
-handing out locks. We're not expecting any reclaim requests to come in
-that situation.
+From: Weston Andros Adamson <dros@primarydata.com>
 
-Have sm-notify do a write to /proc/fs/lockd/nlm_end_grace if that file
-is present. That informs the kernel that it's OK to go ahead and lift
-lockd's grace period early.
+commit 94970014c46223cbcdfbfc67b89596a412f9e3dd upstream.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+This fixes handling of errors from nfs_page_group_lock in
+nfs_lock_and_join_requests.  It now releases the inode lock and the
+reference to the head request.
+
+Reported-by: Peng Tao <tao.peng@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Reviewed-by: Peng Tao <tao.peng@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- utils/statd/sm-notify.c | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+ fs/nfs/write.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 9dbe5d908336..828a6991f8e6 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -42,6 +42,8 @@
- #define NSM_TIMEOUT	2
- #define NSM_MAX_TIMEOUT	120	/* don't make this too big */
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index c8eb14eb6659..014d23c7d16e 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -455,8 +455,11 @@ try_again:
  
-+#define NLM_END_GRACE_FILE	"/proc/fs/lockd/nlm_end_grace"
-+
- struct nsm_host {
- 	struct nsm_host *	next;
- 	char *			name;
-@@ -450,6 +452,28 @@ retry:
- 	return sock;
- }
- 
-+/* Inform the kernel that it's OK to lift lockd's grace period */
-+static void
-+nsm_lift_grace_period(void)
-+{
-+	int fd;
-+
-+	fd = open(NLM_END_GRACE_FILE, O_WRONLY);
-+	if (fd < 0) {
-+		/* Don't warn if file isn't present */
-+		if (errno != ENOENT)
-+			xlog(L_WARNING, "Unable to open %s: %m",
-+				NLM_END_GRACE_FILE);
-+		return;
+ 	/* lock each request in the page group */
+ 	ret = nfs_page_group_lock(head, true);
+-	if (ret < 0)
++	if (ret < 0) {
++		spin_unlock(&inode->i_lock);
++		nfs_release_request(head);
+ 		return ERR_PTR(ret);
 +	}
-+
-+	if (write(fd, "Y", 1) < 0)
-+		xlog(L_WARNING, "Unable to write to %s: %m", NLM_END_GRACE_FILE);
-+
-+	close(fd);
-+	return;
-+}
-+
- int
- main(int argc, char **argv)
- {
-@@ -534,6 +558,7 @@ usage:		fprintf(stderr,
- 	(void)nsm_retire_monitored_hosts();
- 	if (nsm_load_notify_list(smn_get_host) == 0) {
- 		xlog(D_GENERAL, "No hosts to notify; exiting");
-+		nsm_lift_grace_period();
- 		return 0;
- 	}
- 
+ 	subreq = head;
+ 	do {
+ 		/*
 -- 
 1.9.3
 
