@@ -1,73 +1,215 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22960 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751730AbaIVTnL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 15:43:11 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8MJhBGc003890
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 15:43:11 -0400
-Message-ID: <54207BCD.70101@RedHat.com>
-Date: Mon, 22 Sep 2014 15:43:09 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>	<1411413608-16462-2-git-send-email-steved@redhat.com> <20140922152603.75005941@willson.usersys.redhat.com>
-In-Reply-To: <20140922152603.75005941@willson.usersys.redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:48224 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752169AbaIONOZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 09:14:25 -0400
+Received: by mail-qa0-f41.google.com with SMTP id f12so3783459qad.28
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 06:14:24 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v4 4/9] lockd: add a /proc/fs/lockd/nlm_end_grace file
+Date: Mon, 15 Sep 2014 09:14:05 -0400
+Message-Id: <1410786850-18194-5-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
+References: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Add a new procfile that will allow a (privileged) userland process to
+end the NLM grace period early. The basic idea here will be to have
+sm-notify write to this file, if it sent out no NOTIFY requests when
+it runs. In that situation, we can generally expect that there will be
+no reclaim requests so the grace period can be lifted early.
 
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/lockd/Makefile |  1 +
+ fs/lockd/procfs.c | 92 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/lockd/procfs.h | 28 +++++++++++++++++
+ fs/lockd/svc.c    |  9 ++++++
+ 4 files changed, 130 insertions(+)
+ create mode 100644 fs/lockd/procfs.c
+ create mode 100644 fs/lockd/procfs.h
 
-On 09/22/2014 03:26 PM, Simo Sorce wrote:
-> On Mon, 22 Sep 2014 15:20:07 -0400
-> Steve Dickson <steved@redhat.com> wrote:
-> 
->> Added the gssproxy.service to both the Wants= and
->> Atfers= lines, before the rpc-svcgssd.service. There
->> are  ConditionPathExists= lines in the rpc-svcgssd.service
->> unit which will stop the rpc.svcgssd daemon from
->> starting when the gssproxy daemon is already running.
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  systemd/nfs-server.service | 5 +++--
->>  1 file changed, 3 insertions(+), 2 deletions(-)
->>
->> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
->> index 2fa7387..c740fa2 100644
->> --- a/systemd/nfs-server.service
->> +++ b/systemd/nfs-server.service
->> @@ -2,12 +2,13 @@
->>  Description=NFS server and services
->>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
->>  Requires= nfs-mountd.service
->> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
->> rpc-svcgssd.service +Wants=rpc-statd.service nfs-idmapd.service 
->> +Wants=rpc-gssd.service  
->>  Wants=rpc-statd-notify.service
->>  
->>  After= network.target proc-fs-nfsd.mount rpcbind.target
->> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
->> -After= rpc-gssd.service rpc-svcgssd.service
->> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
->>  Before= rpc-statd-notify.service
->>  
->>  Wants=nfs-config.service
-> 
-> I think you really need to insure that the modules are loaded before
-> any of the server services are started, perhaps adding a unit file that
-> exec's modprobe and has "Before: gssproxy.service rpc-svcgssd.service"
-> in it ?
-I really don't think its needed... From my testing it appears 
-gssproxy is always being started and rpc.svcgssd is not... 
-
-Plus, from my understanding...  loading module from a service 
-file is a big no no! People were having problems with
-way back when... 
-
-steved.
+diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
+index 6a0b351ce30e..9b320cc2a8cf 100644
+--- a/fs/lockd/Makefile
++++ b/fs/lockd/Makefile
+@@ -7,4 +7,5 @@ obj-$(CONFIG_LOCKD) += lockd.o
+ lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
+ 	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o
+ lockd-objs-$(CONFIG_LOCKD_V4) += clnt4xdr.o xdr4.o svc4proc.o
++lockd-objs-$(CONFIG_PROC_FS) += procfs.o
+ lockd-objs		      := $(lockd-objs-y)
+diff --git a/fs/lockd/procfs.c b/fs/lockd/procfs.c
+new file mode 100644
+index 000000000000..2a0a98480e39
+--- /dev/null
++++ b/fs/lockd/procfs.c
+@@ -0,0 +1,92 @@
++/*
++ * Procfs support for lockd
++ *
++ * Copyright (c) 2014 Jeff Layton <jlayton@primarydata.com>
++ */
++
++#include <linux/fs.h>
++#include <linux/proc_fs.h>
++#include <linux/module.h>
++#include <linux/nsproxy.h>
++#include <net/net_namespace.h>
++
++#include "netns.h"
++#include "procfs.h"
++
++/*
++ * We only allow strings that start with 'Y', 'y', or '1'.
++ */
++static ssize_t
++nlm_end_grace_write(struct file *file, const char __user *buf, size_t size,
++		    loff_t *pos)
++{
++	char *data;
++	struct lockd_net *ln = net_generic(current->nsproxy->net_ns,
++					   lockd_net_id);
++
++	if (size < 1)
++		return -EINVAL;
++
++	data = simple_transaction_get(file, buf, size);
++	if (IS_ERR(data))
++		return PTR_ERR(data);
++
++	switch(data[0]) {
++	case 'Y':
++	case 'y':
++	case '1':
++		locks_end_grace(&ln->lockd_manager);
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return size;
++}
++
++static ssize_t
++nlm_end_grace_read(struct file *file, char __user *buf, size_t size,
++		   loff_t *pos)
++{
++	struct lockd_net *ln = net_generic(current->nsproxy->net_ns,
++					   lockd_net_id);
++	char resp[3];
++
++	resp[0] = list_empty(&ln->lockd_manager.list) ? 'Y' : 'N';
++	resp[1] = '\n';
++	resp[2] = '\0';
++
++	return simple_read_from_buffer(buf, size, pos, resp, sizeof(resp));
++}
++
++static const struct file_operations lockd_end_grace_operations = {
++	.write		= nlm_end_grace_write,
++	.read		= nlm_end_grace_read,
++	.llseek		= default_llseek,
++	.release	= simple_transaction_release,
++	.owner		= THIS_MODULE,
++};
++
++int __init
++lockd_create_procfs(void)
++{
++	struct proc_dir_entry *entry;
++
++	entry = proc_mkdir("fs/lockd", NULL);
++	if (!entry)
++		return -ENOMEM;
++	entry = proc_create("nlm_end_grace", S_IRUGO|S_IWUSR, entry,
++				 &lockd_end_grace_operations);
++	if (!entry) {
++		remove_proc_entry("fs/lockd", NULL);
++		return -ENOMEM;
++	}
++	return 0;
++}
++
++void __exit
++lockd_remove_procfs(void)
++{
++	remove_proc_entry("fs/lockd/nlm_end_grace", NULL);
++	remove_proc_entry("fs/lockd", NULL);
++}
+diff --git a/fs/lockd/procfs.h b/fs/lockd/procfs.h
+new file mode 100644
+index 000000000000..2257a1311027
+--- /dev/null
++++ b/fs/lockd/procfs.h
+@@ -0,0 +1,28 @@
++/*
++ * Procfs support for lockd
++ *
++ * Copyright (c) 2014 Jeff Layton <jlayton@primarydata.com>
++ */
++#ifndef _LOCKD_PROCFS_H
++#define _LOCKD_PROCFS_H
++
++#include <linux/kconfig.h>
++
++#if IS_ENABLED(CONFIG_PROC_FS)
++int lockd_create_procfs(void);
++void lockd_remove_procfs(void);
++#else
++static inline int
++lockd_create_procfs(void)
++{
++	return 0;
++}
++
++static inline void
++lockd_remove_procfs(void)
++{
++	return;
++}
++#endif /* IS_ENABLED(CONFIG_PROC_FS) */
++
++#endif /* _LOCKD_PROCFS_H */
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index c35cd43a06e6..3ebdd8353429 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -36,6 +36,7 @@
+ #include <linux/nfs.h>
+ 
+ #include "netns.h"
++#include "procfs.h"
+ 
+ #define NLMDBG_FACILITY		NLMDBG_SVC
+ #define LOCKD_BUFSIZE		(1024 + NLMSVC_XDRSIZE)
+@@ -619,8 +620,15 @@ static int __init init_nlm(void)
+ 	err = register_pernet_subsys(&lockd_net_ops);
+ 	if (err)
+ 		goto err_pernet;
++
++	err = lockd_create_procfs();
++	if (err)
++		goto err_procfs;
++
+ 	return 0;
+ 
++err_procfs:
++	unregister_pernet_subsys(&lockd_net_ops);
+ err_pernet:
+ #ifdef CONFIG_SYSCTL
+ 	unregister_sysctl_table(nlm_sysctl_table);
+@@ -633,6 +641,7 @@ static void __exit exit_nlm(void)
+ {
+ 	/* FIXME: delete all NLM clients */
+ 	nlm_shutdown_hosts();
++	lockd_remove_procfs();
+ 	unregister_pernet_subsys(&lockd_net_ops);
+ #ifdef CONFIG_SYSCTL
+ 	unregister_sysctl_table(nlm_sysctl_table);
+-- 
+1.9.3
 
