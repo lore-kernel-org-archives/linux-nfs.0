@@ -1,29 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12217 "EHLO mx1.redhat.com"
+Received: from verein.lst.de ([213.95.11.211]:33197 "EHLO newverein.lst.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751735AbaIWPbc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 11:31:32 -0400
-Message-ID: <5421924F.3010406@RedHat.com>
-Date: Tue, 23 Sep 2014 11:31:27 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752807AbaIORMQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 15 Sep 2014 13:12:16 -0400
+Date: Mon, 15 Sep 2014 19:12:12 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Boaz Harrosh <boaz@plexistor.com>
+Cc: Christoph Hellwig <hch@lst.de>, Benny Halevy <bhalevy@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: layoutcommit space reservation for the objlayout driver
+Message-ID: <20140915171212.GA23765@lst.de>
+References: <20140914164655.GB13467@lst.de> <5416ABF3.3040403@plexistor.com>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-server: Replace rpc.svcgssd with gssproxy in
- systemd script
-References: <1411146621-18797-1-git-send-email-steved@redhat.com>	<1411146621-18797-2-git-send-email-steved@redhat.com>	<541C892D.7020401@RedHat.com> <20140923112352.28917775@notabene.brown> <542189F6.1050406@RedHat.com>
-In-Reply-To: <542189F6.1050406@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5416ABF3.3040403@plexistor.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/23/2014 10:55 AM, Steve Dickson wrote:
-> So I guess at the end of the day... I want to break the 'Unknown' Wants rule... ;-) 
-> By adding a dependency to gssproxy and by having nfs-server 'want' the gssproxy
-> service...  Its the cleanest way... IMHO... 
+On Mon, Sep 15, 2014 at 12:05:55PM +0300, Boaz Harrosh wrote:
+> I do not understand. This used to work just fine. Please point me to
+> the patch that broke it?
+> (And since when are we allowed to brake old code?)
 
-As Simo just pointed out...  nfs-utils does not need to require 
-gssproxy to be installed... When its not installed, rpc.svcgssd 
-will be started when it is, gssproxy will be started. 
+I bet it still works the same way it does as commited, which doesn't
+make it right.  The way the NFS XDR buffer allocations work seems to be
+that you can actually slightly overun it without things falling apart,
+but that doesn't make it right.  E.g. it took a fairly larger overrun
+in the block layout driver to finally find the issues, and most of the
+time it was just silent truncations, real corruption happened less
+often.
 
-steved.
+But to make sure things work properly in the long run you'd really want
+to have the proper allocation.
