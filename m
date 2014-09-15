@@ -1,62 +1,239 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:52089 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753083AbaIDMjR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:17 -0400
-Received: by mail-qc0-f182.google.com with SMTP id m20so10481485qcx.27
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:17 -0700 (PDT)
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:53052 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753658AbaIONO2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 09:14:28 -0400
+Received: by mail-qg0-f54.google.com with SMTP id z60so3839890qgd.13
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 06:14:27 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 03/17] locks: close potential race in lease_get_mtime
-Date: Thu,  4 Sep 2014 08:38:29 -0400
-Message-Id: <1409834323-7171-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v4 6/9] nfsd: pass extra info in env vars to upcalls to allow for early grace period end
+Date: Mon, 15 Sep 2014 09:14:07 -0400
+Message-Id: <1410786850-18194-7-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
+References: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-lease_get_mtime is called without the i_lock held, so there's no
-guarantee about the stability of the list. Between the time when we
-assign "flock" and then dereference it to check whether it's a lease
-and for write, the lease could be freed.
+In order to support lifting the grace period early, we must tell
+nfsdcltrack what sort of client the "create" upcall is for. We can't
+reliably tell if a v4.0 client has completed reclaiming, so we can only
+lift the grace period once all the v4.1+ clients have issued a
+RECLAIM_COMPLETE and if there are no v4.0 clients.
 
-Ensure that that doesn't occur by taking the i_lock before trying
-to check the lease.
+Also, in order to lift the grace period, we have to tell userland when
+the grace period started so that it can tell whether a RECLAIM_COMPLETE
+has been issued for each client since then.
 
-Cc: J. Bruce Fields <bfields@fieldses.org>
+Since this is all optional info, we pass it along in environment
+variables to the "init" and "create" upcalls. By doing this, we don't
+need to revise the upcall format. The UMH upcall can simply make use of
+this info if it happens to be present. If it's not then it can just
+avoid lifting the grace period early.
+
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/locks.c | 14 ++++++++++++--
- 1 file changed, 12 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4recover.c | 96 ++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfsd/nfs4state.c   |  4 +--
+ 2 files changed, 85 insertions(+), 15 deletions(-)
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 18e87f11a25f..4031324e6cca 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1456,8 +1456,18 @@ EXPORT_SYMBOL(__break_lease);
-  */
- void lease_get_mtime(struct inode *inode, struct timespec *time)
- {
--	struct file_lock *flock = inode->i_flock;
--	if (flock && IS_LEASE(flock) && (flock->fl_type == F_WRLCK))
-+	bool has_lease = false;
-+	struct file_lock *flock;
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index a0d2ba956a3f..d1354d43e9ad 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -1062,6 +1062,8 @@ MODULE_PARM_DESC(cltrack_legacy_disable,
+ 
+ #define LEGACY_TOPDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_TOPDIR="
+ #define LEGACY_RECDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_RECDIR="
++#define HAS_SESSION_ENV_PREFIX "NFSDCLTRACK_CLIENT_HAS_SESSION="
++#define GRACE_START_ENV_PREFIX "NFSDCLTRACK_GRACE_START="
+ 
+ static char *
+ nfsd4_cltrack_legacy_topdir(void)
+@@ -1126,10 +1128,60 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
+ 	return result;
+ }
+ 
++static char *
++nfsd4_cltrack_client_has_session(struct nfs4_client *clp)
++{
++	int copied;
++	size_t len;
++	char *result;
 +
-+	if (inode->i_flock) {
-+		spin_lock(&inode->i_lock);
-+		flock = inode->i_flock;
-+		if (flock && IS_LEASE(flock) && (flock->fl_type == F_WRLCK))
-+			has_lease = true;
-+		spin_unlock(&inode->i_lock);
++	/* prefix + Y/N character + terminating NULL */
++	len = strlen(HAS_SESSION_ENV_PREFIX) + 1 + 1;
++
++	result = kmalloc(len, GFP_KERNEL);
++	if (!result)
++		return result;
++
++	copied = snprintf(result, len, HAS_SESSION_ENV_PREFIX "%c",
++				clp->cl_minorversion ? 'Y' : 'N');
++	if (copied >= len) {
++		/* just return nothing if output was truncated */
++		kfree(result);
++		return NULL;
 +	}
 +
-+	if (has_lease)
- 		*time = current_fs_time(inode->i_sb);
- 	else
- 		*time = inode->i_mtime;
++	return result;
++}
++
++static char *
++nfsd4_cltrack_grace_start(time_t grace_start)
++{
++	int copied;
++	size_t len;
++	char *result;
++
++	/* prefix + max width of int64_t string + terminating NULL */
++	len = strlen(GRACE_START_ENV_PREFIX) + 22 + 1;
++
++	result = kmalloc(len, GFP_KERNEL);
++	if (!result)
++		return result;
++
++	copied = snprintf(result, len, GRACE_START_ENV_PREFIX "%ld",
++				grace_start);
++	if (copied >= len) {
++		/* just return nothing if output was truncated */
++		kfree(result);
++		return NULL;
++	}
++
++	return result;
++}
++
+ static int
+-nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
++nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *env0, char *env1)
+ {
+-	char *envp[2];
++	char *envp[3];
+ 	char *argv[4];
+ 	int ret;
+ 
+@@ -1140,10 +1192,12 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
+ 
+ 	dprintk("%s: cmd: %s\n", __func__, cmd);
+ 	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
+-	dprintk("%s: legacy: %s\n", __func__, legacy ? legacy : "(null)");
++	dprintk("%s: env0: %s\n", __func__, env0 ? env0 : "(null)");
++	dprintk("%s: env1: %s\n", __func__, env1 ? env1 : "(null)");
+ 
+-	envp[0] = legacy;
+-	envp[1] = NULL;
++	envp[0] = env0;
++	envp[1] = env1;
++	envp[2] = NULL;
+ 
+ 	argv[0] = (char *)cltrack_prog;
+ 	argv[1] = cmd;
+@@ -1187,28 +1241,40 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
+ }
+ 
+ static int
+-nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
++nfsd4_umh_cltrack_init(struct net *net)
+ {
++	int ret;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	char *grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
++
+ 	/* XXX: The usermode helper s not working in container yet. */
+ 	if (net != &init_net) {
+ 		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
+ 			"tracking in a container!\n");
+ 		return -EINVAL;
+ 	}
+-	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
++
++	ret = nfsd4_umh_cltrack_upcall("init", NULL, grace_start, NULL);
++	kfree(grace_start);
++	return ret;
+ }
+ 
+ static void
+ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+ {
+-	char *hexid;
++	char *hexid, *has_session, *grace_start;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+ 
+ 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+ 	if (!hexid) {
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
+-	nfsd4_umh_cltrack_upcall("create", hexid, NULL);
++	has_session = nfsd4_cltrack_client_has_session(clp);
++	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
++	nfsd4_umh_cltrack_upcall("create", hexid, has_session, grace_start);
++	kfree(has_session);
++	kfree(grace_start);
+ 	kfree(hexid);
+ }
+ 
+@@ -1222,7 +1288,7 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
+-	nfsd4_umh_cltrack_upcall("remove", hexid, NULL);
++	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
+ 	kfree(hexid);
+ }
+ 
+@@ -1230,17 +1296,21 @@ static int
+ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+ {
+ 	int ret;
+-	char *hexid, *legacy;
++	char *hexid, *has_session, *legacy;
+ 
+ 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
+ 	if (!hexid) {
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return -ENOMEM;
+ 	}
++
++	has_session = nfsd4_cltrack_client_has_session(clp);
+ 	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
+-	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy);
++	ret = nfsd4_umh_cltrack_upcall("check", hexid, has_session, legacy);
++	kfree(has_session);
+ 	kfree(legacy);
+ 	kfree(hexid);
++
+ 	return ret;
+ }
+ 
+@@ -1252,7 +1322,7 @@ nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
+ 
+ 	sprintf(timestr, "%ld", nn->boot_time);
+ 	legacy = nfsd4_cltrack_legacy_topdir();
+-	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
++	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy, NULL);
+ 	kfree(legacy);
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0918bbf07146..00903f211df0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -6364,10 +6364,10 @@ nfs4_state_start_net(struct net *net)
+ 	ret = nfs4_state_create_net(net);
+ 	if (ret)
+ 		return ret;
+-	nfsd4_client_tracking_init(net);
+ 	nn->boot_time = get_seconds();
+-	locks_start_grace(net, &nn->nfsd4_manager);
+ 	nn->grace_ended = false;
++	locks_start_grace(net, &nn->nfsd4_manager);
++	nfsd4_client_tracking_init(net);
+ 	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
+ 	       nn->nfsd4_grace, net);
+ 	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
 -- 
 1.9.3
 
