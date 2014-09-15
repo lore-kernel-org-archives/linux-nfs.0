@@ -1,35 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:46748 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753794AbaIHOmY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:42:24 -0400
-Date: Mon, 8 Sep 2014 07:42:23 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] nfs: revert "nfs4: queue free_lock_state job submission
- to nfsiod"
-Message-ID: <20140908144223.GA19811@infradead.org>
-References: <20140907153534.GA7026@infradead.org>
- <1410179161-18418-1-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1410179161-18418-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:52061 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753676AbaIONO3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 09:14:29 -0400
+Received: by mail-qa0-f45.google.com with SMTP id s7so3740017qap.18
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 06:14:28 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v4 7/9] nfsd: serialize nfsdcltrack upcalls for a particular client
+Date: Mon, 15 Sep 2014 09:14:08 -0400
+Message-Id: <1410786850-18194-8-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
+References: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 08, 2014 at 08:26:01AM -0400, Jeff Layton wrote:
-> The original reason for this patch was because the fl_release_private
-> operation couldn't sleep. With commit ed9814d85810 (locks: defer freeing
-> locks in locks_delete_lock until after i_lock has been dropped), this is
-> no longer a problem so we can revert this patch.
-> 
-> Reported-by: Christoph Hellwig <hch@infradead.org>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+In a later patch, we want to add a flag that will allow us to reduce the
+need for upcalls. In order to handle that correctly, we'll need to
+ensure that racing upcalls for the same client can't occur. In practice
+it should be rare for this to occur with a well-behaved client, but it
+is possible.
 
-Looks good, I tested an equivalent revert for about half a dozen runs
-of xfstests yesterday and couldn't reproduce this bug with it.
+Convert one of the bits in the cl_flags field to be an upcall bitlock,
+and use it to ensure that upcalls for the same client are serialized.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Tested-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ fs/nfsd/nfs4recover.c | 29 +++++++++++++++++++++++++++++
+ fs/nfsd/state.h       |  1 +
+ 2 files changed, 30 insertions(+)
+
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index d1354d43e9ad..aa04d9f62419 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -1260,6 +1260,22 @@ nfsd4_umh_cltrack_init(struct net *net)
+ }
+ 
+ static void
++nfsd4_cltrack_upcall_lock(struct nfs4_client *clp)
++{
++	wait_on_bit_lock(&clp->cl_flags, NFSD4_CLIENT_UPCALL_LOCK,
++			 TASK_UNINTERRUPTIBLE);
++}
++
++static void
++nfsd4_cltrack_upcall_unlock(struct nfs4_client *clp)
++{
++	smp_mb__before_atomic();
++	clear_bit(NFSD4_CLIENT_UPCALL_LOCK, &clp->cl_flags);
++	smp_mb__after_atomic();
++	wake_up_bit(&clp->cl_flags, NFSD4_CLIENT_UPCALL_LOCK);
++}
++
++static void
+ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+ {
+ 	char *hexid, *has_session, *grace_start;
+@@ -1270,9 +1286,14 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
++
+ 	has_session = nfsd4_cltrack_client_has_session(clp);
+ 	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
++
++	nfsd4_cltrack_upcall_lock(clp);
+ 	nfsd4_umh_cltrack_upcall("create", hexid, has_session, grace_start);
++	nfsd4_cltrack_upcall_unlock(clp);
++
+ 	kfree(has_session);
+ 	kfree(grace_start);
+ 	kfree(hexid);
+@@ -1288,7 +1309,11 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
+ 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ 		return;
+ 	}
++
++	nfsd4_cltrack_upcall_lock(clp);
+ 	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
++	nfsd4_cltrack_upcall_unlock(clp);
++
+ 	kfree(hexid);
+ }
+ 
+@@ -1306,7 +1331,11 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
+ 
+ 	has_session = nfsd4_cltrack_client_has_session(clp);
+ 	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
++
++	nfsd4_cltrack_upcall_lock(clp);
+ 	ret = nfsd4_umh_cltrack_upcall("check", hexid, has_session, legacy);
++	nfsd4_cltrack_upcall_unlock(clp);
++
+ 	kfree(has_session);
+ 	kfree(legacy);
+ 	kfree(hexid);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 10bfda710f71..a0ed18f00dcb 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -306,6 +306,7 @@ struct nfs4_client {
+ #define NFSD4_CLIENT_STABLE		(2)	/* client on stable storage */
+ #define NFSD4_CLIENT_RECLAIM_COMPLETE	(3)	/* reclaim_complete done */
+ #define NFSD4_CLIENT_CONFIRMED		(4)	/* client is confirmed */
++#define NFSD4_CLIENT_UPCALL_LOCK	(5)	/* upcall serialization */
+ #define NFSD4_CLIENT_CB_FLAG_MASK	(1 << NFSD4_CLIENT_CB_UPDATE | \
+ 					 1 << NFSD4_CLIENT_CB_KILL)
+ 	unsigned long		cl_flags;
+-- 
+1.9.3
+
