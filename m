@@ -1,150 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:56601 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754414AbaIOSOy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 14:14:54 -0400
-Received: by mail-ie0-f172.google.com with SMTP id tr6so5078521ieb.31
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 11:14:53 -0700 (PDT)
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:39353 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754382AbaIOSOw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 14:14:52 -0400
+Received: by mail-ig0-f181.google.com with SMTP id h3so4419670igd.14
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 11:14:52 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: stable@vger.kernel.org
 Cc: Weston Andros Adamson <dros@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 05/14] nfs: check wait_on_bit_lock err in page_group_lock
-Date: Mon, 15 Sep 2014 14:14:36 -0400
-Message-Id: <1410804885-17228-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1410804885-17228-5-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 04/14] nfs: remove pgio_header refcount, related cleanup
+Date: Mon, 15 Sep 2014 14:14:35 -0400
+Message-Id: <1410804885-17228-5-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1410804885-17228-4-git-send-email-trond.myklebust@primarydata.com>
 References: <1410804885-17228-1-git-send-email-trond.myklebust@primarydata.com>
  <1410804885-17228-2-git-send-email-trond.myklebust@primarydata.com>
  <1410804885-17228-3-git-send-email-trond.myklebust@primarydata.com>
  <1410804885-17228-4-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-5-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Weston Andros Adamson <dros@primarydata.com>
 
-commit e7029206ff43f6cf7d6fcb741adb126f47200516 upstream.
+commit 4714fb51fd03a14d8c73001438283e7f7b752f1e upstream.
 
-Return errors from wait_on_bit_lock from nfs_page_group_lock.
-
-Add a bool argument @wait to nfs_page_group_lock. If true, loop over
-wait_on_bit_lock until it returns cleanly. If false, return the error
-from wait_on_bit_lock.
+The refcounting on nfs_pgio_header was related to there being (possibly)
+more than one nfs_pgio_data. Now that nfs_pgio_data has been merged into
+nfs_pgio_header, there is no reason to do this ref counting.  Just call
+the completion callback on nfs_pgio_release/nfs_pgio_error.
 
 Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pagelist.c        | 29 +++++++++++++++++++++++------
- fs/nfs/write.c           |  6 ++++--
- include/linux/nfs_page.h |  2 +-
- 3 files changed, 28 insertions(+), 9 deletions(-)
+ fs/nfs/pagelist.c       | 36 +++++++++++-------------------------
+ fs/nfs/pnfs.c           |  6 ------
+ include/linux/nfs_xdr.h |  1 -
+ 3 files changed, 11 insertions(+), 32 deletions(-)
 
 diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 653017909e97..6a6fd0532664 100644
+index 6dea542f9b42..653017909e97 100644
 --- a/fs/nfs/pagelist.c
 +++ b/fs/nfs/pagelist.c
-@@ -147,17 +147,25 @@ static int nfs_wait_bit_uninterruptible(void *word)
-  * @req - request in group that is to be locked
-  *
-  * this lock must be held if modifying the page group list
+@@ -469,7 +469,6 @@ struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *ops)
+ 	if (hdr) {
+ 		INIT_LIST_HEAD(&hdr->pages);
+ 		spin_lock_init(&hdr->lock);
+-		atomic_set(&hdr->refcnt, 0);
+ 		hdr->rw_ops = ops;
+ 	}
+ 	return hdr;
+@@ -487,31 +486,18 @@ void nfs_pgio_header_free(struct nfs_pgio_header *hdr)
+ EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
+ 
+ /**
+- * nfs_pgio_data_alloc - Allocate pageio data
+- * @hdr: The header making a request
+- * @pagecount: Number of pages to create
+- */
+-static bool nfs_pgio_data_init(struct nfs_pgio_header *hdr,
+-			       unsigned int pagecount)
+-{
+-	if (nfs_pgarray_set(&hdr->page_array, pagecount)) {
+-		atomic_inc(&hdr->refcnt);
+-		return true;
+-	}
+-	return false;
+-}
+-
+-/**
+- * nfs_pgio_data_destroy - Properly release pageio data
+- * @hdr: The header with data to destroy
++ * nfs_pgio_data_destroy - make @hdr suitable for reuse
 + *
-+ * returns result from wait_on_bit_lock: 0 on success, < 0 on error
++ * Frees memory and releases refs from nfs_generic_pgio, so that it may
++ * be called again.
++ *
++ * @hdr: A header that has had nfs_generic_pgio called
   */
--void
--nfs_page_group_lock(struct nfs_page *req)
-+int
-+nfs_page_group_lock(struct nfs_page *req, bool wait)
+ void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
  {
- 	struct nfs_page *head = req->wb_head;
-+	int ret;
+ 	put_nfs_open_context(hdr->args.context);
+ 	if (hdr->page_array.pagevec != hdr->page_array.page_array)
+ 		kfree(hdr->page_array.pagevec);
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+ }
+ EXPORT_SYMBOL_GPL(nfs_pgio_data_destroy);
  
- 	WARN_ON_ONCE(head != head->wb_head);
- 
--	wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
-+	do {
-+		ret = wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
- 			nfs_wait_bit_uninterruptible,
- 			TASK_UNINTERRUPTIBLE);
-+	} while (wait && ret != 0);
-+
-+	WARN_ON_ONCE(ret > 0);
-+	return ret;
+@@ -630,6 +616,7 @@ static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
+ {
+ 	set_bit(NFS_IOHDR_REDO, &hdr->flags);
+ 	nfs_pgio_data_destroy(hdr);
++	hdr->completion_ops->completion(hdr);
+ 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+ 	return -ENOMEM;
+ }
+@@ -644,6 +631,7 @@ static void nfs_pgio_release(void *calldata)
+ 	if (hdr->rw_ops->rw_release)
+ 		hdr->rw_ops->rw_release(hdr);
+ 	nfs_pgio_data_destroy(hdr);
++	hdr->completion_ops->completion(hdr);
  }
  
- /*
-@@ -218,7 +226,7 @@ bool nfs_page_group_sync_on_bit(struct nfs_page *req, unsigned int bit)
- {
- 	bool ret;
+ /**
+@@ -717,9 +705,10 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
+ 	struct page		**pages;
+ 	struct list_head *head = &desc->pg_list;
+ 	struct nfs_commit_info cinfo;
++	unsigned int pagecount;
  
--	nfs_page_group_lock(req);
-+	nfs_page_group_lock(req, true);
- 	ret = nfs_page_group_sync_on_bit_locked(req, bit);
- 	nfs_page_group_unlock(req);
+-	if (!nfs_pgio_data_init(hdr, nfs_page_array_len(desc->pg_base,
+-			   desc->pg_count)))
++	pagecount = nfs_page_array_len(desc->pg_base, desc->pg_count);
++	if (!nfs_pgarray_set(&hdr->page_array, pagecount))
+ 		return nfs_pgio_error(desc, hdr);
  
-@@ -859,8 +867,13 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 	struct nfs_page *subreq;
- 	unsigned int bytes_left = 0;
- 	unsigned int offset, pgbase;
-+	int ret;
- 
--	nfs_page_group_lock(req);
-+	ret = nfs_page_group_lock(req, false);
-+	if (ret < 0) {
-+		desc->pg_error = ret;
-+		return 0;
-+	}
- 
- 	subreq = req;
- 	bytes_left = subreq->wb_bytes;
-@@ -882,7 +895,11 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
- 			if (desc->pg_recoalesce)
- 				return 0;
- 			/* retry add_request for this subreq */
--			nfs_page_group_lock(req);
-+			ret = nfs_page_group_lock(req, false);
-+			if (ret < 0) {
-+				desc->pg_error = ret;
-+				return 0;
-+			}
- 			continue;
- 		}
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index cbd1f6402f3a..2ed54b224bf2 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -216,7 +216,7 @@ static bool nfs_page_group_covers_page(struct nfs_page *req)
- 	unsigned int pos = 0;
- 	unsigned int len = nfs_page_length(req->wb_page);
- 
--	nfs_page_group_lock(req);
-+	nfs_page_group_lock(req, true);
- 
- 	do {
- 		tmp = nfs_page_group_search_locked(req->wb_head, pos);
-@@ -456,7 +456,9 @@ try_again:
+ 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
+@@ -753,14 +742,11 @@ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
+ 		return -ENOMEM;
  	}
+ 	nfs_pgheader_init(desc, hdr, nfs_pgio_header_free);
+-	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret == 0)
+ 		ret = nfs_initiate_pgio(NFS_CLIENT(hdr->inode),
+ 					hdr, desc->pg_rpc_callops,
+ 					desc->pg_ioflags, 0);
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+ 	return ret;
+ }
  
- 	/* lock each request in the page group */
--	nfs_page_group_lock(head);
-+	ret = nfs_page_group_lock(head, false);
-+	if (ret < 0)
-+		return ERR_PTR(ret);
- 	subreq = head;
- 	do {
- 		/*
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index d0fae7b78252..c18c315db126 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -120,7 +120,7 @@ extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
- extern  int nfs_wait_on_request(struct nfs_page *);
- extern	void nfs_unlock_request(struct nfs_page *req);
- extern	void nfs_unlock_and_release_request(struct nfs_page *);
--extern void nfs_page_group_lock(struct nfs_page *);
-+extern int nfs_page_group_lock(struct nfs_page *, bool);
- extern void nfs_page_group_unlock(struct nfs_page *);
- extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
- 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index ecc911347750..ecbed4632d11 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1602,15 +1602,12 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	}
+ 	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
+ 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+-	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret != 0) {
+ 		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+ 	} else
+ 		pnfs_do_write(desc, hdr, desc->pg_ioflags);
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+@@ -1745,15 +1742,12 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	}
+ 	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
+ 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+-	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret != 0) {
+ 		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+ 	} else
+ 		pnfs_do_read(desc, hdr);
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index efeaf7690b51..2c35d524ffc6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1261,7 +1261,6 @@ struct nfs_pgio_header {
+ 	struct inode		*inode;
+ 	struct rpc_cred		*cred;
+ 	struct list_head	pages;
+-	atomic_t		refcnt;
+ 	struct nfs_page		*req;
+ 	struct nfs_writeverf	verf;		/* Used for writes */
+ 	struct pnfs_layout_segment *lseg;
 -- 
 1.9.3
 
