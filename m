@@ -1,322 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54707 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750996AbaIKGUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Sep 2014 02:20:41 -0400
-Date: Thu, 11 Sep 2014 16:20:32 +1000
-From: NeilBrown <neilb@suse.de>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: kernel BUG in fs/dcache.c running nfs
-Message-ID: <20140911162032.12c60dd8@notabene.brown>
-In-Reply-To: <20140910075943.327db1b0@tlielax.poochiereds.net>
-References: <20140908144525.GB19811@infradead.org>
-	<20140909105918.59477ee3@tlielax.poochiereds.net>
-	<20140909154211.GA6614@infradead.org>
-	<20140909121244.610f297d@tlielax.poochiereds.net>
-	<20140909121546.3981121b@tlielax.poochiereds.net>
-	<20140909135006.2b956f47@tlielax.poochiereds.net>
-	<20140910135739.2b897d94@notabene.brown>
-	<20140910075943.327db1b0@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/6W8IxRrJtOp2jOuqbyrRomz"; protocol="application/pgp-signature"
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:56690 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752929AbaIOOBV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 10:01:21 -0400
+Received: by mail-qc0-f178.google.com with SMTP id c9so2218018qcz.9
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 07:01:20 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: steved@redhat.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v4 5/7] nfsdcltrack: update schema to v2
+Date: Mon, 15 Sep 2014 10:01:03 -0400
+Message-Id: <1410789665-19745-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410789665-19745-1-git-send-email-jlayton@primarydata.com>
+References: <1410789665-19745-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/6W8IxRrJtOp2jOuqbyrRomz
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: Jeff Layton <jlayton@poochiereds.net>
 
-On Wed, 10 Sep 2014 07:59:43 -0400 Jeff Layton <jeff.layton@primarydata.com>
-wrote:
+In order to allow knfsd's lock manager to lift its grace period early,
+we need to figure out whether all clients have finished reclaiming
+their state not. Unfortunately, the current code doesn't allow us to
+ascertain this. All we track for each client is a timestamp that tells
+us when the last "check" or "create" operation came in.
 
-> On Wed, 10 Sep 2014 13:57:39 +1000
-> NeilBrown <neilb@suse.de> wrote:
->=20
-> > On Tue, 9 Sep 2014 13:50:06 -0400 Jeff Layton <jeff.layton@primarydata.=
-com>
-> > wrote:
-> >=20
-> > > On Tue, 9 Sep 2014 12:15:46 -0400
-> > > Jeff Layton <jeff.layton@primarydata.com> wrote:
-> > >=20
-> > > > On Tue, 9 Sep 2014 12:12:44 -0400
-> > > > Jeff Layton <jlayton@primarydata.com> wrote:
-> > > >=20
-> > > > > On Tue, 9 Sep 2014 08:42:11 -0700
-> > > > > Christoph Hellwig <hch@infradead.org> wrote:
-> > > > >=20
-> > > > > > On Tue, Sep 09, 2014 at 10:59:18AM -0400, Jeff Layton wrote:
-> > > > > > > > [ 5497.405585]  [<ffffffff8135d0c1>] nfs4_do_open.constprop=
-.84+0x681/0x960
-> > > > > > > > [ 5497.405585]  [<ffffffff8135d459>] nfs4_atomic_open+0x9/0=
-x20
-> > > > > > > > [ 5497.405585]  [<ffffffff8136cc3d>] nfs4_file_open+0xcd/0x=
-1b0
-> > > > > > > > [ 5497.405585]  [<ffffffff811b8092>] do_dentry_open.isra.13=
-+0x1f2/0x320
-> > > > > > > > [ 5497.405585]  [<ffffffff811b82ad>] finish_open+0x1d/0x30
-> > > > > > > > [ 5497.405585]  [<ffffffff811c98e9>] path_openat+0xb9/0x670
-> > > > > > > > [ 5497.405585]  [<ffffffff811ca26e>] do_filp_open+0x3e/0xa0
-> > > > > > > > [ 5497.405585]  [<ffffffff811b95cc>] do_sys_open+0x13c/0x230
-> > > > > > > > [ 5497.405585]  [<ffffffff811b96dd>] SyS_open+0x1d/0x20
-> > > > > > > > [ 5497.405585]  [<ffffffff81d9f5a9>] system_call_fastpath+0=
-x16/0x1b
-> > > > > > > >=20
-> > > > > > >=20
-> > > > > > > Odd...
-> > > > > > >=20
-> > > > > > > It looks like you hit the BUG() in d_instantiate.
-> > > > > > >=20
-> > > > > > > I don't see any calls to d_instantiate in the current nfs_cod=
-e (aside
-> > > > > > > from the one in nfs_lookup, and I don't think that's getting =
-called
-> > > > > > > here). d_instantiate is called by d_add though, and that gets=
- called
-> > > > > > > from nfs_atomic_open. Is that what happened here?
-> > > > > > >=20
-> > > > > > > Maybe you can use gdb to figure out what line of code
-> > > > > > > "nfs4_do_open.constprop.84+0x681" actually is?
-> > > > > >=20
-> > > > > > My gdb can't cope with these constprop expressions unfortunatel=
-y.
-> > > > > >=20
-> > > > > > But when you remove the questionable symbols as I've done above=
- it's
-> > > > > > pretty clear that this must be the
-> > > > > >=20
-> > > > > > nfs4_atomic_open
-> > > > > >  -> nfs4_do_open
-> > > > > >    -> _nfs4_do_open
-> > > > > >      -> _nfs4_open_and_get_state
-> > > > > >        -> d_add
-> > > > > >          -> d_instantiate
-> > > > > >=20
-> > > > > > call chain. There is heavy inlining going on inside nfs4file.c,=
- and
-> > > > > > d_add now is a simple inline around d_instantiate and d_rehash.
-> > > > >=20
-> > > > > Ok. So I'm guessing that means that the current scheme of doing a
-> > > > > d_drop/d_add is not valid. d_drop doesn't remove the dentry from =
-the
-> > > > > i_alias list.
-> > > > >=20
-> > > > > It looks like the first call there should just be doing a d_delete
-> > > > > instead, since it's trying to turn the thing into a negative dent=
-ry.
-> > > >=20
-> > > > (cc'ing Neil B.)
-> > > >=20
-> > > > ...and I'd hazard a guess that 4fa2c54b5198d might be the culprit. =
-You
-> > > > might want to try backing that out and see if it's still reproducib=
-le.
-> > > >=20
-> > > > Neil, any thoughts?
-> > > >=20
-> > >=20
-> > > In fact, maybe this patch would make sense?
-> > >=20
-> > > ------------------[snip]-------------------
-> > >=20
-> > > [PATCH] nfs: d_drop/d_add of positive dentry may be harmful
-> > >=20
-> > > Christoph reported the following oops, when running xfstests:
-> > >=20
-> > > generic/089 199s ...
-> > > [ 5497.402293] ------------[ cut here ]------------
-> > > [ 5497.403150] kernel BUG at ../fs/dcache.c:1620!
-> > > [ 5497.403974] invalid opcode: 0000 [#1] SMP
-> > > [ 5497.404826] Modules linked in:
-> > > [ 5497.405280] CPU: 1 PID: 14691 Comm: t_mtab Not tainted 3.17.0-rc3+=
- #264
-> > > [ 5497.405585] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
-> > > [ 5497.405585] task: ffff88007ac801d0 ti: ffff8800670a4000 task.ti: f=
-fff8800670a4000
-> > > [ 5497.405585] RIP: 0010:[<ffffffff811d1345>]  [<ffffffff811d1345>] d=
-_instantiate+0x75/0x80
-> > > [ 5497.405585] RSP: 0018:ffff8800670a7a68  EFLAGS: 00010286
-> > > [ 5497.405585] RAX: 0000000000000001 RBX: ffff880066c399d8 RCX: ffff8=
-8007ac80990
-> > > [ 5497.405585] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff8=
-80066c399d8
-> > > [ 5497.405585] RBP: ffff8800670a7a88 R08: 0000000000000001 R09: 00000=
-00000000000
-> > > [ 5497.405585] R10: ffff880072f45000 R11: 000000000003fdf0 R12: ffff8=
-80066c399d8
-> > > [ 5497.405585] R13: ffff88007a684800 R14: ffff88007acbc280 R15: ffff8=
-800670de000
-> > > [ 5497.405585] FS:  00007f6db6aae700(0000) GS:ffff88007fc80000(0000) =
-knlGS:0000000000000000
-> > > [ 5497.405585] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> > > [ 5497.405585] CR2: 00007f6db5f56800 CR3: 000000007ac9e000 CR4: 00000=
-000000006e0
-> > > [ 5497.405585] Stack:
-> > > [ 5497.405585]  ffff8800670a7a88 ffff880066c399d8 ffff88007a684800 ff=
-ff88007a684800
-> > > [ 5497.405585]  ffff8800670a7b68 ffffffff8135d0c1 ffffffff00000004 ff=
-ff8800000000d0
-> > > [ 5497.405585]  ffff88007d400180 0000000000000246 ffff8800fffffffe ff=
-ff880072f45000
-> > > [ 5497.405585] Call Trace:
-> > > [ 5497.405585]  [<ffffffff8135d0c1>] nfs4_do_open.constprop.84+0x681/=
-0x960
-> > > [ 5497.405585]  [<ffffffff8135d459>] nfs4_atomic_open+0x9/0x20
-> > > [ 5497.405585]  [<ffffffff8136cc3d>] nfs4_file_open+0xcd/0x1b0
-> > > [ 5497.405585]  [<ffffffff81d9ee56>] ? _raw_spin_unlock+0x26/0x30
-> > > [ 5497.405585]  [<ffffffff8176b73d>] ? lockref_get+0x1d/0x30
-> > > [ 5497.405585]  [<ffffffff8136cb70>] ? nfs4_file_fsync+0xb0/0xb0
-> > > [ 5497.405585]  [<ffffffff811b8092>] do_dentry_open.isra.13+0x1f2/0x3=
-20
-> > > [ 5497.405585]  [<ffffffff81336f52>] ? nfs_permission+0x62/0x1d0
-> > > [ 5497.405585]  [<ffffffff811b82ad>] finish_open+0x1d/0x30
-> > > [ 5497.405585]  [<ffffffff811c91be>] do_last.isra.63+0x62e/0xca0
-> > > [ 5497.405585]  [<ffffffff811c5703>] ? inode_permission+0x13/0x50
-> > > [ 5497.405585]  [<ffffffff811c5bde>] ? link_path_walk+0x23e/0x850
-> > > [ 5497.405585]  [<ffffffff811c98e9>] path_openat+0xb9/0x670
-> > > [ 5497.405585]  [<ffffffff811b366b>] ? poison_obj+0x2b/0x40
-> > > [ 5497.405585]  [<ffffffff811ca26e>] do_filp_open+0x3e/0xa0
-> > > [ 5497.405585]  [<ffffffff811d7da1>] ? __alloc_fd+0xd1/0x120
-> > > [ 5497.405585]  [<ffffffff811b95cc>] do_sys_open+0x13c/0x230
-> > > [ 5497.405585]  [<ffffffff810f5bbd>] ? trace_hardirqs_on_caller+0x10d=
-/0x1d0
-> > > [ 5497.405585]  [<ffffffff811b96dd>] SyS_open+0x1d/0x20
-> > > [ 5497.405585]  [<ffffffff81d9f5a9>] system_call_fastpath+0x16/0x1b
-> > >=20
-> > > The BUG() is due to the fact that the d_alias hlist is not empty when
-> > > we called into d_instantiate. This is likely due to a situation where
-> > > we did a successful open and instantiated the dentry and then later
-> > > failed and ended up retrying. At that point, we try the open again and
-> > > get back -ENOENT, and try to d_drop/d_add it.
-> > >=20
-> > > The problem is that d_drop'ing a positive dentry is not sufficient to
-> > > "clear" it for adding it back into the cache. That just makes it unfi=
-ndable
-> > > in the hash tables, but doesn't unhitch it from the inode.
-> > >=20
-> > > Switch to using the helper we already have for turning positive dentr=
-ies
-> > > into negative ones.
-> > >=20
-> > > Cc: Neil Brown <neilb@suse.de>
-> > > Reported-by: Christoph Hellwig <hch@infradead.org>
-> > > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > > ---
-> > >  fs/nfs/dir.c      | 3 ++-
-> > >  fs/nfs/internal.h | 1 +
-> > >  fs/nfs/nfs4proc.c | 3 +--
-> > >  3 files changed, 4 insertions(+), 3 deletions(-)
-> > >=20
-> > > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > > index 36d921f0c602..3938dba859c5 100644
-> > > --- a/fs/nfs/dir.c
-> > > +++ b/fs/nfs/dir.c
-> > > @@ -1754,11 +1754,12 @@ out_err:
-> > >  }
-> > >  EXPORT_SYMBOL_GPL(nfs_mkdir);
-> > > =20
-> > > -static void nfs_dentry_handle_enoent(struct dentry *dentry)
-> > > +void nfs_dentry_handle_enoent(struct dentry *dentry)
-> > >  {
-> > >  	if (dentry->d_inode !=3D NULL && !d_unhashed(dentry))
-> > >  		d_delete(dentry);
-> > >  }
-> > > +EXPORT_SYMBOL_GPL(nfs_dentry_handle_enoent);
-> > > =20
-> > >  int nfs_rmdir(struct inode *dir, struct dentry *dentry)
-> > >  {
-> > > diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> > > index 9056622d2230..8d85a57ae499 100644
-> > > --- a/fs/nfs/internal.h
-> > > +++ b/fs/nfs/internal.h
-> > > @@ -326,6 +326,7 @@ extern unsigned long nfs_access_cache_scan(struct=
- shrinker *shrink,
-> > >  struct dentry *nfs_lookup(struct inode *, struct dentry *, unsigned =
-int);
-> > >  int nfs_create(struct inode *, struct dentry *, umode_t, bool);
-> > >  int nfs_mkdir(struct inode *, struct dentry *, umode_t);
-> > > +void nfs_dentry_handle_enoent(struct dentry *);
-> > >  int nfs_rmdir(struct inode *, struct dentry *);
-> > >  int nfs_unlink(struct inode *, struct dentry *);
-> > >  int nfs_symlink(struct inode *, struct dentry *, const char *);
-> > > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > > index 7dd8aca31c29..84ee3fb9e410 100644
-> > > --- a/fs/nfs/nfs4proc.c
-> > > +++ b/fs/nfs/nfs4proc.c
-> > > @@ -2226,8 +2226,7 @@ static int _nfs4_open_and_get_state(struct nfs4=
-_opendata *opendata,
-> > >  	ret =3D _nfs4_proc_open(opendata);
-> > >  	if (ret !=3D 0) {
-> > >  		if (ret =3D=3D -ENOENT) {
-> > > -			d_drop(opendata->dentry);
-> > > -			d_add(opendata->dentry, NULL);
-> > > +			nfs_dentry_handle_enoent(opendata->dentry);
-> > >  			nfs_set_verifier(opendata->dentry,
-> > >  					 nfs_save_change_attribute(opendata->dir->d_inode));
-> > >  		}
-> >=20
-> >=20
-> > The d_drop();d_add(); pattern is used a number of times in NFS, but wha=
-t I
-> > didn't notice before is that it is only used if ->d_inode is NULL.
-> >=20
-> > We *could* simply change the condition to
-> >    if (ret =3D=3D -ENOENT && opendata->dentry->d_inode =3D=3D NULL) {
-> >=20
-> > Calling nfs_dentry_handle_enoent() is possibly a good idea, but we do w=
-ant to
-> > still call d_add().  The whole point of the patch which introduce that =
-code
-> > was to ensure that negative entries were cached.
-> > nfs_dentry_handle_enoent()  is always enough to prepare for d_add(), so=
- we
-> > cannot just replace d_drop with that.
-> >=20
-> > Maybe:
-> >=20
-> >   if (ret =3D=3D -ENOENT) {
-> > 	struct dentry *de =3D opendata->dentry;
-> > 	d_drop(de->d_inode);
-> >         if (de->d_inode =3D=3D NULL)
-> > 		d_add(de, NULL);
-> >         nfs_set_verifier(de, .....);
-> >   }
-> >=20
->=20
-> Yeah using nfs_dentry_handle_enoent won't hash a brand new negative
-> dentry. The above code though won't convert an existing positive dentry
-> into a negative one. I guess though that's a rare enough situation that
-> it's not worth optimizing for?
->=20
+Not only is this insufficient with clients that use sessions, it's also
+wrong. We only want to update the timestamp on v4.1 clients when the
+"create" operation comes in or we can leave the server susceptible to
+edge condition #2 in RFC5661, section 8.4.3. Once the grace period is
+lifted, we disallow reclaim on subsequent reboots for clients that
+have not sent a RECLAIM_COMPLETE.
 
-I agree.  I've just posted a patch which I think is the best balance.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ utils/nfsdcltrack/sqlite.c | 101 +++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 93 insertions(+), 8 deletions(-)
 
-Thanks for your analysis and review!
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index dde2f7ff8621..5d38ccb7c0fe 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -29,7 +29,9 @@
+  *
+  * clients: an "id" column containing a BLOB with the long-form clientid as
+  * 	    sent by the client, a "time" column containing a timestamp (in
+- * 	    epoch seconds) of when the record was last updated.
++ * 	    epoch seconds) of when the record was last updated, and a
++ * 	    "has_session" column containing a boolean value indicating
++ * 	    whether the client has sessions (v4.1+) or not (v4.0).
+  */
+ 
+ #ifdef HAVE_CONFIG_H
+@@ -50,7 +52,7 @@
+ 
+ #include "xlog.h"
+ 
+-#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 1
++#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 2
+ 
+ /* in milliseconds */
+ #define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
+@@ -120,6 +122,81 @@ out:
+ 	return ret;
+ }
+ 
++static int
++sqlite_maindb_update_v1_to_v2(void)
++{
++	int ret, ret2;
++	char *err;
++
++	/* begin transaction */
++	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
++				&err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to begin transaction: %s", err);
++		goto rollback;
++	}
++
++	/*
++	 * Check schema version again. This time, under an exclusive
++	 * transaction to guard against racing DB setup attempts
++	 */
++	ret = sqlite_query_schema_version();
++	switch (ret) {
++	case 1:
++		/* Still at v1 -- do conversion */
++		break;
++	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
++		/* Someone else raced in and set it up */
++		ret = 0;
++		goto rollback;
++	default:
++		/* Something went wrong -- fail! */
++		ret = -EINVAL;
++		goto rollback;
++	}
++
++	/* create v2 clients table */
++	ret = sqlite3_exec(dbh, "ALTER TABLE clients ADD COLUMN "
++				"has_session INTEGER;",
++				NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to update clients table: %s", err);
++		goto rollback;
++	}
++
++	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
++			"WHERE key = \"version\";",
++			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
++	if (ret < 0) {
++		xlog(L_ERROR, "sprintf failed!");
++		goto rollback;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
++		ret = -EINVAL;
++		goto rollback;
++	}
++
++	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to update schema version: %s", err);
++		goto rollback;
++	}
++
++	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to commit transaction: %s", err);
++		goto rollback;
++	}
++out:
++	sqlite3_free(err);
++	return ret;
++rollback:
++	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	if (ret2 != SQLITE_OK)
++		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
++	goto out;
++}
++
+ /*
+  * Start an exclusive transaction and recheck the DB schema version. If it's
+  * still zero (indicating a new database) then set it up. If that all works,
+@@ -127,9 +204,9 @@ out:
+  * transaction. On any error, rollback the transaction.
+  */
+ int
+-sqlite_maindb_init_v1(void)
++sqlite_maindb_init_v2(void)
+ {
+-	int ret;
++	int ret, ret2;
+ 	char *err = NULL;
+ 
+ 	/* Start a transaction */
+@@ -169,7 +246,7 @@ sqlite_maindb_init_v1(void)
+ 
+ 	/* create the "clients" table */
+ 	ret = sqlite3_exec(dbh, "CREATE TABLE clients (id BLOB PRIMARY KEY, "
+-				"time INTEGER);",
++				"time INTEGER, has_session INTEGER);",
+ 				NULL, NULL, &err);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "Unable to create clients table: %s", err);
+@@ -207,7 +284,9 @@ out:
+ 
+ rollback:
+ 	/* Attempt to rollback the transaction */
+-	sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	if (ret2 != SQLITE_OK)
++		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+ 	goto out;
+ }
+ 
+@@ -255,9 +334,15 @@ sqlite_prepare_dbh(const char *topdir)
+ 		/* DB is already set up. Do nothing */
+ 		ret = 0;
+ 		break;
++	case 1:
++		/* Old DB -- update to new schema */
++		ret = sqlite_maindb_update_v1_to_v2();
++		if (ret)
++			goto out_close;
++		break;
+ 	case 0:
+ 		/* Query failed -- try to set up new DB */
+-		ret = sqlite_maindb_init_v1();
++		ret = sqlite_maindb_init_v2();
+ 		if (ret)
+ 			goto out_close;
+ 		break;
+@@ -289,7 +374,7 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen)
+ 	sqlite3_stmt *stmt = NULL;
+ 
+ 	ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients VALUES "
+-				      "(?, strftime('%s', 'now'));", -1,
++					"(?, strftime('%s', 'now'), 0);", -1,
+ 					&stmt, NULL);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
+-- 
+1.9.3
 
-NeilBrown
-
---Sig_/6W8IxRrJtOp2jOuqbyrRomz
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBVBE/MDnsnt1WYoG5AQKHAxAAiOgN4KCDleKP6cnNjGAh9l0hGaREiDD4
-qbTkOafrbSAeJ5cAkEsMEUioazZ9uLd4mVrX9K3QqjAviCvxSwi5QhrVsZXpkcaA
-6rQi21v/YKPET2LsvvqUVq/qn+FuGraPDfVEGA5ajiPaHNhfEsOcaKdzUVnhm8EJ
-d+p0euQSBQexGJIYTwrgcY77Ur8+Khy7of0qScJAS5liLuu8WcDe3IfYF+FugRc1
-AE305d0diFtMsE3db4S+BuHBmwM4aesnTmw0yRkf27E/+osXvi+h4K2kwb3bDsQ7
-TmM7mcvL6EGPlJFFhBUqf7QPBFokzD9ZGUFuAZsLcIj/B6vHL0UZMED8ajorI2lY
-PoyuZt/hShlOxZ83Um1GO2XlU3kM3OQ02UMWkhmP91Eq4ndReN87qpzKIIreoo/U
-pJc2QEJQxp3QkCYTOaWW/kk2azSy4VGzGuQesZafRPG2GlPkdIQAnC6uyNeCzvIx
-v+MD7wyrF7IKxeYx0ODSR0M6ZVJJEUklnrf8ayzakuMnCi3HgkBoJGH+aiT/7LfJ
-hfsPxzgLqeYZF2xjD6TETNf7kUfSXSUD3oqXnnDqbOIpXvo4xDMsxEsIBdnzr3sL
-6p3wtn5GrwYw77VaTChYSZ1nVPC9EyoF9upNt5kPUz6Sqrs77Yk8OY+OsGKdU5Rp
-mFQ7iHdgXXY=
-=0S3a
------END PGP SIGNATURE-----
-
---Sig_/6W8IxRrJtOp2jOuqbyrRomz--
