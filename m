@@ -1,64 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:44685 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750882AbaIJNWJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 09:22:09 -0400
-Received: by mail-qa0-f53.google.com with SMTP id n8so307054qaq.12
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Sep 2014 06:22:09 -0700 (PDT)
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:43559 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752887AbaIOOBS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 10:01:18 -0400
+Received: by mail-qa0-f42.google.com with SMTP id j7so3870277qaq.1
+        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 07:01:17 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: [PATCH v3 9/8] nfsd: skip subsequent UMH "create" operations after the first one for v4.0 clients
-Date: Wed, 10 Sep 2014 09:22:03 -0400
-Message-Id: <1410355323-25839-1-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
-References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+To: steved@redhat.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v4 3/7] nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
+Date: Mon, 15 Sep 2014 10:01:01 -0400
+Message-Id: <1410789665-19745-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410789665-19745-1-git-send-email-jlayton@primarydata.com>
+References: <1410789665-19745-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the case of v4.0 clients, we may call into the "create" client
-tracking operation multiple times (once for each openowner). Upcalling
-for each one of those is wasteful and slow however. We can skip doing
-further "create" operations after the first one if we know that one has
-already been done.
+From: Jeff Layton <jlayton@poochiereds.net>
 
-v4.1+ clients generally only call into this function once (on
-RECLAIM_COMPLETE), and we can't skip upcalling on the create even if the
-STABLE bit is set. Doing so would make it impossible for nfsdcltrack to
-lift the grace period early.
+Since nfsdcld has been dead for a few years now, clean up the prefixes
+on the constants.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4recover.c | 16 ++++++++++++++++
- 1 file changed, 16 insertions(+)
+ utils/nfsdcltrack/sqlite.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 5697e9d2e875..6bd97d1d1880 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1281,6 +1281,22 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
- 	char *hexid, *reclaim_complete, *grace_start;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index 352f029d55c0..52fcaa4d7ca3 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -50,10 +50,10 @@
  
-+	/*
-+	 * With v4.0 clients, there's little difference in outcome between a
-+	 * create and check operation, and we can end up calling into this
-+	 * function multiple times per client (once for each openowner). So,
-+	 * for v4.0 clients skip upcalling once the client has been recorded
-+	 * on stable storage.
-+	 *
-+	 * For v4.1+ clients, the outcome of the two operations is different,
-+	 * so we must ensure that we upcall for the create operation. v4.1+
-+	 * clients call this on RECLAIM_COMPLETE though, so we should only end
-+	 * up doing a single create upcall per client.
-+	 */
-+	if (clp->cl_minorversion == 0 &&
-+	    test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-+		return;
-+
- 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
- 	if (!hexid) {
- 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
+ #include "xlog.h"
+ 
+-#define CLD_SQLITE_SCHEMA_VERSION 1
++#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 1
+ 
+ /* in milliseconds */
+-#define CLD_SQLITE_BUSY_TIMEOUT 10000
++#define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
+ 
+ /* private data structures */
+ 
+@@ -111,7 +111,7 @@ sqlite_prepare_dbh(const char *topdir)
+ 		return ret;
+ 	}
+ 
+-	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
++	ret = sqlite3_busy_timeout(dbh, CLTRACK_SQLITE_BUSY_TIMEOUT);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
+ 		sqlite3_close(dbh);
+@@ -156,7 +156,7 @@ sqlite_maindb_init(const char *topdir)
+ 	/* insert version into table -- ignore error if it fails */
+ 	ret = snprintf(buf, sizeof(buf),
+ 		       "INSERT OR IGNORE INTO parameters values (\"version\", "
+-		       "\"%d\");", CLD_SQLITE_SCHEMA_VERSION);
++		       "\"%d\");", CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION);
+ 	if (ret < 0) {
+ 		goto out_err;
+ 	} else if ((size_t)ret >= sizeof(buf)) {
+@@ -189,10 +189,10 @@ sqlite_maindb_init(const char *topdir)
+ 
+ 	/* process SELECT result */
+ 	ret = sqlite3_column_int(stmt, 0);
+-	if (ret != CLD_SQLITE_SCHEMA_VERSION) {
++	if (ret != CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION) {
+ 		xlog(L_ERROR, "Unsupported database schema version! "
+ 			"Expected %d, got %d.",
+-			CLD_SQLITE_SCHEMA_VERSION, ret);
++			CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION, ret);
+ 		ret = -EINVAL;
+ 		goto out_err;
+ 	}
 -- 
 1.9.3
 
