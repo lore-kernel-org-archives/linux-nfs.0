@@ -1,79 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45893 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757230AbaIIQi6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:38:58 -0400
-Received: from [50.247.105.171] (helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRORU-00081O-Vf
-	for linux-nfs@vger.kernel.org; Tue, 09 Sep 2014 16:38:57 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 7/9] pnfs/blocklayout: implement the return_range method
-Date: Tue,  9 Sep 2014 09:40:51 -0700
-Message-Id: <1410280853-3964-8-git-send-email-hch@lst.de>
-In-Reply-To: <1410280853-3964-1-git-send-email-hch@lst.de>
-References: <1410280853-3964-1-git-send-email-hch@lst.de>
+Received: from mail-vc0-f180.google.com ([209.85.220.180]:51834 "EHLO
+	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752842AbaIPWE4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Sep 2014 18:04:56 -0400
+Received: by mail-vc0-f180.google.com with SMTP id hq11so541627vcb.11
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Sep 2014 15:04:55 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140916053135.22257.46476.stgit@notabene.brown>
+References: <20140916051911.22257.24658.stgit@notabene.brown>
+	<20140916053135.22257.46476.stgit@notabene.brown>
+Date: Tue, 16 Sep 2014 18:04:55 -0400
+Message-ID: <CAHQdGtQbFtLFEpzgqoMoLiG7-Y0FdFiZdpS4dgkT7hsCnqMiPA@mail.gmail.com>
+Subject: Re: [PATCH 4/4] NFS/SUNRPC: Remove other deadlock-avoidance
+ mechanisms in nfs_release_page()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Peter Zijlstra <peterz@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>, linux-mm@kvack.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jeff.layton@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This allows removing extents from the extent tree especially on truncate
-operations, and thus fixing reads from truncated and re-extended that
-previously returned stale data.
+Hi Neil,
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+On Tue, Sep 16, 2014 at 1:31 AM, NeilBrown <neilb@suse.de> wrote:
+> Now that nfs_release_page() doesn't block indefinitely, other deadlock
+> avoidance mechanisms aren't needed.
+>  - it doesn't hurt for kswapd to block occasionally.  If it doesn't
+>    want to block it would clear __GFP_WAIT.  The current_is_kswapd()
+>    was only added to avoid deadlocks and we have a new approach for
+>    that.
+>  - memory allocation in the SUNRPC layer can very rarely try to
+>    ->releasepage() a page it is trying to handle.  The deadlock
+>    is removed as nfs_release_page() doesn't block indefinitely.
+>
+> So we don't need to set PF_FSTRANS for sunrpc network operations any
+> more.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 42b6f9c..a7524c4 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -470,6 +470,35 @@ static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
- }
- 
- static void
-+bl_return_range(struct pnfs_layout_hdr *lo,
-+		struct pnfs_layout_range *range)
-+{
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
-+	sector_t offset = range->offset >> SECTOR_SHIFT, end;
-+	int err;
-+
-+	if (range->offset % 8) {
-+		dprintk("%s: offset %lld not block size aligned\n",
-+			__func__, range->offset);
-+		return;
-+	}
-+
-+	if (range->length != NFS4_MAX_UINT64) {
-+		if (range->length % 8) {
-+			dprintk("%s: length %lld not block size aligned\n",
-+				__func__, range->length);
-+			return;
-+		}
-+
-+		end = offset + (range->length >> SECTOR_SHIFT);
-+	} else {
-+		end = round_down(NFS4_MAX_UINT64, PAGE_SIZE);
-+	}
-+
-+	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
-+}
-+
-+static void
- bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
- 		       const struct nfs4_layoutcommit_args *arg)
- {
-@@ -777,6 +806,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.free_layout_hdr		= bl_free_layout_hdr,
- 	.alloc_lseg			= bl_alloc_lseg,
- 	.free_lseg			= bl_free_lseg,
-+	.return_range			= bl_return_range,
- 	.encode_layoutcommit		= bl_encode_layoutcommit,
- 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
- 	.set_layoutdriver		= bl_set_layoutdriver,
+Jeff Layton and I had a little discussion about this earlier today.
+The issue that Jeff raised was that these 1 second waits, although
+they will eventually complete, can nevertheless have a cumulative
+large effect if, say, the reason why we're not making progress is that
+we're being called as part of a socket reconnect attempt in
+xs_tcp_setup_socket().
+
+In that case, any attempts to call nfs_release_page() on pages that
+need to use that socket, will result in a 1 second wait, and no
+progress in satisfying the allocation attempt.
+
+Our conclusion was that we still need the PF_FSTRANS in order to deal
+with that case, where we need to actually circumvent the new wait in
+order to guarantee progress on the task of allocating and connecting
+the new socket.
+
+Comments?
+
+Cheers
+  Trond
+
 -- 
-1.9.1
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
