@@ -1,55 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:1241 "EHLO mx12.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:53265 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750802AbaIXNq5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2014 09:46:57 -0400
-Message-ID: <5422CB4E.1070000@Netapp.com>
-Date: Wed, 24 Sep 2014 09:46:54 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1752660AbaIPFdG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Sep 2014 01:33:06 -0400
+From: NeilBrown <neilb@suse.de>
+To: Peter Zijlstra <peterz@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>
+Date: Tue, 16 Sep 2014 15:31:35 +1000
+Subject: [PATCH 4/4] NFS/SUNRPC: Remove other deadlock-avoidance mechanisms
+ in nfs_release_page()
+Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jeff Layton <jeff.layton@primarydata.com>
+Message-ID: <20140916053135.22257.46476.stgit@notabene.brown>
+In-Reply-To: <20140916051911.22257.24658.stgit@notabene.brown>
+References: <20140916051911.22257.24658.stgit@notabene.brown>
 MIME-Version: 1.0
-To: Olga Kornievskaia <aglo@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] Fixing lease renewal
-References: <CAN-5tyFQihuK22n_bzsO0LtqQBM+KW6vELt7H_DPEF0RFdoDQQ@mail.gmail.com>
-In-Reply-To: <CAN-5tyFQihuK22n_bzsO0LtqQBM+KW6vELt7H_DPEF0RFdoDQQ@mail.gmail.com>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Olga,
+Now that nfs_release_page() doesn't block indefinitely, other deadlock
+avoidance mechanisms aren't needed.
+ - it doesn't hurt for kswapd to block occasionally.  If it doesn't
+   want to block it would clear __GFP_WAIT.  The current_is_kswapd()
+   was only added to avoid deadlocks and we have a new approach for
+   that.
+ - memory allocation in the SUNRPC layer can very rarely try to
+   ->releasepage() a page it is trying to handle.  The deadlock
+   is removed as nfs_release_page() doesn't block indefinitely.
 
-Your patch is using spaces instead of tabs, so it won't apply to the existing code.  Did you use `git format-patch` to generate it?
+So we don't need to set PF_FSTRANS for sunrpc network operations any
+more.
 
-Anna
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/nfs/file.c                   |   16 +++++++---------
+ net/sunrpc/sched.c              |    2 --
+ net/sunrpc/xprtrdma/transport.c |    2 --
+ net/sunrpc/xprtsock.c           |   10 ----------
+ 4 files changed, 7 insertions(+), 23 deletions(-)
 
-On 09/24/2014 09:11 AM, Olga Kornievskaia wrote:
-> Commit c9fdeb28 removed a 'continue' after checking if the lease needs
-> to be renewed. However, if client hasn't moved, the code falls down to
-> starting reboot recovery erroneously (ie., sends open reclaim and gets
-> back stale_clientid error) before recovering from getting stale_clientid
-> on the renew operation.
->
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  fs/nfs/nfs4state.c |    4 +++-
->  1 files changed, 3 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 22fe351..4616598 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -2340,11 +2340,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
->                         continue;
->                 }
->
-> -               if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
-> +               if (!test_bit(NFS4CLNT_MOVED, &clp->cl_state) &&
-> +                    test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
->                         section = "check lease";
->                         status = nfs4_check_lease(clp);
->                         if (status < 0)
->                                 goto out_error;
-> +                       continue;
->                 }
->
->                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 8d74983417af..5949ca37cd18 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -469,18 +469,16 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+ 	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
+ 
+ 	/* Always try to initiate a 'commit' if relevant, but only
+-	 * wait for it if __GFP_WAIT is set and the calling process is
+-	 * allowed to block.  Even then, only wait 1 second.  Waiting
+-	 * indefinitely can cause deadlocks when the NFS server is on
+-	 * this machine, and there is no particular need to wait
+-	 * extensively here.  A short wait has the benefit that
+-	 * someone else can worry about the freezer.
++	 * wait for it if __GFP_WAIT is set.  Even then, only wait 1
++	 * second.  Waiting indefinitely can cause deadlocks when the
++	 * NFS server is on this machine, when a new TCP connection is
++	 * needed and in other rare cases.  There is no particular
++	 * need to wait extensively here.  A short wait has the
++	 * benefit that someone else can worry about the freezer.
+ 	 */
+ 	if (mapping) {
+ 		nfs_commit_inode(mapping->host, 0);
+-		if ((gfp & __GFP_WAIT) &&
+-		    !current_is_kswapd() &&
+-		    !(current->flags & PF_FSTRANS))
++		if ((gfp & __GFP_WAIT))
+ 			wait_on_page_bit_killable_timeout(page, PG_private,
+ 							  HZ);
+ 	}
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 9358c79fd589..fe3441abdbe5 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -821,9 +821,7 @@ void rpc_execute(struct rpc_task *task)
+ 
+ static void rpc_async_schedule(struct work_struct *work)
+ {
+-	current->flags |= PF_FSTRANS;
+ 	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
+-	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /**
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 2faac4940563..6a4615dd0261 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -205,7 +205,6 @@ xprt_rdma_connect_worker(struct work_struct *work)
+ 	struct rpc_xprt *xprt = &r_xprt->xprt;
+ 	int rc = 0;
+ 
+-	current->flags |= PF_FSTRANS;
+ 	xprt_clear_connected(xprt);
+ 
+ 	dprintk("RPC:       %s: %sconnect\n", __func__,
+@@ -216,7 +215,6 @@ xprt_rdma_connect_worker(struct work_struct *work)
+ 
+ 	dprintk("RPC:       %s: exit\n", __func__);
+ 	xprt_clear_connecting(xprt);
+-	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /*
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 43cd89eacfab..4707c0c8568b 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1927,8 +1927,6 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
+ 	struct socket *sock;
+ 	int status = -EIO;
+ 
+-	current->flags |= PF_FSTRANS;
+-
+ 	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+ 	status = __sock_create(xprt->xprt_net, AF_LOCAL,
+ 					SOCK_STREAM, 0, &sock, 1);
+@@ -1968,7 +1966,6 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
+-	current->flags &= ~PF_FSTRANS;
+ 	return status;
+ }
+ 
+@@ -2071,8 +2068,6 @@ static void xs_udp_setup_socket(struct work_struct *work)
+ 	struct socket *sock = transport->sock;
+ 	int status = -EIO;
+ 
+-	current->flags |= PF_FSTRANS;
+-
+ 	/* Start by resetting any existing state */
+ 	xs_reset_transport(transport);
+ 	sock = xs_create_sock(xprt, transport,
+@@ -2092,7 +2087,6 @@ static void xs_udp_setup_socket(struct work_struct *work)
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
+-	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /*
+@@ -2229,8 +2223,6 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+ 	struct rpc_xprt *xprt = &transport->xprt;
+ 	int status = -EIO;
+ 
+-	current->flags |= PF_FSTRANS;
+-
+ 	if (!sock) {
+ 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+ 		sock = xs_create_sock(xprt, transport,
+@@ -2276,7 +2268,6 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+ 	case -EINPROGRESS:
+ 	case -EALREADY:
+ 		xprt_clear_connecting(xprt);
+-		current->flags &= ~PF_FSTRANS;
+ 		return;
+ 	case -EINVAL:
+ 		/* Happens, for instance, if the user specified a link
+@@ -2294,7 +2285,6 @@ out_eagain:
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
+-	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /**
+
 
