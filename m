@@ -1,121 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:63298 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750725AbaIXWMc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 18:12:32 -0400
-Received: by mail-ie0-f172.google.com with SMTP id rp18so10513108iec.17
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 15:12:32 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:48359 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753729AbaIPXiT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Sep 2014 19:38:19 -0400
+Date: Wed, 17 Sep 2014 09:37:57 +1000
+From: NeilBrown <neilb@suse.de>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Peter Zijlstra <peterz@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>, <linux-fsdevel@vger.kernel.org>,
+        <linux-mm@kvack.org>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jeff.layton@primarydata.com>
+Subject: Re: [PATCH 3/4] NFS: avoid deadlocks with loop-back mounted NFS
+ filesystems.
+Message-ID: <20140917093757.472c8cf2@notabene.brown>
+In-Reply-To: <54182F8B.8010302@Netapp.com>
+References: <20140916051911.22257.24658.stgit@notabene.brown>
+	<20140916053135.22257.68002.stgit@notabene.brown>
+	<54182F8B.8010302@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtTYCPOK_Cq0BPVdfXQ9C=8sCU47R83-m52-6P5VOSq8Tg@mail.gmail.com>
-References: <1411574911-19269-1-git-send-email-kolga@netapp.com>
-	<CAHQdGtTfUYoU+0LRqS6eao5Z-uVqHoGkXO9HcU+Wmo=vZobvew@mail.gmail.com>
-	<CAN-5tyHhXMzJd60ASes1zMYSEaSiwAqry5_4zE=LHZw_3Lbv9w@mail.gmail.com>
-	<CAHQdGtTYCPOK_Cq0BPVdfXQ9C=8sCU47R83-m52-6P5VOSq8Tg@mail.gmail.com>
-Date: Wed, 24 Sep 2014 18:12:32 -0400
-Message-ID: <CAN-5tyFLxHivtgjiiRqvhfmrR53qmd4j2oveERVihxz-rMLQYQ@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Fixing lease renewal
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/SleaSZokHRCCDT+.Q_nPcHS"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 24, 2014 at 4:11 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Wed, Sep 24, 2014 at 2:29 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> Before I go ahead with the change, does it make sense to move "both"
->> of the migration sections NFS4CLNT_MOVED and NFS4CLNT_LEASE_MOVED
->> before the check lease section?
->
-> Actually. Never mind. Thinking about this, and looking at the code, we
-> definitely do want to ensure that lease recovery is performed before
-> migration recovery.
-> Let's just put the 'continue;' back into the CHECK_LEASE section for
-> now so that we enforce that.
->
+--Sig_/SleaSZokHRCCDT+.Q_nPcHS
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Ok. Another one submitted.
+On Tue, 16 Sep 2014 08:39:39 -0400 Anna Schumaker <Anna.Schumaker@netapp.co=
+m>
+wrote:
 
->> On Wed, Sep 24, 2014 at 2:05 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->>> Hi Olga,
->>>
->>> On Wed, Sep 24, 2014 at 12:08 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
->>>> Commit c9fdeb28 removed a 'continue' after checking if the lease needs
->>>> to be renewed. However, if client hasn't moved, the code falls down to
->>>> starting reboot recovery erroneously (ie., sends open reclaim and gets
->>>> back stale_clientid error) before recovering from getting stale_clientid
->>>> on the renew operation.
->>>>
->>>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->>>> ---
->>>>  fs/nfs/nfs4state.c | 4 +++-
->>>>  1 file changed, 3 insertions(+), 1 deletion(-)
->>>>
->>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->>>> index 22fe351..4616598 100644
->>>> --- a/fs/nfs/nfs4state.c
->>>> +++ b/fs/nfs/nfs4state.c
->>>> @@ -2340,11 +2340,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
->>>>                         continue;
->>>>                 }
->>>>
->>>> -               if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
->>>> +               if (!test_bit(NFS4CLNT_MOVED, &clp->cl_state) &&
->>>> +                    test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
->>>>                         section = "check lease";
->>>>                         status = nfs4_check_lease(clp);
->>>>                         if (status < 0)
->>>>                                 goto out_error;
->>>> +                       continue;
->>>>                 }
->>>>
->>>>                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
->>>> --
->>>> 1.8.5.2 (Apple Git-48)
->>>>
->>>
->>> I think you misunderstood me. I was proposing that we move the entire
->>> code section that currently reads
->>>
->>>                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
->>>                         section = "migration";
->>>                         status = nfs4_handle_migration(clp);
->>>                         if (status < 0)
->>>                                 goto out_error;
->>>                 }
->>>
->>> so that it occurs before the section
->>>
->>>                 if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
->>>                         section = "check lease";
->>>                         status = nfs4_check_lease(clp);
->>>                         if (status < 0)
->>>                                 goto out_error;
->>> +                      continue;
->>>                 }
->>>
->>> That way we only need to test once for NFS4CLNT_MOVED.
->>>
->>> Cheers
->>>   Trond
->>> --
->>> Trond Myklebust
->>>
->>> Linux NFS client maintainer, PrimaryData
->>>
->>> trond.myklebust@primarydata.com
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
+> On 09/16/2014 01:31 AM, NeilBrown wrote:
+> > Support for loop-back mounted NFS filesystems is useful when NFS is
+> > used to access shared storage in a high-availability cluster.
+> >
+> > If the node running the NFS server fails, some other node can mount the
+> > filesystem and start providing NFS service.  If that node already had
+> > the filesystem NFS mounted, it will now have it loop-back mounted.
+> >
+> > nfsd can suffer a deadlock when allocating memory and entering direct
+> > reclaim.
+> > While direct reclaim does not write to the NFS filesystem it can send
+> > and wait for a COMMIT through nfs_release_page().
+>=20
+> Is there anything that can be done on the nfsd side to prevent the deadlo=
+cks?
+>=20
+
+I went down that path first and it didn't work out.
+Setting PF_FSTRANS in nfsd (when the request comes from localhost) and then
+arranging the __GFP_FS is cleared when that flag is set overcomes a number =
+of
+possible deadlock sources, but not all.
+
+There are a number of situations where nfsd is waiting on some other thread
+(which doesn't have PF_FSTRANS set) and that thread tries to reclaim memory
+and hits nfs_release_page().
+It was a long and complex patch set, and nobody liked it.
+And the common thread was always that it always blocked in nfs_release_page=
+().
+So it seemed to make sense to just remove that blockage.
+
+Thanks,
+NeilBrown
+
+--Sig_/SleaSZokHRCCDT+.Q_nPcHS
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBVBjJ1Tnsnt1WYoG5AQIA4A/9FUdVuHypfzeP82ItnBzQ2jKdkcLlfEI6
+g6BsDX9RJ28++zq7MqI1mnsyJXzZbBpvB1W6wSFWiFNq8FqZOhHH+YFzQMGY6MgX
+m9NjV5Jb6aXCGwjwjlE/ocIhbgHyS3DYJyiid28Lv0j/mdsA2rux0lW86Z3QuqP+
+zV4y/FQCs9Hmf0hwOmlrdVjdMe5XYtZpBgctlKaynMKooC69yfna21zzWMAW0JU4
+TgNPR9XMNVULFS+rtt1tYYMbHynPtnuIS0tT7RJJjAf4EWxzlMrcHGebCoZaJZ3G
+7AgadunMpvBPmBDQOwUbf2iVibEFkEUSOTqr4X6xMdOOzbNv8hGO0+7WixEuLQv/
+uP5W0S+1oBSLyISUhhW8KQharjPIKbPF8pM+WLXpZclXNMDl6xRztOeHrHjc7InZ
+E2HrOlR/ttWbtcTMz0B17PhkKZjyYvuRyxTXoj0cWxgnTNH4MCzGFYlDDcwqKOUu
+kLZ2TCrIHpVmzhlFde6wFLpTWBzErhuo1Wna/HYFXK7sitq2hiOx0NM4DPDMNInw
+tw4hxzUBjd5s7UEaW/+YEZAct8rkXWDjYAkw0fyQZFTEqjGKZXVKvY6koJDG0gZG
+B/2pWkP0VyU23iZ/SjpLdpWgP030KI/X/TXYRZTzCaPipJyYGfCL/xpwWk2N7ki9
+0eK6lfXjMvs=
+=F4Ed
+-----END PGP SIGNATURE-----
+
+--Sig_/SleaSZokHRCCDT+.Q_nPcHS--
