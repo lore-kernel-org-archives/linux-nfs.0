@@ -1,97 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:51885 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:1849 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754572AbaIXCDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 22:03:40 -0400
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Wed, 24 Sep 2014 11:28:32 +1000
-Subject: [PATCH 4/5] NFS: avoid waiting at all in nfs_release_page when
- congested.
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Ingo Molnar <mingo@redhat.com>,
-        linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Peter Zijlstra <peterz@infradead.org>
-Message-ID: <20140924012832.4838.7078.stgit@notabene.brown>
-In-Reply-To: <20140924012422.4838.29188.stgit@notabene.brown>
-References: <20140924012422.4838.29188.stgit@notabene.brown>
+	id S1754291AbaIPNa6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Sep 2014 09:30:58 -0400
+Message-ID: <54183B8F.3080301@RedHat.com>
+Date: Tue, 16 Sep 2014 09:30:55 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Chris Perl <chris.perl@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs-utils: nfs_get_tcpclient/nfs_get_udpclient - make
+ bind(2) implicit
+References: <1410547762-27285-1-git-send-email-chris.perl@gmail.com>
+In-Reply-To: <1410547762-27285-1-git-send-email-chris.perl@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If nfs_release_page() is called on a sequence of pages which are all
-in the same file which is blocked on COMMIT, each page could
-contribute a 1 second delay which could be come excessive.  I have
-seen delays of as much as 208 seconds.
-
-To keep the delay to one second, mark the bdi as write-congested
-if the commit didn't finished.  Once it does finish, the
-write-congested flag will be cleared by nfs_commit_release_pages().
-
-With this, the longest total delay in try_to_free_pages that I have
-seen is under 3 seconds.  With no waiting in nfs_release_page at all
-I have seen delays of nearly 1.5 seconds.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/nfs/file.c  |    9 +++++++--
- fs/nfs/write.c |    5 +++++
- 2 files changed, 12 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index ef5513322cf6..1243a15438d0 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -470,7 +470,8 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
- 
- 	/* Always try to initiate a 'commit' if relevant, but only
- 	 * wait for it if __GFP_WAIT is set and the calling process is
--	 * allowed to block.  Even then, only wait 1 second.
-+	 * allowed to block.  Even then, only wait 1 second and only
-+	 * if the 'bdi' is not congested.
- 	 * Waiting indefinitely can cause deadlocks when the NFS
- 	 * server is on this machine, and there is no particular need
- 	 * to wait extensively here.  A short wait has the benefit
-@@ -481,9 +482,13 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
- 		nfs_commit_inode(mapping->host, 0);
- 		if ((gfp & __GFP_WAIT) &&
- 		    !current_is_kswapd() &&
--		    !(current->flags & PF_FSTRANS)) {
-+		    !(current->flags & PF_FSTRANS) &&
-+		    !bdi_write_congested(&nfss->backing_dev_info)) {
- 			wait_on_page_bit_killable_timeout(page, PG_private,
- 							  HZ);
-+			if (PagePrivate(page))
-+				set_bdi_congested(&nfss->backing_dev_info,
-+						  BLK_RW_ASYNC);
- 		}
- 	}
- 	/* If PagePrivate() is set, then the page is not freeable */
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index b5d83c7545d4..3066c7fcb565 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1638,6 +1638,7 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
- 	struct nfs_page	*req;
- 	int status = data->task.tk_status;
- 	struct nfs_commit_info cinfo;
-+	struct nfs_server *nfss;
- 
- 	while (!list_empty(&data->pages)) {
- 		req = nfs_list_entry(data->pages.next);
-@@ -1671,6 +1672,10 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
- 	next:
- 		nfs_unlock_and_release_request(req);
- 	}
-+	nfss = NFS_SERVER(data->inode);
-+	if (atomic_long_read(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
-+		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
-+
- 	nfs_init_cinfo(&cinfo, data->inode, data->dreq);
- 	if (atomic_dec_and_test(&cinfo.mds->rpcs_out))
- 		nfs_commit_clear_lock(NFS_I(data->inode));
 
 
+On 09/12/2014 02:49 PM, Chris Perl wrote:
+> When attempting to establish a local ephemeral endpoint for a TCP or UDP
+> socket, do not explicitly call bind(2), instead let it happen implicilty when
+> the socket is first used.
+> 
+> The main motivating factor for this change is when TCP runs out of unique
+> ephemeral ports (i.e.  cannot find any ephemeral ports which are not a part of
+> *any* TCP connection).  In this situation if you explicitly call bind(2), then
+> the call will fail with EADDRINUSE.  However, if you allow the allocation of an
+> ephemeral port to happen implicitly as part of connect(2) (or other functions),
+> then ephemeral ports can be reused, so long as the combination of (local_ip,
+> local_port, remote_ip, remote_port) is unique for TCP sockets on the system.
+> 
+> This doesn't matter for UDP sockets, but it seemed easiest to treat TCP and UDP
+> sockets the same.
+> 
+> This can allow mount.nfs(8) to continue to function successfully, even in the
+> face of misbehaving applications which are creating a large number of TCP
+> connections.
+> 
+> Signed-off-by: Chris Perl <chris.perl@gmail.com>
+Committed...
+
+steved.
+
+> ---
+>  support/nfs/rpc_socket.c | 68 ++++++++++++++----------------------------------
+>  1 file changed, 20 insertions(+), 48 deletions(-)
+> 
+> diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
+> index 7896cd2..2900d18 100644
+> --- a/support/nfs/rpc_socket.c
+> +++ b/support/nfs/rpc_socket.c
+> @@ -106,36 +106,6 @@ static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
+>  	return client;
+>  }
+>  
+> -/*
+> - * Bind a socket using an unused ephemeral source port.
+> - *
+> - * Returns zero on success, or returns -1 on error.  errno is
+> - * set to reflect the nature of the error.
+> - */
+> -static int nfs_bind(const int sock, const sa_family_t family)
+> -{
+> -	struct sockaddr_in sin = {
+> -		.sin_family		= AF_INET,
+> -		.sin_addr.s_addr	= htonl(INADDR_ANY),
+> -	};
+> -	struct sockaddr_in6 sin6 = {
+> -		.sin6_family		= AF_INET6,
+> -		.sin6_addr		= IN6ADDR_ANY_INIT,
+> -	};
+> -
+> -	switch (family) {
+> -	case AF_INET:
+> -		return bind(sock, (struct sockaddr *)(char *)&sin,
+> -					(socklen_t)sizeof(sin));
+> -	case AF_INET6:
+> -		return bind(sock, (struct sockaddr *)(char *)&sin6,
+> -					(socklen_t)sizeof(sin6));
+> -	}
+> -
+> -	errno = EAFNOSUPPORT;
+> -	return -1;
+> -}
+> -
+>  #ifdef HAVE_LIBTIRPC
+>  
+>  /*
+> @@ -276,7 +246,8 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
+>  				 const int resvport)
+>  {
+>  	CLIENT *client;
+> -	int ret, sock;
+> +	int ret = 0;
+> +	int sock = 0;
+>  #ifdef HAVE_LIBTIRPC
+>  	struct sockaddr_storage address;
+>  	const struct netbuf nbuf = {
+> @@ -300,15 +271,15 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
+>  		return NULL;
+>  	}
+>  
+> -	if (resvport)
+> +	if (resvport) {
+>  		ret = nfs_bindresvport(sock, sap->sa_family);
+> -	else
+> -		ret = nfs_bind(sock, sap->sa_family);
+> -	if (ret < 0) {
+> -		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> -		rpc_createerr.cf_error.re_errno = errno;
+> -		(void)close(sock);
+> -		return NULL;
+> +
+> +		if (ret < 0) {
+> +			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> +			rpc_createerr.cf_error.re_errno = errno;
+> +			(void)close(sock);
+> +			return NULL;
+> +		}
+>  	}
+>  
+>  	if (timeout->tv_sec == -1)
+> @@ -358,7 +329,8 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
+>  				 const int resvport)
+>  {
+>  	CLIENT *client;
+> -	int ret, sock;
+> +	int ret = 0;
+> +	int sock = 0;
+>  #ifdef HAVE_LIBTIRPC
+>  	struct sockaddr_storage address;
+>  	const struct netbuf nbuf = {
+> @@ -382,15 +354,15 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
+>  		return NULL;
+>  	}
+>  
+> -	if (resvport)
+> +	if (resvport) {
+>  		ret = nfs_bindresvport(sock, sap->sa_family);
+> -	else
+> -		ret = nfs_bind(sock, sap->sa_family);
+> -	if (ret < 0) {
+> -		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> -		rpc_createerr.cf_error.re_errno = errno;
+> -		(void)close(sock);
+> -		return NULL;
+> +
+> +		if (ret < 0) {
+> +			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
+> +			rpc_createerr.cf_error.re_errno = errno;
+> +			(void)close(sock);
+> +			return NULL;
+> +		}
+>  	}
+>  
+>  	if (timeout->tv_sec == -1)
+> 
