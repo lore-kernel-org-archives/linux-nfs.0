@@ -1,63 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:46532 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752659AbaIXPI2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 11:08:28 -0400
-Received: by mail-ig0-f182.google.com with SMTP id hn15so6675936igb.9
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 08:08:27 -0700 (PDT)
+Received: from cantor2.suse.de ([195.135.220.15]:53234 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750813AbaIPFca (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Sep 2014 01:32:30 -0400
+From: NeilBrown <neilb@suse.de>
+To: Peter Zijlstra <peterz@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>
+Date: Tue, 16 Sep 2014 15:31:34 +1000
+Subject: [PATCH 0/4] Remove possible deadlocks in nfs_release_page()
+Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Jeff Layton <jeff.layton@primarydata.com>
+Message-ID: <20140916051911.22257.24658.stgit@notabene.brown>
 MIME-Version: 1.0
-In-Reply-To: <5422CB4E.1070000@Netapp.com>
-References: <CAN-5tyFQihuK22n_bzsO0LtqQBM+KW6vELt7H_DPEF0RFdoDQQ@mail.gmail.com>
-	<5422CB4E.1070000@Netapp.com>
-Date: Wed, 24 Sep 2014 11:08:27 -0400
-Message-ID: <CAN-5tyFUOGejnf2tmAtZmHumRV8DH2EdcoerJx5x8YkENTcsNA@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Fixing lease renewal
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I did. Let me try again.
+Because nfs_release_page() submits a 'COMMIT' nfs request and waits
+for it to complete, and does this during memory reclaim, it is
+susceptible to deadlocks if memory allocation happens anywhere in
+sending the COMMIT message.  If the NFS server is on the same host
+(i.e. loop-back NFS), then any memory allocations in the NFS server
+can also cause deadlocks.
 
-On Wed, Sep 24, 2014 at 9:46 AM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> Hey Olga,
->
-> Your patch is using spaces instead of tabs, so it won't apply to the existing code.  Did you use `git format-patch` to generate it?
->
-> Anna
->
-> On 09/24/2014 09:11 AM, Olga Kornievskaia wrote:
->> Commit c9fdeb28 removed a 'continue' after checking if the lease needs
->> to be renewed. However, if client hasn't moved, the code falls down to
->> starting reboot recovery erroneously (ie., sends open reclaim and gets
->> back stale_clientid error) before recovering from getting stale_clientid
->> on the renew operation.
->>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->>  fs/nfs/nfs4state.c |    4 +++-
->>  1 files changed, 3 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->> index 22fe351..4616598 100644
->> --- a/fs/nfs/nfs4state.c
->> +++ b/fs/nfs/nfs4state.c
->> @@ -2340,11 +2340,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
->>                         continue;
->>                 }
->>
->> -               if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
->> +               if (!test_bit(NFS4CLNT_MOVED, &clp->cl_state) &&
->> +                    test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
->>                         section = "check lease";
->>                         status = nfs4_check_lease(clp);
->>                         if (status < 0)
->>                                 goto out_error;
->> +                       continue;
->>                 }
->>
->>                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
->
+nfs_release_page() already has some code to avoid deadlocks in some
+circumstances, but these are not sufficient for loopback NFS.
+
+This patch set changes the approach to deadlock avoidance.  Rather
+than detecting cases that could deadlock and avoiding the COMMIT, it
+always tries the COMMIT, but only waits a short time (1 second).
+This avoid any deadlock possibility at the expense of not waiting
+longer than 1 second even if no deadlock is pending.
+
+nfs_release_page() does not *need* to wait longer - all callers that
+matter handle a failure gracefully - they move on to other pages.
+
+This set:
+ - adds some "_timeout()" functions to "wait_on_bit".  Only a
+   wait_on_page version is actually used.
+ - exports page wake_up support.  NFS knows that the COMMIT is complete
+   when PG_private is clear.  So nfs_release_page will use
+   wait_on_page_bit_killable_timeout to wait for the bit to clear,
+   and needs access to wake_up_page()
+ - changes nfs_release_page() to use
+    wait_on_page_bit_killable_timeout()
+ - removes the other deadlock avoidance mechanisms from
+   nfs_release_page, so that PF_FSTRANS is again only used
+   by XFS.
+
+As such, it needs buy-in from sched people, mm people, and NFS people.
+Assuming I get that buy-in, suggests for how these patches can flow
+into mainline would be appreciated ... I daren't hope they can all go
+in through one tree....
+
+Thanks,
+NeilBrown
+
+
+---
+
+NeilBrown (4):
+      SCHED: add some "wait..on_bit...timeout()" interfaces.
+      MM: export page_wakeup functions
+      NFS: avoid deadlocks with loop-back mounted NFS filesystems.
+      NFS/SUNRPC: Remove other deadlock-avoidance mechanisms in nfs_release_page()
+
+
+ fs/nfs/file.c                   |   22 ++++++++++++----------
+ fs/nfs/write.c                  |    2 ++
+ include/linux/pagemap.h         |   12 ++++++++++--
+ include/linux/wait.h            |    5 ++++-
+ kernel/sched/wait.c             |   36 ++++++++++++++++++++++++++++++++++++
+ mm/filemap.c                    |   21 +++++++++++++++------
+ net/sunrpc/sched.c              |    2 --
+ net/sunrpc/xprtrdma/transport.c |    2 --
+ net/sunrpc/xprtsock.c           |   10 ----------
+ 9 files changed, 79 insertions(+), 33 deletions(-)
+
+-- 
+Signature
+
