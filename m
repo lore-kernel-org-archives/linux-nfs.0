@@ -1,45 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:58825 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753352AbaIWG4a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 02:56:30 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Cc: Benny Halevy <bhalevy@primarydata.com>, Benny Halevy <bhalevy@panasas.com>
-Subject: [PATCH 2/2] nfsd: do not clear rpc_resp in nfsd4_cb_done_sequence
-Date: Tue, 23 Sep 2014 08:58:49 +0200
-Message-Id: <1411455529-11556-3-git-send-email-hch@lst.de>
-In-Reply-To: <1411455529-11556-1-git-send-email-hch@lst.de>
-References: <1411455529-11556-1-git-send-email-hch@lst.de>
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:65533 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751229AbaIPLro (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Sep 2014 07:47:44 -0400
+Received: by mail-qa0-f46.google.com with SMTP id k15so5283918qaq.5
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Sep 2014 04:47:43 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 16 Sep 2014 07:47:41 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: Peter Zijlstra <peterz@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Jeff Layton <jeff.layton@primarydata.com>
+Subject: Re: [PATCH 0/4] Remove possible deadlocks in nfs_release_page()
+Message-ID: <20140916074741.1de870c5@tlielax.poochiereds.net>
+In-Reply-To: <20140916051911.22257.24658.stgit@notabene.brown>
+References: <20140916051911.22257.24658.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@panasas.com>
+On Tue, 16 Sep 2014 15:31:34 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-This is incorrect when a callback is has to be restarted, in which case
-the XDR decoding of the second iteration will see a NULL cb argument.
+> Because nfs_release_page() submits a 'COMMIT' nfs request and waits
+> for it to complete, and does this during memory reclaim, it is
+> susceptible to deadlocks if memory allocation happens anywhere in
+> sending the COMMIT message.  If the NFS server is on the same host
+> (i.e. loop-back NFS), then any memory allocations in the NFS server
+> can also cause deadlocks.
+> 
+> nfs_release_page() already has some code to avoid deadlocks in some
+> circumstances, but these are not sufficient for loopback NFS.
+> 
+> This patch set changes the approach to deadlock avoidance.  Rather
+> than detecting cases that could deadlock and avoiding the COMMIT, it
+> always tries the COMMIT, but only waits a short time (1 second).
+> This avoid any deadlock possibility at the expense of not waiting
+> longer than 1 second even if no deadlock is pending.
+> 
+> nfs_release_page() does not *need* to wait longer - all callers that
+> matter handle a failure gracefully - they move on to other pages.
+> 
+> This set:
+>  - adds some "_timeout()" functions to "wait_on_bit".  Only a
+>    wait_on_page version is actually used.
+>  - exports page wake_up support.  NFS knows that the COMMIT is complete
+>    when PG_private is clear.  So nfs_release_page will use
+>    wait_on_page_bit_killable_timeout to wait for the bit to clear,
+>    and needs access to wake_up_page()
+>  - changes nfs_release_page() to use
+>     wait_on_page_bit_killable_timeout()
+>  - removes the other deadlock avoidance mechanisms from
+>    nfs_release_page, so that PF_FSTRANS is again only used
+>    by XFS.
+> 
+> As such, it needs buy-in from sched people, mm people, and NFS people.
+> Assuming I get that buy-in, suggests for how these patches can flow
+> into mainline would be appreciated ... I daren't hope they can all go
+> in through one tree....
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> ---
+> 
+> NeilBrown (4):
+>       SCHED: add some "wait..on_bit...timeout()" interfaces.
+>       MM: export page_wakeup functions
+>       NFS: avoid deadlocks with loop-back mounted NFS filesystems.
+>       NFS/SUNRPC: Remove other deadlock-avoidance mechanisms in nfs_release_page()
+> 
+> 
+>  fs/nfs/file.c                   |   22 ++++++++++++----------
+>  fs/nfs/write.c                  |    2 ++
+>  include/linux/pagemap.h         |   12 ++++++++++--
+>  include/linux/wait.h            |    5 ++++-
+>  kernel/sched/wait.c             |   36 ++++++++++++++++++++++++++++++++++++
+>  mm/filemap.c                    |   21 +++++++++++++++------
+>  net/sunrpc/sched.c              |    2 --
+>  net/sunrpc/xprtrdma/transport.c |    2 --
+>  net/sunrpc/xprtsock.c           |   10 ----------
+>  9 files changed, 79 insertions(+), 33 deletions(-)
+> 
 
-[hch: updated description]
-Signed-off-by: Benny Halevy <bhalevy@panasas.com>
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4callback.c | 3 ---
- 1 file changed, 3 deletions(-)
+On balance, I like the NFS parts of this set -- particular the fact
+that we get rid of the PF_FSTRANS abortion, and simplify the code quite
+a bit. My only real concern is that you could end up stalling in this
+code in situations where you really can't release the page.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 795e218..fc07084 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -847,9 +847,6 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
- 		rpc_wake_up_next(&clp->cl_cb_waitq);
- 		dprintk("%s: freed slot, new seqid=%d\n", __func__,
- 			clp->cl_cb_session->se_cb_seq_nr);
--
--		/* We're done looking into the sequence information */
--		task->tk_msg.rpc_resp = NULL;
- 	}
- }
- 
+For instance, suppose you're trying to reconnect the socket to the
+server (a'la xs_tcp_setup_socket). The VM is low on memory and tries to
+release a page that needs that socket in order to issue a COMMIT. That
+situation is going to end up with the page unable to be released, but
+you'll still wait 1s before returning. If the VM tries to release a
+bunch of pages like this, then those waits could add up.
+
+Also, we call things like invalidate_complete_page2 from the cache
+invalidation code. Will we end up with potential problems now that we
+have a stronger possibility that a page might not be freeable when it
+calls releasepage? (no idea on this -- I'm just spitballing)
+
 -- 
-1.9.1
-
+Jeff Layton <jlayton@primarydata.com>
