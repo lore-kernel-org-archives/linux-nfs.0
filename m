@@ -1,91 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:64889 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754104AbaIHOrC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:02 -0400
-Received: by mail-qa0-f45.google.com with SMTP id v10so2335911qac.32
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:46:58 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: [PATCH v3 0/8] nfsd: support for lifting grace period early
-Date: Mon,  8 Sep 2014 10:46:41 -0400
-Message-Id: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:4414 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753206AbaIPMjp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Sep 2014 08:39:45 -0400
+Message-ID: <54182F8B.8010302@Netapp.com>
+Date: Tue, 16 Sep 2014 08:39:39 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>, Peter Zijlstra <peterz@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>
+CC: <linux-fsdevel@vger.kernel.org>, <linux-mm@kvack.org>,
+        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jeff.layton@primarydata.com>
+Subject: Re: [PATCH 3/4] NFS: avoid deadlocks with loop-back mounted NFS filesystems.
+References: <20140916051911.22257.24658.stgit@notabene.brown> <20140916053135.22257.68002.stgit@notabene.brown>
+In-Reply-To: <20140916053135.22257.68002.stgit@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v3:
-- only accept Y/y/1 in new procfile writes
-- turn minorversion env var into a "reclaim complete" boolean
-- serialize nfsdcltrack upcalls for a client
-- reduce duplicate upcalls via NFSD4_CLIENT_STABLE flag
-- don't allow reclaims after RECLAIM_COMPLETE
+On 09/16/2014 01:31 AM, NeilBrown wrote:
+> Support for loop-back mounted NFS filesystems is useful when NFS is
+> used to access shared storage in a high-availability cluster.
+>
+> If the node running the NFS server fails, some other node can mount the
+> filesystem and start providing NFS service.  If that node already had
+> the filesystem NFS mounted, it will now have it loop-back mounted.
+>
+> nfsd can suffer a deadlock when allocating memory and entering direct
+> reclaim.
+> While direct reclaim does not write to the NFS filesystem it can send
+> and wait for a COMMIT through nfs_release_page().
 
-v2:
-- move grace period handling into its own module
+Is there anything that can be done on the nfsd side to prevent the deadlocks?
 
-Here's a respin of the patches to reduce the grace period. A respun
-version of the nfs-utils patches will be posted separately (needed due
-to the minorversion to reclaim complete boolean change). I also threw
-in some other patches that clean up the upcall handling a bit and
-that prevent the client from being able to reclaim after sending a
-RECLAIM_COMPLETE.
+Anna
 
-Original cover letter follows:
-
-One of the huge annoyances in dealing with knfsd is the 90s grace period
-that's imposed when the server reboots. This is not just an annoyance,
-but means a siginificant amount of "downtime" in many production
-environments.
-
-This patchset aimed at reducing this pain. It adds a couple of /proc
-knobs that tell the lockd and nfsd lock managers to lift the grace
-period.
-
-It also changes the UMH upcalls to pass a little bit of extra info in
-the form of environment variables so that the upcall program can
-determine whether there are still any clients that may be in the process
-of reclaiming.
-
-There are also a couple of cleanup patches in here that are not strictly
-required. In particular, making a separate grace.ko module doesn't have
-to be done, but I think it's a good idea.
-
-Jeff Layton (8):
-  lockd: move lockd's grace period handling into its own module
-  nfsd: remove redundant boot_time parm from grace_done client tracking
-    op
-  lockd: add a /proc/fs/lockd/nlm_end_grace file
-  nfsd: add a v4_end_grace file to /proc/fs/nfsd
-  nfsd: pass extra info in env vars to upcalls to allow for early grace
-    period end
-  nfsd: serialize nfsdcltrack upcalls for a particular client
-  nfsd: set and test NFSD4_CLIENT_STABLE bit to reduce nfsdcltrack
-    upcalls
-  nfsd: reject reclaim request when client has already sent
-    RECLAIM_COMPLETE
-
- fs/Kconfig              |   6 +-
- fs/lockd/Makefile       |   3 +-
- fs/lockd/grace.c        |  65 ---------------------
- fs/lockd/netns.h        |   1 -
- fs/lockd/procfs.c       |  92 +++++++++++++++++++++++++++++
- fs/lockd/procfs.h       |  28 +++++++++
- fs/lockd/svc.c          |  10 +++-
- fs/nfs_common/Makefile  |   3 +-
- fs/nfs_common/grace.c   | 113 ++++++++++++++++++++++++++++++++++++
- fs/nfsd/Kconfig         |   1 +
- fs/nfsd/nfs4recover.c   | 150 +++++++++++++++++++++++++++++++++++++++++-------
- fs/nfsd/nfs4state.c     |  11 ++--
- fs/nfsd/nfsctl.c        |  45 +++++++++++++++
- fs/nfsd/state.h         |   6 +-
- include/linux/proc_fs.h |   2 +
- 15 files changed, 440 insertions(+), 96 deletions(-)
- delete mode 100644 fs/lockd/grace.c
- create mode 100644 fs/lockd/procfs.c
- create mode 100644 fs/lockd/procfs.h
- create mode 100644 fs/nfs_common/grace.c
-
--- 
-1.9.3
+>
+> This patch modifies nfs_release_page() to wait a limited time for the
+> commit to complete - one second.  If the commit doesn't complete
+> in this time, nfs_release_page() will fail.  This means it might now
+> fail in some cases where it wouldn't before.  These cases are only
+> when 'gfp' includes '__GFP_WAIT'.
+>
+> nfs_release_page() is only called by try_to_release_page(), and that
+> can only be called on an NFS page with required 'gfp' flags from
+>  - page_cache_pipe_buf_steal() in splice.c
+>  - shrink_page_list() in vmscan.c
+>  - invalidate_inode_pages2_range() in truncate.c
+>
+> The first two handle failure quite safely.  The last is only called
+> after ->launder_page() has been called, and that will have waited
+> for the commit to finish already.
+>
+> So aborting if the commit takes longer than 1 second is perfectly safe.
+>
+> 1 second may be longer than is really necessary, but it is much
+> shorter than the current maximum wait, so this is not a regression.
+> Some waiting is needed to help slow down memory allocation to the
+> rate that we can complete writeout of pages.
+>
+> In those rare cases where it is nfsd, or something that nfsd is
+> waiting for, that is calling nfs_release_page(), this delay will at
+> most cause a small hic-cough in places where it currently deadlocks.
+>
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  fs/nfs/file.c  |   24 ++++++++++++++----------
+>  fs/nfs/write.c |    2 ++
+>  2 files changed, 16 insertions(+), 10 deletions(-)
+>
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 524dd80d1898..8d74983417af 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -468,17 +468,21 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+>  
+>  	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
+>  
+> -	/* Only do I/O if gfp is a superset of GFP_KERNEL, and we're not
+> -	 * doing this memory reclaim for a fs-related allocation.
+> +	/* Always try to initiate a 'commit' if relevant, but only
+> +	 * wait for it if __GFP_WAIT is set and the calling process is
+> +	 * allowed to block.  Even then, only wait 1 second.  Waiting
+> +	 * indefinitely can cause deadlocks when the NFS server is on
+> +	 * this machine, and there is no particular need to wait
+> +	 * extensively here.  A short wait has the benefit that
+> +	 * someone else can worry about the freezer.
+>  	 */
+> -	if (mapping && (gfp & GFP_KERNEL) == GFP_KERNEL &&
+> -	    !(current->flags & PF_FSTRANS)) {
+> -		int how = FLUSH_SYNC;
+> -
+> -		/* Don't let kswapd deadlock waiting for OOM RPC calls */
+> -		if (current_is_kswapd())
+> -			how = 0;
+> -		nfs_commit_inode(mapping->host, how);
+> +	if (mapping) {
+> +		nfs_commit_inode(mapping->host, 0);
+> +		if ((gfp & __GFP_WAIT) &&
+> +		    !current_is_kswapd() &&
+> +		    !(current->flags & PF_FSTRANS))
+> +			wait_on_page_bit_killable_timeout(page, PG_private,
+> +							  HZ);
+>  	}
+>  	/* If PagePrivate() is set, then the page is not freeable */
+>  	if (PagePrivate(page))
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 175d5d073ccf..b5d83c7545d4 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -731,6 +731,8 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+>  		if (likely(!PageSwapCache(head->wb_page))) {
+>  			set_page_private(head->wb_page, 0);
+>  			ClearPagePrivate(head->wb_page);
+> +			smp_mb__after_atomic();
+> +			wake_up_page(head->wb_page, PG_private);
+>  			clear_bit(PG_MAPPED, &head->wb_flags);
+>  		}
+>  		nfsi->npages--;
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
