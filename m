@@ -1,195 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12731 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752350AbaIWA1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 20:27:03 -0400
-Date: Mon, 22 Sep 2014 20:26:55 -0400
-From: Simo Sorce <simo@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140922202655.5e308e58@willson.usersys.redhat.com>
-In-Reply-To: <5420B78D.6040704@RedHat.com>
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>
-	<1411413608-16462-2-git-send-email-steved@redhat.com>
-	<20140922152603.75005941@willson.usersys.redhat.com>
-	<54207BCD.70101@RedHat.com>
-	<20140922204401.GI26763@fieldses.org>
-	<5420911D.6080506@RedHat.com>
-	<20140922223423.GA29932@fieldses.org>
-	<5420B78D.6040704@RedHat.com>
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:48146 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756068AbaIQUaa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2014 16:30:30 -0400
+Received: by mail-ig0-f172.google.com with SMTP id a13so258674igq.5
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Sep 2014 13:30:30 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20140917110528.130aeb7b@willson.usersys.redhat.com>
+References: <CALXu0Ue9z-xbFk9hhsvu4c38qqmd0Wwupk2LvL99rwoAcRMqOw@mail.gmail.com>
+	<540831FE.1010208@rug.nl>
+	<CALXu0Ufa166-PocKOOMBSF6yONaMxyUMHQmLA8NuSda9sE8PVQ@mail.gmail.com>
+	<54085BF3.60802@rug.nl>
+	<1409855758.8703.48.camel@willson.usersys.redhat.com>
+	<CALXu0UeX=KRD949z8QX0-XoHQucP5X=0ERmTdMrSxSjQFJatsQ@mail.gmail.com>
+	<1933258307.20622714.1410354390763.JavaMail.zimbra@redhat.com>
+	<CALXu0UdQ9a4NTjhuXtRuCf6vmpC4B8CunMaH=NaQnUYLY=YAHw@mail.gmail.com>
+	<20140917110528.130aeb7b@willson.usersys.redhat.com>
+Date: Wed, 17 Sep 2014 22:30:29 +0200
+Message-ID: <CALXu0UcQ9YGTLnrjs5+AmVstAWmZ1QcNqOVeYyE-b_ktbfqvjw@mail.gmail.com>
+Subject: Re: How to use NFS with multiple principals in different realms?
+From: Cedric Blancher <cedric.blancher@gmail.com>
+To: Simo Sorce <simo@redhat.com>
+Cc: Steve Dickson <steved@redhat.com>, Jurjen Bokma <j.bokma@rug.nl>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        kerberos <kerberos@mit.edu>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 22 Sep 2014 19:58:05 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+On 17 September 2014 17:05, Simo Sorce <simo@redhat.com> wrote:
+> On Wed, 17 Sep 2014 13:20:19 +0200
+> Cedric Blancher <cedric.blancher@gmail.com> wrote:
+>
+>> What happens if there is no relation between KRB Realm names and
+>> FQDN/DNS? Can the NFS client find out which KRB Realm is used by the
+>> server?
+>
+> Depending on the environment you may have 1 or 2 ways.
+>
+> 1. add domain to realm mapping in the appropriate section in krb5.conf
+> on the client.
+> 2. allow the KDC to send back a referral (but not all clients will ask
+> their own KDC, some can do only 1).
 
-> 
-> 
-> On 09/22/2014 06:34 PM, J. Bruce Fields wrote:
-> > On Mon, Sep 22, 2014 at 05:14:05PM -0400, Steve Dickson wrote:
-> >>
-> >>
-> >> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
-> >>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
-> >>>>
-> >>>>
-> >>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
-> >>>>> On Mon, 22 Sep 2014 15:20:07 -0400
-> >>>>> Steve Dickson <steved@redhat.com> wrote:
-> >>>>>
-> >>>>>> Added the gssproxy.service to both the Wants= and
-> >>>>>> Atfers= lines, before the rpc-svcgssd.service. There
-> >>>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
-> >>>>>> unit which will stop the rpc.svcgssd daemon from
-> >>>>>> starting when the gssproxy daemon is already running.
-> >>>>>>
-> >>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
-> >>>>>> ---
-> >>>>>>  systemd/nfs-server.service | 5 +++--
-> >>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
-> >>>>>>
-> >>>>>> diff --git a/systemd/nfs-server.service
-> >>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
-> >>>>>> --- a/systemd/nfs-server.service
-> >>>>>> +++ b/systemd/nfs-server.service
-> >>>>>> @@ -2,12 +2,13 @@
-> >>>>>>  Description=NFS server and services
-> >>>>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
-> >>>>>>  Requires= nfs-mountd.service
-> >>>>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
-> >>>>>> rpc-svcgssd.service +Wants=rpc-statd.service
-> >>>>>> nfs-idmapd.service +Wants=rpc-gssd.service  
-> >>>>>>  Wants=rpc-statd-notify.service
-> >>>>>>  
-> >>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
-> >>>>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
-> >>>>>> -After= rpc-gssd.service rpc-svcgssd.service
-> >>>>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
-> >>>>>>  Before= rpc-statd-notify.service
-> >>>>>>  
-> >>>>>>  Wants=nfs-config.service
-> >>>>>
-> >>>>> I think you really need to insure that the modules are loaded
-> >>>>> before any of the server services are started, perhaps adding a
-> >>>>> unit file that exec's modprobe and has "Before:
-> >>>>> gssproxy.service rpc-svcgssd.service" in it ?
-> >>>> I really don't think its needed... From my testing it appears 
-> >>>> gssproxy is always being started and rpc.svcgssd is not... 
-> >>>
-> >>> Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount
-> >>> as both "Requires=" and "After=", so rpc-svcgssd.service will
-> >>> never run without first running var-lib-nfs-rpc_pipefs.mount,
-> >>> which will load sunrpc.  But I don't see where auth_rpcgss is
-> >>> getting loaded.  And I don't see what ensures anything happening
-> >>> before gssproxy runs.
-> >> It happens during the mount on the client and when the server
-> >> is started. 
-> >>
-> >>>
-> >>> We want to make sure your testing's not just getting lucky on the
-> >>> startup order.
-> >> The reason it working is because rpc.gssd is being started on the
-> >> server these days for callbacks and the After= line in
-> >> rpc-svcgssd.service is being executed before the
-> >> ConditionPathExists which cause rpc.svcgssd not to start.
-> > 
-> > nfs-utils$ grep After systemd/rpc-svcgssd.service 
-> > After=var-lib-nfs-rpc_pipefs.mount
-> > After=gssproxy.service
-> > After=nfs-config.service
-> > 
-> > There doesn't seem to be an After= line referring to rpc.gssd.
-> No, why should there be? There is After= line referring to rpc.gssd
-> in nfs-server.service
-> 
-> grep After systemd/nfs-server.service 
-> After= network.target proc-fs-nfsd.mount rpcbind.target
-> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
-> After= rpc-gssd.service rpc-svcgssd.service
-> After=nfs-config.service
-> 
-> So when the server starts,rpc.gssd will start and rpc.svcgssd will
-> start if gssproxy is not enable and there is a key tab. 
+But how can 1. help? Sure I can have my own krb5.conf but AFAIK
+rpc.gssd only looks at he system /etc/krb5.conf and not at any custom
+user defined location. Basically mount(8) would have to pass the
+location of the custom krb5.conf file to rpc.gssd to facilitate the
+mount, right?
 
-They can start in parallel, there is nothing in that line that makes
-one start before the other.
+I *think* we have a bigger problem here: Kerberos5 support in NFS
+appears to be designed around the philosophy of one realm per machine
+(one-to-rule-them'-all) and not that a single user or machine has
+mounts from many different realms, right?
 
-If you are relying on this you are relying on luck.
-
-> >> So when gssproxy.service does it's "Before=nfs-secure.service
-> >> nfs-secure-server.service" line everything is loaded before
-> >> gssproxy start... 
-> > 
-> > That line only makes gss-proxy start before those other things.
-> Right, which will load the sunrpc modules.
-
-No, starting before those service in itself achieves nothing.\
-I think what may cause the module to load maybe the fact
-gssproxy.service includes:
-Requires=proc-fs-nfsd.mount
-
-But to be honest this was a hack to deal with broken nfs service files,
-gss-proxy should not require nfsd, the dependency should be the other
-way around, as gss-proxy can run on machines where there is no nfs
-service whatsoever, as it stand this is a bug in gssproxy.service and
-I'd like to fix it.
-
-> >> I'm think gssproxy.service just needs to the put the Wants and
-> >> After= var-lib-nfs-rpc_pipefs.mount lines, instead of that Before
-> >> line.. 
-> > 
-> > That would make sure sunrpc's loaded, but not auth_rpcgss.
-> On the client side the mount -o sec=krb5? loads auth_rpcgss module.
-
-This happens eons after gss-proxy has been started.
-
-> Maybe the loading of nfsd loads the module? But I don't think that
-> module has to be loaded for any of the gss daemons (gssd, svcgssd or
-> gssproxy) to start successfully...
-
-Atm it *has to*.
-If the module is not loaded then /proc/net/rpc/use-gss-proxy will not
-exist and GSS-Proxy will not register with the kernel (it does so only
-at startup). It also means rpc.svcgssd will be started when it shouldn't
-
- 
-> >>>> Plus, from my understanding...  loading module from a service 
-> >>>> file is a big no no! People were having problems with
-> >>>> way back when... 
-> >>>
-> >>> Any pointers?  Google's not finding me anything.
-> >> Search the the Fedora bz's when systemd first came out... 
-> > 
-> > All I can find is:
-> > 
-> > 	https://bugzilla.redhat.com/show_bug.cgi?id=699040#c16
-> > 
-> > 	Btw afaik modules should be loaded via autoloading based on
-> > bus information, or via /etc/modules-load.d/*.conf. and unloading a
-> > 	module from the kernel should not be done except for
-> > debugging purposes so loading all these modules is it really
-> > necessary?
-> > 
-> > Which I agree with--modules should normally load on demand when we
-> > need them, and we should have an explanation for exceptions.
-> Yes, this was the conversation I was referring to.. Thank you 
-> for digging it out.. 
-> 
-> > 
-> > But here we have a pretty reasonable explanation (we need to know
-> > on startup whether a certain module has a certain feature, and we
-> > have to modprobe to do that).  I don't see any blanket prohibition
-> > against loading modules.
-> Lets talk with the systemd people to see what they say...
-
-Feel free to CC the,.
-
-Simo.
-
-
+Ced
 -- 
-Simo Sorce * Red Hat, Inc * New York
+Cedric Blancher <cedric.blancher@gmail.com>
+Institute Pasteur
