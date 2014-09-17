@@ -1,243 +1,360 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:53135 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752019AbaIKAeX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:34:23 -0400
-Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRsL7-000837-SL
-	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:34:22 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] pnfs/blocklayout: allocate separate pages for the layoutcommit payload
-Date: Wed, 10 Sep 2014 17:36:30 -0700
-Message-Id: <1410395791-2385-4-git-send-email-hch@lst.de>
-In-Reply-To: <1410395791-2385-1-git-send-email-hch@lst.de>
-References: <1410395791-2385-1-git-send-email-hch@lst.de>
+Received: from fieldses.org ([174.143.236.118]:53108 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756536AbaIQTgp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Sep 2014 15:36:45 -0400
+Date: Wed, 17 Sep 2014 15:36:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 1/9] lockd: move lockd's grace period handling into
+ its own module
+Message-ID: <20140917193642.GA2855@fieldses.org>
+References: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
+ <1410786850-18194-2-git-send-email-jlayton@primarydata.com>
+ <20140915150221.2437635b@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140915150221.2437635b@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of overflowing the XDR send buffer with our extent list allocate
-pages and pre-encode the layoutupdate payload into them.  We optimistically
-allocate a single page use alloc_page and only switch to vmalloc when we
-have more extents outstanding.  Currently there is only a single testcase
-(xfstests generic/113) which can reproduce large enough extent lists for
-this to occur.
+On Mon, Sep 15, 2014 at 03:02:21PM -0400, Jeff Layton wrote:
+> On Mon, 15 Sep 2014 09:14:02 -0400
+> Jeff Layton <jlayton@primarydata.com> wrote:
+> 
+> > Currently, all of the grace period handling is part of lockd. Eventually
+> > though we'd like to be able to build v4-only servers, at which point
+> > we'll need to put all of this elsewhere.
+> > 
+> > Move the code itself into fs/nfs_common and have it build a grace.ko
+> > module. Then, rejigger the Kconfig options so that both nfsd and lockd
+> > enable it automatically.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > ---
+> >  fs/Kconfig              |   6 ++-
+> >  fs/lockd/Makefile       |   2 +-
+> >  fs/lockd/grace.c        |  65 ----------------------------
+> >  fs/lockd/netns.h        |   1 -
+> >  fs/lockd/svc.c          |   1 -
+> >  fs/nfs_common/Makefile  |   3 +-
+> >  fs/nfs_common/grace.c   | 113 ++++++++++++++++++++++++++++++++++++++++++++++++
+> >  fs/nfsd/Kconfig         |   1 +
+> >  include/linux/proc_fs.h |   2 +
+> >  9 files changed, 124 insertions(+), 70 deletions(-)
+> >  delete mode 100644 fs/lockd/grace.c
+> >  create mode 100644 fs/nfs_common/grace.c
+> > 
+> > diff --git a/fs/Kconfig b/fs/Kconfig
+> > index 312393f32948..db5dc1598716 100644
+> > --- a/fs/Kconfig
+> > +++ b/fs/Kconfig
+> > @@ -233,9 +233,13 @@ if NETWORK_FILESYSTEMS
+> >  source "fs/nfs/Kconfig"
+> >  source "fs/nfsd/Kconfig"
+> >  
+> > +config GRACE_PERIOD
+> > +	tristate
+> > +
+> >  config LOCKD
+> >  	tristate
+> >  	depends on FILE_LOCKING
+> > +	select GRACE_PERIOD
+> >  
+> >  config LOCKD_V4
+> >  	bool
+> > @@ -249,7 +253,7 @@ config NFS_ACL_SUPPORT
+> >  
+> >  config NFS_COMMON
+> >  	bool
+> > -	depends on NFSD || NFS_FS
+> > +	depends on NFSD || NFS_FS || LOCKD
+> >  	default y
+> >  
+> >  source "net/sunrpc/Kconfig"
+> > diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
+> > index ca58d64374ca..6a0b351ce30e 100644
+> > --- a/fs/lockd/Makefile
+> > +++ b/fs/lockd/Makefile
+> > @@ -5,6 +5,6 @@
+> >  obj-$(CONFIG_LOCKD) += lockd.o
+> >  
+> >  lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
+> > -	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o grace.o
+> > +	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o
+> >  lockd-objs-$(CONFIG_LOCKD_V4) += clnt4xdr.o xdr4.o svc4proc.o
+> >  lockd-objs		      := $(lockd-objs-y)
+> > diff --git a/fs/lockd/grace.c b/fs/lockd/grace.c
+> > deleted file mode 100644
+> > index 6d1ee7204c88..000000000000
+> > --- a/fs/lockd/grace.c
+> > +++ /dev/null
+> > @@ -1,65 +0,0 @@
+> > -/*
+> > - * Common code for control of lockd and nfsv4 grace periods.
+> > - */
+> > -
+> > -#include <linux/module.h>
+> > -#include <linux/lockd/bind.h>
+> > -#include <net/net_namespace.h>
+> > -
+> > -#include "netns.h"
+> > -
+> > -static DEFINE_SPINLOCK(grace_lock);
+> > -
+> > -/**
+> > - * locks_start_grace
+> > - * @lm: who this grace period is for
+> > - *
+> > - * A grace period is a period during which locks should not be given
+> > - * out.  Currently grace periods are only enforced by the two lock
+> > - * managers (lockd and nfsd), using the locks_in_grace() function to
+> > - * check when they are in a grace period.
+> > - *
+> > - * This function is called to start a grace period.
+> > - */
+> > -void locks_start_grace(struct net *net, struct lock_manager *lm)
+> > -{
+> > -	struct lockd_net *ln = net_generic(net, lockd_net_id);
+> > -
+> > -	spin_lock(&grace_lock);
+> > -	list_add(&lm->list, &ln->grace_list);
+> > -	spin_unlock(&grace_lock);
+> > -}
+> > -EXPORT_SYMBOL_GPL(locks_start_grace);
+> > -
+> > -/**
+> > - * locks_end_grace
+> > - * @lm: who this grace period is for
+> > - *
+> > - * Call this function to state that the given lock manager is ready to
+> > - * resume regular locking.  The grace period will not end until all lock
+> > - * managers that called locks_start_grace() also call locks_end_grace().
+> > - * Note that callers count on it being safe to call this more than once,
+> > - * and the second call should be a no-op.
+> > - */
+> > -void locks_end_grace(struct lock_manager *lm)
+> > -{
+> > -	spin_lock(&grace_lock);
+> > -	list_del_init(&lm->list);
+> > -	spin_unlock(&grace_lock);
+> > -}
+> > -EXPORT_SYMBOL_GPL(locks_end_grace);
+> > -
+> > -/**
+> > - * locks_in_grace
+> > - *
+> > - * Lock managers call this function to determine when it is OK for them
+> > - * to answer ordinary lock requests, and when they should accept only
+> > - * lock reclaims.
+> > - */
+> > -int locks_in_grace(struct net *net)
+> > -{
+> > -	struct lockd_net *ln = net_generic(net, lockd_net_id);
+> > -
+> > -	return !list_empty(&ln->grace_list);
+> > -}
+> > -EXPORT_SYMBOL_GPL(locks_in_grace);
+> > diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+> > index 5010b55628b4..097bfa3adb1c 100644
+> > --- a/fs/lockd/netns.h
+> > +++ b/fs/lockd/netns.h
+> > @@ -11,7 +11,6 @@ struct lockd_net {
+> >  
+> >  	struct delayed_work grace_period_end;
+> >  	struct lock_manager lockd_manager;
+> > -	struct list_head grace_list;
+> >  
+> >  	spinlock_t nsm_clnt_lock;
+> >  	unsigned int nsm_users;
+> > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> > index 09857b48d0c3..c35cd43a06e6 100644
+> > --- a/fs/lockd/svc.c
+> > +++ b/fs/lockd/svc.c
+> > @@ -586,7 +586,6 @@ static int lockd_init_net(struct net *net)
+> >  	struct lockd_net *ln = net_generic(net, lockd_net_id);
+> >  
+> >  	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
+> > -	INIT_LIST_HEAD(&ln->grace_list);
+> 
+> Ahh, just found a bug. Now that we can initialize the grace_list
+> independently of the lockd_manager, we must ensure that we initialize
+> the lockd_manager's list_head in lockd_init_net. So, we need to add
+> this in here:
+> 
+> 	INIT_LIST_HEAD(&ln->lockd_manager.list);
+> 
+> ...or we can end up oopsing if sm-notify runs and writes to the
+> nlm_grace_end file before lockd comes up.
+> 
+> I've fixed this in my tree, but I'll wait to resend just yet to see
+> whether there are any more comments on the rest of the set.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c |  15 ++----
- fs/nfs/blocklayout/blocklayout.h |   8 ++--
- fs/nfs/blocklayout/extent_tree.c | 100 +++++++++++++++++++++++++++++++--------
- 3 files changed, 90 insertions(+), 33 deletions(-)
+I don't have any more comments.  I can fix this up if this is all there
+is to do, or you can resend or give me a git url.--b.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 25ba9e0..900eb09 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -500,21 +500,16 @@ bl_return_range(struct pnfs_layout_hdr *lo,
- 	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
- }
- 
--static void
--bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
--		       const struct nfs4_layoutcommit_args *arg)
-+static int
-+bl_prepare_layoutcommit(struct nfs4_layoutcommit_args *arg)
- {
--	dprintk("%s enter\n", __func__);
--	ext_tree_encode_commit(BLK_LO2EXT(lo), xdr);
-+	return ext_tree_prepare_commit(arg);
- }
- 
- static void
- bl_cleanup_layoutcommit(struct nfs4_layoutcommit_data *lcdata)
- {
--	struct pnfs_layout_hdr *lo = NFS_I(lcdata->args.inode)->layout;
--
--	dprintk("%s enter\n", __func__);
--	ext_tree_mark_committed(BLK_LO2EXT(lo), lcdata->res.status);
-+	ext_tree_mark_committed(&lcdata->args, lcdata->res.status);
- }
- 
- static int
-@@ -670,7 +665,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.alloc_lseg			= bl_alloc_lseg,
- 	.free_lseg			= bl_free_lseg,
- 	.return_range			= bl_return_range,
--	.encode_layoutcommit		= bl_encode_layoutcommit,
-+	.prepare_layoutcommit		= bl_prepare_layoutcommit,
- 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
- 	.set_layoutdriver		= bl_set_layoutdriver,
- 	.alloc_deviceid_node		= bl_alloc_deviceid_node,
-diff --git a/fs/nfs/blocklayout/blocklayout.h b/fs/nfs/blocklayout/blocklayout.h
-index 19fae5e..9757f3e 100644
---- a/fs/nfs/blocklayout/blocklayout.h
-+++ b/fs/nfs/blocklayout/blocklayout.h
-@@ -72,6 +72,9 @@ struct pnfs_block_extent {
- 	unsigned int	be_tag;
- };
- 
-+/* on the wire size of the extent */
-+#define BL_EXTENT_SIZE	(7 * sizeof(__be32) + NFS4_DEVICEID4_SIZE)
-+
- struct pnfs_block_layout {
- 	struct pnfs_layout_hdr	bl_layout;
- 	struct rb_root		bl_ext_rw;
-@@ -129,8 +132,7 @@ int ext_tree_mark_written(struct pnfs_block_layout *bl, sector_t start,
- 		sector_t len);
- bool ext_tree_lookup(struct pnfs_block_layout *bl, sector_t isect,
- 		struct pnfs_block_extent *ret, bool rw);
--int ext_tree_encode_commit(struct pnfs_block_layout *bl,
--		struct xdr_stream *xdr);
--void ext_tree_mark_committed(struct pnfs_block_layout *bl, int status);
-+int ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg);
-+void ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status);
- 
- #endif /* FS_NFS_NFS4BLOCKLAYOUT_H */
-diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
-index 43e891b..2a2c261 100644
---- a/fs/nfs/blocklayout/extent_tree.c
-+++ b/fs/nfs/blocklayout/extent_tree.c
-@@ -462,19 +462,25 @@ out:
- 	return err;
- }
- 
--int
--ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
-+static void ext_tree_free_commitdata(struct nfs4_layoutcommit_args *arg,
-+		size_t buffer_size)
- {
--	struct pnfs_block_extent *be;
--	unsigned int count = 0;
--	__be32 *p, *xdr_start;
--	int ret = 0;
-+	if (arg->layoutupdate_pages != &arg->layoutupdate_page) {
-+		int nr_pages = DIV_ROUND_UP(buffer_size, PAGE_SIZE), i;
- 
--	dprintk("%s enter\n", __func__);
-+		for (i = 0; i < nr_pages; i++)
-+			put_page(arg->layoutupdate_pages[i]);
-+		kfree(arg->layoutupdate_pages);
-+	} else {
-+		put_page(arg->layoutupdate_page);
-+	}
-+}
- 
--	xdr_start = xdr_reserve_space(xdr, 8);
--	if (!xdr_start)
--		return -ENOSPC;
-+static int ext_tree_encode_commit(struct pnfs_block_layout *bl, __be32 *p,
-+		size_t buffer_size, size_t *count)
-+{
-+	struct pnfs_block_extent *be;
-+	int ret = 0;
- 
- 	spin_lock(&bl->bl_ext_lock);
- 	for (be = ext_tree_first(&bl->bl_ext_rw); be; be = ext_tree_next(be)) {
-@@ -482,12 +488,11 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
- 		    be->be_tag != EXTENT_WRITTEN)
- 			continue;
- 
--		p = xdr_reserve_space(xdr, 7 * sizeof(__be32) +
--					NFS4_DEVICEID4_SIZE);
--		if (!p) {
--			printk("%s: out of space for extent list\n", __func__);
-+		(*count)++;
-+		if (*count * BL_EXTENT_SIZE > buffer_size) {
-+			/* keep counting.. */
- 			ret = -ENOSPC;
--			break;
-+			continue;
- 		}
- 
- 		p = xdr_encode_opaque_fixed(p, be->be_device->deviceid.data,
-@@ -498,25 +503,80 @@ ext_tree_encode_commit(struct pnfs_block_layout *bl, struct xdr_stream *xdr)
- 		*p++ = cpu_to_be32(PNFS_BLOCK_READWRITE_DATA);
- 
- 		be->be_tag = EXTENT_COMMITTING;
--		count++;
- 	}
- 	spin_unlock(&bl->bl_ext_lock);
- 
--	xdr_start[0] = cpu_to_be32((xdr->p - xdr_start - 1) * 4);
--	xdr_start[1] = cpu_to_be32(count);
-+	return ret;
-+}
-+
-+int
-+ext_tree_prepare_commit(struct nfs4_layoutcommit_args *arg)
-+{
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
-+	size_t count = 0, buffer_size = PAGE_SIZE;
-+	__be32 *start_p;
-+	int ret;
-+
-+	dprintk("%s enter\n", __func__);
-+
-+	arg->layoutupdate_page = alloc_page(GFP_NOFS);
-+	if (!arg->layoutupdate_page)
-+		return -ENOMEM;
-+	start_p = page_address(arg->layoutupdate_page);
-+	arg->layoutupdate_pages = &arg->layoutupdate_page;
-+
-+retry:
-+	ret = ext_tree_encode_commit(bl, start_p + 1, buffer_size, &count);
-+	if (unlikely(ret)) {
-+		ext_tree_free_commitdata(arg, buffer_size);
-+
-+		buffer_size = sizeof(__be32) + BL_EXTENT_SIZE * count;
-+		count = 0;
-+
-+		arg->layoutupdate_pages =
-+			kcalloc(DIV_ROUND_UP(buffer_size, PAGE_SIZE),
-+				sizeof(struct page *), GFP_NOFS);
-+		if (!arg->layoutupdate_pages)
-+			return -ENOMEM;
-+
-+		start_p = __vmalloc(buffer_size, GFP_NOFS, PAGE_KERNEL);
-+		if (!start_p) {
-+			kfree(arg->layoutupdate_pages);
-+			return -ENOMEM;
-+		}
-+
-+		goto retry;
-+	}
-+
-+	*start_p = cpu_to_be32(count);
-+	arg->layoutupdate_len = sizeof(__be32) + BL_EXTENT_SIZE * count;
-+
-+	if (unlikely(arg->layoutupdate_pages != &arg->layoutupdate_page)) {
-+		__be32 *p = start_p;
-+		int i = 0;
-+
-+		for (p = start_p;
-+		     p < start_p + arg->layoutupdate_len;
-+		     p += PAGE_SIZE) {
-+			arg->layoutupdate_pages[i++] = vmalloc_to_page(p);
-+		}
-+	}
- 
- 	dprintk("%s found %i ranges\n", __func__, count);
--	return ret;
-+	return 0;
- }
- 
- void
--ext_tree_mark_committed(struct pnfs_block_layout *bl, int status)
-+ext_tree_mark_committed(struct nfs4_layoutcommit_args *arg, int status)
- {
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(NFS_I(arg->inode)->layout);
- 	struct rb_root *root = &bl->bl_ext_rw;
- 	struct pnfs_block_extent *be;
- 
- 	dprintk("%s status %d\n", __func__, status);
- 
-+	ext_tree_free_commitdata(arg, arg->layoutupdate_len);
-+
- 	spin_lock(&bl->bl_ext_lock);
- 	for (be = ext_tree_first(root); be; be = ext_tree_next(be)) {
- 		if (be->be_state != PNFS_BLOCK_INVALID_DATA ||
--- 
-1.9.1
-
+> 
+> >  	spin_lock_init(&ln->nsm_clnt_lock);
+> >  	return 0;
+> >  }
+> > diff --git a/fs/nfs_common/Makefile b/fs/nfs_common/Makefile
+> > index f689ed82af3a..d153ca3ea577 100644
+> > --- a/fs/nfs_common/Makefile
+> > +++ b/fs/nfs_common/Makefile
+> > @@ -3,5 +3,6 @@
+> >  #
+> >  
+> >  obj-$(CONFIG_NFS_ACL_SUPPORT) += nfs_acl.o
+> > -
+> >  nfs_acl-objs := nfsacl.o
+> > +
+> > +obj-$(CONFIG_GRACE_PERIOD) += grace.o
+> > diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
+> > new file mode 100644
+> > index 000000000000..ae6e58ea4de5
+> > --- /dev/null
+> > +++ b/fs/nfs_common/grace.c
+> > @@ -0,0 +1,113 @@
+> > +/*
+> > + * Common code for control of lockd and nfsv4 grace periods.
+> > + *
+> > + * Transplanted from lockd code
+> > + */
+> > +
+> > +#include <linux/module.h>
+> > +#include <net/net_namespace.h>
+> > +#include <net/netns/generic.h>
+> > +#include <linux/fs.h>
+> > +
+> > +static int grace_net_id;
+> > +static DEFINE_SPINLOCK(grace_lock);
+> > +
+> > +/**
+> > + * locks_start_grace
+> > + * @net: net namespace that this lock manager belongs to
+> > + * @lm: who this grace period is for
+> > + *
+> > + * A grace period is a period during which locks should not be given
+> > + * out.  Currently grace periods are only enforced by the two lock
+> > + * managers (lockd and nfsd), using the locks_in_grace() function to
+> > + * check when they are in a grace period.
+> > + *
+> > + * This function is called to start a grace period.
+> > + */
+> > +void
+> > +locks_start_grace(struct net *net, struct lock_manager *lm)
+> > +{
+> > +	struct list_head *grace_list = net_generic(net, grace_net_id);
+> > +
+> > +	spin_lock(&grace_lock);
+> > +	list_add(&lm->list, grace_list);
+> > +	spin_unlock(&grace_lock);
+> > +}
+> > +EXPORT_SYMBOL_GPL(locks_start_grace);
+> > +
+> > +/**
+> > + * locks_end_grace
+> > + * @net: net namespace that this lock manager belongs to
+> > + * @lm: who this grace period is for
+> > + *
+> > + * Call this function to state that the given lock manager is ready to
+> > + * resume regular locking.  The grace period will not end until all lock
+> > + * managers that called locks_start_grace() also call locks_end_grace().
+> > + * Note that callers count on it being safe to call this more than once,
+> > + * and the second call should be a no-op.
+> > + */
+> > +void
+> > +locks_end_grace(struct lock_manager *lm)
+> > +{
+> > +	spin_lock(&grace_lock);
+> > +	list_del_init(&lm->list);
+> > +	spin_unlock(&grace_lock);
+> > +}
+> > +EXPORT_SYMBOL_GPL(locks_end_grace);
+> > +
+> > +/**
+> > + * locks_in_grace
+> > + *
+> > + * Lock managers call this function to determine when it is OK for them
+> > + * to answer ordinary lock requests, and when they should accept only
+> > + * lock reclaims.
+> > + */
+> > +int
+> > +locks_in_grace(struct net *net)
+> > +{
+> > +	struct list_head *grace_list = net_generic(net, grace_net_id);
+> > +
+> > +	return !list_empty(grace_list);
+> > +}
+> > +EXPORT_SYMBOL_GPL(locks_in_grace);
+> > +
+> > +static int __net_init
+> > +grace_init_net(struct net *net)
+> > +{
+> > +	struct list_head *grace_list = net_generic(net, grace_net_id);
+> > +
+> > +	INIT_LIST_HEAD(grace_list);
+> > +	return 0;
+> > +}
+> > +
+> > +static void __net_exit
+> > +grace_exit_net(struct net *net)
+> > +{
+> > +	struct list_head *grace_list = net_generic(net, grace_net_id);
+> > +
+> > +	BUG_ON(!list_empty(grace_list));
+> > +}
+> > +
+> > +static struct pernet_operations grace_net_ops = {
+> > +	.init = grace_init_net,
+> > +	.exit = grace_exit_net,
+> > +	.id   = &grace_net_id,
+> > +	.size = sizeof(struct list_head),
+> > +};
+> > +
+> > +static int __init
+> > +init_grace(void)
+> > +{
+> > +	return register_pernet_subsys(&grace_net_ops);
+> > +}
+> > +
+> > +static void __exit
+> > +exit_grace(void)
+> > +{
+> > +	unregister_pernet_subsys(&grace_net_ops);
+> > +}
+> > +
+> > +MODULE_AUTHOR("Jeff Layton <jlayton@primarydata.com>");
+> > +MODULE_LICENSE("GPL");
+> > +module_init(init_grace)
+> > +module_exit(exit_grace)
+> > diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+> > index f3586b645d7d..73395156bdb4 100644
+> > --- a/fs/nfsd/Kconfig
+> > +++ b/fs/nfsd/Kconfig
+> > @@ -71,6 +71,7 @@ config NFSD_V4
+> >  	select FS_POSIX_ACL
+> >  	select SUNRPC_GSS
+> >  	select CRYPTO
+> > +	select GRACE_PERIOD
+> >  	help
+> >  	  This option enables support in your system's NFS server for
+> >  	  version 4 of the NFS protocol (RFC 3530).
+> > diff --git a/include/linux/proc_fs.h b/include/linux/proc_fs.h
+> > index 9d117f61d976..b97bf2ef996e 100644
+> > --- a/include/linux/proc_fs.h
+> > +++ b/include/linux/proc_fs.h
+> > @@ -74,6 +74,8 @@ static inline int remove_proc_subtree(const char *name, struct proc_dir_entry *p
+> >  
+> >  #endif /* CONFIG_PROC_FS */
+> >  
+> > +struct net;
+> > +
+> >  static inline struct proc_dir_entry *proc_net_mkdir(
+> >  	struct net *net, const char *name, struct proc_dir_entry *parent)
+> >  {
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@primarydata.com>
