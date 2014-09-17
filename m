@@ -1,52 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:37311 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756646AbaIWTmb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 15:42:31 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Chuck Lever'" <chuck.lever@oracle.com>
-Cc: "'J. Bruce Fields'" <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
-        <linux-rdma@vger.kernel.org>
-References: <20140922200547.19909.68196.stgit@build.ogc.int> <465554E1-802A-4D37-8032-4E99B96B8BFB@oracle.com>
-In-Reply-To: <465554E1-802A-4D37-8032-4E99B96B8BFB@oracle.com>
-Subject: RE: [PATCH V2] svcrdma: Advertise the correct max payload
-Date: Tue, 23 Sep 2014 14:42:34 -0500
-Message-ID: <00a701cfd766$855044e0$8ff0cea0$@opengridcomputing.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56767 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757346AbaIQVbO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 17 Sep 2014 17:31:14 -0400
+Date: Wed, 17 Sep 2014 17:31:04 -0400
+From: Simo Sorce <simo@redhat.com>
+To: Cedric Blancher <cedric.blancher@gmail.com>
+Cc: Steve Dickson <steved@redhat.com>, Jurjen Bokma <j.bokma@rug.nl>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        kerberos <kerberos@mit.edu>
+Subject: Re: How to use NFS with multiple principals in different realms?
+Message-ID: <20140917173104.4ea31d95@willson.usersys.redhat.com>
+In-Reply-To: <CALXu0UcQ9YGTLnrjs5+AmVstAWmZ1QcNqOVeYyE-b_ktbfqvjw@mail.gmail.com>
+References: <CALXu0Ue9z-xbFk9hhsvu4c38qqmd0Wwupk2LvL99rwoAcRMqOw@mail.gmail.com>
+	<540831FE.1010208@rug.nl>
+	<CALXu0Ufa166-PocKOOMBSF6yONaMxyUMHQmLA8NuSda9sE8PVQ@mail.gmail.com>
+	<54085BF3.60802@rug.nl>
+	<1409855758.8703.48.camel@willson.usersys.redhat.com>
+	<CALXu0UeX=KRD949z8QX0-XoHQucP5X=0ERmTdMrSxSjQFJatsQ@mail.gmail.com>
+	<1933258307.20622714.1410354390763.JavaMail.zimbra@redhat.com>
+	<CALXu0UdQ9a4NTjhuXtRuCf6vmpC4B8CunMaH=NaQnUYLY=YAHw@mail.gmail.com>
+	<20140917110528.130aeb7b@willson.usersys.redhat.com>
+	<CALXu0UcQ9YGTLnrjs5+AmVstAWmZ1QcNqOVeYyE-b_ktbfqvjw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 17 Sep 2014 22:30:29 +0200
+Cedric Blancher <cedric.blancher@gmail.com> wrote:
 
-> > diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> > index c419498..a9cf5c3 100644
-> > --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> > +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> > @@ -392,4 +392,8 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
-> > /* Workqueue created in svc_rdma.c */
-> > extern struct workqueue_struct *svc_rdma_wq;
+> On 17 September 2014 17:05, Simo Sorce <simo@redhat.com> wrote:
+> > On Wed, 17 Sep 2014 13:20:19 +0200
+> > Cedric Blancher <cedric.blancher@gmail.com> wrote:
 > >
-> > +#define RPCSVC_MAXPAYLOAD_RDMA \
-> > +	(RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT) ? \
-> > +	 RPCSVC_MAXPAYLOAD : (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT))
-> > +
+> >> What happens if there is no relation between KRB Realm names and
+> >> FQDN/DNS? Can the NFS client find out which KRB Realm is used by
+> >> the server?
+> >
+> > Depending on the environment you may have 1 or 2 ways.
+> >
+> > 1. add domain to realm mapping in the appropriate section in
+> > krb5.conf on the client.
+> > 2. allow the KDC to send back a referral (but not all clients will
+> > ask their own KDC, some can do only 1).
 > 
-> Couldn't you use:
-> 
-> #if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
-> #define RPCSVC_MAXPAYLOAD_RDMA RPC_MAXPAYLOAD
-> #else
-> #define RPCSVC_MAXPAYLOAD_RDMA (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
-> #endif
-> 
-> That seems more idiomatic.
+> But how can 1. help? Sure I can have my own krb5.conf but AFAIK
+> rpc.gssd only looks at he system /etc/krb5.conf and not at any custom
+> user defined location. Basically mount(8) would have to pass the
+> location of the custom krb5.conf file to rpc.gssd to facilitate the
+> mount, right?
 
-Sure.  That makes it easier to read in my opinion too.
+A mount operation is a system-wide operation and requires privileges,
+the system krb5.conf is what is used. Trusting a user provided
+krb5.conf file for system level operations is not possible.
 
-I'll send out V3 with this change.
+> I *think* we have a bigger problem here: Kerberos5 support in NFS
+> appears to be designed around the philosophy of one realm per machine
+> (one-to-rule-them'-all) and not that a single user or machine has
+> mounts from many different realms, right?
 
-Thanks,
+wrong, the machine just need to 'know' about multiple realms and that
+is done via domain_realm mappings, of course you can only have one
+realm per dns domain.
 
-Steve.
+Simo.
 
+-- 
+Simo Sorce * Red Hat, Inc * New York
