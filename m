@@ -1,689 +1,220 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:50996 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751916AbaIJPVb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 11:21:31 -0400
-Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRji5-00007H-D0
-	for linux-nfs@vger.kernel.org; Wed, 10 Sep 2014 15:21:30 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/9] pnfs/blocklayout: remove read-modify-write handling in bl_write_pagelist
-Date: Wed, 10 Sep 2014 08:23:32 -0700
-Message-Id: <1410362617-28018-5-git-send-email-hch@lst.de>
-In-Reply-To: <1410362617-28018-1-git-send-email-hch@lst.de>
-References: <1410362617-28018-1-git-send-email-hch@lst.de>
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:63680 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756153AbaIQUPf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2014 16:15:35 -0400
+Received: by mail-qa0-f42.google.com with SMTP id j7so2557753qaq.1
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Sep 2014 13:15:34 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 17 Sep 2014 16:15:32 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 1/9] lockd: move lockd's grace period handling into
+ its own module
+Message-ID: <20140917161532.39e20a3b@tlielax.poochiereds.net>
+In-Reply-To: <20140917193642.GA2855@fieldses.org>
+References: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
+	<1410786850-18194-2-git-send-email-jlayton@primarydata.com>
+	<20140915150221.2437635b@tlielax.poochiereds.net>
+	<20140917193642.GA2855@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the new PNFS_READ_WHOLE_PAGE flag to offload read-modify-write
-handling to core nfs code, and remove a huge chunk of deadlock prone
-mess from the block layout writeback path.
+On Wed, 17 Sep 2014 15:36:43 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c | 500 +++++----------------------------------
- 1 file changed, 64 insertions(+), 436 deletions(-)
+> On Mon, Sep 15, 2014 at 03:02:21PM -0400, Jeff Layton wrote:
+> > On Mon, 15 Sep 2014 09:14:02 -0400
+> > Jeff Layton <jlayton@primarydata.com> wrote:
+> > 
+> > > Currently, all of the grace period handling is part of lockd. Eventually
+> > > though we'd like to be able to build v4-only servers, at which point
+> > > we'll need to put all of this elsewhere.
+> > > 
+> > > Move the code itself into fs/nfs_common and have it build a grace.ko
+> > > module. Then, rejigger the Kconfig options so that both nfsd and lockd
+> > > enable it automatically.
+> > > 
+> > > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > > ---
+> > >  fs/Kconfig              |   6 ++-
+> > >  fs/lockd/Makefile       |   2 +-
+> > >  fs/lockd/grace.c        |  65 ----------------------------
+> > >  fs/lockd/netns.h        |   1 -
+> > >  fs/lockd/svc.c          |   1 -
+> > >  fs/nfs_common/Makefile  |   3 +-
+> > >  fs/nfs_common/grace.c   | 113 ++++++++++++++++++++++++++++++++++++++++++++++++
+> > >  fs/nfsd/Kconfig         |   1 +
+> > >  include/linux/proc_fs.h |   2 +
+> > >  9 files changed, 124 insertions(+), 70 deletions(-)
+> > >  delete mode 100644 fs/lockd/grace.c
+> > >  create mode 100644 fs/nfs_common/grace.c
+> > > 
+> > > diff --git a/fs/Kconfig b/fs/Kconfig
+> > > index 312393f32948..db5dc1598716 100644
+> > > --- a/fs/Kconfig
+> > > +++ b/fs/Kconfig
+> > > @@ -233,9 +233,13 @@ if NETWORK_FILESYSTEMS
+> > >  source "fs/nfs/Kconfig"
+> > >  source "fs/nfsd/Kconfig"
+> > >  
+> > > +config GRACE_PERIOD
+> > > +	tristate
+> > > +
+> > >  config LOCKD
+> > >  	tristate
+> > >  	depends on FILE_LOCKING
+> > > +	select GRACE_PERIOD
+> > >  
+> > >  config LOCKD_V4
+> > >  	bool
+> > > @@ -249,7 +253,7 @@ config NFS_ACL_SUPPORT
+> > >  
+> > >  config NFS_COMMON
+> > >  	bool
+> > > -	depends on NFSD || NFS_FS
+> > > +	depends on NFSD || NFS_FS || LOCKD
+> > >  	default y
+> > >  
+> > >  source "net/sunrpc/Kconfig"
+> > > diff --git a/fs/lockd/Makefile b/fs/lockd/Makefile
+> > > index ca58d64374ca..6a0b351ce30e 100644
+> > > --- a/fs/lockd/Makefile
+> > > +++ b/fs/lockd/Makefile
+> > > @@ -5,6 +5,6 @@
+> > >  obj-$(CONFIG_LOCKD) += lockd.o
+> > >  
+> > >  lockd-objs-y := clntlock.o clntproc.o clntxdr.o host.o svc.o svclock.o \
+> > > -	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o grace.o
+> > > +	        svcshare.o svcproc.o svcsubs.o mon.o xdr.o
+> > >  lockd-objs-$(CONFIG_LOCKD_V4) += clnt4xdr.o xdr4.o svc4proc.o
+> > >  lockd-objs		      := $(lockd-objs-y)
+> > > diff --git a/fs/lockd/grace.c b/fs/lockd/grace.c
+> > > deleted file mode 100644
+> > > index 6d1ee7204c88..000000000000
+> > > --- a/fs/lockd/grace.c
+> > > +++ /dev/null
+> > > @@ -1,65 +0,0 @@
+> > > -/*
+> > > - * Common code for control of lockd and nfsv4 grace periods.
+> > > - */
+> > > -
+> > > -#include <linux/module.h>
+> > > -#include <linux/lockd/bind.h>
+> > > -#include <net/net_namespace.h>
+> > > -
+> > > -#include "netns.h"
+> > > -
+> > > -static DEFINE_SPINLOCK(grace_lock);
+> > > -
+> > > -/**
+> > > - * locks_start_grace
+> > > - * @lm: who this grace period is for
+> > > - *
+> > > - * A grace period is a period during which locks should not be given
+> > > - * out.  Currently grace periods are only enforced by the two lock
+> > > - * managers (lockd and nfsd), using the locks_in_grace() function to
+> > > - * check when they are in a grace period.
+> > > - *
+> > > - * This function is called to start a grace period.
+> > > - */
+> > > -void locks_start_grace(struct net *net, struct lock_manager *lm)
+> > > -{
+> > > -	struct lockd_net *ln = net_generic(net, lockd_net_id);
+> > > -
+> > > -	spin_lock(&grace_lock);
+> > > -	list_add(&lm->list, &ln->grace_list);
+> > > -	spin_unlock(&grace_lock);
+> > > -}
+> > > -EXPORT_SYMBOL_GPL(locks_start_grace);
+> > > -
+> > > -/**
+> > > - * locks_end_grace
+> > > - * @lm: who this grace period is for
+> > > - *
+> > > - * Call this function to state that the given lock manager is ready to
+> > > - * resume regular locking.  The grace period will not end until all lock
+> > > - * managers that called locks_start_grace() also call locks_end_grace().
+> > > - * Note that callers count on it being safe to call this more than once,
+> > > - * and the second call should be a no-op.
+> > > - */
+> > > -void locks_end_grace(struct lock_manager *lm)
+> > > -{
+> > > -	spin_lock(&grace_lock);
+> > > -	list_del_init(&lm->list);
+> > > -	spin_unlock(&grace_lock);
+> > > -}
+> > > -EXPORT_SYMBOL_GPL(locks_end_grace);
+> > > -
+> > > -/**
+> > > - * locks_in_grace
+> > > - *
+> > > - * Lock managers call this function to determine when it is OK for them
+> > > - * to answer ordinary lock requests, and when they should accept only
+> > > - * lock reclaims.
+> > > - */
+> > > -int locks_in_grace(struct net *net)
+> > > -{
+> > > -	struct lockd_net *ln = net_generic(net, lockd_net_id);
+> > > -
+> > > -	return !list_empty(&ln->grace_list);
+> > > -}
+> > > -EXPORT_SYMBOL_GPL(locks_in_grace);
+> > > diff --git a/fs/lockd/netns.h b/fs/lockd/netns.h
+> > > index 5010b55628b4..097bfa3adb1c 100644
+> > > --- a/fs/lockd/netns.h
+> > > +++ b/fs/lockd/netns.h
+> > > @@ -11,7 +11,6 @@ struct lockd_net {
+> > >  
+> > >  	struct delayed_work grace_period_end;
+> > >  	struct lock_manager lockd_manager;
+> > > -	struct list_head grace_list;
+> > >  
+> > >  	spinlock_t nsm_clnt_lock;
+> > >  	unsigned int nsm_users;
+> > > diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> > > index 09857b48d0c3..c35cd43a06e6 100644
+> > > --- a/fs/lockd/svc.c
+> > > +++ b/fs/lockd/svc.c
+> > > @@ -586,7 +586,6 @@ static int lockd_init_net(struct net *net)
+> > >  	struct lockd_net *ln = net_generic(net, lockd_net_id);
+> > >  
+> > >  	INIT_DELAYED_WORK(&ln->grace_period_end, grace_ender);
+> > > -	INIT_LIST_HEAD(&ln->grace_list);
+> > 
+> > Ahh, just found a bug. Now that we can initialize the grace_list
+> > independently of the lockd_manager, we must ensure that we initialize
+> > the lockd_manager's list_head in lockd_init_net. So, we need to add
+> > this in here:
+> > 
+> > 	INIT_LIST_HEAD(&ln->lockd_manager.list);
+> > 
+> > ...or we can end up oopsing if sm-notify runs and writes to the
+> > nlm_grace_end file before lockd comes up.
+> > 
+> > I've fixed this in my tree, but I'll wait to resend just yet to see
+> > whether there are any more comments on the rest of the set.
+> 
+> I don't have any more comments.  I can fix this up if this is all there
+> is to do, or you can resend or give me a git url.--b.
+> 
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 87a633d..6484b9f 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -35,7 +35,6 @@
- #include <linux/mount.h>
- #include <linux/namei.h>
- #include <linux/bio.h>		/* struct bio */
--#include <linux/buffer_head.h>	/* various write calls */
- #include <linux/prefetch.h>
- #include <linux/pagevec.h>
- 
-@@ -188,16 +187,6 @@ retry:
- 	return bio;
- }
- 
--static struct bio *bl_add_page_to_bio(struct bio *bio, int npg, int rw,
--				      sector_t isect, struct page *page,
--				      struct pnfs_block_extent *be,
--				      void (*end_io)(struct bio *, int err),
--				      struct parallel_io *par)
--{
--	return do_add_page_to_bio(bio, npg, rw, isect, page, be,
--				  end_io, par, 0, PAGE_CACHE_SIZE);
--}
--
- /* This is basically copied from mpage_end_io_read */
- static void bl_end_io_read(struct bio *bio, int err)
- {
-@@ -293,8 +282,8 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 			}
- 		}
- 
-+		pg_offset = f_offset & ~PAGE_CACHE_MASK;
- 		if (is_dio) {
--			pg_offset = f_offset & ~PAGE_CACHE_MASK;
- 			if (pg_offset + bytes_left > PAGE_CACHE_SIZE)
- 				pg_len = PAGE_CACHE_SIZE - pg_offset;
- 			else
-@@ -305,7 +294,7 @@ bl_read_pagelist(struct nfs_pgio_header *hdr)
- 			isect += (pg_offset >> SECTOR_SHIFT);
- 			extent_length -= (pg_offset >> SECTOR_SHIFT);
- 		} else {
--			pg_offset = 0;
-+			BUG_ON(pg_offset != 0);
- 			pg_len = PAGE_CACHE_SIZE;
- 		}
- 
-@@ -383,29 +372,6 @@ static void mark_extents_written(struct pnfs_block_layout *bl,
- 	}
- }
- 
--static void bl_end_io_write_zero(struct bio *bio, int err)
--{
--	struct parallel_io *par = bio->bi_private;
--	struct bio_vec *bvec;
--	int i;
--
--	bio_for_each_segment_all(bvec, bio, i) {
--		/* This is the zeroing page we added */
--		end_page_writeback(bvec->bv_page);
--		page_cache_release(bvec->bv_page);
--	}
--
--	if (unlikely(err)) {
--		struct nfs_pgio_header *header = par->data;
--
--		if (!header->pnfs_error)
--			header->pnfs_error = -EIO;
--		pnfs_set_lo_fail(header->lseg);
--	}
--	bio_put(bio);
--	put_parallel(par);
--}
--
- static void bl_end_io_write(struct bio *bio, int err)
- {
- 	struct parallel_io *par = bio->bi_private;
-@@ -455,256 +421,22 @@ static void bl_end_par_io_write(void *data, int num_se)
- 	schedule_work(&hdr->task.u.tk_work);
- }
- 
--/* FIXME STUB - mark intersection of layout and page as bad, so is not
-- * used again.
-- */
--static void mark_bad_read(void)
--{
--	return;
--}
--
--/*
-- * map_block:  map a requested I/0 block (isect) into an offset in the LVM
-- * block_device
-- */
--static void
--map_block(struct buffer_head *bh, sector_t isect, struct pnfs_block_extent *be)
--{
--	dprintk("%s enter be=%p\n", __func__, be);
--
--	set_buffer_mapped(bh);
--	bh->b_bdev = be->be_mdev;
--	bh->b_blocknr = (isect - be->be_f_offset + be->be_v_offset) >>
--	    (be->be_mdev->bd_inode->i_blkbits - SECTOR_SHIFT);
--
--	dprintk("%s isect %llu, bh->b_blocknr %ld, using bsize %Zd\n",
--		__func__, (unsigned long long)isect, (long)bh->b_blocknr,
--		bh->b_size);
--	return;
--}
--
--static void
--bl_read_single_end_io(struct bio *bio, int error)
--{
--	struct bio_vec *bvec = bio->bi_io_vec + bio->bi_vcnt - 1;
--	struct page *page = bvec->bv_page;
--
--	/* Only one page in bvec */
--	unlock_page(page);
--}
--
--static int
--bl_do_readpage_sync(struct page *page, struct pnfs_block_extent *be,
--		    unsigned int offset, unsigned int len)
--{
--	struct bio *bio;
--	struct page *shadow_page;
--	sector_t isect;
--	char *kaddr, *kshadow_addr;
--	int ret = 0;
--
--	dprintk("%s: offset %u len %u\n", __func__, offset, len);
--
--	shadow_page = alloc_page(GFP_NOFS | __GFP_HIGHMEM);
--	if (shadow_page == NULL)
--		return -ENOMEM;
--
--	bio = bio_alloc(GFP_NOIO, 1);
--	if (bio == NULL)
--		return -ENOMEM;
--
--	isect = (page->index << PAGE_CACHE_SECTOR_SHIFT) +
--		(offset / SECTOR_SIZE);
--
--	bio->bi_iter.bi_sector = isect - be->be_f_offset + be->be_v_offset;
--	bio->bi_bdev = be->be_mdev;
--	bio->bi_end_io = bl_read_single_end_io;
--
--	lock_page(shadow_page);
--	if (bio_add_page(bio, shadow_page,
--			 SECTOR_SIZE, round_down(offset, SECTOR_SIZE)) == 0) {
--		unlock_page(shadow_page);
--		bio_put(bio);
--		return -EIO;
--	}
--
--	submit_bio(READ, bio);
--	wait_on_page_locked(shadow_page);
--	if (unlikely(!test_bit(BIO_UPTODATE, &bio->bi_flags))) {
--		ret = -EIO;
--	} else {
--		kaddr = kmap_atomic(page);
--		kshadow_addr = kmap_atomic(shadow_page);
--		memcpy(kaddr + offset, kshadow_addr + offset, len);
--		kunmap_atomic(kshadow_addr);
--		kunmap_atomic(kaddr);
--	}
--	__free_page(shadow_page);
--	bio_put(bio);
--
--	return ret;
--}
--
--static int
--bl_read_partial_page_sync(struct page *page, struct pnfs_block_extent *be,
--			  unsigned int dirty_offset, unsigned int dirty_len,
--			  bool full_page)
--{
--	int ret = 0;
--	unsigned int start, end;
--
--	if (full_page) {
--		start = 0;
--		end = PAGE_CACHE_SIZE;
--	} else {
--		start = round_down(dirty_offset, SECTOR_SIZE);
--		end = round_up(dirty_offset + dirty_len, SECTOR_SIZE);
--	}
--
--	dprintk("%s: offset %u len %d\n", __func__, dirty_offset, dirty_len);
--	if (!be) {
--		zero_user_segments(page, start, dirty_offset,
--				   dirty_offset + dirty_len, end);
--		if (start == 0 && end == PAGE_CACHE_SIZE &&
--		    trylock_page(page)) {
--			SetPageUptodate(page);
--			unlock_page(page);
--		}
--		return ret;
--	}
--
--	if (start != dirty_offset)
--		ret = bl_do_readpage_sync(page, be, start, dirty_offset - start);
--
--	if (!ret && (dirty_offset + dirty_len < end))
--		ret = bl_do_readpage_sync(page, be, dirty_offset + dirty_len,
--					  end - dirty_offset - dirty_len);
--
--	return ret;
--}
--
--/* Given an unmapped page, zero it or read in page for COW, page is locked
-- * by caller.
-- */
--static int
--init_page_for_write(struct page *page, struct pnfs_block_extent *cow_read)
--{
--	struct buffer_head *bh = NULL;
--	int ret = 0;
--	sector_t isect;
--
--	dprintk("%s enter, %p\n", __func__, page);
--	BUG_ON(PageUptodate(page));
--	if (!cow_read) {
--		zero_user_segment(page, 0, PAGE_SIZE);
--		SetPageUptodate(page);
--		goto cleanup;
--	}
--
--	bh = alloc_page_buffers(page, PAGE_CACHE_SIZE, 0);
--	if (!bh) {
--		ret = -ENOMEM;
--		goto cleanup;
--	}
--
--	isect = (sector_t) page->index << PAGE_CACHE_SECTOR_SHIFT;
--	map_block(bh, isect, cow_read);
--	if (!bh_uptodate_or_lock(bh))
--		ret = bh_submit_read(bh);
--	if (ret)
--		goto cleanup;
--	SetPageUptodate(page);
--
--cleanup:
--	if (bh)
--		free_buffer_head(bh);
--	if (ret) {
--		/* Need to mark layout with bad read...should now
--		 * just use nfs4 for reads and writes.
--		 */
--		mark_bad_read();
--	}
--	return ret;
--}
--
--/* Find or create a zeroing page marked being writeback.
-- * Return ERR_PTR on error, NULL to indicate skip this page and page itself
-- * to indicate write out.
-- */
--static struct page *
--bl_find_get_zeroing_page(struct inode *inode, pgoff_t index,
--			struct pnfs_block_extent *cow_read)
--{
--	struct page *page;
--	int locked = 0;
--	page = find_get_page(inode->i_mapping, index);
--	if (page)
--		goto check_page;
--
--	page = find_or_create_page(inode->i_mapping, index, GFP_NOFS);
--	if (unlikely(!page)) {
--		dprintk("%s oom\n", __func__);
--		return ERR_PTR(-ENOMEM);
--	}
--	locked = 1;
--
--check_page:
--	/* PageDirty: Other will write this out
--	 * PageWriteback: Other is writing this out
--	 * PageUptodate: It was read before
--	 */
--	if (PageDirty(page) || PageWriteback(page)) {
--		print_page(page);
--		if (locked)
--			unlock_page(page);
--		page_cache_release(page);
--		return NULL;
--	}
--
--	if (!locked) {
--		lock_page(page);
--		locked = 1;
--		goto check_page;
--	}
--	if (!PageUptodate(page)) {
--		/* New page, readin or zero it */
--		init_page_for_write(page, cow_read);
--	}
--	set_page_writeback(page);
--	unlock_page(page);
--
--	return page;
--}
--
- static enum pnfs_try_status
- bl_write_pagelist(struct nfs_pgio_header *header, int sync)
- {
--	int i, ret, npg_zero, pg_index, last = 0;
-+	int i, ret;
- 	struct bio *bio = NULL;
--	struct pnfs_block_extent *be = NULL, *cow_read = NULL;
--	sector_t isect, last_isect = 0, extent_length = 0;
-+	struct pnfs_block_extent *be = NULL;
-+	sector_t isect, extent_length = 0;
- 	struct parallel_io *par = NULL;
- 	loff_t offset = header->args.offset;
- 	size_t count = header->args.count;
--	unsigned int pg_offset, pg_len, saved_len;
- 	struct page **pages = header->args.pages;
--	struct page *page;
--	pgoff_t index;
--	u64 temp;
--	int npg_per_block =
--	    NFS_SERVER(header->inode)->pnfs_blksize >> PAGE_CACHE_SHIFT;
-+	int pg_index = pg_index = header->args.pgbase >> PAGE_CACHE_SHIFT;
- 	struct blk_plug plug;
- 
- 	dprintk("%s enter, %Zu@%lld\n", __func__, count, offset);
- 
--	blk_start_plug(&plug);
--
--	if (header->dreq != NULL &&
--	    (!IS_ALIGNED(offset, NFS_SERVER(header->inode)->pnfs_blksize) ||
--	     !IS_ALIGNED(count, NFS_SERVER(header->inode)->pnfs_blksize))) {
--		dprintk("pnfsblock nonblock aligned DIO writes. Resend MDS\n");
--		goto out_mds;
--	}
- 	/* At this point, header->page_aray is a (sequential) list of nfs_pages.
- 	 * We want to write each, and if there is an error set pnfs_error
- 	 * to have it redone using nfs.
-@@ -715,97 +447,20 @@ bl_write_pagelist(struct nfs_pgio_header *header, int sync)
- 	par->pnfs_callback = bl_end_par_io_write;
- 	/* At this point, have to be more careful with error handling */
- 
--	isect = (sector_t) ((offset & (long)PAGE_CACHE_MASK) >> SECTOR_SHIFT);
--	be = bl_find_get_extent(BLK_LSEG2EXT(header->lseg), isect, &cow_read);
--	if (!be || !is_writable(be, isect)) {
--		dprintk("%s no matching extents!\n", __func__);
--		goto out_mds;
--	}
--
--	/* First page inside INVALID extent */
--	if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
--		if (likely(!bl_push_one_short_extent(be->be_inval)))
--			par->bse_count++;
--		else
--			goto out_mds;
--		temp = offset >> PAGE_CACHE_SHIFT;
--		npg_zero = do_div(temp, npg_per_block);
--		isect = (sector_t) (((offset - npg_zero * PAGE_CACHE_SIZE) &
--				     (long)PAGE_CACHE_MASK) >> SECTOR_SHIFT);
--		extent_length = be->be_length - (isect - be->be_f_offset);
--
--fill_invalid_ext:
--		dprintk("%s need to zero %d pages\n", __func__, npg_zero);
--		for (;npg_zero > 0; npg_zero--) {
--			if (bl_is_sector_init(be->be_inval, isect)) {
--				dprintk("isect %llu already init\n",
--					(unsigned long long)isect);
--				goto next_page;
--			}
--			/* page ref released in bl_end_io_write_zero */
--			index = isect >> PAGE_CACHE_SECTOR_SHIFT;
--			dprintk("%s zero %dth page: index %lu isect %llu\n",
--				__func__, npg_zero, index,
--				(unsigned long long)isect);
--			page = bl_find_get_zeroing_page(header->inode, index,
--							cow_read);
--			if (unlikely(IS_ERR(page))) {
--				header->pnfs_error = PTR_ERR(page);
--				goto out;
--			} else if (page == NULL)
--				goto next_page;
--
--			ret = bl_mark_sectors_init(be->be_inval, isect,
--						       PAGE_CACHE_SECTORS);
--			if (unlikely(ret)) {
--				dprintk("%s bl_mark_sectors_init fail %d\n",
--					__func__, ret);
--				end_page_writeback(page);
--				page_cache_release(page);
--				header->pnfs_error = ret;
--				goto out;
--			}
--			if (likely(!bl_push_one_short_extent(be->be_inval)))
--				par->bse_count++;
--			else {
--				end_page_writeback(page);
--				page_cache_release(page);
--				header->pnfs_error = -ENOMEM;
--				goto out;
--			}
--			/* FIXME: This should be done in bi_end_io */
--			mark_extents_written(BLK_LSEG2EXT(header->lseg),
--					     page->index << PAGE_CACHE_SHIFT,
--					     PAGE_CACHE_SIZE);
--
--			bio = bl_add_page_to_bio(bio, npg_zero, WRITE,
--						 isect, page, be,
--						 bl_end_io_write_zero, par);
--			if (IS_ERR(bio)) {
--				header->pnfs_error = PTR_ERR(bio);
--				bio = NULL;
--				goto out;
--			}
--next_page:
--			isect += PAGE_CACHE_SECTORS;
--			extent_length -= PAGE_CACHE_SECTORS;
--		}
--		if (last)
--			goto write_done;
--	}
--	bio = bl_submit_bio(WRITE, bio);
-+	blk_start_plug(&plug);
- 
--	/* Middle pages */
--	pg_index = header->args.pgbase >> PAGE_CACHE_SHIFT;
-+	/* we always write out the whole page */
-+	offset = offset & (loff_t)PAGE_CACHE_MASK;
-+	isect = offset >> SECTOR_SHIFT;
-+	
- 	for (i = pg_index; i < header->page_array.npages; i++) {
- 		if (extent_length <= 0) {
- 			/* We've used up the previous extent */
- 			bl_put_extent(be);
--			bl_put_extent(cow_read);
- 			bio = bl_submit_bio(WRITE, bio);
- 			/* Get the next one */
- 			be = bl_find_get_extent(BLK_LSEG2EXT(header->lseg),
--					     isect, &cow_read);
-+					     isect, NULL);
- 			if (!be || !is_writable(be, isect)) {
- 				header->pnfs_error = -EINVAL;
- 				goto out;
-@@ -823,25 +478,10 @@ next_page:
- 			    (isect - be->be_f_offset);
- 		}
- 
--		dprintk("%s offset %lld count %Zu\n", __func__, offset, count);
--		pg_offset = offset & ~PAGE_CACHE_MASK;
--		if (pg_offset + count > PAGE_CACHE_SIZE)
--			pg_len = PAGE_CACHE_SIZE - pg_offset;
--		else
--			pg_len = count;
-+		BUG_ON(offset & ~PAGE_CACHE_MASK);
- 
--		saved_len = pg_len;
- 		if (be->be_state == PNFS_BLOCK_INVALID_DATA &&
- 		    !bl_is_sector_init(be->be_inval, isect)) {
--			ret = bl_read_partial_page_sync(pages[i], cow_read,
--							pg_offset, pg_len, true);
--			if (ret) {
--				dprintk("%s bl_read_partial_page_sync fail %d\n",
--					__func__, ret);
--				header->pnfs_error = ret;
--				goto out;
--			}
--
- 			ret = bl_mark_sectors_init(be->be_inval, isect,
- 						       PAGE_CACHE_SECTORS);
- 			if (unlikely(ret)) {
-@@ -850,66 +490,31 @@ next_page:
- 				header->pnfs_error = ret;
- 				goto out;
- 			}
--
--			/* Expand to full page write */
--			pg_offset = 0;
--			pg_len = PAGE_CACHE_SIZE;
--		} else if  ((pg_offset & (SECTOR_SIZE - 1)) ||
--			    (pg_len & (SECTOR_SIZE - 1))){
--			/* ahh, nasty case. We have to do sync full sector
--			 * read-modify-write cycles.
--			 */
--			unsigned int saved_offset = pg_offset;
--			ret = bl_read_partial_page_sync(pages[i], be, pg_offset,
--							pg_len, false);
--			pg_offset = round_down(pg_offset, SECTOR_SIZE);
--			pg_len = round_up(saved_offset + pg_len, SECTOR_SIZE)
--				 - pg_offset;
- 		}
- 
--
- 		bio = do_add_page_to_bio(bio, header->page_array.npages - i,
--					 WRITE,
--					 isect, pages[i], be,
-+					 WRITE, isect, pages[i], be,
- 					 bl_end_io_write, par,
--					 pg_offset, pg_len);
-+					 0, PAGE_CACHE_SIZE);
- 		if (IS_ERR(bio)) {
- 			header->pnfs_error = PTR_ERR(bio);
- 			bio = NULL;
- 			goto out;
- 		}
--		offset += saved_len;
--		count -= saved_len;
-+		offset += PAGE_CACHE_SIZE;
-+		count -= PAGE_CACHE_SIZE;
- 		isect += PAGE_CACHE_SECTORS;
--		last_isect = isect;
- 		extent_length -= PAGE_CACHE_SECTORS;
- 	}
- 
--	/* Last page inside INVALID extent */
--	if (be->be_state == PNFS_BLOCK_INVALID_DATA) {
--		bio = bl_submit_bio(WRITE, bio);
--		temp = last_isect >> PAGE_CACHE_SECTOR_SHIFT;
--		npg_zero = npg_per_block - do_div(temp, npg_per_block);
--		if (npg_zero < npg_per_block) {
--			last = 1;
--			goto fill_invalid_ext;
--		}
--	}
--
--write_done:
- 	header->res.count = header->args.count;
- out:
- 	bl_put_extent(be);
--	bl_put_extent(cow_read);
- 	bl_submit_bio(WRITE, bio);
- 	blk_finish_plug(&plug);
- 	put_parallel(par);
- 	return PNFS_ATTEMPTED;
- out_mds:
--	blk_finish_plug(&plug);
--	bl_put_extent(be);
--	bl_put_extent(cow_read);
--	kfree(par);
- 	return PNFS_NOT_ATTEMPTED;
- }
- 
-@@ -1188,20 +793,45 @@ bl_clear_layoutdriver(struct nfs_server *server)
- }
- 
- static bool
--is_aligned_req(struct nfs_page *req, unsigned int alignment)
-+is_aligned_req(struct nfs_pageio_descriptor *pgio,
-+		struct nfs_page *req, unsigned int alignment)
- {
--	return IS_ALIGNED(req->wb_offset, alignment) &&
--	       IS_ALIGNED(req->wb_bytes, alignment);
-+	/*
-+	 * Always accept buffered writes, higher layers take care of the
-+	 * right alignment.
-+	 */
-+	if (pgio->pg_dreq == NULL)
-+		return true;
-+
-+	if (!IS_ALIGNED(req->wb_offset, alignment))
-+		return false;
-+
-+	if (IS_ALIGNED(req->wb_bytes, alignment))
-+		return true;
-+
-+	if (req_offset(req) + req->wb_bytes == i_size_read(pgio->pg_inode)) {
-+		/*
-+		 * If the write goes up to the inode size, just write
-+		 * the full page.  Data past the inode size is
-+		 * guaranteed to be zeroed by the higher level client
-+		 * code, and this behaviour is mandated by RFC 5663
-+		 * section 2.3.2.
-+		 */
-+		return true;
-+	}
-+
-+	return false;
- }
- 
- static void
- bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- {
--	if (pgio->pg_dreq != NULL &&
--	    !is_aligned_req(req, SECTOR_SIZE))
-+	if (!is_aligned_req(pgio, req, SECTOR_SIZE)) {
- 		nfs_pageio_reset_read_mds(pgio);
--	else
--		pnfs_generic_pg_init_read(pgio, req);
-+		return;
-+	}
-+
-+	pnfs_generic_pg_init_read(pgio, req);
- }
- 
- /*
-@@ -1212,10 +842,8 @@ static size_t
- bl_pg_test_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		struct nfs_page *req)
- {
--	if (pgio->pg_dreq != NULL &&
--	    !is_aligned_req(req, SECTOR_SIZE))
-+	if (!is_aligned_req(pgio, req, SECTOR_SIZE))
- 		return 0;
--
- 	return pnfs_generic_pg_test(pgio, prev, req);
- }
- 
-@@ -1245,19 +873,20 @@ static u64 pnfs_num_cont_bytes(struct inode *inode, pgoff_t idx)
- static void
- bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- {
--	if (pgio->pg_dreq != NULL &&
--	    !is_aligned_req(req, PAGE_CACHE_SIZE)) {
-+	u64 wb_size;
-+
-+	if (!is_aligned_req(pgio, req, PAGE_SIZE)) {
- 		nfs_pageio_reset_write_mds(pgio);
--	} else {
--		u64 wb_size;
--		if (pgio->pg_dreq == NULL)
--			wb_size = pnfs_num_cont_bytes(pgio->pg_inode,
--						      req->wb_index);
--		else
--			wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
--
--		pnfs_generic_pg_init_write(pgio, req, wb_size);
-+		return;
- 	}
-+
-+	if (pgio->pg_dreq == NULL)
-+		wb_size = pnfs_num_cont_bytes(pgio->pg_inode,
-+					      req->wb_index);
-+	else
-+		wb_size = nfs_dreq_bytes_left(pgio->pg_dreq);
-+
-+	pnfs_generic_pg_init_write(pgio, req, wb_size);
- }
- 
- /*
-@@ -1268,10 +897,8 @@ static size_t
- bl_pg_test_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		 struct nfs_page *req)
- {
--	if (pgio->pg_dreq != NULL &&
--	    !is_aligned_req(req, PAGE_CACHE_SIZE))
-+	if (!is_aligned_req(pgio, req, PAGE_SIZE))
- 		return 0;
--
- 	return pnfs_generic_pg_test(pgio, prev, req);
- }
- 
-@@ -1291,6 +918,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.id				= LAYOUT_BLOCK_VOLUME,
- 	.name				= "LAYOUT_BLOCK_VOLUME",
- 	.owner				= THIS_MODULE,
-+	.flags				= PNFS_READ_WHOLE_PAGE,
- 	.read_pagelist			= bl_read_pagelist,
- 	.write_pagelist			= bl_write_pagelist,
- 	.alloc_layout_hdr		= bl_alloc_layout_hdr,
+That's all there is that needs fixing, AFAIK.
+
+The fix is in my tree at:
+
+    git://git.samba.org/jlayton/linux.git
+
+in my nfsd-3.18 branch. Thanks for reviewing and merging it.
+
+The only remaining bit is to make sure that Steve D. (or anyone else
+for that matter) has no problem with the userland piece.
+
+Steve, does the v4 userland set look OK to you?
+
+Thanks,
 -- 
-1.9.1
-
+Jeff Layton <jlayton@primarydata.com>
