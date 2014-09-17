@@ -1,64 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 1wt.eu ([62.212.114.60]:33912 "EHLO 1wt.eu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751999AbaIEJnJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 5 Sep 2014 05:43:09 -0400
-Date: Fri, 5 Sep 2014 11:33:46 +0200
-From: Willy Tarreau <w@1wt.eu>
-To: Luis Henriques <luis.henriques@canonical.com>
-Cc: NeilBrown <neilb@suse.de>, stable@vger.kernel.org,
-        NFS <linux-nfs@vger.kernel.org>, Lars Behrens <lars.behrens@pi.uka.de>
-Subject: Re: Incorrect backport to 2.6.32-stable - NFSD regression.
-Message-ID: <20140905093346.GC15759@1wt.eu>
-References: <20140903112843.66bcd6dd@notabene.brown> <20140905092105.GA6614@hercules>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140905092105.GA6614@hercules>
+Received: from mail-qg0-f46.google.com ([209.85.192.46]:46684 "EHLO
+	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756415AbaIQWTv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2014 18:19:51 -0400
+Received: by mail-qg0-f46.google.com with SMTP id q107so12470qgd.33
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Sep 2014 15:19:50 -0700 (PDT)
+MIME-Version: 1.0
+Date: Wed, 17 Sep 2014 23:19:50 +0100
+Message-ID: <CAEEfLy5Mtu76gy0COS4CkE0-Upe39xDxynRCLnG=VA9-GLrdSw@mail.gmail.com>
+Subject: Close to open consistency
+From: Richard Hayden <r.hayden@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi guys,
+Hi there,
 
-On Fri, Sep 05, 2014 at 10:21:05AM +0100, Luis Henriques wrote:
-> (Adding Willy to the CC list, in case he misses this email.)
+I have some queries regarding NFS' implementation of close to open
+consistency. I hope this is the correct forum.
 
-Thank you Luis, I indeed missed it!
+I believe the following to be obviously correct from the various
+references on the subject: if I open, write a new file on one client,
+close it and then immediately attempt to open and read the file on
+another client, I will always see the file as created by the first
+client (assuming no other intervening actions by other clients).
 
-> On Wed, Sep 03, 2014 at 11:28:43AM +1000, NeilBrown wrote:
-> > 
-> > 2.6.32.30 contains:
-> > 
-> > commit 63d059e73ff4574b79bd8aa252b5fc00b6326ddf
-> > Author: NeilBrown <neilb@suse.de>
-> > Date:   Wed Feb 16 13:08:35 2011 +1100
-> > 
-> >     nfsd: correctly handle return value from nfsd_map_name_to_*
-> >     
-> >     commit 47c85291d3dd1a51501555000b90f8e281a0458e upstream.
-> >     
-> >     These functions return an nfs status, not a host_err.  So don't
-> >     try to convert  before returning.
-> >     
-> >     This is a regression introduced by
-> >     3c726023402a2f3b28f49b9d90ebf9e71151157d; I fixed up two of the callers,
-> >     but missed these two.
-> >     
-> >     Reported-by: Herbert Poetzl <herbert@13thfloor.at>
-> >     Signed-off-by: NeilBrown <neilb@suse.de>
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> >     Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-> > 
-> > 
-> > But it does *not* contain a backport of
-> > 3c726023402a2f3b28f49b9d90ebf9e71151157d.
-> > 
-> > So rather an fixing a regression, it introduces one.
-> > 
-> > This patch should be reverted.
+However what if, instead of the second client calling open on the
+file, it immediately calls just exec (assume the file is an
+executable)? Presumably at some point in the exec call it is at least
+implicitly invoking some of the functionality of open but is the above
+consistency still guaranteed here? Is it only explicit calls to open
+which maintain the consistency?
 
-Thanks Neil, I'm queuing this request for next version. I'm slowly
-catching up from my move and hope to be able to deliver it "soon".
-
-Best regards,
-willy
-
+Thanks!
