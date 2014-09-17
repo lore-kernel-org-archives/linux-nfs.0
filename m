@@ -1,137 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53037 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751563AbaIYDXy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2014 23:23:54 -0400
-Date: Thu, 25 Sep 2014 13:23:39 +1000
-From: NeilBrown <neilb@suse.de>
-To: Ingo Molnar <mingo@kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, Ingo Molnar <mingo@redhat.com>,
-        linux-fsdevel@vger.kernel.org,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Peter Zijlstra <peterz@infradead.org>
-Subject: Re: [PATCH 1/5] SCHED: add some "wait..on_bit...timeout()"
- interfaces.
-Message-ID: <20140925132339.2629ffaa@notabene.brown>
-In-Reply-To: <20140924070418.GA990@gmail.com>
-References: <20140924012422.4838.29188.stgit@notabene.brown>
-	<20140924012832.4838.59410.stgit@notabene.brown>
-	<20140924070418.GA990@gmail.com>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:46769 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753676AbaIQBco (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Sep 2014 21:32:44 -0400
+Received: by mail-ig0-f180.google.com with SMTP id hn15so429290igb.13
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Sep 2014 18:32:43 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/3F0C5Wh1afvW5ZV7Em7amCB"; protocol="application/pgp-signature"
+In-Reply-To: <20140917111017.499eb3a9@notabene.brown>
+References: <20140916051911.22257.24658.stgit@notabene.brown>
+	<20140916053135.22257.46476.stgit@notabene.brown>
+	<CAHQdGtQbFtLFEpzgqoMoLiG7-Y0FdFiZdpS4dgkT7hsCnqMiPA@mail.gmail.com>
+	<20140917111017.499eb3a9@notabene.brown>
+Date: Tue, 16 Sep 2014 21:32:43 -0400
+Message-ID: <CAHQdGtST5nEE-Wh99vKLNPsOHc_pSgau4om7dWr+GhfLauFBnA@mail.gmail.com>
+Subject: Re: [PATCH 4/4] NFS/SUNRPC: Remove other deadlock-avoidance
+ mechanisms in nfs_release_page()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Peter Zijlstra <peterz@infradead.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@redhat.com>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>, linux-mm@kvack.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jeff.layton@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/3F0C5Wh1afvW5ZV7Em7amCB
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Tue, Sep 16, 2014 at 9:10 PM, NeilBrown <neilb@suse.de> wrote:
+>
+> However ... something else occurs to me.  We could use the bdi congestion
+> markers to guide the timeout.
+> When the wait for PG_private times out, or when a connection re-establishment
+> is required (and maybe other similar times) we could set_bdi_congested().
+> Then in nfs_release_page() we could completely avoid the wait if
+> bdi_write_congested().
+>
+> The congestion setting should encourage vmscan away from the filesystem so it
+> won't keep calling nfs_release_page() which is a bonus.
+>
+> Setting bdi_congestion from the RPC layer might be awkward from a layering
+> perspective, but probably isn't necessary.
+>
+> Would the following allay your concerns?  The change to
+> nfs_inode_remove_request ensures that any congestion is removed when a
+> 'commit' completes.
+>
+> We certainly could keep the PF_FSTRANS setting in the SUNRPC layer - that was
+> why it was a separate patch.  It would be nice to find a uniform solution
+> though.
+>
+> Thanks,
+> NeilBrown
+>
+>
+>
+> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+> index 5949ca37cd18..bc674ad250ce 100644
+> --- a/fs/nfs/file.c
+> +++ b/fs/nfs/file.c
+> @@ -477,10 +477,15 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+>          * benefit that someone else can worry about the freezer.
+>          */
+>         if (mapping) {
+> +               struct nfs_server *nfss = NFS_SERVER(mapping->host);
+>                 nfs_commit_inode(mapping->host, 0);
+> -               if ((gfp & __GFP_WAIT))
+> +               if ((gfp & __GFP_WAIT) &&
+> +                   !bdi_write_congested(&nfss->backing_dev_info))
+>                         wait_on_page_bit_killable_timeout(page, PG_private,
+>                                                           HZ);
+> +               if (PagePrivate(page))
+> +                       set_bdi_congested(&nfss->backing_dev_info,
+> +                                         BLK_RW_ASYNC);
+>         }
+>         /* If PagePrivate() is set, then the page is not freeable */
+>         if (PagePrivate(page))
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 700e7a865e6d..3ab122e92c9d 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -726,6 +726,7 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+>         struct inode *inode = req->wb_context->dentry->d_inode;
+>         struct nfs_inode *nfsi = NFS_I(inode);
+>         struct nfs_page *head;
+> +       struct nfs_server *nfss = NFS_SERVER(inode);
+>
+>         if (nfs_page_group_sync_on_bit(req, PG_REMOVE)) {
+>                 head = req->wb_head;
+> @@ -742,6 +743,9 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+>                 spin_unlock(&inode->i_lock);
+>         }
+>
+> +       if (atomic_long_read(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
+> +               clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
 
-On Wed, 24 Sep 2014 09:04:18 +0200 Ingo Molnar <mingo@kernel.org> wrote:
+Hmm.... We already have this equivalent functionality in
+nfs_end_page_writeback(), so adding it to nfs_inode_remove_request()
+is just causing duplication as far as the stable writeback path is
+concerned. How about adding it to nfs_commit_release_pages() instead?
 
->=20
-> * NeilBrown <neilb@suse.de> wrote:
->=20
-> > @@ -859,6 +860,8 @@ int wake_bit_function(wait_queue_t *wait, unsigned =
-mode, int sync, void *key);
-> > =20
-> >  extern int bit_wait(struct wait_bit_key *);
-> >  extern int bit_wait_io(struct wait_bit_key *);
-> > +extern int bit_wait_timeout(struct wait_bit_key *);
-> > +extern int bit_wait_io_timeout(struct wait_bit_key *);
-> > =20
-> >  /**
-> >   * wait_on_bit - wait for a bit to be cleared
-> > diff --git a/kernel/sched/wait.c b/kernel/sched/wait.c
-> > index 15cab1a4f84e..380678b3cba4 100644
-> > --- a/kernel/sched/wait.c
-> > +++ b/kernel/sched/wait.c
-> > @@ -343,6 +343,18 @@ int __sched out_of_line_wait_on_bit(void *word, in=
-t bit,
-> >  }
-> >  EXPORT_SYMBOL(out_of_line_wait_on_bit);
-> > =20
-> > +int __sched out_of_line_wait_on_bit_timeout(
-> > +	void *word, int bit, wait_bit_action_f *action,
-> > +	unsigned mode, unsigned long timeout)
-> > +{
-> > +	wait_queue_head_t *wq =3D bit_waitqueue(word, bit);
-> > +	DEFINE_WAIT_BIT(wait, word, bit);
-> > +
-> > +	wait.key.timeout =3D jiffies + timeout;
-> > +	return __wait_on_bit(wq, &wait, action, mode);
-> > +}
-> > +EXPORT_SYMBOL(out_of_line_wait_on_bit_timeout);
-> > +
-> >  int __sched
-> >  __wait_on_bit_lock(wait_queue_head_t *wq, struct wait_bit_queue *q,
-> >  			wait_bit_action_f *action, unsigned mode)
-> > @@ -520,3 +532,27 @@ __sched int bit_wait_io(struct wait_bit_key *word)
-> >  	return 0;
-> >  }
-> >  EXPORT_SYMBOL(bit_wait_io);
-> > +
-> > +__sched int bit_wait_timeout(struct wait_bit_key *word)
-> > +{
-> > +	unsigned long now =3D ACCESS_ONCE(jiffies);
-> > +	if (signal_pending_state(current->state, current))
-> > +		return 1;
-> > +	if (time_after_eq(now, word->timeout))
-> > +		return -EAGAIN;
-> > +	schedule_timeout(word->timeout - now);
-> > +	return 0;
-> > +}
-> > +EXPORT_SYMBOL(bit_wait_timeout);
-> > +
-> > +__sched int bit_wait_io_timeout(struct wait_bit_key *word)
-> > +{
-> > +	unsigned long now =3D ACCESS_ONCE(jiffies);
-> > +	if (signal_pending_state(current->state, current))
-> > +		return 1;
-> > +	if (time_after_eq(now, word->timeout))
-> > +		return -EAGAIN;
-> > +	io_schedule_timeout(word->timeout - now);
-> > +	return 0;
-> > +}
-> > +EXPORT_SYMBOL(bit_wait_io_timeout);
->=20
-> New scheduler APIs should be exported via EXPORT_SYMBOL_GPL().
->=20
+Otherwise, yes, the above does indeed look at if it has merit. Have
+you got a good test?
 
-Fine with me.
+-- 
+Trond Myklebust
 
- Trond, can you just edit that into the patch you have, or do you want me to
- re-send?
- Also maybe added Jeff's=20
-    Acked-by: Jeff Layton <jlayton@primarydata.com>
- to the NFS bits.
+Linux NFS client maintainer, PrimaryData
 
-Thanks,
-NeilBrown
-
---Sig_/3F0C5Wh1afvW5ZV7Em7amCB
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBVCOKuznsnt1WYoG5AQJlnQ//eLcFQi2fKy0WKO5U61vvbWwEX1myaR3j
-kJbbNOxgDWPIwzncSyOIKjWKZGOPZH2lZ0gkt9aDcdPYld8XTaEertxdSflQaR0j
-RZJO/Bx3PTc2hfHe0isBDkIL7wZocvxQe8jFee0rk9blX1ymkAhMb6Q/Vom5Ve8M
-gelRn5nxQV4DYjoV/SyqcTPpE87+lAz+N7dMdFSo0y0zkGXsyBrkOoLKYkExDFIE
-UBN2xOkzPaPKLT8ZZalzJgZGc28q7Cx+AHv22fDKCb9HDlaKc4zWJuOCkUgX9qun
-s/KjeXx/El7xO+OYJDGADBHrS6g6pDnNpXcqGuRDmAsXsthnxkCBiRMuUgoRHMVf
-eNdidRZcMHq99qHJAh48BrxdbjY2wqQcbG0BN4JB7KWzHJy2xhqnzQZM35ra3RqL
-+XkR+UpC/hgHbEABYIHQbzN5Stf5bTc8uqthIMVyKQjHNJJABFrYGz9cblTCzSBX
-cz2BwGQSB+DcFUjPaIiPMPe5bhFGB4eAlWBDhkqrmlbz/osHFjSjvorYrEJ5iarQ
-4MAa7DnsTp0ak7lUI2sDBo5PjJX7mgsXTY0wnjUxLKIQVaIrPWPQ30NsT+TFuikk
-Nrpp7TVu7i+oa1paciJJC2ff/QLHWKkqcLsMj7F2eJ4/6vkeTM+oHI67ViI9wtyj
-W6sNGpRVqqw=
-=5m/y
------END PGP SIGNATURE-----
-
---Sig_/3F0C5Wh1afvW5ZV7Em7amCB--
+trond.myklebust@primarydata.com
