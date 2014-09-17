@@ -1,73 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:39628 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750776AbaIIRiF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Sep 2014 13:38:05 -0400
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Tue, 9 Sep 2014 13:38:04 -0400
-In-Reply-To: <1410274196-30841-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1410274196-30841-1-git-send-email-Anna.Schumaker@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
-        Trond.Myklebust@primarydata.com
-MIME-Version: 1.0
-Subject: Re: [PATCH 0/2] NFS: Add ALLOCATE and DEALLOCATE support
-From: Marc Eshel <eshel@us.ibm.com>
-Message-ID: <OFCC7C8976.B925FBA7-ON88257D4E.00604587-88257D4E.0060D8A0@us.ibm.com>
-Date: Tue, 9 Sep 2014 10:37:50 -0700
-Content-Type: text/plain; charset="US-ASCII"
+Received: from userp1040.oracle.com ([156.151.31.81]:37541 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751750AbaIQXso (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Sep 2014 19:48:44 -0400
+Received: from ucsinet22.oracle.com (ucsinet22.oracle.com [156.151.31.94])
+	by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id s8HNmfTb010756
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 17 Sep 2014 23:48:42 GMT
+From: Todd Vierling <todd.vierling@oracle.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] exportfs: Properly parse IPv6 literal strings with null termination
+Date: Wed, 17 Sep 2014 19:48:39 -0400
+Message-Id: <1410997719-17913-1-git-send-email-todd.vierling@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Anna,
+The original implementation was using strncpy() with a truncation
+length to an uninitialized stack buffer, leaving a string that
+was only null terminated by luck.
 
-Did you get a chance to set up a git tree with all your changes, at least 
-for the client side, maybe Trond will include it in his tree?
+While here, change to use no-copy semantics (no extra buffer) to
+avoid buffer overflows altogether.
+---
+ utils/exportfs/exportfs.c | 18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
 
-Thanks, Marc. 
-
-
-From:   Anna Schumaker <Anna.Schumaker@netapp.com>
-To:     <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>, 
-Date:   09/09/2014 07:50 AM
-Subject:        [PATCH 0/2] NFS: Add ALLOCATE and DEALLOCATE support
-Sent by:        linux-nfs-owner@vger.kernel.org
-
-
-
-These patches add client support for the ALLOCATE and DEALLOCATE 
-operations
-part of NFS v4.2.
-
-These operations are triggered by a vfs_fallocate() call, and we determine
-which to use based on if the FALLOC_FL_PUNCH_HOLE flag is set.
-
-Anna Schumaker (2):
-  nfs: Add ALLOCATE support
-  nfs: Add DEALLOCATE support
-
- fs/nfs/nfs42proc.c        |  74 +++++++++++++++++++++++++
- fs/nfs/nfs42xdr.h         | 136 
-++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4_fs.h          |   3 +
- fs/nfs/nfs4client.c       |   2 +-
- fs/nfs/nfs4file.c         |  47 ++++++++++++++++
- fs/nfs/nfs4proc.c         |   2 +-
- fs/nfs/nfs4xdr.c          |   2 +
- include/linux/nfs4.h      |   2 +
- include/linux/nfs_fs_sb.h |   2 +
- include/linux/nfs_xdr.h   |  28 ++++++++++
- 10 files changed, 296 insertions(+), 2 deletions(-)
-
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index e7d1ac8..bdea12b 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -351,16 +351,15 @@ static int exportfs_generic(char *arg, char *options, int verbose)
+ 
+ static int exportfs_ipv6(char *arg, char *options, int verbose)
+ {
+-	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
++	char *path, *c;
+ 
+ 	arg++;
+ 	c = strchr(arg, ']');
+ 	if (c == NULL)
+ 		return 1;
+-	strncpy(hname, arg, c - arg);
+ 
+ 	/* no colon means this is a wildcarded DNS hostname */
+-	if (strchr(hname, ':') == NULL)
++	if (memchr(arg, ':', c - arg) == NULL)
+ 		return exportfs_generic(--arg, options, verbose);
+ 
+ 	path = strstr(c, ":/");
+@@ -370,9 +369,9 @@ static int exportfs_ipv6(char *arg, char *options, int verbose)
+ 
+ 	/* if there's anything between the closing brace and the
+ 	 * path separator, it's probably a prefix length */
+-	strcat(hname, ++c);
++	memmove(c, c + 1, path - c);
+ 
+-	exportfs_parsed(hname, path, options, verbose);
++	exportfs_parsed(arg, path, options, verbose);
+ 	return 0;
+ }
+ 
+@@ -458,16 +457,15 @@ static int unexportfs_generic(char *arg, int verbose)
+ 
+ static int unexportfs_ipv6(char *arg, int verbose)
+ {
+-	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
++	char *path, *c;
+ 
+ 	arg++;
+ 	c = strchr(arg, ']');
+ 	if (c == NULL)
+ 		return 1;
+-	strncpy(hname, arg, c - arg);
+ 
+ 	/* no colon means this is a wildcarded DNS hostname */
+-	if (strchr(hname, ':') == NULL)
++	if (memchr(arg, ':', c - arg) == NULL)
+ 		return unexportfs_generic(--arg, verbose);
+ 
+ 	path = strstr(c, ":/");
+@@ -477,9 +475,9 @@ static int unexportfs_ipv6(char *arg, int verbose)
+ 
+ 	/* if there's anything between the closing brace and the
+ 	 * path separator, it's probably a prefix length */
+-	strcat(hname, ++c);
++	memmove(c, c + 1, path - c);
+ 
+-	unexportfs_parsed(hname, path, verbose);
++	unexportfs_parsed(arg, path, verbose);
+ 	return 0;
+ }
+ 
 -- 
-2.1.0
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+1.8.3.1
 
