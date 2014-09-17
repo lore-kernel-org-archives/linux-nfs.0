@@ -1,114 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:52061 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753676AbaIONO3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 09:14:29 -0400
-Received: by mail-qa0-f45.google.com with SMTP id s7so3740017qap.18
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 06:14:28 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v4 7/9] nfsd: serialize nfsdcltrack upcalls for a particular client
-Date: Mon, 15 Sep 2014 09:14:08 -0400
-Message-Id: <1410786850-18194-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
-References: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:50075 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754333AbaIQDFX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 16 Sep 2014 23:05:23 -0400
+Date: Wed, 17 Sep 2014 13:05:12 +1000
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: NFS <linux-nfs@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] NFS: state manager thread must stay running.
+Message-ID: <20140917130512.744593fd@notabene.brown>
+In-Reply-To: <CAHQdGtTrWhX=iE9y1nWH13M=kt1dbu=_dwdNVSQGBh1BeZ9aTA@mail.gmail.com>
+References: <20140813140831.22f3e9c7@notabene.brown>
+	<CAHQdGtTrWhX=iE9y1nWH13M=kt1dbu=_dwdNVSQGBh1BeZ9aTA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/mHuF1ocO1j6EYrWdo3VtPCs"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In a later patch, we want to add a flag that will allow us to reduce the
-need for upcalls. In order to handle that correctly, we'll need to
-ensure that racing upcalls for the same client can't occur. In practice
-it should be rare for this to occur with a well-behaved client, but it
-is possible.
+--Sig_/mHuF1ocO1j6EYrWdo3VtPCs
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Convert one of the bits in the cl_flags field to be an upcall bitlock,
-and use it to ensure that upcalls for the same client are serialized.
+On Tue, 16 Sep 2014 21:43:07 -0400 Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4recover.c | 29 +++++++++++++++++++++++++++++
- fs/nfsd/state.h       |  1 +
- 2 files changed, 30 insertions(+)
+> On Wed, Aug 13, 2014 at 12:08 AM, NeilBrown <neilb@suse.de> wrote:
+> >
+> >
+> > If the server restarts at an awkward time it is possible for write
+> > requests to block waiting for the state manager to run.
+> > If the state manager isn't already running a new thread will
+> > need to be started which requires a GFP_KERNEL allocation
+> > (for do_fork).
+> >
+> > If memory is short, that GFP_KERNEL allocation could block on the
+> > writes going out via NFS, resulting in a deadlock.
+> >
+> > The easiest solution is to keep the manager thread running
+> > always.
+>=20
+> I'm still trying to figure out what to do about this patch. There are
+> 2 concerns:
+>=20
+> 1) If we're so low on memory that we can't even start a state manager
+> thread, then how do we guarantee that the recovery can be completed?
+> We rely on that state manager thread being able to allocate memory to
+> perform the lease, session, open and lock recoveries.
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index d1354d43e9ad..aa04d9f62419 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1260,6 +1260,22 @@ nfsd4_umh_cltrack_init(struct net *net)
- }
- 
- static void
-+nfsd4_cltrack_upcall_lock(struct nfs4_client *clp)
-+{
-+	wait_on_bit_lock(&clp->cl_flags, NFSD4_CLIENT_UPCALL_LOCK,
-+			 TASK_UNINTERRUPTIBLE);
-+}
-+
-+static void
-+nfsd4_cltrack_upcall_unlock(struct nfs4_client *clp)
-+{
-+	smp_mb__before_atomic();
-+	clear_bit(NFSD4_CLIENT_UPCALL_LOCK, &clp->cl_flags);
-+	smp_mb__after_atomic();
-+	wake_up_bit(&clp->cl_flags, NFSD4_CLIENT_UPCALL_LOCK);
-+}
-+
-+static void
- nfsd4_umh_cltrack_create(struct nfs4_client *clp)
- {
- 	char *hexid, *has_session, *grace_start;
-@@ -1270,9 +1286,14 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
- 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
- 		return;
- 	}
-+
- 	has_session = nfsd4_cltrack_client_has_session(clp);
- 	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
-+
-+	nfsd4_cltrack_upcall_lock(clp);
- 	nfsd4_umh_cltrack_upcall("create", hexid, has_session, grace_start);
-+	nfsd4_cltrack_upcall_unlock(clp);
-+
- 	kfree(has_session);
- 	kfree(grace_start);
- 	kfree(hexid);
-@@ -1288,7 +1309,11 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
- 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
- 		return;
- 	}
-+
-+	nfsd4_cltrack_upcall_lock(clp);
- 	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
-+	nfsd4_cltrack_upcall_unlock(clp);
-+
- 	kfree(hexid);
- }
- 
-@@ -1306,7 +1331,11 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
- 
- 	has_session = nfsd4_cltrack_client_has_session(clp);
- 	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
-+
-+	nfsd4_cltrack_upcall_lock(clp);
- 	ret = nfsd4_umh_cltrack_upcall("check", hexid, has_session, legacy);
-+	nfsd4_cltrack_upcall_unlock(clp);
-+
- 	kfree(has_session);
- 	kfree(legacy);
- 	kfree(hexid);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 10bfda710f71..a0ed18f00dcb 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -306,6 +306,7 @@ struct nfs4_client {
- #define NFSD4_CLIENT_STABLE		(2)	/* client on stable storage */
- #define NFSD4_CLIENT_RECLAIM_COMPLETE	(3)	/* reclaim_complete done */
- #define NFSD4_CLIENT_CONFIRMED		(4)	/* client is confirmed */
-+#define NFSD4_CLIENT_UPCALL_LOCK	(5)	/* upcall serialization */
- #define NFSD4_CLIENT_CB_FLAG_MASK	(1 << NFSD4_CLIENT_CB_UPDATE | \
- 					 1 << NFSD4_CLIENT_CB_KILL)
- 	unsigned long		cl_flags;
--- 
-1.9.3
+All the allocations performed by the state manager are (I assume) GFP_NOFS.
+Creating a new thread requires GFP_KERNEL allocations, particularly in
+dup_task_struct, which is called by kthreadd, which is well out of reach for
+NFS to try to change the GFP flags.
 
+Having said that, it occurs to me that my other dead-lock avoidance patch
+might fix this problem as well.
+
+The one case where I have seen a problem with starting the state manager, t=
+he
+machine in question had several memory-shortage issues.  I think we finally
+decided that a problem with too_many_isolated handling was the main cause.
+So I cannot get very much reliable information from the stack trace there. =
+ I
+presume that in the current kernel, thread creation could deadlock against
+nfs_release_page() (it was actually stuck in a congestion_wait()).
+
+So I can't be certain, but I think this proactive thread creation won't be
+needed once nfs_release_page() doesn't block indefinitely.
+
+So you can drop this patch.
+
+Thanks.
+
+Though on the topic of patches that you don't know what to do with ....
+Could you have a look at
+   http://permalink.gmane.org/gmane.linux.nfs/56154
+it appears that it slipped under your radar, and it fell of mine until just
+recently.
+
+NeilBrown
+
+
+--Sig_/mHuF1ocO1j6EYrWdo3VtPCs
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBVBj6aDnsnt1WYoG5AQJBHBAAjdiEytmmqoqeGvwfZp2EdMeDrrjD7y1y
+lWEDly+9092ck+SQlKCNWw0D9P+nK6K/vJchSblyBfBhFlyGAaXAdAmxAvr5LEkl
+3RBlzOzRppEdjpYbtW/vJxCAw61DMySnIV6P7AN/Z9YePzpF8yzb7cVE6zYOmhuZ
+nldjwdpkQraXGAhG02x4ELXyJRKWpgA8S5RyhwSgeMJ5iUkRrepSpMU7DBB3VftX
+6S3PEQ4thCiJ2jG1Hu5pIoKneivmn3ZM81Wrg4CWy++2PdIBFrEc7RxWFN63bcgJ
+D/3PYcgYy+4L3458EtAlJZHp7o6GBJ3DoZFv5Epu0/7ytrNNs9plttW5pgeg3g4V
+v1t3AvDUlbl88Xn7GmhQmyj9M/5jeOuKNlOQN8GkVPt5U7prS6vK1InbeDJH1Kol
+FObZ8abFnGb17wcDMLn1pVx+XfCUqVPxNiXO0z3SutKAPmKkclS3um7fNNanFtMI
+lzGHJTxC9FGneDkdawmDILEQdytHL4om925ROLuEt7tKoBQeDsU1Uj6tNV+S1YYu
+W9dGjIrIGizRgJo+PTuzMP9Cg36TNrlOOFEmhe3lIEaA/zSfpn3gBjNCBWiq1+If
+vSp/lP1JohdYlebaR1kNq7RW8IOCob7bwqgxoZDu/Q0evlHclDL2kFcbmvqE5cXg
+k2CMqJvxMzE=
+=FxiC
+-----END PGP SIGNATURE-----
+
+--Sig_/mHuF1ocO1j6EYrWdo3VtPCs--
