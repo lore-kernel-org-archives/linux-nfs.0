@@ -1,172 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51887 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756352AbaIWPGw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 11:06:52 -0400
-Message-ID: <54218C85.6040005@RedHat.com>
-Date: Tue, 23 Sep 2014 11:06:45 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-vc0-f180.google.com ([209.85.220.180]:62186 "EHLO
+	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755864AbaIRUvN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 16:51:13 -0400
+Received: by mail-vc0-f180.google.com with SMTP id hq11so1205705vcb.25
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 13:51:12 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, Simo Sorce <simo@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-References: <1411413608-16462-1-git-send-email-steved@redhat.com> <1411413608-16462-2-git-send-email-steved@redhat.com> <20140922152603.75005941@willson.usersys.redhat.com> <54207BCD.70101@RedHat.com> <20140922204401.GI26763@fieldses.org> <5420911D.6080506@RedHat.com> <20140922223423.GA29932@fieldses.org> <5420B78D.6040704@RedHat.com> <20140922202655.5e308e58@willson.usersys.redhat.com> <20140923015549.GB32712@fieldses.org>
-In-Reply-To: <20140923015549.GB32712@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <d143828a73125846d583f4c606061109d22869f7.1411068259.git.jbaron@akamai.com>
+References: <cover.1411068259.git.jbaron@akamai.com>
+	<d143828a73125846d583f4c606061109d22869f7.1411068259.git.jbaron@akamai.com>
+Date: Thu, 18 Sep 2014 16:51:12 -0400
+Message-ID: <CAHQdGtQOoop=CShDx9dTXSjo47KzWoRqkM9PNx1Si-pFSXg-_w@mail.gmail.com>
+Subject: Re: [PATCH 2/2] rpc: Add -EPERM processing for xs_udp_send_request()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jason Baron <jbaron@akamai.com>
+Cc: Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Sep 18, 2014 at 3:51 PM, Jason Baron <jbaron@akamai.com> wrote:
+> If an iptables drop rule is added for an nfs server, the client can end up in
+> a softlockup. Because of the way that xs_sendpages() is structured, the -EPERM
+> is ignored since the prior bits of the packet may have been successfully queued
+> and thus xs_sendpages() returns a non-zero value. Then, xs_udp_send_request()
+> thinks that because some bits were queued it should return -EAGAIN. We then try
+> the request and again and a softlockup occurs. The test sequence is simply:
+>
+> 1) open a file on the nfs server '/nfs/foo' (mounted using udp)
+> 2) iptables -A OUTPUT -d <nfs server ip> -j DROP
+> 3) write to /nfs/foo
+> 4) close /nfs/foo
+> 5) iptables -D OUTPUT -d <nfs server ip> -j DROP
+>
+> The softlockup occurs in step 4 above.
 
+For UDP, the expected and documented behaviour in the case above is as follows:
+- if the mount is soft, then return EIO on the first major timeout.
+- if the mount is hard, then retry indefinitely on timeout.
 
-On 09/22/2014 09:55 PM, J. Bruce Fields wrote:
-> On Mon, Sep 22, 2014 at 08:26:55PM -0400, Simo Sorce wrote:
->> On Mon, 22 Sep 2014 19:58:05 -0400
->> Steve Dickson <SteveD@redhat.com> wrote:
->>
->>>
->>>
->>> On 09/22/2014 06:34 PM, J. Bruce Fields wrote:
->>>> On Mon, Sep 22, 2014 at 05:14:05PM -0400, Steve Dickson wrote:
->>>>>
->>>>>
->>>>> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
->>>>>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
->>>>>>>
->>>>>>>
->>>>>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
->>>>>>>> On Mon, 22 Sep 2014 15:20:07 -0400
->>>>>>>> Steve Dickson <steved@redhat.com> wrote:
->>>>>>>>
->>>>>>>>> Added the gssproxy.service to both the Wants= and
->>>>>>>>> Atfers= lines, before the rpc-svcgssd.service. There
->>>>>>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
->>>>>>>>> unit which will stop the rpc.svcgssd daemon from
->>>>>>>>> starting when the gssproxy daemon is already running.
->>>>>>>>>
->>>>>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>>>>>>> ---
->>>>>>>>>  systemd/nfs-server.service | 5 +++--
->>>>>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
->>>>>>>>>
->>>>>>>>> diff --git a/systemd/nfs-server.service
->>>>>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
->>>>>>>>> --- a/systemd/nfs-server.service
->>>>>>>>> +++ b/systemd/nfs-server.service
->>>>>>>>> @@ -2,12 +2,13 @@
->>>>>>>>>  Description=NFS server and services
->>>>>>>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
->>>>>>>>>  Requires= nfs-mountd.service
->>>>>>>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
->>>>>>>>> rpc-svcgssd.service +Wants=rpc-statd.service
->>>>>>>>> nfs-idmapd.service +Wants=rpc-gssd.service  
->>>>>>>>>  Wants=rpc-statd-notify.service
->>>>>>>>>  
->>>>>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
->>>>>>>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
->>>>>>>>> -After= rpc-gssd.service rpc-svcgssd.service
->>>>>>>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
->>>>>>>>>  Before= rpc-statd-notify.service
->>>>>>>>>  
->>>>>>>>>  Wants=nfs-config.service
->>>>>>>>
->>>>>>>> I think you really need to insure that the modules are loaded
->>>>>>>> before any of the server services are started, perhaps adding a
->>>>>>>> unit file that exec's modprobe and has "Before:
->>>>>>>> gssproxy.service rpc-svcgssd.service" in it ?
->>>>>>> I really don't think its needed... From my testing it appears 
->>>>>>> gssproxy is always being started and rpc.svcgssd is not... 
->>>>>>
->>>>>> Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount
->>>>>> as both "Requires=" and "After=", so rpc-svcgssd.service will
->>>>>> never run without first running var-lib-nfs-rpc_pipefs.mount,
->>>>>> which will load sunrpc.  But I don't see where auth_rpcgss is
->>>>>> getting loaded.  And I don't see what ensures anything happening
->>>>>> before gssproxy runs.
->>>>> It happens during the mount on the client and when the server
->>>>> is started. 
->>>>>
->>>>>>
->>>>>> We want to make sure your testing's not just getting lucky on the
->>>>>> startup order.
->>>>> The reason it working is because rpc.gssd is being started on the
->>>>> server these days for callbacks and the After= line in
->>>>> rpc-svcgssd.service is being executed before the
->>>>> ConditionPathExists which cause rpc.svcgssd not to start.
->>>>
->>>> nfs-utils$ grep After systemd/rpc-svcgssd.service 
->>>> After=var-lib-nfs-rpc_pipefs.mount
->>>> After=gssproxy.service
->>>> After=nfs-config.service
->>>>
->>>> There doesn't seem to be an After= line referring to rpc.gssd.
->>> No, why should there be? There is After= line referring to rpc.gssd
->>> in nfs-server.service
->>>
->>> grep After systemd/nfs-server.service 
->>> After= network.target proc-fs-nfsd.mount rpcbind.target
->>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
->>> After= rpc-gssd.service rpc-svcgssd.service
->>> After=nfs-config.service
->>>
->>> So when the server starts,rpc.gssd will start and rpc.svcgssd will
->>> start if gssproxy is not enable and there is a key tab. 
->>
->> They can start in parallel, there is nothing in that line that makes
->> one start before the other.
->>
->> If you are relying on this you are relying on luck.
->>
->>>>> So when gssproxy.service does it's "Before=nfs-secure.service
->>>>> nfs-secure-server.service" line everything is loaded before
->>>>> gssproxy start... 
->>>>
->>>> That line only makes gss-proxy start before those other things.
->>> Right, which will load the sunrpc modules.
->>
->> No, starting before those service in itself achieves nothing.\
->> I think what may cause the module to load maybe the fact
->> gssproxy.service includes:
->> Requires=proc-fs-nfsd.mount
-> 
-> I'd expect that to only load the nfsd module.
-> 
-> Hm, I think nfsd actually has a dependency on auth_rpcgss.  I wonder if
-> that's correct.  Maybe that's what's doing it.
-It is... In another thread I clearly showed that.... So I really
-don't think another unit file is necessary...
+Won't these 2 patches end up propagating an EPERM to the application?
+That would be a definite violation of both hard and soft semantics.
 
-steved.
- 
-> 
->> But to be honest this was a hack to deal with broken nfs service files,
->> gss-proxy should not require nfsd, the dependency should be the other
->> way around, as gss-proxy can run on machines where there is no nfs
->> service whatsoever, as it stand this is a bug in gssproxy.service and
->> I'd like to fix it.
-> 
-> So, something like this?  (Untested, no idea if I'm doing this right.)
-> 
-> --b.
-> 
-> diff --git a/systemd/auth-rpcgss-module.service b/systemd/auth-rpcgss-module.service
-> new file mode 100644
-> index 000000000000..252545b458fd
-> --- /dev/null
-> +++ b/systemd/auth-rpcgss-module.service
-> @@ -0,0 +1,15 @@
-> +# We want to start gss-proxy on kernels that support it and rpc.svcgssd
-> +# on those that don't.  Those services check for support by checking
-> +# for existence of the path /proc/net/rpc/use-gss-proxy.  Before they
-> +# can perform that check, they need this module loaded.  (Unless
-> +# rpcsec_gss is built directly into the kernel, in which case this unit
-> +# will fail.  But that's OK.)
-> +[Unit]
-> +Description=Kernel Module supporting RPCSEC_GSS
-> +Before=gssproxy.service rpc-svcgssd.service
-> +
-> +[Service]
-> +ExecStart=/sbin/modprobe -q auth_rpcgss
-> +
-> +[Install]
-> +WantedBy=gssproxy.service rpc-svcgssd.service
-> 
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
