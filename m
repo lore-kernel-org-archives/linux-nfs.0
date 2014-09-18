@@ -1,174 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53265 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:40653 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752660AbaIPFdG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Sep 2014 01:33:06 -0400
-From: NeilBrown <neilb@suse.de>
-To: Peter Zijlstra <peterz@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>
-Date: Tue, 16 Sep 2014 15:31:35 +1000
-Subject: [PATCH 4/4] NFS/SUNRPC: Remove other deadlock-avoidance mechanisms
- in nfs_release_page()
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jeff Layton <jeff.layton@primarydata.com>
-Message-ID: <20140916053135.22257.46476.stgit@notabene.brown>
-In-Reply-To: <20140916051911.22257.24658.stgit@notabene.brown>
-References: <20140916051911.22257.24658.stgit@notabene.brown>
+	id S1752039AbaIRNN6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Sep 2014 09:13:58 -0400
+Message-ID: <541ADA94.6010503@RedHat.com>
+Date: Thu, 18 Sep 2014 09:13:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: nfs4_state_manager() vs. nfs_server_remove_lists()
+References: <1410965448-6110-1-git-send-email-steved@redhat.com> <CAHQdGtQv4BPmD5s77=sFmyjT+64+65A8j3nEu_z-woNOGkGAng@mail.gmail.com>
+In-Reply-To: <CAHQdGtQv4BPmD5s77=sFmyjT+64+65A8j3nEu_z-woNOGkGAng@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that nfs_release_page() doesn't block indefinitely, other deadlock
-avoidance mechanisms aren't needed.
- - it doesn't hurt for kswapd to block occasionally.  If it doesn't
-   want to block it would clear __GFP_WAIT.  The current_is_kswapd()
-   was only added to avoid deadlocks and we have a new approach for
-   that.
- - memory allocation in the SUNRPC layer can very rarely try to
-   ->releasepage() a page it is trying to handle.  The deadlock
-   is removed as nfs_release_page() doesn't block indefinitely.
-
-So we don't need to set PF_FSTRANS for sunrpc network operations any
-more.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/nfs/file.c                   |   16 +++++++---------
- net/sunrpc/sched.c              |    2 --
- net/sunrpc/xprtrdma/transport.c |    2 --
- net/sunrpc/xprtsock.c           |   10 ----------
- 4 files changed, 7 insertions(+), 23 deletions(-)
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 8d74983417af..5949ca37cd18 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -469,18 +469,16 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
- 	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
- 
- 	/* Always try to initiate a 'commit' if relevant, but only
--	 * wait for it if __GFP_WAIT is set and the calling process is
--	 * allowed to block.  Even then, only wait 1 second.  Waiting
--	 * indefinitely can cause deadlocks when the NFS server is on
--	 * this machine, and there is no particular need to wait
--	 * extensively here.  A short wait has the benefit that
--	 * someone else can worry about the freezer.
-+	 * wait for it if __GFP_WAIT is set.  Even then, only wait 1
-+	 * second.  Waiting indefinitely can cause deadlocks when the
-+	 * NFS server is on this machine, when a new TCP connection is
-+	 * needed and in other rare cases.  There is no particular
-+	 * need to wait extensively here.  A short wait has the
-+	 * benefit that someone else can worry about the freezer.
- 	 */
- 	if (mapping) {
- 		nfs_commit_inode(mapping->host, 0);
--		if ((gfp & __GFP_WAIT) &&
--		    !current_is_kswapd() &&
--		    !(current->flags & PF_FSTRANS))
-+		if ((gfp & __GFP_WAIT))
- 			wait_on_page_bit_killable_timeout(page, PG_private,
- 							  HZ);
- 	}
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 9358c79fd589..fe3441abdbe5 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -821,9 +821,7 @@ void rpc_execute(struct rpc_task *task)
- 
- static void rpc_async_schedule(struct work_struct *work)
- {
--	current->flags |= PF_FSTRANS;
- 	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
--	current->flags &= ~PF_FSTRANS;
- }
- 
- /**
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 2faac4940563..6a4615dd0261 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -205,7 +205,6 @@ xprt_rdma_connect_worker(struct work_struct *work)
- 	struct rpc_xprt *xprt = &r_xprt->xprt;
- 	int rc = 0;
- 
--	current->flags |= PF_FSTRANS;
- 	xprt_clear_connected(xprt);
- 
- 	dprintk("RPC:       %s: %sconnect\n", __func__,
-@@ -216,7 +215,6 @@ xprt_rdma_connect_worker(struct work_struct *work)
- 
- 	dprintk("RPC:       %s: exit\n", __func__);
- 	xprt_clear_connecting(xprt);
--	current->flags &= ~PF_FSTRANS;
- }
- 
- /*
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 43cd89eacfab..4707c0c8568b 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1927,8 +1927,6 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
- 	struct socket *sock;
- 	int status = -EIO;
- 
--	current->flags |= PF_FSTRANS;
--
- 	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
- 	status = __sock_create(xprt->xprt_net, AF_LOCAL,
- 					SOCK_STREAM, 0, &sock, 1);
-@@ -1968,7 +1966,6 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
--	current->flags &= ~PF_FSTRANS;
- 	return status;
- }
- 
-@@ -2071,8 +2068,6 @@ static void xs_udp_setup_socket(struct work_struct *work)
- 	struct socket *sock = transport->sock;
- 	int status = -EIO;
- 
--	current->flags |= PF_FSTRANS;
--
- 	/* Start by resetting any existing state */
- 	xs_reset_transport(transport);
- 	sock = xs_create_sock(xprt, transport,
-@@ -2092,7 +2087,6 @@ static void xs_udp_setup_socket(struct work_struct *work)
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
--	current->flags &= ~PF_FSTRANS;
- }
- 
- /*
-@@ -2229,8 +2223,6 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 	struct rpc_xprt *xprt = &transport->xprt;
- 	int status = -EIO;
- 
--	current->flags |= PF_FSTRANS;
--
- 	if (!sock) {
- 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
- 		sock = xs_create_sock(xprt, transport,
-@@ -2276,7 +2268,6 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 	case -EINPROGRESS:
- 	case -EALREADY:
- 		xprt_clear_connecting(xprt);
--		current->flags &= ~PF_FSTRANS;
- 		return;
- 	case -EINVAL:
- 		/* Happens, for instance, if the user specified a link
-@@ -2294,7 +2285,6 @@ out_eagain:
- out:
- 	xprt_clear_connecting(xprt);
- 	xprt_wake_pending_tasks(xprt, status);
--	current->flags &= ~PF_FSTRANS;
- }
- 
- /**
 
 
+On 09/17/2014 10:55 AM, Trond Myklebust wrote:
+> On Wed, Sep 17, 2014 at 10:50 AM, Steve Dickson <steved@redhat.com> wrote:
+>> There is a race between nfs4_state_manager() and
+>> nfs_server_remove_lists() that happens during a nfsv3 mount.
+>>
+>> The v3 mount notices there is already a supper block so
+>> nfs_server_remove_lists() called which uses the nfs_client_lock
+>> spin lock to synchronize access to the client list.
+>>
+>> At the same time nfs4_state_manager() is running through
+>> the client list looking for work to do, using the same
+>> lock. When nfs4_state_manager() wins the race to the
+>> list, a v3 client pointer is found and not ignored
+>> properly which causes the panic.
+>>
+>> Moving some protocol checks before the state checking
+>> avoids the panic.
+>>
+>> CC: Stable Tree <stable@vger.kernel.org>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  fs/nfs/nfs4client.c | 19 ++++++++++---------
+>>  1 file changed, 10 insertions(+), 9 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>> index 53e435a..7ff4c02 100644
+>> --- a/fs/nfs/nfs4client.c
+>> +++ b/fs/nfs/nfs4client.c
+>> @@ -622,6 +622,16 @@ int nfs41_walk_client_list(struct nfs_client *new,
+>>
+>>         spin_lock(&nn->nfs_client_lock);
+>>         list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
+>> +
+>> +               if (pos->rpc_ops != new->rpc_ops)
+>> +                       continue;
+>> +
+>> +               if (pos->cl_proto != new->cl_proto)
+>> +                       continue;
+>> +
+>> +               if (pos->cl_minorversion != new->cl_minorversion)
+>> +                       continue;
+>> +
+>>                 /* If "pos" isn't marked ready, we can't trust the
+>>                  * remaining fields in "pos", especially the client
+>>                  * ID and serverowner fields.  Wait for CREATE_SESSION
+>> @@ -647,15 +657,6 @@ int nfs41_walk_client_list(struct nfs_client *new,
+>>                 if (pos->cl_cons_state != NFS_CS_READY)
+>>                         continue;
+>>
+>> -               if (pos->rpc_ops != new->rpc_ops)
+>> -                       continue;
+>> -
+>> -               if (pos->cl_proto != new->cl_proto)
+>> -                       continue;
+>> -
+>> -               if (pos->cl_minorversion != new->cl_minorversion)
+>> -                       continue;
+>> -
+>>                 if (!nfs4_match_clientids(pos, new))
+>>                         continue;
+>>
+>> --
+>> 1.8.3.1
+>>
+> 
+> Don't we need the same fix in nfs40_walk_client_list?
+Yes... Just posted version 2...
+
+steved.
+ 
+> 
+> Cheers
+>   Trond
+> 
