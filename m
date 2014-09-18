@@ -1,58 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:54929 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753412AbaIYR1h convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 13:27:37 -0400
-Received: by mail-ie0-f174.google.com with SMTP id rd18so8495078iec.5
-        for <linux-nfs@vger.kernel.org>; Thu, 25 Sep 2014 10:27:37 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: WARNING at fs/nfs/write.c:743 nfs_inode_remove_request with -rc6
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <20140925171545.GR20043@arm.com>
-Date: Thu, 25 Sep 2014 13:27:35 -0400
-Cc: Peng Tao <tao.peng@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Message-Id: <78B8153D-59B7-4DBE-8472-D83338F04338@primarydata.com>
-References: <20140923130352.GK26472@arm.com> <2A327753-3E60-46AC-8220-3FF0FF61F08F@primarydata.com> <20140923135938.GB28608@arm.com> <20140923145356.GD28608@arm.com> <5294BEB2-F20F-4E3E-BFB2-E41806A4F85A@primarydata.com> <FA11FBE3-42E7-46B9-B9DA-FAE368DCE96B@primarydata.com> <F632C770-3E3D-4FC5-BBF3-69BB1CCA8F0D@primarydata.com> <20140923152558.GG28608@arm.com> <20140925171545.GR20043@arm.com>
-To: Will Deacon <will.deacon@arm.com>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:59386 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932094AbaIRQAY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 12:00:24 -0400
+Received: by mail-ie0-f172.google.com with SMTP id rd18so1485044iec.3
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 09:00:23 -0700 (PDT)
+Message-ID: <1411056020.10845.1.camel@leira.trondhjem.org>
+Subject: Re: NFS Kernel Bug
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: James Drews <drews@engr.wisc.edu>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Thu, 18 Sep 2014 12:00:20 -0400
+In-Reply-To: <CAHQdGtQZ0kcBZ0QCb+sf52thERjJgz-5M++CsT7kdoDweG61sQ@mail.gmail.com>
+References: <541AD7E5.8020409@engr.wisc.edu>
+	 <CAHQdGtQZ0kcBZ0QCb+sf52thERjJgz-5M++CsT7kdoDweG61sQ@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sep 25, 2014, at 1:15 PM, Will Deacon <will.deacon@arm.com> wrote:
-
-> Hi Andros,
+On Thu, 2014-09-18 at 10:31 -0400, Trond Myklebust wrote:
+> On Thu, Sep 18, 2014 at 9:02 AM, James Drews <drews@engr.wisc.edu> wrote:
+> > Good morning!
+> >
+> > I believe we have found a bug in the NFS kernel area.  The "bug" is a leak
+> > of a file handle where the NFS client never tells the server to close the
+> > file. The problem is very similar to one we had reported and got a fix for
+> > previously. We are using that patch, but ran in to another case where the
+> > client sends out an OPEN_DOWNGRADE but never sends a CLOSE.
+> >
+> > Attached is a simple c program that we have been able to reproduce the bug
+> > with, along with a packet capture of what we see on the wire.
+> >
+> > To reproduce the bug:
+> > -compile the c code
+> > -execute the c code with:
+> >
+> > ./test ; cat testfile3 > /dev/nul
+> >
+> > -now if we try to remove the file we get a file in use error (server is
+> > using mandatory locking)
+> >
+> > Things to note:
+> >
+> > -if you just run the program without the immediate cat'ing of the file, the
+> > bug does not happen
+> > suggesting a timing issue
+> > -If you alter the program so the code mimics the cat of the file, the bug
+> > does not happen (ie, add an open, read file, close to the code).
+> > -If you run the program as described above, and then run it again without
+> > the "; cat testfile3 > /dev/nul", the kernel squeaks out the file close to
+> > the server when the code does the close.
+> >
+> > The attached packet capture is us doing:
+> >
+> > ./test ; cat testfile3 > /dev/null
+> > rm testfile3
+> > ./test
+> > rm testfile3
+> >
+> > where we are denied the rm the first time, but not the second.
+> >
 > 
-> On Tue, Sep 23, 2014 at 04:25:58PM +0100, Will Deacon wrote:
->> On Tue, Sep 23, 2014 at 04:08:36PM +0100, Weston Andros Adamson wrote:
->>> On Sep 23, 2014, at 11:02 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
->>>> Wait a second - the whole point of this extra reference (that the
->>>> WARN_ON_ONCE is related to) is to handle the pass off to commit lists.
->>>> 
->>>> Maybe I’m just doing the wrong thing here with NFSv2!
->>>> 
->>>> More soon.
->>> 
->>> Actually, can you see if this is reproducible with NFSv3?
->> 
->> Just tried that, and I'm unable to trigger the problem with NFSv3.
+> Argh. This is a situation where the client shouldn't have called
+> OPEN_DOWNGRADE, but should have done a CLOSE. The issue is that the
+> client opens the file with OPEN4_SHARE_ACCESS_BOTH, so it is not
+> allowed to downgrade to OPEN4_SHARE_ACCESS_READ. Instead it should
+> have closed the file, and then used the delegation...
 > 
-> Any more ideas? I can run with NFSv3 instead, but it's a shame to leave
-> v2 broken.
 
-Hi Will,
+Does the following patch help (and does it still fix your original
+bugreport)?
 
-I do plan on looking at this more very soon, but since it’s v2 only and just warning
-(and not crashing anything) it didn’t jump to the top of my list. It is only printing the
-warnings, right? That’s no reason to switch things up ;)
+Cheers
+  Trond
+8<----------------------------------------------------------------
+>From d5f56bc67514a290032ff063d837179853231acf Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Thu, 18 Sep 2014 11:51:32 -0400
+Subject: [PATCH] NFSv4: Fix another bug in the close/open_downgrade code
 
-It might be interesting to get some rpcdebug output around the time of the warning,
-but I’m not sure it will be useful.
+James Drew reports another bug whereby the NFS client is now sending
+an OPEN_DOWNGRADE in a situation where it should really have sent a
+CLOSE: the client is opening the file for O_RDWR, but then trying to
+do a downgrade to O_RDONLY, which is not allowed by the NFSv4 spec.
 
-Since I cannot reproduce this, my next step is to inspect the code with an NFSv2
-with 64k pages setup in mind.
+Reported-by: James Drews <drews@engr.wisc.edu>
+Link: http://lkml.kernel.org/r/541AD7E5.8020409@engr.wisc.edu
+Fixes: aee7af356e15 (NFSv4: Fix problems with close in the presence...)
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
 
--dros
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ac2dd953fc18..6ca0c8e7a945 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2618,23 +2618,23 @@ static void nfs4_close_prepare(struct rpc_task *task, void *data)
+ 	is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
+ 	is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
+ 	is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
+-	/* Calculate the current open share mode */
+-	calldata->arg.fmode = 0;
+-	if (is_rdonly || is_rdwr)
+-		calldata->arg.fmode |= FMODE_READ;
+-	if (is_wronly || is_rdwr)
+-		calldata->arg.fmode |= FMODE_WRITE;
+ 	/* Calculate the change in open mode */
++	calldata->arg.fmode = 0;
+ 	if (state->n_rdwr == 0) {
+-		if (state->n_rdonly == 0) {
+-			call_close |= is_rdonly || is_rdwr;
+-			calldata->arg.fmode &= ~FMODE_READ;
+-		}
+-		if (state->n_wronly == 0) {
+-			call_close |= is_wronly || is_rdwr;
+-			calldata->arg.fmode &= ~FMODE_WRITE;
+-		}
+-	}
++		if (state->n_rdonly == 0)
++			call_close |= is_rdonly;
++		else if (is_rdonly)
++			calldata->arg.fmode |= FMODE_READ;
++		if (state->n_wronly == 0)
++			call_close |= is_wronly;
++		else if (is_wronly)
++			calldata->arg.fmode |= FMODE_WRITE;
++	} else if (is_rdwr)
++		calldata->arg.fmode |= FMODE_READ|FMODE_WRITE;
++
++	if (calldata->arg.fmode == 0)
++		call_close |= is_rdwr;
++
+ 	if (!nfs4_valid_open_stateid(state))
+ 		call_close = 0;
+ 	spin_unlock(&state->owner->so_lock);
+-- 
+1.9.3
+
+
 
