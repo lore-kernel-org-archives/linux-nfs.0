@@ -1,87 +1,171 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f50.google.com ([74.125.82.50]:61572 "EHLO
-	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751109AbaILQXc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 12:23:32 -0400
-Received: by mail-wg0-f50.google.com with SMTP id x13so949417wgg.33
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 09:23:30 -0700 (PDT)
-Received: from vm1.localdomain (ip-94-113-17-61.net.upcbroadband.cz. [94.113.17.61])
-        by mx.google.com with ESMTPSA id u10sm2273596wix.2.2014.09.12.09.23.27
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
-        Fri, 12 Sep 2014 09:23:28 -0700 (PDT)
-Message-ID: <54131DFE.9020708@gmail.com>
-Date: Fri, 12 Sep 2014 18:23:26 +0200
-From: Zdenek Kaspar <zkaspar82@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:50276 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757416AbaIRGEd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Sep 2014 02:04:33 -0400
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jeff Layton <jeff.layton@primarydata.com>
+Date: Thu, 18 Sep 2014 16:03:17 +1000
+Subject: [PATCH 4/4] NFS/SUNRPC: Remove other deadlock-avoidance mechanisms
+ in nfs_release_page()
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140918060317.23854.22489.stgit@notabene.brown>
+In-Reply-To: <20140918055907.23854.32118.stgit@notabene.brown>
+References: <20140918055907.23854.32118.stgit@notabene.brown>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: NFSv4 O_DIRECT with 3.16.2 kernel issue (qemu kvm cache=none / RHEL5
- guest)
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello everyone, got this specific problem with RHEL5 guest under KVM
-hypervisor.
+Now that nfs_release_page() doesn't block indefinitely, other deadlock
+avoidance mechanisms aren't needed.
+ - it doesn't hurt for kswapd to block occasionally.  If it doesn't
+   want to block it would clear __GFP_WAIT.  The current_is_kswapd()
+   was only added to avoid deadlocks and we have a new approach for
+   that.
+ - memory allocation in the SUNRPC layer can very rarely try to
+   ->releasepage() a page it is trying to handle.  The deadlock
+   is removed as nfs_release_page() doesn't block indefinitely.
 
-client/server kernel version: 3.16.2
+So we don't need to set PF_FSTRANS for sunrpc network operations any
+more.
 
-/etc/exports: rw,async,no_subtree_check,no_root_squash
-/proc/mounts: nfs4 rw,relatime,vers=4.0,rsize=524288,wsize=524288,
-              namlen=255,hard,proto=tcp,port=0,
-              timeo=600,retrans=2,sec=sys,clientaddr=xxx.xxx.xxx.xxx,
-              local_lock=none,addr=xxx.xxx.xxx.yyy 0 0
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/nfs/file.c                   |   14 ++++++--------
+ net/sunrpc/sched.c              |    2 --
+ net/sunrpc/xprtrdma/transport.c |    2 --
+ net/sunrpc/xprtsock.c           |   10 ----------
+ 4 files changed, 6 insertions(+), 22 deletions(-)
 
-CONFIG_NFS_FS=m
-# CONFIG_NFS_V2 is not set
-CONFIG_NFS_V3=m
-# CONFIG_NFS_V3_ACL is not set
-CONFIG_NFS_V4=m
-# CONFIG_NFS_SWAP is not set
-# CONFIG_NFS_V4_1 is not set
-# CONFIG_NFS_USE_LEGACY_DNS is not set
-CONFIG_NFS_USE_KERNEL_DNS=y
-CONFIG_NFSD=m
-CONFIG_NFSD_V3=y
-# CONFIG_NFSD_V3_ACL is not set
-CONFIG_NFSD_V4=y
-# CONFIG_NFSD_FAULT_INJECTION is not set
-CONFIG_NFS_COMMON=y
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index febba950d8a6..3c032b1f1b75 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -469,20 +469,18 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+ 	dfprintk(PAGECACHE, "NFS: release_page(%p)\n", page);
+ 
+ 	/* Always try to initiate a 'commit' if relevant, but only
+-	 * wait for it if __GFP_WAIT is set and the calling process is
+-	 * allowed to block.  Even then, only wait 1 second and only
+-	 * if the 'bdi' is not congested.
++	 * wait for it if __GFP_WAIT is set.  Even then, only wait 1
++	 * second and only if the 'bdi' is not congested.
+ 	 * Waiting indefinitely can cause deadlocks when the NFS
+-	 * server is on this machine, and there is no particular need
+-	 * to wait extensively here.  A short wait has the benefit
+-	 * that someone else can worry about the freezer.
++	 * server is on this machine, when a new TCP connection is
++	 * needed and in other rare cases.  There is no particular
++	 * need to wait extensively here.  A short wait has the
++	 * benefit that someone else can worry about the freezer.
+ 	 */
+ 	if (mapping) {
+ 		struct nfs_server *nfss = NFS_SERVER(mapping->host);
+ 		nfs_commit_inode(mapping->host, 0);
+ 		if ((gfp & __GFP_WAIT) &&
+-		    !current_is_kswapd() &&
+-		    !(current->flags & PF_FSTRANS) &&
+ 		    !bdi_write_congested(&nfss->backing_dev_info))
+ 			wait_on_page_bit_killable_timeout(page, PG_private,
+ 							  HZ);
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 9358c79fd589..fe3441abdbe5 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -821,9 +821,7 @@ void rpc_execute(struct rpc_task *task)
+ 
+ static void rpc_async_schedule(struct work_struct *work)
+ {
+-	current->flags |= PF_FSTRANS;
+ 	__rpc_execute(container_of(work, struct rpc_task, u.tk_work));
+-	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /**
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 2faac4940563..6a4615dd0261 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -205,7 +205,6 @@ xprt_rdma_connect_worker(struct work_struct *work)
+ 	struct rpc_xprt *xprt = &r_xprt->xprt;
+ 	int rc = 0;
+ 
+-	current->flags |= PF_FSTRANS;
+ 	xprt_clear_connected(xprt);
+ 
+ 	dprintk("RPC:       %s: %sconnect\n", __func__,
+@@ -216,7 +215,6 @@ xprt_rdma_connect_worker(struct work_struct *work)
+ 
+ 	dprintk("RPC:       %s: exit\n", __func__);
+ 	xprt_clear_connecting(xprt);
+-	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /*
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 43cd89eacfab..4707c0c8568b 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1927,8 +1927,6 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
+ 	struct socket *sock;
+ 	int status = -EIO;
+ 
+-	current->flags |= PF_FSTRANS;
+-
+ 	clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+ 	status = __sock_create(xprt->xprt_net, AF_LOCAL,
+ 					SOCK_STREAM, 0, &sock, 1);
+@@ -1968,7 +1966,6 @@ static int xs_local_setup_socket(struct sock_xprt *transport)
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
+-	current->flags &= ~PF_FSTRANS;
+ 	return status;
+ }
+ 
+@@ -2071,8 +2068,6 @@ static void xs_udp_setup_socket(struct work_struct *work)
+ 	struct socket *sock = transport->sock;
+ 	int status = -EIO;
+ 
+-	current->flags |= PF_FSTRANS;
+-
+ 	/* Start by resetting any existing state */
+ 	xs_reset_transport(transport);
+ 	sock = xs_create_sock(xprt, transport,
+@@ -2092,7 +2087,6 @@ static void xs_udp_setup_socket(struct work_struct *work)
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
+-	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /*
+@@ -2229,8 +2223,6 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+ 	struct rpc_xprt *xprt = &transport->xprt;
+ 	int status = -EIO;
+ 
+-	current->flags |= PF_FSTRANS;
+-
+ 	if (!sock) {
+ 		clear_bit(XPRT_CONNECTION_ABORT, &xprt->state);
+ 		sock = xs_create_sock(xprt, transport,
+@@ -2276,7 +2268,6 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+ 	case -EINPROGRESS:
+ 	case -EALREADY:
+ 		xprt_clear_connecting(xprt);
+-		current->flags &= ~PF_FSTRANS;
+ 		return;
+ 	case -EINVAL:
+ 		/* Happens, for instance, if the user specified a link
+@@ -2294,7 +2285,6 @@ out_eagain:
+ out:
+ 	xprt_clear_connecting(xprt);
+ 	xprt_wake_pending_tasks(xprt, status);
+-	current->flags &= ~PF_FSTRANS;
+ }
+ 
+ /**
 
-CentOS-5.10-i386-bin-1of8.iso -- did not test everything on centos,
-behaved same as RHEL5. So let's use it as VM reproducer:
 
-dd if=/dev/zero of=kvm-test1.img bs=1M count=2048
-
-start VM using:
-file=kvm-test1.img,cache=writeback,aio=native,if=virtio,boot=on
-
-create custom layout: /dev/vda1 / ext3 max size primary
-unselect Desktop-Gnome, select Customize now
-use only: Base System/Base and install it..
-
-[root@test1 ~]# find / >/dev/null
-everything works as expected with writeback
-
-shutdown, backup kvm-test1.img (fs will explode)
-start VM using:
-file=kvm-test1.img,cache=none,aio=native,if=virtio,boot=on
-
-[root@test1 ~]# find / >/dev/null
-and check dmesg, reboot etc, ie:
-EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
-directory #460317: rec_len is smaller than minimal - offset=0, inode=0,
-rec_len=0, name_len=0
-EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
-directory #98503: rec_len is smaller than minimal - offset=0, inode=0,
-rec_len=0, name_len=0
-
-Tested locally on ext4, xfs          - WORK
-Tested on NFSv4 share with ext4, xfs - FAIL
-Tested NFSv4 share sync, async       - FAIL
-Tested on NFSv3 share with xfs       - WORK
-KVM with qemu rhel-6.5, 2.1.1        - SAME RESULTS
-
-NOTE: it seems just the rhel5 guest triggers it easily..
-
-HTH, Z.
