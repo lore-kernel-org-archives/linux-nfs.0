@@ -1,99 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:53899 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755167AbaIZOAa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 10:00:30 -0400
-From: Christoph Hellwig <hch@lst.de>
+Received: from mx1.redhat.com ([209.132.183.28]:30359 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751244AbaIRNNX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 18 Sep 2014 09:13:23 -0400
+From: Steve Dickson <steved@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] pnfs/blocklayout: serialize GETDEVICEINFO calls
-Date: Fri, 26 Sep 2014 16:02:50 +0200
-Message-Id: <1411740170-18611-2-git-send-email-hch@lst.de>
-In-Reply-To: <1411740170-18611-1-git-send-email-hch@lst.de>
-References: <1411740170-18611-1-git-send-email-hch@lst.de>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Stable Tree <stable@vger.kernel.org>
+Subject: [PATCH] [V2] NFSv4: nfs4_state_manager() vs. nfs_server_remove_lists()
+Date: Thu, 18 Sep 2014 09:13:17 -0400
+Message-Id: <1411045997-3988-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The rpc_pipefs code isn't thread safe, leading to occasional use after
-frees when running xfstests generic/241 (dbench).
+There is a race between nfs4_state_manager() and
+nfs_server_remove_lists() that happens during a nfsv3 mount.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+The v3 mount notices there is already a supper block so
+nfs_server_remove_lists() called which uses the nfs_client_lock
+spin lock to synchronize access to the client list.
+
+At the same time nfs4_state_manager() is running through
+the client list looking for work to do, using the same
+lock. When nfs4_state_manager() wins the race to the
+list, a v3 client pointer is found and not ignored
+properly which causes the panic.
+
+Moving some protocol checks before the state checking
+avoids the panic.
+
+CC: Stable Tree <stable@vger.kernel.org>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/blocklayout/rpc_pipefs.c | 14 +++++++++-----
- fs/nfs/netns.h                  |  1 +
- 2 files changed, 10 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4client.c | 38 ++++++++++++++++++++------------------
+ 1 file changed, 20 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/blocklayout/rpc_pipefs.c b/fs/nfs/blocklayout/rpc_pipefs.c
-index 8d04bda..da58ff7 100644
---- a/fs/nfs/blocklayout/rpc_pipefs.c
-+++ b/fs/nfs/blocklayout/rpc_pipefs.c
-@@ -65,17 +65,18 @@ bl_resolve_deviceid(struct nfs_server *server, struct pnfs_block_volume *b,
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 53e435a..ffdb28d 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -482,6 +482,16 @@ int nfs40_walk_client_list(struct nfs_client *new,
  
- 	dprintk("%s CREATING PIPEFS MESSAGE\n", __func__);
+ 	spin_lock(&nn->nfs_client_lock);
+ 	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
++
++		if (pos->rpc_ops != new->rpc_ops)
++			continue;
++
++		if (pos->cl_proto != new->cl_proto)
++			continue;
++
++		if (pos->cl_minorversion != new->cl_minorversion)
++			continue;
++
+ 		/* If "pos" isn't marked ready, we can't trust the
+ 		 * remaining fields in "pos" */
+ 		if (pos->cl_cons_state > NFS_CS_READY) {
+@@ -501,15 +511,6 @@ int nfs40_walk_client_list(struct nfs_client *new,
+ 		if (pos->cl_cons_state != NFS_CS_READY)
+ 			continue;
  
-+	mutex_lock(&nn->bl_mutex);
- 	bl_pipe_msg.bl_wq = &nn->bl_wq;
+-		if (pos->rpc_ops != new->rpc_ops)
+-			continue;
+-
+-		if (pos->cl_proto != new->cl_proto)
+-			continue;
+-
+-		if (pos->cl_minorversion != new->cl_minorversion)
+-			continue;
+-
+ 		if (pos->cl_clientid != new->cl_clientid)
+ 			continue;
  
- 	b->simple.len += 4;	/* single volume */
- 	if (b->simple.len > PAGE_SIZE)
--		return -EIO;
-+		goto out_unlock;
+@@ -622,6 +623,16 @@ int nfs41_walk_client_list(struct nfs_client *new,
  
- 	memset(msg, 0, sizeof(*msg));
- 	msg->len = sizeof(*bl_msg) + b->simple.len;
- 	msg->data = kzalloc(msg->len, gfp_mask);
- 	if (!msg->data)
--		goto out;
-+		goto out_free_data;
+ 	spin_lock(&nn->nfs_client_lock);
+ 	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
++
++		if (pos->rpc_ops != new->rpc_ops)
++			continue;
++
++		if (pos->cl_proto != new->cl_proto)
++			continue;
++
++		if (pos->cl_minorversion != new->cl_minorversion)
++			continue;
++
+ 		/* If "pos" isn't marked ready, we can't trust the
+ 		 * remaining fields in "pos", especially the client
+ 		 * ID and serverowner fields.  Wait for CREATE_SESSION
+@@ -647,15 +658,6 @@ int nfs41_walk_client_list(struct nfs_client *new,
+ 		if (pos->cl_cons_state != NFS_CS_READY)
+ 			continue;
  
- 	bl_msg = msg->data;
- 	bl_msg->type = BL_DEVICE_MOUNT,
-@@ -87,7 +88,7 @@ bl_resolve_deviceid(struct nfs_server *server, struct pnfs_block_volume *b,
- 	rc = rpc_queue_upcall(nn->bl_device_pipe, msg);
- 	if (rc < 0) {
- 		remove_wait_queue(&nn->bl_wq, &wq);
--		goto out;
-+		goto out_free_data;
- 	}
+-		if (pos->rpc_ops != new->rpc_ops)
+-			continue;
+-
+-		if (pos->cl_proto != new->cl_proto)
+-			continue;
+-
+-		if (pos->cl_minorversion != new->cl_minorversion)
+-			continue;
+-
+ 		if (!nfs4_match_clientids(pos, new))
+ 			continue;
  
- 	set_current_state(TASK_UNINTERRUPTIBLE);
-@@ -98,12 +99,14 @@ bl_resolve_deviceid(struct nfs_server *server, struct pnfs_block_volume *b,
- 	if (reply->status != BL_DEVICE_REQUEST_PROC) {
- 		printk(KERN_WARNING "%s failed to decode device: %d\n",
- 			__func__, reply->status);
--		goto out;
-+		goto out_free_data;
- 	}
- 
- 	dev = MKDEV(reply->major, reply->minor);
--out:
-+out_free_data:
- 	kfree(msg->data);
-+out_unlock:
-+	mutex_unlock(&nn->bl_mutex);
- 	return dev;
- }
- 
-@@ -233,6 +236,7 @@ static int nfs4blocklayout_net_init(struct net *net)
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
- 	struct dentry *dentry;
- 
-+	mutex_init(&nn->bl_mutex);
- 	init_waitqueue_head(&nn->bl_wq);
- 	nn->bl_device_pipe = rpc_mkpipe_data(&bl_upcall_ops, 0);
- 	if (IS_ERR(nn->bl_device_pipe))
-diff --git a/fs/nfs/netns.h b/fs/nfs/netns.h
-index ef221fb..f0e06e4 100644
---- a/fs/nfs/netns.h
-+++ b/fs/nfs/netns.h
-@@ -19,6 +19,7 @@ struct nfs_net {
- 	struct rpc_pipe *bl_device_pipe;
- 	struct bl_dev_msg bl_mount_reply;
- 	wait_queue_head_t bl_wq;
-+	struct mutex bl_mutex;
- 	struct list_head nfs_client_list;
- 	struct list_head nfs_volume_list;
- #if IS_ENABLED(CONFIG_NFS_V4)
 -- 
-1.9.1
+1.8.3.1
 
