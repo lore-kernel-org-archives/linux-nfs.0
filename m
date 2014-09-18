@@ -1,151 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6837 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932414AbaIWOz4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 10:55:56 -0400
-Message-ID: <542189F6.1050406@RedHat.com>
-Date: Tue, 23 Sep 2014 10:55:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-vc0-f179.google.com ([209.85.220.179]:51563 "EHLO
+	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932117AbaIRRHU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 13:07:20 -0400
+Received: by mail-vc0-f179.google.com with SMTP id la4so637007vcb.38
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 10:07:18 -0700 (PDT)
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-server: Replace rpc.svcgssd with gssproxy in
- systemd script
-References: <1411146621-18797-1-git-send-email-steved@redhat.com>	<1411146621-18797-2-git-send-email-steved@redhat.com>	<541C892D.7020401@RedHat.com> <20140923112352.28917775@notabene.brown>
-In-Reply-To: <20140923112352.28917775@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <1411045997-3988-1-git-send-email-steved@redhat.com>
+References: <1411045997-3988-1-git-send-email-steved@redhat.com>
+Date: Thu, 18 Sep 2014 13:07:18 -0400
+Message-ID: <CAHQdGtQqynEfDsYmq8MxsC_9zS9khaUcpqA=0-WGR7tbreEA9g@mail.gmail.com>
+Subject: Re: [PATCH] [V2] NFSv4: nfs4_state_manager() vs. nfs_server_remove_lists()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
-
-On 09/22/2014 09:23 PM, NeilBrown wrote:
-> 
-> Hi Steve,
->  as gssproxy is part of a separate package, I don't think it is appropriate
->  for and nfs-utils service file to 'want' it.  I don't know that there are
->  any "rules" about this so I make it up as I go along, but that seems right
->  to me.
-I was wondering about this... From a distro its easy... Just add a 
-requirement in the spec file and you'll know the package will exist...
-But upstream it may not so straightforward...   
- 
-> 
->  Instead, the .service file which the gssproxy package installs
->  should/could/might declare
-> 
->     WantedBy=nfs-server.service
-> 
->  so if that is enabled, the linkage gets created.
-> 
->  Either way, my idea is that starting nfs-server should try to start both
->  svcgssd and gssproxy.
-Right... this is the general consensuses...  
-
->  rpc-svcgssd.service already declares itself as being *after* gssproxy so if
->  both are available, gssproxy will be run first.
-Ah.. I did miss this fact... That is very important! 
-
->  If gssproxy starts and finds the kernel supports it, then it will be running
->  when rpc-svcgssd.service starts up and the Conditions in there will cause it
->  to not start the actual daemon.
-Those ConditionPathExists do indeed work... I think both of them need to stay... 
-
-> 
->  So the nfs-utils .service files should not need changing.  All that should
->  be needed for gssproxy to be used is:
->  - gssproxy needs to be installed (of course)
->  - gssproxy.service needs to declare "WantedBy=nfs-server.service" in the
->    [Install] section
-Right now gssproxy.service has:
-
-[Unit]
-Before=nfs-secure.service nfs-secure-server.service
-Requires=proc-fs-nfsd.mount
-^^^^ this Requires actually loads sunrpc, nfsd, auth_rpcgss
-     another important fact!
-
- 
-[Install]
-WantedBy=multi-user.target
-
-So I went ahead and added "WantedBy=nfs-server.service" to the 
-gssproxy.service file and re-installed the package... I didn't
-see it make much difference.... both packages have to be enabled
-for them to be started. 
-
->  - 'systemctl enable gssproxy' needs to have been run somehow.  There are
->    various ways to get this to happen at install time.
-When gssproxy is enabled, it will be *always* started, whether the server 
-is running or not... I was working toward only starting gssproxy when its
-needed, like rpc.svcgssd is today. 
-
-> 
-> 
->  However I haven't really tested this much.  I know I said I would do some
->  testing of these unit files and I really do want to, but it just hasn't
->  happened yet because ... you know, "life". 
-No problem... ;-) thanks for the help! 
-
-> 
->  I had a look at the gssproxy.service file and it already has
->  'WantedBy=multi-user.target' the same as nfs-server.service.
->  So if they are both enabled, they should both be started at the same time,
->  and if should all *just*work*.
-They do... I enable them both... everything comes up just fine... 
-
-> 
->  I assume it doesn't *just*work* at present.  What is actually happening?  Do
->  you have gssproxy.service 'enabled'??
-This is the problem... gssproxy has to be enabled... I don't think that's is
-good... and not necessary... What (I think) is necessary is we create a 
-dependency on gssproxy (like we do for rpcbind, keyutils, libevent, etc) and 
-have the server bring up gssproxy when it comes up. That is achieved by
-simply adding gssproxy.service to the nfs-server.service files:
-
-diff -up f21/systemd/nfs-server.service.orig f21/systemd/nfs-server.service
---- f21/systemd/nfs-server.service.orig 2014-09-23 10:38:39.572726403 -0400
-+++ f21/systemd/nfs-server.service  2014-09-23 10:39:17.604412641 -0400
-@@ -2,12 +2,13 @@
- Description=NFS server and services
- Requires= network.target proc-fs-nfsd.mount rpcbind.target
- Requires= nfs-mountd.service
--Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service rpc-svcgssd.service
-+Wants=rpc-statd.service nfs-idmapd.service 
-+Wants=rpc-gssd.service gssproxy.service rpc-svcgssd.service
- Wants=rpc-statd-notify.service
-
- After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
- After= nfs-idmapd.service rpc-statd.service
--After= rpc-gssd.service rpc-svcgssd.service
-+After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
- Before= rpc-statd-notify.service
-
- Wants=nfs-config.service
+On Thu, Sep 18, 2014 at 9:13 AM, Steve Dickson <steved@redhat.com> wrote:
+> There is a race between nfs4_state_manager() and
+> nfs_server_remove_lists() that happens during a nfsv3 mount.
+>
+> The v3 mount notices there is already a supper block so
+> nfs_server_remove_lists() called which uses the nfs_client_lock
+> spin lock to synchronize access to the client list.
+>
+> At the same time nfs4_state_manager() is running through
+> the client list looking for work to do, using the same
+> lock. When nfs4_state_manager() wins the race to the
+> list, a v3 client pointer is found and not ignored
+> properly which causes the panic.
+>
+> Moving some protocol checks before the state checking
+> avoids the panic.
+>
+> CC: Stable Tree <stable@vger.kernel.org>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  fs/nfs/nfs4client.c | 38 ++++++++++++++++++++------------------
+>  1 file changed, 20 insertions(+), 18 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index 53e435a..ffdb28d 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -482,6 +482,16 @@ int nfs40_walk_client_list(struct nfs_client *new,
+>
+>         spin_lock(&nn->nfs_client_lock);
+>         list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
+> +
+> +               if (pos->rpc_ops != new->rpc_ops)
+> +                       continue;
+> +
+> +               if (pos->cl_proto != new->cl_proto)
+> +                       continue;
+> +
+> +               if (pos->cl_minorversion != new->cl_minorversion)
+> +                       continue;
+> +
+>                 /* If "pos" isn't marked ready, we can't trust the
+>                  * remaining fields in "pos" */
+>                 if (pos->cl_cons_state > NFS_CS_READY) {
+> @@ -501,15 +511,6 @@ int nfs40_walk_client_list(struct nfs_client *new,
+>                 if (pos->cl_cons_state != NFS_CS_READY)
+>                         continue;
+>
+> -               if (pos->rpc_ops != new->rpc_ops)
+> -                       continue;
+> -
+> -               if (pos->cl_proto != new->cl_proto)
+> -                       continue;
+> -
+> -               if (pos->cl_minorversion != new->cl_minorversion)
+> -                       continue;
+> -
+>                 if (pos->cl_clientid != new->cl_clientid)
+>                         continue;
+>
+> @@ -622,6 +623,16 @@ int nfs41_walk_client_list(struct nfs_client *new,
+>
+>         spin_lock(&nn->nfs_client_lock);
+>         list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
+> +
+> +               if (pos->rpc_ops != new->rpc_ops)
+> +                       continue;
+> +
+> +               if (pos->cl_proto != new->cl_proto)
+> +                       continue;
+> +
+> +               if (pos->cl_minorversion != new->cl_minorversion)
+> +                       continue;
+> +
+>                 /* If "pos" isn't marked ready, we can't trust the
+>                  * remaining fields in "pos", especially the client
+>                  * ID and serverowner fields.  Wait for CREATE_SESSION
+> @@ -647,15 +658,6 @@ int nfs41_walk_client_list(struct nfs_client *new,
+>                 if (pos->cl_cons_state != NFS_CS_READY)
+>                         continue;
+>
+> -               if (pos->rpc_ops != new->rpc_ops)
+> -                       continue;
+> -
+> -               if (pos->cl_proto != new->cl_proto)
+> -                       continue;
+> -
+> -               if (pos->cl_minorversion != new->cl_minorversion)
+> -                       continue;
+> -
+>                 if (!nfs4_match_clientids(pos, new))
+>                         continue;
+>
+> --
+> 1.8.3.1
+>
+Thanks. Applied...
 
 
-The patch does not require gssproxy to be enabled so gssproxy will be started
-only when the server is started. Now if an admin what to enable gssproxy for
-some other reason so be it... Things will still work. 
+-- 
+Trond Myklebust
 
-Through this discussion both of my concerns about this patch have been address:
+Linux NFS client maintainer, PrimaryData
 
-1) Having both gssproxy and rpc.gssd started/running at the same time because 
-   systemd starts everything at once... but that can't happen because of 
-   the 'After=gssproxy.service' in rpc-svcgssd.service. That's something I 
-   missed... thank you for pointing  that out! That is very good foresight 
-   on your part! IMHO...
-
-2) This whole business about how auth_rpcgss gets loaded... It is crystal
-   to me that the "Requires=proc-fs-nfsd.mount" in gssproxy.service is 
-   loading the modules. You disable the server, disable the client and 
-   enable gssproxy then reboot... lsmod | grep rpc show sunrpc, nfsd, and 
-   auth_rpcgss are loaded. So nothing has to change in gssproxy.service and
-   another unit file to load the modules is not needed. 
-
-So I guess at the end of the day... I want to break the 'Unknown' Wants rule... ;-) 
-By adding a dependency to gssproxy and by having nfs-server 'want' the gssproxy
-service...  Its the cleanest way... IMHO... 
-
-steved.
- 
+trond.myklebust@primarydata.com
