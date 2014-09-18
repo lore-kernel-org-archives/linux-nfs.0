@@ -1,61 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f42.google.com ([209.85.192.42]:65296 "EHLO
-	mail-qg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751139AbaIDMtl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:49:41 -0400
-Received: by mail-qg0-f42.google.com with SMTP id q107so840395qgd.29
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:49:40 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 4 Sep 2014 08:49:38 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        cluster-devel <cluster-devel@redhat.com>
-Subject: Re: [PATCH v2 01/17] locks: consolidate "nolease" routines
-Message-ID: <20140904084938.2664bf0a@tlielax.poochiereds.net>
-In-Reply-To: <CAHQdGtTqG8aW-cte2PW6pVw+OeCXATgr1BZwdhponuWMjzNg8g@mail.gmail.com>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-	<1409834323-7171-2-git-send-email-jlayton@primarydata.com>
-	<CAHQdGtTqG8aW-cte2PW6pVw+OeCXATgr1BZwdhponuWMjzNg8g@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:43641 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757359AbaIRVPx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 17:15:53 -0400
+Received: by mail-qc0-f178.google.com with SMTP id w7so1502195qcr.37
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 14:15:52 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, Stephen Rothwell <sfr@canb.auug.org.au>
+Subject: [PATCH v2] pnfs/blocklayout: Fix a 64-bit division/remainder issue in bl_map_stripe
+Date: Thu, 18 Sep 2014 17:15:48 -0400
+Message-Id: <1411074948-77880-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 4 Sep 2014 08:41:51 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+kbuild test robot reports:
 
-> On Thu, Sep 4, 2014 at 8:38 AM, Jeff Layton <jlayton@primarydata.com> wrote:
-> > GFS2 and NFS have setlease routines that always just return -EINVAL.
-> > Turn that into a generic routine that can live in fs/libfs.c.
-> >
-> > Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-> > Cc: <linux-nfs@vger.kernel.org>
-> > Cc: Steven Whitehouse <swhiteho@redhat.com>
-> > Cc: <cluster-devel@redhat.com>
-> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> > ---
-> >  fs/gfs2/file.c     | 22 +---------------------
-> >  fs/libfs.c         | 16 ++++++++++++++++
-> >  fs/nfs/file.c      | 13 +------------
-> >  fs/nfs/internal.h  |  1 -
-> >  fs/nfs/nfs4file.c  |  2 +-
-> >  include/linux/fs.h |  1 +
-> >  6 files changed, 20 insertions(+), 35 deletions(-)
-> 
-> Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> 
+   fs/built-in.o: In function `bl_map_stripe':
+   >> :(.text+0x965b4): undefined reference to `__aeabi_uldivmod'
+   >> :(.text+0x965cc): undefined reference to `__aeabi_uldivmod'
+   >> :(.text+0x96604): undefined reference to `__aeabi_uldivmod'
 
-Thanks. While spinning this up, I did have a momentary pause to wonder
-if -ENOLCK would be a better return value here.
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>
+Cc: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+v2: Include the calculation of disk_offset.
 
-It would make it easier to distinguish this from from "oops, I passed
-in bogus arguments". For now, I'll leave it as -EINVAL, but it's
-something to consider...
+ fs/nfs/blocklayout/dev.c | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
+diff --git a/fs/nfs/blocklayout/dev.c b/fs/nfs/blocklayout/dev.c
+index 00f159da06ee..5aed4f98df41 100644
+--- a/fs/nfs/blocklayout/dev.c
++++ b/fs/nfs/blocklayout/dev.c
+@@ -150,10 +150,13 @@ static bool bl_map_stripe(struct pnfs_block_dev *dev, u64 offset,
+ 		struct pnfs_block_dev_map *map)
+ {
+ 	struct pnfs_block_dev *child;
+-	u64 chunk = (offset / dev->chunk_size);
+-	int chunk_idx = chunk % dev->nr_children;
++	u64 chunk;
++	u32 chunk_idx;
+ 	u64 disk_offset;
+ 
++	chunk = div_u64(offset, dev->chunk_size);
++	div_u64_rem(chunk, dev->nr_children, &chunk_idx);
++
+ 	if (chunk_idx > dev->nr_children) {
+ 		dprintk("%s: invalid chunk idx %d (%lld/%lld)\n",
+ 			__func__, chunk_idx, offset, dev->chunk_size);
+@@ -165,7 +168,7 @@ static bool bl_map_stripe(struct pnfs_block_dev *dev, u64 offset,
+ 	offset = chunk * dev->chunk_size;
+ 
+ 	/* disk offset of the stripe */
+-	disk_offset = offset / dev->nr_children;
++	disk_offset = div_u64(offset, dev->nr_children);
+ 
+ 	child = &dev->children[chunk_idx];
+ 	child->map(child, disk_offset, map);
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
