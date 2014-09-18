@@ -1,134 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:52023 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751134AbaIYBpB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2014 21:45:01 -0400
-Date: Thu, 25 Sep 2014 11:44:52 +1000
-From: NeilBrown <neilb@suse.de>
-To: Benjamin ESTRABAUD <be@mpstor.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS auto-reconnect tuning.
-Message-ID: <20140925114452.121776c0@notabene.brown>
-In-Reply-To: <5422E5CB.6000402@mpstor.com>
-References: <5422E5CB.6000402@mpstor.com>
+Received: from mail-vc0-f172.google.com ([209.85.220.172]:55739 "EHLO
+	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757368AbaIRVUd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 17:20:33 -0400
+Received: by mail-vc0-f172.google.com with SMTP id hy10so1314882vcb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 14:20:32 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/r=y0vxC3GoPwkIrotpE41Mc"; protocol="application/pgp-signature"
+In-Reply-To: <541B484E.90202@akamai.com>
+References: <cover.1411068259.git.jbaron@akamai.com>
+	<d143828a73125846d583f4c606061109d22869f7.1411068259.git.jbaron@akamai.com>
+	<CAHQdGtQOoop=CShDx9dTXSjo47KzWoRqkM9PNx1Si-pFSXg-_w@mail.gmail.com>
+	<541B484E.90202@akamai.com>
+Date: Thu, 18 Sep 2014 17:20:32 -0400
+Message-ID: <CAHQdGtQ93P5BpDgW+BEhWNGB4=M7f0RF4p8NOXQmUJEw9cu4iQ@mail.gmail.com>
+Subject: Re: [PATCH 2/2] rpc: Add -EPERM processing for xs_udp_send_request()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jason Baron <jbaron@akamai.com>
+Cc: Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/r=y0vxC3GoPwkIrotpE41Mc
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Thu, Sep 18, 2014 at 5:02 PM, Jason Baron <jbaron@akamai.com> wrote:
+> On 09/18/2014 04:51 PM, Trond Myklebust wrote:
+>> On Thu, Sep 18, 2014 at 3:51 PM, Jason Baron <jbaron@akamai.com> wrote:
+>>> If an iptables drop rule is added for an nfs server, the client can end up in
+>>> a softlockup. Because of the way that xs_sendpages() is structured, the -EPERM
+>>> is ignored since the prior bits of the packet may have been successfully queued
+>>> and thus xs_sendpages() returns a non-zero value. Then, xs_udp_send_request()
+>>> thinks that because some bits were queued it should return -EAGAIN. We then try
+>>> the request and again and a softlockup occurs. The test sequence is simply:
+>>>
+>>> 1) open a file on the nfs server '/nfs/foo' (mounted using udp)
+>>> 2) iptables -A OUTPUT -d <nfs server ip> -j DROP
+>>> 3) write to /nfs/foo
+>>> 4) close /nfs/foo
+>>> 5) iptables -D OUTPUT -d <nfs server ip> -j DROP
+>>>
+>>> The softlockup occurs in step 4 above.
+>> For UDP, the expected and documented behaviour in the case above is as follows:
+>> - if the mount is soft, then return EIO on the first major timeout.
+>
+> yeah - so this case is a softlockup in my testing :(
+>
+>> - if the mount is hard, then retry indefinitely on timeout.
+>>
+>> Won't these 2 patches end up propagating an EPERM to the application?
+>> That would be a definite violation of both hard and soft semantics.
+>
+> ok, yeah it does propogate the -EPERM up - I wasn't aware of the correct
+> semantics - thanks.
+>
+> I can rework the patches such that they return -EIO instead for a soft mount,
+> and verify that we keep retrying for a hard one.
+>
 
-On Wed, 24 Sep 2014 16:39:55 +0100 Benjamin ESTRABAUD <be@mpstor.com> wrote:
+Doesn't the soft timeout currently trigger after the major timeout? If
+not, do we understand why it isn't doing so?
+I'm just trying to figure out what the motivation is for this patch.
 
-> Hi!
->=20
-> I've got a scenario where I'm connected to a NFS share on a client, have=
-=20
-> a file descriptor open as read only (could also be write) on a file from=
-=20
-> that share, and I'm suddenly changing the IP address of that client.
->=20
-> Obviously, the NFS share will hang, so if I now try to read the file=20
-> descriptor I've got open (here in Python), the "read" call will also hang.
->=20
-> However, the driver seems to attempt to do something (maybe=20
-> save/determine whether the existing connection can be saved) and then,=20
-> after about 20 minutes the driver transparently reconnects to the NFS=20
-> share (which is what I wanted anyways) and the "read" call instantiated=20
-> earlier simply finishes (I don't even have to re-open the file again or=20
-> even call "read" again).
->=20
-> The dmesg prints I get are as follow:
->=20
-> [ 4424.500380] nfs: server 10.0.2.17 not responding, still trying <--=20
-> changed IP address and started reading the file.
-> [ 4451.560467] nfs: server 10.0.2.17 OK <--- The NFS share was=20
-> reconnected, the "read" call completes successfully.
+-- 
+Trond Myklebust
 
-The difference between these timestamps is 27 seconds, which is a lot less
-than the "20 minutes" that you quote.  That seems odd.
+Linux NFS client maintainer, PrimaryData
 
-If you adjust
-   /proc/sys/net/ipv4/tcp_retries2
-
-you can reduce the current timeout.
-See Documentation/networking/ip-sysctl.txt for details on the setting.
-
-https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
-
-It claims the default gives an effective timeout of 924 seconds or about 15
-minutes.
-
-I just tried and the timeout was 1047 seconds. This is probably the next
-retry after 924 seconds.
-
-If I reduce tcp_retries2 to '3' (well below the recommended minimum) I get
-a timeout of 5 seconds.
-You can possibly find a suitable number that isn't too small...
-
-Alternately you could use NFSv4.  It will close the connection on a timeout.
-In the default config I measure a 78 second timeout, which is probably more
-acceptable.  This number would respond to the timeo mount option.
-If I set that to 100, I get a 28 second timeout.
-
-The same effect could be provided for NFSv3 by setting:
-
-           __set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
-
-somewhere appropriate.  I wonder why that isn't being done for v3 already...
-Probably some subtle protocol difference.
-
-NeilBrown
-
-=20
-> I would like to know if there was any way to tune this behaviour,=20
-> telling the NFS driver to reconnect if a share is unavailable after say=20
-> 10 seconds.
->=20
-> I tried the following options without any success:
->=20
-> retry=3D0; hard/soft; timeo=3D3; retrans=3D1; bg/fg
->=20
-> I am running on a custom distro (homemade embedded distro, not based on=20
-> anything in particular) running stock kernel 3.10.18 compiled for i686.
->=20
-> Would anyone know what I could do to force NFS into reconnecting a=20
-> seemingly "dead" session sooner?
->=20
-> Thanks in advance for your help.
->=20
-> Regards,
->=20
-> Ben - MPSTOR.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
---Sig_/r=y0vxC3GoPwkIrotpE41Mc
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBVCNzlDnsnt1WYoG5AQLdnw//epKKakCosICqkG0q7bRP25xELwYyQ6rx
-lJMOuTD0cei/7TaIXS4Zw3/djdPdhJqypZfgiZ7zyN9e2DlEZQYTfgXnr5JkhcLp
-+MmBrvnJ6euseNJA1DNqzbu4USdCDRJFTuACImLzDkhIMrfKdEqd3g4TApl6MNUn
-rsOZimCuRq+sPiFLIW55lYEW4wW3fwhvI01pnG6H3ukSJJe3+0P3cFtBtyKAt1hr
-G+YLj14RljnUfWlGHcfCRCSDcZxEGQstLkjdY9EppPZ3KzaYiOZ6LYoWnOkyAJSX
-0FOAgevjnwBlZKgFSbpIg6W6ZYUj/9cNX+kVT0bBIWkCw/R9MSDO8bn0bzeVELxD
-dHqQmHxw/wsEpoNtssF0ITH5Czuos4OvM8b0rpTHCKNQRfVmhEgr6xu/LA7/2V+R
-HP41KfzV/Kratgro9RnOOH1li2eE6pTFYfD2CCNUiG617YGSCHy//sNwz3VpkK73
-2J0G9nesLsQVFOAK+YN/CE0PoB7qiP/7en6OCXMbrkokX+L18g4y7xi/a94GljvX
-IMazFvqSfyXpa30h4XmfEYfoLGWVHNWukU8/ZDWZRn5TbvYGQQxA3a/TwlFv7HRL
-/96FHTJ40GwQBbSoZMXzpmq4r02RHx2vpaPje9C18dZmIdfg9KlAQLSJNy3uw05K
-fxCqPMTwoQA=
-=L0dj
------END PGP SIGNATURE-----
-
---Sig_/r=y0vxC3GoPwkIrotpE41Mc--
+trond.myklebust@primarydata.com
