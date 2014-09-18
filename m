@@ -1,79 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:33670 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754119AbaIVS3X (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2014 14:29:23 -0400
-Received: from hch by bombadil.infradead.org with local (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XW8MV-0007Ps-Ex
-	for linux-nfs@vger.kernel.org; Mon, 22 Sep 2014 18:29:23 +0000
-Date: Mon, 22 Sep 2014 11:29:23 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH, RFC] nfsd: fix nfsd4_cb_recall_done error handling
-Message-ID: <20140922182923.GA18904@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from userp1040.oracle.com ([156.151.31.81]:47616 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932081AbaIRRTP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 13:19:15 -0400
+From: Todd Vierling <todd.vierling@oracle.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] exportfs: Properly parse IPv6 literal strings with null termination
+Date: Thu, 18 Sep 2014 13:19:04 -0400
+Message-Id: <1411060744-14328-1-git-send-email-todd.vierling@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The error handling for CB_RECALL seems fairly broken to me.
+The original implementation was using strncpy() with a truncation
+length to an uninitialized stack buffer, leaving a string that
+was only null terminated by luck.
 
-What looks good:
+While here, change to use no-copy semantics (no extra buffer) to
+avoid buffer overflows altogether. exportfs already modifies argv
+contents elsewhere, so this doesn't break anything anew.
 
- - for EBADHANDLE and NFS4ERR_BAD_STATEID retry until dl_retries
-   hits zero, then mark the connection down and set cb_done
+Fixes: 4663c648 (exportfs: Support raw IPv6 addresses with "client:/path")
 
-What looks wrong:
+Signed-off-by: Todd Vierling <todd.vierling@oracle.com>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ utils/exportfs/exportfs.c | 18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
 
- - for everything else we first mark the connection down, then
-   retry until dl_retries hits zero, then mark the connection down
-   again  and set cb_done.
-
->From all I can see what we want is:
-
- - keep the behavior for EBADHANDLE and NFS4ERR_BAD_STATEID,
-   otherwise jump straight to making the connection down
-   and setting cb_done
-
-But maybe I'm missing something?
-
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 17d5441..ed25c58 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -971,24 +971,21 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
- 		return;
- 	switch (task->tk_status) {
- 	case 0:
--		cb->cb_done = true;
--		return;
-+		break;
- 	case -EBADHANDLE:
- 	case -NFS4ERR_BAD_STATEID:
- 		/* Race: client probably got cb_recall
- 		 * before open reply granting delegation */
--		break;
-+		if (dp->dl_retries--) {
-+			rpc_delay(task, 2*HZ);
-+			task->tk_status = 0;
-+			rpc_restart_call_prepare(task);
-+			return;
-+		}
- 	default:
- 		/* Network partition? */
- 		nfsd4_mark_cb_down(clp, task->tk_status);
- 	}
--	if (dp->dl_retries--) {
--		rpc_delay(task, 2*HZ);
--		task->tk_status = 0;
--		rpc_restart_call_prepare(task);
--		return;
--	}
--	nfsd4_mark_cb_down(clp, task->tk_status);
- 	cb->cb_done = true;
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index e7d1ac8..bdea12b 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -351,16 +351,15 @@ static int exportfs_generic(char *arg, char *options, int verbose)
+ 
+ static int exportfs_ipv6(char *arg, char *options, int verbose)
+ {
+-	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
++	char *path, *c;
+ 
+ 	arg++;
+ 	c = strchr(arg, ']');
+ 	if (c == NULL)
+ 		return 1;
+-	strncpy(hname, arg, c - arg);
+ 
+ 	/* no colon means this is a wildcarded DNS hostname */
+-	if (strchr(hname, ':') == NULL)
++	if (memchr(arg, ':', c - arg) == NULL)
+ 		return exportfs_generic(--arg, options, verbose);
+ 
+ 	path = strstr(c, ":/");
+@@ -370,9 +369,9 @@ static int exportfs_ipv6(char *arg, char *options, int verbose)
+ 
+ 	/* if there's anything between the closing brace and the
+ 	 * path separator, it's probably a prefix length */
+-	strcat(hname, ++c);
++	memmove(c, c + 1, path - c);
+ 
+-	exportfs_parsed(hname, path, options, verbose);
++	exportfs_parsed(arg, path, options, verbose);
+ 	return 0;
+ }
+ 
+@@ -458,16 +457,15 @@ static int unexportfs_generic(char *arg, int verbose)
+ 
+ static int unexportfs_ipv6(char *arg, int verbose)
+ {
+-	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
++	char *path, *c;
+ 
+ 	arg++;
+ 	c = strchr(arg, ']');
+ 	if (c == NULL)
+ 		return 1;
+-	strncpy(hname, arg, c - arg);
+ 
+ 	/* no colon means this is a wildcarded DNS hostname */
+-	if (strchr(hname, ':') == NULL)
++	if (memchr(arg, ':', c - arg) == NULL)
+ 		return unexportfs_generic(--arg, verbose);
+ 
+ 	path = strstr(c, ":/");
+@@ -477,9 +475,9 @@ static int unexportfs_ipv6(char *arg, int verbose)
+ 
+ 	/* if there's anything between the closing brace and the
+ 	 * path separator, it's probably a prefix length */
+-	strcat(hname, ++c);
++	memmove(c, c + 1, path - c);
+ 
+-	unexportfs_parsed(hname, path, verbose);
++	unexportfs_parsed(arg, path, verbose);
+ 	return 0;
  }
  
 -- 
-1.9.1
+1.8.3.1
 
