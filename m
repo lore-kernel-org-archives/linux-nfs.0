@@ -1,61 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f176.google.com ([209.85.192.176]:48893 "EHLO
-	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752533AbaINO2y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Sep 2014 10:28:54 -0400
-Received: by mail-pd0-f176.google.com with SMTP id y13so4562338pdi.7
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Sep 2014 07:28:54 -0700 (PDT)
-Message-ID: <5415A621.3020208@plexistor.com>
-Date: Sun, 14 Sep 2014 17:28:49 +0300
-From: Boaz Harrosh <boaz@plexistor.com>
+Received: from mail-vc0-f177.google.com ([209.85.220.177]:40174 "EHLO
+	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755694AbaIRObt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 10:31:49 -0400
+Received: by mail-vc0-f177.google.com with SMTP id im17so748744vcb.8
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 07:31:48 -0700 (PDT)
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Boaz Harrosh <openosd@gmail.com>, Christoph Hellwig <hch@lst.de>,
-        Peng Tao <bergwolf@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 8/9] pnfs/blocklayout: return layouts on setattr
-References: <1410362617-28018-1-git-send-email-hch@lst.de>	<1410362617-28018-9-git-send-email-hch@lst.de>	<CAKVebiUqhCVy4jyzccBOXcHo3dkQNXjF0WsP1sHkOMkdnEAG9Q@mail.gmail.com>	<20140911152553.GD6690@lst.de>	<CAHQdGtT79qxn6ka4erSr3bxpZCr91+DVe6xtV6kMPD9QUDLL7w@mail.gmail.com>	<20140911154834.GA9280@lst.de>	<CAHQdGtR9gVaw7wG0R6JfXHb8W+M3LnqXcwWyuCXe4=oNbXFGMA@mail.gmail.com>	<5415740E.6030202@gmail.com>	<CAABAsM4sAecHt291APP6AZ9e5QvNCRK74WFF-tyje50CNCcY1g@mail.gmail.com>	<54159D6E.7010507@plexistor.com> <CAABAsM4SxAXtBv=1XtUVyOa=jRYK9zTjYoYU9B_0ch9zmqFiaA@mail.gmail.com>
-In-Reply-To: <CAABAsM4SxAXtBv=1XtUVyOa=jRYK9zTjYoYU9B_0ch9zmqFiaA@mail.gmail.com>
+In-Reply-To: <541AD7E5.8020409@engr.wisc.edu>
+References: <541AD7E5.8020409@engr.wisc.edu>
+Date: Thu, 18 Sep 2014 10:31:48 -0400
+Message-ID: <CAHQdGtQZ0kcBZ0QCb+sf52thERjJgz-5M++CsT7kdoDweG61sQ@mail.gmail.com>
+Subject: Re: NFS Kernel Bug
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: James Drews <drews@engr.wisc.edu>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/14/2014 05:16 PM, Trond Myklebust wrote:
-<>
-> 
-> There is no requirement anywhere in RFC5661 to state that a truncate
-> must be prefixed by a layout return. Not in section 12 (Parallel NFS)
-> nor in section 13 (NFSv4.1 as a Storage Protocol in pNFS: the File
-> Layout Type), nor in the ERRATA. Existing pNFS files servers (i.e.
-> NetApp) don't need it either.
-> 
+On Thu, Sep 18, 2014 at 9:02 AM, James Drews <drews@engr.wisc.edu> wrote:
+> Good morning!
+>
+> I believe we have found a bug in the NFS kernel area.  The "bug" is a leak
+> of a file handle where the NFS client never tells the server to close the
+> file. The problem is very similar to one we had reported and got a fix for
+> previously. We are using that patch, but ran in to another case where the
+> client sends out an OPEN_DOWNGRADE but never sends a CLOSE.
+>
+> Attached is a simple c program that we have been able to reproduce the bug
+> with, along with a packet capture of what we see on the wire.
+>
+> To reproduce the bug:
+> -compile the c code
+> -execute the c code with:
+>
+> ./test ; cat testfile3 > /dev/nul
+>
+> -now if we try to remove the file we get a file in use error (server is
+> using mandatory locking)
+>
+> Things to note:
+>
+> -if you just run the program without the immediate cat'ing of the file, the
+> bug does not happen
+> suggesting a timing issue
+> -If you alter the program so the code mimics the cat of the file, the bug
+> does not happen (ie, add an open, read file, close to the code).
+> -If you run the program as described above, and then run it again without
+> the "; cat testfile3 > /dev/nul", the kernel squeaks out the file close to
+> the server when the code does the close.
+>
+> The attached packet capture is us doing:
+>
+> ./test ; cat testfile3 > /dev/null
+> rm testfile3
+> ./test
+> rm testfile3
+>
+> where we are denied the rm the first time, but not the second.
+>
 
-Yes! which is why it sucks ;-)
+Argh. This is a situation where the client shouldn't have called
+OPEN_DOWNGRADE, but should have done a CLOSE. The issue is that the
+client opens the file with OPEN4_SHARE_ACCESS_BOTH, so it is not
+allowed to downgrade to OPEN4_SHARE_ACCESS_READ. Instead it should
+have closed the file, and then used the delegation...
 
-> If a future CEPH server wants to add its own requirements, then it is
-> free to issue a layoutrecall. However my understanding from
-> conversations with Matt (the Ganesha release notes appear to confirm)
-> was that the CRUSH algorithm is pretty much impossible to implement as
-> a files layout type, so I'm confused as to why it would be a problem
-> in the first place.
-> 
+-- 
+Trond Myklebust
 
-"impossible to implement" without lo-segments yes. *With* lo-segments it
-is my opinion that it is possible. With the contraption of device_id per
-segment.
+Linux NFS client maintainer, PrimaryData
 
-But this argument is mute we both agree that in current code it is not
-needed. 
-
-[ If at future time someone will want to implement lo-segments for
- Linux files layout, I think it could be a nice optimization, just as it
- is with objects and blocks.
-
- Imagine a most simple files MDS that wants to not create filehandles(files)
- on DSs that will not be reached. (Create on demand). In such case deleting
- the DS-files on truncate might make sense no?
-]
-
-Xheers
-Boaz
-
+trond.myklebust@primarydata.com
