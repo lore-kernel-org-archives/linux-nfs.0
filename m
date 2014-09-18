@@ -1,105 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14223 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754758AbaIVTUO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 15:20:14 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8MJKEO3008986
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 15:20:14 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Simo Sorce <simo@redhat.com>
-Subject: [PATCH 2/2] rpc.svcgssd: the build of rpc.svcgssd is off by default
-Date: Mon, 22 Sep 2014 15:20:08 -0400
-Message-Id: <1411413608-16462-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1411413608-16462-1-git-send-email-steved@redhat.com>
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+Received: from prod-mail-xrelay02.akamai.com ([72.246.2.14]:55968 "EHLO
+	prod-mail-xrelay02.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757044AbaIRVKD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 17:10:03 -0400
+Message-ID: <541B484E.90202@akamai.com>
+Date: Thu, 18 Sep 2014 17:02:06 -0400
+From: Jason Baron <jbaron@akamai.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] rpc: Add -EPERM processing for xs_udp_send_request()
+References: <cover.1411068259.git.jbaron@akamai.com>	<d143828a73125846d583f4c606061109d22869f7.1411068259.git.jbaron@akamai.com> <CAHQdGtQOoop=CShDx9dTXSjo47KzWoRqkM9PNx1Si-pFSXg-_w@mail.gmail.com>
+In-Reply-To: <CAHQdGtQOoop=CShDx9dTXSjo47KzWoRqkM9PNx1Si-pFSXg-_w@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Due to the fact the gssproxy is not managing the
-GASSAPI credentials, on the server, there is
-no need to build/install rpc.svcgssd.
+On 09/18/2014 04:51 PM, Trond Myklebust wrote:
+> On Thu, Sep 18, 2014 at 3:51 PM, Jason Baron <jbaron@akamai.com> wrote:
+>> If an iptables drop rule is added for an nfs server, the client can end up in
+>> a softlockup. Because of the way that xs_sendpages() is structured, the -EPERM
+>> is ignored since the prior bits of the packet may have been successfully queued
+>> and thus xs_sendpages() returns a non-zero value. Then, xs_udp_send_request()
+>> thinks that because some bits were queued it should return -EAGAIN. We then try
+>> the request and again and a softlockup occurs. The test sequence is simply:
+>>
+>> 1) open a file on the nfs server '/nfs/foo' (mounted using udp)
+>> 2) iptables -A OUTPUT -d <nfs server ip> -j DROP
+>> 3) write to /nfs/foo
+>> 4) close /nfs/foo
+>> 5) iptables -D OUTPUT -d <nfs server ip> -j DROP
+>>
+>> The softlockup occurs in step 4 above.
+> For UDP, the expected and documented behaviour in the case above is as follows:
+> - if the mount is soft, then return EIO on the first major timeout.
 
-To re-enable the build use the --enable-svcgss
-configure flag
+yeah - so this case is a softlockup in my testing :(
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- configure.ac           | 23 +++++++++++++++++++----
- utils/gssd/Makefile.am | 11 +++++++++--
- 2 files changed, 28 insertions(+), 6 deletions(-)
+> - if the mount is hard, then retry indefinitely on timeout.
+>
+> Won't these 2 patches end up propagating an EPERM to the application?
+> That would be a definite violation of both hard and soft semantics.
 
-diff --git a/configure.ac b/configure.ac
-index bc48373..6767190 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -90,21 +90,36 @@ AC_ARG_ENABLE(nfsv41,
- 
- AC_ARG_ENABLE(gss,
- 	[AC_HELP_STRING([--enable-gss],
--                        [enable support for rpcsec_gss @<:@default=yes@:>@])],
-+              [enable client support for rpcsec_gss @<:@default=yes@:>@])],
- 	enable_gss=$enableval,
- 	enable_gss=yes)
- 	if test "$enable_gss" = yes; then
- 		GSSD=gssd
--		SVCGSSD=svcgssd
- 	else
- 		enable_gss=
- 		GSSD=
--		SVCGSSD=
- 	fi
- 	AC_SUBST(GSSD)
--	AC_SUBST(SVCGSSD)
- 	AC_SUBST(enable_gss)
- 	AM_CONDITIONAL(CONFIG_GSS, [test "$enable_gss" = "yes"])
-+
-+AC_ARG_ENABLE(svcgss,
-+	[AC_HELP_STRING([--enable-svcgss],
-+              [enable server support for rpcsec_gss @<:@default=no@:>@])],
-+	enable_svcgss=$enableval,
-+	enable_svcgss=no)
-+	if test "$enable_gss" = yes; then
-+		if "enable_svcgss" = yes; then
-+			SVCGSSD=svcgssd
-+		fi
-+	else
-+		enable_svcgss=
-+		SVCGSSD=
-+	fi
-+	AC_SUBST(SVCGSSD)
-+	AC_SUBST(enable_svcgss)
-+	AM_CONDITIONAL(CONFIG_SVCGSS, [test "$enable_svcgss" = "yes"])
-+
- AC_ARG_ENABLE(kprefix,
- 	[AC_HELP_STRING([--enable-kprefix], [install progs as rpc.knfsd etc])],
- 	test "$enableval" = "yes" && kprefix=k,
-diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
-index af59791..9835117 100644
---- a/utils/gssd/Makefile.am
-+++ b/utils/gssd/Makefile.am
-@@ -1,10 +1,17 @@
- ## Process this file with automake to produce Makefile.in
- 
--man8_MANS	= gssd.man svcgssd.man
-+man8_MANS	= gssd.man
-+if CONFIG_SVCGSS
-+man8_MANS	+= svcgssd.man
-+endif
- 
- RPCPREFIX	= rpc.
- KPREFIX		= @kprefix@
--sbin_PREFIXED	= gssd svcgssd
-+sbin_PREFIXED	= gssd
-+if CONFIG_SVCGSS
-+sbin_PREFIXED	+= svcgssd
-+endif
-+
- sbin_PROGRAMS	= $(sbin_PREFIXED)
- 
- EXTRA_DIST = \
--- 
-1.9.3
+ok, yeah it does propogate the -EPERM up - I wasn't aware of the correct
+semantics - thanks.
+
+I can rework the patches such that they return -EIO instead for a soft mount,
+and verify that we keep retrying for a hard one.
+
+Thanks,
+
+-Jason
+
 
