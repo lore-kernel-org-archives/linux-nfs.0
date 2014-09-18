@@ -1,79 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:39280 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754610AbaIHQac (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 12:30:32 -0400
-Received: by mail-qc0-f176.google.com with SMTP id x3so2706827qcv.21
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 09:30:31 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: [PATCH v3 3/7] nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
-Date: Mon,  8 Sep 2014 12:30:17 -0400
-Message-Id: <1410193821-25109-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
-References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:39631 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932277AbaIRQwb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 12:52:31 -0400
+Received: by mail-pa0-f45.google.com with SMTP id rd3so1885457pab.32
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 09:52:31 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH] exportfs: Properly parse IPv6 literal strings with null termination
+From: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <1410997719-17913-1-git-send-email-todd.vierling@oracle.com>
+Date: Thu, 18 Sep 2014 09:52:28 -0700
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <5D0058B9-354A-4E1A-AC60-EB071487F78E@gmail.com>
+References: <1410997719-17913-1-git-send-email-todd.vierling@oracle.com>
+To: Todd Vierling <todd.vierling@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@poochiereds.net>
+Thanks for chasing this down, Todd!
 
-Since nfsdcld has been dead for a few years now, clean up the prefixes
-on the constants.
+On Sep 17, 2014, at 4:48 PM, Todd Vierling <todd.vierling@oracle.com> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- utils/nfsdcltrack/sqlite.c | 12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+> The original implementation was using strncpy() with a truncation
+> length to an uninitialized stack buffer, leaving a string that
+> was only null terminated by luck.
+> 
+> While here, change to use no-copy semantics (no extra buffer) to
+> avoid buffer overflows altogether.
 
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index 352f029d55c0..52fcaa4d7ca3 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -50,10 +50,10 @@
- 
- #include "xlog.h"
- 
--#define CLD_SQLITE_SCHEMA_VERSION 1
-+#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 1
- 
- /* in milliseconds */
--#define CLD_SQLITE_BUSY_TIMEOUT 10000
-+#define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
- 
- /* private data structures */
- 
-@@ -111,7 +111,7 @@ sqlite_prepare_dbh(const char *topdir)
- 		return ret;
- 	}
- 
--	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
-+	ret = sqlite3_busy_timeout(dbh, CLTRACK_SQLITE_BUSY_TIMEOUT);
- 	if (ret != SQLITE_OK) {
- 		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
- 		sqlite3_close(dbh);
-@@ -156,7 +156,7 @@ sqlite_maindb_init(const char *topdir)
- 	/* insert version into table -- ignore error if it fails */
- 	ret = snprintf(buf, sizeof(buf),
- 		       "INSERT OR IGNORE INTO parameters values (\"version\", "
--		       "\"%d\");", CLD_SQLITE_SCHEMA_VERSION);
-+		       "\"%d\");", CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION);
- 	if (ret < 0) {
- 		goto out_err;
- 	} else if ((size_t)ret >= sizeof(buf)) {
-@@ -189,10 +189,10 @@ sqlite_maindb_init(const char *topdir)
- 
- 	/* process SELECT result */
- 	ret = sqlite3_column_int(stmt, 0);
--	if (ret != CLD_SQLITE_SCHEMA_VERSION) {
-+	if (ret != CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION) {
- 		xlog(L_ERROR, "Unsupported database schema version! "
- 			"Expected %d, got %d.",
--			CLD_SQLITE_SCHEMA_VERSION, ret);
-+			CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION, ret);
- 		ret = -EINVAL;
- 		goto out_err;
- 	}
--- 
-1.9.3
+Needs
+
+Fixes: 4663c648 (exportfs: Support raw IPv6 addresses with "client:/path”)
+
+And needs a Signed-off-by.
+
+I wonder about the “no-copy” change. I thought that on some systems,
+the tool chain makes the command line arguments read-only.
+
+> ---
+> utils/exportfs/exportfs.c | 18 ++++++++----------
+> 1 file changed, 8 insertions(+), 10 deletions(-)
+> 
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index e7d1ac8..bdea12b 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -351,16 +351,15 @@ static int exportfs_generic(char *arg, char *options, int verbose)
+> 
+> static int exportfs_ipv6(char *arg, char *options, int verbose)
+> {
+> -	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
+> +	char *path, *c;
+> 
+> 	arg++;
+> 	c = strchr(arg, ']');
+> 	if (c == NULL)
+> 		return 1;
+> -	strncpy(hname, arg, c - arg);
+> 
+> 	/* no colon means this is a wildcarded DNS hostname */
+> -	if (strchr(hname, ':') == NULL)
+> +	if (memchr(arg, ':', c - arg) == NULL)
+> 		return exportfs_generic(--arg, options, verbose);
+> 
+> 	path = strstr(c, ":/");
+> @@ -370,9 +369,9 @@ static int exportfs_ipv6(char *arg, char *options, int verbose)
+> 
+> 	/* if there's anything between the closing brace and the
+> 	 * path separator, it's probably a prefix length */
+> -	strcat(hname, ++c);
+> +	memmove(c, c + 1, path - c);
+> 
+> -	exportfs_parsed(hname, path, options, verbose);
+> +	exportfs_parsed(arg, path, options, verbose);
+> 	return 0;
+> }
+> 
+> @@ -458,16 +457,15 @@ static int unexportfs_generic(char *arg, int verbose)
+> 
+> static int unexportfs_ipv6(char *arg, int verbose)
+> {
+> -	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
+> +	char *path, *c;
+> 
+> 	arg++;
+> 	c = strchr(arg, ']');
+> 	if (c == NULL)
+> 		return 1;
+> -	strncpy(hname, arg, c - arg);
+> 
+> 	/* no colon means this is a wildcarded DNS hostname */
+> -	if (strchr(hname, ':') == NULL)
+> +	if (memchr(arg, ':', c - arg) == NULL)
+> 		return unexportfs_generic(--arg, verbose);
+> 
+> 	path = strstr(c, ":/");
+> @@ -477,9 +475,9 @@ static int unexportfs_ipv6(char *arg, int verbose)
+> 
+> 	/* if there's anything between the closing brace and the
+> 	 * path separator, it's probably a prefix length */
+> -	strcat(hname, ++c);
+> +	memmove(c, c + 1, path - c);
+> 
+> -	unexportfs_parsed(hname, path, verbose);
+> +	unexportfs_parsed(arg, path, verbose);
+> 	return 0;
+> }
+> 
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chucklever@gmail.com
+
+
 
