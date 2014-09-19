@@ -1,62 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f177.google.com ([209.85.220.177]:61019 "EHLO
-	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751735AbaIWUlO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 16:41:14 -0400
-Received: by mail-vc0-f177.google.com with SMTP id im17so5842721vcb.36
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 13:41:13 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:25745 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757587AbaISSPp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2014 14:15:45 -0400
+Date: Fri, 19 Sep 2014 14:15:36 -0400
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials
+Message-ID: <20140919141536.36b0a83a@willson.usersys.redhat.com>
+In-Reply-To: <20140919181122.GC16658@fieldses.org>
+References: <1411131103-17254-1-git-send-email-steved@redhat.com>
+	<20140919155733.GA16658@fieldses.org>
+	<541C5A55.7010403@RedHat.com>
+	<20140919163617.GB16658@fieldses.org>
+	<20140919130752.2ac3372e@willson.usersys.redhat.com>
+	<20140919181122.GC16658@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <20140923070733.25555.18292.stgit@unused-4-157.brq.redhat.com>
-References: <20140923070733.25555.18292.stgit@unused-4-157.brq.redhat.com>
-Date: Tue, 23 Sep 2014 16:41:13 -0400
-Message-ID: <CAHQdGtRZA89spXkGWxoDyd8dRt-f9wfnfuz=rACsMe3bSa_meA@mail.gmail.com>
-Subject: Re: [PATCH] mountd.man: mountd tcp wrappers support only NFS v2/v3
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jan Chaloupka <jchaloup@redhat.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 23, 2014 at 3:07 AM, Jan Chaloupka <jchaloup@redhat.com> wrote:
-> mountd tcp wrappers support only NFSv2 and NFSv3, not NFSv4.
->
-> https://bugzilla.redhat.com/show_bug.cgi?id=1116283
->
-> This patch updates the man page
->
-> Signed-off-by: Jan Chaloupka <jchaloup@redhat.com>
-> ---
->  utils/mountd/mountd.man |    2 ++
->  1 file changed, 2 insertions(+)
->
-> diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
-> index a8828ae..1aae75b 100644
-> --- a/utils/mountd/mountd.man
-> +++ b/utils/mountd/mountd.man
-> @@ -217,6 +217,8 @@ listeners using the
->  .B tcp_wrapper
->  library or
->  .BR iptables (8).
-> +Tcp wrappers are only in effect with NFS version 2 and 3 mounts.
-> +They do not work with NFS version 4.
->  .PP
->  Note that the
->  .B tcp_wrapper
->
+On Fri, 19 Sep 2014 14:11:22 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-Is there any point to compiling mountd with the tcp wrappers in this
-day and age? tcp wrappers isn't enforced by knfsd, so as the above
-manpage change indicates it really is only blocking NFSv2/v3 _mount_
-attempts.
+> On Fri, Sep 19, 2014 at 01:07:52PM -0400, Simo Sorce wrote:
+> > On Fri, 19 Sep 2014 12:36:17 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Fri, Sep 19, 2014 at 12:31:17PM -0400, Steve Dickson wrote:
+> > > > 
+> > > > 
+> > > > On 09/19/2014 11:57 AM, J. Bruce Fields wrote:
+> > > > > On Fri, Sep 19, 2014 at 08:51:41AM -0400, Steve Dickson wrote:
+> > > > >> The gssproxy(8) daemon is now how the managing of GSSAPI 
+> > > > >> credentials should be done. 
+> > > > >>
+> > > > >> These to patches has the nfs-server systemd script start 
+> > > > >> gssproxy instead of rpc.svcgssd and removes the building 
+> > > > >> and installation of rpc.svcgssd.
+> > > > >>
+> > > > >> For now I'm leaving the source files... Just in case... ;-)
+> > > > > 
+> > > > > If nothing else, we'd like to keep support for older kernels
+> > > > > for a while.
+> > > > Good point... I should probably make this a configurable...
+> > > > something like --enable_svcgssd and have it off by default...
+> > > 
+> > > Sounds fine.
+> > 
+> > +1, it will be very useful for transitions in distributions, not
+> > all of them will align identically I guess.
+> 
+> If we wanted to be *very* nice, we could try to detect and run one or
+> the other at run-time.  It's nice for people trying to boot old
+> kernels to track down (probably unrelated) regressions.  But I think
+> it would be too complicated.
+> 
+> It might be simple enough for gss-proxy to log some kind of warning
+> when it starts up on an old kernel.
 
-If you can use NFSv4, or sniff the NFSv2/v3 traffic or even just guess
-NFSv2/v3 filehandles, then tcp wrappers can be 100% circumvented.
+Excellent idea, I opened a ticket to track that:
+https://fedorahosted.org/gss-proxy/ticket/126
+
+Simo.
 
 -- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Simo Sorce * Red Hat, Inc * New York
