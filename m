@@ -1,65 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37961 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30350 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752575AbaIWQVr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 12:21:47 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8NGLk8V020318
+	id S1755831AbaISMvs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2014 08:51:48 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8JCpmnq024190
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 12:21:47 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-55-23.rdu2.redhat.com [10.10.55.23])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8NGLhMv027727
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 12:21:46 -0400
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 08:51:48 -0400
 From: Steve Dickson <steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] nfs-service: Added gssproxy support
-Date: Tue, 23 Sep 2014 12:21:41 -0400
-Message-Id: <1411489301-28991-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1411489301-28991-1-git-send-email-steved@redhat.com>
-References: <1411489301-28991-1-git-send-email-steved@redhat.com>
+Cc: Simo Sorce <simo@redhat.com>
+Subject: [PATCH 1/2] nfs-server: Replace rpc.svcgssd with gssproxy
+Date: Fri, 19 Sep 2014 08:51:42 -0400
+Message-Id: <1411131103-17254-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1411131103-17254-1-git-send-email-steved@redhat.com>
+References: <1411131103-17254-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When kernel have gssproxy support the the gssproxy
-daemon should be used to manage the GSSAPI creds.
-So this patch adds "calls" to the gssproxy daemon
-from the NFS server systemd unit file.
-
-When gssproxy is installed, gssproxy will be start
-and rpc.svcgssd will not be. When gssproxy is not
-installed the rpc.svcgssd daemon will be started.
-
-Note, there are already existing hooks in the
-rpc-svcgssd service file that will ensure the
-gssproxy will be started before rpc.svcgssd
-which allows the script not to start rpc.svcsdd
-when gssproxy is installed and running.
+Make the nfs-server depend on the gssproxy
+daemon running instead of svcgssd to manage
+GSSAPI credentials
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- systemd/nfs-server.service | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ systemd/nfs-server.service  |  4 ++--
+ systemd/rpc-svcgssd.service | 19 -------------------
+ 2 files changed, 2 insertions(+), 21 deletions(-)
+ delete mode 100644 systemd/rpc-svcgssd.service
 
 diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-index 2fa7387..c740fa2 100644
+index 2fa7387..3b04f84 100644
 --- a/systemd/nfs-server.service
 +++ b/systemd/nfs-server.service
-@@ -2,12 +2,13 @@
+@@ -2,12 +2,12 @@
  Description=NFS server and services
  Requires= network.target proc-fs-nfsd.mount rpcbind.target
  Requires= nfs-mountd.service
 -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service rpc-svcgssd.service
-+Wants=rpc-statd.service nfs-idmapd.service 
-+Wants=rpc-gssd.service gssproxy.service rpc-svcgssd.service
++Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service gssproxy.service
  Wants=rpc-statd-notify.service
  
  After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
  After= nfs-idmapd.service rpc-statd.service
 -After= rpc-gssd.service rpc-svcgssd.service
-+After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
++After= rpc-gssd.service gssproxy.service
  Before= rpc-statd-notify.service
  
  Wants=nfs-config.service
+diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
+deleted file mode 100644
+index f7424b0..0000000
+--- a/systemd/rpc-svcgssd.service
++++ /dev/null
+@@ -1,19 +0,0 @@
+-[Unit]
+-Description=RPC security service for NFS server
+-Requires=var-lib-nfs-rpc_pipefs.mount
+-After=var-lib-nfs-rpc_pipefs.mount
+-PartOf=nfs-server.service
+-PartOf=nfs-utils.service
+-
+-After=gssproxy.service
+-ConditionPathExists=|!/run/gssproxy.pid
+-ConditionPathExists=|!/proc/net/rpc/use-gss-proxy
+-ConditionPathExists=/etc/krb5.keytab
+-
+-Wants=nfs-config.service
+-After=nfs-config.service
+-
+-[Service]
+-EnvironmentFile=-/run/sysconfig/nfs-utils
+-Type=forking
+-ExecStart=/usr/sbin/rpc.svcgssd $SVCGSSDARGS
 -- 
 1.9.3
 
