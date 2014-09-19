@@ -1,109 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52328 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:40160 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752406AbaIIUqS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Sep 2014 16:46:18 -0400
-Date: Tue, 9 Sep 2014 16:46:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: [PATCH v3 7/8] nfsd: set and test NFSD4_CLIENT_STABLE bit to
- reduce nfsdcltrack upcalls
-Message-ID: <20140909204617.GC17979@fieldses.org>
-References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
- <1410187609-10319-8-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1410187609-10319-8-git-send-email-jlayton@primarydata.com>
+	id S1755831AbaISMvu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2014 08:51:50 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8JCpnia022439
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 08:51:49 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: Simo Sorce <simo@redhat.com>
+Subject: [PATCH 2/2] svcgssd: Remove rules from the Makefile.am
+Date: Fri, 19 Sep 2014 08:51:43 -0400
+Message-Id: <1411131103-17254-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1411131103-17254-1-git-send-email-steved@redhat.com>
+References: <1411131103-17254-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 08, 2014 at 10:46:48AM -0400, Jeff Layton wrote:
-> The nfsdcltrack upcall doesn't utilize the NFSD4_CLIENT_STABLE flag,
-> which basically results in an upcall every time we call into the client
-> tracking ops.
-> 
-> Change it to set this bit on a successful "check" or "create" request,
-> and clear it on a "remove" request.  Also, check to see if that bit is
-> set before upcalling on a "check" or "remove" request, and skip
-> upcalling appropriately, depending on its state.
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4recover.c | 22 ++++++++++++++++++----
->  1 file changed, 18 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-> index ae313861a6f5..5697e9d2e875 100644
-> --- a/fs/nfsd/nfs4recover.c
-> +++ b/fs/nfsd/nfs4recover.c
-> @@ -1291,7 +1291,8 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
->  	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
->  
->  	nfsd4_cltrack_upcall_lock(clp);
-> -	nfsd4_umh_cltrack_upcall("create", hexid, reclaim_complete, grace_start);
-> +	if (!nfsd4_umh_cltrack_upcall("create", hexid, reclaim_complete, grace_start))
-> +		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
+The managing of GSSAPI credentials is now done
+with the gssproxy(8) daemon so svcgssd no longer
+needs to be build or installed.
 
-Don't you also want to skip the upcall when STABLE is set?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/gssd/Makefile.am | 25 ++-----------------------
+ 1 file changed, 2 insertions(+), 23 deletions(-)
 
-(Not a big deal in the 4.1 case as it's only called once per client (in
-RECLAIM_COMPLETE) but annoying in the 4.0 case where it's called on
-every OPEN_CONFIRM.)
+diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+index af59791..716dd0b 100644
+--- a/utils/gssd/Makefile.am
++++ b/utils/gssd/Makefile.am
+@@ -1,10 +1,10 @@
+ ## Process this file with automake to produce Makefile.in
+ 
+-man8_MANS	= gssd.man svcgssd.man
++man8_MANS	= gssd.man
+ 
+ RPCPREFIX	= rpc.
+ KPREFIX		= @kprefix@
+-sbin_PREFIXED	= gssd svcgssd
++sbin_PREFIXED	= gssd
+ sbin_PROGRAMS	= $(sbin_PREFIXED)
+ 
+ EXTRA_DIST = \
+@@ -45,27 +45,6 @@ gssd_LDFLAGS = $(KRBLDFLAGS) $(LIBTIRPC)
+ gssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
+ 	      $(RPCSECGSS_CFLAGS) $(KRBCFLAGS) $(GSSAPI_CFLAGS)
+ 
+-svcgssd_SOURCES = \
+-	$(COMMON_SRCS) \
+-	svcgssd.c \
+-	svcgssd_main_loop.c \
+-	svcgssd_mech2file.c \
+-	svcgssd_proc.c \
+-	svcgssd_krb5.c \
+-	\
+-	svcgssd_krb5.h \
+-	svcgssd.h
+-
+-svcgssd_LDADD = \
+-	../../support/nfs/libnfs.a \
+-	$(RPCSECGSS_LIBS) $(LIBNFSIDMAP) \
+-	$(KRBLIBS) $(GSSAPI_LIBS) $(LIBTIRPC)
+-
+-svcgssd_LDFLAGS = $(KRBLDFLAGS)
+-
+-svcgssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
+-		 $(RPCSECGSS_CFLAGS) $(KRBCFLAGS) $(GSSAPI_CFLAGS)
+-
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+ #######################################################################
+-- 
+1.9.3
 
---b.
-
->  	nfsd4_cltrack_upcall_unlock(clp);
->  
->  	kfree(reclaim_complete);
-> @@ -1304,6 +1305,9 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
->  {
->  	char *hexid;
->  
-> +	if (!test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> +		return;
-> +
->  	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
->  	if (!hexid) {
->  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-> @@ -1311,7 +1315,9 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
->  	}
->  
->  	nfsd4_cltrack_upcall_lock(clp);
-> -	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
-> +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags) &&
-> +	    nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL) == 0)
-> +		clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
->  	nfsd4_cltrack_upcall_unlock(clp);
->  
->  	kfree(hexid);
-> @@ -1323,6 +1329,9 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
->  	int ret;
->  	char *hexid, *legacy;
->  
-> +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-> +		return 0;
-> +
->  	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
->  	if (!hexid) {
->  		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-> @@ -1331,9 +1340,14 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
->  	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
->  
->  	nfsd4_cltrack_upcall_lock(clp);
-> -	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
-> +	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags)) {
-> +		ret = 0;
-> +	} else {
-> +		ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
-> +		if (!ret)
-> +			set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-> +	}
->  	nfsd4_cltrack_upcall_unlock(clp);
-> -
->  	kfree(legacy);
->  	kfree(hexid);
->  	return ret;
-> -- 
-> 1.9.3
-> 
