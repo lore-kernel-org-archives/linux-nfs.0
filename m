@@ -1,84 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from [115.154.191.37] ([115.154.191.37]:33021 "EHLO xtimes.org"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S932162AbaIWQqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 12:46:34 -0400
-Reply-To: <dingxj8@aliyun.com>
-Date: Tue, 23 Sep 2014 22:32:55 +0800
-From: =?utf-8?B?5bCP5a2U?= <gamebox@xtimes.org>
-To: <linux-india-help-admin@lists.sourceforge.net>,
-        <linux-nfs@vger.kernel.org>, <linux-parisc@vger.kernel.org>,
-        <linux-raid-request@vger.rutgers.edu>
-Subject: =?utf-8?B?55So6L+Z5Liq5bmz5Y+w5Y+R55+t5L+h77yM6L+Z5bCx5a+55LqGICAgICAgIA==?=
-	=?utf-8?B?ICAgICAgICAgICAgICAgICAgICA=?=
-	=?utf-8?B?ICAgICAgICAgICAgICAgICAgICA=?=
-	=?utf-8?B?ICAgICAgICAgICAgICAgICAgICA=?=
-	=?utf-8?B?ICB4NWZ3M3V1bQ==?=
-Message-ID: <20140923223305200644@xtimes.org>
-Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:2055 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932186AbaISTvN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2014 15:51:13 -0400
+Message-ID: <541C892D.7020401@RedHat.com>
+Date: Fri, 19 Sep 2014 15:51:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Neil Brown <neilb@suse.de>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-server: Replace rpc.svcgssd with gssproxy in
+ systemd script
+References: <1411146621-18797-1-git-send-email-steved@redhat.com> <1411146621-18797-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1411146621-18797-2-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQogIOWbveWGheacgOWlveeUqOeahOefreS/oeW5s+WPsO+8jOmAiei/meS4qui/meWwseWvueS6
-huOAguato+inhOWGheWuuemDveWPr+S7peWPke+8jOWIsOi+vumrmO+8jOS4jeWxj+iUveOAguWS
-qOivouivt+WKoFFRMTkzOTg5NzI177yM5Y+v5Lul5rWL6K+V5ZOm44CCDQoNCg0KDQoNCg0KIA0K
-DQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoN
-Cg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0K
-DQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoN
-Cg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCg0KDQoNCuWwkeW5tOS4u+W8oOaWh+eroOmc
-gOimgeaciei2o++8jOWoseS6uuWoseW3seiAjOW3su+8jOiAjOWGr+S6keWxseWImeiupOS4uuaW
-h+eroOW6lOivpeaWh+S7pei9vemBk++8jOaVmeWMluS4luS6uuOAgiAgICDkuKTkurrkuonorrrk
-uoblpb3lh6DlpKnvvIzmnIDlkI7lhpvoo4XlsJHlubTkuL7miYvmipXpmY3vvIzkvYbmmK/ov5nm
-m7Torqnlhq/kupHlsbHmhJ/op4nlsYjovrHvvIzmhJ/op4nku5blj6rmmK/kuI3miZPlvIDovabn
-ga/ovablrZDooYzpqbbkuZ/msqHku4DkuYjpmpznoo3jgIIgICAg6JGj6ZuG55qE6Ziy5Y2r5o6q
-5pa96Z2e5bi45aW977yM5p2R5aS055qE5Zub6KeS5L+u5LqG5Zub5bqn5LiJ5bGC5bCP5rSL5qW8
-77yM5YWF5b2T552A4oCc5ZOo5omA4oCd55qE5L2c55So77yM5q+P5bqn5bCP5qW86YO95pyJ5Lq6
-5LiT6Zeo5pS+5ZOo77yM6KOF5pyJ5aSn5ZaH5Y+t5bm/5pKt44CCICAgIOS7luS7rOi/mOWPkeaY
-juS6huS4gOWSjOeItuS6sui/m+ihjOS4gOasoemVv+iwiOOAgiAgICDov5nnp43plb/osIjvvIzl
-vojlnabor5rvvIzkuZ/lvojnm7TmjqXvvIzpkojlr7nmgKflvojlvLrvvIzosIjlvpfnn6XmoLnn
-n6XlupXvvIzmr4/nu4/ljobkuIDmrKHov5nmoLfnmoTosIjor53vvIzmm7noh7Tov5zpg73kvJro
-p4nlvpflj5fnm4rljKrmtYXjgIIgICAg54i25Lqy6Jm954S25LiN6Iez5LqO5YOP6YKT5YWs6YKj
-5qC34oCc5LiJ6LW35LiJ6JC94oCd5LuV576O5oSf44CCICAgIOWkj+Wwj+a0m+i9u+i9u+WcsOmd
-oOi/keS7lu+8jOS7juiDjOWQjuaKseS9j+Wlue+8jOWlueKAnOWViuKAneWcsOS4gOWjsOaDiuWR
-vO+8jOWQk+S6huS4gOi3s++8jOWPjei/h+i6q+adpeeci+ingeaYr+Wkj+Wwj+a0m++8jOS4gOiE
-uOWoh+e+nui1t+adpeOAgiAgICDll5TmgJLlnLDngrnkuobkuIDkuIvlsI/mtJvnmoTohJHpl6jp
-gZPvvJrigJzkvaDov5nlranlrZDvvIzlkJPmrbvlp5Dlp5DkuobvvIHor4nkvaDvvIzlhbblrp7m
-iJHmoLnmnKzkuI3niLHku4DkuYjni5flsYHor5fmrYzmlaPmloflsI/or7TvvIzmiJHkuZ/kuI3m
-mK/ku4DkuYjmloflrabpnZLlubTvvIzmiJHlsLHmmK/kuIDkuKrkv5fkurrvvIzllpzmrKLpkrHl
-lpzmrKLnianotKjllpzmrKLmnYPliKnvvIzmiJHmsqHpgqPkuYjpq5jpm4XvvIzmsYLmsYLkvaDp
-pbbkuobmiJHooYzkuYjvvJ/pgqPnr4for5fmrYzlsLHmmK/miJHmioTooq3nmoTvvIHigJ0gICAg
-5qWa5Zug5Li657u05oqk5L2V6K+X6Z+15pu+57uP5ZKM5Y2i5Y2X5Y2O44CB6JGj5Zub5Zac5YWs
-54S25byA5oiY44CCICAgIOW+iOWkmuS4quWtpOeLrOmavuecoOeahOWknOmHjO+8jOWlueWcqOWT
-gOWPueiHquW3seS4jeW5uOeahOWpmuWnu+i+l+i9rOWPjeS+p+S5i+mZhe+8jOWcqOWboOS4uuS6
-ieadg+WkuuWIqeiuqeWlueeWsuaDq+eahOaXtuWAme+8jOWlueWkmuaDs+acieS4gOS4queUt+S6
-uuWPr+S7peS/neaKpOiHquW3se+8jAkNCuS9oOOAguKAnSAgICDkuI7mraTliY3mlKvlj5bnrKzk
-uIDmobbph5HnmoTigJznirblhYPnrJTorrDigJ3kuI3lkIzvvIzlkInnpaXnianigJznm7znm7zi
-gJ3pobnnm67lt7Lnu4/lvIDlp4vpga3pgYfliLDms6LmipjvvIzlpI/lsI/mtJvoh6rnhLbmmI7n
-mb3kvIHkuJrotorlpKfvvIznu4/okKXnrqHnkIbotorlpI3mnYLvvIzmm7TlrrnmmJPpgYfliLDl
-kITnp43ljbHmnLrjgIIgICAg5LuW5Lmf6ZqQ6ZqQ6KeJ6YGT77ya4oCc546L6ICB5p2/77yM6LCi
-6LCi5L2g77yM6ICB5aSP5bqE6Ie05a+M5aWU5bCP5bq35bCx5YWo6Z2g5oKo5LqG77yB4oCdICAg
-IOeOi+Wkp+WKm+S6q+WPl+edgOWkj+i/keWRqOeahOaEn+iwouWSjOW0h+aVrO+8jOW+iOa3oeWu
-muWcsOS4gOaRhuaJi++8jOmBk++8muKAnOWwj+S6i+WVpuKApuKApuWlveivtO+8jOWlveivtOOA
-guKAnSAgICDlpI/lsI/mtJvnnqflkJHkvK/niLblpI/ov5HlkajvvIzlj5HnjrDku5bmnoHlnLDm
-lr3lsZXlvIDkuIDouqvlpb3lip/lpKvvvIzkuInkuIvkupTpmaTkuozmiorlh6DkuKrmi4nmia/n
-nYDmn7PmnIjnmoTlsI/pnZLlubTmlL7lgJLkuobjgIIgICAg5Yeg5Liq5bCR5bm05LiA55yL5p2l
-6ICF5LiN5ZaE77yM5a+55pa55piO5pi+5piv5Liq57uD5a625a2Q77yM5Y+v5LiN5piv5LiA6Iis
-55qE5pyJ54K56Juu5Yqb6ICM5bey55qE5Yac5p2R6Z2S5bm077yM5Lmf6L2v5LqG77yM5LiN5pWi
-5YaN5Yqo5omL77yM5L2g5Lya5piv5LuA5LmI5oSf6KeJ77yfICAgIOS9oOS4gOWumua7oeaAgOac
-n+W+heiAjOWPiOWFhea7oeaBkOaDp+WQp+OAgiAgICDlpI/lsI/mtJvlsLHooqvov5nmoLfmnJ/l
-voXlkozmt6Hmt6HnmoTmgZDmg6fokKbnu5XnnYDvvIzku5blhrPlrprvvIzopoHmiorkuozni5fl
-rZDlkozmk47lpKnlk6XmlZnnmoTlip/lpKvpg73lrabkvJrkuobjgIIgICAg5q2k5Yi777yM5rWB
-6KiA6Jya6K+t5Lyg5pKt5b6X5aaC5ZCM5YWJ55Sw5Yek5omN77yf4oCdICAgIOWNs+S9v+mCo+ax
-ieWtkOa1kea1iueahOebruWFieS5n+mavuS7peaOqemlsOWFtuS4reeahOaDiuW8gu+8jOmBk++8
-muKAnOS9oOaAjuS5iOefpemBk+eahOKApuKApuaIkeWwseaYr+S7lueahOeItuS6sueUsOebm+aW
-h++8jOWcqOadkemHjOS6uuS7rOmDveWPq+aIkeeUsOWAreeTnOOAguKAnSAgICDlpI/lsI/mtJvm
-g4rpgZPvvJrigJzkvK/niLbvvIzmnpznhLbmmK/mgqjogIHkurrlrrbvvIzlnKjlooPnlYzkuI7m
-sJTlir/kuIrpg73kuI3lsYDkv4PvvIznnJ/mraPnmoTpq5jmiYvlooPnlYzlsLHmmK/pmo/mhI/l
-h7rmiYvvvIzogIzpg73oh7PlpKflooPnlYzjgILlpoLlkIzmkanltJbliLvlrZfvvIzlhbblrp7p
-m4Tmt7fvvIzoh6rmnInnq6/luoTlrp3nm7jjgIIgICAg5aW555uu5YWJ5LiA55u06IGa54Sm5Zyo
-5aSP5bCP5rSb6IS45LiK77yM5LiA5Yqo5Lmf5LiN5Yqo77yM55u05Yiw5peB6L6555qE5LiA5Liq
-5bCR5aWzCQ0K
+Neil,
 
+On 09/19/2014 01:10 PM, Steve Dickson wrote:
+> Have the nfs-server depend/start on the gssproxy daemon
+> instead of rpc.svcgssd to manage GSSAPI credentials
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  systemd/nfs-server.service | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+> index 2fa7387..3b04f84 100644
+> --- a/systemd/nfs-server.service
+> +++ b/systemd/nfs-server.service
+> @@ -2,12 +2,12 @@
+>  Description=NFS server and services
+>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+>  Requires= nfs-mountd.service
+> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service rpc-svcgssd.service
+> +Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service gssproxy.service
+>  Wants=rpc-statd-notify.service
+>  
+>  After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
+>  After= nfs-idmapd.service rpc-statd.service
+> -After= rpc-gssd.service rpc-svcgssd.service
+> +After= rpc-gssd.service gssproxy.service
+Is there a better way to do this, to be more backwards compatible? 
 
+Maybe figure out that gssproxy is installed so would start that daemon
+if not fall back to rpc.svcgssd? 
+
+Unfortunately systemd is still somewhat of a mystery to me.... :-( 
+
+steved.
+>  Before= rpc-statd-notify.service
+>  
+>  Wants=nfs-config.service
+> 
