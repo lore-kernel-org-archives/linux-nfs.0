@@ -1,89 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34428 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:38270 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751130AbaIVUZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 16:25:54 -0400
-Date: Mon, 22 Sep 2014 16:25:50 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH, RFC] nfsd: fix nfsd4_cb_recall_done error handling
-Message-ID: <20140922202550.GH26763@fieldses.org>
-References: <20140922182923.GA18904@infradead.org>
+	id S1756002AbaISRH5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2014 13:07:57 -0400
+Date: Fri, 19 Sep 2014 13:07:52 -0400
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials
+Message-ID: <20140919130752.2ac3372e@willson.usersys.redhat.com>
+In-Reply-To: <20140919163617.GB16658@fieldses.org>
+References: <1411131103-17254-1-git-send-email-steved@redhat.com>
+	<20140919155733.GA16658@fieldses.org>
+	<541C5A55.7010403@RedHat.com>
+	<20140919163617.GB16658@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140922182923.GA18904@infradead.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 22, 2014 at 11:29:23AM -0700, Christoph Hellwig wrote:
-> The error handling for CB_RECALL seems fairly broken to me.
-> 
-> What looks good:
-> 
->  - for EBADHANDLE and NFS4ERR_BAD_STATEID retry until dl_retries
->    hits zero, then mark the connection down and set cb_done
-> 
-> What looks wrong:
-> 
->  - for everything else we first mark the connection down, then
->    retry until dl_retries hits zero, then mark the connection down
->    again  and set cb_done.
-> 
-> >From all I can see what we want is:
-> 
->  - keep the behavior for EBADHANDLE and NFS4ERR_BAD_STATEID,
->    otherwise jump straight to making the connection down
->    and setting cb_done
-> 
-> But maybe I'm missing something?
+On Fri, 19 Sep 2014 12:36:17 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-I can't think of anything; let me know when you want something applied.
+> On Fri, Sep 19, 2014 at 12:31:17PM -0400, Steve Dickson wrote:
+> > 
+> > 
+> > On 09/19/2014 11:57 AM, J. Bruce Fields wrote:
+> > > On Fri, Sep 19, 2014 at 08:51:41AM -0400, Steve Dickson wrote:
+> > >> The gssproxy(8) daemon is now how the managing of GSSAPI 
+> > >> credentials should be done. 
+> > >>
+> > >> These to patches has the nfs-server systemd script start 
+> > >> gssproxy instead of rpc.svcgssd and removes the building 
+> > >> and installation of rpc.svcgssd.
+> > >>
+> > >> For now I'm leaving the source files... Just in case... ;-)
+> > > 
+> > > If nothing else, we'd like to keep support for older kernels for a
+> > > while.
+> > Good point... I should probably make this a configurable...
+> > something like --enable_svcgssd and have it off by default...
+> 
+> Sounds fine.
 
---b.
++1, it will be very useful for transitions in distributions, not all of
+them will align identically I guess.
 
-> 
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 17d5441..ed25c58 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -971,24 +971,21 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
->  		return;
->  	switch (task->tk_status) {
->  	case 0:
-> -		cb->cb_done = true;
-> -		return;
-> +		break;
->  	case -EBADHANDLE:
->  	case -NFS4ERR_BAD_STATEID:
->  		/* Race: client probably got cb_recall
->  		 * before open reply granting delegation */
-> -		break;
-> +		if (dp->dl_retries--) {
-> +			rpc_delay(task, 2*HZ);
-> +			task->tk_status = 0;
-> +			rpc_restart_call_prepare(task);
-> +			return;
-> +		}
->  	default:
->  		/* Network partition? */
->  		nfsd4_mark_cb_down(clp, task->tk_status);
->  	}
-> -	if (dp->dl_retries--) {
-> -		rpc_delay(task, 2*HZ);
-> -		task->tk_status = 0;
-> -		rpc_restart_call_prepare(task);
-> -		return;
-> -	}
-> -	nfsd4_mark_cb_down(clp, task->tk_status);
->  	cb->cb_done = true;
->  }
->  
-> -- 
-> 1.9.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
