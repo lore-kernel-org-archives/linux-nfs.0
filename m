@@ -1,40 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:45886 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754154AbaIIQif (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:38:35 -0400
-Received: from [50.247.105.171] (helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XROR7-00080R-W3
-	for linux-nfs@vger.kernel.org; Tue, 09 Sep 2014 16:38:34 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: pnfs block layout driver fixes V3
-Date: Tue,  9 Sep 2014 09:40:44 -0700
-Message-Id: <1410280853-3964-1-git-send-email-hch@lst.de>
+Received: from mx1.redhat.com ([209.132.183.28]:29529 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756002AbaISRKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2014 13:10:25 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8JHAPXV011885
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 13:10:25 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: Simo Sorce <simo@redhat.com>
+Subject: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials (v2)
+Date: Fri, 19 Sep 2014 13:10:19 -0400
+Message-Id: <1411146621-18797-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This series fixes a wide range of issues with the pnfs block layout driver.
+The gssproxy(8) daemon will now be used to manage the GSSAPI 
+credentials on the server.  
 
-Before this we were seeing frequent silent data corruption, softlockups and
-kernel crashes when running both user applications and test cases like xfstests.
+The nfs-server systemd script will now start gssproxy and
+the building/installing of rpc.svcgssd is now off by
+default.
 
-After this rewrite of the I/O path we've sorted out all issues under normal
-operations, although error handling in the block layout driver and its
-interaction with the core nfs and pnfs code still needs further work.
+Steve Dickson (2):
+  nfs-server: Replace rpc.svcgssd with gssproxy in systemd script
+  rpc.svcgssd: the build of rpc.svcgssd is off by default
 
-This work was sponsored by NetApp, Inc.
+ configure.ac               | 23 +++++++++++++++++++----
+ systemd/nfs-server.service |  4 ++--
+ utils/gssd/Makefile.am     | 11 +++++++++--
+ 3 files changed, 30 insertions(+), 8 deletions(-)
 
-Changes since V2:
- - drop patches already merged by Trond
- - fix compile when NFSv4 isn't enabled
- - address a minor style issue pointed out by Anna
- - unconditionally try a layoutcommit first during layout recall processing
-
-Changes since V1:
- - added two more layout stateid handling fixes
- - change the layoutget path so that the layout driver is responsible for
-   freeing the spliced in payload.
-
+-- 
+1.9.3
 
