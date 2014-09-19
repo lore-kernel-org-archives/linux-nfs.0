@@ -1,172 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:36919 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932379AbaICNzl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2014 09:55:41 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount failures
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140903070048.56201d1d@tlielax.poochiereds.net>
-Date: Wed, 3 Sep 2014 09:55:17 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <70D58138-CB00-433C-8BF8-01584E6460F0@oracle.com>
-References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com> <20140903070048.56201d1d@tlielax.poochiereds.net>
-To: Jeff Layton <jeff.layton@primarydata.com>,
-        Chris Perl <chris.perl@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:7143 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755904AbaISN1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2014 09:27:03 -0400
+Message-ID: <541C2F22.1030002@RedHat.com>
+Date: Fri, 19 Sep 2014 09:26:58 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@primarydata.com>
+CC: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v4 3/7] nfsdcltrack: rename CLD_* constants with CLTRACK_*
+ prefixes
+References: <1410789665-19745-1-git-send-email-jlayton@primarydata.com> <1410789665-19745-4-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1410789665-19745-4-git-send-email-jlayton@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch does not compile do to the following errors:
+   http://fpaste.org/134872/41113211/
 
-On Sep 3, 2014, at 7:00 AM, Jeff Layton <jeff.layton@primarydata.com> wrote:
+With s/CLTRACK_SQLITE_LATEST_SCHEMA_VERSION/CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION/s
+But this causes the 4 patch not to compile because  CLTRACK_SQLITE_LATEST_SCHEMA_VERSION
+is not defined... 
 
-> On Tue, 2 Sep 2014 12:51:06 -0400
-> Chris Perl <chris.perl@gmail.com> wrote:
+Please straight this out, retest and resubmit!
+
+steved.
+
+On 09/15/2014 10:01 AM, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@poochiereds.net>
 > 
->> I've noticed that mount.nfs calls bind (in `nfs_bind' in
->> support/nfs/rpc_socket.c) before ultimately calling connect when
->> trying to get a tcp connection to talk to the remote portmapper
->> service (called from `nfs_get_tcpclient' which is called from
->> `nfs_gp_get_rpcbclient').
->> 
->> Unfortunately, this means you need to find a local ephemeral port such
->> that said ephemeral port is not a part of *any* existing TCP
->> connection (i.e. you're looking for a unique 2 tuple of (socket_type,
->> local_port) where socket_type is either SOCK_STREAM or SOCK_DGRAM, but
->> in this case specifically SOCK_STREAM).
->> 
->> If you were to just call connect without calling bind first, then
->> you'd need to find a unique 5 tuple of (socket_type, local_ip,
->> loacl_port, remote_ip, remote_port).
->> 
->> The end result is a misbehaving application that creates many
->> connections to some service, using all ephemeral ports, can cause
->> attempts to mount remote NFS filesystems to fail with EADDRINUSE.
->> 
->> Don't get me wrong, I think we should fix our application, (and we
->> are) but I don't see any reason why mount.nfs couldn't just call
->> connect without calling bind first (thereby allowing it to happen
->> implicitly) and allowing mount.nfs to continue to work in this
->> situation.
->> 
->> I think an example may help explain what I'm talking about.
->> 
->> Lets take a Linux machine running CentOS 6.5
->> (2.6.32-431.1.2.0.1.el6.x86_64) and restrict the number of available
->> ephemeral ports to just 10:
->> 
->> [cperl@localhost ~]$ cat /proc/sys/net/ipv4/ip_local_port_range
->> 60000   60009
->> 
->> Then create a TCP connection to a remote service which will just hold
->> that connection open:
->> 
->> [cperl@localhost ~]$ for in in {0..9}; do socat -u
->> tcp:192.168.1.12:9990 file:/dev/null & done
->> [1] 21578
->> [2] 21579
->> [3] 21580
->> [4] 21581
->> [5] 21582
->> [6] 21583
->> [7] 21584
->> [8] 21585
->> [9] 21586
->> [10] 21587
->> 
->> [cperl@localhost ~]$ netstat -n --tcp | awk '$6 ~ /ESTABLISHED/ && $5
->> ~/:999[0-9]$/ {print $1, $4, $5}' | sort | column -t
->> tcp  192.168.1.11:60000  192.168.1.12:9990
->> tcp  192.168.1.11:60001  192.168.1.12:9990
->> tcp  192.168.1.11:60002  192.168.1.12:9990
->> tcp  192.168.1.11:60003  192.168.1.12:9990
->> tcp  192.168.1.11:60004  192.168.1.12:9990
->> tcp  192.168.1.11:60005  192.168.1.12:9990
->> tcp  192.168.1.11:60006  192.168.1.12:9990
->> tcp  192.168.1.11:60007  192.168.1.12:9990
->> tcp  192.168.1.11:60008  192.168.1.12:9990
->> tcp  192.168.1.11:60009  192.168.1.12:9990
->> 
->> And now try to mount an NFS export:
->> 
->> [cperl@localhost ~]$ sudo mount 192.168.1.100:/export/a /tmp/a
->> mount.nfs: Address already in use
->> 
->> As mentioned before, this is because bind is trying to find a unique 2
->> tuple of (socket_type, local_port) (really I believe its the 3 tuple
->> (socket_type, local_ip, local_port), but calling bind with INADDR_ANY
->> as `nfs_bind' does reduces it to the 2 tuple), which it cannot do.
->> 
->> However, just calling connect allows local ephemeral ports to be
->> "reused" (i.e. it looks for the unique 5 tuple of (socket_type,
->> local_ip, local_port, remote_ip, remote_port)).
->> 
->> For example, notice how the local ephemeral ports 60003 and 60004 are
->> "reused" below (because socat is just calling connect, not bind,
->> although we can make socat call bind with an option if we want and see
->> it fail like mount.nfs did above):
->> 
->> [cperl@localhost ~]$ socat -u tcp:192.168.1.12:9991 file:/dev/null &
->> [11] 22433
->> [cperl@localhost ~]$ socat -u tcp:192.168.1.13:9990 file:/dev/null &
->> [12] 22499
->> [cperl@localhost ~]$ netstat -n --tcp | awk '$6 ~ /ESTABLISHED/ && $5
->> ~/:999[0-9]$/ {print $1, $4, $5}' | sort | column -t
->> tcp  192.168.0.11:60000  192.168.1.12:9990
->> tcp  192.168.0.11:60001  192.168.1.12:9990
->> tcp  192.168.0.11:60002  192.168.1.12:9990
->> tcp  192.168.0.11:60003  192.168.1.12:9990
->> tcp  192.168.0.11:60003  192.168.1.12:9991
->> tcp  192.168.0.11:60004  192.168.1.12:9990
->> tcp  192.168.0.11:60004  192.168.1.13:9990
->> tcp  192.168.0.11:60005  192.168.1.12:9990
->> tcp  192.168.0.11:60006  192.168.1.12:9990
->> tcp  192.168.0.11:60007  192.168.1.12:9990
->> tcp  192.168.0.11:60008  192.168.1.12:9990
->> tcp  192.168.0.11:60009  192.168.1.12:9990
->> 
->> Is there any reason we couldn't modify `nfs_get_tcpclient' to not bind
->> in the case where its not using a reserved port?
->> 
->> For some color, this is particularly annoying for me because I have
->> extensive automount maps and this failure leads to attempts to access
->> a given automounted path returning ENOENT.  Furthermore, automount
->> caches this failure and continues to return ENOENT for the duration of
->> whatever its negative cache timeout is.
->> 
->> For UDP, I don't think "bind before connect" matters as much.  I
->> believe the difference is just in the error you'll get from either
->> bind or connect (if all ephemeral ports are used).  If you attempt to
->> bind when all local ports are in use you seem to get EADDRINUSE,
->> whereas when you connect when all local ports are in use you get
->> EAGAIN.
-
-There is only one place where mount.nfs uses connected UDP, which
-is nfs_ca_sockname(). But UDP connected sockets are less of a
-hazard because they lack a 120 second TIME_WAIT after they are
-closed.
-
->> It could be I'm missing something totally obvious for why this is.  If
->> so, please let me know!
-
-The reason is I didn’t realize you could call connect(2) without
-calling bind(2) first on STREAM sockets.
-
-> (cc'ing Chuck since he wrote a lot of that code)
+> Since nfsdcld has been dead for a few years now, clean up the prefixes
+> on the constants.
 > 
-> I'm not sure either. If there was a reason for that, it's likely lost
-> to antiquity. In some cases, we really are expected to use reserved
-> ports and I think you do have to bind() in order to get one. In the
-> non-reserved case though it's likely we could skip binding altogether.
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  utils/nfsdcltrack/sqlite.c | 12 ++++++------
+>  1 file changed, 6 insertions(+), 6 deletions(-)
 > 
-> What would probably be best is to roll up a patch that changes it, and
-> propose it on the list.
-
-I’d like to see a prototype, too.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+> index 352f029d55c0..52fcaa4d7ca3 100644
+> --- a/utils/nfsdcltrack/sqlite.c
+> +++ b/utils/nfsdcltrack/sqlite.c
+> @@ -50,10 +50,10 @@
+>  
+>  #include "xlog.h"
+>  
+> -#define CLD_SQLITE_SCHEMA_VERSION 1
+> +#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 1
+>  
+>  /* in milliseconds */
+> -#define CLD_SQLITE_BUSY_TIMEOUT 10000
+> +#define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
+>  
+>  /* private data structures */
+>  
+> @@ -111,7 +111,7 @@ sqlite_prepare_dbh(const char *topdir)
+>  		return ret;
+>  	}
+>  
+> -	ret = sqlite3_busy_timeout(dbh, CLD_SQLITE_BUSY_TIMEOUT);
+> +	ret = sqlite3_busy_timeout(dbh, CLTRACK_SQLITE_BUSY_TIMEOUT);
+>  	if (ret != SQLITE_OK) {
+>  		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
+>  		sqlite3_close(dbh);
+> @@ -156,7 +156,7 @@ sqlite_maindb_init(const char *topdir)
+>  	/* insert version into table -- ignore error if it fails */
+>  	ret = snprintf(buf, sizeof(buf),
+>  		       "INSERT OR IGNORE INTO parameters values (\"version\", "
+> -		       "\"%d\");", CLD_SQLITE_SCHEMA_VERSION);
+> +		       "\"%d\");", CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION);
+>  	if (ret < 0) {
+>  		goto out_err;
+>  	} else if ((size_t)ret >= sizeof(buf)) {
+> @@ -189,10 +189,10 @@ sqlite_maindb_init(const char *topdir)
+>  
+>  	/* process SELECT result */
+>  	ret = sqlite3_column_int(stmt, 0);
+> -	if (ret != CLD_SQLITE_SCHEMA_VERSION) {
+> +	if (ret != CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION) {
+>  		xlog(L_ERROR, "Unsupported database schema version! "
+>  			"Expected %d, got %d.",
+> -			CLD_SQLITE_SCHEMA_VERSION, ret);
+> +			CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION, ret);
+>  		ret = -EINVAL;
+>  		goto out_err;
+>  	}
+> 
