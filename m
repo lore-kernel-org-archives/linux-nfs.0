@@ -1,152 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:49152 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751185AbaILStY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 14:49:24 -0400
-Received: by mail-ie0-f178.google.com with SMTP id tp5so1496019ieb.9
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 11:49:24 -0700 (PDT)
-From: Chris Perl <chris.perl@gmail.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, Chris Perl <chris.perl@gmail.com>
-Subject: [PATCH] nfs-utils: nfs_get_tcpclient/nfs_get_udpclient - make bind(2) implicit
-Date: Fri, 12 Sep 2014 14:49:22 -0400
-Message-Id: <1410547762-27285-1-git-send-email-chris.perl@gmail.com>
+Received: from prod-mail-xrelay02.akamai.com ([72.246.2.14]:52878 "EHLO
+	prod-mail-xrelay02.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750732AbaISBy6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 21:54:58 -0400
+Message-ID: <541B8CF0.3090502@akamai.com>
+Date: Thu, 18 Sep 2014 21:54:56 -0400
+From: Jason Baron <jbaron@akamai.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] rpc: Add -EPERM processing for xs_udp_send_request()
+References: <cover.1411068259.git.jbaron@akamai.com>	<d143828a73125846d583f4c606061109d22869f7.1411068259.git.jbaron@akamai.com>	<CAHQdGtQOoop=CShDx9dTXSjo47KzWoRqkM9PNx1Si-pFSXg-_w@mail.gmail.com>	<541B484E.90202@akamai.com> <CAHQdGtQ93P5BpDgW+BEhWNGB4=M7f0RF4p8NOXQmUJEw9cu4iQ@mail.gmail.com>
+In-Reply-To: <CAHQdGtQ93P5BpDgW+BEhWNGB4=M7f0RF4p8NOXQmUJEw9cu4iQ@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When attempting to establish a local ephemeral endpoint for a TCP or UDP
-socket, do not explicitly call bind(2), instead let it happen implicilty when
-the socket is first used.
+On 09/18/2014 05:20 PM, Trond Myklebust wrote:
+> On Thu, Sep 18, 2014 at 5:02 PM, Jason Baron <jbaron@akamai.com> wrote:
+>> On 09/18/2014 04:51 PM, Trond Myklebust wrote:
+>>> On Thu, Sep 18, 2014 at 3:51 PM, Jason Baron <jbaron@akamai.com> wrote:
+>>>> If an iptables drop rule is added for an nfs server, the client can end up in
+>>>> a softlockup. Because of the way that xs_sendpages() is structured, the -EPERM
+>>>> is ignored since the prior bits of the packet may have been successfully queued
+>>>> and thus xs_sendpages() returns a non-zero value. Then, xs_udp_send_request()
+>>>> thinks that because some bits were queued it should return -EAGAIN. We then try
+>>>> the request and again and a softlockup occurs. The test sequence is simply:
+>>>>
+>>>> 1) open a file on the nfs server '/nfs/foo' (mounted using udp)
+>>>> 2) iptables -A OUTPUT -d <nfs server ip> -j DROP
+>>>> 3) write to /nfs/foo
+>>>> 4) close /nfs/foo
+>>>> 5) iptables -D OUTPUT -d <nfs server ip> -j DROP
+>>>>
+>>>> The softlockup occurs in step 4 above.
+>>> For UDP, the expected and documented behaviour in the case above is as follows:
+>>> - if the mount is soft, then return EIO on the first major timeout.
+>> yeah - so this case is a softlockup in my testing :(
+>>
+>>> - if the mount is hard, then retry indefinitely on timeout.
+>>>
+>>> Won't these 2 patches end up propagating an EPERM to the application?
+>>> That would be a definite violation of both hard and soft semantics.
+>> ok, yeah it does propogate the -EPERM up - I wasn't aware of the correct
+>> semantics - thanks.
+>>
+>> I can rework the patches such that they return -EIO instead for a soft mount,
+>> and verify that we keep retrying for a hard one.
+>>
+> Doesn't the soft timeout currently trigger after the major timeout? If
+> not, do we understand why it isn't doing so?
 
-The main motivating factor for this change is when TCP runs out of unique
-ephemeral ports (i.e.  cannot find any ephemeral ports which are not a part of
-*any* TCP connection).  In this situation if you explicitly call bind(2), then
-the call will fail with EADDRINUSE.  However, if you allow the allocation of an
-ephemeral port to happen implicitly as part of connect(2) (or other functions),
-then ephemeral ports can be reused, so long as the combination of (local_ip,
-local_port, remote_ip, remote_port) is unique for TCP sockets on the system.
+No, the soft timeout does not currently trigger after the major timeout. Instead,
+the kernel spins indefinitely, and triggers a softlockup.
 
-This doesn't matter for UDP sockets, but it seemed easiest to treat TCP and UDP
-sockets the same.
+The reason is that xs_sendpages() returns a positive value in this case
+and xs_udp_send_request() turns it in an -EAGAIN for the write operation.
+Subsequently, we call call_transmit_status() and then call_status() which
+sees the EAGAIN, which just starts all over again with a 'call_transmit()'.
+So we are stuck spinning indefinitely in kernel space.
 
-This can allow mount.nfs(8) to continue to function successfully, even in the
-face of misbehaving applications which are creating a large number of TCP
-connections.
+Simply moving the -EPERM up in this patch, results in the behavior you
+described above - EIO after a major timeout on a soft mount, and indefinte
+retries on a hard mount - but without the cpu consumption. IE applying
+this on top of this patch:
 
-Signed-off-by: Chris Perl <chris.perl@gmail.com>
----
- support/nfs/rpc_socket.c | 68 ++++++++++++++----------------------------------
- 1 file changed, 20 insertions(+), 48 deletions(-)
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2019,6 +2019,7 @@ call_status(struct rpc_task *task)
+        case -EHOSTDOWN:
+        case -EHOSTUNREACH:
+        case -ENETUNREACH:
++       case -EPERM:
+                if (RPC_IS_SOFTCONN(task)) {
+                        rpc_exit(task, status);
+                        break;
+@@ -2048,7 +2049,6 @@ call_status(struct rpc_task *task)
+        case -EAGAIN:
+                task->tk_action = call_transmit;
+                break;
+-       case -EPERM:
+        case -EIO:
+                /* shutdown or soft timeout */
+                rpc_exit(task, status);
 
-diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
-index 7896cd2..2900d18 100644
---- a/support/nfs/rpc_socket.c
-+++ b/support/nfs/rpc_socket.c
-@@ -106,36 +106,6 @@ static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
- 	return client;
- }
- 
--/*
-- * Bind a socket using an unused ephemeral source port.
-- *
-- * Returns zero on success, or returns -1 on error.  errno is
-- * set to reflect the nature of the error.
-- */
--static int nfs_bind(const int sock, const sa_family_t family)
--{
--	struct sockaddr_in sin = {
--		.sin_family		= AF_INET,
--		.sin_addr.s_addr	= htonl(INADDR_ANY),
--	};
--	struct sockaddr_in6 sin6 = {
--		.sin6_family		= AF_INET6,
--		.sin6_addr		= IN6ADDR_ANY_INIT,
--	};
--
--	switch (family) {
--	case AF_INET:
--		return bind(sock, (struct sockaddr *)(char *)&sin,
--					(socklen_t)sizeof(sin));
--	case AF_INET6:
--		return bind(sock, (struct sockaddr *)(char *)&sin6,
--					(socklen_t)sizeof(sin6));
--	}
--
--	errno = EAFNOSUPPORT;
--	return -1;
--}
--
- #ifdef HAVE_LIBTIRPC
- 
- /*
-@@ -276,7 +246,8 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
- 				 const int resvport)
- {
- 	CLIENT *client;
--	int ret, sock;
-+	int ret = 0;
-+	int sock = 0;
- #ifdef HAVE_LIBTIRPC
- 	struct sockaddr_storage address;
- 	const struct netbuf nbuf = {
-@@ -300,15 +271,15 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
- 		return NULL;
- 	}
- 
--	if (resvport)
-+	if (resvport) {
- 		ret = nfs_bindresvport(sock, sap->sa_family);
--	else
--		ret = nfs_bind(sock, sap->sa_family);
--	if (ret < 0) {
--		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
--		rpc_createerr.cf_error.re_errno = errno;
--		(void)close(sock);
--		return NULL;
-+
-+		if (ret < 0) {
-+			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
-+			rpc_createerr.cf_error.re_errno = errno;
-+			(void)close(sock);
-+			return NULL;
-+		}
- 	}
- 
- 	if (timeout->tv_sec == -1)
-@@ -358,7 +329,8 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
- 				 const int resvport)
- {
- 	CLIENT *client;
--	int ret, sock;
-+	int ret = 0;
-+	int sock = 0;
- #ifdef HAVE_LIBTIRPC
- 	struct sockaddr_storage address;
- 	const struct netbuf nbuf = {
-@@ -382,15 +354,15 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
- 		return NULL;
- 	}
- 
--	if (resvport)
-+	if (resvport) {
- 		ret = nfs_bindresvport(sock, sap->sa_family);
--	else
--		ret = nfs_bind(sock, sap->sa_family);
--	if (ret < 0) {
--		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
--		rpc_createerr.cf_error.re_errno = errno;
--		(void)close(sock);
--		return NULL;
-+
-+		if (ret < 0) {
-+			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
-+			rpc_createerr.cf_error.re_errno = errno;
-+			(void)close(sock);
-+			return NULL;
-+		}
- 	}
- 
- 	if (timeout->tv_sec == -1)
--- 
-1.8.3.1
+We could also 'translate' the -EPERM into an '-ENETUNREACH' or such,
+in the return from xs_udp_send_request(), if you think that would make
+more sense?
+
+Hopefully, I've explained things better.
+
+Thanks,
+
+-Jason
+
+
 
