@@ -1,56 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bl2on0148.outbound.protection.outlook.com ([65.55.169.148]:51093
-	"EHLO na01-bl2-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753487AbaIYRwX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Sep 2014 13:52:23 -0400
-Message-ID: <54245661.8010107@eas.gatech.edu>
-Date: Thu, 25 Sep 2014 13:52:33 -0400
-From: MJ Jenkins <mack.jenkins@eas.gatech.edu>
-MIME-Version: 1.0
-To: Emmanuel Florac <eflorac@intellique.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: NFS Share To OS X
-References: <5424156C.8080602@eas.gatech.edu> <20140925183034.432731eb@harpe.intellique.com>
-In-Reply-To: <20140925183034.432731eb@harpe.intellique.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:60553 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757620AbaISTc6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Sep 2014 15:32:58 -0400
+Received: by mail-ig0-f177.google.com with SMTP id h3so168700igd.10
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 12:32:58 -0700 (PDT)
+Message-ID: <1411155174.8463.0.camel@leira.trondhjem.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Date: Fri, 19 Sep 2014 15:32:54 -0400
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the /etc/exports file.  129.169 is the Mac I'm exporting to.  
-129.183 is the other RHEL machine.
+Hi Linus,
 
-##### Mount point for Britney Schmidt's Mac Pro #####
-/nfs/bsmac 
-192.168.129.169(rw,all_squash,no_subtree_check,insecure,anonuid=0) 
-192.168.129.183(rw,no_root_squash,no_subtree_chck)
+The following changes since commit 224ecbf5a674ec7da3a3b3ea21ca62e2853653fa:
 
+  pnfs: fix filelayout_retry_commit when idx > 0 (2014-09-10 12:43:45 -0700)
 
-This is /etc/fstab from the Mac.
-#storage:/nfs/bsmac       /data1          nfs 
-resvport,nolocks,locallocks,intr,soft,wsize=32768,rsize=3276
-storage:/nfs/bsmac        /data1          nfs 
-vers=3,noowners,nolocks,nolockd,nolock,nonlm,automounted,nosuid,hard,bg,noresvport,intr,rw,tcp,nfc
+are available in the git repository at:
 
-That 1st line in /etc/fstab is another way I was mounting the share 
-trying to solve this one.
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.17-5
 
-Thanks for any assistance that can be provided.
+for you to fetch changes up to cd9288ffaea4359d5cfe2b8d264911506aed26a4:
 
-Mack
+  NFSv4: Fix another bug in the close/open_downgrade code (2014-09-18 13:04:22 -0400)
 
-On 09/25/2014 12:30 PM, Emmanuel Florac wrote:
-> Le Thu, 25 Sep 2014 09:15:24 -0400
-> MJ Jenkins <mack.jenkins@eas.gatech.edu> écrivait:
->
->> The problem comes in when the user on the Mac writes files to the NFS
->> share.  On the RHEL side the files are owned by user root and group
->> nfsnobody.  Has anyone else run into this issue?  I'm not sure if the
->> issue is how I am exporting the share to the Mac, or how I have the
->> share mounted on the Mac.
-> Without the content of your /etc/exports, it's impossible to know
-> what's happening. Mac behave like regular NFS clients. Maybe you have
-> "all_squash,anonuid=0,anongid=5" in your export parameter, maybe it's
-> something else entirely.
->
+----------------------------------------------------------------
+NFS client fixes for 3.17
+
+Highligts:
+- Fix an Oops in nfs4_open_and_get_state
+- Fix an Oops in the nfs4_state_manager
+- Fix another bug in the close/open_downgrade code
+
+----------------------------------------------------------------
+NeilBrown (1):
+      NFS: remove BUG possibility in nfs4_open_and_get_state
+
+Steve Dickson (1):
+      NFSv4: nfs4_state_manager() vs. nfs_server_remove_lists()
+
+Trond Myklebust (1):
+      NFSv4: Fix another bug in the close/open_downgrade code
+
+ fs/nfs/nfs4client.c | 38 ++++++++++++++++++++------------------
+ fs/nfs/nfs4proc.c   | 40 ++++++++++++++++++++++------------------
+ 2 files changed, 42 insertions(+), 36 deletions(-)
+
 
