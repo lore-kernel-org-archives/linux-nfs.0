@@ -1,34 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53304 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757219AbaIIPzT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 11:55:19 -0400
-Date: Tue, 9 Sep 2014 08:55:18 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna.Schumaker@netapp.com
+Received: from mail-qa0-f51.google.com ([209.85.216.51]:42540 "EHLO
+	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756485AbaISNxA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Sep 2014 09:53:00 -0400
+Received: by mail-qa0-f51.google.com with SMTP id i13so2594417qae.38
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 06:52:59 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: steved@redhat.com
 Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] nfsd: Add ALLOCATE support
-Message-ID: <20140909155518.GB21928@infradead.org>
-References: <1410274182-30740-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1410274182-30740-3-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1410274182-30740-3-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v5 2/7] nfsdcltrack: update comments in sqlite.c
+Date: Fri, 19 Sep 2014 09:52:45 -0400
+Message-Id: <1411134770-2409-3-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
+References: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 09, 2014 at 10:49:41AM -0400, Anna.Schumaker@netapp.com wrote:
-> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> 
-> The ALLOCATE operation is used to preallocate space in a file.  I use
-> vfs_fallocate() to do the actual preallocation.
-> 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Clean up and fix some inaccuracies.
 
-Looks largely good, but can you do an audit how the error codes match
-the spec?  E.g. We return -ENODEV in do_fallocate if it's called on
-a special file, but that doesn't translate to any valid error codes
-for ALLOCATE in the NFSv4.2.
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ utils/nfsdcltrack/sqlite.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-I guess it should be NFSERR_NOTSUPP, and I'll work with Tom to actually
-define this case in the spec.
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index bac678980938..352f029d55c0 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -21,17 +21,15 @@
+  * Explanation:
+  *
+  * This file contains the code to manage the sqlite backend database for the
+- * clstated upcall daemon.
++ * nfsdcltrack usermodehelper upcall program.
+  *
+  * The main database is called main.sqlite and contains the following tables:
+  *
+  * parameters: simple key/value pairs for storing database info
+  *
+- * clients: one column containing a BLOB with the as sent by the client
+- * 	    and a timestamp (in epoch seconds) of when the record was
+- * 	    established
+- *
+- * FIXME: should we also record the fsid being accessed?
++ * clients: an "id" column containing a BLOB with the long-form clientid as
++ * 	    sent by the client, a "time" column containing a timestamp (in
++ * 	    epoch seconds) of when the record was last updated.
+  */
+ 
+ #ifdef HAVE_CONFIG_H
+-- 
+1.9.3
+
