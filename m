@@ -1,107 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:50075 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754333AbaIQDFX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Sep 2014 23:05:23 -0400
-Date: Wed, 17 Sep 2014 13:05:12 +1000
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: NFS <linux-nfs@vger.kernel.org>, Tejun Heo <tj@kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] NFS: state manager thread must stay running.
-Message-ID: <20140917130512.744593fd@notabene.brown>
-In-Reply-To: <CAHQdGtTrWhX=iE9y1nWH13M=kt1dbu=_dwdNVSQGBh1BeZ9aTA@mail.gmail.com>
-References: <20140813140831.22f3e9c7@notabene.brown>
-	<CAHQdGtTrWhX=iE9y1nWH13M=kt1dbu=_dwdNVSQGBh1BeZ9aTA@mail.gmail.com>
+Received: from smtp-out.cae.wisc.edu ([144.92.12.194]:45762 "EHLO
+	smtp-out.cae.wisc.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756810AbaISRUK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Sep 2014 13:20:10 -0400
+Message-ID: <541C6499.3080606@engr.wisc.edu>
+Date: Fri, 19 Sep 2014 12:15:05 -0500
+From: Ken Hahn <khahn@engr.wisc.edu>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/mHuF1ocO1j6EYrWdo3VtPCs"; protocol="application/pgp-signature"
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: NFS Kernel Bug
+References: <541AD7E5.8020409@engr.wisc.edu>	 <CAHQdGtQZ0kcBZ0QCb+sf52thERjJgz-5M++CsT7kdoDweG61sQ@mail.gmail.com> <1411056020.10845.1.camel@leira.trondhjem.org>
+In-Reply-To: <1411056020.10845.1.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/mHuF1ocO1j6EYrWdo3VtPCs
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Hello,
 
-On Tue, 16 Sep 2014 21:43:07 -0400 Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
+I work with drews@engr.wisc.edu.
 
-> On Wed, Aug 13, 2014 at 12:08 AM, NeilBrown <neilb@suse.de> wrote:
-> >
-> >
-> > If the server restarts at an awkward time it is possible for write
-> > requests to block waiting for the state manager to run.
-> > If the state manager isn't already running a new thread will
-> > need to be started which requires a GFP_KERNEL allocation
-> > (for do_fork).
-> >
-> > If memory is short, that GFP_KERNEL allocation could block on the
-> > writes going out via NFS, resulting in a deadlock.
-> >
-> > The easiest solution is to keep the manager thread running
-> > always.
->=20
-> I'm still trying to figure out what to do about this patch. There are
-> 2 concerns:
->=20
-> 1) If we're so low on memory that we can't even start a state manager
-> thread, then how do we guarantee that the recovery can be completed?
-> We rely on that state manager thread being able to allocate memory to
-> perform the lease, session, open and lock recoveries.
+On 09/18/2014 11:00 AM, Trond Myklebust wrote:
+>>
+>> Argh. This is a situation where the client shouldn't have called
+>> OPEN_DOWNGRADE, but should have done a CLOSE. The issue is that the
+>> client opens the file with OPEN4_SHARE_ACCESS_BOTH, so it is not
+>> allowed to downgrade to OPEN4_SHARE_ACCESS_READ. Instead it should
+>> have closed the file, and then used the delegation...
+>>
+> 
+> Does the following patch help (and does it still fix your original
+> bugreport)?
 
-All the allocations performed by the state manager are (I assume) GFP_NOFS.
-Creating a new thread requires GFP_KERNEL allocations, particularly in
-dup_task_struct, which is called by kthreadd, which is well out of reach for
-NFS to try to change the GFP flags.
+I tried it out, patching the Debian 3.14.15 kernel.. had to alter the
+patch a tiny bit, but I don't think I messed up any real functionality.
 
-Having said that, it occurs to me that my other dead-lock avoidance patch
-might fix this problem as well.
+Indeed it passes the old test, and avoids the new bug too.
 
-The one case where I have seen a problem with starting the state manager, t=
-he
-machine in question had several memory-shortage issues.  I think we finally
-decided that a problem with too_many_isolated handling was the main cause.
-So I cannot get very much reliable information from the stack trace there. =
- I
-presume that in the current kernel, thread creation could deadlock against
-nfs_release_page() (it was actually stuck in a congestion_wait()).
+Thanks!
 
-So I can't be certain, but I think this proactive thread creation won't be
-needed once nfs_release_page() doesn't block indefinitely.
+-Ken Hahn
 
-So you can drop this patch.
+Here's the altered patch for what it is worth (for anyone else using the
+current debian backports kernel):
 
-Thanks.
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2560,20 +2560,22 @@ static void nfs4_close_prepare(struct rpc_task
+*task, void *data)
+        is_rdwr = test_bit(NFS_O_RDWR_STATE, &state->flags);
+        is_rdonly = test_bit(NFS_O_RDONLY_STATE, &state->flags);
+        is_wronly = test_bit(NFS_O_WRONLY_STATE, &state->flags);
+-       if (is_rdonly || is_rdwr)
+-               calldata->arg.fmode |= FMODE_READ;
+-       if (is_wronly || is_rdwr)
+-               calldata->arg.fmode |= FMODE_WRITE;
++       calldata->arg.fmode = 0;
+        if (state->n_rdwr == 0) {
+-               if (state->n_rdonly == 0) {
+-                       call_close |= is_rdonly || is_rdwr;
+-                       calldata->arg.fmode &= ~FMODE_READ;
+-               }
+-               if (state->n_wronly == 0) {
+-                       call_close |= is_wronly || is_rdwr;
+-                       calldata->arg.fmode &= ~FMODE_WRITE;
+-               }
+-       }
++               if (state->n_rdonly == 0)
++                       call_close |= is_rdonly;
++               else if (is_rdonly)
++                       calldata->arg.fmode |= FMODE_READ;
++               if (state->n_wronly == 0)
++                       call_close |= is_wronly;
++               else if (is_wronly)
++                       calldata->arg.fmode |= FMODE_WRITE;
++       } else if (is_rdwr)
++               calldata->arg.fmode |= FMODE_READ|FMODE_WRITE;
++
++       if (calldata->arg.fmode == 0)
++               call_close |= is_rdwr;
++
+        if (!nfs4_valid_open_stateid(state))
+                call_close = 0;
+        spin_unlock(&state->owner->so_lock);
+--
+1.9.3
 
-Though on the topic of patches that you don't know what to do with ....
-Could you have a look at
-   http://permalink.gmane.org/gmane.linux.nfs/56154
-it appears that it slipped under your radar, and it fell of mine until just
-recently.
-
-NeilBrown
 
 
---Sig_/mHuF1ocO1j6EYrWdo3VtPCs
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBVBj6aDnsnt1WYoG5AQJBHBAAjdiEytmmqoqeGvwfZp2EdMeDrrjD7y1y
-lWEDly+9092ck+SQlKCNWw0D9P+nK6K/vJchSblyBfBhFlyGAaXAdAmxAvr5LEkl
-3RBlzOzRppEdjpYbtW/vJxCAw61DMySnIV6P7AN/Z9YePzpF8yzb7cVE6zYOmhuZ
-nldjwdpkQraXGAhG02x4ELXyJRKWpgA8S5RyhwSgeMJ5iUkRrepSpMU7DBB3VftX
-6S3PEQ4thCiJ2jG1Hu5pIoKneivmn3ZM81Wrg4CWy++2PdIBFrEc7RxWFN63bcgJ
-D/3PYcgYy+4L3458EtAlJZHp7o6GBJ3DoZFv5Epu0/7ytrNNs9plttW5pgeg3g4V
-v1t3AvDUlbl88Xn7GmhQmyj9M/5jeOuKNlOQN8GkVPt5U7prS6vK1InbeDJH1Kol
-FObZ8abFnGb17wcDMLn1pVx+XfCUqVPxNiXO0z3SutKAPmKkclS3um7fNNanFtMI
-lzGHJTxC9FGneDkdawmDILEQdytHL4om925ROLuEt7tKoBQeDsU1Uj6tNV+S1YYu
-W9dGjIrIGizRgJo+PTuzMP9Cg36TNrlOOFEmhe3lIEaA/zSfpn3gBjNCBWiq1+If
-vSp/lP1JohdYlebaR1kNq7RW8IOCob7bwqgxoZDu/Q0evlHclDL2kFcbmvqE5cXg
-k2CMqJvxMzE=
-=FxiC
------END PGP SIGNATURE-----
-
---Sig_/mHuF1ocO1j6EYrWdo3VtPCs--
