@@ -1,58 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:53133 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752019AbaIKAeR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:34:17 -0400
-Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRsL1-00082t-PG
-	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:34:16 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] pnfs/blocklayout: remove some debugging
-Date: Wed, 10 Sep 2014 17:36:28 -0700
-Message-Id: <1410395791-2385-2-git-send-email-hch@lst.de>
-In-Reply-To: <1410395791-2385-1-git-send-email-hch@lst.de>
-References: <1410395791-2385-1-git-send-email-hch@lst.de>
+Received: from fieldses.org ([174.143.236.118]:60714 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756232AbaISP5e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2014 11:57:34 -0400
+Date: Fri, 19 Sep 2014 11:57:33 -0400
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
+Subject: Re: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials
+Message-ID: <20140919155733.GA16658@fieldses.org>
+References: <1411131103-17254-1-git-send-email-steved@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1411131103-17254-1-git-send-email-steved@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kbuild test robot complained that we got the printk format wrong.
-Let's just kill these printks instead of fixing them as there is not
-point after the initial tree algorithm debugging.
+On Fri, Sep 19, 2014 at 08:51:41AM -0400, Steve Dickson wrote:
+> The gssproxy(8) daemon is now how the managing of GSSAPI 
+> credentials should be done. 
+> 
+> These to patches has the nfs-server systemd script start 
+> gssproxy instead of rpc.svcgssd and removes the building 
+> and installation of rpc.svcgssd.
+> 
+> For now I'm leaving the source files... Just in case... ;-)
 
-Reported-by: kbuild test robot <fengguang.wu@intel.com>
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/extent_tree.c | 8 --------
- 1 file changed, 8 deletions(-)
+If nothing else, we'd like to keep support for older kernels for a
+while.
 
-diff --git a/fs/nfs/blocklayout/extent_tree.c b/fs/nfs/blocklayout/extent_tree.c
-index f34f61d..43e891b 100644
---- a/fs/nfs/blocklayout/extent_tree.c
-+++ b/fs/nfs/blocklayout/extent_tree.c
-@@ -370,9 +370,6 @@ ext_tree_split(struct rb_root *root, struct pnfs_block_extent *be,
- 	struct pnfs_block_extent *new;
- 	sector_t orig_len = be->be_length;
- 
--	dprintk("%s: need split for 0x%lx:0x%lx at 0x%lx\n",
--		__func__, be->be_f_offset, ext_f_end(be), split);
--
- 	new = kzalloc(sizeof(*new), GFP_ATOMIC);
- 	if (!new)
- 		return -ENOMEM;
-@@ -387,11 +384,6 @@ ext_tree_split(struct rb_root *root, struct pnfs_block_extent *be,
- 	new->be_tag = be->be_tag;
- 	new->be_device = nfs4_get_deviceid(be->be_device);
- 
--	dprintk("%s: got 0x%lx:0x%lx!\n",
--		__func__, be->be_f_offset, ext_f_end(be));
--	dprintk("%s: got 0x%lx:0x%lx!\n",
--		__func__, new->be_f_offset, ext_f_end(new));
--
- 	__ext_tree_insert(root, new, false);
- 	return 0;
- }
--- 
-1.9.1
+--b.
 
+> 
+> Steve Dickson (2):
+>   nfs-server: Replace rpc.svcgssd with gssproxy
+>   svcgssd: Remove rules from the Makefile.am
+> 
+>  systemd/nfs-server.service  |  4 ++--
+>  systemd/rpc-svcgssd.service | 19 -------------------
+>  utils/gssd/Makefile.am      | 25 ++-----------------------
+>  3 files changed, 4 insertions(+), 44 deletions(-)
+>  delete mode 100644 systemd/rpc-svcgssd.service
+> 
+> -- 
+> 1.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
