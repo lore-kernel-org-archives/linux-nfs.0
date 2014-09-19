@@ -1,78 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:45402 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753728AbaICAOZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 20:14:25 -0400
-Received: by mail-pa0-f43.google.com with SMTP id et14so15990895pad.16
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Sep 2014 17:14:24 -0700 (PDT)
-Message-ID: <54065D4E.7040808@gmail.com>
-Date: Wed, 03 Sep 2014 08:14:06 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH v2] NFSD: Put file after ima_file_check fail in nfsd_open()
-References: <5405CFE4.9060407@gmail.com> <20140902155755.GA14472@infradead.org>
-In-Reply-To: <20140902155755.GA14472@infradead.org>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:64661 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756485AbaISNw7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Sep 2014 09:52:59 -0400
+Received: by mail-qc0-f170.google.com with SMTP id c9so375776qcz.15
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 06:52:57 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: steved@redhat.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 1/7] sm-notify: inform the kernel if there were no hosts to notify
+Date: Fri, 19 Sep 2014 09:52:44 -0400
+Message-Id: <1411134770-2409-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
+References: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/vfs.c | 27 +++++++++++++++++----------
- 1 file changed, 17 insertions(+), 10 deletions(-)
+In the event that there no hosts to be notified after a reboot, there's
+no real reason to force lockd to wait the entire grace period before
+handing out locks. We're not expecting any reclaim requests to come in
+that situation.
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index f501a9b..89d1ae3 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -649,6 +649,7 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
- {
- 	struct path	path;
- 	struct inode	*inode;
-+	struct file	*file;
- 	int		flags = O_RDONLY|O_LARGEFILE;
- 	__be32		err;
- 	int		host_err = 0;
-@@ -703,19 +704,25 @@ nfsd_open(struct svc_rqst *rqstp, struct svc_fh *fhp, umode_t type,
- 		else
- 			flags = O_WRONLY|O_LARGEFILE;
- 	}
--	*filp = dentry_open(&path, flags, current_cred());
--	if (IS_ERR(*filp)) {
--		host_err = PTR_ERR(*filp);
--		*filp = NULL;
--	} else {
--		host_err = ima_file_check(*filp, may_flags);
+Have sm-notify do a write to /proc/fs/lockd/nlm_end_grace if that file
+is present. That informs the kernel that it's OK to go ahead and lift
+lockd's grace period early.
+
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ utils/statd/sm-notify.c | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+index 5994b2fbcfd3..8afddd97da73 100644
+--- a/utils/statd/sm-notify.c
++++ b/utils/statd/sm-notify.c
+@@ -42,6 +42,8 @@
+ #define NSM_TIMEOUT	2
+ #define NSM_MAX_TIMEOUT	120	/* don't make this too big */
  
--		if (may_flags & NFSD_MAY_64BIT_COOKIE)
--			(*filp)->f_mode |= FMODE_64BITHASH;
--		else
--			(*filp)->f_mode |= FMODE_32BITHASH;
-+	file = dentry_open(&path, flags, current_cred());
-+	if (IS_ERR(file)) {
-+		host_err = PTR_ERR(file);
-+		goto out_nfserr;
- 	}
++#define NLM_END_GRACE_FILE	"/proc/fs/lockd/nlm_end_grace"
++
+ struct nsm_host {
+ 	struct nsm_host *	next;
+ 	char *			name;
+@@ -450,6 +452,28 @@ retry:
+ 	return sock;
+ }
  
-+	host_err = ima_file_check(file, may_flags);
-+	if (host_err) {
-+		nfsd_close(file);
-+		goto out_nfserr;
++/* Inform the kernel that it's OK to lift lockd's grace period */
++static void
++nsm_lift_grace_period(void)
++{
++	int fd;
++
++	fd = open(NLM_END_GRACE_FILE, O_WRONLY);
++	if (fd < 0) {
++		/* Don't warn if file isn't present */
++		if (errno != ENOENT)
++			xlog(L_WARNING, "Unable to open %s: %m",
++				NLM_END_GRACE_FILE);
++		return;
 +	}
 +
-+	if (may_flags & NFSD_MAY_64BIT_COOKIE)
-+		file->f_mode |= FMODE_64BITHASH;
-+	else
-+		file->f_mode |= FMODE_32BITHASH;
++	if (write(fd, "Y", 1) < 0)
++		xlog(L_WARNING, "Unable to write to %s: %m", NLM_END_GRACE_FILE);
 +
-+	*filp = file;
- out_nfserr:
- 	err = nfserrno(host_err);
- out:
++	close(fd);
++	return;
++}
++
+ int
+ main(int argc, char **argv)
+ {
+@@ -534,6 +558,7 @@ usage:		fprintf(stderr,
+ 	(void)nsm_retire_monitored_hosts();
+ 	if (nsm_load_notify_list(smn_get_host) == 0) {
+ 		xlog(D_GENERAL, "No hosts to notify; exiting");
++		nsm_lift_grace_period();
+ 		return 0;
+ 	}
+ 
 -- 
 1.9.3
 
