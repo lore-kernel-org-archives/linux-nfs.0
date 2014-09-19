@@ -1,91 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f174.google.com ([209.85.220.174]:39452 "EHLO
-	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755035AbaIPT2g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Sep 2014 15:28:36 -0400
-Received: by mail-vc0-f174.google.com with SMTP id hy10so359026vcb.5
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Sep 2014 12:28:35 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CADnza45-ytG-0GcfS3Q0SczekP9M+F9z5EJA0dMsbhD3V=d2Gg@mail.gmail.com>
-References: <53D7EA62.3070204@RedHat.com>
-	<CAHQdGtQ2DU4GnMXy=n9JQzUhGkEC=+UEM8NVm=MviBt0+RJzBA@mail.gmail.com>
-	<53D806C1.9030206@RedHat.com>
-	<CAHQdGtRkbjKXvzBSQvEyrnOvmiWSrwHMe+9eiEvvDz5Pm6WGNA@mail.gmail.com>
-	<CADnza45-ytG-0GcfS3Q0SczekP9M+F9z5EJA0dMsbhD3V=d2Gg@mail.gmail.com>
-Date: Tue, 16 Sep 2014 15:28:35 -0400
-Message-ID: <CAHQdGtToAxvW2CWibgPyRA9phHw+sVmyO0kCCS-41DWs2OcTbg@mail.gmail.com>
-Subject: Re: nfs4_state_manager() vs. nfs_server_remove_lists()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Fred Isaman <iisaman@netapp.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:43187 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756002AbaISRK1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 19 Sep 2014 13:10:27 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8JHARJL021070
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 13:10:27 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: Simo Sorce <simo@redhat.com>
+Subject: [PATCH 2/2] rpc.svcgssd: the build of rpc.svcgssd is off by default
+Date: Fri, 19 Sep 2014 13:10:21 -0400
+Message-Id: <1411146621-18797-3-git-send-email-steved@redhat.com>
+In-Reply-To: <1411146621-18797-1-git-send-email-steved@redhat.com>
+References: <1411146621-18797-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 16, 2014 at 2:51 PM, Fred Isaman <iisaman@netapp.com> wrote:
-> Was a patch ever submitted for this?  I'm seeing something similar but can't
-> find the fix upstream.
+Due to the fact the gssproxy is not managing the
+GASSAPI credentials, on the server, there is
+no need to build/install rpc.svcgssd.
 
-As far as I can tell, the answer is no. If you are seeing the bug,
-then could you please post the discussed fix?
+To re-enable the build use the --enable-svcgss
+configure flag
 
-Cheers
-  TRond
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ configure.ac           | 23 +++++++++++++++++++----
+ utils/gssd/Makefile.am | 11 +++++++++--
+ 2 files changed, 28 insertions(+), 6 deletions(-)
 
->
-> Fred
->
-> On Tue, Jul 29, 2014 at 5:58 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->>
->> On Tue, Jul 29, 2014 at 4:40 PM, Steve Dickson <SteveD@redhat.com> wrote:
->> > On 29/07/14 15:52, Trond Myklebust wrote:
->> >> Let's just move up the test for "pos->rpc_ops != new->rpc_ops",
->> >> "pos->cl_minorversion != new->cl_minorversion" and "pos->cl_proto !=
->> >> new->cl_proto" so that they all happen before we try to test the value
->> >> of cl_cons_state.
->> >> As far as I can tell, all those values are guaranteed to be set as
->> >> part of the struct nfs_client allocators, before we ever put the
->> >> result on the cl_share_link list.
->> >
->> > The check for
->> >    if (pos->cl_cons_state > NFS_CS_READY)
->> >
->> > then right after that check is:
->> >
->> >    if (pos->cl_cons_state != NFS_CS_READY)
->> >          continue;
->> >
->> > confuses me... Is the second check even needed?
->> >
->> > steved.
->>
->> Yes. The result of the lease_recovery could be that the nfs_client is
->> left in a state of error if, say, we get a NFS4ERR_CLID_INUSE beastie.
->>
->> Cheers
->>   Trond
->>
->> --
->> Trond Myklebust
->>
->> Linux NFS client maintainer, PrimaryData
->>
->> trond.myklebust@primarydata.com
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-
-
-
+diff --git a/configure.ac b/configure.ac
+index bc48373..6767190 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -90,21 +90,36 @@ AC_ARG_ENABLE(nfsv41,
+ 
+ AC_ARG_ENABLE(gss,
+ 	[AC_HELP_STRING([--enable-gss],
+-                        [enable support for rpcsec_gss @<:@default=yes@:>@])],
++              [enable client support for rpcsec_gss @<:@default=yes@:>@])],
+ 	enable_gss=$enableval,
+ 	enable_gss=yes)
+ 	if test "$enable_gss" = yes; then
+ 		GSSD=gssd
+-		SVCGSSD=svcgssd
+ 	else
+ 		enable_gss=
+ 		GSSD=
+-		SVCGSSD=
+ 	fi
+ 	AC_SUBST(GSSD)
+-	AC_SUBST(SVCGSSD)
+ 	AC_SUBST(enable_gss)
+ 	AM_CONDITIONAL(CONFIG_GSS, [test "$enable_gss" = "yes"])
++
++AC_ARG_ENABLE(svcgss,
++	[AC_HELP_STRING([--enable-svcgss],
++              [enable server support for rpcsec_gss @<:@default=no@:>@])],
++	enable_svcgss=$enableval,
++	enable_svcgss=no)
++	if test "$enable_gss" = yes; then
++		if "enable_svcgss" = yes; then
++			SVCGSSD=svcgssd
++		fi
++	else
++		enable_svcgss=
++		SVCGSSD=
++	fi
++	AC_SUBST(SVCGSSD)
++	AC_SUBST(enable_svcgss)
++	AM_CONDITIONAL(CONFIG_SVCGSS, [test "$enable_svcgss" = "yes"])
++
+ AC_ARG_ENABLE(kprefix,
+ 	[AC_HELP_STRING([--enable-kprefix], [install progs as rpc.knfsd etc])],
+ 	test "$enableval" = "yes" && kprefix=k,
+diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+index af59791..9835117 100644
+--- a/utils/gssd/Makefile.am
++++ b/utils/gssd/Makefile.am
+@@ -1,10 +1,17 @@
+ ## Process this file with automake to produce Makefile.in
+ 
+-man8_MANS	= gssd.man svcgssd.man
++man8_MANS	= gssd.man
++if CONFIG_SVCGSS
++man8_MANS	+= svcgssd.man
++endif
+ 
+ RPCPREFIX	= rpc.
+ KPREFIX		= @kprefix@
+-sbin_PREFIXED	= gssd svcgssd
++sbin_PREFIXED	= gssd
++if CONFIG_SVCGSS
++sbin_PREFIXED	+= svcgssd
++endif
++
+ sbin_PROGRAMS	= $(sbin_PREFIXED)
+ 
+ EXTRA_DIST = \
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
