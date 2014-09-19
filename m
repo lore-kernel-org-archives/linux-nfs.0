@@ -1,224 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:34178 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752925AbaIHOrI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:08 -0400
-Received: by mail-qc0-f179.google.com with SMTP id l6so15705767qcy.10
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:47:05 -0700 (PDT)
+Received: from mail-qg0-f54.google.com ([209.85.192.54]:40695 "EHLO
+	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756485AbaISNxE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Sep 2014 09:53:04 -0400
+Received: by mail-qg0-f54.google.com with SMTP id z60so2753433qgd.27
+        for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 06:53:03 -0700 (PDT)
 From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: [PATCH v3 5/8] nfsd: pass extra info in env vars to upcalls to allow for early grace period end
-Date: Mon,  8 Sep 2014 10:46:46 -0400
-Message-Id: <1410187609-10319-6-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
-References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+To: steved@redhat.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v5 5/7] nfsdcltrack: update schema to v2
+Date: Fri, 19 Sep 2014 09:52:48 -0400
+Message-Id: <1411134770-2409-6-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
+References: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to support lifting the grace period early, we must tell
-nfsdcltrack what sort of client the "create" upcall is for. We can't
-reliably tell if a v4.0 client has completed reclaiming, so we can only
-lift the grace period once all the v4.1+ clients have issued a
-RECLAIM_COMPLETE and if there are no v4.0 clients.
+From: Jeff Layton <jlayton@poochiereds.net>
 
-Also, in order to lift the grace period, we have to tell userland when
-the grace period started so that it can tell whether a RECLAIM_COMPLETE
-has been issued for each client since then.
+In order to allow knfsd's lock manager to lift its grace period early,
+we need to figure out whether all clients have finished reclaiming
+their state not. Unfortunately, the current code doesn't allow us to
+ascertain this. All we track for each client is a timestamp that tells
+us when the last "check" or "create" operation came in.
 
-Since this is all optional info, we pass it along in environment
-variables to the "init" and "create" upcalls. By doing this, we don't
-need to revise the upcall format. The UMH upcall can simply make use of
-this info if it happens to be present. If it's not then it can just
-avoid lifting the grace period early.
+Not only is this insufficient with clients that use sessions, it's also
+wrong. We only want to update the timestamp on v4.1 clients when the
+"create" operation comes in or we can leave the server susceptible to
+edge condition #2 in RFC5661, section 8.4.3. Once the grace period is
+lifted, we disallow reclaim on subsequent reboots for clients that
+have not sent a RECLAIM_COMPLETE.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/nfsd/nfs4recover.c | 90 ++++++++++++++++++++++++++++++++++++++++++++-------
- fs/nfsd/nfs4state.c   |  4 +--
- 2 files changed, 80 insertions(+), 14 deletions(-)
+ utils/nfsdcltrack/sqlite.c | 101 +++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 93 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index a0d2ba956a3f..5b69f0684060 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1062,6 +1062,8 @@ MODULE_PARM_DESC(cltrack_legacy_disable,
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index dde2f7ff8621..5d38ccb7c0fe 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -29,7 +29,9 @@
+  *
+  * clients: an "id" column containing a BLOB with the long-form clientid as
+  * 	    sent by the client, a "time" column containing a timestamp (in
+- * 	    epoch seconds) of when the record was last updated.
++ * 	    epoch seconds) of when the record was last updated, and a
++ * 	    "has_session" column containing a boolean value indicating
++ * 	    whether the client has sessions (v4.1+) or not (v4.0).
+  */
  
- #define LEGACY_TOPDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_TOPDIR="
- #define LEGACY_RECDIR_ENV_PREFIX "NFSDCLTRACK_LEGACY_RECDIR="
-+#define RECLAIM_COMPLETE_ENV_PREFIX "NFSDCLTRACK_RECLAIM_COMPLETE="
-+#define GRACE_START_ENV_PREFIX "NFSDCLTRACK_GRACE_START="
+ #ifdef HAVE_CONFIG_H
+@@ -50,7 +52,7 @@
  
- static char *
- nfsd4_cltrack_legacy_topdir(void)
-@@ -1126,10 +1128,60 @@ nfsd4_cltrack_legacy_recdir(const struct xdr_netobj *name)
- 	return result;
- }
+ #include "xlog.h"
  
-+static char *
-+nfsd4_cltrack_reclaim_complete(struct nfs4_client *clp)
-+{
-+	int copied;
-+	size_t len;
-+	char *result;
-+
-+	/* prefix + max width of integer string + terminating NULL */
-+	len = strlen(RECLAIM_COMPLETE_ENV_PREFIX) + 10 + 1;
-+
-+	result = kmalloc(len, GFP_KERNEL);
-+	if (!result)
-+		return result;
-+
-+	copied = snprintf(result, len, RECLAIM_COMPLETE_ENV_PREFIX "%c",
-+				clp->cl_minorversion ? 'Y' : 'N');
-+	if (copied >= len) {
-+		/* just return nothing if output was truncated */
-+		kfree(result);
-+		return NULL;
-+	}
-+
-+	return result;
-+}
-+
-+static char *
-+nfsd4_cltrack_grace_start(time_t grace_start)
-+{
-+	int copied;
-+	size_t len;
-+	char *result;
-+
-+	/* prefix + max width of int64_t string + terminating NULL */
-+	len = strlen(GRACE_START_ENV_PREFIX) + 22 + 1;
-+
-+	result = kmalloc(len, GFP_KERNEL);
-+	if (!result)
-+		return result;
-+
-+	copied = snprintf(result, len, GRACE_START_ENV_PREFIX "%ld",
-+				grace_start);
-+	if (copied >= len) {
-+		/* just return nothing if output was truncated */
-+		kfree(result);
-+		return NULL;
-+	}
-+
-+	return result;
-+}
-+
- static int
--nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
-+nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *env0, char *env1)
- {
--	char *envp[2];
-+	char *envp[3];
- 	char *argv[4];
- 	int ret;
+-#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 1
++#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 2
  
-@@ -1140,10 +1192,12 @@ nfsd4_umh_cltrack_upcall(char *cmd, char *arg, char *legacy)
- 
- 	dprintk("%s: cmd: %s\n", __func__, cmd);
- 	dprintk("%s: arg: %s\n", __func__, arg ? arg : "(null)");
--	dprintk("%s: legacy: %s\n", __func__, legacy ? legacy : "(null)");
-+	dprintk("%s: env0: %s\n", __func__, env0 ? env0 : "(null)");
-+	dprintk("%s: env1: %s\n", __func__, env1 ? env1 : "(null)");
- 
--	envp[0] = legacy;
--	envp[1] = NULL;
-+	envp[0] = env0;
-+	envp[1] = env1;
-+	envp[2] = NULL;
- 
- 	argv[0] = (char *)cltrack_prog;
- 	argv[1] = cmd;
-@@ -1187,28 +1241,40 @@ bin_to_hex_dup(const unsigned char *src, int srclen)
- }
- 
- static int
--nfsd4_umh_cltrack_init(struct net __attribute__((unused)) *net)
-+nfsd4_umh_cltrack_init(struct net *net)
- {
-+	int ret;
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+	char *grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
-+
- 	/* XXX: The usermode helper s not working in container yet. */
- 	if (net != &init_net) {
- 		WARN(1, KERN_ERR "NFSD: attempt to initialize umh client "
- 			"tracking in a container!\n");
- 		return -EINVAL;
- 	}
--	return nfsd4_umh_cltrack_upcall("init", NULL, NULL);
-+
-+	ret = nfsd4_umh_cltrack_upcall("init", NULL, grace_start, NULL);
-+	kfree(grace_start);
-+	return ret;
- }
- 
- static void
- nfsd4_umh_cltrack_create(struct nfs4_client *clp)
- {
--	char *hexid;
-+	char *hexid, *reclaim_complete, *grace_start;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
- 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
- 	if (!hexid) {
- 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
- 		return;
- 	}
--	nfsd4_umh_cltrack_upcall("create", hexid, NULL);
-+	reclaim_complete = nfsd4_cltrack_reclaim_complete(clp);
-+	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
-+	nfsd4_umh_cltrack_upcall("create", hexid, reclaim_complete, grace_start);
-+	kfree(reclaim_complete);
-+	kfree(grace_start);
- 	kfree(hexid);
- }
- 
-@@ -1222,7 +1288,7 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
- 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
- 		return;
- 	}
--	nfsd4_umh_cltrack_upcall("remove", hexid, NULL);
-+	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
- 	kfree(hexid);
- }
- 
-@@ -1238,7 +1304,7 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
- 		return -ENOMEM;
- 	}
- 	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
--	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy);
-+	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
- 	kfree(legacy);
- 	kfree(hexid);
+ /* in milliseconds */
+ #define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
+@@ -120,6 +122,81 @@ out:
  	return ret;
-@@ -1252,7 +1318,7 @@ nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
- 
- 	sprintf(timestr, "%ld", nn->boot_time);
- 	legacy = nfsd4_cltrack_legacy_topdir();
--	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
-+	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy, NULL);
- 	kfree(legacy);
  }
  
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ae380e90e372..951c882b1581 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -6357,10 +6357,10 @@ nfs4_state_start_net(struct net *net)
- 	ret = nfs4_state_create_net(net);
- 	if (ret)
- 		return ret;
--	nfsd4_client_tracking_init(net);
- 	nn->boot_time = get_seconds();
--	locks_start_grace(net, &nn->nfsd4_manager);
- 	nn->grace_ended = false;
-+	locks_start_grace(net, &nn->nfsd4_manager);
-+	nfsd4_client_tracking_init(net);
- 	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %p)\n",
- 	       nn->nfsd4_grace, net);
- 	queue_delayed_work(laundry_wq, &nn->laundromat_work, nn->nfsd4_grace * HZ);
++static int
++sqlite_maindb_update_v1_to_v2(void)
++{
++	int ret, ret2;
++	char *err;
++
++	/* begin transaction */
++	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
++				&err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to begin transaction: %s", err);
++		goto rollback;
++	}
++
++	/*
++	 * Check schema version again. This time, under an exclusive
++	 * transaction to guard against racing DB setup attempts
++	 */
++	ret = sqlite_query_schema_version();
++	switch (ret) {
++	case 1:
++		/* Still at v1 -- do conversion */
++		break;
++	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
++		/* Someone else raced in and set it up */
++		ret = 0;
++		goto rollback;
++	default:
++		/* Something went wrong -- fail! */
++		ret = -EINVAL;
++		goto rollback;
++	}
++
++	/* create v2 clients table */
++	ret = sqlite3_exec(dbh, "ALTER TABLE clients ADD COLUMN "
++				"has_session INTEGER;",
++				NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to update clients table: %s", err);
++		goto rollback;
++	}
++
++	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
++			"WHERE key = \"version\";",
++			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
++	if (ret < 0) {
++		xlog(L_ERROR, "sprintf failed!");
++		goto rollback;
++	} else if ((size_t)ret >= sizeof(buf)) {
++		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
++		ret = -EINVAL;
++		goto rollback;
++	}
++
++	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to update schema version: %s", err);
++		goto rollback;
++	}
++
++	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
++	if (ret != SQLITE_OK) {
++		xlog(L_ERROR, "Unable to commit transaction: %s", err);
++		goto rollback;
++	}
++out:
++	sqlite3_free(err);
++	return ret;
++rollback:
++	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	if (ret2 != SQLITE_OK)
++		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
++	goto out;
++}
++
+ /*
+  * Start an exclusive transaction and recheck the DB schema version. If it's
+  * still zero (indicating a new database) then set it up. If that all works,
+@@ -127,9 +204,9 @@ out:
+  * transaction. On any error, rollback the transaction.
+  */
+ int
+-sqlite_maindb_init_v1(void)
++sqlite_maindb_init_v2(void)
+ {
+-	int ret;
++	int ret, ret2;
+ 	char *err = NULL;
+ 
+ 	/* Start a transaction */
+@@ -169,7 +246,7 @@ sqlite_maindb_init_v1(void)
+ 
+ 	/* create the "clients" table */
+ 	ret = sqlite3_exec(dbh, "CREATE TABLE clients (id BLOB PRIMARY KEY, "
+-				"time INTEGER);",
++				"time INTEGER, has_session INTEGER);",
+ 				NULL, NULL, &err);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "Unable to create clients table: %s", err);
+@@ -207,7 +284,9 @@ out:
+ 
+ rollback:
+ 	/* Attempt to rollback the transaction */
+-	sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
++	if (ret2 != SQLITE_OK)
++		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+ 	goto out;
+ }
+ 
+@@ -255,9 +334,15 @@ sqlite_prepare_dbh(const char *topdir)
+ 		/* DB is already set up. Do nothing */
+ 		ret = 0;
+ 		break;
++	case 1:
++		/* Old DB -- update to new schema */
++		ret = sqlite_maindb_update_v1_to_v2();
++		if (ret)
++			goto out_close;
++		break;
+ 	case 0:
+ 		/* Query failed -- try to set up new DB */
+-		ret = sqlite_maindb_init_v1();
++		ret = sqlite_maindb_init_v2();
+ 		if (ret)
+ 			goto out_close;
+ 		break;
+@@ -289,7 +374,7 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen)
+ 	sqlite3_stmt *stmt = NULL;
+ 
+ 	ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients VALUES "
+-				      "(?, strftime('%s', 'now'));", -1,
++					"(?, strftime('%s', 'now'), 0);", -1,
+ 					&stmt, NULL);
+ 	if (ret != SQLITE_OK) {
+ 		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
 -- 
 1.9.3
 
