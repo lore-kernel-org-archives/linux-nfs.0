@@ -1,41 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:36637 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751523AbaIDSH0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 14:07:26 -0400
-Date: Thu, 4 Sep 2014 11:07:25 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 14/17] locks: __break_lease cleanup in preparation of
- allowing direct removal of leases
-Message-ID: <20140904180725.GA11232@infradead.org>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
- <1409834323-7171-15-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:33673 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754135AbaIVTk5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 15:40:57 -0400
+Date: Mon, 22 Sep 2014 15:40:57 -0400
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140922194057.GE26763@fieldses.org>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+ <1411413608-16462-2-git-send-email-steved@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1409834323-7171-15-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1411413608-16462-2-git-send-email-steved@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 04, 2014 at 08:38:40AM -0400, Jeff Layton wrote:
-> Eliminate an unneeded "flock" variable. We can use "fl" as a loop cursor
-> everywhere. Add a any_leases_conflict helper function as well to
-> consolidate a bit of code.
+On Mon, Sep 22, 2014 at 03:20:07PM -0400, Steve Dickson wrote:
+> Added the gssproxy.service to both the Wants= and
+> Atfers= lines, before the rpc-svcgssd.service. There
+> are  ConditionPathExists= lines in the rpc-svcgssd.service
+> unit which will stop the rpc.svcgssd daemon from
+> starting when the gssproxy daemon is already running.
 
-Looks good,
+That should read "when the kernel supports gssproxy", not "when the
+gssproxy daemon is already running."
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+--b.
 
-One thing that came to mind after starring at this code for a while and
-then seeing your cleanup:
-
-the sleep/wake patterns in __break_lease seem highly suboptimal, as
-we always wait for the break time on the first least found, why
-don't we simply take the max of the lease break times, and wait for
-that?
-
-I guess the case of lots of read leases just isn't common enough to
-bother..
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  systemd/nfs-server.service | 5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+> index 2fa7387..c740fa2 100644
+> --- a/systemd/nfs-server.service
+> +++ b/systemd/nfs-server.service
+> @@ -2,12 +2,13 @@
+>  Description=NFS server and services
+>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+>  Requires= nfs-mountd.service
+> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service rpc-svcgssd.service
+> +Wants=rpc-statd.service nfs-idmapd.service 
+> +Wants=rpc-gssd.service gssproxy.service rpc-svcgssd.service
+>  Wants=rpc-statd-notify.service
+>  
+>  After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
+>  After= nfs-idmapd.service rpc-statd.service
+> -After= rpc-gssd.service rpc-svcgssd.service
+> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
+>  Before= rpc-statd-notify.service
+>  
+>  Wants=nfs-config.service
+> -- 
+> 1.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
