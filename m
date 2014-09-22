@@ -1,156 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mxout2.mail.janestreet.com ([38.105.200.115]:45444 "EHLO
-	mxout2.mail.janestreet.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751078AbaIEUGx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 16:06:53 -0400
-Received: from tot-smtp.delacy.com ([172.27.22.15] helo=tot-smtp)
-	by mxout2.mail.janestreet.com with esmtps (TLSv1.2:DHE-RSA-AES256-GCM-SHA384:256)
-	(Exim 4.82)
-	(envelope-from <cperl@janestreet.com>)
-	id 1XPzMp-0001Gv-OV
-	for linux-nfs@vger.kernel.org; Fri, 05 Sep 2014 15:40:19 -0400
-From: Chris Perl <chris.perl@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Chris Perl <chris.perl@gmail.com>
-Subject: [PATCH] nfs-utils: nfs_get_tcpclient/nfs_get_udpclient - make bind(2) implicit
-Date: Fri,  5 Sep 2014 15:40:19 -0400
-Message-Id: <1409946019-796-1-git-send-email-chris.perl@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:61728 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753565AbaIVOL6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 10:11:58 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8MEBw9A010553
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 10:11:58 -0400
+Message-ID: <54202E2C.4070209@RedHat.com>
+Date: Mon, 22 Sep 2014 10:11:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: myllynen@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfsstat: add server ra cache stats
+References: <542019A7.8020504@redhat.com>
+In-Reply-To: <542019A7.8020504@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When attempting to establish a local ephemeral endpoint for a TCP or UDP
-socket, do not explicitly call bind(2), instead let it happen implicilty when
-the socket is first used.
 
-The main motivating factor for this change is when TCP runs out of unique
-ephemeral ports (i.e.  cannot find any ephemeral ports which are not a part of
-*any* TCP connection).  In this situation if you explicitly call bind(2), then
-the call will fail with EADDRINUSE.  However, if you allow the allocation of an
-ephemeral port to happen implicitly as part of connect(2) (or other functions),
-then ephemeral ports can be reused, so long as the combination of (local_ip,
-local_port, remote_ip, remote_port) is unique for TCP sockets on the system.
 
-This doesn't matter for UDP sockets, but it seemed easiest to treat TCP and UDP
-sockets the same.
+On 09/22/2014 08:44 AM, Marko Myllynen wrote:
+> From 7a5072efd524f5537a0b38808420bea8c0e45b01 Mon Sep 17 00:00:00 2001
+> From: Marko Myllynen <myllynen@redhat.com>
+> Date: Mon, 22 Sep 2014 15:31:04 +0300
+> Subject: [PATCH v2] nfsstat: add server ra cache stats
+> 
+> Add server read ahead cache statistics to nfsstat.
+> 
+> Signed-off-by: Marko Myllynen <myllynen@redhat.com>
+Committed....
 
-This can allow mount.nfs(8) to continue to function successfully, even in the
-face of misbehaving applications which are creating a large number of TCP
-connections.
-
-Signed-off-by: Chris Perl <chris.perl@gmail.com>
----
- support/nfs/rpc_socket.c | 68 ++++++++++++++----------------------------------
- 1 file changed, 20 insertions(+), 48 deletions(-)
-
-diff --git a/support/nfs/rpc_socket.c b/support/nfs/rpc_socket.c
-index 7896cd2..2900d18 100644
---- a/support/nfs/rpc_socket.c
-+++ b/support/nfs/rpc_socket.c
-@@ -106,36 +106,6 @@ static CLIENT *nfs_get_localclient(const struct sockaddr *sap,
- 	return client;
- }
+steved.
  
--/*
-- * Bind a socket using an unused ephemeral source port.
-- *
-- * Returns zero on success, or returns -1 on error.  errno is
-- * set to reflect the nature of the error.
-- */
--static int nfs_bind(const int sock, const sa_family_t family)
--{
--	struct sockaddr_in sin = {
--		.sin_family		= AF_INET,
--		.sin_addr.s_addr	= htonl(INADDR_ANY),
--	};
--	struct sockaddr_in6 sin6 = {
--		.sin6_family		= AF_INET6,
--		.sin6_addr		= IN6ADDR_ANY_INIT,
--	};
--
--	switch (family) {
--	case AF_INET:
--		return bind(sock, (struct sockaddr *)(char *)&sin,
--					(socklen_t)sizeof(sin));
--	case AF_INET6:
--		return bind(sock, (struct sockaddr *)(char *)&sin6,
--					(socklen_t)sizeof(sin6));
--	}
--
--	errno = EAFNOSUPPORT;
--	return -1;
--}
--
- #ifdef HAVE_LIBTIRPC
- 
- /*
-@@ -276,7 +246,8 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
- 				 const int resvport)
- {
- 	CLIENT *client;
--	int ret, sock;
-+	int ret = 0;
-+	int sock = 0;
- #ifdef HAVE_LIBTIRPC
- 	struct sockaddr_storage address;
- 	const struct netbuf nbuf = {
-@@ -300,15 +271,15 @@ static CLIENT *nfs_get_udpclient(const struct sockaddr *sap,
- 		return NULL;
- 	}
- 
--	if (resvport)
-+	if (resvport) {
- 		ret = nfs_bindresvport(sock, sap->sa_family);
--	else
--		ret = nfs_bind(sock, sap->sa_family);
--	if (ret < 0) {
--		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
--		rpc_createerr.cf_error.re_errno = errno;
--		(void)close(sock);
--		return NULL;
-+
-+		if (ret < 0) {
-+			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
-+			rpc_createerr.cf_error.re_errno = errno;
-+			(void)close(sock);
-+			return NULL;
-+		}
- 	}
- 
- 	if (timeout->tv_sec == -1)
-@@ -358,7 +329,8 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
- 				 const int resvport)
- {
- 	CLIENT *client;
--	int ret, sock;
-+	int ret = 0;
-+	int sock = 0;
- #ifdef HAVE_LIBTIRPC
- 	struct sockaddr_storage address;
- 	const struct netbuf nbuf = {
-@@ -382,15 +354,15 @@ static CLIENT *nfs_get_tcpclient(const struct sockaddr *sap,
- 		return NULL;
- 	}
- 
--	if (resvport)
-+	if (resvport) {
- 		ret = nfs_bindresvport(sock, sap->sa_family);
--	else
--		ret = nfs_bind(sock, sap->sa_family);
--	if (ret < 0) {
--		rpc_createerr.cf_stat = RPC_SYSTEMERROR;
--		rpc_createerr.cf_error.re_errno = errno;
--		(void)close(sock);
--		return NULL;
-+
-+		if (ret < 0) {
-+			rpc_createerr.cf_stat = RPC_SYSTEMERROR;
-+			rpc_createerr.cf_error.re_errno = errno;
-+			(void)close(sock);
-+			return NULL;
-+		}
- 	}
- 
- 	if (timeout->tv_sec == -1)
--- 
-1.8.3.1
-
+> ---
+>  utils/nfsstat/nfsstat.c |   29 +++++++++++++++++++++++++----
+>  1 files changed, 25 insertions(+), 4 deletions(-)
+> 
+> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+> index 83bde9d..8e165a8 100644
+> --- a/utils/nfsstat/nfsstat.c
+> +++ b/utils/nfsstat/nfsstat.c
+> @@ -96,6 +96,11 @@ static unsigned int	srvioinfo[3], srvioinfo_old[3];		/* 0  bytes read
+>  								 * 1  bytes written
+>  								 */
+>  
+> +static unsigned int	srvrainfo[13], srvrainfo_old[13];	/* 0  ra cache size
+> +								 * 1..11 depth of ra cache hit
+> +								 * 12 ra cache misses
+> +								 */
+> +
+>  static const char *	nfsv2name[SRVPROC2_SZ] = {
+>  	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
+>  	"read", "wrcache", "write",   "create", "remove",  "rename",
+> @@ -172,6 +177,7 @@ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
+>  #define LABEL_srvrc		"Server reply cache:\n"
+>  #define LABEL_srvfh		"Server file handle cache:\n"
+>  #define LABEL_srvio		"Server io stats:\n"
+> +#define LABEL_srvra		"Server read ahead cache:\n"
+>  #define LABEL_srvproc2		"Server nfs v2:\n"
+>  #define LABEL_srvproc3		"Server nfs v3:\n"
+>  #define LABEL_srvproc4		"Server nfs v4:\n"
+> @@ -204,6 +210,7 @@ typedef struct statinfo {
+>  					SRV(rc,s), \
+>  					SRV(fh,s), \
+>  					SRV(io,s), \
+> +					SRV(ra,s), \
+>  					SRV(proc2,s), \
+>  					SRV(proc3,s),\
+>  					SRV(proc4,s), \
+> @@ -256,6 +263,7 @@ static time_t		starttime;
+>  #define PRNT_FH		0x0008
+>  #define PRNT_RC		0x0010
+>  #define PRNT_IO		0x0020
+> +#define PRNT_RA		0x0040
+>  #define PRNT_AUTO	0x1000
+>  #define PRNT_V2		0x2000
+>  #define PRNT_V3		0x4000
+> @@ -283,8 +291,9 @@ void usage(char *name)
+>       rpc		General RPC information\n\
+>       net		Network layer statistics\n\
+>       fh			Usage information on the server's file handle cache\n\
+> -     rc			Usage information on the server's request reply cache\n\
+>       io			Usage information on the server's io statistics\n\
+> +     ra			Usage information on the server's read ahead cache\n\
+> +     rc			Usage information on the server's request reply cache\n\
+>       all		Select all of the above\n\
+>    -v, --verbose, --all	Same as '-o all'\n\
+>    -r, --rpc		Show RPC statistics\n\
+> @@ -376,8 +385,10 @@ main(int argc, char **argv)
+>  				opt_prt |= PRNT_FH;
+>  			else if (!strcmp(optarg, "io"))
+>  				opt_prt |= PRNT_IO;
+> +			else if (!strcmp(optarg, "ra"))
+> +				opt_prt |= PRNT_RA;
+>  			else if (!strcmp(optarg, "all"))
+> -				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO;
+> +				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO | PRNT_RA;
+>  			else {
+>  				fprintf(stderr, "nfsstat: unknown category: "
+>  						"%s\n", optarg);
+> @@ -445,9 +456,9 @@ main(int argc, char **argv)
+>  	if (!(opt_prt & 0xe000)) {
+>  		opt_prt |= PRNT_AUTO;
+>  	}
+> -	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO)) && !opt_srv) {
+> +	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO|PRNT_RA)) && !opt_srv) {
+>  		fprintf(stderr,
+> -			"You requested io, file handle, or request cache "
+> +			"You requested fh/io/ra/rc "
+>  			"statistics while using the -c option.\n"
+>  			"This information is available only for the NFS "
+>  			"server.\n");
+> @@ -572,6 +583,16 @@ print_server_stats(int opt_prt)
+>  			printf("\n");
+>  		}
+>  	}
+> +	if (opt_prt & PRNT_RA) {
+> +		if (opt_sleep && !has_rpcstats(srvrainfo, 3)) {
+> +			;
+> +		} else {
+> +			print_numbers(LABEL_srvra
+> +				"size       0-10%      10-20%     20-30%     30-40%     40-50%     50-60%     60-70%     70-80%     80-90%     90-100%    notfound\n",
+> +				srvrainfo, 12);
+> +			printf("\n");
+> +		}
+> +	}
+>  
+>  	/*
+>  	 * 2.2 puts all fh-related info after the 'rc' header
+> 
