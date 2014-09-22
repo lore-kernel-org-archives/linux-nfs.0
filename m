@@ -1,102 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f173.google.com ([209.85.220.173]:63644 "EHLO
-	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752056AbaILQba (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 12:31:30 -0400
-Received: by mail-vc0-f173.google.com with SMTP id le20so944405vcb.18
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 09:31:29 -0700 (PDT)
+Received: from linode.aoot.com ([69.164.194.13]:36573 "EHLO linode.aoot.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750914AbaIVTNI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 15:13:08 -0400
+Message-ID: <542074B8.8080503@opengridcomputing.com>
+Date: Mon, 22 Sep 2014 14:12:56 -0500
+From: Steve Wise <swise@opengridcomputing.com>
 MIME-Version: 1.0
-In-Reply-To: <54131DFE.9020708@gmail.com>
-References: <54131DFE.9020708@gmail.com>
-Date: Fri, 12 Sep 2014 12:31:29 -0400
-Message-ID: <CAHQdGtRVfNQs7bBDbY8yH2Fzq3MyFyBBxbuTDH63w6WTqs4zPQ@mail.gmail.com>
-Subject: Re: NFSv4 O_DIRECT with 3.16.2 kernel issue (qemu kvm cache=none /
- RHEL5 guest)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Zdenek Kaspar <zkaspar82@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Subject: Re: [PATCH] svcrdma: Advertise the correct max payload
+References: <20140922183653.19376.14276.stgit@build.ogc.int> <20140922183922.GB26763@fieldses.org> <54206D7F.6070603@opengridcomputing.com> <20140922185550.GC26763@fieldses.org>
+In-Reply-To: <20140922185550.GC26763@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 12, 2014 at 12:23 PM, Zdenek Kaspar <zkaspar82@gmail.com> wrote:
-> Hello everyone, got this specific problem with RHEL5 guest under KVM
-> hypervisor.
+On 9/22/2014 1:55 PM, J. Bruce Fields wrote:
+> On Mon, Sep 22, 2014 at 01:42:07PM -0500, Steve Wise wrote:
+>> On 9/22/2014 1:39 PM, J. Bruce Fields wrote:
+>>> On Mon, Sep 22, 2014 at 01:36:53PM -0500, Steve Wise wrote:
+>>>> Svcrdma currently advertises 1MB, which is too large.  The correct value
+>>>> is the max scatter-gather allowed in an NFSRDMA IO chunk * the host page
+>>>> size. This bug is usually benign because the Linux X64 NFSRDMA client
+>>>> correctly limits the payload size to the correct value (64*4096 = 256KB).
+>>>> But if the Linux client is PPC64 with a 64KB page size, then the client
+>>>> will indeed use a payload size that will overflow the server.
+>>>>
+>>>> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+>>>> ---
+>>>>
+>>>>   net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+>>>>   net/sunrpc/xprtrdma/xprt_rdma.h          |    2 ++
+>>>>   2 files changed, 3 insertions(+), 1 deletions(-)
+>>>>
+>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>>>> index 374feb4..4e61880 100644
+>>>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>>>> @@ -91,7 +91,7 @@ struct svc_xprt_class svc_rdma_class = {
+>>>>   	.xcl_name = "rdma",
+>>>>   	.xcl_owner = THIS_MODULE,
+>>>>   	.xcl_ops = &svc_rdma_ops,
+>>>> -	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+>>>> +	.xcl_max_payload = RPCSVC_MAXPAYLOAD_RDMA,
+>>>>   	.xcl_ident = XPRT_TRANSPORT_RDMA,
+>>>>   };
+>>>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>> index c419498..467a77c 100644
+>>>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>>>> @@ -392,4 +392,6 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
+>>>>   /* Workqueue created in svc_rdma.c */
+>>>>   extern struct workqueue_struct *svc_rdma_wq;
+>>>> +#define RPCSVC_MAXPAYLOAD_RDMA	(RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
+>>> Do you want to define this as the minimum of this and
+>>> RPCSVC_MAXPAYLOAD_TCP, in case RPCRDMA_MAX_DATA_SEGS gets increased some
+>>> day?
+>> Why would it need to be limited by MAXPAYLOAD_TCP?
+> Because you're also limited by the size of the rq_pages array, which is
+> determined by RPCSVC_MAXPAGES, calculated from RPCSVC_MAXPAYLOAD.
 >
-> client/server kernel version: 3.16.2
+> (Actually you probably want RPCSVC_MAXPAYLOAD, not MAXPAYLOAD_TCP.)
 >
-> /etc/exports: rw,async,no_subtree_check,no_root_squash
-> /proc/mounts: nfs4 rw,relatime,vers=4.0,rsize=524288,wsize=524288,
->               namlen=255,hard,proto=tcp,port=0,
->               timeo=600,retrans=2,sec=sys,clientaddr=xxx.xxx.xxx.xxx,
->               local_lock=none,addr=xxx.xxx.xxx.yyy 0 0
 >
-> CONFIG_NFS_FS=m
-> # CONFIG_NFS_V2 is not set
-> CONFIG_NFS_V3=m
-> # CONFIG_NFS_V3_ACL is not set
-> CONFIG_NFS_V4=m
-> # CONFIG_NFS_SWAP is not set
-> # CONFIG_NFS_V4_1 is not set
-> # CONFIG_NFS_USE_LEGACY_DNS is not set
-> CONFIG_NFS_USE_KERNEL_DNS=y
-> CONFIG_NFSD=m
-> CONFIG_NFSD_V3=y
-> # CONFIG_NFSD_V3_ACL is not set
-> CONFIG_NFSD_V4=y
-> # CONFIG_NFSD_FAULT_INJECTION is not set
-> CONFIG_NFS_COMMON=y
->
-> CentOS-5.10-i386-bin-1of8.iso -- did not test everything on centos,
-> behaved same as RHEL5. So let's use it as VM reproducer:
->
-> dd if=/dev/zero of=kvm-test1.img bs=1M count=2048
->
-> start VM using:
-> file=kvm-test1.img,cache=writeback,aio=native,if=virtio,boot=on
->
-> create custom layout: /dev/vda1 / ext3 max size primary
-> unselect Desktop-Gnome, select Customize now
-> use only: Base System/Base and install it..
->
-> [root@test1 ~]# find / >/dev/null
-> everything works as expected with writeback
->
-> shutdown, backup kvm-test1.img (fs will explode)
-> start VM using:
-> file=kvm-test1.img,cache=none,aio=native,if=virtio,boot=on
->
-> [root@test1 ~]# find / >/dev/null
-> and check dmesg, reboot etc, ie:
-> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
-> directory #460317: rec_len is smaller than minimal - offset=0, inode=0,
-> rec_len=0, name_len=0
-> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
-> directory #98503: rec_len is smaller than minimal - offset=0, inode=0,
-> rec_len=0, name_len=0
->
-> Tested locally on ext4, xfs          - WORK
-> Tested on NFSv4 share with ext4, xfs - FAIL
-> Tested NFSv4 share sync, async       - FAIL
-> Tested on NFSv3 share with xfs       - WORK
-> KVM with qemu rhel-6.5, 2.1.1        - SAME RESULTS
->
-> NOTE: it seems just the rhel5 guest triggers it easily..
->
-> HTH, Z.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Don't use 3.16.x kernels with NFS yet. There are known bugs in the
-read/write code that need a stable backport of a set of fixes that are
-in 3.17-rc.
+I see.  I agree.
 
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
