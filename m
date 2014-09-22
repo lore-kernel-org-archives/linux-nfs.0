@@ -1,145 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:49030 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753988AbaIHOrF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:05 -0400
-Received: by mail-qa0-f45.google.com with SMTP id v10so2336057qac.32
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:47:04 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: [PATCH v3 4/8] nfsd: add a v4_end_grace file to /proc/fs/nfsd
-Date: Mon,  8 Sep 2014 10:46:45 -0400
-Message-Id: <1410187609-10319-5-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
-References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:30056 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751270AbaIVT0G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 15:26:06 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8MJQ6Th014162
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 15:26:06 -0400
+Date: Mon, 22 Sep 2014 15:26:03 -0400
+From: Simo Sorce <simo@redhat.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140922152603.75005941@willson.usersys.redhat.com>
+In-Reply-To: <1411413608-16462-2-git-send-email-steved@redhat.com>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+	<1411413608-16462-2-git-send-email-steved@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow a privileged userland process to end the v4 grace period early.
-Any write to the file will cause the v4 grace period to be lifted.
-The basic idea with this will be to allow the userland client tracking
-program to lift the grace period once it knows that no more clients
-will be reclaiming state.
+On Mon, 22 Sep 2014 15:20:07 -0400
+Steve Dickson <steved@redhat.com> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c |  2 +-
- fs/nfsd/nfsctl.c    | 45 +++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/state.h     |  3 +++
- 3 files changed, 49 insertions(+), 1 deletion(-)
+> Added the gssproxy.service to both the Wants= and
+> Atfers= lines, before the rpc-svcgssd.service. There
+> are  ConditionPathExists= lines in the rpc-svcgssd.service
+> unit which will stop the rpc.svcgssd daemon from
+> starting when the gssproxy daemon is already running.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  systemd/nfs-server.service | 5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+> index 2fa7387..c740fa2 100644
+> --- a/systemd/nfs-server.service
+> +++ b/systemd/nfs-server.service
+> @@ -2,12 +2,13 @@
+>  Description=NFS server and services
+>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+>  Requires= nfs-mountd.service
+> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
+> rpc-svcgssd.service +Wants=rpc-statd.service nfs-idmapd.service 
+> +Wants=rpc-gssd.service  
+>  Wants=rpc-statd-notify.service
+>  
+>  After= network.target proc-fs-nfsd.mount rpcbind.target
+> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+> -After= rpc-gssd.service rpc-svcgssd.service
+> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
+>  Before= rpc-statd-notify.service
+>  
+>  Wants=nfs-config.service
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 422b1df4bb00..ae380e90e372 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4109,7 +4109,7 @@ out:
- 	return status;
- }
- 
--static void
-+void
- nfsd4_end_grace(struct nfsd_net *nn)
- {
- 	/* do nothing if grace period already ended */
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 4e042105fb6e..ca73ca79a0ee 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -49,6 +49,7 @@ enum {
- 	NFSD_Leasetime,
- 	NFSD_Gracetime,
- 	NFSD_RecoveryDir,
-+	NFSD_V4EndGrace,
- #endif
- };
- 
-@@ -68,6 +69,7 @@ static ssize_t write_maxconn(struct file *file, char *buf, size_t size);
- static ssize_t write_leasetime(struct file *file, char *buf, size_t size);
- static ssize_t write_gracetime(struct file *file, char *buf, size_t size);
- static ssize_t write_recoverydir(struct file *file, char *buf, size_t size);
-+static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size);
- #endif
- 
- static ssize_t (*write_op[])(struct file *, char *, size_t) = {
-@@ -84,6 +86,7 @@ static ssize_t (*write_op[])(struct file *, char *, size_t) = {
- 	[NFSD_Leasetime] = write_leasetime,
- 	[NFSD_Gracetime] = write_gracetime,
- 	[NFSD_RecoveryDir] = write_recoverydir,
-+	[NFSD_V4EndGrace] = write_v4_end_grace,
- #endif
- };
- 
-@@ -1077,6 +1080,47 @@ static ssize_t write_recoverydir(struct file *file, char *buf, size_t size)
- 	return rv;
- }
- 
-+/**
-+ * write_v4_end_grace - release grace period for nfsd's v4.x lock manager
-+ *
-+ * Input:
-+ *			buf:		ignored
-+ *			size:		zero
-+ * OR
-+ *
-+ * Input:
-+ * 			buf:		any value
-+ *			size:		non-zero length of C string in @buf
-+ * Output:
-+ *			passed-in buffer filled with "Y" or "N" with a newline
-+ *			and NULL-terminated C string. This indicates whether
-+ *			the grace period has ended in the current net
-+ *			namespace. Return code is the size in bytes of the
-+ *			string. Writing a string that starts with 'Y', 'y', or
-+ *			'1' to the file will end the grace period for nfsd's v4
-+ *			lock manager.
-+ */
-+static ssize_t write_v4_end_grace(struct file *file, char *buf, size_t size)
-+{
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-+
-+	if (size > 0) {
-+		switch(buf[0]) {
-+		case 'Y':
-+		case 'y':
-+		case '1':
-+			nfsd4_end_grace(nn);
-+			break;
-+		default:
-+			return -EINVAL;
-+		}
-+	}
-+
-+	return scnprintf(buf, SIMPLE_TRANSACTION_LIMIT, "%c\n",
-+			 nn->grace_ended ? 'Y' : 'N');
-+}
-+
- #endif
- 
- /*----------------------------------------------------------------------------*/
-@@ -1110,6 +1154,7 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- 		[NFSD_Leasetime] = {"nfsv4leasetime", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_Gracetime] = {"nfsv4gracetime", &transaction_ops, S_IWUSR|S_IRUSR},
- 		[NFSD_RecoveryDir] = {"nfsv4recoverydir", &transaction_ops, S_IWUSR|S_IRUSR},
-+		[NFSD_V4EndGrace] = {"v4_end_grace", &transaction_ops, S_IWUSR|S_IRUGO},
- #endif
- 		/* last one */ {""}
- 	};
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 5f8a500a58bf..10bfda710f71 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -544,6 +544,9 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- 							struct nfsd_net *nn);
- extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
- 
-+/* grace period management */
-+void nfsd4_end_grace(struct nfsd_net *nn);
-+
- /* nfs4recover operations */
- extern int nfsd4_client_tracking_init(struct net *net);
- extern void nfsd4_client_tracking_exit(struct net *net);
+I think you really need to insure that the modules are loaded before
+any of the server services are started, perhaps adding a unit file that
+exec's modprobe and has "Before: gssproxy.service rpc-svcgssd.service"
+in it ?
+
+Simo.
+
 -- 
-1.9.3
-
+Simo Sorce * Red Hat, Inc * New York
