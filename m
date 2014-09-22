@@ -1,97 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:58534 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755530AbaIZP4w (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 11:56:52 -0400
-Received: by mail-qg0-f46.google.com with SMTP id q108so9216837qgd.5
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2014 08:56:51 -0700 (PDT)
-Date: Fri, 26 Sep 2014 11:56:46 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Joschi Brauchle <joschi.brauchle@tum.de>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Fehenberger, Tobias" <tobias.fehenberger@tum.de>,
-        "Stinner, Markus" <markus.stinner@tum.de>
-Subject: Re: Need help debugging NFSv3+KRB5+PAT (Port Address Translation)
- problem
-Message-ID: <20140926115646.684c8e3c@tlielax.poochiereds.net>
-In-Reply-To: <542586EB.2040101@tum.de>
-References: <542586EB.2040101@tum.de>
+Received: from fieldses.org ([174.143.236.118]:58049 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754487AbaIVWeY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 18:34:24 -0400
+Date: Mon, 22 Sep 2014 18:34:23 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140922223423.GA29932@fieldses.org>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+ <1411413608-16462-2-git-send-email-steved@redhat.com>
+ <20140922152603.75005941@willson.usersys.redhat.com>
+ <54207BCD.70101@RedHat.com>
+ <20140922204401.GI26763@fieldses.org>
+ <5420911D.6080506@RedHat.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/wHuU/+H8noPGJn1Y=zOo0CK"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5420911D.6080506@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/wHuU/+H8noPGJn1Y=zOo0CK
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Mon, Sep 22, 2014 at 05:14:05PM -0400, Steve Dickson wrote:
+> 
+> 
+> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
+> > On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
+> >>
+> >>
+> >> On 09/22/2014 03:26 PM, Simo Sorce wrote:
+> >>> On Mon, 22 Sep 2014 15:20:07 -0400
+> >>> Steve Dickson <steved@redhat.com> wrote:
+> >>>
+> >>>> Added the gssproxy.service to both the Wants= and
+> >>>> Atfers= lines, before the rpc-svcgssd.service. There
+> >>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
+> >>>> unit which will stop the rpc.svcgssd daemon from
+> >>>> starting when the gssproxy daemon is already running.
+> >>>>
+> >>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+> >>>> ---
+> >>>>  systemd/nfs-server.service | 5 +++--
+> >>>>  1 file changed, 3 insertions(+), 2 deletions(-)
+> >>>>
+> >>>> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+> >>>> index 2fa7387..c740fa2 100644
+> >>>> --- a/systemd/nfs-server.service
+> >>>> +++ b/systemd/nfs-server.service
+> >>>> @@ -2,12 +2,13 @@
+> >>>>  Description=NFS server and services
+> >>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>>  Requires= nfs-mountd.service
+> >>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
+> >>>> rpc-svcgssd.service +Wants=rpc-statd.service nfs-idmapd.service 
+> >>>> +Wants=rpc-gssd.service  
+> >>>>  Wants=rpc-statd-notify.service
+> >>>>  
+> >>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+> >>>> -After= rpc-gssd.service rpc-svcgssd.service
+> >>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
+> >>>>  Before= rpc-statd-notify.service
+> >>>>  
+> >>>>  Wants=nfs-config.service
+> >>>
+> >>> I think you really need to insure that the modules are loaded before
+> >>> any of the server services are started, perhaps adding a unit file that
+> >>> exec's modprobe and has "Before: gssproxy.service rpc-svcgssd.service"
+> >>> in it ?
+> >> I really don't think its needed... From my testing it appears 
+> >> gssproxy is always being started and rpc.svcgssd is not... 
+> > 
+> > Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount as both
+> > "Requires=" and "After=", so rpc-svcgssd.service will never run
+> > without first running var-lib-nfs-rpc_pipefs.mount, which will load
+> > sunrpc.  But I don't see where auth_rpcgss is getting loaded.  And I
+> > don't see what ensures anything happening before gssproxy runs.
+> It happens during the mount on the client and when the server
+> is started. 
+> 
+> > 
+> > We want to make sure your testing's not just getting lucky on the
+> > startup order.
+> The reason it working is because rpc.gssd is being started on the server 
+> these days for callbacks and the After= line in rpc-svcgssd.service is being 
+> executed before the ConditionPathExists which cause rpc.svcgssd not to start.
 
-On Fri, 26 Sep 2014 17:31:55 +0200
-Joschi Brauchle <joschi.brauchle@tum.de> wrote:
+nfs-utils$ grep After systemd/rpc-svcgssd.service 
+After=var-lib-nfs-rpc_pipefs.mount
+After=gssproxy.service
+After=nfs-config.service
 
-> Hello everyone,
->=20
-> I need some help debugging a NFSv3 + KRB5 + PAT (Port Address=20
-> Translation) problem.
->=20
-> We have two hosts behind a firewall and an NFSv3 server outside=20
-> requiring KRB5 authentication.
->=20
-> 1) Client_NAT is using NAT (network address translation),
-> 2) Client_PAT is using PAT (port address translation)
-> to reach the NFSv3 server through the firewall.
->=20
-> Both clients are configured identically in terms of Kerberos and so on.
->=20
-> Mounting an NFSv3 share now fails on Client_PAT with the message:
-> RPC: server SERVERNAME requires stronger authentication.
-> On Client_NAT, mounting succeeds.
->=20
-> We strongly suspect the port address translation to be the reason for=20
-> the failure, but would need help confirming this and advice on how to=20
-> fix it.
->=20
-> Please find here the RPC debug logs from
-> Client_NAT: http://pastebin.com/9RANqVgY
-> Client_PAT: http://pastebin.com/TiscNVqW
-> Here is a DIFF between the two: http://pastebin.com/wCg7WyYd
->=20
-> I'm grateful for any help on this problem!
->=20
-> Best regards,
-> Joschi Brauchle
+There doesn't seem to be an After= line referring to rpc.gssd.
 
-I'm not terribly familiar with the PAT vs. NAT distinction, but many
-NFS servers require you to use privileged ports to connect to them. Is
-your PAT client having its privileged port converted to a
-non-privileged one?
+> So when gssproxy.service does it's "Before=nfs-secure.service nfs-secure-server.service"
+> line everything is loaded before gssproxy start... 
 
-If so (and if the server is Linux-based) then you can try to get around
-that by exporting with the "insecure" export option.
+That line only makes gss-proxy start before those other things.
 
---=20
-Jeff Layton <jlayton@poochiereds.net>
+> I'm think gssproxy.service just needs to the put the Wants and After=
+> var-lib-nfs-rpc_pipefs.mount lines, instead of that Before line.. 
 
---Sig_/wHuU/+H8noPGJn1Y=zOo0CK
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+That would make sure sunrpc's loaded, but not auth_rpcgss.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
+> >> Plus, from my understanding...  loading module from a service 
+> >> file is a big no no! People were having problems with
+> >> way back when... 
+> > 
+> > Any pointers?  Google's not finding me anything.
+> Search the the Fedora bz's when systemd first came out... 
 
-iQIcBAEBAgAGBQJUJYy+AAoJEAAOaEEZVoIVe5AP/3OK1VStKZABF/kzbRNmrEG8
-x3zdXQTiSzXdAOEce2aNvtSX4lu9HgkmRhULjfLEznoBoakpu63RLp4DrOluEbis
-LLIjPz96Txo86AxEef5gaQpFSvY/mslyWuSVrwbUA2VDDkIXcuIqXjvfH92rkKX3
-RZitcVjJVE9Tdb7agbwUwTAK9IkwExGz9nXn485icyBSzfw+xPYvc8KWs3PoXxA+
-tFSnD5hqHZk0H7ZhBKGfsUG0xo92icLmVKD8e2ftqpV9VGIOc+bStVqGYO9aRNe9
-jCodwM8boAHoIndlUVV92Gl0BskUWAtBI1zScyDaF0Zd2JjG/Z6U+w3tDf0NjQ1H
-DCNFEnf/GujZ4GqeE6GknvfQ0b0CxmOLqBxUNwOr0ADjmZ9t/h+KBXzIXIzzrUW6
-QCTTVdQ0p6ZoTSaQg06PfTLz8l0Ni0hmlPYmwN/5v1UKfXh6FlN01WUxCukliFcN
-e1YVwMcU09Nrp5q3MRDN/eycExgn9HmKItRoyOTWc9sZQMtp4L2nkWJ4kz+6ehfP
-gZVBax8FquLDj84AwXNhVzAr6csH8Ip0op7f+u+6r/LNWvy93zTz25/3Uee0aVL3
-O8rNZ0nUSAJwhJI9NnzEIkJgWSq8qD7tbtRe3IicaE3G0VEqkD06jZwbhNALucUb
-jApeTw03xe8n36n+bQjl
-=ZA3L
------END PGP SIGNATURE-----
+All I can find is:
 
---Sig_/wHuU/+H8noPGJn1Y=zOo0CK--
+	https://bugzilla.redhat.com/show_bug.cgi?id=699040#c16
+
+	Btw afaik modules should be loaded via autoloading based on bus
+	information, or via /etc/modules-load.d/*.conf. and unloading a
+	module from the kernel should not be done except for debugging
+	purposes so loading all these modules is it really necessary?
+
+Which I agree with--modules should normally load on demand when we need
+them, and we should have an explanation for exceptions.
+
+But here we have a pretty reasonable explanation (we need to know
+on startup whether a certain module has a certain feature, and we have
+to modprobe to do that).  I don't see any blanket prohibition against
+loading modules.
+
+OK, and in 702707 there's a request for support of the monolithic kernel
+case, but that's easy, we just allow the modprobe to fail in that case.
+
+--b.
