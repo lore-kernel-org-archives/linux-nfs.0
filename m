@@ -1,99 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:47616 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932081AbaIRRTP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 13:19:15 -0400
-From: Todd Vierling <todd.vierling@oracle.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] exportfs: Properly parse IPv6 literal strings with null termination
-Date: Thu, 18 Sep 2014 13:19:04 -0400
-Message-Id: <1411060744-14328-1-git-send-email-todd.vierling@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:33159 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751563AbaIVSzu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 14:55:50 -0400
+Date: Mon, 22 Sep 2014 14:55:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Subject: Re: [PATCH] svcrdma: Advertise the correct max payload
+Message-ID: <20140922185550.GC26763@fieldses.org>
+References: <20140922183653.19376.14276.stgit@build.ogc.int>
+ <20140922183922.GB26763@fieldses.org>
+ <54206D7F.6070603@opengridcomputing.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <54206D7F.6070603@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The original implementation was using strncpy() with a truncation
-length to an uninitialized stack buffer, leaving a string that
-was only null terminated by luck.
+On Mon, Sep 22, 2014 at 01:42:07PM -0500, Steve Wise wrote:
+> On 9/22/2014 1:39 PM, J. Bruce Fields wrote:
+> >On Mon, Sep 22, 2014 at 01:36:53PM -0500, Steve Wise wrote:
+> >>Svcrdma currently advertises 1MB, which is too large.  The correct value
+> >>is the max scatter-gather allowed in an NFSRDMA IO chunk * the host page
+> >>size. This bug is usually benign because the Linux X64 NFSRDMA client
+> >>correctly limits the payload size to the correct value (64*4096 = 256KB).
+> >>But if the Linux client is PPC64 with a 64KB page size, then the client
+> >>will indeed use a payload size that will overflow the server.
+> >>
+> >>Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> >>---
+> >>
+> >>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+> >>  net/sunrpc/xprtrdma/xprt_rdma.h          |    2 ++
+> >>  2 files changed, 3 insertions(+), 1 deletions(-)
+> >>
+> >>diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> >>index 374feb4..4e61880 100644
+> >>--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> >>+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> >>@@ -91,7 +91,7 @@ struct svc_xprt_class svc_rdma_class = {
+> >>  	.xcl_name = "rdma",
+> >>  	.xcl_owner = THIS_MODULE,
+> >>  	.xcl_ops = &svc_rdma_ops,
+> >>-	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+> >>+	.xcl_max_payload = RPCSVC_MAXPAYLOAD_RDMA,
+> >>  	.xcl_ident = XPRT_TRANSPORT_RDMA,
+> >>  };
+> >>diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> >>index c419498..467a77c 100644
+> >>--- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> >>+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> >>@@ -392,4 +392,6 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
+> >>  /* Workqueue created in svc_rdma.c */
+> >>  extern struct workqueue_struct *svc_rdma_wq;
+> >>+#define RPCSVC_MAXPAYLOAD_RDMA	(RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
+> >Do you want to define this as the minimum of this and
+> >RPCSVC_MAXPAYLOAD_TCP, in case RPCRDMA_MAX_DATA_SEGS gets increased some
+> >day?
+> 
+> Why would it need to be limited by MAXPAYLOAD_TCP?
 
-While here, change to use no-copy semantics (no extra buffer) to
-avoid buffer overflows altogether. exportfs already modifies argv
-contents elsewhere, so this doesn't break anything anew.
+Because you're also limited by the size of the rq_pages array, which is
+determined by RPCSVC_MAXPAGES, calculated from RPCSVC_MAXPAYLOAD.
 
-Fixes: 4663c648 (exportfs: Support raw IPv6 addresses with "client:/path")
+(Actually you probably want RPCSVC_MAXPAYLOAD, not MAXPAYLOAD_TCP.)
 
-Signed-off-by: Todd Vierling <todd.vierling@oracle.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
----
- utils/exportfs/exportfs.c | 18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
-
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index e7d1ac8..bdea12b 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -351,16 +351,15 @@ static int exportfs_generic(char *arg, char *options, int verbose)
- 
- static int exportfs_ipv6(char *arg, char *options, int verbose)
- {
--	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
-+	char *path, *c;
- 
- 	arg++;
- 	c = strchr(arg, ']');
- 	if (c == NULL)
- 		return 1;
--	strncpy(hname, arg, c - arg);
- 
- 	/* no colon means this is a wildcarded DNS hostname */
--	if (strchr(hname, ':') == NULL)
-+	if (memchr(arg, ':', c - arg) == NULL)
- 		return exportfs_generic(--arg, options, verbose);
- 
- 	path = strstr(c, ":/");
-@@ -370,9 +369,9 @@ static int exportfs_ipv6(char *arg, char *options, int verbose)
- 
- 	/* if there's anything between the closing brace and the
- 	 * path separator, it's probably a prefix length */
--	strcat(hname, ++c);
-+	memmove(c, c + 1, path - c);
- 
--	exportfs_parsed(hname, path, options, verbose);
-+	exportfs_parsed(arg, path, options, verbose);
- 	return 0;
- }
- 
-@@ -458,16 +457,15 @@ static int unexportfs_generic(char *arg, int verbose)
- 
- static int unexportfs_ipv6(char *arg, int verbose)
- {
--	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
-+	char *path, *c;
- 
- 	arg++;
- 	c = strchr(arg, ']');
- 	if (c == NULL)
- 		return 1;
--	strncpy(hname, arg, c - arg);
- 
- 	/* no colon means this is a wildcarded DNS hostname */
--	if (strchr(hname, ':') == NULL)
-+	if (memchr(arg, ':', c - arg) == NULL)
- 		return unexportfs_generic(--arg, verbose);
- 
- 	path = strstr(c, ":/");
-@@ -477,9 +475,9 @@ static int unexportfs_ipv6(char *arg, int verbose)
- 
- 	/* if there's anything between the closing brace and the
- 	 * path separator, it's probably a prefix length */
--	strcat(hname, ++c);
-+	memmove(c, c + 1, path - c);
- 
--	unexportfs_parsed(hname, path, verbose);
-+	unexportfs_parsed(arg, path, verbose);
- 	return 0;
- }
- 
--- 
-1.8.3.1
-
+--b.
