@@ -1,169 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53244 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:33340 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753028AbaIPFcj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Sep 2014 01:32:39 -0400
-From: NeilBrown <neilb@suse.de>
-To: Peter Zijlstra <peterz@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>
-Date: Tue, 16 Sep 2014 15:31:35 +1000
-Subject: [PATCH 1/4] SCHED: add some "wait..on_bit...timeout()" interfaces.
-Cc: linux-fsdevel@vger.kernel.org, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jeff Layton <jeff.layton@primarydata.com>
-Message-ID: <20140916053134.22257.28841.stgit@notabene.brown>
-In-Reply-To: <20140916051911.22257.24658.stgit@notabene.brown>
-References: <20140916051911.22257.24658.stgit@notabene.brown>
+	id S1750777AbaIVFVb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 01:21:31 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LVmB025329
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:31 -0400
+Received: from mmyllyne.csb (vpn1-7-35.ams2.redhat.com [10.36.7.35])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LUEd002441
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:31 -0400
+Message-ID: <541FB1DA.9030600@redhat.com>
+Date: Mon, 22 Sep 2014 08:21:30 +0300
+From: Marko Myllynen <myllynen@redhat.com>
+Reply-To: myllynen@redhat.com
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsstat: document io/ra server facilities
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In commit c1221321b7c25b53204447cff9949a6d5a7ddddc
-   sched: Allow wait_on_bit_action() functions to support a timeout
+>From 5cdb2d26fb01c9e28acdf0666ac53f15d6cda51e Mon Sep 17 00:00:00 2001
+From: Marko Myllynen <myllynen@redhat.com>
+Date: Mon, 22 Sep 2014 08:18:30 +0300
+Subject: [PATCH] nfsstat: document io/ra server facilities
 
-I suggested that a "wait_on_bit_timeout()" interface would not meet my
-need.  This isn't true - I was just over-engineering.
-
-Including a 'private' field in wait_bit_key instead of a focused
-"timeout" field was just premature generalization.  If some other
-use is ever found, it can be generalized or added later.
-
-So this patch renames "private" to "timeout" with a meaning "stop
-waiting when "jiffies" reaches or passes "timeout",
-and adds two of the many possible wait..bit..timeout() interfaces:
-
-wait_on_page_bit_killable_timeout(), which is the one I want to use,
-and out_of_line_wait_on_bit_timeout() which is a reasonably general
-example.  Others can be added as needed.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- include/linux/pagemap.h |    2 ++
- include/linux/wait.h    |    5 ++++-
- kernel/sched/wait.c     |   36 ++++++++++++++++++++++++++++++++++++
- mm/filemap.c            |   13 +++++++++++++
- 4 files changed, 55 insertions(+), 1 deletion(-)
+ utils/nfsstat/nfsstat.man |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-diff --git a/include/linux/pagemap.h b/include/linux/pagemap.h
-index 3df8c7db7a4e..87f9e4230d3a 100644
---- a/include/linux/pagemap.h
-+++ b/include/linux/pagemap.h
-@@ -502,6 +502,8 @@ static inline int lock_page_or_retry(struct page *page, struct mm_struct *mm,
- extern void wait_on_page_bit(struct page *page, int bit_nr);
- 
- extern int wait_on_page_bit_killable(struct page *page, int bit_nr);
-+extern int wait_on_page_bit_killable_timeout(struct page *page,
-+					     int bit_nr, unsigned long timeout);
- 
- static inline int wait_on_page_locked_killable(struct page *page)
- {
-diff --git a/include/linux/wait.h b/include/linux/wait.h
-index 6fb1ba5f9b2f..80115bf88671 100644
---- a/include/linux/wait.h
-+++ b/include/linux/wait.h
-@@ -25,7 +25,7 @@ struct wait_bit_key {
- 	void			*flags;
- 	int			bit_nr;
- #define WAIT_ATOMIC_T_BIT_NR	-1
--	unsigned long		private;
-+	unsigned long		timeout;
- };
- 
- struct wait_bit_queue {
-@@ -154,6 +154,7 @@ int __wait_on_bit_lock(wait_queue_head_t *, struct wait_bit_queue *, wait_bit_ac
- void wake_up_bit(void *, int);
- void wake_up_atomic_t(atomic_t *);
- int out_of_line_wait_on_bit(void *, int, wait_bit_action_f *, unsigned);
-+int out_of_line_wait_on_bit_timeout(void *, int, wait_bit_action_f *, unsigned, unsigned long);
- int out_of_line_wait_on_bit_lock(void *, int, wait_bit_action_f *, unsigned);
- int out_of_line_wait_on_atomic_t(atomic_t *, int (*)(atomic_t *), unsigned);
- wait_queue_head_t *bit_waitqueue(void *, int);
-@@ -859,6 +860,8 @@ int wake_bit_function(wait_queue_t *wait, unsigned mode, int sync, void *key);
- 
- extern int bit_wait(struct wait_bit_key *);
- extern int bit_wait_io(struct wait_bit_key *);
-+extern int bit_wait_timeout(struct wait_bit_key *);
-+extern int bit_wait_io_timeout(struct wait_bit_key *);
- 
- /**
-  * wait_on_bit - wait for a bit to be cleared
-diff --git a/kernel/sched/wait.c b/kernel/sched/wait.c
-index 15cab1a4f84e..380678b3cba4 100644
---- a/kernel/sched/wait.c
-+++ b/kernel/sched/wait.c
-@@ -343,6 +343,18 @@ int __sched out_of_line_wait_on_bit(void *word, int bit,
- }
- EXPORT_SYMBOL(out_of_line_wait_on_bit);
- 
-+int __sched out_of_line_wait_on_bit_timeout(
-+	void *word, int bit, wait_bit_action_f *action,
-+	unsigned mode, unsigned long timeout)
-+{
-+	wait_queue_head_t *wq = bit_waitqueue(word, bit);
-+	DEFINE_WAIT_BIT(wait, word, bit);
-+
-+	wait.key.timeout = jiffies + timeout;
-+	return __wait_on_bit(wq, &wait, action, mode);
-+}
-+EXPORT_SYMBOL(out_of_line_wait_on_bit_timeout);
-+
- int __sched
- __wait_on_bit_lock(wait_queue_head_t *wq, struct wait_bit_queue *q,
- 			wait_bit_action_f *action, unsigned mode)
-@@ -520,3 +532,27 @@ __sched int bit_wait_io(struct wait_bit_key *word)
- 	return 0;
- }
- EXPORT_SYMBOL(bit_wait_io);
-+
-+__sched int bit_wait_timeout(struct wait_bit_key *word)
-+{
-+	unsigned long now = ACCESS_ONCE(jiffies);
-+	if (signal_pending_state(current->state, current))
-+		return 1;
-+	if (time_after_eq(now, word->timeout))
-+		return -EAGAIN;
-+	schedule_timeout(word->timeout - now);
-+	return 0;
-+}
-+EXPORT_SYMBOL(bit_wait_timeout);
-+
-+__sched int bit_wait_io_timeout(struct wait_bit_key *word)
-+{
-+	unsigned long now = ACCESS_ONCE(jiffies);
-+	if (signal_pending_state(current->state, current))
-+		return 1;
-+	if (time_after_eq(now, word->timeout))
-+		return -EAGAIN;
-+	io_schedule_timeout(word->timeout - now);
-+	return 0;
-+}
-+EXPORT_SYMBOL(bit_wait_io_timeout);
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 90effcdf948d..4a19c084bdb1 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -703,6 +703,19 @@ int wait_on_page_bit_killable(struct page *page, int bit_nr)
- 			     bit_wait_io, TASK_KILLABLE);
- }
- 
-+int wait_on_page_bit_killable_timeout(struct page *page,
-+				       int bit_nr, unsigned long timeout)
-+{
-+	DEFINE_WAIT_BIT(wait, &page->flags, bit_nr);
-+
-+	wait.key.timeout = jiffies + timeout;
-+	if (!test_bit(bit_nr, &page->flags))
-+		return 0;
-+	return __wait_on_bit(page_waitqueue(page), &wait,
-+			     bit_wait_io_timeout, TASK_KILLABLE);
-+}
-+EXPORT_SYMBOL(wait_on_page_bit_killable_timeout);
-+
- /**
-  * add_page_wait_queue - Add an arbitrary waiter to a page's wait queue
-  * @page: Page defining the wait queue of interest
+diff --git a/utils/nfsstat/nfsstat.man b/utils/nfsstat/nfsstat.man
+index cd573b0..2e52935 100644
+--- a/utils/nfsstat/nfsstat.man
++++ b/utils/nfsstat/nfsstat.man
+@@ -67,6 +67,14 @@ total number of lookups, and the number of hits and misses.
+ Usage information on the server's request reply cache, including the
+ total number of lookups, and the number of hits and misses.
+ .TP
++.B io
++Usage information on the server's io statistics; bytes read and
++written.
++.TP
++.B ra
++Usage information on the server's read ahead cache, including the
++ra cache size, the depth of ra cache hits, and ra cache misses.
++.TP
+ .B all
+ Display all of the above facilities.
+ .RE
+-- 
+1.7.1
 
-
+-- 
+Marko Myllynen
