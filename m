@@ -1,49 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:43491 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754088AbaIBR7I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Sep 2014 13:59:08 -0400
-Received: by mail-ie0-f178.google.com with SMTP id at1so8173924iec.37
-        for <linux-nfs@vger.kernel.org>; Tue, 02 Sep 2014 10:59:07 -0700 (PDT)
+Received: from mail-vc0-f178.google.com ([209.85.220.178]:48599 "EHLO
+	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754240AbaIVUDi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2014 16:03:38 -0400
+Received: by mail-vc0-f178.google.com with SMTP id lf12so2268407vcb.9
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 13:03:37 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140922182923.GA18904@infradead.org>
+References: <20140922182923.GA18904@infradead.org>
+Date: Mon, 22 Sep 2014 16:03:37 -0400
+Message-ID: <CAHQdGtSGh0vTgXw_eib3EWwGY71bSmDZDEU3Z9FW_bV_FSG7zQ@mail.gmail.com>
+Subject: Re: [PATCH, RFC] nfsd: fix nfsd4_cb_recall_done error handling
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] nfs: do not start the callback thread until we set rqstp->rq_task
-Date: Tue,  2 Sep 2014 13:58:58 -0400
-Message-Id: <1409680738-12491-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1409680738-12491-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1409680738-12491-1-git-send-email-trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This fixes an Oopsable race when starting up the callback server.
+On Mon, Sep 22, 2014 at 2:29 PM, Christoph Hellwig <hch@infradead.org> wrote:
+> The error handling for CB_RECALL seems fairly broken to me.
+>
+> What looks good:
+>
+>  - for EBADHANDLE and NFS4ERR_BAD_STATEID retry until dl_retries
+>    hits zero, then mark the connection down and set cb_done
+>
+> What looks wrong:
+>
+>  - for everything else we first mark the connection down, then
+>    retry until dl_retries hits zero, then mark the connection down
+>    again  and set cb_done.
+>
+> From all I can see what we want is:
+>
+>  - keep the behavior for EBADHANDLE and NFS4ERR_BAD_STATEID,
+>    otherwise jump straight to making the connection down
+>    and setting cb_done
+>
+> But maybe I'm missing something?
+>
+>
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 17d5441..ed25c58 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -971,24 +971,21 @@ static void nfsd4_cb_recall_done(struct rpc_task *task, void *calldata)
+>                 return;
+>         switch (task->tk_status) {
+>         case 0:
+> -               cb->cb_done = true;
+> -               return;
+> +               break;
+>         case -EBADHANDLE:
+>         case -NFS4ERR_BAD_STATEID:
+>                 /* Race: client probably got cb_recall
+>                  * before open reply granting delegation */
+> -               break;
+> +               if (dp->dl_retries--) {
+> +                       rpc_delay(task, 2*HZ);
+> +                       task->tk_status = 0;
+> +                       rpc_restart_call_prepare(task);
+> +                       return;
+> +               }
+>         default:
+>                 /* Network partition? */
+>                 nfsd4_mark_cb_down(clp, task->tk_status);
+>         }
+> -       if (dp->dl_retries--) {
+> -               rpc_delay(task, 2*HZ);
+> -               task->tk_status = 0;
+> -               rpc_restart_call_prepare(task);
+> -               return;
+> -       }
+> -       nfsd4_mark_cb_down(clp, task->tk_status);
+>         cb->cb_done = true;
+>  }
+>
+>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/callback.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+We're also missing a handler for NFS4ERR_DELAY, which is listed as a
+legal response to CB_RECALL in both RFC5661 and RFC3530bis. As far as
+I can tell from the above, knfsd will currently take that to be a sign
+it should mark the callback path as being down...
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index e3dd1cd175d9..b8fb3a4ef649 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -235,7 +235,7 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
- 
- 	cb_info->serv = serv;
- 	cb_info->rqst = rqstp;
--	cb_info->task = kthread_run(callback_svc, cb_info->rqst,
-+	cb_info->task = kthread_create(callback_svc, cb_info->rqst,
- 				    "nfsv4.%u-svc", minorversion);
- 	if (IS_ERR(cb_info->task)) {
- 		ret = PTR_ERR(cb_info->task);
-@@ -245,6 +245,7 @@ static int nfs_callback_start_svc(int minorversion, struct rpc_xprt *xprt,
- 		return ret;
- 	}
- 	rqstp->rq_task = cb_info->task;
-+	wake_up_process(cb_info->task);
- 	dprintk("nfs_callback_up: service started\n");
- 	return 0;
- }
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
