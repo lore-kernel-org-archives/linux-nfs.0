@@ -1,144 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:38963 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755315AbaIIF1H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 01:27:07 -0400
-Received: by mail-pd0-f178.google.com with SMTP id p10so5330154pdj.37
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 22:27:05 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH] NFS: Fix a compile warning when !(CONFIG_NFS_V3 || CONFIG_NFS_V4)
-Date: Mon,  8 Sep 2014 22:26:59 -0700
-Message-Id: <1410240419-43111-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:55556 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753000AbaIVVcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 17:32:43 -0400
+Date: Mon, 22 Sep 2014 17:32:39 -0400
+From: Simo Sorce <simo@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140922173239.05c17b2a@willson.usersys.redhat.com>
+In-Reply-To: <5420911D.6080506@RedHat.com>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+	<1411413608-16462-2-git-send-email-steved@redhat.com>
+	<20140922152603.75005941@willson.usersys.redhat.com>
+	<54207BCD.70101@RedHat.com>
+	<20140922204401.GI26763@fieldses.org>
+	<5420911D.6080506@RedHat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-gcc reports:
+On Mon, 22 Sep 2014 17:14:05 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-linux/fs/nfs/write.c: In function ‘nfs_page_find_head_request_locked.isra.17’:
-linux/fs/nfs/write.c:121:64: warning: ‘cinfo.mds’ may be used uninitialized in this function [-Wmaybe-uninitialized]
-  list_for_each_entry_safe(freq, t, &cinfo.mds->list, wb_list) {
-                                                                  ^
-linux/fs/nfs/write.c:110:25: note: ‘cinfo.mds’ was declared here
-  struct nfs_commit_info cinfo;
+> 
+> 
+> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
+> > On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
+> >>
+> >>
+> >> On 09/22/2014 03:26 PM, Simo Sorce wrote:
+> >>> On Mon, 22 Sep 2014 15:20:07 -0400
+> >>> Steve Dickson <steved@redhat.com> wrote:
+> >>>
+> >>>> Added the gssproxy.service to both the Wants= and
+> >>>> Atfers= lines, before the rpc-svcgssd.service. There
+> >>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
+> >>>> unit which will stop the rpc.svcgssd daemon from
+> >>>> starting when the gssproxy daemon is already running.
+> >>>>
+> >>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+> >>>> ---
+> >>>>  systemd/nfs-server.service | 5 +++--
+> >>>>  1 file changed, 3 insertions(+), 2 deletions(-)
+> >>>>
+> >>>> diff --git a/systemd/nfs-server.service
+> >>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
+> >>>> --- a/systemd/nfs-server.service
+> >>>> +++ b/systemd/nfs-server.service
+> >>>> @@ -2,12 +2,13 @@
+> >>>>  Description=NFS server and services
+> >>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>>  Requires= nfs-mountd.service
+> >>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
+> >>>> rpc-svcgssd.service +Wants=rpc-statd.service nfs-idmapd.service 
+> >>>> +Wants=rpc-gssd.service  
+> >>>>  Wants=rpc-statd-notify.service
+> >>>>  
+> >>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+> >>>> -After= rpc-gssd.service rpc-svcgssd.service
+> >>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
+> >>>>  Before= rpc-statd-notify.service
+> >>>>  
+> >>>>  Wants=nfs-config.service
+> >>>
+> >>> I think you really need to insure that the modules are loaded
+> >>> before any of the server services are started, perhaps adding a
+> >>> unit file that exec's modprobe and has "Before: gssproxy.service
+> >>>  " in it ?
+> >> I really don't think its needed... From my testing it appears 
+> >> gssproxy is always being started and rpc.svcgssd is not... 
+> > 
+> > Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount as
+> > both "Requires=" and "After=", so rpc-svcgssd.service will never run
+> > without first running var-lib-nfs-rpc_pipefs.mount, which will load
+> > sunrpc.  But I don't see where auth_rpcgss is getting loaded.  And I
+> > don't see what ensures anything happening before gssproxy runs.
+> It happens during the mount on the client and when the server
+> is started. 
+> 
+> > 
+> > We want to make sure your testing's not just getting lucky on the
+> > startup order.
+> The reason it working is because rpc.gssd is being started on the
+> server these days for callbacks and the After= line in
+> rpc-svcgssd.service is being executed before the ConditionPathExists
+> which cause rpc.svcgssd not to start.
 
-Reported-by: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Weston Andros Adamson <dros@primarydata.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/write.c | 74 +++++++++++++++++++++++++++++++++-------------------------
- 1 file changed, 42 insertions(+), 32 deletions(-)
+This guarantees ordering (to some degree) between rpc.gssd and
+rpoc.svcgssd, but says nothing about gssproxy ...
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 3c5638f381cd..128d97f01d1c 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -49,6 +49,9 @@ static const struct nfs_rw_ops nfs_rw_write_ops;
- static void nfs_clear_request_commit(struct nfs_page *req);
- static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
- 				      struct inode *inode);
-+static struct nfs_page *
-+nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
-+						struct page *page);
- 
- static struct kmem_cache *nfs_wdata_cachep;
- static mempool_t *nfs_wdata_mempool;
-@@ -95,38 +98,6 @@ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
- }
- 
- /*
-- * nfs_page_search_commits_for_head_request_locked
-- *
-- * Search through commit lists on @inode for the head request for @page.
-- * Must be called while holding the inode (which is cinfo) lock.
-- *
-- * Returns the head request if found, or NULL if not found.
-- */
--static struct nfs_page *
--nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
--						struct page *page)
--{
--	struct nfs_page *freq, *t;
--	struct nfs_commit_info cinfo;
--	struct inode *inode = &nfsi->vfs_inode;
--
--	nfs_init_cinfo_from_inode(&cinfo, inode);
--
--	/* search through pnfs commit lists */
--	freq = pnfs_search_commit_reqs(inode, &cinfo, page);
--	if (freq)
--		return freq->wb_head;
--
--	/* Linearly search the commit list for the correct request */
--	list_for_each_entry_safe(freq, t, &cinfo.mds->list, wb_list) {
--		if (freq->wb_page == page)
--			return freq->wb_head;
--	}
--
--	return NULL;
--}
--
--/*
-  * nfs_page_find_head_request_locked - find head request associated with @page
-  *
-  * must be called while holding the inode lock.
-@@ -750,6 +721,38 @@ nfs_mark_request_dirty(struct nfs_page *req)
- }
- 
- #if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
-+/*
-+ * nfs_page_search_commits_for_head_request_locked
-+ *
-+ * Search through commit lists on @inode for the head request for @page.
-+ * Must be called while holding the inode (which is cinfo) lock.
-+ *
-+ * Returns the head request if found, or NULL if not found.
-+ */
-+static struct nfs_page *
-+nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
-+						struct page *page)
-+{
-+	struct nfs_page *freq, *t;
-+	struct nfs_commit_info cinfo;
-+	struct inode *inode = &nfsi->vfs_inode;
-+
-+	nfs_init_cinfo_from_inode(&cinfo, inode);
-+
-+	/* search through pnfs commit lists */
-+	freq = pnfs_search_commit_reqs(inode, &cinfo, page);
-+	if (freq)
-+		return freq->wb_head;
-+
-+	/* Linearly search the commit list for the correct request */
-+	list_for_each_entry_safe(freq, t, &cinfo.mds->list, wb_list) {
-+		if (freq->wb_page == page)
-+			return freq->wb_head;
-+	}
-+
-+	return NULL;
-+}
-+
- /**
-  * nfs_request_add_commit_list - add request to a commit list
-  * @req: pointer to a struct nfs_page
-@@ -868,6 +871,13 @@ int nfs_write_need_commit(struct nfs_pgio_header *hdr)
- }
- 
- #else
-+static struct nfs_page *
-+nfs_page_search_commits_for_head_request_locked(struct nfs_inode *nfsi,
-+						struct page *page)
-+{
-+	return NULL;
-+}
-+
- static void nfs_init_cinfo_from_inode(struct nfs_commit_info *cinfo,
- 				      struct inode *inode)
- {
+> So when gssproxy.service does it's "Before=nfs-secure.service
+> nfs-secure-server.service" line everything is loaded before gssproxy
+> start... 
+> 
+> I'm think gssproxy.service just needs to the put the Wants and After=
+> var-lib-nfs-rpc_pipefs.mount lines, instead of that Before line.. 
+
+Maybe we should add "Before: gssproxy.service rpc-svcgssd.service"
+to var-lib-nfs-rpc_pipefs.mount instead (and also drop any mention of
+nfs services in gssproxy unit file so you have complete control of the
+dependencies ?
+
+> > 
+> >> Plus, from my understanding...  loading module from a service 
+> >> file is a big no no! People were having problems with
+> >> way back when... 
+> > 
+> > Any pointers?  Google's not finding me anything.
+> Search the the Fedora bz's when systemd first came out... 
+> There were a number of "colorful" discussion on how things
+> were so broken until systemd came along and saved humanity!  ;-) 
+
+This doesn't help really, I see no reason why we could not have a pre
+exec statement to modprobe rpc_authgss in a unit file (whether that is
+var-lib-nfs-rpc_pipefs.mount or something else), to guarantee correct
+ordering.
+
+Simo.
+
 -- 
-1.9.3
-
+Simo Sorce * Red Hat, Inc * New York
