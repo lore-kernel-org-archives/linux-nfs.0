@@ -1,127 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f44.google.com ([209.85.216.44]:58009 "EHLO
-	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752469AbaILQdP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 12:33:15 -0400
-Received: by mail-qa0-f44.google.com with SMTP id w8so996565qac.3
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 09:33:14 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 12 Sep 2014 12:33:11 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Trond Myklebust <trondmy@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 5/7] nfsdcltrack: update schema to v2
-Message-ID: <20140912123311.7f17b96f@tlielax.poochiereds.net>
-In-Reply-To: <CAHQdGtSGaN0NL_NP45i-4Qw6GN9uFPRj=W+8yjBimqk3_7m_oA@mail.gmail.com>
-References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
-	<1410193821-25109-6-git-send-email-jlayton@primarydata.com>
-	<20140911195547.GA21296@fieldses.org>
-	<20140911162836.70056390@tlielax.poochiereds.net>
-	<20140912093600.50dfa9bc@tlielax.poochiereds.net>
-	<20140912102153.09d58de7@tlielax.poochiereds.net>
-	<20140912143621.GA28915@fieldses.org>
-	<20140912152142.GB28915@fieldses.org>
-	<CAABAsM7JoG1tQuyOZ1uU66jz9RKCoung8jdP1LXuDbExfqqWKg@mail.gmail.com>
-	<20140912120737.385fdf6c@tlielax.poochiereds.net>
-	<CAHQdGtSGaN0NL_NP45i-4Qw6GN9uFPRj=W+8yjBimqk3_7m_oA@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:38801 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755242AbaIVW5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 18:57:13 -0400
+Message-ID: <5420A946.4090805@RedHat.com>
+Date: Mon, 22 Sep 2014 18:57:10 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Simo Sorce <simo@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>	<1411413608-16462-2-git-send-email-steved@redhat.com>	<20140922152603.75005941@willson.usersys.redhat.com>	<54207BCD.70101@RedHat.com>	<20140922204401.GI26763@fieldses.org>	<5420911D.6080506@RedHat.com> <20140922173239.05c17b2a@willson.usersys.redhat.com>
+In-Reply-To: <20140922173239.05c17b2a@willson.usersys.redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 12 Sep 2014 12:29:01 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> On Fri, Sep 12, 2014 at 12:07 PM, Jeff Layton
-> <jeff.layton@primarydata.com> wrote:
-> > On Fri, 12 Sep 2014 11:54:17 -0400
-> > Trond Myklebust <trondmy@gmail.com> wrote:
-> >
-> >> On Fri, Sep 12, 2014 at 11:21 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> > On Fri, Sep 12, 2014 at 10:36:21AM -0400, J. Bruce Fields wrote:
-> >> >> On Fri, Sep 12, 2014 at 10:21:53AM -0400, Jeff Layton wrote:
-> >> >> > Grace period
-> >> >> > eventually ends, and its record is purged from the DB.
-> >> >> >
-> >> >> > Now we have a client that has reclaimed some files but that has no
-> >> >> > record on stable storage.
-> >> >> >
-> >> >> > One possibility is to prematurely expire v4.1+ clients that have not
-> >> >> > sent a RECLAIM_COMPLETE when the grace period ends.
-> >> >> >
-> >> >> > That seems problematic though -- what about clients that just happen to
-> >> >> > do an EXCHANGE_ID just before the grace period is going to end, and
-> >> >> > that get expired before they can issue their RECLAIM_COMPLETE. Will
-> >> >> > that be a problem for them?
-> >> >>
-> >> >> In that case a client will send a reclaim, get back a NO_GRACE error,
-> >> >> mark the rest of its state as unrecoverable, send the RECLAIM_COMPLETE,
-> >> >> and continue normally.  (To the extent it can--signalling affected
-> >> >> processes or EIOing further attempts to use the unreclaimed state, or
-> >> >> whatever.)
-> >> >
-> >> > The one thing the server *could* do in this sort of case is extend the
-> >> > grace period by a little--I seem to recall the spec giving some leeway
-> >> > for this kind of thing.
-> >>
-> >>
-> >> Section 8.4.2.1.
-> >>
-> >> > So for example the server could have a heuristics like: extend the grace
-> >> > period by another second each time we notice there's been an EXCHANGE_ID
-> >> > or reclaim in the previous second, up to some maximum.  And I suppose it
-> >> > could also delay the grace period until someone actually attempts a
-> >> > non-reclaim open.
-> >> >
-> >> > In isolation a single client slipping in the end like that sounds like a
-> >> > freak event, but if there's a ton of state to reclaim perhaps it could
-> >> > become more likely.
-> >> >
-> >> > I don't think that's a priority, we might just want to make sure we know
-> >> > how to do that in the future.
-> >> >
-> >> > But now that I think about it I don't see the existing or proposed
-> >> > nfsdcltrack stuff tying our hands in any way here.  It just gives the
-> >> > kernel some extra information, and the kernel still has discretion about
-> >> > when exactly it wants to end the grace period.
-> >> >
-> >>
-> >> It is even allowed to grant reclaim lock attempts after the grace
-> >> period has ended _if_ and only if it can guarantee that no conflicting
-> >> locks were issued.
-> >>
-> >> However note that the NFSv4.1 client is not actually allowed to issue
-> >> non-reclaim lock requests before it has issued a RECLAIM_COMPLETE. I
-> >> dunno how religiously we stick to that in Linux (I think we do), but
-> >> the point is that the server can and should rely on the client
-> >> _always_ sending a RECLAIM_COMPLETE if it is going to establish new
-> >> locks.
-> >
-> > Yeah, I'm pretty sure that bit is enforced. The problem situation that
-> > I think Bruce was referring to is this:
-> >
-> > Server reboots. Client1 reclaims some of its locks (but not all) and
-> > never sends a RECLAIM_COMPLETE. Grace period ends and then server
-> > hands out a lock to client2 that was previously held by client1 but
-> > that didn't get reclaimed.
-> >
-> > Server reboots again, prior to the client1 expiring (so its record is
-> > still in the DB). Now client1 comes back and starts reclaiming again.
-> > This time it reclaims all of its locks and we have a conflict between
-> > it and client2.
-> >
-> > It's a solvable problem, but I'll need to work through how best to do
-> > so.
-> >
-> > --
+
+On 09/22/2014 05:32 PM, Simo Sorce wrote:
+> On Mon, 22 Sep 2014 17:14:05 -0400
+> Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> That's the first edge condition described in section 8.4.3.
+>>
+>>
+>> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
+>>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
+>>>>
+>>>>
+>>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
+>>>>> On Mon, 22 Sep 2014 15:20:07 -0400
+>>>>> Steve Dickson <steved@redhat.com> wrote:
+>>>>>
+>>>>>> Added the gssproxy.service to both the Wants= and
+>>>>>> Atfers= lines, before the rpc-svcgssd.service. There
+>>>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
+>>>>>> unit which will stop the rpc.svcgssd daemon from
+>>>>>> starting when the gssproxy daemon is already running.
+>>>>>>
+>>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>>>>> ---
+>>>>>>  systemd/nfs-server.service | 5 +++--
+>>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
+>>>>>>
+>>>>>> diff --git a/systemd/nfs-server.service
+>>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
+>>>>>> --- a/systemd/nfs-server.service
+>>>>>> +++ b/systemd/nfs-server.service
+>>>>>> @@ -2,12 +2,13 @@
+>>>>>>  Description=NFS server and services
+>>>>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+>>>>>>  Requires= nfs-mountd.service
+>>>>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
+>>>>>> rpc-svcgssd.service +Wants=rpc-statd.service nfs-idmapd.service 
+>>>>>> +Wants=rpc-gssd.service  
+>>>>>>  Wants=rpc-statd-notify.service
+>>>>>>  
+>>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
+>>>>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+>>>>>> -After= rpc-gssd.service rpc-svcgssd.service
+>>>>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
+>>>>>>  Before= rpc-statd-notify.service
+>>>>>>  
+>>>>>>  Wants=nfs-config.service
+>>>>>
+>>>>> I think you really need to insure that the modules are loaded
+>>>>> before any of the server services are started, perhaps adding a
+>>>>> unit file that exec's modprobe and has "Before: gssproxy.service
+>>>>>  " in it ?
+>>>> I really don't think its needed... From my testing it appears 
+>>>> gssproxy is always being started and rpc.svcgssd is not... 
+>>>
+>>> Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount as
+>>> both "Requires=" and "After=", so rpc-svcgssd.service will never run
+>>> without first running var-lib-nfs-rpc_pipefs.mount, which will load
+>>> sunrpc.  But I don't see where auth_rpcgss is getting loaded.  And I
+>>> don't see what ensures anything happening before gssproxy runs.
+>> It happens during the mount on the client and when the server
+>> is started. 
+>>
+>>>
+>>> We want to make sure your testing's not just getting lucky on the
+>>> startup order.
+>> The reason it working is because rpc.gssd is being started on the
+>> server these days for callbacks and the After= line in
+>> rpc-svcgssd.service is being executed before the ConditionPathExists
+>> which cause rpc.svcgssd not to start.
 > 
+> This guarantees ordering (to some degree) between rpc.gssd and
+> rpoc.svcgssd, but says nothing about gssproxy ...
+The question was how is the auth_rpcgss module being loaded. Since
+both rpc-svcgssd.service and rpc-gssd.service service have
+a After=var-lib-nfs-rpc_pipefs.mount and gssproxy is requiring 
+them, that's how auth_rpcgss is being loaded. 
 
-Actually, it's case #2 I think...
+If you only in enable gssproxy (not nfs-server or nfs-client) the 
+module still get loaded via gssproxy,service file 
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+>> So when gssproxy.service does it's "Before=nfs-secure.service
+>> nfs-secure-server.service" line everything is loaded before gssproxy
+>> start... 
+>>
+>> I'm think gssproxy.service just needs to the put the Wants and After=
+>> var-lib-nfs-rpc_pipefs.mount lines, instead of that Before line.. 
+> 
+> Maybe we should add "Before: gssproxy.service rpc-svcgssd.service"
+> to var-lib-nfs-rpc_pipefs.mount instead (and also drop any mention of
+> nfs services in gssproxy unit file so you have complete control of the
+> dependencies ?
+No. 
+The loading of sunrpc and the mounting of the file system has nothing to
+do with starting up the gssd daemons.
+
+I would suggest gssproxy does to two things:
+
+1) Add a Requires: nfs-utils to the spec file since you are requiring 
+   services from  nfs-utils
+
+2) Add a After=var-lib-nfs-rpc_pipefs.mount to the gssproxy.service 
+   file since gssproxy could careless about either rpc.gssd or rpc.svcgssd
+   daemons. All it is looking for is the sunrpc and auth_rpcgss kernel
+   modules.
+
+steved.
+
+> 
+>>>
+>>>> Plus, from my understanding...  loading module from a service 
+>>>> file is a big no no! People were having problems with
+>>>> way back when... 
+>>>
+>>> Any pointers?  Google's not finding me anything.
+>> Search the the Fedora bz's when systemd first came out... 
+>> There were a number of "colorful" discussion on how things
+>> were so broken until systemd came along and saved humanity!  ;-) 
+> 
+> This doesn't help really, I see no reason why we could not have a pre
+> exec statement to modprobe rpc_authgss in a unit file (whether that is
+> var-lib-nfs-rpc_pipefs.mount or something else), to guarantee correct
+> ordering.
+> 
+> Simo.
+> 
