@@ -1,29 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:61627 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752262AbaI1DzD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 23:55:03 -0400
-Received: by mail-ie0-f180.google.com with SMTP id ar1so15190445iec.11
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 20:55:02 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/2] Fix NFS client state recovery
-Date: Sat, 27 Sep 2014 23:54:56 -0400
-Message-Id: <1411876498-12039-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:62412 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754914AbaIVUA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 16:00:58 -0400
+Date: Mon, 22 Sep 2014 16:00:50 -0400
+From: Simo Sorce <simo@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140922160050.0b85f044@willson.usersys.redhat.com>
+In-Reply-To: <54207E4A.7010300@RedHat.com>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+	<1411413608-16462-2-git-send-email-steved@redhat.com>
+	<20140922194057.GE26763@fieldses.org>
+	<20140922154642.779189c8@willson.usersys.redhat.com>
+	<54207E4A.7010300@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-- Client should not declare unreclaimed locks to be stale just because
-  SETCLIENTID_CONFIRM or CREATE_SESSION fail with NFS4ERR_STALE_CLIENTID
-- Fix open/state recovery error handling
+On Mon, 22 Sep 2014 15:53:46 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-Trond Myklebust (2):
-  NFSv4: Fix lock recovery when CREATE_SESSION/SETCLIENTID_CONFIRM fails
-  NFSv4: fix open/lock state recovery error handling
+> 
+> 
+> On 09/22/2014 03:46 PM, Simo Sorce wrote:
+> > On Mon, 22 Sep 2014 15:40:57 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> >> On Mon, Sep 22, 2014 at 03:20:07PM -0400, Steve Dickson wrote:
+> >>> Added the gssproxy.service to both the Wants= and
+> >>> Atfers= lines, before the rpc-svcgssd.service. There
+> >>> are  ConditionPathExists= lines in the rpc-svcgssd.service
+> >>> unit which will stop the rpc.svcgssd daemon from
+> >>> starting when the gssproxy daemon is already running.
+> >>
+> >> That should read "when the kernel supports gssproxy", not "when the
+> >> gssproxy daemon is already running."
+> > 
+> > Actually the language is currently correct but it is another bug,
+> > the systemd/rpc-svcgssd.service file still includes
+> > "ConditionPathExists=|!/run/gssproxy.pid"
+> > This line should be removed in this patch.
+> 
+> I left that on purpose because isn't that ConditionPathExists
+> seeing if /run/gssproxy.pid exists and if it does 
+> it means gssproxy is already running so rpc.svcgssd 
+> should not start?
 
- fs/nfs/nfs4state.c | 17 ++++++-----------
- 1 file changed, 6 insertions(+), 11 deletions(-)
+No.
+First of all the fact gss-proxy is running does not mean it is
+serving nfsd necessarily, it may be running on an older kernel where it
+servers apache or some other process (remember gssproxy is not just
+for nfsd).
+Second you already have
+"ConditionPathExists=|!/proc/net/rpc/use-gss-proxy" which is the
+correct trigger to decide which of the two to use.
+
+Simo.
 
 -- 
-1.9.3
-
+Simo Sorce * Red Hat, Inc * New York
