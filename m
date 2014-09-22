@@ -1,52 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:37634 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750833AbaICEgX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2014 00:36:23 -0400
-Received: from [64.134.221.109] (helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XP2Iv-0003bP-NU
-	for linux-nfs@vger.kernel.org; Wed, 03 Sep 2014 04:36:22 +0000
-From: Christoph Hellwig <hch@lst.de>
+Received: from mx1.redhat.com ([209.132.183.28]:3233 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751039AbaIVFVW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 01:21:22 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LMFa019185
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:22 -0400
+Received: from mmyllyne.csb (vpn1-7-35.ams2.redhat.com [10.36.7.35])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LK7V006797
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:21 -0400
+Message-ID: <541FB1D0.503@redhat.com>
+Date: Mon, 22 Sep 2014 08:21:20 +0300
+From: Marko Myllynen <myllynen@redhat.com>
+Reply-To: myllynen@redhat.com
+MIME-Version: 1.0
 To: linux-nfs@vger.kernel.org
-Subject: pnfs: add CB_NOTIFY_DEVICEID support
-Date: Tue,  2 Sep 2014 21:38:33 -0700
-Message-Id: <1409719119-2110-1-git-send-email-hch@lst.de>
+Subject: [PATCH] nfsstat: add server io stats
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I know everyone was waiting for more pnfs patches for me, so today we'll have
-some special bites that seem way out in crack monkey land but are for real:
+>From 15fc547d8deb3d1975d160deacc05a0f5bec0845 Mon Sep 17 00:00:00 2001
+From: Marko Myllynen <myllynen@redhat.com>
+Date: Mon, 22 Sep 2014 08:02:17 +0300
+Subject: [PATCH] nfsstat: add server io stats
 
- - more kernel code!
- - duplicating existing raid drivers!
- - XDR encoding of previously XDR decoded data!
+---
+ utils/nfsstat/nfsstat.c |   26 +++++++++++++++++++++++---
+ 1 files changed, 23 insertions(+), 3 deletions(-)
 
-If you're not scared read on..
+diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+index 298adcf..83bde9d 100644
+--- a/utils/nfsstat/nfsstat.c
++++ b/utils/nfsstat/nfsstat.c
+@@ -92,6 +92,10 @@ static unsigned int	srvfhinfo[7], srvfhinfo_old[7];		/* (for kernels >= 2.4.0)
+ 								 *    compatability.
+ 								 */
+ 
++static unsigned int	srvioinfo[3], srvioinfo_old[3];		/* 0  bytes read
++								 * 1  bytes written
++								 */
++
+ static const char *	nfsv2name[SRVPROC2_SZ] = {
+ 	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
+ 	"read", "wrcache", "write",   "create", "remove",  "rename",
+@@ -167,6 +171,7 @@ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
+ #define LABEL_srvrpc		"Server rpc stats:\n"
+ #define LABEL_srvrc		"Server reply cache:\n"
+ #define LABEL_srvfh		"Server file handle cache:\n"
++#define LABEL_srvio		"Server io stats:\n"
+ #define LABEL_srvproc2		"Server nfs v2:\n"
+ #define LABEL_srvproc3		"Server nfs v3:\n"
+ #define LABEL_srvproc4		"Server nfs v4:\n"
+@@ -198,6 +203,7 @@ typedef struct statinfo {
+ 					SRV(rpc,s), \
+ 					SRV(rc,s), \
+ 					SRV(fh,s), \
++					SRV(io,s), \
+ 					SRV(proc2,s), \
+ 					SRV(proc3,s),\
+ 					SRV(proc4,s), \
+@@ -249,6 +255,7 @@ static time_t		starttime;
+ #define PRNT_NET	0x0004
+ #define PRNT_FH		0x0008
+ #define PRNT_RC		0x0010
++#define PRNT_IO		0x0020
+ #define PRNT_AUTO	0x1000
+ #define PRNT_V2		0x2000
+ #define PRNT_V3		0x4000
+@@ -277,6 +284,7 @@ void usage(char *name)
+      net		Network layer statistics\n\
+      fh			Usage information on the server's file handle cache\n\
+      rc			Usage information on the server's request reply cache\n\
++     io			Usage information on the server's io statistics\n\
+      all		Select all of the above\n\
+   -v, --verbose, --all	Same as '-o all'\n\
+   -r, --rpc		Show RPC statistics\n\
+@@ -366,8 +374,10 @@ main(int argc, char **argv)
+ 				opt_prt |= PRNT_RC;
+ 			else if (!strcmp(optarg, "fh"))
+ 				opt_prt |= PRNT_FH;
++			else if (!strcmp(optarg, "io"))
++				opt_prt |= PRNT_IO;
+ 			else if (!strcmp(optarg, "all"))
+-				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH;
++				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO;
+ 			else {
+ 				fprintf(stderr, "nfsstat: unknown category: "
+ 						"%s\n", optarg);
+@@ -435,9 +445,9 @@ main(int argc, char **argv)
+ 	if (!(opt_prt & 0xe000)) {
+ 		opt_prt |= PRNT_AUTO;
+ 	}
+-	if ((opt_prt & (PRNT_FH|PRNT_RC)) && !opt_srv) {
++	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO)) && !opt_srv) {
+ 		fprintf(stderr,
+-			"You requested file handle or request cache "
++			"You requested io, file handle, or request cache "
+ 			"statistics while using the -c option.\n"
+ 			"This information is available only for the NFS "
+ 			"server.\n");
+@@ -552,6 +562,16 @@ print_server_stats(int opt_prt)
+ 			printf("\n");
+ 		}
+ 	}
++	if (opt_prt & PRNT_IO) {
++		if (opt_sleep && !has_rpcstats(srvioinfo, 3)) {
++			;
++		} else {
++			print_numbers(LABEL_srvio
++				"read       write\n",
++				srvioinfo, 2);
++			printf("\n");
++		}
++	}
+ 
+ 	/*
+ 	 * 2.2 puts all fh-related info after the 'rc' header
+-- 
+1.7.1
 
-This series adds support for device change notifications to the pnfs core
-and block layout driver.  To properly implement NOTIFY_DEVICEID4_CHANGE I
-had to move GETDEVICEINFO decoding into kernel space, and implement my own
-trivial striping and concat layers in the pnfs blocklayout client.  Why?
-DM and MD are really, really unhappy about multiple raid devices using the
-same physical devices.  Which is fairly understandable from their point of
-view, given that they normally manage on-disk metadata and would rather do
-that exclusively.  But we get all our metadata from the server and couldn't
-care less about their problems, we have our own problem called deviceid
-management..  Once we get a NOTIFY_DEVICEID4_CHANGE callback we need
-to stop new I/O using the existing mapping, so we have to drop it from
-the deviceid cache.  At the same time another layout could easily request
-the same deviceid again and for some period we'd have multiple volume
-structures pointing to the same device.
-
-Note that we do not break userspace compatibility - we still use blkmapd
-to translate signatures to device numbers, and to do so we re-encode the
-SIMPLE volumes we need translated to XDR and send it up to blkmapd just
-for that.
-
-A git tree is also available at
-
-	git://git.infradead.org/users/hch/pnfs.git notify-deviceid
-
-This work was sponsored by NetApp, Inc.
-
+-- 
+Marko Myllynen
