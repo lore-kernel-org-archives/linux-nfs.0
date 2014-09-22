@@ -1,29 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:52853 "EHLO newverein.lst.de"
+Received: from mx1.redhat.com ([209.132.183.28]:55475 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750827AbaIKPVu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Sep 2014 11:21:50 -0400
-Date: Thu, 11 Sep 2014 17:21:49 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Peng Tao <bergwolf@primarydata.com>
-Cc: Christoph Hellwig <hch@lst.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 6/9] pnfs/blocklayout: rewrite extent tracking
-Message-ID: <20140911152149.GB6690@lst.de>
-References: <1410362617-28018-1-git-send-email-hch@lst.de> <1410362617-28018-7-git-send-email-hch@lst.de> <CAKVebiV==2PwNaHJY57sP4oFjUqAzPCLZgx+k9bRf+oiVSeXVw@mail.gmail.com>
+	id S1753565AbaIVOMQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 10:12:16 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8MECE4U015927
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 10:12:15 -0400
+Message-ID: <54202E3D.40109@RedHat.com>
+Date: Mon, 22 Sep 2014 10:12:13 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAKVebiV==2PwNaHJY57sP4oFjUqAzPCLZgx+k9bRf+oiVSeXVw@mail.gmail.com>
+To: myllynen@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfsstat: add server io stats
+References: <542019A1.9040706@redhat.com>
+In-Reply-To: <542019A1.9040706@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 11, 2014 at 10:11:42PM +0800, Peng Tao wrote:
-> The old code works in a way that mark_extents_written() always
-> succeeds. Now that ext_tree_mark_written() may fail, it should check
-> for the return value and resend to MDS if failed, otherwise there may
-> be silent data corruption.
 
-It can only fail for memory allocation erorrs, which can indeed happen in
-theory although not in practice for the amount we do.  But I'll prepare
-testing using error injection and will handle it, thanks!
 
+On 09/22/2014 08:44 AM, Marko Myllynen wrote:
+> From 15fc547d8deb3d1975d160deacc05a0f5bec0845 Mon Sep 17 00:00:00 2001
+> From: Marko Myllynen <myllynen@redhat.com>
+> Date: Mon, 22 Sep 2014 15:30:07 +0300
+> Subject: [PATCH v2] nfsstat: add server io stats
+> 
+> Add server io statistics to nfsstat.
+> 
+> Signed-off-by: Marko Myllynen <myllynen@redhat.com>
+Committed... 
+
+steved.
+
+> ---
+>  utils/nfsstat/nfsstat.c |   26 +++++++++++++++++++++++---
+>  1 files changed, 23 insertions(+), 3 deletions(-)
+> 
+> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+> index 298adcf..83bde9d 100644
+> --- a/utils/nfsstat/nfsstat.c
+> +++ b/utils/nfsstat/nfsstat.c
+> @@ -92,6 +92,10 @@ static unsigned int	srvfhinfo[7], srvfhinfo_old[7];		/* (for kernels >= 2.4.0)
+>  								 *    compatability.
+>  								 */
+>  
+> +static unsigned int	srvioinfo[3], srvioinfo_old[3];		/* 0  bytes read
+> +								 * 1  bytes written
+> +								 */
+> +
+>  static const char *	nfsv2name[SRVPROC2_SZ] = {
+>  	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
+>  	"read", "wrcache", "write",   "create", "remove",  "rename",
+> @@ -167,6 +171,7 @@ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
+>  #define LABEL_srvrpc		"Server rpc stats:\n"
+>  #define LABEL_srvrc		"Server reply cache:\n"
+>  #define LABEL_srvfh		"Server file handle cache:\n"
+> +#define LABEL_srvio		"Server io stats:\n"
+>  #define LABEL_srvproc2		"Server nfs v2:\n"
+>  #define LABEL_srvproc3		"Server nfs v3:\n"
+>  #define LABEL_srvproc4		"Server nfs v4:\n"
+> @@ -198,6 +203,7 @@ typedef struct statinfo {
+>  					SRV(rpc,s), \
+>  					SRV(rc,s), \
+>  					SRV(fh,s), \
+> +					SRV(io,s), \
+>  					SRV(proc2,s), \
+>  					SRV(proc3,s),\
+>  					SRV(proc4,s), \
+> @@ -249,6 +255,7 @@ static time_t		starttime;
+>  #define PRNT_NET	0x0004
+>  #define PRNT_FH		0x0008
+>  #define PRNT_RC		0x0010
+> +#define PRNT_IO		0x0020
+>  #define PRNT_AUTO	0x1000
+>  #define PRNT_V2		0x2000
+>  #define PRNT_V3		0x4000
+> @@ -277,6 +284,7 @@ void usage(char *name)
+>       net		Network layer statistics\n\
+>       fh			Usage information on the server's file handle cache\n\
+>       rc			Usage information on the server's request reply cache\n\
+> +     io			Usage information on the server's io statistics\n\
+>       all		Select all of the above\n\
+>    -v, --verbose, --all	Same as '-o all'\n\
+>    -r, --rpc		Show RPC statistics\n\
+> @@ -366,8 +374,10 @@ main(int argc, char **argv)
+>  				opt_prt |= PRNT_RC;
+>  			else if (!strcmp(optarg, "fh"))
+>  				opt_prt |= PRNT_FH;
+> +			else if (!strcmp(optarg, "io"))
+> +				opt_prt |= PRNT_IO;
+>  			else if (!strcmp(optarg, "all"))
+> -				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH;
+> +				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO;
+>  			else {
+>  				fprintf(stderr, "nfsstat: unknown category: "
+>  						"%s\n", optarg);
+> @@ -435,9 +445,9 @@ main(int argc, char **argv)
+>  	if (!(opt_prt & 0xe000)) {
+>  		opt_prt |= PRNT_AUTO;
+>  	}
+> -	if ((opt_prt & (PRNT_FH|PRNT_RC)) && !opt_srv) {
+> +	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO)) && !opt_srv) {
+>  		fprintf(stderr,
+> -			"You requested file handle or request cache "
+> +			"You requested io, file handle, or request cache "
+>  			"statistics while using the -c option.\n"
+>  			"This information is available only for the NFS "
+>  			"server.\n");
+> @@ -552,6 +562,16 @@ print_server_stats(int opt_prt)
+>  			printf("\n");
+>  		}
+>  	}
+> +	if (opt_prt & PRNT_IO) {
+> +		if (opt_sleep && !has_rpcstats(srvioinfo, 3)) {
+> +			;
+> +		} else {
+> +			print_numbers(LABEL_srvio
+> +				"read       write\n",
+> +				srvioinfo, 2);
+> +			printf("\n");
+> +		}
+> +	}
+>  
+>  	/*
+>  	 * 2.2 puts all fh-related info after the 'rc' header
+> 
