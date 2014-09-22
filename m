@@ -1,26 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:53132 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752019AbaIKAeM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:34:12 -0400
-Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRsKx-00082S-AA
-	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:34:11 +0000
-From: Christoph Hellwig <hch@lst.de>
+Received: from mx1.redhat.com ([209.132.183.28]:15948 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753486AbaIVMoY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 08:44:24 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8MCiOOS008804
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 08:44:24 -0400
+Received: from mmyllyne.csb (vpn1-7-112.ams2.redhat.com [10.36.7.112])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8MCiNet029532
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 08:44:24 -0400
+Message-ID: <542019A7.8020504@redhat.com>
+Date: Mon, 22 Sep 2014 15:44:23 +0300
+From: Marko Myllynen <myllynen@redhat.com>
+Reply-To: myllynen@redhat.com
+MIME-Version: 1.0
 To: linux-nfs@vger.kernel.org
-Subject: a few more pnfs/blocklayout fixes
-Date: Wed, 10 Sep 2014 17:36:27 -0700
-Message-Id: <1410395791-2385-1-git-send-email-hch@lst.de>
+Subject: [PATCH v2] nfsstat: add server ra cache stats
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for merging the first two sets of blocklayout patches!
+>From 7a5072efd524f5537a0b38808420bea8c0e45b01 Mon Sep 17 00:00:00 2001
+From: Marko Myllynen <myllynen@redhat.com>
+Date: Mon, 22 Sep 2014 15:31:04 +0300
+Subject: [PATCH v2] nfsstat: add server ra cache stats
 
-Here are a few more patches to sort out the fallout.
+Add server read ahead cache statistics to nfsstat.
 
-The first two fix up warnings reported from the kbuild robot.
-The third patch didn't make it in for some reason, but is needed
-for reliable operation.  The fourth removes the GETDEVICELIST
-implementation, which was slightly buggy and unessecary.
+Signed-off-by: Marko Myllynen <myllynen@redhat.com>
+---
+ utils/nfsstat/nfsstat.c |   29 +++++++++++++++++++++++++----
+ 1 files changed, 25 insertions(+), 4 deletions(-)
 
+diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+index 83bde9d..8e165a8 100644
+--- a/utils/nfsstat/nfsstat.c
++++ b/utils/nfsstat/nfsstat.c
+@@ -96,6 +96,11 @@ static unsigned int	srvioinfo[3], srvioinfo_old[3];		/* 0  bytes read
+ 								 * 1  bytes written
+ 								 */
+ 
++static unsigned int	srvrainfo[13], srvrainfo_old[13];	/* 0  ra cache size
++								 * 1..11 depth of ra cache hit
++								 * 12 ra cache misses
++								 */
++
+ static const char *	nfsv2name[SRVPROC2_SZ] = {
+ 	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
+ 	"read", "wrcache", "write",   "create", "remove",  "rename",
+@@ -172,6 +177,7 @@ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
+ #define LABEL_srvrc		"Server reply cache:\n"
+ #define LABEL_srvfh		"Server file handle cache:\n"
+ #define LABEL_srvio		"Server io stats:\n"
++#define LABEL_srvra		"Server read ahead cache:\n"
+ #define LABEL_srvproc2		"Server nfs v2:\n"
+ #define LABEL_srvproc3		"Server nfs v3:\n"
+ #define LABEL_srvproc4		"Server nfs v4:\n"
+@@ -204,6 +210,7 @@ typedef struct statinfo {
+ 					SRV(rc,s), \
+ 					SRV(fh,s), \
+ 					SRV(io,s), \
++					SRV(ra,s), \
+ 					SRV(proc2,s), \
+ 					SRV(proc3,s),\
+ 					SRV(proc4,s), \
+@@ -256,6 +263,7 @@ static time_t		starttime;
+ #define PRNT_FH		0x0008
+ #define PRNT_RC		0x0010
+ #define PRNT_IO		0x0020
++#define PRNT_RA		0x0040
+ #define PRNT_AUTO	0x1000
+ #define PRNT_V2		0x2000
+ #define PRNT_V3		0x4000
+@@ -283,8 +291,9 @@ void usage(char *name)
+      rpc		General RPC information\n\
+      net		Network layer statistics\n\
+      fh			Usage information on the server's file handle cache\n\
+-     rc			Usage information on the server's request reply cache\n\
+      io			Usage information on the server's io statistics\n\
++     ra			Usage information on the server's read ahead cache\n\
++     rc			Usage information on the server's request reply cache\n\
+      all		Select all of the above\n\
+   -v, --verbose, --all	Same as '-o all'\n\
+   -r, --rpc		Show RPC statistics\n\
+@@ -376,8 +385,10 @@ main(int argc, char **argv)
+ 				opt_prt |= PRNT_FH;
+ 			else if (!strcmp(optarg, "io"))
+ 				opt_prt |= PRNT_IO;
++			else if (!strcmp(optarg, "ra"))
++				opt_prt |= PRNT_RA;
+ 			else if (!strcmp(optarg, "all"))
+-				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO;
++				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO | PRNT_RA;
+ 			else {
+ 				fprintf(stderr, "nfsstat: unknown category: "
+ 						"%s\n", optarg);
+@@ -445,9 +456,9 @@ main(int argc, char **argv)
+ 	if (!(opt_prt & 0xe000)) {
+ 		opt_prt |= PRNT_AUTO;
+ 	}
+-	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO)) && !opt_srv) {
++	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO|PRNT_RA)) && !opt_srv) {
+ 		fprintf(stderr,
+-			"You requested io, file handle, or request cache "
++			"You requested fh/io/ra/rc "
+ 			"statistics while using the -c option.\n"
+ 			"This information is available only for the NFS "
+ 			"server.\n");
+@@ -572,6 +583,16 @@ print_server_stats(int opt_prt)
+ 			printf("\n");
+ 		}
+ 	}
++	if (opt_prt & PRNT_RA) {
++		if (opt_sleep && !has_rpcstats(srvrainfo, 3)) {
++			;
++		} else {
++			print_numbers(LABEL_srvra
++				"size       0-10%      10-20%     20-30%     30-40%     40-50%     50-60%     60-70%     70-80%     80-90%     90-100%    notfound\n",
++				srvrainfo, 12);
++			printf("\n");
++		}
++	}
+ 
+ 	/*
+ 	 * 2.2 puts all fh-related info after the 'rc' header
+-- 
+1.7.1
+
+-- 
+Marko Myllynen
