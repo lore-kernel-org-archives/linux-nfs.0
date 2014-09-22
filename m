@@ -1,43 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54713 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:16492 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754306AbaISQgS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Sep 2014 12:36:18 -0400
-Date: Fri, 19 Sep 2014 12:36:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Subject: Re: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials
-Message-ID: <20140919163617.GB16658@fieldses.org>
-References: <1411131103-17254-1-git-send-email-steved@redhat.com>
- <20140919155733.GA16658@fieldses.org>
- <541C5A55.7010403@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <541C5A55.7010403@RedHat.com>
+	id S1754757AbaIVTUN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 15:20:13 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8MJKDXo024760
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 15:20:13 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: Simo Sorce <simo@redhat.com>
+Subject: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Date: Mon, 22 Sep 2014 15:20:07 -0400
+Message-Id: <1411413608-16462-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1411413608-16462-1-git-send-email-steved@redhat.com>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 19, 2014 at 12:31:17PM -0400, Steve Dickson wrote:
-> 
-> 
-> On 09/19/2014 11:57 AM, J. Bruce Fields wrote:
-> > On Fri, Sep 19, 2014 at 08:51:41AM -0400, Steve Dickson wrote:
-> >> The gssproxy(8) daemon is now how the managing of GSSAPI 
-> >> credentials should be done. 
-> >>
-> >> These to patches has the nfs-server systemd script start 
-> >> gssproxy instead of rpc.svcgssd and removes the building 
-> >> and installation of rpc.svcgssd.
-> >>
-> >> For now I'm leaving the source files... Just in case... ;-)
-> > 
-> > If nothing else, we'd like to keep support for older kernels for a
-> > while.
-> Good point... I should probably make this a configurable...
-> something like --enable_svcgssd and have it off by default...
+Added the gssproxy.service to both the Wants= and
+Atfers= lines, before the rpc-svcgssd.service. There
+are  ConditionPathExists= lines in the rpc-svcgssd.service
+unit which will stop the rpc.svcgssd daemon from
+starting when the gssproxy daemon is already running.
 
-Sounds fine.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ systemd/nfs-server.service | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
---b.
+diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+index 2fa7387..c740fa2 100644
+--- a/systemd/nfs-server.service
++++ b/systemd/nfs-server.service
+@@ -2,12 +2,13 @@
+ Description=NFS server and services
+ Requires= network.target proc-fs-nfsd.mount rpcbind.target
+ Requires= nfs-mountd.service
+-Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service rpc-svcgssd.service
++Wants=rpc-statd.service nfs-idmapd.service 
++Wants=rpc-gssd.service gssproxy.service rpc-svcgssd.service
+ Wants=rpc-statd-notify.service
+ 
+ After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
+ After= nfs-idmapd.service rpc-statd.service
+-After= rpc-gssd.service rpc-svcgssd.service
++After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
+ Before= rpc-statd-notify.service
+ 
+ Wants=nfs-config.service
+-- 
+1.9.3
+
