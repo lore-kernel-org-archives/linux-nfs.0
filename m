@@ -1,30 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:26528 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753859AbaIWPfm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 11:35:42 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 0/1] NFSv4.1: Fix an NFSv4.1 state renewal regression
-Date: Tue, 23 Sep 2014 11:35:35 -0400
-Message-ID: <1411486536-23401-1-git-send-email-andros@netapp.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:35475 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754631AbaIVUFs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2014 16:05:48 -0400
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH V2] svcrdma: Advertise the correct max payload
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 22 Sep 2014 15:05:47 -0500
+Message-ID: <20140922200547.19909.68196.stgit@build.ogc.int>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Svcrdma currently advertises 1MB, which is too large.  The correct value
+is the minimum of RPCSVC_MAXPAYLOAD and the max scatter-gather allowed
+in an NFSRDMA IO chunk * the host page size. This bug is usually benign
+because the Linux X64 NFSRDMA client correctly limits the payload size to
+the correct value (64*4096 = 256KB).  But if the Linux client is PPC64
+with a 64KB page size, then the client will indeed use a payload size
+that will overflow the server.
 
-Sigh. I did not format the patch with the last changes to the header comments.
-Here is the updated header comments.
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+---
 
-Andy Adamson (1):
-  NFSv4.1: Fix an NFSv4.1 state renewal regression
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+ net/sunrpc/xprtrdma/xprt_rdma.h          |    4 ++++
+ 2 files changed, 5 insertions(+), 1 deletions(-)
 
- fs/nfs/nfs4proc.c | 2 --
- 1 file changed, 2 deletions(-)
-
--- 
-1.8.3.1
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 374feb4..4e61880 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -91,7 +91,7 @@ struct svc_xprt_class svc_rdma_class = {
+ 	.xcl_name = "rdma",
+ 	.xcl_owner = THIS_MODULE,
+ 	.xcl_ops = &svc_rdma_ops,
+-	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
++	.xcl_max_payload = RPCSVC_MAXPAYLOAD_RDMA,
+ 	.xcl_ident = XPRT_TRANSPORT_RDMA,
+ };
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index c419498..a9cf5c3 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -392,4 +392,8 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
+ /* Workqueue created in svc_rdma.c */
+ extern struct workqueue_struct *svc_rdma_wq;
+ 
++#define RPCSVC_MAXPAYLOAD_RDMA \
++	(RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT) ? \
++	 RPCSVC_MAXPAYLOAD : (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT))
++
+ #endif				/* _LINUX_SUNRPC_XPRT_RDMA_H */
 
