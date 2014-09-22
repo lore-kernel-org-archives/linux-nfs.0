@@ -1,61 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:53091 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752528AbaILDBt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Sep 2014 23:01:49 -0400
-Received: by mail-pd0-f175.google.com with SMTP id z10so221946pdj.6
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Sep 2014 20:01:48 -0700 (PDT)
-From: Peng Tao <tao.peng@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Peng Tao <tao.peng@primarydata.com>, Christoph Hellwig <hch@lst.de>,
-        Boaz Harrosh <boaz@plexistor.com>
-Subject: [PATCH] nfs41: change PNFS_LAYOUTRET_ON_SETATTR to only return on chown/truncate
-Date: Fri, 12 Sep 2014 11:01:35 +0800
-Message-Id: <1410490895-12684-1-git-send-email-tao.peng@primarydata.com>
+Received: from prod-mail-xrelay02.akamai.com ([72.246.2.14]:58799 "EHLO
+	prod-mail-xrelay02.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754285AbaIVRzq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2014 13:55:46 -0400
+Message-ID: <542062A0.4030103@akamai.com>
+Date: Mon, 22 Sep 2014 13:55:44 -0400
+From: Jason Baron <jbaron@akamai.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Bruce Fields <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] rpc: Add -EPERM processing for xs_udp_send_request()
+References: <cover.1411068259.git.jbaron@akamai.com> <d143828a73125846d583f4c606061109d22869f7.1411068259.git.jbaron@akamai.com> <CAHQdGtQOoop=CShDx9dTXSjo47KzWoRqkM9PNx1Si-pFSXg-_w@mail.gmail.com> <541B484E.90202@akamai.com> <CAHQdGtQ93P5BpDgW+BEhWNGB4=M7f0RF4p8NOXQmUJEw9cu4iQ@mail.gmail.com> <541B8CF0.3090502@akamai.com> <CAHQdGtSYqwLKuBWKGdZYaZqg5K=+f101FqUZ9Y5gHKr12bbbHA@mail.gmail.com> <541C9D16.7010800@akamai.com>
+In-Reply-To: <541C9D16.7010800@akamai.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Both blocks layout and objects layout want to use it to avoid CB_LAYOUTRECALL
-but that should only happen if client is doing chown or truncate. So change
-PNFS_LAYOUTRET_ON_SETATTR to follow the logic and not to send layoutreturn
-unnecessarily.
+On 09/19/2014 05:16 PM, Jason Baron wrote:
+> On 09/19/2014 03:41 PM, Trond Myklebust wrote:
+>> On Thu, Sep 18, 2014 at 9:54 PM, Jason Baron <jbaron@akamai.com> wrote:
+>>> On 09/18/2014 05:20 PM, Trond Myklebust wrote:
+>>>> On Thu, Sep 18, 2014 at 5:02 PM, Jason Baron <jbaron@akamai.com> wrote:
+>>>>> On 09/18/2014 04:51 PM, Trond Myklebust wrote:
+>>>>>> On Thu, Sep 18, 2014 at 3:51 PM, Jason Baron <jbaron@akamai.com> wrote:
+>>>>>>> If an iptables drop rule is added for an nfs server, the client can end up in
+>>>>>>> a softlockup. Because of the way that xs_sendpages() is structured, the -EPERM
+>>>>>>> is ignored since the prior bits of the packet may have been successfully queued
+>>>>>>> and thus xs_sendpages() returns a non-zero value. Then, xs_udp_send_request()
+>>>>>>> thinks that because some bits were queued it should return -EAGAIN. We then try
+>>>>>>> the request and again and a softlockup occurs. The test sequence is simply:
+>>>>>>>
+>>>>>>> 1) open a file on the nfs server '/nfs/foo' (mounted using udp)
+>>>>>>> 2) iptables -A OUTPUT -d <nfs server ip> -j DROP
+>>>>>>> 3) write to /nfs/foo
+>>>>>>> 4) close /nfs/foo
+>>>>>>> 5) iptables -D OUTPUT -d <nfs server ip> -j DROP
+>>>>>>>
+>>>>>>> The softlockup occurs in step 4 above.
+>>>>>> For UDP, the expected and documented behaviour in the case above is as follows:
+>>>>>> - if the mount is soft, then return EIO on the first major timeout.
+>>>>> yeah - so this case is a softlockup in my testing :(
+>>>>>
+>>>>>> - if the mount is hard, then retry indefinitely on timeout.
+>>>>>>
+>>>>>> Won't these 2 patches end up propagating an EPERM to the application?
+>>>>>> That would be a definite violation of both hard and soft semantics.
+>>>>> ok, yeah it does propogate the -EPERM up - I wasn't aware of the correct
+>>>>> semantics - thanks.
+>>>>>
+>>>>> I can rework the patches such that they return -EIO instead for a soft mount,
+>>>>> and verify that we keep retrying for a hard one.
+>>>>>
+>>>> Doesn't the soft timeout currently trigger after the major timeout? If
+>>>> not, do we understand why it isn't doing so?
+>>>
+>>> No, the soft timeout does not currently trigger after the major timeout. Instead,
+>>> the kernel spins indefinitely, and triggers a softlockup.
+>>>
+>>> The reason is that xs_sendpages() returns a positive value in this case
+>>> and xs_udp_send_request() turns it in an -EAGAIN for the write operation.
+>>> Subsequently, we call call_transmit_status() and then call_status() which
+>>> sees the EAGAIN, which just starts all over again with a 'call_transmit()'.
+>>> So we are stuck spinning indefinitely in kernel space.
+>>>
+>>> Simply moving the -EPERM up in this patch, results in the behavior you
+>>> described above - EIO after a major timeout on a soft mount, and indefinte
+>>> retries on a hard mount - but without the cpu consumption. IE applying
+>>> this on top of this patch:
+>>>
+>>> --- a/net/sunrpc/clnt.c
+>>> +++ b/net/sunrpc/clnt.c
+>>> @@ -2019,6 +2019,7 @@ call_status(struct rpc_task *task)
+>>>         case -EHOSTDOWN:
+>>>         case -EHOSTUNREACH:
+>>>         case -ENETUNREACH:
+>>> +       case -EPERM:
+>>>                 if (RPC_IS_SOFTCONN(task)) {
+>>>                         rpc_exit(task, status);
+>>>                         break;
+>>> @@ -2048,7 +2049,6 @@ call_status(struct rpc_task *task)
+>>>         case -EAGAIN:
+>>>                 task->tk_action = call_transmit;
+>>>                 break;
+>>> -       case -EPERM:
+>>>         case -EIO:
+>>>                 /* shutdown or soft timeout */
+>>>                 rpc_exit(task, status);
+>>>
+>>> We could also 'translate' the -EPERM into an '-ENETUNREACH' or such,
+>>> in the return from xs_udp_send_request(), if you think that would make
+>>> more sense?
+>>>
+>>> Hopefully, I've explained things better.
+>>>
+>>>
+>>
+>> Yep. Can you please resend the patch with the above fix? I think we
+>> can live with the EPERM in the RPC_IS_SOFTCONN case, given that it is
+>> in practice only ever passed back to the 'mount' syscall.
+>>
+> 
+> Hi,
+> 
+> So after some more testing on this new patch, the test sequence I described
+> works fine - but if I set the firewall rule first and then do an open, it
+> appears that the open() wouldn't time out even on a soft mount (whereas
+> with the previous patch it incorrectly returned -EPERM almost immediately).
+> It appears that the rpc request is getting queued up onto one of the wait
+> queues (xprt_backlog or xprt_sending) in that case, but I'm not sure why.
+> I'll have to look more into it next week.
+> 
+> Thanks,
+> 
+> -Jason
+> 
+> 
 
-Cc: Christoph Hellwig <hch@lst.de>
-Cc: Boaz Harrosh <boaz@plexistor.com>
-Signed-off-by: Peng Tao <tao.peng@primarydata.com>
----
- fs/nfs/nfs4proc.c | 3 ++-
- fs/nfs/pnfs.h     | 3 ++-
- 2 files changed, 4 insertions(+), 2 deletions(-)
+Hi Trond,
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7dd8aca..e55bd0f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3213,7 +3213,8 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	struct nfs4_label *label = NULL;
- 	int status;
- 
--	if (pnfs_ld_layoutret_on_setattr(inode))
-+	if (pnfs_ld_layoutret_on_setattr(inode) &&
-+	    sattr->ia_valid & (ATTR_UID|ATTR_GID|ATTR_SIZE))
- 		pnfs_commit_and_return_layout(inode);
- 
- 	nfs_fattr_init(fattr);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index aca3dff..1765ea8 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -68,7 +68,8 @@ enum {
- };
- 
- enum layoutdriver_policy_flags {
--	/* Should the pNFS client commit and return the layout upon a setattr */
-+	/* Should the pNFS client commit and return the layout upon a setattr
-+	 * that changes uid/gid/size. */
- 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
- 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
- };
--- 
-1.9.1
+Ok, so they do timeout now with this patch (for a soft mount) - I simply wasn't
+waiting long enough (took around 30 minutes in some cases). So I think this
+patch is ok. If it makes sense I can clean it up based on the comments, and
+re-submit?
 
+Thanks,
+
+-Jason
