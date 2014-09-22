@@ -1,47 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:49349 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59302 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751075AbaIKQAP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Sep 2014 12:00:15 -0400
-Message-ID: <5411C709.3020304@Netapp.com>
-Date: Thu, 11 Sep 2014 12:00:09 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1751039AbaIVFV2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 01:21:28 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LRAH005156
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:28 -0400
+Received: from mmyllyne.csb (vpn1-7-35.ams2.redhat.com [10.36.7.35])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8M5LQFa016396
+	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 01:21:27 -0400
+Message-ID: <541FB1D6.9040000@redhat.com>
+Date: Mon, 22 Sep 2014 08:21:26 +0300
+From: Marko Myllynen <myllynen@redhat.com>
+Reply-To: myllynen@redhat.com
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@lst.de>, Anna Schumaker <Anna.Schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] pnfs/blocklayout: allocate separate pages for the
- layoutcommit payload
-References: <1410395791-2385-1-git-send-email-hch@lst.de> <1410395791-2385-4-git-send-email-hch@lst.de> <5411AED8.4020204@Netapp.com> <20140911152743.GE6690@lst.de>
-In-Reply-To: <20140911152743.GE6690@lst.de>
-Content-Type: text/plain; charset="utf-8"
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsstat: add server ra cache stats
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/11/2014 11:27 AM, Christoph Hellwig wrote:
-> On Thu, Sep 11, 2014 at 10:16:56AM -0400, Anna Schumaker wrote:
->>> +		arg->layoutupdate_pages =
->>> +			kcalloc(DIV_ROUND_UP(buffer_size, PAGE_SIZE),
->>> +				sizeof(struct page *), GFP_NOFS);
->> I don't think I've seen kcalloc() before.  What does it do?
-> The same as calloc(3) in userspace - allocate an array of nent entries
-> of size, and zero the result that is returned.
-I haven't run across it in userspace either ... thanks for answering! :)
->
->>>  	dprintk("%s found %i ranges\n", __func__, count);
->> I'm getting this:
->>
->> fs/nfs/blocklayout/extent_tree.c: In function ‘ext_tree_prepare_commit’:
->> fs/nfs/blocklayout/extent_tree.c:565:2: warning: format ‘%i’ expects argument of type ‘int’, but argument 3 has type ‘size_t’ [-Wformat=]
->>   dprintk("%s found %i ranges\n", __func__, count);
-> For some reason I haven't managed to trigger this warning even after
-> turning on CONFIG_SUNRPC_DEBUG, but it should be easy to fix up..
+>From 7a5072efd524f5537a0b38808420bea8c0e45b01 Mon Sep 17 00:00:00 2001
+From: Marko Myllynen <myllynen@redhat.com>
+Date: Mon, 22 Sep 2014 08:13:04 +0300
+Subject: [PATCH] nfsstat: add server ra cache stats
 
-Thanks. I'm not sure what I have set differently, but it's consistently showing up in my compile logs.
+---
+ utils/nfsstat/nfsstat.c |   29 +++++++++++++++++++++++++----
+ 1 files changed, 25 insertions(+), 4 deletions(-)
 
-Anna
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+index 83bde9d..8e165a8 100644
+--- a/utils/nfsstat/nfsstat.c
++++ b/utils/nfsstat/nfsstat.c
+@@ -96,6 +96,11 @@ static unsigned int	srvioinfo[3], srvioinfo_old[3];		/* 0  bytes read
+ 								 * 1  bytes written
+ 								 */
+ 
++static unsigned int	srvrainfo[13], srvrainfo_old[13];	/* 0  ra cache size
++								 * 1..11 depth of ra cache hit
++								 * 12 ra cache misses
++								 */
++
+ static const char *	nfsv2name[SRVPROC2_SZ] = {
+ 	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
+ 	"read", "wrcache", "write",   "create", "remove",  "rename",
+@@ -172,6 +177,7 @@ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
+ #define LABEL_srvrc		"Server reply cache:\n"
+ #define LABEL_srvfh		"Server file handle cache:\n"
+ #define LABEL_srvio		"Server io stats:\n"
++#define LABEL_srvra		"Server read ahead cache:\n"
+ #define LABEL_srvproc2		"Server nfs v2:\n"
+ #define LABEL_srvproc3		"Server nfs v3:\n"
+ #define LABEL_srvproc4		"Server nfs v4:\n"
+@@ -204,6 +210,7 @@ typedef struct statinfo {
+ 					SRV(rc,s), \
+ 					SRV(fh,s), \
+ 					SRV(io,s), \
++					SRV(ra,s), \
+ 					SRV(proc2,s), \
+ 					SRV(proc3,s),\
+ 					SRV(proc4,s), \
+@@ -256,6 +263,7 @@ static time_t		starttime;
+ #define PRNT_FH		0x0008
+ #define PRNT_RC		0x0010
+ #define PRNT_IO		0x0020
++#define PRNT_RA		0x0040
+ #define PRNT_AUTO	0x1000
+ #define PRNT_V2		0x2000
+ #define PRNT_V3		0x4000
+@@ -283,8 +291,9 @@ void usage(char *name)
+      rpc		General RPC information\n\
+      net		Network layer statistics\n\
+      fh			Usage information on the server's file handle cache\n\
+-     rc			Usage information on the server's request reply cache\n\
+      io			Usage information on the server's io statistics\n\
++     ra			Usage information on the server's read ahead cache\n\
++     rc			Usage information on the server's request reply cache\n\
+      all		Select all of the above\n\
+   -v, --verbose, --all	Same as '-o all'\n\
+   -r, --rpc		Show RPC statistics\n\
+@@ -376,8 +385,10 @@ main(int argc, char **argv)
+ 				opt_prt |= PRNT_FH;
+ 			else if (!strcmp(optarg, "io"))
+ 				opt_prt |= PRNT_IO;
++			else if (!strcmp(optarg, "ra"))
++				opt_prt |= PRNT_RA;
+ 			else if (!strcmp(optarg, "all"))
+-				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO;
++				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO | PRNT_RA;
+ 			else {
+ 				fprintf(stderr, "nfsstat: unknown category: "
+ 						"%s\n", optarg);
+@@ -445,9 +456,9 @@ main(int argc, char **argv)
+ 	if (!(opt_prt & 0xe000)) {
+ 		opt_prt |= PRNT_AUTO;
+ 	}
+-	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO)) && !opt_srv) {
++	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO|PRNT_RA)) && !opt_srv) {
+ 		fprintf(stderr,
+-			"You requested io, file handle, or request cache "
++			"You requested fh/io/ra/rc "
+ 			"statistics while using the -c option.\n"
+ 			"This information is available only for the NFS "
+ 			"server.\n");
+@@ -572,6 +583,16 @@ print_server_stats(int opt_prt)
+ 			printf("\n");
+ 		}
+ 	}
++	if (opt_prt & PRNT_RA) {
++		if (opt_sleep && !has_rpcstats(srvrainfo, 3)) {
++			;
++		} else {
++			print_numbers(LABEL_srvra
++				"size       0-10%      10-20%     20-30%     30-40%     40-50%     50-60%     60-70%     70-80%     80-90%     90-100%    notfound\n",
++				srvrainfo, 12);
++			printf("\n");
++		}
++	}
+ 
+ 	/*
+ 	 * 2.2 puts all fh-related info after the 'rc' header
+-- 
+1.7.1
 
+-- 
+Marko Myllynen
