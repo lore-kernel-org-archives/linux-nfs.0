@@ -1,134 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f53.google.com ([209.85.192.53]:55825 "EHLO
-	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753865AbaIZSyw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 14:54:52 -0400
-Received: by mail-qg0-f53.google.com with SMTP id e89so9067826qgf.40
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2014 11:54:51 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 26 Sep 2014 14:54:46 -0400
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
-Message-ID: <20140926145446.21a99698@tlielax.poochiereds.net>
-In-Reply-To: <20140926183949.GC27412@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
-	<20140926183949.GC27412@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:51887 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756352AbaIWPGw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 11:06:52 -0400
+Message-ID: <54218C85.6040005@RedHat.com>
+Date: Tue, 23 Sep 2014 11:06:45 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "J. Bruce Fields" <bfields@fieldses.org>, Simo Sorce <simo@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+References: <1411413608-16462-1-git-send-email-steved@redhat.com> <1411413608-16462-2-git-send-email-steved@redhat.com> <20140922152603.75005941@willson.usersys.redhat.com> <54207BCD.70101@RedHat.com> <20140922204401.GI26763@fieldses.org> <5420911D.6080506@RedHat.com> <20140922223423.GA29932@fieldses.org> <5420B78D.6040704@RedHat.com> <20140922202655.5e308e58@willson.usersys.redhat.com> <20140923015549.GB32712@fieldses.org>
+In-Reply-To: <20140923015549.GB32712@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 26 Sep 2014 14:39:49 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> By the way, I've seen the following *before* your patches, but in case
-> you're still looking at reboot recovery problems:
+
+On 09/22/2014 09:55 PM, J. Bruce Fields wrote:
+> On Mon, Sep 22, 2014 at 08:26:55PM -0400, Simo Sorce wrote:
+>> On Mon, 22 Sep 2014 19:58:05 -0400
+>> Steve Dickson <SteveD@redhat.com> wrote:
+>>
+>>>
+>>>
+>>> On 09/22/2014 06:34 PM, J. Bruce Fields wrote:
+>>>> On Mon, Sep 22, 2014 at 05:14:05PM -0400, Steve Dickson wrote:
+>>>>>
+>>>>>
+>>>>> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
+>>>>>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
+>>>>>>>
+>>>>>>>
+>>>>>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
+>>>>>>>> On Mon, 22 Sep 2014 15:20:07 -0400
+>>>>>>>> Steve Dickson <steved@redhat.com> wrote:
+>>>>>>>>
+>>>>>>>>> Added the gssproxy.service to both the Wants= and
+>>>>>>>>> Atfers= lines, before the rpc-svcgssd.service. There
+>>>>>>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
+>>>>>>>>> unit which will stop the rpc.svcgssd daemon from
+>>>>>>>>> starting when the gssproxy daemon is already running.
+>>>>>>>>>
+>>>>>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>>>>>>>> ---
+>>>>>>>>>  systemd/nfs-server.service | 5 +++--
+>>>>>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
+>>>>>>>>>
+>>>>>>>>> diff --git a/systemd/nfs-server.service
+>>>>>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
+>>>>>>>>> --- a/systemd/nfs-server.service
+>>>>>>>>> +++ b/systemd/nfs-server.service
+>>>>>>>>> @@ -2,12 +2,13 @@
+>>>>>>>>>  Description=NFS server and services
+>>>>>>>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+>>>>>>>>>  Requires= nfs-mountd.service
+>>>>>>>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
+>>>>>>>>> rpc-svcgssd.service +Wants=rpc-statd.service
+>>>>>>>>> nfs-idmapd.service +Wants=rpc-gssd.service  
+>>>>>>>>>  Wants=rpc-statd-notify.service
+>>>>>>>>>  
+>>>>>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
+>>>>>>>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+>>>>>>>>> -After= rpc-gssd.service rpc-svcgssd.service
+>>>>>>>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
+>>>>>>>>>  Before= rpc-statd-notify.service
+>>>>>>>>>  
+>>>>>>>>>  Wants=nfs-config.service
+>>>>>>>>
+>>>>>>>> I think you really need to insure that the modules are loaded
+>>>>>>>> before any of the server services are started, perhaps adding a
+>>>>>>>> unit file that exec's modprobe and has "Before:
+>>>>>>>> gssproxy.service rpc-svcgssd.service" in it ?
+>>>>>>> I really don't think its needed... From my testing it appears 
+>>>>>>> gssproxy is always being started and rpc.svcgssd is not... 
+>>>>>>
+>>>>>> Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount
+>>>>>> as both "Requires=" and "After=", so rpc-svcgssd.service will
+>>>>>> never run without first running var-lib-nfs-rpc_pipefs.mount,
+>>>>>> which will load sunrpc.  But I don't see where auth_rpcgss is
+>>>>>> getting loaded.  And I don't see what ensures anything happening
+>>>>>> before gssproxy runs.
+>>>>> It happens during the mount on the client and when the server
+>>>>> is started. 
+>>>>>
+>>>>>>
+>>>>>> We want to make sure your testing's not just getting lucky on the
+>>>>>> startup order.
+>>>>> The reason it working is because rpc.gssd is being started on the
+>>>>> server these days for callbacks and the After= line in
+>>>>> rpc-svcgssd.service is being executed before the
+>>>>> ConditionPathExists which cause rpc.svcgssd not to start.
+>>>>
+>>>> nfs-utils$ grep After systemd/rpc-svcgssd.service 
+>>>> After=var-lib-nfs-rpc_pipefs.mount
+>>>> After=gssproxy.service
+>>>> After=nfs-config.service
+>>>>
+>>>> There doesn't seem to be an After= line referring to rpc.gssd.
+>>> No, why should there be? There is After= line referring to rpc.gssd
+>>> in nfs-server.service
+>>>
+>>> grep After systemd/nfs-server.service 
+>>> After= network.target proc-fs-nfsd.mount rpcbind.target
+>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+>>> After= rpc-gssd.service rpc-svcgssd.service
+>>> After=nfs-config.service
+>>>
+>>> So when the server starts,rpc.gssd will start and rpc.svcgssd will
+>>> start if gssproxy is not enable and there is a key tab. 
+>>
+>> They can start in parallel, there is nothing in that line that makes
+>> one start before the other.
+>>
+>> If you are relying on this you are relying on luck.
+>>
+>>>>> So when gssproxy.service does it's "Before=nfs-secure.service
+>>>>> nfs-secure-server.service" line everything is loaded before
+>>>>> gssproxy start... 
+>>>>
+>>>> That line only makes gss-proxy start before those other things.
+>>> Right, which will load the sunrpc modules.
+>>
+>> No, starting before those service in itself achieves nothing.\
+>> I think what may cause the module to load maybe the fact
+>> gssproxy.service includes:
+>> Requires=proc-fs-nfsd.mount
 > 
-> I'm getting sporadic failures in the REBT6 pynfs test--a reclaim open
-> succeeds after a previous boot (with full grace period) during which the
-> client had failed to reclaim.
+> I'd expect that to only load the nfsd module.
 > 
-> I managed to catch one trace, the relevant parts looked like:
+> Hm, I think nfsd actually has a dependency on auth_rpcgss.  I wonder if
+> that's correct.  Maybe that's what's doing it.
+It is... In another thread I clearly showed that.... So I really
+don't think another unit file is necessary...
+
+steved.
+ 
 > 
-> 	SETCLIENTID client1
-> 	OPEN
-> 	LOCK
+>> But to be honest this was a hack to deal with broken nfs service files,
+>> gss-proxy should not require nfsd, the dependency should be the other
+>> way around, as gss-proxy can run on machines where there is no nfs
+>> service whatsoever, as it stand this is a bug in gssproxy.service and
+>> I'd like to fix it.
 > 
-> 	(server restart here)
-> 
-> 	SETCLIENTID client2
-> 	OPEN
-> 	LOCK (lock that conflicts with client1's)
-> 
-> 	(server restart here)
-> 
-> 	SETCLIENTID client1
-> 	OPEN CLAIM_PREVIOUS
-> 
-> And all those ops (including the last reclaim open) succeeded.
-> 
-> So I didn't have a chance to review it more carefully, but it certainly
-> looks like a server bug, not a test bug.  (Well, technically the server
-> behavior above is correct since it's not required to refuse anything
-> till we actually attempt to reclaim the original lock, but we know our
-> server's not that smart.)
-> 
-> But I haven't gotten any further than that....
+> So, something like this?  (Untested, no idea if I'm doing this right.)
 > 
 > --b.
 > 
-
-Ewww...v4.0... ;)
-
-Well, I guess that could happen if, after the first reboot, client1 also
-did a SETCLIENTID *and* reclaimed something that didn't conflict with
-the lock that client2 grabs...or, did an OPEN/OPEN_CONFIRM after the
-grace period without reclaiming its lock previously.
-
-If it didn't do one or the other, then its record should have been
-cleaned out of the DB after the grace period ended between the reboots
-and it wouldn't have been able to reclaim after the second reboot.
-
-It's a bit of a pathological case, and I don't see a way to fix that in
-the context of v4.0. The fact that there's no RECLAIM_COMPLETE is a
-pretty nasty protocol bug, IMO. Yet another reason to start really
-moving people toward v4.1+...
-
-> On Tue, Aug 19, 2014 at 02:38:24PM -0400, Jeff Layton wrote:
-> > v2:
-> > - move grace period handling into its own module
-> > 
-> > One of the huge annoyances in dealing with knfsd is the 90s grace period
-> > that's imposed when the server reboots. This is not just an annoyance,
-> > but means a siginificant amount of "downtime" in many production
-> > environments.
-> > 
-> > This patchset aimed at reducing this pain. It adds a couple of /proc
-> > knobs that tell the lockd and nfsd lock managers to lift the grace
-> > period.
-> > 
-> > It also changes the UMH upcalls to pass a little bit of extra info in
-> > the form of environment variables so that the upcall program can
-> > determine whether there are still any clients that may be in the process
-> > of reclaiming.
-> > 
-> > There are also a couple of cleanup patches in here that are not strictly
-> > required. In particular, making a separate grace.ko module doesn't have
-> > to be done, but I think it's a good idea.
-> > 
-> > Jeff Layton (5):
-> >   lockd: move lockd's grace period handling into its own module
-> >   lockd: add a /proc/fs/lockd/nlm_end_grace file
-> >   nfsd: add a v4_end_grace file to /proc/fs/nfsd
-> >   nfsd: remove redundant boot_time parm from grace_done client tracking
-> >     op
-> >   nfsd: pass extra info in env vars to upcalls to allow for early grace
-> >     period end
-> > 
-> >  fs/Kconfig                       |   6 ++-
-> >  fs/lockd/Makefile                |   3 +-
-> >  fs/lockd/netns.h                 |   1 -
-> >  fs/lockd/procfs.c                |  76 +++++++++++++++++++++++++++
-> >  fs/lockd/procfs.h                |  28 ++++++++++
-> >  fs/lockd/svc.c                   |  10 +++-
-> >  fs/nfs_common/Makefile           |   3 +-
-> >  fs/{lockd => nfs_common}/grace.c |  68 +++++++++++++++++++++----
-> >  fs/nfsd/Kconfig                  |   1 +
-> >  fs/nfsd/nfs4recover.c            | 107 +++++++++++++++++++++++++++++++--------
-> >  fs/nfsd/nfs4state.c              |   8 +--
-> >  fs/nfsd/nfsctl.c                 |  35 +++++++++++++
-> >  fs/nfsd/state.h                  |   5 +-
-> >  include/linux/proc_fs.h          |   2 +
-> >  14 files changed, 312 insertions(+), 41 deletions(-)
-> >  create mode 100644 fs/lockd/procfs.c
-> >  create mode 100644 fs/lockd/procfs.h
-> >  rename fs/{lockd => nfs_common}/grace.c (50%)
-> > 
-> > -- 
-> > 1.9.3
-> > 
-
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+> diff --git a/systemd/auth-rpcgss-module.service b/systemd/auth-rpcgss-module.service
+> new file mode 100644
+> index 000000000000..252545b458fd
+> --- /dev/null
+> +++ b/systemd/auth-rpcgss-module.service
+> @@ -0,0 +1,15 @@
+> +# We want to start gss-proxy on kernels that support it and rpc.svcgssd
+> +# on those that don't.  Those services check for support by checking
+> +# for existence of the path /proc/net/rpc/use-gss-proxy.  Before they
+> +# can perform that check, they need this module loaded.  (Unless
+> +# rpcsec_gss is built directly into the kernel, in which case this unit
+> +# will fail.  But that's OK.)
+> +[Unit]
+> +Description=Kernel Module supporting RPCSEC_GSS
+> +Before=gssproxy.service rpc-svcgssd.service
+> +
+> +[Service]
+> +ExecStart=/sbin/modprobe -q auth_rpcgss
+> +
+> +[Install]
+> +WantedBy=gssproxy.service rpc-svcgssd.service
+> 
