@@ -1,62 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33575 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:55430 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754259AbaIZUpv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2014 16:45:51 -0400
-Date: Fri, 26 Sep 2014 16:45:49 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@gmail.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
-Message-ID: <20140926204549.GF27412@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
- <20140926183949.GC27412@fieldses.org>
- <20140926145446.21a99698@tlielax.poochiereds.net>
- <20140926194616.GE27412@fieldses.org>
- <CAABAsM664Ce0JhBa=uK9+srsNB4_Ww4LLTymfOvcr1aM3g2X=g@mail.gmail.com>
+	id S932196AbaIWQ6E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 12:58:04 -0400
+Date: Tue, 23 Sep 2014 12:57:58 -0400
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: NeilBrown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140923125758.3aa66211@willson.usersys.redhat.com>
+In-Reply-To: <20140923161214.GF29932@fieldses.org>
+References: <20140922204401.GI26763@fieldses.org>
+	<5420911D.6080506@RedHat.com>
+	<20140922223423.GA29932@fieldses.org>
+	<5420B78D.6040704@RedHat.com>
+	<20140922202655.5e308e58@willson.usersys.redhat.com>
+	<20140923015549.GB32712@fieldses.org>
+	<20140923120804.51dbcc2e@notabene.brown>
+	<20140923084854.6c67d401@willson.usersys.redhat.com>
+	<20140923152000.GC29932@fieldses.org>
+	<20140923120054.7dc8764a@willson.usersys.redhat.com>
+	<20140923161214.GF29932@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAABAsM664Ce0JhBa=uK9+srsNB4_Ww4LLTymfOvcr1aM3g2X=g@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 26, 2014 at 04:37:23PM -0400, Trond Myklebust wrote:
-> On Fri, Sep 26, 2014 at 3:46 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >
-> > As I understand it, the rule for the client is: you're allowed to
-> > reclaim only the set locks that you held previously, where "the set of
-> > locks you held previously" is "the set of locks held by the clientid
-> > which last managed to send a reclaim OPEN or OPEN_CONFIRM".  So for
-> > example once client1 sends that unrelated OPEN reclaim it's giving up on
-> > anything else it doesn't manage to reclaim this time around.
+On Tue, 23 Sep 2014 12:12:14 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Tue, Sep 23, 2014 at 12:00:54PM -0400, Simo Sorce wrote:
+> > On Tue, 23 Sep 2014 11:20:00 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Tue, Sep 23, 2014 at 08:48:54AM -0400, Simo Sorce wrote:
+> > > > On Tue, 23 Sep 2014 12:08:04 +1000
+> > > > NeilBrown <neilb@suse.de> wrote:
+> > > > > I don't think you want an install section.  That means the
+> > > > > service has to be explicitly enabled, which is a pain.
+> > > > > I think nfs-server.service should Want= this.
+> > > > > I also think 
+> > > > > 
+> > > > >   ConditionPathExists=/etc/krb5.keytab
+> > > > > 
+> > > > > would be appropriate.
+> > > > 
+> > > > If GSS-Proxy is in use the administrator may choose to use a
+> > > > keytab in a different location, so I am not entirely sure we
+> > > > should depend on /etc/krb5.keytab, however it is also ok to
+> > > > decide that if the admin wants to use a different place that
+> > > > they create a custom unit file. Up to you.
+> > > 
+> > > Note we're already using the same line in rpc-gssd.service and
+> > > rpc-svcgssd.service.
+> > > 
+> > > Can you suggest a better "does this host have krb5 configured?"
+> > > test?
+> > > 
+> > > I think false positives are OK, but not false negatives.
+> > > 
+> > > (So, if we run those daemons unnecessarily it may annoy some
+> > > people, but if we fail to run them when they're needed then
+> > > things really don't work.)
+> > 
+> > I would simply not test for presence of a keytab if it were my call.
+> > 
+> > If the admin decided to start nfs-secure I assume he already got the
+> > proper key material, ie I am not so sure that double-checking the
+> > admin in the unit files is right for gssproxy, because gssproxy has
+> > directives that allow the admin to put the keytab elsewhere.
 > 
-> The rule for the client is very simple: "You may attempt to reclaim
-> any locks that were held immediately prior to the reboot of the
-> server."
-> It doesn't matter how those locks were established (ordinary OPEN,
-> delegated open, reclaim open, LOCK, reclaim lock...).
+> I believe nfs-secure is being removed (there's none under
+> nfs-utils/systemd).
 > 
-> However if the server reboots and the client did not manage to
-> re-establish a lease (SETCLIENTID+SETCLIENTID_CONFIRM and/or
-> EXCHANGE_ID+CREATE_SESSION) before the second reboot, then it is the
-> server's responsibility to block that client from reclaiming any
-> locks, since the client has no way to know how many times the server
-> has rebooted.
-> Ditto, of course, if the client tries to reclaim any locks outside the
-> grace period and the server isn't tracking whether or not those locks
-> have been handed out to another client.
+> We'd rather not require unnecessary configuration steps.  Configuring
+> NFS and krb5 should be enough.
+> 
+> So the point is to start the daemons automatically.
 
-Agreed with everything except:
+I see, I can live with that for now.
 
-	(SETCLIENTID+SETCLIENTID_CONFIRM and/or
-	EXCHANGE_ID+CREATE_SESSION)
+Simo.
 
-If I remember correctly: RFC 5661 says the point where this happens is
-actually RECLAIM_COMPLETE.  RFC 3530 was more vague but suggested first
-OPEN reclaim or OPEN_CONFIRM, and 3530bis makes that explicit.
 
-But the client can choose an earlier point without violating the
-protocol--it means it will decline reclaiming some things it could have,
-but that's safer than the reverse mistake.
-
---b.
+-- 
+Simo Sorce * Red Hat, Inc * New York
