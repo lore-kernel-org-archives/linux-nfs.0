@@ -1,69 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36874 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750981AbaILPVo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 12 Sep 2014 11:21:44 -0400
-Date: Fri, 12 Sep 2014 11:21:42 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 5/7] nfsdcltrack: update schema to v2
-Message-ID: <20140912152142.GB28915@fieldses.org>
-References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
- <1410193821-25109-6-git-send-email-jlayton@primarydata.com>
- <20140911195547.GA21296@fieldses.org>
- <20140911162836.70056390@tlielax.poochiereds.net>
- <20140912093600.50dfa9bc@tlielax.poochiereds.net>
- <20140912102153.09d58de7@tlielax.poochiereds.net>
- <20140912143621.GA28915@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140912143621.GA28915@fieldses.org>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:57740 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756228AbaIWPC2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 11:02:28 -0400
+Received: by mail-ie0-f177.google.com with SMTP id x19so9521169ier.22
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 08:02:28 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: WARNING at fs/nfs/write.c:743 nfs_inode_remove_request with -rc6
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <5294BEB2-F20F-4E3E-BFB2-E41806A4F85A@primarydata.com>
+Date: Tue, 23 Sep 2014 11:02:26 -0400
+Cc: Peng Tao <tao.peng@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Message-Id: <FA11FBE3-42E7-46B9-B9DA-FAE368DCE96B@primarydata.com>
+References: <20140923130352.GK26472@arm.com> <2A327753-3E60-46AC-8220-3FF0FF61F08F@primarydata.com> <20140923135938.GB28608@arm.com> <20140923145356.GD28608@arm.com> <5294BEB2-F20F-4E3E-BFB2-E41806A4F85A@primarydata.com>
+To: Will Deacon <will.deacon@arm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 12, 2014 at 10:36:21AM -0400, J. Bruce Fields wrote:
-> On Fri, Sep 12, 2014 at 10:21:53AM -0400, Jeff Layton wrote:
-> > Grace period
-> > eventually ends, and its record is purged from the DB.
-> > 
-> > Now we have a client that has reclaimed some files but that has no
-> > record on stable storage.
-> > 
-> > One possibility is to prematurely expire v4.1+ clients that have not
-> > sent a RECLAIM_COMPLETE when the grace period ends.
-> > 
-> > That seems problematic though -- what about clients that just happen to
-> > do an EXCHANGE_ID just before the grace period is going to end, and
-> > that get expired before they can issue their RECLAIM_COMPLETE. Will
-> > that be a problem for them?
+On Sep 23, 2014, at 10:59 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
+
+> On Sep 23, 2014, at 10:53 AM, Will Deacon <will.deacon@arm.com> wrote:
 > 
-> In that case a client will send a reclaim, get back a NO_GRACE error,
-> mark the rest of its state as unrecoverable, send the RECLAIM_COMPLETE,
-> and continue normally.  (To the extent it can--signalling affected
-> processes or EIOing further attempts to use the unreclaimed state, or
-> whatever.)
+>> On Tue, Sep 23, 2014 at 02:59:38PM +0100, Will Deacon wrote:
+>>> On Tue, Sep 23, 2014 at 02:33:06PM +0100, Weston Andros Adamson wrote:
+>>>> Any more info on how to reproduce this would be really great. Unfortunately I don’t
+>>>> have access to an arm64 system.
+>>> 
+>>> I've not spotted a pattern other than using 64k pages, yet. If I manage to
+>>> get a reproducer, I'll let you know.
+>>> 
+>>>> If it’s possible, could we get a packet trace around when this happens? This is pure
+>>>> speculation, but this might have something to do the resend path - a commit fails
+>>>> and all the requests on the commit list have to be resent.
+>>> 
+>>> Sure, once I can reproduce it reliably, then I'll try to do that.
+>> 
+>> Right, a bunch of DDing from /dev/zero over an ssh session triggers this
+>> very quickly. I've put a binary tcpdump here:
+>> 
+>> http://www.willdeacon.ukfsn.org/bitbucket/oopsen/nfs/tcpdump.bin
+>> 
+>> You may want to filter out the ssh packets. The only `interesting' thing to
+>> me is a retransmission about half way through, but I don't know what I'm
+>> looking for.
+>> 
+>> The NFS server is 10.1.203.204 and the client is 10.1.203.24.
+> 
+> Thanks! You are using NFSv2, so there are no commits - that rules out my hunch.
 
-The one thing the server *could* do in this sort of case is extend the
-grace period by a little--I seem to recall the spec giving some leeway
-for this kind of thing.
+Wait a second - the whole point of this extra reference (that the WARN_ON_ONCE is
+related to) is to handle the pass off to commit lists.
 
-So for example the server could have a heuristics like: extend the grace
-period by another second each time we notice there's been an EXCHANGE_ID
-or reclaim in the previous second, up to some maximum.  And I suppose it
-could also delay the grace period until someone actually attempts a
-non-reclaim open.
+Maybe I’m just doing the wrong thing here with NFSv2!
 
-In isolation a single client slipping in the end like that sounds like a
-freak event, but if there's a ton of state to reclaim perhaps it could
-become more likely.
+More soon.
 
-I don't think that's a priority, we might just want to make sure we know
-how to do that in the future.
+-dros
 
-But now that I think about it I don't see the existing or proposed
-nfsdcltrack stuff tying our hands in any way here.  It just gives the
-kernel some extra information, and the kernel still has discretion about
-when exactly it wants to end the grace period.
-
---b.
