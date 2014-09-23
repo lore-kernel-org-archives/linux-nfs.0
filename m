@@ -1,66 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:63919 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750881AbaIIRtO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Sep 2014 13:49:14 -0400
-Message-ID: <540F3D87.803@Netapp.com>
-Date: Tue, 9 Sep 2014 13:48:55 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Marc Eshel <eshel@us.ibm.com>, Anna Schumaker <Anna.Schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, <linux-nfs-owner@vger.kernel.org>,
-        <Trond.Myklebust@primarydata.com>
-Subject: Re: [PATCH 0/2] NFS: Add ALLOCATE and DEALLOCATE support
-References: <1410274196-30841-1-git-send-email-Anna.Schumaker@Netapp.com> <OFCC7C8976.B925FBA7-ON88257D4E.00604587-88257D4E.0060D8A0@us.ibm.com>
-In-Reply-To: <OFCC7C8976.B925FBA7-ON88257D4E.00604587-88257D4E.0060D8A0@us.ibm.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from casper.infradead.org ([85.118.1.10]:58825 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753352AbaIWG4a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 02:56:30 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Cc: Benny Halevy <bhalevy@primarydata.com>, Benny Halevy <bhalevy@panasas.com>
+Subject: [PATCH 2/2] nfsd: do not clear rpc_resp in nfsd4_cb_done_sequence
+Date: Tue, 23 Sep 2014 08:58:49 +0200
+Message-Id: <1411455529-11556-3-git-send-email-hch@lst.de>
+In-Reply-To: <1411455529-11556-1-git-send-email-hch@lst.de>
+References: <1411455529-11556-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/09/2014 01:37 PM, Marc Eshel wrote:
-> Hi Anna,
->
-> Did you get a chance to set up a git tree with all your changes, at least 
-> for the client side, maybe Trond will include it in his tree?
-I did for SEEK.  I haven't updated it to include these patches yet, but I will after making the changes that Trond and Christoph are asking for.
+From: Benny Halevy <bhalevy@panasas.com>
 
-git://git.linux-nfs.org/projects/anna/linux-nfs.git  (see the "seek" branch)
+This is incorrect when a callback is has to be restarted, in which case
+the XDR decoding of the second iteration will see a NULL cb argument.
 
-Anna
->
-> Thanks, Marc. 
->
->
-> From:   Anna Schumaker <Anna.Schumaker@netapp.com>
-> To:     <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>, 
-> Date:   09/09/2014 07:50 AM
-> Subject:        [PATCH 0/2] NFS: Add ALLOCATE and DEALLOCATE support
-> Sent by:        linux-nfs-owner@vger.kernel.org
->
->
->
-> These patches add client support for the ALLOCATE and DEALLOCATE 
-> operations
-> part of NFS v4.2.
->
-> These operations are triggered by a vfs_fallocate() call, and we determine
-> which to use based on if the FALLOC_FL_PUNCH_HOLE flag is set.
->
-> Anna Schumaker (2):
->   nfs: Add ALLOCATE support
->   nfs: Add DEALLOCATE support
->
->  fs/nfs/nfs42proc.c        |  74 +++++++++++++++++++++++++
->  fs/nfs/nfs42xdr.h         | 136 
-> ++++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfs/nfs4_fs.h          |   3 +
->  fs/nfs/nfs4client.c       |   2 +-
->  fs/nfs/nfs4file.c         |  47 ++++++++++++++++
->  fs/nfs/nfs4proc.c         |   2 +-
->  fs/nfs/nfs4xdr.c          |   2 +
->  include/linux/nfs4.h      |   2 +
->  include/linux/nfs_fs_sb.h |   2 +
->  include/linux/nfs_xdr.h   |  28 ++++++++++
->  10 files changed, 296 insertions(+), 2 deletions(-)
->
+[hch: updated description]
+Signed-off-by: Benny Halevy <bhalevy@panasas.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4callback.c | 3 ---
+ 1 file changed, 3 deletions(-)
+
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 795e218..fc07084 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -847,9 +847,6 @@ static void nfsd4_cb_done(struct rpc_task *task, void *calldata)
+ 		rpc_wake_up_next(&clp->cl_cb_waitq);
+ 		dprintk("%s: freed slot, new seqid=%d\n", __func__,
+ 			clp->cl_cb_session->se_cb_seq_nr);
+-
+-		/* We're done looking into the sequence information */
+-		task->tk_msg.rpc_resp = NULL;
+ 	}
+ }
+ 
+-- 
+1.9.1
 
