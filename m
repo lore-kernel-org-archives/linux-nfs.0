@@ -1,156 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59200 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:44944 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752977AbaI2Qo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 29 Sep 2014 12:44:26 -0400
-Date: Mon, 29 Sep 2014 12:44:26 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
-Message-ID: <20140929164425.GF30691@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
- <20140926183949.GC27412@fieldses.org>
- <20140926145446.21a99698@tlielax.poochiereds.net>
- <20140926194616.GE27412@fieldses.org>
- <20140927090458.62806936@synchrony.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140927090458.62806936@synchrony.poochiereds.net>
+	id S932298AbaIWQsI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 12:48:08 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8NGm8RP024456
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 12:48:08 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-55-23.rdu2.redhat.com [10.10.55.23])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8NGLhMu027727
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 12:21:45 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2] rpc.svcgssd: Add a configure switch to disable building the daemon
+Date: Tue, 23 Sep 2014 12:21:40 -0400
+Message-Id: <1411489301-28991-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1411489301-28991-1-git-send-email-steved@redhat.com>
+References: <1411489301-28991-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Sep 27, 2014 at 09:04:58AM -0400, Jeff Layton wrote:
-> On Fri, 26 Sep 2014 15:46:17 -0400
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Fri, Sep 26, 2014 at 02:54:46PM -0400, Jeff Layton wrote:
-> > > On Fri, 26 Sep 2014 14:39:49 -0400
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > 
-> > > > By the way, I've seen the following *before* your patches, but in case
-> > > > you're still looking at reboot recovery problems:
-> > > > 
-> > > > I'm getting sporadic failures in the REBT6 pynfs test--a reclaim open
-> > > > succeeds after a previous boot (with full grace period) during which the
-> > > > client had failed to reclaim.
-> > > > 
-> > > > I managed to catch one trace, the relevant parts looked like:
-> > > > 
-> > > > 	SETCLIENTID client1
-> > > > 	OPEN
-> > > > 	LOCK
-> > > > 
-> > > > 	(server restart here)
-> > > > 
-> > > > 	SETCLIENTID client2
-> > > > 	OPEN
-> > > > 	LOCK (lock that conflicts with client1's)
-> > > > 
-> > > > 	(server restart here)
-> > > > 
-> > > > 	SETCLIENTID client1
-> > > > 	OPEN CLAIM_PREVIOUS
-> > > > 
-> > > > And all those ops (including the last reclaim open) succeeded.
-> > > > 
-> > > > So I didn't have a chance to review it more carefully, but it certainly
-> > > > looks like a server bug, not a test bug.  (Well, technically the server
-> > > > behavior above is correct since it's not required to refuse anything
-> > > > till we actually attempt to reclaim the original lock, but we know our
-> > > > server's not that smart.)
-> > > > 
-> > > > But I haven't gotten any further than that....
-> > > > 
-> > > > --b.
-> > > > 
-> > > 
-> > > Ewww...v4.0... ;)
-> > > 
-> > > Well, I guess that could happen if, after the first reboot, client1 also
-> > > did a SETCLIENTID *and* reclaimed something that didn't conflict with
-> > > the lock that client2 grabs...or, did an OPEN/OPEN_CONFIRM after the
-> > > grace period without reclaiming its lock previously.
-> > > 
-> > > If it didn't do one or the other, then its record should have been
-> > > cleaned out of the DB after the grace period ended between the reboots
-> > > and it wouldn't have been able to reclaim after the second reboot.
-> > 
-> > Yeah.  Is there an easy way to tell nfsdcltrack to log everything?  I'm
-> > only seeing this occasionally.
-> > 
-> 
-> If you can make sure that it's run with the '-d' flag then that'll make
-> it do debug level logging. Unfortunately, the kernel doesn't have a
-> handy switch to enable that so you'll need to patch the kernel (or
-> maybe wrap nfsdcltrack) to make that happen.
-> 
-> Maybe we should add a module parm to nfsd.ko that makes it run
-> nfsdcltrack with -d?
+Now that gssproxy is supported on modern kernels,
+the svcgssd is no longer needed. This switch
+disables the building of the daemon.
 
-Would userland configuration (e.g. and optional /etc/ file) be more
-flexible?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ configure.ac           | 23 +++++++++++++++++++----
+ utils/gssd/Makefile.am | 11 +++++++++--
+ 2 files changed, 28 insertions(+), 6 deletions(-)
 
-> 
-> > > It's a bit of a pathological case, and I don't see a way to fix that in
-> > > the context of v4.0. The fact that there's no RECLAIM_COMPLETE is a
-> > > pretty nasty protocol bug, IMO. Yet another reason to start really
-> > > moving people toward v4.1+...
-> > 
-> > I don't belive there's a protocol bug here.
-> > 
-> > A correct NFSv4.0 client wouldn't send the open reclaim in the case you
-> > describe above.
-> > 
-> 
-> It would in the partial reclaim case.
+diff --git a/configure.ac b/configure.ac
+index bc48373..b63d821 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -90,21 +90,36 @@ AC_ARG_ENABLE(nfsv41,
+ 
+ AC_ARG_ENABLE(gss,
+ 	[AC_HELP_STRING([--enable-gss],
+-                        [enable support for rpcsec_gss @<:@default=yes@:>@])],
++              [enable client support for rpcsec_gss @<:@default=yes@:>@])],
+ 	enable_gss=$enableval,
+ 	enable_gss=yes)
+ 	if test "$enable_gss" = yes; then
+ 		GSSD=gssd
+-		SVCGSSD=svcgssd
+ 	else
+ 		enable_gss=
+ 		GSSD=
+-		SVCGSSD=
+ 	fi
+ 	AC_SUBST(GSSD)
+-	AC_SUBST(SVCGSSD)
+ 	AC_SUBST(enable_gss)
+ 	AM_CONDITIONAL(CONFIG_GSS, [test "$enable_gss" = "yes"])
++
++AC_ARG_ENABLE(svcgss,
++	[AC_HELP_STRING([--enable-svcgss],
++    [dissable building svcgssd for rpcsec_gss server support @<:@default=yes@:>@])],
++	enable_svcgss=$enableval,
++	enable_svcgss=yes)
++	if test "$enable_gss" = yes; then
++		if "enable_svcgss" = yes; then
++			SVCGSSD=svcgssd
++		fi
++	else
++		enable_svcgss=
++		SVCGSSD=
++	fi
++	AC_SUBST(SVCGSSD)
++	AC_SUBST(enable_svcgss)
++	AM_CONDITIONAL(CONFIG_SVCGSS, [test "$enable_svcgss" = "yes"])
++
+ AC_ARG_ENABLE(kprefix,
+ 	[AC_HELP_STRING([--enable-kprefix], [install progs as rpc.knfsd etc])],
+ 	test "$enableval" = "yes" && kprefix=k,
+diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
+index af59791..9835117 100644
+--- a/utils/gssd/Makefile.am
++++ b/utils/gssd/Makefile.am
+@@ -1,10 +1,17 @@
+ ## Process this file with automake to produce Makefile.in
+ 
+-man8_MANS	= gssd.man svcgssd.man
++man8_MANS	= gssd.man
++if CONFIG_SVCGSS
++man8_MANS	+= svcgssd.man
++endif
+ 
+ RPCPREFIX	= rpc.
+ KPREFIX		= @kprefix@
+-sbin_PREFIXED	= gssd svcgssd
++sbin_PREFIXED	= gssd
++if CONFIG_SVCGSS
++sbin_PREFIXED	+= svcgssd
++endif
++
+ sbin_PROGRAMS	= $(sbin_PREFIXED)
+ 
+ EXTRA_DIST = \
+-- 
+1.9.3
 
-My (and I think Trond's) understanding is that client1 would not send
-the reclaim in that case.  In the case of a partial reclaim, a correct
-4.0 client will stop trying to reclaim the state that it failed to
-reclaim previously.  My understanding is that is how the linux client in
-fact behaves.
-
-So the bug would be in the client, not the protocol.  That said,
-admittedly:
-
-	- the "protocol" here seems to be largely in our heads; the spec
-	  does a poor job of explaining all this.
-	- we (not suprisingly) disagree on some of the details.
-
-Nevertheless, I believe that despite our disagreement there's no actual
-bug at least between the existing Linux client and server.  And that
-3530bis and 5661 were at least *supposed* to deal with this case....
-
-Oh, look, Trond and you have written a pile more of text on this on the
-ietf list.  Should I even try to catch up, or would be better off just
-spending the rest of my day back in bed?
-
---b.
-
-> 
-> Suppose we start reclaiming things but don't get everything before
-> there's a network partition. The server ends the grace period and then
-> hands out the conflicting lock to client2. It then reboots again and the
-> network partition heals. At that point, client1 could try to reclaim
-> everything it had before (including the lock that conflicts with the
-> one that client2 had).
-> 
-> I'd still argue that this is a protocol bug. Without RECLAIM_COMPLETE,
-> the server simply has no way to know whether the reclaims done by
-> client1 are complete or not.
-> 
-> > As I understand it, the rule for the client is: you're allowed to
-> > reclaim only the set locks that you held previously, where "the set of
-> > locks you held previously" is "the set of locks held by the clientid
-> > which last managed to send a reclaim OPEN or OPEN_CONFIRM".  So for
-> > example once client1 sends that unrelated OPEN reclaim it's giving up
-> > on anything else it doesn't manage to reclaim this time around.
-> > 
-> > Any server that loses client state on reboot has no choice but to
-> > trust clients to get this sort of thing right.
-> > 
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@primarydata.com>
