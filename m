@@ -1,73 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:62974 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753452AbaIIQMt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:12:49 -0400
-Received: by mail-qg0-f45.google.com with SMTP id j107so4262724qga.4
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 09:12:48 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 9 Sep 2014 12:12:44 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: kernel BUG in fs/dcache.c running nfs
-Message-ID: <20140909121244.610f297d@tlielax.poochiereds.net>
-In-Reply-To: <20140909154211.GA6614@infradead.org>
-References: <20140908144525.GB19811@infradead.org>
-	<20140909105918.59477ee3@tlielax.poochiereds.net>
-	<20140909154211.GA6614@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:29841 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753090AbaIWTkl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 15:40:41 -0400
+Date: Tue, 23 Sep 2014 15:40:36 -0400
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140923154036.23e0e639@willson.usersys.redhat.com>
+In-Reply-To: <20140923192909.GJ29932@fieldses.org>
+References: <1411413608-16462-2-git-send-email-steved@redhat.com>
+	<20140922152603.75005941@willson.usersys.redhat.com>
+	<54207BCD.70101@RedHat.com>
+	<20140922204401.GI26763@fieldses.org>
+	<5420911D.6080506@RedHat.com>
+	<20140922173239.05c17b2a@willson.usersys.redhat.com>
+	<5420A946.4090805@RedHat.com>
+	<20140922201927.36fae05c@willson.usersys.redhat.com>
+	<5420CA96.6090409@RedHat.com>
+	<20140923085245.007533b6@willson.usersys.redhat.com>
+	<20140923192909.GJ29932@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 9 Sep 2014 08:42:11 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+On Tue, 23 Sep 2014 15:29:09 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Tue, Sep 09, 2014 at 10:59:18AM -0400, Jeff Layton wrote:
-> > > [ 5497.405585]  [<ffffffff8135d0c1>] nfs4_do_open.constprop.84+0x681/0x960
-> > > [ 5497.405585]  [<ffffffff8135d459>] nfs4_atomic_open+0x9/0x20
-> > > [ 5497.405585]  [<ffffffff8136cc3d>] nfs4_file_open+0xcd/0x1b0
-> > > [ 5497.405585]  [<ffffffff811b8092>] do_dentry_open.isra.13+0x1f2/0x320
-> > > [ 5497.405585]  [<ffffffff811b82ad>] finish_open+0x1d/0x30
-> > > [ 5497.405585]  [<ffffffff811c98e9>] path_openat+0xb9/0x670
-> > > [ 5497.405585]  [<ffffffff811ca26e>] do_filp_open+0x3e/0xa0
-> > > [ 5497.405585]  [<ffffffff811b95cc>] do_sys_open+0x13c/0x230
-> > > [ 5497.405585]  [<ffffffff811b96dd>] SyS_open+0x1d/0x20
-> > > [ 5497.405585]  [<ffffffff81d9f5a9>] system_call_fastpath+0x16/0x1b
-> > > 
+> On Tue, Sep 23, 2014 at 08:52:45AM -0400, Simo Sorce wrote:
+> > It will not, but right now gssproxy.service also has:
+> >  Requires=proc-fs-nfsd.mount
 > > 
-> > Odd...
-> > 
-> > It looks like you hit the BUG() in d_instantiate.
-> > 
-> > I don't see any calls to d_instantiate in the current nfs_code (aside
-> > from the one in nfs_lookup, and I don't think that's getting called
-> > here). d_instantiate is called by d_add though, and that gets called
-> > from nfs_atomic_open. Is that what happened here?
-> > 
-> > Maybe you can use gdb to figure out what line of code
-> > "nfs4_do_open.constprop.84+0x681" actually is?
+> > I want to drop this one.
 > 
-> My gdb can't cope with these constprop expressions unfortunately.
+> By the way, I think all you actually want is After=proc-fs-nfsd.mount.
 > 
-> But when you remove the questionable symbols as I've done above it's
-> pretty clear that this must be the
+> You don't actually want to bail out if fs-nfsd.mount fails, in fact
+> you don't care if it's activated at all, all you care about is that
+> *if* it's already activated (because nfsd is), then you want it to
+> start before you.
 > 
-> nfs4_atomic_open
->  -> nfs4_do_open
->    -> _nfs4_do_open
->      -> _nfs4_open_and_get_state
->        -> d_add
->          -> d_instantiate
-> 
-> call chain. There is heavy inlining going on inside nfs4file.c, and
-> d_add now is a simple inline around d_instantiate and d_rehash.
+> And in fact we could instead replace that with a
+> Before=gssproxy.service in proc-fs-nfsd.mount if you preferred.  I
+> don't know how to decide which place it goes, or if it matters.
 
-Ok. So I'm guessing that means that the current scheme of doing a
-d_drop/d_add is not valid. d_drop doesn't remove the dentry from the
-i_alias list.
+Given we are already messing with service files I wouldn't object to
+moving the depenecy chain creation in nfs-util by adding a
+Before=gssproxy.service directive in proc-fs-nfsd.mount and dropping
+the Reuire from gssproxy.service
 
-It looks like the first call there should just be doing a d_delete
-instead, since it's trying to turn the thing into a negative dentry.
+Simo.
+
 -- 
-Jeff Layton <jlayton@primarydata.com>
+Simo Sorce * Red Hat, Inc * New York
