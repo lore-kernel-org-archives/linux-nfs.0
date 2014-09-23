@@ -1,129 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from prod-mail-xrelay02.akamai.com ([72.246.2.14]:58799 "EHLO
-	prod-mail-xrelay02.akamai.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754285AbaIVRzq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Sep 2014 13:55:46 -0400
-Message-ID: <542062A0.4030103@akamai.com>
-Date: Mon, 22 Sep 2014 13:55:44 -0400
-From: Jason Baron <jbaron@akamai.com>
+Received: from mx12.netapp.com ([216.240.18.77]:62427 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754470AbaIWPhe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 11:37:34 -0400
+Message-ID: <542193BB.9050106@Netapp.com>
+Date: Tue, 23 Sep 2014 11:37:31 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] rpc: Add -EPERM processing for xs_udp_send_request()
-References: <cover.1411068259.git.jbaron@akamai.com> <d143828a73125846d583f4c606061109d22869f7.1411068259.git.jbaron@akamai.com> <CAHQdGtQOoop=CShDx9dTXSjo47KzWoRqkM9PNx1Si-pFSXg-_w@mail.gmail.com> <541B484E.90202@akamai.com> <CAHQdGtQ93P5BpDgW+BEhWNGB4=M7f0RF4p8NOXQmUJEw9cu4iQ@mail.gmail.com> <541B8CF0.3090502@akamai.com> <CAHQdGtSYqwLKuBWKGdZYaZqg5K=+f101FqUZ9Y5gHKr12bbbHA@mail.gmail.com> <541C9D16.7010800@akamai.com>
-In-Reply-To: <541C9D16.7010800@akamai.com>
-Content-Type: text/plain; charset=UTF-8
+To: <andros@netapp.com>, <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1: Fix an NFSv4.1 state renewal regression
+References: <1411485490-21967-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1411485490-21967-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/19/2014 05:16 PM, Jason Baron wrote:
-> On 09/19/2014 03:41 PM, Trond Myklebust wrote:
->> On Thu, Sep 18, 2014 at 9:54 PM, Jason Baron <jbaron@akamai.com> wrote:
->>> On 09/18/2014 05:20 PM, Trond Myklebust wrote:
->>>> On Thu, Sep 18, 2014 at 5:02 PM, Jason Baron <jbaron@akamai.com> wrote:
->>>>> On 09/18/2014 04:51 PM, Trond Myklebust wrote:
->>>>>> On Thu, Sep 18, 2014 at 3:51 PM, Jason Baron <jbaron@akamai.com> wrote:
->>>>>>> If an iptables drop rule is added for an nfs server, the client can end up in
->>>>>>> a softlockup. Because of the way that xs_sendpages() is structured, the -EPERM
->>>>>>> is ignored since the prior bits of the packet may have been successfully queued
->>>>>>> and thus xs_sendpages() returns a non-zero value. Then, xs_udp_send_request()
->>>>>>> thinks that because some bits were queued it should return -EAGAIN. We then try
->>>>>>> the request and again and a softlockup occurs. The test sequence is simply:
->>>>>>>
->>>>>>> 1) open a file on the nfs server '/nfs/foo' (mounted using udp)
->>>>>>> 2) iptables -A OUTPUT -d <nfs server ip> -j DROP
->>>>>>> 3) write to /nfs/foo
->>>>>>> 4) close /nfs/foo
->>>>>>> 5) iptables -D OUTPUT -d <nfs server ip> -j DROP
->>>>>>>
->>>>>>> The softlockup occurs in step 4 above.
->>>>>> For UDP, the expected and documented behaviour in the case above is as follows:
->>>>>> - if the mount is soft, then return EIO on the first major timeout.
->>>>> yeah - so this case is a softlockup in my testing :(
->>>>>
->>>>>> - if the mount is hard, then retry indefinitely on timeout.
->>>>>>
->>>>>> Won't these 2 patches end up propagating an EPERM to the application?
->>>>>> That would be a definite violation of both hard and soft semantics.
->>>>> ok, yeah it does propogate the -EPERM up - I wasn't aware of the correct
->>>>> semantics - thanks.
->>>>>
->>>>> I can rework the patches such that they return -EIO instead for a soft mount,
->>>>> and verify that we keep retrying for a hard one.
->>>>>
->>>> Doesn't the soft timeout currently trigger after the major timeout? If
->>>> not, do we understand why it isn't doing so?
->>>
->>> No, the soft timeout does not currently trigger after the major timeout. Instead,
->>> the kernel spins indefinitely, and triggers a softlockup.
->>>
->>> The reason is that xs_sendpages() returns a positive value in this case
->>> and xs_udp_send_request() turns it in an -EAGAIN for the write operation.
->>> Subsequently, we call call_transmit_status() and then call_status() which
->>> sees the EAGAIN, which just starts all over again with a 'call_transmit()'.
->>> So we are stuck spinning indefinitely in kernel space.
->>>
->>> Simply moving the -EPERM up in this patch, results in the behavior you
->>> described above - EIO after a major timeout on a soft mount, and indefinte
->>> retries on a hard mount - but without the cpu consumption. IE applying
->>> this on top of this patch:
->>>
->>> --- a/net/sunrpc/clnt.c
->>> +++ b/net/sunrpc/clnt.c
->>> @@ -2019,6 +2019,7 @@ call_status(struct rpc_task *task)
->>>         case -EHOSTDOWN:
->>>         case -EHOSTUNREACH:
->>>         case -ENETUNREACH:
->>> +       case -EPERM:
->>>                 if (RPC_IS_SOFTCONN(task)) {
->>>                         rpc_exit(task, status);
->>>                         break;
->>> @@ -2048,7 +2049,6 @@ call_status(struct rpc_task *task)
->>>         case -EAGAIN:
->>>                 task->tk_action = call_transmit;
->>>                 break;
->>> -       case -EPERM:
->>>         case -EIO:
->>>                 /* shutdown or soft timeout */
->>>                 rpc_exit(task, status);
->>>
->>> We could also 'translate' the -EPERM into an '-ENETUNREACH' or such,
->>> in the return from xs_udp_send_request(), if you think that would make
->>> more sense?
->>>
->>> Hopefully, I've explained things better.
->>>
->>>
->>
->> Yep. Can you please resend the patch with the above fix? I think we
->> can live with the EPERM in the RPC_IS_SOFTCONN case, given that it is
->> in practice only ever passed back to the 'mount' syscall.
->>
-> 
-> Hi,
-> 
-> So after some more testing on this new patch, the test sequence I described
-> works fine - but if I set the firewall rule first and then do an open, it
-> appears that the open() wouldn't time out even on a soft mount (whereas
-> with the previous patch it incorrectly returned -EPERM almost immediately).
-> It appears that the rpc request is getting queued up onto one of the wait
-> queues (xprt_backlog or xprt_sending) in that case, but I'm not sure why.
-> I'll have to look more into it next week.
-> 
-> Thanks,
-> 
-> -Jason
-> 
-> 
+On 09/23/2014 11:18 AM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+>
+> Commit 2f60ea6b8ced ("NFSv4: The NFSv4.0 client must send RENEW calls if it holds a delegation") set the NFS4_RENEW_TIMEOUT
+> flag in nfs4_renew_state, and does not put an nfs41_proc_async_sequence call,
+> the NFSv4.1 lease renewal heartbeat call, on the wire to renew the NFSv4.1
+> state if the flag was not set.
+>
+> The NFS4_RENEW_TIMEOUT flag is set when "now" is after the last renewal
+> (cl_last_renewal) plus the lease time divided by 3. This is arbitrary and
+> sometimes does the following:
+>
+> In normal operation, the only way a future state renewal call is put on the
+> wire is via a call to nfs4_schedule_state_renewal, which schedules a
+> nfs4_renew_state workqueue task. nfs4_renew_state determines if the
+> NFS4_RENEW_TIMEOUT should be set, and the calls nfs41_proc_async_sequence,
+> which only gets sent if the NFS4_RENEW_TIMEOUT flag is set.
+> Then the nfs41_proc_async_sequence rpc_release function schedules
+> another state remewal via nfs4_schedule_state_renewal.
+>
+> Without this change we can get into a state where an application stops
+> accessing the NFSv4.1 share, state renewal calls stop due to the
+> NFS4_RENEW_TIMEOUT flag _not_ being set. Note that the only way to recover
+> from this situation is with a clientid re-establishment, once the application
+> resumes and the server has timed out the lease and so returns
+> NFS4ERR_BAD_SESSION.
+>
+> An example application:
+> open, lock, write a file.
+>
+> sleep for 6 * lease (could be less)
+>
+> ulock, close.
+>
+> In the above example, without this change, there are no OP_SEQUENCE state
+> renewal calls during the sleep, and the clientid is recovered due to lease
+> expiration on the ulock (or close if delegations are enabled).
+>
+> Note that this does not occur with NFSv4 which also sends a renew lease
+> heartbeat if the NFS4_RENEW_DELEGATION_CB is set, and so survives the
+Survives the ...?
 
-Hi Trond,
+Anna
+>
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c | 2 --
+>  1 file changed, 2 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 288be08..efe802a 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -7348,8 +7348,6 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
+>  	struct rpc_task *task;
+>  	int ret = 0;
+>  
+> -	if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
+> -		return 0;
+>  	task = _nfs41_proc_sequence(clp, cred, false);
+>  	if (IS_ERR(task))
+>  		ret = PTR_ERR(task);
 
-Ok, so they do timeout now with this patch (for a soft mount) - I simply wasn't
-waiting long enough (took around 30 minutes in some cases). So I think this
-patch is ok. If it makes sense I can clean it up based on the comments, and
-re-submit?
-
-Thanks,
-
--Jason
