@@ -1,48 +1,195 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39659 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:12731 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756691AbaICVgJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Sep 2014 17:36:09 -0400
-Date: Wed, 3 Sep 2014 17:36:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 6/6] NFSD: Put export if prepare_creds() fail
-Message-ID: <20140903213608.GD25363@fieldses.org>
-References: <5405D0FE.70008@gmail.com>
+	id S1752350AbaIWA1D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 20:27:03 -0400
+Date: Mon, 22 Sep 2014 20:26:55 -0400
+From: Simo Sorce <simo@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140922202655.5e308e58@willson.usersys.redhat.com>
+In-Reply-To: <5420B78D.6040704@RedHat.com>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+	<1411413608-16462-2-git-send-email-steved@redhat.com>
+	<20140922152603.75005941@willson.usersys.redhat.com>
+	<54207BCD.70101@RedHat.com>
+	<20140922204401.GI26763@fieldses.org>
+	<5420911D.6080506@RedHat.com>
+	<20140922223423.GA29932@fieldses.org>
+	<5420B78D.6040704@RedHat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5405D0FE.70008@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying all 6 for 3.18.
+On Mon, 22 Sep 2014 19:58:05 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
---b.
+> 
+> 
+> On 09/22/2014 06:34 PM, J. Bruce Fields wrote:
+> > On Mon, Sep 22, 2014 at 05:14:05PM -0400, Steve Dickson wrote:
+> >>
+> >>
+> >> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
+> >>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
+> >>>>
+> >>>>
+> >>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
+> >>>>> On Mon, 22 Sep 2014 15:20:07 -0400
+> >>>>> Steve Dickson <steved@redhat.com> wrote:
+> >>>>>
+> >>>>>> Added the gssproxy.service to both the Wants= and
+> >>>>>> Atfers= lines, before the rpc-svcgssd.service. There
+> >>>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
+> >>>>>> unit which will stop the rpc.svcgssd daemon from
+> >>>>>> starting when the gssproxy daemon is already running.
+> >>>>>>
+> >>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+> >>>>>> ---
+> >>>>>>  systemd/nfs-server.service | 5 +++--
+> >>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
+> >>>>>>
+> >>>>>> diff --git a/systemd/nfs-server.service
+> >>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
+> >>>>>> --- a/systemd/nfs-server.service
+> >>>>>> +++ b/systemd/nfs-server.service
+> >>>>>> @@ -2,12 +2,13 @@
+> >>>>>>  Description=NFS server and services
+> >>>>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>>>>  Requires= nfs-mountd.service
+> >>>>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
+> >>>>>> rpc-svcgssd.service +Wants=rpc-statd.service
+> >>>>>> nfs-idmapd.service +Wants=rpc-gssd.service  
+> >>>>>>  Wants=rpc-statd-notify.service
+> >>>>>>  
+> >>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+> >>>>>> -After= rpc-gssd.service rpc-svcgssd.service
+> >>>>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
+> >>>>>>  Before= rpc-statd-notify.service
+> >>>>>>  
+> >>>>>>  Wants=nfs-config.service
+> >>>>>
+> >>>>> I think you really need to insure that the modules are loaded
+> >>>>> before any of the server services are started, perhaps adding a
+> >>>>> unit file that exec's modprobe and has "Before:
+> >>>>> gssproxy.service rpc-svcgssd.service" in it ?
+> >>>> I really don't think its needed... From my testing it appears 
+> >>>> gssproxy is always being started and rpc.svcgssd is not... 
+> >>>
+> >>> Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount
+> >>> as both "Requires=" and "After=", so rpc-svcgssd.service will
+> >>> never run without first running var-lib-nfs-rpc_pipefs.mount,
+> >>> which will load sunrpc.  But I don't see where auth_rpcgss is
+> >>> getting loaded.  And I don't see what ensures anything happening
+> >>> before gssproxy runs.
+> >> It happens during the mount on the client and when the server
+> >> is started. 
+> >>
+> >>>
+> >>> We want to make sure your testing's not just getting lucky on the
+> >>> startup order.
+> >> The reason it working is because rpc.gssd is being started on the
+> >> server these days for callbacks and the After= line in
+> >> rpc-svcgssd.service is being executed before the
+> >> ConditionPathExists which cause rpc.svcgssd not to start.
+> > 
+> > nfs-utils$ grep After systemd/rpc-svcgssd.service 
+> > After=var-lib-nfs-rpc_pipefs.mount
+> > After=gssproxy.service
+> > After=nfs-config.service
+> > 
+> > There doesn't seem to be an After= line referring to rpc.gssd.
+> No, why should there be? There is After= line referring to rpc.gssd
+> in nfs-server.service
+> 
+> grep After systemd/nfs-server.service 
+> After= network.target proc-fs-nfsd.mount rpcbind.target
+> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+> After= rpc-gssd.service rpc-svcgssd.service
+> After=nfs-config.service
+> 
+> So when the server starts,rpc.gssd will start and rpc.svcgssd will
+> start if gssproxy is not enable and there is a key tab. 
 
-On Tue, Sep 02, 2014 at 10:15:26PM +0800, Kinglong Mee wrote:
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfsfh.c | 6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
+They can start in parallel, there is nothing in that line that makes
+one start before the other.
+
+If you are relying on this you are relying on luck.
+
+> >> So when gssproxy.service does it's "Before=nfs-secure.service
+> >> nfs-secure-server.service" line everything is loaded before
+> >> gssproxy start... 
+> > 
+> > That line only makes gss-proxy start before those other things.
+> Right, which will load the sunrpc modules.
+
+No, starting before those service in itself achieves nothing.\
+I think what may cause the module to load maybe the fact
+gssproxy.service includes:
+Requires=proc-fs-nfsd.mount
+
+But to be honest this was a hack to deal with broken nfs service files,
+gss-proxy should not require nfsd, the dependency should be the other
+way around, as gss-proxy can run on machines where there is no nfs
+service whatsoever, as it stand this is a bug in gssproxy.service and
+I'd like to fix it.
+
+> >> I'm think gssproxy.service just needs to the put the Wants and
+> >> After= var-lib-nfs-rpc_pipefs.mount lines, instead of that Before
+> >> line.. 
+> > 
+> > That would make sure sunrpc's loaded, but not auth_rpcgss.
+> On the client side the mount -o sec=krb5? loads auth_rpcgss module.
+
+This happens eons after gss-proxy has been started.
+
+> Maybe the loading of nfsd loads the module? But I don't think that
+> module has to be loaded for any of the gss daemons (gssd, svcgssd or
+> gssproxy) to start successfully...
+
+Atm it *has to*.
+If the module is not loaded then /proc/net/rpc/use-gss-proxy will not
+exist and GSS-Proxy will not register with the kernel (it does so only
+at startup). It also means rpc.svcgssd will be started when it shouldn't
+
+ 
+> >>>> Plus, from my understanding...  loading module from a service 
+> >>>> file is a big no no! People were having problems with
+> >>>> way back when... 
+> >>>
+> >>> Any pointers?  Google's not finding me anything.
+> >> Search the the Fedora bz's when systemd first came out... 
+> > 
+> > All I can find is:
+> > 
+> > 	https://bugzilla.redhat.com/show_bug.cgi?id=699040#c16
+> > 
+> > 	Btw afaik modules should be loaded via autoloading based on
+> > bus information, or via /etc/modules-load.d/*.conf. and unloading a
+> > 	module from the kernel should not be done except for
+> > debugging purposes so loading all these modules is it really
+> > necessary?
+> > 
+> > Which I agree with--modules should normally load on demand when we
+> > need them, and we should have an explanation for exceptions.
+> Yes, this was the conversation I was referring to.. Thank you 
+> for digging it out.. 
 > 
-> diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
-> index e883a58..88026fc 100644
-> --- a/fs/nfsd/nfsfh.c
-> +++ b/fs/nfsd/nfsfh.c
-> @@ -209,8 +209,10 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
->  		 * fix that case easily.
->  		 */
->  		struct cred *new = prepare_creds();
-> -		if (!new)
-> -			return nfserrno(-ENOMEM);
-> +		if (!new) {
-> +			error =  nfserrno(-ENOMEM);
-> +			goto out;
-> +		}
->  		new->cap_effective =
->  			cap_raise_nfsd_set(new->cap_effective,
->  					   new->cap_permitted);
-> -- 
-> 1.9.3
-> 
+> > 
+> > But here we have a pretty reasonable explanation (we need to know
+> > on startup whether a certain module has a certain feature, and we
+> > have to modprobe to do that).  I don't see any blanket prohibition
+> > against loading modules.
+> Lets talk with the systemd people to see what they say...
+
+Feel free to CC the,.
+
+Simo.
+
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
