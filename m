@@ -1,85 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:64661 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756485AbaISNw7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Sep 2014 09:52:59 -0400
-Received: by mail-qc0-f170.google.com with SMTP id c9so375776qcz.15
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 06:52:57 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 1/7] sm-notify: inform the kernel if there were no hosts to notify
-Date: Fri, 19 Sep 2014 09:52:44 -0400
-Message-Id: <1411134770-2409-2-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
-References: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:53530 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755540AbaIWT3J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 15:29:09 -0400
+Date: Tue, 23 Sep 2014 15:29:09 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Simo Sorce <simo@redhat.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140923192909.GJ29932@fieldses.org>
+References: <1411413608-16462-2-git-send-email-steved@redhat.com>
+ <20140922152603.75005941@willson.usersys.redhat.com>
+ <54207BCD.70101@RedHat.com>
+ <20140922204401.GI26763@fieldses.org>
+ <5420911D.6080506@RedHat.com>
+ <20140922173239.05c17b2a@willson.usersys.redhat.com>
+ <5420A946.4090805@RedHat.com>
+ <20140922201927.36fae05c@willson.usersys.redhat.com>
+ <5420CA96.6090409@RedHat.com>
+ <20140923085245.007533b6@willson.usersys.redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140923085245.007533b6@willson.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the event that there no hosts to be notified after a reboot, there's
-no real reason to force lockd to wait the entire grace period before
-handing out locks. We're not expecting any reclaim requests to come in
-that situation.
+On Tue, Sep 23, 2014 at 08:52:45AM -0400, Simo Sorce wrote:
+> It will not, but right now gssproxy.service also has:
+>  Requires=proc-fs-nfsd.mount
+> 
+> I want to drop this one.
 
-Have sm-notify do a write to /proc/fs/lockd/nlm_end_grace if that file
-is present. That informs the kernel that it's OK to go ahead and lift
-lockd's grace period early.
+By the way, I think all you actually want is After=proc-fs-nfsd.mount.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- utils/statd/sm-notify.c | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+You don't actually want to bail out if fs-nfsd.mount fails, in fact you
+don't care if it's activated at all, all you care about is that *if*
+it's already activated (because nfsd is), then you want it to start
+before you.
 
-diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
-index 5994b2fbcfd3..8afddd97da73 100644
---- a/utils/statd/sm-notify.c
-+++ b/utils/statd/sm-notify.c
-@@ -42,6 +42,8 @@
- #define NSM_TIMEOUT	2
- #define NSM_MAX_TIMEOUT	120	/* don't make this too big */
- 
-+#define NLM_END_GRACE_FILE	"/proc/fs/lockd/nlm_end_grace"
-+
- struct nsm_host {
- 	struct nsm_host *	next;
- 	char *			name;
-@@ -450,6 +452,28 @@ retry:
- 	return sock;
- }
- 
-+/* Inform the kernel that it's OK to lift lockd's grace period */
-+static void
-+nsm_lift_grace_period(void)
-+{
-+	int fd;
-+
-+	fd = open(NLM_END_GRACE_FILE, O_WRONLY);
-+	if (fd < 0) {
-+		/* Don't warn if file isn't present */
-+		if (errno != ENOENT)
-+			xlog(L_WARNING, "Unable to open %s: %m",
-+				NLM_END_GRACE_FILE);
-+		return;
-+	}
-+
-+	if (write(fd, "Y", 1) < 0)
-+		xlog(L_WARNING, "Unable to write to %s: %m", NLM_END_GRACE_FILE);
-+
-+	close(fd);
-+	return;
-+}
-+
- int
- main(int argc, char **argv)
- {
-@@ -534,6 +558,7 @@ usage:		fprintf(stderr,
- 	(void)nsm_retire_monitored_hosts();
- 	if (nsm_load_notify_list(smn_get_host) == 0) {
- 		xlog(D_GENERAL, "No hosts to notify; exiting");
-+		nsm_lift_grace_period();
- 		return 0;
- 	}
- 
--- 
-1.9.3
+And in fact we could instead replace that with a Before=gssproxy.service
+in proc-fs-nfsd.mount if you preferred.  I don't know how to decide
+which place it goes, or if it matters.
 
+--b.
+
+> 
+> > >> 2) Add a After=var-lib-nfs-rpc_pipefs.mount to the
+> > >> gssproxy.service file since gssproxy could careless about either
+> > >> rpc.gssd or rpc.svcgssd daemons. All it is looking for is the
+> > >> sunrpc and auth_rpcgss kernel modules.
+> > > 
+> > > The correct thing is to add a Before: gssproxy.service to
+> > > var-lib-nfs-rpc_pipefs.mount IMO.
+> > Again what happen if gssproxy is not installed? Things will 
+> > still come up successfully?
+> 
+> Yes, afaik After and Before are just ordering instruction and do not
+> cause any failure if the units are not present at all, or fail to start.
+> 
+> There are Want and Require directives for strong relationships.
+> 
+> Simo.
+> 
+> -- 
+> Simo Sorce * Red Hat, Inc * New York
