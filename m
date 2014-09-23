@@ -1,79 +1,215 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:50999 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751341AbaIJPVl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 11:21:41 -0400
-Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRjiF-00007Z-VN
-	for linux-nfs@vger.kernel.org; Wed, 10 Sep 2014 15:21:40 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 7/9] pnfs/blocklayout: implement the return_range method
-Date: Wed, 10 Sep 2014 08:23:35 -0700
-Message-Id: <1410362617-28018-8-git-send-email-hch@lst.de>
-In-Reply-To: <1410362617-28018-1-git-send-email-hch@lst.de>
-References: <1410362617-28018-1-git-send-email-hch@lst.de>
+Received: from mx1.redhat.com ([209.132.183.28]:24408 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754973AbaIWMtB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 08:49:01 -0400
+Date: Tue, 23 Sep 2014 08:48:54 -0400
+From: Simo Sorce <simo@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140923084854.6c67d401@willson.usersys.redhat.com>
+In-Reply-To: <20140923120804.51dbcc2e@notabene.brown>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+	<1411413608-16462-2-git-send-email-steved@redhat.com>
+	<20140922152603.75005941@willson.usersys.redhat.com>
+	<54207BCD.70101@RedHat.com>
+	<20140922204401.GI26763@fieldses.org>
+	<5420911D.6080506@RedHat.com>
+	<20140922223423.GA29932@fieldses.org>
+	<5420B78D.6040704@RedHat.com>
+	<20140922202655.5e308e58@willson.usersys.redhat.com>
+	<20140923015549.GB32712@fieldses.org>
+	<20140923120804.51dbcc2e@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This allows removing extents from the extent tree especially on truncate
-operations, and thus fixing reads from truncated and re-extended that
-previously returned stale data.
+On Tue, 23 Sep 2014 12:08:04 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+> On Mon, 22 Sep 2014 21:55:49 -0400 "J. Bruce Fields"
+> <bfields@fieldses.org> wrote:
+> 
+> > On Mon, Sep 22, 2014 at 08:26:55PM -0400, Simo Sorce wrote:
+> > > On Mon, 22 Sep 2014 19:58:05 -0400
+> > > Steve Dickson <SteveD@redhat.com> wrote:
+> > > 
+> > > > 
+> > > > 
+> > > > On 09/22/2014 06:34 PM, J. Bruce Fields wrote:
+> > > > > On Mon, Sep 22, 2014 at 05:14:05PM -0400, Steve Dickson wrote:
+> > > > >>
+> > > > >>
+> > > > >> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
+> > > > >>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson
+> > > > >>> wrote:
+> > > > >>>>
+> > > > >>>>
+> > > > >>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
+> > > > >>>>> On Mon, 22 Sep 2014 15:20:07 -0400
+> > > > >>>>> Steve Dickson <steved@redhat.com> wrote:
+> > > > >>>>>
+> > > > >>>>>> Added the gssproxy.service to both the Wants= and
+> > > > >>>>>> Atfers= lines, before the rpc-svcgssd.service. There
+> > > > >>>>>> are  ConditionPathExists= lines in the
+> > > > >>>>>> rpc-svcgssd.service unit which will stop the rpc.svcgssd
+> > > > >>>>>> daemon from starting when the gssproxy daemon is already
+> > > > >>>>>> running.
+> > > > >>>>>>
+> > > > >>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+> > > > >>>>>> ---
+> > > > >>>>>>  systemd/nfs-server.service | 5 +++--
+> > > > >>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
+> > > > >>>>>>
+> > > > >>>>>> diff --git a/systemd/nfs-server.service
+> > > > >>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2
+> > > > >>>>>> 100644 --- a/systemd/nfs-server.service
+> > > > >>>>>> +++ b/systemd/nfs-server.service
+> > > > >>>>>> @@ -2,12 +2,13 @@
+> > > > >>>>>>  Description=NFS server and services
+> > > > >>>>>>  Requires= network.target proc-fs-nfsd.mount
+> > > > >>>>>> rpcbind.target Requires= nfs-mountd.service
+> > > > >>>>>> -Wants=rpc-statd.service nfs-idmapd.service
+> > > > >>>>>> rpc-gssd.service rpc-svcgssd.service
+> > > > >>>>>> +Wants=rpc-statd.service nfs-idmapd.service
+> > > > >>>>>> +Wants=rpc-gssd.service Wants=rpc-statd-notify.service
+> > > > >>>>>>  
+> > > > >>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
+> > > > >>>>>> nfs-mountd.service After= nfs-idmapd.service
+> > > > >>>>>> rpc-statd.service -After= rpc-gssd.service
+> > > > >>>>>> rpc-svcgssd.service +After= rpc-gssd.service
+> > > > >>>>>> gssproxy.service rpc-svcgssd.service Before=
+> > > > >>>>>> rpc-statd-notify.service 
+> > > > >>>>>>  Wants=nfs-config.service
+> > > > >>>>>
+> > > > >>>>> I think you really need to insure that the modules are
+> > > > >>>>> loaded before any of the server services are started,
+> > > > >>>>> perhaps adding a unit file that exec's modprobe and has
+> > > > >>>>> "Before: gssproxy.service rpc-svcgssd.service" in it ?
+> > > > >>>> I really don't think its needed... From my testing it
+> > > > >>>> appears gssproxy is always being started and rpc.svcgssd
+> > > > >>>> is not... 
+> > > > >>>
+> > > > >>> Huh.  Well rpc-svcgssd.service has
+> > > > >>> var-lib-nfs-rpc_pipefs.mount as both "Requires=" and
+> > > > >>> "After=", so rpc-svcgssd.service will never run without
+> > > > >>> first running var-lib-nfs-rpc_pipefs.mount, which will load
+> > > > >>> sunrpc.  But I don't see where auth_rpcgss is getting
+> > > > >>> loaded.  And I don't see what ensures anything happening
+> > > > >>> before gssproxy runs.
+> > > > >> It happens during the mount on the client and when the server
+> > > > >> is started. 
+> > > > >>
+> > > > >>>
+> > > > >>> We want to make sure your testing's not just getting lucky
+> > > > >>> on the startup order.
+> > > > >> The reason it working is because rpc.gssd is being started
+> > > > >> on the server these days for callbacks and the After= line in
+> > > > >> rpc-svcgssd.service is being executed before the
+> > > > >> ConditionPathExists which cause rpc.svcgssd not to start.
+> > > > > 
+> > > > > nfs-utils$ grep After systemd/rpc-svcgssd.service 
+> > > > > After=var-lib-nfs-rpc_pipefs.mount
+> > > > > After=gssproxy.service
+> > > > > After=nfs-config.service
+> > > > > 
+> > > > > There doesn't seem to be an After= line referring to rpc.gssd.
+> > > > No, why should there be? There is After= line referring to
+> > > > rpc.gssd in nfs-server.service
+> > > > 
+> > > > grep After systemd/nfs-server.service 
+> > > > After= network.target proc-fs-nfsd.mount rpcbind.target
+> > > > nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+> > > > After= rpc-gssd.service rpc-svcgssd.service
+> > > > After=nfs-config.service
+> > > > 
+> > > > So when the server starts,rpc.gssd will start and rpc.svcgssd
+> > > > will start if gssproxy is not enable and there is a key tab. 
+> > > 
+> > > They can start in parallel, there is nothing in that line that
+> > > makes one start before the other.
+> > > 
+> > > If you are relying on this you are relying on luck.
+> > > 
+> > > > >> So when gssproxy.service does it's "Before=nfs-secure.service
+> > > > >> nfs-secure-server.service" line everything is loaded before
+> > > > >> gssproxy start... 
+> > > > > 
+> > > > > That line only makes gss-proxy start before those other
+> > > > > things.
+> > > > Right, which will load the sunrpc modules.
+> > > 
+> > > No, starting before those service in itself achieves nothing.\
+> > > I think what may cause the module to load maybe the fact
+> > > gssproxy.service includes:
+> > > Requires=proc-fs-nfsd.mount
+> > 
+> > I'd expect that to only load the nfsd module.
+> > 
+> > Hm, I think nfsd actually has a dependency on auth_rpcgss.  I
+> > wonder if that's correct.  Maybe that's what's doing it.
+> > 
+> > > But to be honest this was a hack to deal with broken nfs service
+> > > files, gss-proxy should not require nfsd, the dependency should
+> > > be the other way around, as gss-proxy can run on machines where
+> > > there is no nfs service whatsoever, as it stand this is a bug in
+> > > gssproxy.service and I'd like to fix it.
+> > 
+> > So, something like this?  (Untested, no idea if I'm doing this
+> > right.)
+> > 
+> > --b.
+> > 
+> > diff --git a/systemd/auth-rpcgss-module.service
+> > b/systemd/auth-rpcgss-module.service new file mode 100644
+> > index 000000000000..252545b458fd
+> > --- /dev/null
+> > +++ b/systemd/auth-rpcgss-module.service
+> > @@ -0,0 +1,15 @@
+> > +# We want to start gss-proxy on kernels that support it and
+> > rpc.svcgssd +# on those that don't.  Those services check for
+> > support by checking +# for existence of the
+> > path /proc/net/rpc/use-gss-proxy.  Before they +# can perform that
+> > check, they need this module loaded.  (Unless +# rpcsec_gss is
+> > built directly into the kernel, in which case this unit +# will
+> > fail.  But that's OK.) +[Unit]
+> > +Description=Kernel Module supporting RPCSEC_GSS
+> > +Before=gssproxy.service rpc-svcgssd.service
+> > +
+> > +[Service]
+> > +ExecStart=/sbin/modprobe -q auth_rpcgss
+> 
+> I think you need
+>    Type=oneshot
+> 
+> else systemd won't wait for the modprobe to complete before running
+> the other services.
+> 
+> > +
+> > +[Install]
+> > +WantedBy=gssproxy.service rpc-svcgssd.service
+> 
+> I don't think you want an install section.  That means the service
+> has to be explicitly enabled, which is a pain.
+> I think nfs-server.service should Want= this.
+> I also think 
+> 
+>   ConditionPathExists=/etc/krb5.keytab
+> 
+> would be appropriate.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 42b6f9c..a7524c4 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -470,6 +470,35 @@ static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
- }
- 
- static void
-+bl_return_range(struct pnfs_layout_hdr *lo,
-+		struct pnfs_layout_range *range)
-+{
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
-+	sector_t offset = range->offset >> SECTOR_SHIFT, end;
-+	int err;
-+
-+	if (range->offset % 8) {
-+		dprintk("%s: offset %lld not block size aligned\n",
-+			__func__, range->offset);
-+		return;
-+	}
-+
-+	if (range->length != NFS4_MAX_UINT64) {
-+		if (range->length % 8) {
-+			dprintk("%s: length %lld not block size aligned\n",
-+				__func__, range->length);
-+			return;
-+		}
-+
-+		end = offset + (range->length >> SECTOR_SHIFT);
-+	} else {
-+		end = round_down(NFS4_MAX_UINT64, PAGE_SIZE);
-+	}
-+
-+	err = ext_tree_remove(bl, range->iomode & IOMODE_RW, offset, end);
-+}
-+
-+static void
- bl_encode_layoutcommit(struct pnfs_layout_hdr *lo, struct xdr_stream *xdr,
- 		       const struct nfs4_layoutcommit_args *arg)
- {
-@@ -777,6 +806,7 @@ static struct pnfs_layoutdriver_type blocklayout_type = {
- 	.free_layout_hdr		= bl_free_layout_hdr,
- 	.alloc_lseg			= bl_alloc_lseg,
- 	.free_lseg			= bl_free_lseg,
-+	.return_range			= bl_return_range,
- 	.encode_layoutcommit		= bl_encode_layoutcommit,
- 	.cleanup_layoutcommit		= bl_cleanup_layoutcommit,
- 	.set_layoutdriver		= bl_set_layoutdriver,
+If GSS-Proxy is in use the administrator may choose to use a keytab in
+a different location, so I am not entirely sure we should depend
+on /etc/krb5.keytab, however it is also ok to decide that if the admin
+wants to use a different place that they create a custom unit file.
+Up to you.
+
+Simo.
+
+
 -- 
-1.9.1
-
+Simo Sorce * Red Hat, Inc * New York
