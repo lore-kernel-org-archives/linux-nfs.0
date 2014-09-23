@@ -1,53 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f176.google.com ([209.85.220.176]:63832 "EHLO
-	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754257AbaIDMlx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:41:53 -0400
-Received: by mail-vc0-f176.google.com with SMTP id ik5so10311202vcb.7
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:41:52 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:7268 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751978AbaIWMwy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 08:52:54 -0400
+Date: Tue, 23 Sep 2014 08:52:45 -0400
+From: Simo Sorce <simo@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140923085245.007533b6@willson.usersys.redhat.com>
+In-Reply-To: <5420CA96.6090409@RedHat.com>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+	<1411413608-16462-2-git-send-email-steved@redhat.com>
+	<20140922152603.75005941@willson.usersys.redhat.com>
+	<54207BCD.70101@RedHat.com>
+	<20140922204401.GI26763@fieldses.org>
+	<5420911D.6080506@RedHat.com>
+	<20140922173239.05c17b2a@willson.usersys.redhat.com>
+	<5420A946.4090805@RedHat.com>
+	<20140922201927.36fae05c@willson.usersys.redhat.com>
+	<5420CA96.6090409@RedHat.com>
 MIME-Version: 1.0
-In-Reply-To: <1409834323-7171-2-git-send-email-jlayton@primarydata.com>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-	<1409834323-7171-2-git-send-email-jlayton@primarydata.com>
-Date: Thu, 4 Sep 2014 08:41:51 -0400
-Message-ID: <CAHQdGtTqG8aW-cte2PW6pVw+OeCXATgr1BZwdhponuWMjzNg8g@mail.gmail.com>
-Subject: Re: [PATCH v2 01/17] locks: consolidate "nolease" routines
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        cluster-devel <cluster-devel@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 4, 2014 at 8:38 AM, Jeff Layton <jlayton@primarydata.com> wrote:
-> GFS2 and NFS have setlease routines that always just return -EINVAL.
-> Turn that into a generic routine that can live in fs/libfs.c.
->
-> Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-> Cc: <linux-nfs@vger.kernel.org>
-> Cc: Steven Whitehouse <swhiteho@redhat.com>
-> Cc: <cluster-devel@redhat.com>
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/gfs2/file.c     | 22 +---------------------
->  fs/libfs.c         | 16 ++++++++++++++++
->  fs/nfs/file.c      | 13 +------------
->  fs/nfs/internal.h  |  1 -
->  fs/nfs/nfs4file.c  |  2 +-
->  include/linux/fs.h |  1 +
->  6 files changed, 20 insertions(+), 35 deletions(-)
+On Mon, 22 Sep 2014 21:19:18 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> 
+> 
+> On 09/22/2014 08:19 PM, Simo Sorce wrote:
+> > On Mon, 22 Sep 2014 18:57:10 -0400
+> > Steve Dickson <SteveD@redhat.com> wrote:
+> > 
+> >>
+> >>
+> >> On 09/22/2014 05:32 PM, Simo Sorce wrote:
+> >>> On Mon, 22 Sep 2014 17:14:05 -0400
+> >>> Steve Dickson <SteveD@redhat.com> wrote:
+> >>>
+> >>>>
+> >>>>
+> >>>> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
+> >>>>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
+> >>>>>>
+> >>>>>>
+> >>>>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
+> >>>>>>> On Mon, 22 Sep 2014 15:20:07 -0400
+> >>>>>>> Steve Dickson <steved@redhat.com> wrote:
+> >>>>>>>
+> >>>>>>>> Added the gssproxy.service to both the Wants= and
+> >>>>>>>> Atfers= lines, before the rpc-svcgssd.service. There
+> >>>>>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
+> >>>>>>>> unit which will stop the rpc.svcgssd daemon from
+> >>>>>>>> starting when the gssproxy daemon is already running.
+> >>>>>>>>
+> >>>>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+> >>>>>>>> ---
+> >>>>>>>>  systemd/nfs-server.service | 5 +++--
+> >>>>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
+> >>>>>>>>
+> >>>>>>>> diff --git a/systemd/nfs-server.service
+> >>>>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
+> >>>>>>>> --- a/systemd/nfs-server.service
+> >>>>>>>> +++ b/systemd/nfs-server.service
+> >>>>>>>> @@ -2,12 +2,13 @@
+> >>>>>>>>  Description=NFS server and services
+> >>>>>>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>>>>>>  Requires= nfs-mountd.service
+> >>>>>>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
+> >>>>>>>> rpc-svcgssd.service +Wants=rpc-statd.service
+> >>>>>>>> nfs-idmapd.service +Wants=rpc-gssd.service  
+> >>>>>>>>  Wants=rpc-statd-notify.service
+> >>>>>>>>  
+> >>>>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>>>>>> nfs-mountd.service After= nfs-idmapd.service
+> >>>>>>>> rpc-statd.service -After= rpc-gssd.service
+> >>>>>>>> rpc-svcgssd.service +After= rpc-gssd.service
+> >>>>>>>> gssproxy.service rpc-svcgssd.service Before=
+> >>>>>>>> rpc-statd-notify.service 
+> >>>>>>>>  Wants=nfs-config.service
+> >>>>>>>
+> >>>>>>> I think you really need to insure that the modules are loaded
+> >>>>>>> before any of the server services are started, perhaps adding
+> >>>>>>> a unit file that exec's modprobe and has "Before:
+> >>>>>>> gssproxy.service " in it ?
+> >>>>>> I really don't think its needed... From my testing it appears 
+> >>>>>> gssproxy is always being started and rpc.svcgssd is not... 
+> >>>>>
+> >>>>> Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount
+> >>>>> as both "Requires=" and "After=", so rpc-svcgssd.service will
+> >>>>> never run without first running var-lib-nfs-rpc_pipefs.mount,
+> >>>>> which will load sunrpc.  But I don't see where auth_rpcgss is
+> >>>>> getting loaded.  And I don't see what ensures anything
+> >>>>> happening before gssproxy runs.
+> >>>> It happens during the mount on the client and when the server
+> >>>> is started. 
+> >>>>
+> >>>>>
+> >>>>> We want to make sure your testing's not just getting lucky on
+> >>>>> the startup order.
+> >>>> The reason it working is because rpc.gssd is being started on the
+> >>>> server these days for callbacks and the After= line in
+> >>>> rpc-svcgssd.service is being executed before the
+> >>>> ConditionPathExists which cause rpc.svcgssd not to start.
+> >>>
+> >>> This guarantees ordering (to some degree) between rpc.gssd and
+> >>> rpoc.svcgssd, but says nothing about gssproxy ...
+> >> The question was how is the auth_rpcgss module being loaded. Since
+> >> both rpc-svcgssd.service and rpc-gssd.service service have
+> >> a After=var-lib-nfs-rpc_pipefs.mount and gssproxy is requiring 
+> >> them, that's how auth_rpcgss is being loaded. 
+> >>
+> >> If you only in enable gssproxy (not nfs-server or nfs-client) the 
+> >> module still get loaded via gssproxy,service file 
+> >>
+> >>>> So when gssproxy.service does it's "Before=nfs-secure.service
+> >>>> nfs-secure-server.service" line everything is loaded before
+> >>>> gssproxy start... 
+> >>>>
+> >>>> I'm think gssproxy.service just needs to the put the Wants and
+> >>>> After= var-lib-nfs-rpc_pipefs.mount lines, instead of that Before
+> >>>> line.. 
+> >>>
+> >>> Maybe we should add "Before: gssproxy.service rpc-svcgssd.service"
+> >>> to var-lib-nfs-rpc_pipefs.mount instead (and also drop any mention
+> >>> of nfs services in gssproxy unit file so you have complete control
+> >>> of the dependencies ?
+> >> No. 
+> >> The loading of sunrpc and the mounting of the file system has
+> >> nothing to do with starting up the gssd daemons.
+> >>
+> >> I would suggest gssproxy does to two things:
+> >>
+> >> 1) Add a Requires: nfs-utils to the spec file since you are
+> >> requiring services from  nfs-utils
+> > 
+> > No we are not requiring services from nfs-utils, nfs-utils is one of
+> > our users, you got that reversed.
+> So having "Before=nfs-secure.service nfs-secure-server.service" in 
+> gssproxy.service and not having nfs-utils installed will not cause the
+> service fail during start up? 
+
+It will not, but right now gssproxy.service also has:
+ Requires=proc-fs-nfsd.mount
+
+I want to drop this one.
+
+> >> 2) Add a After=var-lib-nfs-rpc_pipefs.mount to the
+> >> gssproxy.service file since gssproxy could careless about either
+> >> rpc.gssd or rpc.svcgssd daemons. All it is looking for is the
+> >> sunrpc and auth_rpcgss kernel modules.
+> > 
+> > The correct thing is to add a Before: gssproxy.service to
+> > var-lib-nfs-rpc_pipefs.mount IMO.
+> Again what happen if gssproxy is not installed? Things will 
+> still come up successfully?
+
+Yes, afaik After and Before are just ordering instruction and do not
+cause any failure if the units are not present at all, or fail to start.
+
+There are Want and Require directives for strong relationships.
+
+Simo.
 
 -- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Simo Sorce * Red Hat, Inc * New York
