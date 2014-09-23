@@ -1,53 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38270 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756002AbaISRH5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Sep 2014 13:07:57 -0400
-Date: Fri, 19 Sep 2014 13:07:52 -0400
-From: Simo Sorce <simo@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials
-Message-ID: <20140919130752.2ac3372e@willson.usersys.redhat.com>
-In-Reply-To: <20140919163617.GB16658@fieldses.org>
-References: <1411131103-17254-1-git-send-email-steved@redhat.com>
-	<20140919155733.GA16658@fieldses.org>
-	<541C5A55.7010403@RedHat.com>
-	<20140919163617.GB16658@fieldses.org>
+Received: from cam-admin0.cambridge.arm.com ([217.140.96.50]:52697 "EHLO
+	cam-admin0.cambridge.arm.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755942AbaIWPZz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 11:25:55 -0400
+Date: Tue, 23 Sep 2014 16:25:58 +0100
+From: Will Deacon <will.deacon@arm.com>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: Peng Tao <tao.peng@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: WARNING at fs/nfs/write.c:743 nfs_inode_remove_request with -rc6
+Message-ID: <20140923152558.GG28608@arm.com>
+References: <20140923130352.GK26472@arm.com>
+ <2A327753-3E60-46AC-8220-3FF0FF61F08F@primarydata.com>
+ <20140923135938.GB28608@arm.com>
+ <20140923145356.GD28608@arm.com>
+ <5294BEB2-F20F-4E3E-BFB2-E41806A4F85A@primarydata.com>
+ <FA11FBE3-42E7-46B9-B9DA-FAE368DCE96B@primarydata.com>
+ <F632C770-3E3D-4FC5-BBF3-69BB1CCA8F0D@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <F632C770-3E3D-4FC5-BBF3-69BB1CCA8F0D@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 19 Sep 2014 12:36:17 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Fri, Sep 19, 2014 at 12:31:17PM -0400, Steve Dickson wrote:
+On Tue, Sep 23, 2014 at 04:08:36PM +0100, Weston Andros Adamson wrote:
+> On Sep 23, 2014, at 11:02 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
+> > Wait a second - the whole point of this extra reference (that the
+> > WARN_ON_ONCE is related to) is to handle the pass off to commit lists.
 > > 
+> > Maybe I’m just doing the wrong thing here with NFSv2!
 > > 
-> > On 09/19/2014 11:57 AM, J. Bruce Fields wrote:
-> > > On Fri, Sep 19, 2014 at 08:51:41AM -0400, Steve Dickson wrote:
-> > >> The gssproxy(8) daemon is now how the managing of GSSAPI 
-> > >> credentials should be done. 
-> > >>
-> > >> These to patches has the nfs-server systemd script start 
-> > >> gssproxy instead of rpc.svcgssd and removes the building 
-> > >> and installation of rpc.svcgssd.
-> > >>
-> > >> For now I'm leaving the source files... Just in case... ;-)
-> > > 
-> > > If nothing else, we'd like to keep support for older kernels for a
-> > > while.
-> > Good point... I should probably make this a configurable...
-> > something like --enable_svcgssd and have it off by default...
+> > More soon.
 > 
-> Sounds fine.
+> Actually, can you see if this is reproducible with NFSv3?
 
-+1, it will be very useful for transitions in distributions, not all of
-them will align identically I guess.
+Just tried that, and I'm unable to trigger the problem with NFSv3.
 
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
+Will
