@@ -1,47 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:60938 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12217 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750860AbaIKQAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 11 Sep 2014 12:00:43 -0400
-Message-ID: <5411C6EE.7080500@Netapp.com>
-Date: Thu, 11 Sep 2014 11:59:42 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1751735AbaIWPbc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 11:31:32 -0400
+Message-ID: <5421924F.3010406@RedHat.com>
+Date: Tue, 23 Sep 2014 11:31:27 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@lst.de>, Anna Schumaker <Anna.Schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] pnfs/blocklayout: allocate separate pages for the
- layoutcommit payload
-References: <1410395791-2385-1-git-send-email-hch@lst.de> <1410395791-2385-4-git-send-email-hch@lst.de> <5411AED8.4020204@Netapp.com> <20140911152743.GE6690@lst.de>
-In-Reply-To: <20140911152743.GE6690@lst.de>
-Content-Type: text/plain; charset="utf-8"
+To: NeilBrown <neilb@suse.de>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-server: Replace rpc.svcgssd with gssproxy in
+ systemd script
+References: <1411146621-18797-1-git-send-email-steved@redhat.com>	<1411146621-18797-2-git-send-email-steved@redhat.com>	<541C892D.7020401@RedHat.com> <20140923112352.28917775@notabene.brown> <542189F6.1050406@RedHat.com>
+In-Reply-To: <542189F6.1050406@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/11/2014 11:27 AM, Christoph Hellwig wrote:
-> On Thu, Sep 11, 2014 at 10:16:56AM -0400, Anna Schumaker wrote:
->>> +		arg->layoutupdate_pages =
->>> +			kcalloc(DIV_ROUND_UP(buffer_size, PAGE_SIZE),
->>> +				sizeof(struct page *), GFP_NOFS);
->> I don't think I've seen kcalloc() before.  What does it do?
-> The same as calloc(3) in userspace - allocate an array of nent entries
-> of size, and zero the result that is returned.
-I haven't run across it in userspace either ... thanks for answering! :)
->
->>>  	dprintk("%s found %i ranges\n", __func__, count);
->> I'm getting this:
->>
->> fs/nfs/blocklayout/extent_tree.c: In function ‘ext_tree_prepare_commit’:
->> fs/nfs/blocklayout/extent_tree.c:565:2: warning: format ‘%i’ expects argument of type ‘int’, but argument 3 has type ‘size_t’ [-Wformat=]
->>   dprintk("%s found %i ranges\n", __func__, count);
-> For some reason I haven't managed to trigger this warning even after
-> turning on CONFIG_SUNRPC_DEBUG, but it should be easy to fix up..
+On 09/23/2014 10:55 AM, Steve Dickson wrote:
+> So I guess at the end of the day... I want to break the 'Unknown' Wants rule... ;-) 
+> By adding a dependency to gssproxy and by having nfs-server 'want' the gssproxy
+> service...  Its the cleanest way... IMHO... 
 
-Thanks. I'm not sure what I have set differently, but it's consistently showing up in my compile logs.
+As Simo just pointed out...  nfs-utils does not need to require 
+gssproxy to be installed... When its not installed, rpc.svcgssd 
+will be started when it is, gssproxy will be started. 
 
-Anna
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+steved.
