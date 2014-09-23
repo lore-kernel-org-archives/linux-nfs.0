@@ -1,161 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:34676 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755151AbaICLAv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2014 07:00:51 -0400
-Received: by mail-qa0-f49.google.com with SMTP id s7so3619145qap.22
-        for <linux-nfs@vger.kernel.org>; Wed, 03 Sep 2014 04:00:50 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 3 Sep 2014 07:00:48 -0400
-To: Chris Perl <chris.perl@gmail.com>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount
- failures
-Message-ID: <20140903070048.56201d1d@tlielax.poochiereds.net>
-In-Reply-To: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
-References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54458 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751783AbaIWPwV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 11:52:21 -0400
+Message-ID: <5421972C.4080006@RedHat.com>
+Date: Tue, 23 Sep 2014 11:52:12 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+References: <1411413608-16462-2-git-send-email-steved@redhat.com> <20140922152603.75005941@willson.usersys.redhat.com> <54207BCD.70101@RedHat.com> <20140922204401.GI26763@fieldses.org> <5420911D.6080506@RedHat.com> <20140922223423.GA29932@fieldses.org> <5420B78D.6040704@RedHat.com> <20140922202655.5e308e58@willson.usersys.redhat.com> <20140923015549.GB32712@fieldses.org> <54218C85.6040005@RedHat.com> <20140923151621.GB29932@fieldses.org>
+In-Reply-To: <20140923151621.GB29932@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2 Sep 2014 12:51:06 -0400
-Chris Perl <chris.perl@gmail.com> wrote:
+On 09/23/2014 11:16 AM, J. Bruce Fields wrote:
+> On Tue, Sep 23, 2014 at 11:06:45AM -0400, Steve Dickson wrote:
+>> > 
+>> > 
+>> > On 09/22/2014 09:55 PM, J. Bruce Fields wrote:
+>>> > > On Mon, Sep 22, 2014 at 08:26:55PM -0400, Simo Sorce wrote:
+>>>> > >> No, starting before those service in itself achieves nothing.\
+>>>> > >> I think what may cause the module to load maybe the fact
+>>>> > >> gssproxy.service includes:
+>>>> > >> Requires=proc-fs-nfsd.mount
+>>> > > 
+>>> > > I'd expect that to only load the nfsd module.
+>>> > > 
+>>> > > Hm, I think nfsd actually has a dependency on auth_rpcgss.  I wonder if
+>>> > > that's correct.  Maybe that's what's doing it.
+>> > It is... In another thread I clearly showed that....
+> The dependency of nfsd on auth_rpcgss looks to me like an implementation
+> detail.  The client module doesn't have the same dependency.  
+It does... auth_rpcgss and friends are loaded during the mount
+ 
+> We definitely shouldn't depend on it, as the dependency could get removed
+> some day.
+Well if that dependency gets removed (which I can't see why it ever would)
+we'll deal with the then...
 
-> I've noticed that mount.nfs calls bind (in `nfs_bind' in
-> support/nfs/rpc_socket.c) before ultimately calling connect when
-> trying to get a tcp connection to talk to the remote portmapper
-> service (called from `nfs_get_tcpclient' which is called from
-> `nfs_gp_get_rpcbclient').
-> 
-> Unfortunately, this means you need to find a local ephemeral port such
-> that said ephemeral port is not a part of *any* existing TCP
-> connection (i.e. you're looking for a unique 2 tuple of (socket_type,
-> local_port) where socket_type is either SOCK_STREAM or SOCK_DGRAM, but
-> in this case specifically SOCK_STREAM).
-> 
-> If you were to just call connect without calling bind first, then
-> you'd need to find a unique 5 tuple of (socket_type, local_ip,
-> loacl_port, remote_ip, remote_port).
-> 
-> The end result is a misbehaving application that creates many
-> connections to some service, using all ephemeral ports, can cause
-> attempts to mount remote NFS filesystems to fail with EADDRINUSE.
-> 
-> Don't get me wrong, I think we should fix our application, (and we
-> are) but I don't see any reason why mount.nfs couldn't just call
-> connect without calling bind first (thereby allowing it to happen
-> implicitly) and allowing mount.nfs to continue to work in this
-> situation.
-> 
-> I think an example may help explain what I'm talking about.
-> 
-> Lets take a Linux machine running CentOS 6.5
-> (2.6.32-431.1.2.0.1.el6.x86_64) and restrict the number of available
-> ephemeral ports to just 10:
-> 
-> [cperl@localhost ~]$ cat /proc/sys/net/ipv4/ip_local_port_range
-> 60000   60009
-> 
-> Then create a TCP connection to a remote service which will just hold
-> that connection open:
-> 
-> [cperl@localhost ~]$ for in in {0..9}; do socat -u
-> tcp:192.168.1.12:9990 file:/dev/null & done
-> [1] 21578
-> [2] 21579
-> [3] 21580
-> [4] 21581
-> [5] 21582
-> [6] 21583
-> [7] 21584
-> [8] 21585
-> [9] 21586
-> [10] 21587
-> 
-> [cperl@localhost ~]$ netstat -n --tcp | awk '$6 ~ /ESTABLISHED/ && $5
-> ~/:999[0-9]$/ {print $1, $4, $5}' | sort | column -t
-> tcp  192.168.1.11:60000  192.168.1.12:9990
-> tcp  192.168.1.11:60001  192.168.1.12:9990
-> tcp  192.168.1.11:60002  192.168.1.12:9990
-> tcp  192.168.1.11:60003  192.168.1.12:9990
-> tcp  192.168.1.11:60004  192.168.1.12:9990
-> tcp  192.168.1.11:60005  192.168.1.12:9990
-> tcp  192.168.1.11:60006  192.168.1.12:9990
-> tcp  192.168.1.11:60007  192.168.1.12:9990
-> tcp  192.168.1.11:60008  192.168.1.12:9990
-> tcp  192.168.1.11:60009  192.168.1.12:9990
-> 
-> And now try to mount an NFS export:
-> 
-> [cperl@localhost ~]$ sudo mount 192.168.1.100:/export/a /tmp/a
-> mount.nfs: Address already in use
-> 
-> As mentioned before, this is because bind is trying to find a unique 2
-> tuple of (socket_type, local_port) (really I believe its the 3 tuple
-> (socket_type, local_ip, local_port), but calling bind with INADDR_ANY
-> as `nfs_bind' does reduces it to the 2 tuple), which it cannot do.
-> 
-> However, just calling connect allows local ephemeral ports to be
-> "reused" (i.e. it looks for the unique 5 tuple of (socket_type,
-> local_ip, local_port, remote_ip, remote_port)).
-> 
-> For example, notice how the local ephemeral ports 60003 and 60004 are
-> "reused" below (because socat is just calling connect, not bind,
-> although we can make socat call bind with an option if we want and see
-> it fail like mount.nfs did above):
-> 
-> [cperl@localhost ~]$ socat -u tcp:192.168.1.12:9991 file:/dev/null &
-> [11] 22433
-> [cperl@localhost ~]$ socat -u tcp:192.168.1.13:9990 file:/dev/null &
-> [12] 22499
-> [cperl@localhost ~]$ netstat -n --tcp | awk '$6 ~ /ESTABLISHED/ && $5
-> ~/:999[0-9]$/ {print $1, $4, $5}' | sort | column -t
-> tcp  192.168.0.11:60000  192.168.1.12:9990
-> tcp  192.168.0.11:60001  192.168.1.12:9990
-> tcp  192.168.0.11:60002  192.168.1.12:9990
-> tcp  192.168.0.11:60003  192.168.1.12:9990
-> tcp  192.168.0.11:60003  192.168.1.12:9991
-> tcp  192.168.0.11:60004  192.168.1.12:9990
-> tcp  192.168.0.11:60004  192.168.1.13:9990
-> tcp  192.168.0.11:60005  192.168.1.12:9990
-> tcp  192.168.0.11:60006  192.168.1.12:9990
-> tcp  192.168.0.11:60007  192.168.1.12:9990
-> tcp  192.168.0.11:60008  192.168.1.12:9990
-> tcp  192.168.0.11:60009  192.168.1.12:9990
-> 
-> Is there any reason we couldn't modify `nfs_get_tcpclient' to not bind
-> in the case where its not using a reserved port?
-> 
-> For some color, this is particularly annoying for me because I have
-> extensive automount maps and this failure leads to attempts to access
-> a given automounted path returning ENOENT.  Furthermore, automount
-> caches this failure and continues to return ENOENT for the duration of
-> whatever its negative cache timeout is.
-> 
-> For UDP, I don't think "bind before connect" matters as much.  I
-> believe the difference is just in the error you'll get from either
-> bind or connect (if all ephemeral ports are used).  If you attempt to
-> bind when all local ports are in use you seem to get EADDRINUSE,
-> whereas when you connect when all local ports are in use you get
-> EAGAIN.
-> 
-> It could be I'm missing something totally obvious for why this is.  If
-> so, please let me know!
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Remember the scope of this patch set is to enable the server to use
+the gssproxy, seamlessly... As thing stand today, I think we can 
+easily do that by modifying the server service file to "call" 
+gssproxy when its installed... Plus since both gssproxy 
+and the server have the 'Requires=proc-fs-nfsd.mount' in their
+service files and Today we know that loads the needed modules
+I thinking we are good go to... 
 
-(cc'ing Chuck since he wrote a lot of that code)
+If things change down the road, lets deal with it then... 
 
-I'm not sure either. If there was a reason for that, it's likely lost
-to antiquity. In some cases, we really are expected to use reserved
-ports and I think you do have to bind() in order to get one. In the
-non-reserved case though it's likely we could skip binding altogether.
+> 
+>> > So I really don't think another unit file is necessary...
+> I haven't seen an alternative yet.
+I'm thinking adding yet another unit file to do something that 
+is already being done is just adding more complexity to an 
+already confusing situation... 
 
-What would probably be best is to roll up a patch that changes it, and
-propose it on the list.
+So I guess my alternative is to do nothing. ;-) 
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+steved.
