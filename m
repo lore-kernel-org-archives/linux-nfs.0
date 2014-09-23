@@ -1,69 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15738 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:25846 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751797AbaIDSgK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Sep 2014 14:36:10 -0400
-Message-ID: <1409855758.8703.48.camel@willson.usersys.redhat.com>
-Subject: Re: How to use NFS with multiple principals in different realms?
-From: Simo Sorce <simo@redhat.com>
-To: Jurjen Bokma <j.bokma@rug.nl>
-Cc: Cedric Blancher <cedric.blancher@gmail.com>,
-        "<kerberos@mit.edu>" <kerberos@mit.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Date: Thu, 04 Sep 2014 14:35:58 -0400
-In-Reply-To: <54085BF3.60802@rug.nl>
-References: <CALXu0Ue9z-xbFk9hhsvu4c38qqmd0Wwupk2LvL99rwoAcRMqOw@mail.gmail.com>
-		<540831FE.1010208@rug.nl>
-	 <CALXu0Ufa166-PocKOOMBSF6yONaMxyUMHQmLA8NuSda9sE8PVQ@mail.gmail.com>
-	 <54085BF3.60802@rug.nl>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1753947AbaIWURg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 16:17:36 -0400
+Message-ID: <5421D55B.8040403@RedHat.com>
+Date: Tue, 23 Sep 2014 16:17:31 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>, NeilBrown <neilb@suse.de>
+CC: Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+References: <20140922152603.75005941@willson.usersys.redhat.com> <54207BCD.70101@RedHat.com> <20140922204401.GI26763@fieldses.org> <5420911D.6080506@RedHat.com> <20140922223423.GA29932@fieldses.org> <5420B78D.6040704@RedHat.com> <20140922202655.5e308e58@willson.usersys.redhat.com> <20140923015549.GB32712@fieldses.org> <20140923120804.51dbcc2e@notabene.brown> <20140923021110.GB1409@fieldses.org> <20140923192311.GI29932@fieldses.org>
+In-Reply-To: <20140923192311.GI29932@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2014-09-04 at 14:32 +0200, Jurjen Bokma wrote:
-> On 09/04/2014 01:25 PM, Cedric Blancher wrote:
-> > On 4 September 2014 11:33, Jurjen Bokma <j.bokma@rug.nl> wrote:
-> >> You use cross realm authentication, so that your NFS client may obtain
-> >> tickets for servers that are not in its own realm.
-> > 
-> > What if I cannot use cross realm authentication? For example if both
-> > realms do not like each other?
-> > What if I really have to kinit into multiple realms? Kerberos since
-> > 1.10 can do that and klist now has a new flag -A to list all entries
-> > if KRB5CCNAME points to a directory, e.g.
-> > KRB5CCNAME=DIR:/tmp/krbcc$UID/
-> > 
-> > Ced
-> > 
-> I tried that about a year ago, and failed to make it work.
+On 09/23/2014 03:23 PM, J. Bruce Fields wrote:
+> commit 3fab32b4bf96
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Mon Sep 22 21:43:59 2014 -0400
+> 
+>     systemd: manually insert auth_rpcgss module.
+>     
+>     We need to insert the auth_rpcgss module before starting rpc.svcgssd or
+>     gss-proxy, for two reasons:
+>     
+>     	- gss-proxy needs access to the /proc/net/rpc/use-gss-proxy file
+>     	  to set up communication with knfsd.
+>     	- the unit files need to able to test for the existance of the
+>     	  same path in order to decide whether the kernel supports
+>     	  gss-proxy or not.
+>     
+>     Currently we're using dependencies on proc-fs-nfsd.mount for this, but
+>     that works only because of the nfsd kernel module references some
+>     symbols in auth_rpcgss, which is an odd implementation detail we're
+>     likely to fix some day.
+>     
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/systemd/auth-rpcgss-module.service b/systemd/auth-rpcgss-module.service
+> new file mode 100644
+> index 000000000000..3fc2f4ac924f
+> --- /dev/null
+> +++ b/systemd/auth-rpcgss-module.service
+> @@ -0,0 +1,14 @@
+> +# We want to start gss-proxy on kernels that support it and rpc.svcgssd
+> +# on those that don't.  Those services check for support by checking
+> +# for existence of the path /proc/net/rpc/use-gss-proxy.  Before they
+> +# can perform that check, they need this module loaded.  (Unless
+> +# rpcsec_gss support is built directly into the kernel, in which case this
+> +# unit will fail.  But that's OK.)
+> +[Unit]
+> +Description=Kernel Module supporting RPCSEC_GSS
+> +Before=gssproxy.service rpc-svcgssd.service
+> +ConditionPathExists=/etc/krb5.keytab
+> +
+> +[Service]
+> +Type=oneshot
+> +ExecStart=/sbin/modprobe -q auth_rpcgss
+> diff --git a/systemd/nfs-client.target b/systemd/nfs-client.target
+> index f3c09e76a0f7..474f5e9ad74b 100644
+> --- a/systemd/nfs-client.target
+> +++ b/systemd/nfs-client.target
+> @@ -5,7 +5,7 @@ Wants=remote-fs-pre.target
+>  
+>  # Note: we don't "Wants=rpc-statd.service" as "mount.nfs" will arrange to
+>  # start that on demand if needed.
+> -Wants=rpc-gssd.service rpc-svcgssd.service
+> +Wants=rpc-gssd.service rpc-svcgssd.service auth-rpcgss-module.service
+>  Wants=nfs-blkmap.service rpc-statd-notify.service
+>  Before=rpc-gssd.service rpc-svcgssd.service nfs-blkmap.service
+>  
+> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+> index 2fa7387e1cb9..fd213a3995de 100644
+> --- a/systemd/nfs-server.service
+> +++ b/systemd/nfs-server.service
+> @@ -3,6 +3,7 @@ Description=NFS server and services
+>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+>  Requires= nfs-mountd.service
+>  Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service rpc-svcgssd.service
+> +Wants=auth-rpcgss-module.service
+>  Wants=rpc-statd-notify.service
+>  
+>  After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
+> 
+I through this into my test world and one side effect of this patch
+is both rpc.gssd and rpc.svcgssd daemons are *always* started when 
+a key tab exists (/etc/krb5.keytab) and *all* the services (nfs-client,
+nfs-server, rpc-gssd, and rpc-svcgssd) are disabled, which is not 
+good... Those daemons don't need to be started when both sides 
+are disabled...  But the auth_rpcgss is loaded! ;-) 
 
-The problem is that the server can only have one set of credentials from
-the POV of the client, and that's: nfs@fqdn (a GSSAPI name), that gets
-converted into a principal of the form nfs/fqdn@REALM (where REALM is
-determined by a mapping of the form domain_name->REALM in the client
-usually).
-
-> As far as I know, gssd always picks the same key to authenticate with. I
-
-When rpc.gssd (potentially interposed by gss-proxy) then uses GSSAPI to
-obtain a ticket for the server it will choose the credentials that match
-the same REALM in preference, even if you have multiple credentials.
-
-The client has no way to know that you want to use a different set of
-credentials, because it doesn't even know (IIRC) what you are trying to
-access on the server when this call is made.
-
-> did offer a patch on this list a couple of weeks ago that uses a
-> krb5.conf appdefaults option to configure *which* key, but that one
-> still doesn't make it possible to pick a different key for different shares.
-
-It allows you to choose a different key for the *machine* principal, but
-does nothing for authenticating users using different credentials.
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+steved.
