@@ -1,124 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f45.google.com ([209.85.220.45]:39631 "EHLO
-	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932277AbaIRQwb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 12:52:31 -0400
-Received: by mail-pa0-f45.google.com with SMTP id rd3so1885457pab.32
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 09:52:31 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] exportfs: Properly parse IPv6 literal strings with null termination
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <1410997719-17913-1-git-send-email-todd.vierling@oracle.com>
-Date: Thu, 18 Sep 2014 09:52:28 -0700
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <5D0058B9-354A-4E1A-AC60-EB071487F78E@gmail.com>
-References: <1410997719-17913-1-git-send-email-todd.vierling@oracle.com>
-To: Todd Vierling <todd.vierling@oracle.com>
+Received: from mail-vc0-f177.google.com ([209.85.220.177]:61019 "EHLO
+	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751735AbaIWUlO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 16:41:14 -0400
+Received: by mail-vc0-f177.google.com with SMTP id im17so5842721vcb.36
+        for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 13:41:13 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140923070733.25555.18292.stgit@unused-4-157.brq.redhat.com>
+References: <20140923070733.25555.18292.stgit@unused-4-157.brq.redhat.com>
+Date: Tue, 23 Sep 2014 16:41:13 -0400
+Message-ID: <CAHQdGtRZA89spXkGWxoDyd8dRt-f9wfnfuz=rACsMe3bSa_meA@mail.gmail.com>
+Subject: Re: [PATCH] mountd.man: mountd tcp wrappers support only NFS v2/v3
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jan Chaloupka <jchaloup@redhat.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Steve Dickson <steved@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for chasing this down, Todd!
-
-On Sep 17, 2014, at 4:48 PM, Todd Vierling <todd.vierling@oracle.com> wrote:
-
-> The original implementation was using strncpy() with a truncation
-> length to an uninitialized stack buffer, leaving a string that
-> was only null terminated by luck.
-> 
-> While here, change to use no-copy semantics (no extra buffer) to
-> avoid buffer overflows altogether.
-
-Needs
-
-Fixes: 4663c648 (exportfs: Support raw IPv6 addresses with "client:/path”)
-
-And needs a Signed-off-by.
-
-I wonder about the “no-copy” change. I thought that on some systems,
-the tool chain makes the command line arguments read-only.
-
+On Tue, Sep 23, 2014 at 3:07 AM, Jan Chaloupka <jchaloup@redhat.com> wrote:
+> mountd tcp wrappers support only NFSv2 and NFSv3, not NFSv4.
+>
+> https://bugzilla.redhat.com/show_bug.cgi?id=1116283
+>
+> This patch updates the man page
+>
+> Signed-off-by: Jan Chaloupka <jchaloup@redhat.com>
 > ---
-> utils/exportfs/exportfs.c | 18 ++++++++----------
-> 1 file changed, 8 insertions(+), 10 deletions(-)
-> 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index e7d1ac8..bdea12b 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -351,16 +351,15 @@ static int exportfs_generic(char *arg, char *options, int verbose)
-> 
-> static int exportfs_ipv6(char *arg, char *options, int verbose)
-> {
-> -	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
-> +	char *path, *c;
-> 
-> 	arg++;
-> 	c = strchr(arg, ']');
-> 	if (c == NULL)
-> 		return 1;
-> -	strncpy(hname, arg, c - arg);
-> 
-> 	/* no colon means this is a wildcarded DNS hostname */
-> -	if (strchr(hname, ':') == NULL)
-> +	if (memchr(arg, ':', c - arg) == NULL)
-> 		return exportfs_generic(--arg, options, verbose);
-> 
-> 	path = strstr(c, ":/");
-> @@ -370,9 +369,9 @@ static int exportfs_ipv6(char *arg, char *options, int verbose)
-> 
-> 	/* if there's anything between the closing brace and the
-> 	 * path separator, it's probably a prefix length */
-> -	strcat(hname, ++c);
-> +	memmove(c, c + 1, path - c);
-> 
-> -	exportfs_parsed(hname, path, options, verbose);
-> +	exportfs_parsed(arg, path, options, verbose);
-> 	return 0;
-> }
-> 
-> @@ -458,16 +457,15 @@ static int unexportfs_generic(char *arg, int verbose)
-> 
-> static int unexportfs_ipv6(char *arg, int verbose)
-> {
-> -	char *path, *c, hname[NI_MAXHOST + strlen("/128")];
-> +	char *path, *c;
-> 
-> 	arg++;
-> 	c = strchr(arg, ']');
-> 	if (c == NULL)
-> 		return 1;
-> -	strncpy(hname, arg, c - arg);
-> 
-> 	/* no colon means this is a wildcarded DNS hostname */
-> -	if (strchr(hname, ':') == NULL)
-> +	if (memchr(arg, ':', c - arg) == NULL)
-> 		return unexportfs_generic(--arg, verbose);
-> 
-> 	path = strstr(c, ":/");
-> @@ -477,9 +475,9 @@ static int unexportfs_ipv6(char *arg, int verbose)
-> 
-> 	/* if there's anything between the closing brace and the
-> 	 * path separator, it's probably a prefix length */
-> -	strcat(hname, ++c);
-> +	memmove(c, c + 1, path - c);
-> 
-> -	unexportfs_parsed(hname, path, verbose);
-> +	unexportfs_parsed(arg, path, verbose);
-> 	return 0;
-> }
-> 
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  utils/mountd/mountd.man |    2 ++
+>  1 file changed, 2 insertions(+)
+>
+> diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
+> index a8828ae..1aae75b 100644
+> --- a/utils/mountd/mountd.man
+> +++ b/utils/mountd/mountd.man
+> @@ -217,6 +217,8 @@ listeners using the
+>  .B tcp_wrapper
+>  library or
+>  .BR iptables (8).
+> +Tcp wrappers are only in effect with NFS version 2 and 3 mounts.
+> +They do not work with NFS version 4.
+>  .PP
+>  Note that the
+>  .B tcp_wrapper
+>
 
---
-Chuck Lever
-chucklever@gmail.com
+Is there any point to compiling mountd with the tcp wrappers in this
+day and age? tcp wrappers isn't enforced by knfsd, so as the above
+manpage change indicates it really is only blocking NFSv2/v3 _mount_
+attempts.
 
+If you can use NFSv4, or sniff the NFSv2/v3 traffic or even just guess
+NFSv2/v3 filehandles, then tcp wrappers can be 100% circumvented.
 
+-- 
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
