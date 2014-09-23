@@ -1,46 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:42808 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752987AbaIYCvX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 22:51:23 -0400
-Received: by mail-qa0-f49.google.com with SMTP id n8so4032488qaq.22
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 19:51:22 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Add missing support for RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT
-Date: Wed, 24 Sep 2014 22:51:19 -0400
-Message-Id: <1411613479-8803-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:43960 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751678AbaIWATb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 20:19:31 -0400
+Date: Mon, 22 Sep 2014 20:19:27 -0400
+From: Simo Sorce <simo@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140922201927.36fae05c@willson.usersys.redhat.com>
+In-Reply-To: <5420A946.4090805@RedHat.com>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+	<1411413608-16462-2-git-send-email-steved@redhat.com>
+	<20140922152603.75005941@willson.usersys.redhat.com>
+	<54207BCD.70101@RedHat.com>
+	<20140922204401.GI26763@fieldses.org>
+	<5420911D.6080506@RedHat.com>
+	<20140922173239.05c17b2a@willson.usersys.redhat.com>
+	<5420A946.4090805@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The flag RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT was intended introduced in
-order to allow NFSv4 clients to disable resend timeouts. Since those
-cause the RPC layer to break the connection, they mess up the duplicate
-reply caches that remain indexed on the port number in NFSv4..
+On Mon, 22 Sep 2014 18:57:10 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-This patch includes the code that was missing in the original to
-set the appropriate flag in struct rpc_clnt, when the caller of
-rpc_create() sets RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT.
+> 
+> 
+> On 09/22/2014 05:32 PM, Simo Sorce wrote:
+> > On Mon, 22 Sep 2014 17:14:05 -0400
+> > Steve Dickson <SteveD@redhat.com> wrote:
+> > 
+> >>
+> >>
+> >> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
+> >>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
+> >>>>
+> >>>>
+> >>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
+> >>>>> On Mon, 22 Sep 2014 15:20:07 -0400
+> >>>>> Steve Dickson <steved@redhat.com> wrote:
+> >>>>>
+> >>>>>> Added the gssproxy.service to both the Wants= and
+> >>>>>> Atfers= lines, before the rpc-svcgssd.service. There
+> >>>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
+> >>>>>> unit which will stop the rpc.svcgssd daemon from
+> >>>>>> starting when the gssproxy daemon is already running.
+> >>>>>>
+> >>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+> >>>>>> ---
+> >>>>>>  systemd/nfs-server.service | 5 +++--
+> >>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
+> >>>>>>
+> >>>>>> diff --git a/systemd/nfs-server.service
+> >>>>>> b/systemd/nfs-server.service index 2fa7387..c740fa2 100644
+> >>>>>> --- a/systemd/nfs-server.service
+> >>>>>> +++ b/systemd/nfs-server.service
+> >>>>>> @@ -2,12 +2,13 @@
+> >>>>>>  Description=NFS server and services
+> >>>>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>>>>  Requires= nfs-mountd.service
+> >>>>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
+> >>>>>> rpc-svcgssd.service +Wants=rpc-statd.service
+> >>>>>> nfs-idmapd.service +Wants=rpc-gssd.service  
+> >>>>>>  Wants=rpc-statd-notify.service
+> >>>>>>  
+> >>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
+> >>>>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
+> >>>>>> -After= rpc-gssd.service rpc-svcgssd.service
+> >>>>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
+> >>>>>>  Before= rpc-statd-notify.service
+> >>>>>>  
+> >>>>>>  Wants=nfs-config.service
+> >>>>>
+> >>>>> I think you really need to insure that the modules are loaded
+> >>>>> before any of the server services are started, perhaps adding a
+> >>>>> unit file that exec's modprobe and has "Before: gssproxy.service
+> >>>>>  " in it ?
+> >>>> I really don't think its needed... From my testing it appears 
+> >>>> gssproxy is always being started and rpc.svcgssd is not... 
+> >>>
+> >>> Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount as
+> >>> both "Requires=" and "After=", so rpc-svcgssd.service will never
+> >>> run without first running var-lib-nfs-rpc_pipefs.mount, which
+> >>> will load sunrpc.  But I don't see where auth_rpcgss is getting
+> >>> loaded.  And I don't see what ensures anything happening before
+> >>> gssproxy runs.
+> >> It happens during the mount on the client and when the server
+> >> is started. 
+> >>
+> >>>
+> >>> We want to make sure your testing's not just getting lucky on the
+> >>> startup order.
+> >> The reason it working is because rpc.gssd is being started on the
+> >> server these days for callbacks and the After= line in
+> >> rpc-svcgssd.service is being executed before the
+> >> ConditionPathExists which cause rpc.svcgssd not to start.
+> > 
+> > This guarantees ordering (to some degree) between rpc.gssd and
+> > rpoc.svcgssd, but says nothing about gssproxy ...
+> The question was how is the auth_rpcgss module being loaded. Since
+> both rpc-svcgssd.service and rpc-gssd.service service have
+> a After=var-lib-nfs-rpc_pipefs.mount and gssproxy is requiring 
+> them, that's how auth_rpcgss is being loaded. 
+> 
+> If you only in enable gssproxy (not nfs-server or nfs-client) the 
+> module still get loaded via gssproxy,service file 
+> 
+> >> So when gssproxy.service does it's "Before=nfs-secure.service
+> >> nfs-secure-server.service" line everything is loaded before
+> >> gssproxy start... 
+> >>
+> >> I'm think gssproxy.service just needs to the put the Wants and
+> >> After= var-lib-nfs-rpc_pipefs.mount lines, instead of that Before
+> >> line.. 
+> > 
+> > Maybe we should add "Before: gssproxy.service rpc-svcgssd.service"
+> > to var-lib-nfs-rpc_pipefs.mount instead (and also drop any mention
+> > of nfs services in gssproxy unit file so you have complete control
+> > of the dependencies ?
+> No. 
+> The loading of sunrpc and the mounting of the file system has nothing
+> to do with starting up the gssd daemons.
+> 
+> I would suggest gssproxy does to two things:
+> 
+> 1) Add a Requires: nfs-utils to the spec file since you are requiring 
+>    services from  nfs-utils
 
-Fixes: 8a19a0b6cb2e (SUNRPC: Add RPC task and client level options to...)
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/clnt.c | 2 ++
- 1 file changed, 2 insertions(+)
+No we are not requiring services from nfs-utils, nfs-utils is one of
+our users, you got that reversed.
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 488ddeed9363..841565450354 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -461,6 +461,8 @@ struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
- 
- 	if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
- 		clnt->cl_autobind = 1;
-+	if (args->flags & RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT)
-+		clnt->cl_noretranstimeo = 1;
- 	if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
- 		clnt->cl_discrtry = 1;
- 	if (!(args->flags & RPC_CLNT_CREATE_QUIET))
+> 2) Add a After=var-lib-nfs-rpc_pipefs.mount to the gssproxy.service 
+>    file since gssproxy could careless about either rpc.gssd or
+> rpc.svcgssd daemons. All it is looking for is the sunrpc and
+> auth_rpcgss kernel modules.
+
+The correct thing is to add a Before: gssproxy.service to
+var-lib-nfs-rpc_pipefs.mount IMO.
+
+Simo.
+
 -- 
-1.9.3
-
+Simo Sorce * Red Hat, Inc * New York
