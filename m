@@ -1,166 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from postout2.mail.lrz.de ([129.187.255.138]:57181 "EHLO
-	postout2.mail.lrz.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755317AbaIZPhp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 11:37:45 -0400
-Message-ID: <542586EB.2040101@tum.de>
-Date: Fri, 26 Sep 2014 17:31:55 +0200
-From: Joschi Brauchle <joschi.brauchle@tum.de>
+Received: from fieldses.org ([174.143.236.118]:41323 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751735AbaIWTvt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 15:51:49 -0400
+Date: Tue, 23 Sep 2014 15:51:48 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Simo Sorce <simo@redhat.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140923195148.GM29932@fieldses.org>
+References: <54207BCD.70101@RedHat.com>
+ <20140922204401.GI26763@fieldses.org>
+ <5420911D.6080506@RedHat.com>
+ <20140922173239.05c17b2a@willson.usersys.redhat.com>
+ <5420A946.4090805@RedHat.com>
+ <20140922201927.36fae05c@willson.usersys.redhat.com>
+ <5420CA96.6090409@RedHat.com>
+ <20140923085245.007533b6@willson.usersys.redhat.com>
+ <20140923192909.GJ29932@fieldses.org>
+ <20140923154036.23e0e639@willson.usersys.redhat.com>
 MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "Fehenberger, Tobias" <tobias.fehenberger@tum.de>,
-        "Stinner, Markus" <markus.stinner@tum.de>
-Subject: Need help debugging NFSv3+KRB5+PAT (Port Address Translation) problem
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha1; boundary="------------ms000106030705020307050005"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140923154036.23e0e639@willson.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cryptographically signed message in MIME format.
+On Tue, Sep 23, 2014 at 03:40:36PM -0400, Simo Sorce wrote:
+> On Tue, 23 Sep 2014 15:29:09 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Tue, Sep 23, 2014 at 08:52:45AM -0400, Simo Sorce wrote:
+> > > It will not, but right now gssproxy.service also has:
+> > >  Requires=proc-fs-nfsd.mount
+> > > 
+> > > I want to drop this one.
+> > 
+> > By the way, I think all you actually want is After=proc-fs-nfsd.mount.
+> > 
+> > You don't actually want to bail out if fs-nfsd.mount fails, in fact
+> > you don't care if it's activated at all, all you care about is that
+> > *if* it's already activated (because nfsd is), then you want it to
+> > start before you.
+> > 
+> > And in fact we could instead replace that with a
+> > Before=gssproxy.service in proc-fs-nfsd.mount if you preferred.  I
+> > don't know how to decide which place it goes, or if it matters.
+> 
+> Given we are already messing with service files I wouldn't object to
+> moving the depenecy chain creation in nfs-util by adding a
+> Before=gssproxy.service directive in proc-fs-nfsd.mount and dropping
+> the Reuire from gssproxy.service
 
---------------ms000106030705020307050005
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: quoted-printable
+Wella ctually we should add the auth-rpcgss unit (which includes the
+necessary Before).  But you might want to s/Requires=/After=/ meanwhile
+as the current thing seems possibly unreliable (since there's no
+ordering dependency).
 
-Hello everyone,
-
-I need some help debugging a NFSv3 + KRB5 + PAT (Port Address=20
-Translation) problem.
-
-We have two hosts behind a firewall and an NFSv3 server outside=20
-requiring KRB5 authentication.
-
-1) Client_NAT is using NAT (network address translation),
-2) Client_PAT is using PAT (port address translation)
-to reach the NFSv3 server through the firewall.
-
-Both clients are configured identically in terms of Kerberos and so on.
-
-Mounting an NFSv3 share now fails on Client_PAT with the message:
-RPC: server SERVERNAME requires stronger authentication.
-On Client_NAT, mounting succeeds.
-
-We strongly suspect the port address translation to be the reason for=20
-the failure, but would need help confirming this and advice on how to=20
-fix it.
-
-Please find here the RPC debug logs from
-Client_NAT: http://pastebin.com/9RANqVgY
-Client_PAT: http://pastebin.com/TiscNVqW
-Here is a DIFF between the two: http://pastebin.com/wCg7WyYd
-
-I'm grateful for any help on this problem!
-
-Best regards,
-Joschi Brauchle
---=20
-Dipl.-Ing. Joschi Brauchle, M.S.
-
-Institute for Communications Engineering (LNT)
-Technische Universitaet Muenchen (TUM)
-80290 Munich, Germany
-
-Tel (work): +49 89 289-23474
-Fax (work): +49 89 289-23490
-E-mail: joschi.brauchle@tum.de
-Web: http://www.lnt.ei.tum.de/
-
-
---------------ms000106030705020307050005
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExCzAJBgUrDgMCGgUAMIAGCSqGSIb3DQEHAQAAoIIPnDCC
-BNUwggO9oAMCAQICCFBOxvU9EbRkMA0GCSqGSIb3DQEBCwUAMHExCzAJBgNVBAYTAkRFMRww
-GgYDVQQKExNEZXV0c2NoZSBUZWxla29tIEFHMR8wHQYDVQQLExZULVRlbGVTZWMgVHJ1c3Qg
-Q2VudGVyMSMwIQYDVQQDExpEZXV0c2NoZSBUZWxla29tIFJvb3QgQ0EgMjAeFw0xNDA3MjIx
-MjA4MjZaFw0xOTA3MDkyMzU5MDBaMFoxCzAJBgNVBAYTAkRFMRMwEQYDVQQKEwpERk4tVmVy
-ZWluMRAwDgYDVQQLEwdERk4tUEtJMSQwIgYDVQQDExtERk4tVmVyZWluIFBDQSBHbG9iYWwg
-LSBHMDEwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDpm8NnhfkNrvWNVMOWUDU9
-YuluTO2U1wBblSJ01CDrNI/W7MAxBAuZgeKmFNJSoCgjhIt0iQReW+DieMF4yxbLKDU5ey2Q
-RdDtoAB6fL9KDhsAw4bpXCsxEXsM84IkQ4wcOItqaACa7txPeKvSxhObdq3u3ibo7wGvdA/B
-CaL2a869080UME/15eOkyGKbghoDJzANAmVgTe3RCSMqljVYJ9N2xnG2kB3E7f81hn1vM7Pb
-D8URwoqDoZRdQWvY0hD1TP3KUazZve+Sg7va64sWVlZDz+HVEz2mHycwzUlU28kTNJpxdcVs
-6qcLmPkhnSevPqM5OUhqjK3JmfvDEvK9AgMBAAGjggGGMIIBgjAOBgNVHQ8BAf8EBAMCAQYw
-HQYDVR0OBBYEFEm3xs/oPR9/6kR7Eyn38QpwPt5kMB8GA1UdIwQYMBaAFDHDeRu69VPXF+CJ
-ei0XbAqzK50zMBIGA1UdEwEB/wQIMAYBAf8CAQIwYgYDVR0gBFswWTARBg8rBgEEAYGtIYIs
-AQEEAgIwEQYPKwYBBAGBrSGCLAEBBAMAMBEGDysGAQQBga0hgiwBAQQDATAPBg0rBgEEAYGt
-IYIsAQEEMA0GCysGAQQBga0hgiweMD4GA1UdHwQ3MDUwM6AxoC+GLWh0dHA6Ly9wa2kwMzM2
-LnRlbGVzZWMuZGUvcmwvRFRfUk9PVF9DQV8yLmNybDB4BggrBgEFBQcBAQRsMGowLAYIKwYB
-BQUHMAGGIGh0dHA6Ly9vY3NwMDMzNi50ZWxlc2VjLmRlL29jc3ByMDoGCCsGAQUFBzAChi5o
-dHRwOi8vcGtpMDMzNi50ZWxlc2VjLmRlL2NydC9EVF9ST09UX0NBXzIuY2VyMA0GCSqGSIb3
-DQEBCwUAA4IBAQBjICj9nCGGcr45Rlk5MiW8qQGbDczKfUGchm0KbiyzE1l1sTOSG2EnFv/D
-stU1gvuEKgFJvWa7Zi+ywgZdbj9u4wFaW8pDY1yVtuExpx/VB19N5mWCTjL5w3x6S81NXHTu
-IfJ1AuxSPtLJatOQI25JZzW+f01WpOzML8+3oZeocj7JvEDWWqQIPda8gsO3tzKOsSyOam23
-NQIZz/U5RFhjpyQAELC7/E6vbi84u6VXST/YblBvLJeW3B1GmmWJz67M8uXZn1OzPqEvkqnY
-C8aEHwTG6x7on321e6UC8STFJGMRNMxakyAqeYg6JUKQqWU7fIbTEhUjKfws2sw5W1QXMIIF
-HTCCBAWgAwIBAgIHF5Bg3/QB2TANBgkqhkiG9w0BAQsFADBaMQswCQYDVQQGEwJERTETMBEG
-A1UEChMKREZOLVZlcmVpbjEQMA4GA1UECxMHREZOLVBLSTEkMCIGA1UEAxMbREZOLVZlcmVp
-biBQQ0EgR2xvYmFsIC0gRzAxMB4XDTE0MDUxMjE1MDU1MVoXDTE5MDcwOTIzNTkwMFowYDEL
-MAkGA1UEBhMCREUxKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11ZW5jaGVu
-MSYwJAYDVQQDEx1aZXJ0aWZpemllcnVuZ3NzdGVsbGUgZGVyIFRVTTCCASIwDQYJKoZIhvcN
-AQEBBQADggEPADCCAQoCggEBAKjv6NPYBFzJ+ZELc6JfE/5aga/7K7LWMVBHZvohdJZGd31p
-N9QEfzQeph0kiqsm1X5kHraPtTc9jMH8SLASBI45JppNSSYRfw6j6RjKA7PUStRfV0dq5cBP
-Bl5FpxAY23lAzMzY+6EQEq3/hS8Ia3zG5Q5saJsc+9B2So8+gvaVwZhrWhe7NhyvVqYMiBpT
-E9fbViah3Ur5VdDpcGbsb/BqRDxRrOCjQdNQ6TCQHfIUEDTQMW/czj1wbgLxrp8sB5XlwMPX
-7c2Do+yByWbcrkitdGEeagcWqC1gc8pD/f8PJIoVeW4cy60PjHRIfYC0NBVvg9P0viuwFEyW
-M17brI8CAwEAAaOCAeAwggHcMBIGA1UdEwEB/wQIMAYBAf8CAQEwDgYDVR0PAQH/BAQDAgEG
-MBEGA1UdIAQKMAgwBgYEVR0gADAdBgNVHQ4EFgQUnZ8j8BkbfscjXScqzKU2OqZp5YkwHwYD
-VR0jBBgwFoAUSbfGz+g9H3/qRHsTKffxCnA+3mQwgYgGA1UdHwSBgDB+MD2gO6A5hjdodHRw
-Oi8vY2RwMS5wY2EuZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9jcmwvY2FjcmwuY3JsMD2g
-O6A5hjdodHRwOi8vY2RwMi5wY2EuZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9jcmwvY2Fj
-cmwuY3JsMIHXBggrBgEFBQcBAQSByjCBxzAzBggrBgEFBQcwAYYnaHR0cDovL29jc3AucGNh
-LmRmbi5kZS9PQ1NQLVNlcnZlci9PQ1NQMEcGCCsGAQUFBzAChjtodHRwOi8vY2RwMS5wY2Eu
-ZGZuLmRlL2dsb2JhbC1yb290LWNhL3B1Yi9jYWNlcnQvY2FjZXJ0LmNydDBHBggrBgEFBQcw
-AoY7aHR0cDovL2NkcDIucGNhLmRmbi5kZS9nbG9iYWwtcm9vdC1jYS9wdWIvY2FjZXJ0L2Nh
-Y2VydC5jcnQwDQYJKoZIhvcNAQELBQADggEBANaFYIHzwjpv6JVEdDhka/NaydcN/TSxDEYw
-I7YJ34SlUbk7FVykIRBWlTR8uEwUqhBgNtp1Rg+Kq8qSS9DtSnpOG5EqPvxJRN55x9zNCqZv
-WINnVU+p0V/yOTn+mYBBlgQhgixSxBkanY8VoPBcjr2/i6cck1Mc8co3bZa8i32qCrX0E0mO
-DGohpEVA6sllNkRU6NozLScnab7sibPN7K9w3gbCX61yCPfTvtmiWorJr/GgtLR4D7GczhoD
-ofrJpBzxSacgckbZPirIEgloRZL+1X9kAAjka/hEXh+KYd3qkCdNiMAM8+/Por4Kg8Y/l1k+
-CDudwzwDxAS9H0tcXl4wggWeMIIEhqADAgECAgcWcetffSz0MA0GCSqGSIb3DQEBBQUAMGAx
-CzAJBgNVBAYTAkRFMSkwJwYDVQQKEyBUZWNobmlzY2hlIFVuaXZlcnNpdGFldCBNdWVuY2hl
-bjEmMCQGA1UEAxMdWmVydGlmaXppZXJ1bmdzc3RlbGxlIGRlciBUVU0wHhcNMTMxMDA3MDgx
-NjE2WhcNMTYxMDA2MDgxNjE2WjCB3TELMAkGA1UEBhMCREUxDzANBgNVBAgTBkJheWVybjER
-MA8GA1UEBxMITXVlbmNoZW4xKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11
-ZW5jaGVuMT4wPAYDVQQLEzVGYWt1bHRhZXQgZnVlciBFbGVrdHJvdGVjaG5payB1bmQgSW5m
-b3JtYXRpb25zdGVjaG5pazEYMBYGA1UEAxMPSm9zY2hpIEJyYXVjaGxlMSUwIwYJKoZIhvcN
-AQkBFhZqb3NjaGkuYnJhdWNobGVAdHVtLmRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIB
-CgKCAQEAw1E6N5L0RYJp0kT8TWRT0tGChhKQxR4/dC67zOPWXS/eWUVt8jO0w39YJo/mBi3n
-GyA7xwSgeLoODOkoo53afUxRRFqbPiSqSpHs0I0cePxzYVy+3ZcMg7J9RYsZESY1PrQMFmvh
-TJSxzAwN6waIRyjoVZoTVB4/UC/QhaFbl4WZcIyIqOLq0wlRsrPJuXJiNW8IRsY6xxf5uP4w
-2Foj9wPqoF4ssSaSHQzPVh2PaBoW5iCmHTV/iPaD9mjCGMSLbClIF7VYLMBMCSmfGgou0UlK
-LQ24twb94xkba0QKo8a1GMU00HowMEBb3pY8e4sjHM0hGVzPHfjKf7Z2n774vwIDAQABo4IB
-3TCCAdkwLwYDVR0gBCgwJjARBg8rBgEEAYGtIYIsAQEEAwAwEQYPKwYBBAGBrSGCLAIBBAMA
-MAkGA1UdEwQCMAAwCwYDVR0PBAQDAgXgMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcD
-BDAdBgNVHQ4EFgQUSD2MWx96Lbrr7Vaeh3rAprAP4OswHwYDVR0jBBgwFoAUnZ8j8Bkbfscj
-XScqzKU2OqZp5YkwIQYDVR0RBBowGIEWam9zY2hpLmJyYXVjaGxlQHR1bS5kZTB3BgNVHR8E
-cDBuMDWgM6Axhi9odHRwOi8vY2RwMS5wY2EuZGZuLmRlL3R1bS1jYS9wdWIvY3JsL2NhY3Js
-LmNybDA1oDOgMYYvaHR0cDovL2NkcDIucGNhLmRmbi5kZS90dW0tY2EvcHViL2NybC9jYWNy
-bC5jcmwwgZIGCCsGAQUFBwEBBIGFMIGCMD8GCCsGAQUFBzAChjNodHRwOi8vY2RwMS5wY2Eu
-ZGZuLmRlL3R1bS1jYS9wdWIvY2FjZXJ0L2NhY2VydC5jcnQwPwYIKwYBBQUHMAKGM2h0dHA6
-Ly9jZHAyLnBjYS5kZm4uZGUvdHVtLWNhL3B1Yi9jYWNlcnQvY2FjZXJ0LmNydDANBgkqhkiG
-9w0BAQUFAAOCAQEAK98J5s+3aGhWqEPuUwxbm4jxMmLG+f6DbP5s/2AjHvWkGWwSgT9u503U
-EjqLP7otgr0AFYWArffwTWv2i6Preh1OfhDHkm051LrOtFj+/lBjN+CwuFojG213BKDOno39
-cARrIbSDqBdLpY11DJn7ejEchMj7xNqjt5TbMH40kUD6ApChMuJdilk4tEI/flkKbx4Eo8ba
-PxPivXjyEXIgNOSSsZLjEG+rO0R5mko62OshCS+e099Z7aLcjLE5pxrlZ6+8Xlf0hTJ5BLhT
-HJCCf5banfDrJK+MQzaMcEtfK5jKFhqxJK6gRomqlu7M3Ib1ApQ3u7WWZ1oug9zLE0ZzcDGC
-A1swggNXAgEBMGswYDELMAkGA1UEBhMCREUxKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVy
-c2l0YWV0IE11ZW5jaGVuMSYwJAYDVQQDEx1aZXJ0aWZpemllcnVuZ3NzdGVsbGUgZGVyIFRV
-TQIHFnHrX30s9DAJBgUrDgMCGgUAoIIBxTAYBgkqhkiG9w0BCQMxCwYJKoZIhvcNAQcBMBwG
-CSqGSIb3DQEJBTEPFw0xNDA5MjYxNTMxNTVaMCMGCSqGSIb3DQEJBDEWBBRuO3tq8BFWoiGV
-BXSyCdlNXtXnwzBsBgkqhkiG9w0BCQ8xXzBdMAsGCWCGSAFlAwQBKjALBglghkgBZQMEAQIw
-CgYIKoZIhvcNAwcwDgYIKoZIhvcNAwICAgCAMA0GCCqGSIb3DQMCAgFAMAcGBSsOAwIHMA0G
-CCqGSIb3DQMCAgEoMHoGCSsGAQQBgjcQBDFtMGswYDELMAkGA1UEBhMCREUxKTAnBgNVBAoT
-IFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11ZW5jaGVuMSYwJAYDVQQDEx1aZXJ0aWZpemll
-cnVuZ3NzdGVsbGUgZGVyIFRVTQIHFnHrX30s9DB8BgsqhkiG9w0BCRACCzFtoGswYDELMAkG
-A1UEBhMCREUxKTAnBgNVBAoTIFRlY2huaXNjaGUgVW5pdmVyc2l0YWV0IE11ZW5jaGVuMSYw
-JAYDVQQDEx1aZXJ0aWZpemllcnVuZ3NzdGVsbGUgZGVyIFRVTQIHFnHrX30s9DANBgkqhkiG
-9w0BAQEFAASCAQAo8mPveh0GrsrTq++pCB/95KUD05qPNG9tHbbTRzQi9pHBVVHyvxQyD2VY
-WvmAFoWkRU2718GKZ6XxzjZseUAGrFQ1lV662aHUqaLmAAQLHddXoNHWCYoG+u96RShK59oY
-TTgkTdlKr5iHEZN5uSaT7gly1vyqGnIHxT+3p3ig8MG2csUwIenyP8Rmvr3MlFAwsHZAWwPr
-xO1pyfYLjaY1HKZDhU3hBD7pRHrHzsDVXgjglIKDS5Gtp0cj6HL93BCy+Ej6NYROxiNeL9DG
-KTDpWbXpIY+0AtOlnSV1Tgy/krUxYoVpq7KZnJDIuYdINrXngKn07DblRE9a8GgGUy+jAAAA
-AAAA
---------------ms000106030705020307050005--
+--b.
