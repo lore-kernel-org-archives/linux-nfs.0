@@ -1,65 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:51724 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751272AbaIEA33 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 20:29:29 -0400
-Received: by mail-qc0-f171.google.com with SMTP id x3so11501372qcv.16
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 17:29:29 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 4 Sep 2014 20:29:26 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 05/17] locks: generic_delete_lease doesn't need a
- file_lock at all
-Message-ID: <20140904202926.74c76ee2@tlielax.poochiereds.net>
-In-Reply-To: <20140904201424.GB26054@infradead.org>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-	<1409834323-7171-6-git-send-email-jlayton@primarydata.com>
-	<20140904201424.GB26054@infradead.org>
+Received: from fieldses.org ([174.143.236.118]:32928 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751568AbaIWTs0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 15:48:26 -0400
+Date: Tue, 23 Sep 2014 15:48:25 -0400
+From: "'J. Bruce Fields'" <bfields@fieldses.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: "'Chuck Lever'" <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH V2] svcrdma: Advertise the correct max payload
+Message-ID: <20140923194825.GL29932@fieldses.org>
+References: <20140922200547.19909.68196.stgit@build.ogc.int>
+ <465554E1-802A-4D37-8032-4E99B96B8BFB@oracle.com>
+ <00a701cfd766$855044e0$8ff0cea0$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <00a701cfd766$855044e0$8ff0cea0$@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 4 Sep 2014 13:14:24 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
-
-> On Thu, Sep 04, 2014 at 08:38:31AM -0400, Jeff Layton wrote:
-> > Ensure that it's OK to pass in a NULL file_lock double pointer on
-> > a F_UNLCK request and convert the vfs_setlease F_UNLCK callers to
-> > do just that.
+On Tue, Sep 23, 2014 at 02:42:34PM -0500, Steve Wise wrote:
+> 
+> > > diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> > > index c419498..a9cf5c3 100644
+> > > --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> > > +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> > > @@ -392,4 +392,8 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
+> > > /* Workqueue created in svc_rdma.c */
+> > > extern struct workqueue_struct *svc_rdma_wq;
+> > >
+> > > +#define RPCSVC_MAXPAYLOAD_RDMA \
+> > > +	(RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT) ? \
+> > > +	 RPCSVC_MAXPAYLOAD : (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT))
+> > > +
 > > 
-> > Finally, turn the BUG_ON in generic_setlease into a WARN_ON_ONCE
-> > with an error return. That's a problem we can handle without
-> > crashing the box if it occurs.
+> > Couldn't you use:
+> > 
+> > #if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
+> > #define RPCSVC_MAXPAYLOAD_RDMA RPC_MAXPAYLOAD
+> > #else
+> > #define RPCSVC_MAXPAYLOAD_RDMA (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
+> > #endif
+> > 
+> > That seems more idiomatic.
 > 
-> Can we just make generic_delete_lease (maye renamed to vfs_delete_lease)
-> the interface for deleting leases instead of going through a useless
-> multiplex and file operation?
+> Sure.  That makes it easier to read in my opinion too.
 > 
+> I'll send out V3 with this change.
 
-I'm not sure that change really makes sense to me at this point.
+While we're bikeshedding, why not use min()?
 
-Suppose we have an exportable filesystem with a ->setlease
-implementation [1]. We end up calling into it to set up a lease and it
-calls generic_add_lease. If we make the change you're suggesting, then
-we'll have no parallel to a ->setlease op when removing that lease.
-
-We could of course make a ->dellease op or something, but I'd rather
-not introduce that change until I've had a chance to do some other
-cleanup to the file locking infrastructure.
-
-So...I'm not opposed to doing what you suggest, but I'd rather not do it
-just yet until I've gotten a little farther with some other cleanup of
-how we deal with locks in general. I think it'll be easier to do that
-once some other changes have gone in.
-
-I'll post a draft patchset based on those changes "real soon now" as an
-RFC. Hopefully at that point my rationale will make a bit more sense...
-
-[1]: of course, only cifs has a non-trivial one for now and it's pretty
-half-assed...
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+--b.
