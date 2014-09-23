@@ -1,77 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48396 "EHLO mx2.suse.de"
+Received: from mx12.netapp.com ([216.240.18.77]:23161 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753268AbaIPXlY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Sep 2014 19:41:24 -0400
-Date: Wed, 17 Sep 2014 09:41:13 +1000
-From: NeilBrown <neilb@suse.de>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Peter Zijlstra <peterz@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 0/4] Remove possible deadlocks in nfs_release_page()
-Message-ID: <20140917094113.0cb07cf1@notabene.brown>
-In-Reply-To: <20140916074741.1de870c5@tlielax.poochiereds.net>
-References: <20140916051911.22257.24658.stgit@notabene.brown>
-	<20140916074741.1de870c5@tlielax.poochiereds.net>
+	id S1754992AbaIWPir (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 11:38:47 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 1/1] NFSv4.1: Fix an NFSv4.1 state renewal regression
+Date: Tue, 23 Sep 2014 11:35:36 -0400
+Message-ID: <1411486536-23401-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1411486536-23401-1-git-send-email-andros@netapp.com>
+References: <1411486536-23401-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/PeO.vTXB5CZ=.Tnfg/xaxQv"; protocol="application/pgp-signature"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/PeO.vTXB5CZ=.Tnfg/xaxQv
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: Andy Adamson <andros@netapp.com>
 
-On Tue, 16 Sep 2014 07:47:41 -0400 Jeff Layton <jeff.layton@primarydata.com>
-wrote:
+Commit 2f60ea6b8ced ("NFSv4: The NFSv4.0 client must send RENEW calls if it holds a delegation") set the NFS4_RENEW_TIMEOUT
+flag in nfs4_renew_state, and does not put an nfs41_proc_async_sequence call,
+the NFSv4.1 lease renewal heartbeat call, on the wire to renew the NFSv4.1
+state if the flag was not set.
 
+The NFS4_RENEW_TIMEOUT flag is set when "now" is after the last renewal
+(cl_last_renewal) plus the lease time divided by 3. This is arbitrary and
+sometimes does the following:
 
-> Also, we call things like invalidate_complete_page2 from the cache
-> invalidation code. Will we end up with potential problems now that we
-> have a stronger possibility that a page might not be freeable when it
-> calls releasepage? (no idea on this -- I'm just spitballing)
->=20
+In normal operation, the only way a future state renewal call is put on the
+wire is via a call to nfs4_schedule_state_renewal, which schedules a
+nfs4_renew_state workqueue task. nfs4_renew_state determines if the
+NFS4_RENEW_TIMEOUT should be set, and the calls nfs41_proc_async_sequence,
+which only gets sent if the NFS4_RENEW_TIMEOUT flag is set.
+Then the nfs41_proc_async_sequence rpc_release function schedules
+another state remewal via nfs4_schedule_state_renewal.
 
-Answering just this part here:
- invalidate_complete_page2() is only called immediately after a call to
-do_launder_page().
-For nfs, that means nfs_launder_page() was called, which calls nfs_wb_page()
-which in turn calls
-		ret =3D nfs_commit_inode(inode, FLUSH_SYNC);
+Without this change we can get into a state where an application stops
+accessing the NFSv4.1 share, state renewal calls stop due to the
+NFS4_RENEW_TIMEOUT flag _not_ being set. Note that the only way to recover
+from this situation is with a clientid re-establishment, once the application
+resumes and the server has timed out the lease and so returns
+NFS4ERR_BAD_SESSION.
 
-so the inode is fully committed when invalidate_complete_page2 is called, so
-nfs_release_page will succeed.
+An example application:
+open, lock, write a file.
 
-So there shouldn't be a problem there.
+sleep for 6 * lease (could be less)
 
-Thanks,
-NeilBrown
+ulock, close.
 
---Sig_/PeO.vTXB5CZ=.Tnfg/xaxQv
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+In the above example with NFSv4.1 delegations enabled, without this change,
+there are no OP_SEQUENCE state renewal calls during the sleep, and the
+clientid is recovered due to lease expiration on the close.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
+This issue does not occur with NFSv4.1 delegations disabled, nor with
+NFSv4.0, with or without delegations enabled.
 
-iQIVAwUBVBjKmTnsnt1WYoG5AQIKoxAAwHYOT2px8v/27OkcGivaLkX0QeRC/v7N
-DGFYWzkLZCJQTk8ubsU8qTaMiYBsCHBfxMh7RxIQ66IQ4YOis9/3BiMTFtA81eQL
-sm8TK64e4jBSPrTSwevJ4GUGlJBF/xWZTfYKCGjzaGDo3I/G+WB6fTj2YJDulWnk
-xgoDy1s23yrvdKJpiC3av9hnvnFAYv4d/sv2axOQGzKDfMn62f8vApPLpqphoq+1
-Zone0nWEKTZbDxS0vhf+cN5wDkXtITyjd3WViocfx/QgGPDSZRTvauIXaSmsxYmC
-x4jB2n9bnyAI/ifetUjQwt7WbXu61gmI2Tzkny+hZQBTtng/N3S3UBQlCDfJRszD
-Gn9juNyfO2NbUJb3z1SxUtPo/liHECOzxt/4qmWgVxRs0BQjcY3WdMejOK19llBO
-brBixSxRyNE9c60upOeS3/7kosQSIQttz0KOP0p+/iNmva7h7i5/tgXGpM79vLmn
-DTCCQtU/bNnNaTkUgviSZgm68TrmE6HTHJ4JWdKKgDqDFeb0XJaKqd6yS8zmm7lk
-l3ChbGiK2ul66xNgFkFfBv1QXozpz9lGfvujoESnMrvWTCYbREWg8mVNEIxyhe2K
-3WWlQhEMF5OklFyBUCuQKq+xnNr5O+EiHPboA4wl1PVGRP79pILQ1vbBFdOg/FPD
-3fd8+iJf7nc=
-=Lclc
------END PGP SIGNATURE-----
+Commit 2f60ea6b8ced ("NFSv4: The NFSv4.0 client must send RENEW calls if it holds a delegation") states:
 
---Sig_/PeO.vTXB5CZ=.Tnfg/xaxQv--
+    RFC3530 states that if the client holds a delegation, then it is obliged
+    to continue to send RENEW calls once every lease period in order to allow
+    the server to return NFS4ERR_CB_PATH_DOWN if the callback path is
+    unreachable.
+
+    This is not required for NFSv4.1, since the server can at any time set
+    the SEQ4_STATUS_CB_PATH_DOWN_SESSION in any SEQUENCE operation.
+
+The problem is, in the above example, there is not SEQUENCE operation sent.
+
+AFAICS the purpose of "NFSv4: The NFSv4.0 client must send RENEW calls if it holds a delegation" is to not send a lease renewal when NFSv4.1 delegations are
+enabled, perhaps we should revert that commit.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 288be08..efe802a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7348,8 +7348,6 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
+ 	struct rpc_task *task;
+ 	int ret = 0;
+ 
+-	if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
+-		return 0;
+ 	task = _nfs41_proc_sequence(clp, cred, false);
+ 	if (IS_ERR(task))
+ 		ret = PTR_ERR(task);
+-- 
+1.8.3.1
+
