@@ -1,153 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:56686 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751913AbaI2RLe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Sep 2014 13:11:34 -0400
-Received: by mail-qc0-f182.google.com with SMTP id i17so2462165qcy.13
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Sep 2014 10:11:33 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 29 Sep 2014 13:11:30 -0400
+Received: from cantor2.suse.de ([195.135.220.15]:53354 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754019AbaIWCz2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 22:55:28 -0400
+Date: Tue, 23 Sep 2014 12:55:17 +1000
+From: NeilBrown <neilb@suse.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
-Message-ID: <20140929131130.3ba5d987@tlielax.poochiereds.net>
-In-Reply-To: <20140929164425.GF30691@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
-	<20140926183949.GC27412@fieldses.org>
-	<20140926145446.21a99698@tlielax.poochiereds.net>
-	<20140926194616.GE27412@fieldses.org>
-	<20140927090458.62806936@synchrony.poochiereds.net>
-	<20140929164425.GF30691@fieldses.org>
+Cc: Simo Sorce <simo@redhat.com>, Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+Message-ID: <20140923125517.7a20b09a@notabene.brown>
+In-Reply-To: <20140923020928.GA1409@fieldses.org>
+References: <1411413608-16462-1-git-send-email-steved@redhat.com>
+	<1411413608-16462-2-git-send-email-steved@redhat.com>
+	<20140922194057.GE26763@fieldses.org>
+	<20140922154642.779189c8@willson.usersys.redhat.com>
+	<54207E4A.7010300@RedHat.com>
+	<20140922160050.0b85f044@willson.usersys.redhat.com>
+	<20140923114229.0a9e294f@notabene.brown>
+	<20140923020928.GA1409@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/BdvSZuqnx+nzfEVZrnPSzXj"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 29 Sep 2014 12:44:26 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+--Sig_/BdvSZuqnx+nzfEVZrnPSzXj
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> On Sat, Sep 27, 2014 at 09:04:58AM -0400, Jeff Layton wrote:
-> > On Fri, 26 Sep 2014 15:46:17 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Fri, Sep 26, 2014 at 02:54:46PM -0400, Jeff Layton wrote:
-> > > > On Fri, 26 Sep 2014 14:39:49 -0400
-> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > > > 
-> > > > > By the way, I've seen the following *before* your patches, but in case
-> > > > > you're still looking at reboot recovery problems:
-> > > > > 
-> > > > > I'm getting sporadic failures in the REBT6 pynfs test--a reclaim open
-> > > > > succeeds after a previous boot (with full grace period) during which the
-> > > > > client had failed to reclaim.
-> > > > > 
-> > > > > I managed to catch one trace, the relevant parts looked like:
-> > > > > 
-> > > > > 	SETCLIENTID client1
-> > > > > 	OPEN
-> > > > > 	LOCK
-> > > > > 
-> > > > > 	(server restart here)
-> > > > > 
-> > > > > 	SETCLIENTID client2
-> > > > > 	OPEN
-> > > > > 	LOCK (lock that conflicts with client1's)
-> > > > > 
-> > > > > 	(server restart here)
-> > > > > 
-> > > > > 	SETCLIENTID client1
-> > > > > 	OPEN CLAIM_PREVIOUS
-> > > > > 
-> > > > > And all those ops (including the last reclaim open) succeeded.
-> > > > > 
-> > > > > So I didn't have a chance to review it more carefully, but it certainly
-> > > > > looks like a server bug, not a test bug.  (Well, technically the server
-> > > > > behavior above is correct since it's not required to refuse anything
-> > > > > till we actually attempt to reclaim the original lock, but we know our
-> > > > > server's not that smart.)
-> > > > > 
-> > > > > But I haven't gotten any further than that....
-> > > > > 
-> > > > > --b.
-> > > > > 
-> > > > 
-> > > > Ewww...v4.0... ;)
-> > > > 
-> > > > Well, I guess that could happen if, after the first reboot, client1 also
-> > > > did a SETCLIENTID *and* reclaimed something that didn't conflict with
-> > > > the lock that client2 grabs...or, did an OPEN/OPEN_CONFIRM after the
-> > > > grace period without reclaiming its lock previously.
-> > > > 
-> > > > If it didn't do one or the other, then its record should have been
-> > > > cleaned out of the DB after the grace period ended between the reboots
-> > > > and it wouldn't have been able to reclaim after the second reboot.
-> > > 
-> > > Yeah.  Is there an easy way to tell nfsdcltrack to log everything?  I'm
-> > > only seeing this occasionally.
-> > > 
-> > 
-> > If you can make sure that it's run with the '-d' flag then that'll make
-> > it do debug level logging. Unfortunately, the kernel doesn't have a
-> > handy switch to enable that so you'll need to patch the kernel (or
-> > maybe wrap nfsdcltrack) to make that happen.
-> > 
-> > Maybe we should add a module parm to nfsd.ko that makes it run
-> > nfsdcltrack with -d?
-> 
-> Would userland configuration (e.g. and optional /etc/ file) be more
-> flexible?
-> 
+On Mon, 22 Sep 2014 22:09:28 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-Yeah, that might not hurt.
+> On Tue, Sep 23, 2014 at 11:42:29AM +1000, NeilBrown wrote:
+> > Surely gssproxy is only serving nfsd requests if both /run/gssproxy.pid
+> > exists and /proc/net/rpc/use-gss-proxy exists.
+> > If either of those files is missing, then rpc.svcgssd needs to run.
+> > In one case, the gssproxy daemon isn't available for some reason.  In t=
+he
+> > other case the kernel cannot make use of it.
+> >=20
+> > Is that not correct?
+> >=20
+> > That is exactly the rule that I (tried to) encode in the service file w=
+ith
+> > these two conditions.
+>=20
+> Eh, I see your point, but the gssproxy.pid one still seems a little odd
+> to me.
+>=20
+> I guess it's friendlier to people that don't have gss-proxy installed at
+> all, or want to turn it off for some reason--but then they or their
+> distro can fix up the unit files too.
 
-We do want this thing to run pretty quickly, but if the config file
-were only processed if it were present (and it usually wasn't) then
-that might not be too bad.
+Having to fix up unit files is something I would much rather avoid.  I think
+of them as code and just because they can be edited it doesn't mean they
+should be.
 
-> > 
-> > > > It's a bit of a pathological case, and I don't see a way to fix that in
-> > > > the context of v4.0. The fact that there's no RECLAIM_COMPLETE is a
-> > > > pretty nasty protocol bug, IMO. Yet another reason to start really
-> > > > moving people toward v4.1+...
-> > > 
-> > > I don't belive there's a protocol bug here.
-> > > 
-> > > A correct NFSv4.0 client wouldn't send the open reclaim in the case you
-> > > describe above.
-> > > 
-> > 
-> > It would in the partial reclaim case.
-> 
-> My (and I think Trond's) understanding is that client1 would not send
-> the reclaim in that case.  In the case of a partial reclaim, a correct
-> 4.0 client will stop trying to reclaim the state that it failed to
-> reclaim previously.  My understanding is that is how the linux client in
-> fact behaves.
-> 
-> So the bug would be in the client, not the protocol.  That said,
-> admittedly:
-> 
-> 	- the "protocol" here seems to be largely in our heads; the spec
-> 	  does a poor job of explaining all this.
-> 	- we (not suprisingly) disagree on some of the details.
-> 
-> Nevertheless, I believe that despite our disagreement there's no actual
-> bug at least between the existing Linux client and server.  And that
-> 3530bis and 5661 were at least *supposed* to deal with this case....
-> 
-> Oh, look, Trond and you have written a pile more of text on this on the
-> ietf list.  Should I even try to catch up, or would be better off just
-> spending the rest of my day back in bed?
-> 
+I'm quite open to having rpc.svcgssd test to see if gssproxy is installed
+rather than if it is running.  In that case we would have a 'Want=3D' somew=
+here
+in nfs-utils for gssproxy.service (which I previously said I didn't like but
+I'm beginning to see the wisdom of).
+
+But if gssproxy isn't installed, then I think rpc.svcgssd should run whether
+use-gss-proxy is present or not.
+
+>=20
+> Otherwise if we've got gss-proxy and the kernel supports it then it
+> should work, and if it's failing to come up in that case I'd kind of
+> like to know why and get a bug report like "gssproxy failed to start" or
+> "krb5 exports stopped working" rather than "krb5 exports are working in
+> some subtly different way than they did last week."
+
+This is quite a strong argument.
+
+Thanks,
+NeilBrown
+
+>=20
 > --b.
-> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-If there is any bug, I think it's only going to crop up under extremely
-rare circumstances -- network partitions cropping up during reclaims,
-multiple reboots, etc...
 
-We probably ought to try and clarify this stuff for the spec (and our
-own implementations) but I don't think there's any cause for alarm...
+--Sig_/BdvSZuqnx+nzfEVZrnPSzXj
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBVCDhFjnsnt1WYoG5AQLd2BAArXnA8vwtlq00WIm5r4NYAcg7VSc75Sgq
+ZFbe8CutUGmrX6XHcQHRkg7h3EP8NGbAG3yv8pnzJpxSIM9UvWxE0yYWssGgw/3m
+Z6Sio0LardrhoGOxMw8W6fUiaqdgH8LtfLEey1o7JZF5DGB/vDF74Po2bl6m2NGU
+sMfy3MZQ9GEcuXBOBp4wkbH29y0GUWLgrKdZEq51xePN89oXST3So4NJ7s9A5GJF
+pIGeapU1d5xHtizEzT5w3tCc/cREb/WOR9CAvIYKhjYq5wR1c3T6TyiEWOYtFNrO
+ZR6nVgvI+8oUtrcU0gS/1Ryh1v4LduEsAC8AqSODdWK3BtRDCYaQ71coe5KimKvE
+7YU8w/fogEZZy9YmogNDFFMOj3FIJDpveQaQgicJAnMwIRHoBiQAK/4NPS2fw7xK
+HKmSEWNuAn72ya2LTvMb0F0PJUP67Fic3vZvMK/iuKxT++YXR0nIc5Ss01M2E+iV
+rHImCjVzsIoCpuPdiWg5JXumNLQq4+cBciiAXSLVVft0Jrov53zHSIWdz6sGznjK
+o9HQYL/jbdtymFj1om8M3taVr2X7ED0CekOIjgtG/6MKBvGuRvPhvR1oXIaKsSel
+KwOIDCvopUmNT1CDb4vMw5/A5v9I/xA54aIcA4UI+BDvJ7dzwkd9PgN8DhMC8uun
+zUhvHSqwjjY=
+=gORw
+-----END PGP SIGNATURE-----
+
+--Sig_/BdvSZuqnx+nzfEVZrnPSzXj--
