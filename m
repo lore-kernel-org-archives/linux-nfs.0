@@ -1,49 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:48076 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752594AbaINNYR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Sep 2014 09:24:17 -0400
-Received: by mail-ie0-f172.google.com with SMTP id tr6so3263685ieb.31
-        for <linux-nfs@vger.kernel.org>; Sun, 14 Sep 2014 06:24:17 -0700 (PDT)
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:37561 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756752AbaIWWLX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 18:11:23 -0400
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH V3] svcrdma: advertise the correct max payload
+To: fields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 23 Sep 2014 17:11:22 -0500
+Message-ID: <20140923221122.24227.91718.stgit@build.ogc.int>
 MIME-Version: 1.0
-In-Reply-To: <5415740E.6030202@gmail.com>
-References: <1410362617-28018-1-git-send-email-hch@lst.de>
-	<1410362617-28018-9-git-send-email-hch@lst.de>
-	<CAKVebiUqhCVy4jyzccBOXcHo3dkQNXjF0WsP1sHkOMkdnEAG9Q@mail.gmail.com>
-	<20140911152553.GD6690@lst.de>
-	<CAHQdGtT79qxn6ka4erSr3bxpZCr91+DVe6xtV6kMPD9QUDLL7w@mail.gmail.com>
-	<20140911154834.GA9280@lst.de>
-	<CAHQdGtR9gVaw7wG0R6JfXHb8W+M3LnqXcwWyuCXe4=oNbXFGMA@mail.gmail.com>
-	<5415740E.6030202@gmail.com>
-Date: Sun, 14 Sep 2014 09:24:17 -0400
-Message-ID: <CAABAsM4sAecHt291APP6AZ9e5QvNCRK74WFF-tyje50CNCcY1g@mail.gmail.com>
-Subject: Re: [PATCH 8/9] pnfs/blocklayout: return layouts on setattr
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Boaz Harrosh <openosd@gmail.com>
-Cc: Christoph Hellwig <hch@lst.de>, Peng Tao <bergwolf@primarydata.com>,
-        Boaz Harrosh <boaz@plexistor.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Sep 14, 2014 at 6:55 AM, Boaz Harrosh <openosd@gmail.com> wrote:
-> On 09/11/2014 07:14 PM, Trond Myklebust wrote:
-> <>
->> In the files layout case, it is actually quite common for the server
->> to hand out an "infinite" sized layout in response to a LAYOUTGET. It
->> means that the client doesn't need to ask for a new layout in order to
->> append to the file.
->>
->
-> You mean to say that: "The Linux files-layout driver only supports infinite
->  sized layout, so it is pointless to return a layout which will be returned
->  again, exactly the same"
->
-> Because I agree that "an infinite sized layout" need not be returned but
-> an none-infinite should, only we do not have any.
->
+Svcrdma currently advertises 1MB, which is too large.  The correct value
+is the minimum of RPCSVC_MAXPAYLOAD and the max scatter-gather allowed
+in an NFSRDMA IO chunk * the host page size. This bug is usually benign
+because the Linux X64 NFSRDMA client correctly limits the payload size to
+the correct value (64*4096 = 256KB).  But if the Linux client is PPC64
+with a 64KB page size, then the client will indeed use a payload size
+that will overflow the server.
 
-No Boaz. I mean that it is utterly pointless and stupid to return a
-layout that doesn't preallocate any resources when it isn't necessary
-to do so.
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+---
+
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+ net/sunrpc/xprtrdma/xprt_rdma.h          |    7 +++++++
+ 2 files changed, 8 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 374feb4..4e61880 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -91,7 +91,7 @@ struct svc_xprt_class svc_rdma_class = {
+ 	.xcl_name = "rdma",
+ 	.xcl_owner = THIS_MODULE,
+ 	.xcl_ops = &svc_rdma_ops,
+-	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
++	.xcl_max_payload = RPCSVC_MAXPAYLOAD_RDMA,
+ 	.xcl_ident = XPRT_TRANSPORT_RDMA,
+ };
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index c419498..ac7fc9a 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -51,6 +51,7 @@
+ #include <linux/sunrpc/clnt.h> 		/* rpc_xprt */
+ #include <linux/sunrpc/rpc_rdma.h> 	/* RPC/RDMA protocol */
+ #include <linux/sunrpc/xprtrdma.h> 	/* xprt parameters */
++#include <linux/sunrpc/svc.h>		/* RPCSVC_MAXPAYLOAD */
+ 
+ #define RDMA_RESOLVE_TIMEOUT	(5000)	/* 5 seconds */
+ #define RDMA_CONNECT_RETRY_MAX	(2)	/* retries if no listener backlog */
+@@ -392,4 +393,10 @@ extern struct kmem_cache *svc_rdma_ctxt_cachep;
+ /* Workqueue created in svc_rdma.c */
+ extern struct workqueue_struct *svc_rdma_wq;
+ 
++#if RPCSVC_MAXPAYLOAD < (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
++#define RPCSVC_MAXPAYLOAD_RDMA RPCSVC_MAXPAYLOAD
++#else
++#define RPCSVC_MAXPAYLOAD_RDMA (RPCRDMA_MAX_DATA_SEGS << PAGE_SHIFT)
++#endif
++
+ #endif				/* _LINUX_SUNRPC_XPRT_RDMA_H */
+
