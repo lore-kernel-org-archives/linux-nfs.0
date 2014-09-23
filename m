@@ -1,86 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:63051 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753443AbaIIQPt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 12:15:49 -0400
-Received: by mail-qa0-f42.google.com with SMTP id dc16so11943229qab.15
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 09:15:48 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 9 Sep 2014 12:15:46 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org,
-        neilb@suse.de
-Subject: Re: kernel BUG in fs/dcache.c running nfs
-Message-ID: <20140909121546.3981121b@tlielax.poochiereds.net>
-In-Reply-To: <20140909121244.610f297d@tlielax.poochiereds.net>
-References: <20140908144525.GB19811@infradead.org>
-	<20140909105918.59477ee3@tlielax.poochiereds.net>
-	<20140909154211.GA6614@infradead.org>
-	<20140909121244.610f297d@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mx1.redhat.com ([209.132.183.28]:63734 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753901AbaIWQ0V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 12:26:21 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8NGQKCr016993
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 12:26:21 -0400
+Received: from bcodding-csb.redhat.com (vpn-55-195.rdu2.redhat.com [10.10.55.195])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8NGQKr5016208
+	for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 12:26:20 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] SUNRPC: Don't wake tasks during connection abort
+Date: Tue, 23 Sep 2014 12:26:19 -0400
+Message-Id: <ace36d635d437816d534a748646a1595178b3f72.1411486371.git.bcodding@redhat.com>
+In-Reply-To: <cover.1411486371.git.bcodding@redhat.com>
+References: <cover.1411486371.git.bcodding@redhat.com>
+In-Reply-To: <cover.1411486371.git.bcodding@redhat.com>
+References: <cover.1411486371.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 9 Sep 2014 12:12:44 -0400
-Jeff Layton <jlayton@primarydata.com> wrote:
+When aborting a connection to preserve source ports, don't wake the task in
+xs_error_report.  This allows tasks with RPC_TASK_SOFTCONN to succeed if the
+connection needs to be re-established since it preserves the task's status
+instead of setting it to the status of the aborting kernel_connect().
 
-> On Tue, 9 Sep 2014 08:42:11 -0700
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > On Tue, Sep 09, 2014 at 10:59:18AM -0400, Jeff Layton wrote:
-> > > > [ 5497.405585]  [<ffffffff8135d0c1>] nfs4_do_open.constprop.84+0x681/0x960
-> > > > [ 5497.405585]  [<ffffffff8135d459>] nfs4_atomic_open+0x9/0x20
-> > > > [ 5497.405585]  [<ffffffff8136cc3d>] nfs4_file_open+0xcd/0x1b0
-> > > > [ 5497.405585]  [<ffffffff811b8092>] do_dentry_open.isra.13+0x1f2/0x320
-> > > > [ 5497.405585]  [<ffffffff811b82ad>] finish_open+0x1d/0x30
-> > > > [ 5497.405585]  [<ffffffff811c98e9>] path_openat+0xb9/0x670
-> > > > [ 5497.405585]  [<ffffffff811ca26e>] do_filp_open+0x3e/0xa0
-> > > > [ 5497.405585]  [<ffffffff811b95cc>] do_sys_open+0x13c/0x230
-> > > > [ 5497.405585]  [<ffffffff811b96dd>] SyS_open+0x1d/0x20
-> > > > [ 5497.405585]  [<ffffffff81d9f5a9>] system_call_fastpath+0x16/0x1b
-> > > > 
-> > > 
-> > > Odd...
-> > > 
-> > > It looks like you hit the BUG() in d_instantiate.
-> > > 
-> > > I don't see any calls to d_instantiate in the current nfs_code (aside
-> > > from the one in nfs_lookup, and I don't think that's getting called
-> > > here). d_instantiate is called by d_add though, and that gets called
-> > > from nfs_atomic_open. Is that what happened here?
-> > > 
-> > > Maybe you can use gdb to figure out what line of code
-> > > "nfs4_do_open.constprop.84+0x681" actually is?
-> > 
-> > My gdb can't cope with these constprop expressions unfortunately.
-> > 
-> > But when you remove the questionable symbols as I've done above it's
-> > pretty clear that this must be the
-> > 
-> > nfs4_atomic_open
-> >  -> nfs4_do_open
-> >    -> _nfs4_do_open
-> >      -> _nfs4_open_and_get_state
-> >        -> d_add
-> >          -> d_instantiate
-> > 
-> > call chain. There is heavy inlining going on inside nfs4file.c, and
-> > d_add now is a simple inline around d_instantiate and d_rehash.
-> 
-> Ok. So I'm guessing that means that the current scheme of doing a
-> d_drop/d_add is not valid. d_drop doesn't remove the dentry from the
-> i_alias list.
-> 
-> It looks like the first call there should just be doing a d_delete
-> instead, since it's trying to turn the thing into a negative dentry.
+This may also avoid a potential conflict on the socket's lock.
 
-(cc'ing Neil B.)
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/xprtsock.c       |    4 ++++
+ 2 files changed, 5 insertions(+), 0 deletions(-)
 
-...and I'd hazard a guess that 4fa2c54b5198d might be the culprit. You
-might want to try backing that out and see if it's still reproducible.
-
-Neil, any thoughts?
-
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index fcbfe87..cf391ee 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -357,6 +357,7 @@ int			xs_swapper(struct rpc_xprt *xprt, int enable);
+ #define XPRT_CONNECTION_ABORT	(7)
+ #define XPRT_CONNECTION_CLOSE	(8)
+ #define XPRT_CONGESTED		(9)
++#define XPRT_CONNECTION_REUSE	(10)
+ 
+ static inline void xprt_set_connected(struct rpc_xprt *xprt)
+ {
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 43cd89e..700f879 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -845,6 +845,8 @@ static void xs_error_report(struct sock *sk)
+ 	dprintk("RPC:       xs_error_report client %p, error=%d...\n",
+ 			xprt, -err);
+ 	trace_rpc_socket_error(xprt, sk->sk_socket, err);
++	if (test_bit(XPRT_CONNECTION_REUSE, &xprt->state))
++		goto out;
+ 	xprt_wake_pending_tasks(xprt, err);
+  out:
+ 	read_unlock_bh(&sk->sk_callback_lock);
+@@ -2245,7 +2247,9 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+ 		abort_and_exit = test_and_clear_bit(XPRT_CONNECTION_ABORT,
+ 				&xprt->state);
+ 		/* "close" the socket, preserving the local port */
++		set_bit(XPRT_CONNECTION_REUSE, &xprt->state);
+ 		xs_tcp_reuse_connection(transport);
++		clear_bit(XPRT_CONNECTION_REUSE, &xprt->state);
+ 
+ 		if (abort_and_exit)
+ 			goto out_eagain;
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.7.1
+
