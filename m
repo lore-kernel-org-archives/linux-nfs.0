@@ -1,62 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:50052 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751215AbaIJNEe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 09:04:34 -0400
-Received: by mail-qa0-f48.google.com with SMTP id v10so1831752qac.35
-        for <linux-nfs@vger.kernel.org>; Wed, 10 Sep 2014 06:04:34 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: add __acquires and __releases annotations to seqfile start/stop routines
-Date: Wed, 10 Sep 2014 09:04:27 -0400
-Message-Id: <1410354267-24409-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:35894 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755694AbaIWVPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 17:15:23 -0400
+Message-ID: <5421E2E6.7000409@RedHat.com>
+Date: Tue, 23 Sep 2014 17:15:18 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NeilBrown <neilb@suse.de>, Simo Sorce <simo@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
+References: <20140922204401.GI26763@fieldses.org> <5420911D.6080506@RedHat.com> <20140922223423.GA29932@fieldses.org> <5420B78D.6040704@RedHat.com> <20140922202655.5e308e58@willson.usersys.redhat.com> <20140923015549.GB32712@fieldses.org> <20140923120804.51dbcc2e@notabene.brown> <20140923021110.GB1409@fieldses.org> <20140923192311.GI29932@fieldses.org> <5421D55B.8040403@RedHat.com> <20140923202514.GO29932@fieldses.org>
+In-Reply-To: <20140923202514.GO29932@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To make sparse happy...
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfs/client.c | 4 ++++
- 1 file changed, 4 insertions(+)
+On 09/23/2014 04:25 PM, J. Bruce Fields wrote:
+>> I through this into my test world
+> Thanks!
+> 
+>> > and one side effect of this patch
+>> > is both rpc.gssd and rpc.svcgssd daemons are *always* started when 
+>> > a key tab exists (/etc/krb5.keytab) and *all* the services (nfs-client,
+>> > nfs-server, rpc-gssd, and rpc-svcgssd) are disabled, which is not 
+>> > good... Those daemons don't need to be started when both sides 
+>> > are disabled...  But the auth_rpcgss is loaded! ;-) 
+> Weird.  I can't see how this patch on its own would have any effect on
+> that.
+I agree... I was surprised myself... Unfortunately I'm sure how to
+debug what/how/when systemd starts things...  But I moving
+the key tab out of the way stop the daemons from starting.
+Moving it back in place caused the daemons to start again,
+which didn't happen with the current f21 nfs-utils.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 1c5ff6d58385..39589b4f1966 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -1252,6 +1252,7 @@ static int nfs_server_list_open(struct inode *inode, struct file *file)
-  * set up the iterator to start reading from the server list and return the first item
-  */
- static void *nfs_server_list_start(struct seq_file *m, loff_t *_pos)
-+				__acquires(&nn->nfs_client_lock)
- {
- 	struct nfs_net *nn = net_generic(seq_file_net(m), nfs_net_id);
- 
-@@ -1274,6 +1275,7 @@ static void *nfs_server_list_next(struct seq_file *p, void *v, loff_t *pos)
-  * clean up after reading from the transports list
-  */
- static void nfs_server_list_stop(struct seq_file *p, void *v)
-+				__releases(&nn->nfs_client_lock)
- {
- 	struct nfs_net *nn = net_generic(seq_file_net(p), nfs_net_id);
- 
-@@ -1326,6 +1328,7 @@ static int nfs_volume_list_open(struct inode *inode, struct file *file)
-  * set up the iterator to start reading from the volume list and return the first item
-  */
- static void *nfs_volume_list_start(struct seq_file *m, loff_t *_pos)
-+				__acquires(&nn->nfs_client_lock)
- {
- 	struct nfs_net *nn = net_generic(seq_file_net(m), nfs_net_id);
- 
-@@ -1348,6 +1351,7 @@ static void *nfs_volume_list_next(struct seq_file *p, void *v, loff_t *pos)
-  * clean up after reading from the transports list
-  */
- static void nfs_volume_list_stop(struct seq_file *p, void *v)
-+				__releases(&nn->nfs_client_lock)
- {
- 	struct nfs_net *nn = net_generic(seq_file_net(p), nfs_net_id);
- 
--- 
-1.9.3
+Maybe its a bug in some other unit file... 
 
+steved.
