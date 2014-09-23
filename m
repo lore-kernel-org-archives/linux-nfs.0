@@ -1,47 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:37590 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751634AbaICE0A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Sep 2014 00:26:00 -0400
-Received: from [64.134.221.109] (helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XP28t-0003VP-D5
-	for linux-nfs@vger.kernel.org; Wed, 03 Sep 2014 04:25:59 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] pnfs: add a nfs4_get_deviceid helper
-Date: Tue,  2 Sep 2014 21:27:59 -0700
-Message-Id: <1409718480-1529-4-git-send-email-hch@lst.de>
-In-Reply-To: <1409718480-1529-1-git-send-email-hch@lst.de>
-References: <1409718480-1529-1-git-send-email-hch@lst.de>
+Received: from cantor2.suse.de ([195.135.220.15]:52966 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753982AbaIWCLE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 22 Sep 2014 22:11:04 -0400
+Date: Tue, 23 Sep 2014 12:10:52 +1000
+From: NeilBrown <neilb@suse.de>
+To: Peter Zijlstra <peterz@infradead.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Jeff Layton <jeff.layton@primarydata.com>
+Subject: Re: [PATCH 1/4] SCHED: add some "wait..on_bit...timeout()"
+ interfaces.
+Message-ID: <20140923121052.55dcb4f5@notabene.brown>
+In-Reply-To: <20140918144222.GP2840@worktop.localdomain>
+References: <20140916051911.22257.24658.stgit@notabene.brown>
+	<20140916053134.22257.28841.stgit@notabene.brown>
+	<20140918144222.GP2840@worktop.localdomain>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/p0YjgUNWIN4ITSBXs16hgVq"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will be used by the block layout driver when splitting extents.
+--Sig_/p0YjgUNWIN4ITSBXs16hgVq
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/pnfs.h | 7 +++++++
- 1 file changed, 7 insertions(+)
+On Thu, 18 Sep 2014 16:42:22 +0200 Peter Zijlstra <peterz@infradead.org>
+wrote:
 
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index bf4e87d..4746ede 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -279,6 +279,13 @@ void nfs4_deviceid_purge_client(const struct nfs_client *);
- int nfs4_deviceid_getdevicelist(struct nfs_server *server,
- 		const struct nfs_fh *fh);
- 
-+static inline struct nfs4_deviceid_node *
-+nfs4_get_deviceid(struct nfs4_deviceid_node *d)
-+{
-+	atomic_inc(&d->ref);
-+	return d;
-+}
-+
- static inline struct pnfs_layout_segment *
- pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
--- 
-1.9.1
+> On Tue, Sep 16, 2014 at 03:31:35PM +1000, NeilBrown wrote:
+> > In commit c1221321b7c25b53204447cff9949a6d5a7ddddc
+> >    sched: Allow wait_on_bit_action() functions to support a timeout
+> >=20
+> > I suggested that a "wait_on_bit_timeout()" interface would not meet my
+> > need.  This isn't true - I was just over-engineering.
+> >=20
+> > Including a 'private' field in wait_bit_key instead of a focused
+> > "timeout" field was just premature generalization.  If some other
+> > use is ever found, it can be generalized or added later.
+> >=20
+> > So this patch renames "private" to "timeout" with a meaning "stop
+> > waiting when "jiffies" reaches or passes "timeout",
+> > and adds two of the many possible wait..bit..timeout() interfaces:
+> >=20
+> > wait_on_page_bit_killable_timeout(), which is the one I want to use,
+> > and out_of_line_wait_on_bit_timeout() which is a reasonably general
+> > example.  Others can be added as needed.
+> >=20
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> > ---
+> >  include/linux/pagemap.h |    2 ++
+> >  include/linux/wait.h    |    5 ++++-
+> >  kernel/sched/wait.c     |   36 ++++++++++++++++++++++++++++++++++++
+> >  mm/filemap.c            |   13 +++++++++++++
+> >  4 files changed, 55 insertions(+), 1 deletion(-)
+> >=20
+>=20
+> Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
 
+Thanks.
+I assume that means it is OK for this patch to go to Linus via the NFS tree,
+so we get to keep everything together.
+Now I just need an Ack from akpm for the mm bits (please...)
+
+NeilBrown
+
+--Sig_/p0YjgUNWIN4ITSBXs16hgVq
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBVCDWrDnsnt1WYoG5AQKsuQ/9HIaWXs87B636Ar7UMkB6HHUl9gMQjcoP
+11l6Kq3jn0x+mJYXV/eMCLHrOYpsJsfFph0YVq/40CW5PNw/rY5V+/LAd6AQ0TXJ
+0Sb7GFbUzBO3LaaYppoFfBipS+IflfIY5YcOZqqHPZJ1kdozWb4t+0jWlyJ+l2mz
+M3o0ikklWQDA1Q187HskpadlG7sJx7B2NrzM0aJHVOAjcSjfFdCyxdE/hVxZ+bvO
+9ZvQV3p4krgsr4ofIfIkVC3jJO96p/HJLC/tQkgUuWeSJ8Com1pRNxC6AdpMmxCf
+/xhLaBnek3jRVLr9xfVUbHccywdMMfZz0NH+60TbR1WWAiTeLTYZ/VDXVqLaRRQJ
+QvuC3Q+he3766V55xvlns9xJGeaAXnSwQxiIxoMGRe5HxSIJU9Z+br58UnEkkhzy
+Sk4CwbcEcbN0510UQeGZeiQ9R1haxr02dMRUjjbOTxHo3RK0x4iVLAVp63dotjwF
+Xi4VcW6bc2ujkbYt+lJRnxvvUSxHqLlc45YzbDZFi3K8EzW+A//yed+OcQ/L61Ju
+q1maA1eE2G08Qss39ZpH/kws6LGQA8AH649vqqJoBtbbKCQ13238IwTBzGJkgeXs
+J7JQ7yV10S2glLZCrSADTbRJGSE4Ps48FiWbgaWLmrcZ5L8yuiPf3ORmSPPjIrzo
+NW5R+XPbNO4=
+=YiXD
+-----END PGP SIGNATURE-----
+
+--Sig_/p0YjgUNWIN4ITSBXs16hgVq--
