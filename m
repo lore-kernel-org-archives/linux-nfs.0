@@ -1,101 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:62826 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754414AbaIOSPF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 14:15:05 -0400
-Received: by mail-ie0-f176.google.com with SMTP id ar1so5161719iec.35
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 11:15:05 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: stable@vger.kernel.org
-Cc: Weston Andros Adamson <dros@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 13/14] nfs: disallow duplicate pages in pgio page vectors
-Date: Mon, 15 Sep 2014 14:14:44 -0400
-Message-Id: <1410804885-17228-14-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1410804885-17228-13-git-send-email-trond.myklebust@primarydata.com>
-References: <1410804885-17228-1-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-2-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-3-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-4-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-5-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-6-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-7-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-8-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-9-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-10-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-11-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-12-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-13-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:38193 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751133AbaIXREZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Sep 2014 13:04:25 -0400
+Date: Wed, 24 Sep 2014 13:04:21 -0400
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jan Chaloupka <jchaloup@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mountd.man: mountd tcp wrappers support only NFS v2/v3
+Message-ID: <20140924170421.GA7365@fieldses.org>
+References: <20140923070733.25555.18292.stgit@unused-4-157.brq.redhat.com>
+ <CAHQdGtRZA89spXkGWxoDyd8dRt-f9wfnfuz=rACsMe3bSa_meA@mail.gmail.com>
+ <5422E18E.2080905@RedHat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5422E18E.2080905@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Weston Andros Adamson <dros@primarydata.com>
+On Wed, Sep 24, 2014 at 11:21:50AM -0400, Steve Dickson wrote:
+> 
+> 
+> On 09/23/2014 04:41 PM, Trond Myklebust wrote:
+> > On Tue, Sep 23, 2014 at 3:07 AM, Jan Chaloupka <jchaloup@redhat.com> wrote:
+> >> mountd tcp wrappers support only NFSv2 and NFSv3, not NFSv4.
+> >>
+> >> https://bugzilla.redhat.com/show_bug.cgi?id=1116283
+> >>
+> >> This patch updates the man page
+> >>
+> >> Signed-off-by: Jan Chaloupka <jchaloup@redhat.com>
+> >> ---
+> >>  utils/mountd/mountd.man |    2 ++
+> >>  1 file changed, 2 insertions(+)
+> >>
+> >> diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
+> >> index a8828ae..1aae75b 100644
+> >> --- a/utils/mountd/mountd.man
+> >> +++ b/utils/mountd/mountd.man
+> >> @@ -217,6 +217,8 @@ listeners using the
+> >>  .B tcp_wrapper
+> >>  library or
+> >>  .BR iptables (8).
+> >> +Tcp wrappers are only in effect with NFS version 2 and 3 mounts.
+> >> +They do not work with NFS version 4.
+> >>  .PP
+> >>  Note that the
+> >>  .B tcp_wrapper
+> >>
+> > 
+> > Is there any point to compiling mountd with the tcp wrappers in this
+> > day and age? 
+> >From an upstream point of view... Sure... But I don't think
+> we can remove them from the man pages...
+> 
+> 
+> > tcp wrappers isn't enforced by knfsd, so as the above
+> > manpage change indicates it really is only blocking NFSv2/v3 _mount_
+> > attempts.
+> > 
+> > If you can use NFSv4, or sniff the NFSv2/v3 traffic or even just guess
+> > NFSv2/v3 filehandles, then tcp wrappers can be 100% circumvented.
+> > 
+> You would be surprised on the amount of people that still use
+> them... 
 
-commit bba5c1887a925a9945d22217d38d58d8b3ba1043 upstream.
+I'd also be surprised if any of them really understand how little they
+do in this case.
 
-Adjacent requests that share the same page are allowed, but should only
-use one entry in the page vector. This avoids overruning the page
-vector - it is sized based on how many bytes there are, not by
-request count.
-
-This fixes issues that manifest as "Redzone overwritten" bugs (the
-vector overrun) and hangs waiting on page read / write, as it waits on
-the same page more than once.
-
-This also adds bounds checking to the page vector with a graceful failure
-(WARN_ON_ONCE and pgio error returned to application).
-
-Reported-by: Toralf Förster <toralf.foerster@gmx.de>
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/pagelist.c | 18 +++++++++++++++---
- 1 file changed, 15 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index f56b6351b660..91e84b3ad63e 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -734,10 +734,11 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- 		     struct nfs_pgio_header *hdr)
- {
- 	struct nfs_page		*req;
--	struct page		**pages;
-+	struct page		**pages,
-+				*last_page;
- 	struct list_head *head = &desc->pg_list;
- 	struct nfs_commit_info cinfo;
--	unsigned int pagecount;
-+	unsigned int pagecount, pageused;
- 
- 	pagecount = nfs_page_array_len(desc->pg_base, desc->pg_count);
- 	if (!nfs_pgarray_set(&hdr->page_array, pagecount))
-@@ -745,12 +746,23 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- 
- 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
- 	pages = hdr->page_array.pagevec;
-+	last_page = NULL;
-+	pageused = 0;
- 	while (!list_empty(head)) {
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
- 		nfs_list_add_request(req, &hdr->pages);
--		*pages++ = req->wb_page;
-+
-+		if (WARN_ON_ONCE(pageused >= pagecount))
-+			return nfs_pgio_error(desc, hdr);
-+
-+		if (!last_page || last_page != req->wb_page) {
-+			*pages++ = last_page = req->wb_page;
-+			pageused++;
-+		}
- 	}
-+	if (WARN_ON_ONCE(pageused != pagecount))
-+		return nfs_pgio_error(desc, hdr);
- 
- 	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
- 	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo)))
--- 
-1.9.3
-
+--b.
