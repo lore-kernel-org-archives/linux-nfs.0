@@ -1,61 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:53452 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932069AbaIELsa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 07:48:30 -0400
-Received: by mail-qc0-f171.google.com with SMTP id x3so12094259qcv.16
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 04:48:29 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 5 Sep 2014 07:48:27 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        cluster-devel <cluster-devel@redhat.com>,
-        samba-technical@lists.samba.org
-Subject: Re: [PATCH v2 01/17] locks: consolidate "nolease" routines
-Message-ID: <20140905074827.62a5048a@tlielax.poochiereds.net>
-In-Reply-To: <20140904201200.GA26054@infradead.org>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-	<1409834323-7171-2-git-send-email-jlayton@primarydata.com>
-	<CAHQdGtTqG8aW-cte2PW6pVw+OeCXATgr1BZwdhponuWMjzNg8g@mail.gmail.com>
-	<20140904084938.2664bf0a@tlielax.poochiereds.net>
-	<CAABAsM6v3-f_7cco8f_F5Wpy7PWJOUywQHH7A=mZ-LyHRASZ7Q@mail.gmail.com>
-	<20140904201200.GA26054@infradead.org>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:40864 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751228AbaIXWb4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 18:31:56 -0400
+Received: by mail-ie0-f172.google.com with SMTP id rp18so10645979iec.3
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 15:31:55 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <CAHQdGtQ6WYe0qgn7b7s2TW_HFsq2ZCwyMuMW8PO_10xLh79QFQ@mail.gmail.com>
+References: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
+	<CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
+	<CAN-5tyE8zt5iUQUFp+2iz9oP37HJhQ54YtSgesWs6Cu66A6qZw@mail.gmail.com>
+	<CAHQdGtQ6WYe0qgn7b7s2TW_HFsq2ZCwyMuMW8PO_10xLh79QFQ@mail.gmail.com>
+Date: Wed, 24 Sep 2014 18:31:55 -0400
+Message-ID: <CAN-5tyFKhmHOzV6gmgKJkjSL-cgd_uK0ef6kHXWER7JBvbwTjw@mail.gmail.com>
+Subject: Re: nfs4_lock_delegation_recall() improperly handles errors such as ERROR_GRACE
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 4 Sep 2014 13:12:00 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+On Wed, Sep 24, 2014 at 3:57 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> Hi Olga,
+>
+> On Wed, Sep 24, 2014 at 2:20 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> Hi Trond,
+>>
+>> nfs_delegation_claim_opens() return EAGAIN to nfs_end_delegation_return().
+>> issync is always 0 (as its called by the
+>> nfs_client_return_marked_delegations) and it breaks out of the loop...
+>> as a result the error just doesn't get handled.
+>
+> Ah. OK, so this is being called from
+> nfs_client_return_marked_delegations. That makes sense.
+>
+> So for that case, I'd expect the call to return to the loop in
+> nfs4_state_manager(), and then to retry through that after doing
+> whatever is needed to recover.
+> Essentially, we should be setting NFS4CLNT_DELEGRETURN again, and then
+> bouncing back into nfs_client_return_marked_delegations (after all the
+> recovery work has been done).
 
-> On Thu, Sep 04, 2014 at 02:25:35PM -0400, Trond Myklebust wrote:
-> > Actually, it looks as if when you compile with !CONFIG_FILE_LOCKING,
-> > then fcntl_setlease() returns the value '0' (which would be
-> > "success!"). The word "confusing" only begins to describe it all.
-> 
-> That's incorrect for sure, we should agree on a single sensible code
-> for:
-> 
->  1) !CONFIG_FILE_LOCKING
->  2) !lease_enable
->  3) filesystem doesn't support leases.
-> 
+Yes I don't fully understand what it should be. It never does anything
+about recovering from the lock error and simply returns the
+delegation. Ok I don't know if it means anything to you, but the 2nd
+time around (when it returns the delegation even though it hasn't
+recovered the lock), it never goes into the
+nfs4_open_delegation_recall() because stateid condition doesn't hold
+true.
 
-Agreed. I think -ENOLCK is really better than -EINVAL.
+If it's not too much trouble, could you explain why lock error
+shouldn't be handled as I suggested instead of resending the open with
+claim_cur over again. As I understand in your case, it'll be a series
+of successful open with claim_cur paired with a failed lock with
+err_grace. In my case, it'll be one open with claim_cur and a number
+of lock with err_grace.
 
-I usually take -EINVAL to mean "you sent me something bogus". Whereas
--ENOLCK just says "locking doesn't work". -ENOLCK seems closer to the
-situation in all 3 cases above.
-
-That said, this is a user-visible change. The main userland consumer of
-leases (AFAIK) is samba, so I'll take a peek at that code and run it by
-them before merging anything.
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+>> Would it be useful to provide you with a pcap trace?
+>>
+>> The easiest way to trigger it is to enable the return of inactive
+>> delegation and have simple get a delegation and local lock, sleep and
+>> reboot the server and see the lock recovery error with err_grace.
+>
+> Thanks for the reproducer! I'll see if I can get round to testing. ;-p
+>
+>> On Wed, Sep 24, 2014 at 2:02 PM, Trond Myklebust
+>> <trond.myklebust@primarydata.com> wrote:
+>>> Hi Olga,
+>>>
+>>> On Wed, Sep 24, 2014 at 1:47 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>> There exists a problem in the code that was easily reproducible prior
+>>>> to the commit b757144fd77cf5512f5b60179ba5ca8dcc5184b4 ("NFSv4 Be less
+>>>> aggressive about returning delegations"). The same code is used during
+>>>> delegation return and is still reproducible (with highly coordinated
+>>>> setup of triggering just the right actions).
+>>>>
+>>>> The problem lies in the call of nfs4_lock_delegation_recall(). In the
+>>>> nutshell, when the LOCK op gets an error such as ERR_GRACE, the error
+>>>> is unhanded which leaves the client in incorrect state assuming that
+>>>> it has 'successfully' acquired a lock that was locally acquired while
+>>>> holding a delegation.
+>>>>
+>>>> I believe the problem stems from the fact that
+>>>> nfs4_lock_delegation_recall(), unlike normal version of LOCK
+>>>> nfs4_proc_getlk(), lacks the do { handle_error(do_proc())} while(err)
+>>>> structure.
+>>>>
+>>>> I believe the problem should be fixed by something like the following:
+>>>>
+>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>> index 6ca0c8e..78d088c 100644
+>>>> --- a/fs/nfs/nfs4proc.c
+>>>> +++ b/fs/nfs/nfs4proc.c
+>>>> @@ -5936,11 +5936,12 @@ int nfs4_lock_delegation_recall(struct
+>>>> file_lock *fl, struct nfs4_state *state,
+>>>>         struct nfs_server *server = NFS_SERVER(state->inode);
+>>>>         int err;
+>>>>
+>>>> -       err = nfs4_set_lock_state(state, fl);
+>>>> -       if (err != 0)
+>>>> -               return err;
+>>>> -       err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
+>>>> -       return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>>>> +       do {
+>>>> +               err = nfs4_handle_delegation_recall_error(server, state,
+>>>> +                       stateid, _nfs4_do_setlk(state, F_SETLK, fl,
+>>>> +                               NFS_LOCK_NEW));
+>>>> +       } while (err == -EAGAIN);
+>>>> +       return err;
+>>>>  }
+>>>>
+>>>>  struct nfs_release_lockowner_data {
+>>>>
+>>>> Is this an acceptable solution?
+>>>>
+>>>
+>>> In the current code, I expect the EAGAIN from
+>>> nfs4_handle_delegation_recall_error() to be propagated back to
+>>> nfs_end_delegation_return(). It should then result in the client
+>>> waiting for state recovery to complete followed by a loop back to
+>>> nfs_delegation_claim_opens().
+>>> Could you explain why that isn't working for your case?
+>>>
+>
+> --
+> Trond Myklebust
+>
+> Linux NFS client maintainer, PrimaryData
+>
+> trond.myklebust@primarydata.com
