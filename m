@@ -1,107 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:50994 "EHLO
+Received: from casper.infradead.org ([85.118.1.10]:39528 "EHLO
 	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751916AbaIJPVY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 11:21:24 -0400
-Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRjhz-000077-Ct
-	for linux-nfs@vger.kernel.org; Wed, 10 Sep 2014 15:21:23 +0000
+	with ESMTP id S1751932AbaIXKRA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 06:17:00 -0400
 From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/9] pnfs: add flag to force read-modify-write in ->write_begin
-Date: Wed, 10 Sep 2014 08:23:30 -0700
-Message-Id: <1410362617-28018-3-git-send-email-hch@lst.de>
-In-Reply-To: <1410362617-28018-1-git-send-email-hch@lst.de>
-References: <1410362617-28018-1-git-send-email-hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/4] nfsd: split nfsd4_callback initialization and use
+Date: Wed, 24 Sep 2014 12:19:18 +0200
+Message-Id: <1411553959-5280-4-git-send-email-hch@lst.de>
+In-Reply-To: <1411553959-5280-1-git-send-email-hch@lst.de>
+References: <1411553959-5280-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Like all block based filesystems, the pNFS block layout driver can't read
-or write at a byte granularity and thus has to perform read-modify-write
-cycles on writes smaller than this granularity.
+Split out initializing the nfs4_callback structure from using it.  For
+the NULL callback this gets rid of tons of pointless re-initializations.
 
-Add a flag so that the core NFS code always reads a whole page when
-starting a smaller write, so that we can do it in the place where the VFS
-expects it instead of doing in very deadlock prone way in the writeback
-handler.
-
-Note that in theory we could do less than page size reads here for disks
-that have a smaller sector size which are served by a server with a smaller
-pnfs block size.  But so far that doesn't seem like a worthwhile
-optimization.
+Note that I don't quite understand what protects us from running multiple
+NULL callbacks at the same time, but at least this chance doesn't make
+it worse..
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfs/file.c |  7 +++++++
- fs/nfs/pnfs.h | 15 +++++++++++++++
- 2 files changed, 22 insertions(+)
+ fs/nfsd/nfs4callback.c | 14 ++++++--------
+ fs/nfsd/nfs4state.c    |  8 +++++---
+ fs/nfsd/state.h        |  3 ++-
+ 3 files changed, 13 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 524dd80..05ef7dc 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -36,6 +36,7 @@
- #include "internal.h"
- #include "iostat.h"
- #include "fscache.h"
-+#include "pnfs.h"
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 022edcf..6d9d947 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -743,11 +743,6 @@ static const struct rpc_call_ops nfsd4_cb_probe_ops = {
  
- #include "nfstrace.h"
+ static struct workqueue_struct *callback_wq;
  
-@@ -327,6 +328,12 @@ static int nfs_want_read_modify_write(struct file *file, struct page *page,
- 	unsigned int offset = pos & (PAGE_CACHE_SIZE - 1);
- 	unsigned int end = offset + len;
- 
-+	if (pnfs_ld_read_whole_page(file->f_mapping->host)) {
-+		if (!PageUptodate(page))
-+			return 1;
-+		return 0;
-+	}
-+
- 	if ((file->f_mode & FMODE_READ) &&	/* open for read? */
- 	    !PageUptodate(page) &&		/* Uptodate? */
- 	    !PagePrivate(page) &&		/* i/o request already? */
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 8835b5a..a4c530e 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -72,6 +72,7 @@ enum layoutdriver_policy_flags {
- 	/* Should the pNFS client commit and return the layout upon a setattr */
- 	PNFS_LAYOUTRET_ON_SETATTR	= 1 << 0,
- 	PNFS_LAYOUTRET_ON_ERROR		= 1 << 1,
-+	PNFS_READ_WHOLE_PAGE		= 1 << 2,
- };
- 
- struct nfs4_deviceid_node;
-@@ -370,6 +371,14 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+-static void do_probe_callback(struct nfs4_client *clp)
+-{
+-	return nfsd4_cb(&clp->cl_cb_null, clp, NFSPROC4_CLNT_CB_NULL);
+-}
+-
+ /*
+  * Poke the callback thread to process any updates to the callback
+  * parameters, and send a null probe.
+@@ -756,7 +751,7 @@ void nfsd4_probe_callback(struct nfs4_client *clp)
+ {
+ 	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
+ 	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
+-	do_probe_callback(clp);
++	nfsd4_run_cb(&clp->cl_cb_null);
  }
  
- static inline bool
-+pnfs_ld_read_whole_page(struct inode *inode)
-+{
-+	if (!pnfs_enabled_sb(NFS_SERVER(inode)))
-+		return false;
-+	return NFS_SERVER(inode)->pnfs_curr_ld->flags & PNFS_READ_WHOLE_PAGE;
-+}
-+
-+static inline bool
- pnfs_layoutcommit_outstanding(struct inode *inode)
- {
- 	struct nfs_inode *nfsi = NFS_I(inode);
-@@ -445,6 +454,12 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+ void nfsd4_probe_callback_sync(struct nfs4_client *clp)
+@@ -912,7 +907,7 @@ void nfsd4_shutdown_callback(struct nfs4_client *clp)
+ 	 * instead, nfsd4_run_cb_null() will detect the killed
+ 	 * client, destroy the rpc client, and stop:
+ 	 */
+-	do_probe_callback(clp);
++	nfsd4_run_cb(&clp->cl_cb_null);
+ 	flush_workqueue(callback_wq);
  }
  
- static inline bool
-+pnfs_ld_read_whole_page(struct inode *inode)
-+{
-+	return false;
-+}
-+
-+static inline bool
- pnfs_roc(struct inode *ino)
+@@ -1025,7 +1020,7 @@ nfsd4_run_cb_recall(struct work_struct *w)
+ 	nfsd4_run_callback_rpc(cb);
+ }
+ 
+-void nfsd4_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
++void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ 		enum nfsd4_cb_op op)
  {
- 	return false;
+ 	cb->cb_clp = clp;
+@@ -1038,6 +1033,9 @@ void nfsd4_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ 		cb->cb_ops = &nfsd4_cb_recall_ops;
+  	INIT_LIST_HEAD(&cb->cb_per_client);
+  	cb->cb_done = true;
++}
+ 
++void nfsd4_run_cb(struct nfsd4_callback *cb)
++{
+ 	queue_work(callback_wq, &cb->cb_work);
+ }
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 90b909e..5e5012f 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -650,6 +650,9 @@ alloc_init_deleg(struct nfs4_client *clp, struct svc_fh *current_fh)
+ 	INIT_LIST_HEAD(&dp->dl_perclnt);
+ 	INIT_LIST_HEAD(&dp->dl_recall_lru);
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
++	dp->dl_retries = 1;
++	nfsd4_init_cb(&dp->dl_recall, dp->dl_stid.sc_client,
++		 NFSPROC4_CLNT_CB_RECALL);
+ 	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
+ 	return dp;
+ out_dec:
+@@ -1866,6 +1869,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
+ 		free_client(clp);
+ 		return NULL;
+ 	}
++	nfsd4_init_cb(&clp->cl_cb_null, clp, NFSPROC4_CLNT_CB_NULL);
+ 	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_run_cb_null);
+ 	clp->cl_time = get_seconds();
+ 	clear_bit(0, &clp->cl_cb_slot_busy);
+@@ -3383,9 +3387,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+ 	 * it's safe to take a reference.
+ 	 */
+ 	atomic_inc(&dp->dl_stid.sc_count);
+-	dp->dl_retries = 1;
+-	nfsd4_cb(&dp->dl_recall, dp->dl_stid.sc_client,
+-		 NFSPROC4_CLNT_CB_RECALL);
++	nfsd4_run_cb(&dp->dl_recall);
+ }
+ 
+ /* Called from break_lease() with i_lock held. */
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 515408b..4d10e1d 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -541,8 +541,9 @@ void nfsd4_run_cb_recall(struct work_struct *w);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+ extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
+ extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
+-extern void nfsd4_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
++extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ 		enum nfsd4_cb_op op);
++extern void nfsd4_run_cb(struct nfsd4_callback *cb);
+ extern int nfsd4_create_callback_queue(void);
+ extern void nfsd4_destroy_callback_queue(void);
+ extern void nfsd4_shutdown_callback(struct nfs4_client *);
 -- 
 1.9.1
 
