@@ -1,65 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:62412 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:51885 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754914AbaIVUA6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 16:00:58 -0400
-Date: Mon, 22 Sep 2014 16:00:50 -0400
-From: Simo Sorce <simo@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140922160050.0b85f044@willson.usersys.redhat.com>
-In-Reply-To: <54207E4A.7010300@RedHat.com>
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>
-	<1411413608-16462-2-git-send-email-steved@redhat.com>
-	<20140922194057.GE26763@fieldses.org>
-	<20140922154642.779189c8@willson.usersys.redhat.com>
-	<54207E4A.7010300@RedHat.com>
+	id S1754572AbaIXCDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 23 Sep 2014 22:03:40 -0400
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Wed, 24 Sep 2014 11:28:32 +1000
+Subject: [PATCH 4/5] NFS: avoid waiting at all in nfs_release_page when
+ congested.
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Ingo Molnar <mingo@redhat.com>,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Peter Zijlstra <peterz@infradead.org>
+Message-ID: <20140924012832.4838.7078.stgit@notabene.brown>
+In-Reply-To: <20140924012422.4838.29188.stgit@notabene.brown>
+References: <20140924012422.4838.29188.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 22 Sep 2014 15:53:46 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+If nfs_release_page() is called on a sequence of pages which are all
+in the same file which is blocked on COMMIT, each page could
+contribute a 1 second delay which could be come excessive.  I have
+seen delays of as much as 208 seconds.
 
-> 
-> 
-> On 09/22/2014 03:46 PM, Simo Sorce wrote:
-> > On Mon, 22 Sep 2014 15:40:57 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> >> On Mon, Sep 22, 2014 at 03:20:07PM -0400, Steve Dickson wrote:
-> >>> Added the gssproxy.service to both the Wants= and
-> >>> Atfers= lines, before the rpc-svcgssd.service. There
-> >>> are  ConditionPathExists= lines in the rpc-svcgssd.service
-> >>> unit which will stop the rpc.svcgssd daemon from
-> >>> starting when the gssproxy daemon is already running.
-> >>
-> >> That should read "when the kernel supports gssproxy", not "when the
-> >> gssproxy daemon is already running."
-> > 
-> > Actually the language is currently correct but it is another bug,
-> > the systemd/rpc-svcgssd.service file still includes
-> > "ConditionPathExists=|!/run/gssproxy.pid"
-> > This line should be removed in this patch.
-> 
-> I left that on purpose because isn't that ConditionPathExists
-> seeing if /run/gssproxy.pid exists and if it does 
-> it means gssproxy is already running so rpc.svcgssd 
-> should not start?
+To keep the delay to one second, mark the bdi as write-congested
+if the commit didn't finished.  Once it does finish, the
+write-congested flag will be cleared by nfs_commit_release_pages().
 
-No.
-First of all the fact gss-proxy is running does not mean it is
-serving nfsd necessarily, it may be running on an older kernel where it
-servers apache or some other process (remember gssproxy is not just
-for nfsd).
-Second you already have
-"ConditionPathExists=|!/proc/net/rpc/use-gss-proxy" which is the
-correct trigger to decide which of the two to use.
+With this, the longest total delay in try_to_free_pages that I have
+seen is under 3 seconds.  With no waiting in nfs_release_page at all
+I have seen delays of nearly 1.5 seconds.
 
-Simo.
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/nfs/file.c  |    9 +++++++--
+ fs/nfs/write.c |    5 +++++
+ 2 files changed, 12 insertions(+), 2 deletions(-)
 
--- 
-Simo Sorce * Red Hat, Inc * New York
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index ef5513322cf6..1243a15438d0 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -470,7 +470,8 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+ 
+ 	/* Always try to initiate a 'commit' if relevant, but only
+ 	 * wait for it if __GFP_WAIT is set and the calling process is
+-	 * allowed to block.  Even then, only wait 1 second.
++	 * allowed to block.  Even then, only wait 1 second and only
++	 * if the 'bdi' is not congested.
+ 	 * Waiting indefinitely can cause deadlocks when the NFS
+ 	 * server is on this machine, and there is no particular need
+ 	 * to wait extensively here.  A short wait has the benefit
+@@ -481,9 +482,13 @@ static int nfs_release_page(struct page *page, gfp_t gfp)
+ 		nfs_commit_inode(mapping->host, 0);
+ 		if ((gfp & __GFP_WAIT) &&
+ 		    !current_is_kswapd() &&
+-		    !(current->flags & PF_FSTRANS)) {
++		    !(current->flags & PF_FSTRANS) &&
++		    !bdi_write_congested(&nfss->backing_dev_info)) {
+ 			wait_on_page_bit_killable_timeout(page, PG_private,
+ 							  HZ);
++			if (PagePrivate(page))
++				set_bdi_congested(&nfss->backing_dev_info,
++						  BLK_RW_ASYNC);
+ 		}
+ 	}
+ 	/* If PagePrivate() is set, then the page is not freeable */
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index b5d83c7545d4..3066c7fcb565 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1638,6 +1638,7 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 	struct nfs_page	*req;
+ 	int status = data->task.tk_status;
+ 	struct nfs_commit_info cinfo;
++	struct nfs_server *nfss;
+ 
+ 	while (!list_empty(&data->pages)) {
+ 		req = nfs_list_entry(data->pages.next);
+@@ -1671,6 +1672,10 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 	next:
+ 		nfs_unlock_and_release_request(req);
+ 	}
++	nfss = NFS_SERVER(data->inode);
++	if (atomic_long_read(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
++		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
++
+ 	nfs_init_cinfo(&cinfo, data->inode, data->dreq);
+ 	if (atomic_dec_and_test(&cinfo.mds->rpcs_out))
+ 		nfs_commit_clear_lock(NFS_I(data->inode));
+
+
