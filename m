@@ -1,255 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:37405 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752864AbaIDMjO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 08:39:14 -0400
-Received: by mail-qa0-f46.google.com with SMTP id w8so9208491qac.19
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 05:39:13 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: [PATCH v2 11/17] locks: move freeing of leases outside of i_lock
-Date: Thu,  4 Sep 2014 08:38:37 -0400
-Message-Id: <1409834323-7171-12-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:52201 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750793AbaIXXU5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 19:20:57 -0400
+Received: by mail-ig0-f175.google.com with SMTP id h18so7507887igc.2
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 16:20:57 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAHQdGtQN=0aitE=nSOSdA0ROZMfdchnshQoe-EkeoHBdbFBjsg@mail.gmail.com>
+References: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
+	<CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
+	<CAN-5tyE8zt5iUQUFp+2iz9oP37HJhQ54YtSgesWs6Cu66A6qZw@mail.gmail.com>
+	<CAHQdGtQ6WYe0qgn7b7s2TW_HFsq2ZCwyMuMW8PO_10xLh79QFQ@mail.gmail.com>
+	<CAN-5tyFKhmHOzV6gmgKJkjSL-cgd_uK0ef6kHXWER7JBvbwTjw@mail.gmail.com>
+	<CAHQdGtQN=0aitE=nSOSdA0ROZMfdchnshQoe-EkeoHBdbFBjsg@mail.gmail.com>
+Date: Wed, 24 Sep 2014 19:20:57 -0400
+Message-ID: <CAN-5tyGF1QTe1PuA_XoJG9CocAhTHfR6HOJTQwkSksRLb06uoA@mail.gmail.com>
+Subject: Re: nfs4_lock_delegation_recall() improperly handles errors such as ERROR_GRACE
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There was only one place where we still could free a file_lock while
-holding the i_lock -- lease_modify. Add a new list_head argument to the
-lm_change operation, pass in a private list when calling it, and fix
-those callers to dispose of the list once the lock has been dropped.
+On Wed, Sep 24, 2014 at 6:45 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> On Wed, Sep 24, 2014 at 6:31 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> On Wed, Sep 24, 2014 at 3:57 PM, Trond Myklebust
+>> <trond.myklebust@primarydata.com> wrote:
+>>> Hi Olga,
+>>>
+>>> On Wed, Sep 24, 2014 at 2:20 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>> Hi Trond,
+>>>>
+>>>> nfs_delegation_claim_opens() return EAGAIN to nfs_end_delegation_return().
+>>>> issync is always 0 (as its called by the
+>>>> nfs_client_return_marked_delegations) and it breaks out of the loop...
+>>>> as a result the error just doesn't get handled.
+>>>
+>>> Ah. OK, so this is being called from
+>>> nfs_client_return_marked_delegations. That makes sense.
+>>>
+>>> So for that case, I'd expect the call to return to the loop in
+>>> nfs4_state_manager(), and then to retry through that after doing
+>>> whatever is needed to recover.
+>>> Essentially, we should be setting NFS4CLNT_DELEGRETURN again, and then
+>>> bouncing back into nfs_client_return_marked_delegations (after all the
+>>> recovery work has been done).
+>>
+>> Yes I don't fully understand what it should be. It never does anything
+>> about recovering from the lock error and simply returns the
+>> delegation. Ok I don't know if it means anything to you, but the 2nd
+>> time around (when it returns the delegation even though it hasn't
+>> recovered the lock), it never goes into the
+>> nfs4_open_delegation_recall() because stateid condition doesn't hold
+>> true.
+>>
+>> If it's not too much trouble, could you explain why lock error
+>> shouldn't be handled as I suggested instead of resending the open with
+>> claim_cur over again. As I understand in your case, it'll be a series
+>> of successful open with claim_cur paired with a failed lock with
+>> err_grace. In my case, it'll be one open with claim_cur and a number
+>> of lock with err_grace.
+>
+> There is only 1 state manager thread allowed per nfs_client (i.e. per
+> server) and so we want to avoid having it busy wait in any one state
+> handler. Doing so would basically mean that all other state recovery
+> on that nfs_client is on hold; i.e. we could not deal with exceptions
+> like ADMIN_REVOKED, CB_PATH_DOWN, etc until the busy wait is over.
+> This is why that code has been designed to fall all the way back to
+> nfs4_state_manager() in the event of any error/exception.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/locks.c          | 34 ++++++++++++++++++++++------------
- fs/nfsd/nfs4state.c |  6 +++---
- include/linux/fs.h  |  7 ++++---
- 3 files changed, 29 insertions(+), 18 deletions(-)
+Ok, thanks. It make sense. And makes things complicated. I'm sure
+you'll beat me to figuring out why the error is not handled but I'll
+keep trying.
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 5bc61091263f..dc2e9e18f32d 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1292,7 +1292,7 @@ static void lease_clear_pending(struct file_lock *fl, int arg)
- }
- 
- /* We already had a lease on this file; just change its type */
--int lease_modify(struct file_lock **before, int arg)
-+int lease_modify(struct file_lock **before, int arg, struct list_head *dispose)
- {
- 	struct file_lock *fl = *before;
- 	int error = assign_type(fl, arg);
-@@ -1311,7 +1311,7 @@ int lease_modify(struct file_lock **before, int arg)
- 			printk(KERN_ERR "locks_delete_lock: fasync == %p\n", fl->fl_fasync);
- 			fl->fl_fasync = NULL;
- 		}
--		locks_delete_lock(before, NULL);
-+		locks_delete_lock(before, dispose);
- 	}
- 	return 0;
- }
-@@ -1325,7 +1325,7 @@ static bool past_time(unsigned long then)
- 	return time_after(jiffies, then);
- }
- 
--static void time_out_leases(struct inode *inode)
-+static void time_out_leases(struct inode *inode, struct list_head *dispose)
- {
- 	struct file_lock **before;
- 	struct file_lock *fl;
-@@ -1336,9 +1336,9 @@ static void time_out_leases(struct inode *inode)
- 	while ((fl = *before) && IS_LEASE(fl) && lease_breaking(fl)) {
- 		trace_time_out_leases(inode, fl);
- 		if (past_time(fl->fl_downgrade_time))
--			lease_modify(before, F_RDLCK);
-+			lease_modify(before, F_RDLCK, dispose);
- 		if (past_time(fl->fl_break_time))
--			lease_modify(before, F_UNLCK);
-+			lease_modify(before, F_UNLCK, dispose);
- 		if (fl == *before)	/* lease_modify may have freed fl */
- 			before = &fl->fl_next;
- 	}
-@@ -1373,6 +1373,7 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- 	int i_have_this_lease = 0;
- 	bool lease_conflict = false;
- 	int want_write = (mode & O_ACCMODE) != O_RDONLY;
-+	LIST_HEAD(dispose);
- 
- 	new_fl = lease_alloc(NULL, want_write ? F_WRLCK : F_RDLCK);
- 	if (IS_ERR(new_fl))
-@@ -1381,7 +1382,7 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- 
- 	spin_lock(&inode->i_lock);
- 
--	time_out_leases(inode);
-+	time_out_leases(inode, &dispose);
- 
- 	flock = inode->i_flock;
- 	if ((flock == NULL) || !IS_LEASE(flock))
-@@ -1436,6 +1437,7 @@ restart:
- 	locks_insert_block(flock, new_fl);
- 	trace_break_lease_block(inode, new_fl);
- 	spin_unlock(&inode->i_lock);
-+	locks_dispose_list(&dispose);
- 	error = wait_event_interruptible_timeout(new_fl->fl_wait,
- 						!new_fl->fl_next, break_time);
- 	spin_lock(&inode->i_lock);
-@@ -1443,7 +1445,7 @@ restart:
- 	locks_delete_block(new_fl);
- 	if (error >= 0) {
- 		if (error == 0)
--			time_out_leases(inode);
-+			time_out_leases(inode, &dispose);
- 		/*
- 		 * Wait for the next conflicting lease that has not been
- 		 * broken yet
-@@ -1458,6 +1460,7 @@ restart:
- 
- out:
- 	spin_unlock(&inode->i_lock);
-+	locks_dispose_list(&dispose);
- 	locks_free_lock(new_fl);
- 	return error;
- }
-@@ -1522,9 +1525,10 @@ int fcntl_getlease(struct file *filp)
- 	struct file_lock *fl;
- 	struct inode *inode = file_inode(filp);
- 	int type = F_UNLCK;
-+	LIST_HEAD(dispose);
- 
- 	spin_lock(&inode->i_lock);
--	time_out_leases(file_inode(filp));
-+	time_out_leases(file_inode(filp), &dispose);
- 	for (fl = file_inode(filp)->i_flock; fl && IS_LEASE(fl);
- 			fl = fl->fl_next) {
- 		if (fl->fl_file == filp) {
-@@ -1533,6 +1537,7 @@ int fcntl_getlease(struct file *filp)
- 		}
- 	}
- 	spin_unlock(&inode->i_lock);
-+	locks_dispose_list(&dispose);
- 	return type;
- }
- 
-@@ -1570,6 +1575,7 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
- 	struct inode *inode = dentry->d_inode;
- 	bool is_deleg = (*flp)->fl_flags & FL_DELEG;
- 	int error;
-+	LIST_HEAD(dispose);
- 
- 	lease = *flp;
- 	trace_generic_add_lease(inode, lease);
-@@ -1593,7 +1599,7 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
- 	}
- 
- 	spin_lock(&inode->i_lock);
--	time_out_leases(inode);
-+	time_out_leases(inode, &dispose);
- 	error = check_conflicting_open(dentry, arg);
- 	if (error)
- 		goto out;
-@@ -1630,7 +1636,7 @@ generic_add_lease(struct file *filp, long arg, struct file_lock **flp, void **pr
- 
- 	if (my_before != NULL) {
- 		lease = *my_before;
--		error = lease->fl_lmops->lm_change(my_before, arg);
-+		error = lease->fl_lmops->lm_change(my_before, arg, &dispose);
- 		if (error)
- 			goto out;
- 		goto out_setup;
-@@ -1660,6 +1666,7 @@ out_setup:
- 		lease->fl_lmops->lm_setup(lease, priv);
- out:
- 	spin_unlock(&inode->i_lock);
-+	locks_dispose_list(&dispose);
- 	if (is_deleg)
- 		mutex_unlock(&inode->i_mutex);
- 	if (!error && !my_before)
-@@ -1676,8 +1683,10 @@ static int generic_delete_lease(struct file *filp)
- 	struct file_lock *fl, **before;
- 	struct dentry *dentry = filp->f_path.dentry;
- 	struct inode *inode = dentry->d_inode;
-+	LIST_HEAD(dispose);
- 
- 	spin_lock(&inode->i_lock);
-+	time_out_leases(inode, &dispose);
- 	for (before = &inode->i_flock;
- 			((fl = *before) != NULL) && IS_LEASE(fl);
- 			before = &fl->fl_next) {
-@@ -1686,8 +1695,9 @@ static int generic_delete_lease(struct file *filp)
- 	}
- 	trace_generic_delete_lease(inode, fl);
- 	if (fl)
--		error = fl->fl_lmops->lm_change(before, F_UNLCK);
-+		error = fl->fl_lmops->lm_change(before, F_UNLCK, &dispose);
- 	spin_unlock(&inode->i_lock);
-+	locks_dispose_list(&dispose);
- 	return error;
- }
- 
-@@ -2375,7 +2385,7 @@ void locks_remove_file(struct file *filp)
- 	while ((fl = *before) != NULL) {
- 		if (fl->fl_file == filp) {
- 			if (IS_LEASE(fl)) {
--				lease_modify(before, F_UNLCK);
-+				lease_modify(before, F_UNLCK, &dispose);
- 				continue;
- 			}
- 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 86eebf13b3d0..44e04d6be676 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3423,11 +3423,11 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
- 	spin_unlock(&fp->fi_lock);
- }
- 
--static
--int nfsd_change_deleg_cb(struct file_lock **onlist, int arg)
-+static int
-+nfsd_change_deleg_cb(struct file_lock **onlist, int arg, struct list_head *dispose)
- {
- 	if (arg & F_UNLCK)
--		return lease_modify(onlist, arg);
-+		return lease_modify(onlist, arg, dispose);
- 	else
- 		return -EAGAIN;
- }
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 9a6d56154dd5..f419f718e447 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -873,7 +873,7 @@ struct lock_manager_operations {
- 	void (*lm_notify)(struct file_lock *);	/* unblock callback */
- 	int (*lm_grant)(struct file_lock *, int);
- 	void (*lm_break)(struct file_lock *);
--	int (*lm_change)(struct file_lock **, int);
-+	int (*lm_change)(struct file_lock **, int, struct list_head *);
- 	void (*lm_setup)(struct file_lock *, void **);
- };
- 
-@@ -985,7 +985,7 @@ extern int __break_lease(struct inode *inode, unsigned int flags, unsigned int t
- extern void lease_get_mtime(struct inode *, struct timespec *time);
- extern int generic_setlease(struct file *, long, struct file_lock **, void **priv);
- extern int vfs_setlease(struct file *, long, struct file_lock **, void **);
--extern int lease_modify(struct file_lock **, int);
-+extern int lease_modify(struct file_lock **, int, struct list_head *);
- #else /* !CONFIG_FILE_LOCKING */
- static inline int fcntl_getlk(struct file *file, unsigned int cmd,
- 			      struct flock __user *user)
-@@ -1112,7 +1112,8 @@ static inline int vfs_setlease(struct file *filp, long arg,
- 	return -EINVAL;
- }
- 
--static inline int lease_modify(struct file_lock **before, int arg)
-+static inline int lease_modify(struct file_lock **before, int arg,
-+			       struct list_head *dispose)
- {
- 	return -EINVAL;
- }
--- 
-1.9.3
-
+>
+> --
+> Trond Myklebust
+>
+> Linux NFS client maintainer, PrimaryData
+>
+> trond.myklebust@primarydata.com
