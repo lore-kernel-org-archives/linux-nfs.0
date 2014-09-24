@@ -1,71 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:33493 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754368AbaIOSOp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 14:14:45 -0400
-Received: by mail-ie0-f177.google.com with SMTP id rd18so4829250iec.8
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 11:14:44 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: stable@vger.kernel.org
-Cc: Weston Andros Adamson <dros@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 00/14] Stable fixes for NFS client read/write code in 3.16.x
-Date: Mon, 15 Sep 2014 14:14:31 -0400
-Message-Id: <1410804885-17228-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f52.google.com ([209.85.216.52]:55778 "EHLO
+	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751239AbaIXL1F (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 07:27:05 -0400
+Received: by mail-qa0-f52.google.com with SMTP id dc16so2850078qab.25
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 04:27:03 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 24 Sep 2014 07:27:01 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Ingo Molnar <mingo@redhat.com>,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [PATCH 0/5]  Remove possible deadlocks in nfs_release_page() -
+ V3
+Message-ID: <20140924072701.49a70346@tlielax.poochiereds.net>
+In-Reply-To: <20140924012422.4838.29188.stgit@notabene.brown>
+References: <20140924012422.4838.29188.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Greg,
+On Wed, 24 Sep 2014 11:28:32 +1000
+NeilBrown <neilb@suse.de> wrote:
 
-The following patches are needed in order to fix the NFS read/write code
-in 3.16.x (and only 3.16.x). As it stands, that code will Oops badly if
-you mount using the rsize=1024 or wsize=1024 (or anything < page size).
+> This set includes acked-by's from Andrew and Peter so it should be
+> OK for all five patches to go upstream through the NFS tree.
+> 
+> I split the congestion tracking patch out from the wait-for-PG_private
+> patch as they are conceptually separate.
+> 
+> This set continues to perform well in my tests and addresses all
+> issues that have been raised.
+> 
+> Thanks a lot,
+> NeilBrown
+> 
+> 
+> ---
+> 
+> NeilBrown (5):
+>       SCHED: add some "wait..on_bit...timeout()" interfaces.
+>       MM: export page_wakeup functions
+>       NFS: avoid deadlocks with loop-back mounted NFS filesystems.
+>       NFS: avoid waiting at all in nfs_release_page when congested.
+>       NFS/SUNRPC: Remove other deadlock-avoidance mechanisms in nfs_release_page()
+> 
+> 
+>  fs/nfs/file.c                   |   29 +++++++++++++++++++----------
+>  fs/nfs/write.c                  |    7 +++++++
+>  include/linux/pagemap.h         |   12 ++++++++++--
+>  include/linux/wait.h            |    5 ++++-
+>  kernel/sched/wait.c             |   36 ++++++++++++++++++++++++++++++++++++
+>  mm/filemap.c                    |   21 +++++++++++++++------
+>  net/sunrpc/sched.c              |    2 --
+>  net/sunrpc/xprtrdma/transport.c |    2 --
+>  net/sunrpc/xprtsock.c           |   10 ----------
+>  9 files changed, 91 insertions(+), 33 deletions(-)
+> 
 
-Unfortunately, the upstream patches required me to pull in a few
-cleanups on which there were dependencies, so the first 4 patches are
-needed in order to support the fixes that follow.
+Cool!
 
-Cheers
-  Trond
+This looks like it'll address my earlier concern about setting the BDI
+congested inappropriately. You can add this to the set if you like:
 
-Weston Andros Adamson (14):
-  nfs: move nfs_pgio_data and remove nfs_rw_header
-  nfs: rename members of nfs_pgio_data
-  nfs: merge nfs_pgio_data into _header
-  nfs: remove pgio_header refcount, related cleanup
-  nfs: check wait_on_bit_lock err in page_group_lock
-  pnfs: add pnfs_put_lseg_async
-  nfs: clear_request_commit while holding i_lock
-  nfs: change nfs_page_group_lock argument
-  nfs: fix nonblocking calls to nfs_page_group_lock
-  nfs: use blocking page_group_lock in add_request
-  nfs: fix error handling in lock_and_join_requests
-  nfs: don't sleep with inode lock in lock_and_join_requests
-  nfs: disallow duplicate pages in pgio page vectors
-  nfs: can_coalesce_requests must enforce contiguity
-
- fs/nfs/blocklayout/blocklayout.c |  99 +++++++-------
- fs/nfs/direct.c                  |   8 +-
- fs/nfs/filelayout/filelayout.c   | 175 ++++++++++++------------
- fs/nfs/internal.h                |  10 +-
- fs/nfs/nfs3proc.c                |  21 +--
- fs/nfs/nfs4_fs.h                 |   6 +-
- fs/nfs/nfs4proc.c                | 105 ++++++++-------
- fs/nfs/nfs4trace.h               |  28 ++--
- fs/nfs/objlayout/objio_osd.c     |  24 ++--
- fs/nfs/objlayout/objlayout.c     |  81 ++++++-----
- fs/nfs/objlayout/objlayout.h     |   8 +-
- fs/nfs/pagelist.c                | 284 +++++++++++++++++++--------------------
- fs/nfs/pnfs.c                    | 119 ++++++++--------
- fs/nfs/pnfs.h                    |  17 ++-
- fs/nfs/proc.c                    |  27 ++--
- fs/nfs/read.c                    |  48 +++----
- fs/nfs/write.c                   |  99 ++++++++------
- include/linux/nfs_page.h         |  16 ++-
- include/linux/nfs_xdr.h          |  32 ++---
- 19 files changed, 602 insertions(+), 605 deletions(-)
-
--- 
-1.9.3
-
+Acked-by: Jeff Layton <jlayton@primarydata.com>
