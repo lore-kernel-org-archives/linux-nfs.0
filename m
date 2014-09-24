@@ -1,77 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34979 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:57657 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752295AbaIPNaW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Sep 2014 09:30:22 -0400
-Message-ID: <54183B61.1030500@RedHat.com>
-Date: Tue, 16 Sep 2014 09:30:09 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1750974AbaIXQNY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Sep 2014 12:13:24 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] Fixing lease renewal
+Date: Wed, 24 Sep 2014 12:08:31 -0400
+Message-ID: <1411574911-19269-1-git-send-email-kolga@netapp.com>
 MIME-Version: 1.0
-To: Natanael Copa <natanael.copa@gmail.com>, linux-nfs@vger.kernel.org
-CC: Natanael Copa <ncopa@alpinelinux.org>
-Subject: Re: [PATCH v2 00/11] Porting nfs-utils to musl libc
-References: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
-In-Reply-To: <1407306306-29796-1-git-send-email-ncopa@alpinelinux.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Commit c9fdeb28 removed a 'continue' after checking if the lease needs
+to be renewed. However, if client hasn't moved, the code falls down to
+starting reboot recovery erroneously (ie., sends open reclaim and gets
+back stale_clientid error) before recovering from getting stale_clientid
+on the renew operation.
 
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4state.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-On 08/06/2014 02:24 AM, Natanael Copa wrote:
-> Musl libc is a modern libc for Linux which focuses on correctness in
-> standards-conformance. We use this libc for Alpine Linux.
-> 
-> This patchset makes nfs-utils build with musl libc and should generally
-> improve portability.
-> 
-> It would be nice if at least some of the patches could be applied
-> upstream so we can reduce the number of patches for getting nfs working
-> on Alpine Linux.
-> 
-> Changes v1 -> v2 based on feedback:
->  - Use AC_USE_SYSTEM_EXTENSIONS in configure.ac instead of defining
->    _GNU_SOURCE various places. This means that the patch "include
->    libgen.h for basename" is strictly no longer needed, but I kept it
->    since this is more "correct".
->  - Fix typo in "exportfs: only do glibc specific hackery on glibc"
-> 
-> Natanael Copa (11):
->   conffile: use standard uint*_t and unsigned char
->   Fix header include for definition of NULL
->   configure.ac: enable GNU_SOURCE for stat64/statfs64
->   replace __attribute_malloc__ with the more portable
->     __attribute__((__malloc__))
->   mountd: use standard dev_t instead of glibc internals
->   nfsstat: replace the legacy SA_ONESHOT with standard SA_RESETHAND
->   Allow usage of getrpcbynumber() when getrpcbynumber_r() is unavailable
->   Only work around glibc bugs on glibc
->   include libgen.h for basename
->   exportfs: fix test of NULL pointer in host_pton()
->   exportfs: only do glibc specific hackery on glibc
-All the patches have been committed...
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 22fe351..4616598 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2340,11 +2340,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			continue;
+ 		}
+ 
+-		if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
++		if (!test_bit(NFS4CLNT_MOVED, &clp->cl_state) &&
++		     test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
+ 			section = "check lease";
+ 			status = nfs4_check_lease(clp);
+ 			if (status < 0)
+ 				goto out_error;
++			continue;
+ 		}
+ 
+ 		if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
+-- 
+1.8.5.2 (Apple Git-48)
 
-steved.
-
-> 
->  configure.ac                 |  7 ++-----
->  support/export/hostname.c    | 29 +++++++++++++++++------------
->  support/include/conffile.h   |  2 +-
->  support/include/exportfs.h   | 10 +++++-----
->  support/include/sockaddr.h   |  1 +
->  support/nfs/conffile.c       | 14 +++++++-------
->  support/nfs/svc_create.c     |  2 +-
->  support/nfs/svc_socket.c     |  6 ++++++
->  tools/rpcdebug/rpcdebug.c    |  1 +
->  utils/mount/mount.c          |  1 +
->  utils/mount/mount_libmount.c |  1 +
->  utils/mountd/cache.c         |  2 +-
->  utils/mountd/svc_run.c       |  2 +-
->  utils/nfsd/nfsd.c            |  1 +
->  utils/nfsidmap/nfsidmap.c    |  1 +
->  utils/nfsstat/nfsstat.c      |  2 +-
->  utils/statd/hostname.c       |  6 +++---
->  utils/statd/sm-notify.c      |  8 ++++----
->  utils/statd/statd.h          |  2 +-
->  19 files changed, 56 insertions(+), 42 deletions(-)
-> 
