@@ -1,41 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23528 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752575AbaIWQVp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 12:21:45 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8NGLifN019842
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 12:21:45 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-55-23.rdu2.redhat.com [10.10.55.23])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8NGLhMt027727
-	for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 12:21:44 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 0/2] Use the gssproxy damon for GSSAPI credentials (v4)
-Date: Tue, 23 Sep 2014 12:21:39 -0400
-Message-Id: <1411489301-28991-1-git-send-email-steved@redhat.com>
+Received: from relay4.blacknight.com ([78.153.203.207]:56036 "EHLO
+	relay4.blacknight.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751940AbaIXPqT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 11:46:19 -0400
+Received: from [10.0.2.163] (unknown [91.123.228.33])
+	by relay4.blacknight.com (Postfix) with ESMTP id 9CAAC3988C4
+	for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 16:39:55 +0100 (IST)
+Message-ID: <5422E5CB.6000402@mpstor.com>
+Date: Wed, 24 Sep 2014 16:39:55 +0100
+From: Benjamin ESTRABAUD <be@mpstor.com>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: NFS auto-reconnect tuning.
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When gssproxy(8) daemon is installed, that daemon will be used
-to manage the GSSAPI credentials on the server.  
+Hi!
 
-The nfs-server unit will start gssproxy when it exists 
-otherwise rpc.svcgssd will be started as usual.
+I've got a scenario where I'm connected to a NFS share on a client, have 
+a file descriptor open as read only (could also be write) on a file from 
+that share, and I'm suddenly changing the IP address of that client.
 
-Also, a configure switch was added to disable the building 
-of rpc.svcgssd. 
+Obviously, the NFS share will hang, so if I now try to read the file 
+descriptor I've got open (here in Python), the "read" call will also hang.
 
-Steve Dickson (2):
-  rpc.svcgssd: Add a configure switch to disable building the daemon
-  nfs-service: Added gssproxy support
+However, the driver seems to attempt to do something (maybe 
+save/determine whether the existing connection can be saved) and then, 
+after about 20 minutes the driver transparently reconnects to the NFS 
+share (which is what I wanted anyways) and the "read" call instantiated 
+earlier simply finishes (I don't even have to re-open the file again or 
+even call "read" again).
 
- configure.ac               | 23 +++++++++++++++++++----
- systemd/nfs-server.service |  5 +++--
- utils/gssd/Makefile.am     | 11 +++++++++--
- 3 files changed, 31 insertions(+), 8 deletions(-)
+The dmesg prints I get are as follow:
 
--- 
-1.9.3
+[ 4424.500380] nfs: server 10.0.2.17 not responding, still trying <-- 
+changed IP address and started reading the file.
+[ 4451.560467] nfs: server 10.0.2.17 OK <--- The NFS share was 
+reconnected, the "read" call completes successfully.
 
+I would like to know if there was any way to tune this behaviour, 
+telling the NFS driver to reconnect if a share is unavailable after say 
+10 seconds.
+
+I tried the following options without any success:
+
+retry=0; hard/soft; timeo=3; retrans=1; bg/fg
+
+I am running on a custom distro (homemade embedded distro, not based on 
+anything in particular) running stock kernel 3.10.18 compiled for i686.
+
+Would anyone know what I could do to force NFS into reconnecting a 
+seemingly "dead" session sooner?
+
+Thanks in advance for your help.
+
+Regards,
+
+Ben - MPSTOR.
