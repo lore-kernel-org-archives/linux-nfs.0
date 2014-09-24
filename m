@@ -1,35 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:36705 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751449AbaIDSIT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 14:08:19 -0400
-Date: Thu, 4 Sep 2014 11:08:18 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 15/17] locks: give lm_break a return value
-Message-ID: <20140904180818.GB11232@infradead.org>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
- <1409834323-7171-16-git-send-email-jlayton@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:54196 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751358AbaIXQno (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Sep 2014 12:43:44 -0400
+Date: Wed, 24 Sep 2014 18:43:41 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@lst.de>, "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/4] nfsd: split nfsd4_callback initialization and use
+Message-ID: <20140924164341.GA10208@lst.de>
+References: <1411553959-5280-1-git-send-email-hch@lst.de> <1411553959-5280-4-git-send-email-hch@lst.de> <20140924112954.5d0771b8@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1409834323-7171-16-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <20140924112954.5d0771b8@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 04, 2014 at 08:38:41AM -0400, Jeff Layton wrote:
-> Christoph suggests:
+On Wed, Sep 24, 2014 at 11:29:54AM -0400, Jeff Layton wrote:
+> > Split out initializing the nfs4_callback structure from using it.  For
+> > the NULL callback this gets rid of tons of pointless re-initializations.
+> > 
+> > Note that I don't quite understand what protects us from running multiple
+> > NULL callbacks at the same time, but at least this chance doesn't make
+> > it worse..
+> > 
 > 
->    "Add a return value to lm_break so that the lock manager can tell the
->     core code "you can delete this lease right now".  That gets rid of
->     the games with the timeout which require all kinds of race avoidance
->     code in the users."
-> 
-> Do that here and have the nfsd lease break routine use it when it detects
-> that there was a race between setting up the lease and it being broken.
+> Doesn't the workqueue ensure that? Or am I misunderstanding what you're
+> saying there?
 
-Looks good,
+For the code after my patch that is indeed the case, but before my
+patch we'd re-initialize various fields in cl_cb_null everytime
+do_probe_callback gets called.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
