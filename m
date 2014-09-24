@@ -1,84 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx.cs.uchicago.edu ([128.135.164.214]:58567 "EHLO
-	mx.cs.uchicago.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751620AbaIDUwf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 16:52:35 -0400
-Message-ID: <5408CEB6.7040000@cs.uchicago.edu>
-Date: Thu, 04 Sep 2014 15:42:30 -0500
-From: Colin Hudler <chudler@cs.uchicago.edu>
+Received: from mx12.netapp.com ([216.240.18.77]:1241 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750802AbaIXNq5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Sep 2014 09:46:57 -0400
+Message-ID: <5422CB4E.1070000@Netapp.com>
+Date: Wed, 24 Sep 2014 09:46:54 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: kernel not recovering from statd port change
-References: <20140821213421.GA5474@fieldses.org>
-In-Reply-To: <20140821213421.GA5474@fieldses.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+To: Olga Kornievskaia <aglo@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] Fixing lease renewal
+References: <CAN-5tyFQihuK22n_bzsO0LtqQBM+KW6vELt7H_DPEF0RFdoDQQ@mail.gmail.com>
+In-Reply-To: <CAN-5tyFQihuK22n_bzsO0LtqQBM+KW6vELt7H_DPEF0RFdoDQQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I've been debugging the same thing on an Ubuntu 12.04 server running 
-3.8.0-44, and ended up in the same place you are.  Did you find out 
-anything more? I have carefully inserted rpc_force_rebind() near 
-nlm_client_get, but I don't think it is a good fix for others.
+Hey Olga,
 
-In production servers, I am starting rpc.statd with "--port #####", 
-which does seem to solve the problem. NLM (vs NSM) apparently doesn't 
-suffer from it.
+Your patch is using spaces instead of tabs, so it won't apply to the existing code.  Did you use `git format-patch` to generate it?
 
-One thing that puzzles me is that of several hundred NFS clients only a 
-handful have a problem getting a lock. The problem clients are running 
-3.2 and 2.6.26. The not-problem clients are 3.8 mostly. NFSv3.
+Anna
 
-On 08/21/2014 04:34 PM, J. Bruce Fields wrote:
-> While testing server restart somebody noticed that knfsd can't recover
-> from statd restarting with a new port.
+On 09/24/2014 09:11 AM, Olga Kornievskaia wrote:
+> Commit c9fdeb28 removed a 'continue' after checking if the lease needs
+> to be renewed. However, if client hasn't moved, the code falls down to
+> starting reboot recovery erroneously (ie., sends open reclaim and gets
+> back stale_clientid error) before recovering from getting stale_clientid
+> on the renew operation.
 >
->  From only a very quick skim of the code it looked like creating the nsm
-> client with RPC_CLNT_CREATE_AUTOBIND should cause us to call rpcbind
-> again on connection failures, but that doesn't seem to be working.
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  fs/nfs/nfs4state.c |    4 +++-
+>  1 files changed, 3 insertions(+), 1 deletions(-)
 >
-> Any ideas?  I'll keep looking....
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index 22fe351..4616598 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -2340,11 +2340,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
+>                         continue;
+>                 }
 >
-> --b.
+> -               if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
+> +               if (!test_bit(NFS4CLNT_MOVED, &clp->cl_state) &&
+> +                    test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
+>                         section = "check lease";
+>                         status = nfs4_check_lease(clp);
+>                         if (status < 0)
+>                                 goto out_error;
+> +                       continue;
+>                 }
 >
-> commit 2c9fb5570fe2
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Wed Aug 20 17:21:32 2014 -0400
->
->      lockd: allow rebinding to statd
->
->      During normal operation statd isn't restarted, but it may be if, for
->      example, the server is shut down and restarted to simulate a shutdown or
->      perform some kind of failover.  In that case the kernel may need to
->      query rpcbind again to get statd's new port number.
->
->      Symptoms were locking failures after a manual server restart (without
->      rebooting the machine), and loopback network traces showing the new
->      kernel nfsd attempting to contact statd at its old port number.
->
->      This was probably introduced by cb7323fffa85, which first allowed
->      reusing the statd rpc client, but it looks like a reference count may
->      typically have prevented any symptoms until e498daa81295 "LOCKD: Clear
->      ln->nsm_clnt only when ln->nsm_users is zero".
->
->      Fixes: cb7323fffa85 "lockd: create and use per-net NSM RPC clients on MON/UNMON requests"
->      Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->
-> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-> index 1812f026960c..3bce1d318435 100644
-> --- a/fs/lockd/mon.c
-> +++ b/fs/lockd/mon.c
-> @@ -80,7 +80,8 @@ static struct rpc_clnt *nsm_create(struct net *net)
->   		.program		= &nsm_program,
->   		.version		= NSM_VERSION,
->   		.authflavor		= RPC_AUTH_NULL,
-> -		.flags			= RPC_CLNT_CREATE_NOPING,
-> +		.flags			= RPC_CLNT_CREATE_NOPING|
-> +			                  RPC_CLNT_CREATE_AUTOBIND,
->   	};
->
->   	return rpc_create(&args);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+>                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
+
