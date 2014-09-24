@@ -1,45 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:57188 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932383AbaIEODb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 10:03:31 -0400
-Received: by mail-qa0-f46.google.com with SMTP id w8so10903888qac.5
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 07:03:30 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 5 Sep 2014 10:03:29 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2 11/17] locks: move freeing of leases outside of
- i_lock
-Message-ID: <20140905100329.00da1065@tlielax.poochiereds.net>
-In-Reply-To: <20140904175014.GE16935@infradead.org>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-	<1409834323-7171-12-git-send-email-jlayton@primarydata.com>
-	<20140904175014.GE16935@infradead.org>
+Received: from mx11.netapp.com ([216.240.18.76]:6551 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750821AbaIXWLb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 24 Sep 2014 18:11:31 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] Fixing lease renewal
+Date: Wed, 24 Sep 2014 18:11:28 -0400
+Message-ID: <1411596688-21347-1-git-send-email-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 4 Sep 2014 10:50:14 -0700
-Christoph Hellwig <hch@infradead.org> wrote:
+Commit c9fdeb28 removed a 'continue' after checking if the lease needs
+to be renewed. However, if client hasn't moved, the code falls down to
+starting reboot recovery erroneously (ie., sends open reclaim and gets
+back stale_clientid error) before recovering from getting stale_clientid
+on the renew operation.
 
-> On Thu, Sep 04, 2014 at 08:38:37AM -0400, Jeff Layton wrote:
-> > There was only one place where we still could free a file_lock while
-> > holding the i_lock -- lease_modify. Add a new list_head argument to the
-> > lm_change operation, pass in a private list when calling it, and fix
-> > those callers to dispose of the list once the lock has been dropped.
-> 
-> As mentioned I don't see a real need for this, but it does look correct
-> to me.
-> 
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4state.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Yeah, it's not strictly necessary, but I think it simplifies the API
-for potential users. We already have the infrastructure to handle
-deferring file_lock removal so we might as well take advantage of it
-here too.
-
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 22fe351..6678769 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2345,6 +2345,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			status = nfs4_check_lease(clp);
+ 			if (status < 0)
+ 				goto out_error;
++			continue;
+ 		}
+ 
+ 		if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.8.5.2 (Apple Git-48)
+
