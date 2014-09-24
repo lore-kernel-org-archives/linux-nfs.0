@@ -1,30 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:35311 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753872AbaIDJE2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 05:04:28 -0400
-Received: by mail-ie0-f172.google.com with SMTP id rd18so11232857iec.31
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 02:04:28 -0700 (PDT)
-MIME-Version: 1.0
-Date: Thu, 4 Sep 2014 11:04:27 +0200
-Message-ID: <CALXu0Ue9z-xbFk9hhsvu4c38qqmd0Wwupk2LvL99rwoAcRMqOw@mail.gmail.com>
-Subject: How to use NFS with multiple principals in different realms?
-From: Cedric Blancher <cedric.blancher@gmail.com>
-To: "<kerberos@mit.edu>" <kerberos@mit.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from prod-mail-xrelay07.akamai.com ([72.246.2.115]:35227 "EHLO
+	prod-mail-xrelay07.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753449AbaIXSH5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 14:07:57 -0400
+To: trond.myklebust@primarydata.com
+Cc: bfields@fieldses.org, Anna.Schumaker@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <cover.1411580799.git.jbaron@akamai.com>
+From: Jason Baron <jbaron@akamai.com>
+Subject: [PATCH v2 0/2] rpc: resolve softlockup in presence of iptables drop rule
+Date: Wed, 24 Sep 2014 18:07:56 +0000 (GMT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-How can I use NFS with kerberos krb5p auth when I want to use NFS
-filesystems which come from different realms?
+v2:
+-return -EIO after major timeout on a soft mount, continue to retry if its a
+hard mount
+-fixup changelogs
 
-I know klist -A can show all tickets I got from all realms I kinit to
-- but how can NFS use them?
+Hi,
 
-OS is RHEL7
+We've found a softlockup on the nfsv3 client (udp), while testing an iptables
+rule, which simply drops traffic destined for the nfs server. The softlockup
+occurs because xs_sendpages() returns a positive result (resulting in an
+-EAGAIN), masking out the -EPERM that the lower level ip code returns.
 
-Ced
+The first patch restructures xs_sendpages() such that it can return a 'sent'
+value in addition to an error value. It no longer over-loads the return value
+as both a 'sent' and 'error' value. In this way the 'higher' level code can
+make more informed decisions.
+
+The second patch makes use of the new return value to propagate an -EIO
+up instead of the -EAGAIN and avoids the cpu spinning.
+
+Thanks,
+
+-Jason
+
+
+Jason Baron (2):
+  rpc: return sent and err from xs_sendpages()
+  rpc: Add -EPERM processing for xs_udp_send_request()
+
+ net/sunrpc/clnt.c     |  2 ++
+ net/sunrpc/xprtsock.c | 87 ++++++++++++++++++++++++++++-----------------------
+ 2 files changed, 50 insertions(+), 39 deletions(-)
+
 -- 
-Cedric Blancher <cedric.blancher@gmail.com>
-Institute Pasteur
+1.8.2.rc2
+
