@@ -1,66 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11891 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752686AbaIXPVx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2014 11:21:53 -0400
-Message-ID: <5422E18E.2080905@RedHat.com>
-Date: Wed, 24 Sep 2014 11:21:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-vc0-f181.google.com ([209.85.220.181]:41720 "EHLO
+	mail-vc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750725AbaIXWpy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 18:45:54 -0400
+Received: by mail-vc0-f181.google.com with SMTP id hq12so868143vcb.12
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 15:45:53 -0700 (PDT)
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jan Chaloupka <jchaloup@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd.man: mountd tcp wrappers support only NFS v2/v3
-References: <20140923070733.25555.18292.stgit@unused-4-157.brq.redhat.com> <CAHQdGtRZA89spXkGWxoDyd8dRt-f9wfnfuz=rACsMe3bSa_meA@mail.gmail.com>
-In-Reply-To: <CAHQdGtRZA89spXkGWxoDyd8dRt-f9wfnfuz=rACsMe3bSa_meA@mail.gmail.com>
+In-Reply-To: <CAN-5tyFKhmHOzV6gmgKJkjSL-cgd_uK0ef6kHXWER7JBvbwTjw@mail.gmail.com>
+References: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
+	<CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
+	<CAN-5tyE8zt5iUQUFp+2iz9oP37HJhQ54YtSgesWs6Cu66A6qZw@mail.gmail.com>
+	<CAHQdGtQ6WYe0qgn7b7s2TW_HFsq2ZCwyMuMW8PO_10xLh79QFQ@mail.gmail.com>
+	<CAN-5tyFKhmHOzV6gmgKJkjSL-cgd_uK0ef6kHXWER7JBvbwTjw@mail.gmail.com>
+Date: Wed, 24 Sep 2014 18:45:53 -0400
+Message-ID: <CAHQdGtQN=0aitE=nSOSdA0ROZMfdchnshQoe-EkeoHBdbFBjsg@mail.gmail.com>
+Subject: Re: nfs4_lock_delegation_recall() improperly handles errors such as ERROR_GRACE
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 09/23/2014 04:41 PM, Trond Myklebust wrote:
-> On Tue, Sep 23, 2014 at 3:07 AM, Jan Chaloupka <jchaloup@redhat.com> wrote:
->> mountd tcp wrappers support only NFSv2 and NFSv3, not NFSv4.
+On Wed, Sep 24, 2014 at 6:31 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Wed, Sep 24, 2014 at 3:57 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> Hi Olga,
 >>
->> https://bugzilla.redhat.com/show_bug.cgi?id=1116283
+>> On Wed, Sep 24, 2014 at 2:20 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>> Hi Trond,
+>>>
+>>> nfs_delegation_claim_opens() return EAGAIN to nfs_end_delegation_return().
+>>> issync is always 0 (as its called by the
+>>> nfs_client_return_marked_delegations) and it breaks out of the loop...
+>>> as a result the error just doesn't get handled.
 >>
->> This patch updates the man page
+>> Ah. OK, so this is being called from
+>> nfs_client_return_marked_delegations. That makes sense.
 >>
->> Signed-off-by: Jan Chaloupka <jchaloup@redhat.com>
->> ---
->>  utils/mountd/mountd.man |    2 ++
->>  1 file changed, 2 insertions(+)
->>
->> diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
->> index a8828ae..1aae75b 100644
->> --- a/utils/mountd/mountd.man
->> +++ b/utils/mountd/mountd.man
->> @@ -217,6 +217,8 @@ listeners using the
->>  .B tcp_wrapper
->>  library or
->>  .BR iptables (8).
->> +Tcp wrappers are only in effect with NFS version 2 and 3 mounts.
->> +They do not work with NFS version 4.
->>  .PP
->>  Note that the
->>  .B tcp_wrapper
->>
-> 
-> Is there any point to compiling mountd with the tcp wrappers in this
-> day and age? 
->From an upstream point of view... Sure... But I don't think
-we can remove them from the man pages...
+>> So for that case, I'd expect the call to return to the loop in
+>> nfs4_state_manager(), and then to retry through that after doing
+>> whatever is needed to recover.
+>> Essentially, we should be setting NFS4CLNT_DELEGRETURN again, and then
+>> bouncing back into nfs_client_return_marked_delegations (after all the
+>> recovery work has been done).
+>
+> Yes I don't fully understand what it should be. It never does anything
+> about recovering from the lock error and simply returns the
+> delegation. Ok I don't know if it means anything to you, but the 2nd
+> time around (when it returns the delegation even though it hasn't
+> recovered the lock), it never goes into the
+> nfs4_open_delegation_recall() because stateid condition doesn't hold
+> true.
+>
+> If it's not too much trouble, could you explain why lock error
+> shouldn't be handled as I suggested instead of resending the open with
+> claim_cur over again. As I understand in your case, it'll be a series
+> of successful open with claim_cur paired with a failed lock with
+> err_grace. In my case, it'll be one open with claim_cur and a number
+> of lock with err_grace.
 
+There is only 1 state manager thread allowed per nfs_client (i.e. per
+server) and so we want to avoid having it busy wait in any one state
+handler. Doing so would basically mean that all other state recovery
+on that nfs_client is on hold; i.e. we could not deal with exceptions
+like ADMIN_REVOKED, CB_PATH_DOWN, etc until the busy wait is over.
+This is why that code has been designed to fall all the way back to
+nfs4_state_manager() in the event of any error/exception.
 
-> tcp wrappers isn't enforced by knfsd, so as the above
-> manpage change indicates it really is only blocking NFSv2/v3 _mount_
-> attempts.
-> 
-> If you can use NFSv4, or sniff the NFSv2/v3 traffic or even just guess
-> NFSv2/v3 filehandles, then tcp wrappers can be 100% circumvented.
-> 
-You would be surprised on the amount of people that still use
-them... 
+-- 
+Trond Myklebust
 
-steved.
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
