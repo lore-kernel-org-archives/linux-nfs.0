@@ -1,93 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48359 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753729AbaIPXiT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 16 Sep 2014 19:38:19 -0400
-Date: Wed, 17 Sep 2014 09:37:57 +1000
-From: NeilBrown <neilb@suse.de>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Peter Zijlstra <peterz@infradead.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>, <linux-fsdevel@vger.kernel.org>,
-        <linux-mm@kvack.org>, <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jeff.layton@primarydata.com>
-Subject: Re: [PATCH 3/4] NFS: avoid deadlocks with loop-back mounted NFS
- filesystems.
-Message-ID: <20140917093757.472c8cf2@notabene.brown>
-In-Reply-To: <54182F8B.8010302@Netapp.com>
-References: <20140916051911.22257.24658.stgit@notabene.brown>
-	<20140916053135.22257.68002.stgit@notabene.brown>
-	<54182F8B.8010302@Netapp.com>
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:35369 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751012AbaIXNLG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 09:11:06 -0400
+Received: by mail-ie0-f182.google.com with SMTP id tp5so6171354ieb.27
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 06:11:04 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/SleaSZokHRCCDT+.Q_nPcHS"; protocol="application/pgp-signature"
+Date: Wed, 24 Sep 2014 09:11:04 -0400
+Message-ID: <CAN-5tyFQihuK22n_bzsO0LtqQBM+KW6vELt7H_DPEF0RFdoDQQ@mail.gmail.com>
+Subject: [PATCH 1/1] Fixing lease renewal
+From: Olga Kornievskaia <aglo@umich.edu>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/SleaSZokHRCCDT+.Q_nPcHS
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Commit c9fdeb28 removed a 'continue' after checking if the lease needs
+to be renewed. However, if client hasn't moved, the code falls down to
+starting reboot recovery erroneously (ie., sends open reclaim and gets
+back stale_clientid error) before recovering from getting stale_clientid
+on the renew operation.
 
-On Tue, 16 Sep 2014 08:39:39 -0400 Anna Schumaker <Anna.Schumaker@netapp.co=
-m>
-wrote:
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4state.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-> On 09/16/2014 01:31 AM, NeilBrown wrote:
-> > Support for loop-back mounted NFS filesystems is useful when NFS is
-> > used to access shared storage in a high-availability cluster.
-> >
-> > If the node running the NFS server fails, some other node can mount the
-> > filesystem and start providing NFS service.  If that node already had
-> > the filesystem NFS mounted, it will now have it loop-back mounted.
-> >
-> > nfsd can suffer a deadlock when allocating memory and entering direct
-> > reclaim.
-> > While direct reclaim does not write to the NFS filesystem it can send
-> > and wait for a COMMIT through nfs_release_page().
->=20
-> Is there anything that can be done on the nfsd side to prevent the deadlo=
-cks?
->=20
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 22fe351..4616598 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2340,11 +2340,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
+                        continue;
+                }
 
-I went down that path first and it didn't work out.
-Setting PF_FSTRANS in nfsd (when the request comes from localhost) and then
-arranging the __GFP_FS is cleared when that flag is set overcomes a number =
-of
-possible deadlock sources, but not all.
+-               if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
++               if (!test_bit(NFS4CLNT_MOVED, &clp->cl_state) &&
++                    test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
+                        section = "check lease";
+                        status = nfs4_check_lease(clp);
+                        if (status < 0)
+                                goto out_error;
++                       continue;
+                }
 
-There are a number of situations where nfsd is waiting on some other thread
-(which doesn't have PF_FSTRANS set) and that thread tries to reclaim memory
-and hits nfs_release_page().
-It was a long and complex patch set, and nobody liked it.
-And the common thread was always that it always blocked in nfs_release_page=
-().
-So it seemed to make sense to just remove that blockage.
-
-Thanks,
-NeilBrown
-
---Sig_/SleaSZokHRCCDT+.Q_nPcHS
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBVBjJ1Tnsnt1WYoG5AQIA4A/9FUdVuHypfzeP82ItnBzQ2jKdkcLlfEI6
-g6BsDX9RJ28++zq7MqI1mnsyJXzZbBpvB1W6wSFWiFNq8FqZOhHH+YFzQMGY6MgX
-m9NjV5Jb6aXCGwjwjlE/ocIhbgHyS3DYJyiid28Lv0j/mdsA2rux0lW86Z3QuqP+
-zV4y/FQCs9Hmf0hwOmlrdVjdMe5XYtZpBgctlKaynMKooC69yfna21zzWMAW0JU4
-TgNPR9XMNVULFS+rtt1tYYMbHynPtnuIS0tT7RJJjAf4EWxzlMrcHGebCoZaJZ3G
-7AgadunMpvBPmBDQOwUbf2iVibEFkEUSOTqr4X6xMdOOzbNv8hGO0+7WixEuLQv/
-uP5W0S+1oBSLyISUhhW8KQharjPIKbPF8pM+WLXpZclXNMDl6xRztOeHrHjc7InZ
-E2HrOlR/ttWbtcTMz0B17PhkKZjyYvuRyxTXoj0cWxgnTNH4MCzGFYlDDcwqKOUu
-kLZ2TCrIHpVmzhlFde6wFLpTWBzErhuo1Wna/HYFXK7sitq2hiOx0NM4DPDMNInw
-tw4hxzUBjd5s7UEaW/+YEZAct8rkXWDjYAkw0fyQZFTEqjGKZXVKvY6koJDG0gZG
-B/2pWkP0VyU23iZ/SjpLdpWgP030KI/X/TXYRZTzCaPipJyYGfCL/xpwWk2N7ki9
-0eK6lfXjMvs=
-=F4Ed
------END PGP SIGNATURE-----
-
---Sig_/SleaSZokHRCCDT+.Q_nPcHS--
+                if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
+-- 
+1.7.1
