@@ -1,97 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:59891 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753290AbaIHOrK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 10:47:10 -0400
-Received: by mail-qc0-f177.google.com with SMTP id i8so15168370qcq.8
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 07:47:08 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: [PATCH v3 7/8] nfsd: set and test NFSD4_CLIENT_STABLE bit to reduce nfsdcltrack upcalls
-Date: Mon,  8 Sep 2014 10:46:48 -0400
-Message-Id: <1410187609-10319-8-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
-References: <1410187609-10319-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:55770 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751184AbaIXNKg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 09:10:36 -0400
+Received: by mail-ie0-f175.google.com with SMTP id rl12so5016742iec.6
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 06:10:35 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAHQdGtRu2xb=gv7GGgD2oL_T9Y5McYKcrWOCg0cTOQyAEFwg6g@mail.gmail.com>
+References: <CAN-5tyGn0mLHrk+C+a9CU22YD3MXJm5j3k=2ZrGz5XnyhT-+Uw@mail.gmail.com>
+	<CAHQdGtRu2xb=gv7GGgD2oL_T9Y5McYKcrWOCg0cTOQyAEFwg6g@mail.gmail.com>
+Date: Wed, 24 Sep 2014 09:10:35 -0400
+Message-ID: <CAN-5tyErUCpPEbGShv8VAvUe3dHn6B2=SyC_ae0393HJE2Jm0g@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Fixing lease renewal
+From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The nfsdcltrack upcall doesn't utilize the NFSD4_CLIENT_STABLE flag,
-which basically results in an upcall every time we call into the client
-tracking ops.
+Thanks, Trond. Will do the changes you suggested and submit another patch.
 
-Change it to set this bit on a successful "check" or "create" request,
-and clear it on a "remove" request.  Also, check to see if that bit is
-set before upcalling on a "check" or "remove" request, and skip
-upcalling appropriately, depending on its state.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4recover.c | 22 ++++++++++++++++++----
- 1 file changed, 18 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index ae313861a6f5..5697e9d2e875 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -1291,7 +1291,8 @@ nfsd4_umh_cltrack_create(struct nfs4_client *clp)
- 	grace_start = nfsd4_cltrack_grace_start(nn->boot_time);
- 
- 	nfsd4_cltrack_upcall_lock(clp);
--	nfsd4_umh_cltrack_upcall("create", hexid, reclaim_complete, grace_start);
-+	if (!nfsd4_umh_cltrack_upcall("create", hexid, reclaim_complete, grace_start))
-+		set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
- 	nfsd4_cltrack_upcall_unlock(clp);
- 
- 	kfree(reclaim_complete);
-@@ -1304,6 +1305,9 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
- {
- 	char *hexid;
- 
-+	if (!test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-+		return;
-+
- 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
- 	if (!hexid) {
- 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-@@ -1311,7 +1315,9 @@ nfsd4_umh_cltrack_remove(struct nfs4_client *clp)
- 	}
- 
- 	nfsd4_cltrack_upcall_lock(clp);
--	nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL);
-+	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags) &&
-+	    nfsd4_umh_cltrack_upcall("remove", hexid, NULL, NULL) == 0)
-+		clear_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
- 	nfsd4_cltrack_upcall_unlock(clp);
- 
- 	kfree(hexid);
-@@ -1323,6 +1329,9 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
- 	int ret;
- 	char *hexid, *legacy;
- 
-+	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags))
-+		return 0;
-+
- 	hexid = bin_to_hex_dup(clp->cl_name.data, clp->cl_name.len);
- 	if (!hexid) {
- 		dprintk("%s: can't allocate memory for upcall!\n", __func__);
-@@ -1331,9 +1340,14 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
- 	legacy = nfsd4_cltrack_legacy_recdir(&clp->cl_name);
- 
- 	nfsd4_cltrack_upcall_lock(clp);
--	ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
-+	if (test_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags)) {
-+		ret = 0;
-+	} else {
-+		ret = nfsd4_umh_cltrack_upcall("check", hexid, legacy, NULL);
-+		if (!ret)
-+			set_bit(NFSD4_CLIENT_STABLE, &clp->cl_flags);
-+	}
- 	nfsd4_cltrack_upcall_unlock(clp);
--
- 	kfree(legacy);
- 	kfree(hexid);
- 	return ret;
--- 
-1.9.3
-
+On Tue, Sep 23, 2014 at 2:51 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> Hi Olga,
+>
+> On Tue, Sep 23, 2014 at 5:36 PM, Olga Kornievskaia
+> <olga.kornievskaia@gmail.com> wrote:
+>> Commit c9fdeb28 removed a 'continue' after checking if the lease needs
+>> to be renewed. However, if client hasn't moved, the code falls down to
+>> starting reboot recovery erroneously (ie., sends open reclaim and gets
+>> back stale_clientid error) before recovering from getting stale_clientid
+>> on the renew operation.
+>>
+>> ---
+>>  fs/nfs/nfs4state.c |    2 ++
+>>  1 files changed, 2 insertions(+), 0 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 22fe351..790aed3 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -2345,6 +2345,8 @@ static void nfs4_state_manager(struct nfs_client *clp)
+>>                         status = nfs4_check_lease(clp);
+>>                         if (status < 0)
+>>                                 goto out_error;
+>> +                       if (!test_bit(NFS4CLNT_MOVED, &clp->cl_state))
+>> +                               continue;
+>>                 }
+>>
+>>                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
+>>
+>
+> What say we just move the "if (test_and_clear_bit(NFS4CLNT_MOVED,
+> &clp->cl_state)) { ... }" section so that it comes immediately before
+> the NFS4CLNT_CHECK_LEASE test?
+> That way we can just reinstate the original 'continue' without the
+> extra test above, and ensure that the NFS4CLNT_MOVED is always handled
+> before trying the check lease.
+>
+> Also, please do remember to add a "Signed-off-by:" line when submitting patches.
+>
+> Thanks
+>   Trond
+> --
+> Trond Myklebust
+>
+> Linux NFS client maintainer, PrimaryData
+>
+> trond.myklebust@primarydata.com
