@@ -1,67 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53530 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755540AbaIWT3J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 15:29:09 -0400
-Date: Tue, 23 Sep 2014 15:29:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Simo Sorce <simo@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-Message-ID: <20140923192909.GJ29932@fieldses.org>
-References: <1411413608-16462-2-git-send-email-steved@redhat.com>
- <20140922152603.75005941@willson.usersys.redhat.com>
- <54207BCD.70101@RedHat.com>
- <20140922204401.GI26763@fieldses.org>
- <5420911D.6080506@RedHat.com>
- <20140922173239.05c17b2a@willson.usersys.redhat.com>
- <5420A946.4090805@RedHat.com>
- <20140922201927.36fae05c@willson.usersys.redhat.com>
- <5420CA96.6090409@RedHat.com>
- <20140923085245.007533b6@willson.usersys.redhat.com>
+Received: from mail-we0-f179.google.com ([74.125.82.179]:60132 "EHLO
+	mail-we0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751281AbaIXO4q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 10:56:46 -0400
+Received: by mail-we0-f179.google.com with SMTP id u56so6326120wes.24
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 07:56:45 -0700 (PDT)
+Received: from sys880.ldn.framestore.com (firewall.framestore.com. [193.203.83.19])
+        by mx.google.com with ESMTPSA id ba3sm6057080wib.10.2014.09.24.07.56.44
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Wed, 24 Sep 2014 07:56:44 -0700 (PDT)
+Date: Wed, 24 Sep 2014 15:56:38 +0100 (BST)
+From: Mark Hills <mark.hills@framestore.com>
+To: linux-nfs@vger.kernel.org
+Subject: NFS server QoS ideas
+Message-ID: <alpine.LFD.2.01.1409241248320.7614@sys880.ldn.framestore.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140923085245.007533b6@willson.usersys.redhat.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 23, 2014 at 08:52:45AM -0400, Simo Sorce wrote:
-> It will not, but right now gssproxy.service also has:
->  Requires=proc-fs-nfsd.mount
-> 
-> I want to drop this one.
+I am looking at possibilities to implement QoS (quality of service) in an 
+NFS server -- for a multiuser HPC environment, on NFSv3.
 
-By the way, I think all you actually want is After=proc-fs-nfsd.mount.
+The desire is for a fully loaded server to process requests in some kind 
+of "fair share" (like round robin) or priorities based on some attribute; 
+eg. uid at the client, request type + origin, or even directory etc.
 
-You don't actually want to bail out if fs-nfsd.mount fails, in fact you
-don't care if it's activated at all, all you care about is that *if*
-it's already activated (because nfsd is), then you want it to start
-before you.
+Criteria could be fairly blunt and specific to our use case to begin with.
 
-And in fact we could instead replace that with a Before=gssproxy.service
-in proc-fs-nfsd.mount if you preferred.  I don't know how to decide
-which place it goes, or if it matters.
+I've looked at the code with the following ideas for where to start.
 
---b.
+It seems the implementation depends a lot on which attributes to 
+share/schedule on:
 
-> 
-> > >> 2) Add a After=var-lib-nfs-rpc_pipefs.mount to the
-> > >> gssproxy.service file since gssproxy could careless about either
-> > >> rpc.gssd or rpc.svcgssd daemons. All it is looking for is the
-> > >> sunrpc and auth_rpcgss kernel modules.
-> > > 
-> > > The correct thing is to add a Before: gssproxy.service to
-> > > var-lib-nfs-rpc_pipefs.mount IMO.
-> > Again what happen if gssproxy is not installed? Things will 
-> > still come up successfully?
-> 
-> Yes, afaik After and Before are just ordering instruction and do not
-> cause any failure if the units are not present at all, or fail to start.
-> 
-> There are Want and Require directives for strong relationships.
-> 
-> Simo.
-> 
-> -- 
-> Simo Sorce * Red Hat, Inc * New York
+1) by client IP:
+
+   make use the existing structures
+
+   enhance the svc_xprt_enqueue/dequeue process to schedule svc_xprt
+   as these are already per-client
+
+2) by client uid or other RPC attribute:
+
+   have svc_recv make multiple calls to svc_handle_xprt
+
+   buffer the requests into multiple queues held at svc_pool (re-use 
+   xpt_deferred?)
+
+3) by NFS operation, file handle etc.:
+
+   most awkward, as there is not buffering of requests at the NFS level
+   or shared between threads
+
+   perhaps do as (2) but with a function in svc_program to return
+   scheduling criteria
+
+It looks like I need to consider the behaviour when there are multiple 
+svc_pool (ie. NUMA)
+
+This is the first time I've looked into this code, I'm interested in any 
+comments/criticisms or alternatives.
+
+Thanks
+
+-- 
+Mark
