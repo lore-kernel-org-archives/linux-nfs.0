@@ -1,65 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54200 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756507AbaIOWKb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 15 Sep 2014 18:10:31 -0400
-Date: Mon, 15 Sep 2014 18:10:30 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 1/5] lockd: move lockd's grace period handling into
- its own module
-Message-ID: <20140915221030.GE31157@fieldses.org>
-References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
- <1408473509-14010-2-git-send-email-jlayton@primarydata.com>
- <20140828200059.GB25203@fieldses.org>
- <20140828202442.GC25203@fieldses.org>
- <20140915220813.GC31157@fieldses.org>
- <20140915220939.GD31157@fieldses.org>
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:57640 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753362AbaIXSVK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 14:21:10 -0400
+Received: by mail-ig0-f179.google.com with SMTP id l13so7021936iga.6
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 11:21:09 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140915220939.GD31157@fieldses.org>
+In-Reply-To: <CAHQdGtTfUYoU+0LRqS6eao5Z-uVqHoGkXO9HcU+Wmo=vZobvew@mail.gmail.com>
+References: <1411574911-19269-1-git-send-email-kolga@netapp.com>
+	<CAHQdGtTfUYoU+0LRqS6eao5Z-uVqHoGkXO9HcU+Wmo=vZobvew@mail.gmail.com>
+Date: Wed, 24 Sep 2014 14:21:09 -0400
+Message-ID: <CAN-5tyFnJ0EvfMiL4AAP3kXUg6J+8NvC=3sZEvhXkrfV5pxs3A@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Fixing lease renewal
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 15, 2014 at 06:09:39PM -0400, J. Bruce Fields wrote:
-> I considered doing something like the following anyway (total
-> off-the-cuff draft, not tested), but I think it's overkill.
+I have misunderstood you. One more try coming up.
 
-Oh, and the one other nit here is this.
-
---b.
-
-commit 24e24d2e8125d917a49b3df6a5248d6ca5c9592b
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Sep 15 11:05:46 2014 -0400
-
-    nfsd4: stop grace_time update at end of grace period
-    
-    The attempt to automatically set a new grace period time at the end of
-    the grace period isn't really helpful.  We'll probably shut down and
-    reboot before we actually make use of the new grace period time anyway.
-    So may as well leave it up to the init system to get this right.
-    
-    This just confuses people when they see /proc/fs/nfsd/nfsv4gracetime
-    change from what they set it to.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fc88b57..a298c3d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4124,12 +4124,6 @@ nfsd4_end_grace(struct nfsd_net *nn)
- 	nn->grace_ended = true;
- 	nfsd4_record_grace_done(nn);
- 	locks_end_grace(&nn->nfsd4_manager);
--	/*
--	 * Now that every NFSv4 client has had the chance to recover and
--	 * to see the (possibly new, possibly shorter) lease time, we
--	 * can safely set the next grace time to the current lease time:
--	 */
--	nn->nfsd4_grace = nn->nfsd4_lease;
- }
- 
- static time_t
+On Wed, Sep 24, 2014 at 2:05 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> Hi Olga,
+>
+> On Wed, Sep 24, 2014 at 12:08 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
+>> Commit c9fdeb28 removed a 'continue' after checking if the lease needs
+>> to be renewed. However, if client hasn't moved, the code falls down to
+>> starting reboot recovery erroneously (ie., sends open reclaim and gets
+>> back stale_clientid error) before recovering from getting stale_clientid
+>> on the renew operation.
+>>
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+>>  fs/nfs/nfs4state.c | 4 +++-
+>>  1 file changed, 3 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 22fe351..4616598 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -2340,11 +2340,13 @@ static void nfs4_state_manager(struct nfs_client *clp)
+>>                         continue;
+>>                 }
+>>
+>> -               if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
+>> +               if (!test_bit(NFS4CLNT_MOVED, &clp->cl_state) &&
+>> +                    test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
+>>                         section = "check lease";
+>>                         status = nfs4_check_lease(clp);
+>>                         if (status < 0)
+>>                                 goto out_error;
+>> +                       continue;
+>>                 }
+>>
+>>                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
+>> --
+>> 1.8.5.2 (Apple Git-48)
+>>
+>
+> I think you misunderstood me. I was proposing that we move the entire
+> code section that currently reads
+>
+>                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
+>                         section = "migration";
+>                         status = nfs4_handle_migration(clp);
+>                         if (status < 0)
+>                                 goto out_error;
+>                 }
+>
+> so that it occurs before the section
+>
+>                 if (test_and_clear_bit(NFS4CLNT_CHECK_LEASE, &clp->cl_state)) {
+>                         section = "check lease";
+>                         status = nfs4_check_lease(clp);
+>                         if (status < 0)
+>                                 goto out_error;
+> +                      continue;
+>                 }
+>
+> That way we only need to test once for NFS4CLNT_MOVED.
+>
+> Cheers
+>   Trond
+> --
+> Trond Myklebust
+>
+> Linux NFS client maintainer, PrimaryData
+>
+> trond.myklebust@primarydata.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
