@@ -1,101 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f178.google.com ([74.125.82.178]:44518 "EHLO
-	mail-we0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751245AbaI3QaJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Sep 2014 12:30:09 -0400
-Received: by mail-we0-f178.google.com with SMTP id k48so570927wev.9
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Sep 2014 09:30:06 -0700 (PDT)
-Date: Tue, 30 Sep 2014 17:30:04 +0100 (BST)
-From: Mark Hills <mark.hills@framestore.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS server QoS ideas
-In-Reply-To: <alpine.LRH.2.11.1409241958400.8059@sh-el6.eng.rdu2.redhat.com>
-Message-ID: <alpine.LFD.2.01.1409301657470.11031@sys880.ldn.framestore.com>
-References: <alpine.LFD.2.01.1409241248320.7614@sys880.ldn.framestore.com> <alpine.LRH.2.11.1409241958400.8059@sh-el6.eng.rdu2.redhat.com>
+Received: from mail-vc0-f174.google.com ([209.85.220.174]:64868 "EHLO
+	mail-vc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751595AbaIXSCs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 14:02:48 -0400
+Received: by mail-vc0-f174.google.com with SMTP id hy10so7075593vcb.33
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 11:02:47 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+In-Reply-To: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
+References: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
+Date: Wed, 24 Sep 2014 14:02:47 -0400
+Message-ID: <CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
+Subject: Re: nfs4_lock_delegation_recall() improperly handles errors such as ERROR_GRACE
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 24 Sep 2014, Benjamin Coddington wrote:
+Hi Olga,
 
-> Hi Mark, I've often thought about working on a project like this - 
-> usually when I've been trying to keep a number of systems responsive 
-> when there's been one very aggressive client, which typically would be 
-> identified by a single uid, or a uid:ip pair.  I think your second 
-> criteria would be the most useful.
+On Wed, Sep 24, 2014 at 1:47 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> There exists a problem in the code that was easily reproducible prior
+> to the commit b757144fd77cf5512f5b60179ba5ca8dcc5184b4 ("NFSv4 Be less
+> aggressive about returning delegations"). The same code is used during
+> delegation return and is still reproducible (with highly coordinated
+> setup of triggering just the right actions).
+>
+> The problem lies in the call of nfs4_lock_delegation_recall(). In the
+> nutshell, when the LOCK op gets an error such as ERR_GRACE, the error
+> is unhanded which leaves the client in incorrect state assuming that
+> it has 'successfully' acquired a lock that was locally acquired while
+> holding a delegation.
+>
+> I believe the problem stems from the fact that
+> nfs4_lock_delegation_recall(), unlike normal version of LOCK
+> nfs4_proc_getlk(), lacks the do { handle_error(do_proc())} while(err)
+> structure.
+>
+> I believe the problem should be fixed by something like the following:
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 6ca0c8e..78d088c 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -5936,11 +5936,12 @@ int nfs4_lock_delegation_recall(struct
+> file_lock *fl, struct nfs4_state *state,
+>         struct nfs_server *server = NFS_SERVER(state->inode);
+>         int err;
+>
+> -       err = nfs4_set_lock_state(state, fl);
+> -       if (err != 0)
+> -               return err;
+> -       err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
+> -       return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+> +       do {
+> +               err = nfs4_handle_delegation_recall_error(server, state,
+> +                       stateid, _nfs4_do_setlk(state, F_SETLK, fl,
+> +                               NFS_LOCK_NEW));
+> +       } while (err == -EAGAIN);
+> +       return err;
+>  }
+>
+>  struct nfs_release_lockowner_data {
+>
+> Is this an acceptable solution?
+>
 
-Thanks Ben.
-
-To do uid:ip paid would be similarly possible, but actually we're also 
-interested in uid only -- to balance load between users on a cluster.
- 
-> I've done absolutely no research on this, but I had thought offhandedly 
-> that a solution might integrate with cgroups somehow.
-
-I'm not sure, as this is a server-side thing, there's no real processes to 
-partition in cgroups.
- 
-> That's not much (less than 2 cents), but I think this feature would be
-> welcomed warmly by sysadmins running shared NFS systems.
-
-Thanks, good to hear.
-
-I'd appreciate any input or caveats from anyone on the ideas I posted for 
-implementing this.
-
-Thanks
+In the current code, I expect the EAGAIN from
+nfs4_handle_delegation_recall_error() to be propagated back to
+nfs_end_delegation_return(). It should then result in the client
+waiting for state recovery to complete followed by a loop back to
+nfs_delegation_claim_opens().
+Could you explain why that isn't working for your case?
 
 -- 
-Mark
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
 
-> On Wed, 24 Sep 2014, Mark Hills wrote:
-> 
-> > I am looking at possibilities to implement QoS (quality of service) in an
-> > NFS server -- for a multiuser HPC environment, on NFSv3.
-> > 
-> > The desire is for a fully loaded server to process requests in some kind
-> > of "fair share" (like round robin) or priorities based on some attribute;
-> > eg. uid at the client, request type + origin, or even directory etc.
-> > 
-> > Criteria could be fairly blunt and specific to our use case to begin with.
-> > 
-> > I've looked at the code with the following ideas for where to start.
-> > 
-> > It seems the implementation depends a lot on which attributes to
-> > share/schedule on:
-> > 
-> > 1) by client IP:
-> > 
-> >   make use the existing structures
-> > 
-> >   enhance the svc_xprt_enqueue/dequeue process to schedule svc_xprt
-> >   as these are already per-client
-> > 
-> > 2) by client uid or other RPC attribute:
-> > 
-> >   have svc_recv make multiple calls to svc_handle_xprt
-> > 
-> >   buffer the requests into multiple queues held at svc_pool (re-use
-> >   xpt_deferred?)
-> > 
-> > 3) by NFS operation, file handle etc.:
-> > 
-> >   most awkward, as there is not buffering of requests at the NFS level
-> >   or shared between threads
-> > 
-> >   perhaps do as (2) but with a function in svc_program to return
-> >   scheduling criteria
-> > 
-> > It looks like I need to consider the behaviour when there are multiple
-> > svc_pool (ie. NUMA)
-> > 
-> > This is the first time I've looked into this code, I'm interested in any
-> > comments/criticisms or alternatives.
-> > 
-> > Thanks
-> > 
-> > -- 
-> > Mark
+trond.myklebust@primarydata.com
