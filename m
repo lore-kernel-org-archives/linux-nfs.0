@@ -1,160 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64517 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752686AbaIVX6M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 19:58:12 -0400
-Message-ID: <5420B78D.6040704@RedHat.com>
-Date: Mon, 22 Sep 2014 19:58:05 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:36218 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753449AbaIXSUb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 14:20:31 -0400
+Received: by mail-ig0-f176.google.com with SMTP id hn15so7049812igb.3
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 11:20:31 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Simo Sorce <simo@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-References: <1411413608-16462-1-git-send-email-steved@redhat.com> <1411413608-16462-2-git-send-email-steved@redhat.com> <20140922152603.75005941@willson.usersys.redhat.com> <54207BCD.70101@RedHat.com> <20140922204401.GI26763@fieldses.org> <5420911D.6080506@RedHat.com> <20140922223423.GA29932@fieldses.org>
-In-Reply-To: <20140922223423.GA29932@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
+References: <CAN-5tyGT71Y3DZ-V16ikjDa-+6Bt_j_2QwkQZyQMSZSLun5CaA@mail.gmail.com>
+	<CAHQdGtSoowMb4tz1gVTTf1xRY8jwwgQOX_2CxPC_xziWurmw4Q@mail.gmail.com>
+Date: Wed, 24 Sep 2014 14:20:31 -0400
+Message-ID: <CAN-5tyE8zt5iUQUFp+2iz9oP37HJhQ54YtSgesWs6Cu66A6qZw@mail.gmail.com>
+Subject: Re: nfs4_lock_delegation_recall() improperly handles errors such as ERROR_GRACE
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Trond,
+
+nfs_delegation_claim_opens() return EAGAIN to nfs_end_delegation_return().
+issync is always 0 (as its called by the
+nfs_client_return_marked_delegations) and it breaks out of the loop...
+as a result the error just doesn't get handled.
+
+Would it be useful to provide you with a pcap trace?
+
+The easiest way to trigger it is to enable the return of inactive
+delegation and have simple get a delegation and local lock, sleep and
+reboot the server and see the lock recovery error with err_grace.
 
 
-On 09/22/2014 06:34 PM, J. Bruce Fields wrote:
-> On Mon, Sep 22, 2014 at 05:14:05PM -0400, Steve Dickson wrote:
+On Wed, Sep 24, 2014 at 2:02 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> Hi Olga,
+>
+> On Wed, Sep 24, 2014 at 1:47 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> There exists a problem in the code that was easily reproducible prior
+>> to the commit b757144fd77cf5512f5b60179ba5ca8dcc5184b4 ("NFSv4 Be less
+>> aggressive about returning delegations"). The same code is used during
+>> delegation return and is still reproducible (with highly coordinated
+>> setup of triggering just the right actions).
 >>
+>> The problem lies in the call of nfs4_lock_delegation_recall(). In the
+>> nutshell, when the LOCK op gets an error such as ERR_GRACE, the error
+>> is unhanded which leaves the client in incorrect state assuming that
+>> it has 'successfully' acquired a lock that was locally acquired while
+>> holding a delegation.
 >>
->> On 09/22/2014 04:44 PM, J. Bruce Fields wrote:
->>> On Mon, Sep 22, 2014 at 03:43:09PM -0400, Steve Dickson wrote:
->>>>
->>>>
->>>> On 09/22/2014 03:26 PM, Simo Sorce wrote:
->>>>> On Mon, 22 Sep 2014 15:20:07 -0400
->>>>> Steve Dickson <steved@redhat.com> wrote:
->>>>>
->>>>>> Added the gssproxy.service to both the Wants= and
->>>>>> Atfers= lines, before the rpc-svcgssd.service. There
->>>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
->>>>>> unit which will stop the rpc.svcgssd daemon from
->>>>>> starting when the gssproxy daemon is already running.
->>>>>>
->>>>>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>>>>> ---
->>>>>>  systemd/nfs-server.service | 5 +++--
->>>>>>  1 file changed, 3 insertions(+), 2 deletions(-)
->>>>>>
->>>>>> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
->>>>>> index 2fa7387..c740fa2 100644
->>>>>> --- a/systemd/nfs-server.service
->>>>>> +++ b/systemd/nfs-server.service
->>>>>> @@ -2,12 +2,13 @@
->>>>>>  Description=NFS server and services
->>>>>>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
->>>>>>  Requires= nfs-mountd.service
->>>>>> -Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service
->>>>>> rpc-svcgssd.service +Wants=rpc-statd.service nfs-idmapd.service 
->>>>>> +Wants=rpc-gssd.service  
->>>>>>  Wants=rpc-statd-notify.service
->>>>>>  
->>>>>>  After= network.target proc-fs-nfsd.mount rpcbind.target
->>>>>> nfs-mountd.service After= nfs-idmapd.service rpc-statd.service
->>>>>> -After= rpc-gssd.service rpc-svcgssd.service
->>>>>> +After= rpc-gssd.service gssproxy.service rpc-svcgssd.service
->>>>>>  Before= rpc-statd-notify.service
->>>>>>  
->>>>>>  Wants=nfs-config.service
->>>>>
->>>>> I think you really need to insure that the modules are loaded before
->>>>> any of the server services are started, perhaps adding a unit file that
->>>>> exec's modprobe and has "Before: gssproxy.service rpc-svcgssd.service"
->>>>> in it ?
->>>> I really don't think its needed... From my testing it appears 
->>>> gssproxy is always being started and rpc.svcgssd is not... 
->>>
->>> Huh.  Well rpc-svcgssd.service has var-lib-nfs-rpc_pipefs.mount as both
->>> "Requires=" and "After=", so rpc-svcgssd.service will never run
->>> without first running var-lib-nfs-rpc_pipefs.mount, which will load
->>> sunrpc.  But I don't see where auth_rpcgss is getting loaded.  And I
->>> don't see what ensures anything happening before gssproxy runs.
->> It happens during the mount on the client and when the server
->> is started. 
+>> I believe the problem stems from the fact that
+>> nfs4_lock_delegation_recall(), unlike normal version of LOCK
+>> nfs4_proc_getlk(), lacks the do { handle_error(do_proc())} while(err)
+>> structure.
 >>
->>>
->>> We want to make sure your testing's not just getting lucky on the
->>> startup order.
->> The reason it working is because rpc.gssd is being started on the server 
->> these days for callbacks and the After= line in rpc-svcgssd.service is being 
->> executed before the ConditionPathExists which cause rpc.svcgssd not to start.
-> 
-> nfs-utils$ grep After systemd/rpc-svcgssd.service 
-> After=var-lib-nfs-rpc_pipefs.mount
-> After=gssproxy.service
-> After=nfs-config.service
-> 
-> There doesn't seem to be an After= line referring to rpc.gssd.
-No, why should there be? There is After= line referring to rpc.gssd
-in nfs-server.service
-
-grep After systemd/nfs-server.service 
-After= network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.service
-After= nfs-idmapd.service rpc-statd.service
-After= rpc-gssd.service rpc-svcgssd.service
-After=nfs-config.service
-
-So when the server starts,rpc.gssd will start and rpc.svcgssd will start
-if gssproxy is not enable and there is a key tab. 
-
-> 
->> So when gssproxy.service does it's "Before=nfs-secure.service nfs-secure-server.service"
->> line everything is loaded before gssproxy start... 
-> 
-> That line only makes gss-proxy start before those other things.
-Right, which will load the sunrpc modules.
-
-> 
->> I'm think gssproxy.service just needs to the put the Wants and After=
->> var-lib-nfs-rpc_pipefs.mount lines, instead of that Before line.. 
-> 
-> That would make sure sunrpc's loaded, but not auth_rpcgss.
-On the client side the mount -o sec=krb5? loads auth_rpcgss module.
-Maybe the loading of nfsd loads the module? But I don't think that
-module has to be loaded for any of the gss daemons (gssd, svcgssd or
-gssproxy) to start successfully...
-
- 
-> 
->>>> Plus, from my understanding...  loading module from a service 
->>>> file is a big no no! People were having problems with
->>>> way back when... 
->>>
->>> Any pointers?  Google's not finding me anything.
->> Search the the Fedora bz's when systemd first came out... 
-> 
-> All I can find is:
-> 
-> 	https://bugzilla.redhat.com/show_bug.cgi?id=699040#c16
-> 
-> 	Btw afaik modules should be loaded via autoloading based on bus
-> 	information, or via /etc/modules-load.d/*.conf. and unloading a
-> 	module from the kernel should not be done except for debugging
-> 	purposes so loading all these modules is it really necessary?
-> 
-> Which I agree with--modules should normally load on demand when we need
-> them, and we should have an explanation for exceptions.
-Yes, this was the conversation I was referring to.. Thank you 
-for digging it out.. 
-
-> 
-> But here we have a pretty reasonable explanation (we need to know
-> on startup whether a certain module has a certain feature, and we have
-> to modprobe to do that).  I don't see any blanket prohibition against
-> loading modules.
-Lets talk with the systemd people to see what they say...
-
-steved.
-
-> 
-> OK, and in 702707 there's a request for support of the monolithic kernel
-> case, but that's easy, we just allow the modprobe to fail in that case.
-> 
-> --b.
-> 
+>> I believe the problem should be fixed by something like the following:
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 6ca0c8e..78d088c 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -5936,11 +5936,12 @@ int nfs4_lock_delegation_recall(struct
+>> file_lock *fl, struct nfs4_state *state,
+>>         struct nfs_server *server = NFS_SERVER(state->inode);
+>>         int err;
+>>
+>> -       err = nfs4_set_lock_state(state, fl);
+>> -       if (err != 0)
+>> -               return err;
+>> -       err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
+>> -       return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>> +       do {
+>> +               err = nfs4_handle_delegation_recall_error(server, state,
+>> +                       stateid, _nfs4_do_setlk(state, F_SETLK, fl,
+>> +                               NFS_LOCK_NEW));
+>> +       } while (err == -EAGAIN);
+>> +       return err;
+>>  }
+>>
+>>  struct nfs_release_lockowner_data {
+>>
+>> Is this an acceptable solution?
+>>
+>
+> In the current code, I expect the EAGAIN from
+> nfs4_handle_delegation_recall_error() to be propagated back to
+> nfs_end_delegation_return(). It should then result in the client
+> waiting for state recovery to complete followed by a loop back to
+> nfs_delegation_claim_opens().
+> Could you explain why that isn't working for your case?
+>
+> --
+> Trond Myklebust
+>
+> Linux NFS client maintainer, PrimaryData
+>
+> trond.myklebust@primarydata.com
