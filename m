@@ -1,77 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40160 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755831AbaISMvu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Sep 2014 08:51:50 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8JCpnia022439
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 08:51:49 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Simo Sorce <simo@redhat.com>
-Subject: [PATCH 2/2] svcgssd: Remove rules from the Makefile.am
-Date: Fri, 19 Sep 2014 08:51:43 -0400
-Message-Id: <1411131103-17254-3-git-send-email-steved@redhat.com>
-In-Reply-To: <1411131103-17254-1-git-send-email-steved@redhat.com>
-References: <1411131103-17254-1-git-send-email-steved@redhat.com>
+Received: from mail-vc0-f176.google.com ([209.85.220.176]:39390 "EHLO
+	mail-vc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751012AbaIXWYG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 18:24:06 -0400
+Received: by mail-vc0-f176.google.com with SMTP id la4so5396699vcb.7
+        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 15:24:05 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1411596688-21347-1-git-send-email-kolga@netapp.com>
+References: <1411596688-21347-1-git-send-email-kolga@netapp.com>
+Date: Wed, 24 Sep 2014 18:24:05 -0400
+Message-ID: <CAHQdGtRtm_9BSjegZfsD+1vrJ1m8jc8xvzfmwKW_=2TEjX+4mg@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Fixing lease renewal
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The managing of GSSAPI credentials is now done
-with the gssproxy(8) daemon so svcgssd no longer
-needs to be build or installed.
+On Wed, Sep 24, 2014 at 6:11 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
+> Commit c9fdeb28 removed a 'continue' after checking if the lease needs
+> to be renewed. However, if client hasn't moved, the code falls down to
+> starting reboot recovery erroneously (ie., sends open reclaim and gets
+> back stale_clientid error) before recovering from getting stale_clientid
+> on the renew operation.
+>
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  fs/nfs/nfs4state.c | 1 +
+>  1 file changed, 1 insertion(+)
+>
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index 22fe351..6678769 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -2345,6 +2345,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
+>                         status = nfs4_check_lease(clp);
+>                         if (status < 0)
+>                                 goto out_error;
+> +                       continue;
+>                 }
+>
+>                 if (test_and_clear_bit(NFS4CLNT_MOVED, &clp->cl_state)) {
+> --
+> 1.8.5.2 (Apple Git-48)
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/gssd/Makefile.am | 25 ++-----------------------
- 1 file changed, 2 insertions(+), 23 deletions(-)
+Thanks Olga! Will apply.
 
-diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
-index af59791..716dd0b 100644
---- a/utils/gssd/Makefile.am
-+++ b/utils/gssd/Makefile.am
-@@ -1,10 +1,10 @@
- ## Process this file with automake to produce Makefile.in
- 
--man8_MANS	= gssd.man svcgssd.man
-+man8_MANS	= gssd.man
- 
- RPCPREFIX	= rpc.
- KPREFIX		= @kprefix@
--sbin_PREFIXED	= gssd svcgssd
-+sbin_PREFIXED	= gssd
- sbin_PROGRAMS	= $(sbin_PREFIXED)
- 
- EXTRA_DIST = \
-@@ -45,27 +45,6 @@ gssd_LDFLAGS = $(KRBLDFLAGS) $(LIBTIRPC)
- gssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
- 	      $(RPCSECGSS_CFLAGS) $(KRBCFLAGS) $(GSSAPI_CFLAGS)
- 
--svcgssd_SOURCES = \
--	$(COMMON_SRCS) \
--	svcgssd.c \
--	svcgssd_main_loop.c \
--	svcgssd_mech2file.c \
--	svcgssd_proc.c \
--	svcgssd_krb5.c \
--	\
--	svcgssd_krb5.h \
--	svcgssd.h
--
--svcgssd_LDADD = \
--	../../support/nfs/libnfs.a \
--	$(RPCSECGSS_LIBS) $(LIBNFSIDMAP) \
--	$(KRBLIBS) $(GSSAPI_LIBS) $(LIBTIRPC)
--
--svcgssd_LDFLAGS = $(KRBLDFLAGS)
--
--svcgssd_CFLAGS = $(AM_CFLAGS) $(CFLAGS) \
--		 $(RPCSECGSS_CFLAGS) $(KRBCFLAGS) $(GSSAPI_CFLAGS)
--
- MAINTAINERCLEANFILES = Makefile.in
- 
- #######################################################################
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
