@@ -1,117 +1,238 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f173.google.com ([209.85.220.173]:57599 "EHLO
-	mail-vc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755286AbaIWQfy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 12:35:54 -0400
-Received: by mail-vc0-f173.google.com with SMTP id le20so5624276vcb.18
-        for <linux-nfs@vger.kernel.org>; Tue, 23 Sep 2014 09:35:53 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1411486536-23401-2-git-send-email-andros@netapp.com>
-References: <1411486536-23401-1-git-send-email-andros@netapp.com>
-	<1411486536-23401-2-git-send-email-andros@netapp.com>
-Date: Tue, 23 Sep 2014 12:35:53 -0400
-Message-ID: <CAHQdGtSt+6-Gf6NmSY1tHUzdLvFbM=PSCiFXvAx63tO5usfMew@mail.gmail.com>
-Subject: Re: [PATCH Version 2 1/1] NFSv4.1: Fix an NFSv4.1 state renewal regression
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: William Andros Adamson <andros@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from prod-mail-xrelay02.akamai.com ([72.246.2.14]:43179 "EHLO
+	prod-mail-xrelay02.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753106AbaIXSIB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 14:08:01 -0400
+To: trond.myklebust@primarydata.com
+Cc: bfields@fieldses.org, Anna.Schumaker@netapp.com, linux-nfs@vger.kernel.org
+Message-Id: <99b680ad6d5b87583f01ef68c4690c9d5bb573e9.1411580799.git.jbaron@akamai.com>
+In-Reply-To: <cover.1411580799.git.jbaron@akamai.com>
+References: <cover.1411580799.git.jbaron@akamai.com>
+From: Jason Baron <jbaron@akamai.com>
+Subject: [PATCH v2 1/2] rpc: return sent and err from xs_sendpages()
+Date: Wed, 24 Sep 2014 18:08:00 +0000 (GMT)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Andy,
+If an error is returned after the first bits of a packet have already been
+successfully queued, xs_sendpages() will return a positive 'int' value
+indicating success. Callers seem to treat this as -EAGAIN.
 
-On Tue, Sep 23, 2014 at 11:35 AM,  <andros@netapp.com> wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> Commit 2f60ea6b8ced ("NFSv4: The NFSv4.0 client must send RENEW calls if it holds a delegation") set the NFS4_RENEW_TIMEOUT
-> flag in nfs4_renew_state, and does not put an nfs41_proc_async_sequence call,
-> the NFSv4.1 lease renewal heartbeat call, on the wire to renew the NFSv4.1
-> state if the flag was not set.
->
-> The NFS4_RENEW_TIMEOUT flag is set when "now" is after the last renewal
-> (cl_last_renewal) plus the lease time divided by 3. This is arbitrary and
-> sometimes does the following:
->
-> In normal operation, the only way a future state renewal call is put on the
-> wire is via a call to nfs4_schedule_state_renewal, which schedules a
-> nfs4_renew_state workqueue task. nfs4_renew_state determines if the
-> NFS4_RENEW_TIMEOUT should be set, and the calls nfs41_proc_async_sequence,
-> which only gets sent if the NFS4_RENEW_TIMEOUT flag is set.
-> Then the nfs41_proc_async_sequence rpc_release function schedules
-> another state remewal via nfs4_schedule_state_renewal.
->
-> Without this change we can get into a state where an application stops
-> accessing the NFSv4.1 share, state renewal calls stop due to the
-> NFS4_RENEW_TIMEOUT flag _not_ being set. Note that the only way to recover
-> from this situation is with a clientid re-establishment, once the application
-> resumes and the server has timed out the lease and so returns
-> NFS4ERR_BAD_SESSION.
->
-> An example application:
-> open, lock, write a file.
->
-> sleep for 6 * lease (could be less)
->
-> ulock, close.
->
-> In the above example with NFSv4.1 delegations enabled, without this change,
-> there are no OP_SEQUENCE state renewal calls during the sleep, and the
-> clientid is recovered due to lease expiration on the close.
->
-> This issue does not occur with NFSv4.1 delegations disabled, nor with
-> NFSv4.0, with or without delegations enabled.
->
-> Commit 2f60ea6b8ced ("NFSv4: The NFSv4.0 client must send RENEW calls if it holds a delegation") states:
->
->     RFC3530 states that if the client holds a delegation, then it is obliged
->     to continue to send RENEW calls once every lease period in order to allow
->     the server to return NFS4ERR_CB_PATH_DOWN if the callback path is
->     unreachable.
->
->     This is not required for NFSv4.1, since the server can at any time set
->     the SEQ4_STATUS_CB_PATH_DOWN_SESSION in any SEQUENCE operation.
->
-> The problem is, in the above example, there is not SEQUENCE operation sent.
->
-> AFAICS the purpose of "NFSv4: The NFSv4.0 client must send RENEW calls if it holds a delegation" is to not send a lease renewal when NFSv4.1 delegations are
-> enabled, perhaps we should revert that commit.
->
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c | 2 --
->  1 file changed, 2 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 288be08..efe802a 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7348,8 +7348,6 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
->         struct rpc_task *task;
->         int ret = 0;
->
-> -       if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
-> -               return 0;
->         task = _nfs41_proc_sequence(clp, cred, false);
->         if (IS_ERR(task))
->                 ret = PTR_ERR(task);
-> --
-> 1.8.3.1
+However, there are cases where its not a question of waiting for the write
+queue to drain. For example, when there is an iptables rule dropping packets
+to the destination, the lower level code can return -EPERM only after parts
+of the packet have been successfully queued. In this case, we can end up
+continuously retrying resulting in a kernel softlockup.
 
-The problem here isn't that we're failing to send a SEQUENCE in a
-situation where we're not required to do so by the spec. The problem
-is that we're failing to rearm renewd when we skip that SEQUENCE call.
+This patch is intended to make no changes in behavior but is in preparation for
+subsequent patches that can make decisions based on both on the number of bytes
+sent by xs_sendpages() and any errors that may have be returned.
 
-Instead of removing them, could you rather please modify the above
-lines to return an error, and then have nfs4_renew_state() respond by
-calling nfs4_schedule_state_renewal(), instead of just skipping it as
-we do today. In fact, AFAICS we want to do the same when the renew
-call fails due to ENOMEM (but not when it returns EIO, since that
-signals that the nfs_client is in the process of shutting down).
+Signed-off-by: Jason Baron <jbaron@akamai.com>
+---
+ net/sunrpc/xprtsock.c | 81 ++++++++++++++++++++++++++-------------------------
+ 1 file changed, 42 insertions(+), 39 deletions(-)
 
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 43cd89e..348c786 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -399,13 +399,13 @@ static int xs_send_kvec(struct socket *sock, struct sockaddr *addr, int addrlen,
+ 	return kernel_sendmsg(sock, &msg, NULL, 0, 0);
+ }
+ 
+-static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more, bool zerocopy)
++static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more, bool zerocopy, int *sent_p)
+ {
+ 	ssize_t (*do_sendpage)(struct socket *sock, struct page *page,
+ 			int offset, size_t size, int flags);
+ 	struct page **ppage;
+ 	unsigned int remainder;
+-	int err, sent = 0;
++	int err;
+ 
+ 	remainder = xdr->page_len - base;
+ 	base += xdr->page_base;
+@@ -424,15 +424,15 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+ 		err = do_sendpage(sock, *ppage, base, len, flags);
+ 		if (remainder == 0 || err != len)
+ 			break;
+-		sent += err;
++		*sent_p += err;
+ 		ppage++;
+ 		base = 0;
+ 	}
+-	if (sent == 0)
+-		return err;
+-	if (err > 0)
+-		sent += err;
+-	return sent;
++	if (err > 0) {
++		*sent_p += err;
++		err = 0;
++	}
++	return err;
+ }
+ 
+ /**
+@@ -443,12 +443,14 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+  * @xdr: buffer containing this request
+  * @base: starting position in the buffer
+  * @zerocopy: true if it is safe to use sendpage()
++ * @sent_p: return the total number of bytes successfully queued for sending
+  *
+  */
+-static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base, bool zerocopy)
++static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base, bool zerocopy, int *sent_p)
+ {
+ 	unsigned int remainder = xdr->len - base;
+-	int err, sent = 0;
++	int err = 0;
++	int sent = 0;
+ 
+ 	if (unlikely(!sock))
+ 		return -ENOTSOCK;
+@@ -465,7 +467,7 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
+ 		err = xs_send_kvec(sock, addr, addrlen, &xdr->head[0], base, remainder != 0);
+ 		if (remainder == 0 || err != len)
+ 			goto out;
+-		sent += err;
++		*sent_p += err;
+ 		base = 0;
+ 	} else
+ 		base -= xdr->head[0].iov_len;
+@@ -473,23 +475,23 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
+ 	if (base < xdr->page_len) {
+ 		unsigned int len = xdr->page_len - base;
+ 		remainder -= len;
+-		err = xs_send_pagedata(sock, xdr, base, remainder != 0, zerocopy);
+-		if (remainder == 0 || err != len)
++		err = xs_send_pagedata(sock, xdr, base, remainder != 0, zerocopy, &sent);
++		*sent_p += sent;
++		if (remainder == 0 || sent != len)
+ 			goto out;
+-		sent += err;
+ 		base = 0;
+ 	} else
+ 		base -= xdr->page_len;
+ 
+ 	if (base >= xdr->tail[0].iov_len)
+-		return sent;
++		return 0;
+ 	err = xs_send_kvec(sock, NULL, 0, &xdr->tail[0], base, 0);
+ out:
+-	if (sent == 0)
+-		return err;
+-	if (err > 0)
+-		sent += err;
+-	return sent;
++	if (err > 0) {
++		*sent_p += err;
++		err = 0;
++	}
++	return err;
+ }
+ 
+ static void xs_nospace_callback(struct rpc_task *task)
+@@ -573,19 +575,20 @@ static int xs_local_send_request(struct rpc_task *task)
+ 				container_of(xprt, struct sock_xprt, xprt);
+ 	struct xdr_buf *xdr = &req->rq_snd_buf;
+ 	int status;
++	int sent = 0;
+ 
+ 	xs_encode_stream_record_marker(&req->rq_snd_buf);
+ 
+ 	xs_pktdump("packet data:",
+ 			req->rq_svec->iov_base, req->rq_svec->iov_len);
+ 
+-	status = xs_sendpages(transport->sock, NULL, 0,
+-						xdr, req->rq_bytes_sent, true);
++	status = xs_sendpages(transport->sock, NULL, 0, xdr, req->rq_bytes_sent,
++			      true, &sent);
+ 	dprintk("RPC:       %s(%u) = %d\n",
+ 			__func__, xdr->len - req->rq_bytes_sent, status);
+-	if (likely(status >= 0)) {
+-		req->rq_bytes_sent += status;
+-		req->rq_xmit_bytes_sent += status;
++	if (likely(sent > 0) || status == 0) {
++		req->rq_bytes_sent += sent;
++		req->rq_xmit_bytes_sent += sent;
+ 		if (likely(req->rq_bytes_sent >= req->rq_slen)) {
+ 			req->rq_bytes_sent = 0;
+ 			return 0;
+@@ -626,6 +629,7 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	struct xdr_buf *xdr = &req->rq_snd_buf;
++	int sent = 0;
+ 	int status;
+ 
+ 	xs_pktdump("packet data:",
+@@ -634,17 +638,15 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 
+ 	if (!xprt_bound(xprt))
+ 		return -ENOTCONN;
+-	status = xs_sendpages(transport->sock,
+-			      xs_addr(xprt),
+-			      xprt->addrlen, xdr,
+-			      req->rq_bytes_sent, true);
++	status = xs_sendpages(transport->sock, xs_addr(xprt), xprt->addrlen,
++			      xdr, req->rq_bytes_sent, true, &sent);
+ 
+ 	dprintk("RPC:       xs_udp_send_request(%u) = %d\n",
+ 			xdr->len - req->rq_bytes_sent, status);
+ 
+-	if (status >= 0) {
+-		req->rq_xmit_bytes_sent += status;
+-		if (status >= req->rq_slen)
++	if (sent > 0 || status == 0) {
++		req->rq_xmit_bytes_sent += sent;
++		if (sent >= req->rq_slen)
+ 			return 0;
+ 		/* Still some bytes left; set up for a retry later. */
+ 		status = -EAGAIN;
+@@ -713,6 +715,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	struct xdr_buf *xdr = &req->rq_snd_buf;
+ 	bool zerocopy = true;
+ 	int status;
++	int sent;
+ 
+ 	xs_encode_stream_record_marker(&req->rq_snd_buf);
+ 
+@@ -730,26 +733,26 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	 * to cope with writespace callbacks arriving _after_ we have
+ 	 * called sendmsg(). */
+ 	while (1) {
+-		status = xs_sendpages(transport->sock,
+-					NULL, 0, xdr, req->rq_bytes_sent,
+-					zerocopy);
++		sent = 0;
++		status = xs_sendpages(transport->sock, NULL, 0, xdr,
++				      req->rq_bytes_sent, zerocopy, &sent);
+ 
+ 		dprintk("RPC:       xs_tcp_send_request(%u) = %d\n",
+ 				xdr->len - req->rq_bytes_sent, status);
+ 
+-		if (unlikely(status < 0))
++		if (unlikely(sent == 0 && status < 0))
+ 			break;
+ 
+ 		/* If we've sent the entire packet, immediately
+ 		 * reset the count of bytes sent. */
+-		req->rq_bytes_sent += status;
+-		req->rq_xmit_bytes_sent += status;
++		req->rq_bytes_sent += sent;
++		req->rq_xmit_bytes_sent += sent;
+ 		if (likely(req->rq_bytes_sent >= req->rq_slen)) {
+ 			req->rq_bytes_sent = 0;
+ 			return 0;
+ 		}
+ 
+-		if (status != 0)
++		if (sent != 0)
+ 			continue;
+ 		status = -EAGAIN;
+ 		break;
 -- 
-Trond Myklebust
+1.8.2.rc2
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
