@@ -1,39 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f170.google.com ([209.85.220.170]:58452 "EHLO
-	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752009AbaIIVBj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 17:01:39 -0400
-Received: by mail-vc0-f170.google.com with SMTP id hy4so2991477vcb.15
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 14:01:39 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <540F448D.4020600@RedHat.com>
-References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
- <20140903070048.56201d1d@tlielax.poochiereds.net> <70D58138-CB00-433C-8BF8-01584E6460F0@oracle.com>
- <CA+Tkd6WV9K4oZPVGkqL_y6OcD9Pmj6x0roo9n839QD8RXDsCwA@mail.gmail.com>
- <CA+Tkd6WYkkVbY2YsmRNHB4+9AFg5UjC1xoycLTZQOYrtFCT_2w@mail.gmail.com>
- <CAHQdGtRpD03KHJyu1MtxA=21pu4z_YAG4XA-8Bu+t4xeUefaNQ@mail.gmail.com>
- <CA+Tkd6WBuMkCmsjUpjrAR38Ri6QK_B4BhgNr0gzHBTG1ytjO6Q@mail.gmail.com>
- <CA+Tkd6UjfJmjG0WE1F2bsB068rXkEUHhOq6S+F5e=OVA_wxeMw@mail.gmail.com> <540F448D.4020600@RedHat.com>
-From: Chris Perl <chris.perl@gmail.com>
-Date: Tue, 9 Sep 2014 17:01:18 -0400
-Message-ID: <CA+Tkd6WHP_a0VEhJwTZELs9pNhp1vdVayuuNywhLt8F-0G2+kQ@mail.gmail.com>
-Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount failures
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:56466 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751474AbaIYUz4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 16:55:56 -0400
+Received: by mail-ig0-f170.google.com with SMTP id a13so9088376igq.1
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Sep 2014 13:55:55 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv3: Fix missing includes of nfs3_fs.h
+Date: Thu, 25 Sep 2014 16:55:44 -0400
+Message-Id: <1411678544-47748-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> I have not seen anything....
+Silence a few warnings about missing symbols that are due to missing
+includes of nfs3_fs.h.
 
-I didn't send the patches in reply to this thread, so perhaps that
-confused matters.  Trond already commented on the kernel one.
+Fixes: 00a36a1090350 (NFS: Move v3 declarations out of internal.h)
+Fixes: cb8c20fa53ec2 (NFS: Move NFS v3 acl functions to nfs3_fs.h)
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs3acl.c    | 1 +
+ fs/nfs/nfs3client.c | 1 +
+ 2 files changed, 2 insertions(+)
 
-The two patches are referenced below via gmane.org (not sure if there
-is a better way to direct you to them):
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 24c6898159cc..658e586ca438 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -7,6 +7,7 @@
+ #include <linux/nfsacl.h>
+ 
+ #include "internal.h"
++#include "nfs3_fs.h"
+ 
+ #define NFSDBG_FACILITY	NFSDBG_PROC
+ 
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index b3fc65ef39ca..8c1b437c5403 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -1,6 +1,7 @@
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_mount.h>
+ #include "internal.h"
++#include "nfs3_fs.h"
+ 
+ #ifdef CONFIG_NFS_V3_ACL
+ static struct rpc_stat		nfsacl_rpcstat = { &nfsacl_program };
+-- 
+1.9.3
 
-[1] http://thread.gmane.org/gmane.linux.nfs/66173 (sunrpc module patch)
-[2] http://thread.gmane.org/gmane.linux.nfs/66175 (mount.nfs patch)
