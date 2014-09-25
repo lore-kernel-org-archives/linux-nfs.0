@@ -1,52 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:58954 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752658AbaINQnb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 14 Sep 2014 12:43:31 -0400
-Date: Sun, 14 Sep 2014 18:43:28 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Boaz Harrosh <boaz@plexistor.com>
-Cc: Peng Tao <tao.peng@primarydata.com>, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH v2] nfs41: change PNFS_LAYOUTRET_ON_SETATTR to only
-	return on truncation to smaller size
-Message-ID: <20140914164328.GA13467@lst.de>
-References: <1410491050-12858-1-git-send-email-tao.peng@primarydata.com> <541572BE.6000504@plexistor.com>
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:42754 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751354AbaIYFBI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 01:01:08 -0400
+Date: Thu, 25 Sep 2014 07:01:03 +0200
+From: Ingo Molnar <mingo@kernel.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, Ingo Molnar <mingo@redhat.com>,
+        linux-fsdevel@vger.kernel.org,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Peter Zijlstra <peterz@infradead.org>
+Subject: Re: [PATCH 1/5 - resend] SCHED: add some "wait..on_bit...timeout()"
+ interfaces.
+Message-ID: <20140925050103.GB20431@gmail.com>
+References: <20140924012422.4838.29188.stgit@notabene.brown>
+ <20140924012832.4838.59410.stgit@notabene.brown>
+ <20140924070418.GA990@gmail.com>
+ <20140925135519.3ae1fa60@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <541572BE.6000504@plexistor.com>
+In-Reply-To: <20140925135519.3ae1fa60@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Sep 14, 2014 at 01:49:34PM +0300, Boaz Harrosh wrote:
-> This is in violation of the pnf-objects draft.
 
-Ithought that's an RFC by now? :)
+* NeilBrown <neilb@suse.de> wrote:
 
-> We are obliged
-> on chown to return layouts because of how the CAPs work, they
-> have an embedded CAPs version which might increment when chown
-> is changed, and also the credential keys. Which means that using
-> the old layout will return an E_ACCESS from the OSD.
-
-This is a good enough argument to just split the flags into one
-for chown and one for truncate.  Can you confirm that any other
-setattr but a truncate to a smaller size or chown is fine with
-your interpretation of RFC5664?
-
-> But..
 > 
-> I will agree with this patch. The above is true in an OSD
-> protocol higher then NO_SEC. But none of the current implementation
-> support anything other then NO_SEC.
+> In commit c1221321b7c25b53204447cff9949a6d5a7ddddc
+>    sched: Allow wait_on_bit_action() functions to support a timeout
 > 
-> Second also with none-NO_SEC once a client does a chown the server
-> needs to RECALL all other clients, so as Peng says above the Server
-> should/can also recall from us.
+> I suggested that a "wait_on_bit_timeout()" interface would not meet my
+> need.  This isn't true - I was just over-engineering.
 > 
-> But some good sole needs to make an errata at the RFC draft so to
-> explain.
+> Including a 'private' field in wait_bit_key instead of a focused
+> "timeout" field was just premature generalization.  If some other
+> use is ever found, it can be generalized or added later.
+> 
+> So this patch renames "private" to "timeout" with a meaning "stop
+> waiting when "jiffies" reaches or passes "timeout",
+> and adds two of the many possible wait..bit..timeout() interfaces:
+> 
+> wait_on_page_bit_killable_timeout(), which is the one I want to use,
+> and out_of_line_wait_on_bit_timeout() which is a reasonably general
+> example.  Others can be added as needed.
+> 
+> Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> ---
+> This time with EXPORT_SYMBOL_GPL.
 
-I'd rather not violate the existing RFC unless we have a good reason for it
-and an errata out.  Having a flag to return on chown for the object layout
-seems like the easier way to go forward.
+Looks good to me, thanks!
+
+Acked-by: Ingo Molnar <mingo@kernel.org>
+
+	Ingo
