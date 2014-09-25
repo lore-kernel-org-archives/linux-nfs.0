@@ -1,41 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from 170.107.broadband6.iol.cz ([88.101.107.170]:41621 "EHLO
-	unused-4-157.brq.redhat.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754575AbaIWUTK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 23 Sep 2014 16:19:10 -0400
-Subject: [PATCH] mountd.man: mountd tcp wrappers support only NFS v2/v3
-From: Jan Chaloupka <jchaloup@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: jchaloup@redhat.com, steved@redhat.com
-Date: Tue, 23 Sep 2014 09:07:33 +0200
-Message-ID: <20140923070733.25555.18292.stgit@unused-4-157.brq.redhat.com>
+Received: from mail1.g1.pair.com ([66.39.3.162]:34886 "EHLO mail1.g1.pair.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753386AbaIYQ1o convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 12:27:44 -0400
+Date: Thu, 25 Sep 2014 18:30:34 +0200
+From: Emmanuel Florac <eflorac@intellique.com>
+To: MJ Jenkins <mack.jenkins@eas.gatech.edu>
+Cc: <linux-nfs@vger.kernel.org>
+Subject: Re: NFS Share To OS X
+Message-ID: <20140925183034.432731eb@harpe.intellique.com>
+In-Reply-To: <5424156C.8080602@eas.gatech.edu>
+References: <5424156C.8080602@eas.gatech.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-mountd tcp wrappers support only NFSv2 and NFSv3, not NFSv4.
+Le Thu, 25 Sep 2014 09:15:24 -0400
+MJ Jenkins <mack.jenkins@eas.gatech.edu> écrivait:
 
-https://bugzilla.redhat.com/show_bug.cgi?id=1116283
+> The problem comes in when the user on the Mac writes files to the NFS 
+> share.  On the RHEL side the files are owned by user root and group 
+> nfsnobody.  Has anyone else run into this issue?  I'm not sure if the 
+> issue is how I am exporting the share to the Mac, or how I have the 
+> share mounted on the Mac.
 
-This patch updates the man page
+Without the content of your /etc/exports, it's impossible to know
+what's happening. Mac behave like regular NFS clients. Maybe you have
+"all_squash,anonuid=0,anongid=5" in your export parameter, maybe it's
+something else entirely.
 
-Signed-off-by: Jan Chaloupka <jchaloup@redhat.com>
----
- utils/mountd/mountd.man |    2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
-index a8828ae..1aae75b 100644
---- a/utils/mountd/mountd.man
-+++ b/utils/mountd/mountd.man
-@@ -217,6 +217,8 @@ listeners using the
- .B tcp_wrapper
- library or
- .BR iptables (8).
-+Tcp wrappers are only in effect with NFS version 2 and 3 mounts.
-+They do not work with NFS version 4.
- .PP
- Note that the
- .B tcp_wrapper
-
+-- 
+------------------------------------------------------------------------
+Emmanuel Florac     |   Direction technique
+                    |   Intellique
+                    |	<eflorac@intellique.com>
+                    |   +33 1 78 94 84 02
+------------------------------------------------------------------------
