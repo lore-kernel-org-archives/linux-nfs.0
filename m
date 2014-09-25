@@ -1,215 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:2209 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755368AbaIZR6d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 26 Sep 2014 13:58:33 -0400
-From: <Anna.Schumaker@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 2/2] NFSD: Implement SEEK
-Date: Fri, 26 Sep 2014 13:58:27 -0400
-Message-ID: <1411754307-18457-3-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1411754307-18457-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1411754307-18457-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:55492 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750821AbaIYOPs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 10:15:48 -0400
+Received: by mail-ig0-f172.google.com with SMTP id a13so8533497igq.11
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Sep 2014 07:15:47 -0700 (PDT)
+Message-ID: <1411654543.3044.24.camel@leira.trondhjem.org>
+Subject: Re: NMI/soft lockup in nfs_delegation_need_return()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: David Howells <dhowells@redhat.com>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Date: Thu, 25 Sep 2014 10:15:43 -0400
+In-Reply-To: <28059.1411650278@warthog.procyon.org.uk>
+References: <28059.1411650278@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Hi David,
 
-This patch adds server support for the NFS v4.2 operation SEEK, which
-returns the position of the next hole or data segment in a file.
+On Thu, 2014-09-25 at 14:04 +0100, David Howells wrote:
+> [Let me put a subject in this time]
+> 
+> Hi Trond,
+> 
+> I'm seeing the soft lockup below occasionally.  I'm using the head of Linus's
+> master branch (005f800508eb391480f463dad3d54e5b4ec67d57).  Plus a pair of
+> cachefiles patches that should have no bearing on the matter.  I'm seeing the
+> lockup both with and without a cache.  I did the following:
+> 
+> 	insmod /tmp/sunrpc.ko
+> 	mount -t rpc_pipefs sunrpc /var/lib/nfs/rpc_pipefs
+> 	insmod /tmp/lockd.ko
+> 	insmod /tmp/nfs_acl.ko
+> 	insmod /tmp/auth_rpcgss.ko
+> 	insmod /tmp/fscache.ko
+> 	insmod /tmp/nfs.ko
+> 	insmod /tmp/nfsv2.ko
+> 	insmod /tmp/nfsv3.ko
+> 	insmod /tmp/nfsv4.ko
+> 	mount warthog:/warthog /warthog -o async,intr
+> 	tar cf - /warthog/fs/linux-2.6-fscache | cat >/dev/null
+> 
+> where the directory being tar'd is a kernel tree with a couple of builds in
+> there plus a load of git data (about 3GB worth).
+> 
+> The RIP points here:
+> 
+>    0x0000000000010e81 <+141>:   lea    0x48(%r12),%rdx
+>    0x0000000000010e86 <+146>:   lock btrl $0x1,0x48(%r12)
+>    0x0000000000010e8e <+154>:   jb     0x10e95 <nfs_client_return_marked_delegations+161>
+> 
+> and it appears to be the first test_and_clear_bit() in
+> nfs_delegation_need_return() which seems to have been inlined.
+> 
+> I got at least three barks from the watchdog the last time I ran it before I
+> killed it.
+> 
+> David
+> ---
+> NMI watchdog: BUG: soft lockup - CPU#1 stuck for 22s! [90.155.74.18-ma:2776]
+> Modules linked in: nfsv4 nfsv3 nfsv2 nfs fscache auth_rpcgss nfs_acl lockd sunrpc
+> irq event stamp: 134630
+> hardirqs last  enabled at (134629): [<ffffffff81088a54>] __call_rcu+0x203/0x212
+> hardirqs last disabled at (134630): [<ffffffff8151133a>] apic_timer_interrupt+0x6a/0x80
+> softirqs last  enabled at (134618): [<ffffffff8103de29>] __do_softirq+0x243/0x305
+> softirqs last disabled at (134613): [<ffffffff8103e106>] irq_exit+0x61/0xda
+> CPU: 1 PID: 2776 Comm: 90.155.74.18-ma Tainted: G        W      3.17.0-rc6-fsdevel+ #794
+> Hardware name:                  /DG965RY, BIOS MQ96510J.86A.0816.2006.0716.2308 07/16/2006
+> task: ffff880012ab6250 ti: ffff8800129e8000 task.ti: ffff8800129e8000
+> RIP: 0010:[<ffffffffa00fde8e>]  [<ffffffffa00fde8e>] nfs_client_return_marked_delegations+0x9a/0x1aa [nfsv4]
+> RSP: 0018:ffff8800129ebde8  EFLAGS: 00000202
+> RAX: ffff880020bfd4c0 RBX: ffff8800129ebdd0 RCX: 0000000000000000
+> RDX: ffff880020bfd508 RSI: ffff880012ab6250 RDI: ffff880012ab6250
+> RBP: ffff8800129ebe28 R08: 0000000000000000 R09: 0000000000000000
+> R10: ffff8800129ebd78 R11: 0000000000000000 R12: 0000000000000000
+> R13: 0000000000000000 R14: ffffffff81a43340 R15: ffff8800129ebd78
+> FS:  0000000000000000(0000) GS:ffff88003db00000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> CR2: 0000000000a62418 CR3: 00000000060f1000 CR4: 00000000000007e0
+> Stack:
+>  ffff8800065e58c8 ffff88000610f7f0 ffff880020bfd4c0 ffff8800065e5800
+>  ffff8800065e5800 ffff8800065e5930 0000000000000000 0000000000000000
+>  ffff8800129ebe68 ffffffffa00fc180 000000000000000b ffff8800062f8e80
+> Call Trace:
+>  [<ffffffffa00fc180>] nfs4_run_state_manager+0x614/0x619 [nfsv4]
+>  [<ffffffffa00fbb6c>] ? nfs4_do_reclaim+0x527/0x527 [nfsv4]
+>  [<ffffffff81053a97>] kthread+0xfa/0x102
+>  [<ffffffff8105399d>] ? kthread_create_on_node+0x1ca/0x1ca
+>  [<ffffffff8151036c>] ret_from_fork+0x7c/0xb0
+>  [<ffffffff8105399d>] ? kthread_create_on_node+0x1ca/0x1ca
+> Code: 00 48 89 45 d0 4c 8b 65 d0 48 8d 83 f0 07 00 00 48 89 45 c8 4c 3b 65 c8 0f 84 d7 00 00 00 49 8d 54 24 48 f0 41 0f ba 74 24 48 01 <72> 05 45 31 f6 eb 03 41 b6 01 f0 0f ba 32 02 72 02 eb 36 45 84 
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfsd/nfs4proc.c   | 49 +++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c    | 36 ++++++++++++++++++++++++++++++++++--
- fs/nfsd/xdr4.h       | 14 ++++++++++++++
- include/linux/nfs4.h |  5 +++++
- 4 files changed, 102 insertions(+), 2 deletions(-)
+The 22s hang above appears to occur in a timer interrupt. Could that be
+triggering the Oops by delaying the state manager thread for long enough
+that the delegation is getting freed?
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 5e0dc52..cdeb3cf 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1013,6 +1013,49 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	return status;
- }
- 
-+static __be32
-+nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		struct nfsd4_seek *seek)
-+{
-+	int whence;
-+	__be32 status;
-+	struct file *file;
-+
-+	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
-+					    &seek->seek_stateid,
-+					    RD_STATE, &file);
-+	if (status) {
-+		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
-+		return status;
-+	}
-+
-+	switch (seek->seek_whence) {
-+	case NFS4_CONTENT_DATA:
-+		whence = SEEK_DATA;
-+		break;
-+	case NFS4_CONTENT_HOLE:
-+		whence = SEEK_HOLE;
-+		break;
-+	default:
-+		status = nfserr_union_notsupp;
-+		goto out;
-+	}
-+
-+	/*
-+	 * Note:  This call does change file->f_pos, but nothing in NFSD
-+	 *        should ever file->f_pos.
-+	 */
-+	seek->seek_pos = vfs_llseek(file, seek->seek_offset, whence);
-+	if (seek->seek_pos < 0)
-+		status = nfserrno(seek->seek_pos);
-+	else if (seek->seek_pos >= i_size_read(file_inode(file)))
-+		seek->seek_eof = true;
-+
-+out:
-+	fput(file);
-+	return status;
-+}
-+
- /* This routine never returns NFS_OK!  If there are no other errors, it
-  * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
-  * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
-@@ -1881,6 +1924,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
-+
-+	/* NFSv4.2 operations */
-+	[OP_SEEK] = {
-+		.op_func = (nfsd4op_func)nfsd4_seek,
-+		.op_name = "OP_SEEK",
-+	},
- };
- 
- int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 94dde7b..d20e0a5 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1521,6 +1521,22 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
- }
- 
- static __be32
-+nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
-+{
-+	DECODE_HEAD;
-+
-+	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
-+	if (status)
-+		return status;
-+
-+	READ_BUF(8 + 4);
-+	p = xdr_decode_hyper(p, &seek->seek_offset);
-+	seek->seek_whence = be32_to_cpup(p);
-+
-+	DECODE_TAIL;
-+}
-+
-+static __be32
- nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
- {
- 	return nfs_ok;
-@@ -1605,7 +1621,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
- 	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
- };
- 
-@@ -3765,6 +3781,22 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
- }
- 
- static __be32
-+nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
-+		  struct nfsd4_seek *seek)
-+{
-+	__be32 *p;
-+
-+	if (nfserr)
-+		return nfserr;
-+
-+	p = xdr_reserve_space(&resp->xdr, 4 + 8);
-+	*p++ = cpu_to_be32(seek->seek_eof);
-+	p = xdr_encode_hyper(p, seek->seek_pos);
-+
-+	return nfserr;
-+}
-+
-+static __be32
- nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
- {
- 	return nfserr;
-@@ -3848,7 +3880,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- 	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
--	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
- 	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 465e779..5720e94 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -428,6 +428,17 @@ struct nfsd4_reclaim_complete {
- 	u32 rca_one_fs;
- };
- 
-+struct nfsd4_seek {
-+	/* request */
-+	stateid_t	seek_stateid;
-+	loff_t		seek_offset;
-+	u32		seek_whence;
-+
-+	/* response */
-+	u32		seek_eof;
-+	loff_t		seek_pos;
-+};
-+
- struct nfsd4_op {
- 	int					opnum;
- 	__be32					status;
-@@ -473,6 +484,9 @@ struct nfsd4_op {
- 		struct nfsd4_reclaim_complete	reclaim_complete;
- 		struct nfsd4_test_stateid	test_stateid;
- 		struct nfsd4_free_stateid	free_stateid;
-+
-+		/* NFSv4.2 */
-+		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
- };
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index cf38224..026b0c0 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -550,4 +550,9 @@ struct nfs4_deviceid {
- 	char data[NFS4_DEVICEID4_SIZE];
- };
- 
-+enum data_content4 {
-+	NFS4_CONTENT_DATA		= 0,
-+	NFS4_CONTENT_HOLE		= 1,
-+};
-+
- #endif
--- 
-2.1.0
+I can't see anything obviously violating the RCU rules in the delegation
+code:
+- All delegations are freed via kfree_rcu(), so they should not normally
+be able to disappear from underneath us while we're in a rcu_read_lock()
+protected section such as above.
+- All additions/removals from the server->delegations list are done
+using list_add/del_rcu(), and I don't see any way for a delegation to be
+put on the list twice or to be put back on the list once it has been
+removed.
+- The nfs_server code calls synchronize_rcu() after removing the server
+from the clp->cl_superblocks list (which it does using list_del_rcu()).
+
+Cheers
+  Trond
 
