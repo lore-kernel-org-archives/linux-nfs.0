@@ -1,24 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:44303 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754663AbaI2QHY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Sep 2014 12:07:24 -0400
-Message-ID: <542983BD.90608@opengridcomputing.com>
-Date: Mon, 29 Sep 2014 11:07:25 -0500
-From: Steve Wise <swise@opengridcomputing.com>
+Received: from mail-bn1bon0132.outbound.protection.outlook.com ([157.56.111.132]:38432
+	"EHLO na01-bn1-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753904AbaIYPtN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 25 Sep 2014 11:49:13 -0400
+Message-ID: <5424156C.8080602@eas.gatech.edu>
+Date: Thu, 25 Sep 2014 09:15:24 -0400
+From: MJ Jenkins <mack.jenkins@eas.gatech.edu>
 MIME-Version: 1.0
-To: fields@fieldses.org
-CC: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH V3] svcrdma: advertise the correct max payload
-References: <20140923221122.24227.91718.stgit@build.ogc.int>
-In-Reply-To: <20140923221122.24227.91718.stgit@build.ogc.int>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: <linux-nfs@vger.kernel.org>
+Subject: NFS Share To OS X
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I have a user who is on a Mac, and has some data on our RedHat 
+Enterprise Linux(RHEL) server that needs to be shared to another RHEL 
+box and to her Mac.  All seems to be fine on the RHEL box, and somewhat 
+on the Mac.
 
-Hey Bruce, is this version acceptable for 3.18?
+The problem comes in when the user on the Mac writes files to the NFS 
+share.  On the RHEL side the files are owned by user root and group 
+nfsnobody.  Has anyone else run into this issue?  I'm not sure if the 
+issue is how I am exporting the share to the Mac, or how I have the 
+share mounted on the Mac.
 
-Thanks,
+Any assistance is greatly appreciated.
 
-Steve.
+Mack
+
