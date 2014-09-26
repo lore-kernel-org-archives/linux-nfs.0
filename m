@@ -1,125 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:38447 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751651AbaI0Tur (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 15:50:47 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so317085qgf.35
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 12:50:47 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Sat, 27 Sep 2014 15:50:45 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [nfsv4] Could somebody please enlighten me as to what is
- supposed to happen in this situation?
-Message-ID: <20140927155045.76ce1149@synchrony.poochiereds.net>
-In-Reply-To: <CAHQdGtQBNpBO+xv_uk+bkue6zoSKMhU72xjKaeOb2gEHY012Ew@mail.gmail.com>
-References: <CAABAsM4zDuzjapXfLUrminwM1FV7iwN+oEzxgzaQ60m93gBBug@mail.gmail.com>
-	<20140927144056.2d303755@synchrony.poochiereds.net>
-	<CAHQdGtQBNpBO+xv_uk+bkue6zoSKMhU72xjKaeOb2gEHY012Ew@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:63740 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754654AbaIZOFI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2014 10:05:08 -0400
+Message-ID: <54257293.2060604@RedHat.com>
+Date: Fri, 26 Sep 2014 10:05:07 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: ANNOUNCE: nfs-utils-1.3.1 released.
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 27 Sep 2014 15:25:12 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Hello,
 
-> On Sat, Sep 27, 2014 at 2:40 PM, Jeff Layton
-> <jeff.layton@primarydata.com> wrote:
-> > On Sat, 27 Sep 2014 11:22:29 -0400
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> >
-> >
-> > My take (quite possibly wrong, but...)
-> >
-> >> The scenario is this:
-> >>                                        Server
-> >>                                        ======
-> >>                                        boot (B1)
-> >> Client
-> >> ======
-> >> EXCHANGE_ID
-> >> CREATE_SESSION
-> >> OPEN(reclaim)
-> >> LOCK(reclaim)
-> >> RECLAIM_COMPLETE
-> >>                                        (lift GRACE period)
-> >
-> > At this point, we'd deny reclaim from any client that has not issued a
-> > RECLAIM_COMPLETE. In the case of the Linux server with nfsdcltrack, we
-> > clean out any client records that have not issued a RECLAIM_COMPLETE.
-> >
-> >>                                        reboot (B2)
-> >> EXCHANGE_ID
-> >> CREATE_SESSION
-> >> OPEN(reclaim)
-> >>                                         reboot (while GRACE period
-> >> still being enforced) (B3)
-> >> EXCHANGE_ID
-> >> CREATE_SESSION
-> >> OPEN(reclaim)
-> >>
-> >> What should be the server response to the above OPEN(reclaim) from the
-> >> client after reboot (B3)?
-> >>
-> >
-> > My expectation is that it would be granted. There was a
-> > RECLAIM_COMPLETE issued during the boot where the grace period was last
-> > lifted, and that should be enough to allow the client to issue reclaims
-> > on any subsequent reboot, until the grace period is lifted again.
-> >
-> > Doing anything else would be a pretty unfriendly way for the server to
-> > behave. In the face of rapid reboots (a not-uncommon occurrence when
-> > patching, etc), you'd lose state unless the client just happened to get
-> > in there quickly enough to issue a RECLAIM_COMPLETE between each reboot.
-> >
-> > That was the situation with the legacy client tracker in knfsd. When
-> > testing, it was trivial to reboot the machine quickly twice and on the
-> > second reboot nothing could be reclaimed.
-> 
-> So now, what if the following scenario:
-> 
->                                        Server
->                                        ======
->                                        boot (B1')
-> Client
-> ======
-> EXCHANGE_ID
-> CREATE_SESSION
-> OPEN(reclaim)
-> LOCK(reclaim)
-> RECLAIM_COMPLETE
->                                        (lift GRACE period (G1))
->                                        reboot (B2')
-> EXCHANGE_ID
-> CREATE_SESSION
-> OPEN(reclaim)
->                                        (lift GRACE period (G2))
->                                        reboot (B3')
-> EXCHANGE_ID
-> CREATE_SESSION
-> OPEN(reclaim)
-> 
-> What should happen to the OPEN(reclaim) in (B3')?
-> 
+The major feature in this release is the addition 
+of gssproxy support in the systemd scripts. 
 
-(Let's call the lifting of grace periods 'G1' and 'G2'...)
- 
-Denied.
+When gssproxy is installed and and a key tab 
+(/etc/krb5.keytab) exists, the gssproxy daemon 
+will be started and the NFS server will use 
+that daemon to manage the GSSAPI creds instead 
+of rpc.svcgssd.
 
-There was no RECLAIM_COMPLETE issued between B2 and G2. It's possible
-that client2 could creep in between G2 and B3 and acquire locks that
-conflict with ones that were not reclaimed by client1 between B2 and
-G2. So, we can't allow any reclaims for client1 after B3.
+Rpc.svcgssd will continue to be used when gssproxy 
+does not exist and a key tab does. 
 
-I should add a clarification here too. I'm assuming that the server in
-this case just tracks the minimum required to allow state to be
-reclaimed. If it (for instance) tracked on stable storage all of the
-locks that it ever granted such that it knows that there were no
-conflicts, then it could be more lenient about allowing client1 to
-reclaim after B3.
+One thing not addressed in this release is the tcp wrapper
+changes to the mountd man page. I'm going to let distros
+deal with that as they may.... I'm in favor of ripping 
+all that code out, but I didn't want that to get in the 
+way of this release.
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+The tarballs can be found in
+  http://kernel.org/pub/linux/utils/nfs-utils/1.3.1/
+or
+  http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.1
+
+The change log is in
+   http://kernel.org/pub/linux/utils/nfs-utils/1.3.1/1.3.1-ChangeLog
+or
+   http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.1/
+
+The git tree is at:
+   git://linux-nfs.org/nfs-utils
+
+Please send comments/bugs to linux-nfs@vger.kernel.org
+
+steved.
