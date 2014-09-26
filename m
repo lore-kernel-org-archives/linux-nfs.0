@@ -1,99 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60747 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750937AbaI3PbT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 30 Sep 2014 11:31:19 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8UFVI9E007347
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Tue, 30 Sep 2014 11:31:19 -0400
-Date: Tue, 30 Sep 2014 11:31:15 -0400
-From: Simo Sorce <simo@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/1] Move the wants only to the auth unit.
-Message-ID: <20140930113115.72fc400c@willson.usersys.redhat.com>
-In-Reply-To: <542AC6AA.1090702@RedHat.com>
-References: <1412014923-26587-1-git-send-email-simo@redhat.com>
-	<1412014923-26587-2-git-send-email-simo@redhat.com>
-	<542AC6AA.1090702@RedHat.com>
+Received: from mail-vc0-f177.google.com ([209.85.220.177]:50101 "EHLO
+	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755618AbaIZWRW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 18:17:22 -0400
+Received: by mail-vc0-f177.google.com with SMTP id hq11so1166508vcb.8
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2014 15:17:21 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20140926214743.GH27412@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+	<20140926183949.GC27412@fieldses.org>
+	<20140926145446.21a99698@tlielax.poochiereds.net>
+	<20140926194616.GE27412@fieldses.org>
+	<CAABAsM664Ce0JhBa=uK9+srsNB4_Ww4LLTymfOvcr1aM3g2X=g@mail.gmail.com>
+	<20140926204549.GF27412@fieldses.org>
+	<CAHQdGtR7uWW7s=ug=1_7n6uf_vU885d9Vc8W7kzaw4ncmdPi6w@mail.gmail.com>
+	<20140926214743.GH27412@fieldses.org>
+Date: Fri, 26 Sep 2014 18:17:21 -0400
+Message-ID: <CAHQdGtSdizkiykfThL2z4ozbFkaoFWGnS2_O9VLj749ZDUnxeQ@mail.gmail.com>
+Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 30 Sep 2014 11:05:14 -0400
-Steve Dickson <SteveD@redhat.com> wrote:
+On Fri, Sep 26, 2014 at 5:47 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Sep 26, 2014 at 04:58:47PM -0400, Trond Myklebust wrote:
+>> On Fri, Sep 26, 2014 at 4:45 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> > On Fri, Sep 26, 2014 at 04:37:23PM -0400, Trond Myklebust wrote:
+>> >> On Fri, Sep 26, 2014 at 3:46 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> >> >
+>> >> > As I understand it, the rule for the client is: you're allowed to
+>> >> > reclaim only the set locks that you held previously, where "the set of
+>> >> > locks you held previously" is "the set of locks held by the clientid
+>> >> > which last managed to send a reclaim OPEN or OPEN_CONFIRM".  So for
+>> >> > example once client1 sends that unrelated OPEN reclaim it's giving up on
+>> >> > anything else it doesn't manage to reclaim this time around.
+>> >>
+>> >> The rule for the client is very simple: "You may attempt to reclaim
+>> >> any locks that were held immediately prior to the reboot of the
+>> >> server."
+>> >> It doesn't matter how those locks were established (ordinary OPEN,
+>> >> delegated open, reclaim open, LOCK, reclaim lock...).
+>> >>
+>> >> However if the server reboots and the client did not manage to
+>> >> re-establish a lease (SETCLIENTID+SETCLIENTID_CONFIRM and/or
+>> >> EXCHANGE_ID+CREATE_SESSION) before the second reboot, then it is the
+>> >> server's responsibility to block that client from reclaiming any
+>> >> locks, since the client has no way to know how many times the server
+>> >> has rebooted.
+>> >> Ditto, of course, if the client tries to reclaim any locks outside the
+>> >> grace period and the server isn't tracking whether or not those locks
+>> >> have been handed out to another client.
+>> >
+>> > Agreed with everything except:
+>> >
+>> >         (SETCLIENTID+SETCLIENTID_CONFIRM and/or
+>> >         EXCHANGE_ID+CREATE_SESSION)
+>> >
+>> > If I remember correctly: RFC 5661 says the point where this happens is
+>> > actually RECLAIM_COMPLETE.  RFC 3530 was more vague but suggested first
+>> > OPEN reclaim or OPEN_CONFIRM, and 3530bis makes that explicit.
+>> >
+>> > But the client can choose an earlier point without violating the
+>> > protocol--it means it will decline reclaiming some things it could have,
+>> > but that's safer than the reverse mistake.
+>> >
+>>
+>> Where is this documented? I'm not seeing it.
+>
+> It's more vague than I remembered:
+>
+> http://tools.ietf.org/html/rfc5661#section-8.4.3
+>
+>         The server will set this for any client record in stable
+>         storage where the client has not done a suitable
+>         RECLAIM_COMPLETE (global or file system-specific depending on
+>         the target of the lock request) before it grants any new (i.e.,
+>         not reclaimed) lock to any client.
 
-> On 09/29/2014 02:22 PM, Simo Sorce wrote:
-> > This way either gssproxy or rpc.svcgssd are started only if the
-> > auth module is requested, and it finds a keytab.
-> > If the wants are in the main nfs-client or nfs-server unit files
-> > then the two deamons are started unconditionally and would require
-> > conditions which we can test once and for all in a single unit file
-> > instead.
-> > 
-> > Signed-off-by: Simo Sorce <simo@redhat.com>
-> > ---
-> >  systemd/auth-rpcgss-module.service | 3 ++-
-> >  systemd/nfs-client.target          | 4 ++--
-> >  systemd/nfs-server.service         | 1 -
-> >  3 files changed, 4 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/systemd/auth-rpcgss-module.service
-> > b/systemd/auth-rpcgss-module.service index
-> > 3fc2f4ac924f7e9d6e24969bb9a21d88a5c144fc..0355e13e009528632e97373332db9fa3acdfd1a9
-> > 100644 --- a/systemd/auth-rpcgss-module.service +++
-> > b/systemd/auth-rpcgss-module.service @@ -6,7 +6,8 @@
-> >  # unit will fail.  But that's OK.)
-> >  [Unit]
-> >  Description=Kernel Module supporting RPCSEC_GSS
-> > -Before=gssproxy.service rpc-svcgssd.service
-> > +Before=gssproxy.service rpc-svcgssd.service rpc-gssd.service
-> By moving these into this unit,it destroys client/server
-> sync starts commit 12a95eda talks about... 
+Yes, I read that. Then I read this:
 
-No it does not, this before is critical, the kernel module must be
-loaded before the gss daemons are started.
+   For the second edge condition, after the server restarts for a second
+   time, the indication that the client had not completed its reclaims
+   at the time at which the grace period ended means that the server
+   must reject a reclaim from client A with the error NFS4ERR_NO_GRACE.
 
-> Maybe we could put an After=nfs-server.service in nfs-client.target
+This text is just plain wrong, and we should fix it in an errata.
+There is absolutely NO edge case condition for those locks that were
+successfully reclaimed after the first reboot. There is absolutely no
+reason why the client shouldn't be able to reclaim those locks after
+reboot number 2.
 
-Why would you load the auth modules *after* nfs client and servers are
-started ?
-I think this could cause race conditions at mount on boot if someone
-wants to mount a filesystem with sec=krb5
+All the absence of the RECLAIM_COMPLETE tells the server is that the
+client MAY have held more locks; what is the server supposed to do
+with that information? It's not the server that is responsible for
+reclaiming locks.
 
-> to bring back that synchronization... because in the end
-> we really really want the server to start first especially
-> when gssproxy is involved and both units are enabled.
+> And the corresponding langue in 8.6.3 of rfc 3530 is:
+>
+>         a timestamp that is updated the first time after a server boot
+>         or reboot the client acquires record locking, share reservation,
+>         or delegation state on the server.  The timestamp need not be
+>         updated on subsequent lock requests until the server reboots.
+>
+> I thought there was something referring specifically to OPEN reclaim or
+> OPEN_CONFIRM as the point where "the client acquires record locking" but
+> can't find it on a quick skim.
+>
+> I also say this is "vague" because, unfortunately, in both cases, this
+> language is part of a description of an example server implementation,
+> no actual protocol requirement is made explicit.
+>
+> Which is weird given that noticing the partial-reclaim case was actually
+> Dave Noveck's original motivation for introducing RECLAIM_COMPLETE (then
+> RECOVERY_COMPLETE), with the grace-period shortening an extra benefit:
+>
+>         http://osdir.com/ml/ietf.nfsv4/2006-01/msg00020.html
+>
+>         Adding the RECOVERY_COMPLETE op allows this situation to be
+>         dealt with fairly simply. If a client has not recovered all of
+>         its locks and we have the possiblity of having given out a lock
+>         inconsistent with one of those (the normal realization of this
+>         would be that once we declare grace over with some client's
+>         reclaims not complete) we mark that client as essentially having
+>         had a lock effectively revoked and thus it would not allowed to
+>         reclaim locks after a subsequent reboot since it could no longer
+>         vouch for all the locks it thinks it had.
 
-uh ?
-no you really want to start the auth damoens first, if the server
-starts first then a mount request from a client could race with
-gssproxy starting up and poking the proc file to enable use of gssproxy
-resulting in the auth module to permanently initialize to use the old
-interface.
+Sigh. Another example of one of Dave's proposals going through without
+adequate review because the reader died of exhaustion while wrestling
+with the preamble text.
+So, I agree that if the client were to try to reclaim a lock that it
+didn't own (because it didn't manage to reclaim it) in the previous
+boot instance would be a problem. However WHY would a sane client do
+this?
 
-> Also, this will cause gssproxy to be started on every boot
-> regardless whether Kerberos is installed and configured
-> (which not the case with rpc.svcgssd)... 
+> In the 3530 case we decided that the only safe point to choose was the
+> one described in the sample server implementation, so 3530bis says:
+>
+>         A server may consider a client's lease "successfully
+>         established" once it has received an open operation from that
+>         client.
+>
+> (And "open operation" probably is still too vague.)
+>
+> Sorry for the length.
+>
+> Anyway, if the client's currently doing this at SETCLIENTID_CONFIRM and
+> CREATE_SESSION then I think that's correct but more conservative than
+> necessary.  Which may be a good idea given that I think the chance of a
+> random server implementor making there way through all this is small.
+>
 
-This is a separate issue, I am trying to get the ordering right here,
-then we can debug why gssproxy is started, I suspect Wants always kicks
-in regrardless of ConditionPathExists.
-
-> I can hear the complaints already... Why is NFS starting 
-> up this daemon that will never have anything to do, in
-> the case when Kerberos is not installed/configure
-> which could be the majority of the cases...
-> 
-> I would really really, really like to avoid this.
-
-We can handle it in the next patch. Let's get the order right first.
-
-Simo.
-
-
+The client is pruning all those locks that it did not manage to
+reclaim before the grace period expired and/or the second reboot
+occurred. That is the correct behaviour.
 
 -- 
-Simo Sorce * Red Hat, Inc * New York
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
