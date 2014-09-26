@@ -1,52 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from xes-mad.com ([216.165.139.218]:19927 "EHLO xes-mad.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753241AbaIHSut (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Sep 2014 14:50:49 -0400
-Date: Mon, 8 Sep 2014 13:49:46 -0500 (CDT)
-From: Andrew Martin <amartin@xes-inc.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <2037985632.307306.1410202186698.JavaMail.zimbra@xes-inc.com>
-In-Reply-To: <CAHQdGtT3iwdTXB3ecKSbao=yErOzv8NREPta1A5mOtwYxmRb8Q@mail.gmail.com>
-References: <2124227602.386654.1409868802614.JavaMail.zimbra@xes-inc.com> <584874869.387720.1409869399398.JavaMail.zimbra@xes-inc.com> <CAHQdGtT3iwdTXB3ecKSbao=yErOzv8NREPta1A5mOtwYxmRb8Q@mail.gmail.com>
-Subject: Re: Clarification on client "async" option
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:48656 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754481AbaIZO3e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 10:29:34 -0400
+Received: by mail-ie0-f177.google.com with SMTP id x19so15656199ier.22
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2014 07:29:34 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <1411740170-18611-2-git-send-email-hch@lst.de>
+References: <1411740170-18611-1-git-send-email-hch@lst.de>
+	<1411740170-18611-2-git-send-email-hch@lst.de>
+Date: Fri, 26 Sep 2014 10:29:34 -0400
+Message-ID: <CAHQdGtTg8Tc8bRqbezW-ZWrcTJdG233uRTrqQMP5CvxAcjW9Fg@mail.gmail.com>
+Subject: Re: [PATCH] pnfs/blocklayout: serialize GETDEVICEINFO calls
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message -----
-> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
-> > This shows that a temporary filename is written and then closed, however
-> > the
-> > file is then chmodded and renamed to the final destination filename. Do the
-> > chmod(2) and rename(2) calls force a COMMIT to be sent, flushing these
-> > changes
-> > to stable storage on the NFS server? Or, is there a possibility that during
-> > a
-> > power failure of both client and server, the file would remain as
-> > .dest.y4ihWF
-> > on the server?
-> 
-> In NFSv3, the close() will cause the client to flush all data to stable
-> storage.
-> The client will also flush data to stable storage on a chmod, since
-> that could potentially affect its ability to write back the data. It
-> will not bother to do so for rename.
-> An application should normally be able to rely on the data being
-> safely on disk in both these situations provided that the server
-> honours the NFS protocol (with a caveat that an ill-timed 'kill -9'
-> could interrupt the process of flushing).
-> 
-> All metadata operations such as create, chmod, rename, etc. will cause
-> the server to flush the file metadata to disk assuming that you set
-> the (highly recommended) "sync" export option. If "sync" is set, the
-> server will also honour COMMIT requests by flushing the data to stable
-> storage.
+On Fri, Sep 26, 2014 at 10:02 AM, Christoph Hellwig <hch@lst.de> wrote:
+> The rpc_pipefs code isn't thread safe, leading to occasional use after
+> frees when running xfstests generic/241 (dbench).
+>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfs/blocklayout/rpc_pipefs.c | 14 +++++++++-----
+>  fs/nfs/netns.h                  |  1 +
+>  2 files changed, 10 insertions(+), 5 deletions(-)
+>
+>
 
-Thanks for the clarification - I will use "sync" on the server side and
-"async" on the client side, since I know now that this combination will
-provide both data and metadata safety.
+It worries me that we're putting a mutex directly in the writeback
+path. For small arrays, it might be acceptable, but what if you have a
+block device with 1000s of disks on the back end?
 
-Andrew
+Is there no better way to fix this issue?
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
