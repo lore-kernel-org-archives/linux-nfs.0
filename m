@@ -1,125 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f179.google.com ([209.85.220.179]:51563 "EHLO
-	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932117AbaIRRHU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 13:07:20 -0400
-Received: by mail-vc0-f179.google.com with SMTP id la4so637007vcb.38
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 10:07:18 -0700 (PDT)
+Received: from elasmtp-junco.atl.sa.earthlink.net ([209.86.89.63]:44928 "EHLO
+	elasmtp-junco.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754188AbaIZQ1z convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2014 12:27:55 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Stefan Bauer'" <sb@plzk.de>, <linux-nfs@vger.kernel.org>
+References: <zarafa.5425815f.6e31.1b72722237f64a60@srv1.localhost>
+In-Reply-To: <zarafa.5425815f.6e31.1b72722237f64a60@srv1.localhost>
+Subject: RE: posix acl to nfs4 acl mapping - status?
+Date: Fri, 26 Sep 2014 09:11:39 -0700
+Message-ID: <01cb01cfd9a4$8e802360$ab806a20$@mindspring.com>
 MIME-Version: 1.0
-In-Reply-To: <1411045997-3988-1-git-send-email-steved@redhat.com>
-References: <1411045997-3988-1-git-send-email-steved@redhat.com>
-Date: Thu, 18 Sep 2014 13:07:18 -0400
-Message-ID: <CAHQdGtQqynEfDsYmq8MxsC_9zS9khaUcpqA=0-WGR7tbreEA9g@mail.gmail.com>
-Subject: Re: [PATCH] [V2] NFSv4: nfs4_state_manager() vs. nfs_server_remove_lists()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain;
+	charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 18, 2014 at 9:13 AM, Steve Dickson <steved@redhat.com> wrote:
-> There is a race between nfs4_state_manager() and
-> nfs_server_remove_lists() that happens during a nfsv3 mount.
->
-> The v3 mount notices there is already a supper block so
-> nfs_server_remove_lists() called which uses the nfs_client_lock
-> spin lock to synchronize access to the client list.
->
-> At the same time nfs4_state_manager() is running through
-> the client list looking for work to do, using the same
-> lock. When nfs4_state_manager() wins the race to the
-> list, a v3 client pointer is found and not ignored
-> properly which causes the panic.
->
-> Moving some protocol checks before the state checking
-> avoids the panic.
->
-> CC: Stable Tree <stable@vger.kernel.org>
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  fs/nfs/nfs4client.c | 38 ++++++++++++++++++++------------------
->  1 file changed, 20 insertions(+), 18 deletions(-)
->
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index 53e435a..ffdb28d 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -482,6 +482,16 @@ int nfs40_walk_client_list(struct nfs_client *new,
->
->         spin_lock(&nn->nfs_client_lock);
->         list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
-> +
-> +               if (pos->rpc_ops != new->rpc_ops)
-> +                       continue;
-> +
-> +               if (pos->cl_proto != new->cl_proto)
-> +                       continue;
-> +
-> +               if (pos->cl_minorversion != new->cl_minorversion)
-> +                       continue;
-> +
->                 /* If "pos" isn't marked ready, we can't trust the
->                  * remaining fields in "pos" */
->                 if (pos->cl_cons_state > NFS_CS_READY) {
-> @@ -501,15 +511,6 @@ int nfs40_walk_client_list(struct nfs_client *new,
->                 if (pos->cl_cons_state != NFS_CS_READY)
->                         continue;
->
-> -               if (pos->rpc_ops != new->rpc_ops)
-> -                       continue;
-> -
-> -               if (pos->cl_proto != new->cl_proto)
-> -                       continue;
-> -
-> -               if (pos->cl_minorversion != new->cl_minorversion)
-> -                       continue;
-> -
->                 if (pos->cl_clientid != new->cl_clientid)
->                         continue;
->
-> @@ -622,6 +623,16 @@ int nfs41_walk_client_list(struct nfs_client *new,
->
->         spin_lock(&nn->nfs_client_lock);
->         list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
-> +
-> +               if (pos->rpc_ops != new->rpc_ops)
-> +                       continue;
-> +
-> +               if (pos->cl_proto != new->cl_proto)
-> +                       continue;
-> +
-> +               if (pos->cl_minorversion != new->cl_minorversion)
-> +                       continue;
-> +
->                 /* If "pos" isn't marked ready, we can't trust the
->                  * remaining fields in "pos", especially the client
->                  * ID and serverowner fields.  Wait for CREATE_SESSION
-> @@ -647,15 +658,6 @@ int nfs41_walk_client_list(struct nfs_client *new,
->                 if (pos->cl_cons_state != NFS_CS_READY)
->                         continue;
->
-> -               if (pos->rpc_ops != new->rpc_ops)
-> -                       continue;
-> -
-> -               if (pos->cl_proto != new->cl_proto)
-> -                       continue;
-> -
-> -               if (pos->cl_minorversion != new->cl_minorversion)
-> -                       continue;
-> -
->                 if (!nfs4_match_clientids(pos, new))
->                         continue;
->
-> --
-> 1.8.3.1
->
-Thanks. Applied...
+> I'm just a regular sysadmin and want to use NFS4 shares for backup purpose
+> and keep existing posix acls from local filesystems during transfer.
+> 
+> It seems to not be supported:
+> 
+> root@s1:/# mount.nfs4 -o acl 192.168.0.254:/ /bla root@s1:/# cp -Rvp omg
+> /bla/ ‘omg’ -> ‘/bla/omg’
+> cp: preserving permissions for ‘/bla/omg’: Operation not supported
+
+cp will not attempt to copy the NFS v4 ACL.
+
+> What is the status on that? I'm aware of nfs4_getfacl but dont want to adjust
+> permissions manually.
+> 
+> I also found https://tools.ietf.org/html/draft-ietf-nfsv4-acl-mapping-05
+> which describes a working algorithm for posix->nfs4 mapping but no
+> evidence whether this is implemented and if so - how.
+
+I believe the implementation follows this document. I do know that several years ago, we had some significant ACL testing using AIX clients that exposed many issues in the translation.
+
+Unfortunately, the translation is always doomed to be imperfect, and is probably not suitable for backup-purposes. Any POSIX ACL that includes a mask will certainly be changed to lose that mask (with the CURRENT effect of the mask being applied permanently).
+
+> I'm using Debian testing with kernel 3.14.3.4 #5 SMP Thu May 8 16:31:22 CEST
+> 2014 x86_64 GNU/Linux.
+> mount.nfs4: (linux nfs-utils 1.2.8)
+
+Frank
 
 
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
