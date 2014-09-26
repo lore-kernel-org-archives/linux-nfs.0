@@ -1,74 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f177.google.com ([209.85.220.177]:40174 "EHLO
-	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755694AbaIRObt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Sep 2014 10:31:49 -0400
-Received: by mail-vc0-f177.google.com with SMTP id im17so748744vcb.8
-        for <linux-nfs@vger.kernel.org>; Thu, 18 Sep 2014 07:31:48 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:33575 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754259AbaIZUpv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2014 16:45:51 -0400
+Date: Fri, 26 Sep 2014 16:45:49 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@gmail.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
+Message-ID: <20140926204549.GF27412@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+ <20140926183949.GC27412@fieldses.org>
+ <20140926145446.21a99698@tlielax.poochiereds.net>
+ <20140926194616.GE27412@fieldses.org>
+ <CAABAsM664Ce0JhBa=uK9+srsNB4_Ww4LLTymfOvcr1aM3g2X=g@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <541AD7E5.8020409@engr.wisc.edu>
-References: <541AD7E5.8020409@engr.wisc.edu>
-Date: Thu, 18 Sep 2014 10:31:48 -0400
-Message-ID: <CAHQdGtQZ0kcBZ0QCb+sf52thERjJgz-5M++CsT7kdoDweG61sQ@mail.gmail.com>
-Subject: Re: NFS Kernel Bug
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: James Drews <drews@engr.wisc.edu>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAABAsM664Ce0JhBa=uK9+srsNB4_Ww4LLTymfOvcr1aM3g2X=g@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 18, 2014 at 9:02 AM, James Drews <drews@engr.wisc.edu> wrote:
-> Good morning!
->
-> I believe we have found a bug in the NFS kernel area.  The "bug" is a leak
-> of a file handle where the NFS client never tells the server to close the
-> file. The problem is very similar to one we had reported and got a fix for
-> previously. We are using that patch, but ran in to another case where the
-> client sends out an OPEN_DOWNGRADE but never sends a CLOSE.
->
-> Attached is a simple c program that we have been able to reproduce the bug
-> with, along with a packet capture of what we see on the wire.
->
-> To reproduce the bug:
-> -compile the c code
-> -execute the c code with:
->
-> ./test ; cat testfile3 > /dev/nul
->
-> -now if we try to remove the file we get a file in use error (server is
-> using mandatory locking)
->
-> Things to note:
->
-> -if you just run the program without the immediate cat'ing of the file, the
-> bug does not happen
-> suggesting a timing issue
-> -If you alter the program so the code mimics the cat of the file, the bug
-> does not happen (ie, add an open, read file, close to the code).
-> -If you run the program as described above, and then run it again without
-> the "; cat testfile3 > /dev/nul", the kernel squeaks out the file close to
-> the server when the code does the close.
->
-> The attached packet capture is us doing:
->
-> ./test ; cat testfile3 > /dev/null
-> rm testfile3
-> ./test
-> rm testfile3
->
-> where we are denied the rm the first time, but not the second.
->
+On Fri, Sep 26, 2014 at 04:37:23PM -0400, Trond Myklebust wrote:
+> On Fri, Sep 26, 2014 at 3:46 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > As I understand it, the rule for the client is: you're allowed to
+> > reclaim only the set locks that you held previously, where "the set of
+> > locks you held previously" is "the set of locks held by the clientid
+> > which last managed to send a reclaim OPEN or OPEN_CONFIRM".  So for
+> > example once client1 sends that unrelated OPEN reclaim it's giving up on
+> > anything else it doesn't manage to reclaim this time around.
+> 
+> The rule for the client is very simple: "You may attempt to reclaim
+> any locks that were held immediately prior to the reboot of the
+> server."
+> It doesn't matter how those locks were established (ordinary OPEN,
+> delegated open, reclaim open, LOCK, reclaim lock...).
+> 
+> However if the server reboots and the client did not manage to
+> re-establish a lease (SETCLIENTID+SETCLIENTID_CONFIRM and/or
+> EXCHANGE_ID+CREATE_SESSION) before the second reboot, then it is the
+> server's responsibility to block that client from reclaiming any
+> locks, since the client has no way to know how many times the server
+> has rebooted.
+> Ditto, of course, if the client tries to reclaim any locks outside the
+> grace period and the server isn't tracking whether or not those locks
+> have been handed out to another client.
 
-Argh. This is a situation where the client shouldn't have called
-OPEN_DOWNGRADE, but should have done a CLOSE. The issue is that the
-client opens the file with OPEN4_SHARE_ACCESS_BOTH, so it is not
-allowed to downgrade to OPEN4_SHARE_ACCESS_READ. Instead it should
-have closed the file, and then used the delegation...
+Agreed with everything except:
 
--- 
-Trond Myklebust
+	(SETCLIENTID+SETCLIENTID_CONFIRM and/or
+	EXCHANGE_ID+CREATE_SESSION)
 
-Linux NFS client maintainer, PrimaryData
+If I remember correctly: RFC 5661 says the point where this happens is
+actually RECLAIM_COMPLETE.  RFC 3530 was more vague but suggested first
+OPEN reclaim or OPEN_CONFIRM, and 3530bis makes that explicit.
 
-trond.myklebust@primarydata.com
+But the client can choose an earlier point without violating the
+protocol--it means it will decline reclaiming some things it could have,
+but that's safer than the reverse mistake.
+
+--b.
