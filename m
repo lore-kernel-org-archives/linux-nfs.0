@@ -1,60 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:31711 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751568AbaIYVBX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 25 Sep 2014 17:01:23 -0400
-Message-ID: <54248295.7040001@Netapp.com>
-Date: Thu, 25 Sep 2014 17:01:09 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv3: Fix missing includes of nfs3_fs.h
-References: <1411678544-47748-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1411678544-47748-1-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:41870 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752875AbaIZCYJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 22:24:09 -0400
+Received: by mail-ig0-f173.google.com with SMTP id l13so9597704iga.12
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Sep 2014 19:24:08 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Ensure rpc_fill_super sets sb->s_fs_info before calling notifiers
+Date: Thu, 25 Sep 2014 22:24:02 -0400
+Message-Id: <1411698242-126323-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks good to me, although I'm not sure how I missed that when I submitted my patches!
+The rpc_pipefs event handlers expect the sb->s_fs_info field to contain
+the net namespace. Ensure that we set it before we call the notifier list.
 
-Anna
+Fixes: 2d00131acc64 (SUNRPC: send notification events on pipefs sb creation...)
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/rpc_pipe.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-On 09/25/2014 04:55 PM, Trond Myklebust wrote:
-> Silence a few warnings about missing symbols that are due to missing
-> includes of nfs3_fs.h.
-> 
-> Fixes: 00a36a1090350 (NFS: Move v3 declarations out of internal.h)
-> Fixes: cb8c20fa53ec2 (NFS: Move NFS v3 acl functions to nfs3_fs.h)
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs3acl.c    | 1 +
->  fs/nfs/nfs3client.c | 1 +
->  2 files changed, 2 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
-> index 24c6898159cc..658e586ca438 100644
-> --- a/fs/nfs/nfs3acl.c
-> +++ b/fs/nfs/nfs3acl.c
-> @@ -7,6 +7,7 @@
->  #include <linux/nfsacl.h>
->  
->  #include "internal.h"
-> +#include "nfs3_fs.h"
->  
->  #define NFSDBG_FACILITY	NFSDBG_PROC
->  
-> diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-> index b3fc65ef39ca..8c1b437c5403 100644
-> --- a/fs/nfs/nfs3client.c
-> +++ b/fs/nfs/nfs3client.c
-> @@ -1,6 +1,7 @@
->  #include <linux/nfs_fs.h>
->  #include <linux/nfs_mount.h>
->  #include "internal.h"
-> +#include "nfs3_fs.h"
->  
->  #ifdef CONFIG_NFS_V3_ACL
->  static struct rpc_stat		nfsacl_rpcstat = { &nfsacl_program };
-> 
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 2d12b76b5a64..17d685680c46 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1414,12 +1414,12 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 		net, NET_NAME(net));
+ 	mutex_lock(&sn->pipefs_sb_lock);
+ 	sn->pipefs_sb = sb;
++	sb->s_fs_info = get_net(net);
+ 	err = blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_MOUNT,
+ 					   sb);
+ 	if (err)
+ 		goto err_depopulate;
+-	sb->s_fs_info = get_net(net);
+ 	mutex_unlock(&sn->pipefs_sb_lock);
+ 	return 0;
+ 
+@@ -1431,6 +1431,7 @@ err_depopulate:
+ 	sn->pipefs_sb = NULL;
+ 	__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
+ 	mutex_unlock(&sn->pipefs_sb_lock);
++	put_net(net);
+ 	return err;
+ }
+ 
+-- 
+1.9.3
 
