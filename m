@@ -1,104 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f180.google.com ([209.85.220.180]:64285 "EHLO
-	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751132AbaIEBw0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Sep 2014 21:52:26 -0400
-Received: by mail-vc0-f180.google.com with SMTP id lf12so11345036vcb.25
-        for <linux-nfs@vger.kernel.org>; Thu, 04 Sep 2014 18:52:25 -0700 (PDT)
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:55825 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753865AbaIZSyw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 14:54:52 -0400
+Received: by mail-qg0-f53.google.com with SMTP id e89so9067826qgf.40
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2014 11:54:51 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 26 Sep 2014 14:54:46 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
+Message-ID: <20140926145446.21a99698@tlielax.poochiereds.net>
+In-Reply-To: <20140926183949.GC27412@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+	<20140926183949.GC27412@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <584874869.387720.1409869399398.JavaMail.zimbra@xes-inc.com>
-References: <2124227602.386654.1409868802614.JavaMail.zimbra@xes-inc.com>
-	<584874869.387720.1409869399398.JavaMail.zimbra@xes-inc.com>
-Date: Thu, 4 Sep 2014 21:52:25 -0400
-Message-ID: <CAHQdGtT3iwdTXB3ecKSbao=yErOzv8NREPta1A5mOtwYxmRb8Q@mail.gmail.com>
-Subject: Re: Clarification on client "async" option
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andrew Martin <amartin@xes-inc.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 4, 2014 at 6:23 PM, Andrew Martin <amartin@xes-inc.com> wrote:
-> Hello,
->
-> I would like to understand in more detail how the client-side "async" option
-> works with NFSv3 when used with the NFSv3 server-side option "sync" (async on
-> the client, sync on the server). According to the manpage:
->
->>       The NFS client treats the sync mount option differently than some other
->> file systems (refer to mount(8) for a description of the generic sync and async
->> mount options).  If neither sync nor async is specified (or if the async option
->> is specified), the NFS client delays sending application writes to the server
->> until any of these  events occur:
->>
->>              Memory pressure forces reclamation of system memory resources.
->>
->>              An application flushes file data explicitly with sync(2),
->>              msync(2), or fsync(3).
->>
->>              An application closes a file with close(2).
->>
->>              The file is locked/unlocked via fcntl(2).
->
->
-> When performing a sample strace, e.g with rsync:
-> strace -f rsync -av hosts /mn/nfs/dest
->
-> I see the following:
-> [pid 10670] read(3, "127.0.0.1\tlocalhost\n#127.0.1.1\tv"..., 350) = 350
-> [pid 10670] close(3)                    = 0
-> [pid 10670] select(5, NULL, [4], [4], {60, 0}) = 1 (out [4], left {59, 999998})
-> [pid 10670] write(4, "\211\1\0\7\2\0\240\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0^\1\0\000127.0"..., 397 <unfinished ...>
-> [pid 10672] <... select resumed> )      = 1 (in [0], left {59, 999185})
-> [pid 10670] <... write resumed> )       = 397
-> [pid 10672] read(0,  <unfinished ...>
-> [pid 10670] select(6, [5], [], NULL, {60, 0} <unfinished ...>
-> [pid 10672] <... read resumed> "\211\1\0\7", 4) = 4
-> [pid 10672] select(1, [0], [], NULL, {60, 0}) = 1 (in [0], left {59, 999998})
-> [pid 10672] read(0, "\2\0\240\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0^\1\0\000127.0.0.1"..., 393) = 393
-> [pid 10672] open("dest", O_RDONLY)      = -1 ENOENT (No such file or directory)
-> [pid 10672] open(".dest.y4ihWF", O_RDWR|O_CREAT|O_EXCL, 0600) = 1
-> [pid 10672] fchmod(1, 0600)             = 0
-> [pid 10672] mmap(NULL, 266240, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f7c28b49000
-> [pid 10672] write(1, "127.0.0.1\tlocalhost\n#127.0.1.1\tv"..., 350) = 350
-> [pid 10672] close(1)                    = 0
-> [pid 10672] lstat(".dest.y4ihWF", {st_mode=S_IFREG|0600, st_size=350, ...}) = 0
-> [pid 10672] utimensat(AT_FDCWD, ".dest.y4ihWF", {UTIME_NOW, {1357852439, 0}}, AT_SYMLINK_NOFOLLOW) = 0
-> [pid 10672] chmod(".dest.y4ihWF", 0644) = 0
-> [pid 10672] rename(".dest.y4ihWF", "dest") = 0
->
-> This shows that a temporary filename is written and then closed, however the
-> file is then chmodded and renamed to the final destination filename. Do the
-> chmod(2) and rename(2) calls force a COMMIT to be sent, flushing these changes
-> to stable storage on the NFS server? Or, is there a possibility that during a
-> power failure of both client and server, the file would remain as .dest.y4ihWF
-> on the server?
+On Fri, 26 Sep 2014 14:39:49 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-In NFSv3, the close() will cause the client to flush all data to stable storage.
-The client will also flush data to stable storage on a chmod, since
-that could potentially affect its ability to write back the data. It
-will not bother to do so for rename.
-An application should normally be able to rely on the data being
-safely on disk in both these situations provided that the server
-honours the NFS protocol (with a caveat that an ill-timed 'kill -9'
-could interrupt the process of flushing).
+> By the way, I've seen the following *before* your patches, but in case
+> you're still looking at reboot recovery problems:
+> 
+> I'm getting sporadic failures in the REBT6 pynfs test--a reclaim open
+> succeeds after a previous boot (with full grace period) during which the
+> client had failed to reclaim.
+> 
+> I managed to catch one trace, the relevant parts looked like:
+> 
+> 	SETCLIENTID client1
+> 	OPEN
+> 	LOCK
+> 
+> 	(server restart here)
+> 
+> 	SETCLIENTID client2
+> 	OPEN
+> 	LOCK (lock that conflicts with client1's)
+> 
+> 	(server restart here)
+> 
+> 	SETCLIENTID client1
+> 	OPEN CLAIM_PREVIOUS
+> 
+> And all those ops (including the last reclaim open) succeeded.
+> 
+> So I didn't have a chance to review it more carefully, but it certainly
+> looks like a server bug, not a test bug.  (Well, technically the server
+> behavior above is correct since it's not required to refuse anything
+> till we actually attempt to reclaim the original lock, but we know our
+> server's not that smart.)
+> 
+> But I haven't gotten any further than that....
+> 
+> --b.
+> 
 
-All metadata operations such as create, chmod, rename, etc. will cause
-the server to flush the file metadata to disk assuming that you set
-the (highly recommended) "sync" export option. If "sync" is set, the
-server will also honour COMMIT requests by flushing the data to stable
-storage.
-If, OTOH, your server lists the "async" export option as being set,
-then COMMIT is considered a no-op, and it will not bother to
-explicitly flush metadata operations to stable storage. Performance
-will scream, but be prepared to lose data if that server crashes. This
-is all technically a violation of the NFS spec, however you have been
-given rope...
+Ewww...v4.0... ;)
+
+Well, I guess that could happen if, after the first reboot, client1 also
+did a SETCLIENTID *and* reclaimed something that didn't conflict with
+the lock that client2 grabs...or, did an OPEN/OPEN_CONFIRM after the
+grace period without reclaiming its lock previously.
+
+If it didn't do one or the other, then its record should have been
+cleaned out of the DB after the grace period ended between the reboots
+and it wouldn't have been able to reclaim after the second reboot.
+
+It's a bit of a pathological case, and I don't see a way to fix that in
+the context of v4.0. The fact that there's no RECLAIM_COMPLETE is a
+pretty nasty protocol bug, IMO. Yet another reason to start really
+moving people toward v4.1+...
+
+> On Tue, Aug 19, 2014 at 02:38:24PM -0400, Jeff Layton wrote:
+> > v2:
+> > - move grace period handling into its own module
+> > 
+> > One of the huge annoyances in dealing with knfsd is the 90s grace period
+> > that's imposed when the server reboots. This is not just an annoyance,
+> > but means a siginificant amount of "downtime" in many production
+> > environments.
+> > 
+> > This patchset aimed at reducing this pain. It adds a couple of /proc
+> > knobs that tell the lockd and nfsd lock managers to lift the grace
+> > period.
+> > 
+> > It also changes the UMH upcalls to pass a little bit of extra info in
+> > the form of environment variables so that the upcall program can
+> > determine whether there are still any clients that may be in the process
+> > of reclaiming.
+> > 
+> > There are also a couple of cleanup patches in here that are not strictly
+> > required. In particular, making a separate grace.ko module doesn't have
+> > to be done, but I think it's a good idea.
+> > 
+> > Jeff Layton (5):
+> >   lockd: move lockd's grace period handling into its own module
+> >   lockd: add a /proc/fs/lockd/nlm_end_grace file
+> >   nfsd: add a v4_end_grace file to /proc/fs/nfsd
+> >   nfsd: remove redundant boot_time parm from grace_done client tracking
+> >     op
+> >   nfsd: pass extra info in env vars to upcalls to allow for early grace
+> >     period end
+> > 
+> >  fs/Kconfig                       |   6 ++-
+> >  fs/lockd/Makefile                |   3 +-
+> >  fs/lockd/netns.h                 |   1 -
+> >  fs/lockd/procfs.c                |  76 +++++++++++++++++++++++++++
+> >  fs/lockd/procfs.h                |  28 ++++++++++
+> >  fs/lockd/svc.c                   |  10 +++-
+> >  fs/nfs_common/Makefile           |   3 +-
+> >  fs/{lockd => nfs_common}/grace.c |  68 +++++++++++++++++++++----
+> >  fs/nfsd/Kconfig                  |   1 +
+> >  fs/nfsd/nfs4recover.c            | 107 +++++++++++++++++++++++++++++++--------
+> >  fs/nfsd/nfs4state.c              |   8 +--
+> >  fs/nfsd/nfsctl.c                 |  35 +++++++++++++
+> >  fs/nfsd/state.h                  |   5 +-
+> >  include/linux/proc_fs.h          |   2 +
+> >  14 files changed, 312 insertions(+), 41 deletions(-)
+> >  create mode 100644 fs/lockd/procfs.c
+> >  create mode 100644 fs/lockd/procfs.h
+> >  rename fs/{lockd => nfs_common}/grace.c (50%)
+> > 
+> > -- 
+> > 1.9.3
+> > 
+
 
 -- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Jeff Layton <jlayton@primarydata.com>
