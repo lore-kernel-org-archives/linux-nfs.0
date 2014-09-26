@@ -1,30 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43127 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:60192 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750881AbaIISTA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Sep 2014 14:19:00 -0400
-Message-ID: <540F448D.4020600@RedHat.com>
-Date: Tue, 09 Sep 2014 14:18:53 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1755268AbaIZSDO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2014 14:03:14 -0400
+Date: Fri, 26 Sep 2014 14:03:13 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: refactor nfsd callback handling
+Message-ID: <20140926180313.GB27412@fieldses.org>
+References: <1411553959-5280-1-git-send-email-hch@lst.de>
 MIME-Version: 1.0
-To: Chris Perl <chris.perl@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount failures
-References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com> <20140903070048.56201d1d@tlielax.poochiereds.net> <70D58138-CB00-433C-8BF8-01584E6460F0@oracle.com> <CA+Tkd6WV9K4oZPVGkqL_y6OcD9Pmj6x0roo9n839QD8RXDsCwA@mail.gmail.com> <CA+Tkd6WYkkVbY2YsmRNHB4+9AFg5UjC1xoycLTZQOYrtFCT_2w@mail.gmail.com> <CAHQdGtRpD03KHJyu1MtxA=21pu4z_YAG4XA-8Bu+t4xeUefaNQ@mail.gmail.com> <CA+Tkd6WBuMkCmsjUpjrAR38Ri6QK_B4BhgNr0gzHBTG1ytjO6Q@mail.gmail.com> <CA+Tkd6UjfJmjG0WE1F2bsB068rXkEUHhOq6S+F5e=OVA_wxeMw@mail.gmail.com>
-In-Reply-To: <CA+Tkd6UjfJmjG0WE1F2bsB068rXkEUHhOq6S+F5e=OVA_wxeMw@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1411553959-5280-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Sep 24, 2014 at 12:19:15PM +0200, Christoph Hellwig wrote:
+> This series reshuffles the callback code to allow for easier implementation
+> of more callback operations.
 
+They look sensible to me, but I got a few pynfs timeouts in overnight
+testing, which I can't reproduce.
 
-On 09/05/2014 04:20 PM, Chris Perl wrote:
-> It looks like they may have come through after all, unfortunately I
-> already sent them again.  Apologies for the spam.
-I have not seen anything....
+Almost positive the bug's elsewhere (pynfs, or something broken with my
+test machines), but I'll give it a few more tries and then push it out.
 
-steved.
+Thanks!
 
+--b.
