@@ -1,125 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:35262 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752575AbaIONOW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 09:14:22 -0400
-Received: by mail-qa0-f52.google.com with SMTP id m5so3722457qaj.39
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 06:14:21 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v4 2/9] nfsd: remove redundant boot_time parm from grace_done client tracking op
-Date: Mon, 15 Sep 2014 09:14:03 -0400
-Message-Id: <1410786850-18194-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
-References: <1410786850-18194-1-git-send-email-jlayton@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:60547 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754448AbaIZQmA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2014 12:42:00 -0400
+Date: Fri, 26 Sep 2014 18:41:58 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] pnfs/blocklayout: serialize GETDEVICEINFO calls
+Message-ID: <20140926164158.GA27296@lst.de>
+References: <1411740170-18611-1-git-send-email-hch@lst.de> <1411740170-18611-2-git-send-email-hch@lst.de> <CAHQdGtTg8Tc8bRqbezW-ZWrcTJdG233uRTrqQMP5CvxAcjW9Fg@mail.gmail.com> <20140926154843.GA22675@lst.de> <CAHQdGtRYN_L4ONFU5-GW3=kJ1oz5HS_7kmsn=GWCCGTgBODQAA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtRYN_L4ONFU5-GW3=kJ1oz5HS_7kmsn=GWCCGTgBODQAA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since it's stored in nfsd_net, we don't need to pass it in separately.
+On Fri, Sep 26, 2014 at 12:21:06PM -0400, Trond Myklebust wrote:
+> > Not without getting rid of the rpc_pipefs interface.  That is on my
+> > very long term TODO list, but it will require new userspace support.
+> 
+> Why is that? rpc_pipefs was designed to be message based, so it should
+> work quite well in a multi-threaded environment. We certainly don't
+> use mutexes around the gssd up/downcall, and the only reason for the
+> mutex in idmapd is to deal with the keyring upcall.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4recover.c | 17 ++++++++---------
- fs/nfsd/nfs4state.c   |  2 +-
- fs/nfsd/state.h       |  2 +-
- 3 files changed, 10 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
-index 9c271f42604a..a0d2ba956a3f 100644
---- a/fs/nfsd/nfs4recover.c
-+++ b/fs/nfsd/nfs4recover.c
-@@ -58,7 +58,7 @@ struct nfsd4_client_tracking_ops {
- 	void (*create)(struct nfs4_client *);
- 	void (*remove)(struct nfs4_client *);
- 	int (*check)(struct nfs4_client *);
--	void (*grace_done)(struct nfsd_net *, time_t);
-+	void (*grace_done)(struct nfsd_net *);
- };
- 
- /* Globals */
-@@ -392,7 +392,7 @@ purge_old(struct dentry *parent, struct dentry *child, struct nfsd_net *nn)
- }
- 
- static void
--nfsd4_recdir_purge_old(struct nfsd_net *nn, time_t boot_time)
-+nfsd4_recdir_purge_old(struct nfsd_net *nn)
- {
- 	int status;
- 
-@@ -1016,7 +1016,7 @@ nfsd4_cld_check(struct nfs4_client *clp)
- }
- 
- static void
--nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
-+nfsd4_cld_grace_done(struct nfsd_net *nn)
- {
- 	int ret;
- 	struct cld_upcall *cup;
-@@ -1029,7 +1029,7 @@ nfsd4_cld_grace_done(struct nfsd_net *nn, time_t boot_time)
- 	}
- 
- 	cup->cu_msg.cm_cmd = Cld_GraceDone;
--	cup->cu_msg.cm_u.cm_gracetime = (int64_t)boot_time;
-+	cup->cu_msg.cm_u.cm_gracetime = (int64_t)nn->boot_time;
- 	ret = cld_pipe_upcall(cn->cn_pipe, &cup->cu_msg);
- 	if (!ret)
- 		ret = cup->cu_msg.cm_status;
-@@ -1245,13 +1245,12 @@ nfsd4_umh_cltrack_check(struct nfs4_client *clp)
- }
- 
- static void
--nfsd4_umh_cltrack_grace_done(struct nfsd_net __attribute__((unused)) *nn,
--				time_t boot_time)
-+nfsd4_umh_cltrack_grace_done(struct nfsd_net *nn)
- {
- 	char *legacy;
- 	char timestr[22]; /* FIXME: better way to determine max size? */
- 
--	sprintf(timestr, "%ld", boot_time);
-+	sprintf(timestr, "%ld", nn->boot_time);
- 	legacy = nfsd4_cltrack_legacy_topdir();
- 	nfsd4_umh_cltrack_upcall("gracedone", timestr, legacy);
- 	kfree(legacy);
-@@ -1356,10 +1355,10 @@ nfsd4_client_record_check(struct nfs4_client *clp)
- }
- 
- void
--nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time)
-+nfsd4_record_grace_done(struct nfsd_net *nn)
- {
- 	if (nn->client_tracking_ops)
--		nn->client_tracking_ops->grace_done(nn, boot_time);
-+		nn->client_tracking_ops->grace_done(nn);
- }
- 
- static int
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d1b851548b7a..119d5eeca2cf 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4122,7 +4122,7 @@ nfsd4_end_grace(struct nfsd_net *nn)
- 
- 	dprintk("NFSD: end of grace period\n");
- 	nn->grace_ended = true;
--	nfsd4_record_grace_done(nn, nn->boot_time);
-+	nfsd4_record_grace_done(nn);
- 	locks_end_grace(&nn->nfsd4_manager);
- 	/*
- 	 * Now that every NFSv4 client has had the chance to recover and
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 64f291a25a8c..5f8a500a58bf 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -550,7 +550,7 @@ extern void nfsd4_client_tracking_exit(struct net *net);
- extern void nfsd4_client_record_create(struct nfs4_client *clp);
- extern void nfsd4_client_record_remove(struct nfs4_client *clp);
- extern int nfsd4_client_record_check(struct nfs4_client *clp);
--extern void nfsd4_record_grace_done(struct nfsd_net *nn, time_t boot_time);
-+extern void nfsd4_record_grace_done(struct nfsd_net *nn);
- 
- /* nfs fault injection functions */
- #ifdef CONFIG_NFSD_FAULT_INJECTION
--- 
-1.9.3
-
+Ok, the GSS code dynamically allocates a new message for each upcall
+and thus doesn't have the issue.  I'll take a look if I can do this
+in the blocklayout driver as well.
