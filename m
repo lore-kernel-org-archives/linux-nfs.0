@@ -1,284 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:53140 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753891AbaIKAfQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Sep 2014 20:35:16 -0400
-Received: from ip-64-134-224-54.public.wayport.net ([64.134.224.54] helo=localhost)
-	by casper.infradead.org with esmtpsa (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1XRsLy-000840-Cs
-	for linux-nfs@vger.kernel.org; Thu, 11 Sep 2014 00:35:14 +0000
-From: Christoph Hellwig <hch@lst.de>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/5] pnfs/blocklayout: refactor extent processing
-Date: Wed, 10 Sep 2014 17:37:25 -0700
-Message-Id: <1410395848-2437-3-git-send-email-hch@lst.de>
-In-Reply-To: <1410395848-2437-1-git-send-email-hch@lst.de>
-References: <1410395848-2437-1-git-send-email-hch@lst.de>
+Received: from fieldses.org ([174.143.236.118]:36574 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755983AbaIZVro (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 26 Sep 2014 17:47:44 -0400
+Date: Fri, 26 Sep 2014 17:47:43 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
+Message-ID: <20140926214743.GH27412@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+ <20140926183949.GC27412@fieldses.org>
+ <20140926145446.21a99698@tlielax.poochiereds.net>
+ <20140926194616.GE27412@fieldses.org>
+ <CAABAsM664Ce0JhBa=uK9+srsNB4_Ww4LLTymfOvcr1aM3g2X=g@mail.gmail.com>
+ <20140926204549.GF27412@fieldses.org>
+ <CAHQdGtR7uWW7s=ug=1_7n6uf_vU885d9Vc8W7kzaw4ncmdPi6w@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAHQdGtR7uWW7s=ug=1_7n6uf_vU885d9Vc8W7kzaw4ncmdPi6w@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Factor out a helper for all per-extent work, and merge the now trivial
-functions for lseg allocation and parsing.
+On Fri, Sep 26, 2014 at 04:58:47PM -0400, Trond Myklebust wrote:
+> On Fri, Sep 26, 2014 at 4:45 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Fri, Sep 26, 2014 at 04:37:23PM -0400, Trond Myklebust wrote:
+> >> On Fri, Sep 26, 2014 at 3:46 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >> >
+> >> > As I understand it, the rule for the client is: you're allowed to
+> >> > reclaim only the set locks that you held previously, where "the set of
+> >> > locks you held previously" is "the set of locks held by the clientid
+> >> > which last managed to send a reclaim OPEN or OPEN_CONFIRM".  So for
+> >> > example once client1 sends that unrelated OPEN reclaim it's giving up on
+> >> > anything else it doesn't manage to reclaim this time around.
+> >>
+> >> The rule for the client is very simple: "You may attempt to reclaim
+> >> any locks that were held immediately prior to the reboot of the
+> >> server."
+> >> It doesn't matter how those locks were established (ordinary OPEN,
+> >> delegated open, reclaim open, LOCK, reclaim lock...).
+> >>
+> >> However if the server reboots and the client did not manage to
+> >> re-establish a lease (SETCLIENTID+SETCLIENTID_CONFIRM and/or
+> >> EXCHANGE_ID+CREATE_SESSION) before the second reboot, then it is the
+> >> server's responsibility to block that client from reclaiming any
+> >> locks, since the client has no way to know how many times the server
+> >> has rebooted.
+> >> Ditto, of course, if the client tries to reclaim any locks outside the
+> >> grace period and the server isn't tracking whether or not those locks
+> >> have been handed out to another client.
+> >
+> > Agreed with everything except:
+> >
+> >         (SETCLIENTID+SETCLIENTID_CONFIRM and/or
+> >         EXCHANGE_ID+CREATE_SESSION)
+> >
+> > If I remember correctly: RFC 5661 says the point where this happens is
+> > actually RECLAIM_COMPLETE.  RFC 3530 was more vague but suggested first
+> > OPEN reclaim or OPEN_CONFIRM, and 3530bis makes that explicit.
+> >
+> > But the client can choose an earlier point without violating the
+> > protocol--it means it will decline reclaiming some things it could have,
+> > but that's safer than the reverse mistake.
+> >
+> 
+> Where is this documented? I'm not seeing it.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/blocklayout/blocklayout.c | 207 ++++++++++++++++++++-------------------
- 1 file changed, 105 insertions(+), 102 deletions(-)
+It's more vague than I remembered:
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 61a858c..76ec017 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -513,144 +513,147 @@ static int decode_sector_number(__be32 **rp, sector_t *sp)
- 	return 0;
- }
- 
--/* XDR decode pnfs_block_layout4 structure */
- static int
--nfs4_blk_process_layoutget(struct pnfs_layout_hdr *lo,
--			   struct nfs4_layoutget_res *lgr, gfp_t gfp_flags)
-+bl_alloc_extent(struct xdr_stream *xdr, struct pnfs_layout_hdr *lo,
-+		struct layout_verification *lv, struct list_head *extents,
-+		gfp_t gfp_mask)
- {
--	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
--	int i, status = -EIO;
--	uint32_t count;
--	struct pnfs_block_extent *be = NULL, *save;
--	struct xdr_stream stream;
--	struct xdr_buf buf;
--	struct page *scratch;
-+	struct pnfs_block_extent *be;
-+	struct nfs4_deviceid id;
-+	int error;
- 	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 28 + NFS4_DEVICEID4_SIZE);
-+	if (!p)
-+		return -EIO;
-+
-+	be = kzalloc(sizeof(*be), GFP_NOFS);
-+	if (!be)
-+		return -ENOMEM;
-+
-+	memcpy(&id, p, NFS4_DEVICEID4_SIZE);
-+	p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
-+
-+	error = -EIO;
-+	be->be_device = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &id,
-+						lo->plh_lc_cred, gfp_mask);
-+	if (!be->be_device)
-+		goto out_free_be;
-+
-+	/*
-+	 * The next three values are read in as bytes, but stored in the
-+	 * extent structure in 512-byte granularity.
-+	 */
-+	if (decode_sector_number(&p, &be->be_f_offset) < 0)
-+		goto out_put_deviceid;
-+	if (decode_sector_number(&p, &be->be_length) < 0)
-+		goto out_put_deviceid;
-+	if (decode_sector_number(&p, &be->be_v_offset) < 0)
-+		goto out_put_deviceid;
-+	be->be_state = be32_to_cpup(p++);
-+
-+	error = verify_extent(be, lv);
-+	if (error) {
-+		dprintk("%s: extent verification failed\n", __func__);
-+		goto out_put_deviceid;
-+	}
-+
-+	list_add_tail(&be->be_list, extents);
-+	return 0;
-+
-+out_put_deviceid:
-+	nfs4_put_deviceid_node(be->be_device);
-+out_free_be:
-+	kfree(be);
-+	return error;
-+}
-+
-+static struct pnfs_layout_segment *
-+bl_alloc_lseg(struct pnfs_layout_hdr *lo, struct nfs4_layoutget_res *lgr,
-+		gfp_t gfp_mask)
-+{
- 	struct layout_verification lv = {
- 		.mode = lgr->range.iomode,
- 		.start = lgr->range.offset >> SECTOR_SHIFT,
- 		.inval = lgr->range.offset >> SECTOR_SHIFT,
- 		.cowread = lgr->range.offset >> SECTOR_SHIFT,
- 	};
-+	struct pnfs_block_layout *bl = BLK_LO2EXT(lo);
-+	struct pnfs_layout_segment *lseg;
-+	struct xdr_buf buf;
-+	struct xdr_stream xdr;
-+	struct page *scratch;
-+	int status, i;
-+	uint32_t count;
-+	__be32 *p;
- 	LIST_HEAD(extents);
- 
- 	dprintk("---> %s\n", __func__);
- 
--	scratch = alloc_page(gfp_flags);
-+	lseg = kzalloc(sizeof(*lseg), gfp_mask);
-+	if (!lseg)
-+		return ERR_PTR(-ENOMEM);
-+
-+	status = -ENOMEM;
-+	scratch = alloc_page(gfp_mask);
- 	if (!scratch)
--		return -ENOMEM;
-+		goto out;
- 
--	xdr_init_decode_pages(&stream, &buf, lgr->layoutp->pages, lgr->layoutp->len);
--	xdr_set_scratch_buffer(&stream, page_address(scratch), PAGE_SIZE);
-+	xdr_init_decode_pages(&xdr, &buf,
-+			lgr->layoutp->pages, lgr->layoutp->len);
-+	xdr_set_scratch_buffer(&xdr, page_address(scratch), PAGE_SIZE);
- 
--	p = xdr_inline_decode(&stream, 4);
-+	status = -EIO;
-+	p = xdr_inline_decode(&xdr, 4);
- 	if (unlikely(!p))
--		goto out_err;
-+		goto out_free_scratch;
- 
- 	count = be32_to_cpup(p++);
-+	dprintk("%s: number of extents %d\n", __func__, count);
- 
--	dprintk("%s enter, number of extents %i\n", __func__, count);
--	p = xdr_inline_decode(&stream, (28 + NFS4_DEVICEID4_SIZE) * count);
--	if (unlikely(!p))
--		goto out_err;
--
--	/* Decode individual extents, putting them in temporary
--	 * staging area until whole layout is decoded to make error
--	 * recovery easier.
-+	/*
-+	 * Decode individual extents, putting them in temporary staging area
-+	 * until whole layout is decoded to make error recovery easier.
- 	 */
- 	for (i = 0; i < count; i++) {
--		struct nfs4_deviceid id;
--
--		be = kzalloc(sizeof(struct pnfs_block_extent), GFP_NOFS);
--		if (!be) {
--			status = -ENOMEM;
--			goto out_err;
--		}
--		memcpy(&id, p, NFS4_DEVICEID4_SIZE);
--		p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
--
--		be->be_device =
--			nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &id,
--						lo->plh_lc_cred, gfp_flags);
--		if (!be->be_device)
--			goto out_err;
--
--		/* The next three values are read in as bytes,
--		 * but stored as 512-byte sector lengths
--		 */
--		if (decode_sector_number(&p, &be->be_f_offset) < 0)
--			goto out_err;
--		if (decode_sector_number(&p, &be->be_length) < 0)
--			goto out_err;
--		if (decode_sector_number(&p, &be->be_v_offset) < 0)
--			goto out_err;
--		be->be_state = be32_to_cpup(p++);
--		if (verify_extent(be, &lv)) {
--			dprintk("%s verify failed\n", __func__);
--			goto out_err;
--		}
--		list_add_tail(&be->be_list, &extents);
-+		status = bl_alloc_extent(&xdr, lo, &lv, &extents, gfp_mask);
-+		if (status)
-+			goto process_extents;
- 	}
-+
- 	if (lgr->range.offset + lgr->range.length !=
- 			lv.start << SECTOR_SHIFT) {
- 		dprintk("%s Final length mismatch\n", __func__);
--		be = NULL;
--		goto out_err;
-+		status = -EIO;
-+		goto process_extents;
- 	}
-+
- 	if (lv.start < lv.cowread) {
- 		dprintk("%s Final uncovered COW extent\n", __func__);
--		be = NULL;
--		goto out_err;
--	}
--	/* Extents decoded properly, now try to merge them in to
--	 * existing layout extents.
--	 */
--	list_for_each_entry_safe(be, save, &extents, be_list) {
--		list_del(&be->be_list);
--
--		status = ext_tree_insert(bl, be);
--		if (status)
--			goto out_free_list;
-+		status = -EIO;
- 	}
--	status = 0;
-- out:
--	__free_page(scratch);
--	dprintk("%s returns %i\n", __func__, status);
--	return status;
- 
-- out_err:
--	nfs4_put_deviceid_node(be->be_device);
--	kfree(be);
-- out_free_list:
-+process_extents:
- 	while (!list_empty(&extents)) {
--		be = list_first_entry(&extents, struct pnfs_block_extent,
--				      be_list);
-+		struct pnfs_block_extent *be =
-+			list_first_entry(&extents, struct pnfs_block_extent,
-+					 be_list);
- 		list_del(&be->be_list);
--		nfs4_put_deviceid_node(be->be_device);
--		kfree(be);
--	}
--	goto out;
--}
- 
--/* We pretty much ignore lseg, and store all data layout wide, so we
-- * can correctly merge.
-- */
--static struct pnfs_layout_segment *bl_alloc_lseg(struct pnfs_layout_hdr *lo,
--						 struct nfs4_layoutget_res *lgr,
--						 gfp_t gfp_flags)
--{
--	struct pnfs_layout_segment *lseg;
--	int status;
-+		if (!status)
-+			status = ext_tree_insert(bl, be);
- 
--	dprintk("%s enter\n", __func__);
--	lseg = kzalloc(sizeof(*lseg), gfp_flags);
--	if (!lseg)
--		return ERR_PTR(-ENOMEM);
--	status = nfs4_blk_process_layoutget(lo, lgr, gfp_flags);
-+		if (status) {
-+			nfs4_put_deviceid_node(be->be_device);
-+			kfree(be);
-+		}
-+	}
-+
-+out_free_scratch:
-+	__free_page(scratch);
-+out:
-+	dprintk("%s returns %d\n", __func__, status);
- 	if (status) {
--		/* We don't want to call the full-blown bl_free_lseg,
--		 * since on error extents were not touched.
--		 */
- 		kfree(lseg);
- 		return ERR_PTR(status);
- 	}
--- 
-1.9.1
+http://tools.ietf.org/html/rfc5661#section-8.4.3
 
+	The server will set this for any client record in stable
+	storage where the client has not done a suitable
+	RECLAIM_COMPLETE (global or file system-specific depending on
+	the target of the lock request) before it grants any new (i.e.,
+	not reclaimed) lock to any client.
+
+And the corresponding langue in 8.6.3 of rfc 3530 is:
+
+	a timestamp that is updated the first time after a server boot
+	or reboot the client acquires record locking, share reservation,
+	or delegation state on the server.  The timestamp need not be
+	updated on subsequent lock requests until the server reboots.
+
+I thought there was something referring specifically to OPEN reclaim or
+OPEN_CONFIRM as the point where "the client acquires record locking" but
+can't find it on a quick skim.
+
+I also say this is "vague" because, unfortunately, in both cases, this
+language is part of a description of an example server implementation,
+no actual protocol requirement is made explicit.
+
+Which is weird given that noticing the partial-reclaim case was actually
+Dave Noveck's original motivation for introducing RECLAIM_COMPLETE (then
+RECOVERY_COMPLETE), with the grace-period shortening an extra benefit:
+
+	http://osdir.com/ml/ietf.nfsv4/2006-01/msg00020.html
+
+	Adding the RECOVERY_COMPLETE op allows this situation to be
+	dealt with fairly simply. If a client has not recovered all of
+	its locks and we have the possiblity of having given out a lock
+	inconsistent with one of those (the normal realization of this
+	would be that once we declare grace over with some client's
+	reclaims not complete) we mark that client as essentially having
+	had a lock effectively revoked and thus it would not allowed to
+	reclaim locks after a subsequent reboot since it could no longer
+	vouch for all the locks it thinks it had.
+
+In the 3530 case we decided that the only safe point to choose was the
+one described in the sample server implementation, so 3530bis says:
+
+	A server may consider a client's lease "successfully
+	established" once it has received an open operation from that
+	client.
+
+(And "open operation" probably is still too vague.)
+
+Sorry for the length.
+
+Anyway, if the client's currently doing this at SETCLIENTID_CONFIRM and
+CREATE_SESSION then I think that's correct but more conservative than
+necessary.  Which may be a good idea given that I think the chance of a
+random server implementor making there way through all this is small.
+
+--b.
