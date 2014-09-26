@@ -1,183 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:39353 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754382AbaIOSOw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Sep 2014 14:14:52 -0400
-Received: by mail-ig0-f181.google.com with SMTP id h3so4419670igd.14
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Sep 2014 11:14:52 -0700 (PDT)
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:62441 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752856AbaIZBXg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 25 Sep 2014 21:23:36 -0400
+Received: by mail-ig0-f171.google.com with SMTP id hn15so9509130igb.10
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Sep 2014 18:23:35 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140926111005.3124f859@notabene.brown>
+References: <1411613479-8803-1-git-send-email-trond.myklebust@primarydata.com>
+	<20140926111005.3124f859@notabene.brown>
+Date: Thu, 25 Sep 2014 21:23:35 -0400
+Message-ID: <CAHQdGtRrpRxDi5FFjNhvptVnh+nqEyAREQA_6eSoExoW9_CsfA@mail.gmail.com>
+Subject: Re: [PATCH] SUNRPC: Add missing support for RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: stable@vger.kernel.org
-Cc: Weston Andros Adamson <dros@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 04/14] nfs: remove pgio_header refcount, related cleanup
-Date: Mon, 15 Sep 2014 14:14:35 -0400
-Message-Id: <1410804885-17228-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1410804885-17228-4-git-send-email-trond.myklebust@primarydata.com>
-References: <1410804885-17228-1-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-2-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-3-git-send-email-trond.myklebust@primarydata.com>
- <1410804885-17228-4-git-send-email-trond.myklebust@primarydata.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Weston Andros Adamson <dros@primarydata.com>
+On Thu, Sep 25, 2014 at 9:10 PM, NeilBrown <neilb@suse.de> wrote:
+> On Wed, 24 Sep 2014 22:51:19 -0400 Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>
+>> The flag RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT was intended introduced in
+>> order to allow NFSv4 clients to disable resend timeouts. Since those
+>> cause the RPC layer to break the connection, they mess up the duplicate
+>> reply caches that remain indexed on the port number in NFSv4..
+>>
+>> This patch includes the code that was missing in the original to
+>> set the appropriate flag in struct rpc_clnt, when the caller of
+>> rpc_create() sets RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT.
+>>
+>> Fixes: 8a19a0b6cb2e (SUNRPC: Add RPC task and client level options to...)
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>>  net/sunrpc/clnt.c | 2 ++
+>>  1 file changed, 2 insertions(+)
+>>
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index 488ddeed9363..841565450354 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -461,6 +461,8 @@ struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
+>>
+>>       if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
+>>               clnt->cl_autobind = 1;
+>> +     if (args->flags & RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT)
+>> +             clnt->cl_noretranstimeo = 1;
+>>       if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
+>>               clnt->cl_discrtry = 1;
+>>       if (!(args->flags & RPC_CLNT_CREATE_QUIET))
+>
+> Hi Trond,
+>  do this relate to my observation in
+>     Subject: Re: NFS auto-reconnect tuning
+>
+>  that NFSv4 closes a connections after the first timeout?
+>  This patch seems to be a step towards changing that behaviour, though it
+>  doesn't succeed.
+>
+> You would need
+>
+> @@ -580,6 +582,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
+>         new->cl_autobind = 0;
+>         new->cl_softrtry = clnt->cl_softrtry;
+>         new->cl_discrtry = clnt->cl_discrtry;
+> +       new->cl_noretranstimeo = clnt->cl_noretranstimeo;
 
-commit 4714fb51fd03a14d8c73001438283e7f7b752f1e upstream.
+D'oh! Yes, of course that is correct.
 
-The refcounting on nfs_pgio_header was related to there being (possibly)
-more than one nfs_pgio_data. Now that nfs_pgio_data has been merged into
-nfs_pgio_header, there is no reason to do this ref counting.  Just call
-the completion callback on nfs_pgio_release/nfs_pgio_error.
+>         new->cl_chatty = clnt->cl_chatty;
+>         return new;
+>
+> as well.
+>
+> What do you think of having the client close the connection more quickly when
+> there is a timeout?  There does seem to be a case for closing sooner than 30
+> minutes...
+>
+> I must admit I'm a bit confused by these flags so I might be missing
+> something important.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/pagelist.c       | 36 +++++++++++-------------------------
- fs/nfs/pnfs.c           |  6 ------
- include/linux/nfs_xdr.h |  1 -
- 3 files changed, 11 insertions(+), 32 deletions(-)
+Actually, the whole idea is to stop the client from disconnecting when
+it doesn't need to. Disconnect == very bad, since it typically breaks
+the duplicate reply cache semantics and it can interrupt RPC calls
+that may be in progress on the server.
+Furthermore, the NFSv4 server is supposed to guarantee to us that it
+will always reply to an RPC call (provided that the connection stays
+up), so the whole business of disconnecting was misguided in the first
+place. The only thing we need is to detect accidental disconnections
+(i.e. network partitions), and the way to do that is to use TCP
+keepalive. The new code will therefore interpret the NFSv4 'timeo'
+mount parameter as the TCP keepalive timeout rather than as a
+retransmission timeout.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 6dea542f9b42..653017909e97 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -469,7 +469,6 @@ struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *ops)
- 	if (hdr) {
- 		INIT_LIST_HEAD(&hdr->pages);
- 		spin_lock_init(&hdr->lock);
--		atomic_set(&hdr->refcnt, 0);
- 		hdr->rw_ops = ops;
- 	}
- 	return hdr;
-@@ -487,31 +486,18 @@ void nfs_pgio_header_free(struct nfs_pgio_header *hdr)
- EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
- 
- /**
-- * nfs_pgio_data_alloc - Allocate pageio data
-- * @hdr: The header making a request
-- * @pagecount: Number of pages to create
-- */
--static bool nfs_pgio_data_init(struct nfs_pgio_header *hdr,
--			       unsigned int pagecount)
--{
--	if (nfs_pgarray_set(&hdr->page_array, pagecount)) {
--		atomic_inc(&hdr->refcnt);
--		return true;
--	}
--	return false;
--}
--
--/**
-- * nfs_pgio_data_destroy - Properly release pageio data
-- * @hdr: The header with data to destroy
-+ * nfs_pgio_data_destroy - make @hdr suitable for reuse
-+ *
-+ * Frees memory and releases refs from nfs_generic_pgio, so that it may
-+ * be called again.
-+ *
-+ * @hdr: A header that has had nfs_generic_pgio called
-  */
- void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
- {
- 	put_nfs_open_context(hdr->args.context);
- 	if (hdr->page_array.pagevec != hdr->page_array.page_array)
- 		kfree(hdr->page_array.pagevec);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
- }
- EXPORT_SYMBOL_GPL(nfs_pgio_data_destroy);
- 
-@@ -630,6 +616,7 @@ static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
- {
- 	set_bit(NFS_IOHDR_REDO, &hdr->flags);
- 	nfs_pgio_data_destroy(hdr);
-+	hdr->completion_ops->completion(hdr);
- 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- 	return -ENOMEM;
- }
-@@ -644,6 +631,7 @@ static void nfs_pgio_release(void *calldata)
- 	if (hdr->rw_ops->rw_release)
- 		hdr->rw_ops->rw_release(hdr);
- 	nfs_pgio_data_destroy(hdr);
-+	hdr->completion_ops->completion(hdr);
- }
- 
- /**
-@@ -717,9 +705,10 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- 	struct page		**pages;
- 	struct list_head *head = &desc->pg_list;
- 	struct nfs_commit_info cinfo;
-+	unsigned int pagecount;
- 
--	if (!nfs_pgio_data_init(hdr, nfs_page_array_len(desc->pg_base,
--			   desc->pg_count)))
-+	pagecount = nfs_page_array_len(desc->pg_base, desc->pg_count);
-+	if (!nfs_pgarray_set(&hdr->page_array, pagecount))
- 		return nfs_pgio_error(desc, hdr);
- 
- 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
-@@ -753,14 +742,11 @@ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
- 		return -ENOMEM;
- 	}
- 	nfs_pgheader_init(desc, hdr, nfs_pgio_header_free);
--	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret == 0)
- 		ret = nfs_initiate_pgio(NFS_CLIENT(hdr->inode),
- 					hdr, desc->pg_rpc_callops,
- 					desc->pg_ioflags, 0);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
- 	return ret;
- }
- 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index ecc911347750..ecbed4632d11 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1602,15 +1602,12 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 	}
- 	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
- 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
--	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret != 0) {
- 		pnfs_put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
- 	} else
- 		pnfs_do_write(desc, hdr, desc->pg_ioflags);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
- 	return ret;
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
-@@ -1745,15 +1742,12 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- 	}
- 	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
- 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
--	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret != 0) {
- 		pnfs_put_lseg(desc->pg_lseg);
- 		desc->pg_lseg = NULL;
- 	} else
- 		pnfs_do_read(desc, hdr);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
- 	return ret;
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index efeaf7690b51..2c35d524ffc6 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1261,7 +1261,6 @@ struct nfs_pgio_header {
- 	struct inode		*inode;
- 	struct rpc_cred		*cred;
- 	struct list_head	pages;
--	atomic_t		refcnt;
- 	struct nfs_page		*req;
- 	struct nfs_writeverf	verf;		/* Used for writes */
- 	struct pnfs_layout_segment *lseg;
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
