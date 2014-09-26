@@ -1,363 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f174.google.com ([209.85.216.174]:42133 "EHLO
-	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753922AbaIHQad (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Sep 2014 12:30:33 -0400
-Received: by mail-qc0-f174.google.com with SMTP id i17so15750896qcy.5
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 09:30:32 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Subject: [PATCH v3 4/7] nfsdcltrack: overhaul database initializtion
-Date: Mon,  8 Sep 2014 12:30:18 -0400
-Message-Id: <1410193821-25109-5-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
-References: <1410193821-25109-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-vc0-f175.google.com ([209.85.220.175]:43220 "EHLO
+	mail-vc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755869AbaIZWfk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Sep 2014 18:35:40 -0400
+Received: by mail-vc0-f175.google.com with SMTP id hy4so2473618vcb.6
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Sep 2014 15:35:39 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAHQdGtSdizkiykfThL2z4ozbFkaoFWGnS2_O9VLj749ZDUnxeQ@mail.gmail.com>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+	<20140926183949.GC27412@fieldses.org>
+	<20140926145446.21a99698@tlielax.poochiereds.net>
+	<20140926194616.GE27412@fieldses.org>
+	<CAABAsM664Ce0JhBa=uK9+srsNB4_Ww4LLTymfOvcr1aM3g2X=g@mail.gmail.com>
+	<20140926204549.GF27412@fieldses.org>
+	<CAHQdGtR7uWW7s=ug=1_7n6uf_vU885d9Vc8W7kzaw4ncmdPi6w@mail.gmail.com>
+	<20140926214743.GH27412@fieldses.org>
+	<CAHQdGtSdizkiykfThL2z4ozbFkaoFWGnS2_O9VLj749ZDUnxeQ@mail.gmail.com>
+Date: Fri, 26 Sep 2014 18:35:39 -0400
+Message-ID: <CAHQdGtQ=TaBJ+NoVWctskZr3epBFkNBYdCHVhVRh6aos-GQiiA@mail.gmail.com>
+Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Thomas D Haynes <thomas.haynes@primarydata.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have some possibility for races with nfsdcltrack when the DB schema
-is upgraded.
+On Fri, Sep 26, 2014 at 6:17 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> On Fri, Sep 26, 2014 at 5:47 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> On Fri, Sep 26, 2014 at 04:58:47PM -0400, Trond Myklebust wrote:
+>>> On Fri, Sep 26, 2014 at 4:45 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>> > On Fri, Sep 26, 2014 at 04:37:23PM -0400, Trond Myklebust wrote:
+>>> >> On Fri, Sep 26, 2014 at 3:46 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>>> >> >
+>>> >> > As I understand it, the rule for the client is: you're allowed to
+>>> >> > reclaim only the set locks that you held previously, where "the set of
+>>> >> > locks you held previously" is "the set of locks held by the clientid
+>>> >> > which last managed to send a reclaim OPEN or OPEN_CONFIRM".  So for
+>>> >> > example once client1 sends that unrelated OPEN reclaim it's giving up on
+>>> >> > anything else it doesn't manage to reclaim this time around.
+>>> >>
+>>> >> The rule for the client is very simple: "You may attempt to reclaim
+>>> >> any locks that were held immediately prior to the reboot of the
+>>> >> server."
+>>> >> It doesn't matter how those locks were established (ordinary OPEN,
+>>> >> delegated open, reclaim open, LOCK, reclaim lock...).
+>>> >>
+>>> >> However if the server reboots and the client did not manage to
+>>> >> re-establish a lease (SETCLIENTID+SETCLIENTID_CONFIRM and/or
+>>> >> EXCHANGE_ID+CREATE_SESSION) before the second reboot, then it is the
+>>> >> server's responsibility to block that client from reclaiming any
+>>> >> locks, since the client has no way to know how many times the server
+>>> >> has rebooted.
+>>> >> Ditto, of course, if the client tries to reclaim any locks outside the
+>>> >> grace period and the server isn't tracking whether or not those locks
+>>> >> have been handed out to another client.
+>>> >
+>>> > Agreed with everything except:
+>>> >
+>>> >         (SETCLIENTID+SETCLIENTID_CONFIRM and/or
+>>> >         EXCHANGE_ID+CREATE_SESSION)
+>>> >
+>>> > If I remember correctly: RFC 5661 says the point where this happens is
+>>> > actually RECLAIM_COMPLETE.  RFC 3530 was more vague but suggested first
+>>> > OPEN reclaim or OPEN_CONFIRM, and 3530bis makes that explicit.
+>>> >
+>>> > But the client can choose an earlier point without violating the
+>>> > protocol--it means it will decline reclaiming some things it could have,
+>>> > but that's safer than the reverse mistake.
+>>> >
+>>>
+>>> Where is this documented? I'm not seeing it.
+>>
+>> It's more vague than I remembered:
+>>
+>> http://tools.ietf.org/html/rfc5661#section-8.4.3
+>>
+>>         The server will set this for any client record in stable
+>>         storage where the client has not done a suitable
+>>         RECLAIM_COMPLETE (global or file system-specific depending on
+>>         the target of the lock request) before it grants any new (i.e.,
+>>         not reclaimed) lock to any client.
+>
+> Yes, I read that. Then I read this:
+>
+>    For the second edge condition, after the server restarts for a second
+>    time, the indication that the client had not completed its reclaims
+>    at the time at which the grace period ended means that the server
+>    must reject a reclaim from client A with the error NFS4ERR_NO_GRACE.
+>
+> This text is just plain wrong, and we should fix it in an errata.
+> There is absolutely NO edge case condition for those locks that were
+> successfully reclaimed after the first reboot. There is absolutely no
+> reason why the client shouldn't be able to reclaim those locks after
+> reboot number 2.
+>
+> All the absence of the RECLAIM_COMPLETE tells the server is that the
+> client MAY have held more locks; what is the server supposed to do
+> with that information? It's not the server that is responsible for
+> reclaiming locks.
+>
 
-Suppose we update the nfs-utils package on a machine after the DB has
-been initialized. With the current scheme of initializing the DB only
-during the "init" phase, we could end up with a new program that expects
-a new schema with an old database.
+Sigh, the information in RFC3530bis is still confused.
 
-We could try to do a one-time update when the package is installed, but
-that could be racy. We could get an upcall between when the program is
-installed and when we run the update. Also, relying on packaging to get
-that right is tricky at best. To fix this, change how the database
-initialization and checking of the schema revision works.
+This makes sense:
+   o  a timestamp that is updated the first time after a server boot or
+      reboot the client acquires byte-range locking, share reservation,
+      or delegation state on the server.  The timestamp need not be
+      updated on subsequent lock requests until the server reboots.
+....
+This does not:
+   For the second edge condition, after the server reboots for a second
+   time, the record that the client had an unexpired record lock, share
+   reservation, or delegation established before the server's previous
+   incarnation means that the server must reject a reclaim from client A
+   with the error NFS4ERR_NO_GRACE or NFS4ERR_RECLAIM_BAD.
 
-On every upcall, attempt to open the db as we normally would. If that
-fails, then try to create the directory if it doesn't exist and then
-retry the open. If it fails again, then give up.
+Tom?
 
-If we get a successful open, then query the DB for the schema version.
-If it matches what we expect, then declare success and move on. If the
-query fails then assume that the DB isn't set up yet. Start an exclusive
-transaction, check the schema version again and then set up the DB if no
-one raced in to create it in the meantime.
-
-This should only add a tiny bit of overhead on most upcalls (just an
-extra select of the parameters table), and should improve the
-performance of the "init" upcall. It'll also make it possible to handle
-DB schema changes sanely.
-
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- utils/nfsdcltrack/nfsdcltrack.c |   2 +-
- utils/nfsdcltrack/sqlite.c      | 225 +++++++++++++++++++++++++---------------
- utils/nfsdcltrack/sqlite.h      |   1 -
- 3 files changed, 142 insertions(+), 86 deletions(-)
-
-diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
-index 4334340197b1..f2813610be73 100644
---- a/utils/nfsdcltrack/nfsdcltrack.c
-+++ b/utils/nfsdcltrack/nfsdcltrack.c
-@@ -241,7 +241,7 @@ cltrack_init(const char __attribute__((unused)) *unused)
- 	}
- 
- 	/* set up storage db */
--	ret = sqlite_maindb_init(storagedir);
-+	ret = sqlite_prepare_dbh(storagedir);
- 	if (ret) {
- 		xlog(L_ERROR, "Failed to init database: %d", ret);
- 		/*
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index 52fcaa4d7ca3..dde2f7ff8621 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -88,135 +88,192 @@ mkdir_if_not_exist(const char *dirname)
- 	return ret;
- }
- 
--/* Open the database and set up the database handle for it */
--int
--sqlite_prepare_dbh(const char *topdir)
-+static int
-+sqlite_query_schema_version(void)
- {
- 	int ret;
-+	sqlite3_stmt *stmt = NULL;
- 
--	/* Do nothing if the database handle is already set up */
--	if (dbh)
--		return 0;
--
--	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", topdir);
--	if (ret < 0)
--		return ret;
--
--	buf[PATH_MAX - 1] = '\0';
--
--	ret = sqlite3_open(buf, &dbh);
-+	/* prepare select query */
-+	ret = sqlite3_prepare_v2(dbh,
-+		"SELECT value FROM parameters WHERE key == \"version\";",
-+		 -1, &stmt, NULL);
- 	if (ret != SQLITE_OK) {
--		xlog(L_ERROR, "Unable to open main database: %d", ret);
--		dbh = NULL;
--		return ret;
-+		xlog(L_ERROR, "Unable to prepare select statement: %s",
-+			sqlite3_errstr(ret));
-+		ret = 0;
-+		goto out;
- 	}
- 
--	ret = sqlite3_busy_timeout(dbh, CLTRACK_SQLITE_BUSY_TIMEOUT);
--	if (ret != SQLITE_OK) {
--		xlog(L_ERROR, "Unable to set sqlite busy timeout: %d", ret);
--		sqlite3_close(dbh);
--		dbh = NULL;
-+	/* query schema version */
-+	ret = sqlite3_step(stmt);
-+	if (ret != SQLITE_ROW) {
-+		xlog(L_ERROR, "Select statement execution failed: %s",
-+				sqlite3_errstr(ret));
-+		ret = 0;
-+		goto out;
- 	}
- 
-+	ret = sqlite3_column_int(stmt, 0);
-+out:
-+	sqlite3_finalize(stmt);
- 	return ret;
- }
- 
- /*
-- * Open the "main" database, and attempt to initialize it by creating the
-- * parameters table and inserting the schema version into it. Ignore any errors
-- * from that, and then attempt to select the version out of it again. If the
-- * version appears wrong, then assume that the DB is corrupt or has been
-- * upgraded, and return an error. If all of that works, then attempt to create
-- * the "clients" table.
-+ * Start an exclusive transaction and recheck the DB schema version. If it's
-+ * still zero (indicating a new database) then set it up. If that all works,
-+ * then insert schema version into the parameters table and commit the
-+ * transaction. On any error, rollback the transaction.
-  */
- int
--sqlite_maindb_init(const char *topdir)
-+sqlite_maindb_init_v1(void)
- {
- 	int ret;
- 	char *err = NULL;
--	sqlite3_stmt *stmt = NULL;
- 
--	ret = mkdir_if_not_exist(topdir);
--	if (ret)
-+	/* Start a transaction */
-+	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
-+				&err);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to begin transaction: %s", err);
- 		return ret;
-+	}
- 
--	ret = sqlite_prepare_dbh(topdir);
--	if (ret)
--		return ret;
-+	/*
-+	 * Check schema version again. This time, under an exclusive
-+	 * transaction to guard against racing DB setup attempts
-+	 */
-+	ret = sqlite_query_schema_version();
-+	switch (ret) {
-+	case 0:
-+		/* Query failed again -- set up DB */
-+		break;
-+	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
-+		/* Someone else raced in and set it up */
-+		ret = 0;
-+		goto rollback;
-+	default:
-+		/* Something went wrong -- fail! */
-+		ret = -EINVAL;
-+		goto rollback;
-+	}
- 
--	/* Try to create table */
--	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS parameters "
-+	ret = sqlite3_exec(dbh, "CREATE TABLE parameters "
- 				"(key TEXT PRIMARY KEY, value TEXT);",
- 				NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
--		xlog(L_ERROR, "Unable to create parameter table: %d", ret);
--		goto out_err;
-+		xlog(L_ERROR, "Unable to create parameter table: %s", err);
-+		goto rollback;
- 	}
- 
--	/* insert version into table -- ignore error if it fails */
--	ret = snprintf(buf, sizeof(buf),
--		       "INSERT OR IGNORE INTO parameters values (\"version\", "
--		       "\"%d\");", CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION);
-+	/* create the "clients" table */
-+	ret = sqlite3_exec(dbh, "CREATE TABLE clients (id BLOB PRIMARY KEY, "
-+				"time INTEGER);",
-+				NULL, NULL, &err);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to create clients table: %s", err);
-+		goto rollback;
-+	}
-+
-+
-+	/* insert version into parameters table */
-+	ret = snprintf(buf, sizeof(buf), "INSERT OR FAIL INTO parameters "
-+			"values (\"version\", \"%d\");",
-+			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
- 	if (ret < 0) {
--		goto out_err;
-+		xlog(L_ERROR, "sprintf failed!");
-+		goto rollback;
- 	} else if ((size_t)ret >= sizeof(buf)) {
-+		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
- 		ret = -EINVAL;
--		goto out_err;
-+		goto rollback;
- 	}
- 
- 	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
--		xlog(L_ERROR, "Unable to insert into parameter table: %d",
--				ret);
--		goto out_err;
-+		xlog(L_ERROR, "Unable to insert into parameter table: %s", err);
-+		goto rollback;
- 	}
- 
--	ret = sqlite3_prepare_v2(dbh,
--		"SELECT value FROM parameters WHERE key == \"version\";",
--		 -1, &stmt, NULL);
-+	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
- 	if (ret != SQLITE_OK) {
--		xlog(L_ERROR, "Unable to prepare select statement: %d", ret);
--		goto out_err;
-+		xlog(L_ERROR, "Unable to commit transaction: %s", err);
-+		goto rollback;
- 	}
-+out:
-+	sqlite3_free(err);
-+	return ret;
- 
--	/* check schema version */
--	ret = sqlite3_step(stmt);
--	if (ret != SQLITE_ROW) {
--		xlog(L_ERROR, "Select statement execution failed: %s",
--				sqlite3_errmsg(dbh));
--		goto out_err;
--	}
-+rollback:
-+	/* Attempt to rollback the transaction */
-+	sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
-+	goto out;
-+}
- 
--	/* process SELECT result */
--	ret = sqlite3_column_int(stmt, 0);
--	if (ret != CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION) {
--		xlog(L_ERROR, "Unsupported database schema version! "
--			"Expected %d, got %d.",
--			CLTRACK_SQLITE_CURRENT_SCHEMA_VERSION, ret);
--		ret = -EINVAL;
--		goto out_err;
--	}
-+/* Open the database and set up the database handle for it */
-+int
-+sqlite_prepare_dbh(const char *topdir)
-+{
-+	int ret;
- 
--	/* now create the "clients" table */
--	ret = sqlite3_exec(dbh, "CREATE TABLE IF NOT EXISTS clients "
--				"(id BLOB PRIMARY KEY, time INTEGER);",
--				NULL, NULL, &err);
-+	/* Do nothing if the database handle is already set up */
-+	if (dbh)
-+		return 0;
-+
-+	ret = snprintf(buf, PATH_MAX - 1, "%s/main.sqlite", topdir);
-+	if (ret < 0)
-+		return ret;
-+
-+	buf[PATH_MAX - 1] = '\0';
-+
-+	/* open a new DB handle */
-+	ret = sqlite3_open(buf, &dbh);
- 	if (ret != SQLITE_OK) {
--		xlog(L_ERROR, "Unable to create clients table: %s", err);
--		goto out_err;
-+		/* try to create the dir */
-+		ret = mkdir_if_not_exist(topdir);
-+		if (ret)
-+			goto out_close;
-+
-+		/* retry open */
-+		ret = sqlite3_open(buf, &dbh);
-+		if (ret != SQLITE_OK)
-+			goto out_close;
- 	}
- 
--	sqlite3_free(err);
--	sqlite3_finalize(stmt);
--	return 0;
-+	/* set busy timeout */
-+	ret = sqlite3_busy_timeout(dbh, CLTRACK_SQLITE_BUSY_TIMEOUT);
-+	if (ret != SQLITE_OK) {
-+		xlog(L_ERROR, "Unable to set sqlite busy timeout: %s",
-+				sqlite3_errstr(ret));
-+		goto out_close;
-+	}
- 
--out_err:
--	if (err) {
--		xlog(L_ERROR, "sqlite error: %s", err);
--		sqlite3_free(err);
-+	ret = sqlite_query_schema_version();
-+	switch (ret) {
-+	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
-+		/* DB is already set up. Do nothing */
-+		ret = 0;
-+		break;
-+	case 0:
-+		/* Query failed -- try to set up new DB */
-+		ret = sqlite_maindb_init_v1();
-+		if (ret)
-+			goto out_close;
-+		break;
-+	default:
-+		/* Unknown DB version -- downgrade? Fail */
-+		xlog(L_ERROR, "Unsupported database schema version! "
-+			"Expected %d, got %d.",
-+			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION, ret);
-+		ret = -EINVAL;
-+		goto out_close;
- 	}
--	sqlite3_finalize(stmt);
--	sqlite3_close(dbh);
-+
-+	return ret;
-+out_close:
-+	sqlite3_close_v2(dbh);
-+	dbh = NULL;
- 	return ret;
- }
- 
-diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
-index ebf04c3cdbaa..3713bfb66e2f 100644
---- a/utils/nfsdcltrack/sqlite.h
-+++ b/utils/nfsdcltrack/sqlite.h
-@@ -21,7 +21,6 @@
- #define _SQLITE_H_
- 
- int sqlite_prepare_dbh(const char *topdir);
--int sqlite_maindb_init(const char *topdir);
- int sqlite_insert_client(const unsigned char *clname, const size_t namelen);
- int sqlite_remove_client(const unsigned char *clname, const size_t namelen);
- int sqlite_check_client(const unsigned char *clname, const size_t namelen);
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
