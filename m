@@ -1,50 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from prod-mail-xrelay07.akamai.com ([72.246.2.115]:35227 "EHLO
-	prod-mail-xrelay07.akamai.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753449AbaIXSH5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 14:07:57 -0400
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, Anna.Schumaker@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <cover.1411580799.git.jbaron@akamai.com>
-From: Jason Baron <jbaron@akamai.com>
-Subject: [PATCH v2 0/2] rpc: resolve softlockup in presence of iptables drop rule
-Date: Wed, 24 Sep 2014 18:07:56 +0000 (GMT)
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:39369 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752738AbaI0PWa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 11:22:30 -0400
+Received: by mail-ig0-f175.google.com with SMTP id h18so970448igc.8
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 08:22:30 -0700 (PDT)
+MIME-Version: 1.0
+Date: Sat, 27 Sep 2014 11:22:29 -0400
+Message-ID: <CAABAsM4zDuzjapXfLUrminwM1FV7iwN+oEzxgzaQ60m93gBBug@mail.gmail.com>
+Subject: Could somebody please enlighten me as to what is supposed to happen
+ in this situation?
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "nfsv4@ietf.org" <nfsv4@ietf.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
--return -EIO after major timeout on a soft mount, continue to retry if its a
-hard mount
--fixup changelogs
+The scenario is this:
+                                       Server
+                                       ======
+                                       boot (B1)
+Client
+======
+EXCHANGE_ID
+CREATE_SESSION
+OPEN(reclaim)
+LOCK(reclaim)
+RECLAIM_COMPLETE
+                                       (lift GRACE period)
+                                       reboot (B2)
+EXCHANGE_ID
+CREATE_SESSION
+OPEN(reclaim)
+                                        reboot (while GRACE period
+still being enforced) (B3)
+EXCHANGE_ID
+CREATE_SESSION
+OPEN(reclaim)
 
-Hi,
+What should be the server response to the above OPEN(reclaim) from the
+client after reboot (B3)?
 
-We've found a softlockup on the nfsv3 client (udp), while testing an iptables
-rule, which simply drops traffic destined for the nfs server. The softlockup
-occurs because xs_sendpages() returns a positive result (resulting in an
--EAGAIN), masking out the -EPERM that the lower level ip code returns.
-
-The first patch restructures xs_sendpages() such that it can return a 'sent'
-value in addition to an error value. It no longer over-loads the return value
-as both a 'sent' and 'error' value. In this way the 'higher' level code can
-make more informed decisions.
-
-The second patch makes use of the new return value to propagate an -EIO
-up instead of the -EAGAIN and avoids the cpu spinning.
-
-Thanks,
-
--Jason
-
-
-Jason Baron (2):
-  rpc: return sent and err from xs_sendpages()
-  rpc: Add -EPERM processing for xs_udp_send_request()
-
- net/sunrpc/clnt.c     |  2 ++
- net/sunrpc/xprtsock.c | 87 ++++++++++++++++++++++++++++-----------------------
- 2 files changed, 50 insertions(+), 39 deletions(-)
-
--- 
-1.8.2.rc2
-
+Cheers
+  Trond
