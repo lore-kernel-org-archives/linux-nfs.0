@@ -1,84 +1,210 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:53792 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752515AbaI0WUb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 18:20:31 -0400
-Received: by mail-ie0-f181.google.com with SMTP id at20so2018954iec.12
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 15:20:30 -0700 (PDT)
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:44905 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753239AbaI0XMD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 19:12:03 -0400
+Received: by mail-ie0-f176.google.com with SMTP id ar1so17807465iec.21
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 16:12:02 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140927165704.59be4981@synchrony.poochiereds.net>
+References: <CAABAsM4zDuzjapXfLUrminwM1FV7iwN+oEzxgzaQ60m93gBBug@mail.gmail.com>
+	<20140927144056.2d303755@synchrony.poochiereds.net>
+	<CAHQdGtQBNpBO+xv_uk+bkue6zoSKMhU72xjKaeOb2gEHY012Ew@mail.gmail.com>
+	<20140927155045.76ce1149@synchrony.poochiereds.net>
+	<CAHQdGtSc8+5k-U=5NB7gYEhh5Qd4jq2BqpzQ_0wA_YH637q97g@mail.gmail.com>
+	<20140927165704.59be4981@synchrony.poochiereds.net>
+Date: Sat, 27 Sep 2014 19:12:02 -0400
+Message-ID: <CAHQdGtRNMULR_dPkEwpqYWDRGRfi1o_z6+OuiN9ZM_z6ppTHUQ@mail.gmail.com>
+Subject: Re: [nfsv4] Could somebody please enlighten me as to what is supposed
+ to happen in this situation?
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFSv4: fix open/lock state recovery error handling
-Date: Sat, 27 Sep 2014 18:20:15 -0400
-Message-Id: <1411856415-4472-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1411856415-4472-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1411856415-4472-1-git-send-email-trond.myklebust@primarydata.com>
- <1411856415-4472-2-git-send-email-trond.myklebust@primarydata.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: "nfsv4@ietf.org" <nfsv4@ietf.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current open/lock state recovery unfortunately does not handle errors
-such as NFS4ERR_CONN_NOT_BOUND_TO_SESSION correctly. Instead of looping,
-just proceeds as if the state manager is finished recovering.
-This patch ensures that we loop back, handle higher priority errors
-and complete the open/lock state recovery.
+On Sat, Sep 27, 2014 at 4:57 PM, Jeff Layton
+<jeff.layton@primarydata.com> wrote:
+> On Sat, 27 Sep 2014 16:27:15 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>
+>> On Sat, Sep 27, 2014 at 3:50 PM, Jeff Layton
+>> <jeff.layton@primarydata.com> wrote:
+>> > On Sat, 27 Sep 2014 15:25:12 -0400
+>> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>> >
+>> >> On Sat, Sep 27, 2014 at 2:40 PM, Jeff Layton
+>> >> <jeff.layton@primarydata.com> wrote:
+>> >> > On Sat, 27 Sep 2014 11:22:29 -0400
+>> >> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>> >> >
+>> >> >
+>> >> > My take (quite possibly wrong, but...)
+>> >> >
+>> >> >> The scenario is this:
+>> >> >>                                        Server
+>> >> >>                                        ======
+>> >> >>                                        boot (B1)
+>> >> >> Client
+>> >> >> ======
+>> >> >> EXCHANGE_ID
+>> >> >> CREATE_SESSION
+>> >> >> OPEN(reclaim)
+>> >> >> LOCK(reclaim)
+>> >> >> RECLAIM_COMPLETE
+>> >> >>                                        (lift GRACE period)
+>> >> >
+>> >> > At this point, we'd deny reclaim from any client that has not issued a
+>> >> > RECLAIM_COMPLETE. In the case of the Linux server with nfsdcltrack, we
+>> >> > clean out any client records that have not issued a RECLAIM_COMPLETE.
+>> >> >
+>> >> >>                                        reboot (B2)
+>> >> >> EXCHANGE_ID
+>> >> >> CREATE_SESSION
+>> >> >> OPEN(reclaim)
+>> >> >>                                         reboot (while GRACE period
+>> >> >> still being enforced) (B3)
+>> >> >> EXCHANGE_ID
+>> >> >> CREATE_SESSION
+>> >> >> OPEN(reclaim)
+>> >> >>
+>> >> >> What should be the server response to the above OPEN(reclaim) from the
+>> >> >> client after reboot (B3)?
+>> >> >>
+>> >> >
+>> >> > My expectation is that it would be granted. There was a
+>> >> > RECLAIM_COMPLETE issued during the boot where the grace period was last
+>> >> > lifted, and that should be enough to allow the client to issue reclaims
+>> >> > on any subsequent reboot, until the grace period is lifted again.
+>> >> >
+>> >> > Doing anything else would be a pretty unfriendly way for the server to
+>> >> > behave. In the face of rapid reboots (a not-uncommon occurrence when
+>> >> > patching, etc), you'd lose state unless the client just happened to get
+>> >> > in there quickly enough to issue a RECLAIM_COMPLETE between each reboot.
+>>
+>> Where is the evidence that this is a problem for NFS and for NFS
+>> client recovery?
+>>
+>
+> I don't have any other than my own experience with it. That said,
+> reclaim problems tend to be "silent killers". It's often hard to notice
+> when things go wrong as it's not necessarily a problem.
+>
+>> >> > That was the situation with the legacy client tracker in knfsd. When
+>> >> > testing, it was trivial to reboot the machine quickly twice and on the
+>> >> > second reboot nothing could be reclaimed.
+>> >>
+>> >> So now, what if the following scenario:
+>> >>
+>> >>                                        Server
+>> >>                                        ======
+>> >>                                        boot (B1')
+>> >> Client
+>> >> ======
+>> >> EXCHANGE_ID
+>> >> CREATE_SESSION
+>> >> OPEN(reclaim)
+>> >> LOCK(reclaim)
+>> >> RECLAIM_COMPLETE
+>> >>                                        (lift GRACE period (G1))
+>> >>                                        reboot (B2')
+>> >> EXCHANGE_ID
+>> >> CREATE_SESSION
+>> >> OPEN(reclaim)
+>> >>                                        (lift GRACE period (G2))
+>> >>                                        reboot (B3')
+>> >> EXCHANGE_ID
+>> >> CREATE_SESSION
+>> >> OPEN(reclaim)
+>> >>
+>> >> What should happen to the OPEN(reclaim) in (B3')?
+>> >>
+>> >
+>> > (Let's call the lifting of grace periods 'G1' and 'G2'...)
+>> >
+>> > Denied.
+>> >
+>> > There was no RECLAIM_COMPLETE issued between B2 and G2. It's possible
+>> > that client2 could creep in between G2 and B3 and acquire locks that
+>> > conflict with ones that were not reclaimed by client1 between B2 and
+>> > G2. So, we can't allow any reclaims for client1 after B3.
+>>
+>> Why should the possibility that clients might steal locks that were
+>> not reclaimed, affect reboot recovery of locks that were successfully
+>> reclaimed? There is no way for client 2 to steal those unless the
+>> lease expires, in which case client 1 will be blocked from recovering
+>> state anyway.
+>>
+>
+> Well, the server could allow it, but relying on the client to limit
+> what it reclaims in that case seems a bit sketchy. The question is:
+>
+>     Can the client could lose its lease while the grace period is still
+>     in effect?
+>
+> If so, then the client might reclaim some, but not all locks, and then
+> lose its lease. It gets a new lease and the reclaims only the ones that
+> it reclaimed before, even though it could have reclaimed all of them
+> since the grace period is still in effect.
+>
+> I'm not sure which is worse. :-/
 
-Cc: stable@vger.kernel.org
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4state.c | 16 ++++++----------
- 1 file changed, 6 insertions(+), 10 deletions(-)
+If the client loses its lease, then that will be recorded by the
+server in stable storage using the 1st boolean described in RFC5661,
+Section 8.4.3 (RFC3530, Section 8.6.3) . The server then knows not to
+allow recovery of any locks after a reboot.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 5321b8c71a35..0d9ddbda3bb5 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1704,7 +1704,8 @@ restart:
- 			if (status < 0) {
- 				set_bit(ops->owner_flag_bit, &sp->so_flags);
- 				nfs4_put_state_owner(sp);
--				return nfs4_recovery_handle_error(clp, status);
-+				status = nfs4_recovery_handle_error(clp, status);
-+				return (status != 0) ? status : -EAGAIN;
- 			}
- 
- 			nfs4_put_state_owner(sp);
-@@ -1713,7 +1714,7 @@ restart:
- 		spin_unlock(&clp->cl_lock);
- 	}
- 	rcu_read_unlock();
--	return status;
-+	return 0;
- }
- 
- static int nfs4_check_lease(struct nfs_client *clp)
-@@ -2364,14 +2365,11 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 			section = "reclaim reboot";
- 			status = nfs4_do_reclaim(clp,
- 				clp->cl_mvops->reboot_recovery_ops);
--			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) ||
--			    test_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state))
--				continue;
--			nfs4_state_end_reclaim_reboot(clp);
--			if (test_bit(NFS4CLNT_RECLAIM_NOGRACE, &clp->cl_state))
-+			if (status == -EAGAIN)
- 				continue;
- 			if (status < 0)
- 				goto out_error;
-+			nfs4_state_end_reclaim_reboot(clp);
- 		}
- 
- 		/* Now recover expired state... */
-@@ -2379,9 +2377,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
- 			section = "reclaim nograce";
- 			status = nfs4_do_reclaim(clp,
- 				clp->cl_mvops->nograce_recovery_ops);
--			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) ||
--			    test_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state) ||
--			    test_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state))
-+			if (status == -EAGAIN)
- 				continue;
- 			if (status < 0)
- 				goto out_error;
+>> So you are saying that the client should be able to reclaim all locks
+>> or nothing? If this is really the case then, could we please fix the
+>> spec?
+>>
+>
+> I'm saying that if the client wants to to be able to reclaim anything
+> on the next reboot, then it should issue a RECLAIM_COMPLETE during the
+> current one.
+>
+> The exception there is if the server never gets to lift the grace
+> period before the next reboot occurs. In that case, we'll still want to
+> allow the client to reclaim on the next reboot (since we know that no
+> new state can have been established).
+
+Where is this exception documented? The only discussion I see about
+multiple reboots is in the context of edge conditions 1 and 2. There
+is nothing there about multiple reboots in other contexts.
+
+BTW: if this is indeed the correct interpretation of the spec, then
+does RFC3530 really intend that the client should be unable to recover
+any locks if the application doesn't perform a non-delegated open() or
+lock between the end of the grace period and the server reboot?
+
+>> > I should add a clarification here too. I'm assuming that the server in
+>> > this case just tracks the minimum required to allow state to be
+>> > reclaimed. If it (for instance) tracked on stable storage all of the
+>> > locks that it ever granted such that it knows that there were no
+>> > conflicts, then it could be more lenient about allowing client1 to
+>> > reclaim after B3.
+>>
+>> No. A server doesn't need to do all that in order to allow the client
+>> to recover some of the locks.
+>>
+>> All it needs to do is to be able to tell the client that it shouldn't
+>> reclaim locks that were not reclaimed in (B2'). A simple SEQUENCE
+>> status flag would suffice to let the client know that it failed to
+>> reclaim all its locks in the last valid grace period.
+>>
+>
+> It is required with the current protocol. If you're talking about
+> extending the protocol to allow it, then that's a different matter
+> entirely.
+
+Right now, I'm just trying to figure out the ramifications of all
+this: the RFC3530 requirements in particular...
+
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
