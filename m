@@ -1,110 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30359 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751244AbaIRNNX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 18 Sep 2014 09:13:23 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Stable Tree <stable@vger.kernel.org>
-Subject: [PATCH] [V2] NFSv4: nfs4_state_manager() vs. nfs_server_remove_lists()
-Date: Thu, 18 Sep 2014 09:13:17 -0400
-Message-Id: <1411045997-3988-1-git-send-email-steved@redhat.com>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:50740 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751267AbaI0TZN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 15:25:13 -0400
+Received: by mail-ie0-f170.google.com with SMTP id x19so14933831ier.15
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 12:25:12 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140927144056.2d303755@synchrony.poochiereds.net>
+References: <CAABAsM4zDuzjapXfLUrminwM1FV7iwN+oEzxgzaQ60m93gBBug@mail.gmail.com>
+	<20140927144056.2d303755@synchrony.poochiereds.net>
+Date: Sat, 27 Sep 2014 15:25:12 -0400
+Message-ID: <CAHQdGtQBNpBO+xv_uk+bkue6zoSKMhU72xjKaeOb2gEHY012Ew@mail.gmail.com>
+Subject: Re: [nfsv4] Could somebody please enlighten me as to what is supposed
+ to happen in this situation?
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: "nfsv4@ietf.org" <nfsv4@ietf.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a race between nfs4_state_manager() and
-nfs_server_remove_lists() that happens during a nfsv3 mount.
+On Sat, Sep 27, 2014 at 2:40 PM, Jeff Layton
+<jeff.layton@primarydata.com> wrote:
+> On Sat, 27 Sep 2014 11:22:29 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>
+>
+> My take (quite possibly wrong, but...)
+>
+>> The scenario is this:
+>>                                        Server
+>>                                        ======
+>>                                        boot (B1)
+>> Client
+>> ======
+>> EXCHANGE_ID
+>> CREATE_SESSION
+>> OPEN(reclaim)
+>> LOCK(reclaim)
+>> RECLAIM_COMPLETE
+>>                                        (lift GRACE period)
+>
+> At this point, we'd deny reclaim from any client that has not issued a
+> RECLAIM_COMPLETE. In the case of the Linux server with nfsdcltrack, we
+> clean out any client records that have not issued a RECLAIM_COMPLETE.
+>
+>>                                        reboot (B2)
+>> EXCHANGE_ID
+>> CREATE_SESSION
+>> OPEN(reclaim)
+>>                                         reboot (while GRACE period
+>> still being enforced) (B3)
+>> EXCHANGE_ID
+>> CREATE_SESSION
+>> OPEN(reclaim)
+>>
+>> What should be the server response to the above OPEN(reclaim) from the
+>> client after reboot (B3)?
+>>
+>
+> My expectation is that it would be granted. There was a
+> RECLAIM_COMPLETE issued during the boot where the grace period was last
+> lifted, and that should be enough to allow the client to issue reclaims
+> on any subsequent reboot, until the grace period is lifted again.
+>
+> Doing anything else would be a pretty unfriendly way for the server to
+> behave. In the face of rapid reboots (a not-uncommon occurrence when
+> patching, etc), you'd lose state unless the client just happened to get
+> in there quickly enough to issue a RECLAIM_COMPLETE between each reboot.
+>
+> That was the situation with the legacy client tracker in knfsd. When
+> testing, it was trivial to reboot the machine quickly twice and on the
+> second reboot nothing could be reclaimed.
 
-The v3 mount notices there is already a supper block so
-nfs_server_remove_lists() called which uses the nfs_client_lock
-spin lock to synchronize access to the client list.
+So now, what if the following scenario:
 
-At the same time nfs4_state_manager() is running through
-the client list looking for work to do, using the same
-lock. When nfs4_state_manager() wins the race to the
-list, a v3 client pointer is found and not ignored
-properly which causes the panic.
+                                       Server
+                                       ======
+                                       boot (B1')
+Client
+======
+EXCHANGE_ID
+CREATE_SESSION
+OPEN(reclaim)
+LOCK(reclaim)
+RECLAIM_COMPLETE
+                                       (lift GRACE period)
+                                       reboot (B2')
+EXCHANGE_ID
+CREATE_SESSION
+OPEN(reclaim)
+                                       (lift GRACE period)
+                                       reboot (B3')
+EXCHANGE_ID
+CREATE_SESSION
+OPEN(reclaim)
 
-Moving some protocol checks before the state checking
-avoids the panic.
+What should happen to the OPEN(reclaim) in (B3')?
 
-CC: Stable Tree <stable@vger.kernel.org>
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfs/nfs4client.c | 38 ++++++++++++++++++++------------------
- 1 file changed, 20 insertions(+), 18 deletions(-)
-
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 53e435a..ffdb28d 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -482,6 +482,16 @@ int nfs40_walk_client_list(struct nfs_client *new,
- 
- 	spin_lock(&nn->nfs_client_lock);
- 	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
-+
-+		if (pos->rpc_ops != new->rpc_ops)
-+			continue;
-+
-+		if (pos->cl_proto != new->cl_proto)
-+			continue;
-+
-+		if (pos->cl_minorversion != new->cl_minorversion)
-+			continue;
-+
- 		/* If "pos" isn't marked ready, we can't trust the
- 		 * remaining fields in "pos" */
- 		if (pos->cl_cons_state > NFS_CS_READY) {
-@@ -501,15 +511,6 @@ int nfs40_walk_client_list(struct nfs_client *new,
- 		if (pos->cl_cons_state != NFS_CS_READY)
- 			continue;
- 
--		if (pos->rpc_ops != new->rpc_ops)
--			continue;
--
--		if (pos->cl_proto != new->cl_proto)
--			continue;
--
--		if (pos->cl_minorversion != new->cl_minorversion)
--			continue;
--
- 		if (pos->cl_clientid != new->cl_clientid)
- 			continue;
- 
-@@ -622,6 +623,16 @@ int nfs41_walk_client_list(struct nfs_client *new,
- 
- 	spin_lock(&nn->nfs_client_lock);
- 	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
-+
-+		if (pos->rpc_ops != new->rpc_ops)
-+			continue;
-+
-+		if (pos->cl_proto != new->cl_proto)
-+			continue;
-+
-+		if (pos->cl_minorversion != new->cl_minorversion)
-+			continue;
-+
- 		/* If "pos" isn't marked ready, we can't trust the
- 		 * remaining fields in "pos", especially the client
- 		 * ID and serverowner fields.  Wait for CREATE_SESSION
-@@ -647,15 +658,6 @@ int nfs41_walk_client_list(struct nfs_client *new,
- 		if (pos->cl_cons_state != NFS_CS_READY)
- 			continue;
- 
--		if (pos->rpc_ops != new->rpc_ops)
--			continue;
--
--		if (pos->cl_proto != new->cl_proto)
--			continue;
--
--		if (pos->cl_minorversion != new->cl_minorversion)
--			continue;
--
- 		if (!nfs4_match_clientids(pos, new))
- 			continue;
- 
 -- 
-1.8.3.1
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
