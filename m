@@ -1,61 +1,29 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f177.google.com ([209.85.220.177]:47941 "EHLO
-	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750850AbaIIEMB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 00:12:01 -0400
-Received: by mail-vc0-f177.google.com with SMTP id hq11so16157846vcb.22
-        for <linux-nfs@vger.kernel.org>; Mon, 08 Sep 2014 21:12:01 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140821161338.GA31352@infradead.org>
-References: <1408637375-11343-1-git-send-email-hch@lst.de>
-	<20140821161338.GA31352@infradead.org>
-Date: Mon, 8 Sep 2014 21:12:01 -0700
-Message-ID: <CAHQdGtToLV08oRhfnEMwvxAsL3CeiU55GUxYC9iZvyuUDZ9fCA@mail.gmail.com>
-Subject: Re: pnfs block layout driver fixes V2
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:40854 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752515AbaI0WUZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 18:20:25 -0400
+Received: by mail-ie0-f177.google.com with SMTP id x19so17014837ier.8
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 15:20:24 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Christoph Hellwig <hch@lst.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] Fix NFS client state recovery
+Date: Sat, 27 Sep 2014 18:20:13 -0400
+Message-Id: <1411856415-4472-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 21, 2014 at 9:13 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> For some reason the subject of the mail got lost, fixed it.
->
-> On Thu, Aug 21, 2014 at 11:09:16AM -0500, Christoph Hellwig wrote:
->> This series fixes a wide range of issues with the pnfs block layout driver.
->>
->> Before this we were seeing frequent silent data corruption, softlockups and
->> kernel crashes when running both user applications and test cases like xfstests.
->>
->> After this rewrite of the I/O path we've sorted out all issues under normal
->> operations, although error handling in the block layout driver and its
->> interaction with the core nfs and pnfs code still needs further work.
->>
->> It was pointed out that the requirement for blocksizes smaller or equal to
->> the page size conflicts with existing servers.  From the state of the code
->> I'm very sure it was never used for real against those servers, but as
->> soon as someone signs up to testing and fix support for these servers I'm
->> happy to land a helping hand, although rock solid support probably is
->> imposible.
->>
->> This work was sponsored by NetApp, Inc.
->>
->> Changes since V1:
->>  - added two more layout stateid handling fixes
->>  - change the layoutget path so that the layout driver is responsible for
->>    freeing the spliced in payload.
->>
+- Fix up client to work with NFSv4/v4.1 all or nothing reboot recovery
+- Fix open/state recovery error handling
 
-Applying all patches except the ones for which I explicitly sent you
-an email with questions and/or a notification of a dependency on a
-questioned patch.
 
+Trond Myklebust (2):
+  NFSv4: Don't convert unreclaimed locks on STALE_CLIENTID
+  NFSv4: fix open/lock state recovery error handling
+
+ fs/nfs/nfs4state.c | 18 ++++++------------
+ 1 file changed, 6 insertions(+), 12 deletions(-)
 
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
