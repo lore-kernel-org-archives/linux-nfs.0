@@ -1,42 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f171.google.com ([209.85.220.171]:52826 "EHLO
-	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753495AbaIIOiC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Sep 2014 10:38:02 -0400
-Received: by mail-vc0-f171.google.com with SMTP id id10so17277739vcb.30
-        for <linux-nfs@vger.kernel.org>; Tue, 09 Sep 2014 07:38:00 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140909054929.GA12459@lst.de>
-References: <1408637375-11343-1-git-send-email-hch@lst.de>
-	<1408637375-11343-4-git-send-email-hch@lst.de>
-	<CAHQdGtQ5--A4_NJpJZ=VEkomCbFYM=6AitSEdexShvBk=aJsPQ@mail.gmail.com>
-	<20140909054929.GA12459@lst.de>
-Date: Tue, 9 Sep 2014 07:38:00 -0700
-Message-ID: <CAHQdGtQ7pEK4QCPHMfys1YW+StYcMJeOP2oXnSrn3G6A-8CBuA@mail.gmail.com>
-Subject: Re: [PATCH 03/19] pnfs: force a layout commit when encountering busy
- segments during recall
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:53792 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752515AbaI0WUb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 18:20:31 -0400
+Received: by mail-ie0-f181.google.com with SMTP id at20so2018954iec.12
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 15:20:30 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] NFSv4: fix open/lock state recovery error handling
+Date: Sat, 27 Sep 2014 18:20:15 -0400
+Message-Id: <1411856415-4472-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1411856415-4472-2-git-send-email-trond.myklebust@primarydata.com>
+References: <1411856415-4472-1-git-send-email-trond.myklebust@primarydata.com>
+ <1411856415-4472-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 8, 2014 at 10:49 PM, Christoph Hellwig <hch@lst.de> wrote:
-> On Mon, Sep 08, 2014 at 05:37:42PM -0700, Trond Myklebust wrote:
->> Why wouldn't it make more sense to call pnfs_layoutcommit_inode()
->> unconditionally before the call to pnfs_mark_matching_lsegs_invalid()?
->
-> It would minimally reduce the latency, but otherwise be not very different.
-> The downside is that we'll now need two i_lock roundtrips per recall.
->
-> But if this is your preference I can easily fix it up.
+The current open/lock state recovery unfortunately does not handle errors
+such as NFS4ERR_CONN_NOT_BOUND_TO_SESSION correctly. Instead of looping,
+just proceeds as if the state manager is finished recovering.
+This patch ensures that we loop back, handle higher priority errors
+and complete the open/lock state recovery.
 
-Please do. It would make the code a little easier on the eye.
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4state.c | 16 ++++++----------
+ 1 file changed, 6 insertions(+), 10 deletions(-)
 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 5321b8c71a35..0d9ddbda3bb5 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1704,7 +1704,8 @@ restart:
+ 			if (status < 0) {
+ 				set_bit(ops->owner_flag_bit, &sp->so_flags);
+ 				nfs4_put_state_owner(sp);
+-				return nfs4_recovery_handle_error(clp, status);
++				status = nfs4_recovery_handle_error(clp, status);
++				return (status != 0) ? status : -EAGAIN;
+ 			}
+ 
+ 			nfs4_put_state_owner(sp);
+@@ -1713,7 +1714,7 @@ restart:
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 	rcu_read_unlock();
+-	return status;
++	return 0;
+ }
+ 
+ static int nfs4_check_lease(struct nfs_client *clp)
+@@ -2364,14 +2365,11 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			section = "reclaim reboot";
+ 			status = nfs4_do_reclaim(clp,
+ 				clp->cl_mvops->reboot_recovery_ops);
+-			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) ||
+-			    test_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state))
+-				continue;
+-			nfs4_state_end_reclaim_reboot(clp);
+-			if (test_bit(NFS4CLNT_RECLAIM_NOGRACE, &clp->cl_state))
++			if (status == -EAGAIN)
+ 				continue;
+ 			if (status < 0)
+ 				goto out_error;
++			nfs4_state_end_reclaim_reboot(clp);
+ 		}
+ 
+ 		/* Now recover expired state... */
+@@ -2379,9 +2377,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			section = "reclaim nograce";
+ 			status = nfs4_do_reclaim(clp,
+ 				clp->cl_mvops->nograce_recovery_ops);
+-			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) ||
+-			    test_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state) ||
+-			    test_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state))
++			if (status == -EAGAIN)
+ 				continue;
+ 			if (status < 0)
+ 				goto out_error;
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
