@@ -1,73 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38193 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751133AbaIXREZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2014 13:04:25 -0400
-Date: Wed, 24 Sep 2014 13:04:21 -0400
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jan Chaloupka <jchaloup@redhat.com>,
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:38447 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751651AbaI0Tur (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 15:50:47 -0400
+Received: by mail-qg0-f48.google.com with SMTP id i50so317085qgf.35
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 12:50:47 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Sat, 27 Sep 2014 15:50:45 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mountd.man: mountd tcp wrappers support only NFS v2/v3
-Message-ID: <20140924170421.GA7365@fieldses.org>
-References: <20140923070733.25555.18292.stgit@unused-4-157.brq.redhat.com>
- <CAHQdGtRZA89spXkGWxoDyd8dRt-f9wfnfuz=rACsMe3bSa_meA@mail.gmail.com>
- <5422E18E.2080905@RedHat.com>
+Subject: Re: [nfsv4] Could somebody please enlighten me as to what is
+ supposed to happen in this situation?
+Message-ID: <20140927155045.76ce1149@synchrony.poochiereds.net>
+In-Reply-To: <CAHQdGtQBNpBO+xv_uk+bkue6zoSKMhU72xjKaeOb2gEHY012Ew@mail.gmail.com>
+References: <CAABAsM4zDuzjapXfLUrminwM1FV7iwN+oEzxgzaQ60m93gBBug@mail.gmail.com>
+	<20140927144056.2d303755@synchrony.poochiereds.net>
+	<CAHQdGtQBNpBO+xv_uk+bkue6zoSKMhU72xjKaeOb2gEHY012Ew@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5422E18E.2080905@RedHat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 24, 2014 at 11:21:50AM -0400, Steve Dickson wrote:
-> 
-> 
-> On 09/23/2014 04:41 PM, Trond Myklebust wrote:
-> > On Tue, Sep 23, 2014 at 3:07 AM, Jan Chaloupka <jchaloup@redhat.com> wrote:
-> >> mountd tcp wrappers support only NFSv2 and NFSv3, not NFSv4.
-> >>
-> >> https://bugzilla.redhat.com/show_bug.cgi?id=1116283
-> >>
-> >> This patch updates the man page
-> >>
-> >> Signed-off-by: Jan Chaloupka <jchaloup@redhat.com>
-> >> ---
-> >>  utils/mountd/mountd.man |    2 ++
-> >>  1 file changed, 2 insertions(+)
-> >>
-> >> diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
-> >> index a8828ae..1aae75b 100644
-> >> --- a/utils/mountd/mountd.man
-> >> +++ b/utils/mountd/mountd.man
-> >> @@ -217,6 +217,8 @@ listeners using the
-> >>  .B tcp_wrapper
-> >>  library or
-> >>  .BR iptables (8).
-> >> +Tcp wrappers are only in effect with NFS version 2 and 3 mounts.
-> >> +They do not work with NFS version 4.
-> >>  .PP
-> >>  Note that the
-> >>  .B tcp_wrapper
-> >>
-> > 
-> > Is there any point to compiling mountd with the tcp wrappers in this
-> > day and age? 
-> >From an upstream point of view... Sure... But I don't think
-> we can remove them from the man pages...
-> 
-> 
-> > tcp wrappers isn't enforced by knfsd, so as the above
-> > manpage change indicates it really is only blocking NFSv2/v3 _mount_
-> > attempts.
-> > 
-> > If you can use NFSv4, or sniff the NFSv2/v3 traffic or even just guess
-> > NFSv2/v3 filehandles, then tcp wrappers can be 100% circumvented.
-> > 
-> You would be surprised on the amount of people that still use
-> them... 
+On Sat, 27 Sep 2014 15:25:12 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-I'd also be surprised if any of them really understand how little they
-do in this case.
+> On Sat, Sep 27, 2014 at 2:40 PM, Jeff Layton
+> <jeff.layton@primarydata.com> wrote:
+> > On Sat, 27 Sep 2014 11:22:29 -0400
+> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> >
+> >
+> > My take (quite possibly wrong, but...)
+> >
+> >> The scenario is this:
+> >>                                        Server
+> >>                                        ======
+> >>                                        boot (B1)
+> >> Client
+> >> ======
+> >> EXCHANGE_ID
+> >> CREATE_SESSION
+> >> OPEN(reclaim)
+> >> LOCK(reclaim)
+> >> RECLAIM_COMPLETE
+> >>                                        (lift GRACE period)
+> >
+> > At this point, we'd deny reclaim from any client that has not issued a
+> > RECLAIM_COMPLETE. In the case of the Linux server with nfsdcltrack, we
+> > clean out any client records that have not issued a RECLAIM_COMPLETE.
+> >
+> >>                                        reboot (B2)
+> >> EXCHANGE_ID
+> >> CREATE_SESSION
+> >> OPEN(reclaim)
+> >>                                         reboot (while GRACE period
+> >> still being enforced) (B3)
+> >> EXCHANGE_ID
+> >> CREATE_SESSION
+> >> OPEN(reclaim)
+> >>
+> >> What should be the server response to the above OPEN(reclaim) from the
+> >> client after reboot (B3)?
+> >>
+> >
+> > My expectation is that it would be granted. There was a
+> > RECLAIM_COMPLETE issued during the boot where the grace period was last
+> > lifted, and that should be enough to allow the client to issue reclaims
+> > on any subsequent reboot, until the grace period is lifted again.
+> >
+> > Doing anything else would be a pretty unfriendly way for the server to
+> > behave. In the face of rapid reboots (a not-uncommon occurrence when
+> > patching, etc), you'd lose state unless the client just happened to get
+> > in there quickly enough to issue a RECLAIM_COMPLETE between each reboot.
+> >
+> > That was the situation with the legacy client tracker in knfsd. When
+> > testing, it was trivial to reboot the machine quickly twice and on the
+> > second reboot nothing could be reclaimed.
+> 
+> So now, what if the following scenario:
+> 
+>                                        Server
+>                                        ======
+>                                        boot (B1')
+> Client
+> ======
+> EXCHANGE_ID
+> CREATE_SESSION
+> OPEN(reclaim)
+> LOCK(reclaim)
+> RECLAIM_COMPLETE
+>                                        (lift GRACE period (G1))
+>                                        reboot (B2')
+> EXCHANGE_ID
+> CREATE_SESSION
+> OPEN(reclaim)
+>                                        (lift GRACE period (G2))
+>                                        reboot (B3')
+> EXCHANGE_ID
+> CREATE_SESSION
+> OPEN(reclaim)
+> 
+> What should happen to the OPEN(reclaim) in (B3')?
+> 
 
---b.
+(Let's call the lifting of grace periods 'G1' and 'G2'...)
+ 
+Denied.
+
+There was no RECLAIM_COMPLETE issued between B2 and G2. It's possible
+that client2 could creep in between G2 and B3 and acquire locks that
+conflict with ones that were not reclaimed by client1 between B2 and
+G2. So, we can't allow any reclaims for client1 after B3.
+
+I should add a clarification here too. I'm assuming that the server in
+this case just tracks the minimum required to allow state to be
+reclaimed. If it (for instance) tracked on stable storage all of the
+locks that it ever granted such that it knows that there were no
+conflicts, then it could be more lenient about allowing client1 to
+reclaim after B3.
+
+-- 
+Jeff Layton <jlayton@primarydata.com>
