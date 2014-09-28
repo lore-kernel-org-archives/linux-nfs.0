@@ -1,66 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27396 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750914AbaIVUCf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 16:02:35 -0400
-Message-ID: <54208058.4060502@RedHat.com>
-Date: Mon, 22 Sep 2014 16:02:32 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfs-service: Added the starting of gssproxy
-References: <1411413608-16462-1-git-send-email-steved@redhat.com>	<1411413608-16462-2-git-send-email-steved@redhat.com>	<20140922194057.GE26763@fieldses.org>	<20140922154642.779189c8@willson.usersys.redhat.com>	<54207E4A.7010300@RedHat.com> <20140922160050.0b85f044@willson.usersys.redhat.com>
-In-Reply-To: <20140922160050.0b85f044@willson.usersys.redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:36216 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752322AbaI1DzE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 23:55:04 -0400
+Received: by mail-ig0-f178.google.com with SMTP id l13so45401iga.5
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 20:55:03 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/2] NFSv4: Fix lock recovery when CREATE_SESSION/SETCLIENTID_CONFIRM fails
+Date: Sat, 27 Sep 2014 23:54:57 -0400
+Message-Id: <1411876498-12039-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1411876498-12039-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1411876498-12039-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If a NFSv4.x server returns NFS4ERR_STALE_CLIENTID in response to a
+CREATE_SESSION or SETCLIENTID_CONFIRM in order to tell us that it rebooted
+a second time, then the client will currently take this to mean that it must
+declare all locks to be stale, and hence ineligible for reboot recovery.
 
+RFC3530 and RFC5661 both suggest that the client should instead rely on the
+server to respond to inelegible open share, lock and delegation reclaim
+requests with NFS4ERR_NO_GRACE in this situation.
 
-On 09/22/2014 04:00 PM, Simo Sorce wrote:
-> On Mon, 22 Sep 2014 15:53:46 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 09/22/2014 03:46 PM, Simo Sorce wrote:
->>> On Mon, 22 Sep 2014 15:40:57 -0400
->>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>>
->>>> On Mon, Sep 22, 2014 at 03:20:07PM -0400, Steve Dickson wrote:
->>>>> Added the gssproxy.service to both the Wants= and
->>>>> Atfers= lines, before the rpc-svcgssd.service. There
->>>>> are  ConditionPathExists= lines in the rpc-svcgssd.service
->>>>> unit which will stop the rpc.svcgssd daemon from
->>>>> starting when the gssproxy daemon is already running.
->>>>
->>>> That should read "when the kernel supports gssproxy", not "when the
->>>> gssproxy daemon is already running."
->>>
->>> Actually the language is currently correct but it is another bug,
->>> the systemd/rpc-svcgssd.service file still includes
->>> "ConditionPathExists=|!/run/gssproxy.pid"
->>> This line should be removed in this patch.
->>
->> I left that on purpose because isn't that ConditionPathExists
->> seeing if /run/gssproxy.pid exists and if it does 
->> it means gssproxy is already running so rpc.svcgssd 
->> should not start?
-> 
-> No.
-> First of all the fact gss-proxy is running does not mean it is
-> serving nfsd necessarily, it may be running on an older kernel where it
-> servers apache or some other process (remember gssproxy is not just
-> for nfsd).
-> Second you already have
-> "ConditionPathExists=|!/proc/net/rpc/use-gss-proxy" which is the
-> correct trigger to decide which of the two to use.
-Fair enough... that makes sense... 
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4state.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-steved.
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 22fe35104c0c..26d510d11efd 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1761,7 +1761,6 @@ static int nfs4_handle_reclaim_lease_error(struct nfs_client *clp, int status)
+ 		break;
+ 	case -NFS4ERR_STALE_CLIENTID:
+ 		clear_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
+-		nfs4_state_clear_reclaim_reboot(clp);
+ 		nfs4_state_start_reclaim_reboot(clp);
+ 		break;
+ 	case -NFS4ERR_CLID_INUSE:
+-- 
+1.9.3
 
-> 
-> Simo.
-> 
