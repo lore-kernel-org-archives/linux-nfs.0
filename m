@@ -1,78 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from xes-mad.com ([216.165.139.218]:1362 "EHLO xes-mad.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751356AbaIDXFG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 4 Sep 2014 19:05:06 -0400
-Received: from zimbra.xes-mad.com (zimbra.xes-mad.com [10.52.0.127])
-	by xes-mad.com (8.13.8/8.13.8) with ESMTP id s84MNJfa028130
-	for <linux-nfs@vger.kernel.org>; Thu, 4 Sep 2014 17:23:19 -0500
-Date: Thu, 4 Sep 2014 17:23:19 -0500 (CDT)
-From: Andrew Martin <amartin@xes-inc.com>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:46543 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752322AbaI1DzF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Sep 2014 23:55:05 -0400
+Received: by mail-ig0-f182.google.com with SMTP id hn18so1613379igb.9
+        for <linux-nfs@vger.kernel.org>; Sat, 27 Sep 2014 20:55:04 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Message-ID: <584874869.387720.1409869399398.JavaMail.zimbra@xes-inc.com>
-In-Reply-To: <2124227602.386654.1409868802614.JavaMail.zimbra@xes-inc.com>
-Subject: Clarification on client "async" option
-MIME-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Subject: [PATCH v2 2/2] NFSv4: fix open/lock state recovery error handling
+Date: Sat, 27 Sep 2014 23:54:58 -0400
+Message-Id: <1411876498-12039-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1411876498-12039-2-git-send-email-trond.myklebust@primarydata.com>
+References: <1411876498-12039-1-git-send-email-trond.myklebust@primarydata.com>
+ <1411876498-12039-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+The current open/lock state recovery unfortunately does not handle errors
+such as NFS4ERR_CONN_NOT_BOUND_TO_SESSION correctly. Instead of looping,
+just proceeds as if the state manager is finished recovering.
+This patch ensures that we loop back, handle higher priority errors
+and complete the open/lock state recovery.
 
-I would like to understand in more detail how the client-side "async" option
-works with NFSv3 when used with the NFSv3 server-side option "sync" (async on
-the client, sync on the server). According to the manpage:
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4state.c | 16 ++++++----------
+ 1 file changed, 6 insertions(+), 10 deletions(-)
 
->       The NFS client treats the sync mount option differently than some other
-> file systems (refer to mount(8) for a description of the generic sync and async
-> mount options).  If neither sync nor async is specified (or if the async option
-> is specified), the NFS client delays sending application writes to the server
-> until any of these  events occur:
->
->              Memory pressure forces reclamation of system memory resources.
->
->              An application flushes file data explicitly with sync(2),
->              msync(2), or fsync(3).
->
->              An application closes a file with close(2).
->
->              The file is locked/unlocked via fcntl(2).
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 26d510d11efd..87b2d0e79797 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1705,7 +1705,8 @@ restart:
+ 			if (status < 0) {
+ 				set_bit(ops->owner_flag_bit, &sp->so_flags);
+ 				nfs4_put_state_owner(sp);
+-				return nfs4_recovery_handle_error(clp, status);
++				status = nfs4_recovery_handle_error(clp, status);
++				return (status != 0) ? status : -EAGAIN;
+ 			}
+ 
+ 			nfs4_put_state_owner(sp);
+@@ -1714,7 +1715,7 @@ restart:
+ 		spin_unlock(&clp->cl_lock);
+ 	}
+ 	rcu_read_unlock();
+-	return status;
++	return 0;
+ }
+ 
+ static int nfs4_check_lease(struct nfs_client *clp)
+@@ -2365,14 +2366,11 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			section = "reclaim reboot";
+ 			status = nfs4_do_reclaim(clp,
+ 				clp->cl_mvops->reboot_recovery_ops);
+-			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) ||
+-			    test_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state))
+-				continue;
+-			nfs4_state_end_reclaim_reboot(clp);
+-			if (test_bit(NFS4CLNT_RECLAIM_NOGRACE, &clp->cl_state))
++			if (status == -EAGAIN)
+ 				continue;
+ 			if (status < 0)
+ 				goto out_error;
++			nfs4_state_end_reclaim_reboot(clp);
+ 		}
+ 
+ 		/* Now recover expired state... */
+@@ -2380,9 +2378,7 @@ static void nfs4_state_manager(struct nfs_client *clp)
+ 			section = "reclaim nograce";
+ 			status = nfs4_do_reclaim(clp,
+ 				clp->cl_mvops->nograce_recovery_ops);
+-			if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state) ||
+-			    test_bit(NFS4CLNT_SESSION_RESET, &clp->cl_state) ||
+-			    test_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state))
++			if (status == -EAGAIN)
+ 				continue;
+ 			if (status < 0)
+ 				goto out_error;
+-- 
+1.9.3
 
-
-When performing a sample strace, e.g with rsync:
-strace -f rsync -av hosts /mn/nfs/dest
-
-I see the following:
-[pid 10670] read(3, "127.0.0.1\tlocalhost\n#127.0.1.1\tv"..., 350) = 350
-[pid 10670] close(3)                    = 0
-[pid 10670] select(5, NULL, [4], [4], {60, 0}) = 1 (out [4], left {59, 999998})
-[pid 10670] write(4, "\211\1\0\7\2\0\240\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0^\1\0\000127.0"..., 397 <unfinished ...>
-[pid 10672] <... select resumed> )      = 1 (in [0], left {59, 999185})
-[pid 10670] <... write resumed> )       = 397
-[pid 10672] read(0,  <unfinished ...>
-[pid 10670] select(6, [5], [], NULL, {60, 0} <unfinished ...>
-[pid 10672] <... read resumed> "\211\1\0\7", 4) = 4
-[pid 10672] select(1, [0], [], NULL, {60, 0}) = 1 (in [0], left {59, 999998})
-[pid 10672] read(0, "\2\0\240\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0^\1\0\000127.0.0.1"..., 393) = 393
-[pid 10672] open("dest", O_RDONLY)      = -1 ENOENT (No such file or directory)
-[pid 10672] open(".dest.y4ihWF", O_RDWR|O_CREAT|O_EXCL, 0600) = 1
-[pid 10672] fchmod(1, 0600)             = 0
-[pid 10672] mmap(NULL, 266240, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f7c28b49000
-[pid 10672] write(1, "127.0.0.1\tlocalhost\n#127.0.1.1\tv"..., 350) = 350
-[pid 10672] close(1)                    = 0
-[pid 10672] lstat(".dest.y4ihWF", {st_mode=S_IFREG|0600, st_size=350, ...}) = 0
-[pid 10672] utimensat(AT_FDCWD, ".dest.y4ihWF", {UTIME_NOW, {1357852439, 0}}, AT_SYMLINK_NOFOLLOW) = 0
-[pid 10672] chmod(".dest.y4ihWF", 0644) = 0
-[pid 10672] rename(".dest.y4ihWF", "dest") = 0
-
-This shows that a temporary filename is written and then closed, however the
-file is then chmodded and renamed to the final destination filename. Do the
-chmod(2) and rename(2) calls force a COMMIT to be sent, flushing these changes
-to stable storage on the NFS server? Or, is there a possibility that during a
-power failure of both client and server, the file would remain as .dest.y4ihWF
-on the server?
-
-
-Thanks,
-
-Andrew Martin
