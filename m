@@ -1,133 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61728 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753565AbaIVOL6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 22 Sep 2014 10:11:58 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8MEBw9A010553
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 22 Sep 2014 10:11:58 -0400
-Message-ID: <54202E2C.4070209@RedHat.com>
-Date: Mon, 22 Sep 2014 10:11:56 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:65451 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751943AbaI1LQD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Sep 2014 07:16:03 -0400
+From: Kenjiro Nakayama <nakayamakenjiro@gmail.com>
+To: linux-kernel@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, trivial@kernel.org
+Subject: [PATCH] exportfs: Fix incorrect comment about fh_to_dentry
+Date: Sun, 28 Sep 2014 20:15:59 +0900
+Message-ID: <87a95k572o.fsf@gmail.com>
 MIME-Version: 1.0
-To: myllynen@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfsstat: add server ra cache stats
-References: <542019A7.8020504@redhat.com>
-In-Reply-To: <542019A7.8020504@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+d_alloc_root is obsolete. Replace with d_make_root.
 
+Signed-off-by: Kenjiro Nakayama <nakayamakenjiro@gmail.com>
+---
+ include/linux/exportfs.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-On 09/22/2014 08:44 AM, Marko Myllynen wrote:
-> From 7a5072efd524f5537a0b38808420bea8c0e45b01 Mon Sep 17 00:00:00 2001
-> From: Marko Myllynen <myllynen@redhat.com>
-> Date: Mon, 22 Sep 2014 15:31:04 +0300
-> Subject: [PATCH v2] nfsstat: add server ra cache stats
-> 
-> Add server read ahead cache statistics to nfsstat.
-> 
-> Signed-off-by: Marko Myllynen <myllynen@redhat.com>
-Committed....
-
-steved.
- 
-> ---
->  utils/nfsstat/nfsstat.c |   29 +++++++++++++++++++++++++----
->  1 files changed, 25 insertions(+), 4 deletions(-)
-> 
-> diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
-> index 83bde9d..8e165a8 100644
-> --- a/utils/nfsstat/nfsstat.c
-> +++ b/utils/nfsstat/nfsstat.c
-> @@ -96,6 +96,11 @@ static unsigned int	srvioinfo[3], srvioinfo_old[3];		/* 0  bytes read
->  								 * 1  bytes written
->  								 */
->  
-> +static unsigned int	srvrainfo[13], srvrainfo_old[13];	/* 0  ra cache size
-> +								 * 1..11 depth of ra cache hit
-> +								 * 12 ra cache misses
-> +								 */
-> +
->  static const char *	nfsv2name[SRVPROC2_SZ] = {
->  	"null", "getattr", "setattr", "root",   "lookup",  "readlink",
->  	"read", "wrcache", "write",   "create", "remove",  "rename",
-> @@ -172,6 +177,7 @@ static const char *     nfssrvproc4opname[SRVPROC4OPS_SZ] = {
->  #define LABEL_srvrc		"Server reply cache:\n"
->  #define LABEL_srvfh		"Server file handle cache:\n"
->  #define LABEL_srvio		"Server io stats:\n"
-> +#define LABEL_srvra		"Server read ahead cache:\n"
->  #define LABEL_srvproc2		"Server nfs v2:\n"
->  #define LABEL_srvproc3		"Server nfs v3:\n"
->  #define LABEL_srvproc4		"Server nfs v4:\n"
-> @@ -204,6 +210,7 @@ typedef struct statinfo {
->  					SRV(rc,s), \
->  					SRV(fh,s), \
->  					SRV(io,s), \
-> +					SRV(ra,s), \
->  					SRV(proc2,s), \
->  					SRV(proc3,s),\
->  					SRV(proc4,s), \
-> @@ -256,6 +263,7 @@ static time_t		starttime;
->  #define PRNT_FH		0x0008
->  #define PRNT_RC		0x0010
->  #define PRNT_IO		0x0020
-> +#define PRNT_RA		0x0040
->  #define PRNT_AUTO	0x1000
->  #define PRNT_V2		0x2000
->  #define PRNT_V3		0x4000
-> @@ -283,8 +291,9 @@ void usage(char *name)
->       rpc		General RPC information\n\
->       net		Network layer statistics\n\
->       fh			Usage information on the server's file handle cache\n\
-> -     rc			Usage information on the server's request reply cache\n\
->       io			Usage information on the server's io statistics\n\
-> +     ra			Usage information on the server's read ahead cache\n\
-> +     rc			Usage information on the server's request reply cache\n\
->       all		Select all of the above\n\
->    -v, --verbose, --all	Same as '-o all'\n\
->    -r, --rpc		Show RPC statistics\n\
-> @@ -376,8 +385,10 @@ main(int argc, char **argv)
->  				opt_prt |= PRNT_FH;
->  			else if (!strcmp(optarg, "io"))
->  				opt_prt |= PRNT_IO;
-> +			else if (!strcmp(optarg, "ra"))
-> +				opt_prt |= PRNT_RA;
->  			else if (!strcmp(optarg, "all"))
-> -				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO;
-> +				opt_prt |= PRNT_CALLS | PRNT_RPC | PRNT_NET | PRNT_RC | PRNT_FH | PRNT_IO | PRNT_RA;
->  			else {
->  				fprintf(stderr, "nfsstat: unknown category: "
->  						"%s\n", optarg);
-> @@ -445,9 +456,9 @@ main(int argc, char **argv)
->  	if (!(opt_prt & 0xe000)) {
->  		opt_prt |= PRNT_AUTO;
->  	}
-> -	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO)) && !opt_srv) {
-> +	if ((opt_prt & (PRNT_FH|PRNT_RC|PRNT_IO|PRNT_RA)) && !opt_srv) {
->  		fprintf(stderr,
-> -			"You requested io, file handle, or request cache "
-> +			"You requested fh/io/ra/rc "
->  			"statistics while using the -c option.\n"
->  			"This information is available only for the NFS "
->  			"server.\n");
-> @@ -572,6 +583,16 @@ print_server_stats(int opt_prt)
->  			printf("\n");
->  		}
->  	}
-> +	if (opt_prt & PRNT_RA) {
-> +		if (opt_sleep && !has_rpcstats(srvrainfo, 3)) {
-> +			;
-> +		} else {
-> +			print_numbers(LABEL_srvra
-> +				"size       0-10%      10-20%     20-30%     30-40%     40-50%     50-60%     60-70%     70-80%     80-90%     90-100%    notfound\n",
-> +				srvrainfo, 12);
-> +			printf("\n");
-> +		}
-> +	}
->  
->  	/*
->  	 * 2.2 puts all fh-related info after the 'rc' header
-> 
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index 41b223a..c668cf6 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -152,7 +152,7 @@ struct fid {
+  *    it should return a %NULL pointer if the file was found but no acceptable
+  *    &dentries were available, or an %ERR_PTR error code indicating why it
+  *    couldn't be found (e.g. %ENOENT or %ENOMEM).  Any suitable dentry can be
+- *    returned including, if necessary, a new dentry created with d_alloc_root.
++ *    returned including, if necessary, a new dentry created with d_make_root.
+  *    The caller can then find any other extant dentries by following the
+  *    d_alias links.
+  *
+--
+1.9.3
