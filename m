@@ -1,186 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:18653 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754117AbaIIOtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Sep 2014 10:49:50 -0400
-From: <Anna.Schumaker@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/3] nfsd: Add DEALLOCATE support
-Date: Tue, 9 Sep 2014 10:49:42 -0400
-Message-ID: <1410274182-30740-4-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1410274182-30740-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1410274182-30740-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:56686 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751913AbaI2RLe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Sep 2014 13:11:34 -0400
+Received: by mail-qc0-f182.google.com with SMTP id i17so2462165qcy.13
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Sep 2014 10:11:33 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 29 Sep 2014 13:11:30 -0400
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
+Message-ID: <20140929131130.3ba5d987@tlielax.poochiereds.net>
+In-Reply-To: <20140929164425.GF30691@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+	<20140926183949.GC27412@fieldses.org>
+	<20140926145446.21a99698@tlielax.poochiereds.net>
+	<20140926194616.GE27412@fieldses.org>
+	<20140927090458.62806936@synchrony.poochiereds.net>
+	<20140929164425.GF30691@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+On Mon, 29 Sep 2014 12:44:26 -0400
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-The DEALLOCATE operation is used to punch holes in a file.
+> On Sat, Sep 27, 2014 at 09:04:58AM -0400, Jeff Layton wrote:
+> > On Fri, 26 Sep 2014 15:46:17 -0400
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Fri, Sep 26, 2014 at 02:54:46PM -0400, Jeff Layton wrote:
+> > > > On Fri, 26 Sep 2014 14:39:49 -0400
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > By the way, I've seen the following *before* your patches, but in case
+> > > > > you're still looking at reboot recovery problems:
+> > > > > 
+> > > > > I'm getting sporadic failures in the REBT6 pynfs test--a reclaim open
+> > > > > succeeds after a previous boot (with full grace period) during which the
+> > > > > client had failed to reclaim.
+> > > > > 
+> > > > > I managed to catch one trace, the relevant parts looked like:
+> > > > > 
+> > > > > 	SETCLIENTID client1
+> > > > > 	OPEN
+> > > > > 	LOCK
+> > > > > 
+> > > > > 	(server restart here)
+> > > > > 
+> > > > > 	SETCLIENTID client2
+> > > > > 	OPEN
+> > > > > 	LOCK (lock that conflicts with client1's)
+> > > > > 
+> > > > > 	(server restart here)
+> > > > > 
+> > > > > 	SETCLIENTID client1
+> > > > > 	OPEN CLAIM_PREVIOUS
+> > > > > 
+> > > > > And all those ops (including the last reclaim open) succeeded.
+> > > > > 
+> > > > > So I didn't have a chance to review it more carefully, but it certainly
+> > > > > looks like a server bug, not a test bug.  (Well, technically the server
+> > > > > behavior above is correct since it's not required to refuse anything
+> > > > > till we actually attempt to reclaim the original lock, but we know our
+> > > > > server's not that smart.)
+> > > > > 
+> > > > > But I haven't gotten any further than that....
+> > > > > 
+> > > > > --b.
+> > > > > 
+> > > > 
+> > > > Ewww...v4.0... ;)
+> > > > 
+> > > > Well, I guess that could happen if, after the first reboot, client1 also
+> > > > did a SETCLIENTID *and* reclaimed something that didn't conflict with
+> > > > the lock that client2 grabs...or, did an OPEN/OPEN_CONFIRM after the
+> > > > grace period without reclaiming its lock previously.
+> > > > 
+> > > > If it didn't do one or the other, then its record should have been
+> > > > cleaned out of the DB after the grace period ended between the reboots
+> > > > and it wouldn't have been able to reclaim after the second reboot.
+> > > 
+> > > Yeah.  Is there an easy way to tell nfsdcltrack to log everything?  I'm
+> > > only seeing this occasionally.
+> > > 
+> > 
+> > If you can make sure that it's run with the '-d' flag then that'll make
+> > it do debug level logging. Unfortunately, the kernel doesn't have a
+> > handy switch to enable that so you'll need to patch the kernel (or
+> > maybe wrap nfsdcltrack) to make that happen.
+> > 
+> > Maybe we should add a module parm to nfsd.ko that makes it run
+> > nfsdcltrack with -d?
+> 
+> Would userland configuration (e.g. and optional /etc/ file) be more
+> flexible?
+> 
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfsd/nfs4proc.c | 31 ++++++++++++++++++++++++++++++-
- fs/nfsd/nfs4xdr.c  | 19 ++++++++++++++++++-
- fs/nfsd/vfs.c      |  8 ++++++--
- fs/nfsd/vfs.h      |  2 +-
- fs/nfsd/xdr4.h     |  8 ++++++++
- 5 files changed, 63 insertions(+), 5 deletions(-)
+Yeah, that might not hurt.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index f9d8fac..ac18be6 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1028,7 +1028,7 @@ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return status;
- 	}
- 
--	status = nfsd4_vfs_fallocate(&cstate->current_fh, file,
-+	status = nfsd4_vfs_fallocate(&cstate->current_fh, file, false,
- 				     allocate->alloc_offset,
- 				     allocate->alloc_length);
- 	fput(file);
-@@ -1036,6 +1036,28 @@ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- }
- 
- static __be32
-+nfsd4_deallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		struct nfsd4_deallocate *deallocate)
-+{
-+	__be32 status = nfserr_notsupp;
-+	struct file *file;
-+
-+	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
-+					    &deallocate->dealloc_stateid,
-+					    WR_STATE, &file);
-+	if (status != nfs_ok) {
-+		dprintk("NFSD: nfsd4_deallocate: couldn't process stateid!\n");
-+		return status;
-+	}
-+
-+	status = nfsd4_vfs_fallocate(&cstate->current_fh, file, true,
-+				     deallocate->dealloc_offset,
-+				     deallocate->dealloc_length);
-+	fput(file);
-+	return status;
-+}
-+
-+static __be32
- nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_seek *seek)
- {
-@@ -1949,6 +1971,13 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
- 		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
- 	},
-+	[OP_DEALLOCATE] = {
-+		.op_func = (nfsd4op_func)nfsd4_deallocate,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_name = "OP_DEALLOCATE",
-+		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
-+		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
-+	},
- 	[OP_SEEK] = {
- 		.op_func = (nfsd4op_func)nfsd4_seek,
- 		.op_name = "OP_SEEK",
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index a55aa3b..e1059ce 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1538,6 +1538,23 @@ nfsd4_decode_allocate(struct nfsd4_compoundargs *argp,
- }
- 
- static __be32
-+nfsd4_decode_deallocate(struct nfsd4_compoundargs *argp,
-+		      struct nfsd4_deallocate *deallocate)
-+{
-+	DECODE_HEAD;
-+
-+	status = nfsd4_decode_stateid(argp, &deallocate->dealloc_stateid);
-+	if (status)
-+		return status;
-+
-+	READ_BUF(16);
-+	p = xdr_decode_hyper(p, &deallocate->dealloc_offset);
-+	xdr_decode_hyper(p, &deallocate->dealloc_length);
-+
-+	DECODE_TAIL;
-+}
-+
-+static __be32
- nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
- {
- 	DECODE_HEAD;
-@@ -1631,7 +1648,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_allocate,
- 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_deallocate,
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 4b1dba0..2bf5263 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -525,9 +525,13 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
- #endif
- 
- __be32 nfsd4_vfs_fallocate(struct svc_fh *fhp, struct file *file,
--			   loff_t offset, loff_t len)
-+			   bool punch, loff_t offset, loff_t len)
- {
--	int error = vfs_fallocate(file, 0, offset, len);
-+	int error, mode = 0;
-+	if (punch)
-+		mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
-+
-+	error = vfs_fallocate(file, mode, offset, len);
- 	if (error < 0)
- 		return nfserrno(error);
- 	return nfserrno(commit_metadata(fhp));
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index 9d88c88..9301e8e 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -54,7 +54,7 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
- #ifdef CONFIG_NFSD_V4
- __be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
- 		    struct xdr_netobj *);
--__be32		nfsd4_vfs_fallocate(struct svc_fh *, struct file *, loff_t, loff_t);
-+__be32		nfsd4_vfs_fallocate(struct svc_fh *, struct file *, bool, loff_t, loff_t);
- #endif /* CONFIG_NFSD_V4 */
- __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
- 				char *name, int len, struct iattr *attrs,
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 4a01fa8..2866921 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -435,6 +435,13 @@ struct nfsd4_allocate {
- 	u64		alloc_length;
- };
- 
-+struct nfsd4_deallocate {
-+	/* request */
-+	stateid_t	dealloc_stateid;
-+	loff_t		dealloc_offset;
-+	u64		dealloc_length;
-+};
-+
- struct nfsd4_seek {
- 	/* request */
- 	stateid_t	seek_stateid;
-@@ -494,6 +501,7 @@ struct nfsd4_op {
- 
- 		/* NFSv4.2 */
- 		struct nfsd4_allocate		allocate;
-+		struct nfsd4_deallocate		deallocate;
- 		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
+We do want this thing to run pretty quickly, but if the config file
+were only processed if it were present (and it usually wasn't) then
+that might not be too bad.
+
+> > 
+> > > > It's a bit of a pathological case, and I don't see a way to fix that in
+> > > > the context of v4.0. The fact that there's no RECLAIM_COMPLETE is a
+> > > > pretty nasty protocol bug, IMO. Yet another reason to start really
+> > > > moving people toward v4.1+...
+> > > 
+> > > I don't belive there's a protocol bug here.
+> > > 
+> > > A correct NFSv4.0 client wouldn't send the open reclaim in the case you
+> > > describe above.
+> > > 
+> > 
+> > It would in the partial reclaim case.
+> 
+> My (and I think Trond's) understanding is that client1 would not send
+> the reclaim in that case.  In the case of a partial reclaim, a correct
+> 4.0 client will stop trying to reclaim the state that it failed to
+> reclaim previously.  My understanding is that is how the linux client in
+> fact behaves.
+> 
+> So the bug would be in the client, not the protocol.  That said,
+> admittedly:
+> 
+> 	- the "protocol" here seems to be largely in our heads; the spec
+> 	  does a poor job of explaining all this.
+> 	- we (not suprisingly) disagree on some of the details.
+> 
+> Nevertheless, I believe that despite our disagreement there's no actual
+> bug at least between the existing Linux client and server.  And that
+> 3530bis and 5661 were at least *supposed* to deal with this case....
+> 
+> Oh, look, Trond and you have written a pile more of text on this on the
+> ietf list.  Should I even try to catch up, or would be better off just
+> spending the rest of my day back in bed?
+> 
+> --b.
+> 
+
+If there is any bug, I think it's only going to crop up under extremely
+rare circumstances -- network partitions cropping up during reclaims,
+multiple reboots, etc...
+
+We probably ought to try and clarify this stuff for the spec (and our
+own implementations) but I don't think there's any cause for alarm...
+
 -- 
-2.1.0
-
+Jeff Layton <jlayton@primarydata.com>
