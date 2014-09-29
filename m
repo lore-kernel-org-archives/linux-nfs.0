@@ -1,79 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:51709 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752053AbaIEURd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 16:17:33 -0400
-Received: by mail-ie0-f169.google.com with SMTP id tr6so14961616ieb.28
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 13:17:33 -0700 (PDT)
-From: Chris Perl <chris.perl@gmail.com>
-To: linux-nfs@vger.kernel.org
-Cc: Chris Perl <chris.perl@gmail.com>
-Subject: [PATCH] rpc: xs_bind - do not bind when requesting a random ephemeral port
-Date: Fri,  5 Sep 2014 16:17:31 -0400
-Message-Id: <1409948251-6507-1-git-send-email-chris.perl@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:60071 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753247AbaI2Scr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Sep 2014 14:32:47 -0400
+Date: Mon, 29 Sep 2014 14:32:46 -0400
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs-client.target: Removed a ordering cycle with
+ nfs-server.service
+Message-ID: <20140929183245.GI30691@fieldses.org>
+References: <1412004817-14432-1-git-send-email-steved@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1412004817-14432-1-git-send-email-steved@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When attempting to establish a local ephemeral endpoint for a TCP or UDP
-socket, do not explicitly call bind, instead let it happen implicilty when the
-socket is first used.
+On Mon, Sep 29, 2014 at 11:33:37AM -0400, Steve Dickson wrote:
+> On a VM that boots very fast and with out kerberos
+> enabled a systemd ordering cycle happens between
+> nfs-client and nfs-server units when both were
+> enabled.
+> 
+> Having nfs-client start the gssd daemons in the
+> same matter as the nfs-server does ('After=') seemed
+> to eliminated the ordering cycle.
 
-The main motivating factor for this change is when TCP runs out of unique
-ephemeral ports (i.e.  cannot find any ephemeral ports which are not a part of
-*any* TCP connection).  In this situation if you explicitly call bind, then the
-call will fail with EADDRINUSE.  However, if you allow the allocation of an
-ephemeral port to happen implicitly as part of connect (or other functions),
-then ephemeral ports can be reused, so long as the combination of (local_ip,
-local_port, remote_ip, remote_port) is unique for TCP sockets on the system.
+ACK.--b.
 
-This doesn't matter for UDP sockets, but it seemed easiest to treat TCP and UDP
-sockets the same.
-
-This can allow mount.nfs(8) to continue to function successfully, even in the
-face of misbehaving applications which are creating a large number of TCP
-connections.
-
-Signed-off-by: Chris Perl <chris.perl@gmail.com>
----
- net/sunrpc/xprtsock.c | 20 ++++++++++++++++++--
- 1 file changed, 18 insertions(+), 2 deletions(-)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 43cd89e..7ed47b4 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1746,13 +1746,29 @@ static int xs_bind(struct sock_xprt *transport, struct socket *sock)
- 	unsigned short port = xs_get_srcport(transport);
- 	unsigned short last;
- 
-+	/*
-+	 * If we are asking for any ephemeral port (i.e. port == 0 &&
-+	 * transport->xprt.resvport == 0), don't bind.  Let the local
-+	 * port selection happen implicitly when the socket is used
-+	 * (for example at connect time).
-+	 *
-+	 * This ensures that we can continue to establish TCP
-+	 * connections even when all local ephemeral ports are already
-+	 * a part of some TCP connection.  This makes no difference
-+	 * for UDP sockets, but also doens't harm them.
-+	 *
-+	 * If we're asking for any reserved port (i.e. port == 0 &&
-+	 * transport->xprt.resvport == 1) xs_get_srcport above will
-+	 * ensure that port is non-zero and we will bind as needed.
-+	 */
-+	if (port == 0)
-+		return 0;
-+
- 	memcpy(&myaddr, &transport->srcaddr, transport->xprt.addrlen);
- 	do {
- 		rpc_set_port((struct sockaddr *)&myaddr, port);
- 		err = kernel_bind(sock, (struct sockaddr *)&myaddr,
- 				transport->xprt.addrlen);
--		if (port == 0)
--			break;
- 		if (err == 0) {
- 			transport->srcport = port;
- 			break;
--- 
-1.8.3.1
-
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  systemd/nfs-client.target | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/systemd/nfs-client.target b/systemd/nfs-client.target
+> index 474f5e9..87a1ce8 100644
+> --- a/systemd/nfs-client.target
+> +++ b/systemd/nfs-client.target
+> @@ -7,7 +7,7 @@ Wants=remote-fs-pre.target
+>  # start that on demand if needed.
+>  Wants=rpc-gssd.service rpc-svcgssd.service auth-rpcgss-module.service
+>  Wants=nfs-blkmap.service rpc-statd-notify.service
+> -Before=rpc-gssd.service rpc-svcgssd.service nfs-blkmap.service
+> +After=rpc-gssd.service rpc-svcgssd.service nfs-blkmap.service
+>  
+>  [Install]
+>  WantedBy=multi-user.target
+> -- 
+> 1.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
