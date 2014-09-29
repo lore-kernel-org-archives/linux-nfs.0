@@ -1,60 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51875 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59200 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754085AbaISPU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 19 Sep 2014 11:20:58 -0400
-Message-ID: <541C49D3.6020903@RedHat.com>
-Date: Fri, 19 Sep 2014 11:20:51 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752977AbaI2Qo0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Sep 2014 12:44:26 -0400
+Date: Mon, 29 Sep 2014 12:44:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
+Message-ID: <20140929164425.GF30691@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+ <20140926183949.GC27412@fieldses.org>
+ <20140926145446.21a99698@tlielax.poochiereds.net>
+ <20140926194616.GE27412@fieldses.org>
+ <20140927090458.62806936@synchrony.poochiereds.net>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@primarydata.com>
-CC: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 0/7] nfs-utils: support for lifting grace period early
-References: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140927090458.62806936@synchrony.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sat, Sep 27, 2014 at 09:04:58AM -0400, Jeff Layton wrote:
+> On Fri, 26 Sep 2014 15:46:17 -0400
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Fri, Sep 26, 2014 at 02:54:46PM -0400, Jeff Layton wrote:
+> > > On Fri, 26 Sep 2014 14:39:49 -0400
+> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > 
+> > > > By the way, I've seen the following *before* your patches, but in case
+> > > > you're still looking at reboot recovery problems:
+> > > > 
+> > > > I'm getting sporadic failures in the REBT6 pynfs test--a reclaim open
+> > > > succeeds after a previous boot (with full grace period) during which the
+> > > > client had failed to reclaim.
+> > > > 
+> > > > I managed to catch one trace, the relevant parts looked like:
+> > > > 
+> > > > 	SETCLIENTID client1
+> > > > 	OPEN
+> > > > 	LOCK
+> > > > 
+> > > > 	(server restart here)
+> > > > 
+> > > > 	SETCLIENTID client2
+> > > > 	OPEN
+> > > > 	LOCK (lock that conflicts with client1's)
+> > > > 
+> > > > 	(server restart here)
+> > > > 
+> > > > 	SETCLIENTID client1
+> > > > 	OPEN CLAIM_PREVIOUS
+> > > > 
+> > > > And all those ops (including the last reclaim open) succeeded.
+> > > > 
+> > > > So I didn't have a chance to review it more carefully, but it certainly
+> > > > looks like a server bug, not a test bug.  (Well, technically the server
+> > > > behavior above is correct since it's not required to refuse anything
+> > > > till we actually attempt to reclaim the original lock, but we know our
+> > > > server's not that smart.)
+> > > > 
+> > > > But I haven't gotten any further than that....
+> > > > 
+> > > > --b.
+> > > > 
+> > > 
+> > > Ewww...v4.0... ;)
+> > > 
+> > > Well, I guess that could happen if, after the first reboot, client1 also
+> > > did a SETCLIENTID *and* reclaimed something that didn't conflict with
+> > > the lock that client2 grabs...or, did an OPEN/OPEN_CONFIRM after the
+> > > grace period without reclaiming its lock previously.
+> > > 
+> > > If it didn't do one or the other, then its record should have been
+> > > cleaned out of the DB after the grace period ended between the reboots
+> > > and it wouldn't have been able to reclaim after the second reboot.
+> > 
+> > Yeah.  Is there an easy way to tell nfsdcltrack to log everything?  I'm
+> > only seeing this occasionally.
+> > 
+> 
+> If you can make sure that it's run with the '-d' flag then that'll make
+> it do debug level logging. Unfortunately, the kernel doesn't have a
+> handy switch to enable that so you'll need to patch the kernel (or
+> maybe wrap nfsdcltrack) to make that happen.
+> 
+> Maybe we should add a module parm to nfsd.ko that makes it run
+> nfsdcltrack with -d?
 
+Would userland configuration (e.g. and optional /etc/ file) be more
+flexible?
 
-On 09/19/2014 09:52 AM, Jeff Layton wrote:
-> v5:
-> - fix build break in middle of set
 > 
-> v4:
-> - replace "reclaim_complete" timestamp column with "has_session" boolean
-> - change to use NFSDCLTRACK_CLIENT_HAS_SESSION environment variable
-> - only set timestamp on "has_session" clients during "create" op
+> > > It's a bit of a pathological case, and I don't see a way to fix that in
+> > > the context of v4.0. The fact that there's no RECLAIM_COMPLETE is a
+> > > pretty nasty protocol bug, IMO. Yet another reason to start really
+> > > moving people toward v4.1+...
+> > 
+> > I don't belive there's a protocol bug here.
+> > 
+> > A correct NFSv4.0 client wouldn't send the open reclaim in the case you
+> > describe above.
+> > 
 > 
-> v3:
-> - account for change to NFSDCLTRACK_RECLAIM_COMPLETE env var
-> 
-> This is v5 of the patchset to allow the lifting of the grace period
-> early. The only difference from the v4 set is a fix for a build break
-> that was introduced in the middle of the set (mea culpa!). The end
-> result here should be exactly the same as in the v4 set.
-> 
-> At this point, Bruce has indicated that he intends to merge these patches
-> for v3.18, so I think this set is also ready for merge into nfs-utils.
-> 
-> Jeff Layton (7):
->   sm-notify: inform the kernel if there were no hosts to notify
->   nfsdcltrack: update comments in sqlite.c
->   nfsdcltrack: rename CLD_* constants with CLTRACK_* prefixes
->   nfsdcltrack: overhaul database initializtion
->   nfsdcltrack: update schema to v2
->   nfsdcltrack: grab the NFSDCLTRACK_CLIENT_HAS_SESSION env var if it's
->     present
->   nfsdcltrack: fetch NFSDCLTRACK_GRACE_START out of environment
-> 
->  utils/nfsdcltrack/nfsdcltrack.c | 103 ++++++++++-
->  utils/nfsdcltrack/sqlite.c      | 388 ++++++++++++++++++++++++++++++----------
->  utils/nfsdcltrack/sqlite.h      |   8 +-
->  utils/statd/sm-notify.c         |  25 +++
->  4 files changed, 421 insertions(+), 103 deletions(-)
-> 
-Committed... 
+> It would in the partial reclaim case.
 
-steved.
+My (and I think Trond's) understanding is that client1 would not send
+the reclaim in that case.  In the case of a partial reclaim, a correct
+4.0 client will stop trying to reclaim the state that it failed to
+reclaim previously.  My understanding is that is how the linux client in
+fact behaves.
 
+So the bug would be in the client, not the protocol.  That said,
+admittedly:
+
+	- the "protocol" here seems to be largely in our heads; the spec
+	  does a poor job of explaining all this.
+	- we (not suprisingly) disagree on some of the details.
+
+Nevertheless, I believe that despite our disagreement there's no actual
+bug at least between the existing Linux client and server.  And that
+3530bis and 5661 were at least *supposed* to deal with this case....
+
+Oh, look, Trond and you have written a pile more of text on this on the
+ietf list.  Should I even try to catch up, or would be better off just
+spending the rest of my day back in bed?
+
+--b.
+
+> 
+> Suppose we start reclaiming things but don't get everything before
+> there's a network partition. The server ends the grace period and then
+> hands out the conflicting lock to client2. It then reboots again and the
+> network partition heals. At that point, client1 could try to reclaim
+> everything it had before (including the lock that conflicts with the
+> one that client2 had).
+> 
+> I'd still argue that this is a protocol bug. Without RECLAIM_COMPLETE,
+> the server simply has no way to know whether the reclaims done by
+> client1 are complete or not.
+> 
+> > As I understand it, the rule for the client is: you're allowed to
+> > reclaim only the set locks that you held previously, where "the set of
+> > locks you held previously" is "the set of locks held by the clientid
+> > which last managed to send a reclaim OPEN or OPEN_CONFIRM".  So for
+> > example once client1 sends that unrelated OPEN reclaim it's giving up
+> > on anything else it doesn't manage to reclaim this time around.
+> > 
+> > Any server that loses client state on reboot has no choice but to
+> > trust clients to get this sort of thing right.
+> > 
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@primarydata.com>
