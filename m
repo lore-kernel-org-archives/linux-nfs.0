@@ -1,77 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:31339 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:48246 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932098AbaIWPS3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 23 Sep 2014 11:18:29 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH 1/1] NFSv4.1: Fix an NFSv4.1 state renewal regression
-Date: Tue, 23 Sep 2014 11:18:10 -0400
-Message-ID: <1411485490-21967-1-git-send-email-andros@netapp.com>
+	id S1753498AbaI2Rz5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Sep 2014 13:55:57 -0400
+Date: Mon, 29 Sep 2014 13:55:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/5] nfsd: support for lifting grace period early
+Message-ID: <20140929175555.GH30691@fieldses.org>
+References: <1408473509-14010-1-git-send-email-jlayton@primarydata.com>
+ <20140926183949.GC27412@fieldses.org>
+ <20140926145446.21a99698@tlielax.poochiereds.net>
+ <20140926194616.GE27412@fieldses.org>
+ <20140927090458.62806936@synchrony.poochiereds.net>
+ <20140929164425.GF30691@fieldses.org>
+ <20140929131130.3ba5d987@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140929131130.3ba5d987@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Mon, Sep 29, 2014 at 01:11:30PM -0400, Jeff Layton wrote:
+> If there is any bug, I think it's only going to crop up under extremely
+> rare circumstances -- network partitions cropping up during reclaims,
+> multiple reboots, etc...
+> 
+> We probably ought to try and clarify this stuff for the spec (and our
+> own implementations) but I don't think there's any cause for alarm...
 
-Commit 2f60ea6b8ced ("NFSv4: The NFSv4.0 client must send RENEW calls if it holds a delegation") set the NFS4_RENEW_TIMEOUT
-flag in nfs4_renew_state, and does not put an nfs41_proc_async_sequence call,
-the NFSv4.1 lease renewal heartbeat call, on the wire to renew the NFSv4.1
-state if the flag was not set.
+Yes in this case I agree.
 
-The NFS4_RENEW_TIMEOUT flag is set when "now" is after the last renewal
-(cl_last_renewal) plus the lease time divided by 3. This is arbitrary and
-sometimes does the following:
+In general though reboot-recovery interoperability is hard to test and
+bad documentation increases the chance we'll get it wrong.
 
-In normal operation, the only way a future state renewal call is put on the
-wire is via a call to nfs4_schedule_state_renewal, which schedules a
-nfs4_renew_state workqueue task. nfs4_renew_state determines if the
-NFS4_RENEW_TIMEOUT should be set, and the calls nfs41_proc_async_sequence,
-which only gets sent if the NFS4_RENEW_TIMEOUT flag is set.
-Then the nfs41_proc_async_sequence rpc_release function schedules
-another state remewal via nfs4_schedule_state_renewal.
+(And these "edge cases" could also be more common that we expect: e.g.
+if power failures come in clusters, and bring your switches down at
+about the same time, could multiple-restarts-with-network-partitions be
+the normal case?)
 
-Without this change we can get into a state where an application stops
-accessing the NFSv4.1 share, state renewal calls stop due to the
-NFS4_RENEW_TIMEOUT flag _not_ being set. Note that the only way to recover
-from this situation is with a clientid re-establishment, once the application
-resumes and the server has timed out the lease and so returns
-NFS4ERR_BAD_SESSION.
-
-An example application:
-open, lock, write a file.
-
-sleep for 6 * lease (could be less)
-
-ulock, close.
-
-In the above example, without this change, there are no OP_SEQUENCE state
-renewal calls during the sleep, and the clientid is recovered due to lease
-expiration on the ulock (or close if delegations are enabled).
-
-Note that this does not occur with NFSv4 which also sends a renew lease
-heartbeat if the NFS4_RENEW_DELEGATION_CB is set, and so survives the
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4proc.c | 2 --
- 1 file changed, 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 288be08..efe802a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7348,8 +7348,6 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
- 	struct rpc_task *task;
- 	int ret = 0;
- 
--	if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
--		return 0;
- 	task = _nfs41_proc_sequence(clp, cred, false);
- 	if (IS_ERR(task))
- 		ret = PTR_ERR(task);
--- 
-1.8.3.1
-
+--b.
