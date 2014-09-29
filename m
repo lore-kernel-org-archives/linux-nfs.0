@@ -1,54 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:42540 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756485AbaISNxA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Sep 2014 09:53:00 -0400
-Received: by mail-qa0-f51.google.com with SMTP id i13so2594417qae.38
-        for <linux-nfs@vger.kernel.org>; Fri, 19 Sep 2014 06:52:59 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:18692 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752481AbaI2SWH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Sep 2014 14:22:07 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8TIM7JP023363
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 29 Sep 2014 14:22:07 -0400
+From: Simo Sorce <simo@redhat.com>
 To: steved@redhat.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v5 2/7] nfsdcltrack: update comments in sqlite.c
-Date: Fri, 19 Sep 2014 09:52:45 -0400
-Message-Id: <1411134770-2409-3-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
-References: <1411134770-2409-1-git-send-email-jlayton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Simo Sorce <simo@redhat.com>
+Subject: [PATCH 0/1] Simplify rpcsec gss dependencies in unit files
+Date: Mon, 29 Sep 2014 14:22:02 -0400
+Message-Id: <1412014923-26587-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up and fix some inaccuracies.
+*** BLURB HERE ***
+Concentrate dependencies for rpcsec GSS stuff in one place.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- utils/nfsdcltrack/sqlite.c | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+Simo Sorce (1):
+  Move the wants only to the auth unit.
 
-diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
-index bac678980938..352f029d55c0 100644
---- a/utils/nfsdcltrack/sqlite.c
-+++ b/utils/nfsdcltrack/sqlite.c
-@@ -21,17 +21,15 @@
-  * Explanation:
-  *
-  * This file contains the code to manage the sqlite backend database for the
-- * clstated upcall daemon.
-+ * nfsdcltrack usermodehelper upcall program.
-  *
-  * The main database is called main.sqlite and contains the following tables:
-  *
-  * parameters: simple key/value pairs for storing database info
-  *
-- * clients: one column containing a BLOB with the as sent by the client
-- * 	    and a timestamp (in epoch seconds) of when the record was
-- * 	    established
-- *
-- * FIXME: should we also record the fsid being accessed?
-+ * clients: an "id" column containing a BLOB with the long-form clientid as
-+ * 	    sent by the client, a "time" column containing a timestamp (in
-+ * 	    epoch seconds) of when the record was last updated.
-  */
- 
- #ifdef HAVE_CONFIG_H
+ systemd/auth-rpcgss-module.service | 3 ++-
+ systemd/nfs-client.target          | 4 ++--
+ systemd/nfs-server.service         | 1 -
+ 3 files changed, 4 insertions(+), 4 deletions(-)
+
 -- 
-1.9.3
+2.1.0
 
