@@ -1,146 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:63203 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751110AbaIXP35 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 24 Sep 2014 11:29:57 -0400
-Received: by mail-qg0-f49.google.com with SMTP id q107so6169410qgd.22
-        for <linux-nfs@vger.kernel.org>; Wed, 24 Sep 2014 08:29:57 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 24 Sep 2014 11:29:54 -0400
-To: Christoph Hellwig <hch@lst.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/4] nfsd: split nfsd4_callback initialization and use
-Message-ID: <20140924112954.5d0771b8@tlielax.poochiereds.net>
-In-Reply-To: <1411553959-5280-4-git-send-email-hch@lst.de>
-References: <1411553959-5280-1-git-send-email-hch@lst.de>
-	<1411553959-5280-4-git-send-email-hch@lst.de>
+Received: from relay4.blacknight.com ([78.153.203.207]:36532 "EHLO
+	relay4.blacknight.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751146AbaI2KG3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Sep 2014 06:06:29 -0400
+Message-ID: <54292F22.9050606@mpstor.com>
+Date: Mon, 29 Sep 2014 11:06:26 +0100
+From: Benjamin ESTRABAUD <be@mpstor.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: NeilBrown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: NFS auto-reconnect tuning.
+References: <5422E5CB.6000402@mpstor.com>	<20140925114452.121776c0@notabene.brown>	<5423E461.8020108@mpstor.com> <20140929092836.6de0fd92@notabene.brown>
+In-Reply-To: <20140929092836.6de0fd92@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 24 Sep 2014 12:19:18 +0200
-Christoph Hellwig <hch@lst.de> wrote:
+On 29/09/14 00:28, NeilBrown wrote:
+> On Thu, 25 Sep 2014 10:46:09 +0100 Benjamin ESTRABAUD <be@mpstor.com> wrote:
+>
+>> On 25/09/14 02:44, NeilBrown wrote:
+>>> On Wed, 24 Sep 2014 16:39:55 +0100 Benjamin ESTRABAUD <be@mpstor.com> wrote:
+>>>
+>>>> Hi!
+>>>>
+>>>> I've got a scenario where I'm connected to a NFS share on a client, have
+>>>> a file descriptor open as read only (could also be write) on a file from
+>>>> that share, and I'm suddenly changing the IP address of that client.
+>>>>
+>>>> Obviously, the NFS share will hang, so if I now try to read the file
+>>>> descriptor I've got open (here in Python), the "read" call will also hang.
+>>>>
+>>>> However, the driver seems to attempt to do something (maybe
+>>>> save/determine whether the existing connection can be saved) and then,
+>>>> after about 20 minutes the driver transparently reconnects to the NFS
+>>>> share (which is what I wanted anyways) and the "read" call instantiated
+>>>> earlier simply finishes (I don't even have to re-open the file again or
+>>>> even call "read" again).
+>>>>
+>>>> The dmesg prints I get are as follow:
+>>>>
+>>>> [ 4424.500380] nfs: server 10.0.2.17 not responding, still trying <--
+>>>> changed IP address and started reading the file.
+>>>> [ 4451.560467] nfs: server 10.0.2.17 OK <--- The NFS share was
+>>>> reconnected, the "read" call completes successfully.
+>>>
+>>> The difference between these timestamps is 27 seconds, which is a lot less
+>>> than the "20 minutes" that you quote.  That seems odd.
+>>>
+>> Hi Neil,
+>>
+>> My bad, I had made several attempts and must have copied the wrong dmesg
+>> trace. The above happened when I manually reverted the IP config back to
+>> its original address (when doing so the driver reconnects immediately).
+>>
+>> Here is what had happened:
+>>
+>> [ 1663.940406] nfs: server 10.0.2.17 not responding, still trying
+>> [ 2712.480325] nfs: server 10.0.2.17 OK
+>>
+>>> If you adjust
+>>>      /proc/sys/net/ipv4/tcp_retries2
+>>>
+>>> you can reduce the current timeout.
+>>> See Documentation/networking/ip-sysctl.txt for details on the setting.
+>>>
+>>> https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt
+>>>
+>>> It claims the default gives an effective timeout of 924 seconds or about 15
+>>> minutes.
+>>>
+>>> I just tried and the timeout was 1047 seconds. This is probably the next
+>>> retry after 924 seconds.
+>>>
+>>> If I reduce tcp_retries2 to '3' (well below the recommended minimum) I get
+>>> a timeout of 5 seconds.
+>>> You can possibly find a suitable number that isn't too small...
+>>>
+>> That's very interesting! Thank you very much! However, I'm a bit worried
+>> when changing the whole TCP stack settings, NFS is only one small chunk
+>> of a much bigger network storage box, so if there are alternative it'll
+>> probably be better. Also I would need a very very small timeout, in the
+>> order of 10-20 secs *max* so that would probably cause other issues
+>> elsewhere, but this is very interesting indeed.
+>>
+>>> Alternately you could use NFSv4.  It will close the connection on a timeout.
+>>> In the default config I measure a 78 second timeout, which is probably more
+>>> acceptable.  This number would respond to the timeo mount option.
+>>> If I set that to 100, I get a 28 second timeout.
+>>>
+>> This is great! I had no idea, I will definitely roll NFSv4 and try that.
+>> Thanks again for your help!
+>
+> Actually ... it turns out that NFSv4 shouldn't close the connection early
+> like that.  It happens due to a bug which is now being fixed :-)
+Well, maybe I could "patch" NFSv4 here for my purpose or use the patch 
+you provided before for NFSv3, although I admit it would be easier to 
+use a stock kernel if possible.
+>
+> Probably the real problem is that the TCP KEEPALIVE feature isn't working
+> properly.  NFS configures it so that keep-alives are sent at the 'timeout'
+> time and the connection should close if a reply is not seen fairly soon.
+>
+I wouldn't mind using TCP Keepalives but I am worried that I'd have to 
+change a TCP wide setting, which other applications might rely on (I 
+read that the TCP keepalive time for instance should be no less than 2 
+hours). Could NFS just have a "custom" TCP keepalive and leave the 
+global, default setting untouched?
 
-> Split out initializing the nfs4_callback structure from using it.  For
-> the NULL callback this gets rid of tons of pointless re-initializations.
-> 
-> Note that I don't quite understand what protects us from running multiple
-> NULL callbacks at the same time, but at least this chance doesn't make
-> it worse..
-> 
+> However TCP does not send keepalives when the are packets in the queue
+> waiting to go out (which is appropriate) and also doesn't check for timeouts
+> problem when the queue is full.
+>
+So if I understand correctly, the keepalives are sent when the 
+connection is completely idle, but if the connection break happened 
+during a transfer (queue not empty) then NFS would never find out as it 
+wouldn't send anymore keepalives?
 
-Doesn't the workqueue ensure that? Or am I misunderstanding what you're
-saying there?
+> I'll post to net-dev asking if I've understood this correctly and will take
+> the liberty of cc:ing you.
+Thank you very much for this, this will help.
 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfsd/nfs4callback.c | 14 ++++++--------
->  fs/nfsd/nfs4state.c    |  8 +++++---
->  fs/nfsd/state.h        |  3 ++-
->  3 files changed, 13 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 022edcf..6d9d947 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -743,11 +743,6 @@ static const struct rpc_call_ops nfsd4_cb_probe_ops = {
->  
->  static struct workqueue_struct *callback_wq;
->  
-> -static void do_probe_callback(struct nfs4_client *clp)
-> -{
-> -	return nfsd4_cb(&clp->cl_cb_null, clp, NFSPROC4_CLNT_CB_NULL);
-> -}
-> -
->  /*
->   * Poke the callback thread to process any updates to the callback
->   * parameters, and send a null probe.
-> @@ -756,7 +751,7 @@ void nfsd4_probe_callback(struct nfs4_client *clp)
->  {
->  	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
->  	set_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
-> -	do_probe_callback(clp);
-> +	nfsd4_run_cb(&clp->cl_cb_null);
->  }
->  
->  void nfsd4_probe_callback_sync(struct nfs4_client *clp)
-> @@ -912,7 +907,7 @@ void nfsd4_shutdown_callback(struct nfs4_client *clp)
->  	 * instead, nfsd4_run_cb_null() will detect the killed
->  	 * client, destroy the rpc client, and stop:
->  	 */
-> -	do_probe_callback(clp);
-> +	nfsd4_run_cb(&clp->cl_cb_null);
->  	flush_workqueue(callback_wq);
->  }
->  
-> @@ -1025,7 +1020,7 @@ nfsd4_run_cb_recall(struct work_struct *w)
->  	nfsd4_run_callback_rpc(cb);
->  }
->  
-> -void nfsd4_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
-> +void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
->  		enum nfsd4_cb_op op)
->  {
->  	cb->cb_clp = clp;
-> @@ -1038,6 +1033,9 @@ void nfsd4_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
->  		cb->cb_ops = &nfsd4_cb_recall_ops;
->   	INIT_LIST_HEAD(&cb->cb_per_client);
->   	cb->cb_done = true;
-> +}
->  
-> +void nfsd4_run_cb(struct nfsd4_callback *cb)
-> +{
->  	queue_work(callback_wq, &cb->cb_work);
->  }
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 90b909e..5e5012f 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -650,6 +650,9 @@ alloc_init_deleg(struct nfs4_client *clp, struct svc_fh *current_fh)
->  	INIT_LIST_HEAD(&dp->dl_perclnt);
->  	INIT_LIST_HEAD(&dp->dl_recall_lru);
->  	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
-> +	dp->dl_retries = 1;
-> +	nfsd4_init_cb(&dp->dl_recall, dp->dl_stid.sc_client,
-> +		 NFSPROC4_CLNT_CB_RECALL);
->  	INIT_WORK(&dp->dl_recall.cb_work, nfsd4_run_cb_recall);
->  	return dp;
->  out_dec:
-> @@ -1866,6 +1869,7 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
->  		free_client(clp);
->  		return NULL;
->  	}
-> +	nfsd4_init_cb(&clp->cl_cb_null, clp, NFSPROC4_CLNT_CB_NULL);
->  	INIT_WORK(&clp->cl_cb_null.cb_work, nfsd4_run_cb_null);
->  	clp->cl_time = get_seconds();
->  	clear_bit(0, &clp->cl_cb_slot_busy);
-> @@ -3383,9 +3387,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
->  	 * it's safe to take a reference.
->  	 */
->  	atomic_inc(&dp->dl_stid.sc_count);
-> -	dp->dl_retries = 1;
-> -	nfsd4_cb(&dp->dl_recall, dp->dl_stid.sc_client,
-> -		 NFSPROC4_CLNT_CB_RECALL);
-> +	nfsd4_run_cb(&dp->dl_recall);
->  }
->  
->  /* Called from break_lease() with i_lock held. */
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index 515408b..4d10e1d 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -541,8 +541,9 @@ void nfsd4_run_cb_recall(struct work_struct *w);
->  extern void nfsd4_probe_callback(struct nfs4_client *clp);
->  extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
->  extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
-> -extern void nfsd4_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
-> +extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
->  		enum nfsd4_cb_op op);
-> +extern void nfsd4_run_cb(struct nfsd4_callback *cb);
->  extern int nfsd4_create_callback_queue(void);
->  extern void nfsd4_destroy_callback_queue(void);
->  extern void nfsd4_shutdown_callback(struct nfs4_client *);
+>
+> NeilBrown
+>
+>
+Ben - MPSTOR
 
--- 
-Jeff Layton <jlayton@primarydata.com>
