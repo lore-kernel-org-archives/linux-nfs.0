@@ -1,111 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:51536 "EHLO mx2.suse.de"
+Received: from mx12.netapp.com ([216.240.18.77]:58495 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751239AbaIYAcS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 24 Sep 2014 20:32:18 -0400
-Date: Thu, 25 Sep 2014 10:32:10 +1000
-From: NeilBrown <neilb@suse.de>
-To: "=?UTF-8?B?U3Ryw7Zzc2VyLA==?= Bodo" <bodo.stroesser@ts.fujitsu.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Subject: Re: rpc.mountd can be blocked by a bad client
-Message-ID: <20140925103210.5423676f@notabene.brown>
-In-Reply-To: <8B06D1E6480A6747B23FEC34909D2B5EA819D7DCA4@ABGEX70E.FSC.NET>
-References: <8B06D1E6480A6747B23FEC34909D2B5EA819D7DCA4@ABGEX70E.FSC.NET>
+	id S1754342AbaI2QcP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 29 Sep 2014 12:32:15 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 3 0/1] NFSv4.1: Fix an NFSv4.1 state renewal regression
+Date: Mon, 29 Sep 2014 12:31:56 -0400
+Message-ID: <1412008317-36182-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/fjelDp+bCuy0PTGz5UaNctV"; protocol="application/pgp-signature"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/fjelDp+bCuy0PTGz5UaNctV
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+From: Andy Adamson <andros@netapp.com>
 
-On Wed, 24 Sep 2014 12:57:09 +0200 "Str=C3=B6sser, Bodo"
-<bodo.stroesser@ts.fujitsu.com> wrote:
+Version 3 responds to a review request by Trond:
 
-> Hello,
->=20
-> a few days ago we had some trouble with a NFS server. The clients most of=
- the time no longer
-> could mount any shares, but in rare cases they had success.
->=20
-> We found out, that during the times when mounts failed, rpc.mountd hung o=
-n a write() to a TCP
-> socket. netstat showed, that Send-Q was full and Recv-Q counted up slowly=
-. After a long time
-> the write ended with an error ("TCP timeout" IIRC) and rpc.mountd worked =
-normally for a short
-> while until it again hung on write() for the same reason. The problem was=
- caused by a MTU size
-> configured wrong. So, one single bad client (or as much clients as the nu=
-mber of threads used
-> by rpc.mountd) can block rpc.mountd entirely.
->=20
-> But what will happen, if someone intentionally sends RPC requests, but do=
-esn't read() the
-> answers? I wrote a small tool to test this situation. It fires DUMP reque=
-sts to rpc.mountd as
-> fast as possible, but does not read from the socket. The result is the sa=
-me as with the
-> problem above: rpc.mountd hangs in write() and no longer responds to othe=
-r requests while no
-> TCP timeout breaks up this situation.
->=20
-> So it's quite easy to intentionally block rpc.mountd from remote.
+The problem here isn't that we're failing to send a SEQUENCE in a
+situation where we're not required to do so by the spec. The problem
+is that we're failing to rearm renewd when we skip that SEQUENCE call.
 
-That's rather nasty.
-We could possibly set the socket to be non-blocking, or we could set an ala=
-rm
-just before handling a request.
-Probably rpc_dispatch() in support/nfs/rpcdispatch.c would be the best place
-to put the timeout.
- catch SIGALRM (don't set SA_RESTART)
- alarm(10);
- call svc_sendreply
- alarm(0);
+Instead of removing them, could you rather please modify the above
+lines to return an error, and then have nfs4_renew_state() respond by
+calling nfs4_schedule_state_renewal(), instead of just skipping it as
+we do today. In fact, AFAICS we want to do the same when the renew
+call fails due to ENOMEM (but not when it returns EIO, since that
+signals that the nfs_client is in the process of shutting down).
 
-if the alarm fires while svc_sendreply is writing to the socket it should g=
-et
-an error and close the connection.
+Andy Adamson (1):
+  NFSv4.1: Fix an NFSv4.1 state renewal      regression
 
-This would only fix mountd (as it is the only process to use rpc_dispatch).
-Is a similar thing needed for statd I wonder??  It isn't so important.
+ fs/nfs/nfs4proc.c   |  2 +-
+ fs/nfs/nfs4renewd.c | 14 ++++++++++++--
+ 2 files changed, 13 insertions(+), 3 deletions(-)
 
-NeilBrown
+-- 
+1.8.3.1
 
->=20
-> Please CC me, I'm not on the list.
->=20
-> Best regards,
-> Bodo
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
---Sig_/fjelDp+bCuy0PTGz5UaNctV
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBVCNiijnsnt1WYoG5AQJ/jQ//e+tm97nPyYF8ezCc8DSIa1ATS7NkzKkC
-BrdJI/ewjpm45GURCtZk35/QQU4BVNxMtMCkXJ1YH5YqIaBTCyJmQa0TtJoMZn5g
-el33gGRHsngIKe6bRhLn5JFdd2bWTi9sSoag0d85XM/cg5q0hZcMT6q/JPMHyYDo
-DpMFtZPamdmyjqVfQyGSVb96SRehp9hGUK4C9jfTjMAS1reRzfMweUY1pp/4CMA7
-kq0xTVqtFmR5FPQqcCzf1lf76/OAjHAgYtTXqtVw5BXC30dY1qXWlPETXZq+LBhQ
-UesAeUchUafEVSMcdQsE8GTvQLIPxEegdDLG4CuDNbhVqpLpTutmdMD3LT29CjGb
-zfzYfoOXydt3iJbLEYFlQ73nZiOXY2p7UtF6kzVpLWQliVkYeOetEUZsdpDOwj1L
-ompJzVp/AuE3/mHfy7xws88NL3zVV8mkjzClNwlfwMsC5afagUaL5sHJMvF3uqyr
-1bfcCoDsdjBPHyG1Cwiy9EIQlWXfiRF/IqcWMEHC+dnMKonRfgU0uaMuUK5KCGvF
-kIyw5Pq0KDSdRiDAWHpJ3RdPuhhST3QoY7CwfVDVV3rCSQ7Oj3pAe3oIX4LdMcbr
-nKDq7pXXTw49QSbp2NPVZK+Fj23eY7lKJ13+21BG4fWWTBaACISEse1RxpBntfGp
-wjFt+49uuqY=
-=dk42
------END PGP SIGNATURE-----
-
---Sig_/fjelDp+bCuy0PTGz5UaNctV--
