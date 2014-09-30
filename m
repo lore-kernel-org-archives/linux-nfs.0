@@ -1,58 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:51861 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751320AbaILREM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 12 Sep 2014 13:04:12 -0400
-Received: by mail-ig0-f180.google.com with SMTP id hn15so870422igb.13
-        for <linux-nfs@vger.kernel.org>; Fri, 12 Sep 2014 10:04:11 -0700 (PDT)
-Message-ID: <1410541450.66768.1.camel@leira.trondhjem.org>
-Subject: [GIT PULL] Please pull NFS client fixes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Date: Fri, 12 Sep 2014 13:04:10 -0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-we0-f178.google.com ([74.125.82.178]:44518 "EHLO
+	mail-we0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751245AbaI3QaJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Sep 2014 12:30:09 -0400
+Received: by mail-we0-f178.google.com with SMTP id k48so570927wev.9
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Sep 2014 09:30:06 -0700 (PDT)
+Date: Tue, 30 Sep 2014 17:30:04 +0100 (BST)
+From: Mark Hills <mark.hills@framestore.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS server QoS ideas
+In-Reply-To: <alpine.LRH.2.11.1409241958400.8059@sh-el6.eng.rdu2.redhat.com>
+Message-ID: <alpine.LFD.2.01.1409301657470.11031@sys880.ldn.framestore.com>
+References: <alpine.LFD.2.01.1409241248320.7614@sys880.ldn.framestore.com> <alpine.LRH.2.11.1409241958400.8059@sh-el6.eng.rdu2.redhat.com>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Wed, 24 Sep 2014, Benjamin Coddington wrote:
 
-The following changes since commit 2ce7598c9a453e0acd0e07be7be3f5eb39608ebd:
+> Hi Mark, I've often thought about working on a project like this - 
+> usually when I've been trying to keep a number of systems responsive 
+> when there's been one very aggressive client, which typically would be 
+> identified by a single uid, or a uid:ip pair.  I think your second 
+> criteria would be the most useful.
 
-  Linux 3.17-rc4 (2014-09-07 16:09:43 -0700)
+Thanks Ben.
 
-are available in the git repository at:
+To do uid:ip paid would be similarly possible, but actually we're also 
+interested in uid only -- to balance load between users on a cluster.
+ 
+> I've done absolutely no research on this, but I had thought offhandedly 
+> that a solution might integrate with cgroups somehow.
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.17-4
+I'm not sure, as this is a server-side thing, there's no real processes to 
+partition in cgroups.
+ 
+> That's not much (less than 2 cents), but I think this feature would be
+> welcomed warmly by sysadmins running shared NFS systems.
 
-for you to fetch changes up to 224ecbf5a674ec7da3a3b3ea21ca62e2853653fa:
+Thanks, good to hear.
 
-  pnfs: fix filelayout_retry_commit when idx > 0 (2014-09-10 12:43:45 -0700)
+I'd appreciate any input or caveats from anyone on the ideas I posted for 
+implementing this.
 
-----------------------------------------------------------------
-NFS client fixes for 3.17
+Thanks
 
-Highlights:
-- Fix a kernel warning when removing /proc/net/nfsfs
-- Revert commit 49a4bda22e18 due to Oopses
-- Fix a typo in the pNFS file layout commit code
-
-----------------------------------------------------------------
-Cong Wang (1):
-      nfs: fix kernel warning when removing proc entry
-
-Jeff Layton (1):
-      nfs: revert "nfs4: queue free_lock_state job submission to nfsiod"
-
-Weston Andros Adamson (1):
-      pnfs: fix filelayout_retry_commit when idx > 0
-
- fs/nfs/client.c                | 12 +++---------
- fs/nfs/filelayout/filelayout.c |  5 +++--
- fs/nfs/nfs4_fs.h               | 13 ++++++-------
- fs/nfs/nfs4state.c             | 24 ++++++------------------
- 4 files changed, 18 insertions(+), 36 deletions(-)
+-- 
+Mark
 
 
+> On Wed, 24 Sep 2014, Mark Hills wrote:
+> 
+> > I am looking at possibilities to implement QoS (quality of service) in an
+> > NFS server -- for a multiuser HPC environment, on NFSv3.
+> > 
+> > The desire is for a fully loaded server to process requests in some kind
+> > of "fair share" (like round robin) or priorities based on some attribute;
+> > eg. uid at the client, request type + origin, or even directory etc.
+> > 
+> > Criteria could be fairly blunt and specific to our use case to begin with.
+> > 
+> > I've looked at the code with the following ideas for where to start.
+> > 
+> > It seems the implementation depends a lot on which attributes to
+> > share/schedule on:
+> > 
+> > 1) by client IP:
+> > 
+> >   make use the existing structures
+> > 
+> >   enhance the svc_xprt_enqueue/dequeue process to schedule svc_xprt
+> >   as these are already per-client
+> > 
+> > 2) by client uid or other RPC attribute:
+> > 
+> >   have svc_recv make multiple calls to svc_handle_xprt
+> > 
+> >   buffer the requests into multiple queues held at svc_pool (re-use
+> >   xpt_deferred?)
+> > 
+> > 3) by NFS operation, file handle etc.:
+> > 
+> >   most awkward, as there is not buffering of requests at the NFS level
+> >   or shared between threads
+> > 
+> >   perhaps do as (2) but with a function in svc_program to return
+> >   scheduling criteria
+> > 
+> > It looks like I need to consider the behaviour when there are multiple
+> > svc_pool (ie. NUMA)
+> > 
+> > This is the first time I've looked into this code, I'm interested in any
+> > comments/criticisms or alternatives.
+> > 
+> > Thanks
+> > 
+> > -- 
+> > Mark
