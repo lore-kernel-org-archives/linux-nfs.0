@@ -1,66 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f182.google.com ([209.85.220.182]:54871 "EHLO
-	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750891AbaIEUUt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Sep 2014 16:20:49 -0400
-Received: by mail-vc0-f182.google.com with SMTP id im17so13230842vcb.27
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Sep 2014 13:20:48 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:62163 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751170AbaI3LFH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 30 Sep 2014 07:05:07 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s8UB57bY021753
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 30 Sep 2014 07:05:07 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s8UB56JV031148
+	for <linux-nfs@vger.kernel.org>; Tue, 30 Sep 2014 07:05:06 -0400
+Message-ID: <542A8E62.1080408@RedHat.com>
+Date: Tue, 30 Sep 2014 07:05:06 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <CA+Tkd6WBuMkCmsjUpjrAR38Ri6QK_B4BhgNr0gzHBTG1ytjO6Q@mail.gmail.com>
-References: <CA+Tkd6URVCziomwWMFYtxmQyybpC7=r_BTjnwVuduDaOa4cuvg@mail.gmail.com>
- <20140903070048.56201d1d@tlielax.poochiereds.net> <70D58138-CB00-433C-8BF8-01584E6460F0@oracle.com>
- <CA+Tkd6WV9K4oZPVGkqL_y6OcD9Pmj6x0roo9n839QD8RXDsCwA@mail.gmail.com>
- <CA+Tkd6WYkkVbY2YsmRNHB4+9AFg5UjC1xoycLTZQOYrtFCT_2w@mail.gmail.com>
- <CAHQdGtRpD03KHJyu1MtxA=21pu4z_YAG4XA-8Bu+t4xeUefaNQ@mail.gmail.com> <CA+Tkd6WBuMkCmsjUpjrAR38Ri6QK_B4BhgNr0gzHBTG1ytjO6Q@mail.gmail.com>
-From: Chris Perl <chris.perl@gmail.com>
-Date: Fri, 5 Sep 2014 16:20:28 -0400
-Message-ID: <CA+Tkd6UjfJmjG0WE1F2bsB068rXkEUHhOq6S+F5e=OVA_wxeMw@mail.gmail.com>
-Subject: Re: nfs-utils - TCP ephemeral port exhaustion results in mount failures
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs-client.target: Removed a ordering cycle with nfs-server.service
+References: <1412004817-14432-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1412004817-14432-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It looks like they may have come through after all, unfortunately I
-already sent them again.  Apologies for the spam.
 
-On Fri, Sep 5, 2014 at 4:04 PM, Chris Perl <chris.perl@gmail.com> wrote:
-> I tried to send them to the list, but I guess they didn't come through
-> because my sender was set to chris.perl@gmail.com, but I ran `git
-> send-email' from work, so the smtp sender ip wouldn't authorized.
->
-> I'll figure out a way to send them now.
->
-> On Fri, Sep 5, 2014 at 4:03 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Fri, Sep 5, 2014 at 3:40 PM, Chris Perl <chris.perl@gmail.com> wrote:
->>> I just submitted two patches, one for nfs-utils and one for linux-nfs.
->>>
->>> As I said in my previous email, the patch to nfs-utils was enough to
->>> get us farther along, but we failed inside mount(2) with EIO (with a
->>> decidedly more confusing error message).
->>>
->>> So, I've also submitted a patch for the rpc code in the kernel that
->>> also avoids bind when asking for a random ephemeral port.  I've tested
->>> the combination of these two patches with my system while in the
->>> situation I originally outlined.  I can continue to successfully mount
->>> NFS filesystems using both of these patches.
->>>
->>> I don't particularly love the kernel patch, as it makes `xs_bind' not
->>> actually bind in all circumstances, which seems confusing.  However, I
->>> thought trying to rework things in a larger way would cause more
->>> issues given that I'm not very familiar with this code.  If everyone
->>> hates it, I can try something else.
->>
->> To whom did you submit these patches? I don't see anything in the
->> linux-nfs mailing list.
->>
->> --
->> Trond Myklebust
->>
->> Linux NFS client maintainer, PrimaryData
->>
->> trond.myklebust@primarydata.com
+
+On 09/29/2014 11:33 AM, Steve Dickson wrote:
+> On a VM that boots very fast and with out kerberos
+> enabled a systemd ordering cycle happens between
+> nfs-client and nfs-server units when both were
+> enabled.
+> 
+> Having nfs-client start the gssd daemons in the
+> same matter as the nfs-server does ('After=') seemed
+> to eliminated the ordering cycle.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
+
+steved.
+
+> ---
+>  systemd/nfs-client.target | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/systemd/nfs-client.target b/systemd/nfs-client.target
+> index 474f5e9..87a1ce8 100644
+> --- a/systemd/nfs-client.target
+> +++ b/systemd/nfs-client.target
+> @@ -7,7 +7,7 @@ Wants=remote-fs-pre.target
+>  # start that on demand if needed.
+>  Wants=rpc-gssd.service rpc-svcgssd.service auth-rpcgss-module.service
+>  Wants=nfs-blkmap.service rpc-statd-notify.service
+> -Before=rpc-gssd.service rpc-svcgssd.service nfs-blkmap.service
+> +After=rpc-gssd.service rpc-svcgssd.service nfs-blkmap.service
+>  
+>  [Install]
+>  WantedBy=multi-user.target
+> 
