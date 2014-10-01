@@ -1,62 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:58223 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752931AbaJMOxc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 10:53:32 -0400
-Received: by mail-ig0-f177.google.com with SMTP id a13so10691334igq.16
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 07:53:31 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH 1/1] NFSv4: open context can be NULL in nfs_put_open_context
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <1413209295-13509-1-git-send-email-andros@netapp.com>
-Date: Mon, 13 Oct 2014 10:53:31 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <72CB6478-87D9-48B6-9C38-86BB5D3F4CDF@primarydata.com>
-References: <1413209295-13509-1-git-send-email-andros@netapp.com>
-To: William Andros Adamson <andros@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:41685 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751394AbaJAUx5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Oct 2014 16:53:57 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s91KrvnI011255
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Oct 2014 16:53:57 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s91KrvEN017202
+	for <linux-nfs@vger.kernel.org>; Wed, 1 Oct 2014 16:53:57 -0400
+Message-ID: <542C69E4.2030707@RedHat.com>
+Date: Wed, 01 Oct 2014 16:53:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting: Tomorrow - Thur 10/2/14
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct 13, 2014, at 10:08 AM, andros@netapp.com wrote:
+Hello,
 
-> From: Andy Adamson <andros@netapp.com>
-> 
-> If a pgio error is caught before the nfs_pgio_header args->context is set
-> with get_nfs_open_context, the context can be NULL.
+Its been a while... and we can do some finalizing 
+on the upcoming BAT...  
 
-It looks like all three calls to nfs_pgio_error would hit this!
+So the Linux NFS town hall meeting is tomorrow
+   *Thur Oct 2 at 01:00 pm EST (10:00am PST)*
 
-The fix looks good to me.
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
 
--dros
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
 
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
-> fs/nfs/inode.c | 3 +++
-> 1 file changed, 3 insertions(+)
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 141c9f4..a2b148e 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -798,6 +798,9 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
-> 	struct inode *inode = ctx->dentry->d_inode;
-> 	struct super_block *sb = ctx->dentry->d_sb;
-> 
-> +	if (ctx == NULL)
-> +		return;
-> +
-> 	if (!list_empty(&ctx->list)) {
-> 		if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
-> 			return;
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Time: 10:00 am PST (01:00 pm EST)
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+
+steved.
 
