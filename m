@@ -1,55 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from foss-mx-na.foss.arm.com ([217.140.108.86]:51521 "EHLO
-	foss-mx-na.foss.arm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932248AbaJaOzj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Oct 2014 10:55:39 -0400
-Date: Fri, 31 Oct 2014 14:55:28 +0000
-From: Will Deacon <will.deacon@arm.com>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: Peng Tao <tao.peng@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: WARNING at fs/nfs/write.c:743 nfs_inode_remove_request with -rc6
-Message-ID: <20141031145528.GI6731@arm.com>
-References: <20140923145356.GD28608@arm.com>
- <5294BEB2-F20F-4E3E-BFB2-E41806A4F85A@primarydata.com>
- <FA11FBE3-42E7-46B9-B9DA-FAE368DCE96B@primarydata.com>
- <F632C770-3E3D-4FC5-BBF3-69BB1CCA8F0D@primarydata.com>
- <20140923152558.GG28608@arm.com>
- <20140925171545.GR20043@arm.com>
- <78B8153D-59B7-4DBE-8472-D83338F04338@primarydata.com>
- <6111EECC-C8C1-4605-98AD-0AF0E1B6DA59@primarydata.com>
- <20141020135736.GB20301@arm.com>
- <FE0552AE-5243-44D3-B661-B622C2D957C0@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:36010 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752521AbaJASVM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Oct 2014 14:21:12 -0400
+Date: Wed, 1 Oct 2014 14:21:07 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 0/2] NFSD: Add v4.2 SEEK support
+Message-ID: <20141001182106.GB29675@fieldses.org>
+References: <1411754307-18457-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <20140926215431.GI27412@fieldses.org>
+ <CAFX2Jfm2pDmz7vKPVNe8yZScVT-MvVD=+AsfOgdrPfKwgaLTXw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <FE0552AE-5243-44D3-B661-B622C2D957C0@primarydata.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAFX2Jfm2pDmz7vKPVNe8yZScVT-MvVD=+AsfOgdrPfKwgaLTXw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 31, 2014 at 02:49:13PM +0000, Weston Andros Adamson wrote:
-> On Oct 20, 2014, at 9:57 AM, Will Deacon <will.deacon@arm.com> wrote:
-> > On Sat, Oct 11, 2014 at 02:32:29PM +0100, Weston Andros Adamson wrote:
-> >> I’ve been very busy, but I haven’t forgotten about your bug report!
-> > 
-> > No problem, I've been busy too. I just checked with -rc1 and I can reproduce
-> > the issue there too.
-> > 
-> >> I think the WARN_ON_ONCE is just wrong, there are cases where the
-> >> PG_INODE_REF flag is legitimately not set. The flag is set so that sub
-> >> requests can mimmic the parent request’s reference count.
-> >> 
-> >> Could you please run the reproducer again, unmount, then check the contents of
-> >> /proc/fs/nfsfs/servers?
-> > 
-> > Sure. I just tried this and that file is empty after unmounting.
-> 
-> Sorry for the delay (again) - I just got back from a two week holiday.
-> 
-> This is good news! I think we can safely remove this WARN_ON_ONCE and call it a
-> day… or maybe calling it a month is more accurate ;)
+On Tue, Sep 30, 2014 at 01:00:24PM -0400, Anna Schumaker wrote:
+> I'm testing with xfstests #285.  It's an lseek specific test, and helped
+> find a few edge cases during development.
 
-Great! Feel free to add my reported-by/tested-by on that patch.
+I think you told me that already and I forgot.  Bah.
 
-Will
+OK, applied.  Thanks!
+
+--b.
+
+> 
+> Anna
+> 
+> On Fri, Sep 26, 2014 at 5:54 PM, J. Bruce Fields <bfields@fieldses.org>
+> wrote:
+> 
+> > On Fri, Sep 26, 2014 at 01:58:25PM -0400, Anna.Schumaker@netapp.com wrote:
+> > > From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> > >
+> > > These patches add server support for the NFS v4.2 operation SEEK.  The
+> > first
+> > > patch adds basic NFS v4.2 infrastructure that all future operations will
+> > rely
+> > > on.  The second patch adds the SEEK operation.
+> >
+> > How are you testing these?
+> >
+> > It looks OK to me, so I'll likely commit in a few days if there are no
+> > objections.
+> >
+> > --b.
+> >
+> > >
+> > > Changes in v3:
+> > > - Rework the switch statement in nfsd4_seek() so we only call
+> > vfs_llseek()
+> > >   from one place.
+> > > - Change XDR encode and decode functions to A + B notation for
+> > calculating
+> > >   byte counts.
+> > >
+> > > These patches and the corresponding client patch are avaliable in the
+> > [seek]
+> > > branch of:
+> > >
+> > >       git://git.linux-nfs.org/projects/anna/linux-nfs.git
+> > >
+> > >
+> > > Questions?  Comments?  Thoughts?
+> > >
+> > > Anna
+> > >
+> > >
+> > > Anna Schumaker (2):
+> > >   NFSD: Add generic v4.2 infrastructure
+> > >   NFSD: Implement SEEK
+> > >
+> > >  fs/nfsd/nfs4proc.c   | 49 ++++++++++++++++++++++++++++++++++++++++++
+> > >  fs/nfsd/nfs4xdr.c    | 60
+> > ++++++++++++++++++++++++++++++++++++++++++++++++++++
+> > >  fs/nfsd/xdr4.h       | 14 ++++++++++++
+> > >  include/linux/nfs4.h | 23 ++++++++++++++++++--
+> > >  4 files changed, 144 insertions(+), 2 deletions(-)
+> > >
+> > > --
+> > > 2.1.0
+> > >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
