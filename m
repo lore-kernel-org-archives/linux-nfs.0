@@ -1,50 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f171.google.com ([209.85.220.171]:37280 "EHLO
-	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752330AbaJFN5x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 09:57:53 -0400
-Received: by mail-vc0-f171.google.com with SMTP id hy10so3165322vcb.16
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 06:57:52 -0700 (PDT)
+Received: from mail-vc0-f180.google.com ([209.85.220.180]:61043 "EHLO
+	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753957AbaJASs6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Oct 2014 14:48:58 -0400
+Received: by mail-vc0-f180.google.com with SMTP id le20so717976vcb.11
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Oct 2014 11:48:57 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyF4oCkmHskT02GceF=CR1mYZc3uwm0tLf2fd39-XeyjRg@mail.gmail.com>
-References: <CAN-5tyF4oCkmHskT02GceF=CR1mYZc3uwm0tLf2fd39-XeyjRg@mail.gmail.com>
-Date: Mon, 6 Oct 2014 09:57:52 -0400
-Message-ID: <CAHQdGtT39EBPx1SQTn3hFHBNuLsSoBdkSOYWHYRQ=j8vpVjB_A@mail.gmail.com>
-Subject: Re: [bug] open owner value is always the same
+In-Reply-To: <542C082C.3080602@Netapp.com>
+References: <1411876498-12039-1-git-send-email-trond.myklebust@primarydata.com>
+	<1411876498-12039-2-git-send-email-trond.myklebust@primarydata.com>
+	<1411876498-12039-3-git-send-email-trond.myklebust@primarydata.com>
+	<542C082C.3080602@Netapp.com>
+Date: Wed, 1 Oct 2014 14:48:57 -0400
+Message-ID: <CAHQdGtSc_R-NNjE6nGvONyWoPGXb7hOJ2jpTFtJ2oS0ka6m7aQ@mail.gmail.com>
+Subject: Re: [PATCH v2 2/2] NFSv4: fix open/lock state recovery error handling
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Olga,
-
-On Mon, Oct 6, 2014 at 9:48 AM, Olga Kornievskaia
-<olga.kornievskaia@gmail.com> wrote:
-> The spec says that open owner needs to be different for different
-> files yet the code returns the same value.
+On Wed, Oct 1, 2014 at 9:57 AM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> On 09/27/2014 11:54 PM, Trond Myklebust wrote:
+>> The current open/lock state recovery unfortunately does not handle errors
+>> such as NFS4ERR_CONN_NOT_BOUND_TO_SESSION correctly. Instead of looping,
+>> just proceeds as if the state manager is finished recovering.
+>> This patch ensures that we loop back, handle higher priority errors
+>> and complete the open/lock state recovery.
+>>
+>> Cc: stable@vger.kernel.org
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>>  fs/nfs/nfs4state.c | 16 ++++++----------
+>>  1 file changed, 6 insertions(+), 10 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index 26d510d11efd..87b2d0e79797 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -1705,7 +1705,8 @@ restart:
+>>                       if (status < 0) {
+>>                               set_bit(ops->owner_flag_bit, &sp->so_flags);
+>>                               nfs4_put_state_owner(sp);
+>> -                             return nfs4_recovery_handle_error(clp, status);
+>> +                             status = nfs4_recovery_handle_error(clp, status);
+>> +                             return (status != 0) ? status : -EAGAIN;
 >
-> It is not clear to me what's broken about ida_get_new() that's used
-> for generation of the owner ids.
+> Why is the ternary better than doing something like this?
 >
-> Can somebody comment on this?
->
+>         if (status == 0)
+>                 return -EAGAIN;
+>         return status;
 
-As far as I know, there is no requirement in either NFSv4 or NFSv4.1
-that open owners be different for each file. In NFSv4.1 there is a
-requirement that they be unique to each credential/principal, but only
-if you negotiate EXCHGID4_FLAG_BIND_PRINC_STATEID.
-
-The current choice of scheme where we share open_owners between files
-was largely motivated by a desire not to overload the NFSv4.0 servers
-with lots of open_owner structures. In NFSv4.0, those structures are
-required to be cached by the server for a while after the file has
-been closed.
-
-Cheers
-  Trond
-
+It is 2 lines shorter, yet just as legible in this situation.
 
 -- 
 Trond Myklebust
