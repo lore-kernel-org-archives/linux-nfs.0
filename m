@@ -1,42 +1,234 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:58491 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751729AbaJXO3m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Oct 2014 10:29:42 -0400
-Date: Fri, 24 Oct 2014 16:29:39 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pnfs/blocklayout: serialize GETDEVICEINFO calls
-Message-ID: <20141024142939.GA22472@lst.de>
-References: <1411740170-18611-1-git-send-email-hch@lst.de> <1411740170-18611-2-git-send-email-hch@lst.de> <CAHQdGtTg8Tc8bRqbezW-ZWrcTJdG233uRTrqQMP5CvxAcjW9Fg@mail.gmail.com> <20140926154843.GA22675@lst.de> <CAHQdGtRYN_L4ONFU5-GW3=kJ1oz5HS_7kmsn=GWCCGTgBODQAA@mail.gmail.com>
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:50011 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753242AbaJBNmj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Oct 2014 09:42:39 -0400
+Received: by mail-lb0-f174.google.com with SMTP id p9so2277078lbv.5
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Oct 2014 06:42:37 -0700 (PDT)
+From: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
+To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        ncopa@alpinelinux.org
+Cc: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
+Subject: [PATCH v2 3/5] gssd: talk to kernel using file descriptors instead of FILE
+Date: Thu,  2 Oct 2014 16:41:59 +0300
+Message-Id: <1412257321-5855-4-git-send-email-timo.teras@iki.fi>
+In-Reply-To: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
+References: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtRYN_L4ONFU5-GW3=kJ1oz5HS_7kmsn=GWCCGTgBODQAA@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 26, 2014 at 12:21:06PM -0400, Trond Myklebust wrote:
-> > On Fri, Sep 26, 2014 at 10:29:34AM -0400, Trond Myklebust wrote:
-> >> It worries me that we're putting a mutex directly in the writeback
-> >> path. For small arrays, it might be acceptable, but what if you have a
-> >> block device with 1000s of disks on the back end?
-> >>
-> >> Is there no better way to fix this issue?
-> >
-> > Not without getting rid of the rpc_pipefs interface.  That is on my
-> > very long term TODO list, but it will require new userspace support.
-> 
-> Why is that? rpc_pipefs was designed to be message based, so it should
-> work quite well in a multi-threaded environment. We certainly don't
-> use mutexes around the gssd up/downcall, and the only reason for the
-> mutex in idmapd is to deal with the keyring upcall.
+Signed-off-by: Timo Teräs <timo.teras@iki.fi>
+---
+ utils/gssd/gssd_proc.c         |  9 +++++---
+ utils/gssd/svcgssd.h           |  2 +-
+ utils/gssd/svcgssd_main_loop.c |  9 ++++----
+ utils/gssd/svcgssd_proc.c      | 51 ++++++++++++++++++++++--------------------
+ 4 files changed, 38 insertions(+), 33 deletions(-)
 
-Turns out we can't do anything like that with the existing blkmapd
-ABI.  The other callers that support concurrency have some sort
-of uniqueue identifier embedded in their messages both on the upcall
-and the downcall, so that the kernel can find the right structure
-on the downcall side.
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 121feb1..1d8e6a7 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -78,6 +78,7 @@
+ #include "nfsrpc.h"
+ #include "nfslib.h"
+ #include "gss_names.h"
++#include "misc.h"
+ 
+ /*
+  * pollarray:
+@@ -1250,7 +1251,7 @@ void
+ handle_gssd_upcall(struct clnt_info *clp)
+ {
+ 	uid_t			uid;
+-	char			*lbuf = NULL;
++	char			lbuf[RPC_CHAN_BUF_SIZE];
+ 	int			lbuflen = 0;
+ 	char			*p;
+ 	char			*mech = NULL;
+@@ -1260,11 +1261,14 @@ handle_gssd_upcall(struct clnt_info *clp)
+ 
+ 	printerr(1, "handling gssd upcall (%s)\n", clp->dirname);
+ 
+-	if (readline(clp->gssd_fd, &lbuf, &lbuflen) != 1) {
++	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
++	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+ 		printerr(0, "WARNING: handle_gssd_upcall: "
+ 			    "failed reading request\n");
+ 		return;
+ 	}
++	lbuf[lbuflen-1] = 0;
++
+ 	printerr(2, "%s: '%s'\n", __func__, lbuf);
+ 
+ 	/* find the mechanism name */
+@@ -1362,7 +1366,6 @@ handle_gssd_upcall(struct clnt_info *clp)
+ 	}
+ 
+ out:
+-	free(lbuf);
+ 	free(mech);
+ 	free(enctypes);
+ 	free(target);
+diff --git a/utils/gssd/svcgssd.h b/utils/gssd/svcgssd.h
+index 9a2e2e8..02b5c7a 100644
+--- a/utils/gssd/svcgssd.h
++++ b/utils/gssd/svcgssd.h
+@@ -35,7 +35,7 @@
+ #include <sys/queue.h>
+ #include <gssapi/gssapi.h>
+ 
+-void handle_nullreq(FILE *f);
++void handle_nullreq(int f);
+ void gssd_run(void);
+ 
+ #define GSSD_SERVICE_NAME	"nfs"
+diff --git a/utils/gssd/svcgssd_main_loop.c b/utils/gssd/svcgssd_main_loop.c
+index 2b4111c..b5681ce 100644
+--- a/utils/gssd/svcgssd_main_loop.c
++++ b/utils/gssd/svcgssd_main_loop.c
+@@ -54,19 +54,18 @@ void
+ gssd_run()
+ {
+ 	int			ret;
+-	FILE			*f;
++	int			f;
+ 	struct pollfd		pollfd;
+ 
+ #define NULLRPC_FILE "/proc/net/rpc/auth.rpcsec.init/channel"
+ 
+-	f = fopen(NULLRPC_FILE, "rw");
+-
+-	if (!f) {
++	f = open(NULLRPC_FILE, O_RDWR);
++	if (f < 0) {
+ 		printerr(0, "failed to open %s: %s\n",
+ 			 NULLRPC_FILE, strerror(errno));
+ 		exit(1);
+ 	}
+-	pollfd.fd = fileno(f);
++	pollfd.fd = f;
+ 	pollfd.events = POLLIN;
+ 	while (1) {
+ 		int save_err;
+diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
+index 5bdb438..72ec254 100644
+--- a/utils/gssd/svcgssd_proc.c
++++ b/utils/gssd/svcgssd_proc.c
+@@ -73,36 +73,35 @@ struct svc_cred {
+ 	int	cr_ngroups;
+ 	gid_t	cr_groups[NGROUPS];
+ };
+-static char vbuf[RPC_CHAN_BUF_SIZE];
+ 
+ static int
+ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
+ 		gss_OID mech, gss_buffer_desc *context_token,
+ 		int32_t endtime, char *client_name)
+ {
+-	FILE *f;
+-	int i;
++	char buf[RPC_CHAN_BUF_SIZE], *bp;
++	int i, f, err, blen;
+ 	char *fname = NULL;
+-	int err;
+ 
+ 	printerr(1, "doing downcall\n");
+ 	if ((fname = mech2file(mech)) == NULL)
+ 		goto out_err;
+-	f = fopen(SVCGSSD_CONTEXT_CHANNEL, "w");
+-	if (f == NULL) {
++
++	f = open(SVCGSSD_CONTEXT_CHANNEL, O_WRONLY);
++	if (f < 0) {
+ 		printerr(0, "WARNING: unable to open downcall channel "
+ 			     "%s: %s\n",
+ 			     SVCGSSD_CONTEXT_CHANNEL, strerror(errno));
+ 		goto out_err;
+ 	}
+-	setvbuf(f, vbuf, _IOLBF, RPC_CHAN_BUF_SIZE);
+-	qword_printhex(f, out_handle->value, out_handle->length);
++	bp = buf, blen = sizeof(buf);
++	qword_addhex(&bp, &blen, out_handle->value, out_handle->length);
+ 	/* XXX are types OK for the rest of this? */
+ 	/* For context cache, use the actual context endtime */
+-	qword_printint(f, endtime);
+-	qword_printint(f, cred->cr_uid);
+-	qword_printint(f, cred->cr_gid);
+-	qword_printint(f, cred->cr_ngroups);
++	qword_addint(&bp, &blen, endtime);
++	qword_addint(&bp, &blen, cred->cr_uid);
++	qword_addint(&bp, &blen, cred->cr_gid);
++	qword_addint(&bp, &blen, cred->cr_ngroups);
+ 	printerr(2, "mech: %s, hndl len: %d, ctx len %d, timeout: %d (%d from now), "
+ 		 "clnt: %s, uid: %d, gid: %d, num aux grps: %d:\n",
+ 		 fname, out_handle->length, context_token->length,
+@@ -110,19 +109,21 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
+ 		 client_name ? client_name : "<null>",
+ 		 cred->cr_uid, cred->cr_gid, cred->cr_ngroups);
+ 	for (i=0; i < cred->cr_ngroups; i++) {
+-		qword_printint(f, cred->cr_groups[i]);
++		qword_addint(&bp, &blen, cred->cr_groups[i]);
+ 		printerr(2, "  (%4d) %d\n", i+1, cred->cr_groups[i]);
+ 	}
+-	qword_print(f, fname);
+-	qword_printhex(f, context_token->value, context_token->length);
++	qword_add(&bp, &blen, fname);
++	qword_addhex(&bp, &blen, context_token->value, context_token->length);
+ 	if (client_name)
+-		qword_print(f, client_name);
+-	err = qword_eol(f);
+-	if (err) {
++		qword_add(&bp, &blen, client_name);
++	qword_addeol(&bp, &blen);
++	err = 0;
++	if (blen <= 0 || write(f, buf, bp - buf) != bp - buf) {
+ 		printerr(1, "WARNING: error writing to downcall channel "
+ 			 "%s: %s\n", SVCGSSD_CONTEXT_CHANNEL, strerror(errno));
++		err = -1;
+ 	}
+-	fclose(f);
++	close(f);
+ 	return err;
+ out_err:
+ 	printerr(1, "WARNING: downcall failed\n");
+@@ -317,7 +318,7 @@ print_hexl(const char *description, unsigned char *cp, int length)
+ #endif
+ 
+ void
+-handle_nullreq(FILE *f) {
++handle_nullreq(int f) {
+ 	/* XXX initialize to a random integer to reduce chances of unnecessary
+ 	 * invalidation of existing ctx's on restarting svcgssd. */
+ 	static u_int32_t	handle_seq = 0;
+@@ -339,19 +340,21 @@ handle_nullreq(FILE *f) {
+ 	u_int32_t		maj_stat = GSS_S_FAILURE, min_stat = 0;
+ 	u_int32_t		ignore_min_stat;
+ 	struct svc_cred		cred;
+-	static char		*lbuf = NULL;
+-	static int		lbuflen = 0;
+-	static char		*cp;
++	char			lbuf[RPC_CHAN_BUF_SIZE];
++	int			lbuflen = 0;
++	char			*cp;
+ 	int32_t			ctx_endtime;
+ 	char			*hostbased_name = NULL;
+ 
+ 	printerr(1, "handling null request\n");
+ 
+-	if (readline(fileno(f), &lbuf, &lbuflen) != 1) {
++	lbuflen = read(f, lbuf, sizeof(lbuf));
++	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
+ 		printerr(0, "WARNING: handle_nullreq: "
+ 			    "failed reading request\n");
+ 		return;
+ 	}
++	lbuf[lbuflen-1] = 0;
+ 
+ 	cp = lbuf;
+ 
+-- 
+2.1.2
 
-Because of that I'd like to request inclusion of this patch with a Cc
-to stable for 3.17.
