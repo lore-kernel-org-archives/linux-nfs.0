@@ -1,51 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:48531 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755728AbaJ2VyZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Oct 2014 17:54:25 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=windows-1252
-Subject: building upstream nfs-utils on EL6 fails
-Date: Wed, 29 Oct 2014 17:54:19 -0400
-Message-Id: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Steve Dickson <SteveD@redhat.com>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Received: from mail-lb0-f174.google.com ([209.85.217.174]:48755 "EHLO
+	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752166AbaJBNmi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Oct 2014 09:42:38 -0400
+Received: by mail-lb0-f174.google.com with SMTP id p9so2246186lbv.19
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Oct 2014 06:42:36 -0700 (PDT)
+From: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
+To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        ncopa@alpinelinux.org
+Cc: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
+Subject: [PATCH v2 1/5] Add string.h to source files that need it
+Date: Thu,  2 Oct 2014 16:41:57 +0300
+Message-Id: <1412257321-5855-2-git-send-email-timo.teras@iki.fi>
+In-Reply-To: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
+References: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+Signed-off-by: Timo Ter√§s <timo.teras@iki.fi>
+---
+ support/include/exportfs.h | 1 +
+ support/include/nfsrpc.h   | 1 +
+ support/nfs/cacheio.c      | 1 +
+ utils/gssd/write_bytes.h   | 1 +
+ utils/nfsd/nfssvc.c        | 1 +
+ 5 files changed, 5 insertions(+)
 
-libtool: link: gcc -Wall -Wextra -Wstrict-prototypes -pipe -D_FILE_OFFSET_BITS=64 -Wp,-D_FORTIFY_SOURCE=2 -Os -Wall -Wextra -pedantic -std=c99 -Wformat=2 -Wmissing-include-dirs -Wunused -Wconversion -Wlogical-op -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wmissing-noreturn -Wshadow -Wunreachable-code -Winline -Wdisabled-optimization -Wstrict-aliasing=2 -Wstrict-overflow=4 -Wstack-protector -fstrict-aliasing -fstrict-overflow -fexceptions -fstack-protector -fasynchronous-unwind-tables -fpie -pie -o nfsidmap nfsidmap.o  /usr/lib64/libnfsidmap.so -ldl -lkeyutils ../../support/nfs/libnfs.a
-nfsidmap.o: In function `key_invalidate':
-nfsidmap.c:(.text+0x141): undefined reference to `keyctl_invalidate'
-collect2: ld returned 1 exit status
-make[2]: *** [nfsidmap] Error 1
-make[1]: *** [all-recursive] Error 1
-make: *** [all-recursive] Error 1
-[cel@dali nfs-utils]$
-
-I think this could be due to
-
-commit 2ae0763a618d30037ebb2520f6292f80d838a440
-Author: Steve Dickson <steved@redhat.com>
-Date:   Tue Mar 25 10:56:58 2014 -0400
-
-    nfsidmap: Keys need to be invalidated instead of revoked
-
-Probably need to have some autoconf logic to pick which keyctl_
-API is available on the build system.
-
-But Iíd like to run recent kernels on EL6 systems. It looks like
-the current upstream kernel ID mapping interface isnít compatible
-with the EL6 user space (/usr/sbin/nfsidmap).
-
-I see both sets of infrastructure on EL6: nfsidmap is installed
-and so is rpc.idmapd. Which one is supposed to be used?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+index 9021fae..32711e4 100644
+--- a/support/include/exportfs.h
++++ b/support/include/exportfs.h
+@@ -10,6 +10,7 @@
+ #define EXPORTFS_H
+ 
+ #include <netdb.h>
++#include <string.h>
+ 
+ #include "sockaddr.h"
+ #include "nfslib.h"
+diff --git a/support/include/nfsrpc.h b/support/include/nfsrpc.h
+index 1bfae7a..fbbdb6a 100644
+--- a/support/include/nfsrpc.h
++++ b/support/include/nfsrpc.h
+@@ -23,6 +23,7 @@
+ #ifndef __NFS_UTILS_NFSRPC_H
+ #define __NFS_UTILS_NFSRPC_H
+ 
++#include <string.h>
+ #include <rpc/types.h>
+ #include <rpc/clnt.h>
+ 
+diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
+index 61e07a8..2726d8f 100644
+--- a/support/nfs/cacheio.c
++++ b/support/nfs/cacheio.c
+@@ -18,6 +18,7 @@
+ #include <nfslib.h>
+ #include <stdio.h>
+ #include <stdio_ext.h>
++#include <string.h>
+ #include <ctype.h>
+ #include <unistd.h>
+ #include <sys/types.h>
+diff --git a/utils/gssd/write_bytes.h b/utils/gssd/write_bytes.h
+index 4fc72cc..b3f342b 100644
+--- a/utils/gssd/write_bytes.h
++++ b/utils/gssd/write_bytes.h
+@@ -32,6 +32,7 @@
+ #define _WRITE_BYTES_H_
+ 
+ #include <stdlib.h>
++#include <string.h>
+ #include <sys/types.h>
+ #include <netinet/in.h>		/* for ntohl */
+ 
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index 0675b6a..027e5ac 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -20,6 +20,7 @@
+ #include <fcntl.h>
+ #include <errno.h>
+ #include <stdlib.h>
++#include <string.h>
+ 
+ #include "nfslib.h"
+ #include "xlog.h"
+-- 
+2.1.2
 
