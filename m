@@ -1,172 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f43.google.com ([209.85.192.43]:46291 "EHLO
-	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756582AbaJXNfE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 09:35:04 -0400
-Received: by mail-qg0-f43.google.com with SMTP id j107so974499qga.30
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 06:35:02 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 24 Oct 2014 09:34:59 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        bfields@fieldses.org
-Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection
- when dropping a request
-Message-ID: <20141024093459.70a29d80@tlielax.poochiereds.net>
-In-Reply-To: <20141024072644.6643f9ed@tlielax.poochiereds.net>
-References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
-	<1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
-	<20141024072644.6643f9ed@tlielax.poochiereds.net>
+Received: from mail-vc0-f177.google.com ([209.85.220.177]:41013 "EHLO
+	mail-vc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752507AbaJBNqA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Oct 2014 09:46:00 -0400
+Received: by mail-vc0-f177.google.com with SMTP id hq11so1366341vcb.8
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Oct 2014 06:45:59 -0700 (PDT)
 MIME-Version: 1.0
+In-Reply-To: <242225503.126017.1412240463629.JavaMail.zimbra@opinsys.fi>
+References: <1508157147.125995.1412239112248.JavaMail.zimbra@opinsys.fi>
+	<242225503.126017.1412240463629.JavaMail.zimbra@opinsys.fi>
+Date: Thu, 2 Oct 2014 09:45:59 -0400
+Message-ID: <CAHQdGtQPwzEcmWsZs3isrCEEJbB6n3sk0ZsPJ7k1E==e5-VE5g@mail.gmail.com>
+Subject: Re: [RFC]: make nfs_wait_on_request() KILLABLE
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: =?UTF-8?B?VHVvbWFzIFLDpHPDpG5lbg==?= <tuomasjjrasanen@opinsys.fi>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 24 Oct 2014 07:26:44 -0400
-Jeff Layton <jlayton@primarydata.com> wrote:
+On Thu, Oct 2, 2014 at 5:01 AM, Tuomas Räsänen
+<tuomasjjrasanen@opinsys.fi> wrote:
+> Hi
+>
+> Before David Jefferey's commit:
+>
+>   92a5655 nfs: Don't busy-wait on SIGKILL in __nfs_iocounter_wait
+>
+> we often experienced softlockups in our systems due to busy-looping
+> after SIGKILL.
+>
+> With that patch applied, the frequency of softlockups has decreased
+> but they are not completely gone. Now softlockups happen with
+> following kind of call traces:
+>
+>  [<c1045c27>] ? kvm_clock_get_cycles+0x17/0x20
+>  [<c10b2028>] ? ktime_get_ts+0x48/0x140
+>  [<f8b77be0>] ? nfs_free_request+0x90/0x90 [nfs]
+>  [<c1656fb6>] io_schedule+0x86/0x100
+>  [<f8b77bed>] nfs_wait_bit_uninterruptible+0xd/0x20 [nfs]
+>  [<c16572d1>] __wait_on_bit+0x51/0x70
+>  [<f8b77be0>] ? nfs_free_request+0x90/0x90 [nfs]
+>  [<f8b77be0>] ? nfs_free_request+0x90/0x90 [nfs]
+>  [<c165734b>] out_of_line_wait_on_bit+0x5b/0x70
+>  [<c1091470>] ? autoremove_wake_function+0x40/0x40
+>  [<f8b77f3e>] nfs_wait_on_request+0x2e/0x30 [nfs]
+>  [<f8b7c5ae>] nfs_updatepage+0x11e/0x7d0 [nfs]
+>  [<f8b7b15b>] ? nfs_page_find_request+0x3b/0x50 [nfs]
+>  [<f8b7c41d>] ? nfs_flush_incompatible+0x6d/0xe0 [nfs]
+>  [<f8b6f1a0>] nfs_write_end+0x110/0x280 [nfs]
+>  [<c10503f2>] ? kmap_atomic_prot+0xe2/0x100
+>  [<c1050283>] ? __kunmap_atomic+0x63/0x80
+>  [<c1121e52>] generic_file_buffered_write+0x132/0x210
+>  [<c112362d>] __generic_file_aio_write+0x25d/0x460
+>  [<f8b71df2>] ? __nfs_revalidate_inode+0x102/0x2e0 [nfs]
+>  [<c1123883>] generic_file_aio_write+0x53/0x90
+>  [<f8b6e267>] nfs_file_write+0xa7/0x1d0 [nfs]
+>  [<c12a78eb>] ? common_file_perm+0x4b/0xe0
+>  [<c11794f7>] do_sync_write+0x57/0x90
+>  [<c11794a0>] ? do_sync_readv_writev+0x80/0x80
+>  [<c1179975>] vfs_write+0x95/0x1b0
+>  [<c117a019>] SyS_write+0x49/0x90
+>  [<c165a297>] syscall_call+0x7/0x7
+>  [<c1650000>] ? balance_dirty_pages.isra.18+0x390/0x4c3
+>
+> As I understand it, there are some outstanding requests going on which
+> nfs_wait_on_request() is waiting for. For some reason, they are not
+> finished in timely manner and the process is eventually killed with
 
-> On Fri, 24 Oct 2014 13:08:28 +0300
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > Both RFC3530 and RFC5661 impose a requirement on the server that it MUST NOT
-> > drop a request unless the connection is broken.
-> > 
-> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > ---
-> >  fs/nfsd/nfs4proc.c         | 6 ++++++
-> >  include/linux/sunrpc/svc.h | 1 +
-> >  net/sunrpc/svc.c           | 4 ++++
-> >  3 files changed, 11 insertions(+)
-> > 
-> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > index cdeb3cfd6f32..500ac76662a8 100644
-> > --- a/fs/nfsd/nfs4proc.c
-> > +++ b/fs/nfsd/nfs4proc.c
-> > @@ -1960,6 +1960,11 @@ static const char *nfsd4_op_name(unsigned opnum)
-> >  	return "unknown_operation";
-> >  }
-> >  
-> > +static void nfsd4_dropme(struct svc_rqst *rqstp)
-> > +{
-> > +	svc_close_xprt(rqstp->rq_xprt);
-> > +}
-> > +
-> >  #define nfsd4_voidres			nfsd4_voidargs
-> >  struct nfsd4_voidargs { int dummy; };
-> >  
-> > @@ -1989,6 +1994,7 @@ struct svc_version	nfsd_version4 = {
-> >  		.vs_nproc	= 2,
-> >  		.vs_proc	= nfsd_procedures4,
-> >  		.vs_dispatch	= nfsd_dispatch,
-> > +		.vs_dropme	= nfsd4_dropme,
-> >  		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
-> >  		.vs_rpcb_optnl	= 1,
-> >  };
-> > diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> > index 21678464883a..824656da1f6d 100644
-> > --- a/include/linux/sunrpc/svc.h
-> > +++ b/include/linux/sunrpc/svc.h
-> > @@ -400,6 +400,7 @@ struct svc_version {
-> >  	 * vs_dispatch == NULL means use default dispatcher.
-> >  	 */
-> >  	int			(*vs_dispatch)(struct svc_rqst *, __be32 *);
-> > +	void			(*vs_dropme)(struct svc_rqst *);
-> >  };
-> >  
-> >  /*
-> > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> > index ca8a7958f4e6..09136abfef26 100644
-> > --- a/net/sunrpc/svc.c
-> > +++ b/net/sunrpc/svc.c
-> > @@ -1071,6 +1071,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
-> >  	struct svc_version	*versp = NULL;	/* compiler food */
-> >  	struct svc_procedure	*procp = NULL;
-> >  	struct svc_serv		*serv = rqstp->rq_server;
-> > +	void (*dropme)(struct svc_rqst *rqstp) = NULL;
-> >  	kxdrproc_t		xdr;
-> >  	__be32			*statp;
-> >  	u32			prog, vers, proc;
-> > @@ -1151,6 +1152,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
-> >  	if (vers >= progp->pg_nvers ||
-> >  	  !(versp = progp->pg_vers[vers]))
-> >  		goto err_bad_vers;
-> > +	dropme = versp->vs_dropme;
-> >  
-> >  	procp = versp->vs_proc + proc;
-> >  	if (proc >= versp->vs_nproc || !procp->pc_func)
-> > @@ -1228,6 +1230,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
-> >   dropit:
-> >  	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
-> >  	dprintk("svc: svc_process dropit\n");
-> > +	if (dropme != NULL)
-> > +		dropme(rqstp);
-> >  	return 0;
-> >  
-> >  err_short_len:
-> 
-> (cc'ing Bruce too...)
-> 
-> I guess the theory here is that the client sent the request, and got a
-> TCP ACK and then the server never responded because it dropped the
-> request? That sounds plausible and we almost certainly want something
-> like the above for v4.0.
-> 
-> If the above patch fixes Christoph's problem with v4.1 though, then I
-> think we'll need more investigation into why. I don't see a way to get
-> a dropped request with v4.1. Those mainly occur due to interaction with
-> the DRC (disabled for v4.1) or with svc_defer (disabled for all v4
-> requests).
-> 
-> Is it possible that one of the nfsd threads is just hung while
-> processing an RPC and that's why you're not getting a response?
-> 
+Why are those outstanding requests not completing, and why would
+killing the tasks that are waiting for that completion help?
 
-Ok, I'm able to reproduce this too and got a network trace. I think
-Trond is correct as to the cause:
+> SIGKILL by admin. However, nfs_wait_on_request() has set the task
+> state TASK_UNINTERRUPTIBLE and it does not get killed.
+>
+> Why nfs_wait_on_request() is UNINTERRUPTIBLE instead of KILLABLE?
 
-I see a SETATTR call go out and then see a TCP ACK for it a little
-later, but didn't see a reply sent for it.
+Please see the changelog entry in
+https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=9f557cd80731
 
-I sprinkled in some printks around the "dropit" codepath above and in
-some other areas however and none of them fired. So while Trond's patch
-looks like it might be correct, I don't think it'll fix the problem I'm
-seeing.
+Cheers
+  Trond
 
-Sniffing a little later, it seems like the server replies are being
-delayed somehow:
-
-362 450.126141          ::1 -> ::1          NFS 234 V4 Call SEQUENCE
-363 450.126211          ::1 -> ::1          NFS 170 V4 Reply (Call In 349) SEQUENCE
-364 450.126253          ::1 -> ::1          TCP 98 [TCP Dup ACK 362#1] 826→2049 [ACK] Seq=5577 Ack=1 Win=23025 Len=0 TSval=546384 TSecr=4294762921 SLE=131289 SRE=135581
-365 450.126302          ::1 -> ::1          TCP 65550 [TCP Out-Of-Order] 2049→826 [ACK] Seq=1 Ack=5577 Win=16001 Len=65464 TSval=546384 TSecr=546384
-366 450.126320          ::1 -> ::1          TCP 266 [TCP Out-Of-Order] 2049→826 [PSH, ACK] Seq=65465 Ack=5577 Win=16001 Len=180 TSval=546384 TSecr=546384[Reassembly error, protocol TCP: New fragment overlaps old data (retransmission?)]
-367 450.327131          ::1 -> ::1          TCP 65550 [TCP Retransmission] 2049→826 [ACK] Seq=1 Ack=5577 Win=16001 Len=65464 TSval=546585 TSecr=546384
-368 450.729997          ::1 -> ::1          TCP 65550 [TCP Retransmission] 2049→826 [ACK] Seq=1 Ack=5577 Win=16001 Len=65464 TSval=546988 TSecr=546384
-369 451.536010          ::1 -> ::1          TCP 65550 [TCP Retransmission] 2049→826 [ACK] Seq=1 Ack=5577 Win=16001 Len=65464 TSval=547794 TSecr=546384
-370 453.149981          ::1 -> ::1          TCP 65550 [TCP Retransmission] 2049→826 [ACK] Seq=1 Ack=5577 Win=16001 Len=65464 TSval=549408 TSecr=546384
-371 455.150167          ::1 -> ::1          NFS 234 V4 Call SEQUENCE
-372 455.150235          ::1 -> ::1          NFS 170 V4 Reply (Call In 362) SEQUENCE
-373 455.150279          ::1 -> ::1          TCP 98 [TCP Dup ACK 371#1] 826→2049 [ACK] Seq=5713 Ack=1 Win=23025 Len=0 TSval=551408 TSecr=4294762921 SLE=131289 SRE=135665
-374 455.350978          ::1 -> ::1          TCP 65550 [TCP Retransmission] 2049→826 [ACK] Seq=1 Ack=5713 Win=16001 Len=65464 TSval=551609 TSecr=551408
-375 455.753946          ::1 -> ::1          TCP 65550 [TCP Retransmission] 2049→826 [ACK] Seq=1 Ack=5713 Win=16001 Len=65464 TSval=552012 TSecr=551408
-376 456.559960          ::1 -> ::1          TCP 65550 [TCP Retransmission] 2049→826 [ACK] Seq=1 Ack=5713 Win=16001 Len=65464 TSval=552818 TSecr=551408
-377 458.173955          ::1 -> ::1          TCP 65550 [TCP Retransmission] 2049→826 [ACK] Seq=1 Ack=5713 Win=16001 Len=65464 TSval=554432 TSecr=551408
-378 461.398011          ::1 -> ::1          TCP 65550 [TCP Retransmission] 2049→826 [ACK] Seq=1 Ack=5713 Win=16001 Len=65464 TSval=557656 TSecr=551408
-
-Note that the reply in 372 is a reply to the call in 362 even though it
-was sent just after the *next* SEQUENCE call came in. There are also a
-bunch of TCP retransmissions. Later SEQUENCE replies follow a similar
-pattern.
-
-Looking at /proc/meminfo, it looks like I have plenty of free memory so
-I don't think this is a memory exhaustion situation. All of the nfsds
-seem idle (I have 64 running) and the CPUs aren't especially busy.
-
-It "smells" sort of like something is wrong in the lower networking
-layers. That said, I'm not quite ready to point fingers there yet. I'll
-do a bit more debugging and see what I can find.
-
-Stay tuned...
 -- 
-Jeff Layton <jlayton@primarydata.com>
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
