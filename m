@@ -1,89 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:22043 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752576AbaJ0QGr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2014 12:06:47 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: NFSv4 idmap misbehavior
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <89017554-D9A0-4778-9AF3-1738E68230D9@oracle.com>
-Date: Mon, 27 Oct 2014 12:06:39 -0400
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <00F3B530-C40E-4754-9C46-BD83F8AA4E0B@oracle.com>
-References: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com> <17204.1414405979@warthog.procyon.org.uk> <89017554-D9A0-4778-9AF3-1738E68230D9@oracle.com>
-To: David Howells <dhowells@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:43061 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753655AbaJBTxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Oct 2014 15:53:39 -0400
+Date: Thu, 2 Oct 2014 15:53:38 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/4] NFSD: Always initialize cl_cb_addr
+Message-ID: <20141002195338.GA13925@fieldses.org>
+References: <20140822190835.3883.7581.stgit@klimt.1015granger.net>
+ <20140822191059.3883.7753.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140822191059.3883.7753.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Aug 22, 2014 at 03:10:59PM -0400, Chuck Lever wrote:
+> A client may not want to use the back channel on a transport it sent
+> CREATE_SESSION on, in which case it clears SESSION4_BACK_CHAN.
+> 
+> However, cl_cb_addr should be populated anyway, to be used if the
+> client binds other connections to this session. If cl_cb_addr is
+> not initialized, rpc_create() fails when the server attempts to
+> set up a back channel on such secondary transports.
 
-On Oct 27, 2014, at 10:44 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+OK, applying.--b.
 
-> Hi David-
 > 
-> On Oct 27, 2014, at 6:32 AM, David Howells <dhowells@redhat.com> wrote:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
 > 
->> Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> After the test has been running for ten minutes, the id_resolv
->>> keys expire, and id_legacy keys appear. Before the above commit,
->>> the id_resolv keys would simply be refreshed and operation
->>> would continue normally.
->>> 
->>> # grep id_ /proc/keys
->>> 00f0a664 I--Q-N-     1  42s 3b010000     0     0 id_legacy uid:cel@oracle.com
->> 
->> The 'N' flag indicates that the key is negatively instantiated - ie. the
->> upcall to instantiate them failed in some way.  Keys so marked will cause key
->> lookups to return ENOKEY (or maybe some other error if keyctl_reject() was
->> used).
->> 
->> Failure can be due to the key being properly negatively instantiated
->> (keyctl_negate() or keyctl_reject()) or the userspace side of instantiation
->> exiting or otherwise dying before it managed to instantiate the key.
->> 
->> Is there anything to actually process the id_legacy upcall?  It appears
->> they're all negatively instantiated.
+>  fs/nfsd/nfs4state.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
 > 
-> rpc.idmapd isn’t running on this system, so no. Legacy idmapping is
-> normally disabled on EL6 update 4 AFAICT.
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 2e80a59..a45f244 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1429,7 +1429,7 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
+>  	list_add(&new->se_perclnt, &clp->cl_sessions);
+>  	spin_unlock(&clp->cl_lock);
+>  
+> -	if (cses->flags & SESSION4_BACK_CHAN) {
+> +	{
+>  		struct sockaddr *sa = svc_addr(rqstp);
+>  		/*
+>  		 * This is a little silly; with sessions there's no real
 > 
-> There is an /etc/request-key.d/id_resolver.conf file, and
-> /usr/sbin/nfsidmap is there. On another system I previously tried
-> using only rpc.idmapd, and it didn’t resolve the sudden ownership
-> change issue.
-> 
-> There should be no reason to switch to using the legacy ID mapper
-> upcall if the key resolution infrastructure is working. Before the
-> “KEYS: Expand the capacity . . . ” commit, id_legacy keys do not
-> appear in /proc/keys.
-> 
-> That leads me to believe something that commit did is preventing
-> expired id_resolv keys from getting renewed.
-> 
->> Can you stick "#define __KDEBUG" at the top of security/keys/request_key.c,
->> rebuild and look in dmesg?
-> 
-> Thanks, I’ll give that a try and report back.
-
-I enabled __KDEBUG. There are no new messages in /var/log/messages
-when the reproducer fails.
-
-
->> Also, /sbin/request-key logs to syslog if it can't find a match in its config
->> file.
-> 
-> I didn’t see any relevant messages in /var/log/messages, but I may
-> have overlooked something.
-> 
-> More recent kernels change the key resolver interface to require
-> key_revoke instead of key_invalidate. I’ve seen /var/log/messages
-> complaints about that on other EL6 systems running kernels newer
-> than 3.16.
-
---
-Chuck Lever
-
-
-
