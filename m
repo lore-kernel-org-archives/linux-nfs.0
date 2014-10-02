@@ -1,41 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52250 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:14279 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751211AbaJaREb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 Oct 2014 13:04:31 -0400
-From: Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-Subject: [PATCH v2 4/5] common: use _scratch_mount helper in _require_relatime()
-Date: Sat,  1 Nov 2014 01:03:59 +0800
-Message-Id: <1414775040-4051-5-git-send-email-eguan@redhat.com>
-In-Reply-To: <1414775040-4051-1-git-send-email-eguan@redhat.com>
-References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
+	id S1751789AbaJBQqX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Oct 2014 12:46:23 -0400
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s92GkNwO002743
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Oct 2014 12:46:23 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s92GkMOi001436
+	for <linux-nfs@vger.kernel.org>; Thu, 2 Oct 2014 12:46:23 -0400
+Message-ID: <542D815E.6010306@RedHat.com>
+Date: Thu, 02 Oct 2014 12:46:22 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Linux NFS Town Hall  meeting: Tomorrow - Thur 10/2/14
+References: <542C69E4.2030707@RedHat.com>
+In-Reply-To: <542C69E4.2030707@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change the way how _require_relatime() mount $SCRATCH_DEV, use
-_scratch_mount helper so $SCRATCH_DEV is mounted with selinux context,
-to avoid "same superblock, different selinux context" failure.
+This meeting will be starting in 15mins or so...
 
-Signed-off-by: Eryu Guan <eguan@redhat.com>
----
- common/rc | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+steved.
 
-diff --git a/common/rc b/common/rc
-index 2d2b40f..b495ec1 100644
---- a/common/rc
-+++ b/common/rc
-@@ -2395,7 +2395,7 @@ _require_atime()
- _require_relatime()
- {
-         _scratch_mkfs > /dev/null 2>&1
--        _mount -t $FSTYP -o relatime $SCRATCH_DEV $SCRATCH_MNT || \
-+        _scratch_mount -o relatime || \
-                 _notrun "relatime not supported by the current kernel"
- 	_scratch_unmount
- }
--- 
-1.9.3
-
+On 10/01/2014 04:53 PM, Steve Dickson wrote:
+> Hello,
+> 
+> Its been a while... and we can do some finalizing 
+> on the upcoming BAT...  
+> 
+> So the Linux NFS town hall meeting is tomorrow
+>    *Thur Oct 2 at 01:00 pm EST (10:00am PST)*
+> 
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
+> 
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
+> 
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
+> 
+> Please feel to attend and participate!
+> 
+> Time: 10:00 am PST (01:00 pm EST)
+> 
+> The call in numbers are:
+> 
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+> 
+> Conference code: 564.272.1552
+> 
+> 
+> steved.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
