@@ -1,80 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-3.desy.de ([131.169.56.156]:59137 "EHLO smtp-o-3.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752232AbaJYTTv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 25 Oct 2014 15:19:51 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id C17DB280941
-	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:34 +0200 (CEST)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id B2FA610F1
-	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:34 +0200 (MEST)
-Received: from smtp-intra-3.desy.de (lb-40-26.desy.de) by ZITSWEEP1.win.desy.de
- (Clearswift SMTPRS 5.5.0) with ESMTP id <Tb6559101a183a9615f2b74@ZITSWEEP1.win.desy.de> for <linux-nfs@vger.kernel.org>;
- Sat, 25 Oct 2014 21:13:34 +0200
-Received: from z-mta-3.desy.de (z-mta-3.desy.de [131.169.55.137])
-	by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id 0E1CE10F1
-	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:34 +0200 (MEST)
-Received: from z-mta-3.desy.de (localhost [127.0.0.1])
-	by z-mta-3.desy.de (Postfix) with ESMTP id 096B140084
-	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:34 +0200 (CEST)
-Received: from z-mta-3.desy.de (localhost [127.0.0.1])
-	by z-mta-3.desy.de (Postfix) with ESMTP id ECFAD400B9
-	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:33 +0200 (CEST)
-Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
-	by z-mta-3.desy.de (Postfix) with ESMTP id E566940084
-	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:33 +0200 (CEST)
-Date: Sat, 25 Oct 2014 21:13:33 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org
-Message-ID: <340559201.872226.1414264413792.JavaMail.zimbra@desy.de>
-In-Reply-To: <74264531.872138.1414263726250.JavaMail.zimbra@desy.de>
-Subject: lua extention for wireshak to trace nfs server latencies
+Received: from mail-lb0-f179.google.com ([209.85.217.179]:43867 "EHLO
+	mail-lb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753607AbaJBNmk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Oct 2014 09:42:40 -0400
+Received: by mail-lb0-f179.google.com with SMTP id l4so2207211lbv.38
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Oct 2014 06:42:39 -0700 (PDT)
+From: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
+To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        ncopa@alpinelinux.org
+Cc: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
+Subject: [PATCH v2 5/5] nfslib: remove now unused FILE helpers
+Date: Thu,  2 Oct 2014 16:42:01 +0300
+Message-Id: <1412257321-5855-6-git-send-email-timo.teras@iki.fi>
+In-Reply-To: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
+References: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+All access to kernel is now done using file descriptors.
 
+Signed-off-by: Timo Teräs <timo.teras@iki.fi>
+---
+ support/include/nfslib.h |   7 ---
+ support/nfs/cacheio.c    | 110 -----------------------------------------------
+ 2 files changed, 117 deletions(-)
 
-Dear NFS fellows,
+diff --git a/support/include/nfslib.h b/support/include/nfslib.h
+index ce4b14b..9fd22ac 100644
+--- a/support/include/nfslib.h
++++ b/support/include/nfslib.h
+@@ -152,11 +152,6 @@ struct nfs_fh_len *	getfh(const struct sockaddr_in *sin, const char *path);
+ struct nfs_fh_len *	getfh_size(const struct sockaddr_in *sin,
+ 					const char *path, int const size);
+ 
+-void qword_print(FILE *f, char *str);
+-void qword_printhex(FILE *f, char *str, int slen);
+-void qword_printint(FILE *f, int num);
+-int qword_eol(FILE *f);
+-int readline(int fd, char **buf, int *lenp);
+ int qword_get(char **bpp, char *dest, int bufsize);
+ int qword_get_int(char **bpp, int *anint);
+ void cache_flush(int force);
+@@ -167,8 +162,6 @@ void qword_addint(char **bpp, int *lp, int n);
+ void qword_adduint(char **bpp, int *lp, unsigned int n);
+ void qword_addeol(char **bpp, int *lp);
+ int qword_get_uint(char **bpp, unsigned int *anint);
+-void qword_printuint(FILE *f, unsigned int num);
+-void qword_printtimefrom(FILE *f, unsigned int num);
+ 
+ void closeall(int min);
+ 
+diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
+index 2726d8f..42e2502 100644
+--- a/support/nfs/cacheio.c
++++ b/support/nfs/cacheio.c
+@@ -121,74 +121,6 @@ void qword_addeol(char **bpp, int *lp)
+ 	(*lp)--;
+ }
+ 
+-static char qword_buf[8192];
+-void qword_print(FILE *f, char *str)
+-{
+-	char *bp = qword_buf;
+-	int len = sizeof(qword_buf);
+-	qword_add(&bp, &len, str);
+-	if (fwrite(qword_buf, bp-qword_buf, 1, f) != 1) {
+-		xlog_warn("qword_print: fwrite failed: errno %d (%s)",
+-			errno, strerror(errno));
+-	}
+-}
+-
+-void qword_printhex(FILE *f, char *str, int slen)
+-{
+-	char *bp = qword_buf;
+-	int len = sizeof(qword_buf);
+-	qword_addhex(&bp, &len, str, slen);
+-	if (fwrite(qword_buf, bp-qword_buf, 1, f) != 1) {
+-		xlog_warn("qword_printhex: fwrite failed: errno %d (%s)",
+-			errno, strerror(errno));
+-	}
+-}
+-
+-void qword_printint(FILE *f, int num)
+-{
+-	fprintf(f, "%d ", num);
+-}
+-
+-void qword_printuint(FILE *f, unsigned int num)
+-{
+-	fprintf(f, "%u ", num);
+-}
+-
+-void qword_printtimefrom(FILE *f, unsigned int num)
+-{
+-	fprintf(f, "%lu ", time(0) + num);
+-}
+-
+-int qword_eol(FILE *f)
+-{
+-	int err;
+-
+-	err = fprintf(f,"\n");
+-	if (err < 0) {
+-		xlog_warn("qword_eol: fprintf failed: errno %d (%s)",
+-			    errno, strerror(errno));
+-	} else {
+-		err = fflush(f);
+-		if (err) {
+-			xlog_warn("qword_eol: fflush failed: errno %d (%s)",
+-				  errno, strerror(errno));
+-		}
+-	}
+-	/*
+-	 * We must send one line (and one line only) in a single write
+-	 * call.  In case of a write error, libc may accumulate the
+-	 * unwritten data and try to write it again later, resulting in a
+-	 * multi-line write.  So we must explicitly ask it to throw away
+-	 * any such cached data.  But we return any original error
+-	 * indication to the caller.
+-	 */
+-	__fpurge(f);
+-	fflush(f);
+-	return err;
+-}
+-
+-
+-
+ #define isodigit(c) (isdigit(c) && c <= '7')
+ int qword_get(char **bpp, char *dest, int bufsize)
+ {
+@@ -266,48 +198,6 @@ int qword_get_uint(char **bpp, unsigned int *anint)
+ 	return 0;
+ }
+ 
+-#define READLINE_BUFFER_INCREMENT 2048
+-
+-int readline(int fd, char **buf, int *lenp)
+-{
+-	/* read a line into *buf, which is malloced *len long
+-	 * realloc if needed until we find a \n
+-	 * nul out the \n and return
+-	 * 0 on eof, 1 on success
+-	 */
+-	int len;
+-
+-	if (*lenp == 0) {
+-		char *b = malloc(READLINE_BUFFER_INCREMENT);
+-		if (b == NULL)
+-			return 0;
+-		*buf = b;
+-		*lenp = READLINE_BUFFER_INCREMENT;
+-	}
+-	len = read(fd, *buf, *lenp);
+-	if (len <= 0)
+-		return 0;
+-	while ((*buf)[len-1] != '\n') {
+-	/* now the less common case.  There was no newline,
+-	 * so we have to keep reading after re-alloc
+-	 */
+-		char *new;
+-		int nl;
+-		*lenp += READLINE_BUFFER_INCREMENT;
+-		new = realloc(*buf, *lenp);
+-		if (new == NULL)
+-			return 0;
+-		*buf = new;
+-		nl = read(fd, *buf + len, *lenp - len);
+-		if (nl <= 0)
+-			return 0;
+-		len += nl;
+-	}
+-	(*buf)[len-1] = '\0';
+-	return 1;
+-}
+-
+-
+ /* Check if we should use the new caching interface
+  * This succeeds iff the "nfsd" filesystem is mounted on
+  * /proc/fs/nfs
+-- 
+2.1.2
 
-recently I was debugging some NFS related issues and
-needed a tool to trace situations when NFS server is slow.
-
-I created a lua extension for tshark which allows to get
-such information, but still has the full power of tshark.
-
-example usage:
-
-
-# for life capture
-$ tshark -q -X lua_script:nfs.lua -f "port 2049"
-
-# for a capture file
-$ tshark -q -r nfs.dump -X lua_script:nfs.lua
-
-the output looks like:
-
-       timestamp                        client ip                 server ip             time  OP
-
-"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_EXCHANGE_ID
-"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_CREATE_SESSION
-"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_PUTROOTFH
-"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.002 v4_RECLAIM_COMPLETE
-"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_PUTROOTFH
-"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_DESTROY_SESSION
-"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.001 v4_EXCHANGE_ID
-"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.001 v4_CREATE_SESSION
-"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.003 v4_PUTROOTFH
-"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.002 v4_RECLAIM_COMPLETE
-"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.004 v4_PUTROOTFH
-
-
-May be some one need's it as well:  https://github.com/kofemann/wireshark_lua
-
-
-P.S.: is it the right place for such posts or there yet another mailing list or wiki?
-
-Thanks,
-   Tigran.
