@@ -1,97 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:53178 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753060AbaJMP2j convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 11:28:39 -0400
-Received: by mail-ig0-f175.google.com with SMTP id uq10so10823930igb.14
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 08:28:39 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH 1/1] NFSv4: open context can be NULL in nfs_put_open_context
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <CAHQdGtRpmS6EXCb2cj48BAeT3uHYC5kjJp8YGaRAt5CR4M_7Jw@mail.gmail.com>
-Date: Mon, 13 Oct 2014 11:28:39 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <0F0C9142-A812-4D91-8AF4-F938A303B874@primarydata.com>
-References: <1413209295-13509-1-git-send-email-andros@netapp.com> <CAHQdGtT12WC896sZwHQkgXgiPx0ODckX2dhNZb0O+XHBUN2E-A@mail.gmail.com> <CAHQdGtRpmS6EXCb2cj48BAeT3uHYC5kjJp8YGaRAt5CR4M_7Jw@mail.gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-la0-f48.google.com ([209.85.215.48]:47802 "EHLO
+	mail-la0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753362AbaJBNmj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Oct 2014 09:42:39 -0400
+Received: by mail-la0-f48.google.com with SMTP id gi9so2345536lab.7
+        for <linux-nfs@vger.kernel.org>; Thu, 02 Oct 2014 06:42:38 -0700 (PDT)
+From: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
+To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        ncopa@alpinelinux.org
+Cc: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
+Subject: [PATCH v2 4/5] nfsexport: talk to kernel using file descriptors instead of FILE
+Date: Thu,  2 Oct 2014 16:42:00 +0300
+Message-Id: <1412257321-5855-5-git-send-email-timo.teras@iki.fi>
+In-Reply-To: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
+References: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct 13, 2014, at 11:25 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Signed-off-by: Timo Teräs <timo.teras@iki.fi>
+---
+ support/nfs/nfsexport.c | 77 ++++++++++++++++++++++++++++---------------------
+ 1 file changed, 44 insertions(+), 33 deletions(-)
 
-> Resending to list... Apologies for the duplicate...
-> 
-> On Mon, Oct 13, 2014 at 11:24 AM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> Hi Andy,
->> 
->> 
->> On Mon, Oct 13, 2014 at 10:08 AM, <andros@netapp.com> wrote:
->>> 
->>> From: Andy Adamson <andros@netapp.com>
->>> 
->>> If a pgio error is caught before the nfs_pgio_header args->context is set
->>> with get_nfs_open_context, the context can be NULL.
->>> 
->>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>> ---
->>> fs/nfs/inode.c | 3 +++
->>> 1 file changed, 3 insertions(+)
->>> 
->>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->>> index 141c9f4..a2b148e 100644
->>> --- a/fs/nfs/inode.c
->>> +++ b/fs/nfs/inode.c
->>> @@ -798,6 +798,9 @@ static void __put_nfs_open_context(struct
->>> nfs_open_context *ctx, int is_sync)
->>>        struct inode *inode = ctx->dentry->d_inode;
->>>        struct super_block *sb = ctx->dentry->d_sb;
->>> 
->>> +       if (ctx == NULL)
->>> +               return;
->>> +
->>>        if (!list_empty(&ctx->list)) {
->>>                if (!atomic_dec_and_lock(&ctx->lock_context.count,
->>> &inode->i_lock))
->>>                        return;
->>> --
->>> 1.8.3.1
->>> 
->> 
->> AFAICS, there is only one callsite where we need to check the context, so we
->> can avoid the check on all calls to put_nfs_open_context. Please see PATCH
->> 1/2 that I just posted in response to an off-list bug report from Steve
->> Dickson.
-
-Thanks Trond,
-
-Both patches should fix the OOPS, but I think your reasoning to avoid the check in
-all calls to put_nfs_open_context makes sense.
-
--dros 
-
->> 
->> Cheers
->>  Trond
->> --
->> 
->> Trond Myklebust
->> 
->> Linux NFS client maintainer, PrimaryData
->> 
->> trond.myklebust@primarydata.com
-> 
-> 
-> 
-> -- 
-> Trond Myklebust
-> 
-> Linux NFS client maintainer, PrimaryData
-> 
-> trond.myklebust@primarydata.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/support/nfs/nfsexport.c b/support/nfs/nfsexport.c
+index f129fd2..afd7c90 100644
+--- a/support/nfs/nfsexport.c
++++ b/support/nfs/nfsexport.c
+@@ -18,6 +18,7 @@
+ #include <fcntl.h>
+ 
+ #include "nfslib.h"
++#include "misc.h"
+ 
+ 	/* if /proc/net/rpc/... exists, then 
+ 	 * write to it, as that interface is more stable.
+@@ -32,62 +33,72 @@
+ static int
+ exp_unexp(struct nfsctl_export *exp, int export)
+ {
+-	FILE *f;
++	char buf[RPC_CHAN_BUF_SIZE], *bp;
+ 	struct stat stb;
+ 	__u32 fsid;
+ 	char fsidstr[8];
+ 	__u16 dev;
+ 	__u32 inode;
+-	int err;
++	int err = 0, f, blen;
+ 
++	f = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
++	if (f < 0) return -1;
+ 
+-	f = fopen("/proc/net/rpc/nfsd.export/channel", "w");
+-	if (f == NULL) return -1;
+-	qword_print(f, exp->ex_client);
+-	qword_print(f, exp->ex_path);
++	bp = buf; blen = sizeof(buf);
++	qword_add(&bp, &blen, exp->ex_client);
++	qword_add(&bp, &blen, exp->ex_path);
+ 	if (export) {
+-		qword_printint(f, 0x7fffffff);
+-		qword_printint(f, exp->ex_flags);
+-		qword_printint(f, exp->ex_anon_uid);
+-		qword_printint(f, exp->ex_anon_gid);
+-		qword_printint(f, exp->ex_dev);
++		qword_addint(&bp, &blen, 0x7fffffff);
++		qword_addint(&bp, &blen, exp->ex_flags);
++		qword_addint(&bp, &blen, exp->ex_anon_uid);
++		qword_addint(&bp, &blen, exp->ex_anon_gid);
++		qword_addint(&bp, &blen, exp->ex_dev);
+ 	} else
+-		qword_printint(f, 1);
+-
+-	err = qword_eol(f);
+-	fclose(f);
++		qword_addint(&bp, &blen, 1);
++	qword_addeol(&bp, &blen);
++	if (blen <= 0 || write(f, buf, bp - buf) != bp - buf)
++		err = -1;
++	close(f);
+ 
+ 	if (stat(exp->ex_path, &stb) != 0)
+ 		return -1;
+-	f = fopen("/proc/net/rpc/nfsd.fh/channel", "w");
+-	if (f==NULL) return -1;
++
++	f = open("/proc/net/rpc/nfsd.fh/channel", O_WRONLY);
++	if (f < 0) return -1;
+ 	if (exp->ex_flags & NFSEXP_FSID) {
+-		qword_print(f,exp->ex_client);
+-		qword_printint(f,1);
++		bp = buf; blen = sizeof(buf);
++		qword_add(&bp, &blen, exp->ex_client);
++		qword_addint(&bp, &blen, 1);
+ 		fsid = exp->ex_dev;
+-		qword_printhex(f, (char*)&fsid, 4);
++		qword_addhex(&bp, &blen, (char*)&fsid, 4);
+ 		if (export) {
+-			qword_printint(f, 0x7fffffff);
+-			qword_print(f, exp->ex_path);
++			qword_addint(&bp, &blen, 0x7fffffff);
++			qword_add(&bp, &blen, exp->ex_path);
+ 		} else
+-			qword_printint(f, 1);
+-
+-		err = qword_eol(f) || err;
++			qword_addint(&bp, &blen, 1);
++		qword_addeol(&bp, &blen);
++		if (blen <= 0 || write(f, buf, bp - buf) != bp - buf)
++			err = -1;
+ 	}
+-	qword_print(f,exp->ex_client);
+-	qword_printint(f,0);
++
++	bp = buf; blen = sizeof(buf);
++	qword_add(&bp, &blen, exp->ex_client);
++	qword_addint(&bp, &blen, 0);
+ 	dev = htons(major(stb.st_dev)); memcpy(fsidstr, &dev, 2);
+ 	dev = htons(minor(stb.st_dev)); memcpy(fsidstr+2, &dev, 2);
+ 	inode = stb.st_ino; memcpy(fsidstr+4, &inode, 4);
+ 	
+-	qword_printhex(f, fsidstr, 8);
++	qword_addhex(&bp, &blen, fsidstr, 8);
+ 	if (export) {
+-		qword_printint(f, 0x7fffffff);
+-		qword_print(f, exp->ex_path);
++		qword_addint(&bp, &blen, 0x7fffffff);
++		qword_add(&bp, &blen, exp->ex_path);
+ 	} else
+-		qword_printint(f, 1);
+-	err = qword_eol(f) || err;
+-	fclose(f);
++		qword_addint(&bp, &blen, 1);
++	qword_addeol(&bp, &blen);
++	if (blen <= 0 || write(f, buf, bp - buf) != bp - buf)
++		err = -1;
++	close(f);
++
+ 	return err;
+ }
+ 
+-- 
+2.1.2
 
