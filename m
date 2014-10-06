@@ -1,37 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:35898 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755306AbaJ3TAh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Oct 2014 15:00:37 -0400
-Date: Thu, 30 Oct 2014 12:00:35 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: netdev@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Bruce Fields <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: nfs stalls over loopback interface (no sk_data_ready events?)
-Message-ID: <20141030190035.GA23129@infradead.org>
-References: <20141027152900.4e81a9d5@tlielax.poochiereds.net>
- <20141029102123.58f6c960@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141029102123.58f6c960@tlielax.poochiereds.net>
+Received: from mail-wg0-f42.google.com ([74.125.82.42]:57583 "EHLO
+	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751391AbaJFXnD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 19:43:03 -0400
+Received: by mail-wg0-f42.google.com with SMTP id z12so7785450wgg.13
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 16:43:01 -0700 (PDT)
+From: Zach Brown <zab@zabbo.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] nfsd: fix inclusive vfs_fsync_range() end
+Date: Mon,  6 Oct 2014 16:42:52 -0700
+Message-Id: <1412638972-14617-1-git-send-email-zab@zabbo.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 29, 2014 at 10:21:23AM -0400, Jeff Layton wrote:
-> Looks some change that went into -rc2 has fixed the problem for me.
-> Christoph, can you confirm that this no longer occurs with -rc2?
+The vfs_fsync_range() call during write processing got the end of the
+range off by one.  The range is inclusive, not exclusive.  The error has
+nfsd sync more data than requested -- it's correct but unnecessary
+overhead.
 
-I can't reproduce it anymore on -rc2.
+The call during commit processing is correct so I copied that pattern in
+write processing.  Maybe a helper would be nice but I kept it trivial.
 
+This is untested.  I found it while reviewing code for something else
+entirely.
 
-However:
+Signed-off-by: Zach Brown <zab@zabbo.net>
+---
+ fs/nfsd/vfs.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-generic/133 fails fairly reliably with:
-
-	 Buffered writer, buffered reader
-	+pread64: Device or resource busy
-
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index f501a9b..825250e 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -921,6 +921,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 	int			stable = *stablep;
+ 	int			use_wgather;
+ 	loff_t			pos = offset;
++	loff_t			end = LLONG_MAX;
+ 	unsigned int		pflags = current->flags;
+ 
+ 	if (rqstp->rq_local)
+@@ -952,10 +953,13 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 	fsnotify_modify(file);
+ 
+ 	if (stable) {
+-		if (use_wgather)
++		if (use_wgather) {
+ 			host_err = wait_for_concurrent_writes(file);
+-		else
+-			host_err = vfs_fsync_range(file, offset, offset+*cnt, 0);
++		} else {
++			if (*cnt)
++				end = offset + *cnt - 1;
++			host_err = vfs_fsync_range(file, offset, end, 0);
++		}
+ 	}
+ 
+ out_nfserr:
+-- 
+1.9.3
 
