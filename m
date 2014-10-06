@@ -1,45 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:24734 "EHLO mx12.netapp.com"
+Received: from ares08.inai.de ([46.4.84.70]:52495 "EHLO ares08.inai.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750855AbaJIRg5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Oct 2014 13:36:57 -0400
-Message-ID: <5436C7B5.7040700@Netapp.com>
-Date: Thu, 9 Oct 2014 13:36:53 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: Steve French <smfrench@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        <fstests@vger.kernel.org>, Lukas Czerner <lczerner@redhat.com>
-Subject: Re: xfstests and linux nfs testing
-References: <20141009162127.GA12500@infradead.org>
-In-Reply-To: <20141009162127.GA12500@infradead.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1752545AbaJFV0y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Oct 2014 17:26:54 -0400
+From: Jan Engelhardt <jengelh@inai.de>
+To: steved@redhat.com
+Cc: bfields@citi.umich.edu, linux-nfs@vger.kernel.org
+Subject: [PATCH 3/5] build: use a separate tool directory and update .gitignore
+Date: Mon,  6 Oct 2014 23:19:32 +0200
+Message-Id: <1412630374-23246-4-git-send-email-jengelh@inai.de>
+In-Reply-To: <1412630374-23246-1-git-send-email-jengelh@inai.de>
+References: <1412630374-23246-1-git-send-email-jengelh@inai.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/09/14 12:21, Christoph Hellwig wrote:
-> On Thu, Oct 09, 2014 at 08:41:54AM -0400, Anna Schumaker wrote:
->> I think this is a bug in xfstests.  This fixes it for me, but I'm not sure what needs to be checked in the NFS case:
-> 
-> Lukas broke this with:
->  common: Check fs consistency on TEST_DEV only when needed
-> 
-> as far as I can tell it blindly copied the _require_scratch code
-> to _require_test, which is bad for two reasons:
-> 
->  a) due to lots of code duplication
->  b) because it broke filesystems that don't support a scratch dev
->     like nfs.
-> 
-> Anna fix should work, can you resend it to the fstests lists with a
-> proper signoff?  Even better would be some validation that the
-> passed in "device" is a valid format for a nfs export, but that's not
-> strictly required.
+With m4/.gitignore, we ensure that the m4 directory exists in any
+git checkout such that aclocal/libtoolize won't complain about
+its absence during `autoreconf`.
 
-Sure!  I'll fix up the patch so it doesn't have commented out lines while I'm at it :).  I'll take a stab at server format validation, and then send something out!
+Signed-off-by: Jan Engelhardt <jengelh@inai.de>
+---
+ .gitignore    | 13 +++----------
+ configure.ac  |  1 +
+ m4/.gitignore |  2 ++
+ 3 files changed, 6 insertions(+), 10 deletions(-)
+ create mode 100644 m4/.gitignore
 
-Anna
-> 
+diff --git a/.gitignore b/.gitignore
+index d24d727..fd87695 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,15 +1,9 @@
+ Makefile.in
+-aclocal.m4
+-autom4te.cache/
+-config.guess
+-config.sub
++/aclocal.m4
++/autom4te.cache/
++/build-aux/
+ configure
+-depcomp
+-ltmain.sh
+-missing
+-install-sh
+ Makefile
+-install-sh
+ .deps/
+ config.log
+ config.status
+@@ -21,7 +15,6 @@ nsswitch.la
+ static.la
+ umich_ldap.la
+ configure.in~
+-m4/
+ *.o
+ *.lo
+ cscope.*
+diff --git a/configure.ac b/configure.ac
+index cb5740b..84a2ab0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -3,6 +3,7 @@
+ 
+ AC_PREREQ([2.66])
+ AC_INIT([libnfsidmap],[0.25],[linux-nfs@vger.kernel.org])
++AC_CONFIG_AUX_DIR([build-aux])
+ AC_CONFIG_SRCDIR([nfsidmap.h])
+ AC_CONFIG_MACRO_DIR([m4])
+ AM_INIT_AUTOMAKE
+diff --git a/m4/.gitignore b/m4/.gitignore
+new file mode 100644
+index 0000000..64d9bbc
+--- /dev/null
++++ b/m4/.gitignore
+@@ -0,0 +1,2 @@
++/libtool.m4
++/lt*.m4
+-- 
+2.0.0
 
