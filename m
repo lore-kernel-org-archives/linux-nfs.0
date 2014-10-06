@@ -1,78 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out03.mta.xmission.com ([166.70.13.233]:53438 "EHLO
-	out03.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756592AbaJXSTM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 14:19:12 -0400
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: Hans de Bruin <jmdebruin@xmsnet.nl>
-Cc: "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-References: <543ED24D.4070905@xmsnet.nl> <5443F5A1.1050004@xmsnet.nl>
-	<544A7933.3010702@xmsnet.nl> <544A7D5C.5060804@xmsnet.nl>
-Date: Fri, 24 Oct 2014 13:18:22 -0500
-In-Reply-To: <544A7D5C.5060804@xmsnet.nl> (Hans de Bruin's message of "Fri, 24
-	Oct 2014 18:25:00 +0200")
-Message-ID: <871tpx1gcx.fsf@x220.int.ebiederm.org>
+Received: from mail-vc0-f179.google.com ([209.85.220.179]:63397 "EHLO
+	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752781AbaJFPTt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 11:19:49 -0400
+Received: by mail-vc0-f179.google.com with SMTP id im17so3235783vcb.24
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 08:19:48 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
-Subject: Re: 3.17.0+ files disappearing after playing old dos game on nfsroot laptop
+In-Reply-To: <5432B2C1.7090901@gmail.com>
+References: <54131DFE.9020708@gmail.com>
+	<CAHQdGtRVfNQs7bBDbY8yH2Fzq3MyFyBBxbuTDH63w6WTqs4zPQ@mail.gmail.com>
+	<5432B2C1.7090901@gmail.com>
+Date: Mon, 6 Oct 2014 11:19:48 -0400
+Message-ID: <CAHQdGtRcbBwYceKuEYLRXGi9RxGt0Y76MZcSSY=nQmdBVKreJA@mail.gmail.com>
+Subject: Re: NFSv4 O_DIRECT with 3.16.2 kernel issue (qemu kvm cache=none /
+ RHEL5 guest)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Zdenek Kaspar <zkaspar82@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hans de Bruin <jmdebruin@xmsnet.nl> writes:
-
-> On 10/19/2014 07:32 PM, Hans de Bruin wrote:
->> On 10/15/2014 10:00 PM, Hans de Bruin wrote:
->>> After playing an old dos game i am missing files on my nfsroot installed
->>> laptop. Which one, wel /bin/ls is at least one of them. After a reboot
->>> there all back again.  But not al is well. Some icons on my kde panel
->>> where gone. I have seen this twice in the last day's
+On Mon, Oct 6, 2014 at 11:18 AM, Zdenek Kaspar <zkaspar82@gmail.com> wrote:
+> On 09/12/2014 06:31 PM, Trond Myklebust wrote:
+>> On Fri, Sep 12, 2014 at 12:23 PM, Zdenek Kaspar <zkaspar82@gmail.com> wrote:
+>>> Hello everyone, got this specific problem with RHEL5 guest under KVM
+>>> hypervisor.
 >>>
+>>> client/server kernel version: 3.16.2
+>>>
+>>> /etc/exports: rw,async,no_subtree_check,no_root_squash
+>>> /proc/mounts: nfs4 rw,relatime,vers=4.0,rsize=524288,wsize=524288,
+>>>               namlen=255,hard,proto=tcp,port=0,
+>>>               timeo=600,retrans=2,sec=sys,clientaddr=xxx.xxx.xxx.xxx,
+>>>               local_lock=none,addr=xxx.xxx.xxx.yyy 0 0
+>>>
+>>> CONFIG_NFS_FS=m
+>>> # CONFIG_NFS_V2 is not set
+>>> CONFIG_NFS_V3=m
+>>> # CONFIG_NFS_V3_ACL is not set
+>>> CONFIG_NFS_V4=m
+>>> # CONFIG_NFS_SWAP is not set
+>>> # CONFIG_NFS_V4_1 is not set
+>>> # CONFIG_NFS_USE_LEGACY_DNS is not set
+>>> CONFIG_NFS_USE_KERNEL_DNS=y
+>>> CONFIG_NFSD=m
+>>> CONFIG_NFSD_V3=y
+>>> # CONFIG_NFSD_V3_ACL is not set
+>>> CONFIG_NFSD_V4=y
+>>> # CONFIG_NFSD_FAULT_INJECTION is not set
+>>> CONFIG_NFS_COMMON=y
+>>>
+>>> CentOS-5.10-i386-bin-1of8.iso -- did not test everything on centos,
+>>> behaved same as RHEL5. So let's use it as VM reproducer:
+>>>
+>>> dd if=/dev/zero of=kvm-test1.img bs=1M count=2048
+>>>
+>>> start VM using:
+>>> file=kvm-test1.img,cache=writeback,aio=native,if=virtio,boot=on
+>>>
+>>> create custom layout: /dev/vda1 / ext3 max size primary
+>>> unselect Desktop-Gnome, select Customize now
+>>> use only: Base System/Base and install it..
+>>>
+>>> [root@test1 ~]# find / >/dev/null
+>>> everything works as expected with writeback
+>>>
+>>> shutdown, backup kvm-test1.img (fs will explode)
+>>> start VM using:
+>>> file=kvm-test1.img,cache=none,aio=native,if=virtio,boot=on
+>>>
+>>> [root@test1 ~]# find / >/dev/null
+>>> and check dmesg, reboot etc, ie:
+>>> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
+>>> directory #460317: rec_len is smaller than minimal - offset=0, inode=0,
+>>> rec_len=0, name_len=0
+>>> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
+>>> directory #98503: rec_len is smaller than minimal - offset=0, inode=0,
+>>> rec_len=0, name_len=0
+>>>
+>>> Tested locally on ext4, xfs          - WORK
+>>> Tested on NFSv4 share with ext4, xfs - FAIL
+>>> Tested NFSv4 share sync, async       - FAIL
+>>> Tested on NFSv3 share with xfs       - WORK
+>>> KVM with qemu rhel-6.5, 2.1.1        - SAME RESULTS
+>>>
+>>> NOTE: it seems just the rhel5 guest triggers it easily..
+>>>
+>>> HTH, Z.
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >>
->> The problem appears immediately after starting dosemu so this bisectable
+>> Don't use 3.16.x kernels with NFS yet. There are known bugs in the
+>> read/write code that need a stable backport of a set of fixes that are
+>> in 3.17-rc.
+>>
 >>
 >
+> Hi Trond, noticed big nfs update that got into -stable, running 3.16.4
+> on both sides and problem is fixed, thx!
 >
-> My bisect ended here:
->
-> commit 8ed936b5671bfb33d89bc60bdcc7cf0470ba52fe
-> Author: Eric W. Biederman <ebiederman@twitter.com>
-> Date:   Tue Oct 1 18:33:48 2013 -0700
->
->
->      vfs: Lazily remove mounts on unlinked files and directories.
->
->
-> I haven reverted it yet.
->
->
->
-> Eric,
->
-> Immediately after starting dosemu all files under mount point /usr are
-> gone. When I play a old dos game for a while (binaries are under /home)
-> even /bin/ls disappears. Al mounts are nfs, even /.
->
-> Could you look in to this and cc this to the relevant kernel
-> mailinglist?
+> Z.
 
-At this point I don't know enough to reproduce this.
-What does /proc/mounts look like before you start dosemu?
+Cool! Thanks for having tested and for confirming.
 
-My expectation is that you should only see this if the mount points are
-removed on the nfs server (which does not sound like it is the case).
+Cheers
+  Trond
+-- 
+Trond Myklebust
 
-Although a transient malfunction of the nfs server or misplaced call to
-check_submounts_and_drop could cause mounts to disappear as well.  
-During testing autofs was observed to have an inappropriate call
-to d_invalidate and it is unlikely but possible something like
-that is going on with nfs as well.
+Linux NFS client maintainer, PrimaryData
 
-Are your nfs mounts read-only or read-write?
-
-What is your nfs-server and what is it exporting?
-Which distro are you running?
-Which version of dosemu are you running?
-How is dosemu configured to access files on your filesystem?
-
-Eric
+trond.myklebust@primarydata.com
