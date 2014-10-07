@@ -1,82 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:50009 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:60033 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756504AbaJXNht (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Oct 2014 09:37:49 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s9ODbnFd026339
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 09:37:49 -0400
-Message-ID: <544A562C.3090204@RedHat.com>
-Date: Fri, 24 Oct 2014 09:37:48 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752462AbaJGNqQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Oct 2014 09:46:16 -0400
+Date: Tue, 7 Oct 2014 09:46:13 -0400
+To: Srikrishan Malik <srimalik@in.ibm.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Fail the test if number of supported attrs are more than
+ expected.
+Message-ID: <20141007134613.GB23258@fieldses.org>
+References: <1407994346-18244-1-git-send-email-srimalik@in.ibm.com>
 MIME-Version: 1.0
-To: Karel Zak <kzak@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] umount: make it sensitive to -v
-References: <1414145000-16669-1-git-send-email-kzak@redhat.com>
-In-Reply-To: <1414145000-16669-1-git-send-email-kzak@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1407994346-18244-1-git-send-email-srimalik@in.ibm.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Sorry for the delay.
 
+Returning unrequested attributes sounds like unlikely behavior, but may
+as well check for it, sure....  Applying.
 
-On 10/24/2014 06:03 AM, Karel Zak wrote:
-> Let's print verbose messages like original non-libmount version.
-> 
-> Addresses: https://bugzilla.redhat.com/show_bug.cgi?id=923582
-> Signed-off-by: Karel Zak <kzak@redhat.com>
-Committed.... Thanks! 
+--b.
 
-steved.
+On Thu, Aug 14, 2014 at 11:02:26AM +0530, Srikrishan Malik wrote:
+> Signed-off-by: Srikrishan Malik <srimalik@in.ibm.com>
 > ---
->  utils/mount/mount_libmount.c | 14 +++++++++++++-
->  1 file changed, 13 insertions(+), 1 deletion(-)
+>  nfs4.0/servertests/st_getattr.py |    4 ++++
+>  1 files changed, 4 insertions(+), 0 deletions(-)
 > 
-> diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
-> index 6f85dc9..fa46d54 100644
-> --- a/utils/mount/mount_libmount.c
-> +++ b/utils/mount/mount_libmount.c
-> @@ -174,7 +174,7 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
->  {
->  	int rc, c;
->  	char *spec = NULL, *opts = NULL;
-> -	int ret = EX_FAIL;
-> +	int ret = EX_FAIL, verbose = 0;
+> diff --git a/nfs4.0/servertests/st_getattr.py b/nfs4.0/servertests/st_getattr.py
+> index a55b923..6a4acdd 100644
+> --- a/nfs4.0/servertests/st_getattr.py
+> +++ b/nfs4.0/servertests/st_getattr.py
+> @@ -43,10 +43,14 @@ def _try_empty(t, c, path):
+>  def _try_supported(t, env, path):
+>      c = env.c1
+>      mandatory = sum([attr.mask for attr in env.attr_info if attr.mandatory])
+> +    all = sum([attr.mask for attr in env.attr_info])
+>      supported = c.supportedAttrs(path)
+>      if mandatory & supported != mandatory:
+>          t.fail("GETATTR(FATTR4_SUPPORTED_ATTRS) did not return "
+>                 "all mandatory attributes")
+> +    if supported > all:
+> +        t.fail("GETATTR(FATTR4_SUPPORTED_ATTRS) returned more than expected "
+> +               "supported attributes for the protocol")
 >  
->  	static const struct option longopts[] = {
->  		{ "force", 0, 0, 'f' },
-> @@ -201,6 +201,8 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
->  		return EX_USAGE;
->  	}
->  
-> +	verbose = mnt_context_is_verbose(cxt);
-> +
->  	if (optind < argc)
->  		spec = argv[optind++];
->  
-> @@ -228,6 +230,10 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
->  		goto err;
->  	}
->  
-> +	if (verbose)
-> +		printf(_("%s: %s mount point detected\n"), spec,
-> +					mnt_context_get_fstype(cxt));
-> +
->  	opts = retrieve_mount_options(mnt_context_get_fs(cxt));
->  
->  	if (!mnt_context_is_lazy(cxt)) {
-> @@ -263,6 +269,12 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
->  	}
->  	ret = EX_SUCCESS;
->  err:
-> +	if (verbose) {
-> +		if (ret == EX_SUCCESS)
-> +			printf(_("%s: umounted\n"), spec);
-> +		else
-> +			printf(_("%s: umount failed\n"), spec);
-> +	}
->  	free(opts);
->  	return ret;
->  }
+>  def _try_long(env, path):
+>      c = env.c1
+> -- 
+> 1.7.1
 > 
