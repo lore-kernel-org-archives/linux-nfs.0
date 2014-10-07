@@ -1,33 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56367 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759803AbaJ3NEZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Oct 2014 09:04:25 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s9UD4NB2030588
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Oct 2014 09:04:24 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-58-248.rdu2.redhat.com [10.10.58.248])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s9UD4KPA030048
-	for <linux-nfs@vger.kernel.org>; Thu, 30 Oct 2014 09:04:22 -0400
-Message-ID: <5452374E.6090003@RedHat.com>
-Date: Thu, 30 Oct 2014 09:04:14 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:41034 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755051AbaJGSCu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Oct 2014 14:02:50 -0400
+Date: Tue, 7 Oct 2014 11:02:50 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Thomas Haynes <thomas.haynes@primarydata.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Tom Haynes <loghyr@primarydata.com>
+Subject: Re: [PATCH] pnfs: Do not schedule layout segment work if there is no
+ work to be done.
+Message-ID: <20141007180250.GA623@infradead.org>
+References: <1412704787-46388-1-git-send-email-Thomas.Haynes@primarydata.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS town hall  meeting  10/30/14 (Canceled)
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1412704787-46388-1-git-send-email-Thomas.Haynes@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It turns out Trond will be OOTO today and I don't 
-think much is happening since there is not a 
-release looming...
+On Tue, Oct 07, 2014 at 10:59:47AM -0700, Thomas Haynes wrote:
+> From: Tom Haynes <loghyr@primarydata.com>
+> 
+> Callers of pnfs_put_lseg_async() might encounter no writes to
+> be committed, etc. As such, do not attempt to add work if none
+> is needed. Also, don't oops if that is the case.
 
-So unless someone has something they want to talk
-about lets cancel this week's town hall... 
+I think that last issue is the main culprit, isn't it? :)
 
-Talk to ya in couple weeks...   
-
-steved.
-
+I still think adding the NULL check to filelayout_clear_request_commit
+would be more reasonable, as it's clear that freeme can be NULL there,
+but as pnfs_put_lseg accepts a NULL lseg it's probably wise to keep
+the two in sync.
