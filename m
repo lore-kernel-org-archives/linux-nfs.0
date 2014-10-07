@@ -1,46 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37607 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933664AbaJ2PiN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Oct 2014 11:38:13 -0400
-Date: Wed, 29 Oct 2014 11:38:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: Re: [patch] SUNRPC: off by one in BUG_ON()
-Message-ID: <20141029153806.GB1133@fieldses.org>
-References: <20141029084416.GC8939@mwanda>
+Received: from mail-wi0-f169.google.com ([209.85.212.169]:49778 "EHLO
+	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754619AbaJGRe7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Oct 2014 13:34:59 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141029084416.GC8939@mwanda>
+In-Reply-To: <20141007171703.GA30274@infradead.org>
+References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
+	<1409834323-7171-3-git-send-email-jlayton@primarydata.com>
+	<CACE9dm-gEfVnHvESfewAPx1vDSdpUW+za=H_zpA8hJd55AR=tA@mail.gmail.com>
+	<20141007171703.GA30274@infradead.org>
+Date: Tue, 7 Oct 2014 20:34:57 +0300
+Message-ID: <CACE9dm_NKwFV__MeQw039yenbjzT+XwakgxZuynr25EVWHjRdQ@mail.gmail.com>
+Subject: Re: [PATCH v2 02/17] security: make security_file_set_fowner,
+ f_setown and __f_setown void return
+From: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jlayton@primarydata.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-security-module <linux-security-module@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 29, 2014 at 11:44:16AM +0300, Dan Carpenter wrote:
-> The m->pool_to[] array has "maxpools" number of elements.  It's
-> allocated in svc_pool_map_alloc_arrays() which we called earlier in the
-> function.  This test should be >= instead of >.
-> 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
-> ---
-> This is very old code, but hopefully the off by one doesn't affect
-> runtime.
+On 7 October 2014 20:17, Christoph Hellwig <hch@infradead.org> wrote:
+> On Tue, Oct 07, 2014 at 08:11:42PM +0300, Dmitry Kasatkin wrote:
+>> If file_set_fowner op is now type of "void", how you can actually
+>> return the value?
+>> I think compiler must give error. How could you compile it?
+>
+> Returning void values is a GNU extension.  I've seen it in a few
+> places in the kernel.  Although in general I'd prefer it we'd remove
+> it (and have the compiler warn about it).
+>
 
-Yeah, doesn't look like a big deal, but thanks, applying for 3.19.--b.
+Cool. There were patches around to use LLVM as well.
+Will it work there?
 
-> 
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index ca8a795..349c98f 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -189,7 +189,7 @@ svc_pool_map_init_percpu(struct svc_pool_map *m)
->  		return err;
->  
->  	for_each_online_cpu(cpu) {
-> -		BUG_ON(pidx > maxpools);
-> +		BUG_ON(pidx >= maxpools);
->  		m->to_pool[cpu] = pidx;
->  		m->pool_to[pidx] = cpu;
->  		pidx++;
+-- 
+Thanks,
+Dmitry
