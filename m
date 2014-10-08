@@ -1,77 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45017 "EHLO fieldses.org"
+Received: from e7.ny.us.ibm.com ([32.97.182.137]:52052 "EHLO e7.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932300AbaJUNOH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Oct 2014 09:14:07 -0400
-Date: Tue, 21 Oct 2014 09:14:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfsd4: fix response size estimation for OP_SEQUENCE
-Message-ID: <20141021131406.GE9863@fieldses.org>
-References: <20141017212446.GC3474@fieldses.org>
- <20141021103631.GB21863@infradead.org>
+	id S1755190AbaJHQAN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Oct 2014 12:00:13 -0400
+Received: from /spool/local
+	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
+	Wed, 8 Oct 2014 12:00:12 -0400
+In-Reply-To: <610954AB-462F-4755-A777-3F89E3CAD5E6@primarydata.com>
+References: <OF5715E76C.462C3FDF-ON88257D6B.00062E96-88257D6B.00088A0A@us.ibm.com> <610954AB-462F-4755-A777-3F89E3CAD5E6@primarydata.com>
+To: Tom Haynes <thomas.haynes@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
+        Marc Eshel <eshel@us.ibm.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141021103631.GB21863@infradead.org>
+Subject: Re: decode_device
+From: Marc Eshel <eshel@us.ibm.com>
+Message-ID: <OF547036CA.322A9587-ON88257D6B.0052B41D-88257D6B.0057E622@us.ibm.com>
+Date: Wed, 8 Oct 2014 09:00:05 -0700
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 21, 2014 at 03:36:31AM -0700, Christoph Hellwig wrote:
-> On Fri, Oct 17, 2014 at 05:24:46PM -0400, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > We added this new estimator function but forgot to hook it up.  The
-> > effect is that NFSv4.1 won't do zero-copy reads.
-> > 
-> > The estimate was also wrong by 8 bytes.
+linux-nfs-owner@vger.kernel.org wrote on 10/08/2014 05:46:24 AM:
+
+> From: Tom Haynes <thomas.haynes@primarydata.com>
+> To: Marc Eshel/Almaden/IBM@IBMUS, 
+> Cc: Trond Myklebust <trond.myklebust@primarydata.com>, linux-
+> nfs@vger.kernel.org
+> Date: 10/08/2014 05:46 AM
+> Subject: Re: decode_device
+> Sent by: linux-nfs-owner@vger.kernel.org
 > 
-> This would affect 4.0 and 4.2 as well, wouldn't it?
+> 
+> On Oct 7, 2014, at 9:33 PM, Marc Eshel <eshel@us.ibm.com> wrote:
+> 
+> > I see that NFS4_PNFS_MAX_STRIPE_CNT is 4096 but when give the client a 
+cnt 
+> > that is bigger than 1024 it fails, is that the limitation of kcalloc() 
+?
+> > 
+> > 366341.304362] <-- _nfs4_proc_getdeviceinfo status=0
+> > [366341.304364] filelayout_get_device_info getdevice info returns 0
+> > [366341.304368] decode_device stripe count  1512
+> > [366341.304370] decode_device ERROR: returning NULL
+> > [366341.304372] NFS: decode_and_add_device: Could not decode or add 
+device
+> > [366341.304428] <-- filelayout_get_device_info dsaddr           (null)
+> > [366341.304430] --> filelayout_check_layout returns -22
+> > [366341.304433] pnfs_layout_process: Could not allocate layout: error 
+-12
+> > 
+> > decode_device()
+> > 
+> > ...
+> >        dprintk("%s stripe count  %d\n", __func__, cnt);
+> >        if (cnt > NFS4_PNFS_MAX_STRIPE_CNT) {
+> >                printk(KERN_WARNING "NFS: %s: stripe count %d greater 
+than 
+> > "
+> >                       "supported maximum %d\n", __func__,
+> >                        cnt, NFS4_PNFS_MAX_STRIPE_CNT);
+> >                goto out_err_free_scratch;
+> >        }
+> > 
+> >        /* read stripe indices */
+> >        stripe_indices = kcalloc(cnt, sizeof(u8), gfp_flags);
+> >        if (!stripe_indices)
+> >                goto out_err_free_scratch;
+> > 
+> > 
+> > Thanks, Marc.
+> 
+> 
+> 
+> Hi Marc,
+> 
+> You are asking for 1512 bytes of memory. That would be looking for a 2k 
+slab.
+> 
+> What flags are being passed down in gfp_flags?
+> 
+> Are you experiencing any other memory issues?
 
-It was introduced in 4.1, so yes to 4.2, no to 4.1.
+Hi Tom,
+It was working fine for a list of up to 1024 so I assumed it was a 
+kcalloc, I will have to add more debugging to find the problem.
+Thanks, Marc. 
 
-Also, this still had an arithmetic mistake. Fixed version follows.
+> 
+> Tom
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-Also my tests are failing due to an unrelated crash in 18-rc1 which I
-want to track down before sending this in.
-
---b.
-
-commit d1d84c9626bb3a519863b3ffc40d347166f9fb83
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Aug 21 15:04:31 2014 -0400
-
-    nfsd4: fix response size estimation for OP_SEQUENCE
-    
-    We added this new estimator function but forgot to hook it up.  The
-    effect is that NFSv4.1 (and greater) won't do zero-copy reads.
-    
-    The estimate was also wrong by 8 bytes.
-    
-    Fixes: ccae70a9ee41 "nfsd4: estimate sequence response size"
-    Cc: stable@vger.kernel.org
-    Reported-by: Chuck Lever <chucklever@gmail.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index cdeb3cf..f4bd578 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1589,7 +1589,8 @@ static inline u32 nfsd4_rename_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op
- static inline u32 nfsd4_sequence_rsize(struct svc_rqst *rqstp,
- 				       struct nfsd4_op *op)
- {
--	return NFS4_MAX_SESSIONID_LEN + 20;
-+	return (op_encode_hdr_size
-+		+ XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN) + 5) * sizeof(__be32);
- }
- 
- static inline u32 nfsd4_setattr_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
-@@ -1893,6 +1894,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_func = (nfsd4op_func)nfsd4_sequence,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
- 		.op_name = "OP_SEQUENCE",
-+		.op_rsize_bop = (nfsd4op_rsize)nfsd4_sequence_rsize,
- 	},
- 	[OP_DESTROY_CLIENTID] = {
- 		.op_func = (nfsd4op_func)nfsd4_destroy_clientid,
