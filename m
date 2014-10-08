@@ -1,154 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56892 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932860AbaJ3Pma (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Oct 2014 11:42:30 -0400
-Message-ID: <54525C63.9010003@RedHat.com>
-Date: Thu, 30 Oct 2014 11:42:27 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Benjamin Coddington <bcodding@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: building upstream nfs-utils on EL6 fails
-References: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com> <alpine.LRH.2.11.1410291919090.20279@sh-el6.eng.rdu2.redhat.com> <0953ACF5-C77F-4568-9952-FAF0C126B4AD@oracle.com> <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com>
-In-Reply-To: <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-vc0-f170.google.com ([209.85.220.170]:41924 "EHLO
+	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932137AbaJHMq1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Oct 2014 08:46:27 -0400
+Received: by mail-vc0-f170.google.com with SMTP id hy10so6684428vcb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Oct 2014 05:46:27 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: decode_device
+From: Tom Haynes <thomas.haynes@primarydata.com>
+In-Reply-To: <OF5715E76C.462C3FDF-ON88257D6B.00062E96-88257D6B.00088A0A@us.ibm.com>
+Date: Wed, 8 Oct 2014 08:46:24 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <610954AB-462F-4755-A777-3F89E3CAD5E6@primarydata.com>
+References: <OF5715E76C.462C3FDF-ON88257D6B.00062E96-88257D6B.00088A0A@us.ibm.com>
+To: Marc Eshel <eshel@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Oct 7, 2014, at 9:33 PM, Marc Eshel <eshel@us.ibm.com> wrote:
 
-On 10/30/2014 10:53 AM, Benjamin Coddington wrote:
+> I see that NFS4_PNFS_MAX_STRIPE_CNT is 4096 but when give the client a cnt 
+> that is bigger than 1024 it fails, is that the limitation of kcalloc() ?
 > 
-> On Wed, 29 Oct 2014, Chuck Lever wrote:
+> 366341.304362] <-- _nfs4_proc_getdeviceinfo status=0
+> [366341.304364] filelayout_get_device_info getdevice info returns 0
+> [366341.304368] decode_device stripe count  1512
+> [366341.304370] decode_device ERROR: returning NULL
+> [366341.304372] NFS: decode_and_add_device: Could not decode or add device
+> [366341.304428] <-- filelayout_get_device_info dsaddr           (null)
+> [366341.304430] --> filelayout_check_layout returns -22
+> [366341.304433] pnfs_layout_process: Could not allocate layout: error -12
 > 
->> Hi Ben-
->>
->> On Oct 29, 2014, at 7:27 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
->>
->>> Hi Chuck, I'll jump in here if you don't mind.
->>>
->>> How's this work for missing keyctl_invalidate:
->>>
->>> diff --git a/configure.ac b/configure.ac
->>> index 59fd14d..8295bed 100644
->>> --- a/configure.ac
->>> +++ b/configure.ac
->>> @@ -270,6 +270,9 @@ AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
->>>
->>> AC_CHECK_LIB([dl], [dlclose], [LIBDL="-ldl"])
->>>
->>> +AC_CHECK_LIB([keyutils], [keyctl_invalidate], ,[
->>> +       AC_DEFINE([MISSING_KEYCTL_INVALIDATE], [1], [Define to use
->>> keyctl_revoke instead])])
->>
->> Nit: I would just add
->>
->>  AC_CHECK_FUNCS([keyctl_invalidate])
->>
->> in aclocal/keyutils.m4 to define HAVE_KEYCTL_INVALIDATE .
+> decode_device()
 > 
-> Yes, that is better.
+> ...
+>        dprintk("%s stripe count  %d\n", __func__, cnt);
+>        if (cnt > NFS4_PNFS_MAX_STRIPE_CNT) {
+>                printk(KERN_WARNING "NFS: %s: stripe count %d greater than 
+> "
+>                       "supported maximum %d\n", __func__,
+>                        cnt, NFS4_PNFS_MAX_STRIPE_CNT);
+>                goto out_err_free_scratch;
+>        }
 > 
->>> +
->>> if test "$enable_nfsv4" = yes; then
->>>   dnl check for libevent libraries and headers
->>>   AC_LIBEVENT
->>> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
->>> index e0d31e7..ab4b10c 100644
->>> --- a/utils/nfsidmap/nfsidmap.c
->>> +++ b/utils/nfsidmap/nfsidmap.c
->>> @@ -14,6 +14,7 @@
->>> #include <unistd.h>
->>> #include "xlog.h"
->>> #include "conffile.h"
->>> +#include “config.h"
->>>
->>> int verbose = 0;
->>> char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key
->>> desc]";
->>> @@ -23,6 +24,10 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] ||
->>> [-t timeout] key desc]";
->>> #define USER  1
->>> #define GROUP 0
->>>
->>> +#ifdef MISSING_KEYCTL_INVALIDATE
->>> +#define keyctl_invalidate(key) keyctl_revoke(key)
->>> +#endif
->>> +
->>> #define PROCKEYS "/proc/keys"
->>> #ifndef DEFAULT_KEYRING
->>> #define DEFAULT_KEYRING "id_resolver"
->>>
->>> ^^^ that's a little ugly -- it doesn't try to figure out what should be
->>> done in the kernel to clean up keys.  It assumes that if your
->>> libkeyutils has keyctl_invalidate then that's what you should use.
->>
->> This looks like it fixes the build issue. I think we do
->> want late-model nfs-utils to build correctly on older
->> distributions.
->>
->> I’m not sure keyctl_revoke and keyctl_invalidate do
->> precisely the same thing, though? On older systems can
->> we expect a change from one to the other to have no
->> impact? (Just beginning to explore this issue).
+>        /* read stripe indices */
+>        stripe_indices = kcalloc(cnt, sizeof(u8), gfp_flags);
+>        if (!stripe_indices)
+>                goto out_err_free_scratch;
 > 
-> For EL6 kernels, you should be good with keyctl_revoke.  That's the only
-> thing you can do - there's no key_invalidate.
 > 
-> But on later kernels, you'd want to use key_invalidate. The details of the
-> kernel changes are here:
-> 
-> 0c7774abb41bd00d KEYS: Allow special keys (eg. DNS results) to be
-> invalidated by CAP_SYS_ADMIN
-> 
-> The summary is that permission changes in later kernels cause
-> keyctl_revoke to be unable to clean up keys that are not in possession.
-> This specific commit allows that once more for CAP_SYS_ADMIN, so
-> really, it should work fine if you have this.  However:
-> 
-> keyctl_revoke waits key_gc_timeout to clean up the key, and access
-> attempts return -EKEYREVOKED.
-> 
-> keyctl_invalidate immediately removes all references to the key.
-> 
-> The latter is the preferred operation for nfsidmap, since this code path
-> exists to allow the admin to flush out a specific key from the idmapper
-> cache.
-> 
-> It might be a good idea to just update your libkeyutils along with the kernel
-> and nfs-utils.  Maybe we should make a version dependency for
-> libkeyutils in nfs-utils.  Steve, what do you think?
-Today we have a dependency on keyutils which I thought 
-would take care of this... but looking at the code it
-appears you might have a point... Lets open a bz and 
-take a look at it... 
+> Thanks, Marc.
 
-steved.
 
-> 
->>> EL6 systems should be able to do both the request-key (nfsidmap)
->>> and the rpc.idmapd upcall.  I believe that EL6 kernels try both - if the
->>> nfsidmap request-key doesn't work they fall back to the upcall, however
->>> the nfsidmap request-key interface really is the one that should be
->>> used.
->>
->> I have several EL6 systems here, and at least one of them
->> had rpc.idmapd configured off. I couldn’t remember if I had
->> done that, or it came that way off the installation media.
-> 
-> I think rpc.idmapd being on/off changed a couple of times in EL6.. I
-> don't recall the specifics.
-> 
->> When installing a newer kernel causes a fallback to rpc.idmapd,
->> is there any risk of an ID mapper behavior change? Loss of
->> functionality, for example?
-> 
-> The functionality should be equivalent - I think they end up in the same
-> library after making it through the callout/callup interface.
-> 
-> The newer kernels only do the request-key callout, and rpc.idmapd
-> won't ever be consulted.
-> 
-> Ben
+
+Hi Marc,
+
+You are asking for 1512 bytes of memory. That would be looking for a 2k slab.
+
+What flags are being passed down in gfp_flags?
+
+Are you experiencing any other memory issues?
+
+Tom
