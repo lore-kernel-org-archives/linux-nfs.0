@@ -1,134 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:44302 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751610AbaJZVra convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Oct 2014 17:47:30 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=windows-1252
-Subject: NFSv4 idmap misbehavior
-Date: Sun, 26 Oct 2014 17:47:21 -0400
-Message-Id: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: David Howells <dhowells@redhat.com>
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Received: from mail-vc0-f182.google.com ([209.85.220.182]:49050 "EHLO
+	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754483AbaJHTrw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Oct 2014 15:47:52 -0400
+Received: by mail-vc0-f182.google.com with SMTP id la4so7602019vcb.27
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Oct 2014 12:47:51 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <alpine.LRH.2.11.1410081513530.8059@sh-el6.eng.rdu2.redhat.com>
+References: <ACC0FF8A2EDF4D42AC55DCCCC7FC1E0E30845CB8@MAIL01.fnal.gov>
+	<alpine.LRH.2.11.1410070849050.8059@sh-el6.eng.rdu2.redhat.com>
+	<CAHQdGtRF+_yJKiWHKTmZZ1gx3Y9LsSk62EtZNjkZFPOr5u=vYw@mail.gmail.com>
+	<alpine.LRH.2.11.1410081513530.8059@sh-el6.eng.rdu2.redhat.com>
+Date: Wed, 8 Oct 2014 15:47:51 -0400
+Message-ID: <CAHQdGtS8w+Hs7dOX7hqwVpF-2eet-jktTNOHJCvb7qPxYuBJ7A@mail.gmail.com>
+Subject: Re: Linux NFSv4 security issue: client presents wrong user's
+ credentials to NFS server
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: "Andrew J. Romero" <romero@fnal.gov>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "Michael K. Rosier" <mrosier@fnal.gov>,
+        Briant S Lawson <blawson@fnal.gov>,
+        Joseph W Klemencic <jklemenc@fnal.gov>,
+        Lynn A Garren <garren@fnal.gov>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi David-
+On Wed, Oct 8, 2014 at 3:39 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
+>
+> On Tue, 7 Oct 2014, Trond Myklebust wrote:
+>
+>> On Tue, Oct 7, 2014 at 9:10 AM, Benjamin Coddington <bcodding@redhat.com>
+>> wrote:
+>>>
+>>> On Tue, 7 Oct 2014, Andrew J. Romero wrote:
+>>>
+>>>> Hi
+>>>>
+>>>> It is common in certain cases for
+>>>> a Linux workstation administrator to
+>>>> create a shared account with a
+>>>> corresponding .k5login file.
+>>>>
+>>>> Kerberos principal strings for users
+>>>> are added to the .k5login and the corresponding
+>>>> users can logon as the local shared account using
+>>>> their Kerberos credentials.
+>>>>
+>>>> Once logged on to the workstation, the user's
+>>>> local identity (local to the workstation) is
+>>>> the UID of the local shared account; however,
+>>>> when accessing kerberized resources external
+>>>> to the workstation (for example NFSv4 volumes),
+>>>> the user's identity is expected to be the
+>>>> individual user's kerberos identity.
+>>>>
+>>>> I am seeing the following serious security issue:
+>>>>
+>>>> If N users (user1@REALM , user2@REALM ...userN@REALM)
+>>>> (who are listed  sharusr's .k5login) all logon to
+>>>> workstation1 as sharusr and are all running sessions
+>>>> simultaneously, then, the GSS Context / kerberos credentials
+>>>> stored in and used by the NFS-client kernel code when
+>>>> processing NFS requests on behalf of a user,
+>>>> will be correct for 1 user and incorrect for N-1 users.
+>>>>
+>>>> Each of the N-1 users will not be able to
+>>>> access NFS server resources that only they have been
+>>>> granted access to; but, they will be able
+>>>> to access all NFS resources that the 1  user
+>>>> has been granted access to. (even if their
+>>>> kerberos identity has not been granted access).
+>>>>
+>>>> Even after each of the N-1 users destroys their credentials
+>>>> they still retain access to all NFS resources
+>>>> that the 1 user has been granted access to.
+>>>> Access will not be denied until the 1 user also destroys
+>>>> his / her credentials.
+>>>>
+>>>> It is my understanding that the RPC GSS kernel module
+>>>> on an NFS client system, keeps a GSS security context
+>>>> (copy of a user's credentials) that it uses when it
+>>>> communicates with the NFS server on the user's behalf.
+>>>>
+>>>> I believe that the kernel security context
+>>>> relates back to the user mode process solely by UID number.
+>>>
+>>>
+>>>
+>>> That is correct.
+>>>
+>>>> Would adding session ID to the relation resolve the issue ?
+>>>> Each Session for each user would then have a unique tuple
+>>>> (UID,SessionID) that would map to the *correct* GSS Security
+>>>> context in the kernel.
+>>>
+>>>
+>>>
+>>> I think what could be done is to hang gss contexts off either session
+>>> or process keyrings - then each process group would be able to own an
+>>> identity independently of other processes running with the same UID.
+>>>
+>>> To do this the gssd upcall could be moved to a request-key mechanism, as
+>>> there would need to be a way to pass along which krb5 credentials ought
+>>> to be used to establish the context.  I suppose that if the process
+>>> already has krb5 credentials in a keyring ccache, those could be used -
+>>> but I don't think that we could count on always having a keyring ccache
+>>> available, and the fallback would be to try to guess which ccache to use
+>>> based on UID as things are today.  There would additionally be the
+>>> situation where keyring ccaches cannot be used, and the main problem
+>>> becomes how to have a process tell gssd which credential cache to use.
+>>
+>>
+>> The problem with the request key interface is that it is completely
+>> broken when applied to containers, since it only runs in the global
+>> init namespace context. Fixing that is a non-trivial exercise; you'd
+>> have to not only carry a full namespace context with the RPC
+>> credential, but also somehow apply it to the upcall thread.
+>>
+>> The rpc.gssd model is much easier to manage, since the daemon itself
+>> is started from the container's local init process.
+>
+>
+> That seems like something that might be fixed in the keys stuff instead
+> of dragging the namespace along on the rpc cred, because it seems like a
+> more general problem that request-key upcalls can execute outside their
+> container..  but maybe that's exactly what request-key is supposed to
+> do.  I'll ask David what he thinks about it.
+>
+> Alternatively, the contexts could still hang off session or process
+> keyrings but still use the existing upcall...
+>
+> How did the idmap upcall get moved over to the request-key interface
+> without taking the container problem into account?
 
-I’m looking into some odd NFS idmapper behavior, and I’ve bisected
-the problem to this commit (merged in 3.13):
+Timing is everything.
 
-> commit b2a4df200d570b2c33a57e1ebfa5896e4bc81b69
-> Author: David Howells <dhowells@redhat.com>
-> Date:   Tue Sep 24 10:35:18 2013 +0100
-> 
->     KEYS: Expand the capacity of a keyring
->     
->     Expand the capacity of a keyring to be able to hold a lot more keys by using
->     the previously added associative array implementation.  Currently the maximum
->     capacity is:
->     
->     (PAGE_SIZE - sizeof(header)) / sizeof(struct key *)
->     
->     which, on a 64-bit system, is a little more 500.  However, since this is being
->     used for the NFS uid mapper, we need more than that.  The new implementation
->     gives us effectively unlimited capacity.
->     
->     With some alterations, the keyutils testsuite runs successfully to completion
->     after this patch is applied.  The alterations are because (a) keyrings that
->     are simply added to no longer appear ordered and (b) some of the errors have
->     changed a bit.
->     
->     Signed-off-by: David Howells <dhowells@redhat.com>
+We converted idmapper in 2010 just before the Parallels people came
+and wanted to do net namespaces in 2011. However you will note that we
+still do support the rpc.idmapd daemon, and that the interfaces it
+uses have been converted to support net namespace.
 
-
-The problem occurs when running on RHEL6 with an upstream kernel
-against a Solaris 11 update 2 server. I am able to reproduce this
-with 3.17. Notably I’m not able to reproduce this with a newer
-user space (tried with F19), nor with a Linux NFS server.
-
-To reproduce it, I’ll start a long-running cthon04 test on an
-NFS mount.
-
-[cel@dali cthon04-x86_64]$ ./server -a -N10
-
-Just after starting the test, in another window:
-
-# grep id_ /proc/keys
-03515452 I--Q---     1   9m 3b010000     0     0 id_resolv gid:users@oracle.com: 4
-1c6ebd43 I--Q---     1 perm 1f3f0000     0 65534 keyring   _uid_ses.0: 1
-249f8fdb I--Q---     1   9m 3b010000     0     0 id_resolv gid:root@oracle.com: 2
-2da69ca9 I--Q---     1 perm 3f3f0000     0     0 keyring   .id_resolver_child_1: 4
-37df5ceb I--Q---     1   9m 3b010000     0     0 id_resolv uid:cel@oracle.com: 5
-38810f75 I------     1 perm 1f030000     0     0 keyring   .id_resolver: 1
-3e7df923 I--Q---     1   9m 3b010000     0     0 id_resolv uid:root@oracle.com: 2
-
-After the test has been running for ten minutes, the id_resolv
-keys expire, and id_legacy keys appear. Before the above commit,
-the id_resolv keys would simply be refreshed and operation
-would continue normally.
-
-# grep id_ /proc/keys
-00f0a664 I--Q-N-     1  42s 3b010000     0     0 id_legacy uid:cel@oracle.com
-03515452 I--Q---     1 expd 3b010000     0     0 id_resolv gid:users@oracle.com: 4
-0efeaada I--Q-N-     1  53s 3b010000     0     0 id_legacy uid:root@oracle.com
-12d6cd15 I--Q-N-     1  42s 3b010000     0     0 id_legacy gid:users@oracle.com
-1c6ebd43 I--Q---     1 perm 1f3f0000     0 65534 keyring   _uid_ses.0: 1
-249f8fdb I--Q---     1 expd 3b010000     0     0 id_resolv gid:root@oracle.com: 2
-2da69ca9 I--Q---     1 perm 3f3f0000     0     0 keyring   .id_resolver_child_1: 4
-2e7150a3 I--Q-N-     1  53s 3b010000     0     0 id_legacy gid:root@oracle.com
-37df5ceb I--Q---     1 expd 3b010000     0     0 id_resolv uid:cel@oracle.com: 5
-38810f75 I------     1 perm 1f030000     0     0 keyring   .id_resolver: 5
-3e7df923 I--Q---     1 expd 3b010000     0     0 id_resolv uid:root@oracle.com: 2
-
-Subsequently cthon04 fails when it tries to start another pass:
-
-**  CHILD pass 1 results: 64/64 pass, 0/0 warn, 0/0 fail (pass/total).
-Congratulations, you passed the locking tests!
-... Pass 8 ...
-
-rm: cannot remove `/mnt/monet/dali.test': Operation not permitted
-Starting BASIC tests: test directory /mnt/monet/dali.test (arg: -t)
-mkdir: cannot create directory `/mnt/monet/dali.test': File exists
-
-./test1: File and directory creation test
-rm: cannot remove `/mnt/monet/dali.test': Operation not permitted
-./test1: (/home/cel/src/cthon04-x86_64/basic) can't remove old test directory /mnt/monet/dali.test
-basic tests failed
-Tests failed, leaving /mnt/monet mounted
-[cel@dali cthon04-x86_64]$
-
-And ID mapping on the test mount is broken. “dali.test” is the
-test directory, but all other files on that mount have bogus
-ownership.
-
-[cel@dali cthon04-x86_64]$ ls -l /mnt/monet
-total 38995
-drwxr-xr-x  2 4294967294 4294967294             4098 Oct 15 22:59 310
--rw-------  1 4294967294 4294967294         10485760 Oct 15 23:00 aio-testfile
--rw-r--r--  1 4294967294 4294967294                0 Oct 15 22:38 client.out
-drwxr-xr-x 12 4294967294 4294967294               12 Oct 15 11:47 clients
-drwxrwxrwx  2 4294967294 4294967294                2 Oct 26 17:16 dali.test
-drwxr-xr-x  3 4294967294 4294967294                3 Oct 15 22:54 dbench
--rw-------  1 4294967294 4294967294                0 Oct 15 22:53 file
- . . . 
-
-Restarting the tests or removing the test directory by hand
-results in “Operation not permitted."
-
-After several minutes, all expired id_ keys are purged:
-
-1c6ebd43 I--Q---     1 perm 1f3f0000     0 65534 keyring   _uid_ses.0: 1
-2da69ca9 I--Q---     1 perm 3f3f0000     0     0 keyring   .id_resolver_child_1: empty
-38810f75 I------     1 perm 1f030000     0     0 keyring   .id_resolver: 1
-
-And cthon04 is able to run again.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+>>> Maybe instead of establishing contexts at file access time, they could
+>>> be established deliberately beforehand with a userspace command that
+>>> would specify which krb5 credential to use to create the context, and
+>>> then the context would hang off the process keyrings.  The client could
+>>> then check to see if there's an existing keyring context, and if so use
+>>> that, and if not do the upcall.
+>>>
+>>
+>> The server is free to drop any GSS session at any time, depending on
+>> internal resource management requirements. A client must be able to
+>> recover from that scenario or risk being unable to write back data.
+>
+>
+> Ah, right.  Thank you for pointing that out.
+>
+> Ben
 
 
 
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
