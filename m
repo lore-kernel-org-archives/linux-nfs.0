@@ -1,70 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f176.google.com ([209.85.192.176]:38527 "EHLO
-	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932234AbaJVUMe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Oct 2014 16:12:34 -0400
-Received: by mail-pd0-f176.google.com with SMTP id fp1so4144927pdb.7
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Oct 2014 13:12:34 -0700 (PDT)
-References: <20141017212446.GC3474@fieldses.org> <20141021103631.GB21863@infradead.org> <20141021131406.GE9863@fieldses.org> <20141022192258.GB5552@fieldses.org> <20141022194257.GC5552@fieldses.org>
-Mime-Version: 1.0 (1.0)
-In-Reply-To: <20141022194257.GC5552@fieldses.org>
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <57662446-E474-4420-84F5-349B6B85119F@primarydata.com>
-Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
+Received: from mx1.netapp.com ([216.240.18.38]:33349 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751195AbaJIMwV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Oct 2014 08:52:21 -0400
+Message-ID: <54368292.8060209@Netapp.com>
+Date: Thu, 9 Oct 2014 08:41:54 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: Steve French <smfrench@gmail.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Christoph Hellwig <hch@infradead.org>
-From: Tom Haynes <thomas.haynes@primarydata.com>
-Subject: Re: [PATCH] nfsd4: fix response size estimation for OP_SEQUENCE
-Date: Wed, 22 Oct 2014 13:12:12 -0700
-To: "J. Bruce Fields" <bfields@fieldses.org>
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Subject: Re: xfstests and linux nfs testing
+References: <CAH2r5mt8EfVraedY2Gi31E4xQG=p=YqtAXEoH2a+FYHdmBzbqA@mail.gmail.com>
+In-Reply-To: <CAH2r5mt8EfVraedY2Gi31E4xQG=p=YqtAXEoH2a+FYHdmBzbqA@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I think this is a bug in xfstests.  This fixes it for me, but I'm not sure what needs to be checked in the NFS case:
+
+Anna
+
+diff --git a/common/rc b/common/rc
+index 34d7c19..e86bbfb 100644
+--- a/common/rc
++++ b/common/rc
+@@ -1085,9 +1085,9 @@ _require_scratch()
+ _require_test()
+ {
+     case "$FSTYP" in
+-       nfs*)
+-                 _notrun "requires a test device"
+-                ;;
++       #nfs*)
++        #         _notrun "requires a test device"
++       #        ;;
+        cifs)
+                echo $TEST_DEV | grep -q "//" > /dev/null 2>&1
+                if [ -z "$TEST_DEV" -o "$?" != "0" ]; then
+@@ -1097,7 +1097,7 @@ _require_test()
+                     _notrun "this test requires a valid \$TEST_DIR"
+                fi
+                ;;
+-       tmpfs)
++       tmpfs|nfs*)
+                if [ -z "$TEST_DEV" -o ! -d "$TEST_DIR" ];
+                then
+                    _notrun "this test requires a valid \$TEST_DIR and unique $TEST_DEV"
 
 
 
-> On Oct 22, 2014, at 12:42 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
->> On Wed, Oct 22, 2014 at 03:22:58PM -0400, J. Bruce Fields wrote:
->>> On Tue, Oct 21, 2014 at 09:14:06AM -0400, J. Bruce Fields wrote:
->>> Also my tests are failing due to an unrelated crash in 18-rc1 which I
->>> want to track down before sending this in.
->> 
->> There are two bugs:
->> 
->>    - the client is sending SEEK over minorversion 1.
->>    - this sometimes causes the server to crash.
->> 
->> I'm testing a fix for the latter.
->> 
->> On the former: looks like if 4.2 support is built in, then llseek is set
->> to nfs4_file_llseek, which unconditionally calls nfs42_proc_llseek().
->> 
->> Does nfs4_file_llseek need an explicit minorversion check, or should it
->> be handled some other way?
-> 
-> By the way, a purely theoretical issue for now, but: on unknown
-> operations the server returns either NFS4ERR_OP_ILLEGAL or
-> NFS4ERR_OP_NOTSUPP depending on whether we think it's in the range of
-> defined nfs4.2 operations.
-> 
-> That means that if a revision of the 4.2 draft adds a new operation
-> beyond the current end (OP_WRITE_SAME = 70), a client would need to be
-> prepared for old servers returning OP_ILLEGAL to that operation.
-> 
+On 10/08/14 23:09, Steve French wrote:
+> Was running into a strange error with xfstests over nfs - must be
+> missing something obvious since I have run it various times before.
+>
+> Tried the following local.config file (placed in root of xfstests directory)
+>
+> FSTYP=nfs
+> TEST_DEV=192.168.93.152:/share-1
+> TEST_DIR=/mnt/test
+> NFS_MOUNT_OPTIONS='-ov3'
+>
+> and did
+> ./check -nfs generic/001
+>
+> which should have worked fine, but it and the various other nfs
+> capable xfstests returned
+>
+>      [not run] requires a test device
+>
+> which is weird because even setting the TEST_DEV as an environment
+> variable xfstests still thought it wasn't set.
+>
+> Anyone have a sample NFS local.config file for xfstests which works?
+>
 
-Or if the new minor versioning rules take effect...
-
-
-
-> Freezing the definitions of the ops and attributes we care about may not
-> be quite enough to make implementing-as-we-go-along work?
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
