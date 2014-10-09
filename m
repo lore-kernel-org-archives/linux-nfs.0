@@ -1,144 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f172.google.com ([209.85.220.172]:49427 "EHLO
-	mail-vc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752698AbaJFPRg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 11:17:36 -0400
-Received: by mail-vc0-f172.google.com with SMTP id lf12so3287258vcb.31
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 08:17:35 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAN-5tyGy63qnfqD6XY9h9Rh9nsOTXgeHFeP4t_vO_obNXGpNYg@mail.gmail.com>
-References: <CAN-5tyF4oCkmHskT02GceF=CR1mYZc3uwm0tLf2fd39-XeyjRg@mail.gmail.com>
-	<CAHQdGtT39EBPx1SQTn3hFHBNuLsSoBdkSOYWHYRQ=j8vpVjB_A@mail.gmail.com>
-	<CAN-5tyGVfAQ+ZBp0hSMyRMHHWL3iP=h5XzaFrsLRf02rSH1ZHQ@mail.gmail.com>
-	<CAABAsM5MZxgpSd2c8rc4BxVVCjxwBgT2n8+uUONNrTX6AvJudQ@mail.gmail.com>
-	<CAN-5tyGy63qnfqD6XY9h9Rh9nsOTXgeHFeP4t_vO_obNXGpNYg@mail.gmail.com>
-Date: Mon, 6 Oct 2014 11:17:35 -0400
-Message-ID: <CAHQdGtRTrvAbEyT5xSmgemp9KkCrER9x9eVamEfKNxM-4U1jcQ@mail.gmail.com>
-Subject: Re: [bug] open owner value is always the same
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:36898 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750875AbaJICLb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Oct 2014 22:11:31 -0400
+Received: by mail-qc0-f175.google.com with SMTP id x13so276586qcv.6
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Oct 2014 19:11:30 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH] NFSv4.1/pnfs: replace broken pnfs_put_lseg_async
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <1412801200-17936-1-git-send-email-trond.myklebust@primarydata.com>
+Date: Wed, 8 Oct 2014 22:11:28 -0400
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <875DA1C9-2FD0-4176-9C63-7306CE4D2B53@primarydata.com>
+References: <1412801200-17936-1-git-send-email-trond.myklebust@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 6, 2014 at 11:07 AM, Olga Kornievskaia
-<olga.kornievskaia@gmail.com> wrote:
-> On Mon, Oct 6, 2014 at 10:49 AM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Mon, Oct 6, 2014 at 10:12 AM, Olga Kornievskaia
->> <olga.kornievskaia@gmail.com> wrote:
->>> Aren't sequence slots shared by the same open owners?
->>>
->>> The problem I'm seeing is that a client with an outstanding open can't
->>> respond to a delegation return because sequenced hasn't been
->>> confirmed. I think it's problematic when there are two clients each
->>> holding delegations and each sending an open. The server tries to
->>> recall the delegations but neither clients will reply until the server
->>> returns an open to the outstanding open. The server will try and not
->>> reply to the outstanding opens until the delegations are returned.
->>
->> I'm not sure that I understand.
->>
->> Why should the server refuse to respond to OPEN calls just because a
->> delegation recall is outstanding? That sounds like a catastrophic
->> design for a server. How is the client going to convert its cached
->> open/lock state into open stateids and lock stateids if the server
->> won't respond to OPEN calls for that file?
->>
->> If the server cannot respond to the OPEN because it conflicts with a
->> delegation being recalled, then the right thing to do is to return
->> NFS4ERR_DELAY. That allows the client to make progress on other OPEN
->> requests that may be required in order to return the conflicting
->> delegation, and that may be serialised behind that blocked OPEN.
->> I can imagine this might be the case if the client holds a delegation
->> for a file, and then is asked to OPEN a hard link to the same file.
->> The client has no way to know a priori that it is opening the same
->> file through the hard link, so it doesn't know that it conflicts with
->> the delegation.
->>
->
-> Sorry I should have provided a clear example. But you are right, the
-> server is not replying to the open because of the conflicting
-> opens/delegations.
->
-> ClientA opens file A gets a write delegation.
-> ClientB open files B gets a write delegation.
-> ClientA sends an open for file B
-> ClientB sends an open for file A
->
-> Thank you for pointing out that a server should/can return
-> NFS4ERR_DELAY to the open.
->
-> I'm still new to this, so I apologize. But to me it seems like at
-> should be totally reasonable from the server-side to expect for the
-> delegation to file A to the returned independent of the opening of
-> file B.
+On Oct 8, 2014, at 4:46 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-No. The problem with that assumption are the serialisation issues:
+> You cannot call pnfs_put_lseg_async() more than once per lseg, so it
+> is really an inappropriate way to deal with a refcount issue.
 
-a) There is no serialisation between OPEN and the recall callback from
-the server. The server cannot rely on the client having received the
-callback when it decides how to handle the OPEN.
-b) There is _mandatory_ serialisation between OPEN requests on the
-client. Unless the server replies to the OPEN, then all other OPEN
-requests that are serialised behind that OPEN are required by RFC3530
-to wait.
+You’re absolutely right!
 
-Cheers
- Trond
+> Instead, replace it with a function that decrements the refcount, and
+> puts the final 'free' operation (which is incompatible with locks) on
+> the work queue.
 
->
->> Cheers
->>   Trond
->>
->>>
->>> On Mon, Oct 6, 2014 at 9:57 AM, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>>> Hi Olga,
->>>>
->>>> On Mon, Oct 6, 2014 at 9:48 AM, Olga Kornievskaia
->>>> <olga.kornievskaia@gmail.com> wrote:
->>>>> The spec says that open owner needs to be different for different
->>>>> files yet the code returns the same value.
->>>>>
->>>>> It is not clear to me what's broken about ida_get_new() that's used
->>>>> for generation of the owner ids.
->>>>>
->>>>> Can somebody comment on this?
->>>>>
->>>>
->>>> As far as I know, there is no requirement in either NFSv4 or NFSv4.1
->>>> that open owners be different for each file. In NFSv4.1 there is a
->>>> requirement that they be unique to each credential/principal, but only
->>>> if you negotiate EXCHGID4_FLAG_BIND_PRINC_STATEID.
->>>>
->>>> The current choice of scheme where we share open_owners between files
->>>> was largely motivated by a desire not to overload the NFSv4.0 servers
->>>> with lots of open_owner structures. In NFSv4.0, those structures are
->>>> required to be cached by the server for a while after the file has
->>>> been closed.
->>>>
->>>> Cheers
->>>>   Trond
->>>>
->>>>
->>>> --
->>>> Trond Myklebust
->>>>
->>>> Linux NFS client maintainer, PrimaryData
->>>>
->>>> trond.myklebust@primarydata.com
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks, this looks like the right solution.
 
+The good news is that nobody should have been hitting this, as the only file layout
+server (that I know of) does stable writes, thus doesn’t use the commit path.
 
+-dros
 
--- 
-Trond Myklebust
+> 
+> Cc: Weston Andros Adamson <dros@primarydata.com>
+> Fixes: e6cf82d1830f: pnfs: add pnfs_put_lseg_async
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> fs/nfs/filelayout/filelayout.c |  2 +-
+> fs/nfs/pnfs.c                  | 33 +++++++++++++++++++++++++++------
+> fs/nfs/pnfs.h                  |  6 +-----
+> 3 files changed, 29 insertions(+), 12 deletions(-)
+> 
+> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+> index abc5056999d6..46fab1cb455a 100644
+> --- a/fs/nfs/filelayout/filelayout.c
+> +++ b/fs/nfs/filelayout/filelayout.c
+> @@ -1031,7 +1031,7 @@ filelayout_clear_request_commit(struct nfs_page *req,
+> 	}
+> out:
+> 	nfs_request_remove_commit_list(req, cinfo);
+> -	pnfs_put_lseg_async(freeme);
+> +	pnfs_put_lseg_locked(freeme);
+> }
+> 
+> static void
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 76de7f568119..0a5dda4d85c2 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -361,22 +361,43 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+> }
+> EXPORT_SYMBOL_GPL(pnfs_put_lseg);
+> 
+> -static void pnfs_put_lseg_async_work(struct work_struct *work)
+> +static void pnfs_free_lseg_async_work(struct work_struct *work)
+> {
+> 	struct pnfs_layout_segment *lseg;
+> +	struct pnfs_layout_hdr *lo;
+> 
+> 	lseg = container_of(work, struct pnfs_layout_segment, pls_work);
+> +	lo = lseg->pls_layout;
+> 
+> -	pnfs_put_lseg(lseg);
+> +	pnfs_free_lseg(lseg);
+> +	pnfs_put_layout_hdr(lo);
+> }
+> 
+> -void
+> -pnfs_put_lseg_async(struct pnfs_layout_segment *lseg)
+> +static void pnfs_free_lseg_async(struct pnfs_layout_segment *lseg)
+> {
+> -	INIT_WORK(&lseg->pls_work, pnfs_put_lseg_async_work);
+> +	INIT_WORK(&lseg->pls_work, pnfs_free_lseg_async_work);
+> 	schedule_work(&lseg->pls_work);
+> }
+> -EXPORT_SYMBOL_GPL(pnfs_put_lseg_async);
+> +
+> +void
+> +pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg)
+> +{
+> +	if (!lseg)
+> +		return;
+> +
+> +	assert_spin_locked(&lseg->pls_layout->plh_inode->i_lock);
+> +
+> +	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
+> +		atomic_read(&lseg->pls_refcount),
+> +		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
+> +	if (atomic_dec_and_test(&lseg->pls_refcount)) {
+> +		struct pnfs_layout_hdr *lo = lseg->pls_layout;
+> +		pnfs_get_layout_hdr(lo);
+> +		pnfs_layout_remove_lseg(lo, lseg);
+> +		pnfs_free_lseg_async(lseg);
+> +	}
+> +}
+> +EXPORT_SYMBOL_GPL(pnfs_put_lseg_locked);
+> 
+> static u64
+> end_offset(u64 start, u64 len)
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 509a710148ba..9ae5b765b073 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -190,7 +190,7 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+> /* pnfs.c */
+> void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+> void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+> -void pnfs_put_lseg_async(struct pnfs_layout_segment *lseg);
+> +void pnfs_put_lseg_locked(struct pnfs_layout_segment *lseg);
+> 
+> void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+> void unset_pnfs_layoutdriver(struct nfs_server *);
+> @@ -445,10 +445,6 @@ static inline void pnfs_put_lseg(struct pnfs_layout_segment *lseg)
+> {
+> }
+> 
+> -static inline void pnfs_put_lseg_async(struct pnfs_layout_segment *lseg)
+> -{
+> -}
+> -
+> static inline int pnfs_return_layout(struct inode *ino)
+> {
+> 	return 0;
+> -- 
+> 1.9.3
+> 
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
