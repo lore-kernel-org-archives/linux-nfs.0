@@ -1,117 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:40869 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751798AbaJPTjN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 15:39:13 -0400
-Received: by mail-ig0-f177.google.com with SMTP id a13so264936igq.10
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 12:39:12 -0700 (PDT)
-Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
-        by mx.google.com with ESMTPSA id nu1sm1271617igb.0.2014.10.16.12.39.12
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 16 Oct 2014 12:39:12 -0700 (PDT)
-Subject: [PATCH v1 07/16] SUNRPC: serialize iostats updates
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Date: Thu, 16 Oct 2014 15:39:11 -0400
-Message-ID: <20141016193911.13414.55761.stgit@manet.1015granger.net>
-In-Reply-To: <20141016192919.13414.3151.stgit@manet.1015granger.net>
-References: <20141016192919.13414.3151.stgit@manet.1015granger.net>
+Received: from userp1040.oracle.com ([156.151.31.81]:17873 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751340AbaJIQ3q (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Oct 2014 12:29:46 -0400
+Message-ID: <5436B7DB.1050204@oracle.com>
+Date: Thu, 09 Oct 2014 09:29:15 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Charles EDWARD Lever <chuck.lever@oracle.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>, Devesh.Sharma@emulex.com,
+        Doug Ledford <dledford@redhat.com>,
+        Dominique Martinet <dominique.martinet@cea.fr>,
+        jeffrey.c.becker@nasa.gov, Rupert Dance <rsdance@soft-forge.com>,
+        "Coulter, Susan K" <skc@lanl.gov>, sprabhu@redhat.com,
+        Steve Wise <swise@opengridcomputing.com>, wendy.cheng@intel.com,
+        yanb@mellanox.com
+CC: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: NFSoRDMA developers bi-weekly meeting minutes (10/9)
+References: <5411D79A.4000908@oracle.com>
+In-Reply-To: <5411D79A.4000908@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Occasionally mountstats reports a negative retransmission rate.
-Ensure that two RPCs completing concurrently don't confuse the sums
-in the transport's op_metrics array.
+Attendees:
 
-Since pNFS filelayout can invoke rpc_count_iostats() on another
-transport from xprt_release(), we can't rely on simply holding the
-transport_lock in xprt_release(). There's nothing for it but hard
-serialization. One spin lock per RPC operation should make this as
-painless as it can be.
+Yan Burman (Mellanox)
+Rupert Dance (Soft Forge)
+Steve Dickson (Red Hat)
+Chuck Lever (Oracle)
+Doug Ledford (RedHat)
+Shirley Ma (Oracle)
+Sachin Prabhu (RedHat)
+Devesh Sharma (Emulex)
+Anna Schumaker (Net App)
+Steve Wise (OpenGridComputing, Chelsio)
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/metrics.h |    3 +++
- net/sunrpc/stats.c             |   21 ++++++++++++++++-----
- 2 files changed, 19 insertions(+), 5 deletions(-)
+Moderator:
+Shirley Ma (Oracle)
 
-diff --git a/include/linux/sunrpc/metrics.h b/include/linux/sunrpc/metrics.h
-index 1565bbe..eecb5a7 100644
---- a/include/linux/sunrpc/metrics.h
-+++ b/include/linux/sunrpc/metrics.h
-@@ -27,10 +27,13 @@
- 
- #include <linux/seq_file.h>
- #include <linux/ktime.h>
-+#include <linux/spinlock.h>
- 
- #define RPC_IOSTATS_VERS	"1.0"
- 
- struct rpc_iostats {
-+	spinlock_t		om_lock;
-+
- 	/*
- 	 * These counters give an idea about how many request
- 	 * transmissions are required, on average, to complete that
-diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index 5453049..9711a15 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -116,7 +116,15 @@ EXPORT_SYMBOL_GPL(svc_seq_show);
-  */
- struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt *clnt)
- {
--	return kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
-+	struct rpc_iostats *stats;
-+	int i;
-+
-+	stats = kcalloc(clnt->cl_maxproc, sizeof(*stats), GFP_KERNEL);
-+	if (stats) {
-+		for (i = 0; i < clnt->cl_maxproc; i++)
-+			spin_lock_init(&stats[i].om_lock);
-+	}
-+	return stats;
- }
- EXPORT_SYMBOL_GPL(rpc_alloc_iostats);
- 
-@@ -135,20 +143,21 @@ EXPORT_SYMBOL_GPL(rpc_free_iostats);
-  * rpc_count_iostats - tally up per-task stats
-  * @task: completed rpc_task
-  * @stats: array of stat structures
-- *
-- * Relies on the caller for serialization.
-  */
- void rpc_count_iostats(const struct rpc_task *task, struct rpc_iostats *stats)
- {
- 	struct rpc_rqst *req = task->tk_rqstp;
- 	struct rpc_iostats *op_metrics;
--	ktime_t delta;
-+	ktime_t delta, now;
- 
- 	if (!stats || !req)
- 		return;
- 
-+	now = ktime_get();
- 	op_metrics = &stats[task->tk_msg.rpc_proc->p_statidx];
- 
-+	spin_lock(&op_metrics->om_lock);
-+
- 	op_metrics->om_ops++;
- 	op_metrics->om_ntrans += req->rq_ntrans;
- 	op_metrics->om_timeouts += task->tk_timeouts;
-@@ -161,8 +170,10 @@ void rpc_count_iostats(const struct rpc_task *task, struct rpc_iostats *stats)
- 
- 	op_metrics->om_rtt = ktime_add(op_metrics->om_rtt, req->rq_rtt);
- 
--	delta = ktime_sub(ktime_get(), task->tk_start);
-+	delta = ktime_sub(now, task->tk_start);
- 	op_metrics->om_execute = ktime_add(op_metrics->om_execute, delta);
-+
-+	spin_unlock(&op_metrics->om_lock);
- }
- EXPORT_SYMBOL_GPL(rpc_count_iostats);
- 
+NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA development and test effort from different resources to speed up NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools development. Hopefully the quality of NFSoRDMA upstream patches can be improved by being tested with a quorum of HW vendors.
 
+Today's meeting notes: (Chuck, SteveD, Yan)
+1. Follow-ups for Engineer resource allocation to speed up IB stack review process: in progress.
+
+2. OFED update and bug status (Rupert):
+OFED 3.12-1-RC3 is expected to be released next Monday after an update for infinipatch-psm which prevented RHEL 7.0 build.
+Thanks for Steve Wise to resolve some NFSoRDMA issues. Two outstanding bugs:
+
+http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2489
+"Bug 2489 - System crash during cable pull test with Active NFS-RDMA share"
+Bug 2489 is outstanding but is resolved in 3.17 RC6, need to bisect the right patch for OFED 3.12-1.
+
+http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2507
+The panic stack reported it's backport patch issue. To confirm that Steve Wise suggested to reproduce it with upstream 3.12 kernel. Devesh will build 3.12 kernel and test it.
+ 
+http://bugs.openfabrics.org/bugzilla/show_bug.cgi?id=2502
+Bug 2502 is RDS bug, which will talk to Oracle directly.
+
+3. mainline kernel update and bug status: (Chuck, SteveW, Devesh)
+
+https://bugzilla.linux-nfs.org/show_bug.cgi?id=269
+Bug 269 xfstests generic/113 on NFSv4.1 causes connection drops
+It was found in ConnectX-2. The number of outstanding completions is limited to 87. When exceeding this, post_send will fail. The SQ depth is 256. Whether this is a limitation on ConnectX-2? It's better to try on different HCAs to see the difference.
+
+https://bugzilla.linux-nfs.org/show_bug.cgi?id=271
+Steve Wise is making progress on this one.
+
+Devesh suggested to use same approach on client side to reduce Server side signaling, he filed a bug to track this to see any performance difference.
+https://bugzilla.linux-nfs.org/show_bug.cgi?id=272
+
+4. Bake-a-thon NFSoRDMA conclave update: Chuck, SteveD gave update on 10/8 Linux Enterprise NFSoRDMA
+-- RHEL7.0 NFSoRDMA server is disabled, we still couldn't locate resource for NFSoRDMA server maintainer. NFSoRDMA client is supported.
+-- NFSoRDMA test strategies and utilities: add NFSoRDMA test
+-- NFSoRDMA future directions and features
+
+5. 3.17-rc5 NFSoRDMA performance discussion: (Shirley)
+Shirley has presented IOZone WRITE NFS performance numbers for NFSoIPoIB, NFSoRDMA FMR and FRWR mode on connectX-2. The discuss focus was on NFS WRITE. There are couple areas need to do further research:
+-- NFS WRITE overhead: what limits NFS WRITE performance in NFS protocol?
+-- Unexpected latency increase and BW drop in large I/O write
+-- How much gain from IPoIB-CM SG, cheksum offloading patch
+-- Yan suggested the test to move to ConnectX-3 since ConnectX-2 is out.
+
+Feel free to reply here for anything missing. See you on Oct.23.
+
+10/9/2014
+@7:30am PDT
+@8:30am MDT
+@9:30am CDT
+@10:30am EDT
+@Bangalore @8:00pm
+@Israel @5:30pm
+
+Duration: 1 hour
+
+Call-in number:
+Israel: +972 37219638
+Bangalore: +91 8039890080 (180030109800)
+France  Colombes +33 1 5760 2222    +33 176728936
+US: 8666824770,  408-7744073
+
+Conference Code: 2308833
+Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
+
+Thanks everyone for joining the call and providing valuable inputs/work to the community to make NFSoRDMA better.
+
+Shirley
