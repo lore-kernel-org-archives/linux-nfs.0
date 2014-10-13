@@ -1,37 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:58068 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752456AbaJIQVa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Oct 2014 12:21:30 -0400
-Date: Thu, 9 Oct 2014 09:21:27 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Steve French <smfrench@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>, fstests@vger.kernel.org,
-        Lukas Czerner <lczerner@redhat.com>
-Subject: Re: xfstests and linux nfs testing
-Message-ID: <20141009162127.GA12500@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:35669 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754041AbaJMRGW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 13:06:22 -0400
+From: David Howells <dhowells@redhat.com>
+To: torvalds@linux-foundation.org
+cc: dhowells@redhat.com, rob.jones@codethink.co.uk, manuel.schoelling@gmx.de,
+        linux-cachefs@redhat.com, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: [GIT PULL] FS-Cache: Two fixes and a cleanup
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <54368292.8060209@Netapp.com>
+Content-Type: text/plain; charset="us-ascii"
+Date: Mon, 13 Oct 2014 18:06:07 +0100
+Message-ID: <24210.1413219967@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 09, 2014 at 08:41:54AM -0400, Anna Schumaker wrote:
-> I think this is a bug in xfstests.  This fixes it for me, but I'm not sure what needs to be checked in the NFS case:
+Hi Linus,
 
-Lukas broke this with:
- common: Check fs consistency on TEST_DEV only when needed
+Can you pull this please?  There are three commits: two fixes for bugs in
+CacheFiles and a cleanup in FS-Cache.
 
-as far as I can tell it blindly copied the _require_scratch code
-to _require_test, which is bad for two reasons:
+David
+---
+The following changes since commit fe82dcec644244676d55a1384c958d5f67979adb:
 
- a) due to lots of code duplication
- b) because it broke filesystems that don't support a scratch dev
-    like nfs.
+  Linux 3.17-rc7 (2014-09-28 14:29:07 -0700)
 
-Anna fix should work, can you resend it to the fstests lists with a
-proper signoff?  Even better would be some validation that the
-passed in "device" is a valid format for a nfs export, but that's not
-strictly required.
+are available in the git repository at:
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/fscache-fixes-20141013
+
+for you to fetch changes up to d5d962265d99088ce96480db3e61358d7170e24c:
+
+  fs/fscache/object-list.c: use __seq_open_private() (2014-10-13 17:52:21 +0100)
+
+----------------------------------------------------------------
+FS-Cache fixes
+
+----------------------------------------------------------------
+David Howells (2):
+      CacheFiles: Handle object being killed before being set up
+      CacheFiles: Fix incorrect test for in-memory object collision
+
+Rob Jones (1):
+      fs/fscache/object-list.c: use __seq_open_private()
+
+ fs/cachefiles/interface.c | 33 ++++++++++++++++++++-------------
+ fs/cachefiles/namei.c     |  2 +-
+ fs/fscache/object-list.c  | 16 ++--------------
+ 3 files changed, 23 insertions(+), 28 deletions(-)
