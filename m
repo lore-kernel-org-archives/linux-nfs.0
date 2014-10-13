@@ -1,54 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60033 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752462AbaJGNqQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Oct 2014 09:46:16 -0400
-Date: Tue, 7 Oct 2014 09:46:13 -0400
-To: Srikrishan Malik <srimalik@in.ibm.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Fail the test if number of supported attrs are more than
- expected.
-Message-ID: <20141007134613.GB23258@fieldses.org>
-References: <1407994346-18244-1-git-send-email-srimalik@in.ibm.com>
+Received: from mail-vc0-f181.google.com ([209.85.220.181]:33334 "EHLO
+	mail-vc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751429AbaJMVMW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 17:12:22 -0400
+Received: by mail-vc0-f181.google.com with SMTP id le20so6413498vcb.26
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 14:12:20 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1407994346-18244-1-git-send-email-srimalik@in.ibm.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
+References: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
+	<CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
+	<CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
+Date: Mon, 13 Oct 2014 17:12:19 -0400
+Message-ID: <CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
+Subject: Re: how to properly handle failures during delegation recall process
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for the delay.
+On Mon, Oct 13, 2014 at 4:23 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Mon, Oct 13, 2014 at 3:53 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> Hi Olga,
+>>
+>> On Mon, Oct 13, 2014 at 2:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>> I'd like to hear community's thought about how to properly handle
+>>> failures during delegation recall process and/or thoughts about a
+>>> proposed fixed listed at the end.
+>>>
+>>> There are two problems seen during the following situation:
+>>> A client get a cb_call for a delegation it currently holds. Consider
+>>> the case where the client has a delegated lock for this open. Callback
+>>> thread will send an open with delegation_cur, followed by a lock
+>>> operation, and finally delegreturn.
+>>>
+>>> Problem#1: the client will send a lock operation regardless of whether
+>>> or not the open succeeded. This is a new_owner lock and in nfs4xdr.c,
+>>> the lock operation will choose to use the open_stateid. However, when
+>>> the open failed, the stateid is 0. Thus, we send an erroneous stateid
+>>> of 0.
+>>>
+>>> Problem#2: if the open fails with admin_revoked, bad_stateid errors,
+>>> it leads to an infinite loop of sending an open with deleg_cur and
+>>> getting a bad_stateid error back.
+>>>
+>>> It seems to me that we shouldn't even be trying to recover if we get a
+>>> bad_stateid-type of errors on open with deleg_cur because they are
+>>> unrecoverable.
+>>>
+>>> Furthermore, I propose that if we get an error in
+>>> nfs4_open_delegation_recall() then we mark any delegation locks as
+>>> lost and in nfs4_lock_delegation_recall() don't attempt to recover
+>>> lost lock.
+>>>
+>>> I have tested to following code as a fix:
+>>>
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index 5aa55c1..523fae0 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -1682,6 +1682,22 @@ int nfs4_open_delegation_recall(struct
+>>> nfs_open_context *ctx, struct nfs4_state
+>>>         nfs4_stateid_copy(&opendata->o_arg.u.delegation, stateid);
+>>>         err = nfs4_open_recover(opendata, state);
+>>>         nfs4_opendata_put(opendata);
+>>> +       switch(err) {
+>>> +               case -NFS4ERR_DELEG_REVOKED:
+>>> +               case -NFS4ERR_ADMIN_REVOKED:
+>>> +               case -NFS4ERR_BAD_STATEID:
+>>> +               case -NFS4ERR_OPENMODE: {
+>>> +                       struct nfs4_lock_state *lock;
+>>> +                       /* go through open locks and mark them lost */
+>>> +                       spin_lock(&state->state_lock);
+>>> +                       list_for_each_entry(lock, &state->lock_states,
+>>> ls_locks) {
+>>> +                               if (!test_bit(NFS_LOCK_INITIALIZED,
+>>> &lock->ls_flags))
+>>> +                                       set_bit(NFS_LOCK_LOST, &lock->ls_flags);
+>>> +                       }
+>>> +                       spin_unlock(&state->state_lock);
+>>> +                       return 0;
+>>
+>> If the open stated is marked for "nograce" recovery by
+>> nfs4_handle_delegation_recall_errror(), then nfs4_lock_expired()
+>> should do the above for you automatically. Are you reproducing this
+>> bug with a 3.17 kernel?
+>
+> Yes, the bug is with the 3.17 kernel.
+>
+> Yes, the nfs4_lock_expired() will mark it. However, the state_manager
+> thread (most frequently) doesn't get to run to do that before
+> nfs4_open_delegation_recall() returns 0 and calls the
+> nfs_delegation_claim_locks(). Therefore, I found the code needed
+> before returning from nfs4_open_delegation_recall().
 
-Returning unrequested attributes sounds like unlikely behavior, but may
-as well check for it, sure....  Applying.
+Right. We probably should not be returning a value of 0 in that case.
+If the delegation has been revoked, then we want
+nfs4_open_delegation_recall() to just return immediately, and then we
+want nfs_end_delegation_return() to detach the delegation and free it
+without calling delegreturn.
 
---b.
+>>> +               }
+>>> +       }
+>>>         return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>>>  }
+>>>
+>>> @@ -5957,6 +5973,10 @@ int nfs4_lock_delegation_recall(struct
+>>> file_lock *fl, struct nfs4_state *state,
+>>>         err = nfs4_set_lock_state(state, fl);
+>>>         if (err != 0)
+>>>                 return err;
+>>> +       if (test_bit(NFS_LOCK_LOST, &fl->fl_u.nfs4_fl.owner->ls_flags)) {
+>>> +               pr_warn_ratelimited("NFS: %s: Lock reclaim failed!\n",
+>>> __func__);
+>>> +               return -EIO;
+>>> +       }
+>>>         err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
+>>
+>> Note that there is a potential race here if the server is playing with
+>> NFS4ERR_DELEG_REVOKED or NFS4ERR_ADMIN_REVOKED. Since we do not
+>> present the delegation as part of the LOCK request, we have no way of
+>> knowing if the delegation is still in effect. I guess we can check the
+>> return value of DELEGRETURN, but if it returns NFS4ERR_DELEG_REVOKED
+>> or NFS4ERR_ADMIN_REVOKED, then we still do not know whether or not the
+>> LOCK is safe.
+>
+> I'm not following you. We send LOCK before we send DELEGRETURN? Also,
+> we normally send in LOCK the open_stateid returned by the open with
+> cur so do we know that delegation is still in effect.
 
-On Thu, Aug 14, 2014 at 11:02:26AM +0530, Srikrishan Malik wrote:
-> Signed-off-by: Srikrishan Malik <srimalik@in.ibm.com>
-> ---
->  nfs4.0/servertests/st_getattr.py |    4 ++++
->  1 files changed, 4 insertions(+), 0 deletions(-)
-> 
-> diff --git a/nfs4.0/servertests/st_getattr.py b/nfs4.0/servertests/st_getattr.py
-> index a55b923..6a4acdd 100644
-> --- a/nfs4.0/servertests/st_getattr.py
-> +++ b/nfs4.0/servertests/st_getattr.py
-> @@ -43,10 +43,14 @@ def _try_empty(t, c, path):
->  def _try_supported(t, env, path):
->      c = env.c1
->      mandatory = sum([attr.mask for attr in env.attr_info if attr.mandatory])
-> +    all = sum([attr.mask for attr in env.attr_info])
->      supported = c.supportedAttrs(path)
->      if mandatory & supported != mandatory:
->          t.fail("GETATTR(FATTR4_SUPPORTED_ATTRS) did not return "
->                 "all mandatory attributes")
-> +    if supported > all:
-> +        t.fail("GETATTR(FATTR4_SUPPORTED_ATTRS) returned more than expected "
-> +               "supported attributes for the protocol")
->  
->  def _try_long(env, path):
->      c = env.c1
-> -- 
-> 1.7.1
-> 
+How so? The open stateid doesn't tell you that the delegation is still
+in effect. If the DELEGRETURN returns NFS4ERR_DELEG_REVOKED, how can
+you tell if the delegation was revoked before or after the LOCK
+request was handled?
+
+>
+>>
+>>>         return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>>>  }
+>>> --
+>>> 1.7.1
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>>
+>>
+>> --
+>> Trond Myklebust
+>>
+>> Linux NFS client maintainer, PrimaryData
+>>
+>> trond.myklebust@primarydata.com
+
+
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
