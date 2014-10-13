@@ -1,39 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:49066 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751479AbaJWVYz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Oct 2014 17:24:55 -0400
-Message-ID: <544971CE.9090808@Netapp.com>
-Date: Thu, 23 Oct 2014 17:23:26 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@lst.de>
-CC: <viro@zeniv.linux.org.uk>, <linux-fsdevel@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>, <bfields@fieldses.org>,
-        <Trond.Myklebust@primarydata.com>
-Subject: Re: [PATCH] VFS: Rename do_fallocate() to vfs_fallocate()
-References: <1412190907-30307-1-git-send-email-Anna.Schumaker@Netapp.com> <20141001210451.GB6680@lst.de>
-In-Reply-To: <20141001210451.GB6680@lst.de>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:58223 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752931AbaJMOxc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 10:53:32 -0400
+Received: by mail-ig0-f177.google.com with SMTP id a13so10691334igq.16
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 07:53:31 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH 1/1] NFSv4: open context can be NULL in nfs_put_open_context
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <1413209295-13509-1-git-send-email-andros@netapp.com>
+Date: Mon, 13 Oct 2014 10:53:31 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <72CB6478-87D9-48B6-9C38-86BB5D3F4CDF@primarydata.com>
+References: <1413209295-13509-1-git-send-email-andros@netapp.com>
+To: William Andros Adamson <andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm curious what the status of this patch is?
+On Oct 13, 2014, at 10:08 AM, andros@netapp.com wrote:
 
-Thanks,
-Anna
+> From: Andy Adamson <andros@netapp.com>
+> 
+> If a pgio error is caught before the nfs_pgio_header args->context is set
+> with get_nfs_open_context, the context can be NULL.
 
-On 10/01/2014 05:04 PM, Christoph Hellwig wrote:
-> On Wed, Oct 01, 2014 at 03:15:07PM -0400, Anna Schumaker wrote:
->> From: Anna Schumaker <Anna.Schumaker@netapp.com>
->>
->> This function needs to be exported so it can be used by the NFSD module
->> when responding to the new ALLOCATE and DEALLOCATE operations in NFS
->> v4.2.  Christoph Hellwig suggested renaming the function to stay
->> consistent with how other vfs functions are named.
->>
->> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+It looks like all three calls to nfs_pgio_error would hit this!
+
+The fix looks good to me.
+
+-dros
+
 > 
-> Acked-by: Christoph Hellwig <hch@lst.de>
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+> fs/nfs/inode.c | 3 +++
+> 1 file changed, 3 insertions(+)
 > 
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 141c9f4..a2b148e 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -798,6 +798,9 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
+> 	struct inode *inode = ctx->dentry->d_inode;
+> 	struct super_block *sb = ctx->dentry->d_sb;
+> 
+> +	if (ctx == NULL)
+> +		return;
+> +
+> 	if (!list_empty(&ctx->list)) {
+> 		if (!atomic_dec_and_lock(&ctx->lock_context.count, &inode->i_lock))
+> 			return;
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
