@@ -1,51 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:39076 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756211AbaJXOmi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Oct 2014 10:42:38 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 0/2] NFS: Add ALLOCATE and DEALLOCATE support
-Date: Fri, 24 Oct 2014 10:42:11 -0400
-Message-ID: <1414161733-26726-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:33069 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752509AbaJMPH0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 11:07:26 -0400
+Received: by mail-ig0-f170.google.com with SMTP id hn15so14050344igb.1
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 08:07:25 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 1/2] NFS: Fix an uninitialised pointer Oops in the writeback error path
+Date: Mon, 13 Oct 2014 11:07:18 -0400
+Message-Id: <1413212839-6665-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These patches add client support for the ALLOCATE and DEALLOCATE operations
-part of NFS v4.2, which are triggered by a vfs_fallocate() call.
+SteveD reports the following Oops:
+ RIP: 0010:[<ffffffffa053461d>]  [<ffffffffa053461d>] __put_nfs_open_context+0x1d/0x100 [nfs]
+ RSP: 0018:ffff880fed687b90  EFLAGS: 00010286
+ RAX: 0000000000000024 RBX: 0000000000000000 RCX: 0000000000000006
+ RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
+ RBP: ffff880fed687bc0 R08: 0000000000000092 R09: 000000000000047a
+ R10: 0000000000000000 R11: ffff880fed6878d6 R12: ffff880fed687d20
+ R13: ffff880fed687d20 R14: 0000000000000070 R15: ffffea000aa33ec0
+ FS:  00007fce290f0740(0000) GS:ffff8807ffc60000(0000) knlGS:0000000000000000
+ CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+ CR2: 0000000000000070 CR3: 00000007f2e79000 CR4: 00000000000007e0
+ DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+ DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+ Stack:
+  0000000000000000 ffff880036c5e510 ffff880fed687d20 ffff880fed687d20
+  ffff880036c5e200 ffffea000aa33ec0 ffff880fed687bd0 ffffffffa0534710
+  ffff880fed687be8 ffffffffa053d5f0 ffff880036c5e200 ffff880fed687c08
+ Call Trace:
+  [<ffffffffa0534710>] put_nfs_open_context+0x10/0x20 [nfs]
+  [<ffffffffa053d5f0>] nfs_pgio_data_destroy+0x20/0x40 [nfs]
+  [<ffffffffa053d672>] nfs_pgio_error+0x22/0x40 [nfs]
+  [<ffffffffa053d8f4>] nfs_generic_pgio+0x74/0x2e0 [nfs]
+  [<ffffffffa06b18c3>] pnfs_generic_pg_writepages+0x63/0x210 [nfsv4]
+  [<ffffffffa053d579>] nfs_pageio_doio+0x19/0x50 [nfs]
+  [<ffffffffa053eb84>] nfs_pageio_complete+0x24/0x30 [nfs]
+  [<ffffffffa053cb25>] nfs_direct_write_schedule_iovec+0x115/0x1f0 [nfs]
+  [<ffffffffa053675f>] ? nfs_get_lock_context+0x4f/0x120 [nfs]
+  [<ffffffffa053d252>] nfs_file_direct_write+0x262/0x420 [nfs]
+  [<ffffffffa0532d91>] nfs_file_write+0x131/0x1d0 [nfs]
+  [<ffffffffa0532c60>] ? nfs_need_sync_write.isra.17+0x40/0x40 [nfs]
+  [<ffffffff812127b8>] do_io_submit+0x3b8/0x840
+  [<ffffffff81212c50>] SyS_io_submit+0x10/0x20
+  [<ffffffff81610f29>] system_call_fastpath+0x16/0x1b
 
-Changes in v2:
-- Use nfs_server_capable() for checking server capabilities.
-- Set the only valid fallocate() modes to either 0 or PUNCH_HOLE | KEEP_SIZE.
+This is due to the calls to nfs_pgio_error() in nfs_generic_pgio(), which
+happen before the nfs_pgio_header's open context is referenced in
+nfs_pgio_rpcsetup().
 
-These patches and the corresponding server changes are available in the
-[fallocate] branch of
+Reported-by: Steve Dickson <SteveD@redhat.com>
+Cc: stable@vger.kernel.org # 3.16.x
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/pagelist.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-	git://git.linux-nfs.org/projects/anna/linux-nfs.git
-
-Questions?  Comments?  Thougts?
-
-Anna
-
-
-Anna Schumaker (2):
-  nfs: Add ALLOCATE support
-  nfs: Add DEALLOCATE support
-
- fs/nfs/nfs42.h            |   2 +
- fs/nfs/nfs42proc.c        |  92 +++++++++++++++++++++++++++++++
- fs/nfs/nfs42xdr.c         | 136 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4_fs.h          |   1 +
- fs/nfs/nfs4file.c         |  22 ++++++++
- fs/nfs/nfs4proc.c         |   4 +-
- fs/nfs/nfs4xdr.c          |   2 +
- include/linux/nfs4.h      |   2 +
- include/linux/nfs_fs_sb.h |   2 +
- include/linux/nfs_xdr.h   |  28 ++++++++++
- 10 files changed, 290 insertions(+), 1 deletion(-)
-
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 94e16ec88312..08085de879ed 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -526,7 +526,8 @@ EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
+  */
+ void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
+ {
+-	put_nfs_open_context(hdr->args.context);
++	if (hdr->args.context)
++		put_nfs_open_context(hdr->args.context);
+ 	if (hdr->page_array.pagevec != hdr->page_array.page_array)
+ 		kfree(hdr->page_array.pagevec);
+ }
 -- 
-2.1.2
+1.9.3
 
