@@ -1,85 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:35784 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751592AbaJKNcb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 11 Oct 2014 09:32:31 -0400
-Received: by mail-ig0-f177.google.com with SMTP id a13so5869107igq.10
-        for <linux-nfs@vger.kernel.org>; Sat, 11 Oct 2014 06:32:31 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: WARNING at fs/nfs/write.c:743 nfs_inode_remove_request with -rc6
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <78B8153D-59B7-4DBE-8472-D83338F04338@primarydata.com>
-Date: Sat, 11 Oct 2014 09:32:29 -0400
-Cc: Peng Tao <tao.peng@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Message-Id: <6111EECC-C8C1-4605-98AD-0AF0E1B6DA59@primarydata.com>
-References: <20140923130352.GK26472@arm.com> <2A327753-3E60-46AC-8220-3FF0FF61F08F@primarydata.com> <20140923135938.GB28608@arm.com> <20140923145356.GD28608@arm.com> <5294BEB2-F20F-4E3E-BFB2-E41806A4F85A@primarydata.com> <FA11FBE3-42E7-46B9-B9DA-FAE368DCE96B@primarydata.com> <F632C770-3E3D-4FC5-BBF3-69BB1CCA8F0D@primarydata.com> <20140923152558.GG28608@arm.com> <20140925171545.GR20043@arm.com> <78B8153D-59B7-4DBE-8472-D83338F04338@primarydata.com>
-To: Will Deacon <will.deacon@arm.com>
+Received: from mail-vc0-f171.google.com ([209.85.220.171]:60600 "EHLO
+	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751188AbaJMV3J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 17:29:09 -0400
+Received: by mail-vc0-f171.google.com with SMTP id hy10so6460388vcb.2
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 14:29:09 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
+References: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
+	<CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
+	<CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
+	<CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
+Date: Mon, 13 Oct 2014 17:29:08 -0400
+Message-ID: <CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
+Subject: Re: how to properly handle failures during delegation recall process
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Will,
+On Mon, Oct 13, 2014 at 5:12 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> On Mon, Oct 13, 2014 at 4:23 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> On Mon, Oct 13, 2014 at 3:53 PM, Trond Myklebust
+>> <trond.myklebust@primarydata.com> wrote:
+>>> On Mon, Oct 13, 2014 at 2:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>> +               }
+>>>> +       }
+>>>>         return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>>>>  }
+>>>>
+>>>> @@ -5957,6 +5973,10 @@ int nfs4_lock_delegation_recall(struct
+>>>> file_lock *fl, struct nfs4_state *state,
+>>>>         err = nfs4_set_lock_state(state, fl);
+>>>>         if (err != 0)
+>>>>                 return err;
+>>>> +       if (test_bit(NFS_LOCK_LOST, &fl->fl_u.nfs4_fl.owner->ls_flags)) {
+>>>> +               pr_warn_ratelimited("NFS: %s: Lock reclaim failed!\n",
+>>>> __func__);
+>>>> +               return -EIO;
+>>>> +       }
+>>>>         err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
+>>>
+>>> Note that there is a potential race here if the server is playing with
+>>> NFS4ERR_DELEG_REVOKED or NFS4ERR_ADMIN_REVOKED. Since we do not
+>>> present the delegation as part of the LOCK request, we have no way of
+>>> knowing if the delegation is still in effect. I guess we can check the
+>>> return value of DELEGRETURN, but if it returns NFS4ERR_DELEG_REVOKED
+>>> or NFS4ERR_ADMIN_REVOKED, then we still do not know whether or not the
+>>> LOCK is safe.
+>>
+>> I'm not following you. We send LOCK before we send DELEGRETURN? Also,
+>> we normally send in LOCK the open_stateid returned by the open with
+>> cur so do we know that delegation is still in effect.
+>
+> How so? The open stateid doesn't tell you that the delegation is still
+> in effect. If the DELEGRETURN returns NFS4ERR_DELEG_REVOKED, how can
+> you tell if the delegation was revoked before or after the LOCK
+> request was handled?
 
-I’ve been very busy, but I haven’t forgotten about your bug report!
+Actually, let me answer that myself. You can sort of figure things out
+in NFSv4.1 if you look at the SEQ4_STATUS_RECALLABLE_STATE_REVOKED
+flag. If it is set, you should probably distrust the lock stateid that
+you just attempted to recover, since you now know that at least one
+delegation was just revoked.
 
-I think the WARN_ON_ONCE is just wrong, there are cases where the PG_INODE_REF
-flag is legitimately not set. The flag is set so that sub requests can mimmic the parent
-request’s reference count.
+In that case, we probably also have to do a TEST_STATEID+FREE_STATEID
+on the delegation stateid.
 
-Could you please run the reproducer again, unmount, then check the contents of
-/proc/fs/nfsfs/servers?
+-- 
+Trond Myklebust
 
-If it’s empty like example output below, then we know that requests are being properly
-dereferenced.
+Linux NFS client maintainer, PrimaryData
 
-# cat /proc/fs/nfsfs/servers 
-NV SERVER   PORT USE HOSTNAME  
-#
-
-If there are any servers still listed (I’m assuming this is the only mount on your client for
-the test), then we have a problem.
-
--dros
-
-
-
-On Sep 25, 2014, at 1:27 PM, Weston Andros Adamson <dros@primarydata.com> wrote:
-
-> On Sep 25, 2014, at 1:15 PM, Will Deacon <will.deacon@arm.com> wrote:
-> 
->> Hi Andros,
->> 
->> On Tue, Sep 23, 2014 at 04:25:58PM +0100, Will Deacon wrote:
->>> On Tue, Sep 23, 2014 at 04:08:36PM +0100, Weston Andros Adamson wrote:
->>>> On Sep 23, 2014, at 11:02 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
->>>>> Wait a second - the whole point of this extra reference (that the
->>>>> WARN_ON_ONCE is related to) is to handle the pass off to commit lists.
->>>>> 
->>>>> Maybe I’m just doing the wrong thing here with NFSv2!
->>>>> 
->>>>> More soon.
->>>> 
->>>> Actually, can you see if this is reproducible with NFSv3?
->>> 
->>> Just tried that, and I'm unable to trigger the problem with NFSv3.
->> 
->> Any more ideas? I can run with NFSv3 instead, but it's a shame to leave
->> v2 broken.
-> 
-> Hi Will,
-> 
-> I do plan on looking at this more very soon, but since it’s v2 only and just warning
-> (and not crashing anything) it didn’t jump to the top of my list. It is only printing the
-> warnings, right? That’s no reason to switch things up ;)
-> 
-> It might be interesting to get some rpcdebug output around the time of the warning,
-> but I’m not sure it will be useful.
-> 
-> Since I cannot reproduce this, my next step is to inspect the code with an NFSv2
-> with 64k pages setup in mind.
-> 
-> -dros
-
+trond.myklebust@primarydata.com
