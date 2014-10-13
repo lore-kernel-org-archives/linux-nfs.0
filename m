@@ -1,77 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:60283 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755894AbaJXRIb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 13:08:31 -0400
-Received: by mail-qa0-f51.google.com with SMTP id k15so1226816qaq.24
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 10:08:30 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 24 Oct 2014 13:08:28 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Bruce Fields <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection
- when dropping a request
-Message-ID: <20141024130828.1304aa8f@tlielax.poochiereds.net>
-In-Reply-To: <CAHQdGtTt23DBM3YH295T_eUvq6ymNere7OfDR9VNFyB3Xsfcsw@mail.gmail.com>
-References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
-	<1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
-	<20141024072644.6643f9ed@tlielax.poochiereds.net>
-	<20141024093459.70a29d80@tlielax.poochiereds.net>
-	<1414161055.21776.2.camel@leira.trondhjem.org>
-	<20141024105758.064f2e14@tlielax.poochiereds.net>
-	<CAHQdGtTt23DBM3YH295T_eUvq6ymNere7OfDR9VNFyB3Xsfcsw@mail.gmail.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:37752 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753797AbaJMSv5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 14:51:57 -0400
+Received: by mail-ig0-f175.google.com with SMTP id uq10so11604883igb.8
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 11:51:56 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Date: Mon, 13 Oct 2014 14:51:56 -0400
+Message-ID: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
+Subject: how to properly handle failures during delegation recall process
+From: Olga Kornievskaia <aglo@umich.edu>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 24 Oct 2014 18:59:47 +0300
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+I'd like to hear community's thought about how to properly handle
+failures during delegation recall process and/or thoughts about a
+proposed fixed listed at the end.
 
-> On Fri, Oct 24, 2014 at 5:57 PM, Jeff Layton
-> <jeff.layton@primarydata.com> wrote:
-> >> @@ -1228,6 +1231,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
-> >>   dropit:
-> >>       svc_authorise(rqstp);   /* doesn't hurt to call this twice */
-> >>       dprintk("svc: svc_process dropit\n");
-> >
-> > I don't think this will fix it either. I turned the above dprintk into
-> > a normal printk and it never fired during the test. As best I can tell,
-> > svc_process_common is not returning 0 when this occurs.
-> 
-> OK. Is perhaps the "revisit canceled" triggering in svc_revisit()? I'm
-> having trouble understanding the call chain for that stuff, but it too
-> looks as if it can trigger some strange behaviour.
-> 
+There are two problems seen during the following situation:
+A client get a cb_call for a delegation it currently holds. Consider
+the case where the client has a delegated lock for this open. Callback
+thread will send an open with delegation_cur, followed by a lock
+operation, and finally delegreturn.
 
-I don't think that's it either. I turned the dprintks in svc_revisit
-into a printks just to be sure, and they didn't fire either.
+Problem#1: the client will send a lock operation regardless of whether
+or not the open succeeded. This is a new_owner lock and in nfs4xdr.c,
+the lock operation will choose to use the open_stateid. However, when
+the open failed, the stateid is 0. Thus, we send an erroneous stateid
+of 0.
 
-Basically, I don't think we ever do anything in svc_defer for v4.1
-requests, due to this at the top of it:
+Problem#2: if the open fails with admin_revoked, bad_stateid errors,
+it leads to an infinite loop of sending an open with deleg_cur and
+getting a bad_stateid error back.
 
-        if (rqstp->rq_arg.page_len || !rqstp->rq_usedeferral)
-                return NULL; /* if more than a page, give up FIXME */
+It seems to me that we shouldn't even be trying to recover if we get a
+bad_stateid-type of errors on open with deleg_cur because they are
+unrecoverable.
 
-...basically rq_usedeferral should be set in most cases for v4.1
-requests. It gets set when processing the compound and then unset
-afterward.
+Furthermore, I propose that if we get an error in
+nfs4_open_delegation_recall() then we mark any delegation locks as
+lost and in nfs4_lock_delegation_recall() don't attempt to recover
+lost lock.
 
-That said, I suppose you could end up deferring the request if it
-occurs before the pc_func gets called, but I haven't seen any evidence
-of that happening so far with this test.
+I have tested to following code as a fix:
 
-I do concur with Christoph that I've only been able to reproduce this
-while running on the loopback interface. If I have server and client in
-different VMs, then this test runs just fine. Could this be related to
-the changes that Neil sent in recently to make loopback mounts work
-better?
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5aa55c1..523fae0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1682,6 +1682,22 @@ int nfs4_open_delegation_recall(struct
+nfs_open_context *ctx, struct nfs4_state
+        nfs4_stateid_copy(&opendata->o_arg.u.delegation, stateid);
+        err = nfs4_open_recover(opendata, state);
+        nfs4_opendata_put(opendata);
++       switch(err) {
++               case -NFS4ERR_DELEG_REVOKED:
++               case -NFS4ERR_ADMIN_REVOKED:
++               case -NFS4ERR_BAD_STATEID:
++               case -NFS4ERR_OPENMODE: {
++                       struct nfs4_lock_state *lock;
++                       /* go through open locks and mark them lost */
++                       spin_lock(&state->state_lock);
++                       list_for_each_entry(lock, &state->lock_states,
+ls_locks) {
++                               if (!test_bit(NFS_LOCK_INITIALIZED,
+&lock->ls_flags))
++                                       set_bit(NFS_LOCK_LOST, &lock->ls_flags);
++                       }
++                       spin_unlock(&state->state_lock);
++                       return 0;
++               }
++       }
+        return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+ }
 
-One idea might be reasonable to backport 2aca5b869ace67 to something
-v3.17-ish and see whether it's still reproducible?
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+@@ -5957,6 +5973,10 @@ int nfs4_lock_delegation_recall(struct
+file_lock *fl, struct nfs4_state *state,
+        err = nfs4_set_lock_state(state, fl);
+        if (err != 0)
+                return err;
++       if (test_bit(NFS_LOCK_LOST, &fl->fl_u.nfs4_fl.owner->ls_flags)) {
++               pr_warn_ratelimited("NFS: %s: Lock reclaim failed!\n",
+__func__);
++               return -EIO;
++       }
+        err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
+        return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+ }
+--
+1.7.1
