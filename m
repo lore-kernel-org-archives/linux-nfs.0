@@ -1,164 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:49267 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753663AbaJQTez (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Oct 2014 15:34:55 -0400
-Received: by mail-ig0-f171.google.com with SMTP id h15so2187207igd.16
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2014 12:34:54 -0700 (PDT)
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:35812 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750877AbaJMWNH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 18:13:07 -0400
+Received: by mail-ig0-f178.google.com with SMTP id h3so12254514igd.11
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 15:13:05 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyH6ihiQFX=JiDpqidZ928GtdrA35Y-oMkGHaWBCr90WiQ@mail.gmail.com>
-References: <CAN-5tyF4oCkmHskT02GceF=CR1mYZc3uwm0tLf2fd39-XeyjRg@mail.gmail.com>
-	<CAHQdGtT39EBPx1SQTn3hFHBNuLsSoBdkSOYWHYRQ=j8vpVjB_A@mail.gmail.com>
-	<CAN-5tyGVfAQ+ZBp0hSMyRMHHWL3iP=h5XzaFrsLRf02rSH1ZHQ@mail.gmail.com>
-	<CAABAsM5MZxgpSd2c8rc4BxVVCjxwBgT2n8+uUONNrTX6AvJudQ@mail.gmail.com>
-	<CAN-5tyGy63qnfqD6XY9h9Rh9nsOTXgeHFeP4t_vO_obNXGpNYg@mail.gmail.com>
-	<CAHQdGtRTrvAbEyT5xSmgemp9KkCrER9x9eVamEfKNxM-4U1jcQ@mail.gmail.com>
-	<CAN-5tyH6ihiQFX=JiDpqidZ928GtdrA35Y-oMkGHaWBCr90WiQ@mail.gmail.com>
-Date: Fri, 17 Oct 2014 15:34:54 -0400
-Message-ID: <CAN-5tyF7zL+MKCuf2zdjsLyP-e7ZX-RcH-1Vat8SywvUaRDdCA@mail.gmail.com>
-Subject: Re: [bug] open owner value is always the same
-From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
+In-Reply-To: <CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
+References: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
+	<CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
+	<CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
+	<CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
+	<CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
+Date: Mon, 13 Oct 2014 18:13:05 -0400
+Message-ID: <CAN-5tyGsopFNFjo=LBwYE9n6b7Emv73Rkw0H2wyq2vCjMUOftA@mail.gmail.com>
+Subject: Re: how to properly handle failures during delegation recall process
+From: Olga Kornievskaia <aglo@umich.edu>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 6, 2014 at 11:54 AM, Olga Kornievskaia
-<olga.kornievskaia@gmail.com> wrote:
-> On Mon, Oct 6, 2014 at 11:17 AM, Trond Myklebust
+On Mon, Oct 13, 2014 at 5:29 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> On Mon, Oct 13, 2014 at 5:12 PM, Trond Myklebust
 > <trond.myklebust@primarydata.com> wrote:
->> On Mon, Oct 6, 2014 at 11:07 AM, Olga Kornievskaia
->> <olga.kornievskaia@gmail.com> wrote:
->>> On Mon, Oct 6, 2014 at 10:49 AM, Trond Myklebust
+>> On Mon, Oct 13, 2014 at 4:23 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>> On Mon, Oct 13, 2014 at 3:53 PM, Trond Myklebust
 >>> <trond.myklebust@primarydata.com> wrote:
->>>> On Mon, Oct 6, 2014 at 10:12 AM, Olga Kornievskaia
->>>> <olga.kornievskaia@gmail.com> wrote:
->>>>> Aren't sequence slots shared by the same open owners?
+>>>> On Mon, Oct 13, 2014 at 2:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>> +               }
+>>>>> +       }
+>>>>>         return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>>>>>  }
 >>>>>
->>>>> The problem I'm seeing is that a client with an outstanding open can't
->>>>> respond to a delegation return because sequenced hasn't been
->>>>> confirmed. I think it's problematic when there are two clients each
->>>>> holding delegations and each sending an open. The server tries to
->>>>> recall the delegations but neither clients will reply until the server
->>>>> returns an open to the outstanding open. The server will try and not
->>>>> reply to the outstanding opens until the delegations are returned.
+>>>>> @@ -5957,6 +5973,10 @@ int nfs4_lock_delegation_recall(struct
+>>>>> file_lock *fl, struct nfs4_state *state,
+>>>>>         err = nfs4_set_lock_state(state, fl);
+>>>>>         if (err != 0)
+>>>>>                 return err;
+>>>>> +       if (test_bit(NFS_LOCK_LOST, &fl->fl_u.nfs4_fl.owner->ls_flags)) {
+>>>>> +               pr_warn_ratelimited("NFS: %s: Lock reclaim failed!\n",
+>>>>> __func__);
+>>>>> +               return -EIO;
+>>>>> +       }
+>>>>>         err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
 >>>>
->>>> I'm not sure that I understand.
->>>>
->>>> Why should the server refuse to respond to OPEN calls just because a
->>>> delegation recall is outstanding? That sounds like a catastrophic
->>>> design for a server. How is the client going to convert its cached
->>>> open/lock state into open stateids and lock stateids if the server
->>>> won't respond to OPEN calls for that file?
->>>>
->>>> If the server cannot respond to the OPEN because it conflicts with a
->>>> delegation being recalled, then the right thing to do is to return
->>>> NFS4ERR_DELAY. That allows the client to make progress on other OPEN
->>>> requests that may be required in order to return the conflicting
->>>> delegation, and that may be serialised behind that blocked OPEN.
->>>> I can imagine this might be the case if the client holds a delegation
->>>> for a file, and then is asked to OPEN a hard link to the same file.
->>>> The client has no way to know a priori that it is opening the same
->>>> file through the hard link, so it doesn't know that it conflicts with
->>>> the delegation.
->>>>
+>>>> Note that there is a potential race here if the server is playing with
+>>>> NFS4ERR_DELEG_REVOKED or NFS4ERR_ADMIN_REVOKED. Since we do not
+>>>> present the delegation as part of the LOCK request, we have no way of
+>>>> knowing if the delegation is still in effect. I guess we can check the
+>>>> return value of DELEGRETURN, but if it returns NFS4ERR_DELEG_REVOKED
+>>>> or NFS4ERR_ADMIN_REVOKED, then we still do not know whether or not the
+>>>> LOCK is safe.
 >>>
->>> Sorry I should have provided a clear example. But you are right, the
->>> server is not replying to the open because of the conflicting
->>> opens/delegations.
->>>
->>> ClientA opens file A gets a write delegation.
->>> ClientB open files B gets a write delegation.
->>> ClientA sends an open for file B
->>> ClientB sends an open for file A
->>>
->>> Thank you for pointing out that a server should/can return
->>> NFS4ERR_DELAY to the open.
->>>
->>> I'm still new to this, so I apologize. But to me it seems like at
->>> should be totally reasonable from the server-side to expect for the
->>> delegation to file A to the returned independent of the opening of
->>> file B.
+>>> I'm not following you. We send LOCK before we send DELEGRETURN? Also,
+>>> we normally send in LOCK the open_stateid returned by the open with
+>>> cur so do we know that delegation is still in effect.
 >>
->> No. The problem with that assumption are the serialisation issues:
->>
->> a) There is no serialisation between OPEN and the recall callback from
->> the server. The server cannot rely on the client having received the
->> callback when it decides how to handle the OPEN.
->> b) There is _mandatory_ serialisation between OPEN requests on the
->> client. Unless the server replies to the OPEN, then all other OPEN
->> requests that are serialised behind that OPEN are required by RFC3530
->> to wait.
+>> How so? The open stateid doesn't tell you that the delegation is still
+>> in effect. If the DELEGRETURN returns NFS4ERR_DELEG_REVOKED, how can
+>> you tell if the delegation was revoked before or after the LOCK
+>> request was handled?
 >
-> Yes, for the same open owner, the requests must be serialized. Given
-> the choice to use the same open owner for all the files for a given
-> credential/principal, it imposes strict requirements on the server
-> implementation.
+> Actually, let me answer that myself. You can sort of figure things out
+> in NFSv4.1 if you look at the SEQ4_STATUS_RECALLABLE_STATE_REVOKED
+> flag. If it is set, you should probably distrust the lock stateid that
+> you just attempted to recover, since you now know that at least one
+> delegation was just revoked.
 >
-> Thanks for the explanation.
+> In that case, we probably also have to do a TEST_STATEID+FREE_STATEID
+> on the delegation stateid.
 
-Would it be acceptable to somehow have an option that would allow for
-faster-than-a-normal-RPC-timeout as an alternative to expecting to get
-an ERR_DELAY from the server?
+I think we are mis-communicating here by talking about different
+nuances. I agree with you that when an operation is sent there is no
+way of knowing if in the mean while the server has decided to revoke
+the delegation. However, this is not what I'm confused about regarding
+your comment. I'm noticing that in the flow of operations, we send (1)
+open with cur, then (2) lock, then (3) delegreturn. So I was confused
+about how can we check return of delegreturn, step 3, if we are in
+step 2.
+
+I think the LOCK is safe if the reply to the LOCK is successful.
+
+Let me just step back from this to note that your solution to "lost
+locks during delegation" is to recognize the open with cure failure
+and skip locking and delegreturn. I can work on a patch for that.
+
+Do you agree that the state recovery should not be initiated in case
+we get those errors?
 
 >
+> --
+> Trond Myklebust
 >
+> Linux NFS client maintainer, PrimaryData
 >
->> Cheers
->>  Trond
->>
->>>
->>>> Cheers
->>>>   Trond
->>>>
->>>>>
->>>>> On Mon, Oct 6, 2014 at 9:57 AM, Trond Myklebust
->>>>> <trond.myklebust@primarydata.com> wrote:
->>>>>> Hi Olga,
->>>>>>
->>>>>> On Mon, Oct 6, 2014 at 9:48 AM, Olga Kornievskaia
->>>>>> <olga.kornievskaia@gmail.com> wrote:
->>>>>>> The spec says that open owner needs to be different for different
->>>>>>> files yet the code returns the same value.
->>>>>>>
->>>>>>> It is not clear to me what's broken about ida_get_new() that's used
->>>>>>> for generation of the owner ids.
->>>>>>>
->>>>>>> Can somebody comment on this?
->>>>>>>
->>>>>>
->>>>>> As far as I know, there is no requirement in either NFSv4 or NFSv4.1
->>>>>> that open owners be different for each file. In NFSv4.1 there is a
->>>>>> requirement that they be unique to each credential/principal, but only
->>>>>> if you negotiate EXCHGID4_FLAG_BIND_PRINC_STATEID.
->>>>>>
->>>>>> The current choice of scheme where we share open_owners between files
->>>>>> was largely motivated by a desire not to overload the NFSv4.0 servers
->>>>>> with lots of open_owner structures. In NFSv4.0, those structures are
->>>>>> required to be cached by the server for a while after the file has
->>>>>> been closed.
->>>>>>
->>>>>> Cheers
->>>>>>   Trond
->>>>>>
->>>>>>
->>>>>> --
->>>>>> Trond Myklebust
->>>>>>
->>>>>> Linux NFS client maintainer, PrimaryData
->>>>>>
->>>>>> trond.myklebust@primarydata.com
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>
->>
->> --
->> Trond Myklebust
->>
->> Linux NFS client maintainer, PrimaryData
->>
->> trond.myklebust@primarydata.com
+> trond.myklebust@primarydata.com
