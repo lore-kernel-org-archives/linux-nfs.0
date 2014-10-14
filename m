@@ -1,165 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f49.google.com ([74.125.82.49]:38136 "EHLO
-	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753499AbaJXObA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 10:31:00 -0400
-Received: by mail-wg0-f49.google.com with SMTP id x12so1228935wgg.8
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 07:30:59 -0700 (PDT)
-Message-ID: <1414161055.21776.2.camel@leira.trondhjem.org>
-Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection
- when dropping a request
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        bfields@fieldses.org
-Date: Fri, 24 Oct 2014 17:30:55 +0300
-In-Reply-To: <20141024093459.70a29d80@tlielax.poochiereds.net>
-References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
-	 <1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
-	 <20141024072644.6643f9ed@tlielax.poochiereds.net>
-	 <20141024093459.70a29d80@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:21236 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752936AbaJNVWm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 14 Oct 2014 17:22:42 -0400
+Message-ID: <543D941D.4010908@RedHat.com>
+Date: Tue, 14 Oct 2014 17:22:37 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: Re: [PATCH 1/2] NFS: Fix an uninitialised pointer Oops in the writeback
+ error path
+References: <1413212839-6665-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1413212839-6665-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2014-10-24 at 09:34 -0400, Jeff Layton wrote:
-> On Fri, 24 Oct 2014 07:26:44 -0400
-> Jeff Layton <jlayton@primarydata.com> wrote:
->  
-> > I guess the theory here is that the client sent the request, and got a
-> > TCP ACK and then the server never responded because it dropped the
-> > request? That sounds plausible and we almost certainly want something
-> > like the above for v4.0.
-> > 
-> > If the above patch fixes Christoph's problem with v4.1 though, then I
-> > think we'll need more investigation into why. I don't see a way to get
-> > a dropped request with v4.1. Those mainly occur due to interaction with
-> > the DRC (disabled for v4.1) or with svc_defer (disabled for all v4
-> > requests).
-> > 
-> > Is it possible that one of the nfsd threads is just hung while
-> > processing an RPC and that's why you're not getting a response?
-> > 
+
+
+On 10/13/2014 11:07 AM, Trond Myklebust wrote:
+> SteveD reports the following Oops:
+>  RIP: 0010:[<ffffffffa053461d>]  [<ffffffffa053461d>] __put_nfs_open_context+0x1d/0x100 [nfs]
+>  RSP: 0018:ffff880fed687b90  EFLAGS: 00010286
+>  RAX: 0000000000000024 RBX: 0000000000000000 RCX: 0000000000000006
+>  RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
+>  RBP: ffff880fed687bc0 R08: 0000000000000092 R09: 000000000000047a
+>  R10: 0000000000000000 R11: ffff880fed6878d6 R12: ffff880fed687d20
+>  R13: ffff880fed687d20 R14: 0000000000000070 R15: ffffea000aa33ec0
+>  FS:  00007fce290f0740(0000) GS:ffff8807ffc60000(0000) knlGS:0000000000000000
+>  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>  CR2: 0000000000000070 CR3: 00000007f2e79000 CR4: 00000000000007e0
+>  DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+>  DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+>  Stack:
+>   0000000000000000 ffff880036c5e510 ffff880fed687d20 ffff880fed687d20
+>   ffff880036c5e200 ffffea000aa33ec0 ffff880fed687bd0 ffffffffa0534710
+>   ffff880fed687be8 ffffffffa053d5f0 ffff880036c5e200 ffff880fed687c08
+>  Call Trace:
+>   [<ffffffffa0534710>] put_nfs_open_context+0x10/0x20 [nfs]
+>   [<ffffffffa053d5f0>] nfs_pgio_data_destroy+0x20/0x40 [nfs]
+>   [<ffffffffa053d672>] nfs_pgio_error+0x22/0x40 [nfs]
+>   [<ffffffffa053d8f4>] nfs_generic_pgio+0x74/0x2e0 [nfs]
+>   [<ffffffffa06b18c3>] pnfs_generic_pg_writepages+0x63/0x210 [nfsv4]
+>   [<ffffffffa053d579>] nfs_pageio_doio+0x19/0x50 [nfs]
+>   [<ffffffffa053eb84>] nfs_pageio_complete+0x24/0x30 [nfs]
+>   [<ffffffffa053cb25>] nfs_direct_write_schedule_iovec+0x115/0x1f0 [nfs]
+>   [<ffffffffa053675f>] ? nfs_get_lock_context+0x4f/0x120 [nfs]
+>   [<ffffffffa053d252>] nfs_file_direct_write+0x262/0x420 [nfs]
+>   [<ffffffffa0532d91>] nfs_file_write+0x131/0x1d0 [nfs]
+>   [<ffffffffa0532c60>] ? nfs_need_sync_write.isra.17+0x40/0x40 [nfs]
+>   [<ffffffff812127b8>] do_io_submit+0x3b8/0x840
+>   [<ffffffff81212c50>] SyS_io_submit+0x10/0x20
+>   [<ffffffff81610f29>] system_call_fastpath+0x16/0x1b
 > 
-> Ok, I'm able to reproduce this too and got a network trace. I think
-> Trond is correct as to the cause:
+> This is due to the calls to nfs_pgio_error() in nfs_generic_pgio(), which
+> happen before the nfs_pgio_header's open context is referenced in
+> nfs_pgio_rpcsetup().
 > 
-> I see a SETATTR call go out and then see a TCP ACK for it a little
-> later, but didn't see a reply sent for it.
+> Reported-by: Steve Dickson <SteveD@redhat.com>
+> Cc: stable@vger.kernel.org # 3.16.x
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Tested-by: Steve Dickson <steved@redhat.com>
+
+steved.
+> ---
+>  fs/nfs/pagelist.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
 > 
-> I sprinkled in some printks around the "dropit" codepath above and in
-> some other areas however and none of them fired. So while Trond's patch
-> looks like it might be correct, I don't think it'll fix the problem I'm
-> seeing.
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index 94e16ec88312..08085de879ed 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -526,7 +526,8 @@ EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
+>   */
+>  void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
+>  {
+> -	put_nfs_open_context(hdr->args.context);
+> +	if (hdr->args.context)
+> +		put_nfs_open_context(hdr->args.context);
+>  	if (hdr->page_array.pagevec != hdr->page_array.page_array)
+>  		kfree(hdr->page_array.pagevec);
+>  }
 > 
-> Sniffing a little later, it seems like the server replies are being
-> delayed somehow:
-
-You can get deferrals in the authentication code which trigger drops.
-Here is a variant which tries to deal with that:
-
-8<-----------------------------------------------------
->From a9be1292152af2cb651415c44fd3d91b3d017240 Mon Sep 17 00:00:00 2001
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Fri, 24 Oct 2014 12:54:47 +0300
-Subject: [PATCH v2] nfsd: Ensure that NFSv4 always drops the connection when
- dropping a request
-
-Both RFC3530 and RFC5661 impose a requirement on the server that it MUST NOT
-drop a request unless the connection is broken. This is in order to allow
-clients to assume that they can always expect an answer unless the
-connection is broken.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: stable@vger.kernel.org
----
-v2: Also deal with NFSv4 requests dropped due to authentication issues
-
- fs/nfsd/nfs4proc.c         |  6 ++++++
- include/linux/sunrpc/svc.h |  1 +
- net/sunrpc/svc.c           | 13 +++++++++----
- 3 files changed, 16 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index cdeb3cfd6f32..500ac76662a8 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1960,6 +1960,11 @@ static const char *nfsd4_op_name(unsigned opnum)
- 	return "unknown_operation";
- }
- 
-+static void nfsd4_dropme(struct svc_rqst *rqstp)
-+{
-+	svc_close_xprt(rqstp->rq_xprt);
-+}
-+
- #define nfsd4_voidres			nfsd4_voidargs
- struct nfsd4_voidargs { int dummy; };
- 
-@@ -1989,6 +1994,7 @@ struct svc_version	nfsd_version4 = {
- 		.vs_nproc	= 2,
- 		.vs_proc	= nfsd_procedures4,
- 		.vs_dispatch	= nfsd_dispatch,
-+		.vs_dropme	= nfsd4_dropme,
- 		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
- 		.vs_rpcb_optnl	= 1,
- };
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 21678464883a..824656da1f6d 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -400,6 +400,7 @@ struct svc_version {
- 	 * vs_dispatch == NULL means use default dispatcher.
- 	 */
- 	int			(*vs_dispatch)(struct svc_rqst *, __be32 *);
-+	void			(*vs_dropme)(struct svc_rqst *);
- };
- 
- /*
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index ca8a7958f4e6..a178496ce2c1 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1111,9 +1111,13 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 	rqstp->rq_vers = vers = svc_getnl(argv);	/* version number */
- 	rqstp->rq_proc = proc = svc_getnl(argv);	/* procedure number */
- 
--	for (progp = serv->sv_program; progp; progp = progp->pg_next)
--		if (prog == progp->pg_prog)
-+	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
-+		if (prog == progp->pg_prog) {
-+			if (vers < progp->pg_nvers)
-+				versp = progp->pg_vers[vers];
- 			break;
-+		}
-+	}
- 
- 	/*
- 	 * Decode auth data, and add verifier to reply buffer.
-@@ -1148,8 +1152,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 	if (progp == NULL)
- 		goto err_bad_prog;
- 
--	if (vers >= progp->pg_nvers ||
--	  !(versp = progp->pg_vers[vers]))
-+	if (versp == NULL)
- 		goto err_bad_vers;
- 
- 	procp = versp->vs_proc + proc;
-@@ -1228,6 +1231,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
-  dropit:
- 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
- 	dprintk("svc: svc_process dropit\n");
-+	if (versp && versp->vs_dropme)
-+		versp->vs_dropme(rqstp);
- 	return 0;
- 
- err_short_len:
--- 
-1.9.3
-
-
-
-
