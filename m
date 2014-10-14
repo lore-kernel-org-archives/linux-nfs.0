@@ -1,117 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:40504 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752859AbaJ0TAl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2014 15:00:41 -0400
-Received: by mail-qa0-f50.google.com with SMTP id cs9so4219300qab.23
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Oct 2014 12:00:40 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 27 Oct 2014 15:00:37 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Bruce Fields <bfields@fieldses.org>
-Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection
- when dropping a request
-Message-ID: <20141027150037.65bd3080@tlielax.poochiereds.net>
-In-Reply-To: <20141024130828.1304aa8f@tlielax.poochiereds.net>
-References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
-	<1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
-	<20141024072644.6643f9ed@tlielax.poochiereds.net>
-	<20141024093459.70a29d80@tlielax.poochiereds.net>
-	<1414161055.21776.2.camel@leira.trondhjem.org>
-	<20141024105758.064f2e14@tlielax.poochiereds.net>
-	<CAHQdGtTt23DBM3YH295T_eUvq6ymNere7OfDR9VNFyB3Xsfcsw@mail.gmail.com>
-	<20141024130828.1304aa8f@tlielax.poochiereds.net>
+Received: from aserp1040.oracle.com ([141.146.126.69]:30969 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751860AbaJNIqs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Oct 2014 04:46:48 -0400
+Date: Tue, 14 Oct 2014 11:46:29 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: vipul@chelsio.com
+Cc: linux-nfs@vger.kernel.org
+Subject: re: RDMA/cxgb4: Add support for active and passive open connection
+ with IPv6 address
+Message-ID: <20141014084629.GA26952@mwanda>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 24 Oct 2014 13:08:28 -0400
-Jeff Layton <jlayton@primarydata.com> wrote:
+Hello Vipul Pandya,
 
-> On Fri, 24 Oct 2014 18:59:47 +0300
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > On Fri, Oct 24, 2014 at 5:57 PM, Jeff Layton
-> > <jeff.layton@primarydata.com> wrote:
-> > >> @@ -1228,6 +1231,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
-> > >>   dropit:
-> > >>       svc_authorise(rqstp);   /* doesn't hurt to call this twice */
-> > >>       dprintk("svc: svc_process dropit\n");
-> > >
-> > > I don't think this will fix it either. I turned the above dprintk into
-> > > a normal printk and it never fired during the test. As best I can tell,
-> > > svc_process_common is not returning 0 when this occurs.
-> > 
-> > OK. Is perhaps the "revisit canceled" triggering in svc_revisit()? I'm
-> > having trouble understanding the call chain for that stuff, but it too
-> > looks as if it can trigger some strange behaviour.
-> > 
-> 
-> I don't think that's it either. I turned the dprintks in svc_revisit
-> into a printks just to be sure, and they didn't fire either.
-> 
-> Basically, I don't think we ever do anything in svc_defer for v4.1
-> requests, due to this at the top of it:
-> 
->         if (rqstp->rq_arg.page_len || !rqstp->rq_usedeferral)
->                 return NULL; /* if more than a page, give up FIXME */
-> 
-> ...basically rq_usedeferral should be set in most cases for v4.1
-> requests. It gets set when processing the compound and then unset
-> afterward.
-> 
-> That said, I suppose you could end up deferring the request if it
-> occurs before the pc_func gets called, but I haven't seen any evidence
-> of that happening so far with this test.
-> 
-> I do concur with Christoph that I've only been able to reproduce this
-> while running on the loopback interface. If I have server and client in
-> different VMs, then this test runs just fine. Could this be related to
-> the changes that Neil sent in recently to make loopback mounts work
-> better?
-> 
-> One idea might be reasonable to backport 2aca5b869ace67 to something
-> v3.17-ish and see whether it's still reproducible?
-> 
+The patch 830662f6f032: "RDMA/cxgb4: Add support for active and
+passive open connection with IPv6 address" from Jul 4, 2013, leads to
+the following static checker warning:
 
-Ok, I've made a bit more progress on this, mostly by adding a fair
-number of tracepoints into the client and server request dispatching
-code. I'll be posting patches to add those for eventually, but they
-need a little cleanup first.
+	net/sunrpc/xprtrdma/svc_rdma_transport.c:737 svc_rdma_create()
+	error: passing non negative 1 to ERR_PTR
 
-In any case, here's a typical request as it's supposed to work:
+drivers/infiniband/hw/cxgb4/cm.c
+  3128  static int create_server4(struct c4iw_dev *dev, struct c4iw_listen_ep *ep)
+  3129  {
+  3130          int err;
+  3131          struct sockaddr_in *sin = (struct sockaddr_in *)
+  3132                                    &ep->com.mapped_local_addr;
+  3133  
+  3134          if (dev->rdev.lldi.enable_fw_ofld_conn) {
+  3135                  do {
+  3136                          err = cxgb4_create_server_filter(
+  3137                                  ep->com.dev->rdev.lldi.ports[0], ep->stid,
+  3138                                  sin->sin_addr.s_addr, sin->sin_port, 0,
+  3139                                  ep->com.dev->rdev.lldi.rxq_ids[0], 0, 0);
+  3140                          if (err == -EBUSY) {
+  3141                                  set_current_state(TASK_UNINTERRUPTIBLE);
+  3142                                  schedule_timeout(usecs_to_jiffies(100));
+  3143                          }
+  3144                  } while (err == -EBUSY);
+  3145          } else {
+  3146                  c4iw_init_wr_wait(&ep->com.wr_wait);
+  3147                  err = cxgb4_create_server(ep->com.dev->rdev.lldi.ports[0],
+  3148                                  ep->stid, sin->sin_addr.s_addr, sin->sin_port,
+  3149                                  0, ep->com.dev->rdev.lldi.rxq_ids[0]);
+                              ^^^^^^^^^^^^^^^^^^^^
+cxgb4_create_server() can return NET_XMIT_DROP which leads to an oops.
+The 1 is eventually returned to svc_create_xprt() which treats it as a
+valid pointer and passes it to svc_add_new_perm_xprt() which
+dereferences it.
 
-       mount.nfs-906   [002] ...1 22711.996969: xprt_transmit: xprt=0xffff8800ce961000 xid=0xa8a34513 status=0
-            nfsd-678   [000] ...1 22711.997082: svc_recv: rq_xid=0xa8a34513 status=164
-            nfsd-678   [000] ..s8 22711.997185: xprt_lookup_rqst: xprt=0xffff8800ce961000 xid=0xa8a34513 status=0
-            nfsd-678   [000] ..s8 22711.997186: xprt_complete_rqst: xprt=0xffff8800ce961000 xid=0xa8a34513 status=140
-            nfsd-678   [000] ...1 22711.997236: svc_send: rq_xid=0xa8a34513 dropme=0 status=144
-            nfsd-678   [000] ...1 22711.997236: svc_process: rq_xid=0xa8a34513 dropme=0 status=144
+  3150                  if (!err)
+  3151                          err = c4iw_wait_for_reply(&ep->com.dev->rdev,
+  3152                                                    &ep->com.wr_wait,
+  3153                                                    0, 0, __func__);
+  3154          }
+  3155          if (err)
+  3156                  pr_err("cxgb4_create_server/filter failed err %d stid %d laddr %pI4 lport %d\n"
+  3157                         , err, ep->stid,
+  3158                         &sin->sin_addr, ntohs(sin->sin_port));
+  3159          return err;
+  3160  }
 
-...and here's what we see when things start hanging:
-
-     kworker/2:2-107   [002] ...1 22741.696070: xprt_transmit: xprt=0xffff8800ce961000 xid=0xc3a84513 status=0
-            nfsd-678   [002] .N.1 22741.696917: svc_recv: rq_xid=0xc3a84513 status=208
-            nfsd-678   [002] ...1 22741.699890: svc_send: rq_xid=0xc3a84513 dropme=0 status=262252
-            nfsd-678   [002] ...1 22741.699891: svc_process: rq_xid=0xc3a84513 dropme=0 status=262252
-
-What's happening is that xprt_transmit is called to send the request
-to the server. The server then gets it, and immediately processes it
-(in less than a second) and sends the reply.
-
-The problem is that at some point, we stop getting sk_data_ready
-events on the socket, even when the server has clearly sent something
-to the client. I'm unclear on why that is, but I suspect that something
-is broken in the lower level socket code, possibly just in the loopback
-code?
-
-At this point, I think I'm pretty close to ready to call in the netdev
-cavalry. I'll write up a synopsis of what we know so far, and send it
-there (and cc it here) in the hopes that someone will have some insight.
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+regards,
+dan carpenter
