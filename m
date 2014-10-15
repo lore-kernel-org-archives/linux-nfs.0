@@ -1,42 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:39803 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932789AbaJVMA2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Oct 2014 08:00:28 -0400
-Received: by mail-ie0-f177.google.com with SMTP id tp5so314424ieb.22
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Oct 2014 05:00:27 -0700 (PDT)
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:52796 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755609AbaJOAtb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Oct 2014 20:49:31 -0400
+Received: by mail-qg0-f50.google.com with SMTP id q108so167311qgd.23
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2014 17:49:30 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20141022114649.GA2567@infradead.org>
-References: <20141020173658.GA7552@infradead.org>
-	<20141022114649.GA2567@infradead.org>
-Date: Wed, 22 Oct 2014 15:00:27 +0300
-Message-ID: <CAABAsM44E-Ly=qPFBA2iBvgkCvA3GE5NRGi=d1hD+Pvk1xzevA@mail.gmail.com>
-Subject: Re: xfstests generic/075 failure on recent Linus' tree
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
+In-Reply-To: <20140917181619.GA31483@infradead.org>
+References: <20140917181619.GA31483@infradead.org>
+From: Steve French <smfrench@gmail.com>
+Date: Tue, 14 Oct 2014 19:49:10 -0500
+Message-ID: <CAH2r5mutD=JzAf0whP2OLgZVzBR_H81-rzmq_Qku2fEBofR9mA@mail.gmail.com>
+Subject: Re: NFSv4.1 xfstests results
+To: Christoph Hellwig <hch@infradead.org>, Anna.Schumaker@netapp.com,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 22, 2014 at 2:46 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Mon, Oct 20, 2014 at 10:36:58AM -0700, Christoph Hellwig wrote:
->> Running 4.1 against a same host server backed off XFS I run into
->> a hang in generic/075:
->
-> I've bisected this down to:
->
-> commit 2aca5b869ace67a63aab895659e5dc14c33a4d6e
-> Author: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date:   Wed Sep 24 22:35:58 2014 -0400
->
->     SUNRPC: Add missing support for RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT
->
->
-> Note that I can only reproduce it when running locally, and only when
-> not using pNFS (block layout).
+Saw Anna's patch for xfstests go in today (thanks) so for
+nfsv3/v4/v4.1 did a run from 3.17 client and saw failures on test 192
+(as expected based on Christoph's earlier results) and 35 and 313
+(also noted by Christoph) for NFSv4.1 (server was Fedora 20).
 
-Does the NFS client show a TCP connection to port 2049 on 127.0.0.1?
+> Failures: generic/192 generic/313
 
-Cheers
-  Trond
+For NFSv4.1 I saw 3 out of 55 fail
+Failures: generic/035 generic/192 generic/313
+
+For NFSv4 I saw 4 out of 55 fail
+Failures: generic/011 generic/035 generic/192 generic/313
+
+For NFSv3 I saw 3 out of 55 fail
+Failures: generic/035 generic/192 generic/313
+
+Is the test 35 failure (overwriting rename syscall test) expected (it
+wasn't in Christoph's original list)? and the test 11 failure expected
+(which failed on NFSv4 only)?
+
+Test 35 output:
+    --- tests/generic/035.out 2014-10-14 16:59:22.237529380 -0500
+    +++ /home/sfrench/xfstests/results//NFSv41/generic/035.out.bad
+2014-10-14 18:52:51.523146653 -0500
+    @@ -1,3 +1,6 @@
+     QA output created by 035
+     overwriting regular file:
+    +./tests/generic/035: line 57: src/t_rename_overwrite: No such
+file or directory
+     overwriting directory:
+    +./tests/generic/035: line 65: src/t_rename_overwrite: No such
+file or directory
+    +rmdir: failed to remove '/mnt/test/8221': Directory not empty
+
+
+Test 11 is dirstress (which only failed on NFSv4 for me)
+
+
+-- 
+Thanks,
+
+Steve
