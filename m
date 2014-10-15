@@ -1,63 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:37778 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753184AbaJQQPz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Oct 2014 12:15:55 -0400
-Received: by mail-pd0-f172.google.com with SMTP id ft15so1034671pdb.31
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2014 09:15:54 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: when rpc.mountd flushes auth.unix.gid
-From: Tom Haynes <thomas.haynes@primarydata.com>
-In-Reply-To: <54412AC6.7070000@cs.uchicago.edu>
-Date: Fri, 17 Oct 2014 11:15:50 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <EB1CCA15-1DFB-454B-A7C7-061164B72DB7@primarydata.com>
-References: <54412AC6.7070000@cs.uchicago.edu>
-To: Colin Hudler <chudler@cs.uchicago.edu>
+Received: from mail-qg0-f53.google.com ([209.85.192.53]:51946 "EHLO
+	mail-qg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751214AbaJOOwF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Oct 2014 10:52:05 -0400
+Received: by mail-qg0-f53.google.com with SMTP id q107so1013397qgd.12
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Oct 2014 07:52:03 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20141015132620.GB10652@infradead.org>
+References: <20140917181619.GA31483@infradead.org> <CAH2r5mutD=JzAf0whP2OLgZVzBR_H81-rzmq_Qku2fEBofR9mA@mail.gmail.com>
+ <20141015132620.GB10652@infradead.org>
+From: Steve French <smfrench@gmail.com>
+Date: Wed, 15 Oct 2014 09:51:42 -0500
+Message-ID: <CAH2r5mvhubJm3Yaab4roBo36pFcwtW6Y7uP-rU3z_oE4SCJUnQ@mail.gmail.com>
+Subject: Re: NFSv4.1 xfstests results
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Anna.Schumaker@netapp.com,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Oct 15, 2014 at 8:26 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Tue, Oct 14, 2014 at 07:49:10PM -0500, Steve French wrote:
+>> Is the test 35 failure (overwriting rename syscall test) expected (it
+>> wasn't in Christoph's original list)? and the test 11 failure expected
+>> (which failed on NFSv4 only)?
+>>
+>> Test 35 output:
+>>     --- tests/generic/035.out 2014-10-14 16:59:22.237529380 -0500
+>>     +++ /home/sfrench/xfstests/results//NFSv41/generic/035.out.bad
+>> 2014-10-14 18:52:51.523146653 -0500
+>>     @@ -1,3 +1,6 @@
+>>      QA output created by 035
+>>      overwriting regular file:
+>>     +./tests/generic/035: line 57: src/t_rename_overwrite: No such
+>> file or directory
+>
+> Looks like you didn't run a make to build that new testcase.
 
-On Oct 17, 2014, at 9:42 AM, Colin Hudler <chudler@cs.uchicago.edu> wrote:
+You are right, despite it being a low numbered test, it is new.  After
+rebuilding it still fails on v3/v4/v4.1
 
-> We have a few hundred computers mounting an NFS server in a typical LDAP-based users (nss) setup. We frequently add and remove exports and use exportfs -r to update stab.
+SECTION       -- NFSv3
+FSTYP         -- nfs
+PLATFORM      -- Linux/x86_64 ubuntu 3.17.0+
 
-I know this isn’t your question, but you would be better served by using explicit exportfs -a and exportfs -r commands for the specific changes.
-
-
-
-> Every time we do so, the clients report "NFS server not responding" and start backing off their requests. After a painful 3-5 minutes, they recover and life is normal again.
-> 
-> We discovered that when the rpc.mountd cache flushing occurs, our NIS system is overwhelmed with grouplist requests and this obviously blocks things. We are working on that problem separately, and I admit this to be a weakness in our setup. My question is simple.
-> 
-> Why does it flush auth.unix.gid when the etab changed? I think it makes unnecessary work for rpc.mountd because the gids are unlikely to have changed,
-
-Another assumption is that exports rarely change. I expect your setup is an exception to the rule.
-
-
-> and they already have a reasonable expiration policy.
-
-One way to read what the man page states for exportfs -r:
-
-       -r     Reexport  all  directories,  synchronizing  /var/lib/nfs/etab with /etc/exports and files under /etc/exports.d.
-              This option removes entries in /var/lib/nfs/etab which have been  deleted  from  /etc/exports  or  files  under
-              /etc/exports.d, and removes any entries from the kernel export table which are no longer valid.
-
-is that it only removes entries which have been deleted.
-
-Instead, it removes all entries and reexports those that are still valid. The remove of all is what blows away the auth.unix.gid caching.
-
-Using exportfs -a <path> and exportfs -r <path> should solve this for you.
+generic/035 - output mismatch (see
+/home/sfrench/xfstests/results//NFSv3/generic/035.out.bad)
+    --- tests/generic/035.out 2014-10-14 16:59:22.237529380 -0500
+    +++ /home/sfrench/xfstests/results//NFSv3/generic/035.out.bad
+2014-10-15 06:50:41.149755964 -0500
+    @@ -1,3 +1,5 @@
+     QA output created by 035
+     overwriting regular file:
+    +nlink is 1, should be 0
+     overwriting directory:
+    +t_rename_overwrite: fstat(3): Stale file handle
+    ...
+    (Run 'diff -u tests/generic/035.out
+/home/sfrench/xfstests/results//NFSv3/generic/035.out.bad'  to see the
+entire diff)
+Ran: generic/035
+Failures: generic/035
+Failed 1 of 1 tests
 
 
 
 
-> 
-> --
-> Colin
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+-- 
+Thanks,
+
+Steve
