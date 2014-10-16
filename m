@@ -1,261 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from auth-4.ukservers.net ([217.10.138.158]:56903 "EHLO
-	auth-4.ukservers.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750780AbaJCUqL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2014 16:46:11 -0400
-Received: from main.carlh.net (unknown [37.139.5.111])
-	(using TLSv1.2 with cipher DHE-RSA-AES128-SHA (128/128 bits))
-	(No client certificate requested)
-	by auth-4.ukservers.net (Postfix smtp) with ESMTPS id 01AE11CD993D
-	for <linux-nfs@vger.kernel.org>; Fri,  3 Oct 2014 21:39:48 +0100 (BST)
-Received: from carl (helo=localhost)
-	by main.carlh.net with local-esmtp (Exim 4.80)
-	(envelope-from <cth@carlh.net>)
-	id 1Xa9df-0000CX-Tz
-	for linux-nfs@vger.kernel.org; Fri, 03 Oct 2014 21:39:48 +0100
-Date: Fri, 3 Oct 2014 21:39:43 +0100 (BST)
-From: Carl Hetherington <cth@carlh.net>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:62306 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752517AbaJPTik (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 15:38:40 -0400
+Received: by mail-ie0-f170.google.com with SMTP id rd18so4198005iec.15
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 12:38:39 -0700 (PDT)
+Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
+        by mx.google.com with ESMTPSA id a192sm3539207ioa.34.2014.10.16.12.38.39
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 16 Oct 2014 12:38:39 -0700 (PDT)
+Subject: [PATCH v1 03/16] SUNRPC: Pass callsize and recvsize to buf_alloc as
+ separate arguments
+From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Message-ID: <alpine.DEB.2.02.1410032137370.27485@main.carlh.net>
+Date: Thu, 16 Oct 2014 15:38:38 -0400
+Message-ID: <20141016193838.13414.12691.stgit@manet.1015granger.net>
+In-Reply-To: <20141016192919.13414.3151.stgit@manet.1015granger.net>
+References: <20141016192919.13414.3151.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
-Subject: [PATCH] for intermittent erroneous uid/gid bug with NFS4/Kerberos
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+I noticed that on RDMA, NFSv4 operations were using "hardway"
+allocations much more than not. A "hardway" allocation uses GFP_NOFS
+during each RPC to allocate the XDR buffer, instead of using a
+pre-allocated pre-registered buffer for each RPC.
 
-I am investigating this bug:
-https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/1124250
-which is also:
-https://bugzilla.redhat.com/show_bug.cgi?id=876705
-and:
-https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=758870
+The pre-allocated buffers are 2200 bytes in length.  The requested
+XDR buffer sizes looked like this:
 
-After the keys which map NFS uid/gid to names expire there is sometimes a 
-delay in them being recreated.  I believe this is because 
-nfs_idmap_request_key calls request_key_with_auxdata which returns expired 
-keys if they exist.  If this happens there is no-one to re-create the key.
+    GETATTR: 3220 bytes
+    LOOKUP:  3612 bytes
+    WRITE:   3256 bytes
+    OPEN:    6344 bytes
 
-I think, instead, nfs_idmap_request_key should request a new key with a 
-userspace upcall if its key for a particular name has expired.
+But an NFSv4 GETATTR RPC request should be small. It's the reply
+part of GETATTR that can grow large.
 
-I have made the attached patch which fixes the problem in my tests.  It 
-adds request_valid_key_with_auxdata() which does the same as 
-request_key_with_auxdata() except that it ignores expired, revoked and 
-invalidated keys.  It does this by passing KEYRING_SEARCH_DO_STATE_CHECK 
-into the context for search_process_keyrings inside request_key_and_link. 
-If all keys are expired, this function then asks userspace for an updated 
-key.
+call_allocate() passes a single value as the XDR buffer size: the
+sum of call and reply buffers. However, the xprtrdma transport
+allocates its XDR request and reply buffers separately.
 
-Can anyone offer any suggestions about whether this is along the right 
-lines, or if not, what the right lines might be? :)
+xprtrdma needs to know the maximum call size, as guidance for how
+large the outgoing request is going to be and how the NFS payload
+will be marshalled into chunks.
 
-Thanks & best regards,
-Carl
+But RDMA XDR reply buffers are pre-posted, fixed-size buffers, not
+allocated by xprt_rdma_allocate().
 
-Signed-off-by: Carl Hetherington <cth@carlh.net>
+Because of the sum passed through ->buf_alloc(), xprtrdma's
+->buf_alloc() always allocates more XDR buffer than it will ever
+use. For NFSv4, it is unnecessarily triggering the slow "hardway"
+path for almost every RPC.
+
+Pass the call and reply buffer size values separately to the
+transport's ->buf_alloc method.  The RDMA transport ->buf_alloc can
+now ignore the reply size, and allocate just what it will use for
+the call buffer.  The socket transport ->buf_alloc can simply add
+them together, as call_allocate() did before.
+
+With this patch, an NFSv4 GETATTR request now allocates a 476 byte
+RDMA XDR buffer. I didn't see a single NFSv4 request that did not
+fit into the transport's pre-allocated XDR buffer.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
-index 567983d..744e40f 100644
---- a/fs/nfs/idmap.c
-+++ b/fs/nfs/idmap.c
-@@ -278,8 +278,8 @@ static struct key *nfs_idmap_request_key(const char 
-*name, size_t namelen,
-   	rkey = request_key(&key_type_id_resolver, desc, "");
-   	if (IS_ERR(rkey)) {
-   		mutex_lock(&idmap->idmap_mutex);
--		rkey = request_key_with_auxdata(&key_type_id_resolver_legacy,
--						desc, "", 0, idmap);
-+		rkey = request_valid_key_with_auxdata(&key_type_id_resolver_legacy,
-+						      desc, "", 0, idmap);
-   		mutex_unlock(&idmap->idmap_mutex);
-   	}
+ include/linux/sunrpc/sched.h    |    2 +-
+ include/linux/sunrpc/xprt.h     |    3 ++-
+ net/sunrpc/clnt.c               |    4 ++--
+ net/sunrpc/sched.c              |    6 ++++--
+ net/sunrpc/xprtrdma/transport.c |    2 +-
+ net/sunrpc/xprtsock.c           |    3 ++-
+ 6 files changed, 12 insertions(+), 8 deletions(-)
 
-diff --git a/include/linux/key.h b/include/linux/key.h
-index 80d6774..6a4ef03 100644
---- a/include/linux/key.h
-+++ b/include/linux/key.h
-@@ -252,6 +252,12 @@ extern struct key *request_key_with_auxdata(struct 
-key_type *type,
-   					    size_t callout_len,
-   					    void *aux);
-
-+extern struct key *request_valid_key_with_auxdata(struct key_type *type,
-+						  const char *description,
-+						  const void *callout_info,
-+						  size_t callout_len,
-+						  void *aux);
-+
-   extern struct key *request_key_async(struct key_type *type,
-   				     const char *description,
-   				     const void *callout_info,
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index 80b2aac..5c9bc62 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -150,7 +150,8 @@ extern struct key *request_key_and_link(struct 
-key_type *type,
-   					size_t callout_len,
-   					void *aux,
-   					struct key *dest_keyring,
--					unsigned long flags);
-+					unsigned long key_alloc_flags,
-+					unsigned long 
-keyring_search_flags);
-
-   extern int lookup_user_key_possessed(const struct key *key, const void *target);
-   extern key_ref_t lookup_user_key(key_serial_t id, unsigned long flags,
-diff --git a/security/keys/keyctl.c b/security/keys/keyctl.c
-index cee72ce..25a12bc 100644
---- a/security/keys/keyctl.c
-+++ b/security/keys/keyctl.c
-@@ -212,7 +212,7 @@ SYSCALL_DEFINE4(request_key, const char __user *, _type,
-   	/* do the search */
-   	key = request_key_and_link(ktype, description, callout_info,
-   				   callout_len, NULL, key_ref_to_ptr(dest_ref),
--				   KEY_ALLOC_IN_QUOTA);
-+				   KEY_ALLOC_IN_QUOTA, 0);
-   	if (IS_ERR(key)) {
-   		ret = PTR_ERR(key);
-   		goto error5;
-diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-index 3814119..af8345c 100644
---- a/security/keys/request_key.c
-+++ b/security/keys/request_key.c
-@@ -500,7 +500,11 @@ couldnt_alloc_key:
-    * @callout_len: The length of callout_info.
-    * @aux: Auxiliary data for the upcall.
-    * @dest_keyring: Where to cache the key.
-- * @flags: Flags to key_alloc().
-+ * @key_alloc_flags: Flags to key_alloc().
-+ * @keyring_search_flags: Flags to pass in the keyring search context
-+ * (in addition to KEYRING_SEARCH_LOOKUP_DIRECT).  For example, passing
-+ * KEYRING_SEARCH_DO_STATE_CHECK here will stop the function returning
-+ * invalidated, revoked or expired keys.
-    *
-    * A key matching the specified criteria is searched for in the process's
-    * keyrings and returned with its usage count incremented if found. 
-Otherwise,
-@@ -525,7 +529,8 @@ struct key *request_key_and_link(struct key_type *type,
-   				 size_t callout_len,
-   				 void *aux,
-   				 struct key *dest_keyring,
--				 unsigned long flags)
-+				 unsigned long key_alloc_flags,
-+				 unsigned long keyring_search_flags)
-   {
-   	struct keyring_search_context ctx = {
-   		.index_key.type		= type,
-@@ -533,7 +538,7 @@ struct key *request_key_and_link(struct key_type *type,
-   		.cred			= current_cred(),
-   		.match			= type->match,
-   		.match_data		= description,
--		.flags			= KEYRING_SEARCH_LOOKUP_DIRECT,
-+		.flags			= KEYRING_SEARCH_LOOKUP_DIRECT | keyring_search_flags
-   	};
-   	struct key *key;
-   	key_ref_t key_ref;
-@@ -541,7 +546,7 @@ struct key *request_key_and_link(struct key_type *type,
-
-   	kenter("%s,%s,%p,%zu,%p,%p,%lx",
-   	       ctx.index_key.type->name, ctx.index_key.description,
--	       callout_info, callout_len, aux, dest_keyring, flags);
-+	       callout_info, callout_len, aux, dest_keyring, key_alloc_flags);
-
-   	/* search all the process keyrings for a key */
-   	key_ref = search_process_keyrings(&ctx);
-@@ -568,7 +573,7 @@ struct key *request_key_and_link(struct key_type *type,
-   			goto error;
-
-   		key = construct_key_and_link(&ctx, callout_info, callout_len,
--					     aux, dest_keyring, flags);
-+					     aux, dest_keyring, 
-key_alloc_flags);
-   	}
-
-   error:
-@@ -629,7 +634,7 @@ struct key *request_key(struct key_type *type,
-   	if (callout_info)
-   		callout_len = strlen(callout_info);
-   	key = request_key_and_link(type, description, callout_info, 
-callout_len,
--				   NULL, NULL, KEY_ALLOC_IN_QUOTA);
-+				   NULL, NULL, KEY_ALLOC_IN_QUOTA, 0);
-   	if (!IS_ERR(key)) {
-   		ret = wait_for_key_construction(key, false);
-   		if (ret < 0) {
-@@ -665,7 +670,7 @@ struct key *request_key_with_auxdata(struct key_type 
-*type,
-   	int ret;
-
-   	key = request_key_and_link(type, description, callout_info,
-callout_len,
--				   aux, NULL, KEY_ALLOC_IN_QUOTA);
-+				   aux, NULL, KEY_ALLOC_IN_QUOTA, 0);
-   	if (!IS_ERR(key)) {
-   		ret = wait_for_key_construction(key, false);
-   		if (ret < 0) {
-@@ -677,6 +682,42 @@ struct key *request_key_with_auxdata(struct key_type 
-*type,
-   }
-   EXPORT_SYMBOL(request_key_with_auxdata);
-
-+/**
-+ * request_valid_key_with_auxdata - Request a key with auxiliary data for the upcaller
-+ * @type: The type of key we want.
-+ * @description: The searchable description of the key.
-+ * @callout_info: The data to pass to the instantiation upcall (or NULL).
-+ * @callout_len: The length of callout_info.
-+ * @aux: Auxiliary data for the upcall.
-+ *
-+ * As for request_key_with_auxdata() except that existing invalidated, revoked and expired
-+ * keys are ignored during the search for the requested key.
-+ *
-+ * Furthermore, it then works as wait_for_key_construction() to wait for the
-+ * completion of keys undergoing construction with a non-interruptible wait.
-+ */
-+struct key *request_valid_key_with_auxdata(struct key_type *type,
-+				     const char *description,
-+				     const void *callout_info,
-+				     size_t callout_len,
-+				     void *aux)
-+{
-+	struct key *key;
-+	int ret;
-+
-+	key = request_key_and_link(type, description, callout_info, callout_len,
-+				   aux, NULL, KEY_ALLOC_IN_QUOTA, KEYRING_SEARCH_DO_STATE_CHECK);
-+	if (!IS_ERR(key)) {
-+		ret = wait_for_key_construction(key, false);
-+		if (ret < 0) {
-+			key_put(key);
-+			return ERR_PTR(ret);
-+		}
-+	}
-+	return key;
-+}
-+EXPORT_SYMBOL(request_valid_key_with_auxdata);
-+
-   /*
-    * request_key_async - Request a key (allow async construction)
-    * @type: Type of key.
-@@ -698,7 +739,7 @@ struct key *request_key_async(struct key_type *type,
-   {
-   	return request_key_and_link(type, description, callout_info,
-   				    callout_len, NULL, NULL,
--				    KEY_ALLOC_IN_QUOTA);
-+				    KEY_ALLOC_IN_QUOTA, 0);
-   }
-   EXPORT_SYMBOL(request_key_async);
-
-@@ -723,6 +764,6 @@ struct key *request_key_async_with_auxdata(struct 
-key_type *type,
-   					   void *aux)
-   {
-   	return request_key_and_link(type, description, callout_info,
--				    callout_len, aux, NULL, KEY_ALLOC_IN_QUOTA);
-+				    callout_len, aux, NULL, KEY_ALLOC_IN_QUOTA, 0);
-   }
-   EXPORT_SYMBOL(request_key_async_with_auxdata);
+diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+index 1a89599..68fa71d 100644
+--- a/include/linux/sunrpc/sched.h
++++ b/include/linux/sunrpc/sched.h
+@@ -232,7 +232,7 @@ struct rpc_task *rpc_wake_up_first(struct rpc_wait_queue *,
+ 					void *);
+ void		rpc_wake_up_status(struct rpc_wait_queue *, int);
+ void		rpc_delay(struct rpc_task *, unsigned long);
+-void *		rpc_malloc(struct rpc_task *, size_t);
++void		*rpc_malloc(struct rpc_task *, size_t, size_t);
+ void		rpc_free(void *);
+ int		rpciod_up(void);
+ void		rpciod_down(void);
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index fcbfe87..632685c 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -124,7 +124,8 @@ struct rpc_xprt_ops {
+ 	void		(*rpcbind)(struct rpc_task *task);
+ 	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
+ 	void		(*connect)(struct rpc_xprt *xprt, struct rpc_task *task);
+-	void *		(*buf_alloc)(struct rpc_task *task, size_t size);
++	void *		(*buf_alloc)(struct rpc_task *task,
++					size_t call, size_t reply);
+ 	void		(*buf_free)(void *buffer);
+ 	int		(*send_request)(struct rpc_task *task);
+ 	void		(*set_retrans_timeout)(struct rpc_task *task);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 488ddee..5e817d6 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1599,8 +1599,8 @@ call_allocate(struct rpc_task *task)
+ 	req->rq_rcvsize = RPC_REPHDRSIZE + slack + proc->p_replen;
+ 	req->rq_rcvsize <<= 2;
+ 
+-	req->rq_buffer = xprt->ops->buf_alloc(task,
+-					req->rq_callsize + req->rq_rcvsize);
++	req->rq_buffer = xprt->ops->buf_alloc(task, req->rq_callsize,
++					      req->rq_rcvsize);
+ 	if (req->rq_buffer != NULL)
+ 		return;
+ 
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 9358c79..fc4f939 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -829,7 +829,8 @@ static void rpc_async_schedule(struct work_struct *work)
+ /**
+  * rpc_malloc - allocate an RPC buffer
+  * @task: RPC task that will use this buffer
+- * @size: requested byte size
++ * @call: maximum size of on-the-wire RPC call, in bytes
++ * @reply: maximum size of on-the-wire RPC reply, in bytes
+  *
+  * To prevent rpciod from hanging, this allocator never sleeps,
+  * returning NULL and suppressing warning if the request cannot be serviced
+@@ -843,8 +844,9 @@ static void rpc_async_schedule(struct work_struct *work)
+  * In order to avoid memory starvation triggering more writebacks of
+  * NFS requests, we avoid using GFP_KERNEL.
+  */
+-void *rpc_malloc(struct rpc_task *task, size_t size)
++void *rpc_malloc(struct rpc_task *task, size_t call, size_t reply)
+ {
++	size_t size = call + reply;
+ 	struct rpc_buffer *buf;
+ 	gfp_t gfp = GFP_NOWAIT | __GFP_NOWARN;
+ 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 2faac49..6e9d0a7 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -459,7 +459,7 @@ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
+  * the receive buffer portion when using reply chunks.
+  */
+ static void *
+-xprt_rdma_allocate(struct rpc_task *task, size_t size)
++xprt_rdma_allocate(struct rpc_task *task, size_t size, size_t replen)
+ {
+ 	struct rpc_xprt *xprt = task->tk_rqstp->rq_xprt;
+ 	struct rpcrdma_req *req, *nreq;
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 43cd89e..b4aca48 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2423,8 +2423,9 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+  * we allocate pages instead doing a kmalloc like rpc_malloc is because we want
+  * to use the server side send routines.
+  */
+-static void *bc_malloc(struct rpc_task *task, size_t size)
++static void *bc_malloc(struct rpc_task *task, size_t call, size_t reply)
+ {
++	size_t size = call + reply;
+ 	struct page *page;
+ 	struct rpc_buffer *buf;
+ 
 
