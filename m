@@ -1,21 +1,20 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:65506 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751935AbaJPTjh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 15:39:37 -0400
-Received: by mail-ie0-f176.google.com with SMTP id rp18so4189347iec.35
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 12:39:37 -0700 (PDT)
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:40869 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751798AbaJPTjN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 15:39:13 -0400
+Received: by mail-ig0-f177.google.com with SMTP id a13so264936igq.10
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 12:39:12 -0700 (PDT)
 Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
-        by mx.google.com with ESMTPSA id hi1sm1273190igb.18.2014.10.16.12.39.36
+        by mx.google.com with ESMTPSA id nu1sm1271617igb.0.2014.10.16.12.39.12
         for <linux-nfs@vger.kernel.org>
         (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 16 Oct 2014 12:39:36 -0700 (PDT)
-Subject: [PATCH v1 10/16] NFS: Include transport protocol name in UCS client
- string
+        Thu, 16 Oct 2014 12:39:12 -0700 (PDT)
+Subject: [PATCH v1 07/16] SUNRPC: serialize iostats updates
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Date: Thu, 16 Oct 2014 15:39:35 -0400
-Message-ID: <20141016193935.13414.97081.stgit@manet.1015granger.net>
+Date: Thu, 16 Oct 2014 15:39:11 -0400
+Message-ID: <20141016193911.13414.55761.stgit@manet.1015granger.net>
 In-Reply-To: <20141016192919.13414.3151.stgit@manet.1015granger.net>
 References: <20141016192919.13414.3151.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -23,73 +22,96 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The nfs_match_client() function asserts that different nfs_client
-structures are used when mounting the same server with different
-transport protocols. For example, if a Linux client mounts the same
-server via NFSv3 with some UDP mounts and some TCP mounts, it will
-use only two transports and two nfs_client structures: one shared
-with all UDP mounts, and one shared with all TCP mounts.
+Occasionally mountstats reports a negative retransmission rate.
+Ensure that two RPCs completing concurrently don't confuse the sums
+in the transport's op_metrics array.
 
-When a uniform client string is in use (NFSv4.1, or NFSv4.0 with the
-"migration" mount option), nfs_match_client() will ensure an
-nfs_client structure and separate transport is created for mounts
-with unique "proto=" settings (one for TCP and one for RDMA,
-currently).
-
-But EXCHANGE_ID sends exactly the same nfs_client_id4 string on both
-transports. The server then believes that the client is trunking
-over disparate transports, when it clearly is not. The open and lock
-state that will appear on each transport is disjoint.
-
-Now that NFSv4.1 over RDMA is supported, a user can mount the same
-server with NFSv4.1 over TCP and RDMA concurrently. The client will
-send an EXCHANGE_ID with the same client ID on both transports, and
-it will also send a CREATE_SESSION on both.
-
-To ensure the Linux client represents itself correctly to servers,
-add the transport protocol name to the uniform client string. Each
-transport instance should get its own client ID (and session) to
-prevent trunking.
-
-This doesn't appear to be a problem for NFSv4.0 without migration.
-It also wasn't a problem for NFSv4.1 when TCP was the only available
-transport.
+Since pNFS filelayout can invoke rpc_count_iostats() on another
+transport from xprt_release(), we can't rely on simply holding the
+transport_lock in xprt_release(). There's nothing for it but hard
+serialization. One spin lock per RPC operation should make this as
+painless as it can be.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs4proc.c |   15 +++++++++++----
- 1 file changed, 11 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/metrics.h |    3 +++
+ net/sunrpc/stats.c             |   21 ++++++++++++++++-----
+ 2 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6ca0c8e..a1243e7 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4929,16 +4929,23 @@ nfs4_init_uniform_client_string(const struct nfs_client *clp,
- 				char *buf, size_t len)
+diff --git a/include/linux/sunrpc/metrics.h b/include/linux/sunrpc/metrics.h
+index 1565bbe..eecb5a7 100644
+--- a/include/linux/sunrpc/metrics.h
++++ b/include/linux/sunrpc/metrics.h
+@@ -27,10 +27,13 @@
+ 
+ #include <linux/seq_file.h>
+ #include <linux/ktime.h>
++#include <linux/spinlock.h>
+ 
+ #define RPC_IOSTATS_VERS	"1.0"
+ 
+ struct rpc_iostats {
++	spinlock_t		om_lock;
++
+ 	/*
+ 	 * These counters give an idea about how many request
+ 	 * transmissions are required, on average, to complete that
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index 5453049..9711a15 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -116,7 +116,15 @@ EXPORT_SYMBOL_GPL(svc_seq_show);
+  */
+ struct rpc_iostats *rpc_alloc_iostats(struct rpc_clnt *clnt)
  {
- 	const char *nodename = clp->cl_rpcclient->cl_nodename;
-+	unsigned int result;
- 
-+	rcu_read_lock();
- 	if (nfs4_client_id_uniquifier[0] != '\0')
--		return scnprintf(buf, len, "Linux NFSv%u.%u %s/%s",
-+		result = scnprintf(buf, len, "Linux NFSv%u.%u %s/%s %s",
- 				clp->rpc_ops->version,
- 				clp->cl_minorversion,
- 				nfs4_client_id_uniquifier,
--				nodename);
--	return scnprintf(buf, len, "Linux NFSv%u.%u %s",
-+				nodename, rpc_peeraddr2str(clp->cl_rpcclient,
-+							RPC_DISPLAY_PROTO));
-+	else
-+		result = scnprintf(buf, len, "Linux NFSv%u.%u %s %s",
- 				clp->rpc_ops->version, clp->cl_minorversion,
--				nodename);
-+				nodename, rpc_peeraddr2str(clp->cl_rpcclient,
-+							RPC_DISPLAY_PROTO));
-+	rcu_read_unlock();
-+	return result;
+-	return kcalloc(clnt->cl_maxproc, sizeof(struct rpc_iostats), GFP_KERNEL);
++	struct rpc_iostats *stats;
++	int i;
++
++	stats = kcalloc(clnt->cl_maxproc, sizeof(*stats), GFP_KERNEL);
++	if (stats) {
++		for (i = 0; i < clnt->cl_maxproc; i++)
++			spin_lock_init(&stats[i].om_lock);
++	}
++	return stats;
  }
+ EXPORT_SYMBOL_GPL(rpc_alloc_iostats);
  
- /*
+@@ -135,20 +143,21 @@ EXPORT_SYMBOL_GPL(rpc_free_iostats);
+  * rpc_count_iostats - tally up per-task stats
+  * @task: completed rpc_task
+  * @stats: array of stat structures
+- *
+- * Relies on the caller for serialization.
+  */
+ void rpc_count_iostats(const struct rpc_task *task, struct rpc_iostats *stats)
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_iostats *op_metrics;
+-	ktime_t delta;
++	ktime_t delta, now;
+ 
+ 	if (!stats || !req)
+ 		return;
+ 
++	now = ktime_get();
+ 	op_metrics = &stats[task->tk_msg.rpc_proc->p_statidx];
+ 
++	spin_lock(&op_metrics->om_lock);
++
+ 	op_metrics->om_ops++;
+ 	op_metrics->om_ntrans += req->rq_ntrans;
+ 	op_metrics->om_timeouts += task->tk_timeouts;
+@@ -161,8 +170,10 @@ void rpc_count_iostats(const struct rpc_task *task, struct rpc_iostats *stats)
+ 
+ 	op_metrics->om_rtt = ktime_add(op_metrics->om_rtt, req->rq_rtt);
+ 
+-	delta = ktime_sub(ktime_get(), task->tk_start);
++	delta = ktime_sub(now, task->tk_start);
+ 	op_metrics->om_execute = ktime_add(op_metrics->om_execute, delta);
++
++	spin_unlock(&op_metrics->om_lock);
+ }
+ EXPORT_SYMBOL_GPL(rpc_count_iostats);
+ 
 
