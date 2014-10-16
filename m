@@ -1,184 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:61815 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754146AbaJWMBK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2014 08:01:10 -0400
-Received: by mail-qa0-f54.google.com with SMTP id i13so531273qae.13
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Oct 2014 05:01:09 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: [PATCH v2] nfsd: convert nfs4_file searches to use RCU
-Date: Thu, 23 Oct 2014 08:01:02 -0400
-Message-Id: <1414065662-23341-1-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1413541275-3884-1-git-send-email-jlayton@primarydata.com>
-References: <1413541275-3884-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:35891 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752517AbaJPTib (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 15:38:31 -0400
+Received: by mail-ig0-f173.google.com with SMTP id h18so262502igc.12
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 12:38:31 -0700 (PDT)
+Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
+        by mx.google.com with ESMTPSA id ro6sm14833175igb.3.2014.10.16.12.38.30
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 16 Oct 2014 12:38:30 -0700 (PDT)
+Subject: [PATCH v1 02/16] xprtrdma: Cap req_cqinit
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Thu, 16 Oct 2014 15:38:29 -0400
+Message-ID: <20141016193829.13414.57075.stgit@manet.1015granger.net>
+In-Reply-To: <20141016192919.13414.3151.stgit@manet.1015granger.net>
+References: <20141016192919.13414.3151.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The global state_lock protects the file_hashtbl, and that has the
-potential to be a scalability bottleneck.
+Recent work made FRMR registration and invalidation completions
+unsignaled. This greatly reduces the adapter interrupt rate.
 
-Address this by making the file_hashtbl use RCU. Add a rcu_head to the
-nfs4_file and use that when freeing ones that have been hashed. In order
-to conserve space, we union the fi_rcu field with the fi_delegations
-list_head which must be clear by the time the last reference to the file
-is dropped.
+Every so often, however, a posted send Work Request is allowed to
+signal. Otherwise, the provider's Work Queue will wrap and the
+workload will hang.
 
-Convert find_file_locked to use RCU lookup primitives and not to require
-that the state_lock be held, and convert find_file to do a lockless
-lookup. Convert find_or_add_file to attempt a lockless lookup first, and
-then fall back to doing a locked search and insert if that fails to find
-anything.
+The number of Work Requests that are allowed to remain unsignaled is
+determined by the value of req_cqinit. Currently, this is set to the
+size of the send Work Queue divided by two, minus 1.
 
-Also, minimize the number of times we need to calculate the hash value
-by passing it in as an argument to the search and insert functions, and
-optimize the order of arguments in nfsd4_init_file.
+For FRMR, the send Work Queue is the maximum number of concurrent
+RPCs (currently 32) times the maximum number of Work Requests an
+RPC might use (currently 7, though some adapters may need more).
 
-Cc: Christoph Hellwig <hch@infradead.org>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+For mlx4, this is 224 entries. This leaves completion signaling
+disabled for 111 send Work Requests.
+
+Some providers hold back dispatching Work Requests until a CQE is
+generated.  If completions are disabled, then no CQEs are generated
+for quite some time, and that can stall the Work Queue.
+
+I've seen this occur running xfstests generic/113 over NFSv4, where
+eventually, posting a FAST_REG_MR Work Request fails with -ENOMEM
+because the Work Queue has overflowed. The connection is dropped
+and re-established.
+
+Cap the rep_cqinit setting so completions are not left turned off
+for too long.
+
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=269
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4state.c | 51 +++++++++++++++++++++++++++++----------------------
- fs/nfsd/state.h     |  5 ++++-
- 2 files changed, 33 insertions(+), 23 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1afd7d4420bd..1379d86f7b4f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -275,9 +275,11 @@ opaque_hashval(const void *ptr, int nbytes)
- 	return x;
- }
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 6ea2942..5c0c7a5 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -733,6 +733,8 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
  
--static void nfsd4_free_file(struct nfs4_file *f)
-+static void nfsd4_free_file_rcu(struct rcu_head *rcu)
- {
--	kmem_cache_free(file_slab, f);
-+	struct nfs4_file *fp = container_of(rcu, struct nfs4_file, fi_rcu);
-+
-+	kmem_cache_free(file_slab, fp);
- }
- 
- static inline void
-@@ -286,9 +288,10 @@ put_nfs4_file(struct nfs4_file *fi)
- 	might_lock(&state_lock);
- 
- 	if (atomic_dec_and_lock(&fi->fi_ref, &state_lock)) {
--		hlist_del(&fi->fi_hash);
-+		hlist_del_rcu(&fi->fi_hash);
- 		spin_unlock(&state_lock);
--		nfsd4_free_file(fi);
-+		WARN_ON_ONCE(!list_empty(&fi->fi_delegations));
-+		call_rcu(&fi->fi_rcu, nfsd4_free_file_rcu);
- 	}
- }
- 
-@@ -3057,10 +3060,9 @@ static struct nfs4_file *nfsd4_alloc_file(void)
- }
- 
- /* OPEN Share state helper functions */
--static void nfsd4_init_file(struct nfs4_file *fp, struct knfsd_fh *fh)
-+static void nfsd4_init_file(struct knfsd_fh *fh, unsigned int hashval,
-+				struct nfs4_file *fp)
- {
--	unsigned int hashval = file_hashval(fh);
--
- 	lockdep_assert_held(&state_lock);
- 
- 	atomic_set(&fp->fi_ref, 1);
-@@ -3073,7 +3075,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct knfsd_fh *fh)
- 	fp->fi_share_deny = 0;
- 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
- 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
--	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
-+	hlist_add_head_rcu(&fp->fi_hash, &file_hashtbl[hashval]);
- }
- 
- void
-@@ -3294,17 +3296,14 @@ move_to_close_lru(struct nfs4_ol_stateid *s, struct net *net)
- 
- /* search file_hashtbl[] for file */
- static struct nfs4_file *
--find_file_locked(struct knfsd_fh *fh)
-+find_file_locked(struct knfsd_fh *fh, unsigned int hashval)
- {
--	unsigned int hashval = file_hashval(fh);
- 	struct nfs4_file *fp;
- 
--	lockdep_assert_held(&state_lock);
--
--	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
-+	hlist_for_each_entry_rcu(fp, &file_hashtbl[hashval], fi_hash) {
- 		if (nfsd_fh_match(&fp->fi_fhandle, fh)) {
--			get_nfs4_file(fp);
--			return fp;
-+			if (atomic_inc_not_zero(&fp->fi_ref))
-+				return fp;
- 		}
- 	}
- 	return NULL;
-@@ -3314,10 +3313,11 @@ static struct nfs4_file *
- find_file(struct knfsd_fh *fh)
- {
- 	struct nfs4_file *fp;
-+	unsigned int hashval = file_hashval(fh);
- 
--	spin_lock(&state_lock);
--	fp = find_file_locked(fh);
--	spin_unlock(&state_lock);
-+	rcu_read_lock();
-+	fp = find_file_locked(fh, hashval);
-+	rcu_read_unlock();
- 	return fp;
- }
- 
-@@ -3325,11 +3325,18 @@ static struct nfs4_file *
- find_or_add_file(struct nfs4_file *new, struct knfsd_fh *fh)
- {
- 	struct nfs4_file *fp;
-+	unsigned int hashval = file_hashval(fh);
-+
-+	rcu_read_lock();
-+	fp = find_file_locked(fh, hashval);
-+	rcu_read_unlock();
-+	if (fp)
-+		return fp;
- 
- 	spin_lock(&state_lock);
--	fp = find_file_locked(fh);
--	if (fp == NULL) {
--		nfsd4_init_file(new, fh);
-+	fp = find_file_locked(fh, hashval);
-+	if (likely(fp == NULL)) {
-+		nfsd4_init_file(fh, hashval, new);
- 		fp = new;
- 	}
- 	spin_unlock(&state_lock);
-@@ -4127,7 +4134,7 @@ void nfsd4_cleanup_open_state(struct nfsd4_compound_state *cstate,
- 		nfs4_put_stateowner(so);
- 	}
- 	if (open->op_file)
--		nfsd4_free_file(open->op_file);
-+		kmem_cache_free(file_slab, open->op_file);
- 	if (open->op_stp)
- 		nfs4_put_stid(&open->op_stp->st_stid);
- }
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 8e85e07efce6..9d3be371240a 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -477,7 +477,10 @@ struct nfs4_file {
- 	spinlock_t		fi_lock;
- 	struct hlist_node       fi_hash;	/* hash on fi_fhandle */
- 	struct list_head        fi_stateids;
--	struct list_head	fi_delegations;
-+	union {
-+		struct list_head	fi_delegations;
-+		struct rcu_head		fi_rcu;
-+	};
- 	/* One each for O_RDONLY, O_WRONLY, O_RDWR: */
- 	struct file *		fi_fds[3];
- 	/*
--- 
-1.9.3
+ 	/* set trigger for requesting send completion */
+ 	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
++	if (ep->rep_cqinit > 20)
++		ep->rep_cqinit = 20;
+ 	if (ep->rep_cqinit <= 2)
+ 		ep->rep_cqinit = 0;
+ 	INIT_CQCOUNT(ep);
 
