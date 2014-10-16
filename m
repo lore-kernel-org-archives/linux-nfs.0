@@ -1,78 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f171.google.com ([209.85.220.171]:60600 "EHLO
-	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751188AbaJMV3J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 17:29:09 -0400
-Received: by mail-vc0-f171.google.com with SMTP id hy10so6460388vcb.2
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 14:29:09 -0700 (PDT)
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:38571 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752492AbaJPTjF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 15:39:05 -0400
+Received: by mail-ig0-f173.google.com with SMTP id h18so292462igc.0
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 12:39:04 -0700 (PDT)
+Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
+        by mx.google.com with ESMTPSA id y2sm2165735igl.8.2014.10.16.12.39.03
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 16 Oct 2014 12:39:04 -0700 (PDT)
+Subject: [PATCH v1 06/16] xprtrdma: spin CQ completion vectors
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Thu, 16 Oct 2014 15:39:03 -0400
+Message-ID: <20141016193903.13414.79847.stgit@manet.1015granger.net>
+In-Reply-To: <20141016192919.13414.3151.stgit@manet.1015granger.net>
+References: <20141016192919.13414.3151.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
-References: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
-	<CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
-	<CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
-	<CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
-Date: Mon, 13 Oct 2014 17:29:08 -0400
-Message-ID: <CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
-Subject: Re: how to properly handle failures during delegation recall process
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 13, 2014 at 5:12 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Mon, Oct 13, 2014 at 4:23 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> On Mon, Oct 13, 2014 at 3:53 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->>> On Mon, Oct 13, 2014 at 2:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>> +               }
->>>> +       }
->>>>         return nfs4_handle_delegation_recall_error(server, state, stateid, err);
->>>>  }
->>>>
->>>> @@ -5957,6 +5973,10 @@ int nfs4_lock_delegation_recall(struct
->>>> file_lock *fl, struct nfs4_state *state,
->>>>         err = nfs4_set_lock_state(state, fl);
->>>>         if (err != 0)
->>>>                 return err;
->>>> +       if (test_bit(NFS_LOCK_LOST, &fl->fl_u.nfs4_fl.owner->ls_flags)) {
->>>> +               pr_warn_ratelimited("NFS: %s: Lock reclaim failed!\n",
->>>> __func__);
->>>> +               return -EIO;
->>>> +       }
->>>>         err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
->>>
->>> Note that there is a potential race here if the server is playing with
->>> NFS4ERR_DELEG_REVOKED or NFS4ERR_ADMIN_REVOKED. Since we do not
->>> present the delegation as part of the LOCK request, we have no way of
->>> knowing if the delegation is still in effect. I guess we can check the
->>> return value of DELEGRETURN, but if it returns NFS4ERR_DELEG_REVOKED
->>> or NFS4ERR_ADMIN_REVOKED, then we still do not know whether or not the
->>> LOCK is safe.
->>
->> I'm not following you. We send LOCK before we send DELEGRETURN? Also,
->> we normally send in LOCK the open_stateid returned by the open with
->> cur so do we know that delegation is still in effect.
->
-> How so? The open stateid doesn't tell you that the delegation is still
-> in effect. If the DELEGRETURN returns NFS4ERR_DELEG_REVOKED, how can
-> you tell if the delegation was revoked before or after the LOCK
-> request was handled?
+A pair of CQs is created for each xprtrdma transport. One transport
+instance is created per NFS mount point.
 
-Actually, let me answer that myself. You can sort of figure things out
-in NFSv4.1 if you look at the SEQ4_STATUS_RECALLABLE_STATE_REVOKED
-flag. If it is set, you should probably distrust the lock stateid that
-you just attempted to recover, since you now know that at least one
-delegation was just revoked.
+Both Shirley Ma and Steve Wise have observed that the adapter
+interrupt workload sticks with a single MSI-X and CPU core unless
+manual steps are taken to move it to other CPUs. This tends to limit
+performance once the interrupt workload consumes an entire core.
 
-In that case, we probably also have to do a TEST_STATEID+FREE_STATEID
-on the delegation stateid.
+Sagi Grimwald suggested one way to get better dispersal of
+interrupts is to use the completion vector argument of the
+ib_create_cq() API to assign new CQs to different adapter ingress
+queues. Currently, xprtrdma sets this argument to 0 unconditionally,
+which leaves all xprtrdma CQs consuming the same small pool of
+resources.
 
--- 
-Trond Myklebust
+Each CQ will still be nailed to one completion vector.  This won't help
+a "single mount point" workload, but when multiple mount points are in
+play, the RDMA provider will see to it that adapter interrupts are
+better spread over available resources.
 
-Linux NFS client maintainer, PrimaryData
+We also take a little trouble to stay off of vector 0, which is used
+by many other kernel RDMA consumers such as IPoIB.
 
-trond.myklebust@primarydata.com
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |   45 ++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 42 insertions(+), 3 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9105524..dc4c8e3 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -49,6 +49,8 @@
+ 
+ #include <linux/interrupt.h>
+ #include <linux/slab.h>
++#include <linux/random.h>
++
+ #include <asm/bitops.h>
+ 
+ #include "xprt_rdma.h"
+@@ -666,6 +668,42 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+ }
+ 
+ /*
++ * Select a provider completion vector to assign a CQ to.
++ *
++ * This is an attempt to spread CQs across available CPUs. The counter
++ * is shared between all adapters on a system. Multi-adapter systems
++ * are rare, and this is still better for them than leaving all CQs on
++ * one completion vector.
++ *
++ * We could put the send and receive CQs for the same transport on
++ * different vectors. However, this risks assigning them to cores on
++ * different sockets in larger systems, which could have disasterous
++ * performance effects due to NUMA.
++ */
++static int
++rpcrdma_cq_comp_vec(struct rpcrdma_ia *ia)
++{
++	int num_comp_vectors = ia->ri_id->device->num_comp_vectors;
++	int vector = 0;
++
++	if (num_comp_vectors > 1) {
++		static DEFINE_SPINLOCK(rpcrdma_cv_lock);
++		static unsigned int rpcrdma_cv_counter;
++
++		spin_lock(&rpcrdma_cv_lock);
++		vector = rpcrdma_cv_counter++ % num_comp_vectors;
++		/* Skip 0, as it is commonly used by other RDMA consumers */
++		if (vector == 0)
++			vector = rpcrdma_cv_counter++ % num_comp_vectors;
++		spin_unlock(&rpcrdma_cv_lock);
++	}
++
++	dprintk("RPC:       %s: adapter has %d vectors, using vector %d\n",
++		__func__, num_comp_vectors, vector);
++	return vector;
++}
++
++/*
+  * Create unconnected endpoint.
+  */
+ int
+@@ -674,7 +712,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ {
+ 	struct ib_device_attr devattr;
+ 	struct ib_cq *sendcq, *recvcq;
+-	int rc, err;
++	int rc, err, comp_vec;
+ 
+ 	rc = ib_query_device(ia->ri_id->device, &devattr);
+ 	if (rc) {
+@@ -759,9 +797,10 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	init_waitqueue_head(&ep->rep_connect_wait);
+ 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+ 
++	comp_vec = rpcrdma_cq_comp_vec(ia);
+ 	sendcq = ib_create_cq(ia->ri_id->device, rpcrdma_sendcq_upcall,
+ 				  rpcrdma_cq_async_error_upcall, ep,
+-				  ep->rep_attr.cap.max_send_wr + 1, 0);
++				  ep->rep_attr.cap.max_send_wr + 1, comp_vec);
+ 	if (IS_ERR(sendcq)) {
+ 		rc = PTR_ERR(sendcq);
+ 		dprintk("RPC:       %s: failed to create send CQ: %i\n",
+@@ -778,7 +817,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 
+ 	recvcq = ib_create_cq(ia->ri_id->device, rpcrdma_recvcq_upcall,
+ 				  rpcrdma_cq_async_error_upcall, ep,
+-				  ep->rep_attr.cap.max_recv_wr + 1, 0);
++				  ep->rep_attr.cap.max_recv_wr + 1, comp_vec);
+ 	if (IS_ERR(recvcq)) {
+ 		rc = PTR_ERR(recvcq);
+ 		dprintk("RPC:       %s: failed to create recv CQ: %i\n",
+
