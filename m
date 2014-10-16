@@ -1,39 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:58237 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755255AbaJWMCx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Oct 2014 08:02:53 -0400
-From: Jan Kara <jack@suse.cz>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>
-Subject: [PATCH] nfs: Fix use of uninitialized variable in nfs_getattr()
-Date: Thu, 23 Oct 2014 14:02:47 +0200
-Message-Id: <1414065767-20005-1-git-send-email-jack@suse.cz>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:36639 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751414AbaJPTj3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 15:39:29 -0400
+Received: by mail-ie0-f180.google.com with SMTP id x19so4039214ier.25
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 12:39:28 -0700 (PDT)
+Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
+        by mx.google.com with ESMTPSA id an1sm14820902igc.8.2014.10.16.12.39.28
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 16 Oct 2014 12:39:28 -0700 (PDT)
+Subject: [PATCH v1 09/16] xprtrdma: Enable pad optimization
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Thu, 16 Oct 2014 15:39:27 -0400
+Message-ID: <20141016193927.13414.49993.stgit@manet.1015granger.net>
+In-Reply-To: <20141016192919.13414.3151.stgit@manet.1015granger.net>
+References: <20141016192919.13414.3151.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Variable 'err' needn't be initialized when nfs_getattr() uses it to
-check whether it should call generic_fillattr() or not. That can result
-in spurious error returns. Initialize 'err' properly.
+The Linux NFS/RDMA was rejecting NFSv3 WRITE requests when pad
+optimization was enabled. That bug is now fixed
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+We can enable pad optimization, which helps performance and is
+supported now by both Linux and Solaris servers.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/inode.c | 2 +-
+ net/sunrpc/xprtrdma/transport.c |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 6388a59f2add..00689a8a85e4 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -626,7 +626,7 @@ int nfs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- {
- 	struct inode *inode = dentry->d_inode;
- 	int need_atime = NFS_I(inode)->cache_validity & NFS_INO_INVALID_ATIME;
--	int err;
-+	int err = 0;
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 61be0a0..09c6443 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -73,7 +73,7 @@ static unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
+ static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
+ static unsigned int xprt_rdma_inline_write_padding;
+ static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
+-                int xprt_rdma_pad_optimize = 0;
++		int xprt_rdma_pad_optimize = 1;
  
- 	trace_nfs_getattr_enter(inode);
- 	/* Flush out writes to the server in order to update c/mtime.  */
--- 
-1.8.1.4
+ #ifdef RPC_DEBUG
+ 
 
