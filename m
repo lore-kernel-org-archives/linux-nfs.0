@@ -1,64 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f42.google.com ([74.125.82.42]:57583 "EHLO
-	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751391AbaJFXnD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 19:43:03 -0400
-Received: by mail-wg0-f42.google.com with SMTP id z12so7785450wgg.13
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 16:43:01 -0700 (PDT)
-From: Zach Brown <zab@zabbo.net>
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] nfsd: fix inclusive vfs_fsync_range() end
-Date: Mon,  6 Oct 2014 16:42:52 -0700
-Message-Id: <1412638972-14617-1-git-send-email-zab@zabbo.net>
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:49557 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751340AbaJPTiP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 15:38:15 -0400
+Received: by mail-ig0-f177.google.com with SMTP id a13so249293igq.16
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 12:38:14 -0700 (PDT)
+Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
+        by mx.google.com with ESMTPSA id oq6sm14827051igb.2.2014.10.16.12.38.13
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 16 Oct 2014 12:38:13 -0700 (PDT)
+Subject: [PATCH v1 00/16] NFS/RDMA patches for 3.19
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Thu, 16 Oct 2014 15:38:12 -0400
+Message-ID: <20141016192919.13414.3151.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The vfs_fsync_range() call during write processing got the end of the
-range off by one.  The range is inclusive, not exclusive.  The error has
-nfsd sync more data than requested -- it's correct but unnecessary
-overhead.
+Hi-
 
-The call during commit processing is correct so I copied that pattern in
-write processing.  Maybe a helper would be nice but I kept it trivial.
+Two groups of patches in this series. The first group is fixes
+and clean-ups for xprtrdma. The second group adds client support
+for NFSv4.1 on RDMA. Looking for review and testing.
 
-This is untested.  I found it while reviewing code for something else
-entirely.
+Also available in the "nfs-rdma-for-3.19" topic branch at
 
-Signed-off-by: Zach Brown <zab@zabbo.net>
+  git://linux-nfs.org/projects/cel/cel-2.6.git
+
 ---
- fs/nfsd/vfs.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index f501a9b..825250e 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -921,6 +921,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	int			stable = *stablep;
- 	int			use_wgather;
- 	loff_t			pos = offset;
-+	loff_t			end = LLONG_MAX;
- 	unsigned int		pflags = current->flags;
- 
- 	if (rqstp->rq_local)
-@@ -952,10 +953,13 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	fsnotify_modify(file);
- 
- 	if (stable) {
--		if (use_wgather)
-+		if (use_wgather) {
- 			host_err = wait_for_concurrent_writes(file);
--		else
--			host_err = vfs_fsync_range(file, offset, offset+*cnt, 0);
-+		} else {
-+			if (*cnt)
-+				end = offset + *cnt - 1;
-+			host_err = vfs_fsync_range(file, offset, end, 0);
-+		}
- 	}
- 
- out_nfserr:
--- 
-1.9.3
+Chuck Lever (16):
+      xprtrdma: Return an errno from rpcrdma_register_external()
+      xprtrdma: Cap req_cqinit
+      SUNRPC: Pass callsize and recvsize to buf_alloc as separate arguments
+      xprtrdma: Re-write rpcrdma_flush_cqs()
+      xprtrdma: unmap all FMRs during transport disconnect
+      xprtrdma: spin CQ completion vectors
+      SUNRPC: serialize iostats updates
+      xprtrdma: Display async errors
+      xprtrdma: Enable pad optimization
+      NFS: Include transport protocol name in UCS client string
+      NFS: Clean up nfs4_init_callback()
+      SUNRPC: Add rpc_xprt_is_bidirectional()
+      NFS: Add sidecar RPC client support
+      NFS: Set BIND_CONN_TO_SESSION arguments in the proc layer
+      NFS: Bind side-car connection to session
+      NFS: Disable SESSION4_BACK_CHAN when a backchannel sidecar is to be used
 
+
+ fs/nfs/client.c                 |    1 
+ fs/nfs/nfs4client.c             |   86 +++++++++++++++++----
+ fs/nfs/nfs4proc.c               |   71 ++++++++++++++---
+ fs/nfs/nfs4xdr.c                |   16 ++--
+ include/linux/nfs_fs_sb.h       |    2 
+ include/linux/nfs_xdr.h         |    6 +
+ include/linux/sunrpc/clnt.h     |    1 
+ include/linux/sunrpc/metrics.h  |    3 +
+ include/linux/sunrpc/sched.h    |    2 
+ include/linux/sunrpc/xprt.h     |    4 +
+ net/sunrpc/clnt.c               |   28 ++++++-
+ net/sunrpc/sched.c              |    6 +
+ net/sunrpc/stats.c              |   21 ++++-
+ net/sunrpc/xprtrdma/transport.c |    6 +
+ net/sunrpc/xprtrdma/verbs.c     |  159 +++++++++++++++++++++++++++++++++++----
+ net/sunrpc/xprtsock.c           |    6 +
+ 16 files changed, 347 insertions(+), 71 deletions(-)
+
+--
+Chuck Lever
