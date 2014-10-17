@@ -1,45 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from auth-3.ukservers.net ([217.10.138.152]:41261 "EHLO
-	auth-3.ukservers.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751840AbaJ1KMm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Oct 2014 06:12:42 -0400
-Date: Tue, 28 Oct 2014 10:12:32 +0000 (GMT)
-From: Carl Hetherington <cth@carlh.net>
-To: Chuck Lever <chuck.lever@oracle.com>
-cc: David Howells <dhowells@redhat.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com>
-Message-ID: <alpine.DEB.2.02.1410281006010.27485@main.carlh.net>
-References: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:37266 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750854AbaJQVYr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Oct 2014 17:24:47 -0400
+Date: Fri, 17 Oct 2014 17:24:46 -0400
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] nfsd4: fix response size estimation for OP_SEQUENCE
+Message-ID: <20141017212446.GC3474@fieldses.org>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Subject: Re: NFSv4 idmap misbehavior
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Hi Chuck,
+We added this new estimator function but forgot to hook it up.  The
+effect is that NFSv4.1 won't do zero-copy reads.
 
-[snip]
+The estimate was also wrong by 8 bytes.
 
-> After the test has been running for ten minutes, the id_resolv
-> keys expire, and id_legacy keys appear. Before the above commit,
-> the id_resolv keys would simply be refreshed and operation
-> would continue normally.
+Fixes: ccae70a9ee41 "nfsd4: estimate sequence response size"
+Cc: stable@vger.kernel.org
+Reported-by: Chuck Lever <chucklever@gmail.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-This sounds a lot like a bug I have seen, our investigations into which
-are summarised here:
+Whoops, this should have gone in some time ago but I lost it somehow.
+Thanks to Chuck for noticing the oversight.
 
-https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/1124250
+I'll pass it along upstream soon.--b.
 
-There's an inexpertly written (by me) patch in that bug report (which I
-posted to this list recently, too) which (in a nutshell) makes the
-idmapper code call up to userspace to get a new key when the current ones
-have expired.
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index cdeb3cf..f990983 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1589,7 +1589,8 @@ static inline u32 nfsd4_rename_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op
+ static inline u32 nfsd4_sequence_rsize(struct svc_rqst *rqstp,
+ 				       struct nfsd4_op *op)
+ {
+-	return NFS4_MAX_SESSIONID_LEN + 20;
++	return (op_encode_hdr_size
++		+ XDR_QUADLEN(NFS4_MAX_SESSIONID_LEN + 5)) * sizeof(__be32);
+ }
+ 
+ static inline u32 nfsd4_setattr_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+@@ -1893,6 +1894,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_func = (nfsd4op_func)nfsd4_sequence,
+ 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_AS_FIRST_OP,
+ 		.op_name = "OP_SEQUENCE",
++		.op_rsize_bop = (nfsd4op_rsize)nfsd4_sequence_rsize,
+ 	},
+ 	[OP_DESTROY_CLIENTID] = {
+ 		.op_func = (nfsd4op_func)nfsd4_destroy_clientid,
+-- 
+1.9.1
 
-I don't know whether that's the right approach, but I'm sure someone here
-more qualified can comment.
-
-Best regards,
-Carl
