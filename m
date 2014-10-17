@@ -1,41 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail05.adl6.internode.on.net ([150.101.137.143]:14668 "EHLO
-	ipmail05.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757287AbaJ2XeP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Oct 2014 19:34:15 -0400
-Date: Thu, 30 Oct 2014 10:33:31 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: fstests@vger.kernel.org, hch@infradead.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] common:  Fixes for testing NFS over IPv6
-Message-ID: <20141029233331.GO16186@dastard>
-References: <1414611127-14246-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1414611127-14246-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mail-pd0-f172.google.com ([209.85.192.172]:37778 "EHLO
+	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753184AbaJQQPz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Oct 2014 12:15:55 -0400
+Received: by mail-pd0-f172.google.com with SMTP id ft15so1034671pdb.31
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2014 09:15:54 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: when rpc.mountd flushes auth.unix.gid
+From: Tom Haynes <thomas.haynes@primarydata.com>
+In-Reply-To: <54412AC6.7070000@cs.uchicago.edu>
+Date: Fri, 17 Oct 2014 11:15:50 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <EB1CCA15-1DFB-454B-A7C7-061164B72DB7@primarydata.com>
+References: <54412AC6.7070000@cs.uchicago.edu>
+To: Colin Hudler <chudler@cs.uchicago.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 29, 2014 at 03:32:07PM -0400, Anna Schumaker wrote:
-> When testing NFS over IPv6, the user will set a $TEST_DEV of the form
-> [fe80::42]:/export.  The use of square brackets surrounding the IPv6
-> address is an accepted convention, but grep and awk think that our IPv6
-> address is actually a regex and tries to evaluate it instead.  The
-> result is that xfstests reports our filesystem "is busy or already
-> mounted".
+
+On Oct 17, 2014, at 9:42 AM, Colin Hudler <chudler@cs.uchicago.edu> wrote:
+
+> We have a few hundred computers mounting an NFS server in a typical LDAP-based users (nss) setup. We frequently add and remove exports and use exportfs -r to update stab.
+
+I know this isn’t your question, but you would be better served by using explicit exportfs -a and exportfs -r commands for the specific changes.
+
+
+
+> Every time we do so, the clients report "NFS server not responding" and start backing off their requests. After a painful 3-5 minutes, they recover and life is normal again.
 > 
-> This patch fixes the IPv6 problem by telling awk and grep to treat
-> $TEST_DEV as a fixed string rather than a regex.
+> We discovered that when the rpc.mountd cache flushing occurs, our NIS system is overwhelmed with grouplist requests and this obviously blocks things. We are working on that problem separately, and I admit this to be a weakness in our setup. My question is simple.
 > 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> Why does it flush auth.unix.gid when the etab changed? I think it makes unnecessary work for rpc.mountd because the gids are unlikely to have changed,
 
-Seems sensible, but it needs comments so that when someone copies
-the code they know why it's using these sorts of matches.
+Another assumption is that exports rarely change. I expect your setup is an exception to the rule.
 
-Cheers,
 
-Dave.
+> and they already have a reasonable expiration policy.
 
--- 
-Dave Chinner
-david@fromorbit.com
+One way to read what the man page states for exportfs -r:
+
+       -r     Reexport  all  directories,  synchronizing  /var/lib/nfs/etab with /etc/exports and files under /etc/exports.d.
+              This option removes entries in /var/lib/nfs/etab which have been  deleted  from  /etc/exports  or  files  under
+              /etc/exports.d, and removes any entries from the kernel export table which are no longer valid.
+
+is that it only removes entries which have been deleted.
+
+Instead, it removes all entries and reexports those that are still valid. The remove of all is what blows away the auth.unix.gid caching.
+
+Using exportfs -a <path> and exportfs -r <path> should solve this for you.
+
+
+
+
+> 
+> --
+> Colin
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
