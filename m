@@ -1,131 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f173.google.com ([209.85.212.173]:58528 "EHLO
-	mail-wi0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751429AbaJPJFV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 05:05:21 -0400
-Received: by mail-wi0-f173.google.com with SMTP id fb4so875951wid.6
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 02:05:19 -0700 (PDT)
-Message-ID: <1413450315.4062.4.camel@leira.trondhjem.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes and SEEK_HOLE/SEEK_DATA
- feature
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Date: Thu, 16 Oct 2014 12:05:15 +0300
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail1.windriver.com ([147.11.146.13]:60764 "EHLO
+	mail1.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751287AbaJRRFx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Oct 2014 13:05:53 -0400
+Message-ID: <54429DE4.2040504@windriver.com>
+Date: Sat, 18 Oct 2014 11:05:40 -0600
+From: Chris Friesen <chris.friesen@windriver.com>
+MIME-Version: 1.0
+To: <linux-nfs@vger.kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+        <linux-ext4@vger.kernel.org>, <tytso@mit.edu>,
+        <adilger.kernel@dilger.ca>, <linux-rt-users@vger.kernel.org>
+Subject: Re: Hang writing to nfs-mounted filesystem from client -- expected
+ code path?
+References: <544156FE.7070905@windriver.com>
+In-Reply-To: <544156FE.7070905@windriver.com>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On 10/17/2014 11:50 AM, Chris Friesen wrote:
+> Looking through the other tracebacks, it appears that pid 1803 [nfsd]
+> probably has this mutex. Also, looking at the block_start in
+> /proc/1803/sched (, it appears that this was the first process to block:
+>
+> se.statistics.block_start          :      13948189.066634
+>
+> Its traceback looks like this:
+> [<ffffffff8125dc55>] jbd2_log_wait_commit+0xc5/0x150
+> [<ffffffff8125f628>] jbd2_complete_transaction+0xb8/0xd0
+> [<ffffffff81205dcd>] ext4_sync_file+0x1fd/0x4b0
+> [<ffffffff81197ad5>] generic_write_sync+0x55/0x70
+> [<ffffffff8110fdb6>] generic_file_aio_write+0xc6/0xe0
+> [<ffffffff8120591f>] ext4_file_write+0xbf/0x250
+> [<ffffffff811689ab>] do_sync_readv_writev+0xdb/0x120
+> [<ffffffff81168c94>] do_readv_writev+0xd4/0x1d0
+> [<ffffffff81168dcc>] vfs_writev+0x3c/0x50
+> [<ffffffffa01701b8>] nfsd_vfs_write.isra.12+0xf8/0x2e0 [nfsd]
+> [<ffffffffa0172888>] nfsd_write+0xf8/0x110 [nfsd]
+> [<ffffffffa0178b5f>] nfsd3_proc_write+0x9f/0xe0 [nfsd]
+> [<ffffffffa016cade>] nfsd_dispatch+0xbe/0x1c0 [nfsd]
+> [<ffffffff81871679>] svc_process+0x499/0x790
+> [<ffffffffa016c125>] nfsd+0xc5/0x1a0 [nfsd]
+> [<ffffffff810609bb>] kthread+0xdb/0xe0
+> [<ffffffff8193b904>] kernel_thread_helper+0x4/0x10
+>
+> The inode-i_mutex seems to be taken in ext4_sync_file() before the call
+> to jbd2_complete_transaction().
+>
+> It looks like jbd2_log_wait_commit() has just called schedule() in
+> wait_event() in the code below:
+>
+> while (tid_gt(tid, journal->j_commit_sequence)) {
+>      jbd_debug(1, "JBD2: want %d, j_commit_sequence=%d\n",
+>          tid, journal->j_commit_sequence);
+>      wake_up(&journal->j_wait_commit);
+>      read_unlock(&journal->j_state_lock);
+>      wait_event(journal->j_wait_done_commit,
+>          !tid_gt(tid, journal->j_commit_sequence));
+>      read_lock(&journal->j_state_lock);
+> }
+>
+>
+> The kjournald2 thread (pid 5305) blocks significantly later:
+> se.statistics.block_start          :      13953712.751778
+>
+> Here is the traceback:
+> [<ffffffff8110e3ae>] sleep_on_page+0xe/0x20
+> [<ffffffff8110e5b8>] wait_on_page_bit+0x78/0x80
+> [<ffffffff8110e81c>] filemap_fdatawait_range+0x10c/0x1b0
+> [<ffffffff8110e8eb>] filemap_fdatawait+0x2b/0x30
+> [<ffffffff8125832c>] jbd2_journal_commit_transaction+0x8dc/0x1a70
+>      This calls journal_finish_inode_data_buffers which calls
+>      filemap_fdatawait()
+> [<ffffffff8125ddaf>] kjournald2+0xbf/0x280
+> [<ffffffff810609bb>] kthread+0xdb/0xe0
+> [<ffffffff8193b904>] kernel_thread_helper+0x4/0x10
+>
+> It is stuck in jbd2_journal_commit_transaction, apparently waiting for
+> inodes to be written to disk? I'm not sure what would be preventing that
+> from happening.
 
-The following changes since commit 72c23f0819977d37924af92a42a9b7fbfd1c95d8:
+Given the above traces, it appears that nfsd is waiting for jbd2 to 
+commit a transaction to the journal, and jbd2 is waiting for a page to 
+finish writing to disk.
 
-  Merge branch 'bugfixes' into linux-next (2014-09-30 17:21:41 -0400)
+Can someone point me to the code path that actually starts the writing 
+process, and also the code path we would expect to follow when the page 
+has been written?  I assume we're going to be calling 
+set_page_writeback/end_page_writeback, but I don't know how we're going 
+to get there given the above tracebacks.
 
-are available in the git repository at:
-
-
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.18-2
-
-for you to fetch changes up to b8fb9c30f25e45dab5d2cd310ab6913b6861d00f:
-
-  NFS: Fix a bogus warning in nfs_generic_pgio (2014-10-13 11:04:02 -0400)
-
-Note the tree does include a partial merge of Bruce's tree. That was
-done in order to resolve an include file dependency issue for the SEEK
-patch.
-
-Cheers
-  Trond
-
-----------------------------------------------------------------
-NFS client updates for Linux 3.18
-
-Highlights include:
-
-Stable fixes:
-- Fix an uninitialised pointer Oops in the writeback error path
-- Fix a bogus warning (and early exit from the loop) in nfs_generic_pgio
-
-Features:
-- Add NFSv4.2 SEEK feature and client support for lseek(SEEK_HOLE/SEEK_DATA)
-
-Other fixes:
-- pnfs: replace broken pnfs_put_lseg_async
-- Remove dead prototype for nfs4_insert_deviceid_node
-
-----------------------------------------------------------------
-Anna Schumaker (1):
-      NFS: Implement SEEK
-
-Tom Haynes (1):
-      NFSv4: Remove dead prototype for nfs4_insert_deviceid_node()
-
-Trond Myklebust (5):
-      Merge commit '24bab491220f' into client-4.2
-      Merge branch 'client-4.2' into linux-next
-      NFSv4.1/pnfs: replace broken pnfs_put_lseg_async
-      NFS: Fix an uninitialised pointer Oops in the writeback error path
-      NFS: Fix a bogus warning in nfs_generic_pgio
-
- fs/Kconfig                               |   6 +-
- fs/lockd/Makefile                        |   3 +-
- fs/lockd/netns.h                         |   1 -
- fs/lockd/procfs.c                        |  92 +++++++++++++
- fs/lockd/procfs.h                        |  28 ++++
- fs/lockd/svc.c                           |  16 ++-
- fs/nfs/Makefile                          |   1 +
- fs/nfs/callback.c                        |   4 +-
- fs/nfs/filelayout/filelayout.c           |   2 +-
- fs/nfs/inode.c                           |   2 +
- fs/nfs/nfs42.h                           |  14 ++
- fs/nfs/nfs42proc.c                       |  69 ++++++++++
- fs/nfs/nfs42xdr.c                        |  98 ++++++++++++++
- fs/nfs/nfs4_fs.h                         |   3 +
- fs/nfs/nfs4file.c                        |  25 ++++
- fs/nfs/nfs4proc.c                        |   4 +-
- fs/nfs/nfs4xdr.c                         |   7 +
- fs/nfs/pagelist.c                        |  10 +-
- fs/nfs/pnfs.c                            |  33 ++++-
- fs/nfs/pnfs.h                            |   7 +-
- fs/nfs_common/Makefile                   |   3 +-
- fs/{lockd => nfs_common}/grace.c         |  68 ++++++++--
- fs/nfsd/Kconfig                          |   4 +-
- fs/nfsd/cache.h                          |   1 -
- fs/nfsd/export.c                         |   1 +
- fs/nfsd/nfs3proc.c                       |  13 +-
- fs/nfsd/nfs4callback.c                   | 145 ++++++---------------
- fs/nfsd/nfs4idmap.c                      |  20 ++-
- fs/nfsd/nfs4proc.c                       |  49 +++++++
- fs/nfsd/nfs4recover.c                    | 205 +++++++++++++++++++++++------
- fs/nfsd/nfs4state.c                      | 118 +++++++++++++----
- fs/nfsd/nfs4xdr.c                        |  75 ++++++++++-
- fs/nfsd/nfscache.c                       | 214 ++++++++++++++++---------------
- fs/nfsd/nfsctl.c                         |  45 +++++++
- fs/nfsd/nfsd.h                           |   2 +-
- fs/nfsd/nfsfh.c                          |   6 +-
- fs/nfsd/state.h                          |  28 +++-
- fs/nfsd/vfs.c                            |  37 ++++--
- fs/nfsd/xdr4.h                           |  14 ++
- include/linux/nfs4.h                     |  29 ++++-
- include/linux/nfs_fs_sb.h                |   1 +
- include/linux/nfs_xdr.h                  |  19 +++
- include/linux/proc_fs.h                  |   2 +
- include/linux/sunrpc/svc.h               |   1 -
- include/uapi/linux/nfsd/export.h         |   5 +-
- net/sunrpc/svc.c                         |   2 -
- net/sunrpc/svc_xprt.c                    |  81 +++++-------
- net/sunrpc/svcsock.c                     |  25 +---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   2 +-
- net/sunrpc/xprtrdma/xprt_rdma.h          |   7 +
- 50 files changed, 1222 insertions(+), 425 deletions(-)
- create mode 100644 fs/lockd/procfs.c
- create mode 100644 fs/lockd/procfs.h
- create mode 100644 fs/nfs/nfs42.h
- create mode 100644 fs/nfs/nfs42proc.c
- create mode 100644 fs/nfs/nfs42xdr.c
- rename fs/{lockd => nfs_common}/grace.c (50%)
+Thanks,
+Chris
 
 
