@@ -1,32 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:47295 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752164AbaJCPKJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Oct 2014 11:10:09 -0400
-Date: Fri, 3 Oct 2014 08:10:09 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Thomas Haynes <thomas.haynes@primarydata.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Tom Haynes <loghyr@primarydata.com>
-Subject: Re: [PATCH] NFSv4: Remove dead prototype for
- nfs4_insert_deviceid_node()
-Message-ID: <20141003151009.GA9250@infradead.org>
-References: <1412318651-53549-1-git-send-email-Thomas.Haynes@primarydata.com>
+Received: from mout.gmx.net ([212.227.15.18]:63994 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750980AbaJRV7H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 18 Oct 2014 17:59:07 -0400
+Received: from [192.168.178.21] ([80.171.109.239]) by mail.gmx.com (mrgmx003)
+ with ESMTPSA (Nemesis) id 0LtIdP-1Y7haN0zOd-012qbD for
+ <linux-nfs@vger.kernel.org>; Sat, 18 Oct 2014 23:59:04 +0200
+Message-ID: <5442E2A4.9030006@gmx.de>
+Date: Sat, 18 Oct 2014 23:59:00 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1412318651-53549-1-git-send-email-Thomas.Haynes@primarydata.com>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: fuzz testing gave today : "kernel: NFS: nfs4_reclaim_open_state:
+ unhandled error -13"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 02, 2014 at 11:44:11PM -0700, Thomas Haynes wrote:
-> From: Tom Haynes <loghyr@primarydata.com>
-> 
-> nfs4_insert_deviceid_node() was removed in 661373b13d0490ff410a2133d4a7a117f2dd037e
+happens within a 32 bit user mode linux guest running latest git tree v3.17-9981-g929254d
+It occurred few times about half an hour after the test case was started.
 
-Oops, sorry.
+Well, it is very early in the current release cycle, so just asking, if this is already known / worth to investigate ?
+-- 
+Toralf
+pgp key: 0076 E94E
 
-
-Looks good,
-
-Reviewed-by: Christoph Hellwig <hch@lst.de>
