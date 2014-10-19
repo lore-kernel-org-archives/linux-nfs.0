@@ -1,40 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:35414 "EHLO mx2.suse.de"
+Received: from mout.gmx.net ([212.227.15.15]:56129 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756047AbaJWP4S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Oct 2014 11:56:18 -0400
-From: Jan Kara <jack@suse.cz>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>
-Subject: [PATCH] nfs: Remove dead case from nfs4_map_errors()
-Date: Thu, 23 Oct 2014 17:56:11 +0200
-Message-Id: <1414079771-2960-1-git-send-email-jack@suse.cz>
+	id S1750993AbaJSUeP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 19 Oct 2014 16:34:15 -0400
+Message-ID: <54442040.5070601@gmx.de>
+Date: Sun, 19 Oct 2014 22:34:08 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+MIME-Version: 1.0
+To: Trond Myklebust <trondmy@gmail.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: fuzz testing gave today : "kernel: NFS: nfs4_reclaim_open_state:
+ unhandled error -13"
+References: <5442E2A4.9030006@gmx.de> <CAABAsM4ETHB6obPVa4Zf8T7Vb--t6--Q2tS5ibOurA1BN3as=g@mail.gmail.com>
+In-Reply-To: <CAABAsM4ETHB6obPVa4Zf8T7Vb--t6--Q2tS5ibOurA1BN3as=g@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS4ERR_ACCESS has number 13 and thus is matched and returned
-immediately at the beginning of nfs4_map_errors() and there's no point
-in checking it later.
+On 10/19/2014 10:03 PM, Trond Myklebust wrote:
+> Errno 13 is EACCES. Might the test case involve changing the mode
+> bits/acls on an open file, then putting the client in situation where
+> an expired lease causes it to attempt open state recovery?
 
-Coverity-id: 733891
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/nfs/nfs4proc.c | 2 --
- 1 file changed, 2 deletions(-)
+right - that's likely possible due to 2 trinity childs running in parallel
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 405bd95c1f58..f45e6ea1b278 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -158,8 +158,6 @@ static int nfs4_map_errors(int err)
- 		return -EACCES;
- 	case -NFS4ERR_MINOR_VERS_MISMATCH:
- 		return -EPROTONOSUPPORT;
--	case -NFS4ERR_ACCESS:
--		return -EACCES;
- 	case -NFS4ERR_FILE_OPEN:
- 		return -EBUSY;
- 	default:
+
 -- 
-1.8.1.4
+Toralf
+pgp key: 0076 E94E
 
