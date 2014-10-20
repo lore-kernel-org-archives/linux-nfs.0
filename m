@@ -1,41 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:64860 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750727AbaJ1SYW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Oct 2014 14:24:22 -0400
-Received: by mail-qc0-f175.google.com with SMTP id b13so1160171qcw.34
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Oct 2014 11:24:22 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] sunrpc: new tracepoints for call/reply tracking
-Date: Tue, 28 Oct 2014 14:24:11 -0400
-Message-Id: <1414520654-1606-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:41948 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751233AbaJTWbS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Oct 2014 18:31:18 -0400
+Received: by mail-yh0-f46.google.com with SMTP id f73so2767yha.19
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2014 15:31:17 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <D259448C-9E9B-43AE-A809-A73C3C2716C5@oracle.com>
+References: <20141016192919.13414.3151.stgit@manet.1015granger.net>
+	<20141016194000.13414.83844.stgit@manet.1015granger.net>
+	<54454762.8020506@Netapp.com>
+	<A1CBA20C-FA2F-4E6B-9D94-75F7EFDED9C3@oracle.com>
+	<CAHQdGtTgJ7vRR3Kw8n4K4=PSoMXV_ZQK9yFkAcK-CK5xsaTm3A@mail.gmail.com>
+	<D259448C-9E9B-43AE-A809-A73C3C2716C5@oracle.com>
+Date: Tue, 21 Oct 2014 01:31:17 +0300
+Message-ID: <CAHQdGtRahOX68j6J6Vq9ykBE-2qUm1sd_HPw=HGimKAGs5V=9Q@mail.gmail.com>
+Subject: Re: [PATCH v1 13/16] NFS: Add sidecar RPC client support
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Tom Talpey <tom@talpey.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These patches add some tracepoints that I recently used when tracking
-down the hang that Christoph reported recently. At this point, I still
-haven't followed the trail to completion, but I think the problem is
-not likely to be in the RPC code.
+On Mon, Oct 20, 2014 at 11:11 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Hi Trond-
+>
+> On Oct 20, 2014, at 3:40 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>
+>> Why aren't we doing the callbacks via RDMA as per the recommendation
+>> in RFC5667 section 5.1?
+>
+> There’s no benefit to it. With a side car, the server requires
+> few or no changes. There are no CB operations that benefit
+> from using RDMA. It’s very quick to implement, re-using most of
+> the client backchannel implementation that already exists.
+>
+> I’ve discussed this with an author of RFC 5667 [cc’d], and also
+> with the implementors of an existing NFSv4.1 server that supports
+> RDMA. They both agree that a side car is an acceptable, or even a
+> preferable, way to approach backchannel support.
+>
+> Also, when I discussed this with you months ago, you also felt
+> that a side car was better than adding backchannel support to the
+> xprtrdma transport. I took this approach only because you OK’d it.
+>
+> But I don’t see an explicit recommendation in section 5.1. Which
+> text are you referring to?
 
-Please consider these for v3.19? Some of these are for client RPC and
-some for server-side. I'll assume that Trond will merge these, but
-review by others would be appreciated as well.
+The very first paragraph argues that because callback messages don't
+carry bulk data, there is no problem with using RPC/RDMA and, in
+particular, with using RDMA_MSG provided that the buffer sizes are
+negotiated correctly.
 
-Jeff Layton (3):
-  sunrpc: add some tracepoints in svc_rqst handling functions
-  sunrpc: add new tracepoints in xprt handling code
-  sunrpc: add tracepoints in xs_tcp_data_recv
+So the questions are:
 
- include/linux/sunrpc/xprtsock.h |  59 +++++++++++++++
- include/trace/events/sunrpc.h   | 160 ++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/svc.c                |  21 +++---
- net/sunrpc/svc_xprt.c           |  31 +++++---
- net/sunrpc/xprt.c               |   9 ++-
- net/sunrpc/xprtsock.c           |  69 +++--------------
- 6 files changed, 269 insertions(+), 80 deletions(-)
+1) Where is the discussion of the merits for and against adding
+bi-directional support to the xprtrdma layer in Linux? What is the
+showstopper preventing implementation of a design based around
+RFC5667?
+
+2) Why do we instead have to solve the whole backchannel problem in
+the NFSv4.1 layer, and where is the discussion of the merits for and
+against that particular solution? As far as I can tell, it imposes at
+least 2 extra requirements:
+ a) NFSv4.1 client+server must have support either for session
+trunking or for clientid trunking
+ b) NFSv4.1 client must be able to set up a TCP connection to the
+server (that can be session/clientid trunked with the existing RDMA
+channel)
+
+All I've found so far on googling these questions is a 5 1/2 year old
+email exchange between Tom Tucker and Ricardo where the conclusion
+appears to be that we can, in time, implement both designs. However
+there is no explanation of why we would want to do so.
+http://comments.gmane.org/gmane.linux.nfs/22927
 
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
