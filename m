@@ -1,88 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:30709 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754490AbaJWUql (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2014 16:46:41 -0400
-Message-ID: <54496910.1020100@oracle.com>
-Date: Thu, 23 Oct 2014 13:46:08 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:43543 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751553AbaJTFMc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Oct 2014 01:12:32 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s9K5CWk7009370
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2014 01:12:32 -0400
+Received: from mmyllyne.csb (vpn1-5-245.ams2.redhat.com [10.36.5.245])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s9K5CVJV002459
+	for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2014 01:12:31 -0400
+Message-ID: <544499BA.1050408@redhat.com>
+Date: Mon, 20 Oct 2014 08:12:26 +0300
+From: Marko Myllynen <myllynen@redhat.com>
+Reply-To: myllynen@redhat.com
 MIME-Version: 1.0
-To: "Charles EDWARD Lever" <chuck.lever@oracle.com>, Anna.Schumaker@netapp.com,
-        Devesh.Sharma@emulex.com, dledford@redhat.com,
-        dominique.martinet@cea.fr, jeffrey.c.becker@nasa.gov,
-        rsdance@soft-forge.com, skc@lanl.gov, sprabhu@redhat.com,
-        SteveD@redhat.com, swise@opengridcomputing.com, wendy.cheng@intel.com,
-        yanb@mellanox.com
-CC: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: NFSoRDMA developers bi-weekly meeting minutes (10/23)
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsstat: fix server rpc stats header
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Attendees:
+linux/net/sunrpc/stats.c has:
 
-Steve Dickson (Red Hat)
-Chuck Lever (Oracle)
-Doug Ledford (RedHat)
-Shirley Ma (Oracle)
-Sachin Prabhu (RedHat)
-Anna Schumaker (Net App)
-Steve Wise (OpenGridComputing, Chelsio)
+/*
+ * Get RPC server stats
+ */
+void svc_seq_show(struct seq_file *seq, const struct svc_stat *statp) {
+...
+        seq_printf(seq,
+                "rpc %u %u %u %u %u\n",
+                        statp->rpccnt,
+                        statp->rpcbadfmt+statp->rpcbadauth+statp->rpcbadclnt,
+                        statp->rpcbadfmt,
+                        statp->rpcbadauth,
+                        statp->rpcbadclnt);
+...
 
-Moderator:
-Shirley Ma (Oracle)
+But when /proc/net/rpc/nfsd contains
 
-NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA development and test effort from different resources to speed up NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools development. Hopefully the quality of NFSoRDMA upstream patches can be improved by being tested with a quorum of HW vendors.
+rpc 1 2 3 4 5
 
-Today's meeting notes:
-1. OFED update and bug status (Rupert):
--- Intel has discovered some issues with infinipath-psm and is working on an update so there will have to be an OFED 3.12-1 rc4
--- Vlad (Mellanox) has agreed to put together the next version of OFED which will be based on kernel 3.18 rc1. This will be ready will be ready to use in the OFA Interop Debug event next week. This will allow us to test some of these NFSoRDMA bugs that are outstanding.
+nfsstat -sv prints:
 
-2. NFS 4.1 RDMA client support (Chuck)
-Chuck has submitted the patchset to upstream review. The patch includes bi-directional RPC xprt support and sidecar client support, default is TCP to handle backchannel if not specified in mounting option. Patchset is under review, here is the link:
-http://www.spinics.net/lists/linux-nfs/msg47278.html
--- NFS 4.1 enables pNFS
--- bi-redictional RDMA
+Server rpc stats:
+calls      badcalls   badclnt    badauth    xdrcall
+1          2          3          4          5
 
-3. Performance tools and test I/O block size:
--- RPC GETATTR, LOOKUP, ACCESS, READ, WRITE latency are more important than other RPCs: mountstats ouput
--- I/O latency changes with heavy CPU workload (like kernel build)
--- direction I/O performance, tmpfs, ramdisk, big file size equal to 80% of physical memory
--- 8K block size performance in particular for database workload
--- mixed block size performance
--- benchmark tools: fio, iozone, dbench, connecthon, xfstest...
--- scalability: number of mountpoints, number of clients
+Change this to match the kernel:
 
-4. RDMA emulate driver for testing if no HW is available: (Steve Wise)
--- soft iwarp: repo is 
-https://www.gitorious.org/softiwarp/ (maintainer Bernard Metzler)
+Server rpc stats:
+calls      badcalls   badfmt     badauth    badclnt
+1          2          3          4          5
 
-5. Whether we can use RDMA write for both NFS write/read to improve the performance?
+Fixes https://bugzilla.redhat.com/show_bug.cgi?id=1142842.
 
-Feel free to reply here for anything missing. See you on Nov.6th.
+Signed-off-by: Marko Myllynen <myllynen@redhat.com>
+---
+ utils/nfsstat/nfsstat.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-10/23/2014
-@7:30am PDT
-@8:30am MDT
-@9:30am CDT
-@10:30am EDT
-@Bangalore @8:00pm
-@Israel @5:30pm
+diff --git a/utils/nfsstat/nfsstat.c b/utils/nfsstat/nfsstat.c
+index 18e4d27..9f481db 100644
+--- a/utils/nfsstat/nfsstat.c
++++ b/utils/nfsstat/nfsstat.c
+@@ -558,7 +558,7 @@ print_server_stats(int opt_prt)
+ 			;
+ 		} else {
+ 			print_numbers(LABEL_srvrpc
+-				"calls      badcalls   badclnt    badauth    xdrcall\n",
++				"calls      badcalls   badfmt     badauth    badclnt\n",
+ 				srvrpcinfo, 5);
+ 			printf("\n");
+ 		}
+-- 
+1.7.1
 
-Duration: 1 hour
-
-Call-in number:
-Israel: +972 37219638
-Bangalore: +91 8039890080 (180030109800)
-France  Colombes +33 1 5760 2222    +33 176728936
-US: 8666824770,  408-7744073
-
-Conference Code: 2308833
-Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
-
-Thanks everyone for joining the call and providing valuable inputs/work to the community to make NFSoRDMA better.
-
-Cheers,
-Shirley
+-- 
+Marko Myllynen
