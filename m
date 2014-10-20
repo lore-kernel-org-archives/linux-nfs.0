@@ -1,234 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f174.google.com ([209.85.217.174]:50011 "EHLO
-	mail-lb0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753242AbaJBNmj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Oct 2014 09:42:39 -0400
-Received: by mail-lb0-f174.google.com with SMTP id p9so2277078lbv.5
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Oct 2014 06:42:37 -0700 (PDT)
-From: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
-To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
-        ncopa@alpinelinux.org
-Cc: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
-Subject: [PATCH v2 3/5] gssd: talk to kernel using file descriptors instead of FILE
-Date: Thu,  2 Oct 2014 16:41:59 +0300
-Message-Id: <1412257321-5855-4-git-send-email-timo.teras@iki.fi>
-In-Reply-To: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
-References: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from userp1040.oracle.com ([156.151.31.81]:22377 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751511AbaJTSJr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Oct 2014 14:09:47 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH v1 13/16] NFS: Add sidecar RPC client support
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <54454762.8020506@Netapp.com>
+Date: Mon, 20 Oct 2014 14:09:42 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <A1CBA20C-FA2F-4E6B-9D94-75F7EFDED9C3@oracle.com>
+References: <20141016192919.13414.3151.stgit@manet.1015granger.net> <20141016194000.13414.83844.stgit@manet.1015granger.net> <54454762.8020506@Netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Timo Ter√§s <timo.teras@iki.fi>
----
- utils/gssd/gssd_proc.c         |  9 +++++---
- utils/gssd/svcgssd.h           |  2 +-
- utils/gssd/svcgssd_main_loop.c |  9 ++++----
- utils/gssd/svcgssd_proc.c      | 51 ++++++++++++++++++++++--------------------
- 4 files changed, 38 insertions(+), 33 deletions(-)
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 121feb1..1d8e6a7 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -78,6 +78,7 @@
- #include "nfsrpc.h"
- #include "nfslib.h"
- #include "gss_names.h"
-+#include "misc.h"
- 
- /*
-  * pollarray:
-@@ -1250,7 +1251,7 @@ void
- handle_gssd_upcall(struct clnt_info *clp)
- {
- 	uid_t			uid;
--	char			*lbuf = NULL;
-+	char			lbuf[RPC_CHAN_BUF_SIZE];
- 	int			lbuflen = 0;
- 	char			*p;
- 	char			*mech = NULL;
-@@ -1260,11 +1261,14 @@ handle_gssd_upcall(struct clnt_info *clp)
- 
- 	printerr(1, "handling gssd upcall (%s)\n", clp->dirname);
- 
--	if (readline(clp->gssd_fd, &lbuf, &lbuflen) != 1) {
-+	lbuflen = read(clp->gssd_fd, lbuf, sizeof(lbuf));
-+	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
- 		printerr(0, "WARNING: handle_gssd_upcall: "
- 			    "failed reading request\n");
- 		return;
- 	}
-+	lbuf[lbuflen-1] = 0;
-+
- 	printerr(2, "%s: '%s'\n", __func__, lbuf);
- 
- 	/* find the mechanism name */
-@@ -1362,7 +1366,6 @@ handle_gssd_upcall(struct clnt_info *clp)
- 	}
- 
- out:
--	free(lbuf);
- 	free(mech);
- 	free(enctypes);
- 	free(target);
-diff --git a/utils/gssd/svcgssd.h b/utils/gssd/svcgssd.h
-index 9a2e2e8..02b5c7a 100644
---- a/utils/gssd/svcgssd.h
-+++ b/utils/gssd/svcgssd.h
-@@ -35,7 +35,7 @@
- #include <sys/queue.h>
- #include <gssapi/gssapi.h>
- 
--void handle_nullreq(FILE *f);
-+void handle_nullreq(int f);
- void gssd_run(void);
- 
- #define GSSD_SERVICE_NAME	"nfs"
-diff --git a/utils/gssd/svcgssd_main_loop.c b/utils/gssd/svcgssd_main_loop.c
-index 2b4111c..b5681ce 100644
---- a/utils/gssd/svcgssd_main_loop.c
-+++ b/utils/gssd/svcgssd_main_loop.c
-@@ -54,19 +54,18 @@ void
- gssd_run()
- {
- 	int			ret;
--	FILE			*f;
-+	int			f;
- 	struct pollfd		pollfd;
- 
- #define NULLRPC_FILE "/proc/net/rpc/auth.rpcsec.init/channel"
- 
--	f = fopen(NULLRPC_FILE, "rw");
--
--	if (!f) {
-+	f = open(NULLRPC_FILE, O_RDWR);
-+	if (f < 0) {
- 		printerr(0, "failed to open %s: %s\n",
- 			 NULLRPC_FILE, strerror(errno));
- 		exit(1);
- 	}
--	pollfd.fd = fileno(f);
-+	pollfd.fd = f;
- 	pollfd.events = POLLIN;
- 	while (1) {
- 		int save_err;
-diff --git a/utils/gssd/svcgssd_proc.c b/utils/gssd/svcgssd_proc.c
-index 5bdb438..72ec254 100644
---- a/utils/gssd/svcgssd_proc.c
-+++ b/utils/gssd/svcgssd_proc.c
-@@ -73,36 +73,35 @@ struct svc_cred {
- 	int	cr_ngroups;
- 	gid_t	cr_groups[NGROUPS];
- };
--static char vbuf[RPC_CHAN_BUF_SIZE];
- 
- static int
- do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
- 		gss_OID mech, gss_buffer_desc *context_token,
- 		int32_t endtime, char *client_name)
- {
--	FILE *f;
--	int i;
-+	char buf[RPC_CHAN_BUF_SIZE], *bp;
-+	int i, f, err, blen;
- 	char *fname = NULL;
--	int err;
- 
- 	printerr(1, "doing downcall\n");
- 	if ((fname = mech2file(mech)) == NULL)
- 		goto out_err;
--	f = fopen(SVCGSSD_CONTEXT_CHANNEL, "w");
--	if (f == NULL) {
-+
-+	f = open(SVCGSSD_CONTEXT_CHANNEL, O_WRONLY);
-+	if (f < 0) {
- 		printerr(0, "WARNING: unable to open downcall channel "
- 			     "%s: %s\n",
- 			     SVCGSSD_CONTEXT_CHANNEL, strerror(errno));
- 		goto out_err;
- 	}
--	setvbuf(f, vbuf, _IOLBF, RPC_CHAN_BUF_SIZE);
--	qword_printhex(f, out_handle->value, out_handle->length);
-+	bp = buf, blen = sizeof(buf);
-+	qword_addhex(&bp, &blen, out_handle->value, out_handle->length);
- 	/* XXX are types OK for the rest of this? */
- 	/* For context cache, use the actual context endtime */
--	qword_printint(f, endtime);
--	qword_printint(f, cred->cr_uid);
--	qword_printint(f, cred->cr_gid);
--	qword_printint(f, cred->cr_ngroups);
-+	qword_addint(&bp, &blen, endtime);
-+	qword_addint(&bp, &blen, cred->cr_uid);
-+	qword_addint(&bp, &blen, cred->cr_gid);
-+	qword_addint(&bp, &blen, cred->cr_ngroups);
- 	printerr(2, "mech: %s, hndl len: %d, ctx len %d, timeout: %d (%d from now), "
- 		 "clnt: %s, uid: %d, gid: %d, num aux grps: %d:\n",
- 		 fname, out_handle->length, context_token->length,
-@@ -110,19 +109,21 @@ do_svc_downcall(gss_buffer_desc *out_handle, struct svc_cred *cred,
- 		 client_name ? client_name : "<null>",
- 		 cred->cr_uid, cred->cr_gid, cred->cr_ngroups);
- 	for (i=0; i < cred->cr_ngroups; i++) {
--		qword_printint(f, cred->cr_groups[i]);
-+		qword_addint(&bp, &blen, cred->cr_groups[i]);
- 		printerr(2, "  (%4d) %d\n", i+1, cred->cr_groups[i]);
- 	}
--	qword_print(f, fname);
--	qword_printhex(f, context_token->value, context_token->length);
-+	qword_add(&bp, &blen, fname);
-+	qword_addhex(&bp, &blen, context_token->value, context_token->length);
- 	if (client_name)
--		qword_print(f, client_name);
--	err = qword_eol(f);
--	if (err) {
-+		qword_add(&bp, &blen, client_name);
-+	qword_addeol(&bp, &blen);
-+	err = 0;
-+	if (blen <= 0 || write(f, buf, bp - buf) != bp - buf) {
- 		printerr(1, "WARNING: error writing to downcall channel "
- 			 "%s: %s\n", SVCGSSD_CONTEXT_CHANNEL, strerror(errno));
-+		err = -1;
- 	}
--	fclose(f);
-+	close(f);
- 	return err;
- out_err:
- 	printerr(1, "WARNING: downcall failed\n");
-@@ -317,7 +318,7 @@ print_hexl(const char *description, unsigned char *cp, int length)
- #endif
- 
- void
--handle_nullreq(FILE *f) {
-+handle_nullreq(int f) {
- 	/* XXX initialize to a random integer to reduce chances of unnecessary
- 	 * invalidation of existing ctx's on restarting svcgssd. */
- 	static u_int32_t	handle_seq = 0;
-@@ -339,19 +340,21 @@ handle_nullreq(FILE *f) {
- 	u_int32_t		maj_stat = GSS_S_FAILURE, min_stat = 0;
- 	u_int32_t		ignore_min_stat;
- 	struct svc_cred		cred;
--	static char		*lbuf = NULL;
--	static int		lbuflen = 0;
--	static char		*cp;
-+	char			lbuf[RPC_CHAN_BUF_SIZE];
-+	int			lbuflen = 0;
-+	char			*cp;
- 	int32_t			ctx_endtime;
- 	char			*hostbased_name = NULL;
- 
- 	printerr(1, "handling null request\n");
- 
--	if (readline(fileno(f), &lbuf, &lbuflen) != 1) {
-+	lbuflen = read(f, lbuf, sizeof(lbuf));
-+	if (lbuflen <= 0 || lbuf[lbuflen-1] != '\n') {
- 		printerr(0, "WARNING: handle_nullreq: "
- 			    "failed reading request\n");
- 		return;
- 	}
-+	lbuf[lbuflen-1] = 0;
- 
- 	cp = lbuf;
- 
--- 
-2.1.2
+On Oct 20, 2014, at 1:33 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+
+> On 10/16/14 15:40, Chuck Lever wrote:
+>> So far, TCP is the only transport that supports bi-directional RPC.
+>> 
+>> When mounting with NFSv4.1 using a transport that does not support
+>> bi-directional RPC, establish a TCP sidecar connection to handle
+>> backchannel traffic for a session. The sidecar transport does not
+>> use its forward channel except for sending BIND_CONN_TO_SESSION
+>> operations.
+>> 
+>> This commit adds logic to create and destroy the sidecar transport.
+>> Subsequent commits add logic to use the transport.
+> 
+> I thought NFS v4.0 also uses a separate connection for the backchannel?
+
+For NFSv4.0, the server opens a connection to the client. For
+NFSv4.1, the client opens the side car connection to the
+server, and then performs BIND_CONN_TO_SESSION, an operation
+not in NFSv4.0. The processes are not terribly similar.
+
+> Can any of that code be reused here, rather than creating new sidecar structures?
+
+Since itís the client opening a connection in this case,
+I donít see any obvious common code paths that I havenít
+already re-used. Iím open to suggestions.
+
+> Anna
+> 
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> fs/nfs/client.c           |    1 +
+>> fs/nfs/nfs4client.c       |   54 +++++++++++++++++++++++++++++++++++++++++++++
+>> include/linux/nfs_fs_sb.h |    2 ++
+>> 3 files changed, 57 insertions(+)
+>> 
+>> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+>> index 6a4f366..19f49bf 100644
+>> --- a/fs/nfs/client.c
+>> +++ b/fs/nfs/client.c
+>> @@ -78,6 +78,7 @@ const struct rpc_program nfs_program = {
+>> 	.stats			= &nfs_rpcstat,
+>> 	.pipe_dir_name		= NFS_PIPE_DIRNAME,
+>> };
+>> +EXPORT_SYMBOL_GPL(nfs_program);
+>> 
+>> struct rpc_stat nfs_rpcstat = {
+>> 	.program		= &nfs_program
+>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>> index 5f4b818..b1cc35e 100644
+>> --- a/fs/nfs/nfs4client.c
+>> +++ b/fs/nfs/nfs4client.c
+>> @@ -213,6 +213,8 @@ static void nfs4_destroy_callback(struct nfs_client *clp)
+>> {
+>> 	if (__test_and_clear_bit(NFS_CS_CALLBACK, &clp->cl_res_state))
+>> 		nfs_callback_down(clp->cl_mvops->minor_version, clp->cl_net);
+>> +	if (clp->cl_bc_rpcclient)
+>> +		rpc_shutdown_client(clp->cl_bc_rpcclient);
+>> }
+>> 
+>> static void nfs4_shutdown_client(struct nfs_client *clp)
+>> @@ -291,6 +293,53 @@ int nfs40_init_client(struct nfs_client *clp)
+>> 
+>> #if defined(CONFIG_NFS_V4_1)
+>> 
+>> +/*
+>> + * Create a separate rpc_clnt using TCP that can provide a
+>> + * backchannel service.
+>> + */
+>> +static int nfs41_create_sidecar_rpc_client(struct nfs_client *clp)
+>> +{
+>> +	struct sockaddr_storage address;
+>> +	struct sockaddr *sap = (struct sockaddr *)&address;
+>> +	struct rpc_create_args args = {
+>> +		.net		= clp->cl_net,
+>> +		.protocol	= XPRT_TRANSPORT_TCP,
+>> +		.address	= sap,
+>> +		.addrsize	= clp->cl_addrlen,
+>> +		.servername	= clp->cl_hostname,
+>> +		.program	= &nfs_program,
+>> +		.version	= clp->rpc_ops->version,
+>> +		.flags		= (RPC_CLNT_CREATE_DISCRTRY |
+>> +				  RPC_CLNT_CREATE_NOPING),
+>> +	};
+>> +	struct rpc_clnt *clnt;
+>> +	struct rpc_cred *cred;
+>> +
+>> +	if (rpc_xprt_is_bidirectional(clp->cl_rpcclient))
+>> +		return 0;
+>> +
+>> +	if (test_bit(NFS_CS_NORESVPORT, &clp->cl_flags))
+>> +		args.flags |= RPC_CLNT_CREATE_NONPRIVPORT;
+>> +	memcpy(sap, &clp->cl_addr, clp->cl_addrlen);
+>> +	rpc_set_port(sap, NFS_PORT);
+>> +	cred = nfs4_get_clid_cred(clp);
+>> +	if (cred) {
+>> +		args.authflavor = cred->cr_auth->au_flavor;
+>> +		put_rpccred(cred);
+>> +	} else
+>> +		args.authflavor = RPC_AUTH_UNIX;
+>> +
+>> +	clnt = rpc_create(&args);
+>> +	if (IS_ERR(clnt)) {
+>> +		dprintk("%s: cannot create side-car RPC client. Error = %ld\n",
+>> +			__func__, PTR_ERR(clnt));
+>> +		return PTR_ERR(clnt);
+>> +	}
+>> +
+>> +	clp->cl_bc_rpcclient = clnt;
+>> +	return 0;
+>> +}
+>> +
+>> /**
+>>  * nfs41_init_client - nfs_client initialization tasks for NFSv4.1+
+>>  * @clp - nfs_client to initialize
+>> @@ -300,6 +349,11 @@ int nfs40_init_client(struct nfs_client *clp)
+>> int nfs41_init_client(struct nfs_client *clp)
+>> {
+>> 	struct nfs4_session *session = NULL;
+>> +	int ret;
+>> +
+>> +	ret = nfs41_create_sidecar_rpc_client(clp);
+>> +	if (ret)
+>> +		return ret;
+>> 
+>> 	/*
+>> 	 * Create the session and mark it expired.
+>> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+>> index 922be2e..159d703 100644
+>> --- a/include/linux/nfs_fs_sb.h
+>> +++ b/include/linux/nfs_fs_sb.h
+>> @@ -87,6 +87,8 @@ struct nfs_client {
+>> 
+>> 	/* The sequence id to use for the next CREATE_SESSION */
+>> 	u32			cl_seqid;
+>> +	/* The optional sidecar backchannel transport */
+>> +	struct rpc_clnt		*cl_bc_rpcclient;
+>> 	/* The flags used for obtaining the clientid during EXCHANGE_ID */
+>> 	u32			cl_exchange_flags;
+>> 	struct nfs4_session	*cl_session;	/* shared session */
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+--
+Chuck Lever
+
+
 
