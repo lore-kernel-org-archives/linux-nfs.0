@@ -1,125 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:34531 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751035AbaJQKVX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Oct 2014 06:21:23 -0400
-Received: by mail-qa0-f48.google.com with SMTP id dc16so277944qab.7
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Oct 2014 03:21:22 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: convert nfs4_file searches to use RCU
-Date: Fri, 17 Oct 2014 06:21:15 -0400
-Message-Id: <1413541275-3884-1-git-send-email-jlayton@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:30187 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751233AbaJTSWB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Oct 2014 14:22:01 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH v1 03/16] SUNRPC: Pass callsize and recvsize to buf_alloc as separate arguments
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <5445167D.9050401@Netapp.com>
+Date: Mon, 20 Oct 2014 14:21:57 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <88F222C3-F2AA-4CAA-A2CB-222A56ED9C52@oracle.com>
+References: <20141016192919.13414.3151.stgit@manet.1015granger.net> <20141016193838.13414.12691.stgit@manet.1015granger.net> <5445167D.9050401@Netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The global state_lock protects the file_hashtbl, and that has the
-potential to be a scalability bottleneck.
 
-Address this by making the file_hashtbl use RCU. Add a rcu_head to the
-nfs4_file and use that when freeing ones that have been hashed.
+On Oct 20, 2014, at 10:04 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
 
-Convert find_file to use a lockless lookup. Convert find_or_add_file to
-attempt a lockless lookup first, and then fall back to doing the
-"normal" locked search and insert if that fails to find anything.
+> On 10/16/14 15:38, Chuck Lever wrote:
+>> I noticed that on RDMA, NFSv4 operations were using "hardway"
+>> allocations much more than not. A "hardway" allocation uses GFP_NOFS
+>> during each RPC to allocate the XDR buffer, instead of using a
+>> pre-allocated pre-registered buffer for each RPC.
+>> 
+>> The pre-allocated buffers are 2200 bytes in length.  The requested
+>> XDR buffer sizes looked like this:
+>> 
+>>    GETATTR: 3220 bytes
+>>    LOOKUP:  3612 bytes
+>>    WRITE:   3256 bytes
+>>    OPEN:    6344 bytes
+>> 
+>> But an NFSv4 GETATTR RPC request should be small. It's the reply
+>> part of GETATTR that can grow large.
+>> 
+>> call_allocate() passes a single value as the XDR buffer size: the
+>> sum of call and reply buffers. However, the xprtrdma transport
+>> allocates its XDR request and reply buffers separately.
+>> 
+>> xprtrdma needs to know the maximum call size, as guidance for how
+>> large the outgoing request is going to be and how the NFS payload
+>> will be marshalled into chunks.
+>> 
+>> But RDMA XDR reply buffers are pre-posted, fixed-size buffers, not
+>> allocated by xprt_rdma_allocate().
+>> 
+>> Because of the sum passed through ->buf_alloc(), xprtrdma's
+>> ->buf_alloc() always allocates more XDR buffer than it will ever
+>> use. For NFSv4, it is unnecessarily triggering the slow "hardway"
+>> path for almost every RPC.
+>> 
+>> Pass the call and reply buffer size values separately to the
+>> transport's ->buf_alloc method.  The RDMA transport ->buf_alloc can
+>> now ignore the reply size, and allocate just what it will use for
+>> the call buffer.  The socket transport ->buf_alloc can simply add
+>> them together, as call_allocate() did before.
+>> 
+>> With this patch, an NFSv4 GETATTR request now allocates a 476 byte
+>> RDMA XDR buffer. I didn't see a single NFSv4 request that did not
+>> fit into the transport's pre-allocated XDR buffer.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> include/linux/sunrpc/sched.h    |    2 +-
+>> include/linux/sunrpc/xprt.h     |    3 ++-
+>> net/sunrpc/clnt.c               |    4 ++--
+>> net/sunrpc/sched.c              |    6 ++++--
+>> net/sunrpc/xprtrdma/transport.c |    2 +-
+>> net/sunrpc/xprtsock.c           |    3 ++-
+>> 6 files changed, 12 insertions(+), 8 deletions(-)
+>> 
+>> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
+>> index 1a89599..68fa71d 100644
+>> --- a/include/linux/sunrpc/sched.h
+>> +++ b/include/linux/sunrpc/sched.h
+>> @@ -232,7 +232,7 @@ struct rpc_task *rpc_wake_up_first(struct rpc_wait_queue *,
+>> 					void *);
+>> void		rpc_wake_up_status(struct rpc_wait_queue *, int);
+>> void		rpc_delay(struct rpc_task *, unsigned long);
+>> -void *		rpc_malloc(struct rpc_task *, size_t);
+>> +void		*rpc_malloc(struct rpc_task *, size_t, size_t);
+>> void		rpc_free(void *);
+>> int		rpciod_up(void);
+>> void		rpciod_down(void);
+>> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+>> index fcbfe87..632685c 100644
+>> --- a/include/linux/sunrpc/xprt.h
+>> +++ b/include/linux/sunrpc/xprt.h
+>> @@ -124,7 +124,8 @@ struct rpc_xprt_ops {
+>> 	void		(*rpcbind)(struct rpc_task *task);
+>> 	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
+>> 	void		(*connect)(struct rpc_xprt *xprt, struct rpc_task *task);
+>> -	void *		(*buf_alloc)(struct rpc_task *task, size_t size);
+>> +	void *		(*buf_alloc)(struct rpc_task *task,
+>> +					size_t call, size_t reply);
+>> 	void		(*buf_free)(void *buffer);
+>> 	int		(*send_request)(struct rpc_task *task);
+>> 	void		(*set_retrans_timeout)(struct rpc_task *task);
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index 488ddee..5e817d6 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -1599,8 +1599,8 @@ call_allocate(struct rpc_task *task)
+>> 	req->rq_rcvsize = RPC_REPHDRSIZE + slack + proc->p_replen;
+>> 	req->rq_rcvsize <<= 2;
+>> 
+>> -	req->rq_buffer = xprt->ops->buf_alloc(task,
+>> -					req->rq_callsize + req->rq_rcvsize);
+>> +	req->rq_buffer = xprt->ops->buf_alloc(task, req->rq_callsize,
+>> +					      req->rq_rcvsize);
+>> 	if (req->rq_buffer != NULL)
+>> 		return;
+>> 
+>> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+>> index 9358c79..fc4f939 100644
+>> --- a/net/sunrpc/sched.c
+>> +++ b/net/sunrpc/sched.c
+>> @@ -829,7 +829,8 @@ static void rpc_async_schedule(struct work_struct *work)
+>> /**
+>>  * rpc_malloc - allocate an RPC buffer
+>>  * @task: RPC task that will use this buffer
+>> - * @size: requested byte size
+>> + * @call: maximum size of on-the-wire RPC call, in bytes
+>> + * @reply: maximum size of on-the-wire RPC reply, in bytes
+>>  *
+>>  * To prevent rpciod from hanging, this allocator never sleeps,
+>>  * returning NULL and suppressing warning if the request cannot be serviced
+>> @@ -843,8 +844,9 @@ static void rpc_async_schedule(struct work_struct *work)
+>>  * In order to avoid memory starvation triggering more writebacks of
+>>  * NFS requests, we avoid using GFP_KERNEL.
+>>  */
+>> -void *rpc_malloc(struct rpc_task *task, size_t size)
+>> +void *rpc_malloc(struct rpc_task *task, size_t call, size_t reply)
+>> {
+>> +	size_t size = call + reply;
+>> 	struct rpc_buffer *buf;
+>> 	gfp_t gfp = GFP_NOWAIT | __GFP_NOWARN;
+>> 
+>> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+>> index 2faac49..6e9d0a7 100644
+>> --- a/net/sunrpc/xprtrdma/transport.c
+>> +++ b/net/sunrpc/xprtrdma/transport.c
+>> @@ -459,7 +459,7 @@ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
+>>  * the receive buffer portion when using reply chunks.
+>>  */
+>> static void *
+>> -xprt_rdma_allocate(struct rpc_task *task, size_t size)
+>> +xprt_rdma_allocate(struct rpc_task *task, size_t size, size_t replen)
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 36 +++++++++++++++++++++++++++---------
- fs/nfsd/state.h     |  1 +
- 2 files changed, 28 insertions(+), 9 deletions(-)
+The rpc_rqst actually has separate send and receive sizes
+already in it, and the passed-in tk_task has a pointer to
+rpc_rqst. So I don’t need to alter the buf_alloc() method
+synopsis at all.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e9c3afe4b5d3..9bd3bcfee3c2 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -280,15 +280,22 @@ static void nfsd4_free_file(struct nfs4_file *f)
- 	kmem_cache_free(file_slab, f);
- }
- 
-+static void nfsd4_free_file_rcu(struct rcu_head *rcu)
-+{
-+	struct nfs4_file *fp = container_of(rcu, struct nfs4_file, fi_rcu);
-+
-+	nfsd4_free_file(fp);
-+}
-+
- static inline void
- put_nfs4_file(struct nfs4_file *fi)
- {
- 	might_lock(&state_lock);
- 
- 	if (atomic_dec_and_lock(&fi->fi_ref, &state_lock)) {
--		hlist_del(&fi->fi_hash);
-+		hlist_del_rcu(&fi->fi_hash);
- 		spin_unlock(&state_lock);
--		nfsd4_free_file(fi);
-+		call_rcu(&fi->fi_rcu, nfsd4_free_file_rcu);
- 	}
- }
- 
-@@ -3073,7 +3080,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct knfsd_fh *fh)
- 	fp->fi_share_deny = 0;
- 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
- 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
--	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
-+	hlist_add_head_rcu(&fp->fi_hash, &file_hashtbl[hashval]);
- }
- 
- void
-@@ -3313,12 +3320,19 @@ find_file_locked(struct knfsd_fh *fh)
- static struct nfs4_file *
- find_file(struct knfsd_fh *fh)
- {
--	struct nfs4_file *fp;
-+	struct nfs4_file *fp, *ret = NULL;
-+	unsigned int hashval = file_hashval(fh);
- 
--	spin_lock(&state_lock);
--	fp = find_file_locked(fh);
--	spin_unlock(&state_lock);
--	return fp;
-+	rcu_read_lock();
-+	hlist_for_each_entry_rcu(fp, &file_hashtbl[hashval], fi_hash) {
-+		if (nfsd_fh_match(&fp->fi_fhandle, fh)) {
-+			if (atomic_inc_not_zero(&fp->fi_ref))
-+				ret = fp;
-+			break;
-+		}
-+	}
-+	rcu_read_unlock();
-+	return ret;
- }
- 
- static struct nfs4_file *
-@@ -3326,9 +3340,13 @@ find_or_add_file(struct nfs4_file *new, struct knfsd_fh *fh)
- {
- 	struct nfs4_file *fp;
- 
-+	fp = find_file(fh);
-+	if (fp)
-+		return fp;
-+
- 	spin_lock(&state_lock);
- 	fp = find_file_locked(fh);
--	if (fp == NULL) {
-+	if (likely(fp == NULL)) {
- 		nfsd4_init_file(new, fh);
- 		fp = new;
- 	}
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 8e85e07efce6..530470a35ecd 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -490,6 +490,7 @@ struct nfs4_file {
- 	atomic_t		fi_access[2];
- 	u32			fi_share_deny;
- 	struct file		*fi_deleg_file;
-+	struct rcu_head		fi_rcu;
- 	atomic_t		fi_delegees;
- 	struct knfsd_fh		fi_fhandle;
- 	bool			fi_had_conflict;
--- 
-1.9.3
+Though I’ve tested with the two server implementations that
+I have on hand, I’ve discovered this is a less than generic
+approach to the problem. I can’t just slice off the receive
+part of this buffer, as it is actually used sometimes
+(though apparently not with the Solaris or Linux servers).
+
+For those two reasons, I’m going to replace this patch with
+something else in the next round. JFYI so you know what to
+look for next time.
+
+> The comment right before this function mentions that send and receive buffers are allocated in the same call.  Can you update this?
+
+If the new patch touches xprt_rdma_allocate(), I can
+replace Tom’s implementer’s notes in this function with
+some operational documenting comments.
+
+> Anna
+> 
+>> {
+>> 	struct rpc_xprt *xprt = task->tk_rqstp->rq_xprt;
+>> 	struct rpcrdma_req *req, *nreq;
+>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>> index 43cd89e..b4aca48 100644
+>> --- a/net/sunrpc/xprtsock.c
+>> +++ b/net/sunrpc/xprtsock.c
+>> @@ -2423,8 +2423,9 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+>>  * we allocate pages instead doing a kmalloc like rpc_malloc is because we want
+>>  * to use the server side send routines.
+>>  */
+>> -static void *bc_malloc(struct rpc_task *task, size_t size)
+>> +static void *bc_malloc(struct rpc_task *task, size_t call, size_t reply)
+>> {
+>> +	size_t size = call + reply;
+>> 	struct page *page;
+>> 	struct rpc_buffer *buf;
+>> 
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+--
+Chuck Lever
+
+
 
