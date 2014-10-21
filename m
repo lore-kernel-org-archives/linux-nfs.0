@@ -1,73 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:35719 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933186AbaJVNIO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Oct 2014 09:08:14 -0400
-Date: Wed, 22 Oct 2014 06:08:14 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: xfstests generic/075 failure on recent Linus' tree
-Message-ID: <20141022130814.GA26501@infradead.org>
-References: <20141020173658.GA7552@infradead.org>
- <20141022114649.GA2567@infradead.org>
- <CAABAsM44E-Ly=qPFBA2iBvgkCvA3GE5NRGi=d1hD+Pvk1xzevA@mail.gmail.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:61295 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755090AbaJUSWX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Oct 2014 14:22:23 -0400
+Received: by mail-ig0-f175.google.com with SMTP id uq10so1904181igb.8
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Oct 2014 11:22:22 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAABAsM44E-Ly=qPFBA2iBvgkCvA3GE5NRGi=d1hD+Pvk1xzevA@mail.gmail.com>
+In-Reply-To: <CAN-5tyHoE01_POnTOjyYx-=7y3cZT2Dh5A+ZMiOt6vV5KGqKQg@mail.gmail.com>
+References: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
+	<CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
+	<CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
+	<CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
+	<CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
+	<CAN-5tyGsopFNFjo=LBwYE9n6b7Emv73Rkw0H2wyq2vCjMUOftA@mail.gmail.com>
+	<CAHQdGtSQJLe60ja+-ChkHXOu8_UjmOpd4X7QHyhNOj1mPQGWPg@mail.gmail.com>
+	<CAN-5tyEJiHQaVbE3zgzv5OJxkmyzTGa_+2oTqj1ebQFnfHaDjw@mail.gmail.com>
+	<CAN-5tyHoE01_POnTOjyYx-=7y3cZT2Dh5A+ZMiOt6vV5KGqKQg@mail.gmail.com>
+Date: Tue, 21 Oct 2014 14:22:22 -0400
+Message-ID: <CAN-5tyFjLipfcPaWQbtp+kpLyO_b0GbKn+Zt47Uj6KHKbXn8SQ@mail.gmail.com>
+Subject: Re: how to properly handle failures during delegation recall process
+From: Olga Kornievskaia <aglo@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 22, 2014 at 03:00:27PM +0300, Trond Myklebust wrote:
-> Does the NFS client show a TCP connection to port 2049 on 127.0.0.1?
+I'd like to checkin to see what folks think about the proposed fix?
 
->From netstat -a
-
-tcp        0 262352 localhost:nfs           localhost:684	ESTABLISHED
-tcp        0      0 localhost:684           localhost:nfs	ESTABLISHED
-
-
-Note that about 1/4 to 1/3 of the hangs show a backtrace like:
-
-[  480.293522] INFO: task fsx:14631 blocked for more than 120 seconds.
-[  480.296181]       Not tainted 3.18.0-rc1+ #1519
-[  480.299073] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
-[  480.304028] fsx             D ffffffff81dcbd90     0 14631  14430 0x00000004
-[  480.307132]  ffff88007a457b08 0000000000000046 ffff880072db0b50 0000000000013dc0
-[  480.310401]  ffff88007a457fd8 0000000000013dc0 ffff88007d524310 ffff880072db0b50
-[  480.312772]  0000000000000000 0000000000000002 0000000000000001 0000000000000001
-[  480.315200] Call Trace:
-[  480.315946]  [<ffffffff81dcbd90>] ? bit_wait_timeout+0x60/0x60
-[  480.317358]  [<ffffffff810f906a>] ? mark_held_locks+0x6a/0x90
-[  480.318818]  [<ffffffff8111ef25>] ? ktime_get+0x105/0x140
-[  480.320167]  [<ffffffff810830af>] ? kvm_clock_read+0x1f/0x30
-[  480.321537]  [<ffffffff810830c9>] ? kvm_clock_get_cycles+0x9/0x10
-[  480.322871]  [<ffffffff8111eec5>] ? ktime_get+0xa5/0x140
-[  480.324360]  [<ffffffff811405ee>] ? __delayacct_blkio_start+0x1e/0x30
-[  480.325829]  [<ffffffff81dcbd90>] ? bit_wait_timeout+0x60/0x60
-[  480.327252]  [<ffffffff81dcb7a4>] schedule+0x24/0x70
-[  480.328471]  [<ffffffff81dcb87a>] io_schedule+0x8a/0xd0
-[  480.329683]  [<ffffffff81dcbdb6>] bit_wait_io+0x26/0x40
-[  480.330902]  [<ffffffff81dcbe7e>] __wait_on_bit_lock+0x6e/0xb0
-[  480.332189]  [<ffffffff81178de2>] ? find_get_entries+0x22/0x160
-[  480.336273]  [<ffffffff8117653c>] ? find_get_entry+0x8c/0xc0
-[  480.337719]  [<ffffffff811764b0>] ? find_get_pages_contig+0x1a0/0x1a0
-[  480.339280]  [<ffffffff81176755>] __lock_page+0x95/0xa0
-[  480.340518]  [<ffffffff810ee160>] ? wake_atomic_t_function+0x30/0x30
-[  480.342066]  [<ffffffff81184e66>] truncate_inode_pages_range+0x3c6/0x710
-[  480.343853]  [<ffffffff81185230>] truncate_inode_pages+0x10/0x20
-[  480.345306]  [<ffffffff81185286>] truncate_pagecache+0x46/0x70
-[  480.346481]  [<ffffffff81345e5e>] nfs_setattr_update_inode+0x9e/0x120
-[  480.348372]  [<ffffffff813682f8>] nfs4_proc_setattr+0xb8/0x100
-[  480.349751]  [<ffffffff813477b6>] nfs_setattr+0xd6/0x1d0
-[  480.350741]  [<ffffffff811deb10>] notify_change+0x160/0x3c0
-[  480.351748]  [<ffffffff81200afb>] ? fsnotify+0x7b/0x310
-[  480.353260]  [<ffffffff811c0671>] do_truncate+0x61/0xa0
-[  480.354829]  [<ffffffff811c09f4>] do_sys_ftruncate.constprop.16+0x104/0x160
-[  480.356754]  [<ffffffff8178760e>] ? trace_hardirqs_on_thunk+0x3a/0x3f
-[  480.358561]  [<ffffffff811c0a79>] SyS_ftruncate+0x9/0x10
-[  480.360054]  [<ffffffff81dd0fe9>] system_call_fastpath+0x12/0x17
-[  480.361744] 2 locks held by fsx/14631:
-[  480.362844]  #0:  (sb_writers#9){.+.+.+}, at: [<ffffffff811c09bf>] do_sys_ftruncate.constprop.16+0xcf/0x160
-[  480.366248]  #1:  (&sb->s_type->i_mutex_key#11){+.+.+.}, at: [<ffffffff811c0663>] do_truncate+0x53/0xa0
-
+On Thu, Oct 16, 2014 at 2:43 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Tue, Oct 14, 2014 at 11:48 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> On Mon, Oct 13, 2014 at 6:24 PM, Trond Myklebust
+>> <trond.myklebust@primarydata.com> wrote:
+>>> On Mon, Oct 13, 2014 at 6:13 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>> On Mon, Oct 13, 2014 at 5:29 PM, Trond Myklebust
+>>>> <trond.myklebust@primarydata.com> wrote:
+>>>>> On Mon, Oct 13, 2014 at 5:12 PM, Trond Myklebust
+>>>>> <trond.myklebust@primarydata.com> wrote:
+>>>>>> On Mon, Oct 13, 2014 at 4:23 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>>> On Mon, Oct 13, 2014 at 3:53 PM, Trond Myklebust
+>>>>>>> <trond.myklebust@primarydata.com> wrote:
+>>>>>>>> On Mon, Oct 13, 2014 at 2:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>>>>> +               }
+>>>>>>>>> +       }
+>>>>>>>>>         return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>>>>>>>>>  }
+>>>>>>>>>
+>>>>>>>>> @@ -5957,6 +5973,10 @@ int nfs4_lock_delegation_recall(struct
+>>>>>>>>> file_lock *fl, struct nfs4_state *state,
+>>>>>>>>>         err = nfs4_set_lock_state(state, fl);
+>>>>>>>>>         if (err != 0)
+>>>>>>>>>                 return err;
+>>>>>>>>> +       if (test_bit(NFS_LOCK_LOST, &fl->fl_u.nfs4_fl.owner->ls_flags)) {
+>>>>>>>>> +               pr_warn_ratelimited("NFS: %s: Lock reclaim failed!\n",
+>>>>>>>>> __func__);
+>>>>>>>>> +               return -EIO;
+>>>>>>>>> +       }
+>>>>>>>>>         err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
+>>>>>>>>
+>>>>>>>> Note that there is a potential race here if the server is playing with
+>>>>>>>> NFS4ERR_DELEG_REVOKED or NFS4ERR_ADMIN_REVOKED. Since we do not
+>>>>>>>> present the delegation as part of the LOCK request, we have no way of
+>>>>>>>> knowing if the delegation is still in effect. I guess we can check the
+>>>>>>>> return value of DELEGRETURN, but if it returns NFS4ERR_DELEG_REVOKED
+>>>>>>>> or NFS4ERR_ADMIN_REVOKED, then we still do not know whether or not the
+>>>>>>>> LOCK is safe.
+>>>>>>>
+>>>>>>> I'm not following you. We send LOCK before we send DELEGRETURN? Also,
+>>>>>>> we normally send in LOCK the open_stateid returned by the open with
+>>>>>>> cur so do we know that delegation is still in effect.
+>>>>>>
+>>>>>> How so? The open stateid doesn't tell you that the delegation is still
+>>>>>> in effect. If the DELEGRETURN returns NFS4ERR_DELEG_REVOKED, how can
+>>>>>> you tell if the delegation was revoked before or after the LOCK
+>>>>>> request was handled?
+>>>>>
+>>>>> Actually, let me answer that myself. You can sort of figure things out
+>>>>> in NFSv4.1 if you look at the SEQ4_STATUS_RECALLABLE_STATE_REVOKED
+>>>>> flag. If it is set, you should probably distrust the lock stateid that
+>>>>> you just attempted to recover, since you now know that at least one
+>>>>> delegation was just revoked.
+>>>>>
+>>>>> In that case, we probably also have to do a TEST_STATEID+FREE_STATEID
+>>>>> on the delegation stateid.
+>>>>
+>>>> I think we are mis-communicating here by talking about different
+>>>> nuances. I agree with you that when an operation is sent there is no
+>>>> way of knowing if in the mean while the server has decided to revoke
+>>>> the delegation. However, this is not what I'm confused about regarding
+>>>> your comment. I'm noticing that in the flow of operations, we send (1)
+>>>> open with cur, then (2) lock, then (3) delegreturn. So I was confused
+>>>> about how can we check return of delegreturn, step 3, if we are in
+>>>> step 2.
+>>>>
+>>>> I think the LOCK is safe if the reply to the LOCK is successful.
+>>>
+>>> It needs to be concurrent with the delegation as well, otherwise
+>>> general lock atomicity is broken.
+>>>
+>>>> Let me just step back from this to note that your solution to "lost
+>>>> locks during delegation" is to recognize the open with cure failure
+>>>> and skip locking and delegreturn. I can work on a patch for that.
+>>>>
+>>>> Do you agree that the state recovery should not be initiated in case
+>>>> we get those errors?
+>>>
+>>> State recovery _should_ be initiated so that we do reclaim opens (I
+>>> don't care about share lock atomicity on Linux). However
+>>> nfs_delegation_claim_locks() _should_not_ be called.
+>>>
+>>> I'll give some more thought as to how we can ensure the missing lock atomicity.
+>>
+>> If state recover is initiated, it will go into an infinite loop. There
+>> is no way to stop it once it's initiated. A "recovery" open will get a
+>> BAD_STATEID which will again initiated state recovery.
+>>
+>> Are proposing to add smarts to the state manager when it should not
+>> recover from a BAD_STATEID?
+>
+> Ok. How about something like this?
+>
+> [PATCH 1/1] Fixing infinite state recovery loop due to failed delegation return
+>
+> If we get a bad-stateid-type of error when we send OPEN with delegate_cur
+> to return currently held delegation, we shouldn't be trying to reclaim locks
+> associated with that delegation state_id because we don't have an
+> open_stateid to be used for the LOCK operation. Thus, we should
+> return an error from the nfs4_open_delegation_recall() in that case.
+>
+> Furthermore, if an error occurs the delegation code will call
+> nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
+> flags in the state and it leads the state manager to into an infinite loop
+> for trying to reclaim the delegated state.
+>
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  fs/nfs/delegation.c |    5 +++--
+>  fs/nfs/nfs4proc.c   |    2 +-
+>  2 files changed, 4 insertions(+), 3 deletions(-)
+>
+> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+> index 5853f53..8016d89 100644
+> --- a/fs/nfs/delegation.c
+> +++ b/fs/nfs/delegation.c
+> @@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode
+> *inode, struct nfs_delegation
+>                 err = nfs4_wait_clnt_recover(clp);
+>         } while (err == 0);
+>
+> -       if (err) {
+> +       if (err && err != -EIO) {
+>                 nfs_abort_delegation_return(delegation, clp);
+>                 goto out;
+>         }
+> @@ -458,7 +458,8 @@ restart:
+>                         iput(inode);
+>                         if (!err)
+>                                 goto restart;
+> -                       set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
+> +                       if (err != -EIO)
+> +                               set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
+>                         return err;
+>                 }
+>         }
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 5aa55c1..6871055 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1655,7 +1655,7 @@ static int
+> nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+>                         nfs_inode_find_state_and_recover(state->inode,
+>                                         stateid);
+>                         nfs4_schedule_stateid_recovery(server, state);
+> -                       return 0;
+> +                       return -EIO;
+>                 case -NFS4ERR_DELAY:
+>                 case -NFS4ERR_GRACE:
+>                         set_bit(NFS_DELEGATED_STATE, &state->flags);
+> --
+> 1.7.1
+>
+>>
+>>>
+>>> --
+>>> Trond Myklebust
+>>>
+>>> Linux NFS client maintainer, PrimaryData
+>>>
+>>> trond.myklebust@primarydata.com
