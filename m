@@ -1,172 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:41849 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753499AbaJXO6J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 10:58:09 -0400
-Received: by mail-qa0-f48.google.com with SMTP id x12so1056123qac.21
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 07:58:08 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 24 Oct 2014 10:57:58 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        bfields@fieldses.org
-Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection
- when dropping a request
-Message-ID: <20141024105758.064f2e14@tlielax.poochiereds.net>
-In-Reply-To: <1414161055.21776.2.camel@leira.trondhjem.org>
-References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
-	<1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
-	<20141024072644.6643f9ed@tlielax.poochiereds.net>
-	<20141024093459.70a29d80@tlielax.poochiereds.net>
-	<1414161055.21776.2.camel@leira.trondhjem.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:56106 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755195AbaJUKkQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Oct 2014 06:40:16 -0400
+Date: Tue, 21 Oct 2014 03:40:13 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: convert nfs4_file searches to use RCU
+Message-ID: <20141021104013.GC21863@infradead.org>
+References: <1413541275-3884-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1413541275-3884-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 24 Oct 2014 17:30:55 +0300
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> On Fri, 2014-10-24 at 09:34 -0400, Jeff Layton wrote:
-> > On Fri, 24 Oct 2014 07:26:44 -0400
-> > Jeff Layton <jlayton@primarydata.com> wrote:
-> >  
-> > > I guess the theory here is that the client sent the request, and got a
-> > > TCP ACK and then the server never responded because it dropped the
-> > > request? That sounds plausible and we almost certainly want something
-> > > like the above for v4.0.
-> > > 
-> > > If the above patch fixes Christoph's problem with v4.1 though, then I
-> > > think we'll need more investigation into why. I don't see a way to get
-> > > a dropped request with v4.1. Those mainly occur due to interaction with
-> > > the DRC (disabled for v4.1) or with svc_defer (disabled for all v4
-> > > requests).
-> > > 
-> > > Is it possible that one of the nfsd threads is just hung while
-> > > processing an RPC and that's why you're not getting a response?
-> > > 
-> > 
-> > Ok, I'm able to reproduce this too and got a network trace. I think
-> > Trond is correct as to the cause:
-> > 
-> > I see a SETATTR call go out and then see a TCP ACK for it a little
-> > later, but didn't see a reply sent for it.
-> > 
-> > I sprinkled in some printks around the "dropit" codepath above and in
-> > some other areas however and none of them fired. So while Trond's patch
-> > looks like it might be correct, I don't think it'll fix the problem I'm
-> > seeing.
-> > 
-> > Sniffing a little later, it seems like the server replies are being
-> > delayed somehow:
+On Fri, Oct 17, 2014 at 06:21:15AM -0400, Jeff Layton wrote:
+> The global state_lock protects the file_hashtbl, and that has the
+> potential to be a scalability bottleneck.
 > 
-> You can get deferrals in the authentication code which trigger drops.
-> Here is a variant which tries to deal with that:
+> Address this by making the file_hashtbl use RCU. Add a rcu_head to the
+> nfs4_file and use that when freeing ones that have been hashed.
 > 
-> 8<-----------------------------------------------------
-> From a9be1292152af2cb651415c44fd3d91b3d017240 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Fri, 24 Oct 2014 12:54:47 +0300
-> Subject: [PATCH v2] nfsd: Ensure that NFSv4 always drops the connection when
->  dropping a request
+> Convert find_file to use a lockless lookup. Convert find_or_add_file to
+> attempt a lockless lookup first, and then fall back to doing the
+> "normal" locked search and insert if that fails to find anything.
 > 
-> Both RFC3530 and RFC5661 impose a requirement on the server that it MUST NOT
-> drop a request unless the connection is broken. This is in order to allow
-> clients to assume that they can always expect an answer unless the
-> connection is broken.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Cc: stable@vger.kernel.org
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 > ---
-> v2: Also deal with NFSv4 requests dropped due to authentication issues
+>  fs/nfsd/nfs4state.c | 36 +++++++++++++++++++++++++++---------
+>  fs/nfsd/state.h     |  1 +
+>  2 files changed, 28 insertions(+), 9 deletions(-)
 > 
->  fs/nfsd/nfs4proc.c         |  6 ++++++
->  include/linux/sunrpc/svc.h |  1 +
->  net/sunrpc/svc.c           | 13 +++++++++----
->  3 files changed, 16 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index cdeb3cfd6f32..500ac76662a8 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1960,6 +1960,11 @@ static const char *nfsd4_op_name(unsigned opnum)
->  	return "unknown_operation";
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index e9c3afe4b5d3..9bd3bcfee3c2 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -280,15 +280,22 @@ static void nfsd4_free_file(struct nfs4_file *f)
+>  	kmem_cache_free(file_slab, f);
 >  }
 >  
-> +static void nfsd4_dropme(struct svc_rqst *rqstp)
+> +static void nfsd4_free_file_rcu(struct rcu_head *rcu)
 > +{
-> +	svc_close_xprt(rqstp->rq_xprt);
-> +}
+> +	struct nfs4_file *fp = container_of(rcu, struct nfs4_file, fi_rcu);
 > +
->  #define nfsd4_voidres			nfsd4_voidargs
->  struct nfsd4_voidargs { int dummy; };
+> +	nfsd4_free_file(fp);
+
+You might as well kill the pointless nfsd4_free_file wrapper while
+you're at it.
+
+> @@ -3313,12 +3320,19 @@ find_file_locked(struct knfsd_fh *fh)
+>  static struct nfs4_file *
+>  find_file(struct knfsd_fh *fh)
+>  {
+> -	struct nfs4_file *fp;
+> +	struct nfs4_file *fp, *ret = NULL;
+> +	unsigned int hashval = file_hashval(fh);
 >  
-> @@ -1989,6 +1994,7 @@ struct svc_version	nfsd_version4 = {
->  		.vs_nproc	= 2,
->  		.vs_proc	= nfsd_procedures4,
->  		.vs_dispatch	= nfsd_dispatch,
-> +		.vs_dropme	= nfsd4_dropme,
->  		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
->  		.vs_rpcb_optnl	= 1,
->  };
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 21678464883a..824656da1f6d 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -400,6 +400,7 @@ struct svc_version {
->  	 * vs_dispatch == NULL means use default dispatcher.
->  	 */
->  	int			(*vs_dispatch)(struct svc_rqst *, __be32 *);
-> +	void			(*vs_dropme)(struct svc_rqst *);
->  };
->  
->  /*
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index ca8a7958f4e6..a178496ce2c1 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -1111,9 +1111,13 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  	rqstp->rq_vers = vers = svc_getnl(argv);	/* version number */
->  	rqstp->rq_proc = proc = svc_getnl(argv);	/* procedure number */
->  
-> -	for (progp = serv->sv_program; progp; progp = progp->pg_next)
-> -		if (prog == progp->pg_prog)
-> +	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
-> +		if (prog == progp->pg_prog) {
-> +			if (vers < progp->pg_nvers)
-> +				versp = progp->pg_vers[vers];
->  			break;
+> -	spin_lock(&state_lock);
+> -	fp = find_file_locked(fh);
+> -	spin_unlock(&state_lock);
+> -	return fp;
+> +	rcu_read_lock();
+> +	hlist_for_each_entry_rcu(fp, &file_hashtbl[hashval], fi_hash) {
+> +		if (nfsd_fh_match(&fp->fi_fhandle, fh)) {
+> +			if (atomic_inc_not_zero(&fp->fi_ref))
+> +				ret = fp;
+> +			break;
 > +		}
 > +	}
->  
->  	/*
->  	 * Decode auth data, and add verifier to reply buffer.
-> @@ -1148,8 +1152,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  	if (progp == NULL)
->  		goto err_bad_prog;
->  
-> -	if (vers >= progp->pg_nvers ||
-> -	  !(versp = progp->pg_vers[vers]))
-> +	if (versp == NULL)
->  		goto err_bad_vers;
->  
->  	procp = versp->vs_proc + proc;
-> @@ -1228,6 +1231,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->   dropit:
->  	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
->  	dprintk("svc: svc_process dropit\n");
+> +	rcu_read_unlock();
+> +	return ret;
 
-I don't think this will fix it either. I turned the above dprintk into
-a normal printk and it never fired during the test. As best I can tell,
-svc_process_common is not returning 0 when this occurs.
+I think it would be better to just switch find_file_locked ti use
+hlist_for_each_entry_rcu instead of duplicating it.
 
-> +	if (versp && versp->vs_dropme)
-> +		versp->vs_dropme(rqstp);
->  	return 0;
->  
->  err_short_len:
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 8e85e07efce6..530470a35ecd 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -490,6 +490,7 @@ struct nfs4_file {
+>  	atomic_t		fi_access[2];
+>  	u32			fi_share_deny;
+>  	struct file		*fi_deleg_file;
+> +	struct rcu_head		fi_rcu;
+
+Can we union this over a field that's guaranteed to be unused on
+a file that has been unhashed?
 
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+Also a slightly related question:  Is the small fixes size hash table
+still fine for the workloads where the RCU access matters?  It seems
+like we should aim for a more scalable data structure to look up the
+files.  It also irks me a bit how this duplicates the inode cache,
+which for some filesystems (e.g. XFS) already is very scalable.
+
