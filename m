@@ -1,82 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ares08.inai.de ([46.4.84.70]:52495 "EHLO ares08.inai.de"
+Received: from fieldses.org ([174.143.236.118]:45838 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752545AbaJFV0y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Oct 2014 17:26:54 -0400
-From: Jan Engelhardt <jengelh@inai.de>
-To: steved@redhat.com
-Cc: bfields@citi.umich.edu, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] build: use a separate tool directory and update .gitignore
-Date: Mon,  6 Oct 2014 23:19:32 +0200
-Message-Id: <1412630374-23246-4-git-send-email-jengelh@inai.de>
-In-Reply-To: <1412630374-23246-1-git-send-email-jengelh@inai.de>
-References: <1412630374-23246-1-git-send-email-jengelh@inai.de>
+	id S932071AbaJVTtM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Oct 2014 15:49:12 -0400
+Date: Wed, 22 Oct 2014 15:49:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Chuck Lever <chuck.lever@oracle.com>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: [PATCH] nfsd4: fix crash on unknown operation number
+Message-ID: <20141022194907.GD5552@fieldses.org>
+References: <20141017212446.GC3474@fieldses.org>
+ <20141021103631.GB21863@infradead.org>
+ <20141021131406.GE9863@fieldses.org>
+ <20141022192258.GB5552@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141022192258.GB5552@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With m4/.gitignore, we ensure that the m4 directory exists in any
-git checkout such that aclocal/libtoolize won't complain about
-its absence during `autoreconf`.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Jan Engelhardt <jengelh@inai.de>
+Unknown operation numbers are caught in nfsd4_decode_compound() which
+sets op->opnum to OP_ILLEGAL and op->status to nfserr_op_illegal.  The
+error causes the main loop in nfsd4_proc_compound() to skip most
+processing.  But nfsd4_proc_compound also peeks ahead at the next
+operation in one case and doesn't take similar precautions there.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- .gitignore    | 13 +++----------
- configure.ac  |  1 +
- m4/.gitignore |  2 ++
- 3 files changed, 6 insertions(+), 10 deletions(-)
- create mode 100644 m4/.gitignore
+ fs/nfsd/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/.gitignore b/.gitignore
-index d24d727..fd87695 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -1,15 +1,9 @@
- Makefile.in
--aclocal.m4
--autom4te.cache/
--config.guess
--config.sub
-+/aclocal.m4
-+/autom4te.cache/
-+/build-aux/
- configure
--depcomp
--ltmain.sh
--missing
--install-sh
- Makefile
--install-sh
- .deps/
- config.log
- config.status
-@@ -21,7 +15,6 @@ nsswitch.la
- static.la
- umich_ldap.la
- configure.in~
--m4/
- *.o
- *.lo
- cscope.*
-diff --git a/configure.ac b/configure.ac
-index cb5740b..84a2ab0 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -3,6 +3,7 @@
- 
- AC_PREREQ([2.66])
- AC_INIT([libnfsidmap],[0.25],[linux-nfs@vger.kernel.org])
-+AC_CONFIG_AUX_DIR([build-aux])
- AC_CONFIG_SRCDIR([nfsidmap.h])
- AC_CONFIG_MACRO_DIR([m4])
- AM_INIT_AUTOMAKE
-diff --git a/m4/.gitignore b/m4/.gitignore
-new file mode 100644
-index 0000000..64d9bbc
---- /dev/null
-+++ b/m4/.gitignore
-@@ -0,0 +1,2 @@
-+/libtool.m4
-+/lt*.m4
+On Wed, Oct 22, 2014 at 03:2
+> There are two bugs:
+> 
+> 	- the client is sending SEEK over minorversion 1.
+> 	- this sometimes causes the server to crash.
+> 
+> I'm testing a fix for the latter.
+
+I think this is all it needs.
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index f4bd578bed55..0beb023f25ac 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1272,7 +1272,8 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+ 	 */
+ 	if (argp->opcnt == resp->opcnt)
+ 		return false;
+-
++	if (next->opnum == OP_ILLEGAL)
++		return false;
+ 	nextd = OPDESC(next);
+ 	/*
+ 	 * Rest of 2.6.3.1.1: certain operations will return WRONGSEC
 -- 
-2.0.0
+1.9.3
 
