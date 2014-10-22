@@ -1,97 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:60231 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751777AbaJFOtH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 10:49:07 -0400
-Received: by mail-ig0-f171.google.com with SMTP id h15so2612774igd.10
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 07:49:07 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:38608 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932085AbaJVTxN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Oct 2014 15:53:13 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2] NFS: SEEK is an NFS v4.2 feature
+Date: Wed, 22 Oct 2014 15:53:10 -0400
+Message-ID: <1414007590-14286-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyGVfAQ+ZBp0hSMyRMHHWL3iP=h5XzaFrsLRf02rSH1ZHQ@mail.gmail.com>
-References: <CAN-5tyF4oCkmHskT02GceF=CR1mYZc3uwm0tLf2fd39-XeyjRg@mail.gmail.com>
-	<CAHQdGtT39EBPx1SQTn3hFHBNuLsSoBdkSOYWHYRQ=j8vpVjB_A@mail.gmail.com>
-	<CAN-5tyGVfAQ+ZBp0hSMyRMHHWL3iP=h5XzaFrsLRf02rSH1ZHQ@mail.gmail.com>
-Date: Mon, 6 Oct 2014 10:49:06 -0400
-Message-ID: <CAABAsM5MZxgpSd2c8rc4BxVVCjxwBgT2n8+uUONNrTX6AvJudQ@mail.gmail.com>
-Subject: Re: [bug] open owner value is always the same
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <olga.kornievskaia@gmail.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 6, 2014 at 10:12 AM, Olga Kornievskaia
-<olga.kornievskaia@gmail.com> wrote:
-> Aren't sequence slots shared by the same open owners?
->
-> The problem I'm seeing is that a client with an outstanding open can't
-> respond to a delegation return because sequenced hasn't been
-> confirmed. I think it's problematic when there are two clients each
-> holding delegations and each sending an open. The server tries to
-> recall the delegations but neither clients will reply until the server
-> returns an open to the outstanding open. The server will try and not
-> reply to the outstanding opens until the delegations are returned.
+Somehow the nfs_v4_1_minor_ops had the NFS_CAP_SEEK flag set, enabling
+SEEK over v4.1.  This is wrong, and can make servers crash.
 
-I'm not sure that I understand.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+v2: Fix compile error
 
-Why should the server refuse to respond to OPEN calls just because a
-delegation recall is outstanding? That sounds like a catastrophic
-design for a server. How is the client going to convert its cached
-open/lock state into open stateids and lock stateids if the server
-won't respond to OPEN calls for that file?
+ fs/nfs/nfs4proc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-If the server cannot respond to the OPEN because it conflicts with a
-delegation being recalled, then the right thing to do is to return
-NFS4ERR_DELAY. That allows the client to make progress on other OPEN
-requests that may be required in order to return the conflicting
-delegation, and that may be serialised behind that blocked OPEN.
-I can imagine this might be the case if the client holds a delegation
-for a file, and then is asked to OPEN a hard link to the same file.
-The client has no way to know a priori that it is opening the same
-file through the hard link, so it doesn't know that it conflicts with
-the delegation.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 405bd95..8aba549 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8408,8 +8408,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
+ 		| NFS_CAP_CHANGE_ATTR
+ 		| NFS_CAP_POSIX_LOCK
+ 		| NFS_CAP_STATEID_NFSV41
+-		| NFS_CAP_ATOMIC_OPEN_V1
+-		| NFS_CAP_SEEK,
++		| NFS_CAP_ATOMIC_OPEN_V1,
+ 	.init_client = nfs41_init_client,
+ 	.shutdown_client = nfs41_shutdown_client,
+ 	.match_stateid = nfs41_match_stateid,
+@@ -8431,7 +8430,8 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
+ 		| NFS_CAP_CHANGE_ATTR
+ 		| NFS_CAP_POSIX_LOCK
+ 		| NFS_CAP_STATEID_NFSV41
+-		| NFS_CAP_ATOMIC_OPEN_V1,
++		| NFS_CAP_ATOMIC_OPEN_V1
++		| NFS_CAP_SEEK,
+ 	.init_client = nfs41_init_client,
+ 	.shutdown_client = nfs41_shutdown_client,
+ 	.match_stateid = nfs41_match_stateid,
+-- 
+2.1.2
 
-Cheers
-  Trond
-
->
-> On Mon, Oct 6, 2014 at 9:57 AM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> Hi Olga,
->>
->> On Mon, Oct 6, 2014 at 9:48 AM, Olga Kornievskaia
->> <olga.kornievskaia@gmail.com> wrote:
->>> The spec says that open owner needs to be different for different
->>> files yet the code returns the same value.
->>>
->>> It is not clear to me what's broken about ida_get_new() that's used
->>> for generation of the owner ids.
->>>
->>> Can somebody comment on this?
->>>
->>
->> As far as I know, there is no requirement in either NFSv4 or NFSv4.1
->> that open owners be different for each file. In NFSv4.1 there is a
->> requirement that they be unique to each credential/principal, but only
->> if you negotiate EXCHGID4_FLAG_BIND_PRINC_STATEID.
->>
->> The current choice of scheme where we share open_owners between files
->> was largely motivated by a desire not to overload the NFSv4.0 servers
->> with lots of open_owner structures. In NFSv4.0, those structures are
->> required to be cached by the server for a while after the file has
->> been closed.
->>
->> Cheers
->>   Trond
->>
->>
->> --
->> Trond Myklebust
->>
->> Linux NFS client maintainer, PrimaryData
->>
->> trond.myklebust@primarydata.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
