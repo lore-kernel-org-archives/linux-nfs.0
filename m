@@ -1,34 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59327 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753459AbaJGRRE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Oct 2014 13:17:04 -0400
-Date: Tue, 7 Oct 2014 10:17:03 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>
-Cc: Jeff Layton <jlayton@primarydata.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-security-module <linux-security-module@vger.kernel.org>
-Subject: Re: [PATCH v2 02/17] security: make security_file_set_fowner,
- f_setown and __f_setown void return
-Message-ID: <20141007171703.GA30274@infradead.org>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
- <1409834323-7171-3-git-send-email-jlayton@primarydata.com>
- <CACE9dm-gEfVnHvESfewAPx1vDSdpUW+za=H_zpA8hJd55AR=tA@mail.gmail.com>
+Received: from mx12.netapp.com ([216.240.18.77]:9432 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753068AbaJVTdQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Oct 2014 15:33:16 -0400
+Message-ID: <54480679.70501@Netapp.com>
+Date: Wed, 22 Oct 2014 15:33:13 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CACE9dm-gEfVnHvESfewAPx1vDSdpUW+za=H_zpA8hJd55AR=tA@mail.gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Chuck Lever <chuck.lever@oracle.com>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] nfsd4: fix response size estimation for OP_SEQUENCE
+References: <20141017212446.GC3474@fieldses.org> <20141021103631.GB21863@infradead.org> <20141021131406.GE9863@fieldses.org> <20141022192258.GB5552@fieldses.org>
+In-Reply-To: <20141022192258.GB5552@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 07, 2014 at 08:11:42PM +0300, Dmitry Kasatkin wrote:
-> If file_set_fowner op is now type of "void", how you can actually
-> return the value?
-> I think compiler must give error. How could you compile it?
+On 10/22/14 15:22, J. Bruce Fields wrote:
+> On Tue, Oct 21, 2014 at 09:14:06AM -0400, J. Bruce Fields wrote:
+>> Also my tests are failing due to an unrelated crash in 18-rc1 which I
+>> want to track down before sending this in.
+> 
+> There are two bugs:
+> 
+> 	- the client is sending SEEK over minorversion 1.
+> 	- this sometimes causes the server to crash.
+> 
+> I'm testing a fix for the latter.
+> 
+> On the former: looks like if 4.2 support is built in, then llseek is set
+> to nfs4_file_llseek, which unconditionally calls nfs42_proc_llseek().
+> 
+> Does nfs4_file_llseek need an explicit minorversion check, or should it
+> be handled some other way?
 
-Returning void values is a GNU extension.  I've seen it in a few
-places in the kernel.  Although in general I'd prefer it we'd remove
-it (and have the compiler warn about it).
+The client should be checking for CAP_SEEK, which should only be set on NFS v4.2.  I'll look into this!
+> 
+> --b.
+> 
 
