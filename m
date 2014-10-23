@@ -1,185 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f179.google.com ([209.85.217.179]:43867 "EHLO
-	mail-lb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753607AbaJBNmk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Oct 2014 09:42:40 -0400
-Received: by mail-lb0-f179.google.com with SMTP id l4so2207211lbv.38
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Oct 2014 06:42:39 -0700 (PDT)
-From: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
-To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
-        ncopa@alpinelinux.org
-Cc: =?UTF-8?q?Timo=20Ter=C3=A4s?= <timo.teras@iki.fi>
-Subject: [PATCH v2 5/5] nfslib: remove now unused FILE helpers
-Date: Thu,  2 Oct 2014 16:42:01 +0300
-Message-Id: <1412257321-5855-6-git-send-email-timo.teras@iki.fi>
-In-Reply-To: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
-References: <1412257321-5855-1-git-send-email-timo.teras@iki.fi>
+Received: from userp1040.oracle.com ([156.151.31.81]:30709 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754490AbaJWUql (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2014 16:46:41 -0400
+Message-ID: <54496910.1020100@oracle.com>
+Date: Thu, 23 Oct 2014 13:46:08 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+To: "Charles EDWARD Lever" <chuck.lever@oracle.com>, Anna.Schumaker@netapp.com,
+        Devesh.Sharma@emulex.com, dledford@redhat.com,
+        dominique.martinet@cea.fr, jeffrey.c.becker@nasa.gov,
+        rsdance@soft-forge.com, skc@lanl.gov, sprabhu@redhat.com,
+        SteveD@redhat.com, swise@opengridcomputing.com, wendy.cheng@intel.com,
+        yanb@mellanox.com
+CC: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: NFSoRDMA developers bi-weekly meeting minutes (10/23)
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All access to kernel is now done using file descriptors.
+Attendees:
 
-Signed-off-by: Timo Teräs <timo.teras@iki.fi>
----
- support/include/nfslib.h |   7 ---
- support/nfs/cacheio.c    | 110 -----------------------------------------------
- 2 files changed, 117 deletions(-)
+Steve Dickson (Red Hat)
+Chuck Lever (Oracle)
+Doug Ledford (RedHat)
+Shirley Ma (Oracle)
+Sachin Prabhu (RedHat)
+Anna Schumaker (Net App)
+Steve Wise (OpenGridComputing, Chelsio)
 
-diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-index ce4b14b..9fd22ac 100644
---- a/support/include/nfslib.h
-+++ b/support/include/nfslib.h
-@@ -152,11 +152,6 @@ struct nfs_fh_len *	getfh(const struct sockaddr_in *sin, const char *path);
- struct nfs_fh_len *	getfh_size(const struct sockaddr_in *sin,
- 					const char *path, int const size);
- 
--void qword_print(FILE *f, char *str);
--void qword_printhex(FILE *f, char *str, int slen);
--void qword_printint(FILE *f, int num);
--int qword_eol(FILE *f);
--int readline(int fd, char **buf, int *lenp);
- int qword_get(char **bpp, char *dest, int bufsize);
- int qword_get_int(char **bpp, int *anint);
- void cache_flush(int force);
-@@ -167,8 +162,6 @@ void qword_addint(char **bpp, int *lp, int n);
- void qword_adduint(char **bpp, int *lp, unsigned int n);
- void qword_addeol(char **bpp, int *lp);
- int qword_get_uint(char **bpp, unsigned int *anint);
--void qword_printuint(FILE *f, unsigned int num);
--void qword_printtimefrom(FILE *f, unsigned int num);
- 
- void closeall(int min);
- 
-diff --git a/support/nfs/cacheio.c b/support/nfs/cacheio.c
-index 2726d8f..42e2502 100644
---- a/support/nfs/cacheio.c
-+++ b/support/nfs/cacheio.c
-@@ -121,74 +121,6 @@ void qword_addeol(char **bpp, int *lp)
- 	(*lp)--;
- }
- 
--static char qword_buf[8192];
--void qword_print(FILE *f, char *str)
--{
--	char *bp = qword_buf;
--	int len = sizeof(qword_buf);
--	qword_add(&bp, &len, str);
--	if (fwrite(qword_buf, bp-qword_buf, 1, f) != 1) {
--		xlog_warn("qword_print: fwrite failed: errno %d (%s)",
--			errno, strerror(errno));
--	}
--}
--
--void qword_printhex(FILE *f, char *str, int slen)
--{
--	char *bp = qword_buf;
--	int len = sizeof(qword_buf);
--	qword_addhex(&bp, &len, str, slen);
--	if (fwrite(qword_buf, bp-qword_buf, 1, f) != 1) {
--		xlog_warn("qword_printhex: fwrite failed: errno %d (%s)",
--			errno, strerror(errno));
--	}
--}
--
--void qword_printint(FILE *f, int num)
--{
--	fprintf(f, "%d ", num);
--}
--
--void qword_printuint(FILE *f, unsigned int num)
--{
--	fprintf(f, "%u ", num);
--}
--
--void qword_printtimefrom(FILE *f, unsigned int num)
--{
--	fprintf(f, "%lu ", time(0) + num);
--}
--
--int qword_eol(FILE *f)
--{
--	int err;
--
--	err = fprintf(f,"\n");
--	if (err < 0) {
--		xlog_warn("qword_eol: fprintf failed: errno %d (%s)",
--			    errno, strerror(errno));
--	} else {
--		err = fflush(f);
--		if (err) {
--			xlog_warn("qword_eol: fflush failed: errno %d (%s)",
--				  errno, strerror(errno));
--		}
--	}
--	/*
--	 * We must send one line (and one line only) in a single write
--	 * call.  In case of a write error, libc may accumulate the
--	 * unwritten data and try to write it again later, resulting in a
--	 * multi-line write.  So we must explicitly ask it to throw away
--	 * any such cached data.  But we return any original error
--	 * indication to the caller.
--	 */
--	__fpurge(f);
--	fflush(f);
--	return err;
--}
--
--
--
- #define isodigit(c) (isdigit(c) && c <= '7')
- int qword_get(char **bpp, char *dest, int bufsize)
- {
-@@ -266,48 +198,6 @@ int qword_get_uint(char **bpp, unsigned int *anint)
- 	return 0;
- }
- 
--#define READLINE_BUFFER_INCREMENT 2048
--
--int readline(int fd, char **buf, int *lenp)
--{
--	/* read a line into *buf, which is malloced *len long
--	 * realloc if needed until we find a \n
--	 * nul out the \n and return
--	 * 0 on eof, 1 on success
--	 */
--	int len;
--
--	if (*lenp == 0) {
--		char *b = malloc(READLINE_BUFFER_INCREMENT);
--		if (b == NULL)
--			return 0;
--		*buf = b;
--		*lenp = READLINE_BUFFER_INCREMENT;
--	}
--	len = read(fd, *buf, *lenp);
--	if (len <= 0)
--		return 0;
--	while ((*buf)[len-1] != '\n') {
--	/* now the less common case.  There was no newline,
--	 * so we have to keep reading after re-alloc
--	 */
--		char *new;
--		int nl;
--		*lenp += READLINE_BUFFER_INCREMENT;
--		new = realloc(*buf, *lenp);
--		if (new == NULL)
--			return 0;
--		*buf = new;
--		nl = read(fd, *buf + len, *lenp - len);
--		if (nl <= 0)
--			return 0;
--		len += nl;
--	}
--	(*buf)[len-1] = '\0';
--	return 1;
--}
--
--
- /* Check if we should use the new caching interface
-  * This succeeds iff the "nfsd" filesystem is mounted on
-  * /proc/fs/nfs
--- 
-2.1.2
+Moderator:
+Shirley Ma (Oracle)
 
+NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA development and test effort from different resources to speed up NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools development. Hopefully the quality of NFSoRDMA upstream patches can be improved by being tested with a quorum of HW vendors.
+
+Today's meeting notes:
+1. OFED update and bug status (Rupert):
+-- Intel has discovered some issues with infinipath-psm and is working on an update so there will have to be an OFED 3.12-1 rc4
+-- Vlad (Mellanox) has agreed to put together the next version of OFED which will be based on kernel 3.18 rc1. This will be ready will be ready to use in the OFA Interop Debug event next week. This will allow us to test some of these NFSoRDMA bugs that are outstanding.
+
+2. NFS 4.1 RDMA client support (Chuck)
+Chuck has submitted the patchset to upstream review. The patch includes bi-directional RPC xprt support and sidecar client support, default is TCP to handle backchannel if not specified in mounting option. Patchset is under review, here is the link:
+http://www.spinics.net/lists/linux-nfs/msg47278.html
+-- NFS 4.1 enables pNFS
+-- bi-redictional RDMA
+
+3. Performance tools and test I/O block size:
+-- RPC GETATTR, LOOKUP, ACCESS, READ, WRITE latency are more important than other RPCs: mountstats ouput
+-- I/O latency changes with heavy CPU workload (like kernel build)
+-- direction I/O performance, tmpfs, ramdisk, big file size equal to 80% of physical memory
+-- 8K block size performance in particular for database workload
+-- mixed block size performance
+-- benchmark tools: fio, iozone, dbench, connecthon, xfstest...
+-- scalability: number of mountpoints, number of clients
+
+4. RDMA emulate driver for testing if no HW is available: (Steve Wise)
+-- soft iwarp: repo is 
+https://www.gitorious.org/softiwarp/ (maintainer Bernard Metzler)
+
+5. Whether we can use RDMA write for both NFS write/read to improve the performance?
+
+Feel free to reply here for anything missing. See you on Nov.6th.
+
+10/23/2014
+@7:30am PDT
+@8:30am MDT
+@9:30am CDT
+@10:30am EDT
+@Bangalore @8:00pm
+@Israel @5:30pm
+
+Duration: 1 hour
+
+Call-in number:
+Israel: +972 37219638
+Bangalore: +91 8039890080 (180030109800)
+France  Colombes +33 1 5760 2222    +33 176728936
+US: 8666824770,  408-7744073
+
+Conference Code: 2308833
+Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
+
+Thanks everyone for joining the call and providing valuable inputs/work to the community to make NFSoRDMA better.
+
+Cheers,
+Shirley
