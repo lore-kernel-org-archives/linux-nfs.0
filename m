@@ -1,64 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45791 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:49066 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752143AbaJ1NQy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Oct 2014 09:16:54 -0400
-From: Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-Subject: [PATCH 1/4] common: re-enable tests that require scratch dev on NFS
-Date: Tue, 28 Oct 2014 21:16:08 +0800
-Message-Id: <1414502171-10319-2-git-send-email-eguan@redhat.com>
-In-Reply-To: <1414502171-10319-1-git-send-email-eguan@redhat.com>
-References: <1414502171-10319-1-git-send-email-eguan@redhat.com>
+	id S1751479AbaJWVYz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Oct 2014 17:24:55 -0400
+Message-ID: <544971CE.9090808@Netapp.com>
+Date: Thu, 23 Oct 2014 17:23:26 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@lst.de>
+CC: <viro@zeniv.linux.org.uk>, <linux-fsdevel@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, <bfields@fieldses.org>,
+        <Trond.Myklebust@primarydata.com>
+Subject: Re: [PATCH] VFS: Rename do_fallocate() to vfs_fallocate()
+References: <1412190907-30307-1-git-send-email-Anna.Schumaker@Netapp.com> <20141001210451.GB6680@lst.de>
+In-Reply-To: <20141001210451.GB6680@lst.de>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This commit disables tests requires scratch dev running on NFS
+I'm curious what the status of this patch is?
 
-c041421 xfstests: stop special casing nfs and udf
+Thanks,
+Anna
 
-Now re-enable them to get a larger test coverage on NFS.
-
-Signed-off-by: Eryu Guan <eguan@redhat.com>
----
- common/rc | 16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
-
-diff --git a/common/rc b/common/rc
-index 747cf72..8738da7 100644
---- a/common/rc
-+++ b/common/rc
-@@ -558,7 +558,11 @@ _scratch_mkfs()
-         _scratch_mkfs_xfs $*
- 	;;
-     nfs*)
--	# do nothing for nfs
-+	# unable to re-create NFS, just remove all files in $SCRATCH_MNT to
-+	# avoid EEXIST caused by the leftover files created in previous runs
-+	_scratch_mount
-+	rm -rf $SCRATCH_MNT/*
-+	_scratch_unmount
- 	;;
-     cifs)
- 	# do nothing for cifs
-@@ -1032,8 +1036,14 @@ _require_scratch_nocheck()
- {
-     case "$FSTYP" in
- 	nfs*)
--                 _notrun "requires a scratch device"
--		 ;;
-+		echo $SCRATCH_DEV | grep -q ":/" > /dev/null 2>&1
-+		if [ -z "$SCRATCH_DEV" -o "$?" != "0" ]; then
-+			_notrun "this test requires a valid \$SCRATCH_DEV"
-+		fi
-+		if [ ! -d "$SCRATCH_MNT" ]; then
-+			_notrun "this test requires a valid \$SCRATCH_MNT"
-+		fi
-+		;;
- 	cifs)
- 		_notrun "requires a scratch device"
- 		;;
--- 
-1.8.3.1
+On 10/01/2014 05:04 PM, Christoph Hellwig wrote:
+> On Wed, Oct 01, 2014 at 03:15:07PM -0400, Anna Schumaker wrote:
+>> From: Anna Schumaker <Anna.Schumaker@netapp.com>
+>>
+>> This function needs to be exported so it can be used by the NFSD module
+>> when responding to the new ALLOCATE and DEALLOCATE operations in NFS
+>> v4.2.  Christoph Hellwig suggested renaming the function to stay
+>> consistent with how other vfs functions are named.
+>>
+>> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> 
+> Acked-by: Christoph Hellwig <hch@lst.de>
+> 
 
