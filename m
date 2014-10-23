@@ -1,83 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:50801 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750997AbaJAMF3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Oct 2014 08:05:29 -0400
-Received: by mail-qg0-f45.google.com with SMTP id e89so123298qgf.4
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Oct 2014 05:05:28 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-Subject: [PATCH] nfsd: eliminate "to_delegation" define
-Date: Wed,  1 Oct 2014 08:05:22 -0400
-Message-Id: <1412165122-17557-1-git-send-email-jlayton@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:59776 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752010AbaJWHfA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2014 03:35:00 -0400
+Date: Thu, 23 Oct 2014 00:34:57 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Tom Haynes <thomas.haynes@primarydata.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] nfsd4: fix response size estimation for OP_SEQUENCE
+Message-ID: <20141023073457.GA18399@infradead.org>
+References: <20141017212446.GC3474@fieldses.org>
+ <20141021103631.GB21863@infradead.org>
+ <20141021131406.GE9863@fieldses.org>
+ <20141022192258.GB5552@fieldses.org>
+ <20141022194257.GC5552@fieldses.org>
+ <57662446-E474-4420-84F5-349B6B85119F@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <57662446-E474-4420-84F5-349B6B85119F@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We now have cb_to_delegation and to_delegation, which do the same thing
-and are defined separately in different .c files. Move the
-cb_to_delegation definition into a header file and eliminate the
-redundant to_delegation definition.
+On Wed, Oct 22, 2014 at 01:12:12PM -0700, Tom Haynes wrote:
+> > That means that if a revision of the 4.2 draft adds a new operation
+> > beyond the current end (OP_WRITE_SAME = 70), a client would need to be
+> > prepared for old servers returning OP_ILLEGAL to that operation.
+> > 
+> 
+> Or if the new minor versioning rules take effect...
 
-Cc: Christoph Hellwig <hch@infradead.org>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4callback.c | 5 +----
- fs/nfsd/nfs4state.c    | 3 ---
- fs/nfsd/state.h        | 3 +++
- 3 files changed, 4 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 4fe4be1ee82e..ed2b1151b171 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -49,9 +49,6 @@ static void nfsd4_mark_cb_fault(struct nfs4_client *, int reason);
- 
- /* Index of predefined Linux callback client operations */
- 
--#define to_delegation(cb) \
--	container_of(cb, struct nfs4_delegation, dl_recall)
--
- struct nfs4_cb_compound_hdr {
- 	/* args */
- 	u32		ident;	/* minorversion 0 only */
-@@ -491,7 +488,7 @@ static void nfs4_xdr_enc_cb_null(struct rpc_rqst *req, struct xdr_stream *xdr,
- static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
- 				   const struct nfsd4_callback *cb)
- {
--	const struct nfs4_delegation *dp = to_delegation(cb);
-+	const struct nfs4_delegation *dp = cb_to_delegation(cb);
- 	struct nfs4_cb_compound_hdr hdr = {
- 		.ident = cb->cb_clp->cl_cb_ident,
- 		.minorversion = cb->cb_minorversion,
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 551f32d7f5c7..5c0cac173068 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3360,9 +3360,6 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
- 	return ret;
- }
- 
--#define cb_to_delegation(cb) \
--	container_of(cb, struct nfs4_delegation, dl_recall)
--
- static void nfsd4_cb_recall_prepare(struct nfsd4_callback *cb)
- {
- 	struct nfs4_delegation *dp = cb_to_delegation(cb);
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index bf52dc7b15e7..0a47c6a6b301 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -132,6 +132,9 @@ struct nfs4_delegation {
- 	struct nfsd4_callback	dl_recall;
- };
- 
-+#define cb_to_delegation(cb) \
-+	container_of(cb, struct nfs4_delegation, dl_recall)
-+
- /* client delegation callback info */
- struct nfs4_cb_conn {
- 	/* SETCLIENTID info */
--- 
-1.9.3
+I guess that's a good reason to start future proofing clients to treat
+OP_ILLEGAL the same as NFS4ERR_NOTSUP.
 
