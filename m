@@ -1,156 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:43253 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751017AbaJFPyY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 11:54:24 -0400
-Received: by mail-ig0-f176.google.com with SMTP id hn15so2712781igb.15
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 08:54:23 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAHQdGtRTrvAbEyT5xSmgemp9KkCrER9x9eVamEfKNxM-4U1jcQ@mail.gmail.com>
-References: <CAN-5tyF4oCkmHskT02GceF=CR1mYZc3uwm0tLf2fd39-XeyjRg@mail.gmail.com>
-	<CAHQdGtT39EBPx1SQTn3hFHBNuLsSoBdkSOYWHYRQ=j8vpVjB_A@mail.gmail.com>
-	<CAN-5tyGVfAQ+ZBp0hSMyRMHHWL3iP=h5XzaFrsLRf02rSH1ZHQ@mail.gmail.com>
-	<CAABAsM5MZxgpSd2c8rc4BxVVCjxwBgT2n8+uUONNrTX6AvJudQ@mail.gmail.com>
-	<CAN-5tyGy63qnfqD6XY9h9Rh9nsOTXgeHFeP4t_vO_obNXGpNYg@mail.gmail.com>
-	<CAHQdGtRTrvAbEyT5xSmgemp9KkCrER9x9eVamEfKNxM-4U1jcQ@mail.gmail.com>
-Date: Mon, 6 Oct 2014 11:54:23 -0400
-Message-ID: <CAN-5tyH6ihiQFX=JiDpqidZ928GtdrA35Y-oMkGHaWBCr90WiQ@mail.gmail.com>
-Subject: Re: [bug] open owner value is always the same
-From: Olga Kornievskaia <olga.kornievskaia@gmail.com>
+Received: from mail-qa0-f48.google.com ([209.85.216.48]:41849 "EHLO
+	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753499AbaJXO6J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 10:58:09 -0400
+Received: by mail-qa0-f48.google.com with SMTP id x12so1056123qac.21
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 07:58:08 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 24 Oct 2014 10:57:58 -0400
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        bfields@fieldses.org
+Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection
+ when dropping a request
+Message-ID: <20141024105758.064f2e14@tlielax.poochiereds.net>
+In-Reply-To: <1414161055.21776.2.camel@leira.trondhjem.org>
+References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
+	<1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
+	<20141024072644.6643f9ed@tlielax.poochiereds.net>
+	<20141024093459.70a29d80@tlielax.poochiereds.net>
+	<1414161055.21776.2.camel@leira.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 6, 2014 at 11:17 AM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Mon, Oct 6, 2014 at 11:07 AM, Olga Kornievskaia
-> <olga.kornievskaia@gmail.com> wrote:
->> On Mon, Oct 6, 2014 at 10:49 AM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->>> On Mon, Oct 6, 2014 at 10:12 AM, Olga Kornievskaia
->>> <olga.kornievskaia@gmail.com> wrote:
->>>> Aren't sequence slots shared by the same open owners?
->>>>
->>>> The problem I'm seeing is that a client with an outstanding open can't
->>>> respond to a delegation return because sequenced hasn't been
->>>> confirmed. I think it's problematic when there are two clients each
->>>> holding delegations and each sending an open. The server tries to
->>>> recall the delegations but neither clients will reply until the server
->>>> returns an open to the outstanding open. The server will try and not
->>>> reply to the outstanding opens until the delegations are returned.
->>>
->>> I'm not sure that I understand.
->>>
->>> Why should the server refuse to respond to OPEN calls just because a
->>> delegation recall is outstanding? That sounds like a catastrophic
->>> design for a server. How is the client going to convert its cached
->>> open/lock state into open stateids and lock stateids if the server
->>> won't respond to OPEN calls for that file?
->>>
->>> If the server cannot respond to the OPEN because it conflicts with a
->>> delegation being recalled, then the right thing to do is to return
->>> NFS4ERR_DELAY. That allows the client to make progress on other OPEN
->>> requests that may be required in order to return the conflicting
->>> delegation, and that may be serialised behind that blocked OPEN.
->>> I can imagine this might be the case if the client holds a delegation
->>> for a file, and then is asked to OPEN a hard link to the same file.
->>> The client has no way to know a priori that it is opening the same
->>> file through the hard link, so it doesn't know that it conflicts with
->>> the delegation.
->>>
->>
->> Sorry I should have provided a clear example. But you are right, the
->> server is not replying to the open because of the conflicting
->> opens/delegations.
->>
->> ClientA opens file A gets a write delegation.
->> ClientB open files B gets a write delegation.
->> ClientA sends an open for file B
->> ClientB sends an open for file A
->>
->> Thank you for pointing out that a server should/can return
->> NFS4ERR_DELAY to the open.
->>
->> I'm still new to this, so I apologize. But to me it seems like at
->> should be totally reasonable from the server-side to expect for the
->> delegation to file A to the returned independent of the opening of
->> file B.
->
-> No. The problem with that assumption are the serialisation issues:
->
-> a) There is no serialisation between OPEN and the recall callback from
-> the server. The server cannot rely on the client having received the
-> callback when it decides how to handle the OPEN.
-> b) There is _mandatory_ serialisation between OPEN requests on the
-> client. Unless the server replies to the OPEN, then all other OPEN
-> requests that are serialised behind that OPEN are required by RFC3530
-> to wait.
+On Fri, 24 Oct 2014 17:30:55 +0300
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-Yes, for the same open owner, the requests must be serialized. Given
-the choice to use the same open owner for all the files for a given
-credential/principal, it imposes strict requirements on the server
-implementation.
+> On Fri, 2014-10-24 at 09:34 -0400, Jeff Layton wrote:
+> > On Fri, 24 Oct 2014 07:26:44 -0400
+> > Jeff Layton <jlayton@primarydata.com> wrote:
+> >  
+> > > I guess the theory here is that the client sent the request, and got a
+> > > TCP ACK and then the server never responded because it dropped the
+> > > request? That sounds plausible and we almost certainly want something
+> > > like the above for v4.0.
+> > > 
+> > > If the above patch fixes Christoph's problem with v4.1 though, then I
+> > > think we'll need more investigation into why. I don't see a way to get
+> > > a dropped request with v4.1. Those mainly occur due to interaction with
+> > > the DRC (disabled for v4.1) or with svc_defer (disabled for all v4
+> > > requests).
+> > > 
+> > > Is it possible that one of the nfsd threads is just hung while
+> > > processing an RPC and that's why you're not getting a response?
+> > > 
+> > 
+> > Ok, I'm able to reproduce this too and got a network trace. I think
+> > Trond is correct as to the cause:
+> > 
+> > I see a SETATTR call go out and then see a TCP ACK for it a little
+> > later, but didn't see a reply sent for it.
+> > 
+> > I sprinkled in some printks around the "dropit" codepath above and in
+> > some other areas however and none of them fired. So while Trond's patch
+> > looks like it might be correct, I don't think it'll fix the problem I'm
+> > seeing.
+> > 
+> > Sniffing a little later, it seems like the server replies are being
+> > delayed somehow:
+> 
+> You can get deferrals in the authentication code which trigger drops.
+> Here is a variant which tries to deal with that:
+> 
+> 8<-----------------------------------------------------
+> From a9be1292152af2cb651415c44fd3d91b3d017240 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date: Fri, 24 Oct 2014 12:54:47 +0300
+> Subject: [PATCH v2] nfsd: Ensure that NFSv4 always drops the connection when
+>  dropping a request
+> 
+> Both RFC3530 and RFC5661 impose a requirement on the server that it MUST NOT
+> drop a request unless the connection is broken. This is in order to allow
+> clients to assume that they can always expect an answer unless the
+> connection is broken.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Cc: stable@vger.kernel.org
+> ---
+> v2: Also deal with NFSv4 requests dropped due to authentication issues
+> 
+>  fs/nfsd/nfs4proc.c         |  6 ++++++
+>  include/linux/sunrpc/svc.h |  1 +
+>  net/sunrpc/svc.c           | 13 +++++++++----
+>  3 files changed, 16 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index cdeb3cfd6f32..500ac76662a8 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1960,6 +1960,11 @@ static const char *nfsd4_op_name(unsigned opnum)
+>  	return "unknown_operation";
+>  }
+>  
+> +static void nfsd4_dropme(struct svc_rqst *rqstp)
+> +{
+> +	svc_close_xprt(rqstp->rq_xprt);
+> +}
+> +
+>  #define nfsd4_voidres			nfsd4_voidargs
+>  struct nfsd4_voidargs { int dummy; };
+>  
+> @@ -1989,6 +1994,7 @@ struct svc_version	nfsd_version4 = {
+>  		.vs_nproc	= 2,
+>  		.vs_proc	= nfsd_procedures4,
+>  		.vs_dispatch	= nfsd_dispatch,
+> +		.vs_dropme	= nfsd4_dropme,
+>  		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
+>  		.vs_rpcb_optnl	= 1,
+>  };
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 21678464883a..824656da1f6d 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -400,6 +400,7 @@ struct svc_version {
+>  	 * vs_dispatch == NULL means use default dispatcher.
+>  	 */
+>  	int			(*vs_dispatch)(struct svc_rqst *, __be32 *);
+> +	void			(*vs_dropme)(struct svc_rqst *);
+>  };
+>  
+>  /*
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index ca8a7958f4e6..a178496ce2c1 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1111,9 +1111,13 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>  	rqstp->rq_vers = vers = svc_getnl(argv);	/* version number */
+>  	rqstp->rq_proc = proc = svc_getnl(argv);	/* procedure number */
+>  
+> -	for (progp = serv->sv_program; progp; progp = progp->pg_next)
+> -		if (prog == progp->pg_prog)
+> +	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
+> +		if (prog == progp->pg_prog) {
+> +			if (vers < progp->pg_nvers)
+> +				versp = progp->pg_vers[vers];
+>  			break;
+> +		}
+> +	}
+>  
+>  	/*
+>  	 * Decode auth data, and add verifier to reply buffer.
+> @@ -1148,8 +1152,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>  	if (progp == NULL)
+>  		goto err_bad_prog;
+>  
+> -	if (vers >= progp->pg_nvers ||
+> -	  !(versp = progp->pg_vers[vers]))
+> +	if (versp == NULL)
+>  		goto err_bad_vers;
+>  
+>  	procp = versp->vs_proc + proc;
+> @@ -1228,6 +1231,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>   dropit:
+>  	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+>  	dprintk("svc: svc_process dropit\n");
 
-Thanks for the explanation.
+I don't think this will fix it either. I turned the above dprintk into
+a normal printk and it never fired during the test. As best I can tell,
+svc_process_common is not returning 0 when this occurs.
+
+> +	if (versp && versp->vs_dropme)
+> +		versp->vs_dropme(rqstp);
+>  	return 0;
+>  
+>  err_short_len:
 
 
-
-> Cheers
->  Trond
->
->>
->>> Cheers
->>>   Trond
->>>
->>>>
->>>> On Mon, Oct 6, 2014 at 9:57 AM, Trond Myklebust
->>>> <trond.myklebust@primarydata.com> wrote:
->>>>> Hi Olga,
->>>>>
->>>>> On Mon, Oct 6, 2014 at 9:48 AM, Olga Kornievskaia
->>>>> <olga.kornievskaia@gmail.com> wrote:
->>>>>> The spec says that open owner needs to be different for different
->>>>>> files yet the code returns the same value.
->>>>>>
->>>>>> It is not clear to me what's broken about ida_get_new() that's used
->>>>>> for generation of the owner ids.
->>>>>>
->>>>>> Can somebody comment on this?
->>>>>>
->>>>>
->>>>> As far as I know, there is no requirement in either NFSv4 or NFSv4.1
->>>>> that open owners be different for each file. In NFSv4.1 there is a
->>>>> requirement that they be unique to each credential/principal, but only
->>>>> if you negotiate EXCHGID4_FLAG_BIND_PRINC_STATEID.
->>>>>
->>>>> The current choice of scheme where we share open_owners between files
->>>>> was largely motivated by a desire not to overload the NFSv4.0 servers
->>>>> with lots of open_owner structures. In NFSv4.0, those structures are
->>>>> required to be cached by the server for a while after the file has
->>>>> been closed.
->>>>>
->>>>> Cheers
->>>>>   Trond
->>>>>
->>>>>
->>>>> --
->>>>> Trond Myklebust
->>>>>
->>>>> Linux NFS client maintainer, PrimaryData
->>>>>
->>>>> trond.myklebust@primarydata.com
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
+-- 
+Jeff Layton <jlayton@primarydata.com>
