@@ -1,31 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-3.concepts.nl ([213.197.30.127]:45079 "EHLO
-	smtp-3.concepts.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751490AbaJSRr1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Oct 2014 13:47:27 -0400
-Message-ID: <5443F5A1.1050004@xmsnet.nl>
-Date: Sun, 19 Oct 2014 19:32:17 +0200
-From: Hans de Bruin <jmdebruin@xmsnet.nl>
+Received: from mx1.redhat.com ([209.132.183.28]:50009 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756504AbaJXNht (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Oct 2014 09:37:49 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s9ODbnFd026339
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 09:37:49 -0400
+Message-ID: <544A562C.3090204@RedHat.com>
+Date: Fri, 24 Oct 2014 09:37:48 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: 3.17.0+ files disappearing after playing old dos game on nfsroot
- laptop
-References: <543ED24D.4070905@xmsnet.nl>
-In-Reply-To: <543ED24D.4070905@xmsnet.nl>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Karel Zak <kzak@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] umount: make it sensitive to -v
+References: <1414145000-16669-1-git-send-email-kzak@redhat.com>
+In-Reply-To: <1414145000-16669-1-git-send-email-kzak@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/15/2014 10:00 PM, Hans de Bruin wrote:
-> After playing an old dos game i am missing files on my nfsroot installed
-> laptop. Which one, wel /bin/ls is at least one of them. After a reboot
-> there all back again.  But not al is well. Some icons on my kde panel
-> where gone. I have seen this twice in the last day's
->
 
-The problem appears immediately after starting dosemu so this bisectable
 
--- 
-Hans
+On 10/24/2014 06:03 AM, Karel Zak wrote:
+> Let's print verbose messages like original non-libmount version.
+> 
+> Addresses: https://bugzilla.redhat.com/show_bug.cgi?id=923582
+> Signed-off-by: Karel Zak <kzak@redhat.com>
+Committed.... Thanks! 
 
+steved.
+> ---
+>  utils/mount/mount_libmount.c | 14 +++++++++++++-
+>  1 file changed, 13 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
+> index 6f85dc9..fa46d54 100644
+> --- a/utils/mount/mount_libmount.c
+> +++ b/utils/mount/mount_libmount.c
+> @@ -174,7 +174,7 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
+>  {
+>  	int rc, c;
+>  	char *spec = NULL, *opts = NULL;
+> -	int ret = EX_FAIL;
+> +	int ret = EX_FAIL, verbose = 0;
+>  
+>  	static const struct option longopts[] = {
+>  		{ "force", 0, 0, 'f' },
+> @@ -201,6 +201,8 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
+>  		return EX_USAGE;
+>  	}
+>  
+> +	verbose = mnt_context_is_verbose(cxt);
+> +
+>  	if (optind < argc)
+>  		spec = argv[optind++];
+>  
+> @@ -228,6 +230,10 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
+>  		goto err;
+>  	}
+>  
+> +	if (verbose)
+> +		printf(_("%s: %s mount point detected\n"), spec,
+> +					mnt_context_get_fstype(cxt));
+> +
+>  	opts = retrieve_mount_options(mnt_context_get_fs(cxt));
+>  
+>  	if (!mnt_context_is_lazy(cxt)) {
+> @@ -263,6 +269,12 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
+>  	}
+>  	ret = EX_SUCCESS;
+>  err:
+> +	if (verbose) {
+> +		if (ret == EX_SUCCESS)
+> +			printf(_("%s: umounted\n"), spec);
+> +		else
+> +			printf(_("%s: umount failed\n"), spec);
+> +	}
+>  	free(opts);
+>  	return ret;
+>  }
+> 
