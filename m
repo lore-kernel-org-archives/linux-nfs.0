@@ -1,70 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47834 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:14588 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751300AbaJGMcZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Oct 2014 08:32:25 -0400
-Date: Tue, 7 Oct 2014 08:32:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Zach Brown <zab@zabbo.net>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfsd: fix inclusive vfs_fsync_range() end
-Message-ID: <20141007123224.GA23258@fieldses.org>
-References: <1412638972-14617-1-git-send-email-zab@zabbo.net>
+	id S1756735AbaJXOlu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Oct 2014 10:41:50 -0400
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 2/2] nfsd: Add DEALLOCATE support
+Date: Fri, 24 Oct 2014 10:41:45 -0400
+Message-ID: <1414161705-26617-3-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1414161705-26617-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1414161705-26617-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1412638972-14617-1-git-send-email-zab@zabbo.net>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 06, 2014 at 04:42:52PM -0700, Zach Brown wrote:
-> The vfs_fsync_range() call during write processing got the end of the
-> range off by one.  The range is inclusive, not exclusive.  The error has
-> nfsd sync more data than requested -- it's correct but unnecessary
-> overhead.
-> 
-> The call during commit processing is correct so I copied that pattern in
-> write processing.  Maybe a helper would be nice but I kept it trivial.
-> 
-> This is untested.  I found it while reviewing code for something else
-> entirely.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Makes sense to me, thanks!  Queuing up for 3.19.--b.
+DEALLOCATE only returns a status value, meaning we can use the noop()
+xdr encoder to reply to the client.
 
-> 
-> Signed-off-by: Zach Brown <zab@zabbo.net>
-> ---
->  fs/nfsd/vfs.c | 10 +++++++---
->  1 file changed, 7 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index f501a9b..825250e 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -921,6 +921,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
->  	int			stable = *stablep;
->  	int			use_wgather;
->  	loff_t			pos = offset;
-> +	loff_t			end = LLONG_MAX;
->  	unsigned int		pflags = current->flags;
->  
->  	if (rqstp->rq_local)
-> @@ -952,10 +953,13 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
->  	fsnotify_modify(file);
->  
->  	if (stable) {
-> -		if (use_wgather)
-> +		if (use_wgather) {
->  			host_err = wait_for_concurrent_writes(file);
-> -		else
-> -			host_err = vfs_fsync_range(file, offset, offset+*cnt, 0);
-> +		} else {
-> +			if (*cnt)
-> +				end = offset + *cnt - 1;
-> +			host_err = vfs_fsync_range(file, offset, end, 0);
-> +		}
->  	}
->  
->  out_nfserr:
-> -- 
-> 1.9.3
-> 
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfsd/nfs4proc.c | 15 +++++++++++++++
+ fs/nfsd/nfs4xdr.c  |  2 +-
+ fs/nfsd/xdr4.h     |  1 +
+ 3 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 57bfcad..b3a9d0d 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -33,6 +33,7 @@
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ #include <linux/file.h>
++#include <linux/falloc.h>
+ #include <linux/slab.h>
+ 
+ #include "idmap.h"
+@@ -1044,6 +1045,14 @@ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ }
+ 
+ static __be32
++nfsd4_deallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		 struct nfsd4_fallocate *fallocate)
++{
++	return nfsd4_fallocate(rqstp, cstate, fallocate,
++			       FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE);
++}
++
++static __be32
+ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		struct nfsd4_seek *seek)
+ {
+@@ -1962,6 +1971,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_name = "OP_ALLOCATE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+ 	},
++	[OP_DEALLOCATE] = {
++		.op_func = (nfsd4op_func)nfsd4_deallocate,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_name = "OP_DEALLOCATE",
++		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
++	},
+ 	[OP_SEEK] = {
+ 		.op_func = (nfsd4op_func)nfsd4_seek,
+ 		.op_name = "OP_SEEK",
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a60cff8..0622d4f 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1624,7 +1624,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
+ 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
+ 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index eeaa0d0..90a5925 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -494,6 +494,7 @@ struct nfsd4_op {
+ 
+ 		/* NFSv4.2 */
+ 		struct nfsd4_fallocate		allocate;
++		struct nfsd4_fallocate		deallocate;
+ 		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+-- 
+2.1.2
+
