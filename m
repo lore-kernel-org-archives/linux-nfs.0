@@ -1,31 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:43490 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751208AbaJAVEz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 1 Oct 2014 17:04:55 -0400
-Date: Wed, 1 Oct 2014 23:04:51 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, hch@lst.de, bfields@fieldses.org,
-        Trond.Myklebust@primarydata.com
-Subject: Re: [PATCH] VFS: Rename do_fallocate() to vfs_fallocate()
-Message-ID: <20141001210451.GB6680@lst.de>
-References: <1412190907-30307-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from smtp-3.concepts.nl ([213.197.30.127]:38186 "EHLO
+	smtp-3.concepts.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751510AbaJXQZI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 12:25:08 -0400
+Message-ID: <544A7D5C.5060804@xmsnet.nl>
+Date: Fri, 24 Oct 2014 18:25:00 +0200
+From: Hans de Bruin <jmdebruin@xmsnet.nl>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1412190907-30307-1-git-send-email-Anna.Schumaker@Netapp.com>
+To: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, ebiederm@xmission.com
+Subject: Re: 3.17.0+ files disappearing after playing old dos game on nfsroot
+ laptop
+References: <543ED24D.4070905@xmsnet.nl> <5443F5A1.1050004@xmsnet.nl> <544A7933.3010702@xmsnet.nl>
+In-Reply-To: <544A7933.3010702@xmsnet.nl>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 01, 2014 at 03:15:07PM -0400, Anna Schumaker wrote:
-> From: Anna Schumaker <Anna.Schumaker@netapp.com>
-> 
-> This function needs to be exported so it can be used by the NFSD module
-> when responding to the new ALLOCATE and DEALLOCATE operations in NFS
-> v4.2.  Christoph Hellwig suggested renaming the function to stay
-> consistent with how other vfs functions are named.
-> 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+On 10/19/2014 07:32 PM, Hans de Bruin wrote:
+> On 10/15/2014 10:00 PM, Hans de Bruin wrote:
+>> After playing an old dos game i am missing files on my nfsroot installed
+>> laptop. Which one, wel /bin/ls is at least one of them. After a reboot
+>> there all back again.  But not al is well. Some icons on my kde panel
+>> where gone. I have seen this twice in the last day's
+>>
+>
+> The problem appears immediately after starting dosemu so this bisectable
+>
 
-Acked-by: Christoph Hellwig <hch@lst.de>
+
+My bisect ended here:
+
+commit 8ed936b5671bfb33d89bc60bdcc7cf0470ba52fe
+Author: Eric W. Biederman <ebiederman@twitter.com>
+Date:   Tue Oct 1 18:33:48 2013 -0700
+
+
+      vfs: Lazily remove mounts on unlinked files and directories.
+
+
+I haven reverted it yet.
+
+
+
+Eric,
+
+Immediately after starting dosemu all files under mount point /usr are
+gone. When I play a old dos game for a while (binaries are under /home)
+even /bin/ls disappears. Al mounts are nfs, even /.
+
+Could you look in to this and cc this to the relevant kernel mailinglist?
+
+-- 
+Hans
