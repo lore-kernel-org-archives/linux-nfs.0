@@ -1,50 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:51135 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751688AbaJTULd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Oct 2014 16:11:33 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v1 13/16] NFS: Add sidecar RPC client support
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAHQdGtTgJ7vRR3Kw8n4K4=PSoMXV_ZQK9yFkAcK-CK5xsaTm3A@mail.gmail.com>
-Date: Mon, 20 Oct 2014 16:11:25 -0400
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Tom Talpey <tom@talpey.com>
-Message-Id: <D259448C-9E9B-43AE-A809-A73C3C2716C5@oracle.com>
-References: <20141016192919.13414.3151.stgit@manet.1015granger.net> <20141016194000.13414.83844.stgit@manet.1015granger.net> <54454762.8020506@Netapp.com> <A1CBA20C-FA2F-4E6B-9D94-75F7EFDED9C3@oracle.com> <CAHQdGtTgJ7vRR3Kw8n4K4=PSoMXV_ZQK9yFkAcK-CK5xsaTm3A@mail.gmail.com>
+Received: from mail-qa0-f51.google.com ([209.85.216.51]:60283 "EHLO
+	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755894AbaJXRIb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 13:08:31 -0400
+Received: by mail-qa0-f51.google.com with SMTP id k15so1226816qaq.24
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 10:08:30 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 24 Oct 2014 13:08:28 -0400
 To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Bruce Fields <bfields@fieldses.org>
+Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection
+ when dropping a request
+Message-ID: <20141024130828.1304aa8f@tlielax.poochiereds.net>
+In-Reply-To: <CAHQdGtTt23DBM3YH295T_eUvq6ymNere7OfDR9VNFyB3Xsfcsw@mail.gmail.com>
+References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
+	<1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
+	<20141024072644.6643f9ed@tlielax.poochiereds.net>
+	<20141024093459.70a29d80@tlielax.poochiereds.net>
+	<1414161055.21776.2.camel@leira.trondhjem.org>
+	<20141024105758.064f2e14@tlielax.poochiereds.net>
+	<CAHQdGtTt23DBM3YH295T_eUvq6ymNere7OfDR9VNFyB3Xsfcsw@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond-
+On Fri, 24 Oct 2014 18:59:47 +0300
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-On Oct 20, 2014, at 3:40 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> On Fri, Oct 24, 2014 at 5:57 PM, Jeff Layton
+> <jeff.layton@primarydata.com> wrote:
+> >> @@ -1228,6 +1231,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+> >>   dropit:
+> >>       svc_authorise(rqstp);   /* doesn't hurt to call this twice */
+> >>       dprintk("svc: svc_process dropit\n");
+> >
+> > I don't think this will fix it either. I turned the above dprintk into
+> > a normal printk and it never fired during the test. As best I can tell,
+> > svc_process_common is not returning 0 when this occurs.
+> 
+> OK. Is perhaps the "revisit canceled" triggering in svc_revisit()? I'm
+> having trouble understanding the call chain for that stuff, but it too
+> looks as if it can trigger some strange behaviour.
+> 
 
-> Why aren't we doing the callbacks via RDMA as per the recommendation
-> in RFC5667 section 5.1?
+I don't think that's it either. I turned the dprintks in svc_revisit
+into a printks just to be sure, and they didn't fire either.
 
-There’s no benefit to it. With a side car, the server requires
-few or no changes. There are no CB operations that benefit
-from using RDMA. It’s very quick to implement, re-using most of
-the client backchannel implementation that already exists.
+Basically, I don't think we ever do anything in svc_defer for v4.1
+requests, due to this at the top of it:
 
-I’ve discussed this with an author of RFC 5667 [cc’d], and also
-with the implementors of an existing NFSv4.1 server that supports
-RDMA. They both agree that a side car is an acceptable, or even a
-preferable, way to approach backchannel support.
+        if (rqstp->rq_arg.page_len || !rqstp->rq_usedeferral)
+                return NULL; /* if more than a page, give up FIXME */
 
-Also, when I discussed this with you months ago, you also felt
-that a side car was better than adding backchannel support to the
-xprtrdma transport. I took this approach only because you OK’d it.
+...basically rq_usedeferral should be set in most cases for v4.1
+requests. It gets set when processing the compound and then unset
+afterward.
 
-But I don’t see an explicit recommendation in section 5.1. Which
-text are you referring to?
+That said, I suppose you could end up deferring the request if it
+occurs before the pc_func gets called, but I haven't seen any evidence
+of that happening so far with this test.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+I do concur with Christoph that I've only been able to reproduce this
+while running on the loopback interface. If I have server and client in
+different VMs, then this test runs just fine. Could this be related to
+the changes that Neil sent in recently to make loopback mounts work
+better?
 
+One idea might be reasonable to backport 2aca5b869ace67 to something
+v3.17-ish and see whether it's still reproducible?
 
-
+-- 
+Jeff Layton <jlayton@primarydata.com>
