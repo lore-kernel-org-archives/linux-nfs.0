@@ -1,121 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:59206 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932229AbaJNPse (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Oct 2014 11:48:34 -0400
-Received: by mail-ig0-f171.google.com with SMTP id h15so15089653igd.10
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Oct 2014 08:48:33 -0700 (PDT)
+Received: from mx12.netapp.com ([216.240.18.77]:39076 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756211AbaJXOmi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Oct 2014 10:42:38 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 0/2] NFS: Add ALLOCATE and DEALLOCATE support
+Date: Fri, 24 Oct 2014 10:42:11 -0400
+Message-ID: <1414161733-26726-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtSQJLe60ja+-ChkHXOu8_UjmOpd4X7QHyhNOj1mPQGWPg@mail.gmail.com>
-References: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
-	<CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
-	<CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
-	<CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
-	<CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
-	<CAN-5tyGsopFNFjo=LBwYE9n6b7Emv73Rkw0H2wyq2vCjMUOftA@mail.gmail.com>
-	<CAHQdGtSQJLe60ja+-ChkHXOu8_UjmOpd4X7QHyhNOj1mPQGWPg@mail.gmail.com>
-Date: Tue, 14 Oct 2014 11:48:33 -0400
-Message-ID: <CAN-5tyEJiHQaVbE3zgzv5OJxkmyzTGa_+2oTqj1ebQFnfHaDjw@mail.gmail.com>
-Subject: Re: how to properly handle failures during delegation recall process
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 13, 2014 at 6:24 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Mon, Oct 13, 2014 at 6:13 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> On Mon, Oct 13, 2014 at 5:29 PM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->>> On Mon, Oct 13, 2014 at 5:12 PM, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>>> On Mon, Oct 13, 2014 at 4:23 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>> On Mon, Oct 13, 2014 at 3:53 PM, Trond Myklebust
->>>>> <trond.myklebust@primarydata.com> wrote:
->>>>>> On Mon, Oct 13, 2014 at 2:51 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>>> +               }
->>>>>>> +       }
->>>>>>>         return nfs4_handle_delegation_recall_error(server, state, stateid, err);
->>>>>>>  }
->>>>>>>
->>>>>>> @@ -5957,6 +5973,10 @@ int nfs4_lock_delegation_recall(struct
->>>>>>> file_lock *fl, struct nfs4_state *state,
->>>>>>>         err = nfs4_set_lock_state(state, fl);
->>>>>>>         if (err != 0)
->>>>>>>                 return err;
->>>>>>> +       if (test_bit(NFS_LOCK_LOST, &fl->fl_u.nfs4_fl.owner->ls_flags)) {
->>>>>>> +               pr_warn_ratelimited("NFS: %s: Lock reclaim failed!\n",
->>>>>>> __func__);
->>>>>>> +               return -EIO;
->>>>>>> +       }
->>>>>>>         err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
->>>>>>
->>>>>> Note that there is a potential race here if the server is playing with
->>>>>> NFS4ERR_DELEG_REVOKED or NFS4ERR_ADMIN_REVOKED. Since we do not
->>>>>> present the delegation as part of the LOCK request, we have no way of
->>>>>> knowing if the delegation is still in effect. I guess we can check the
->>>>>> return value of DELEGRETURN, but if it returns NFS4ERR_DELEG_REVOKED
->>>>>> or NFS4ERR_ADMIN_REVOKED, then we still do not know whether or not the
->>>>>> LOCK is safe.
->>>>>
->>>>> I'm not following you. We send LOCK before we send DELEGRETURN? Also,
->>>>> we normally send in LOCK the open_stateid returned by the open with
->>>>> cur so do we know that delegation is still in effect.
->>>>
->>>> How so? The open stateid doesn't tell you that the delegation is still
->>>> in effect. If the DELEGRETURN returns NFS4ERR_DELEG_REVOKED, how can
->>>> you tell if the delegation was revoked before or after the LOCK
->>>> request was handled?
->>>
->>> Actually, let me answer that myself. You can sort of figure things out
->>> in NFSv4.1 if you look at the SEQ4_STATUS_RECALLABLE_STATE_REVOKED
->>> flag. If it is set, you should probably distrust the lock stateid that
->>> you just attempted to recover, since you now know that at least one
->>> delegation was just revoked.
->>>
->>> In that case, we probably also have to do a TEST_STATEID+FREE_STATEID
->>> on the delegation stateid.
->>
->> I think we are mis-communicating here by talking about different
->> nuances. I agree with you that when an operation is sent there is no
->> way of knowing if in the mean while the server has decided to revoke
->> the delegation. However, this is not what I'm confused about regarding
->> your comment. I'm noticing that in the flow of operations, we send (1)
->> open with cur, then (2) lock, then (3) delegreturn. So I was confused
->> about how can we check return of delegreturn, step 3, if we are in
->> step 2.
->>
->> I think the LOCK is safe if the reply to the LOCK is successful.
->
-> It needs to be concurrent with the delegation as well, otherwise
-> general lock atomicity is broken.
->
->> Let me just step back from this to note that your solution to "lost
->> locks during delegation" is to recognize the open with cure failure
->> and skip locking and delegreturn. I can work on a patch for that.
->>
->> Do you agree that the state recovery should not be initiated in case
->> we get those errors?
->
-> State recovery _should_ be initiated so that we do reclaim opens (I
-> don't care about share lock atomicity on Linux). However
-> nfs_delegation_claim_locks() _should_not_ be called.
->
-> I'll give some more thought as to how we can ensure the missing lock atomicity.
+These patches add client support for the ALLOCATE and DEALLOCATE operations
+part of NFS v4.2, which are triggered by a vfs_fallocate() call.
 
-If state recover is initiated, it will go into an infinite loop. There
-is no way to stop it once it's initiated. A "recovery" open will get a
-BAD_STATEID which will again initiated state recovery.
+Changes in v2:
+- Use nfs_server_capable() for checking server capabilities.
+- Set the only valid fallocate() modes to either 0 or PUNCH_HOLE | KEEP_SIZE.
 
-Are proposing to add smarts to the state manager when it should not
-recover from a BAD_STATEID?
+These patches and the corresponding server changes are available in the
+[fallocate] branch of
 
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
+	git://git.linux-nfs.org/projects/anna/linux-nfs.git
+
+Questions?  Comments?  Thougts?
+
+Anna
+
+
+Anna Schumaker (2):
+  nfs: Add ALLOCATE support
+  nfs: Add DEALLOCATE support
+
+ fs/nfs/nfs42.h            |   2 +
+ fs/nfs/nfs42proc.c        |  92 +++++++++++++++++++++++++++++++
+ fs/nfs/nfs42xdr.c         | 136 ++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4_fs.h          |   1 +
+ fs/nfs/nfs4file.c         |  22 ++++++++
+ fs/nfs/nfs4proc.c         |   4 +-
+ fs/nfs/nfs4xdr.c          |   2 +
+ include/linux/nfs4.h      |   2 +
+ include/linux/nfs_fs_sb.h |   2 +
+ include/linux/nfs_xdr.h   |  28 ++++++++++
+ 10 files changed, 290 insertions(+), 1 deletion(-)
+
+-- 
+2.1.2
+
