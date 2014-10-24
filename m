@@ -1,230 +1,312 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f47.google.com ([209.85.216.47]:34743 "EHLO
-	mail-qa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752419AbaJFNDS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 09:03:18 -0400
-Received: by mail-qa0-f47.google.com with SMTP id cm18so3406740qab.34
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 06:03:16 -0700 (PDT)
-Message-ID: <1412600594.3332.1.camel@leira.trondhjem.org>
-Subject: [GIT PULL] Please pull NFS client changes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Date: Mon, 06 Oct 2014 09:03:14 -0400
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx12.netapp.com ([216.240.18.77]:33032 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756767AbaJXOmk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Oct 2014 10:42:40 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 2/2] nfs: Add DEALLOCATE support
+Date: Fri, 24 Oct 2014 10:42:13 -0400
+Message-ID: <1414161733-26726-3-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1414161733-26726-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1414161733-26726-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+This patch adds support for using the NFS v4.2 operation DEALLOCATE to
+punch holes in a file.
 
-The following changes since commit cd9288ffaea4359d5cfe2b8d264911506aed26a4:
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs42.h            |  1 +
+ fs/nfs/nfs42proc.c        | 46 ++++++++++++++++++++++++++++++++
+ fs/nfs/nfs42xdr.c         | 68 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4file.c         |  7 +++--
+ fs/nfs/nfs4proc.c         |  1 +
+ fs/nfs/nfs4xdr.c          |  1 +
+ include/linux/nfs4.h      |  1 +
+ include/linux/nfs_fs_sb.h |  1 +
+ include/linux/nfs_xdr.h   | 14 ++++++++++
+ 9 files changed, 138 insertions(+), 2 deletions(-)
 
-  NFSv4: Fix another bug in the close/open_downgrade code (2014-09-18 13:04:22 -0400)
-
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.18-1
-
-for you to fetch changes up to 72c23f0819977d37924af92a42a9b7fbfd1c95d8:
-
-  Merge branch 'bugfixes' into linux-next (2014-09-30 17:21:41 -0400)
-
-Please note the presence of the following 2 "non-NFS" patches which are
-needed for Neil's nfs_release_page() deadlock avoidance:
-
-cbbce8220949: SCHED: add some "wait..on_bit...timeout()" interfaces.
-Acked-by: Peter Zijlstra (Intel) <peterz@infradead.org>
-Acked-by: Ingo Molnar <mingo@kernel.org>
-
-and
-
-a4796e37c12e: MM: export page_wakeup functions
-Acked-by: Andrew Morton <akpm@linux-foundation.org>
-
-Cheers
-  Trond
-
-----------------------------------------------------------------
-
-NFS client updates for Linux 3.18
-
-Highlights include:
-
-Stable fixes:
-- fix an NFSv4.1 state renewal regression
-- fix open/lock state recovery error handling
-- fix lock recovery when CREATE_SESSION/SETCLIENTID_CONFIRM fails
-- fix statd when reconnection fails
-- Don't wake tasks during connection abort
-- Don't start reboot recovery if lease check fails
-- fix duplicate proc entries
-
-Features:
-- pNFS block driver fixes and clean ups from Christoph
-- More code cleanups from Anna
-- Improve mmap() writeback performance
-- Replace use of PF_TRANS with a more generic mechanism for avoiding
-  deadlocks in nfs_release_page
-
-----------------------------------------------------------------
-Andy Adamson (1):
-      NFSv4.1: Fix an NFSv4.1 state renewal regression
-
-Anna Schumaker (5):
-      NFS: Clear up state owner lock usage
-      NFS: Unconditionally enable commit code
-      NFS: Move v3 declarations out of internal.h
-      NFS: Remove v3 not compiled check from validate_mount_data()
-      NFS: Move NFS v3 acl functions to nfs3_fs.h
-
-Benjamin Coddington (2):
-      SUNRPC: Don't wake tasks during connection abort
-      lockd: Try to reconnect if statd has moved
-
-Chris Perl (1):
-      rpc: xs_bind - do not bind when requesting a random ephemeral port
-
-Christoph Hellwig (32):
-      nfs: cap request size to fit a kmalloced page array
-      pnfs: do not pass uninitialized lsegs to ->free_lseg
-      pnfs: don't check sequence on new stateids in layoutget
-      pnfs: retry after a bad stateid error from layoutget
-      pnfs: avoid using stale stateids after layoutreturn
-      pnfs: allow splicing pre-encoded pages into the layoutcommit args
-      pnfs/blocklayout: reject pnfs blocksize larger than page size
-      pnfs/blocklayout: improve GETDEVICEINFO error reporting
-      pnfs/blocklayout: plug block queues
-      pnfs/blocklayout: correctly decrement extent length
-      pnfs: force a layout commit when encountering busy segments during recall
-      pnfs: add flag to force read-modify-write in ->write_begin
-      pnfs: add return_range method
-      pnfs/blocklayout: remove read-modify-write handling in bl_write_pagelist
-      pnfs/blocklayout: don't set pages uptodate
-      pnfs/blocklayout: rewrite extent tracking
-      pnfs/blocklayout: implement the return_range method
-      pnfs/blocklayout: return layouts on setattr
-      pnfs: factor GETDEVICEINFO implementations
-      pnfs: add a common GETDEVICELIST implementation
-      pnfs: add a nfs4_get_deviceid helper
-      pnfs/blocklayout: use the device id cache
-      nfs: setattr can only change regular file sizes
-      pnfs/blocklayout: remove some debugging
-      pnfs/objlayout: fix endianess annotation in objio_alloc_deviceid_node
-      pnfs: remove GETDEVICELIST implementation
-      pnfs/blocklayout: allocate separate pages for the layoutcommit payload
-      pnfs/blocklayout: move extent processing to blocklayout.c
-      pnfs/blocklayout: refactor extent processing
-      pnfs/blocklayout: move all rpc_pipefs related code into a single file
-      pnfs/blocklayout: in-kernel GETDEVICEINFO XDR parsing
-      pnfs: enable CB_NOTIFY_DEVICEID support
-
-David Howells (1):
-      NFS: Fabricate fscache server index key correctly
-
-Fabian Frederick (1):
-      nfs: fix duplicate proc entries
-
-Jason Baron (2):
-      rpc: return sent and err from xs_sendpages()
-      rpc: Add -EPERM processing for xs_udp_send_request()
-
-Jeff Layton (2):
-      nfs: fix RCU cl_xprt handling in nfs_swap_activate/deactivate
-      nfs: add __acquires and __releases annotations to seqfile start/stop routines
-
-NeilBrown (7):
-      NFSv4: use exponential retry on NFS4ERR_DELAY for async requests.
-      NFS: don't use STABLE writes during writeback.
-      SCHED: add some "wait..on_bit...timeout()" interfaces.
-      MM: export page_wakeup functions
-      NFS: avoid deadlocks with loop-back mounted NFS filesystems.
-      NFS: avoid waiting at all in nfs_release_page when congested.
-      NFS/SUNRPC: Remove other deadlock-avoidance mechanisms in nfs_release_page()
-
-Olga Kornievskaia (1):
-      Fixing lease renewal
-
-Peng Tao (3):
-      nfs41: add a helper function to set layoutcommit after commit
-      nfs/filelayout: set layoutcommit depending on write verifier
-      nfs41: change PNFS_LAYOUTRET_ON_SETATTR to only return on truncation to smaller size
-
-Stephen Rothwell (1):
-      pnfs/blocklayout: include vmalloc.h for __vmalloc
-
-Trond Myklebust (8):
-      NFS: Fix a compile warning when !(CONFIG_NFS_V3 || CONFIG_NFS_V4)
-      pNFS/blocklayout: Remove a couple of unused variables
-      pnfs/blocklayout: Fix a 64-bit division/remainder issue in bl_map_stripe
-      NFSv3: Fix missing includes of nfs3_fs.h
-      SUNRPC: Add missing support for RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT
-      NFSv4: Fix lock recovery when CREATE_SESSION/SETCLIENTID_CONFIRM fails
-      NFSv4: fix open/lock state recovery error handling
-      Merge branch 'bugfixes' into linux-next
-
- fs/lockd/mon.c                      |    6 +
- fs/nfs/blocklayout/Makefile         |    3 +-
- fs/nfs/blocklayout/blocklayout.c    | 1386 +++++++++++------------------------
- fs/nfs/blocklayout/blocklayout.h    |  213 +++---
- fs/nfs/blocklayout/blocklayoutdev.c |  384 ----------
- fs/nfs/blocklayout/blocklayoutdm.c  |  108 ---
- fs/nfs/blocklayout/dev.c            |  363 +++++++++
- fs/nfs/blocklayout/extent_tree.c    |  602 +++++++++++++++
- fs/nfs/blocklayout/extents.c        |  908 -----------------------
- fs/nfs/blocklayout/rpc_pipefs.c     |  285 +++++++
- fs/nfs/callback_proc.c              |   23 +-
- fs/nfs/client.c                     |    6 +-
- fs/nfs/direct.c                     |   14 -
- fs/nfs/file.c                       |   52 +-
- fs/nfs/filelayout/filelayout.c      |   34 +-
- fs/nfs/filelayout/filelayout.h      |    7 +-
- fs/nfs/filelayout/filelayoutdev.c   |  108 +--
- fs/nfs/fscache-index.c              |    3 +-
- fs/nfs/inode.c                      |    4 +-
- fs/nfs/internal.h                   |    7 -
- fs/nfs/nfs3_fs.h                    |   34 +
- fs/nfs/nfs3acl.c                    |    1 +
- fs/nfs/nfs3client.c                 |    1 +
- fs/nfs/nfs3proc.c                   |    1 +
- fs/nfs/nfs3super.c                  |    1 +
- fs/nfs/nfs4proc.c                   |  138 ++--
- fs/nfs/nfs4renewd.c                 |   12 +-
- fs/nfs/nfs4state.c                  |   18 +-
- fs/nfs/nfs4xdr.c                    |  179 +----
- fs/nfs/objlayout/objio_osd.c        |  113 ++-
- fs/nfs/objlayout/objlayout.c        |   70 --
- fs/nfs/objlayout/objlayout.h        |    5 -
- fs/nfs/pagelist.c                   |    8 +
- fs/nfs/pnfs.c                       |  105 ++-
- fs/nfs/pnfs.h                       |   50 +-
- fs/nfs/pnfs_dev.c                   |  150 ++--
- fs/nfs/super.c                      |   11 -
- fs/nfs/write.c                      |  150 ++--
- include/linux/nfs_fs.h              |   41 --
- include/linux/nfs_xdr.h             |   17 +-
- include/linux/pagemap.h             |   12 +-
- include/linux/sunrpc/xprt.h         |    1 +
- include/linux/wait.h                |    5 +-
- kernel/sched/wait.c                 |   36 +
- mm/filemap.c                        |   21 +-
- net/sunrpc/clnt.c                   |    5 +
- net/sunrpc/sched.c                  |    2 -
- net/sunrpc/xprtrdma/transport.c     |    2 -
- net/sunrpc/xprtsock.c               |  121 +--
- 49 files changed, 2520 insertions(+), 3306 deletions(-)
- delete mode 100644 fs/nfs/blocklayout/blocklayoutdev.c
- delete mode 100644 fs/nfs/blocklayout/blocklayoutdm.c
- create mode 100644 fs/nfs/blocklayout/dev.c
- create mode 100644 fs/nfs/blocklayout/extent_tree.c
- delete mode 100644 fs/nfs/blocklayout/extents.c
- create mode 100644 fs/nfs/blocklayout/rpc_pipefs.c
- create mode 100644 fs/nfs/nfs3_fs.h
-
+diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
+index 42656a9..7afb894 100644
+--- a/fs/nfs/nfs42.h
++++ b/fs/nfs/nfs42.h
+@@ -7,6 +7,7 @@
+ 
+ /* nfs4.2proc.c */
+ int nfs42_proc_allocate(struct file *, loff_t, loff_t);
++int nfs42_proc_deallocate(struct file *, loff_t, loff_t);
+ loff_t nfs42_proc_llseek(struct file *, loff_t, int);
+ 
+ /* nfs4.2xdr.h */
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 44e0c7b..9613362 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -78,6 +78,52 @@ int nfs42_proc_allocate(struct file *filep, loff_t offset, loff_t len)
+ 	return err;
+ }
+ 
++int _nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
++{
++	struct nfs42_deallocate_args args = {
++		.dealloc_fh		= NFS_FH(file_inode(filep)),
++		.dealloc_offset		= offset,
++		.dealloc_length		= len,
++	};
++	struct nfs42_deallocate_res res;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_DEALLOCATE],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++	};
++	struct nfs_server *server = NFS_SERVER(file_inode(filep));
++	int status;
++
++	status = nfs42_set_rw_stateid(&args.dealloc_stateid, filep, FMODE_WRITE);
++	if (status)
++		return status;
++
++	return nfs4_call_sync(server->client, server, &msg,
++			      &args.seq_args, &res.seq_res, 0);
++}
++
++int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
++{
++	struct inode *inode = file_inode(filep);
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct nfs4_exception exception = { };
++	int err;
++
++	if (!nfs_server_capable(inode, NFS_CAP_DEALLOCATE))
++		return -EOPNOTSUPP;
++
++	do {
++		err = _nfs42_proc_deallocate(filep, offset, len);
++		if (err == -ENOTSUPP) {
++			server->caps &= ~NFS_CAP_DEALLOCATE;
++			return -EOPNOTSUPP;
++		}
++		err = nfs4_handle_exception(server, err, &exception);
++	} while (exception.retry);
++
++	return err;
++}
++
+ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
+ {
+ 	struct inode *inode = file_inode(filep);
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 9506f5a..5db9dad 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -9,6 +9,11 @@
+ 					 2 /* offest */ + \
+ 					 2 /* length */)
+ #define decode_allocate_maxsz		(op_decode_hdr_maxsz)
++#define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
++					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
++					 2 /* offest */ + \
++					 2 /* length */)
++#define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
+ #define encode_seek_maxsz		(op_encode_hdr_maxsz + \
+ 					 encode_stateid_maxsz + \
+ 					 2 /* offset */ + \
+@@ -25,6 +30,12 @@
+ #define NFS4_dec_allocate_sz		(compound_decode_hdr_maxsz + \
+ 					 decode_putfh_maxsz + \
+ 					 decode_allocate_maxsz)
++#define NFS4_enc_deallocate_sz		(compound_encode_hdr_maxsz + \
++					 encode_putfh_maxsz + \
++					 encode_deallocate_maxsz)
++#define NFS4_dec_deallocate_sz		(compound_decode_hdr_maxsz + \
++					 decode_putfh_maxsz + \
++					 decode_deallocate_maxsz)
+ #define NFS4_enc_seek_sz		(compound_encode_hdr_maxsz + \
+ 					 encode_putfh_maxsz + \
+ 					 encode_seek_maxsz)
+@@ -43,6 +54,16 @@ static void encode_allocate(struct xdr_stream *xdr,
+ 	encode_uint64(xdr, args->alloc_length);
+ }
+ 
++static void encode_deallocate(struct xdr_stream *xdr,
++			      struct nfs42_deallocate_args *args,
++			      struct compound_hdr *hdr)
++{
++	encode_op_hdr(xdr, OP_DEALLOCATE, decode_deallocate_maxsz, hdr);
++	encode_nfs4_stateid(xdr, &args->dealloc_stateid);
++	encode_uint64(xdr, args->dealloc_offset);
++	encode_uint64(xdr, args->dealloc_length);
++}
++
+ static void encode_seek(struct xdr_stream *xdr,
+ 			struct nfs42_seek_args *args,
+ 			struct compound_hdr *hdr)
+@@ -72,6 +93,24 @@ static void nfs4_xdr_enc_allocate(struct rpc_rqst *req,
+ }
+ 
+ /*
++ * Encode DEALLOCATE request
++ */
++static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
++				    struct xdr_stream *xdr,
++				    struct nfs42_deallocate_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, args->dealloc_fh, &hdr);
++	encode_deallocate(xdr, args, &hdr);
++	encode_nops(&hdr);
++}
++
++/*
+  * Encode SEEK request
+  */
+ static void nfs4_xdr_enc_seek(struct rpc_rqst *req,
+@@ -94,6 +133,11 @@ static int decode_allocate(struct xdr_stream *xdr, struct nfs42_allocate_res *re
+ 	return decode_op_hdr(xdr, OP_ALLOCATE);
+ }
+ 
++static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_deallocate_res *res)
++{
++	return decode_op_hdr(xdr, OP_DEALLOCATE);
++}
++
+ static int decode_seek(struct xdr_stream *xdr, struct nfs42_seek_res *res)
+ {
+ 	int status;
+@@ -141,6 +185,30 @@ out:
+ }
+ 
+ /*
++ * Decode DEALLOCATE request
++ */
++static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
++				   struct xdr_stream *xdr,
++				   struct nfs42_deallocate_res *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_deallocate(xdr, res);
++out:
++	return status;
++}
++
++/*
+  * Decode SEEK request
+  */
+ static int nfs4_xdr_dec_seek(struct rpc_rqst *rqstp,
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index 6256957..1b2d82d 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -142,11 +142,14 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
+ 	struct inode *inode = file_inode(filep);
+ 	long ret;
+ 
+-	if (mode != 0)
++	if ((mode != 0) && (mode != (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE)))
+ 		return -EOPNOTSUPP;
+ 
+ 	mutex_lock(&inode->i_mutex);
+-	ret = nfs42_proc_allocate(filep, offset, len);
++	if (mode & FALLOC_FL_PUNCH_HOLE)
++		ret = nfs42_proc_deallocate(filep, offset, len);
++	else
++		ret = nfs42_proc_allocate(filep, offset, len);
+ 	mutex_unlock(&inode->i_mutex);
+ 	return ret;
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 65a3859..cb5dd74 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8432,6 +8432,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
+ 		| NFS_CAP_STATEID_NFSV41
+ 		| NFS_CAP_ATOMIC_OPEN_V1
+ 		| NFS_CAP_ALLOCATE
++		| NFS_CAP_DEALLOCATE
+ 		| NFS_CAP_SEEK,
+ 	.init_client = nfs41_init_client,
+ 	.shutdown_client = nfs41_shutdown_client,
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 0a14845..03d0fa6 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -7395,6 +7395,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ #ifdef CONFIG_NFS_V4_2
+ 	PROC(SEEK,		enc_seek,		dec_seek),
+ 	PROC(ALLOCATE,		enc_allocate,		dec_allocate),
++	PROC(DEALLOCATE,	enc_deallocate,		dec_deallocate),
+ #endif /* CONFIG_NFS_V4_2 */
+ };
+ 
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 2b28a21..022b761 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -491,6 +491,7 @@ enum {
+ 	/* nfs42 */
+ 	NFSPROC4_CLNT_SEEK,
+ 	NFSPROC4_CLNT_ALLOCATE,
++	NFSPROC4_CLNT_DEALLOCATE,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index df6ed42..1e37fbb 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -232,5 +232,6 @@ struct nfs_server {
+ #define NFS_CAP_SECURITY_LABEL	(1U << 18)
+ #define NFS_CAP_SEEK		(1U << 19)
+ #define NFS_CAP_ALLOCATE	(1U << 20)
++#define NFS_CAP_DEALLOCATE	(1U << 21)
+ 
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index f3fc647..9098e51 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1246,6 +1246,20 @@ struct nfs42_allocate_res {
+ 	unsigned int			status;
+ };
+ 
++struct nfs42_deallocate_args {
++	struct nfs4_sequence_args	seq_args;
++
++	struct nfs_fh			*dealloc_fh;
++	nfs4_stateid			 dealloc_stateid;
++	u64				 dealloc_offset;
++	u64				 dealloc_length;
++};
++
++struct nfs42_deallocate_res {
++	struct nfs4_sequence_res	seq_res;
++	unsigned int			status;
++};
++
+ struct nfs42_seek_args {
+ 	struct nfs4_sequence_args	seq_args;
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+2.1.2
 
