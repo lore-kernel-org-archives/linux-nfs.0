@@ -1,96 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:51113 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751911AbaJ0Lwq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2014 07:52:46 -0400
-Received: by mail-ie0-f169.google.com with SMTP id tr6so4123486ieb.14
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Oct 2014 04:52:45 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <544D99EF.3030808@oracle.com>
-References: <1413881868-13111-1-git-send-email-wen.gang.wang@oracle.com>
-	<544D99EF.3030808@oracle.com>
-Date: Mon, 27 Oct 2014 13:52:45 +0200
-Message-ID: <CAABAsM5YLCDOek+ZY4XiSBvc6Z=P7invXopG=r=ZSSNQJ2S8zQ@mail.gmail.com>
-Subject: Re: [PATCH] [SUNRPC]: avoid race between xs_reset_transport and xs_tcp_setup_socket
-From: Trond Myklebust <trondmy@gmail.com>
-To: Wengang <wen.gang.wang@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:30318 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932142AbaJXKDZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Oct 2014 06:03:25 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s9OA3Ohe032505
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 06:03:25 -0400
+From: Karel Zak <kzak@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Steve Dickson <SteveD@redhat.com>, Karel Zak <kzak@redhat.com>
+Subject: [PATCH] umount: make it sensitive to -v
+Date: Fri, 24 Oct 2014 12:03:20 +0200
+Message-Id: <1414145000-16669-1-git-send-email-kzak@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 27, 2014 at 3:03 AM, Wengang <wen.gang.wang@oracle.com> wrote:
-> Could somebody help to review this patch please?
->
-> thanks,
-> Wengang
->
-> 于 2014年10月21日 16:57, Wengang Wang 写道:
->>
->> A panic with call trace like this:
->>
->> crash> bt
->> PID: 1842   TASK: ffff8824d1d523c0  CPU: 29  COMMAND: "kworker/29:1"
->>   #0 [ffff88052a351a40] machine_kexec at ffffffff8103b40d
->>   #1 [ffff88052a351ab0] crash_kexec at ffffffff810b98c5
->>   #2 [ffff88052a351b80] oops_end at ffffffff815077d8
->>   #3 [ffff88052a351bb0] no_context at ffffffff81048dff
->>   #4 [ffff88052a351bf0] __bad_area_nosemaphore at ffffffff81048f80
->>   #5 [ffff88052a351c40] bad_area_nosemaphore at ffffffff81049183
->>   #6 [ffff88052a351c50] do_page_fault at ffffffff8150a32e
->>   #7 [ffff88052a351d60] page_fault at ffffffff81506d55
->>      [exception RIP: xs_tcp_reuse_connection+24]
->>      RIP: ffffffffa0439518  RSP: ffff88052a351e10  RFLAGS: 00010282
->>      RAX: ffff8824d1d523c0  RBX: ffff880d0d2d1000  RCX: ffff88407f3ae088
->>      RDX: 0000000000000000  RSI: 0000000000001d00  RDI: ffff880d0d2d1000
->>      RBP: ffff88052a351e20   R8: ffff88407f3af260   R9: ffffffff819ab880
->>      R10: 0000000000000000  R11: ffff883f03de4820  R12: 00000000fffffff5
->>      R13: ffff880d0d2d1000  R14: ffff8815e260b840  R15: 0000000000000000
->>      ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
->>   #8 [ffff88052a351e28] xs_tcp_setup_socket at ffffffffa043b01a [sunrpc]
->>   #9 [ffff88052a351e58] process_one_work at ffffffff8108c0d9
->> #10 [ffff88052a351ea8] worker_thread at ffffffff8108ca1a
->> #11 [ffff88052a351ee8] kthread at ffffffff81090ff7
->> #12 [ffff88052a351f48] kernel_thread_helper at ffffffff8150fe84
->>
->> In xs_tcp_setup_socket, if the xprt->sock is not NULL, it calls
->> xs_tcp_reuse_connection. But in xs_tcp_reuse_connection, the sock and
->> inet is seen to be zero when crash happened
->>
->> crash> sock_xprt.sock ffff880d0d2d1000
->>    sock = 0x0
->> crash> sock_xprt.inet ffff880d0d2d1000
->>    inet = 0x0
->>
->> the xprt.state is 532 which is XPRT_CONNECTING|XPRT_BOUND|XPRT_INITIALIZED
->>
->> This looks like a race with xs_reset_transport().
->>
->> The fix is to wait the cancel and wait until connect_worker finishes.
->>
->> Signed-off-by: Wengang Wang <wen.gang.wang@oracle.com>
->> ---
->>   net/sunrpc/xprtsock.c | 3 +++
->>   1 file changed, 3 insertions(+)
->>
->> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->> index 3b305ab..718c57f 100644
->> --- a/net/sunrpc/xprtsock.c
->> +++ b/net/sunrpc/xprtsock.c
->> @@ -869,6 +869,9 @@ static void xs_reset_transport(struct sock_xprt
->> *transport)
->>         if (sk == NULL)
->>                 return;
->>   +     /* avoid a race with xs_tcp_setup_socket */
->> +       cancel_delayed_work_sync(&transport->connect_worker);
->> +
->>         transport->srcport = 0;
->>         write_lock_bh(&sk->sk_callback_lock);
->
+Let's print verbose messages like original non-libmount version.
 
-In mainline, there are only 2 callers of xs_reset_transport():
-1) xs_close(), which already performs the above call
-2) xs_udp_setup_socket() which cannot conflict with xs_tcp_setup_socket()
+Addresses: https://bugzilla.redhat.com/show_bug.cgi?id=923582
+Signed-off-by: Karel Zak <kzak@redhat.com>
+---
+ utils/mount/mount_libmount.c | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
 
-Cheers
-  Trond
+diff --git a/utils/mount/mount_libmount.c b/utils/mount/mount_libmount.c
+index 6f85dc9..fa46d54 100644
+--- a/utils/mount/mount_libmount.c
++++ b/utils/mount/mount_libmount.c
+@@ -174,7 +174,7 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
+ {
+ 	int rc, c;
+ 	char *spec = NULL, *opts = NULL;
+-	int ret = EX_FAIL;
++	int ret = EX_FAIL, verbose = 0;
+ 
+ 	static const struct option longopts[] = {
+ 		{ "force", 0, 0, 'f' },
+@@ -201,6 +201,8 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
+ 		return EX_USAGE;
+ 	}
+ 
++	verbose = mnt_context_is_verbose(cxt);
++
+ 	if (optind < argc)
+ 		spec = argv[optind++];
+ 
+@@ -228,6 +230,10 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
+ 		goto err;
+ 	}
+ 
++	if (verbose)
++		printf(_("%s: %s mount point detected\n"), spec,
++					mnt_context_get_fstype(cxt));
++
+ 	opts = retrieve_mount_options(mnt_context_get_fs(cxt));
+ 
+ 	if (!mnt_context_is_lazy(cxt)) {
+@@ -263,6 +269,12 @@ static int umount_main(struct libmnt_context *cxt, int argc, char **argv)
+ 	}
+ 	ret = EX_SUCCESS;
+ err:
++	if (verbose) {
++		if (ret == EX_SUCCESS)
++			printf(_("%s: umounted\n"), spec);
++		else
++			printf(_("%s: umount failed\n"), spec);
++	}
+ 	free(opts);
+ 	return ret;
+ }
+-- 
+1.9.3
+
