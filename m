@@ -1,333 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:33634 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752671AbaJ1Sau (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Oct 2014 14:30:50 -0400
-Received: by mail-qa0-f45.google.com with SMTP id dc16so917487qab.32
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Oct 2014 11:30:49 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Tue, 28 Oct 2014 14:30:47 -0400
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: add debugfs file for displaying client rpc_task
- queue
-Message-ID: <20141028143047.5c1fca24@tlielax.poochiereds.net>
-In-Reply-To: <1414520695-1701-1-git-send-email-jlayton@primarydata.com>
-References: <1414520695-1701-1-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:38136 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753499AbaJXObA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 10:31:00 -0400
+Received: by mail-wg0-f49.google.com with SMTP id x12so1228935wgg.8
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 07:30:59 -0700 (PDT)
+Message-ID: <1414161055.21776.2.camel@leira.trondhjem.org>
+Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection
+ when dropping a request
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        bfields@fieldses.org
+Date: Fri, 24 Oct 2014 17:30:55 +0300
+In-Reply-To: <20141024093459.70a29d80@tlielax.poochiereds.net>
+References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
+	 <1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
+	 <20141024072644.6643f9ed@tlielax.poochiereds.net>
+	 <20141024093459.70a29d80@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 28 Oct 2014 14:24:55 -0400
-Jeff Layton <jlayton@primarydata.com> wrote:
-
-> It's possible to get a dump of the RPC task queue by writing a value to
-> /proc/sys/sunrpc/rpc_debug. If you write any value to that file, you get
-> a dump of the RPC client task list into the log buffer. This is a rather
-> inconvenient interface however, and makes it hard to get immediate info
-> about the task queue.
+On Fri, 2014-10-24 at 09:34 -0400, Jeff Layton wrote:
+> On Fri, 24 Oct 2014 07:26:44 -0400
+> Jeff Layton <jlayton@primarydata.com> wrote:
+>  
+> > I guess the theory here is that the client sent the request, and got a
+> > TCP ACK and then the server never responded because it dropped the
+> > request? That sounds plausible and we almost certainly want something
+> > like the above for v4.0.
+> > 
+> > If the above patch fixes Christoph's problem with v4.1 though, then I
+> > think we'll need more investigation into why. I don't see a way to get
+> > a dropped request with v4.1. Those mainly occur due to interaction with
+> > the DRC (disabled for v4.1) or with svc_defer (disabled for all v4
+> > requests).
+> > 
+> > Is it possible that one of the nfsd threads is just hung while
+> > processing an RPC and that's why you're not getting a response?
+> > 
 > 
-> Add a new file under debugfs that shows similar info. There are some
-> small differences -- we avoid printing raw kernel addresses in favor of
-> symbolic names and the XID is also displayed.
+> Ok, I'm able to reproduce this too and got a network trace. I think
+> Trond is correct as to the cause:
 > 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  include/linux/sunrpc/clnt.h  |   1 +
->  include/linux/sunrpc/debug.h |  13 ++++
->  net/sunrpc/Kconfig           |   1 +
->  net/sunrpc/Makefile          |   1 +
->  net/sunrpc/clnt.c            |   3 +-
->  net/sunrpc/debugfs.c         | 153 +++++++++++++++++++++++++++++++++++++++++++
->  net/sunrpc/sunrpc_syms.c     |   8 +++
->  7 files changed, 179 insertions(+), 1 deletion(-)
->  create mode 100644 net/sunrpc/debugfs.c
+> I see a SETATTR call go out and then see a TCP ACK for it a little
+> later, but didn't see a reply sent for it.
 > 
-> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> index 70736b98c721..265d40bd3109 100644
-> --- a/include/linux/sunrpc/clnt.h
-> +++ b/include/linux/sunrpc/clnt.h
-> @@ -176,5 +176,6 @@ size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
->  const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
->  int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
->  
-> +const char *rpc_proc_name(const struct rpc_task *task);
->  #endif /* __KERNEL__ */
->  #endif /* _LINUX_SUNRPC_CLNT_H */
-> diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-> index 9385bd74c860..7c1ef9530087 100644
-> --- a/include/linux/sunrpc/debug.h
-> +++ b/include/linux/sunrpc/debug.h
-> @@ -68,6 +68,19 @@ extern unsigned int		nlm_debug;
->  #ifdef RPC_DEBUG
->  void		rpc_register_sysctl(void);
->  void		rpc_unregister_sysctl(void);
-> +int		sunrpc_debugfs_init(void);
-> +void		sunrpc_debugfs_exit(void);
-> +#else
-> +static inline int
-> +sunrpc_debugfs_init(void)
-> +{
-> +	return 0;
-> +}
-> +static inline void
-> +sunrpc_debugfs_exit(void)
-> +{
-> +	return;
-> +}
->  #endif
->  
->  #endif /* _LINUX_SUNRPC_DEBUG_H_ */
-> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-> index 0754d0f466d2..fb78117b896c 100644
-> --- a/net/sunrpc/Kconfig
-> +++ b/net/sunrpc/Kconfig
-> @@ -35,6 +35,7 @@ config RPCSEC_GSS_KRB5
->  config SUNRPC_DEBUG
->  	bool "RPC: Enable dprintk debugging"
->  	depends on SUNRPC && SYSCTL
-> +	select DEBUG_FS
->  	help
->  	  This option enables a sysctl-based debugging interface
->  	  that is be used by the 'rpcdebug' utility to turn on or off
-> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-> index e5a7a1cac8f3..15e6f6c23c5d 100644
-> --- a/net/sunrpc/Makefile
-> +++ b/net/sunrpc/Makefile
-> @@ -14,6 +14,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
->  	    addr.o rpcb_clnt.o timer.o xdr.o \
->  	    sunrpc_syms.o cache.o rpc_pipe.o \
->  	    svc_xprt.o
-> +sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
->  sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o bc_svc.o
->  sunrpc-$(CONFIG_PROC_FS) += stats.o
->  sunrpc-$(CONFIG_SYSCTL) += sysctl.o
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 9acd6ce88db7..5b2e2d3d37c1 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1397,7 +1397,8 @@ rpc_restart_call(struct rpc_task *task)
->  EXPORT_SYMBOL_GPL(rpc_restart_call);
->  
->  #ifdef RPC_DEBUG
-> -static const char *rpc_proc_name(const struct rpc_task *task)
-> +const char
-> +*rpc_proc_name(const struct rpc_task *task)
->  {
->  	const struct rpc_procinfo *proc = task->tk_msg.rpc_proc;
->  
-> diff --git a/net/sunrpc/debugfs.c b/net/sunrpc/debugfs.c
-> new file mode 100644
-> index 000000000000..48769338172e
-> --- /dev/null
-> +++ b/net/sunrpc/debugfs.c
-> @@ -0,0 +1,153 @@
-> +/**
-> + * debugfs interface for sunrpc
-> + *
-> + * (c) 2014 Jeff Layton <jlayton@primarydata.com>
-> + */
-> +
-> +#include <linux/debugfs.h>
-> +#include <linux/sunrpc/sched.h>
-> +#include <linux/sunrpc/clnt.h>
-> +#include "netns.h"
-> +
-> +static struct dentry *topdir;
-> +
-> +static int
-> +tasks_show(struct seq_file *f, void *v)
-> +{
-> +	u32 xid = 0;
-> +	struct rpc_task *task = v;
-> +	struct rpc_clnt *clnt = task->tk_client;
-> +	const char *rpc_waitq = "none";
-> +
-> +	if (RPC_IS_QUEUED(task))
-> +		rpc_waitq = rpc_qname(task->tk_waitqueue);
-> +
-> +	if (task->tk_rqstp)
-> +		xid = be32_to_cpu(task->tk_rqstp->rq_xid);
-> +
-> +	seq_printf(f, "%5u %04x %6d 0x%x 0x%x %8ld %ps %sv%u %s a:%ps q:%s\n",
-> +		task->tk_pid, task->tk_flags, task->tk_status,
-> +		clnt->cl_clid, xid, task->tk_timeout, task->tk_ops,
-> +		clnt->cl_program->name, clnt->cl_vers, rpc_proc_name(task),
-> +		task->tk_action, rpc_waitq);
-> +	return 0;
-> +}
-> +
-> +static void *
-> +tasks_start(struct seq_file *f, loff_t *ppos)
-> +	__acquires(&sn->rpc_client_lock)
-> +	__acquires(&clnt->cl_lock)
-> +{
-> +	loff_t *p = f->private, pos = *ppos;
-> +	struct rpc_clnt *clnt;
-> +	struct rpc_task *task;
-> +	struct sunrpc_net *sn = net_generic(current->nsproxy->net_ns,
-> +						sunrpc_net_id);
-> +
-> +	*p = pos + 1;
-> +	spin_lock(&sn->rpc_client_lock);
-> +	list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
-> +		spin_lock(&clnt->cl_lock);
-> +		list_for_each_entry(task, &clnt->cl_tasks, tk_task)
-> +			if (pos-- == 0)
-> +				return task;
-> +		spin_unlock(&clnt->cl_lock);
-> +	}
-> +	return NULL;
-> +}
-> +
-> +static void *
-> +tasks_next(struct seq_file *f, void *v, loff_t *pos)
-> +	__releases(&clnt->cl_lock)
-> +	__acquires(&clnt->cl_lock)
-> +{
-> +	loff_t *p = f->private;
-> +	struct rpc_task *task = v;
-> +	struct rpc_clnt *clnt = task->tk_client;
-> +	struct list_head *next = task->tk_task.next;
-> +	struct sunrpc_net *sn = net_generic(current->nsproxy->net_ns,
-> +						sunrpc_net_id);
-> +
-> +	++*p;
-> +	++*pos;
-> +
-> +	/* If there's another task on list, return it */
-> +	if (next != &clnt->cl_tasks)
-> +		return list_entry(next, struct rpc_task, tk_task);
-> +
-> +	/* We're finished with this client, move on */
-> +	spin_unlock(&clnt->cl_lock);
-> +next_client:
-> +	next = clnt->cl_clients.next;
-> +	if (next == &sn->all_clients)
-> +		return NULL;
-> +
-> +	clnt = list_entry(next, struct rpc_clnt, cl_clients);
-> +	if (list_empty(&clnt->cl_tasks))
-> +		goto next_client;
-> +	spin_lock(&clnt->cl_lock);
-> +	if (list_empty(&clnt->cl_tasks)) {
-> +		spin_unlock(&clnt->cl_lock);
-> +		goto next_client;
-> +	}
-> +	return list_first_entry(&clnt->cl_tasks, struct rpc_task, tk_task);
-> +}
-> +
-> +static void
-> +tasks_stop(struct seq_file *f, void *v)
-> +	__releases(&sn->rpc_client_lock)
-> +	__releases(&clnt->cl_lock)
-> +{
-> +	struct rpc_task *task = v;
-> +	struct rpc_clnt *clnt;
-> +	struct sunrpc_net *sn = net_generic(current->nsproxy->net_ns,
-> +						sunrpc_net_id);
-> +
-> +	if (v) {
-> +		clnt = task->tk_client;
-> +		spin_unlock(&clnt->cl_lock);
-> +	}
+> I sprinkled in some printks around the "dropit" codepath above and in
+> some other areas however and none of them fired. So while Trond's patch
+> looks like it might be correct, I don't think it'll fix the problem I'm
+> seeing.
+> 
+> Sniffing a little later, it seems like the server replies are being
+> delayed somehow:
 
-Full disclosure here...
+You can get deferrals in the authentication code which trigger drops.
+Here is a variant which tries to deal with that:
 
-sparse complains about this patch:
+8<-----------------------------------------------------
+>From a9be1292152af2cb651415c44fd3d91b3d017240 Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Fri, 24 Oct 2014 12:54:47 +0300
+Subject: [PATCH v2] nfsd: Ensure that NFSv4 always drops the connection when
+ dropping a request
 
-net/sunrpc/debugfs.c:36:13: warning: context imbalance in 'tasks_start' - different lock contexts for basic block
-net/sunrpc/debugfs.c:59:13: warning: context imbalance in 'tasks_next' - different lock contexts for basic block
-net/sunrpc/debugfs.c:110:20: warning: context imbalance in 'tasks_stop' - different lock contexts for basic block
+Both RFC3530 and RFC5661 impose a requirement on the server that it MUST NOT
+drop a request unless the connection is broken. This is in order to allow
+clients to assume that they can always expect an answer unless the
+connection is broken.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: stable@vger.kernel.org
+---
+v2: Also deal with NFSv4 requests dropped due to authentication issues
 
-The __acquires/__releases annotations don't help in this case since
-tasks_start and tasks_next can conditionally return with the cl_lock
-held or not.
+ fs/nfsd/nfs4proc.c         |  6 ++++++
+ include/linux/sunrpc/svc.h |  1 +
+ net/sunrpc/svc.c           | 13 +++++++++----
+ 3 files changed, 16 insertions(+), 4 deletions(-)
 
-If tasks_start/_next return a valid object, then the lock will be held.
-If it returns NULL then it won't be. There should be no actual lock
-imbalances however.
-
-> +	spin_unlock(&sn->rpc_client_lock);
-> +}
-> +
-> +static const struct seq_operations tasks_seq_operations = {
-> +	.start	= tasks_start,
-> +	.next	= tasks_next,
-> +	.stop	= tasks_stop,
-> +	.show	= tasks_show,
-> +};
-> +
-> +static int tasks_open(struct inode *inode, struct file *filp)
-> +{
-> +	return seq_open_private(filp, &tasks_seq_operations,
-> +				sizeof(loff_t));
-> +}
-> +
-> +static const struct file_operations tasks_fops = {
-> +	.owner		= THIS_MODULE,
-> +	.open		= tasks_open,
-> +	.read		= seq_read,
-> +	.llseek		= seq_lseek,
-> +	.release	= seq_release_private,
-> +};
-> +
-> +void __exit
-> +sunrpc_debugfs_exit(void)
-> +{
-> +	debugfs_remove_recursive(topdir);
-> +}
-> +
-> +int __init
-> +sunrpc_debugfs_init(void)
-> +{
-> +	topdir = debugfs_create_dir("sunrpc", NULL);
-> +	if (!topdir)
-> +		return -ENOMEM;
-> +
-> +	if (!debugfs_create_file("client_tasks", S_IFREG | S_IRUSR, topdir,
-> +					NULL, &tasks_fops)) {
-> +		debugfs_remove_recursive(topdir);
-> +		return -ENOMEM;
-> +	}
-> +	return 0;
-> +}
-> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-> index cd30120de9e4..32583adf3477 100644
-> --- a/net/sunrpc/sunrpc_syms.c
-> +++ b/net/sunrpc/sunrpc_syms.c
-> @@ -97,6 +97,11 @@ init_sunrpc(void)
->  	err = register_rpc_pipefs();
->  	if (err)
->  		goto out4;
-> +
-> +	err = sunrpc_debugfs_init();
-> +	if (err)
-> +		goto out5;
-> +
->  #ifdef RPC_DEBUG
->  	rpc_register_sysctl();
->  #endif
-> @@ -104,6 +109,8 @@ init_sunrpc(void)
->  	init_socket_xprt();	/* clnt sock transport */
->  	return 0;
->  
-> +out5:
-> +	unregister_rpc_pipefs();
->  out4:
->  	unregister_pernet_subsys(&sunrpc_net_ops);
->  out3:
-> @@ -120,6 +127,7 @@ cleanup_sunrpc(void)
->  	rpcauth_remove_module();
->  	cleanup_socket_xprt();
->  	svc_cleanup_xprt_sock();
-> +	sunrpc_debugfs_exit();
->  	unregister_rpc_pipefs();
->  	rpc_destroy_mempool();
->  	unregister_pernet_subsys(&sunrpc_net_ops);
-
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index cdeb3cfd6f32..500ac76662a8 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1960,6 +1960,11 @@ static const char *nfsd4_op_name(unsigned opnum)
+ 	return "unknown_operation";
+ }
+ 
++static void nfsd4_dropme(struct svc_rqst *rqstp)
++{
++	svc_close_xprt(rqstp->rq_xprt);
++}
++
+ #define nfsd4_voidres			nfsd4_voidargs
+ struct nfsd4_voidargs { int dummy; };
+ 
+@@ -1989,6 +1994,7 @@ struct svc_version	nfsd_version4 = {
+ 		.vs_nproc	= 2,
+ 		.vs_proc	= nfsd_procedures4,
+ 		.vs_dispatch	= nfsd_dispatch,
++		.vs_dropme	= nfsd4_dropme,
+ 		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
+ 		.vs_rpcb_optnl	= 1,
+ };
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 21678464883a..824656da1f6d 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -400,6 +400,7 @@ struct svc_version {
+ 	 * vs_dispatch == NULL means use default dispatcher.
+ 	 */
+ 	int			(*vs_dispatch)(struct svc_rqst *, __be32 *);
++	void			(*vs_dropme)(struct svc_rqst *);
+ };
+ 
+ /*
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index ca8a7958f4e6..a178496ce2c1 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1111,9 +1111,13 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ 	rqstp->rq_vers = vers = svc_getnl(argv);	/* version number */
+ 	rqstp->rq_proc = proc = svc_getnl(argv);	/* procedure number */
+ 
+-	for (progp = serv->sv_program; progp; progp = progp->pg_next)
+-		if (prog == progp->pg_prog)
++	for (progp = serv->sv_program; progp; progp = progp->pg_next) {
++		if (prog == progp->pg_prog) {
++			if (vers < progp->pg_nvers)
++				versp = progp->pg_vers[vers];
+ 			break;
++		}
++	}
+ 
+ 	/*
+ 	 * Decode auth data, and add verifier to reply buffer.
+@@ -1148,8 +1152,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ 	if (progp == NULL)
+ 		goto err_bad_prog;
+ 
+-	if (vers >= progp->pg_nvers ||
+-	  !(versp = progp->pg_vers[vers]))
++	if (versp == NULL)
+ 		goto err_bad_vers;
+ 
+ 	procp = versp->vs_proc + proc;
+@@ -1228,6 +1231,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+  dropit:
+ 	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
+ 	dprintk("svc: svc_process dropit\n");
++	if (versp && versp->vs_dropme)
++		versp->vs_dropme(rqstp);
+ 	return 0;
+ 
+ err_short_len:
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
+
+
+
