@@ -1,83 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:21025 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753043AbaJ0OoN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2014 10:44:13 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: NFSv4 idmap misbehavior
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <17204.1414405979@warthog.procyon.org.uk>
-Date: Mon, 27 Oct 2014 10:44:07 -0400
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <89017554-D9A0-4778-9AF3-1738E68230D9@oracle.com>
-References: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com> <17204.1414405979@warthog.procyon.org.uk>
-To: David Howells <dhowells@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:41715 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752397AbaJXUNs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Oct 2014 16:13:48 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] Fixing infinite state recovery loop due to failed delegation return
+Date: Fri, 24 Oct 2014 16:13:44 -0400
+Message-ID: <1414181624-35819-1-git-send-email-kolga@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi David-
+If we get a bad-stateid-type of error when we send OPEN with delegate_cur
+to return currently held delegation, we shouldn't be trying to reclaim locks
+associated with that delegation state_id because we don't have an
+open_stateid to be used for the LOCK operation. Thus, we should
+return an error from the nfs4_open_delegation_recall() in that case.
 
-On Oct 27, 2014, at 6:32 AM, David Howells <dhowells@redhat.com> wrote:
+Furthermore, if an error occurs the delegation code will call
+nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
+flags in the state and it leads the state manager to into an infinite loop
+for trying to reclaim the delegated state.
 
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> After the test has been running for ten minutes, the id_resolv
->> keys expire, and id_legacy keys appear. Before the above commit,
->> the id_resolv keys would simply be refreshed and operation
->> would continue normally.
->> 
->> # grep id_ /proc/keys
->> 00f0a664 I--Q-N-     1  42s 3b010000     0     0 id_legacy uid:cel@oracle.com
-> 
-> The 'N' flag indicates that the key is negatively instantiated - ie. the
-> upcall to instantiate them failed in some way.  Keys so marked will cause key
-> lookups to return ENOKEY (or maybe some other error if keyctl_reject() was
-> used).
-> 
-> Failure can be due to the key being properly negatively instantiated
-> (keyctl_negate() or keyctl_reject()) or the userspace side of instantiation
-> exiting or otherwise dying before it managed to instantiate the key.
-> 
-> Is there anything to actually process the id_legacy upcall?  It appears
-> they're all negatively instantiated.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/delegation.c |    5 +++--
+ fs/nfs/nfs4proc.c   |    2 +-
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-rpc.idmapd isn’t running on this system, so no. Legacy idmapping is
-normally disabled on EL6 update 4 AFAICT.
-
-There is an /etc/request-key.d/id_resolver.conf file, and
-/usr/sbin/nfsidmap is there. On another system I previously tried
-using only rpc.idmapd, and it didn’t resolve the sudden ownership
-change issue.
-
-There should be no reason to switch to using the legacy ID mapper
-upcall if the key resolution infrastructure is working. Before the
-“KEYS: Expand the capacity . . . ” commit, id_legacy keys do not
-appear in /proc/keys.
-
-That leads me to believe something that commit did is preventing
-expired id_resolv keys from getting renewed.
-
-> Can you stick "#define __KDEBUG" at the top of security/keys/request_key.c,
-> rebuild and look in dmesg?
-
-Thanks, I’ll give that a try and report back.
-
-> Also, /sbin/request-key logs to syslog if it can't find a match in its config
-> file.
-
-I didn’t see any relevant messages in /var/log/messages, but I may
-have overlooked something.
-
-More recent kernels change the key resolver interface to require
-key_revoke instead of key_invalidate. I’ve seen /var/log/messages
-complaints about that on other EL6 systems running kernels newer
-than 3.16.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 5853f53..8016d89 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
+ 		err = nfs4_wait_clnt_recover(clp);
+ 	} while (err == 0);
+ 
+-	if (err) {
++	if (err && err != -EIO) {
+ 		nfs_abort_delegation_return(delegation, clp);
+ 		goto out;
+ 	}
+@@ -458,7 +458,8 @@ restart:
+ 			iput(inode);
+ 			if (!err)
+ 				goto restart;
+-			set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
++			if (err != -EIO)
++				set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
+ 			return err;
+ 		}
+ 	}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5aa55c1..6871055 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1655,7 +1655,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ 			nfs_inode_find_state_and_recover(state->inode,
+ 					stateid);
+ 			nfs4_schedule_stateid_recovery(server, state);
+-			return 0;
++			return -EIO;
+ 		case -NFS4ERR_DELAY:
+ 		case -NFS4ERR_GRACE:
+ 			set_bit(NFS_DELEGATED_STATE, &state->flags);
+-- 
+1.7.1
 
