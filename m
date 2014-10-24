@@ -1,77 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:33349 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751195AbaJIMwV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Oct 2014 08:52:21 -0400
-Message-ID: <54368292.8060209@Netapp.com>
-Date: Thu, 9 Oct 2014 08:41:54 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from mail-wg0-f43.google.com ([74.125.82.43]:64186 "EHLO
+	mail-wg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756618AbaJXP7t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 11:59:49 -0400
+Received: by mail-wg0-f43.google.com with SMTP id n12so1395445wgh.26
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 08:59:48 -0700 (PDT)
 MIME-Version: 1.0
-To: Steve French <smfrench@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: Re: xfstests and linux nfs testing
-References: <CAH2r5mt8EfVraedY2Gi31E4xQG=p=YqtAXEoH2a+FYHdmBzbqA@mail.gmail.com>
-In-Reply-To: <CAH2r5mt8EfVraedY2Gi31E4xQG=p=YqtAXEoH2a+FYHdmBzbqA@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20141024105758.064f2e14@tlielax.poochiereds.net>
+References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
+	<1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
+	<20141024072644.6643f9ed@tlielax.poochiereds.net>
+	<20141024093459.70a29d80@tlielax.poochiereds.net>
+	<1414161055.21776.2.camel@leira.trondhjem.org>
+	<20141024105758.064f2e14@tlielax.poochiereds.net>
+Date: Fri, 24 Oct 2014 18:59:47 +0300
+Message-ID: <CAHQdGtTt23DBM3YH295T_eUvq6ymNere7OfDR9VNFyB3Xsfcsw@mail.gmail.com>
+Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection when
+ dropping a request
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Bruce Fields <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I think this is a bug in xfstests.  This fixes it for me, but I'm not sure what needs to be checked in the NFS case:
+On Fri, Oct 24, 2014 at 5:57 PM, Jeff Layton
+<jeff.layton@primarydata.com> wrote:
+>> @@ -1228,6 +1231,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>>   dropit:
+>>       svc_authorise(rqstp);   /* doesn't hurt to call this twice */
+>>       dprintk("svc: svc_process dropit\n");
+>
+> I don't think this will fix it either. I turned the above dprintk into
+> a normal printk and it never fired during the test. As best I can tell,
+> svc_process_common is not returning 0 when this occurs.
 
-Anna
+OK. Is perhaps the "revisit canceled" triggering in svc_revisit()? I'm
+having trouble understanding the call chain for that stuff, but it too
+looks as if it can trigger some strange behaviour.
 
-diff --git a/common/rc b/common/rc
-index 34d7c19..e86bbfb 100644
---- a/common/rc
-+++ b/common/rc
-@@ -1085,9 +1085,9 @@ _require_scratch()
- _require_test()
- {
-     case "$FSTYP" in
--       nfs*)
--                 _notrun "requires a test device"
--                ;;
-+       #nfs*)
-+        #         _notrun "requires a test device"
-+       #        ;;
-        cifs)
-                echo $TEST_DEV | grep -q "//" > /dev/null 2>&1
-                if [ -z "$TEST_DEV" -o "$?" != "0" ]; then
-@@ -1097,7 +1097,7 @@ _require_test()
-                     _notrun "this test requires a valid \$TEST_DIR"
-                fi
-                ;;
--       tmpfs)
-+       tmpfs|nfs*)
-                if [ -z "$TEST_DEV" -o ! -d "$TEST_DIR" ];
-                then
-                    _notrun "this test requires a valid \$TEST_DIR and unique $TEST_DEV"
+-- 
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
 
-
-On 10/08/14 23:09, Steve French wrote:
-> Was running into a strange error with xfstests over nfs - must be
-> missing something obvious since I have run it various times before.
->
-> Tried the following local.config file (placed in root of xfstests directory)
->
-> FSTYP=nfs
-> TEST_DEV=192.168.93.152:/share-1
-> TEST_DIR=/mnt/test
-> NFS_MOUNT_OPTIONS='-ov3'
->
-> and did
-> ./check -nfs generic/001
->
-> which should have worked fine, but it and the various other nfs
-> capable xfstests returned
->
->      [not run] requires a test device
->
-> which is weird because even setting the TEST_DEV as an environment
-> variable xfstests still thought it wasn't set.
->
-> Anyone have a sample NFS local.config file for xfstests which works?
->
-
+trond.myklebust@primarydata.com
