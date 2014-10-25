@@ -1,98 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:56801 "EHLO mx12.netapp.com"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:59137 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759794AbaJaUxx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 Oct 2014 16:53:53 -0400
-From: <Anna.Schumaker@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 3/3] nfsd: Add DEALLOCATE support
-Date: Fri, 31 Oct 2014 16:53:46 -0400
-Message-ID: <1414788826-21474-4-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1414788826-21474-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1414788826-21474-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1752232AbaJYTTv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 25 Oct 2014 15:19:51 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id C17DB280941
+	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:34 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id B2FA610F1
+	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:34 +0200 (MEST)
+Received: from smtp-intra-3.desy.de (lb-40-26.desy.de) by ZITSWEEP1.win.desy.de
+ (Clearswift SMTPRS 5.5.0) with ESMTP id <Tb6559101a183a9615f2b74@ZITSWEEP1.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Sat, 25 Oct 2014 21:13:34 +0200
+Received: from z-mta-3.desy.de (z-mta-3.desy.de [131.169.55.137])
+	by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id 0E1CE10F1
+	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:34 +0200 (MEST)
+Received: from z-mta-3.desy.de (localhost [127.0.0.1])
+	by z-mta-3.desy.de (Postfix) with ESMTP id 096B140084
+	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:34 +0200 (CEST)
+Received: from z-mta-3.desy.de (localhost [127.0.0.1])
+	by z-mta-3.desy.de (Postfix) with ESMTP id ECFAD400B9
+	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:33 +0200 (CEST)
+Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
+	by z-mta-3.desy.de (Postfix) with ESMTP id E566940084
+	for <linux-nfs@vger.kernel.org>; Sat, 25 Oct 2014 21:13:33 +0200 (CEST)
+Date: Sat, 25 Oct 2014 21:13:33 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Message-ID: <340559201.872226.1414264413792.JavaMail.zimbra@desy.de>
+In-Reply-To: <74264531.872138.1414263726250.JavaMail.zimbra@desy.de>
+Subject: lua extention for wireshak to trace nfs server latencies
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-DEALLOCATE only returns a status value, meaning we can use the noop()
-xdr encoder to reply to the client.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfsd/nfs4proc.c | 15 +++++++++++++++
- fs/nfsd/nfs4xdr.c  |  2 +-
- fs/nfsd/xdr4.h     |  1 +
- 3 files changed, 17 insertions(+), 1 deletion(-)
+Dear NFS fellows,
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 57bfcad..b3a9d0d 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -33,6 +33,7 @@
-  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- #include <linux/file.h>
-+#include <linux/falloc.h>
- #include <linux/slab.h>
- 
- #include "idmap.h"
-@@ -1044,6 +1045,14 @@ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- }
- 
- static __be32
-+nfsd4_deallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		 struct nfsd4_fallocate *fallocate)
-+{
-+	return nfsd4_fallocate(rqstp, cstate, fallocate,
-+			       FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE);
-+}
-+
-+static __be32
- nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_seek *seek)
- {
-@@ -1962,6 +1971,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_name = "OP_ALLOCATE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
- 	},
-+	[OP_DEALLOCATE] = {
-+		.op_func = (nfsd4op_func)nfsd4_deallocate,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_name = "OP_DEALLOCATE",
-+		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
-+	},
- 	[OP_SEEK] = {
- 		.op_func = (nfsd4op_func)nfsd4_seek,
- 		.op_name = "OP_SEEK",
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index a60cff8..0622d4f 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1624,7 +1624,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index eeaa0d0..90a5925 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -494,6 +494,7 @@ struct nfsd4_op {
- 
- 		/* NFSv4.2 */
- 		struct nfsd4_fallocate		allocate;
-+		struct nfsd4_fallocate		deallocate;
- 		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
--- 
-2.1.3
+recently I was debugging some NFS related issues and
+needed a tool to trace situations when NFS server is slow.
 
+I created a lua extension for tshark which allows to get
+such information, but still has the full power of tshark.
+
+example usage:
+
+
+# for life capture
+$ tshark -q -X lua_script:nfs.lua -f "port 2049"
+
+# for a capture file
+$ tshark -q -r nfs.dump -X lua_script:nfs.lua
+
+the output looks like:
+
+       timestamp                        client ip                 server ip             time  OP
+
+"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_EXCHANGE_ID
+"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_CREATE_SESSION
+"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_PUTROOTFH
+"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.002 v4_RECLAIM_COMPLETE
+"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_PUTROOTFH
+"Aug 27, 2014 16:44:43.000 CEST" aaaa:bbbb:ccc:10a0::1:7f <=> aaaa:bbbb:ccc:10bf::1:8c 0.001 v4_DESTROY_SESSION
+"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.001 v4_EXCHANGE_ID
+"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.001 v4_CREATE_SESSION
+"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.003 v4_PUTROOTFH
+"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.002 v4_RECLAIM_COMPLETE
+"Aug 27, 2014 16:44:43.000 CEST" a.b.161.127 <=> a.b.191.140 0.004 v4_PUTROOTFH
+
+
+May be some one need's it as well:  https://github.com/kofemann/wireshark_lua
+
+
+P.S.: is it the right place for such posts or there yet another mailing list or wiki?
+
+Thanks,
+   Tigran.
