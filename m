@@ -1,86 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f46.google.com ([209.85.213.46]:41948 "EHLO
-	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751233AbaJTWbS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Oct 2014 18:31:18 -0400
-Received: by mail-yh0-f46.google.com with SMTP id f73so2767yha.19
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Oct 2014 15:31:17 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <D259448C-9E9B-43AE-A809-A73C3C2716C5@oracle.com>
-References: <20141016192919.13414.3151.stgit@manet.1015granger.net>
-	<20141016194000.13414.83844.stgit@manet.1015granger.net>
-	<54454762.8020506@Netapp.com>
-	<A1CBA20C-FA2F-4E6B-9D94-75F7EFDED9C3@oracle.com>
-	<CAHQdGtTgJ7vRR3Kw8n4K4=PSoMXV_ZQK9yFkAcK-CK5xsaTm3A@mail.gmail.com>
-	<D259448C-9E9B-43AE-A809-A73C3C2716C5@oracle.com>
-Date: Tue, 21 Oct 2014 01:31:17 +0300
-Message-ID: <CAHQdGtRahOX68j6J6Vq9ykBE-2qUm1sd_HPw=HGimKAGs5V=9Q@mail.gmail.com>
-Subject: Re: [PATCH v1 13/16] NFS: Add sidecar RPC client support
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Chuck Lever <chuck.lever@oracle.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:44302 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751610AbaJZVra convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 26 Oct 2014 17:47:30 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=windows-1252
+Subject: NFSv4 idmap misbehavior
+Date: Sun, 26 Oct 2014 17:47:21 -0400
+Message-Id: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com>
 Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Tom Talpey <tom@talpey.com>
-Content-Type: text/plain; charset=UTF-8
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: David Howells <dhowells@redhat.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 20, 2014 at 11:11 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Hi Trond-
->
-> On Oct 20, 2014, at 3:40 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->
->> Why aren't we doing the callbacks via RDMA as per the recommendation
->> in RFC5667 section 5.1?
->
-> Thereâ€™s no benefit to it. With a side car, the server requires
-> few or no changes. There are no CB operations that benefit
-> from using RDMA. Itâ€™s very quick to implement, re-using most of
-> the client backchannel implementation that already exists.
->
-> Iâ€™ve discussed this with an author of RFC 5667 [ccâ€™d], and also
-> with the implementors of an existing NFSv4.1 server that supports
-> RDMA. They both agree that a side car is an acceptable, or even a
-> preferable, way to approach backchannel support.
->
-> Also, when I discussed this with you months ago, you also felt
-> that a side car was better than adding backchannel support to the
-> xprtrdma transport. I took this approach only because you OKâ€™d it.
->
-> But I donâ€™t see an explicit recommendation in section 5.1. Which
-> text are you referring to?
+Hi David-
 
-The very first paragraph argues that because callback messages don't
-carry bulk data, there is no problem with using RPC/RDMA and, in
-particular, with using RDMA_MSG provided that the buffer sizes are
-negotiated correctly.
+I’m looking into some odd NFS idmapper behavior, and I’ve bisected
+the problem to this commit (merged in 3.13):
 
-So the questions are:
+> commit b2a4df200d570b2c33a57e1ebfa5896e4bc81b69
+> Author: David Howells <dhowells@redhat.com>
+> Date:   Tue Sep 24 10:35:18 2013 +0100
+> 
+>     KEYS: Expand the capacity of a keyring
+>     
+>     Expand the capacity of a keyring to be able to hold a lot more keys by using
+>     the previously added associative array implementation.  Currently the maximum
+>     capacity is:
+>     
+>     (PAGE_SIZE - sizeof(header)) / sizeof(struct key *)
+>     
+>     which, on a 64-bit system, is a little more 500.  However, since this is being
+>     used for the NFS uid mapper, we need more than that.  The new implementation
+>     gives us effectively unlimited capacity.
+>     
+>     With some alterations, the keyutils testsuite runs successfully to completion
+>     after this patch is applied.  The alterations are because (a) keyrings that
+>     are simply added to no longer appear ordered and (b) some of the errors have
+>     changed a bit.
+>     
+>     Signed-off-by: David Howells <dhowells@redhat.com>
 
-1) Where is the discussion of the merits for and against adding
-bi-directional support to the xprtrdma layer in Linux? What is the
-showstopper preventing implementation of a design based around
-RFC5667?
 
-2) Why do we instead have to solve the whole backchannel problem in
-the NFSv4.1 layer, and where is the discussion of the merits for and
-against that particular solution? As far as I can tell, it imposes at
-least 2 extra requirements:
- a) NFSv4.1 client+server must have support either for session
-trunking or for clientid trunking
- b) NFSv4.1 client must be able to set up a TCP connection to the
-server (that can be session/clientid trunked with the existing RDMA
-channel)
+The problem occurs when running on RHEL6 with an upstream kernel
+against a Solaris 11 update 2 server. I am able to reproduce this
+with 3.17. Notably I’m not able to reproduce this with a newer
+user space (tried with F19), nor with a Linux NFS server.
 
-All I've found so far on googling these questions is a 5 1/2 year old
-email exchange between Tom Tucker and Ricardo where the conclusion
-appears to be that we can, in time, implement both designs. However
-there is no explanation of why we would want to do so.
-http://comments.gmane.org/gmane.linux.nfs/22927
+To reproduce it, I’ll start a long-running cthon04 test on an
+NFS mount.
 
--- 
-Trond Myklebust
+[cel@dali cthon04-x86_64]$ ./server -a -N10
 
-Linux NFS client maintainer, PrimaryData
+Just after starting the test, in another window:
 
-trond.myklebust@primarydata.com
+# grep id_ /proc/keys
+03515452 I--Q---     1   9m 3b010000     0     0 id_resolv gid:users@oracle.com: 4
+1c6ebd43 I--Q---     1 perm 1f3f0000     0 65534 keyring   _uid_ses.0: 1
+249f8fdb I--Q---     1   9m 3b010000     0     0 id_resolv gid:root@oracle.com: 2
+2da69ca9 I--Q---     1 perm 3f3f0000     0     0 keyring   .id_resolver_child_1: 4
+37df5ceb I--Q---     1   9m 3b010000     0     0 id_resolv uid:cel@oracle.com: 5
+38810f75 I------     1 perm 1f030000     0     0 keyring   .id_resolver: 1
+3e7df923 I--Q---     1   9m 3b010000     0     0 id_resolv uid:root@oracle.com: 2
+
+After the test has been running for ten minutes, the id_resolv
+keys expire, and id_legacy keys appear. Before the above commit,
+the id_resolv keys would simply be refreshed and operation
+would continue normally.
+
+# grep id_ /proc/keys
+00f0a664 I--Q-N-     1  42s 3b010000     0     0 id_legacy uid:cel@oracle.com
+03515452 I--Q---     1 expd 3b010000     0     0 id_resolv gid:users@oracle.com: 4
+0efeaada I--Q-N-     1  53s 3b010000     0     0 id_legacy uid:root@oracle.com
+12d6cd15 I--Q-N-     1  42s 3b010000     0     0 id_legacy gid:users@oracle.com
+1c6ebd43 I--Q---     1 perm 1f3f0000     0 65534 keyring   _uid_ses.0: 1
+249f8fdb I--Q---     1 expd 3b010000     0     0 id_resolv gid:root@oracle.com: 2
+2da69ca9 I--Q---     1 perm 3f3f0000     0     0 keyring   .id_resolver_child_1: 4
+2e7150a3 I--Q-N-     1  53s 3b010000     0     0 id_legacy gid:root@oracle.com
+37df5ceb I--Q---     1 expd 3b010000     0     0 id_resolv uid:cel@oracle.com: 5
+38810f75 I------     1 perm 1f030000     0     0 keyring   .id_resolver: 5
+3e7df923 I--Q---     1 expd 3b010000     0     0 id_resolv uid:root@oracle.com: 2
+
+Subsequently cthon04 fails when it tries to start another pass:
+
+**  CHILD pass 1 results: 64/64 pass, 0/0 warn, 0/0 fail (pass/total).
+Congratulations, you passed the locking tests!
+... Pass 8 ...
+
+rm: cannot remove `/mnt/monet/dali.test': Operation not permitted
+Starting BASIC tests: test directory /mnt/monet/dali.test (arg: -t)
+mkdir: cannot create directory `/mnt/monet/dali.test': File exists
+
+./test1: File and directory creation test
+rm: cannot remove `/mnt/monet/dali.test': Operation not permitted
+./test1: (/home/cel/src/cthon04-x86_64/basic) can't remove old test directory /mnt/monet/dali.test
+basic tests failed
+Tests failed, leaving /mnt/monet mounted
+[cel@dali cthon04-x86_64]$
+
+And ID mapping on the test mount is broken. “dali.test” is the
+test directory, but all other files on that mount have bogus
+ownership.
+
+[cel@dali cthon04-x86_64]$ ls -l /mnt/monet
+total 38995
+drwxr-xr-x  2 4294967294 4294967294             4098 Oct 15 22:59 310
+-rw-------  1 4294967294 4294967294         10485760 Oct 15 23:00 aio-testfile
+-rw-r--r--  1 4294967294 4294967294                0 Oct 15 22:38 client.out
+drwxr-xr-x 12 4294967294 4294967294               12 Oct 15 11:47 clients
+drwxrwxrwx  2 4294967294 4294967294                2 Oct 26 17:16 dali.test
+drwxr-xr-x  3 4294967294 4294967294                3 Oct 15 22:54 dbench
+-rw-------  1 4294967294 4294967294                0 Oct 15 22:53 file
+ . . . 
+
+Restarting the tests or removing the test directory by hand
+results in “Operation not permitted."
+
+After several minutes, all expired id_ keys are purged:
+
+1c6ebd43 I--Q---     1 perm 1f3f0000     0 65534 keyring   _uid_ses.0: 1
+2da69ca9 I--Q---     1 perm 3f3f0000     0     0 keyring   .id_resolver_child_1: empty
+38810f75 I------     1 perm 1f030000     0     0 keyring   .id_resolver: 1
+
+And cthon04 is able to run again.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
