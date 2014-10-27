@@ -1,48 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56105 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:55982 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752522AbaJ0KdH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2014 06:33:07 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com>
-References: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: dhowells@redhat.com, Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 idmap misbehavior
+	id S1752462AbaJ0WIt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 27 Oct 2014 18:08:49 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1XisT3-0000ex-2f
+	for linux-nfs@vger.kernel.org; Mon, 27 Oct 2014 18:08:49 -0400
+Date: Mon, 27 Oct 2014 18:08:49 -0400
+To: linux-nfs@vger.kernel.org
+Subject: wireshark
+Message-ID: <20141027220848.GB32743@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Mon, 27 Oct 2014 10:32:59 +0000
-Message-ID: <17204.1414405979@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever <chuck.lever@oracle.com> wrote:
+I've been getting frequent crashes with the latest wireshark.  I think
+it's fixed in:
 
-> After the test has been running for ten minutes, the id_resolv
-> keys expire, and id_legacy keys appear. Before the above commit,
-> the id_resolv keys would simply be refreshed and operation
-> would continue normally.
-> 
-> # grep id_ /proc/keys
-> 00f0a664 I--Q-N-     1  42s 3b010000     0     0 id_legacy uid:cel@oracle.com
+	git://linux-nfs.org/~bfields/wireshark.git master
 
-The 'N' flag indicates that the key is negatively instantiated - ie. the
-upcall to instantiate them failed in some way.  Keys so marked will cause key
-lookups to return ENOKEY (or maybe some other error if keyctl_reject() was
-used).
+I'll probably try to add seek and allocate support while I'm there, and
+pass it to wireshark upstream when I've got it better figured out.
 
-Failure can be due to the key being properly negatively instantiated
-(keyctl_negate() or keyctl_reject()) or the userspace side of instantiation
-exiting or otherwise dying before it managed to instantiate the key.
-
-Is there anything to actually process the id_legacy upcall?  It appears
-they're all negatively instantiated.
-
-Can you stick "#define __KDEBUG" at the top of security/keys/request_key.c,
-rebuild and look in dmesg?
-
-Also, /sbin/request-key logs to syslog if it can't find a match in its config
-file.
-
-David
+--b.
