@@ -1,78 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:33069 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752509AbaJMPH0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 11:07:26 -0400
-Received: by mail-ig0-f170.google.com with SMTP id hn15so14050344igb.1
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 08:07:25 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 1/2] NFS: Fix an uninitialised pointer Oops in the writeback error path
-Date: Mon, 13 Oct 2014 11:07:18 -0400
-Message-Id: <1413212839-6665-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:22043 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752576AbaJ0QGr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2014 12:06:47 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: NFSv4 idmap misbehavior
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <89017554-D9A0-4778-9AF3-1738E68230D9@oracle.com>
+Date: Mon, 27 Oct 2014 12:06:39 -0400
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <00F3B530-C40E-4754-9C46-BD83F8AA4E0B@oracle.com>
+References: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com> <17204.1414405979@warthog.procyon.org.uk> <89017554-D9A0-4778-9AF3-1738E68230D9@oracle.com>
+To: David Howells <dhowells@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SteveD reports the following Oops:
- RIP: 0010:[<ffffffffa053461d>]  [<ffffffffa053461d>] __put_nfs_open_context+0x1d/0x100 [nfs]
- RSP: 0018:ffff880fed687b90  EFLAGS: 00010286
- RAX: 0000000000000024 RBX: 0000000000000000 RCX: 0000000000000006
- RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
- RBP: ffff880fed687bc0 R08: 0000000000000092 R09: 000000000000047a
- R10: 0000000000000000 R11: ffff880fed6878d6 R12: ffff880fed687d20
- R13: ffff880fed687d20 R14: 0000000000000070 R15: ffffea000aa33ec0
- FS:  00007fce290f0740(0000) GS:ffff8807ffc60000(0000) knlGS:0000000000000000
- CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
- CR2: 0000000000000070 CR3: 00000007f2e79000 CR4: 00000000000007e0
- DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
- DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
- Stack:
-  0000000000000000 ffff880036c5e510 ffff880fed687d20 ffff880fed687d20
-  ffff880036c5e200 ffffea000aa33ec0 ffff880fed687bd0 ffffffffa0534710
-  ffff880fed687be8 ffffffffa053d5f0 ffff880036c5e200 ffff880fed687c08
- Call Trace:
-  [<ffffffffa0534710>] put_nfs_open_context+0x10/0x20 [nfs]
-  [<ffffffffa053d5f0>] nfs_pgio_data_destroy+0x20/0x40 [nfs]
-  [<ffffffffa053d672>] nfs_pgio_error+0x22/0x40 [nfs]
-  [<ffffffffa053d8f4>] nfs_generic_pgio+0x74/0x2e0 [nfs]
-  [<ffffffffa06b18c3>] pnfs_generic_pg_writepages+0x63/0x210 [nfsv4]
-  [<ffffffffa053d579>] nfs_pageio_doio+0x19/0x50 [nfs]
-  [<ffffffffa053eb84>] nfs_pageio_complete+0x24/0x30 [nfs]
-  [<ffffffffa053cb25>] nfs_direct_write_schedule_iovec+0x115/0x1f0 [nfs]
-  [<ffffffffa053675f>] ? nfs_get_lock_context+0x4f/0x120 [nfs]
-  [<ffffffffa053d252>] nfs_file_direct_write+0x262/0x420 [nfs]
-  [<ffffffffa0532d91>] nfs_file_write+0x131/0x1d0 [nfs]
-  [<ffffffffa0532c60>] ? nfs_need_sync_write.isra.17+0x40/0x40 [nfs]
-  [<ffffffff812127b8>] do_io_submit+0x3b8/0x840
-  [<ffffffff81212c50>] SyS_io_submit+0x10/0x20
-  [<ffffffff81610f29>] system_call_fastpath+0x16/0x1b
 
-This is due to the calls to nfs_pgio_error() in nfs_generic_pgio(), which
-happen before the nfs_pgio_header's open context is referenced in
-nfs_pgio_rpcsetup().
+On Oct 27, 2014, at 10:44 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Reported-by: Steve Dickson <SteveD@redhat.com>
-Cc: stable@vger.kernel.org # 3.16.x
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/pagelist.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+> Hi David-
+> 
+> On Oct 27, 2014, at 6:32 AM, David Howells <dhowells@redhat.com> wrote:
+> 
+>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> After the test has been running for ten minutes, the id_resolv
+>>> keys expire, and id_legacy keys appear. Before the above commit,
+>>> the id_resolv keys would simply be refreshed and operation
+>>> would continue normally.
+>>> 
+>>> # grep id_ /proc/keys
+>>> 00f0a664 I--Q-N-     1  42s 3b010000     0     0 id_legacy uid:cel@oracle.com
+>> 
+>> The 'N' flag indicates that the key is negatively instantiated - ie. the
+>> upcall to instantiate them failed in some way.  Keys so marked will cause key
+>> lookups to return ENOKEY (or maybe some other error if keyctl_reject() was
+>> used).
+>> 
+>> Failure can be due to the key being properly negatively instantiated
+>> (keyctl_negate() or keyctl_reject()) or the userspace side of instantiation
+>> exiting or otherwise dying before it managed to instantiate the key.
+>> 
+>> Is there anything to actually process the id_legacy upcall?  It appears
+>> they're all negatively instantiated.
+> 
+> rpc.idmapd isn’t running on this system, so no. Legacy idmapping is
+> normally disabled on EL6 update 4 AFAICT.
+> 
+> There is an /etc/request-key.d/id_resolver.conf file, and
+> /usr/sbin/nfsidmap is there. On another system I previously tried
+> using only rpc.idmapd, and it didn’t resolve the sudden ownership
+> change issue.
+> 
+> There should be no reason to switch to using the legacy ID mapper
+> upcall if the key resolution infrastructure is working. Before the
+> “KEYS: Expand the capacity . . . ” commit, id_legacy keys do not
+> appear in /proc/keys.
+> 
+> That leads me to believe something that commit did is preventing
+> expired id_resolv keys from getting renewed.
+> 
+>> Can you stick "#define __KDEBUG" at the top of security/keys/request_key.c,
+>> rebuild and look in dmesg?
+> 
+> Thanks, I’ll give that a try and report back.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 94e16ec88312..08085de879ed 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -526,7 +526,8 @@ EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
-  */
- void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
- {
--	put_nfs_open_context(hdr->args.context);
-+	if (hdr->args.context)
-+		put_nfs_open_context(hdr->args.context);
- 	if (hdr->page_array.pagevec != hdr->page_array.page_array)
- 		kfree(hdr->page_array.pagevec);
- }
--- 
-1.9.3
+I enabled __KDEBUG. There are no new messages in /var/log/messages
+when the reproducer fails.
+
+
+>> Also, /sbin/request-key logs to syslog if it can't find a match in its config
+>> file.
+> 
+> I didn’t see any relevant messages in /var/log/messages, but I may
+> have overlooked something.
+> 
+> More recent kernels change the key resolver interface to require
+> key_revoke instead of key_invalidate. I’ve seen /var/log/messages
+> complaints about that on other EL6 systems running kernels newer
+> than 3.16.
+
+--
+Chuck Lever
+
+
 
