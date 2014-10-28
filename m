@@ -1,102 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f182.google.com ([209.85.212.182]:49494 "EHLO
-	mail-wi0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752486AbaJFPS3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 11:18:29 -0400
-Received: by mail-wi0-f182.google.com with SMTP id n3so4943613wiv.15
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 08:18:28 -0700 (PDT)
-Message-ID: <5432B2C1.7090901@gmail.com>
-Date: Mon, 06 Oct 2014 17:18:25 +0200
-From: Zdenek Kaspar <zkaspar82@gmail.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:36699 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752332AbaJ1BDw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Oct 2014 21:03:52 -0400
+Message-ID: <544EEBD6.8020004@oracle.com>
+Date: Tue, 28 Oct 2014 09:05:26 +0800
+From: Wengang <wen.gang.wang@oracle.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4 O_DIRECT with 3.16.2 kernel issue (qemu kvm cache=none
- / RHEL5 guest)
-References: <54131DFE.9020708@gmail.com> <CAHQdGtRVfNQs7bBDbY8yH2Fzq3MyFyBBxbuTDH63w6WTqs4zPQ@mail.gmail.com>
-In-Reply-To: <CAHQdGtRVfNQs7bBDbY8yH2Fzq3MyFyBBxbuTDH63w6WTqs4zPQ@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <trondmy@gmail.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] [SUNRPC]: avoid race between xs_reset_transport and xs_tcp_setup_socket
+References: <1413881868-13111-1-git-send-email-wen.gang.wang@oracle.com>	<544D99EF.3030808@oracle.com> <CAABAsM5YLCDOek+ZY4XiSBvc6Z=P7invXopG=r=ZSSNQJ2S8zQ@mail.gmail.com>
+In-Reply-To: <CAABAsM5YLCDOek+ZY4XiSBvc6Z=P7invXopG=r=ZSSNQJ2S8zQ@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/12/2014 06:31 PM, Trond Myklebust wrote:
-> On Fri, Sep 12, 2014 at 12:23 PM, Zdenek Kaspar <zkaspar82@gmail.com> wrote:
->> Hello everyone, got this specific problem with RHEL5 guest under KVM
->> hypervisor.
->>
->> client/server kernel version: 3.16.2
->>
->> /etc/exports: rw,async,no_subtree_check,no_root_squash
->> /proc/mounts: nfs4 rw,relatime,vers=4.0,rsize=524288,wsize=524288,
->>               namlen=255,hard,proto=tcp,port=0,
->>               timeo=600,retrans=2,sec=sys,clientaddr=xxx.xxx.xxx.xxx,
->>               local_lock=none,addr=xxx.xxx.xxx.yyy 0 0
->>
->> CONFIG_NFS_FS=m
->> # CONFIG_NFS_V2 is not set
->> CONFIG_NFS_V3=m
->> # CONFIG_NFS_V3_ACL is not set
->> CONFIG_NFS_V4=m
->> # CONFIG_NFS_SWAP is not set
->> # CONFIG_NFS_V4_1 is not set
->> # CONFIG_NFS_USE_LEGACY_DNS is not set
->> CONFIG_NFS_USE_KERNEL_DNS=y
->> CONFIG_NFSD=m
->> CONFIG_NFSD_V3=y
->> # CONFIG_NFSD_V3_ACL is not set
->> CONFIG_NFSD_V4=y
->> # CONFIG_NFSD_FAULT_INJECTION is not set
->> CONFIG_NFS_COMMON=y
->>
->> CentOS-5.10-i386-bin-1of8.iso -- did not test everything on centos,
->> behaved same as RHEL5. So let's use it as VM reproducer:
->>
->> dd if=/dev/zero of=kvm-test1.img bs=1M count=2048
->>
->> start VM using:
->> file=kvm-test1.img,cache=writeback,aio=native,if=virtio,boot=on
->>
->> create custom layout: /dev/vda1 / ext3 max size primary
->> unselect Desktop-Gnome, select Customize now
->> use only: Base System/Base and install it..
->>
->> [root@test1 ~]# find / >/dev/null
->> everything works as expected with writeback
->>
->> shutdown, backup kvm-test1.img (fs will explode)
->> start VM using:
->> file=kvm-test1.img,cache=none,aio=native,if=virtio,boot=on
->>
->> [root@test1 ~]# find / >/dev/null
->> and check dmesg, reboot etc, ie:
->> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
->> directory #460317: rec_len is smaller than minimal - offset=0, inode=0,
->> rec_len=0, name_len=0
->> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
->> directory #98503: rec_len is smaller than minimal - offset=0, inode=0,
->> rec_len=0, name_len=0
->>
->> Tested locally on ext4, xfs          - WORK
->> Tested on NFSv4 share with ext4, xfs - FAIL
->> Tested NFSv4 share sync, async       - FAIL
->> Tested on NFSv3 share with xfs       - WORK
->> KVM with qemu rhel-6.5, 2.1.1        - SAME RESULTS
->>
->> NOTE: it seems just the rhel5 guest triggers it easily..
->>
->> HTH, Z.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> Don't use 3.16.x kernels with NFS yet. There are known bugs in the
-> read/write code that need a stable backport of a set of fixes that are
-> in 3.17-rc.
-> 
-> 
+Hi Trond,
 
-Hi Trond, noticed big nfs update that got into -stable, running 3.16.4
-on both sides and problem is fixed, thx!
+Thanks for your review!
+The problem happened against source code without cancel_delayed_work_sync
+being called in xs_close(). I didn't realize the difference with between 
+mainline code,
+sorry for confusing and thanks for your time.
 
-Z.
+thanks,
+wengang
+
+于 2014年10月27日 19:52, Trond Myklebust 写道:
+> On Mon, Oct 27, 2014 at 3:03 AM, Wengang <wen.gang.wang@oracle.com> wrote:
+>> Could somebody help to review this patch please?
+>>
+>> thanks,
+>> Wengang
+>>
+>> 于 2014年10月21日 16:57, Wengang Wang 写道:
+>>> A panic with call trace like this:
+>>>
+>>> crash> bt
+>>> PID: 1842   TASK: ffff8824d1d523c0  CPU: 29  COMMAND: "kworker/29:1"
+>>>    #0 [ffff88052a351a40] machine_kexec at ffffffff8103b40d
+>>>    #1 [ffff88052a351ab0] crash_kexec at ffffffff810b98c5
+>>>    #2 [ffff88052a351b80] oops_end at ffffffff815077d8
+>>>    #3 [ffff88052a351bb0] no_context at ffffffff81048dff
+>>>    #4 [ffff88052a351bf0] __bad_area_nosemaphore at ffffffff81048f80
+>>>    #5 [ffff88052a351c40] bad_area_nosemaphore at ffffffff81049183
+>>>    #6 [ffff88052a351c50] do_page_fault at ffffffff8150a32e
+>>>    #7 [ffff88052a351d60] page_fault at ffffffff81506d55
+>>>       [exception RIP: xs_tcp_reuse_connection+24]
+>>>       RIP: ffffffffa0439518  RSP: ffff88052a351e10  RFLAGS: 00010282
+>>>       RAX: ffff8824d1d523c0  RBX: ffff880d0d2d1000  RCX: ffff88407f3ae088
+>>>       RDX: 0000000000000000  RSI: 0000000000001d00  RDI: ffff880d0d2d1000
+>>>       RBP: ffff88052a351e20   R8: ffff88407f3af260   R9: ffffffff819ab880
+>>>       R10: 0000000000000000  R11: ffff883f03de4820  R12: 00000000fffffff5
+>>>       R13: ffff880d0d2d1000  R14: ffff8815e260b840  R15: 0000000000000000
+>>>       ORIG_RAX: ffffffffffffffff  CS: 0010  SS: 0018
+>>>    #8 [ffff88052a351e28] xs_tcp_setup_socket at ffffffffa043b01a [sunrpc]
+>>>    #9 [ffff88052a351e58] process_one_work at ffffffff8108c0d9
+>>> #10 [ffff88052a351ea8] worker_thread at ffffffff8108ca1a
+>>> #11 [ffff88052a351ee8] kthread at ffffffff81090ff7
+>>> #12 [ffff88052a351f48] kernel_thread_helper at ffffffff8150fe84
+>>>
+>>> In xs_tcp_setup_socket, if the xprt->sock is not NULL, it calls
+>>> xs_tcp_reuse_connection. But in xs_tcp_reuse_connection, the sock and
+>>> inet is seen to be zero when crash happened
+>>>
+>>> crash> sock_xprt.sock ffff880d0d2d1000
+>>>     sock = 0x0
+>>> crash> sock_xprt.inet ffff880d0d2d1000
+>>>     inet = 0x0
+>>>
+>>> the xprt.state is 532 which is XPRT_CONNECTING|XPRT_BOUND|XPRT_INITIALIZED
+>>>
+>>> This looks like a race with xs_reset_transport().
+>>>
+>>> The fix is to wait the cancel and wait until connect_worker finishes.
+>>>
+>>> Signed-off-by: Wengang Wang <wen.gang.wang@oracle.com>
+>>> ---
+>>>    net/sunrpc/xprtsock.c | 3 +++
+>>>    1 file changed, 3 insertions(+)
+>>>
+>>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>>> index 3b305ab..718c57f 100644
+>>> --- a/net/sunrpc/xprtsock.c
+>>> +++ b/net/sunrpc/xprtsock.c
+>>> @@ -869,6 +869,9 @@ static void xs_reset_transport(struct sock_xprt
+>>> *transport)
+>>>          if (sk == NULL)
+>>>                  return;
+>>>    +     /* avoid a race with xs_tcp_setup_socket */
+>>> +       cancel_delayed_work_sync(&transport->connect_worker);
+>>> +
+>>>          transport->srcport = 0;
+>>>          write_lock_bh(&sk->sk_callback_lock);
+> In mainline, there are only 2 callers of xs_reset_transport():
+> 1) xs_close(), which already performs the above call
+> 2) xs_udp_setup_socket() which cannot conflict with xs_tcp_setup_socket()
+>
+> Cheers
+>    Trond
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
