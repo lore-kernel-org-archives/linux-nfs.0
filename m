@@ -1,67 +1,240 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43571 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751721AbaJWRel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Oct 2014 13:34:41 -0400
-Date: Thu, 23 Oct 2014 13:34:35 -0400
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] NFS: SEEK is an NFS v4.2 feature
-Message-ID: <20141023173435.GC16717@fieldses.org>
-References: <1414007590-14286-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1414007590-14286-1-git-send-email-Anna.Schumaker@Netapp.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:54481 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751407AbaJ1SYY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Oct 2014 14:24:24 -0400
+Received: by mail-qa0-f54.google.com with SMTP id u7so881625qaz.41
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Oct 2014 11:24:24 -0700 (PDT)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] sunrpc: add some tracepoints in svc_rqst handling functions
+Date: Tue, 28 Oct 2014 14:24:12 -0400
+Message-Id: <1414520654-1606-2-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1414520654-1606-1-git-send-email-jlayton@primarydata.com>
+References: <1414520654-1606-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 22, 2014 at 03:53:10PM -0400, Anna Schumaker wrote:
-> Somehow the nfs_v4_1_minor_ops had the NFS_CAP_SEEK flag set, enabling
-> SEEK over v4.1.  This is wrong, and can make servers crash.
-> 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+...just around svc_send, svc_recv and svc_process for now.
 
-Thanks!
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+---
+ include/trace/events/sunrpc.h | 55 +++++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/svc.c              | 21 ++++++++++-------
+ net/sunrpc/svc_xprt.c         | 31 ++++++++++++++++--------
+ 3 files changed, 88 insertions(+), 19 deletions(-)
 
-Tested-by: J. Bruce Fields <bfields@redhat.com>
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index 1fef3e6e9436..6260f5134212 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -6,6 +6,7 @@
+ 
+ #include <linux/sunrpc/sched.h>
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/svc.h>
+ #include <net/tcp_states.h>
+ #include <linux/net.h>
+ #include <linux/tracepoint.h>
+@@ -306,6 +307,60 @@ DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_reset_connection);
+ DEFINE_RPC_SOCKET_EVENT(rpc_socket_close);
+ DEFINE_RPC_SOCKET_EVENT(rpc_socket_shutdown);
+ 
++TRACE_EVENT(svc_recv,
++	TP_PROTO(struct svc_rqst *rqst, int status),
++
++	TP_ARGS(rqst, status),
++
++	TP_STRUCT__entry(
++		__field(struct sockaddr *, addr)
++		__field(__be32, xid)
++		__field(int, status)
++	),
++
++	TP_fast_assign(
++		__entry->addr = (struct sockaddr *)&rqst->rq_addr;
++		__entry->xid = status > 0 ? rqst->rq_xid : 0;
++		__entry->status = status;
++	),
++
++	TP_printk("addr=%pIScp xid=0x%x status=%d", __entry->addr,
++			be32_to_cpu(__entry->xid), __entry->status)
++);
++
++DECLARE_EVENT_CLASS(svc_rqst_status,
++
++	TP_PROTO(struct svc_rqst *rqst, int status),
++
++	TP_ARGS(rqst, status),
++
++	TP_STRUCT__entry(
++		__field(struct sockaddr *, addr)
++		__field(__be32, xid)
++		__field(int, dropme)
++		__field(int, status)
++	),
++
++	TP_fast_assign(
++		__entry->addr = (struct sockaddr *)&rqst->rq_addr;
++		__entry->xid = rqst->rq_xid;
++		__entry->dropme = (int)rqst->rq_dropme;
++		__entry->status = status;
++	),
++
++	TP_printk("addr=%pIScp rq_xid=0x%x dropme=%d status=%d",
++		__entry->addr, be32_to_cpu(__entry->xid), __entry->dropme,
++		__entry->status)
++);
++
++DEFINE_EVENT(svc_rqst_status, svc_process,
++	TP_PROTO(struct svc_rqst *rqst, int status),
++	TP_ARGS(rqst, status));
++
++DEFINE_EVENT(svc_rqst_status, svc_send,
++	TP_PROTO(struct svc_rqst *rqst, int status),
++	TP_ARGS(rqst, status));
++
+ #endif /* _TRACE_SUNRPC_H */
+ 
+ #include <trace/define_trace.h>
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index ca8a7958f4e6..371a8bbb43d6 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -28,6 +28,8 @@
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/bc_xprt.h>
+ 
++#include <trace/events/sunrpc.h>
++
+ #define RPCDBG_FACILITY	RPCDBG_SVCDSP
+ 
+ static void svc_unregister(const struct svc_serv *serv, struct net *net);
+@@ -1314,24 +1316,25 @@ svc_process(struct svc_rqst *rqstp)
+ 	rqstp->rq_res.tail[0].iov_base = NULL;
+ 	rqstp->rq_res.tail[0].iov_len = 0;
+ 
+-	rqstp->rq_xid = svc_getu32(argv);
+-
+ 	dir  = svc_getnl(argv);
+ 	if (dir != 0) {
+ 		/* direction != CALL */
+ 		svc_printk(rqstp, "bad direction %d, dropping request\n", dir);
+ 		serv->sv_stats->rpcbadfmt++;
+-		svc_drop(rqstp);
+-		return 0;
++		goto out_drop;
+ 	}
+ 
+ 	/* Returns 1 for send, 0 for drop */
+-	if (svc_process_common(rqstp, argv, resv))
+-		return svc_send(rqstp);
+-	else {
+-		svc_drop(rqstp);
+-		return 0;
++	if (likely(svc_process_common(rqstp, argv, resv))) {
++		int ret = svc_send(rqstp);
++
++		trace_svc_process(rqstp, ret);
++		return ret;
+ 	}
++out_drop:
++	trace_svc_process(rqstp, 0);
++	svc_drop(rqstp);
++	return 0;
+ }
+ 
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index c179ca2a5aa4..bbb3b044b877 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -15,6 +15,7 @@
+ #include <linux/sunrpc/svcsock.h>
+ #include <linux/sunrpc/xprt.h>
+ #include <linux/module.h>
++#include <trace/events/sunrpc.h>
+ 
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+ 
+@@ -773,35 +774,43 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+ 
+ 	err = svc_alloc_arg(rqstp);
+ 	if (err)
+-		return err;
++		goto out;
+ 
+ 	try_to_freeze();
+ 	cond_resched();
++	err = -EINTR;
+ 	if (signalled() || kthread_should_stop())
+-		return -EINTR;
++		goto out;
+ 
+ 	xprt = svc_get_next_xprt(rqstp, timeout);
+-	if (IS_ERR(xprt))
+-		return PTR_ERR(xprt);
++	if (IS_ERR(xprt)) {
++		err = PTR_ERR(xprt);
++		goto out;
++	}
+ 
+ 	len = svc_handle_xprt(rqstp, xprt);
+ 
+ 	/* No data, incomplete (TCP) read, or accept() */
++	err = -EAGAIN;
+ 	if (len <= 0)
+-		goto out;
++		goto out_release;
+ 
+ 	clear_bit(XPT_OLD, &xprt->xpt_flags);
+ 
+ 	rqstp->rq_secure = xprt->xpt_ops->xpo_secure_port(rqstp);
+ 	rqstp->rq_chandle.defer = svc_defer;
++	rqstp->rq_xid = svc_getu32(&rqstp->rq_arg.head[0]);
+ 
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->netcnt++;
++	trace_svc_recv(rqstp, len);
+ 	return len;
+-out:
++out_release:
+ 	rqstp->rq_res.len = 0;
+ 	svc_xprt_release(rqstp);
+-	return -EAGAIN;
++out:
++	trace_svc_recv(rqstp, err);
++	return err;
+ }
+ EXPORT_SYMBOL_GPL(svc_recv);
+ 
+@@ -821,12 +830,12 @@ EXPORT_SYMBOL_GPL(svc_drop);
+ int svc_send(struct svc_rqst *rqstp)
+ {
+ 	struct svc_xprt	*xprt;
+-	int		len;
++	int		len = -EFAULT;
+ 	struct xdr_buf	*xb;
+ 
+ 	xprt = rqstp->rq_xprt;
+ 	if (!xprt)
+-		return -EFAULT;
++		goto out;
+ 
+ 	/* release the receive skb before sending the reply */
+ 	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
+@@ -849,7 +858,9 @@ int svc_send(struct svc_rqst *rqstp)
+ 	svc_xprt_release(rqstp);
+ 
+ 	if (len == -ECONNREFUSED || len == -ENOTCONN || len == -EAGAIN)
+-		return 0;
++		len = 0;
++out:
++	trace_svc_send(rqstp, len);
+ 	return len;
+ }
+ 
+-- 
+1.9.3
 
---b.
-
-> ---
-> v2: Fix compile error
-> 
->  fs/nfs/nfs4proc.c | 6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 405bd95..8aba549 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -8408,8 +8408,7 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
->  		| NFS_CAP_CHANGE_ATTR
->  		| NFS_CAP_POSIX_LOCK
->  		| NFS_CAP_STATEID_NFSV41
-> -		| NFS_CAP_ATOMIC_OPEN_V1
-> -		| NFS_CAP_SEEK,
-> +		| NFS_CAP_ATOMIC_OPEN_V1,
->  	.init_client = nfs41_init_client,
->  	.shutdown_client = nfs41_shutdown_client,
->  	.match_stateid = nfs41_match_stateid,
-> @@ -8431,7 +8430,8 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
->  		| NFS_CAP_CHANGE_ATTR
->  		| NFS_CAP_POSIX_LOCK
->  		| NFS_CAP_STATEID_NFSV41
-> -		| NFS_CAP_ATOMIC_OPEN_V1,
-> +		| NFS_CAP_ATOMIC_OPEN_V1
-> +		| NFS_CAP_SEEK,
->  	.init_client = nfs41_init_client,
->  	.shutdown_client = nfs41_shutdown_client,
->  	.match_stateid = nfs41_match_stateid,
-> -- 
-> 2.1.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
