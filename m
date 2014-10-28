@@ -1,98 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:56106 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755195AbaJUKkQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Oct 2014 06:40:16 -0400
-Date: Tue, 21 Oct 2014 03:40:13 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@primarydata.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: convert nfs4_file searches to use RCU
-Message-ID: <20141021104013.GC21863@infradead.org>
-References: <1413541275-3884-1-git-send-email-jlayton@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1413541275-3884-1-git-send-email-jlayton@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:35061 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752399AbaJ1NQ5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Oct 2014 09:16:57 -0400
+From: Eryu Guan <eguan@redhat.com>
+To: fstests@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Eryu Guan <eguan@redhat.com>
+Subject: [PATCH 3/4] common: skip atime related tests on NFS
+Date: Tue, 28 Oct 2014 21:16:10 +0800
+Message-Id: <1414502171-10319-4-git-send-email-eguan@redhat.com>
+In-Reply-To: <1414502171-10319-1-git-send-email-eguan@redhat.com>
+References: <1414502171-10319-1-git-send-email-eguan@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 17, 2014 at 06:21:15AM -0400, Jeff Layton wrote:
-> The global state_lock protects the file_hashtbl, and that has the
-> potential to be a scalability bottleneck.
-> 
-> Address this by making the file_hashtbl use RCU. Add a rcu_head to the
-> nfs4_file and use that when freeing ones that have been hashed.
-> 
-> Convert find_file to use a lockless lookup. Convert find_or_add_file to
-> attempt a lockless lookup first, and then fall back to doing the
-> "normal" locked search and insert if that fails to find anything.
-> 
-> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 36 +++++++++++++++++++++++++++---------
->  fs/nfsd/state.h     |  1 +
->  2 files changed, 28 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index e9c3afe4b5d3..9bd3bcfee3c2 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -280,15 +280,22 @@ static void nfsd4_free_file(struct nfs4_file *f)
->  	kmem_cache_free(file_slab, f);
->  }
->  
-> +static void nfsd4_free_file_rcu(struct rcu_head *rcu)
-> +{
-> +	struct nfs4_file *fp = container_of(rcu, struct nfs4_file, fi_rcu);
-> +
-> +	nfsd4_free_file(fp);
+>From nfs(5) we can know that atime related mount options have no effect
+on NFS mounts, so add _require_atime() helper to skip atime tests on NFS
 
-You might as well kill the pointless nfsd4_free_file wrapper while
-you're at it.
+Also change the way how _require_relatime() mount $SCRATCH_DEV, use
+_scratch_mount helper so it's mounted with selinux context, to avoid
+"same superblock, different selinux context" failure.
 
-> @@ -3313,12 +3320,19 @@ find_file_locked(struct knfsd_fh *fh)
->  static struct nfs4_file *
->  find_file(struct knfsd_fh *fh)
->  {
-> -	struct nfs4_file *fp;
-> +	struct nfs4_file *fp, *ret = NULL;
-> +	unsigned int hashval = file_hashval(fh);
->  
-> -	spin_lock(&state_lock);
-> -	fp = find_file_locked(fh);
-> -	spin_unlock(&state_lock);
-> -	return fp;
-> +	rcu_read_lock();
-> +	hlist_for_each_entry_rcu(fp, &file_hashtbl[hashval], fi_hash) {
-> +		if (nfsd_fh_match(&fp->fi_fhandle, fh)) {
-> +			if (atomic_inc_not_zero(&fp->fi_ref))
-> +				ret = fp;
-> +			break;
-> +		}
-> +	}
-> +	rcu_read_unlock();
-> +	return ret;
+Signed-off-by: Eryu Guan <eguan@redhat.com>
+---
+ common/rc         | 9 ++++++++-
+ tests/generic/003 | 1 +
+ tests/generic/192 | 1 +
+ 3 files changed, 10 insertions(+), 1 deletion(-)
 
-I think it would be better to just switch find_file_locked ti use
-hlist_for_each_entry_rcu instead of duplicating it.
-
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index 8e85e07efce6..530470a35ecd 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -490,6 +490,7 @@ struct nfs4_file {
->  	atomic_t		fi_access[2];
->  	u32			fi_share_deny;
->  	struct file		*fi_deleg_file;
-> +	struct rcu_head		fi_rcu;
-
-Can we union this over a field that's guaranteed to be unused on
-a file that has been unhashed?
-
-
-Also a slightly related question:  Is the small fixes size hash table
-still fine for the workloads where the RCU access matters?  It seems
-like we should aim for a more scalable data structure to look up the
-files.  It also irks me a bit how this duplicates the inode cache,
-which for some filesystems (e.g. XFS) already is very scalable.
+diff --git a/common/rc b/common/rc
+index 42f00cb..b50577f 100644
+--- a/common/rc
++++ b/common/rc
+@@ -2379,10 +2379,17 @@ _verify_reflink()
+                || echo "$1 and $2 are not reflinks: different extents"
+ }
+ 
++_require_atime()
++{
++	if [ "$FSTYP" == "nfs" ]; then
++		_notrun "atime related mount options have no effect on NFS"
++	fi
++}
++
+ _require_relatime()
+ {
+         _scratch_mkfs > /dev/null 2>&1
+-        _mount -t $FSTYP -o relatime $SCRATCH_DEV $SCRATCH_MNT || \
++        _scratch_mount -o relatime || \
+                 _notrun "relatime not supported by the current kernel"
+ 	_scratch_unmount
+ }
+diff --git a/tests/generic/003 b/tests/generic/003
+index 83d6f90..7ffd09a 100755
+--- a/tests/generic/003
++++ b/tests/generic/003
+@@ -47,6 +47,7 @@ _cleanup()
+ _supported_fs generic
+ _supported_os Linux
+ _require_scratch
++_require_atime
+ _require_relatime
+ 
+ rm -f $seqres.full
+diff --git a/tests/generic/192 b/tests/generic/192
+index b2da358..5b6cfbc 100755
+--- a/tests/generic/192
++++ b/tests/generic/192
+@@ -54,6 +54,7 @@ is_noatime_set() {
+ _supported_fs generic
+ _supported_os Linux
+ _require_test
++_require_atime
+ #delay=150
+ #delay=75
+ #delay=60
+-- 
+1.8.3.1
 
