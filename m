@@ -1,50 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:12166 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48539 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750786AbaJ1VJM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Oct 2014 17:09:12 -0400
-Message-ID: <545005EC.9030505@Netapp.com>
-Date: Tue, 28 Oct 2014 17:09:00 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 0/2] NFSD: Add v4.2 SEEK support
-References: <1411754307-18457-1-git-send-email-Anna.Schumaker@Netapp.com> <20140926215431.GI27412@fieldses.org> <CAFX2Jfm2pDmz7vKPVNe8yZScVT-MvVD=+AsfOgdrPfKwgaLTXw@mail.gmail.com> <20141028210700.GI32743@fieldses.org>
-In-Reply-To: <20141028210700.GI32743@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+	id S1750855AbaJ1SkK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Oct 2014 14:40:10 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s9SIeArI012403
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Oct 2014 14:40:10 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s9SIe96l024842
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Oct 2014 14:40:09 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfsidmap.map: Add more global variables to the map.
+Date: Tue, 28 Oct 2014 14:40:07 -0400
+Message-Id: <1414521607-8426-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/28/2014 05:07 PM, J. Bruce Fields wrote:
-> On Tue, Sep 30, 2014 at 01:00:24PM -0400, Anna Schumaker wrote:
->> I'm testing with xfstests #285.  It's an lseek specific test, and helped
->> find a few edge cases during development.
-> 
-> Any hints?  I did basically:
-> 
-> 	yum install xfsprogs-devel libattr-devel libacl-devel
-> 	git clone git://oss.sgi.com/xfs/cmds/xfstests.git
-> 	cd xfstests
-> 	make
-> 	make install
-> 	cat >local.config <<EOF
-> 	FSTYP=nfs
-> 	TEST_DEV=f20-1:/exports/xfs/xfstests
-> 	TEST_DIR=/mnt
-> 	NFS_MOUNT_OPTIONS='-overs=4.2,sec=sys'
+With the introduction of a symbol version map
+(commit 045d2e46d) all global variables need to
+be in the map for the plugins to load correctly
 
-Try setting TEST_FS_MOUNT_OPTIONS instead of NFS_MOUNT_OPTIONS.
+Fixes https://bugzilla.redhat.com/show_bug.cgi?id=1156484
 
-> 	EOF
-> 	./check -nfs generic/285
-> 
-> Passes just fine, but insists on using 4.0 and sec=krb5p, so apparently
-> NFS_MOUNT_OPTIONS is ignored.
-> 
-> I'm probably missing something basic, I haven't used xfstests before
-> (shame on me).
-> 
-> --b.
-> 
+Reported-by: Jeff Layton <jlayton@poochiereds.net>
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ nfsidmap.map | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/nfsidmap.map b/nfsidmap.map
+index 540835c..1e7cf7e 100644
+--- a/nfsidmap.map
++++ b/nfsidmap.map
+@@ -16,6 +16,10 @@ global:
+ 	nfs4_gss_princ_to_ids_ex;
+ 	nfs4_gss_princ_to_grouplist_ex;
+ 	nfs4_set_debug;
++	idmap_verbosity;
++	idmap_log_func;
++	get_default_domain;
++	get_local_realms;
+ local:
+ 	*;
+ };
+-- 
+1.9.3
 
