@@ -1,42 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f169.google.com ([209.85.212.169]:49778 "EHLO
-	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754619AbaJGRe7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Oct 2014 13:34:59 -0400
+Received: from auth-3.ukservers.net ([217.10.138.152]:41261 "EHLO
+	auth-3.ukservers.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751840AbaJ1KMm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Oct 2014 06:12:42 -0400
+Date: Tue, 28 Oct 2014 10:12:32 +0000 (GMT)
+From: Carl Hetherington <cth@carlh.net>
+To: Chuck Lever <chuck.lever@oracle.com>
+cc: David Howells <dhowells@redhat.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com>
+Message-ID: <alpine.DEB.2.02.1410281006010.27485@main.carlh.net>
+References: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <20141007171703.GA30274@infradead.org>
-References: <1409834323-7171-1-git-send-email-jlayton@primarydata.com>
-	<1409834323-7171-3-git-send-email-jlayton@primarydata.com>
-	<CACE9dm-gEfVnHvESfewAPx1vDSdpUW+za=H_zpA8hJd55AR=tA@mail.gmail.com>
-	<20141007171703.GA30274@infradead.org>
-Date: Tue, 7 Oct 2014 20:34:57 +0300
-Message-ID: <CACE9dm_NKwFV__MeQw039yenbjzT+XwakgxZuynr25EVWHjRdQ@mail.gmail.com>
-Subject: Re: [PATCH v2 02/17] security: make security_file_set_fowner,
- f_setown and __f_setown void return
-From: Dmitry Kasatkin <dmitry.kasatkin@gmail.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jlayton@primarydata.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-security-module <linux-security-module@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Subject: Re: NFSv4 idmap misbehavior
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 7 October 2014 20:17, Christoph Hellwig <hch@infradead.org> wrote:
-> On Tue, Oct 07, 2014 at 08:11:42PM +0300, Dmitry Kasatkin wrote:
->> If file_set_fowner op is now type of "void", how you can actually
->> return the value?
->> I think compiler must give error. How could you compile it?
->
-> Returning void values is a GNU extension.  I've seen it in a few
-> places in the kernel.  Although in general I'd prefer it we'd remove
-> it (and have the compiler warn about it).
->
 
-Cool. There were patches around to use LLVM as well.
-Will it work there?
+Hi Chuck,
 
--- 
-Thanks,
-Dmitry
+[snip]
+
+> After the test has been running for ten minutes, the id_resolv
+> keys expire, and id_legacy keys appear. Before the above commit,
+> the id_resolv keys would simply be refreshed and operation
+> would continue normally.
+
+This sounds a lot like a bug I have seen, our investigations into which
+are summarised here:
+
+https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/1124250
+
+There's an inexpertly written (by me) patch in that bug report (which I
+posted to this list recently, too) which (in a nutshell) makes the
+idmapper code call up to userspace to get a new key when the current ones
+have expired.
+
+I don't know whether that's the right approach, but I'm sure someone here
+more qualified can comment.
+
+Best regards,
+Carl
