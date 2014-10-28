@@ -1,52 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35669 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754041AbaJMRGW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 13:06:22 -0400
-From: David Howells <dhowells@redhat.com>
-To: torvalds@linux-foundation.org
-cc: dhowells@redhat.com, rob.jones@codethink.co.uk, manuel.schoelling@gmx.de,
-        linux-cachefs@redhat.com, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: [GIT PULL] FS-Cache: Two fixes and a cleanup
+Received: from bombadil.infradead.org ([198.137.202.9]:35716 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753890AbaJ1IhW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Oct 2014 04:37:22 -0400
+Date: Tue, 28 Oct 2014 01:37:20 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Anna.Schumaker@netapp.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        Al Viro <viro@zeniv.linux.org.uk>
+Subject: Re: [PATCH v2 0/2] NFSD: Add ALLOCATE and DEALLOCATE support
+Message-ID: <20141028083720.GB25532@infradead.org>
+References: <1414161705-26617-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Mon, 13 Oct 2014 18:06:07 +0100
-Message-ID: <24210.1413219967@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1414161705-26617-1-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Fri, Oct 24, 2014 at 10:41:43AM -0400, Anna.Schumaker@netapp.com wrote:
+> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> 
+> These patches add server support for the ALLOCATE and DEALLOCATE operations
+> part of NFS v4.2.
+> 
+> I submitted my do_fallocate() -> vfs_fallocate() change as a separate patch,
+> so it has been removed from this submission.  However, this code still depends
+> on this patch being applied first.
 
-Can you pull this please?  There are three commits: two fixes for bugs in
-CacheFiles and a cleanup in FS-Cache.
+Please inlude the patch to make everyones life easier.   Al, can you
+please ack the patch so that we can move forward with this series?
 
-David
----
-The following changes since commit fe82dcec644244676d55a1384c958d5f67979adb:
-
-  Linux 3.17-rc7 (2014-09-28 14:29:07 -0700)
-
-are available in the git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/fscache-fixes-20141013
-
-for you to fetch changes up to d5d962265d99088ce96480db3e61358d7170e24c:
-
-  fs/fscache/object-list.c: use __seq_open_private() (2014-10-13 17:52:21 +0100)
-
-----------------------------------------------------------------
-FS-Cache fixes
-
-----------------------------------------------------------------
-David Howells (2):
-      CacheFiles: Handle object being killed before being set up
-      CacheFiles: Fix incorrect test for in-memory object collision
-
-Rob Jones (1):
-      fs/fscache/object-list.c: use __seq_open_private()
-
- fs/cachefiles/interface.c | 33 ++++++++++++++++++++-------------
- fs/cachefiles/namei.c     |  2 +-
- fs/fscache/object-list.c  | 16 ++--------------
- 3 files changed, 23 insertions(+), 28 deletions(-)
