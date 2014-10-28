@@ -1,45 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f182.google.com ([209.85.220.182]:40830 "EHLO
-	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753764AbaJGSAJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Oct 2014 14:00:09 -0400
-Received: by mail-vc0-f182.google.com with SMTP id la4so5397593vcb.27
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Oct 2014 11:00:08 -0700 (PDT)
-From: Thomas Haynes <thomas.haynes@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Tom Haynes <loghyr@primarydata.com>
-Subject: [PATCH] pnfs: Do not schedule layout segment work if there is no work to be done.
-Date: Tue,  7 Oct 2014 10:59:47 -0700
-Message-Id: <1412704787-46388-1-git-send-email-Thomas.Haynes@primarydata.com>
+Received: from fisica.ufpr.br ([200.17.209.129]:32500 "EHLO fisica.ufpr.br"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753349AbaJ1OOa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Oct 2014 10:14:30 -0400
+Date: Tue, 28 Oct 2014 12:14:28 -0200
+From: Carlos Carvalho <carlos@fisica.ufpr.br>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: massive memory leak in 3.1[3-5] with nfs4+kerberos
+Message-ID: <20141028141428.GA17735@fisica.ufpr.br>
+References: <20141011033627.GA6850@fisica.ufpr.br>
+ <20141013135840.GA32584@fieldses.org>
+ <20141013235026.GA10153@fisica.ufpr.br>
+ <20141014204245.GB15960@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141014204245.GB15960@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Haynes <loghyr@primarydata.com>
+J. Bruce Fields (bfields@fieldses.org) wrote on Tue, Oct 14, 2014 at 05:42:45PM BRT:
+> On Mon, Oct 13, 2014 at 08:50:27PM -0300, Carlos Carvalho wrote:
+> > J. Bruce Fields (bfields@fieldses.org) wrote on Mon, Oct 13, 2014 at 10:58:40AM BRT:
+> > Note the big xprt_alloc. slabinfo is found in the kernel tree at tools/vm.
+> > Another way to see it:
+> > 
+> > urquell# sort -n /sys/kernel/slab/kmalloc-2048/alloc_calls | tail -n 2
+> >    1519 nfsd4_create_session+0x24a/0x810 age=189221/25894524/71426273 pid=5372-5436 cpus=0-11,13-16,19-20 nodes=0-1
+> > 3380755 xprt_alloc+0x1e/0x190 age=5/27767270/71441075 pid=6-32599 cpus=0-31 nodes=0-1
+> 
+> Agreed that the xprt_alloc is suspicious, though I don't really
+> understand these statistics.
+> 
+> Since you have 4.1 clients, maybe this would be explained by a leak in
+> the backchannel code.
 
-Callers of pnfs_put_lseg_async() might encounter no writes to
-be committed, etc. As such, do not attempt to add work if none
-is needed. Also, don't oops if that is the case.
+We've set clients to use 4.0 and it only made the problem worse; the growth in
+unreclaimable memory was faster.
 
-Signed-off-by: Tom Haynes <loghyr@primarydata.com>
----
- fs/nfs/pnfs.c | 3 +++
- 1 file changed, 3 insertions(+)
+> It could certainly still be worth testing 3.17 if possible.
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 76de7f5..08b1060 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -373,6 +373,9 @@ static void pnfs_put_lseg_async_work(struct work_struct *work)
- void
- pnfs_put_lseg_async(struct pnfs_layout_segment *lseg)
- {
-+	if (!lseg)
-+		return;
-+
- 	INIT_WORK(&lseg->pls_work, pnfs_put_lseg_async_work);
- 	schedule_work(&lseg->pls_work);
- }
--- 
-1.9.3
+We tested it and it SEEMS the problem doesn't appear in 3.17.1; the SUnreclaim
+value oscillates up and down as usual, instead of increasing monotonically.
+However it didn't last long enough for us to get conclusive numbers because
+after about 5-6h the machine fills the screen with "NMI watchdog CPU #... is
+locked for more than 22s". It spits these messages for many cores at once, and
+becomes unresponsive; we have to reboot it from the console with alt+sysreq.
 
+Do these 2 new pieces of info give a clue?
