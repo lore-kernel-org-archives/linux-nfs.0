@@ -1,54 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:41012 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751340AbaJPTiX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Oct 2014 15:38:23 -0400
-Received: by mail-ie0-f173.google.com with SMTP id tp5so4174555ieb.18
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Oct 2014 12:38:22 -0700 (PDT)
-Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
-        by mx.google.com with ESMTPSA id z131sm3539052iod.32.2014.10.16.12.38.22
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 16 Oct 2014 12:38:22 -0700 (PDT)
-Subject: [PATCH v1 01/16] xprtrdma: Return an errno from
- rpcrdma_register_external()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Date: Thu, 16 Oct 2014 15:38:21 -0400
-Message-ID: <20141016193821.13414.10228.stgit@manet.1015granger.net>
-In-Reply-To: <20141016192919.13414.3151.stgit@manet.1015granger.net>
-References: <20141016192919.13414.3151.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:43522 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752143AbaJ1NQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Oct 2014 09:16:55 -0400
+From: Eryu Guan <eguan@redhat.com>
+To: fstests@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Eryu Guan <eguan@redhat.com>
+Subject: [PATCH 2/4] common: add _require_block_device() helper
+Date: Tue, 28 Oct 2014 21:16:09 +0800
+Message-Id: <1414502171-10319-3-git-send-email-eguan@redhat.com>
+In-Reply-To: <1414502171-10319-1-git-send-email-eguan@redhat.com>
+References: <1414502171-10319-1-git-send-email-eguan@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The RPC/RDMA send_request method and the chunk registration code
-expects an errno from the registration function. This allows
-the upper layers to distinguish between a recoverable failure
-(for example, temporary memory exhaustion) and a hard failure
-(for example, a bug in the registration logic).
+Add _require_block_device() helper and use it in _require_dm_flakey()
+and generic/076.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+_require_dm_flakey() assumes $SCRATCH_DEV is a block device, now it can
+also be a NFS export.
+
+generic/076 does "cat $SCRATCH_DEV" which will fail when testing on NFS.
+
+Signed-off-by: Eryu Guan <eguan@redhat.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ common/rc         | 15 +++++++++++++++
+ tests/generic/076 |  1 +
+ 2 files changed, 16 insertions(+)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 61c4129..6ea2942 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1918,10 +1918,10 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 		break;
- 
- 	default:
--		return -1;
-+		return -EIO;
- 	}
- 	if (rc)
--		return -1;
-+		return rc;
- 
- 	return nsegs;
+diff --git a/common/rc b/common/rc
+index 8738da7..42f00cb 100644
+--- a/common/rc
++++ b/common/rc
+@@ -1237,10 +1237,25 @@ _require_command()
+     [ -n "$1" -a -x "$1" ] || _notrun "$_cmd utility required, skipped this test"
  }
+ 
++# this test requires the device to be valid block device
++# $1 - device
++_require_block_device()
++{
++	if [ -z "$1" ]; then
++		echo "Usage: _require_block_device <dev>" 1>&2
++		exit 1
++	fi
++	if [ "`_is_block_dev $SCRATCH_DEV`" == "" ]; then
++		_notrun "require $1 to be valid block disk"
++	fi
++}
++
+ # this test requires the device mapper flakey target
+ #
+ _require_dm_flakey()
+ {
++    # require SCRATCH_DEV to be a valid block device
++    _require_block_device $SCRATCH_DEV
+     _require_command $DMSETUP_PROG
+ 
+     modprobe dm-flakey >/dev/null 2>&1
+diff --git a/tests/generic/076 b/tests/generic/076
+index 02af762..aa0aae0 100755
+--- a/tests/generic/076
++++ b/tests/generic/076
+@@ -56,6 +56,7 @@ _supported_fs generic
+ _supported_os IRIX Linux
+ 
+ _require_scratch
++_require_block_device $SCRATCH_DEV
+ 
+ echo "*** init fs"
+ 
+-- 
+1.8.3.1
 
