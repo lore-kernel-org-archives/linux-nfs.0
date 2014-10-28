@@ -1,46 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:9213 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:36991 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932071AbaJVTsG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Oct 2014 15:48:06 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS: SEEK is an NFS v4.2 feature
-Date: Wed, 22 Oct 2014 15:48:02 -0400
-Message-ID: <1414007282-2358-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1751153AbaJ1VYm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Oct 2014 17:24:42 -0400
+Date: Tue, 28 Oct 2014 17:24:41 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 0/2] NFSD: Add v4.2 SEEK support
+Message-ID: <20141028212441.GK32743@fieldses.org>
+References: <1411754307-18457-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <20140926215431.GI27412@fieldses.org>
+ <CAFX2Jfm2pDmz7vKPVNe8yZScVT-MvVD=+AsfOgdrPfKwgaLTXw@mail.gmail.com>
+ <20141028210700.GI32743@fieldses.org>
+ <545005EC.9030505@Netapp.com>
+ <20141028211727.GJ32743@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141028211727.GJ32743@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Somehow the nfs_v4_1_minor_ops had the NFS_CAP_SEEK flag set, enabling
-SEEK over v4.1.  This is wrong, and can make servers crash.
+On Tue, Oct 28, 2014 at 05:17:28PM -0400, J. Bruce Fields wrote:
+> On Tue, Oct 28, 2014 at 05:09:00PM -0400, Anna Schumaker wrote:
+> > On 10/28/2014 05:07 PM, J. Bruce Fields wrote:
+> > > On Tue, Sep 30, 2014 at 01:00:24PM -0400, Anna Schumaker wrote:
+> > >> I'm testing with xfstests #285.  It's an lseek specific test, and helped
+> > >> find a few edge cases during development.
+> > > 
+> > > Any hints?  I did basically:
+> > > 
+> > > 	yum install xfsprogs-devel libattr-devel libacl-devel
+> > > 	git clone git://oss.sgi.com/xfs/cmds/xfstests.git
+> > > 	cd xfstests
+> > > 	make
+> > > 	make install
+> > > 	cat >local.config <<EOF
+> > > 	FSTYP=nfs
+> > > 	TEST_DEV=f20-1:/exports/xfs/xfstests
+> > > 	TEST_DIR=/mnt
+> > > 	NFS_MOUNT_OPTIONS='-overs=4.2,sec=sys'
+> > 
+> > Try setting TEST_FS_MOUNT_OPTIONS instead of NFS_MOUNT_OPTIONS.
+> 
+> No change.--b.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs4proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+(But TEST_FS_MOUNT_OPTS works.  How was I supposed to figure that out?)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 405bd95..07b041a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8409,7 +8409,6 @@ static const struct nfs4_minor_version_ops nfs_v4_1_minor_ops = {
- 		| NFS_CAP_POSIX_LOCK
- 		| NFS_CAP_STATEID_NFSV41
- 		| NFS_CAP_ATOMIC_OPEN_V1
--		| NFS_CAP_SEEK,
- 	.init_client = nfs41_init_client,
- 	.shutdown_client = nfs41_shutdown_client,
- 	.match_stateid = nfs41_match_stateid,
-@@ -8432,6 +8431,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
- 		| NFS_CAP_POSIX_LOCK
- 		| NFS_CAP_STATEID_NFSV41
- 		| NFS_CAP_ATOMIC_OPEN_V1,
-+		| NFS_CAP_SEEK,
- 	.init_client = nfs41_init_client,
- 	.shutdown_client = nfs41_shutdown_client,
- 	.match_stateid = nfs41_match_stateid,
--- 
-2.1.2
-
+--b.
