@@ -1,116 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f179.google.com ([209.85.220.179]:63397 "EHLO
-	mail-vc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752781AbaJFPTt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Oct 2014 11:19:49 -0400
-Received: by mail-vc0-f179.google.com with SMTP id im17so3235783vcb.24
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Oct 2014 08:19:48 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:50695 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750727AbaJ1T3q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Oct 2014 15:29:46 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s9SJTk6H014166
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Oct 2014 15:29:46 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s9SJTjwh007618
+	for <linux-nfs@vger.kernel.org>; Tue, 28 Oct 2014 15:29:45 -0400
+Message-ID: <544FEEA9.9050009@RedHat.com>
+Date: Tue, 28 Oct 2014 15:29:45 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <5432B2C1.7090901@gmail.com>
-References: <54131DFE.9020708@gmail.com>
-	<CAHQdGtRVfNQs7bBDbY8yH2Fzq3MyFyBBxbuTDH63w6WTqs4zPQ@mail.gmail.com>
-	<5432B2C1.7090901@gmail.com>
-Date: Mon, 6 Oct 2014 11:19:48 -0400
-Message-ID: <CAHQdGtRcbBwYceKuEYLRXGi9RxGt0Y76MZcSSY=nQmdBVKreJA@mail.gmail.com>
-Subject: Re: NFSv4 O_DIRECT with 3.16.2 kernel issue (qemu kvm cache=none /
- RHEL5 guest)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Zdenek Kaspar <zkaspar82@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsidmap.map: Add more global variables to the map.
+References: <1414521607-8426-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1414521607-8426-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 6, 2014 at 11:18 AM, Zdenek Kaspar <zkaspar82@gmail.com> wrote:
-> On 09/12/2014 06:31 PM, Trond Myklebust wrote:
->> On Fri, Sep 12, 2014 at 12:23 PM, Zdenek Kaspar <zkaspar82@gmail.com> wrote:
->>> Hello everyone, got this specific problem with RHEL5 guest under KVM
->>> hypervisor.
->>>
->>> client/server kernel version: 3.16.2
->>>
->>> /etc/exports: rw,async,no_subtree_check,no_root_squash
->>> /proc/mounts: nfs4 rw,relatime,vers=4.0,rsize=524288,wsize=524288,
->>>               namlen=255,hard,proto=tcp,port=0,
->>>               timeo=600,retrans=2,sec=sys,clientaddr=xxx.xxx.xxx.xxx,
->>>               local_lock=none,addr=xxx.xxx.xxx.yyy 0 0
->>>
->>> CONFIG_NFS_FS=m
->>> # CONFIG_NFS_V2 is not set
->>> CONFIG_NFS_V3=m
->>> # CONFIG_NFS_V3_ACL is not set
->>> CONFIG_NFS_V4=m
->>> # CONFIG_NFS_SWAP is not set
->>> # CONFIG_NFS_V4_1 is not set
->>> # CONFIG_NFS_USE_LEGACY_DNS is not set
->>> CONFIG_NFS_USE_KERNEL_DNS=y
->>> CONFIG_NFSD=m
->>> CONFIG_NFSD_V3=y
->>> # CONFIG_NFSD_V3_ACL is not set
->>> CONFIG_NFSD_V4=y
->>> # CONFIG_NFSD_FAULT_INJECTION is not set
->>> CONFIG_NFS_COMMON=y
->>>
->>> CentOS-5.10-i386-bin-1of8.iso -- did not test everything on centos,
->>> behaved same as RHEL5. So let's use it as VM reproducer:
->>>
->>> dd if=/dev/zero of=kvm-test1.img bs=1M count=2048
->>>
->>> start VM using:
->>> file=kvm-test1.img,cache=writeback,aio=native,if=virtio,boot=on
->>>
->>> create custom layout: /dev/vda1 / ext3 max size primary
->>> unselect Desktop-Gnome, select Customize now
->>> use only: Base System/Base and install it..
->>>
->>> [root@test1 ~]# find / >/dev/null
->>> everything works as expected with writeback
->>>
->>> shutdown, backup kvm-test1.img (fs will explode)
->>> start VM using:
->>> file=kvm-test1.img,cache=none,aio=native,if=virtio,boot=on
->>>
->>> [root@test1 ~]# find / >/dev/null
->>> and check dmesg, reboot etc, ie:
->>> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
->>> directory #460317: rec_len is smaller than minimal - offset=0, inode=0,
->>> rec_len=0, name_len=0
->>> EXT3-fs error (device vda1): htree_dirblock_to_tree: bad entry in
->>> directory #98503: rec_len is smaller than minimal - offset=0, inode=0,
->>> rec_len=0, name_len=0
->>>
->>> Tested locally on ext4, xfs          - WORK
->>> Tested on NFSv4 share with ext4, xfs - FAIL
->>> Tested NFSv4 share sync, async       - FAIL
->>> Tested on NFSv3 share with xfs       - WORK
->>> KVM with qemu rhel-6.5, 2.1.1        - SAME RESULTS
->>>
->>> NOTE: it seems just the rhel5 guest triggers it easily..
->>>
->>> HTH, Z.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> Don't use 3.16.x kernels with NFS yet. There are known bugs in the
->> read/write code that need a stable backport of a set of fixes that are
->> in 3.17-rc.
->>
->>
->
-> Hi Trond, noticed big nfs update that got into -stable, running 3.16.4
-> on both sides and problem is fixed, thx!
->
-> Z.
 
-Cool! Thanks for having tested and for confirming.
 
-Cheers
-  Trond
--- 
-Trond Myklebust
+On 10/28/2014 02:40 PM, Steve Dickson wrote:
+> With the introduction of a symbol version map
+> (commit 045d2e46d) all global variables need to
+> be in the map for the plugins to load correctly
+> 
+> Fixes https://bugzilla.redhat.com/show_bug.cgi?id=1156484
+> 
+> Reported-by: Jeff Layton <jlayton@poochiereds.net>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
 
-Linux NFS client maintainer, PrimaryData
+steved.
 
-trond.myklebust@primarydata.com
+> ---
+>  nfsidmap.map | 4 ++++
+>  1 file changed, 4 insertions(+)
+> 
+> diff --git a/nfsidmap.map b/nfsidmap.map
+> index 540835c..1e7cf7e 100644
+> --- a/nfsidmap.map
+> +++ b/nfsidmap.map
+> @@ -16,6 +16,10 @@ global:
+>  	nfs4_gss_princ_to_ids_ex;
+>  	nfs4_gss_princ_to_grouplist_ex;
+>  	nfs4_set_debug;
+> +	idmap_verbosity;
+> +	idmap_log_func;
+> +	get_default_domain;
+> +	get_local_realms;
+>  local:
+>  	*;
+>  };
+> 
