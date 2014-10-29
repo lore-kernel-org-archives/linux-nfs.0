@@ -1,141 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-2.concepts.nl ([213.197.30.125]:45345 "EHLO
-	smtp-2.concepts.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751366AbaJYUrX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 25 Oct 2014 16:47:23 -0400
-Message-ID: <544B7D9F.1070403@xmsnet.nl>
-Date: Sat, 25 Oct 2014 12:38:23 +0200
-From: Hans de Bruin <jmdebruin@xmsnet.nl>
+Received: from mx1.redhat.com ([209.132.183.28]:50293 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757285AbaJ2X1k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Oct 2014 19:27:40 -0400
+Date: Wed, 29 Oct 2014 19:27:38 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: building upstream nfs-utils on EL6 fails
+In-Reply-To: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com>
+Message-ID: <alpine.LRH.2.11.1410291919090.20279@sh-el6.eng.rdu2.redhat.com>
+References: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com>
 MIME-Version: 1.0
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org
-Subject: Re: 3.17.0+ files disappearing after playing old dos game on nfsroot
- laptop
-References: <543ED24D.4070905@xmsnet.nl> <5443F5A1.1050004@xmsnet.nl>	<544A7933.3010702@xmsnet.nl> <544A7D5C.5060804@xmsnet.nl> <871tpx1gcx.fsf@x220.int.ebiederm.org>
-In-Reply-To: <871tpx1gcx.fsf@x220.int.ebiederm.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: MULTIPART/MIXED; BOUNDARY="168445344-1625450250-1414625258=:20279"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/24/2014 08:18 PM, Eric W. Biederman wrote:
-> Hans de Bruin <jmdebruin@xmsnet.nl> writes:
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
+
+--168445344-1625450250-1414625258=:20279
+Content-Type: TEXT/PLAIN; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 8BIT
+
+Hi Chuck, I'll jump in here if you don't mind.
+
+How's this work for missing keyctl_invalidate:
+
+diff --git a/configure.ac b/configure.ac
+index 59fd14d..8295bed 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -270,6 +270,9 @@ AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
+
+  AC_CHECK_LIB([dl], [dlclose], [LIBDL="-ldl"])
+
++AC_CHECK_LIB([keyutils], [keyctl_invalidate], ,[
++       AC_DEFINE([MISSING_KEYCTL_INVALIDATE], [1], [Define to use
+keyctl_revoke instead])])
++
+  if test "$enable_nfsv4" = yes; then
+    dnl check for libevent libraries and headers
+    AC_LIBEVENT
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index e0d31e7..ab4b10c 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -14,6 +14,7 @@
+  #include <unistd.h>
+  #include "xlog.h"
+  #include "conffile.h"
++#include "config.h"
+
+  int verbose = 0;
+  char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key
+desc]";
+@@ -23,6 +24,10 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] ||
+[-t timeout] key desc]";
+  #define USER  1
+  #define GROUP 0
+
++#ifdef MISSING_KEYCTL_INVALIDATE
++#define keyctl_invalidate(key) keyctl_revoke(key)
++#endif
++
+  #define PROCKEYS "/proc/keys"
+  #ifndef DEFAULT_KEYRING
+  #define DEFAULT_KEYRING "id_resolver"
+
+^^^ that's a little ugly -- it doesn't try to figure out what should be
+done in the kernel to clean up keys.  It assumes that if your
+libkeyutils has keyctl_invalidate then that's what you should use.
+
+EL6 systems should be able to do both the request-key (nfsidmap)
+and the rpc.idmapd upcall.  I believe that EL6 kernels try both - if the
+nfsidmap request-key doesn't work they fall back to the upcall, however
+the nfsidmap request-key interface really is the one that should be
+used.
+
+Ben
+
+On Wed, 29 Oct 2014, Chuck Lever wrote:
+
+> Hi Steve-
 >
->> On 10/19/2014 07:32 PM, Hans de Bruin wrote:
->>> On 10/15/2014 10:00 PM, Hans de Bruin wrote:
->>>> After playing an old dos game i am missing files on my nfsroot installed
->>>> laptop. Which one, wel /bin/ls is at least one of them. After a reboot
->>>> there all back again.  But not al is well. Some icons on my kde panel
->>>> where gone. I have seen this twice in the last day's
->>>>
->>>
->>> The problem appears immediately after starting dosemu so this bisectable
->>>
->>
->>
->> My bisect ended here:
->>
->> commit 8ed936b5671bfb33d89bc60bdcc7cf0470ba52fe
->> Author: Eric W. Biederman <ebiederman@twitter.com>
->> Date:   Tue Oct 1 18:33:48 2013 -0700
->>
->>
->>       vfs: Lazily remove mounts on unlinked files and directories.
->>
->>
->> I haven reverted it yet.
->>
->>
->>
->> Eric,
->>
->> Immediately after starting dosemu all files under mount point /usr are
->> gone. When I play a old dos game for a while (binaries are under /home)
->> even /bin/ls disappears. Al mounts are nfs, even /.
->>
->> Could you look in to this and cc this to the relevant kernel
->> mailinglist?
+> libtool: link: gcc -Wall -Wextra -Wstrict-prototypes -pipe -D_FILE_OFFSET_BITS=64 -Wp,-D_FORTIFY_SOURCE=2 -Os -Wall -Wextra -pedantic -std=c99 -Wformat=2 -Wmissing-include-dirs -Wunused -Wconversion -Wlogical-op -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wmissing-noreturn -Wshadow -Wunreachable-code -Winline -Wdisabled-optimization -Wstrict-aliasing=2 -Wstrict-overflow=4 -Wstack-protector -fstrict-aliasing -fstrict-overflow -fexceptions -fstack-protector -fasynchronous-unwind-tables -fpie -pie -o nfsidmap nfsidmap.o  /usr/lib64/libnfsidmap.so -ldl -lkeyutils ../../support/nfs/libnfs.a
+> nfsidmap.o: In function `key_invalidate':
+> nfsidmap.c:(.text+0x141): undefined reference to `keyctl_invalidate'
+> collect2: ld returned 1 exit status
+> make[2]: *** [nfsidmap] Error 1
+> make[1]: *** [all-recursive] Error 1
+> make: *** [all-recursive] Error 1
+> [cel@dali nfs-utils]$
 >
-> At this point I don't know enough to reproduce this.
-> What does /proc/mounts look like before you start dosemu?
-
-bash-4.2$ cat /proc/mounts
-rootfs / rootfs rw 0 0
-10.10.0.1:/nfs/root/psion_14.1 / nfs 
-rw,relatime,vers=3,rsize=4096,wsize=4096,namlen=255,hard,nolock,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.10.0.1,mountvers=3,mountproto=tcp,local_lock=all,addr=10.10.0.1 
-0 0
-devtmpfs /dev devtmpfs 
-rw,relatime,size=1031016k,nr_inodes=220978,mode=755 0 0
-proc /proc proc rw,relatime 0 0
-sysfs /sys sysfs rw,relatime 0 0
-tmpfs /run tmpfs rw,relatime,mode=755 0 0
-devpts /dev/pts devpts rw,relatime,gid=5,mode=620 0 0
-cgroup /sys/fs/cgroup cgroup rw,relatime,cpu 0 0
-/dev/shm /tmp tmpfs rw,relatime,size=524288k 0 0
-/dev/shm /dev/shm tmpfs rw,relatime,size=524288k 0 0
-nfs:/nfs/usr/slackware-14.1/usr /usr nfs 
-ro,relatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.10.0.1,mountvers=3,mountport=38337,mountproto=udp,local_lock=none,addr=10.10.0.1 
-0 0
-nfs:/nfs/home /home nfs 
-rw,relatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.10.0.1,mountvers=3,mountport=38337,mountproto=udp,local_lock=none,addr=10.10.0.1 
-0 0
-nfs:/nfs/mp3 /mp3 nfs 
-rw,relatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.10.0.1,mountvers=3,mountport=38337,mountproto=udp,local_lock=none,addr=10.10.0.1 
-0 0
-nfs:/nfs/src /usr/src nfs 
-rw,relatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.10.0.1,mountvers=3,mountport=38337,mountproto=udp,local_lock=none,addr=10.10.0.1 
-0 0
-nfs:/nfs/video /video nfs 
-rw,relatime,vers=3,rsize=262144,wsize=262144,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.10.0.1,mountvers=3,mountport=38337,mountproto=udp,local_lock=none,addr=10.10.0.1 
-0 0
-
-I now know why I do not see any file in /usr after running dosemu. The 
-whole /usr mount disappears in /proc/mounts. When I remount it I have a 
-usable laptop again. Running dosemu a second time does not remove the 
-mount again. In the mean time I have seen /usr disappear after running 
-other programs like xterm and firefox. But until now never after 
-remouting it.
-
+> I think this could be due to
 >
-> My expectation is that you should only see this if the mount points are
-> removed on the nfs server (which does not sound like it is the case).
-
-This is a at home environment with a nfs server in the meter cupboard. I 
-have not changed the exports.
-
-
-> Although a transient malfunction of the nfs server or misplaced call to
-> check_submounts_and_drop could cause mounts to disappear as well.
-> During testing autofs was observed to have an inappropriate call
-
-I am not using autofs
-
-> to d_invalidate and it is unlikely but possible something like
-> that is going on with nfs as well.
+> commit 2ae0763a618d30037ebb2520f6292f80d838a440
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Tue Mar 25 10:56:58 2014 -0400
 >
-> Are your nfs mounts read-only or read-write?
-
-/usr is mounted ro and exported ro
-
+>    nfsidmap: Keys need to be invalidated instead of revoked
 >
-> What is your nfs-server and what is it exporting?
-> Which distro are you running?
-
-The nfs-server is slackware64 14.0 with a 3.4 kernel
-part from exports:
-/nfs/usr       -ro,async,no_subtree_check 10.10.0.0/16
-
-The laptop is slackware(32 bit) 14.1 with yesterday's linus kernel
-
-> Which version of dosemu are you running?
-
-1.4.0.8
-
-> How is dosemu configured to access files on your filesystem?
-
-I do not understand what you mean by this. It uses ~/.dosemu/drive_c
-
--- 
-Hans
-
-
+> Probably need to have some autoconf logic to pick which keyctl_
+> API is available on the build system.
+>
+> But I’d like to run recent kernels on EL6 systems. It looks like
+> the current upstream kernel ID mapping interface isn’t compatible
+> with the EL6 user space (/usr/sbin/nfsidmap).
+>
+> I see both sets of infrastructure on EL6: nfsidmap is installed
+> and so is rpc.idmapd. Which one is supposed to be used?
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+--168445344-1625450250-1414625258=:20279--
