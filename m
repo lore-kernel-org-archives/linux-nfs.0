@@ -1,134 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f180.google.com ([209.85.220.180]:60622 "EHLO
-	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752462AbaJGNgN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Oct 2014 09:36:13 -0400
-Received: by mail-vc0-f180.google.com with SMTP id le20so4732199vcb.39
-        for <linux-nfs@vger.kernel.org>; Tue, 07 Oct 2014 06:36:12 -0700 (PDT)
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:36450 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933701AbaJ2OV1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Oct 2014 10:21:27 -0400
+Received: by mail-qg0-f52.google.com with SMTP id a108so2262195qge.25
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Oct 2014 07:21:26 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 29 Oct 2014 10:21:23 -0400
+To: netdev@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Bruce Fields <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: nfs stalls over loopback interface (no sk_data_ready events?)
+Message-ID: <20141029102123.58f6c960@tlielax.poochiereds.net>
+In-Reply-To: <20141027152900.4e81a9d5@tlielax.poochiereds.net>
+References: <20141027152900.4e81a9d5@tlielax.poochiereds.net>
 MIME-Version: 1.0
-In-Reply-To: <alpine.LRH.2.11.1410070849050.8059@sh-el6.eng.rdu2.redhat.com>
-References: <ACC0FF8A2EDF4D42AC55DCCCC7FC1E0E30845CB8@MAIL01.fnal.gov>
-	<alpine.LRH.2.11.1410070849050.8059@sh-el6.eng.rdu2.redhat.com>
-Date: Tue, 7 Oct 2014 09:36:12 -0400
-Message-ID: <CAHQdGtRF+_yJKiWHKTmZZ1gx3Y9LsSk62EtZNjkZFPOr5u=vYw@mail.gmail.com>
-Subject: Re: Linux NFSv4 security issue: client presents wrong user's
- credentials to NFS server
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: "Andrew J. Romero" <romero@fnal.gov>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Michael K. Rosier" <mrosier@fnal.gov>,
-        Briant S Lawson <blawson@fnal.gov>,
-        Joseph W Klemencic <jklemenc@fnal.gov>,
-        Lynn A Garren <garren@fnal.gov>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 7, 2014 at 9:10 AM, Benjamin Coddington <bcodding@redhat.com> wrote:
-> On Tue, 7 Oct 2014, Andrew J. Romero wrote:
->
->> Hi
->>
->> It is common in certain cases for
->> a Linux workstation administrator to
->> create a shared account with a
->> corresponding .k5login file.
->>
->> Kerberos principal strings for users
->> are added to the .k5login and the corresponding
->> users can logon as the local shared account using
->> their Kerberos credentials.
->>
->> Once logged on to the workstation, the user's
->> local identity (local to the workstation) is
->> the UID of the local shared account; however,
->> when accessing kerberized resources external
->> to the workstation (for example NFSv4 volumes),
->> the user's identity is expected to be the
->> individual user's kerberos identity.
->>
->> I am seeing the following serious security issue:
->>
->> If N users (user1@REALM , user2@REALM ...userN@REALM)
->> (who are listed  sharusr's .k5login) all logon to
->> workstation1 as sharusr and are all running sessions
->> simultaneously, then, the GSS Context / kerberos credentials
->> stored in and used by the NFS-client kernel code when
->> processing NFS requests on behalf of a user,
->> will be correct for 1 user and incorrect for N-1 users.
->>
->> Each of the N-1 users will not be able to
->> access NFS server resources that only they have been
->> granted access to; but, they will be able
->> to access all NFS resources that the 1  user
->> has been granted access to. (even if their
->> kerberos identity has not been granted access).
->>
->> Even after each of the N-1 users destroys their credentials
->> they still retain access to all NFS resources
->> that the 1 user has been granted access to.
->> Access will not be denied until the 1 user also destroys
->> his / her credentials.
->>
->> It is my understanding that the RPC GSS kernel module
->> on an NFS client system, keeps a GSS security context
->> (copy of a user's credentials) that it uses when it
->> communicates with the NFS server on the user's behalf.
->>
->> I believe that the kernel security context
->> relates back to the user mode process solely by UID number.
->
->
-> That is correct.
->
->> Would adding session ID to the relation resolve the issue ?
->> Each Session for each user would then have a unique tuple
->> (UID,SessionID) that would map to the *correct* GSS Security
->> context in the kernel.
->
->
-> I think what could be done is to hang gss contexts off either session
-> or process keyrings - then each process group would be able to own an
-> identity independently of other processes running with the same UID.
->
-> To do this the gssd upcall could be moved to a request-key mechanism, as
-> there would need to be a way to pass along which krb5 credentials ought
-> to be used to establish the context.  I suppose that if the process
-> already has krb5 credentials in a keyring ccache, those could be used -
-> but I don't think that we could count on always having a keyring ccache
-> available, and the fallback would be to try to guess which ccache to use
-> based on UID as things are today.  There would additionally be the
-> situation where keyring ccaches cannot be used, and the main problem
-> becomes how to have a process tell gssd which credential cache to use.
+On Mon, 27 Oct 2014 15:29:00 -0400
+Jeff Layton <jlayton@primarydata.com> wrote:
 
-The problem with the request key interface is that it is completely
-broken when applied to containers, since it only runs in the global
-init namespace context. Fixing that is a non-trivial exercise; you'd
-have to not only carry a full namespace context with the RPC
-credential, but also somehow apply it to the upcall thread.
+> (sorry for resend -- I got the netdev address wrong)
+> 
+> Sending this to netdev since I think I've now determined that this is
+> not a NFS specific problem. Recently Christoph mentioned that he was
+> seeing stalls when running xfstests generic/075 test on NFS over the
+> loopback interface with v3.18-rc1-ish kernel.
+> 
+> The configuration in this case is the nfs server and client on same box
+> communicating over the lo interface.
+> 
+> Here's are tracepoints from a typical request as it's supposed to work:
+> 
+>        mount.nfs-906   [002] ...1 22711.996969: xprt_transmit: xprt=0xffff8800ce961000 xid=0xa8a34513 status=0
+>             nfsd-678   [000] ...1 22711.997082: svc_recv: rq_xid=0xa8a34513 status=164
+>             nfsd-678   [000] ..s8 22711.997185: xprt_lookup_rqst: xprt=0xffff8800ce961000 xid=0xa8a34513 status=0
+>             nfsd-678   [000] ..s8 22711.997186: xprt_complete_rqst: xprt=0xffff8800ce961000 xid=0xa8a34513 status=140
+>             nfsd-678   [000] ...1 22711.997236: svc_send: rq_xid=0xa8a34513 dropme=0 status=144
+>             nfsd-678   [000] ...1 22711.997236: svc_process: rq_xid=0xa8a34513 dropme=0 status=144
+> 
+> ...basically, we send a request to the server. Server picks it up and
+> sends the reply, and then the client IDs that reply and processes it.
+> This runs along just fine for ~ a minute or so. At some point, the
+> client stops seeing replies come in:
+> 
+>      kworker/2:2-107   [002] ...1 22741.696070: xprt_transmit: xprt=0xffff8800ce961000 xid=0xc3a84513 status=0
+>             nfsd-678   [002] .N.1 22741.696917: svc_recv: rq_xid=0xc3a84513 status=208
+>             nfsd-678   [002] ...1 22741.699890: svc_send: rq_xid=0xc3a84513 dropme=0 status=262252
+>             nfsd-678   [002] ...1 22741.699891: svc_process: rq_xid=0xc3a84513 dropme=0 status=262252
+> 
+> 
+> ...a bit more tracepoint work seems to show that we just stop getting
+> sk_data_ready callbacks on the socket at all. I'm not terribly familiar
+> with the lower-level socket code, so I figured I'd email here and ask...
+> 
+> Anyone have insight into why this might be happening?
+> 
 
-The rpc.gssd model is much easier to manage, since the daemon itself
-is started from the container's local init process.
-
-> Maybe instead of establishing contexts at file access time, they could
-> be established deliberately beforehand with a userspace command that
-> would specify which krb5 credential to use to create the context, and
-> then the context would hang off the process keyrings.  The client could
-> then check to see if there's an existing keyring context, and if so use
-> that, and if not do the upcall.
->
-
-The server is free to drop any GSS session at any time, depending on
-internal resource management requirements. A client must be able to
-recover from that scenario or risk being unable to write back data.
-
-Cheers
-  Trond
+Looks some change that went into -rc2 has fixed the problem for me.
+Christoph, can you confirm that this no longer occurs with -rc2?
 
 -- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Jeff Layton <jlayton@primarydata.com>
