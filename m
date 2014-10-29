@@ -1,69 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f181.google.com ([209.85.212.181]:65032 "EHLO
-	mail-wi0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750928AbaJWQSy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2014 12:18:54 -0400
-Received: by mail-wi0-f181.google.com with SMTP id n3so2438291wiv.14
-        for <linux-nfs@vger.kernel.org>; Thu, 23 Oct 2014 09:18:53 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:46720 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932985AbaJ2Oro (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Oct 2014 10:47:44 -0400
+Date: Wed, 29 Oct 2014 10:47:41 -0400
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: lua extention for wireshak to trace nfs server latencies
+Message-ID: <20141029144741.GA1133@fieldses.org>
+References: <74264531.872138.1414263726250.JavaMail.zimbra@desy.de>
+ <340559201.872226.1414264413792.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtRowHfcy=y656tLGkVBFzSDtx5sLHkvuBTY1=oRX0AqYQ@mail.gmail.com>
-References: <1414079771-2960-1-git-send-email-jack@suse.cz>
-	<CAHQdGtRowHfcy=y656tLGkVBFzSDtx5sLHkvuBTY1=oRX0AqYQ@mail.gmail.com>
-Date: Thu, 23 Oct 2014 19:18:52 +0300
-Message-ID: <CAHQdGtRVyjOowVnJNd30HVWT1jjTOmce6bRkjAbVjH_RiZ0VMw@mail.gmail.com>
-Subject: Re: [PATCH] nfs: Remove dead case from nfs4_map_errors()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <340559201.872226.1414264413792.JavaMail.zimbra@desy.de>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 23, 2014 at 7:16 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> Hi Jan,
->
-> On Thu, Oct 23, 2014 at 6:56 PM, Jan Kara <jack@suse.cz> wrote:
->> NFS4ERR_ACCESS has number 13 and thus is matched and returned
->> immediately at the beginning of nfs4_map_errors() and there's no point
->> in checking it later.
->>
->> Coverity-id: 733891
->> Signed-off-by: Jan Kara <jack@suse.cz>
->> ---
->>  fs/nfs/nfs4proc.c | 2 --
->>  1 file changed, 2 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 405bd95c1f58..f45e6ea1b278 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -158,8 +158,6 @@ static int nfs4_map_errors(int err)
->>                 return -EACCES;
->>         case -NFS4ERR_MINOR_VERS_MISMATCH:
->>                 return -EPROTONOSUPPORT;
->> -       case -NFS4ERR_ACCESS:
->> -               return -EACCES;
->>         case -NFS4ERR_FILE_OPEN:
->>                 return -EBUSY;
->>         default:
->> --
->> 1.8.1.4
->>
->
-> Can you guarantee that EACCES will _always_ take the value 13? I don't
-> think POSIX lists explicit values.
-> The NFSv4 error codes are sometimes based on old Solaris error code
-> values, and so often coincide with the Linux values, but I'm not
-> comfortable yet with the assumption that will always be the case.
->
+On Sat, Oct 25, 2014 at 09:13:33PM +0200, Mkrtchyan, Tigran wrote:
+> recently I was debugging some NFS related issues and
+> needed a tool to trace situations when NFS server is slow.
+> 
+> I created a lua extension for tshark which allows to get
+> such information, but still has the full power of tshark.
+...
+> May be some one need's it as well:  https://github.com/kofemann/wireshark_lua
+> 
+> 
+> P.S.: is it the right place for such posts or there yet another mailing list or wiki?
 
-D'oh... Never mind. I penetrated the fog of jetlag and now I see what
-you are saying...
+I guess I'd be inclined to cross-post such things to nfsv4@ietf.org.  I
+don't know how else to reach implementors across OS's.
 
--- 
-Trond Myklebust
+You're welcome to add things to wiki.linux-nfs.org too.
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+--b.
