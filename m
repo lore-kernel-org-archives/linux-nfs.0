@@ -1,45 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46741 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:37607 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752071AbaJ1NQ7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Oct 2014 09:16:59 -0400
-From: Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-Subject: [PATCH 4/4] generic/277: add _require_attrs
-Date: Tue, 28 Oct 2014 21:16:11 +0800
-Message-Id: <1414502171-10319-5-git-send-email-eguan@redhat.com>
-In-Reply-To: <1414502171-10319-1-git-send-email-eguan@redhat.com>
-References: <1414502171-10319-1-git-send-email-eguan@redhat.com>
+	id S933664AbaJ2PiN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Oct 2014 11:38:13 -0400
+Date: Wed, 29 Oct 2014 11:38:06 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Dan Carpenter <dan.carpenter@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org
+Subject: Re: [patch] SUNRPC: off by one in BUG_ON()
+Message-ID: <20141029153806.GB1133@fieldses.org>
+References: <20141029084416.GC8939@mwanda>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141029084416.GC8939@mwanda>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS doesn't support attr yet, add _require_attrs in generic/277 to avoid
-failure when testing on NFS.
+On Wed, Oct 29, 2014 at 11:44:16AM +0300, Dan Carpenter wrote:
+> The m->pool_to[] array has "maxpools" number of elements.  It's
+> allocated in svc_pool_map_alloc_arrays() which we called earlier in the
+> function.  This test should be >= instead of >.
+> 
+> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> ---
+> This is very old code, but hopefully the off by one doesn't affect
+> runtime.
 
-Signed-off-by: Eryu Guan <eguan@redhat.com>
----
- tests/generic/277 | 2 ++
- 1 file changed, 2 insertions(+)
+Yeah, doesn't look like a big deal, but thanks, applying for 3.19.--b.
 
-diff --git a/tests/generic/277 b/tests/generic/277
-index 8461ad9..39ebdc3 100755
---- a/tests/generic/277
-+++ b/tests/generic/277
-@@ -38,11 +38,13 @@ trap "_cleanup ; exit \$status" 0 1 2 3 15
- # get standard environment, filters and checks
- . ./common/rc
- . ./common/filter
-+. ./common/attr
- 
- # real QA test starts here
- _supported_fs generic
- _supported_os Linux
- _require_scratch
-+_require_attrs
- 
- _scratch_mkfs > /dev/null 2>&1
- _scratch_mount
--- 
-1.8.3.1
-
+> 
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index ca8a795..349c98f 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -189,7 +189,7 @@ svc_pool_map_init_percpu(struct svc_pool_map *m)
+>  		return err;
+>  
+>  	for_each_online_cpu(cpu) {
+> -		BUG_ON(pidx > maxpools);
+> +		BUG_ON(pidx >= maxpools);
+>  		m->to_pool[cpu] = pidx;
+>  		m->pool_to[pidx] = cpu;
+>  		pidx++;
