@@ -1,39 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59776 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752010AbaJWHfA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2014 03:35:00 -0400
-Date: Thu, 23 Oct 2014 00:34:57 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Tom Haynes <thomas.haynes@primarydata.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] nfsd4: fix response size estimation for OP_SEQUENCE
-Message-ID: <20141023073457.GA18399@infradead.org>
-References: <20141017212446.GC3474@fieldses.org>
- <20141021103631.GB21863@infradead.org>
- <20141021131406.GE9863@fieldses.org>
- <20141022192258.GB5552@fieldses.org>
- <20141022194257.GC5552@fieldses.org>
- <57662446-E474-4420-84F5-349B6B85119F@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:31996 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756730AbaJ2TcN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Oct 2014 15:32:13 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <fstests@vger.kernel.org>, <hch@infradead.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH] common:  Fixes for testing NFS over IPv6
+Date: Wed, 29 Oct 2014 15:32:07 -0400
+Message-ID: <1414611127-14246-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <57662446-E474-4420-84F5-349B6B85119F@primarydata.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 22, 2014 at 01:12:12PM -0700, Tom Haynes wrote:
-> > That means that if a revision of the 4.2 draft adds a new operation
-> > beyond the current end (OP_WRITE_SAME = 70), a client would need to be
-> > prepared for old servers returning OP_ILLEGAL to that operation.
-> > 
-> 
-> Or if the new minor versioning rules take effect...
+When testing NFS over IPv6, the user will set a $TEST_DEV of the form
+[fe80::42]:/export.  The use of square brackets surrounding the IPv6
+address is an accepted convention, but grep and awk think that our IPv6
+address is actually a regex and tries to evaluate it instead.  The
+result is that xfstests reports our filesystem "is busy or already
+mounted".
 
-I guess that's a good reason to start future proofing clients to treat
-OP_ILLEGAL the same as NFS4ERR_NOTSUP.
+This patch fixes the IPv6 problem by telling awk and grep to treat
+$TEST_DEV as a fixed string rather than a regex.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ common/rc | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/common/rc b/common/rc
+index 747cf72..5f24eb0 100644
+--- a/common/rc
++++ b/common/rc
+@@ -810,13 +810,13 @@ _df_device()
+     fi
+ 
+     $DF_PROG 2>/dev/null | $AWK_PROG -v what=$1 '
+-        match($1,what) && NF==1 {
++        ($1==what) && (NF==1) {
+             v=$1
+             getline
+             print v, $0
+             exit
+         }
+-        match($1,what) {
++        ($1==what) {
+             print
+             exit
+         }
+@@ -1132,10 +1132,10 @@ _require_test()
+     esac
+ 
+     # mounted?
+-    if _mount | grep -q $TEST_DEV
++    if _mount | grep -F -q $TEST_DEV
+     then
+         # if it's mounted, make sure its on $TEST_DIR
+-        if ! _mount | grep $TEST_DEV | grep -q $TEST_DIR
++        if ! _mount | grep -F $TEST_DEV | grep -q $TEST_DIR
+         then
+             echo "\$TEST_DEV is mounted but not on \$TEST_DIR - aborting"
+             exit 1
+-- 
+2.1.2
 
