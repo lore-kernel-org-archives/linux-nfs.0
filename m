@@ -1,66 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37650 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751390AbaJ1Usf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Oct 2014 16:48:35 -0400
-Date: Tue, 28 Oct 2014 16:48:33 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna.Schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/2] NFSD: Add ALLOCATE and DEALLOCATE support
-Message-ID: <20141028204833.GH32743@fieldses.org>
-References: <1414161705-26617-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:33601 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754579AbaJ3JDG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Oct 2014 05:03:06 -0400
+Date: Thu, 30 Oct 2014 02:03:06 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Eryu Guan <eguan@redhat.com>
+Cc: fstests@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: nfs atime semantics, was: Re: [PATCH 3/4] common: skip atime related
+ tests on NFS
+Message-ID: <20141030090306.GA23917@infradead.org>
+References: <1414502171-10319-1-git-send-email-eguan@redhat.com>
+ <1414502171-10319-4-git-send-email-eguan@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1414161705-26617-1-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1414502171-10319-4-git-send-email-eguan@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 24, 2014 at 10:41:43AM -0400, Anna.Schumaker@netapp.com wrote:
-> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> 
-> These patches add server support for the ALLOCATE and DEALLOCATE operations
-> part of NFS v4.2.
+On Tue, Oct 28, 2014 at 09:16:10PM +0800, Eryu Guan wrote:
+> >From nfs(5) we can know that atime related mount options have no effect
+> on NFS mounts, so add _require_atime() helper to skip atime tests on NFS
 
-Thanks!
+I' like to use this opportunity to start a discussion on NFS atime
+handlign again, which I think is broken.  I think relatime is perfectly
+fine default semantics for NFS, and not supporting it can cause all
+kidns of application breakage.  Supporting normal atime semantics when
+explicity requested is also something NFS shouldn't sneak out of.
 
-What are you using for testing?
+> Also change the way how _require_relatime() mount $SCRATCH_DEV, use
+> _scratch_mount helper so it's mounted with selinux context, to avoid
+> "same superblock, different selinux context" failure.
 
---b.
+Can you please split this part into a separate patch?
 
-> 
-> I submitted my do_fallocate() -> vfs_fallocate() change as a separate patch,
-> so it has been removed from this submission.  However, this code still depends
-> on this patch being applied first.
-> 
-> Changes in v2:
-> - ALLOCATE and DEALLOCATE can call a common nfsd4_fallocate() to check the
->   stateids, look up the file, and eventually call nfsd4_vfs_fallocate().
-> - I return NFS4ERR_INVAL in the case that vfs_fallocate() returns -ENODEV.
->   Please let me know if there is a better error to return instead!
-> 
-> These patches and the corresponding client changes are available in the
-> [fallocate] branch of:
-> 
-> 	git://git.linux-nfs.org/projects/anna/linux-nfs.git
-> 
-> 
-> Questions?  Comments?  Thoughts?
-> 
-> Anna
-> 
-> 
-> Anna Schumaker (2):
->   nfsd: Add ALLOCATE support
->   nfsd: Add DEALLOCATE support
-> 
->  fs/nfsd/nfs4proc.c | 51 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/nfs4xdr.c  | 21 +++++++++++++++++++--
->  fs/nfsd/vfs.c      | 19 +++++++++++++++++++
->  fs/nfsd/vfs.h      |  2 ++
->  fs/nfsd/xdr4.h     |  9 +++++++++
->  5 files changed, 100 insertions(+), 2 deletions(-)
-> 
-> -- 
-> 2.1.2
-> 
