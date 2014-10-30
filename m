@@ -1,122 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:48667 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756094AbaJXL0r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 07:26:47 -0400
-Received: by mail-qa0-f53.google.com with SMTP id v10so760716qac.12
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Oct 2014 04:26:47 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Fri, 24 Oct 2014 07:26:44 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Jeffrey Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        bfields@fieldses.org
-Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection
- when dropping a request
-Message-ID: <20141024072644.6643f9ed@tlielax.poochiereds.net>
-In-Reply-To: <1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
-References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
-	<1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56892 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932860AbaJ3Pma (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Oct 2014 11:42:30 -0400
+Message-ID: <54525C63.9010003@RedHat.com>
+Date: Thu, 30 Oct 2014 11:42:27 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Benjamin Coddington <bcodding@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: building upstream nfs-utils on EL6 fails
+References: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com> <alpine.LRH.2.11.1410291919090.20279@sh-el6.eng.rdu2.redhat.com> <0953ACF5-C77F-4568-9952-FAF0C126B4AD@oracle.com> <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com>
+In-Reply-To: <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 24 Oct 2014 13:08:28 +0300
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> Both RFC3530 and RFC5661 impose a requirement on the server that it MUST NOT
-> drop a request unless the connection is broken.
+
+On 10/30/2014 10:53 AM, Benjamin Coddington wrote:
 > 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/nfs4proc.c         | 6 ++++++
->  include/linux/sunrpc/svc.h | 1 +
->  net/sunrpc/svc.c           | 4 ++++
->  3 files changed, 11 insertions(+)
+> On Wed, 29 Oct 2014, Chuck Lever wrote:
 > 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index cdeb3cfd6f32..500ac76662a8 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1960,6 +1960,11 @@ static const char *nfsd4_op_name(unsigned opnum)
->  	return "unknown_operation";
->  }
->  
-> +static void nfsd4_dropme(struct svc_rqst *rqstp)
-> +{
-> +	svc_close_xprt(rqstp->rq_xprt);
-> +}
-> +
->  #define nfsd4_voidres			nfsd4_voidargs
->  struct nfsd4_voidargs { int dummy; };
->  
-> @@ -1989,6 +1994,7 @@ struct svc_version	nfsd_version4 = {
->  		.vs_nproc	= 2,
->  		.vs_proc	= nfsd_procedures4,
->  		.vs_dispatch	= nfsd_dispatch,
-> +		.vs_dropme	= nfsd4_dropme,
->  		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
->  		.vs_rpcb_optnl	= 1,
->  };
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 21678464883a..824656da1f6d 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -400,6 +400,7 @@ struct svc_version {
->  	 * vs_dispatch == NULL means use default dispatcher.
->  	 */
->  	int			(*vs_dispatch)(struct svc_rqst *, __be32 *);
-> +	void			(*vs_dropme)(struct svc_rqst *);
->  };
->  
->  /*
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index ca8a7958f4e6..09136abfef26 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -1071,6 +1071,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  	struct svc_version	*versp = NULL;	/* compiler food */
->  	struct svc_procedure	*procp = NULL;
->  	struct svc_serv		*serv = rqstp->rq_server;
-> +	void (*dropme)(struct svc_rqst *rqstp) = NULL;
->  	kxdrproc_t		xdr;
->  	__be32			*statp;
->  	u32			prog, vers, proc;
-> @@ -1151,6 +1152,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  	if (vers >= progp->pg_nvers ||
->  	  !(versp = progp->pg_vers[vers]))
->  		goto err_bad_vers;
-> +	dropme = versp->vs_dropme;
->  
->  	procp = versp->vs_proc + proc;
->  	if (proc >= versp->vs_nproc || !procp->pc_func)
-> @@ -1228,6 +1230,8 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->   dropit:
->  	svc_authorise(rqstp);	/* doesn't hurt to call this twice */
->  	dprintk("svc: svc_process dropit\n");
-> +	if (dropme != NULL)
-> +		dropme(rqstp);
->  	return 0;
->  
->  err_short_len:
+>> Hi Ben-
+>>
+>> On Oct 29, 2014, at 7:27 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
+>>
+>>> Hi Chuck, I'll jump in here if you don't mind.
+>>>
+>>> How's this work for missing keyctl_invalidate:
+>>>
+>>> diff --git a/configure.ac b/configure.ac
+>>> index 59fd14d..8295bed 100644
+>>> --- a/configure.ac
+>>> +++ b/configure.ac
+>>> @@ -270,6 +270,9 @@ AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
+>>>
+>>> AC_CHECK_LIB([dl], [dlclose], [LIBDL="-ldl"])
+>>>
+>>> +AC_CHECK_LIB([keyutils], [keyctl_invalidate], ,[
+>>> +       AC_DEFINE([MISSING_KEYCTL_INVALIDATE], [1], [Define to use
+>>> keyctl_revoke instead])])
+>>
+>> Nit: I would just add
+>>
+>>  AC_CHECK_FUNCS([keyctl_invalidate])
+>>
+>> in aclocal/keyutils.m4 to define HAVE_KEYCTL_INVALIDATE .
+> 
+> Yes, that is better.
+> 
+>>> +
+>>> if test "$enable_nfsv4" = yes; then
+>>>   dnl check for libevent libraries and headers
+>>>   AC_LIBEVENT
+>>> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+>>> index e0d31e7..ab4b10c 100644
+>>> --- a/utils/nfsidmap/nfsidmap.c
+>>> +++ b/utils/nfsidmap/nfsidmap.c
+>>> @@ -14,6 +14,7 @@
+>>> #include <unistd.h>
+>>> #include "xlog.h"
+>>> #include "conffile.h"
+>>> +#include “config.h"
+>>>
+>>> int verbose = 0;
+>>> char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key
+>>> desc]";
+>>> @@ -23,6 +24,10 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] ||
+>>> [-t timeout] key desc]";
+>>> #define USER  1
+>>> #define GROUP 0
+>>>
+>>> +#ifdef MISSING_KEYCTL_INVALIDATE
+>>> +#define keyctl_invalidate(key) keyctl_revoke(key)
+>>> +#endif
+>>> +
+>>> #define PROCKEYS "/proc/keys"
+>>> #ifndef DEFAULT_KEYRING
+>>> #define DEFAULT_KEYRING "id_resolver"
+>>>
+>>> ^^^ that's a little ugly -- it doesn't try to figure out what should be
+>>> done in the kernel to clean up keys.  It assumes that if your
+>>> libkeyutils has keyctl_invalidate then that's what you should use.
+>>
+>> This looks like it fixes the build issue. I think we do
+>> want late-model nfs-utils to build correctly on older
+>> distributions.
+>>
+>> I’m not sure keyctl_revoke and keyctl_invalidate do
+>> precisely the same thing, though? On older systems can
+>> we expect a change from one to the other to have no
+>> impact? (Just beginning to explore this issue).
+> 
+> For EL6 kernels, you should be good with keyctl_revoke.  That's the only
+> thing you can do - there's no key_invalidate.
+> 
+> But on later kernels, you'd want to use key_invalidate. The details of the
+> kernel changes are here:
+> 
+> 0c7774abb41bd00d KEYS: Allow special keys (eg. DNS results) to be
+> invalidated by CAP_SYS_ADMIN
+> 
+> The summary is that permission changes in later kernels cause
+> keyctl_revoke to be unable to clean up keys that are not in possession.
+> This specific commit allows that once more for CAP_SYS_ADMIN, so
+> really, it should work fine if you have this.  However:
+> 
+> keyctl_revoke waits key_gc_timeout to clean up the key, and access
+> attempts return -EKEYREVOKED.
+> 
+> keyctl_invalidate immediately removes all references to the key.
+> 
+> The latter is the preferred operation for nfsidmap, since this code path
+> exists to allow the admin to flush out a specific key from the idmapper
+> cache.
+> 
+> It might be a good idea to just update your libkeyutils along with the kernel
+> and nfs-utils.  Maybe we should make a version dependency for
+> libkeyutils in nfs-utils.  Steve, what do you think?
+Today we have a dependency on keyutils which I thought 
+would take care of this... but looking at the code it
+appears you might have a point... Lets open a bz and 
+take a look at it... 
 
-(cc'ing Bruce too...)
+steved.
 
-I guess the theory here is that the client sent the request, and got a
-TCP ACK and then the server never responded because it dropped the
-request? That sounds plausible and we almost certainly want something
-like the above for v4.0.
-
-If the above patch fixes Christoph's problem with v4.1 though, then I
-think we'll need more investigation into why. I don't see a way to get
-a dropped request with v4.1. Those mainly occur due to interaction with
-the DRC (disabled for v4.1) or with svc_defer (disabled for all v4
-requests).
-
-Is it possible that one of the nfsd threads is just hung while
-processing an RPC and that's why you're not getting a response?
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+> 
+>>> EL6 systems should be able to do both the request-key (nfsidmap)
+>>> and the rpc.idmapd upcall.  I believe that EL6 kernels try both - if the
+>>> nfsidmap request-key doesn't work they fall back to the upcall, however
+>>> the nfsidmap request-key interface really is the one that should be
+>>> used.
+>>
+>> I have several EL6 systems here, and at least one of them
+>> had rpc.idmapd configured off. I couldn’t remember if I had
+>> done that, or it came that way off the installation media.
+> 
+> I think rpc.idmapd being on/off changed a couple of times in EL6.. I
+> don't recall the specifics.
+> 
+>> When installing a newer kernel causes a fallback to rpc.idmapd,
+>> is there any risk of an ID mapper behavior change? Loss of
+>> functionality, for example?
+> 
+> The functionality should be equivalent - I think they end up in the same
+> library after making it through the callout/callup interface.
+> 
+> The newer kernels only do the request-key callout, and rpc.idmapd
+> won't ever be consulted.
+> 
+> Ben
