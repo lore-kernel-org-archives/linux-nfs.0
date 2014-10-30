@@ -1,69 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14279 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:50690 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751789AbaJBQqX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Oct 2014 12:46:23 -0400
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s92GkNwO002743
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Oct 2014 12:46:23 -0400
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s92GkMOi001436
-	for <linux-nfs@vger.kernel.org>; Thu, 2 Oct 2014 12:46:23 -0400
-Message-ID: <542D815E.6010306@RedHat.com>
-Date: Thu, 02 Oct 2014 12:46:22 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1759792AbaJ3Mmm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Oct 2014 08:42:42 -0400
+Message-ID: <5452323F.5010703@Netapp.com>
+Date: Thu, 30 Oct 2014 08:42:39 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Linux NFS Town Hall  meeting: Tomorrow - Thur 10/2/14
-References: <542C69E4.2030707@RedHat.com>
-In-Reply-To: <542C69E4.2030707@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Dave Chinner <david@fromorbit.com>
+CC: <fstests@vger.kernel.org>, <hch@infradead.org>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] common:  Fixes for testing NFS over IPv6
+References: <1414611127-14246-1-git-send-email-Anna.Schumaker@Netapp.com> <20141029233331.GO16186@dastard>
+In-Reply-To: <20141029233331.GO16186@dastard>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This meeting will be starting in 15mins or so...
+On 10/29/2014 07:33 PM, Dave Chinner wrote:
+> On Wed, Oct 29, 2014 at 03:32:07PM -0400, Anna Schumaker wrote:
+>> When testing NFS over IPv6, the user will set a $TEST_DEV of the form
+>> [fe80::42]:/export.  The use of square brackets surrounding the IPv6
+>> address is an accepted convention, but grep and awk think that our IPv6
+>> address is actually a regex and tries to evaluate it instead.  The
+>> result is that xfstests reports our filesystem "is busy or already
+>> mounted".
+>>
+>> This patch fixes the IPv6 problem by telling awk and grep to treat
+>> $TEST_DEV as a fixed string rather than a regex.
+>>
+>> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> 
+> Seems sensible, but it needs comments so that when someone copies
+> the code they know why it's using these sorts of matches.
 
-steved.
+Sure.  I'll add that in, thanks!
 
-On 10/01/2014 04:53 PM, Steve Dickson wrote:
-> Hello,
 > 
-> Its been a while... and we can do some finalizing 
-> on the upcoming BAT...  
+> Cheers,
 > 
-> So the Linux NFS town hall meeting is tomorrow
->    *Thur Oct 2 at 01:00 pm EST (10:00am PST)*
+> Dave.
 > 
-> The usual agenda will apply. The maintainers will give
-> a quick status of what is happening in their worlds.
-> 
-> Next we'll get updates from major contributors on what
-> they have been doing and are planing on doing.
->   
-> Finally, we'll open the floor to questions, comments, 
-> concerns from the community.  
-> 
-> Generally the meeting lasts between 30 to 45 mins, with 
-> a very hard stop at 60mins. 
-> 
-> Please feel to attend and participate!
-> 
-> Time: 10:00 am PST (01:00 pm EST)
-> 
-> The call in numbers are:
-> 
-> U.S. and Canada: (800) 451-8679
-> World wide toll free numbers
->    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-> 
-> Conference code: 564.272.1552
-> 
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
