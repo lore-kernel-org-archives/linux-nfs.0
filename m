@@ -1,38 +1,197 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:8870 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752865AbaJWSBM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Oct 2014 14:01:12 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFS: Use nfs_server_capable() for checknig NFS_CAP_SEEK
-Date: Thu, 23 Oct 2014 14:00:54 -0400
-Message-ID: <1414087254-10130-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from userp1040.oracle.com ([156.151.31.81]:22771 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932611AbaJ3PbO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Oct 2014 11:31:14 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: building upstream nfs-utils on EL6 fails
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com>
+Date: Thu, 30 Oct 2014 11:31:06 -0400
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <88A2F169-8D62-4F15-BAAE-42732903DE46@oracle.com>
+References: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com> <alpine.LRH.2.11.1410291919090.20279@sh-el6.eng.rdu2.redhat.com> <0953ACF5-C77F-4568-9952-FAF0C126B4AD@oracle.com> <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This should make the code easier to maintain in the future.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs42proc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On Oct 30, 2014, at 10:53 AM, Benjamin Coddington <bcodding@redhat.com> wrote:
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 0886f1d..056f5aa 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -50,7 +50,7 @@ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	int status;
- 
--	if (!(server->caps & NFS_CAP_SEEK))
-+	if (!nfs_server_capable(inode, NFS_CAP_SEEK))
- 		return -ENOTSUPP;
- 
- 	status = nfs42_set_rw_stateid(&args.sa_stateid, filep, FMODE_READ);
--- 
-2.1.2
+> 
+> On Wed, 29 Oct 2014, Chuck Lever wrote:
+> 
+>> Hi Ben-
+>> 
+>> On Oct 29, 2014, at 7:27 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
+>> 
+>>> Hi Chuck, I'll jump in here if you don't mind.
+>>> 
+>>> How's this work for missing keyctl_invalidate:
+>>> 
+>>> diff --git a/configure.ac b/configure.ac
+>>> index 59fd14d..8295bed 100644
+>>> --- a/configure.ac
+>>> +++ b/configure.ac
+>>> @@ -270,6 +270,9 @@ AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
+>>> 
+>>> AC_CHECK_LIB([dl], [dlclose], [LIBDL="-ldl"])
+>>> 
+>>> +AC_CHECK_LIB([keyutils], [keyctl_invalidate], ,[
+>>> +       AC_DEFINE([MISSING_KEYCTL_INVALIDATE], [1], [Define to use
+>>> keyctl_revoke instead])])
+>> 
+>> Nit: I would just add
+>> 
+>> AC_CHECK_FUNCS([keyctl_invalidate])
+>> 
+>> in aclocal/keyutils.m4 to define HAVE_KEYCTL_INVALIDATE .
+> 
+> Yes, that is better.
+> 
+>>> +
+>>> if test "$enable_nfsv4" = yes; then
+>>>  dnl check for libevent libraries and headers
+>>>  AC_LIBEVENT
+>>> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+>>> index e0d31e7..ab4b10c 100644
+>>> --- a/utils/nfsidmap/nfsidmap.c
+>>> +++ b/utils/nfsidmap/nfsidmap.c
+>>> @@ -14,6 +14,7 @@
+>>> #include <unistd.h>
+>>> #include "xlog.h"
+>>> #include "conffile.h"
+>>> +#include “config.h"
+>>> 
+>>> int verbose = 0;
+>>> char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key
+>>> desc]";
+>>> @@ -23,6 +24,10 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] ||
+>>> [-t timeout] key desc]";
+>>> #define USER  1
+>>> #define GROUP 0
+>>> 
+>>> +#ifdef MISSING_KEYCTL_INVALIDATE
+>>> +#define keyctl_invalidate(key) keyctl_revoke(key)
+>>> +#endif
+>>> +
+>>> #define PROCKEYS "/proc/keys"
+>>> #ifndef DEFAULT_KEYRING
+>>> #define DEFAULT_KEYRING "id_resolver"
+>>> 
+>>> ^^^ that's a little ugly -- it doesn't try to figure out what should be
+>>> done in the kernel to clean up keys.  It assumes that if your
+>>> libkeyutils has keyctl_invalidate then that's what you should use.
+>> 
+>> This looks like it fixes the build issue. I think we do
+>> want late-model nfs-utils to build correctly on older
+>> distributions.
+>> 
+>> I’m not sure keyctl_revoke and keyctl_invalidate do
+>> precisely the same thing, though? On older systems can
+>> we expect a change from one to the other to have no
+>> impact? (Just beginning to explore this issue).
+> 
+> For EL6 kernels, you should be good with keyctl_revoke.  That's the only
+> thing you can do - there's no key_invalidate.
+> 
+> But on later kernels, you'd want to use key_invalidate.
+
+I realize that EL6 user space is not designed to support
+newer kernels, but some distributions allow continuous
+upgrades of kernels. If the kernel API changes over time,
+then IMO user space tools need to be sensitive to what
+kernel is running.
+
+> The details of the kernel changes are here:
+> 
+> 0c7774abb41bd00d KEYS: Allow special keys (eg. DNS results) to be
+> invalidated by CAP_SYS_ADMIN
+
+I think this means the EL6 nfsidmap no longer works quite
+right when running 3.17. I’m still studying the problem.
+See below.
+
+> The summary is that permission changes in later kernels cause
+> keyctl_revoke to be unable to clean up keys that are not in possession.
+> This specific commit allows that once more for CAP_SYS_ADMIN, so
+> really, it should work fine if you have this.  However:
+> 
+> keyctl_revoke waits key_gc_timeout to clean up the key, and access
+> attempts return -EKEYREVOKED.
+> 
+> keyctl_invalidate immediately removes all references to the key.
+
+This change means keyctl_set_timeout fails, since
+lookup_user_key returns -EKEYREVOKED, for example, when a
+key is revoked instead of invalidated. The key timeouts
+are then set to 0 (the default).
+
+There is at least one other bug which breaks nfsidmap in
+3.13 and newer kernels. I will post a proposed fix later
+today.
+
+> The latter is the preferred operation for nfsidmap, since this code path
+> exists to allow the admin to flush out a specific key from the idmapper
+> cache.
+
+EL6 libkeyutils doesn’t have keyctl_invalidate. That
+seems to be the crux of the problem (for EL6).
+
+> It might be a good idea to just update your libkeyutils along with the kernel
+> and nfs-utils.  Maybe we should make a version dependency for
+> libkeyutils in nfs-utils.  Steve, what do you think?
+
+I don’t know the history of the kernel API, but one
+assumes that 2.6.32-vintage kernels don’t have
+keyctl_invalidate, since it is missing from older
+libkeyutils as well.
+
+I think nfs-utils needs both to build with
+keyctl_invalidate support if that exists on the build
+system, and it needs to pick which of keyctl_revoke
+or keyctl_invalidate it will invoke based on the kernel
+version where it’s running. That’s pretty easy to do
+in nfs-utils.
+
+Is keyctl_revoke expected to go away at some point?
+
+>>> EL6 systems should be able to do both the request-key (nfsidmap)
+>>> and the rpc.idmapd upcall.  I believe that EL6 kernels try both - if the
+>>> nfsidmap request-key doesn't work they fall back to the upcall, however
+>>> the nfsidmap request-key interface really is the one that should be
+>>> used.
+>> 
+>> I have several EL6 systems here, and at least one of them
+>> had rpc.idmapd configured off. I couldn’t remember if I had
+>> done that, or it came that way off the installation media.
+> 
+> I think rpc.idmapd being on/off changed a couple of times in EL6.. I
+> don't recall the specifics.
+
+Makes sense. My EL6 installs are of various vintages.
+
+But that could be a problem when installing a kernel that
+causes nfsidmap to fail because the kernel API has changed.
+Without the fallback in place, ID mapping will not work.
+
+>> When installing a newer kernel causes a fallback to rpc.idmapd,
+>> is there any risk of an ID mapper behavior change? Loss of
+>> functionality, for example?
+> 
+> The functionality should be equivalent - I think they end up in the same
+> library after making it through the callout/callup interface.
+> 
+> The newer kernels only do the request-key callout, and rpc.idmapd
+> won't ever be consulted.
+
+Unless nfsidmap is broken by a new kernel API. :-)
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
