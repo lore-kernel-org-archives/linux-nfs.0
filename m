@@ -1,75 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43522 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752143AbaJ1NQz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Oct 2014 09:16:55 -0400
-From: Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-Subject: [PATCH 2/4] common: add _require_block_device() helper
-Date: Tue, 28 Oct 2014 21:16:09 +0800
-Message-Id: <1414502171-10319-3-git-send-email-eguan@redhat.com>
-In-Reply-To: <1414502171-10319-1-git-send-email-eguan@redhat.com>
-References: <1414502171-10319-1-git-send-email-eguan@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:35898 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755306AbaJ3TAh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Oct 2014 15:00:37 -0400
+Date: Thu, 30 Oct 2014 12:00:35 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: netdev@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Bruce Fields <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: nfs stalls over loopback interface (no sk_data_ready events?)
+Message-ID: <20141030190035.GA23129@infradead.org>
+References: <20141027152900.4e81a9d5@tlielax.poochiereds.net>
+ <20141029102123.58f6c960@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141029102123.58f6c960@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add _require_block_device() helper and use it in _require_dm_flakey()
-and generic/076.
+On Wed, Oct 29, 2014 at 10:21:23AM -0400, Jeff Layton wrote:
+> Looks some change that went into -rc2 has fixed the problem for me.
+> Christoph, can you confirm that this no longer occurs with -rc2?
 
-_require_dm_flakey() assumes $SCRATCH_DEV is a block device, now it can
-also be a NFS export.
+I can't reproduce it anymore on -rc2.
 
-generic/076 does "cat $SCRATCH_DEV" which will fail when testing on NFS.
 
-Signed-off-by: Eryu Guan <eguan@redhat.com>
----
- common/rc         | 15 +++++++++++++++
- tests/generic/076 |  1 +
- 2 files changed, 16 insertions(+)
+However:
 
-diff --git a/common/rc b/common/rc
-index 8738da7..42f00cb 100644
---- a/common/rc
-+++ b/common/rc
-@@ -1237,10 +1237,25 @@ _require_command()
-     [ -n "$1" -a -x "$1" ] || _notrun "$_cmd utility required, skipped this test"
- }
- 
-+# this test requires the device to be valid block device
-+# $1 - device
-+_require_block_device()
-+{
-+	if [ -z "$1" ]; then
-+		echo "Usage: _require_block_device <dev>" 1>&2
-+		exit 1
-+	fi
-+	if [ "`_is_block_dev $SCRATCH_DEV`" == "" ]; then
-+		_notrun "require $1 to be valid block disk"
-+	fi
-+}
-+
- # this test requires the device mapper flakey target
- #
- _require_dm_flakey()
- {
-+    # require SCRATCH_DEV to be a valid block device
-+    _require_block_device $SCRATCH_DEV
-     _require_command $DMSETUP_PROG
- 
-     modprobe dm-flakey >/dev/null 2>&1
-diff --git a/tests/generic/076 b/tests/generic/076
-index 02af762..aa0aae0 100755
---- a/tests/generic/076
-+++ b/tests/generic/076
-@@ -56,6 +56,7 @@ _supported_fs generic
- _supported_os IRIX Linux
- 
- _require_scratch
-+_require_block_device $SCRATCH_DEV
- 
- echo "*** init fs"
- 
--- 
-1.8.3.1
+generic/133 fails fairly reliably with:
+
+	 Buffered writer, buffered reader
+	+pread64: Device or resource busy
+
 
