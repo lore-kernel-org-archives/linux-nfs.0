@@ -1,177 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16440 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752345AbaJTOEr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Oct 2014 10:04:47 -0400
-Message-ID: <5445167D.9050401@Netapp.com>
-Date: Mon, 20 Oct 2014 10:04:45 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1 03/16] SUNRPC: Pass callsize and recvsize to buf_alloc
- as separate arguments
-References: <20141016192919.13414.3151.stgit@manet.1015granger.net> <20141016193838.13414.12691.stgit@manet.1015granger.net>
-In-Reply-To: <20141016193838.13414.12691.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:42906 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758772AbaJaOtS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Oct 2014 10:49:18 -0400
+Received: by mail-ie0-f182.google.com with SMTP id rd18so1427756iec.13
+        for <linux-nfs@vger.kernel.org>; Fri, 31 Oct 2014 07:49:17 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: WARNING at fs/nfs/write.c:743 nfs_inode_remove_request with -rc6
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20141020135736.GB20301@arm.com>
+Date: Fri, 31 Oct 2014 10:49:13 -0400
+Cc: Peng Tao <tao.peng@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Message-Id: <FE0552AE-5243-44D3-B661-B622C2D957C0@primarydata.com>
+References: <2A327753-3E60-46AC-8220-3FF0FF61F08F@primarydata.com> <20140923135938.GB28608@arm.com> <20140923145356.GD28608@arm.com> <5294BEB2-F20F-4E3E-BFB2-E41806A4F85A@primarydata.com> <FA11FBE3-42E7-46B9-B9DA-FAE368DCE96B@primarydata.com> <F632C770-3E3D-4FC5-BBF3-69BB1CCA8F0D@primarydata.com> <20140923152558.GG28608@arm.com> <20140925171545.GR20043@arm.com> <78B8153D-59B7-4DBE-8472-D83338F04338@primarydata.com> <6111EECC-C8C1-4605-98AD-0AF0E1B6DA59@primarydata.com> <20141020135736.GB20301@arm.com>
+To: Will Deacon <will.deacon@arm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/16/14 15:38, Chuck Lever wrote:
-> I noticed that on RDMA, NFSv4 operations were using "hardway"
-> allocations much more than not. A "hardway" allocation uses GFP_NOFS
-> during each RPC to allocate the XDR buffer, instead of using a
-> pre-allocated pre-registered buffer for each RPC.
->
-> The pre-allocated buffers are 2200 bytes in length.  The requested
-> XDR buffer sizes looked like this:
->
->     GETATTR: 3220 bytes
->     LOOKUP:  3612 bytes
->     WRITE:   3256 bytes
->     OPEN:    6344 bytes
->
-> But an NFSv4 GETATTR RPC request should be small. It's the reply
-> part of GETATTR that can grow large.
->
-> call_allocate() passes a single value as the XDR buffer size: the
-> sum of call and reply buffers. However, the xprtrdma transport
-> allocates its XDR request and reply buffers separately.
->
-> xprtrdma needs to know the maximum call size, as guidance for how
-> large the outgoing request is going to be and how the NFS payload
-> will be marshalled into chunks.
->
-> But RDMA XDR reply buffers are pre-posted, fixed-size buffers, not
-> allocated by xprt_rdma_allocate().
->
-> Because of the sum passed through ->buf_alloc(), xprtrdma's
-> ->buf_alloc() always allocates more XDR buffer than it will ever
-> use. For NFSv4, it is unnecessarily triggering the slow "hardway"
-> path for almost every RPC.
->
-> Pass the call and reply buffer size values separately to the
-> transport's ->buf_alloc method.  The RDMA transport ->buf_alloc can
-> now ignore the reply size, and allocate just what it will use for
-> the call buffer.  The socket transport ->buf_alloc can simply add
-> them together, as call_allocate() did before.
->
-> With this patch, an NFSv4 GETATTR request now allocates a 476 byte
-> RDMA XDR buffer. I didn't see a single NFSv4 request that did not
-> fit into the transport's pre-allocated XDR buffer.
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  include/linux/sunrpc/sched.h    |    2 +-
->  include/linux/sunrpc/xprt.h     |    3 ++-
->  net/sunrpc/clnt.c               |    4 ++--
->  net/sunrpc/sched.c              |    6 ++++--
->  net/sunrpc/xprtrdma/transport.c |    2 +-
->  net/sunrpc/xprtsock.c           |    3 ++-
->  6 files changed, 12 insertions(+), 8 deletions(-)
->
-> diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-> index 1a89599..68fa71d 100644
-> --- a/include/linux/sunrpc/sched.h
-> +++ b/include/linux/sunrpc/sched.h
-> @@ -232,7 +232,7 @@ struct rpc_task *rpc_wake_up_first(struct rpc_wait_queue *,
->  					void *);
->  void		rpc_wake_up_status(struct rpc_wait_queue *, int);
->  void		rpc_delay(struct rpc_task *, unsigned long);
-> -void *		rpc_malloc(struct rpc_task *, size_t);
-> +void		*rpc_malloc(struct rpc_task *, size_t, size_t);
->  void		rpc_free(void *);
->  int		rpciod_up(void);
->  void		rpciod_down(void);
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index fcbfe87..632685c 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -124,7 +124,8 @@ struct rpc_xprt_ops {
->  	void		(*rpcbind)(struct rpc_task *task);
->  	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
->  	void		(*connect)(struct rpc_xprt *xprt, struct rpc_task *task);
-> -	void *		(*buf_alloc)(struct rpc_task *task, size_t size);
-> +	void *		(*buf_alloc)(struct rpc_task *task,
-> +					size_t call, size_t reply);
->  	void		(*buf_free)(void *buffer);
->  	int		(*send_request)(struct rpc_task *task);
->  	void		(*set_retrans_timeout)(struct rpc_task *task);
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 488ddee..5e817d6 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1599,8 +1599,8 @@ call_allocate(struct rpc_task *task)
->  	req->rq_rcvsize = RPC_REPHDRSIZE + slack + proc->p_replen;
->  	req->rq_rcvsize <<= 2;
->  
-> -	req->rq_buffer = xprt->ops->buf_alloc(task,
-> -					req->rq_callsize + req->rq_rcvsize);
-> +	req->rq_buffer = xprt->ops->buf_alloc(task, req->rq_callsize,
-> +					      req->rq_rcvsize);
->  	if (req->rq_buffer != NULL)
->  		return;
->  
-> diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-> index 9358c79..fc4f939 100644
-> --- a/net/sunrpc/sched.c
-> +++ b/net/sunrpc/sched.c
-> @@ -829,7 +829,8 @@ static void rpc_async_schedule(struct work_struct *work)
->  /**
->   * rpc_malloc - allocate an RPC buffer
->   * @task: RPC task that will use this buffer
-> - * @size: requested byte size
-> + * @call: maximum size of on-the-wire RPC call, in bytes
-> + * @reply: maximum size of on-the-wire RPC reply, in bytes
->   *
->   * To prevent rpciod from hanging, this allocator never sleeps,
->   * returning NULL and suppressing warning if the request cannot be serviced
-> @@ -843,8 +844,9 @@ static void rpc_async_schedule(struct work_struct *work)
->   * In order to avoid memory starvation triggering more writebacks of
->   * NFS requests, we avoid using GFP_KERNEL.
->   */
-> -void *rpc_malloc(struct rpc_task *task, size_t size)
-> +void *rpc_malloc(struct rpc_task *task, size_t call, size_t reply)
->  {
-> +	size_t size = call + reply;
->  	struct rpc_buffer *buf;
->  	gfp_t gfp = GFP_NOWAIT | __GFP_NOWARN;
->  
-> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-> index 2faac49..6e9d0a7 100644
-> --- a/net/sunrpc/xprtrdma/transport.c
-> +++ b/net/sunrpc/xprtrdma/transport.c
-> @@ -459,7 +459,7 @@ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
->   * the receive buffer portion when using reply chunks.
->   */
->  static void *
-> -xprt_rdma_allocate(struct rpc_task *task, size_t size)
-> +xprt_rdma_allocate(struct rpc_task *task, size_t size, size_t replen)
+On Oct 20, 2014, at 9:57 AM, Will Deacon <will.deacon@arm.com> wrote:
 
-The comment right before this function mentions that send and receive buffers are allocated in the same call.  Can you update this?
+> On Sat, Oct 11, 2014 at 02:32:29PM +0100, Weston Andros Adamson wrote:
+>> Hey Will,
+> 
+> Hi again, Andros,
+> 
+>> I’ve been very busy, but I haven’t forgotten about your bug report!
+> 
+> No problem, I've been busy too. I just checked with -rc1 and I can reproduce
+> the issue there too.
+> 
+>> I think the WARN_ON_ONCE is just wrong, there are cases where the
+>> PG_INODE_REF flag is legitimately not set. The flag is set so that sub
+>> requests can mimmic the parent request’s reference count.
+>> 
+>> Could you please run the reproducer again, unmount, then check the contents of
+>> /proc/fs/nfsfs/servers?
+> 
+> Sure. I just tried this and that file is empty after unmounting.
 
-Anna
+Sorry for the delay (again) - I just got back from a two week holiday.
 
->  {
->  	struct rpc_xprt *xprt = task->tk_rqstp->rq_xprt;
->  	struct rpcrdma_req *req, *nreq;
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 43cd89e..b4aca48 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -2423,8 +2423,9 @@ static void xs_tcp_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
->   * we allocate pages instead doing a kmalloc like rpc_malloc is because we want
->   * to use the server side send routines.
->   */
-> -static void *bc_malloc(struct rpc_task *task, size_t size)
-> +static void *bc_malloc(struct rpc_task *task, size_t call, size_t reply)
->  {
-> +	size_t size = call + reply;
->  	struct page *page;
->  	struct rpc_buffer *buf;
->  
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+This is good news! I think we can safely remove this WARN_ON_ONCE and call it a
+day… or maybe calling it a month is more accurate ;)
+
+-dros
 
