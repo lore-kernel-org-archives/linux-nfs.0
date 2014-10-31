@@ -1,26 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:33263 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756587AbaJXNm6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Oct 2014 09:42:58 -0400
-Date: Fri, 24 Oct 2014 06:42:58 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeffrey Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Ensure that NFSv4 always drops the connection when
- dropping a request
-Message-ID: <20141024134258.GA16355@infradead.org>
-References: <CAHQdGtQM7E37gFeLopQiNcvC+QH7MPVMdYnwYhScL65rq=xHxQ@mail.gmail.com>
- <1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:56801 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759794AbaJaUxx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Oct 2014 16:53:53 -0400
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 3/3] nfsd: Add DEALLOCATE support
+Date: Fri, 31 Oct 2014 16:53:46 -0400
+Message-ID: <1414788826-21474-4-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1414788826-21474-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1414788826-21474-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1414145308-11196-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 24, 2014 at 01:08:28PM +0300, Trond Myklebust wrote:
-> Both RFC3530 and RFC5661 impose a requirement on the server that it MUST NOT
-> drop a request unless the connection is broken.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-I can still reproduce the issue with this patch applied.
+DEALLOCATE only returns a status value, meaning we can use the noop()
+xdr encoder to reply to the client.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfsd/nfs4proc.c | 15 +++++++++++++++
+ fs/nfsd/nfs4xdr.c  |  2 +-
+ fs/nfsd/xdr4.h     |  1 +
+ 3 files changed, 17 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 57bfcad..b3a9d0d 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -33,6 +33,7 @@
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ #include <linux/file.h>
++#include <linux/falloc.h>
+ #include <linux/slab.h>
+ 
+ #include "idmap.h"
+@@ -1044,6 +1045,14 @@ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ }
+ 
+ static __be32
++nfsd4_deallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		 struct nfsd4_fallocate *fallocate)
++{
++	return nfsd4_fallocate(rqstp, cstate, fallocate,
++			       FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE);
++}
++
++static __be32
+ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		struct nfsd4_seek *seek)
+ {
+@@ -1962,6 +1971,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_name = "OP_ALLOCATE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+ 	},
++	[OP_DEALLOCATE] = {
++		.op_func = (nfsd4op_func)nfsd4_deallocate,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_name = "OP_DEALLOCATE",
++		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
++	},
+ 	[OP_SEEK] = {
+ 		.op_func = (nfsd4op_func)nfsd4_seek,
+ 		.op_name = "OP_SEEK",
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a60cff8..0622d4f 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1624,7 +1624,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
+ 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
+ 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index eeaa0d0..90a5925 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -494,6 +494,7 @@ struct nfsd4_op {
+ 
+ 		/* NFSv4.2 */
+ 		struct nfsd4_fallocate		allocate;
++		struct nfsd4_fallocate		deallocate;
+ 		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+-- 
+2.1.3
+
