@@ -1,77 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53560 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:51937 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751798AbaJaREY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 Oct 2014 13:04:24 -0400
-From: Eryu Guan <eguan@redhat.com>
-To: fstests@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, Eryu Guan <eguan@redhat.com>
-Subject: [PATCH v2 1/5] common: re-enable tests that require scratch dev on NFS
-Date: Sat,  1 Nov 2014 01:03:56 +0800
-Message-Id: <1414775040-4051-2-git-send-email-eguan@redhat.com>
-In-Reply-To: <1414775040-4051-1-git-send-email-eguan@redhat.com>
-References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
+	id S1750918AbaJaUU1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Oct 2014 16:20:27 -0400
+Received: from bfields by fieldses.org with local (Exim 4.76)
+	(envelope-from <bfields@fieldses.org>)
+	id 1XkIgM-00005v-QF
+	for linux-nfs@vger.kernel.org; Fri, 31 Oct 2014 16:20:26 -0400
+Date: Fri, 31 Oct 2014 16:20:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Subject: Re: wireshark
+Message-ID: <20141031202026.GG17580@fieldses.org>
+References: <20141027220848.GB32743@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141027220848.GB32743@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This commit disables tests requires scratch dev running on NFS
+On Mon, Oct 27, 2014 at 06:08:48PM -0400, bfields wrote:
+> I've been getting frequent crashes with the latest wireshark.  I think
+> it's fixed in:
+> 
+> 	git://linux-nfs.org/~bfields/wireshark.git master
+> 
+> I'll probably try to add seek and allocate support while I'm there, and
+> pass it to wireshark upstream when I've got it better figured out.
 
-c041421 xfstests: stop special casing nfs and udf
+Done, but not upstream yet.  Till then, something like:
 
-Now re-enable them to get a larger test coverage on NFS.
+	git clone git://linux-nfs.org/~bfields/wireshark.git
+	cd wireshark
+	./autogen.sh
+	./configure
+	make
 
-Signed-off-by: Eryu Guan <eguan@redhat.com>
----
- common/rc | 22 +++++++++++++++++++---
- 1 file changed, 19 insertions(+), 3 deletions(-)
+should work.  (And you may discover you need to install some -devel
+packages after the next-to-last step.)
 
-diff --git a/common/rc b/common/rc
-index 747cf72..ae03712 100644
---- a/common/rc
-+++ b/common/rc
-@@ -551,6 +551,14 @@ _mkfs_dev()
-     rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
- }
- 
-+# remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
-+_scratch_cleanup_files()
-+{
-+	_scratch_mount
-+	rm -rf $SCRATCH_MNT/*
-+	_scratch_unmount
-+}
-+
- _scratch_mkfs()
- {
-     case $FSTYP in
-@@ -558,7 +566,9 @@ _scratch_mkfs()
-         _scratch_mkfs_xfs $*
- 	;;
-     nfs*)
--	# do nothing for nfs
-+	# unable to re-create NFS, just remove all files in $SCRATCH_MNT to
-+	# avoid EEXIST caused by the leftover files created in previous runs
-+        _scratch_cleanup_files
- 	;;
-     cifs)
- 	# do nothing for cifs
-@@ -1032,8 +1042,14 @@ _require_scratch_nocheck()
- {
-     case "$FSTYP" in
- 	nfs*)
--                 _notrun "requires a scratch device"
--		 ;;
-+		echo $SCRATCH_DEV | grep -q ":/" > /dev/null 2>&1
-+		if [ -z "$SCRATCH_DEV" -o "$?" != "0" ]; then
-+			_notrun "this test requires a valid \$SCRATCH_DEV"
-+		fi
-+		if [ ! -d "$SCRATCH_MNT" ]; then
-+			_notrun "this test requires a valid \$SCRATCH_MNT"
-+		fi
-+		;;
- 	cifs)
- 		_notrun "requires a scratch device"
- 		;;
--- 
-1.9.3
-
+--b.
