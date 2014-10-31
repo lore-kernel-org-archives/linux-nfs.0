@@ -1,258 +1,316 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:16956 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758837AbaJ3QS1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Oct 2014 12:18:27 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: building upstream nfs-utils on EL6 fails
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <alpine.LRH.2.11.1410301152390.20279@sh-el6.eng.rdu2.redhat.com>
-Date: Thu, 30 Oct 2014 12:18:17 -0400
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <0CF508F8-8222-4555-A3E0-CDA435CF994D@oracle.com>
-References: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com> <alpine.LRH.2.11.1410291919090.20279@sh-el6.eng.rdu2.redhat.com> <0953ACF5-C77F-4568-9952-FAF0C126B4AD@oracle.com> <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com> <88A2F169-8D62-4F15-BAAE-42732903DE46@oracle.com> <alpine.LRH.2.11.1410301152390.20279@sh-el6.eng.rdu2.redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:43862 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759770AbaJaUxt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Oct 2014 16:53:49 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 2/2] nfs: Add DEALLOCATE support
+Date: Fri, 31 Oct 2014 16:53:31 -0400
+Message-ID: <1414788811-21339-3-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1414788811-21339-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1414788811-21339-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch adds support for using the NFS v4.2 operation DEALLOCATE to
+punch holes in a file.
 
-On Oct 30, 2014, at 12:08 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs42.h            |  1 +
+ fs/nfs/nfs42proc.c        | 46 ++++++++++++++++++++++++++++++++
+ fs/nfs/nfs42xdr.c         | 68 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4file.c         |  7 +++--
+ fs/nfs/nfs4proc.c         |  1 +
+ fs/nfs/nfs4xdr.c          |  1 +
+ include/linux/nfs4.h      |  1 +
+ include/linux/nfs_fs_sb.h |  1 +
+ include/linux/nfs_xdr.h   | 14 ++++++++++
+ 9 files changed, 138 insertions(+), 2 deletions(-)
 
-> 
-> 
-> On Thu, 30 Oct 2014, Chuck Lever wrote:
-> 
->> 
->> On Oct 30, 2014, at 10:53 AM, Benjamin Coddington <bcodding@redhat.com> wrote:
->> 
->>> 
->>> On Wed, 29 Oct 2014, Chuck Lever wrote:
->>> 
->>>> Hi Ben-
->>>> 
->>>> On Oct 29, 2014, at 7:27 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
->>>> 
->>>>> Hi Chuck, I'll jump in here if you don't mind.
->>>>> 
->>>>> How's this work for missing keyctl_invalidate:
->>>>> 
->>>>> diff --git a/configure.ac b/configure.ac
->>>>> index 59fd14d..8295bed 100644
->>>>> --- a/configure.ac
->>>>> +++ b/configure.ac
->>>>> @@ -270,6 +270,9 @@ AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
->>>>> 
->>>>> AC_CHECK_LIB([dl], [dlclose], [LIBDL="-ldl"])
->>>>> 
->>>>> +AC_CHECK_LIB([keyutils], [keyctl_invalidate], ,[
->>>>> +       AC_DEFINE([MISSING_KEYCTL_INVALIDATE], [1], [Define to use
->>>>> keyctl_revoke instead])])
->>>> 
->>>> Nit: I would just add
->>>> 
->>>> AC_CHECK_FUNCS([keyctl_invalidate])
->>>> 
->>>> in aclocal/keyutils.m4 to define HAVE_KEYCTL_INVALIDATE .
->>> 
->>> Yes, that is better.
->>> 
->>>>> +
->>>>> if test "$enable_nfsv4" = yes; then
->>>>> dnl check for libevent libraries and headers
->>>>> AC_LIBEVENT
->>>>> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
->>>>> index e0d31e7..ab4b10c 100644
->>>>> --- a/utils/nfsidmap/nfsidmap.c
->>>>> +++ b/utils/nfsidmap/nfsidmap.c
->>>>> @@ -14,6 +14,7 @@
->>>>> #include <unistd.h>
->>>>> #include "xlog.h"
->>>>> #include "conffile.h"
->>>>> +#include “config.h"
->>>>> 
->>>>> int verbose = 0;
->>>>> char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key
->>>>> desc]";
->>>>> @@ -23,6 +24,10 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] ||
->>>>> [-t timeout] key desc]";
->>>>> #define USER  1
->>>>> #define GROUP 0
->>>>> 
->>>>> +#ifdef MISSING_KEYCTL_INVALIDATE
->>>>> +#define keyctl_invalidate(key) keyctl_revoke(key)
->>>>> +#endif
->>>>> +
->>>>> #define PROCKEYS "/proc/keys"
->>>>> #ifndef DEFAULT_KEYRING
->>>>> #define DEFAULT_KEYRING "id_resolver"
->>>>> 
->>>>> ^^^ that's a little ugly -- it doesn't try to figure out what should be
->>>>> done in the kernel to clean up keys.  It assumes that if your
->>>>> libkeyutils has keyctl_invalidate then that's what you should use.
->>>> 
->>>> This looks like it fixes the build issue. I think we do
->>>> want late-model nfs-utils to build correctly on older
->>>> distributions.
->>>> 
->>>> I’m not sure keyctl_revoke and keyctl_invalidate do
->>>> precisely the same thing, though? On older systems can
->>>> we expect a change from one to the other to have no
->>>> impact? (Just beginning to explore this issue).
->>> 
->>> For EL6 kernels, you should be good with keyctl_revoke.  That's the only
->>> thing you can do - there's no key_invalidate.
->>> 
->>> But on later kernels, you'd want to use key_invalidate.
->> 
->> I realize that EL6 user space is not designed to support
->> newer kernels, but some distributions allow continuous
->> upgrades of kernels. If the kernel API changes over time,
->> then IMO user space tools need to be sensitive to what
->> kernel is running.
-> 
-> It would be a lot of work to continually backport adjustments to
-> utilities across the supported/released platforms to allow
-> compatilibilty with upstream kernels; it also reduces the stability
-> of those releases.
-> 
-> It would be nice if it always just worked, but /most/ RHEL customers
-> don't try to run upstream kernels in older releases.
-
-Just an example:
-
-Oracle Linux provides updated kernels via the Unbreakable
-Enterprise Kernel releases. The latest release is UEK3, which
-is 3.8-based. It installs on EL6.
-
-My point of posting here, just to be clear, is that upstream
-nfs-utils no longer builds on systems that have an older
-keyutils. The details particular to EL6 can be resolved, as
-Steve suggested, in an RH bz.
-
-In the nfsidmap case, I think the extra logic in nfsidmap to
-do the right keyctl call is simple to add and test. That would
-make nfsidmap “just work”.
-
->>> The details of the kernel changes are here:
->>> 
->>> 0c7774abb41bd00d KEYS: Allow special keys (eg. DNS results) to be
->>> invalidated by CAP_SYS_ADMIN
->> 
->> I think this means the EL6 nfsidmap no longer works quite
->> right when running 3.17. I’m still studying the problem.
->> See below.
->> 
->>> The summary is that permission changes in later kernels cause
->>> keyctl_revoke to be unable to clean up keys that are not in possession.
->>> This specific commit allows that once more for CAP_SYS_ADMIN, so
->>> really, it should work fine if you have this.  However:
->>> 
->>> keyctl_revoke waits key_gc_timeout to clean up the key, and access
->>> attempts return -EKEYREVOKED.
->>> 
->>> keyctl_invalidate immediately removes all references to the key.
->> 
->> This change means keyctl_set_timeout fails, since
->> lookup_user_key returns -EKEYREVOKED, for example, when a
->> key is revoked instead of invalidated. The key timeouts
->> are then set to 0 (the default).
->> 
->> There is at least one other bug which breaks nfsidmap in
->> 3.13 and newer kernels. I will post a proposed fix later
->> today.
->> 
->>> The latter is the preferred operation for nfsidmap, since this code path
->>> exists to allow the admin to flush out a specific key from the idmapper
->>> cache.
->> 
->> EL6 libkeyutils doesn’t have keyctl_invalidate. That
->> seems to be the crux of the problem (for EL6).
->> 
->>> It might be a good idea to just update your libkeyutils along with the kernel
->>> and nfs-utils.  Maybe we should make a version dependency for
->>> libkeyutils in nfs-utils.  Steve, what do you think?
->> 
->> I don’t know the history of the kernel API, but one
->> assumes that 2.6.32-vintage kernels don’t have
->> keyctl_invalidate, since it is missing from older
->> libkeyutils as well.
->> 
->> I think nfs-utils needs both to build with
->> keyctl_invalidate support if that exists on the build
->> system, and it needs to pick which of keyctl_revoke
->> or keyctl_invalidate it will invoke based on the kernel
->> version where it’s running. That’s pretty easy to do
->> in nfs-utils.
->> 
->> Is keyctl_revoke expected to go away at some point?
-> 
-> I think that it serves an important role in marking keys as existing,
-> but revoked - this can provide a useful type of negative cache to
-> communicate the state of an object. I haven't expected it to go away.
-> 
->>>>> EL6 systems should be able to do both the request-key (nfsidmap)
->>>>> and the rpc.idmapd upcall.  I believe that EL6 kernels try both - if the
->>>>> nfsidmap request-key doesn't work they fall back to the upcall, however
->>>>> the nfsidmap request-key interface really is the one that should be
->>>>> used.
->>>> 
->>>> I have several EL6 systems here, and at least one of them
->>>> had rpc.idmapd configured off. I couldn’t remember if I had
->>>> done that, or it came that way off the installation media.
->>> 
->>> I think rpc.idmapd being on/off changed a couple of times in EL6.. I
->>> don't recall the specifics.
->> 
->> Makes sense. My EL6 installs are of various vintages.
->> 
->> But that could be a problem when installing a kernel that
->> causes nfsidmap to fail because the kernel API has changed.
->> Without the fallback in place, ID mapping will not work.
-> 
-> Ah, but those later kernels will not try the fallback.  :/  Or, maybe
-> there is a set of kernels that are broken that will try the fallback,
-> but later ones won't.
-> 
-> I used to do this when using later kernels with EL6: if it didn't
-> work with EL6 userspace then use upstream nfs-utils, keylibs... etc.  As
-> long as you didn't get into dep-hell, it seemed the simplest path to
-> getting a working system.
-
-Except that EL6 libkeyutil doesn’t have keyctl_invalidate. So
-there’s no way to build a working nfsidmap without installing
-a newer keyutils. That seems like a step along the path to
-dep-hell that could be prevented with a few careful lines of
-code in nfs-utils.
-
-I’d like to be able to pull an upstream nfs-utils and build it
-on EL6, at the very least.
-
-> Ben
-> 
->>>> When installing a newer kernel causes a fallback to rpc.idmapd,
->>>> is there any risk of an ID mapper behavior change? Loss of
->>>> functionality, for example?
->>> 
->>> The functionality should be equivalent - I think they end up in the same
->>> library after making it through the callout/callup interface.
->>> 
->>> The newer kernels only do the request-key callout, and rpc.idmapd
->>> won't ever be consulted.
->> 
->> Unless nfsidmap is broken by a new kernel API. :-)
->> 
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
+index 42656a9..7afb894 100644
+--- a/fs/nfs/nfs42.h
++++ b/fs/nfs/nfs42.h
+@@ -7,6 +7,7 @@
+ 
+ /* nfs4.2proc.c */
+ int nfs42_proc_allocate(struct file *, loff_t, loff_t);
++int nfs42_proc_deallocate(struct file *, loff_t, loff_t);
+ loff_t nfs42_proc_llseek(struct file *, loff_t, int);
+ 
+ /* nfs4.2xdr.h */
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 44e0c7b..9613362 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -78,6 +78,52 @@ int nfs42_proc_allocate(struct file *filep, loff_t offset, loff_t len)
+ 	return err;
+ }
+ 
++int _nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
++{
++	struct nfs42_deallocate_args args = {
++		.dealloc_fh		= NFS_FH(file_inode(filep)),
++		.dealloc_offset		= offset,
++		.dealloc_length		= len,
++	};
++	struct nfs42_deallocate_res res;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_DEALLOCATE],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++	};
++	struct nfs_server *server = NFS_SERVER(file_inode(filep));
++	int status;
++
++	status = nfs42_set_rw_stateid(&args.dealloc_stateid, filep, FMODE_WRITE);
++	if (status)
++		return status;
++
++	return nfs4_call_sync(server->client, server, &msg,
++			      &args.seq_args, &res.seq_res, 0);
++}
++
++int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
++{
++	struct inode *inode = file_inode(filep);
++	struct nfs_server *server = NFS_SERVER(inode);
++	struct nfs4_exception exception = { };
++	int err;
++
++	if (!nfs_server_capable(inode, NFS_CAP_DEALLOCATE))
++		return -EOPNOTSUPP;
++
++	do {
++		err = _nfs42_proc_deallocate(filep, offset, len);
++		if (err == -ENOTSUPP) {
++			server->caps &= ~NFS_CAP_DEALLOCATE;
++			return -EOPNOTSUPP;
++		}
++		err = nfs4_handle_exception(server, err, &exception);
++	} while (exception.retry);
++
++	return err;
++}
++
+ loff_t nfs42_proc_llseek(struct file *filep, loff_t offset, int whence)
+ {
+ 	struct inode *inode = file_inode(filep);
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 9506f5a..5db9dad 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -9,6 +9,11 @@
+ 					 2 /* offest */ + \
+ 					 2 /* length */)
+ #define decode_allocate_maxsz		(op_decode_hdr_maxsz)
++#define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
++					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
++					 2 /* offest */ + \
++					 2 /* length */)
++#define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
+ #define encode_seek_maxsz		(op_encode_hdr_maxsz + \
+ 					 encode_stateid_maxsz + \
+ 					 2 /* offset */ + \
+@@ -25,6 +30,12 @@
+ #define NFS4_dec_allocate_sz		(compound_decode_hdr_maxsz + \
+ 					 decode_putfh_maxsz + \
+ 					 decode_allocate_maxsz)
++#define NFS4_enc_deallocate_sz		(compound_encode_hdr_maxsz + \
++					 encode_putfh_maxsz + \
++					 encode_deallocate_maxsz)
++#define NFS4_dec_deallocate_sz		(compound_decode_hdr_maxsz + \
++					 decode_putfh_maxsz + \
++					 decode_deallocate_maxsz)
+ #define NFS4_enc_seek_sz		(compound_encode_hdr_maxsz + \
+ 					 encode_putfh_maxsz + \
+ 					 encode_seek_maxsz)
+@@ -43,6 +54,16 @@ static void encode_allocate(struct xdr_stream *xdr,
+ 	encode_uint64(xdr, args->alloc_length);
+ }
+ 
++static void encode_deallocate(struct xdr_stream *xdr,
++			      struct nfs42_deallocate_args *args,
++			      struct compound_hdr *hdr)
++{
++	encode_op_hdr(xdr, OP_DEALLOCATE, decode_deallocate_maxsz, hdr);
++	encode_nfs4_stateid(xdr, &args->dealloc_stateid);
++	encode_uint64(xdr, args->dealloc_offset);
++	encode_uint64(xdr, args->dealloc_length);
++}
++
+ static void encode_seek(struct xdr_stream *xdr,
+ 			struct nfs42_seek_args *args,
+ 			struct compound_hdr *hdr)
+@@ -72,6 +93,24 @@ static void nfs4_xdr_enc_allocate(struct rpc_rqst *req,
+ }
+ 
+ /*
++ * Encode DEALLOCATE request
++ */
++static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
++				    struct xdr_stream *xdr,
++				    struct nfs42_deallocate_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, args->dealloc_fh, &hdr);
++	encode_deallocate(xdr, args, &hdr);
++	encode_nops(&hdr);
++}
++
++/*
+  * Encode SEEK request
+  */
+ static void nfs4_xdr_enc_seek(struct rpc_rqst *req,
+@@ -94,6 +133,11 @@ static int decode_allocate(struct xdr_stream *xdr, struct nfs42_allocate_res *re
+ 	return decode_op_hdr(xdr, OP_ALLOCATE);
+ }
+ 
++static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_deallocate_res *res)
++{
++	return decode_op_hdr(xdr, OP_DEALLOCATE);
++}
++
+ static int decode_seek(struct xdr_stream *xdr, struct nfs42_seek_res *res)
+ {
+ 	int status;
+@@ -141,6 +185,30 @@ out:
+ }
+ 
+ /*
++ * Decode DEALLOCATE request
++ */
++static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
++				   struct xdr_stream *xdr,
++				   struct nfs42_deallocate_res *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_deallocate(xdr, res);
++out:
++	return status;
++}
++
++/*
+  * Decode SEEK request
+  */
+ static int nfs4_xdr_dec_seek(struct rpc_rqst *rqstp,
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index f7cacab..7ac3d70 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -142,7 +142,7 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
+ 	struct inode *inode = file_inode(filep);
+ 	long ret;
+ 
+-	if (mode != 0)
++	if ((mode != 0) && (mode != (FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE)))
+ 		return -EOPNOTSUPP;
+ 
+ 	ret = inode_newsize_ok(inode, offset + len);
+@@ -150,7 +150,10 @@ static long nfs42_fallocate(struct file *filep, int mode, loff_t offset, loff_t
+ 		return ret;
+ 
+ 	mutex_lock(&inode->i_mutex);
+-	ret = nfs42_proc_allocate(filep, offset, len);
++	if (mode & FALLOC_FL_PUNCH_HOLE)
++		ret = nfs42_proc_deallocate(filep, offset, len);
++	else
++		ret = nfs42_proc_allocate(filep, offset, len);
+ 	mutex_unlock(&inode->i_mutex);
+ 	return ret;
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 65a3859..cb5dd74 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8432,6 +8432,7 @@ static const struct nfs4_minor_version_ops nfs_v4_2_minor_ops = {
+ 		| NFS_CAP_STATEID_NFSV41
+ 		| NFS_CAP_ATOMIC_OPEN_V1
+ 		| NFS_CAP_ALLOCATE
++		| NFS_CAP_DEALLOCATE
+ 		| NFS_CAP_SEEK,
+ 	.init_client = nfs41_init_client,
+ 	.shutdown_client = nfs41_shutdown_client,
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 0a14845..03d0fa6 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -7395,6 +7395,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ #ifdef CONFIG_NFS_V4_2
+ 	PROC(SEEK,		enc_seek,		dec_seek),
+ 	PROC(ALLOCATE,		enc_allocate,		dec_allocate),
++	PROC(DEALLOCATE,	enc_deallocate,		dec_deallocate),
+ #endif /* CONFIG_NFS_V4_2 */
+ };
+ 
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 2b28a21..022b761 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -491,6 +491,7 @@ enum {
+ 	/* nfs42 */
+ 	NFSPROC4_CLNT_SEEK,
+ 	NFSPROC4_CLNT_ALLOCATE,
++	NFSPROC4_CLNT_DEALLOCATE,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index df6ed42..1e37fbb 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -232,5 +232,6 @@ struct nfs_server {
+ #define NFS_CAP_SECURITY_LABEL	(1U << 18)
+ #define NFS_CAP_SEEK		(1U << 19)
+ #define NFS_CAP_ALLOCATE	(1U << 20)
++#define NFS_CAP_DEALLOCATE	(1U << 21)
+ 
+ #endif
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index f3fc647..9098e51 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1246,6 +1246,20 @@ struct nfs42_allocate_res {
+ 	unsigned int			status;
+ };
+ 
++struct nfs42_deallocate_args {
++	struct nfs4_sequence_args	seq_args;
++
++	struct nfs_fh			*dealloc_fh;
++	nfs4_stateid			 dealloc_stateid;
++	u64				 dealloc_offset;
++	u64				 dealloc_length;
++};
++
++struct nfs42_deallocate_res {
++	struct nfs4_sequence_res	seq_res;
++	unsigned int			status;
++};
++
+ struct nfs42_seek_args {
+ 	struct nfs4_sequence_args	seq_args;
+ 
+-- 
+2.1.3
 
