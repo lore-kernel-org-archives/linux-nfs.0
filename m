@@ -1,45 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:51122 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750850AbaJWNzm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Oct 2014 09:55:42 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v1 13/16] NFS: Add sidecar RPC client support
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20141023133229.GA16717@fieldses.org>
-Date: Thu, 23 Oct 2014 09:55:28 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Tom Talpey <tom@talpey.com>
-Message-Id: <D826C6DC-A3BB-4AD8-AD45-934BA6F11D1A@oracle.com>
-References: <20141016192919.13414.3151.stgit@manet.1015granger.net> <20141016194000.13414.83844.stgit@manet.1015granger.net> <54454762.8020506@Netapp.com> <A1CBA20C-FA2F-4E6B-9D94-75F7EFDED9C3@oracle.com> <CAHQdGtTgJ7vRR3Kw8n4K4=PSoMXV_ZQK9yFkAcK-CK5xsaTm3A@mail.gmail.com> <D259448C-9E9B-43AE-A809-A73C3C2716C5@oracle.com> <CAHQdGtRahOX68j6J6Vq9ykBE-2qUm1sd_HPw=HGimKAGs5V=9Q@mail.gmail.com> <5BF0312C-06EC-4D83-81E9-F929724A0EAD@oracle.com> <CAHQdGtRumr9Cr6oJPUEw5nLiiWqNW5JRq7tzpsKUVtCG=F1QFg@mail.gmail.com> <EB7360E0-CDE8-40A6-8F91-6A119EE68DEC@oracle.com> <20141023133229.GA16717@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:56329 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752552AbaJaRE0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Oct 2014 13:04:26 -0400
+From: Eryu Guan <eguan@redhat.com>
+To: fstests@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Eryu Guan <eguan@redhat.com>
+Subject: [PATCH v2 2/5] common: add _require_block_device() helper
+Date: Sat,  1 Nov 2014 01:03:57 +0800
+Message-Id: <1414775040-4051-3-git-send-email-eguan@redhat.com>
+In-Reply-To: <1414775040-4051-1-git-send-email-eguan@redhat.com>
+References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Add _require_block_device() helper and use it in _require_dm_flakey()
+and generic/076.
 
-On Oct 23, 2014, at 9:32 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+_require_dm_flakey() assumes $SCRATCH_DEV is a block device, now it can
+also be a NFS export.
 
-> On Tue, Oct 21, 2014 at 01:11:26PM -0400, Chuck Lever wrote:
->> The size of the changeset _is_ the justification. It’s
->> a much less invasive change to add a TCP side-car than
->> it is to implement RDMA backchannel on both server and
->> client.
-> 
-> Something I'm confused about: is bidirectional RPC/RDMA optional or
-> mandatory for servers to implement?
+generic/076 does "cat $SCRATCH_DEV" which will fail when testing on NFS.
 
-IMO bi-directional RPC/RDMA is not required anywhere in RFCs 5666
-(the RPC/RDMA spec) or 5667 (the NFS on RPC/RDMA spec).
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eryu Guan <eguan@redhat.com>
+---
+ common/rc         | 15 +++++++++++++++
+ tests/generic/076 |  1 +
+ 2 files changed, 16 insertions(+)
 
-> Something somewhere has to be mandatory if we want to guarantee a
-> working backchannel between any two implementations.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/common/rc b/common/rc
+index ae03712..ca8c4a2 100644
+--- a/common/rc
++++ b/common/rc
+@@ -1243,10 +1243,25 @@ _require_command()
+     [ -n "$1" -a -x "$1" ] || _notrun "$_cmd utility required, skipped this test"
+ }
+ 
++# this test requires the device to be valid block device
++# $1 - device
++_require_block_device()
++{
++	if [ -z "$1" ]; then
++		echo "Usage: _require_block_device <dev>" 1>&2
++		exit 1
++	fi
++	if [ "`_is_block_dev $SCRATCH_DEV`" == "" ]; then
++		_notrun "require $1 to be valid block disk"
++	fi
++}
++
+ # this test requires the device mapper flakey target
+ #
+ _require_dm_flakey()
+ {
++    # require SCRATCH_DEV to be a valid block device
++    _require_block_device $SCRATCH_DEV
+     _require_command $DMSETUP_PROG
+ 
+     modprobe dm-flakey >/dev/null 2>&1
+diff --git a/tests/generic/076 b/tests/generic/076
+index 02af762..aa0aae0 100755
+--- a/tests/generic/076
++++ b/tests/generic/076
+@@ -56,6 +56,7 @@ _supported_fs generic
+ _supported_os IRIX Linux
+ 
+ _require_scratch
++_require_block_device $SCRATCH_DEV
+ 
+ echo "*** init fs"
+ 
+-- 
+1.9.3
 
