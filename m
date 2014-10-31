@@ -1,152 +1,206 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47416 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:43862 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760352AbaJ3Oxf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 30 Oct 2014 10:53:35 -0400
-Date: Thu, 30 Oct 2014 10:53:33 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: building upstream nfs-utils on EL6 fails
-In-Reply-To: <0953ACF5-C77F-4568-9952-FAF0C126B4AD@oracle.com>
-Message-ID: <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com>
-References: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com> <alpine.LRH.2.11.1410291919090.20279@sh-el6.eng.rdu2.redhat.com> <0953ACF5-C77F-4568-9952-FAF0C126B4AD@oracle.com>
+	id S1759801AbaJaUxx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Oct 2014 16:53:53 -0400
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 2/3] nfsd: Add ALLOCATE support
+Date: Fri, 31 Oct 2014 16:53:45 -0400
+Message-ID: <1414788826-21474-3-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1414788826-21474-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1414788826-21474-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: MULTIPART/MIXED; BOUNDARY="168445344-607757357-1414680813=:20279"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  This message is in MIME format.  The first part should be readable text,
-  while the remaining parts are likely unreadable without MIME-aware tools.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
---168445344-607757357-1414680813=:20279
-Content-Type: TEXT/PLAIN; charset=windows-1252; format=flowed
-Content-Transfer-Encoding: 8BIT
+The ALLOCATE operation is used to preallocate space in a file.  I can do
+this by using vfs_fallocate() to do the actual preallocation.
 
+ALLOCATE only returns a status indicator, so we don't need to write a
+special encode() function.
 
-On Wed, 29 Oct 2014, Chuck Lever wrote:
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfsd/nfs4proc.c | 36 ++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c  | 19 ++++++++++++++++++-
+ fs/nfsd/vfs.c      | 20 ++++++++++++++++++++
+ fs/nfsd/vfs.h      |  2 ++
+ fs/nfsd/xdr4.h     |  8 ++++++++
+ 5 files changed, 84 insertions(+), 1 deletion(-)
 
-> Hi Ben-
->
-> On Oct 29, 2014, at 7:27 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
->
->> Hi Chuck, I'll jump in here if you don't mind.
->>
->> How's this work for missing keyctl_invalidate:
->>
->> diff --git a/configure.ac b/configure.ac
->> index 59fd14d..8295bed 100644
->> --- a/configure.ac
->> +++ b/configure.ac
->> @@ -270,6 +270,9 @@ AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
->>
->> AC_CHECK_LIB([dl], [dlclose], [LIBDL="-ldl"])
->>
->> +AC_CHECK_LIB([keyutils], [keyctl_invalidate], ,[
->> +       AC_DEFINE([MISSING_KEYCTL_INVALIDATE], [1], [Define to use
->> keyctl_revoke instead])])
->
-> Nit: I would just add
->
->  AC_CHECK_FUNCS([keyctl_invalidate])
->
-> in aclocal/keyutils.m4 to define HAVE_KEYCTL_INVALIDATE .
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index cdeb3cf..57bfcad 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1014,6 +1014,36 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ }
+ 
+ static __be32
++nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		struct nfsd4_fallocate *fallocate, int flags)
++{
++	__be32 status = nfserr_notsupp;
++	struct file *file;
++
++	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
++					    &fallocate->falloc_stateid,
++					    WR_STATE, &file);
++	if (status != nfs_ok) {
++		dprintk("NFSD: nfsd4_fallocate: couldn't process stateid!\n");
++		return status;
++	}
++
++	status = nfsd4_vfs_fallocate(rqstp, &cstate->current_fh, file,
++				     fallocate->falloc_offset,
++				     fallocate->falloc_length,
++				     flags);
++	fput(file);
++	return status;
++}
++
++static __be32
++nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++	       struct nfsd4_fallocate *fallocate)
++{
++	return nfsd4_fallocate(rqstp, cstate, fallocate, 0);
++}
++
++static __be32
+ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		struct nfsd4_seek *seek)
+ {
+@@ -1926,6 +1956,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ 
+ 	/* NFSv4.2 operations */
++	[OP_ALLOCATE] = {
++		.op_func = (nfsd4op_func)nfsd4_allocate,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_name = "OP_ALLOCATE",
++		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
++	},
+ 	[OP_SEEK] = {
+ 		.op_func = (nfsd4op_func)nfsd4_seek,
+ 		.op_name = "OP_SEEK",
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index eeea7a9..a60cff8 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1514,6 +1514,23 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ }
+ 
+ static __be32
++nfsd4_decode_fallocate(struct nfsd4_compoundargs *argp,
++		       struct nfsd4_fallocate *fallocate)
++{
++	DECODE_HEAD;
++
++	status = nfsd4_decode_stateid(argp, &fallocate->falloc_stateid);
++	if (status)
++		return status;
++
++	READ_BUF(16);
++	p = xdr_decode_hyper(p, &fallocate->falloc_offset);
++	xdr_decode_hyper(p, &fallocate->falloc_length);
++
++	DECODE_TAIL;
++}
++
++static __be32
+ nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
+ {
+ 	DECODE_HEAD;
+@@ -1604,7 +1621,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+ 
+ 	/* new operations for NFSv4.2 */
+-	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
+ 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 989129e..9d29631 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -16,6 +16,7 @@
+ #include <linux/fs.h>
+ #include <linux/file.h>
+ #include <linux/splice.h>
++#include <linux/falloc.h>
+ #include <linux/fcntl.h>
+ #include <linux/namei.h>
+ #include <linux/delay.h>
+@@ -533,6 +534,25 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ }
+ #endif
+ 
++__be32 nfsd4_vfs_fallocate(struct svc_rqst *rqstp, struct svc_fh *fhp,
++			   struct file *file, loff_t offset, loff_t len,
++			   int flags)
++{
++	__be32 err;
++	int error;
++
++	err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry, NFSD_MAY_WRITE);
++	if (err)
++		return err;
++
++	error = vfs_fallocate(file, flags, offset, len);
++	if (!error)
++		error = commit_metadata(fhp);
++
++	if (error == -ENODEV)
++		return nfserr_inval;
++	return nfserrno(error);
++}
+ #endif /* defined(CONFIG_NFSD_V4) */
+ 
+ #ifdef CONFIG_NFSD_V3
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index c2ff3f1..7ffdb14 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -54,6 +54,8 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
+ #ifdef CONFIG_NFSD_V4
+ __be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
+ 		    struct xdr_netobj *);
++__be32		nfsd4_vfs_fallocate(struct svc_rqst *, struct svc_fh *,
++				    struct file *, loff_t, loff_t, int);
+ #endif /* CONFIG_NFSD_V4 */
+ __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
+ 				char *name, int len, struct iattr *attrs,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 5720e94..eeaa0d0 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -428,6 +428,13 @@ struct nfsd4_reclaim_complete {
+ 	u32 rca_one_fs;
+ };
+ 
++struct nfsd4_fallocate {
++	/* request */
++	stateid_t	falloc_stateid;
++	loff_t		falloc_offset;
++	u64		falloc_length;
++};
++
+ struct nfsd4_seek {
+ 	/* request */
+ 	stateid_t	seek_stateid;
+@@ -486,6 +493,7 @@ struct nfsd4_op {
+ 		struct nfsd4_free_stateid	free_stateid;
+ 
+ 		/* NFSv4.2 */
++		struct nfsd4_fallocate		allocate;
+ 		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+-- 
+2.1.3
 
-Yes, that is better.
-
->> +
->> if test "$enable_nfsv4" = yes; then
->>   dnl check for libevent libraries and headers
->>   AC_LIBEVENT
->> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
->> index e0d31e7..ab4b10c 100644
->> --- a/utils/nfsidmap/nfsidmap.c
->> +++ b/utils/nfsidmap/nfsidmap.c
->> @@ -14,6 +14,7 @@
->> #include <unistd.h>
->> #include "xlog.h"
->> #include "conffile.h"
->> +#include “config.h"
->>
->> int verbose = 0;
->> char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key
->> desc]";
->> @@ -23,6 +24,10 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] ||
->> [-t timeout] key desc]";
->> #define USER  1
->> #define GROUP 0
->>
->> +#ifdef MISSING_KEYCTL_INVALIDATE
->> +#define keyctl_invalidate(key) keyctl_revoke(key)
->> +#endif
->> +
->> #define PROCKEYS "/proc/keys"
->> #ifndef DEFAULT_KEYRING
->> #define DEFAULT_KEYRING "id_resolver"
->>
->> ^^^ that's a little ugly -- it doesn't try to figure out what should be
->> done in the kernel to clean up keys.  It assumes that if your
->> libkeyutils has keyctl_invalidate then that's what you should use.
->
-> This looks like it fixes the build issue. I think we do
-> want late-model nfs-utils to build correctly on older
-> distributions.
->
-> I’m not sure keyctl_revoke and keyctl_invalidate do
-> precisely the same thing, though? On older systems can
-> we expect a change from one to the other to have no
-> impact? (Just beginning to explore this issue).
-
-For EL6 kernels, you should be good with keyctl_revoke.  That's the only
-thing you can do - there's no key_invalidate.
-
-But on later kernels, you'd want to use key_invalidate. The details of the
-kernel changes are here:
-
-0c7774abb41bd00d KEYS: Allow special keys (eg. DNS results) to be
-invalidated by CAP_SYS_ADMIN
-
-The summary is that permission changes in later kernels cause
-keyctl_revoke to be unable to clean up keys that are not in possession.
-This specific commit allows that once more for CAP_SYS_ADMIN, so
-really, it should work fine if you have this.  However:
-
-keyctl_revoke waits key_gc_timeout to clean up the key, and access
-attempts return -EKEYREVOKED.
-
-keyctl_invalidate immediately removes all references to the key.
-
-The latter is the preferred operation for nfsidmap, since this code path
-exists to allow the admin to flush out a specific key from the idmapper
-cache.
-
-It might be a good idea to just update your libkeyutils along with the kernel
-and nfs-utils.  Maybe we should make a version dependency for
-libkeyutils in nfs-utils.  Steve, what do you think?
-
->> EL6 systems should be able to do both the request-key (nfsidmap)
->> and the rpc.idmapd upcall.  I believe that EL6 kernels try both - if the
->> nfsidmap request-key doesn't work they fall back to the upcall, however
->> the nfsidmap request-key interface really is the one that should be
->> used.
->
-> I have several EL6 systems here, and at least one of them
-> had rpc.idmapd configured off. I couldn’t remember if I had
-> done that, or it came that way off the installation media.
-
-I think rpc.idmapd being on/off changed a couple of times in EL6.. I
-don't recall the specifics.
-
-> When installing a newer kernel causes a fallback to rpc.idmapd,
-> is there any risk of an ID mapper behavior change? Loss of
-> functionality, for example?
-
-The functionality should be equivalent - I think they end up in the same
-library after making it through the callout/callup interface.
-
-The newer kernels only do the request-key callout, and rpc.idmapd
-won't ever be consulted.
-
-Ben
---168445344-607757357-1414680813=:20279--
