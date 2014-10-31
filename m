@@ -1,54 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:39587 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752656AbaJMPH1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Oct 2014 11:07:27 -0400
-Received: by mail-ig0-f175.google.com with SMTP id uq10so10787464igb.2
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Oct 2014 08:07:26 -0700 (PDT)
+Received: from mail-wg0-f42.google.com ([74.125.82.42]:40712 "EHLO
+	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756017AbaJaLbh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Oct 2014 07:31:37 -0400
+Received: by mail-wg0-f42.google.com with SMTP id k14so6319528wgh.29
+        for <linux-nfs@vger.kernel.org>; Fri, 31 Oct 2014 04:31:36 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20141030090306.GA23917@infradead.org>
+References: <1414502171-10319-1-git-send-email-eguan@redhat.com>
+	<1414502171-10319-4-git-send-email-eguan@redhat.com>
+	<20141030090306.GA23917@infradead.org>
+Date: Fri, 31 Oct 2014 13:31:36 +0200
+Message-ID: <CAHQdGtRFMcJGNZvU_V22Xh-3LadD2bYc=TwrkmBVBK81RkWCvw@mail.gmail.com>
+Subject: Re: nfs atime semantics, was: Re: [PATCH 3/4] common: skip atime
+ related tests on NFS
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 2/2] NFS: Fix a bogus warning in nfs_generic_pgio
-Date: Mon, 13 Oct 2014 11:07:19 -0400
-Message-Id: <1413212839-6665-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1413212839-6665-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1413212839-6665-1-git-send-email-trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is OK for pageused == pagecount in the loop, as long as we don't add
-another entry to the *pages array. Move the test so that it only triggers
-in that case.
+On Thu, Oct 30, 2014 at 11:03 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Tue, Oct 28, 2014 at 09:16:10PM +0800, Eryu Guan wrote:
+>> >From nfs(5) we can know that atime related mount options have no effect
+>> on NFS mounts, so add _require_atime() helper to skip atime tests on NFS
+>
+> I' like to use this opportunity to start a discussion on NFS atime
+> handlign again, which I think is broken.  I think relatime is perfectly
+> fine default semantics for NFS, and not supporting it can cause all
+> kidns of application breakage.  Supporting normal atime semantics when
+> explicity requested is also something NFS shouldn't sneak out of.
 
-Reported-by: Steve Dickson <SteveD@redhat.com>
-Fixes: bba5c1887a92 (nfs: disallow duplicate pages in pgio page vectors)
-Cc: Weston Andros Adamson <dros@primarydata.com>
-Cc: stable@vger.kernel.org # 3.16.x
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/pagelist.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+If there is no read on the wire, then there is no way to update the
+atime without doing an explicit SETATTR. Courtesy of POSIX filesystem
+semantics on the server, that means we get a bonus change attribute
+and ctime update (no extra charge).
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 08085de879ed..ed0db61f8543 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -752,12 +752,11 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- 		nfs_list_remove_request(req);
- 		nfs_list_add_request(req, &hdr->pages);
- 
--		if (WARN_ON_ONCE(pageused >= pagecount))
--			return nfs_pgio_error(desc, hdr);
--
- 		if (!last_page || last_page != req->wb_page) {
--			*pages++ = last_page = req->wb_page;
- 			pageused++;
-+			if (pageused > pagecount)
-+				break;
-+			*pages++ = last_page = req->wb_page;
- 		}
- 	}
- 	if (WARN_ON_ONCE(pageused != pagecount))
+Unless there are new suggestions for how to solve the atime issue that
+do not involve introducing this or similar regressions, then the
+standing NACK applies.
+
+Cheers
+  Trond
 -- 
-1.9.3
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
