@@ -1,43 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:9432 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753068AbaJVTdQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Oct 2014 15:33:16 -0400
-Message-ID: <54480679.70501@Netapp.com>
-Date: Wed, 22 Oct 2014 15:33:13 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from gproxy9-pub.mail.unifiedlayer.com ([69.89.20.122]:53136 "HELO
+	gproxy9-pub.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1757046AbaJaSkp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Oct 2014 14:40:45 -0400
+From: Henrique Martins <linux@martins.cc>
+To: linux-nfs@vger.kernel.org
+cc: Steve Dickson <steved@redhat.com>
+Subject: Re: F20 nfs-utils exportfs patch
+In-reply-to: <14393.1409936528@monster.martins.cc>
+References: <14393.1409936528@monster.martins.cc>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Chuck Lever <chuck.lever@oracle.com>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] nfsd4: fix response size estimation for OP_SEQUENCE
-References: <20141017212446.GC3474@fieldses.org> <20141021103631.GB21863@infradead.org> <20141021131406.GE9863@fieldses.org> <20141022192258.GB5552@fieldses.org>
-In-Reply-To: <20141022192258.GB5552@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/mixed; boundary="=-=-="
+Date: Fri, 31 Oct 2014 11:33:55 -0700
+Message-ID: <15531.1414780435@monster.martins.cc>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/22/14 15:22, J. Bruce Fields wrote:
-> On Tue, Oct 21, 2014 at 09:14:06AM -0400, J. Bruce Fields wrote:
->> Also my tests are failing due to an unrelated crash in 18-rc1 which I
->> want to track down before sending this in.
-> 
-> There are two bugs:
-> 
-> 	- the client is sending SEEK over minorversion 1.
-> 	- this sometimes causes the server to crash.
-> 
-> I'm testing a fix for the latter.
-> 
-> On the former: looks like if 4.2 support is built in, then llseek is set
-> to nfs4_file_llseek, which unconditionally calls nfs42_proc_llseek().
-> 
-> Does nfs4_file_llseek need an explicit minorversion check, or should it
-> be handled some other way?
+--=-=-=
+Content-Type: text/plain; charset=utf-8
 
-The client should be checking for CAP_SEEK, which should only be set on NFS v4.2.  I'll look into this!
-> 
-> --b.
-> 
 
+Re-sending this patch, at Steve Dickson's request.
+
+-- Henrique
+
+--------------------------------------------------------------
+
+Attaching path to exportfs that:
+- in client.c/client_lookup:
+    changes the (x)log level for unresolvable entries in
+    /etc/exports from L_ERROR to L_WARNING,
+- in hostname.c/host_addrinfo:
+    changes the (x)log level for unresolvable entries in
+    /etc/exports from D_GENERAL to D_PARSE,
+- in export.c/export_read:
+    counts the number of exported volume entries and
+    generates a (x)log L_ERROR if no volumes are exported.
+
+Built and tested on a Fedora 20 system.
+
+--------------------------------------------------------------
+
+
+--=-=-=
+Content-Type: text/x-diff; charset=utf-8
+Content-Disposition: inline; filename=nfs-utils-1.3.0-exportfs.patch
+
+--- nfs-utils-1.3.0/support/export/client.c.orig	2014-09-05 08:21:37.568364360 -0700
++++ nfs-utils-1.3.0/support/export/client.c	2014-09-05 08:21:41.709451778 -0700
+@@ -277,7 +277,7 @@
+ 	if (htype == MCL_FQDN && !canonical) {
+ 		ai = host_addrinfo(hname);
+ 		if (!ai) {
+-			xlog(L_ERROR, "Failed to resolve %s", hname);
++			xlog(L_WARNING, "Failed to resolve %s", hname);
+ 			goto out;
+ 		}
+ 		hname = ai->ai_canonname;
+--- nfs-utils-1.3.0/support/export/hostname.c.orig	2014-09-05 08:09:07.387551291 -0700
++++ nfs-utils-1.3.0/support/export/hostname.c	2014-09-05 08:09:13.799573723 -0700
+@@ -175,11 +175,11 @@
+ 	case 0:
+ 		return ai;
+ 	case EAI_SYSTEM:
+-		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
++		xlog(D_PARSE, "%s: failed to resolve %s: (%d) %m",
+ 				__func__, hostname, errno);
+ 		break;
+ 	default:
+-		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
++		xlog(D_PARSE, "%s: failed to resolve %s: %s",
+ 				__func__, hostname, gai_strerror(error));
+ 		break;
+ 	}
+--- nfs-utils-1.3.0/support/export/export.c.orig	2014-03-25 08:12:07.000000000 -0700
++++ nfs-utils-1.3.0/support/export/export.c	2014-09-05 09:23:37.424105125 -0700
+@@ -76,15 +76,22 @@
+ 	struct exportent	*eep;
+ 	nfs_export		*exp;
+
++        int volumes = 0;
++
+ 	setexportent(fname, "r");
+ 	while ((eep = getexportent(0,1)) != NULL) {
+ 		exp = export_lookup(eep->e_hostname, eep->e_path, 0);
+-		if (!exp)
+-			export_create(eep, 0);
++		if (!exp) {
++			exp = export_create(eep, 0);
++                        if (exp)
++                        	volumes++;
++                }
+ 		else
+ 			warn_duplicated_exports(exp, eep);
+ 	}
+ 	endexportent();
++        if (volumes == 0)
++        	xlog(L_ERROR, "no or all unresolvable export entries");
+ }
+
+ /**
+
+--=-=-=--
