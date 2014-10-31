@@ -1,98 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e7.ny.us.ibm.com ([32.97.182.137]:52052 "EHLO e7.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755190AbaJHQAN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Oct 2014 12:00:13 -0400
-Received: from /spool/local
-	by e7.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Wed, 8 Oct 2014 12:00:12 -0400
-In-Reply-To: <610954AB-462F-4755-A777-3F89E3CAD5E6@primarydata.com>
-References: <OF5715E76C.462C3FDF-ON88257D6B.00062E96-88257D6B.00088A0A@us.ibm.com> <610954AB-462F-4755-A777-3F89E3CAD5E6@primarydata.com>
-To: Tom Haynes <thomas.haynes@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
-        Marc Eshel <eshel@us.ibm.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from foss-mx-na.foss.arm.com ([217.140.108.86]:51521 "EHLO
+	foss-mx-na.foss.arm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932248AbaJaOzj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Oct 2014 10:55:39 -0400
+Date: Fri, 31 Oct 2014 14:55:28 +0000
+From: Will Deacon <will.deacon@arm.com>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: Peng Tao <tao.peng@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: WARNING at fs/nfs/write.c:743 nfs_inode_remove_request with -rc6
+Message-ID: <20141031145528.GI6731@arm.com>
+References: <20140923145356.GD28608@arm.com>
+ <5294BEB2-F20F-4E3E-BFB2-E41806A4F85A@primarydata.com>
+ <FA11FBE3-42E7-46B9-B9DA-FAE368DCE96B@primarydata.com>
+ <F632C770-3E3D-4FC5-BBF3-69BB1CCA8F0D@primarydata.com>
+ <20140923152558.GG28608@arm.com>
+ <20140925171545.GR20043@arm.com>
+ <78B8153D-59B7-4DBE-8472-D83338F04338@primarydata.com>
+ <6111EECC-C8C1-4605-98AD-0AF0E1B6DA59@primarydata.com>
+ <20141020135736.GB20301@arm.com>
+ <FE0552AE-5243-44D3-B661-B622C2D957C0@primarydata.com>
 MIME-Version: 1.0
-Subject: Re: decode_device
-From: Marc Eshel <eshel@us.ibm.com>
-Message-ID: <OF547036CA.322A9587-ON88257D6B.0052B41D-88257D6B.0057E622@us.ibm.com>
-Date: Wed, 8 Oct 2014 09:00:05 -0700
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <FE0552AE-5243-44D3-B661-B622C2D957C0@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-linux-nfs-owner@vger.kernel.org wrote on 10/08/2014 05:46:24 AM:
+On Fri, Oct 31, 2014 at 02:49:13PM +0000, Weston Andros Adamson wrote:
+> On Oct 20, 2014, at 9:57 AM, Will Deacon <will.deacon@arm.com> wrote:
+> > On Sat, Oct 11, 2014 at 02:32:29PM +0100, Weston Andros Adamson wrote:
+> >> I’ve been very busy, but I haven’t forgotten about your bug report!
+> > 
+> > No problem, I've been busy too. I just checked with -rc1 and I can reproduce
+> > the issue there too.
+> > 
+> >> I think the WARN_ON_ONCE is just wrong, there are cases where the
+> >> PG_INODE_REF flag is legitimately not set. The flag is set so that sub
+> >> requests can mimmic the parent request’s reference count.
+> >> 
+> >> Could you please run the reproducer again, unmount, then check the contents of
+> >> /proc/fs/nfsfs/servers?
+> > 
+> > Sure. I just tried this and that file is empty after unmounting.
+> 
+> Sorry for the delay (again) - I just got back from a two week holiday.
+> 
+> This is good news! I think we can safely remove this WARN_ON_ONCE and call it a
+> day… or maybe calling it a month is more accurate ;)
 
-> From: Tom Haynes <thomas.haynes@primarydata.com>
-> To: Marc Eshel/Almaden/IBM@IBMUS, 
-> Cc: Trond Myklebust <trond.myklebust@primarydata.com>, linux-
-> nfs@vger.kernel.org
-> Date: 10/08/2014 05:46 AM
-> Subject: Re: decode_device
-> Sent by: linux-nfs-owner@vger.kernel.org
-> 
-> 
-> On Oct 7, 2014, at 9:33 PM, Marc Eshel <eshel@us.ibm.com> wrote:
-> 
-> > I see that NFS4_PNFS_MAX_STRIPE_CNT is 4096 but when give the client a 
-cnt 
-> > that is bigger than 1024 it fails, is that the limitation of kcalloc() 
-?
-> > 
-> > 366341.304362] <-- _nfs4_proc_getdeviceinfo status=0
-> > [366341.304364] filelayout_get_device_info getdevice info returns 0
-> > [366341.304368] decode_device stripe count  1512
-> > [366341.304370] decode_device ERROR: returning NULL
-> > [366341.304372] NFS: decode_and_add_device: Could not decode or add 
-device
-> > [366341.304428] <-- filelayout_get_device_info dsaddr           (null)
-> > [366341.304430] --> filelayout_check_layout returns -22
-> > [366341.304433] pnfs_layout_process: Could not allocate layout: error 
--12
-> > 
-> > decode_device()
-> > 
-> > ...
-> >        dprintk("%s stripe count  %d\n", __func__, cnt);
-> >        if (cnt > NFS4_PNFS_MAX_STRIPE_CNT) {
-> >                printk(KERN_WARNING "NFS: %s: stripe count %d greater 
-than 
-> > "
-> >                       "supported maximum %d\n", __func__,
-> >                        cnt, NFS4_PNFS_MAX_STRIPE_CNT);
-> >                goto out_err_free_scratch;
-> >        }
-> > 
-> >        /* read stripe indices */
-> >        stripe_indices = kcalloc(cnt, sizeof(u8), gfp_flags);
-> >        if (!stripe_indices)
-> >                goto out_err_free_scratch;
-> > 
-> > 
-> > Thanks, Marc.
-> 
-> 
-> 
-> Hi Marc,
-> 
-> You are asking for 1512 bytes of memory. That would be looking for a 2k 
-slab.
-> 
-> What flags are being passed down in gfp_flags?
-> 
-> Are you experiencing any other memory issues?
+Great! Feel free to add my reported-by/tested-by on that patch.
 
-Hi Tom,
-It was working fine for a list of up to 1024 so I assumed it was a 
-kcalloc, I will have to add more debugging to find the problem.
-Thanks, Marc. 
-
-> 
-> Tom
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+Will
