@@ -1,46 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48696 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750925AbaJ1VHB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 28 Oct 2014 17:07:01 -0400
-Date: Tue, 28 Oct 2014 17:07:00 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 0/2] NFSD: Add v4.2 SEEK support
-Message-ID: <20141028210700.GI32743@fieldses.org>
-References: <1411754307-18457-1-git-send-email-Anna.Schumaker@Netapp.com>
- <20140926215431.GI27412@fieldses.org>
- <CAFX2Jfm2pDmz7vKPVNe8yZScVT-MvVD=+AsfOgdrPfKwgaLTXw@mail.gmail.com>
+Received: from mail-qc0-f173.google.com ([209.85.216.173]:34107 "EHLO
+	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758302AbaJaMoD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Oct 2014 08:44:03 -0400
+Received: by mail-qc0-f173.google.com with SMTP id x3so5708769qcv.4
+        for <linux-nfs@vger.kernel.org>; Fri, 31 Oct 2014 05:44:02 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Fri, 31 Oct 2014 08:44:00 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Bruce Fields <bfields@fieldses.org>, imc@cs.ox.ac.uk,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] lockd: ratelimit "lockd: cannot monitor" messages
+Message-ID: <20141031084400.4f3023af@tlielax.poochiereds.net>
+In-Reply-To: <CAHQdGtSFrimRHne+NphHi5YcCSEV9pGjjQkUc2ktULsGDfE3iQ@mail.gmail.com>
+References: <1414758509-30397-1-git-send-email-jlayton@primarydata.com>
+	<CAHQdGtSFrimRHne+NphHi5YcCSEV9pGjjQkUc2ktULsGDfE3iQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAFX2Jfm2pDmz7vKPVNe8yZScVT-MvVD=+AsfOgdrPfKwgaLTXw@mail.gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 30, 2014 at 01:00:24PM -0400, Anna Schumaker wrote:
-> I'm testing with xfstests #285.  It's an lseek specific test, and helped
-> find a few edge cases during development.
+On Fri, 31 Oct 2014 14:36:16 +0200
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-Any hints?  I did basically:
+> On Fri, Oct 31, 2014 at 2:28 PM, Jeff Layton <jlayton@primarydata.com> wrote:
+> > When lockd can't talk to a remote statd, it'll spew a warning message
+> > to the ring buffer. If the application is really hammering on locks
+> > however, it's possible for that message to spam the logs. Ratelimit it
+> > to minimize the potential for harm.
+> >
+> > Reported-by: Ian Collier <imc@cs.ox.ac.uk>
+> > Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> > ---
+> >  fs/lockd/mon.c | 2 +-
+> >  1 file changed, 1 insertion(+), 1 deletion(-)
+> >
+> > diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> > index 9106f42c472c..1cc6ec51e6b1 100644
+> > --- a/fs/lockd/mon.c
+> > +++ b/fs/lockd/mon.c
+> > @@ -214,7 +214,7 @@ int nsm_monitor(const struct nlm_host *host)
+> >         if (unlikely(res.status != 0))
+> >                 status = -EIO;
+> >         if (unlikely(status < 0)) {
+> > -               printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
+> > +               pr_notice_ratelimited("lockd: cannot monitor %s\n", nsm->sm_name);
+> >                 return status;
+> >         }
+> >
+> 
+> How is this being triggered repeatedly? Normally, the 'cannot monitor'
+> message should be happening at client mount time or not at all.
+> 
 
-	yum install xfsprogs-devel libattr-devel libacl-devel
-	git clone git://oss.sgi.com/xfs/cmds/xfstests.git
-	cd xfstests
-	make
-	make install
-	cat >local.config <<EOF
-	FSTYP=nfs
-	TEST_DEV=f20-1:/exports/xfs/xfstests
-	TEST_DIR=/mnt
-	NFS_MOUNT_OPTIONS='-overs=4.2,sec=sys'
-	EOF
-	./check -nfs generic/285
+No, it's triggered on NLM lock activity. I don't think we really do
+much with NLM at mount time, do we? In any case, the bug was reported
+here:
 
-Passes just fine, but insists on using 4.0 and sec=krb5p, so apparently
-NFS_MOUNT_OPTIONS is ignored.
+    https://bugzilla.redhat.com/show_bug.cgi?id=1155232
 
-I'm probably missing something basic, I haven't used xfstests before
-(shame on me).
+In this case, it was an application that was apparently responding to
+ENOLCK errors by retrying the lock.
 
---b.
+-- 
+Jeff Layton <jlayton@primarydata.com>
