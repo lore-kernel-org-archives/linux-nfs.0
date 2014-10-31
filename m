@@ -1,73 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:49371 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751526AbaJ1OQi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Oct 2014 10:16:38 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: NFSv4 idmap misbehavior
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <alpine.DEB.2.02.1410281006010.27485@main.carlh.net>
-Date: Tue, 28 Oct 2014 10:16:02 -0400
-Cc: David Howells <dhowells@redhat.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <F9A7C5A6-542A-4573-BD66-844B8BD3F57F@oracle.com>
-References: <70DD1EAE-3001-46E7-92D6-AEB928E8FBA1@oracle.com> <alpine.DEB.2.02.1410281006010.27485@main.carlh.net>
-To: Carl Hetherington <cth@carlh.net>
+Received: from mx12.netapp.com ([216.240.18.77]:56801 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759789AbaJaUxx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Oct 2014 16:53:53 -0400
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 1/3] VFS: Rename do_fallocate() to vfs_fallocate()
+Date: Fri, 31 Oct 2014 16:53:44 -0400
+Message-ID: <1414788826-21474-2-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1414788826-21474-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1414788826-21474-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Carl-
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-On Oct 28, 2014, at 6:12 AM, Carl Hetherington <cth@carlh.net> wrote:
+This function needs to be exported so it can be used by the NFSD module
+when responding to the new ALLOCATE and DEALLOCATE operations in NFS
+v4.2.  Christoph Hellwig suggested renaming the function to stay
+consistent with how other vfs functions are named.
 
-> Hi Chuck,
-> 
-> [snip]
-> 
->> After the test has been running for ten minutes, the id_resolv
->> keys expire, and id_legacy keys appear. Before the above commit,
->> the id_resolv keys would simply be refreshed and operation
->> would continue normally.
-> 
-> This sounds a lot like a bug I have seen, our investigations into which
-> are summarised here:
-> 
-> https://bugs.launchpad.net/ubuntu/+source/nfs-utils/+bug/1124250
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ drivers/staging/android/ashmem.c | 2 +-
+ fs/ioctl.c                       | 2 +-
+ fs/open.c                        | 5 +++--
+ include/linux/fs.h               | 2 +-
+ mm/madvise.c                     | 2 +-
+ 5 files changed, 7 insertions(+), 6 deletions(-)
 
-Looks like a lot of folks are having trouble, and there are two or
-three sets of independent symptoms reported in the comments. Thanks
-for bringing it to this forum.
-
-I might have a different issue from the bug report, though:
-
- + 1124250 might be a server-side problem, and my problem is
-   definitely on the NFS client
-
- + My system works fine with kernels up to 3.12
-
- + I can reproduce with just one user, so probably not a key
-   quota issue
-
- + I’ve got keyutils installed already
-
-> There's an inexpertly written (by me) patch in that bug report (which I
-> posted to this list recently, too) which (in a nutshell) makes the
-> idmapper code call up to userspace to get a new key when the current ones
-> have expired.
-
-David should have a look at this.
-
-However, your patch changes the behavior of renewing legacy ID
-resolver keys AFAICT? On my system, at least, we shouldn’t even
-be getting this far.
-
-I’ll poke around more.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/drivers/staging/android/ashmem.c b/drivers/staging/android/ashmem.c
+index ad4f579..27eecfe 100644
+--- a/drivers/staging/android/ashmem.c
++++ b/drivers/staging/android/ashmem.c
+@@ -446,7 +446,7 @@ ashmem_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
+ 		loff_t start = range->pgstart * PAGE_SIZE;
+ 		loff_t end = (range->pgend + 1) * PAGE_SIZE;
+ 
+-		do_fallocate(range->asma->file,
++		vfs_fallocate(range->asma->file,
+ 				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+ 				start, end - start);
+ 		range->purged = ASHMEM_WAS_PURGED;
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index 8ac3fad..0bd61421 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -443,7 +443,7 @@ int ioctl_preallocate(struct file *filp, void __user *argp)
+ 		return -EINVAL;
+ 	}
+ 
+-	return do_fallocate(filp, FALLOC_FL_KEEP_SIZE, sr.l_start, sr.l_len);
++	return vfs_fallocate(filp, FALLOC_FL_KEEP_SIZE, sr.l_start, sr.l_len);
+ }
+ 
+ static int file_ioctl(struct file *filp, unsigned int cmd,
+diff --git a/fs/open.c b/fs/open.c
+index de92c13..192c429 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -222,7 +222,7 @@ SYSCALL_DEFINE2(ftruncate64, unsigned int, fd, loff_t, length)
+ #endif /* BITS_PER_LONG == 32 */
+ 
+ 
+-int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
++int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ {
+ 	struct inode *inode = file_inode(file);
+ 	long ret;
+@@ -298,6 +298,7 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+ 	sb_end_write(inode->i_sb);
+ 	return ret;
+ }
++EXPORT_SYMBOL_GPL(vfs_fallocate);
+ 
+ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
+ {
+@@ -305,7 +306,7 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
+ 	int error = -EBADF;
+ 
+ 	if (f.file) {
+-		error = do_fallocate(f.file, mode, offset, len);
++		error = vfs_fallocate(f.file, mode, offset, len);
+ 		fdput(f);
+ 	}
+ 	return error;
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 4e41a4a..fee9914 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2057,7 +2057,7 @@ struct filename {
+ extern long vfs_truncate(struct path *, loff_t);
+ extern int do_truncate(struct dentry *, loff_t start, unsigned int time_attrs,
+ 		       struct file *filp);
+-extern int do_fallocate(struct file *file, int mode, loff_t offset,
++extern int vfs_fallocate(struct file *file, int mode, loff_t offset,
+ 			loff_t len);
+ extern long do_sys_open(int dfd, const char __user *filename, int flags,
+ 			umode_t mode);
+diff --git a/mm/madvise.c b/mm/madvise.c
+index 0938b30..a271adc 100644
+--- a/mm/madvise.c
++++ b/mm/madvise.c
+@@ -326,7 +326,7 @@ static long madvise_remove(struct vm_area_struct *vma,
+ 	 */
+ 	get_file(f);
+ 	up_read(&current->mm->mmap_sem);
+-	error = do_fallocate(f,
++	error = vfs_fallocate(f,
+ 				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+ 				offset, end - start);
+ 	fput(f);
+-- 
+2.1.3
 
