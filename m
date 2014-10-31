@@ -1,85 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21236 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53600 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752936AbaJNVWm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 14 Oct 2014 17:22:42 -0400
-Message-ID: <543D941D.4010908@RedHat.com>
-Date: Tue, 14 Oct 2014 17:22:37 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: Re: [PATCH 1/2] NFS: Fix an uninitialised pointer Oops in the writeback
- error path
-References: <1413212839-6665-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1413212839-6665-1-git-send-email-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1753717AbaJaREd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Oct 2014 13:04:33 -0400
+From: Eryu Guan <eguan@redhat.com>
+To: fstests@vger.kernel.org
+Cc: linux-nfs@vger.kernel.org, Eryu Guan <eguan@redhat.com>
+Subject: [PATCH v2 5/5] generic/277: add _require_attrs
+Date: Sat,  1 Nov 2014 01:04:00 +0800
+Message-Id: <1414775040-4051-6-git-send-email-eguan@redhat.com>
+In-Reply-To: <1414775040-4051-1-git-send-email-eguan@redhat.com>
+References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFS doesn't support attr yet, add _require_attrs in generic/277 to avoid
+failure when testing on NFS.
 
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Eryu Guan <eguan@redhat.com>
+---
+ tests/generic/277 | 2 ++
+ 1 file changed, 2 insertions(+)
 
-On 10/13/2014 11:07 AM, Trond Myklebust wrote:
-> SteveD reports the following Oops:
->  RIP: 0010:[<ffffffffa053461d>]  [<ffffffffa053461d>] __put_nfs_open_context+0x1d/0x100 [nfs]
->  RSP: 0018:ffff880fed687b90  EFLAGS: 00010286
->  RAX: 0000000000000024 RBX: 0000000000000000 RCX: 0000000000000006
->  RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
->  RBP: ffff880fed687bc0 R08: 0000000000000092 R09: 000000000000047a
->  R10: 0000000000000000 R11: ffff880fed6878d6 R12: ffff880fed687d20
->  R13: ffff880fed687d20 R14: 0000000000000070 R15: ffffea000aa33ec0
->  FS:  00007fce290f0740(0000) GS:ffff8807ffc60000(0000) knlGS:0000000000000000
->  CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->  CR2: 0000000000000070 CR3: 00000007f2e79000 CR4: 00000000000007e0
->  DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
->  DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
->  Stack:
->   0000000000000000 ffff880036c5e510 ffff880fed687d20 ffff880fed687d20
->   ffff880036c5e200 ffffea000aa33ec0 ffff880fed687bd0 ffffffffa0534710
->   ffff880fed687be8 ffffffffa053d5f0 ffff880036c5e200 ffff880fed687c08
->  Call Trace:
->   [<ffffffffa0534710>] put_nfs_open_context+0x10/0x20 [nfs]
->   [<ffffffffa053d5f0>] nfs_pgio_data_destroy+0x20/0x40 [nfs]
->   [<ffffffffa053d672>] nfs_pgio_error+0x22/0x40 [nfs]
->   [<ffffffffa053d8f4>] nfs_generic_pgio+0x74/0x2e0 [nfs]
->   [<ffffffffa06b18c3>] pnfs_generic_pg_writepages+0x63/0x210 [nfsv4]
->   [<ffffffffa053d579>] nfs_pageio_doio+0x19/0x50 [nfs]
->   [<ffffffffa053eb84>] nfs_pageio_complete+0x24/0x30 [nfs]
->   [<ffffffffa053cb25>] nfs_direct_write_schedule_iovec+0x115/0x1f0 [nfs]
->   [<ffffffffa053675f>] ? nfs_get_lock_context+0x4f/0x120 [nfs]
->   [<ffffffffa053d252>] nfs_file_direct_write+0x262/0x420 [nfs]
->   [<ffffffffa0532d91>] nfs_file_write+0x131/0x1d0 [nfs]
->   [<ffffffffa0532c60>] ? nfs_need_sync_write.isra.17+0x40/0x40 [nfs]
->   [<ffffffff812127b8>] do_io_submit+0x3b8/0x840
->   [<ffffffff81212c50>] SyS_io_submit+0x10/0x20
->   [<ffffffff81610f29>] system_call_fastpath+0x16/0x1b
-> 
-> This is due to the calls to nfs_pgio_error() in nfs_generic_pgio(), which
-> happen before the nfs_pgio_header's open context is referenced in
-> nfs_pgio_rpcsetup().
-> 
-> Reported-by: Steve Dickson <SteveD@redhat.com>
-> Cc: stable@vger.kernel.org # 3.16.x
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Tested-by: Steve Dickson <steved@redhat.com>
+diff --git a/tests/generic/277 b/tests/generic/277
+index 8461ad9..39ebdc3 100755
+--- a/tests/generic/277
++++ b/tests/generic/277
+@@ -38,11 +38,13 @@ trap "_cleanup ; exit \$status" 0 1 2 3 15
+ # get standard environment, filters and checks
+ . ./common/rc
+ . ./common/filter
++. ./common/attr
+ 
+ # real QA test starts here
+ _supported_fs generic
+ _supported_os Linux
+ _require_scratch
++_require_attrs
+ 
+ _scratch_mkfs > /dev/null 2>&1
+ _scratch_mount
+-- 
+1.9.3
 
-steved.
-> ---
->  fs/nfs/pagelist.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> index 94e16ec88312..08085de879ed 100644
-> --- a/fs/nfs/pagelist.c
-> +++ b/fs/nfs/pagelist.c
-> @@ -526,7 +526,8 @@ EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
->   */
->  void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
->  {
-> -	put_nfs_open_context(hdr->args.context);
-> +	if (hdr->args.context)
-> +		put_nfs_open_context(hdr->args.context);
->  	if (hdr->page_array.pagevec != hdr->page_array.page_array)
->  		kfree(hdr->page_array.pagevec);
->  }
-> 
