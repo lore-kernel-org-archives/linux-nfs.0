@@ -1,117 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f175.google.com ([209.85.212.175]:59296 "EHLO
-	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751052AbaKEAOP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2014 19:14:15 -0500
-Received: by mail-wi0-f175.google.com with SMTP id ex7so10981132wid.8
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Nov 2014 16:14:14 -0800 (PST)
+Received: from mail-wg0-f46.google.com ([74.125.82.46]:42005 "EHLO
+	mail-wg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751454AbaKBSDA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Nov 2014 13:03:00 -0500
+Message-ID: <545671D0.2090506@electrozaur.com>
+Date: Sun, 02 Nov 2014 20:02:56 +0200
+From: Boaz Harrosh <ooo@electrozaur.com>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyHVoJ60z7WBaCYvUN3GsCEGh9jGc0evRCuiVt2aA6zP0g@mail.gmail.com>
-References: <1415025403-31914-1-git-send-email-kolga@netapp.com>
-	<CAN-5tyHVoJ60z7WBaCYvUN3GsCEGh9jGc0evRCuiVt2aA6zP0g@mail.gmail.com>
-Date: Tue, 4 Nov 2014 19:14:14 -0500
-Message-ID: <CAHQdGtQWg+Fiyn7vH9pjU1GR-TKvMp+gcR7ssaA1zESQ8JdVsw@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Fixing infinite state recovery loop due to failed
- delegation return
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>
+CC: Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: nfs atime semantics, was: Re: [PATCH 3/4] common: skip atime
+ related tests on NFS
+References: <1414502171-10319-1-git-send-email-eguan@redhat.com>	<1414502171-10319-4-git-send-email-eguan@redhat.com>	<20141030090306.GA23917@infradead.org> <CAHQdGtRFMcJGNZvU_V22Xh-3LadD2bYc=TwrkmBVBK81RkWCvw@mail.gmail.com>
+In-Reply-To: <CAHQdGtRFMcJGNZvU_V22Xh-3LadD2bYc=TwrkmBVBK81RkWCvw@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 4, 2014 at 6:22 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> Trond, can you please respond to the patch?
->
-> As per earlier conversation, in this solution, state recovery is
-> initiated which marks the locks lost.
->
-> Please either accept this patch or let me know what needs to be fixed.
->
+On 10/31/2014 01:31 PM, Trond Myklebust wrote:
+<>
+> If there is no read on the wire, then there is no way to update the
+> atime without doing an explicit SETATTR. Courtesy of POSIX filesystem
+> semantics on the server, that means we get a bonus change attribute
+> and ctime update (no extra charge).
+> 
+> Unless there are new suggestions for how to solve the atime issue that
+> do not involve introducing this or similar regressions, then the
+> standing NACK applies.
+> 
 
-Please see the 3 fixes I just sent out concerning delegation recovery
-w.r.t. NFSv4+NFSv4.1. In addition, we need to handle the case you
-patch attempts to address (however see the question I have below).
+Say the user asks, realy (realy^3) nicely, can we instead of sending
+SETATTR (BAD) send in its place an async READ of say one byte (or one
+word)
 
-> Thank you.
->
-> On Mon, Nov 3, 2014 at 9:36 AM, Olga Kornievskaia <kolga@netapp.com> wrote:
->> If we get a bad-stateid-type of error when we send OPEN with delegate_cur
->> to return currently held delegation, we shouldn't be trying to reclaim locks
->> associated with that delegation state_id because we don't have an
->> open_stateid to be used for the LOCK operation. Thus, we should
->> return an error from the nfs4_open_delegation_recall() in that case.
->>
->> Furthermore, if an error occurs the delegation code will call
->> nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
->> flags in the state and it leads the state manager to into an infinite loop
->> for trying to reclaim the delegated state.
->>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->>  fs/nfs/delegation.c |    5 +++--
->>  fs/nfs/nfs4proc.c   |    2 +-
->>  2 files changed, 4 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
->> index 5853f53..8016d89 100644
->> --- a/fs/nfs/delegation.c
->> +++ b/fs/nfs/delegation.c
->> @@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
->>                 err = nfs4_wait_clnt_recover(clp);
->>         } while (err == 0);
->>
->> -       if (err) {
->> +       if (err && err != -EIO) {
->>                 nfs_abort_delegation_return(delegation, clp);
+It will do what we want. Just need to collect the updates and atime vs rel-atime
+correctly, and to not hurt performance as well. (Like only send when no real
+READS went through)
 
-This exception for EIO now has me worried. If we detach the
-delegation, then it looks to me as if we will never send a
-FREE_STATEID, as required for the case of NFSv4.1.
+> Cheers
+>   Trond
+> 
 
->>                 goto out;
->>         }
->> @@ -458,7 +458,8 @@ restart:
->>                         iput(inode);
->>                         if (!err)
->>                                 goto restart;
->> -                       set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
->> +                       if (err != -EIO)
->> +                               set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
+Cheers
+Boaz
 
-Please explain why this is needed. If we've cleared the bad
-delegation, then why should we not attempt to return any others that
-may be pending?
-
->>                         return err;
->>                 }
->>         }
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 5aa55c1..6871055 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -1655,7 +1655,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
->>                         nfs_inode_find_state_and_recover(state->inode,
->>                                         stateid);
->>                         nfs4_schedule_stateid_recovery(server, state);
->> -                       return 0;
->> +                       return -EIO;
->>                 case -NFS4ERR_DELAY:
->>                 case -NFS4ERR_GRACE:
->>                         set_bit(NFS_DELEGATED_STATE, &state->flags);
->> --
->> 1.7.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
