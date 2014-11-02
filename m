@@ -1,74 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:48082 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45543 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752014AbaKJPW6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2014 10:22:58 -0500
-Message-ID: <5460D84A.3050704@Netapp.com>
-Date: Mon, 10 Nov 2014 10:22:50 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+	id S1751337AbaKBQob (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 2 Nov 2014 11:44:31 -0500
+Message-ID: <54565F6C.60204@RedHat.com>
+Date: Sun, 02 Nov 2014 11:44:28 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>, <linux-rdma@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>,
-        trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v2 09/10] NFS: SETCLIENTID XDR buffer sizes are incorrect
-References: <20141109010328.8806.5861.stgit@manet.1015granger.net> <20141109011518.8806.36904.stgit@manet.1015granger.net>
-In-Reply-To: <20141109011518.8806.36904.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
+To: Chuck Lever <chuck.lever@oracle.com>,
+        Benjamin Coddington <bcodding@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: building upstream nfs-utils on EL6 fails
+References: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com> <alpine.LRH.2.11.1410291919090.20279@sh-el6.eng.rdu2.redhat.com> <0953ACF5-C77F-4568-9952-FAF0C126B4AD@oracle.com> <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com> <88A2F169-8D62-4F15-BAAE-42732903DE46@oracle.com> <alpine.LRH.2.11.1410301152390.20279@sh-el6.eng.rdu2.redhat.com> <0CF508F8-8222-4555-A3E0-CDA435CF994D@oracle.com> <alpine.LRH.2.11.1410301229380.20279@sh-el6.eng.rdu2.redhat.com> <0ED5691C-39ED-4132-B6C9-5B6FB40D4CF1@oracle.com>
+In-Reply-To: <0ED5691C-39ED-4132-B6C9-5B6FB40D4CF1@oracle.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
 
-It looks like this patch and the next one are general client changes, so they might have to be submitted to Trond directly rather than going through my tree.  Trond, what do you think?
 
-Anna
+On 10/30/2014 01:19 PM, Chuck Lever wrote:
+>> Yes, I agree.  It occurs to me that you can also call these through the
+>> > syscall keyctl(), and pass the function number - so we can bypass a
+>> > non-compatible libkeyutils with something like (the untested):
+>> > 
+>> > diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+>> > index e0d31e7..99ae07e 100644
+>> > --- a/utils/nfsidmap/nfsidmap.c
+>> > +++ b/utils/nfsidmap/nfsidmap.c
+>> > @@ -209,10 +209,17 @@ static int key_invalidate(char *keystr, int keymask)
+>> >                *(strchr(buf, ' ')) = '\0';
+>> >                sscanf(buf, "%x", &key);
+>> > 
+>> > -               if (keyctl_invalidate(key) < 0) {
+>> > -                       xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
+>> > -                       fclose(fp);
+>> > -                       return 1;
+>> > +/* older libkeyutils compatibility */
+>> > +#ifndef KEYCTL_INVALIDATE
+>> > +#define KEYCTL_INVALIDATE 21      /* invalidate a key */
+>> > +#endif
+>> > +               if (keyctl(KEYCTL_INVALIDATE, key) < 0 && errno == EOPNOTSUPP) {
+>> > +                       /* older kernel compatibility attempt: */
+>> > +                       if (keyctl_revoke(key) < 0) {
+>> > +                               xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
+>> > +                               fclose(fp);
+>> > +                               return 1;
+>> > +                       }
+>> >                }
+>> > 
+>> >                keymask &= ~mask;
+>> > 
+>> > This should try to do the keyctl_invalidate if the kernel has it instead
+>> > of relying on the stub in libkeyutils.
+> I tested this with upstream 3.17, 2.6.39-400.209.1.el6uek.x86_64 (UEK2),
+> and 2.6.32-504.el6.x86_64. I think this approach can work.
+> 
+> Upstream 3.17 worked as expected.
+Can we add this to the upcoming RH bz.... 
 
-On 11/08/2014 08:15 PM, Chuck Lever wrote:
-> Use the correct calculation of the maximum size of a clientaddr4
-> when encoding and decoding SETCLIENTID operations. clientaddr4 is
-> defined in section 2.2.10 of RFC3530bis-31.
->
-> The usage in encode_setclientid_maxsz is missing the 4-byte length
-> in both strings, but is otherwise correct. decode_setclientid_maxsz
-> simply asks for a page of receive buffer space, which is
-> unnecessarily large (more than 4KB).
->
-> Note that a SETCLIENTID reply is either clientid+verifier, or
-> clientaddr4, depending on the returned NFS status. It doesn't
-> hurt to allocate enough space for both.
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  fs/nfs/nfs4xdr.c |   10 ++++++----
->  1 file changed, 6 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 206c08a..f8afa67 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -141,13 +141,15 @@ static int nfs4_stat_to_errno(int);
->  				XDR_QUADLEN(NFS4_VERIFIER_SIZE) + \
->  				XDR_QUADLEN(NFS4_SETCLIENTID_NAMELEN) + \
->  				1 /* sc_prog */ + \
-> -				XDR_QUADLEN(RPCBIND_MAXNETIDLEN) + \
-> -				XDR_QUADLEN(RPCBIND_MAXUADDRLEN) + \
-> +				1 + XDR_QUADLEN(RPCBIND_MAXNETIDLEN) + \
-> +				1 + XDR_QUADLEN(RPCBIND_MAXUADDRLEN) + \
->  				1) /* sc_cb_ident */
->  #define decode_setclientid_maxsz \
->  				(op_decode_hdr_maxsz + \
-> -				2 + \
-> -				1024) /* large value for CLID_INUSE */
-> +				2 /* clientid */ + \
-> +				XDR_QUADLEN(NFS4_VERIFIER_SIZE) + \
-> +				1 + XDR_QUADLEN(RPCBIND_MAXNETIDLEN) + \
-> +				1 + XDR_QUADLEN(RPCBIND_MAXUADDRLEN))
->  #define encode_setclientid_confirm_maxsz \
->  				(op_encode_hdr_maxsz + \
->  				3 + (NFS4_VERIFIER_SIZE >> 2))
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> UEK2 seems to use only the rpc.idmapd interface, no keys were created,
+> and the test workload ran normally.
+> 
+> 2.6.32-504.el6.x86_64 almost worked. 
+> 
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: key: 0x249ea9d9 type: uid value: cel@oracle.com timeout 600
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: nfs4_name_to_uid: calling nsswitch->name_to_uid
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: nss_getpwnam: name 'cel@oracle.com' domain 'oracle.com': resulting localname 'cel'
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: nfs4_name_to_uid: nsswitch->name_to_uid returned 0
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: nfs4_name_to_uid: final return value is 0
+> Oct 30 13:01:58 dali nfsidmap_new[2323]: key: 0x2944b451 type: gid value: users@oracle.com timeout 600
+> Oct 30 13:01:58 dali nfsidmap_new[2323]: nfs4_name_to_gid: calling nsswitch->name_to_gid
+> Oct 30 13:01:58 dali nfsidmap_new[2323]: nfs4_name_to_gid: nsswitch->name_to_gid returned 0
+> Oct 30 13:01:58 dali nfsidmap_new[2323]: nfs4_name_to_gid: final return value is 0
+> 
+> Golden. But nfsidmap_new was not able to set the key timeouts:
+> 
+> [root@dali ~]# cat /proc/keys
+> 020d3315 I--Q--     3 perm 1f3f0000     0    -1 keyring   _uid.0: empty
+> 0bf90e2d I--Q--     5 perm 1f3f0000     0     0 keyring   _ses: 1/4
+> 1a94e9ce I--Q--     1 perm 1f3f0000     0    -1 keyring   _uid_ses.0: 1/4
+> 1f77c0ad I--Q--     1 perm 3f050000     0     0 id_resolv gid:root@oracle.com: 2
+> 249ea9d9 I--Q--     1 perm 3f050000     0     0 id_resolv uid:cel@oracle.com: 5
+> 2944b451 I--Q--     1 perm 3f050000     0     0 id_resolv gid:users@oracle.com: 4
+> 3641d485 I-----     1 perm 1f030000     0     0 keyring   .id_resolver: 4/4
+> 3b10283e I--Q--     1 perm 3f050000     0     0 id_resolv uid:root@oracle.com: 2
+> 
+> I’m not sure if that’s normal for EL6 kernels, since I haven’t
+> used one of the stock EL6 kernels in a while.
+> 
+> An unrelated problem: upstream nfs-utils still doesn’t build
+> properly on EL6: nfsdcltrack can’t find the exact sqlite3 calls
+> it needs, and the build bails (fortunately after building
+> nfsidmap). More autoconf goo is needed to fix that.
+Sounds like another RH bz to me... ;-)
 
+steved.
