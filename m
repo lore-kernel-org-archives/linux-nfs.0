@@ -1,88 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f51.google.com ([209.85.220.51]:53987 "EHLO
-	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758459AbaKUKRY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2014 05:17:24 -0500
-Received: by mail-pa0-f51.google.com with SMTP id ey11so4622583pad.10
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Nov 2014 02:17:23 -0800 (PST)
-From: Omar Sandoval <osandov@osandov.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
-        Josef Bacik <jbacik@fb.com>, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Mel Gorman <mgorman@suse.de>
-Cc: Omar Sandoval <osandov@osandov.com>,
-        Dave Kleikamp <dave.kleikamp@oracle.com>,
-        Ming Lei <ming.lei@canonical.com>
-Subject: [PATCH v2 1/5] direct-io: don't dirty ITER_BVEC pages on read
-Date: Fri, 21 Nov 2014 02:08:27 -0800
-Message-Id: <d5e6bbb3e54f76bbc11ffd106bc98a2c531b67ad.1416563833.git.osandov@osandov.com>
-In-Reply-To: <cover.1416563833.git.osandov@osandov.com>
-References: <cover.1416563833.git.osandov@osandov.com>
-In-Reply-To: <cover.1416563833.git.osandov@osandov.com>
-References: <cover.1416563833.git.osandov@osandov.com>
+Received: from mx11.netapp.com ([216.240.18.76]:50696 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751698AbaKCOgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Nov 2014 09:36:47 -0500
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] Fixing infinite state recovery loop due to failed delegation return
+Date: Mon, 3 Nov 2014 09:36:43 -0500
+Message-ID: <1415025403-31914-1-git-send-email-kolga@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reads through the iov_iter infrastructure for kernel pages shouldn't be dirtied
-by the direct I/O code.
+If we get a bad-stateid-type of error when we send OPEN with delegate_cur
+to return currently held delegation, we shouldn't be trying to reclaim locks
+associated with that delegation state_id because we don't have an
+open_stateid to be used for the LOCK operation. Thus, we should
+return an error from the nfs4_open_delegation_recall() in that case.
 
-This is based on Dave Kleikamp's and Ming Lei's previously posted patches.
+Furthermore, if an error occurs the delegation code will call
+nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
+flags in the state and it leads the state manager to into an infinite loop
+for trying to reclaim the delegated state.
 
-Cc: Dave Kleikamp <dave.kleikamp@oracle.com>
-Cc: Ming Lei <ming.lei@canonical.com>
-Signed-off-by: Omar Sandoval <osandov@osandov.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/direct-io.c | 8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+ fs/nfs/delegation.c |    5 +++--
+ fs/nfs/nfs4proc.c   |    2 +-
+ 2 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/direct-io.c b/fs/direct-io.c
-index e181b6b..e542ce4 100644
---- a/fs/direct-io.c
-+++ b/fs/direct-io.c
-@@ -120,6 +120,7 @@ struct dio {
- 	spinlock_t bio_lock;		/* protects BIO fields below */
- 	int page_errors;		/* errno from get_user_pages() */
- 	int is_async;			/* is IO async ? */
-+	int should_dirty;		/* should we mark read pages dirty? */
- 	bool defer_completion;		/* defer AIO completion to workqueue? */
- 	int io_error;			/* IO error in completion path */
- 	unsigned long refcount;		/* direct_io_worker() and bios */
-@@ -392,7 +393,7 @@ static inline void dio_bio_submit(struct dio *dio, struct dio_submit *sdio)
- 	dio->refcount++;
- 	spin_unlock_irqrestore(&dio->bio_lock, flags);
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 5853f53..8016d89 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
+ 		err = nfs4_wait_clnt_recover(clp);
+ 	} while (err == 0);
  
--	if (dio->is_async && dio->rw == READ)
-+	if (dio->is_async && dio->rw == READ && dio->should_dirty)
- 		bio_set_pages_dirty(bio);
- 
- 	if (sdio->submit_io)
-@@ -463,13 +464,13 @@ static int dio_bio_complete(struct dio *dio, struct bio *bio)
- 	if (!uptodate)
- 		dio->io_error = -EIO;
- 
--	if (dio->is_async && dio->rw == READ) {
-+	if (dio->is_async && dio->rw == READ && dio->should_dirty) {
- 		bio_check_pages_dirty(bio);	/* transfers ownership */
- 	} else {
- 		bio_for_each_segment_all(bvec, bio, i) {
- 			struct page *page = bvec->bv_page;
- 
--			if (dio->rw == READ && !PageCompound(page))
-+			if (dio->rw == READ && !PageCompound(page) && dio->should_dirty)
- 				set_page_dirty_lock(page);
- 			page_cache_release(page);
+-	if (err) {
++	if (err && err != -EIO) {
+ 		nfs_abort_delegation_return(delegation, clp);
+ 		goto out;
+ 	}
+@@ -458,7 +458,8 @@ restart:
+ 			iput(inode);
+ 			if (!err)
+ 				goto restart;
+-			set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
++			if (err != -EIO)
++				set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
+ 			return err;
  		}
-@@ -1177,6 +1178,7 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
- 
- 	dio->inode = inode;
- 	dio->rw = rw;
-+	dio->should_dirty = !(iter->type & ITER_BVEC);
- 
- 	/*
- 	 * For AIO O_(D)SYNC writes we need to defer completions to a workqueue
+ 	}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 5aa55c1..6871055 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1655,7 +1655,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+ 			nfs_inode_find_state_and_recover(state->inode,
+ 					stateid);
+ 			nfs4_schedule_stateid_recovery(server, state);
+-			return 0;
++			return -EIO;
+ 		case -NFS4ERR_DELAY:
+ 		case -NFS4ERR_GRACE:
+ 			set_bit(NFS_DELEGATED_STATE, &state->flags);
 -- 
-2.1.3
+1.7.1
 
