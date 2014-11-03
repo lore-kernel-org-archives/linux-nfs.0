@@ -1,321 +1,329 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cobra.newdream.net ([66.33.216.30]:46519 "EHLO
-	cobra.newdream.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751399AbaKJQHN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2014 11:07:13 -0500
-Date: Mon, 10 Nov 2014 08:07:12 -0800 (PST)
-From: Sage Weil <sage@newdream.net>
-To: Milosz Tanski <milosz@adfin.com>
-cc: linux-kernel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
-        Mel Gorman <mgorman@suse.de>,
-        Volker Lendecke <Volker.Lendecke@sernet.de>, Tejun Heo <tj@kernel.org>,
-        Jeff Moyer <jmoyer@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Al Viro <viro@zeniv.linux.org.uk>, linux-api@vger.kernel.org,
-        Michael Kerrisk <mtk.manpages@gmail.com>, linux-arch@vger.kernel.org,
-        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
-        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mm@kvack.org
-Subject: Re: [PATCH v5 4/7] vfs: RWF_NONBLOCK flag for preadv2
-In-Reply-To: <379c680ae1e6309e679ff83bc6cb55e1cf97d7f9.1415220890.git.milosz@adfin.com>
-Message-ID: <alpine.DEB.2.00.1411100805590.11379@cobra.newdream.net>
-References: <cover.1415220890.git.milosz@adfin.com> <379c680ae1e6309e679ff83bc6cb55e1cf97d7f9.1415220890.git.milosz@adfin.com>
+Received: from mx1.redhat.com ([209.132.183.28]:45946 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752471AbaKCOoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Nov 2014 09:44:03 -0500
+Date: Mon, 3 Nov 2014 09:44:01 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: building upstream nfs-utils on EL6 fails
+In-Reply-To: <0ED5691C-39ED-4132-B6C9-5B6FB40D4CF1@oracle.com>
+Message-ID: <alpine.LRH.2.11.1411030939280.20279@sh-el6.eng.rdu2.redhat.com>
+References: <E823B0AB-32D7-45C5-B5C2-69B165A2CEAC@oracle.com> <alpine.LRH.2.11.1410291919090.20279@sh-el6.eng.rdu2.redhat.com> <0953ACF5-C77F-4568-9952-FAF0C126B4AD@oracle.com> <alpine.LRH.2.11.1410301022140.20279@sh-el6.eng.rdu2.redhat.com>
+ <88A2F169-8D62-4F15-BAAE-42732903DE46@oracle.com> <alpine.LRH.2.11.1410301152390.20279@sh-el6.eng.rdu2.redhat.com> <0CF508F8-8222-4555-A3E0-CDA435CF994D@oracle.com> <alpine.LRH.2.11.1410301229380.20279@sh-el6.eng.rdu2.redhat.com>
+ <0ED5691C-39ED-4132-B6C9-5B6FB40D4CF1@oracle.com>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: MULTIPART/MIXED; BOUNDARY="168445344-64467639-1415025841=:20279"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 5 Nov 2014, Milosz Tanski wrote:
-> generic_file_read_iter() supports a new flag RWF_NONBLOCK which says that we
-> only want to read the data if it's already in the page cache.
-> 
-> Additionally, there are a few filesystems that we have to specifically
-> bail early if RWF_NONBLOCK because the op would block. Christoph Hellwig
-> contributed this code.
-> 
-> Signed-off-by: Milosz Tanski <milosz@adfin.com>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> Reviewed-by: Jeff Moyer <jmoyer@redhat.com>
+  This message is in MIME format.  The first part should be readable text,
+  while the remaining parts are likely unreadable without MIME-aware tools.
 
-Ceph bits
-
-Acked-by: Sage Weil <sage@redhat.com>
+--168445344-64467639-1415025841=:20279
+Content-Type: TEXT/PLAIN; charset=windows-1252; format=flowed
+Content-Transfer-Encoding: 8BIT
 
 
-> ---
->  fs/ceph/file.c     |  2 ++
->  fs/cifs/file.c     |  6 ++++++
->  fs/nfs/file.c      |  5 ++++-
->  fs/ocfs2/file.c    |  6 ++++++
->  fs/pipe.c          |  3 ++-
->  fs/read_write.c    | 38 +++++++++++++++++++++++++-------------
->  fs/xfs/xfs_file.c  |  4 ++++
->  include/linux/fs.h |  3 +++
->  mm/filemap.c       | 18 ++++++++++++++++++
->  mm/shmem.c         |  4 ++++
->  10 files changed, 74 insertions(+), 15 deletions(-)
-> 
-> diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-> index d7e0da8..b798b5c 100644
-> --- a/fs/ceph/file.c
-> +++ b/fs/ceph/file.c
-> @@ -822,6 +822,8 @@ again:
->  	if ((got & (CEPH_CAP_FILE_CACHE|CEPH_CAP_FILE_LAZYIO)) == 0 ||
->  	    (iocb->ki_filp->f_flags & O_DIRECT) ||
->  	    (fi->flags & CEPH_F_SYNC)) {
-> +		if (iocb->ki_rwflags & O_NONBLOCK)
-> +			return -EAGAIN;
->  
->  		dout("aio_sync_read %p %llx.%llx %llu~%u got cap refs on %s\n",
->  		     inode, ceph_vinop(inode), iocb->ki_pos, (unsigned)len,
-> diff --git a/fs/cifs/file.c b/fs/cifs/file.c
-> index 3e4d00a..c485afa 100644
-> --- a/fs/cifs/file.c
-> +++ b/fs/cifs/file.c
-> @@ -3005,6 +3005,9 @@ ssize_t cifs_user_readv(struct kiocb *iocb, struct iov_iter *to)
->  	struct cifs_readdata *rdata, *tmp;
->  	struct list_head rdata_list;
->  
-> +	if (iocb->ki_rwflags & RWF_NONBLOCK)
-> +		return -EAGAIN;
-> +
->  	len = iov_iter_count(to);
->  	if (!len)
->  		return 0;
-> @@ -3123,6 +3126,9 @@ cifs_strict_readv(struct kiocb *iocb, struct iov_iter *to)
->  	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0))
->  		return generic_file_read_iter(iocb, to);
->  
-> +	if (iocb->ki_rwflags & RWF_NONBLOCK)
-> +		return -EAGAIN;
-> +
->  	/*
->  	 * We need to hold the sem to be sure nobody modifies lock list
->  	 * with a brlock that prevents reading.
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 2ab6f00..aa9046f 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -171,8 +171,11 @@ nfs_file_read(struct kiocb *iocb, struct iov_iter *to)
->  	struct inode *inode = file_inode(iocb->ki_filp);
->  	ssize_t result;
->  
-> -	if (iocb->ki_filp->f_flags & O_DIRECT)
-> +	if (iocb->ki_filp->f_flags & O_DIRECT) {
-> +		if (iocb->ki_rwflags & O_NONBLOCK)
-> +			return -EAGAIN;
->  		return nfs_file_direct_read(iocb, to, iocb->ki_pos);
-> +	}
->  
->  	dprintk("NFS: read(%pD2, %zu@%lu)\n",
->  		iocb->ki_filp,
-> diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-> index 324dc93..bb66ca4 100644
-> --- a/fs/ocfs2/file.c
-> +++ b/fs/ocfs2/file.c
-> @@ -2472,6 +2472,12 @@ static ssize_t ocfs2_file_read_iter(struct kiocb *iocb,
->  			filp->f_path.dentry->d_name.name,
->  			to->nr_segs);	/* GRRRRR */
->  
-> +	/*
-> +	 * No non-blocking reads for ocfs2 for now.  Might be doable with
-> +	 * non-blocking cluster lock helpers.
-> +	 */
-> +	if (iocb->ki_rwflags & RWF_NONBLOCK)
-> +		return -EAGAIN;
->  
->  	if (!inode) {
->  		ret = -EINVAL;
-> diff --git a/fs/pipe.c b/fs/pipe.c
-> index 21981e5..212bf68 100644
-> --- a/fs/pipe.c
-> +++ b/fs/pipe.c
-> @@ -302,7 +302,8 @@ pipe_read(struct kiocb *iocb, struct iov_iter *to)
->  			 */
->  			if (ret)
->  				break;
-> -			if (filp->f_flags & O_NONBLOCK) {
-> +			if ((filp->f_flags & O_NONBLOCK) ||
-> +			    (iocb->ki_rwflags & RWF_NONBLOCK)) {
->  				ret = -EAGAIN;
->  				break;
->  			}
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index 907735c..cba7d4c 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -835,14 +835,19 @@ static ssize_t do_readv_writev(int type, struct file *file,
->  		file_start_write(file);
->  	}
->  
-> -	if (iter_fn)
-> +	if (iter_fn) {
->  		ret = do_iter_readv_writev(file, type, iov, nr_segs, tot_len,
->  						pos, iter_fn, flags);
-> -	else if (fnv)
-> -		ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
-> -						pos, fnv);
-> -	else
-> -		ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
-> +	} else {
-> +		if (type == READ && (flags & RWF_NONBLOCK))
-> +			return -EAGAIN;
-> +
-> +		if (fnv)
-> +			ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
-> +							pos, fnv);
-> +		else
-> +			ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
-> +	}
->  
->  	if (type != READ)
->  		file_end_write(file);
-> @@ -866,8 +871,10 @@ ssize_t vfs_readv(struct file *file, const struct iovec __user *vec,
->  		return -EBADF;
->  	if (!(file->f_mode & FMODE_CAN_READ))
->  		return -EINVAL;
-> -	if (flags & ~0)
-> +	if (flags & ~RWF_NONBLOCK)
->  		return -EINVAL;
-> +	if ((file->f_flags & O_DIRECT) && (flags & RWF_NONBLOCK))
-> +		return -EAGAIN;
->  
->  	return do_readv_writev(READ, file, vec, vlen, pos, flags);
->  }
-> @@ -1069,14 +1076,19 @@ static ssize_t compat_do_readv_writev(int type, struct file *file,
->  		file_start_write(file);
->  	}
->  
-> -	if (iter_fn)
-> +	if (iter_fn) {
->  		ret = do_iter_readv_writev(file, type, iov, nr_segs, tot_len,
->  						pos, iter_fn, flags);
-> -	else if (fnv)
-> -		ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
-> -						pos, fnv);
-> -	else
-> -		ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
-> +	} else {
-> +		if (type == READ && (flags & RWF_NONBLOCK))
-> +			return -EAGAIN;
-> +
-> +		if (fnv)
-> +			ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
-> +							pos, fnv);
-> +		else
-> +			ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
-> +	}
->  
->  	if (type != READ)
->  		file_end_write(file);
-> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> index eb596b4..b1f6334 100644
-> --- a/fs/xfs/xfs_file.c
-> +++ b/fs/xfs/xfs_file.c
-> @@ -246,6 +246,10 @@ xfs_file_read_iter(
->  
->  	XFS_STATS_INC(xs_read_calls);
->  
-> +	/* XXX: need a non-blocking iolock helper, shouldn't be too hard */
-> +	if (iocb->ki_rwflags & RWF_NONBLOCK)
-> +		return -EAGAIN;
-> +
->  	if (unlikely(file->f_flags & O_DIRECT))
->  		ioflags |= XFS_IO_ISDIRECT;
->  	if (file->f_mode & FMODE_NOCMTIME)
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 9ed5711..eaebd99 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1459,6 +1459,9 @@ struct block_device_operations;
->  #define HAVE_COMPAT_IOCTL 1
->  #define HAVE_UNLOCKED_IOCTL 1
->  
-> +/* These flags are used for the readv/writev syscalls with flags. */
-> +#define RWF_NONBLOCK 0x00000001
-> +
->  struct iov_iter;
->  
->  struct file_operations {
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 530c263..09d3af3 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -1494,6 +1494,8 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
->  find_page:
->  		page = find_get_page(mapping, index);
->  		if (!page) {
-> +			if (flags & RWF_NONBLOCK)
-> +				goto would_block;
->  			page_cache_sync_readahead(mapping,
->  					ra, filp,
->  					index, last_index - index);
-> @@ -1585,6 +1587,11 @@ page_ok:
->  		continue;
->  
->  page_not_up_to_date:
-> +		if (flags & RWF_NONBLOCK) {
-> +			page_cache_release(page);
-> +			goto would_block;
-> +		}
-> +
->  		/* Get exclusive access to the page ... */
->  		error = lock_page_killable(page);
->  		if (unlikely(error))
-> @@ -1604,6 +1611,12 @@ page_not_up_to_date_locked:
->  			goto page_ok;
->  		}
->  
-> +		if (flags & RWF_NONBLOCK) {
-> +			unlock_page(page);
-> +			page_cache_release(page);
-> +			goto would_block;
-> +		}
-> +
->  readpage:
->  		/*
->  		 * A previous I/O error may have been due to temporary
-> @@ -1674,6 +1687,8 @@ no_cached_page:
->  		goto readpage;
->  	}
->  
-> +would_block:
-> +	error = -EAGAIN;
->  out:
->  	ra->prev_pos = prev_index;
->  	ra->prev_pos <<= PAGE_CACHE_SHIFT;
-> @@ -1707,6 +1722,9 @@ generic_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
->  		size_t count = iov_iter_count(iter);
->  		loff_t size;
->  
-> +		if (iocb->ki_rwflags & RWF_NONBLOCK)
-> +			return -EAGAIN;
-> +
->  		if (!count)
->  			goto out; /* skip atime */
->  		size = i_size_read(inode);
-> diff --git a/mm/shmem.c b/mm/shmem.c
-> index cd6fc75..5c30f04 100644
-> --- a/mm/shmem.c
-> +++ b/mm/shmem.c
-> @@ -1531,6 +1531,10 @@ static ssize_t shmem_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
->  	ssize_t retval = 0;
->  	loff_t *ppos = &iocb->ki_pos;
->  
-> +	/* XXX: should be easily supportable */
-> +	if (iocb->ki_rwflags & RWF_NONBLOCK)
-> +		return -EAGAIN;
-> +
->  	/*
->  	 * Might this read be for a stacking filesystem?  Then when reading
->  	 * holes of a sparse file, we actually need to allocate those pages,
-> -- 
-> 1.9.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe ceph-devel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+
+On Thu, 30 Oct 2014, Chuck Lever wrote:
+
+>
+> On Oct 30, 2014, at 12:52 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
+>
+>>
+>>
+>> On Thu, 30 Oct 2014, Chuck Lever wrote:
+>>
+>>>
+>>> On Oct 30, 2014, at 12:08 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
+>>>
+>>>>
+>>>>
+>>>> On Thu, 30 Oct 2014, Chuck Lever wrote:
+>>>>
+>>>>>
+>>>>> On Oct 30, 2014, at 10:53 AM, Benjamin Coddington <bcodding@redhat.com> wrote:
+>>>>>
+>>>>>>
+>>>>>> On Wed, 29 Oct 2014, Chuck Lever wrote:
+>>>>>>
+>>>>>>> Hi Ben-
+>>>>>>>
+>>>>>>> On Oct 29, 2014, at 7:27 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
+>>>>>>>
+>>>>>>>> Hi Chuck, I'll jump in here if you don't mind.
+>>>>>>>>
+>>>>>>>> How's this work for missing keyctl_invalidate:
+>>>>>>>>
+>>>>>>>> diff --git a/configure.ac b/configure.ac
+>>>>>>>> index 59fd14d..8295bed 100644
+>>>>>>>> --- a/configure.ac
+>>>>>>>> +++ b/configure.ac
+>>>>>>>> @@ -270,6 +270,9 @@ AC_CHECK_LIB([crypt], [crypt], [LIBCRYPT="-lcrypt"])
+>>>>>>>>
+>>>>>>>> AC_CHECK_LIB([dl], [dlclose], [LIBDL="-ldl"])
+>>>>>>>>
+>>>>>>>> +AC_CHECK_LIB([keyutils], [keyctl_invalidate], ,[
+>>>>>>>> +       AC_DEFINE([MISSING_KEYCTL_INVALIDATE], [1], [Define to use
+>>>>>>>> keyctl_revoke instead])])
+>>>>>>>
+>>>>>>> Nit: I would just add
+>>>>>>>
+>>>>>>> AC_CHECK_FUNCS([keyctl_invalidate])
+>>>>>>>
+>>>>>>> in aclocal/keyutils.m4 to define HAVE_KEYCTL_INVALIDATE .
+>>>>>>
+>>>>>> Yes, that is better.
+>>>>>>
+>>>>>>>> +
+>>>>>>>> if test "$enable_nfsv4" = yes; then
+>>>>>>>> dnl check for libevent libraries and headers
+>>>>>>>> AC_LIBEVENT
+>>>>>>>> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+>>>>>>>> index e0d31e7..ab4b10c 100644
+>>>>>>>> --- a/utils/nfsidmap/nfsidmap.c
+>>>>>>>> +++ b/utils/nfsidmap/nfsidmap.c
+>>>>>>>> @@ -14,6 +14,7 @@
+>>>>>>>> #include <unistd.h>
+>>>>>>>> #include "xlog.h"
+>>>>>>>> #include "conffile.h"
+>>>>>>>> +#include “config.h"
+>>>>>>>>
+>>>>>>>> int verbose = 0;
+>>>>>>>> char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key
+>>>>>>>> desc]";
+>>>>>>>> @@ -23,6 +24,10 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] ||
+>>>>>>>> [-t timeout] key desc]";
+>>>>>>>> #define USER  1
+>>>>>>>> #define GROUP 0
+>>>>>>>>
+>>>>>>>> +#ifdef MISSING_KEYCTL_INVALIDATE
+>>>>>>>> +#define keyctl_invalidate(key) keyctl_revoke(key)
+>>>>>>>> +#endif
+>>>>>>>> +
+>>>>>>>> #define PROCKEYS "/proc/keys"
+>>>>>>>> #ifndef DEFAULT_KEYRING
+>>>>>>>> #define DEFAULT_KEYRING "id_resolver"
+>>>>>>>>
+>>>>>>>> ^^^ that's a little ugly -- it doesn't try to figure out what should be
+>>>>>>>> done in the kernel to clean up keys.  It assumes that if your
+>>>>>>>> libkeyutils has keyctl_invalidate then that's what you should use.
+>>>>>>>
+>>>>>>> This looks like it fixes the build issue. I think we do
+>>>>>>> want late-model nfs-utils to build correctly on older
+>>>>>>> distributions.
+>>>>>>>
+>>>>>>> I’m not sure keyctl_revoke and keyctl_invalidate do
+>>>>>>> precisely the same thing, though? On older systems can
+>>>>>>> we expect a change from one to the other to have no
+>>>>>>> impact? (Just beginning to explore this issue).
+>>>>>>
+>>>>>> For EL6 kernels, you should be good with keyctl_revoke.  That's the only
+>>>>>> thing you can do - there's no key_invalidate.
+>>>>>>
+>>>>>> But on later kernels, you'd want to use key_invalidate.
+>>>>>
+>>>>> I realize that EL6 user space is not designed to support
+>>>>> newer kernels, but some distributions allow continuous
+>>>>> upgrades of kernels. If the kernel API changes over time,
+>>>>> then IMO user space tools need to be sensitive to what
+>>>>> kernel is running.
+>>>>
+>>>> It would be a lot of work to continually backport adjustments to
+>>>> utilities across the supported/released platforms to allow
+>>>> compatilibilty with upstream kernels; it also reduces the stability
+>>>> of those releases.
+>>>>
+>>>> It would be nice if it always just worked, but /most/ RHEL customers
+>>>> don't try to run upstream kernels in older releases.
+>>>
+>>> Just an example:
+>>>
+>>> Oracle Linux provides updated kernels via the Unbreakable
+>>> Enterprise Kernel releases. The latest release is UEK3, which
+>>> is 3.8-based. It installs on EL6.
+>>>
+>>> My point of posting here, just to be clear, is that upstream
+>>> nfs-utils no longer builds on systems that have an older
+>>> keyutils. The details particular to EL6 can be resolved, as
+>>> Steve suggested, in an RH bz.
+>>>
+>>> In the nfsidmap case, I think the extra logic in nfsidmap to
+>>> do the right keyctl call is simple to add and test. That would
+>>> make nfsidmap “just work”.
+>>>
+>>>>>> The details of the kernel changes are here:
+>>>>>>
+>>>>>> 0c7774abb41bd00d KEYS: Allow special keys (eg. DNS results) to be
+>>>>>> invalidated by CAP_SYS_ADMIN
+>>>>>
+>>>>> I think this means the EL6 nfsidmap no longer works quite
+>>>>> right when running 3.17. I’m still studying the problem.
+>>>>> See below.
+>>>>>
+>>>>>> The summary is that permission changes in later kernels cause
+>>>>>> keyctl_revoke to be unable to clean up keys that are not in possession.
+>>>>>> This specific commit allows that once more for CAP_SYS_ADMIN, so
+>>>>>> really, it should work fine if you have this.  However:
+>>>>>>
+>>>>>> keyctl_revoke waits key_gc_timeout to clean up the key, and access
+>>>>>> attempts return -EKEYREVOKED.
+>>>>>>
+>>>>>> keyctl_invalidate immediately removes all references to the key.
+>>>>>
+>>>>> This change means keyctl_set_timeout fails, since
+>>>>> lookup_user_key returns -EKEYREVOKED, for example, when a
+>>>>> key is revoked instead of invalidated. The key timeouts
+>>>>> are then set to 0 (the default).
+>>>>>
+>>>>> There is at least one other bug which breaks nfsidmap in
+>>>>> 3.13 and newer kernels. I will post a proposed fix later
+>>>>> today.
+>>>>>
+>>>>>> The latter is the preferred operation for nfsidmap, since this code path
+>>>>>> exists to allow the admin to flush out a specific key from the idmapper
+>>>>>> cache.
+>>>>>
+>>>>> EL6 libkeyutils doesn’t have keyctl_invalidate. That
+>>>>> seems to be the crux of the problem (for EL6).
+>>>>>
+>>>>>> It might be a good idea to just update your libkeyutils along with the kernel
+>>>>>> and nfs-utils.  Maybe we should make a version dependency for
+>>>>>> libkeyutils in nfs-utils.  Steve, what do you think?
+>>>>>
+>>>>> I don’t know the history of the kernel API, but one
+>>>>> assumes that 2.6.32-vintage kernels don’t have
+>>>>> keyctl_invalidate, since it is missing from older
+>>>>> libkeyutils as well.
+>>>>>
+>>>>> I think nfs-utils needs both to build with
+>>>>> keyctl_invalidate support if that exists on the build
+>>>>> system, and it needs to pick which of keyctl_revoke
+>>>>> or keyctl_invalidate it will invoke based on the kernel
+>>>>> version where it’s running. That’s pretty easy to do
+>>>>> in nfs-utils.
+>>>>>
+>>>>> Is keyctl_revoke expected to go away at some point?
+>>>>
+>>>> I think that it serves an important role in marking keys as existing,
+>>>> but revoked - this can provide a useful type of negative cache to
+>>>> communicate the state of an object. I haven't expected it to go away.
+>>>>
+>>>>>>>> EL6 systems should be able to do both the request-key (nfsidmap)
+>>>>>>>> and the rpc.idmapd upcall.  I believe that EL6 kernels try both - if the
+>>>>>>>> nfsidmap request-key doesn't work they fall back to the upcall, however
+>>>>>>>> the nfsidmap request-key interface really is the one that should be
+>>>>>>>> used.
+>>>>>>>
+>>>>>>> I have several EL6 systems here, and at least one of them
+>>>>>>> had rpc.idmapd configured off. I couldn’t remember if I had
+>>>>>>> done that, or it came that way off the installation media.
+>>>>>>
+>>>>>> I think rpc.idmapd being on/off changed a couple of times in EL6.. I
+>>>>>> don't recall the specifics.
+>>>>>
+>>>>> Makes sense. My EL6 installs are of various vintages.
+>>>>>
+>>>>> But that could be a problem when installing a kernel that
+>>>>> causes nfsidmap to fail because the kernel API has changed.
+>>>>> Without the fallback in place, ID mapping will not work.
+>>>>
+>>>> Ah, but those later kernels will not try the fallback.  :/  Or, maybe
+>>>> there is a set of kernels that are broken that will try the fallback,
+>>>> but later ones won't.
+>>>>
+>>>> I used to do this when using later kernels with EL6: if it didn't
+>>>> work with EL6 userspace then use upstream nfs-utils, keylibs... etc.  As
+>>>> long as you didn't get into dep-hell, it seemed the simplest path to
+>>>> getting a working system.
+>>>
+>>> Except that EL6 libkeyutil doesn’t have keyctl_invalidate. So
+>>> there’s no way to build a working nfsidmap without installing
+>>> a newer keyutils. That seems like a step along the path to
+>>> dep-hell that could be prevented with a few careful lines of
+>>> code in nfs-utils.
+>>>
+>>> I’d like to be able to pull an upstream nfs-utils and build it
+>>> on EL6, at the very least.
+>>
+>> Yes, I agree.  It occurs to me that you can also call these through the
+>> syscall keyctl(), and pass the function number - so we can bypass a
+>> non-compatible libkeyutils with something like (the untested):
+>>
+>> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+>> index e0d31e7..99ae07e 100644
+>> --- a/utils/nfsidmap/nfsidmap.c
+>> +++ b/utils/nfsidmap/nfsidmap.c
+>> @@ -209,10 +209,17 @@ static int key_invalidate(char *keystr, int keymask)
+>>                *(strchr(buf, ' ')) = '\0';
+>>                sscanf(buf, "%x", &key);
+>>
+>> -               if (keyctl_invalidate(key) < 0) {
+>> -                       xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
+>> -                       fclose(fp);
+>> -                       return 1;
+>> +/* older libkeyutils compatibility */
+>> +#ifndef KEYCTL_INVALIDATE
+>> +#define KEYCTL_INVALIDATE 21      /* invalidate a key */
+>> +#endif
+>> +               if (keyctl(KEYCTL_INVALIDATE, key) < 0 && errno == EOPNOTSUPP) {
+>> +                       /* older kernel compatibility attempt: */
+>> +                       if (keyctl_revoke(key) < 0) {
+>> +                               xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
+>> +                               fclose(fp);
+>> +                               return 1;
+>> +                       }
+>>                }
+>>
+>>                keymask &= ~mask;
+>>
+>> This should try to do the keyctl_invalidate if the kernel has it instead
+>> of relying on the stub in libkeyutils.
+>
+> I tested this with upstream 3.17, 2.6.39-400.209.1.el6uek.x86_64 (UEK2),
+> and 2.6.32-504.el6.x86_64. I think this approach can work.
+>
+> Upstream 3.17 worked as expected.
+>
+> UEK2 seems to use only the rpc.idmapd interface, no keys were created,
+> and the test workload ran normally.
+>
+> 2.6.32-504.el6.x86_64 almost worked.
+>
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: key: 0x249ea9d9 type: uid value: cel@oracle.com timeout 600
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: nfs4_name_to_uid: calling nsswitch->name_to_uid
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: nss_getpwnam: name 'cel@oracle.com' domain 'oracle.com': resulting localname 'cel'
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: nfs4_name_to_uid: nsswitch->name_to_uid returned 0
+> Oct 30 13:01:58 dali nfsidmap_new[2321]: nfs4_name_to_uid: final return value is 0
+> Oct 30 13:01:58 dali nfsidmap_new[2323]: key: 0x2944b451 type: gid value: users@oracle.com timeout 600
+> Oct 30 13:01:58 dali nfsidmap_new[2323]: nfs4_name_to_gid: calling nsswitch->name_to_gid
+> Oct 30 13:01:58 dali nfsidmap_new[2323]: nfs4_name_to_gid: nsswitch->name_to_gid returned 0
+> Oct 30 13:01:58 dali nfsidmap_new[2323]: nfs4_name_to_gid: final return value is 0
+>
+> Golden. But nfsidmap_new was not able to set the key timeouts:
+>
+> [root@dali ~]# cat /proc/keys
+> 020d3315 I--Q--     3 perm 1f3f0000     0    -1 keyring   _uid.0: empty
+> 0bf90e2d I--Q--     5 perm 1f3f0000     0     0 keyring   _ses: 1/4
+> 1a94e9ce I--Q--     1 perm 1f3f0000     0    -1 keyring   _uid_ses.0: 1/4
+> 1f77c0ad I--Q--     1 perm 3f050000     0     0 id_resolv gid:root@oracle.com: 2
+> 249ea9d9 I--Q--     1 perm 3f050000     0     0 id_resolv uid:cel@oracle.com: 5
+> 2944b451 I--Q--     1 perm 3f050000     0     0 id_resolv gid:users@oracle.com: 4
+> 3641d485 I-----     1 perm 1f030000     0     0 keyring   .id_resolver: 4/4
+> 3b10283e I--Q--     1 perm 3f050000     0     0 id_resolv uid:root@oracle.com: 2
+>
+> I’m not sure if that’s normal for EL6 kernels, since I haven’t
+> used one of the stock EL6 kernels in a while.
+
+It looks like this problem is unrelated to the above patch and exists
+upstream as well.  Probably the default key permissions do not allow
+nfsidmap to set the timeout during instantiation.  I think that the
+reason it works with EL6 nfsidmap is because EL6 links keys to child
+keyrings to work around the keyring limit, and KEY_POS_SETATTR then
+allows the timeout to be set.  I'll look into it.
+
+Ben
+--168445344-64467639-1415025841=:20279--
