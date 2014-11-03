@@ -1,198 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40870 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58097 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932251AbaKERBR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2014 12:01:17 -0500
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1G12009265
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:17 -0500
-Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1FCU004637
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:16 -0500
-Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1F2G000935
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:15 -0500
-Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1FZ5000934
-	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:15 -0500
-From: Scott Mayhew <smayhew@redhat.com>
+	id S1752128AbaKCRMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Nov 2014 12:12:33 -0500
+From: Benjamin Coddington <bcodding@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils RFC PATCH 09/15] mountstats: Add support for -S/--since to the mountstats and ms-iostat commands
-Date: Wed,  5 Nov 2014 12:01:06 -0500
-Message-Id: <1415206872-864-10-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
-References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+Cc: chuck.lever@oracle.com
+Subject: [PATCH v2] nfsidmap: keyctl_invalidate kernel compatibility
+Date: Mon,  3 Nov 2014 12:12:30 -0500
+Message-Id: <eee96450255a3407517dd1ed4ce9991ba9f2dbd1.1415034378.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add support for -S/--since to the mountstats and ms-iostat commands to
-display the delta between a previous copy of /proc/self/mountstats and
-the current /proc/self/mountstats file.  Can be combined with the -f
-option to show the statistics between two different points in time.
+Change the keyctl_invalidate call to use the syscall interface directly so
+that when building with libkeyutils missing keyctl_invalidate the build succeeds.
+Attempt to use _invalidate and fall back to _revoke if the current kernel is
+missing _invalidate.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- tools/mountstats/mountstats.py | 61 +++++++++++++++++++++++++++++-------------
- 1 file changed, 43 insertions(+), 18 deletions(-)
+ utils/nfsidmap/nfsidmap.c |   21 +++++++++++++++++----
+ 1 files changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-index 23def92..b3231b2 100755
---- a/tools/mountstats/mountstats.py
-+++ b/tools/mountstats/mountstats.py
-@@ -562,13 +562,28 @@ def print_mountstats_help(name):
-     print('  --rpc        display only the RPC statistics')
-     print('  --start      sample and save statistics')
-     print('  --end        resample statistics and compare them with saved')
-+    print('  --since <file> shows difference between current stats and those in \'file\'')
-     print()
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index e0d31e7..96149cc 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -209,10 +209,23 @@ static int key_invalidate(char *keystr, int keymask)
+ 		*(strchr(buf, ' ')) = '\0';
+ 		sscanf(buf, "%x", &key);
  
-+def print_mountstats(stats, nfs_only, rpc_only):
-+    if nfs_only:
-+       stats.display_nfs_options()
-+       stats.display_nfs_events()
-+       stats.display_nfs_bytes()
-+    elif rpc_only:
-+       stats.display_rpc_generic_stats()
-+       stats.display_rpc_op_stats()
-+    else:
-+       stats.display_nfs_options()
-+       stats.display_nfs_bytes()
-+       stats.display_rpc_generic_stats()
-+       stats.display_rpc_op_stats()
-+
- def mountstats_command():
-     """Mountstats command
-     """
-     try:
--        opts, args = getopt.getopt(sys.argv[1:], "ef:hnrsv", ["end", "file=", "help", "nfs", "rpc", "start", "version"])
-+        opts, args = getopt.getopt(sys.argv[1:], "ef:hnrsvS:", ["end", "file=", "help", "nfs", "rpc", "start", "version", "since="])
-     except getopt.GetoptError as err:
-         print_mountstats_help(prog)
+-		if (keyctl_invalidate(key) < 0) {
+-			xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
+-			fclose(fp);
+-			return 1;
++/* older libkeyutils compatibility */
++#ifndef KEYCTL_INVALIDATE
++#define KEYCTL_INVALIDATE 21      /* invalidate a key */
++#endif
++		if (keyctl(KEYCTL_INVALIDATE, key) < 0) {
++			if (errno != EOPNOTSUPP) {
++				xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
++				fclose(fp);
++				return 1;
++			} else {
++				/* older kernel compatibility attempt: */
++				if (keyctl_revoke(key) < 0) {
++					xlog_err("keyctl_revoke(0x%x) failed: %m", key);
++					fclose(fp);
++					return 1;
++				}
++			}
+ 		}
  
-@@ -576,6 +591,7 @@ def mountstats_command():
-     nfs_only = False
-     rpc_only = False
-     infile = None
-+    since = None
- 
-     for o, a in opts:
-         if o in ("-e", "--end"):
-@@ -594,6 +610,8 @@ def mountstats_command():
-         elif o in ("-v", "--version"):
-             print('%s version %s' % (sys.argv[0], Mountstats_version))
-             sys.exit(0)
-+        elif o in ("-S", "--since"):
-+            since = a
-         else:
-             assert False, "unhandled option"
-     mountpoints += args
-@@ -610,6 +628,9 @@ def mountstats_command():
-         infile = '/proc/self/mountstats'
-     mountstats = parse_stats_file(infile)
- 
-+    if since:
-+        old_mountstats = parse_stats_file(since)
-+
-     for mp in mountpoints:
-         if mp not in mountstats:
-             print('Statistics for mount point %s not found' % mp)
-@@ -622,18 +643,15 @@ def mountstats_command():
-             print('Mount point %s exists but is not an NFS mount' % mp)
-             continue
- 
--        if nfs_only:
--           stats.display_nfs_options()
--           stats.display_nfs_events()
--           stats.display_nfs_bytes()
--        elif rpc_only:
--           stats.display_rpc_generic_stats()
--           stats.display_rpc_op_stats()
-+        if not since:
-+            print_mountstats(stats, nfs_only, rpc_only)
-+        elif since and mp not in old_mountstats:
-+            print_mountstats(stats, nfs_only, rpc_only)
-         else:
--           stats.display_nfs_options()
--           stats.display_nfs_bytes()
--           stats.display_rpc_generic_stats()
--           stats.display_rpc_op_stats()
-+            old_stats = DeviceData()
-+            old_stats.parse_stats(old_mountstats[mp])
-+            diff_stats = stats.compare_iostats(old_stats)
-+            print_mountstats(diff_stats, nfs_only, rpc_only)
- 
- def print_nfsstat_help(name):
-     print('usage: %s [ options ]' % name)
-@@ -684,7 +702,7 @@ def iostat_command():
-     """iostat-like command for NFS mount points
-     """
-     try:
--        opts, args = getopt.getopt(sys.argv[1:], "f:hv", ["file=", "help", "version"])
-+        opts, args = getopt.getopt(sys.argv[1:], "f:hvS:", ["file=", "help", "version", "since="])
-     except getopt.GetoptError as err:
-         print_iostat_help(prog)
-     devices = []
-@@ -692,6 +710,7 @@ def iostat_command():
-     count_seen = False
-     infile_seen = False
-     infile = None
-+    since = None
- 
-     for o, a in opts:
-         if o in ("-f", "--file"):
-@@ -703,6 +722,8 @@ def iostat_command():
-         elif o in ("-v", "--version"):
-             print('%s version %s' % (sys.argv[0], Mountstats_version))
-             sys.exit(0)
-+        elif o in ("-S", "--since"):
-+            since = a
-         else:
-             assert False, "unhandled option"
-     if not infile:
-@@ -715,8 +736,8 @@ def iostat_command():
-         elif not interval_seen:
-             interval = int(arg)
-             if interval > 0:
--                if infile_seen:
--                    print('interval may not be used with the -f option')
-+                if infile_seen or since:
-+                    print('interval may not be used with the -f or -S options')
-                     return
-                 else:
-                     interval_seen = True
-@@ -726,8 +747,8 @@ def iostat_command():
-         elif not count_seen:
-             count = int(arg)
-             if count > 0:
--                if infile_seen:
--                    print('count may not be used with the -f option')
-+                if infile_seen or since:
-+                    print('count may not be used with the -f or -S options')
-                     return
-                 else:
-                     count_seen = True
-@@ -735,6 +756,11 @@ def iostat_command():
-                 print('Illegal <count> value')
-                 return
- 
-+    if since:
-+        old_mountstats = parse_stats_file(since)
-+    else:
-+        old_mountstats = None
-+
-     # make certain devices contains only NFS mount points
-     if len(devices) > 0:
-         check = []
-@@ -754,7 +780,6 @@ def iostat_command():
-         print('No NFS mount points were found')
-         return
- 
--    old_mountstats = None
-     sample_time = 0
- 
-     if not interval_seen:
+ 		keymask &= ~mask;
 -- 
-1.9.3
+1.7.1
 
