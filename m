@@ -1,81 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55674 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:4743 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750702AbaKEUel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2014 15:34:41 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5KYeoK007151
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 15:34:41 -0500
-Message-ID: <545A89DF.3070702@RedHat.com>
-Date: Wed, 05 Nov 2014 15:34:39 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752324AbaKCTq4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Nov 2014 14:46:56 -0500
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <bfields@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] [nfs4-acl-tools] handle DENY ace for DELETE, WRITE_OWNER, and NAMED_ATTRS
+Date: Mon, 3 Nov 2014 14:46:51 -0500
+Message-ID: <1415044011-35671-1-git-send-email-kolga@netapp.com>
 MIME-Version: 1.0
-To: Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils RFC PATCH 00/15] A few enhancements to mountstats.py
-References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Don't ignore setting or viewing DENY ace for DELETE, WRITE_OWNER, and
+NAMED_ATTRS.
 
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ include/libacl_nfs4.h     | 8 ++------
+ libnfs4acl/nfs4_new_ace.c | 3 ---
+ 2 files changed, 2 insertions(+), 9 deletions(-)
 
-On 11/05/2014 12:00 PM, Scott Mayhew wrote:
-> The following patches add a couple of enhancements to mountstats.py.  I
-> also fixed a few bugs I encountered along the way.  Highlights include:
-> 
-> - added support for -f/--file to allow stats to be parsed from an
->   aritrary input file instead of /proc/self/mountstats
-> 
-> - added support for -S/--since to show just the changes that have
->   occurred between the current and a previous set of statisics (works
->   with and without the -f option)
-> 
-> - added support for -R/--raw to generate 'raw' statistics (i.e. in the
->   same format as /proc/self/mountstats).  It's intended to be used with
->   the -f and -S options.
-The mountstats(8) will need to be updated with these new flags... 
-You could probably just use the verbiage from the usage messages
+diff --git a/include/libacl_nfs4.h b/include/libacl_nfs4.h
+index 2f7cc28..7b19c6f 100644
+--- a/include/libacl_nfs4.h
++++ b/include/libacl_nfs4.h
+@@ -95,15 +95,11 @@
+ #define NFS4_INHERITANCE_FLAGS (NFS4_ACE_FILE_INHERIT_ACE \
+ 		| NFS4_ACE_DIRECTORY_INHERIT_ACE | NFS4_ACE_INHERIT_ONLY_ACE)
+ 
+-#define NFS4_ACE_MASK_IGNORE (NFS4_ACE_DELETE | NFS4_ACE_WRITE_OWNER \
+-		| NFS4_ACE_READ_NAMED_ATTRS | NFS4_ACE_WRITE_NAMED_ATTRS)
+ /* XXX not sure about the following.  Note that e.g. DELETE_CHILD is wrong in
+  * general (should only be ignored on files). */
+ #define MASK_EQUAL(mask1, mask2) \
+-	(((mask1) & NFS4_ACE_MASK_ALL & ~NFS4_ACE_MASK_IGNORE & \
+-	  					~NFS4_ACE_DELETE_CHILD) \
+-	 == ((mask2) & NFS4_ACE_MASK_ALL & ~NFS4_ACE_MASK_IGNORE & \
+-		 				~NFS4_ACE_DELETE_CHILD))
++	(((mask1) & NFS4_ACE_MASK_ALL & ~NFS4_ACE_DELETE_CHILD) \
++	 == ((mask2) & NFS4_ACE_MASK_ALL & ~NFS4_ACE_DELETE_CHILD))
+ 
+ /*
+  * NFS4_MAX_ACESIZE -- the number of bytes in the string representation we
+diff --git a/libnfs4acl/nfs4_new_ace.c b/libnfs4acl/nfs4_new_ace.c
+index a93f74a..0c875b1 100644
+--- a/libnfs4acl/nfs4_new_ace.c
++++ b/libnfs4acl/nfs4_new_ace.c
+@@ -51,9 +51,6 @@ struct nfs4_ace * nfs4_new_ace(int is_directory, u32 type, u32 flag, u32 access_
+ 	ace->type = type;
+ 	ace->flag = flag;
+ 
+-	if( type == NFS4_ACE_ACCESS_DENIED_ACE_TYPE )
+-		access_mask = access_mask & ~(NFS4_ACE_MASK_IGNORE);
+-
+ 	/* Castrate delete_child if we aren't a directory */
+ 	if (!is_directory)
+ 		access_mask &= ~NFS4_ACE_DELETE_CHILD;
+-- 
+1.9.3
 
-Ping me if want some help with the archaic nroff notation ;-)    
-> 
-> - implemented the ms-nfsstat command to generate client-side
->   nfsstat-like statisics (only works with a single mountpoint)
-> 
-> My motivation for these changes was so that I could take various copies
-> of /proc/self/mountstats and massage them into data that I could feed
-> into the 'report' option of Dros's nfsometer tool for scenarios where
-> it's not feasible to run nfsometer itself (e.g. systems where we can't
-> start with an 'idle' state (i.e. no NFS filesystems initially
-> mounted), systems with multiple NFS filesystems mounted, and workloads
-> that can't easily be boiled down into an nfsometer workload file or run
-> via the custom workload environment variables).
-Thanks for doing this!
-
-steved. 
-> 
-> Scott Mayhew (15):
->   mountstats: Fix up NFS event counters
->   mountstats: Add lists of various counters
->   mountstats: Refactor __parse_nfs_line and __parse_rpc_line
->   mountstats: Refactor compare_iostats
->   mountstats: Convert existing option parsing to use the getopt module
->   mountstats: Make ms-iostat output match that of nfs-iostat.py
->   mountstats: Make print_iostat_summary handle newly appearing mounts
->   mountstats: Add support for -f/--file to the mountstats and ms-iostat
->     commands
->   mountstats: Add support for -S/--since to the mountstats and ms-iostat
->     commands
->   mountstats: Fix IndexError in __parse_nfs_line
->   mountstats: Allow mountstats_command to take a variable number of
->     mountpoints
->   mountstats: Add support for -R/--raw to mountstats_command
->   mountstats: Implement nfsstat_command
->   mountstats: Remove the --start and --end options
->   mountstats: Update the help output
-> 
->  tools/mountstats/mountstats.py | 730 ++++++++++++++++++++++++++++++-----------
->  1 file changed, 544 insertions(+), 186 deletions(-)
->  mode change 100644 => 100755 tools/mountstats/mountstats.py
-> 
