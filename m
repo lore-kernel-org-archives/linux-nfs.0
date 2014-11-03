@@ -1,71 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out02.mta.xmission.com ([166.70.13.232]:60615 "EHLO
-	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750866AbaKYUCh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 15:02:37 -0500
-From: ebiederm@xmission.com (Eric W. Biederman)
-To: David Miller <davem@davemloft.net>
-Cc: josh@joshtriplett.org, rdunlap@infradead.org, pieter@boesman.nl,
-        alexander.h.duyck@intel.com, viro@zeniv.linux.org.uk, ast@plumgrid.com,
-        akpm@linux-foundation.org, beber@meleeweb.net,
-        catalina.mocanu@gmail.com, dborkman@redhat.com, edumazet@google.com,
-        fabf@skynet.be, fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
-        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
-        bfields@fieldses.org, jlayton@poochiereds.net,
-        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
-        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
-        Paul.Durrant@citrix.com, paulmck@linux.vnet.ibm.com,
-        pefoley2@pefoley.com, tgraf@suug.ch, therbert@google.com,
-        trond.myklebust@primarydata.com, willemb@google.com,
-        xiaoguangrong@linux.vnet.ibm.com, zhenglong.cai@cs2c.com.cn
-References: <20141125185310.GA24891@cloud>
-	<20141125.140441.401150380839514113.davem@davemloft.net>
-	<87egsr9jkz.fsf@x220.int.ebiederm.org>
-	<20141125.142741.1620673255148724338.davem@davemloft.net>
-Date: Tue, 25 Nov 2014 14:01:15 -0600
-In-Reply-To: <20141125.142741.1620673255148724338.davem@davemloft.net> (David
-	Miller's message of "Tue, 25 Nov 2014 14:27:41 -0500 (EST)")
-Message-ID: <87y4qz82yc.fsf@x220.int.ebiederm.org>
-MIME-Version: 1.0
-Content-Type: text/plain
-Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out splice family of syscalls (splice, vmsplice, tee and sendfile)
+Received: from mx1.redhat.com ([209.132.183.28]:43052 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751436AbaKCRtk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Nov 2014 12:49:40 -0500
+From: Benjamin Coddington <bcodding@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: chuck.lever@oracle.com
+Subject: [PATCH 2/2] nfsidmap: Correct a failure to set key timeout values
+Date: Mon,  3 Nov 2014 12:49:33 -0500
+Message-Id: <13a6c96c4a94b19e4e4e9f95250dca6e46c1969d.1415036893.git.bcodding@redhat.com>
+In-Reply-To: <cover.1415036893.git.bcodding@redhat.com>
+References: <cover.1415036893.git.bcodding@redhat.com>
+In-Reply-To: <cover.1415036893.git.bcodding@redhat.com>
+References: <cover.1415036893.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-David Miller <davem@davemloft.net> writes:
+The caller must be a possesor of the key to set the attributes, so link the
+destination keyring to the current thread's keyring before instantiation so
+that after instantiation the timeout can be set.
 
-> From: ebiederm@xmission.com (Eric W. Biederman)
-> Date: Tue, 25 Nov 2014 13:16:44 -0600
->
->> David Miller <davem@davemloft.net> writes:
->> 
->>> From: josh@joshtriplett.org
->>> Date: Tue, 25 Nov 2014 10:53:10 -0800
->>>
->>>> It's not a "slippery slope"; it's been our standard practice for ages.
->>>
->>> We've never put an entire class of generic system calls behind
->>> a config option.
->> 
->> CONFIG_SYSVIPC has been in the kernel as long as I can remember.
->> 
->> I seem to remember a plan to remove that code once userspace had
->> finished migrating to more unixy interfaces to ipc.  But in 20 years
->> that migration does does not seem to have finished, or even look
->> like it ever will.
->> 
->> But if we started a slippery slope it was long long ago.
->
-> Fair enough.
->
-> Would be amusing if these tiny systems have it enabled.
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ utils/nfsidmap/nfsidmap.c |    3 +++
+ 1 files changed, 3 insertions(+), 0 deletions(-)
 
-It would.
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index 4da7f5c..b141f9e 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -329,6 +329,9 @@ int main(int argc, char **argv)
+ 			key, type, value, timeout);
+ 	}
+ 
++	/* become a possesor of the to-be-instantiated key to set the key's timeout */
++	request_key("keyring", DEFAULT_KEYRING, NULL, KEY_SPEC_THREAD_KEYRING);
++
+ 	if (strcmp(type, "uid") == 0)
+ 		rc = id_lookup(value, key, USER);
+ 	else if (strcmp(type, "gid") == 0)
+-- 
+1.7.1
 
-In practice when I was playing in that space I had a hard time
-justifying CONFIG_NET and CONFIG_INET.  Despite writing a network
-bootloader to use with kexec.
-
-Eric
