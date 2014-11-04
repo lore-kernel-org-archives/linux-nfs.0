@@ -1,41 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:37920 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752814AbaKLWcL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 17:32:11 -0500
-Received: by mail-ie0-f172.google.com with SMTP id at20so14705233iec.3
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 14:32:10 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 0/5] Fix up delegation reclaim and recovery issues
-Date: Wed, 12 Nov 2014 17:31:49 -0500
-Message-Id: <1415831514-47005-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from gproxy6-pub.mail.unifiedlayer.com ([67.222.39.168]:45534 "HELO
+	gproxy6-pub.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751118AbaKDUgw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2014 15:36:52 -0500
+From: Henrique Martins <henrique@martins.cc>
+To: Steve Dickson <SteveD@redhat.com>
+cc: Henrique Martins <linux@martins.cc>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] nfsd/exportfs: changes handling of unresolvable entries
+In-reply-to: <545933D2.4080308@RedHat.com>
+References: <8957.1415128789@monster.martins.cc> <545928A7.60103@Netapp.com> <545929AB.4000802@RedHat.com> <9233.1415130192@monster.martins.cc> <545933D2.4080308@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 04 Nov 2014 12:30:02 -0800
+Message-ID: <9824.1415133002@monster.martins.cc>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The main change w.r.t. the first iteration of these patches is that
-we no longer trust the NFS_DELEGATED_STATE flag to tell us when we need
-to test and/or discard the delegation. Instead, we just assume that
-if we have a delegation then it is part of the recovery process.
+anna> I think you should be indenting your code with tabs
+annd> instead of spaces to be consistent with the rest of
+anna> this file.
 
-Trond Myklebust (5):
-  NFSv4: Ensure that we remove NFSv4.0 delegations when state has
-    expired
-  NFSv4.1: nfs41_clear_delegation_stateid shouldn't trust
-    NFS_DELEGATED_STATE
-  NFSv4: Fix races between nfs_remove_bad_delegation() and delegation
-    return
-  NFSv4: Ensure that we call FREE_STATEID when NFSv4.x stateids are
-    revoked
-  NFS: Don't try to reclaim delegation open state if recovery failed
+me> I do, but xemacs spaces out :-)
 
- fs/nfs/delegation.c            | 25 ++++++++++++--
- fs/nfs/delegation.h            |  1 +
- fs/nfs/filelayout/filelayout.c |  3 --
- fs/nfs/nfs4proc.c              | 76 +++++++++++++++++++++++-------------------
- 4 files changed, 65 insertions(+), 40 deletions(-)
+steve> There has to be a way to fix that...
 
--- 
-1.9.3
+Off course there is. After all, I did configure emacs to
+behave that way, long long ago, in pre-linux days.
 
+I just have to remember to match what some particular
+project does, and conventions do vary...
+
+-- Henrique
