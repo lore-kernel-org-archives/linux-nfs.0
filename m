@@ -1,115 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from gproxy7-pub.mail.unifiedlayer.com ([70.40.196.235]:43174 "HELO
-	gproxy7-pub.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751294AbaKDTT6 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Nov 2014 14:19:58 -0500
-From: Henrique Martins <linux@martins.cc>
-To: Steve Dickson <SteveD@redhat.com>
-cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] nfsd/exportfs: changes handling of unresolvable entries
+Received: from mx1.redhat.com ([209.132.183.28]:44025 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751118AbaKDUXr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Nov 2014 15:23:47 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA4KNlwt017436
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Tue, 4 Nov 2014 15:23:47 -0500
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA4KNlG5000554
+	for <linux-nfs@vger.kernel.org>; Tue, 4 Nov 2014 15:23:47 -0500
+Message-ID: <545935D2.7090805@RedHat.com>
+Date: Tue, 04 Nov 2014 15:23:46 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 04 Nov 2014 11:19:49 -0800
-Message-ID: <8957.1415128789@monster.martins.cc>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] build: Revert using a symbol version map
+References: <1415118304-5696-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1415118304-5696-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In-reply-to: <54591385.2080007@RedHat.com>
-References: <14393.1409936528@monster.martins.cc>
- <15531.1414780435@monster.martins.cc> <54591385.2080007@RedHat.com>
-Comments: In-reply-to Steve Dickson <SteveD@redhat.com>
-   message dated "Tue, 04 Nov 2014 12:57:25 -0500."
-X-Mailer: MH-E 8.5; nmh 1.6; XEmacs 21.5  (beta34)
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-=-="
---------
---=-=-=
-Content-Type: text/plain; charset=utf-8
 
 
-Attaching patch to nfs/exportfs to allow nfsd to start when
-there are some, but not all, unresolvable entries in
-/etc/exports.
+On 11/04/2014 11:25 AM, Steve Dickson wrote:
+> Commit 045d2e46 cause a number of systems to be
+> undefined during run time in rpc.idmapd.
+> 
+> Having this type of versioning is not necessary in
+> this type of a library so the patch was reverted.
+> 
+> Fixes https://bugzilla.redhat.com/show_bug.cgi?id=1159943
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
 
-Nfs currently fails to start in my laptop which has work
-machines listed in exports that aren't resolvable when I'm
-not in the office, and home machines in exports that aren't
-resolvable when I'm not home.
+steved.
 
-Files changed:
-- in client.c/client_lookup:
-    changes the (x)log level for unresolvable entries in
-    /etc/exports from L_ERROR to L_WARNING,
-- in hostname.c/host_addrinfo:
-    changes the (x)log level for unresolvable entries in
-    /etc/exports from D_GENERAL to D_PARSE,
-- in export.c/export_read:
-    counts the number of exported volume entries and
-    generates a (x)log L_ERROR if no volumes are exported.
-
-Built and tested on a Fedora 20 (fully updated) system.
-
-Signed-off-by: Henrique Martins <linux@martins.cc>
----
-
---=-=-=
-Content-Type: text/x-diff; charset=utf-8
-Content-Disposition: inline; filename=nfs-utils-1.3.0-exportfs.patch
-
---- nfs-utils-1.3.0/support/export/client.c.orig	2014-09-05 08:21:37.568364360 -0700
-+++ nfs-utils-1.3.0/support/export/client.c	2014-09-05 08:21:41.709451778 -0700
-@@ -277,7 +277,7 @@
- 	if (htype == MCL_FQDN && !canonical) {
- 		ai = host_addrinfo(hname);
- 		if (!ai) {
--			xlog(L_ERROR, "Failed to resolve %s", hname);
-+			xlog(L_WARNING, "Failed to resolve %s", hname);
- 			goto out;
- 		}
- 		hname = ai->ai_canonname;
---- nfs-utils-1.3.0/support/export/hostname.c.orig	2014-09-05 08:09:07.387551291 -0700
-+++ nfs-utils-1.3.0/support/export/hostname.c	2014-09-05 08:09:13.799573723 -0700
-@@ -175,11 +175,11 @@
- 	case 0:
- 		return ai;
- 	case EAI_SYSTEM:
--		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
-+		xlog(D_PARSE, "%s: failed to resolve %s: (%d) %m",
- 				__func__, hostname, errno);
- 		break;
- 	default:
--		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
-+		xlog(D_PARSE, "%s: failed to resolve %s: %s",
- 				__func__, hostname, gai_strerror(error));
- 		break;
- 	}
---- nfs-utils-1.3.0/support/export/export.c.orig	2014-03-25 08:12:07.000000000 -0700
-+++ nfs-utils-1.3.0/support/export/export.c	2014-09-05 09:23:37.424105125 -0700
-@@ -76,15 +76,22 @@
- 	struct exportent	*eep;
- 	nfs_export		*exp;
-
-+        int volumes = 0;
-+
- 	setexportent(fname, "r");
- 	while ((eep = getexportent(0,1)) != NULL) {
- 		exp = export_lookup(eep->e_hostname, eep->e_path, 0);
--		if (!exp)
--			export_create(eep, 0);
-+		if (!exp) {
-+			exp = export_create(eep, 0);
-+                        if (exp)
-+                        	volumes++;
-+                }
- 		else
- 			warn_duplicated_exports(exp, eep);
- 	}
- 	endexportent();
-+        if (volumes == 0)
-+        	xlog(L_ERROR, "no or all unresolvable export entries");
- }
-
- /**
-
---=-=-=--
+> ---
+>  Makefile.am  |  3 +--
+>  nfsidmap.map | 31 -------------------------------
+>  2 files changed, 1 insertion(+), 33 deletions(-)
+>  delete mode 100644 nfsidmap.map
+> 
+> diff --git a/Makefile.am b/Makefile.am
+> index 69bbcbc..85f19c8 100644
+> --- a/Makefile.am
+> +++ b/Makefile.am
+> @@ -26,9 +26,8 @@ pkglib_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
+>  #  		by this library.
+>  
+>  libnfsidmap_la_SOURCES = libnfsidmap.c cfg.c strlcpy.c cfg.h nfsidmap_internal.h queue.h
+> -libnfsidmap_la_LDFLAGS = -version-info 3:0:3 -Wl,--version-script=$(srcdir)/nfsidmap.map
+> +libnfsidmap_la_LDFLAGS = -version-info 3:0:3
+>  libnfsidmap_la_LIBADD = -ldl
+> -libnfsidmap_la_DEPENDENCIES = nfsidmap.map
+>  
+>  nsswitch_la_SOURCES = nss.c
+>  nsswitch_la_LDFLAGS = -module -avoid-version
+> diff --git a/nfsidmap.map b/nfsidmap.map
+> deleted file mode 100644
+> index 1e7cf7e..0000000
+> --- a/nfsidmap.map
+> +++ /dev/null
+> @@ -1,31 +0,0 @@
+> -V_0.26 {
+> -global:
+> -	nfs4_init_name_mapping;
+> -	nfs4_get_default_domain;
+> -	nfs4_uid_to_name;
+> -	nfs4_gid_to_name;
+> -	nfs4_uid_to_owner;
+> -	nfs4_gid_to_group_owner;
+> -	nfs4_name_to_uid;
+> -	nfs4_name_to_gid;
+> -	nfs4_owner_to_uid;
+> -	nfs4_owner_to_gid;
+> -	nfs4_group_owner_to_gid;
+> -	nfs4_gss_princ_to_ids;
+> -	nfs4_gss_princ_to_grouplist;
+> -	nfs4_gss_princ_to_ids_ex;
+> -	nfs4_gss_princ_to_grouplist_ex;
+> -	nfs4_set_debug;
+> -	idmap_verbosity;
+> -	idmap_log_func;
+> -	get_default_domain;
+> -	get_local_realms;
+> -local:
+> -	*;
+> -};
+> -/*
+> -V_0.27 {
+> -global:
+> -	...
+> -} V_0.26;
+> -*/
+> 
