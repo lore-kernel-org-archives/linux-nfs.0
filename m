@@ -1,102 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:20552 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750877AbaKFCJ4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 21:09:56 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [nfs-utils RFC PATCH 11/15] mountstats: Allow mountstats_command to take a variable number of mountpoints
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:58971 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751368AbaKDWOi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2014 17:14:38 -0500
+Received: by mail-ig0-f176.google.com with SMTP id l13so8246673iga.15
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Nov 2014 14:14:37 -0800 (PST)
+Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
+        by mx.google.com with ESMTPSA id c18sm728530ioe.22.2014.11.04.14.14.36
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 04 Nov 2014 14:14:37 -0800 (PST)
+Subject: [PATCH] mountstats: Sort RPC statistics by operation count
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1415206872-864-12-git-send-email-smayhew@redhat.com>
-Date: Wed, 5 Nov 2014 21:09:51 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <52AAA463-33E9-4112-B000-51CDFD1A53F8@oracle.com>
-References: <1415206872-864-1-git-send-email-smayhew@redhat.com> <1415206872-864-12-git-send-email-smayhew@redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Date: Tue, 04 Nov 2014 17:14:35 -0500
+Message-ID: <20141104221043.13019.51333.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Sort the RPC statistics in descending order by operation count, so
+that the most frequently executed operation appears at the top of
+the listing (a la `top`).
 
-On Nov 5, 2014, at 12:01 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+Hey folks-
 
-> Allow the mountstats command to take a variable number of mountpoints
-> (including none, in which case it will print stats for all NFS
-> mountpoints it finds).
+Any opinions about this? I considered adding a "--sort" command line
+option to enable sorting, but instead made it always-on.
 
-Cool idea.
+Could also use --sort to specify which individual statistic is used
+for sorting (op count, RTT, retransmit rate, and so forth).
 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
-> tools/mountstats/mountstats.py | 32 +++++++++++++++++++-------------
-> 1 file changed, 19 insertions(+), 13 deletions(-)
-> 
-> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-> index 77975ad..281f4be 100755
-> --- a/tools/mountstats/mountstats.py
-> +++ b/tools/mountstats/mountstats.py
-> @@ -616,10 +616,6 @@ def mountstats_command():
->             assert False, "unhandled option"
->     mountpoints += args
-> 
-> -    if mountpoints == []:
-> -        print_mountstats_help(prog)
-> -        return
-> -
->     if rpc_only == True and nfs_only == True:
->         print_mountstats_help(prog)
->         return
-> @@ -628,21 +624,31 @@ def mountstats_command():
->         infile = '/proc/self/mountstats'
->     mountstats = parse_stats_file(infile)
-> 
-> +    # make certain devices contains only NFS mount points
-> +    if len(mountpoints) > 0:
-> +        check = []
-> +        for device in mountpoints:
-> +            stats = DeviceData()
-> +            stats.parse_stats(mountstats[device])
-> +            if stats.is_nfs_mountpoint():
-> +                check += [device]
-> +        mountpoints = check
-> +    else:
-> +        for device, descr in mountstats.items():
-> +            stats = DeviceData()
-> +            stats.parse_stats(descr)
-> +            if stats.is_nfs_mountpoint():
-> +                mountpoints += [device]
-> +    if len(mountpoints) == 0:
-> +        print('No NFS mount points were found')
-> +        return
-> +
->     if since:
->         old_mountstats = parse_stats_file(since)
-> 
->     for mp in mountpoints:
-> -        if mp not in mountstats:
-> -            print('Statistics for mount point %s not found' % mp)
-> -            continue
-> -
->         stats = DeviceData()
->         stats.parse_stats(mountstats[mp])
-> -
-> -        if not stats.is_nfs_mountpoint():
-> -            print('Mount point %s exists but is not an NFS mount' % mp)
-> -            continue
-> -
->         if not since:
->             print_mountstats(stats, nfs_only, rpc_only)
->         elif since and mp not in old_mountstats:
-> -- 
-> 1.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Try: watch -d "mountstats --rpc /mnt/your-mount-here"
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ tools/mountstats/mountstats.py |   25 ++++++++++++++-----------
+ 1 file changed, 14 insertions(+), 11 deletions(-)
 
-
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index 9a6ec43..f75103c 100644
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -24,6 +24,7 @@ MA 02110-1301 USA
+ """
+ 
+ import sys, os, time
++from operator import itemgetter
+ 
+ Mountstats_version = '0.2'
+ 
+@@ -262,27 +263,29 @@ class DeviceData:
+         """
+         sends = self.__rpc_data['rpcsends']
+ 
+-        # XXX: these should be sorted by 'count'
+-        print()
++        allstats = []
+         for op in self.__rpc_data['ops']:
+-            stats = self.__rpc_data[op]
+-            count = stats[0]
+-            retrans = stats[1] - count
++            allstats.append([op] + self.__rpc_data[op])
++
++        print()
++        for stats in sorted(allstats, key=itemgetter(1), reverse=True):
++            count = stats[1]
+             if count != 0:
+-                print('%s:' % op)
++                print('%s:' % stats[0])
+                 print('\t%d ops (%d%%)' % \
+                     (count, ((count * 100) / sends)), end=' ')
++                retrans = stats[2] - count
+                 if retrans != 0:
+                     print('\t%d retrans (%d%%)' % (retrans, ((retrans * 100) / count)), end=' ')
+-                    print('\t%d major timeouts' % stats[2])
++                    print('\t%d major timeouts' % stats[3])
+                 else:
+                     print('')
+                 print('\tavg bytes sent per op: %d\tavg bytes received per op: %d' % \
+-                    (stats[3] / count, stats[4] / count))
+-                print('\tbacklog wait: %f' % (float(stats[5]) / count), end=' ')
+-                print('\tRTT: %f' % (float(stats[6]) / count), end=' ')
++                    (stats[4] / count, stats[5] / count))
++                print('\tbacklog wait: %f' % (float(stats[6]) / count), end=' ')
++                print('\tRTT: %f' % (float(stats[7]) / count), end=' ')
+                 print('\ttotal execute time: %f (milliseconds)' % \
+-                    (float(stats[7]) / count))
++                    (float(stats[8]) / count))
+ 
+     def compare_iostats(self, old_stats):
+         """Return the difference between two sets of stats
 
