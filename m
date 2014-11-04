@@ -1,41 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from verein.lst.de ([213.95.11.211]:41159 "EHLO newverein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752187AbaKLKYo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Nov 2014 05:24:44 -0500
-Date: Wed, 12 Nov 2014 11:24:40 +0100
-From: Christoph Hellwig <hch@lst.de>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsd: implement chage_attr_type attribute
-Message-ID: <20141112102440.GA31344@lst.de>
-References: <20141111162849.GA12527@lst.de> <20141111162704.GA12103@lst.de> <20141111222710.GY23575@dastard>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141111222710.GY23575@dastard>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:36527 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751435AbaKDXge (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2014 18:36:34 -0500
+Received: by mail-ig0-f182.google.com with SMTP id hn18so389402igb.9
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Nov 2014 15:36:34 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] NFSv4: Ensure that we call FREE_STATEID when NFSv4.x stateids are revoked
+Date: Tue,  4 Nov 2014 17:36:27 -0600
+Message-Id: <1415144188-17193-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1415144188-17193-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1415144188-17193-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 12, 2014 at 09:27:10AM +1100, Dave Chinner wrote:
-> To clarify what Christoph wrote, XFS updates i_version is updated
-> once per transaction that modifies the inode. So if a VFS level
-> operation results in multiple transactions then each transaction
-> will but the version.
-> 
-> It was implemented that way because nobody could tell me what the
-> actual granularity requirement for change detection was.  Hence what
-> I implemented was "be able to detect any persistent change that is
-> made" to cover all bases.
+NFSv4.x (x>0) requires us to call TEST_STATEID+FREE_STATEID if a stateid is
+revoked. We will currently fail to do this if the stateid is a delegation.
 
-Honestly the XFS implementation seems most sensible, and easiest to
-verify for me.  I don't really understand the rationale behind the
-fairly convoluted NFS4_CHANGE_TYPE_IS_VERSION_COUNTER semantics, and
-I doubt you could actually implemet them on any Unix-like semantics.
+http://lkml.kernel.org/r/CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 8 --------
+ 1 file changed, 8 deletions(-)
 
-Trond, given that the language in the standard is from you:
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d8f352d8c75f..6cf49af3092d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -370,11 +370,6 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+ 		case -NFS4ERR_DELEG_REVOKED:
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_BAD_STATEID:
+-			if (inode != NULL && nfs4_have_delegation(inode, FMODE_READ)) {
+-				nfs_remove_bad_delegation(inode);
+-				exception->retry = 1;
+-				break;
+-			}
+ 			if (state == NULL)
+ 				break;
+ 			ret = nfs4_schedule_stateid_recovery(server, state);
+@@ -4849,9 +4844,6 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+ 		case -NFS4ERR_DELEG_REVOKED:
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_BAD_STATEID:
+-			if (state == NULL)
+-				break;
+-			nfs_remove_bad_delegation(state->inode);
+ 		case -NFS4ERR_OPENMODE:
+ 			if (state == NULL)
+ 				break;
+-- 
+1.9.3
 
- 1) how do you expect to use NFS4_CHANGE_TYPE_IS_VERSION_COUNTER
-    semantics in the client
- 2) what server do you have in mind that could actually implement them?
