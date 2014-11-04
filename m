@@ -1,67 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e37.co.us.ibm.com ([32.97.110.158]:46417 "EHLO
-	e37.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750841AbaKYSKl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 13:10:41 -0500
-Received: from /spool/local
-	by e37.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
-	Tue, 25 Nov 2014 11:10:41 -0700
-Date: Tue, 25 Nov 2014 10:10:32 -0800
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-To: David Miller <davem@davemloft.net>
-Cc: rdunlap@infradead.org, pieter@boesman.nl, josh@joshtriplett.org,
-        alexander.h.duyck@intel.com, viro@zeniv.linux.org.uk, ast@plumgrid.com,
-        akpm@linux-foundation.org, beber@meleeweb.net,
-        catalina.mocanu@gmail.com, dborkman@redhat.com, edumazet@google.com,
-        ebiederm@xmission.com, fabf@skynet.be,
-        fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
-        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
-        bfields@fieldses.org, jlayton@poochiereds.net,
-        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
-        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
-        Paul.Durrant@citrix.com, pefoley2@pefoley.com, tgraf@suug.ch,
-        therbert@google.com, trond.myklebust@primarydata.com,
-        willemb@google.com, xiaoguangrong@linux.vnet.ibm.com,
-        zhenglong.cai@cs2c.com.cn
-Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
- splice family of syscalls (splice, vmsplice, tee and sendfile)
-Message-ID: <20141125181032.GJ5050@linux.vnet.ibm.com>
-Reply-To: paulmck@linux.vnet.ibm.com
-References: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
- <5474ABB6.3030400@infradead.org>
- <20141125.121305.2094097848188324942.davem@davemloft.net>
+Received: from mx1.redhat.com ([209.132.183.28]:44238 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751777AbaKDTb6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Nov 2014 14:31:58 -0500
+Message-ID: <545929AB.4000802@RedHat.com>
+Date: Tue, 04 Nov 2014 14:31:55 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141125.121305.2094097848188324942.davem@davemloft.net>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Henrique Martins <linux@martins.cc>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/1] nfsd/exportfs: changes handling of unresolvable entries
+References: <8957.1415128789@monster.martins.cc> <545928A7.60103@Netapp.com>
+In-Reply-To: <545928A7.60103@Netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 25, 2014 at 12:13:05PM -0500, David Miller wrote:
-> From: Randy Dunlap <rdunlap@infradead.org>
-> Date: Tue, 25 Nov 2014 08:17:58 -0800
-> 
-> > Is the splice family of syscalls the only one that tiny has identified
-> > for optional building or can we expect similar treatment for other
-> > syscalls?
-> > 
-> > Why will many embedded systems not need these syscalls?  You know
-> > exactly what apps they run and you are positive that those apps do
-> > not use splice?
-> 
-> I think starting to compile out system calls is a very slippery
-> slope we should not begin the journey down.
-> 
-> This changes the forward facing interface to userspace.
+Hello,
 
-I certainly sympathize with this concern, given the importance of software
-portability.  However, the tiny-hardware alternative appears ot some sort
-of special-purpose embedded OS, which most definitely will suffer from
-software compatibility issues.  I guess that the good news is that much
-of the tiny hardware that used to be 8 or 16 bits is now 32 bits, which
-means that it has at least some chance of running some form of Linux.  ;-)
-
-							Thanx, Paul
-
+On 11/04/2014 02:27 PM, Anna Schumaker wrote:
+> Hey Henrique,
+> 
+> 
+> On 11/04/2014 02:19 PM, Henrique Martins wrote:
+>> In-reply-to: <54591385.2080007@RedHat.com>
+>> References: <14393.1409936528@monster.martins.cc>
+>>  <15531.1414780435@monster.martins.cc> <54591385.2080007@RedHat.com>
+>> Comments: In-reply-to Steve Dickson <SteveD@redhat.com>
+>>    message dated "Tue, 04 Nov 2014 12:57:25 -0500."
+>> X-Mailer: MH-E 8.5; nmh 1.6; XEmacs 21.5  (beta34)
+>> MIME-Version: 1.0
+>> Content-Type: multipart/mixed; boundary="=-=-="
+>> --------
+>> --=-=-=
+>> Content-Type: text/plain; charset=utf-8
+>>
+>>
+>> Attaching patch to nfs/exportfs to allow nfsd to start when
+>> there are some, but not all, unresolvable entries in
+>> /etc/exports.
+>>
+>> Nfs currently fails to start in my laptop which has work
+>> machines listed in exports that aren't resolvable when I'm
+>> not in the office, and home machines in exports that aren't
+>> resolvable when I'm not home.
+>>
+>> Files changed:
+>> - in client.c/client_lookup:
+>>     changes the (x)log level for unresolvable entries in
+>>     /etc/exports from L_ERROR to L_WARNING,
+>> - in hostname.c/host_addrinfo:
+>>     changes the (x)log level for unresolvable entries in
+>>     /etc/exports from D_GENERAL to D_PARSE,
+>> - in export.c/export_read:
+>>     counts the number of exported volume entries and
+>>     generates a (x)log L_ERROR if no volumes are exported.
+>>
+>> Built and tested on a Fedora 20 (fully updated) system.
+>>
+>> Signed-off-by: Henrique Martins <linux@martins.cc>
+>> ---
+>>
+>> --=-=-=
+>> Content-Type: text/x-diff; charset=utf-8
+>> Content-Disposition: inline; filename=nfs-utils-1.3.0-exportfs.patch
+>>
+>> --- nfs-utils-1.3.0/support/export/client.c.orig	2014-09-05 08:21:37.568364360 -0700
+>> +++ nfs-utils-1.3.0/support/export/client.c	2014-09-05 08:21:41.709451778 -0700
+>> @@ -277,7 +277,7 @@
+>>  	if (htype == MCL_FQDN && !canonical) {
+>>  		ai = host_addrinfo(hname);
+>>  		if (!ai) {
+>> -			xlog(L_ERROR, "Failed to resolve %s", hname);
+>> +			xlog(L_WARNING, "Failed to resolve %s", hname);
+>>  			goto out;
+>>  		}
+>>  		hname = ai->ai_canonname;
+>> --- nfs-utils-1.3.0/support/export/hostname.c.orig	2014-09-05 08:09:07.387551291 -0700
+>> +++ nfs-utils-1.3.0/support/export/hostname.c	2014-09-05 08:09:13.799573723 -0700
+>> @@ -175,11 +175,11 @@
+>>  	case 0:
+>>  		return ai;
+>>  	case EAI_SYSTEM:
+>> -		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
+>> +		xlog(D_PARSE, "%s: failed to resolve %s: (%d) %m",
+>>  				__func__, hostname, errno);
+>>  		break;
+>>  	default:
+>> -		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
+>> +		xlog(D_PARSE, "%s: failed to resolve %s: %s",
+>>  				__func__, hostname, gai_strerror(error));
+>>  		break;
+>>  	}
+>> --- nfs-utils-1.3.0/support/export/export.c.orig	2014-03-25 08:12:07.000000000 -0700
+>> +++ nfs-utils-1.3.0/support/export/export.c	2014-09-05 09:23:37.424105125 -0700
+>> @@ -76,15 +76,22 @@
+>>  	struct exportent	*eep;
+>>  	nfs_export		*exp;
+>>
+>> +        int volumes = 0;
+>> +
+>>  	setexportent(fname, "r");
+>>  	while ((eep = getexportent(0,1)) != NULL) {
+>>  		exp = export_lookup(eep->e_hostname, eep->e_path, 0);
+>> -		if (!exp)
+>> -			export_create(eep, 0);
+>> +		if (!exp) {
+>> +			exp = export_create(eep, 0);
+>> +                        if (exp)
+>> +                        	volumes++;
+>> +                }
+> 
+> I think you should be indenting your code with tabs instead of spaces to be consistent with the rest of this file.
+Thanks for point this out.... but I'll take care of it when
+do the commit... 
+> 
+> Thanks,
+> Anna
+> 
+>>  		else
+>>  			warn_duplicated_exports(exp, eep);
+>>  	}
+>>  	endexportent();
+>> +        if (volumes == 0)
+>> +        	xlog(L_ERROR, "no or all unresolvable export entries");
+>>  }
+>>
+>>  /**
+>>
+>> --=-=-=--
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
