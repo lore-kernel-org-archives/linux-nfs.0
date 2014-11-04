@@ -1,117 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:44123 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933267AbaKLBda (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Nov 2014 20:33:30 -0500
-Received: by mail-ig0-f177.google.com with SMTP id hl2so2104795igb.4
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Nov 2014 17:33:29 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: Fix races between nfs_remove_bad_delegation() and delegation return
-Date: Tue, 11 Nov 2014 20:33:23 -0500
-Message-Id: <1415756003-4483-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:26898 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751651AbaKDUpG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2014 15:45:06 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH v2] nfsidmap: keyctl_invalidate kernel compatibility
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <54592B0E.5050201@RedHat.com>
+Date: Tue, 4 Nov 2014 15:44:56 -0500
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <46A4BDBA-C8B6-47CB-BA19-4D459944EA01@oracle.com>
+References: <eee96450255a3407517dd1ed4ce9991ba9f2dbd1.1415034378.git.bcodding@redhat.com> <54592B0E.5050201@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Any attempt to call nfs_remove_bad_delegation() while a delegation is being
-returned is currently a no-op. This means that we can end up looping
-forever in nfs_end_delegation_return() if something causes the delegation
-to be revoked.
-This patch adds a mechanism whereby the state recovery code can communicate
-to the delegation return code that the delegation is no longer valid and
-that it should not be used when reclaiming state.
-It also changes the return value for nfs4_handle_delegation_recall_error()
-to ensure that nfs_end_delegation_return() does not reattempt the lock
-reclaim before state recovery is done.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/delegation.c | 23 +++++++++++++++++++++--
- fs/nfs/delegation.h |  1 +
- fs/nfs/nfs4proc.c   |  2 +-
- 3 files changed, 23 insertions(+), 3 deletions(-)
+On Nov 4, 2014, at 2:37 PM, Steve Dickson <SteveD@redhat.com> wrote:
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 4904a1dba937..7f3f60641344 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -195,7 +195,11 @@ static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *
- {
- 	int res = 0;
- 
--	res = nfs4_proc_delegreturn(inode, delegation->cred, &delegation->stateid, issync);
-+	if (!test_bit(NFS_DELEGATION_REVOKED, &delegation->flags))
-+		res = nfs4_proc_delegreturn(inode,
-+				delegation->cred,
-+				&delegation->stateid,
-+				issync);
- 	nfs_free_delegation(delegation);
- 	return res;
- }
-@@ -382,11 +386,13 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
- {
- 	struct nfs_client *clp = NFS_SERVER(inode)->nfs_client;
- 	struct nfs_inode *nfsi = NFS_I(inode);
--	int err;
-+	int err = 0;
- 
- 	if (delegation == NULL)
- 		return 0;
- 	do {
-+		if (test_bit(NFS_DELEGATION_REVOKED, &delegation->flags))
-+			break;
- 		err = nfs_delegation_claim_opens(inode, &delegation->stateid);
- 		if (!issync || err != -EAGAIN)
- 			break;
-@@ -607,10 +613,23 @@ static void nfs_client_mark_return_unused_delegation_types(struct nfs_client *cl
- 	rcu_read_unlock();
- }
- 
-+static void nfs_revoke_delegation(struct inode *inode)
-+{
-+	struct nfs_delegation *delegation;
-+	rcu_read_lock();
-+	delegation = rcu_dereference(NFS_I(inode)->delegation);
-+	if (delegation != NULL) {
-+		set_bit(NFS_DELEGATION_REVOKED, &delegation->flags);
-+		nfs_mark_return_delegation(NFS_SERVER(inode), delegation);
-+	}
-+	rcu_read_unlock();
-+}
-+
- void nfs_remove_bad_delegation(struct inode *inode)
- {
- 	struct nfs_delegation *delegation;
- 
-+	nfs_revoke_delegation(inode);
- 	delegation = nfs_inode_detach_delegation(inode);
- 	if (delegation) {
- 		nfs_inode_find_state_and_recover(inode, &delegation->stateid);
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index 5c1cce39297f..e3c20a3ccc93 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -31,6 +31,7 @@ enum {
- 	NFS_DELEGATION_RETURN_IF_CLOSED,
- 	NFS_DELEGATION_REFERENCED,
- 	NFS_DELEGATION_RETURNING,
-+	NFS_DELEGATION_REVOKED,
- };
- 
- int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 773ebcb9eea9..a3deb6589b65 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1649,7 +1649,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
- 			nfs_inode_find_state_and_recover(state->inode,
- 					stateid);
- 			nfs4_schedule_stateid_recovery(server, state);
--			return 0;
-+			return -EAGAIN;
- 		case -NFS4ERR_DELAY:
- 		case -NFS4ERR_GRACE:
- 			set_bit(NFS_DELEGATED_STATE, &state->flags);
--- 
-1.9.3
+> 
+> 
+> On 11/03/2014 12:12 PM, Benjamin Coddington wrote:
+>> Change the keyctl_invalidate call to use the syscall interface directly so
+>> that when building with libkeyutils missing keyctl_invalidate the build succeeds.
+>> Attempt to use _invalidate and fall back to _revoke if the current kernel is
+>> missing _invalidate.
+>> 
+>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> Committed... 
+> 
+> This does get by the nfsidmap compile error when 
+> compiling on RHEL6, but not the ones in nfsdcltrack/sqlite.c
+> (http://ur1.ca/ioyfs)
+> 
+> Chuck, how are you getting around them?
+
+Short answer: I’m not.
+
+The nfsdcltrack build fails after nfsidmap is built. I just
+installed the nfsidmap binary for testing, and ignored the
+rest of upstream nfs-utils.
+
+Do you want me to look into this, or should Jeff do it?
+
+> steved.
+> 
+>> ---
+>> utils/nfsidmap/nfsidmap.c |   21 +++++++++++++++++----
+>> 1 files changed, 17 insertions(+), 4 deletions(-)
+>> 
+>> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+>> index e0d31e7..96149cc 100644
+>> --- a/utils/nfsidmap/nfsidmap.c
+>> +++ b/utils/nfsidmap/nfsidmap.c
+>> @@ -209,10 +209,23 @@ static int key_invalidate(char *keystr, int keymask)
+>> 		*(strchr(buf, ' ')) = '\0';
+>> 		sscanf(buf, "%x", &key);
+>> 
+>> -		if (keyctl_invalidate(key) < 0) {
+>> -			xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
+>> -			fclose(fp);
+>> -			return 1;
+>> +/* older libkeyutils compatibility */
+>> +#ifndef KEYCTL_INVALIDATE
+>> +#define KEYCTL_INVALIDATE 21      /* invalidate a key */
+>> +#endif
+>> +		if (keyctl(KEYCTL_INVALIDATE, key) < 0) {
+>> +			if (errno != EOPNOTSUPP) {
+>> +				xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
+>> +				fclose(fp);
+>> +				return 1;
+>> +			} else {
+>> +				/* older kernel compatibility attempt: */
+>> +				if (keyctl_revoke(key) < 0) {
+>> +					xlog_err("keyctl_revoke(0x%x) failed: %m", key);
+>> +					fclose(fp);
+>> +					return 1;
+>> +				}
+>> +			}
+>> 		}
+>> 
+>> 		keymask &= ~mask;
+>> 
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
