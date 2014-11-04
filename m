@@ -1,61 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:5583 "EHLO
-	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752144AbaKEUYa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 15:24:30 -0500
-Message-Id: <d6437a$6ag165@dgate10u.abg.fsc.net>
-Date: 05 Nov 2014 21:24:29 +0100
-From: bstroesser@ts.fujitsu.com
-To: neilb@suse.de, linux-nfs@vger.kernel.org
-Cc: bfields@fieldses.org, bstroesser@ts.fujitsu.com
-Subject: [nfs-utils] [PATCH 3/3] rpc.mountd: set libtirpc nonblocking mode to avoid DOS
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:48593 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751435AbaKDXgd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2014 18:36:33 -0500
+Received: by mail-ig0-f176.google.com with SMTP id l13so8385575iga.3
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Nov 2014 15:36:32 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/3] NFSv4: Ensure that we remove delegations before recovering
+Date: Tue,  4 Nov 2014 17:36:26 -0600
+Message-Id: <1415144188-17193-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RnJvbTogQm9kbyBTdHJvZXNzZXIgPGJzdHJvZXNzZXJAdHMuZnVqaXRzdS5jb20+CkRhdGU6
-IFRodSwgMDkgT2N0IDIwMTQgMTM6MDY6MTkgKzAyMDAKU3ViamVjdDogW25mcy11dGlsc10g
-W1BBVENIIDMvM10gcnBjLm1vdW50ZDogc2V0IGxpYnRpcnBjIG5vbmJsb2NraW5nIG1vZGUg
-dG8gYXZvaWQgRE9TCgpUaGlzIHBhdGNoIGlzIGV4cGVyaW1lbnRhbC4gSW4gd29ya3MgZmlu
-ZSBpbiB0aGF0IGl0IHJlbW92ZXMgdGhlIHZ1bG5lcmFiaWxpdHkKYWdhaW5zdCBhIERPUyBh
-dHRhY2suIHJwYy5tb3VudGQgY2FuIGJlIGJsb2NrZWQgYnkgYSBiYWQgY2xpZW50LCB0aGF0
-IHNlbmRzCm1hbnkgUlBDIHJlcXVlc3RzIGJ1dCBuZXZlciByZWFkcyB0aGUgcmVzcG9uc2Vz
-LiBUaGlzIG1pZ2h0IGhhcHBlbiBpbnRlbnRpb25hbGx5Cm9yIGNhdXNlZCBieSBhIHdyb25n
-IG5ldHdvcmsgY29uZmlnIChNVFUpLgpUaGUgcGF0Y2ggc3dpdGNoZXMgb24gdGhlIG5vbmJs
-b2NraW5nIG1vZGUgb2YgbGlidGlycGMuIEluIHRoYXQgbW9kZSB3cml0ZXMgY2FuCmJsb2Nr
-IGZvciBhIG1heC4gb2YgMiBzZWNvbmRzLiBBdHRhY2tlcnMgYXJlIGZvcmNlZCB0byBzZW5k
-IHJlcXVlc3RzIHNsb3dlciwgYXMKbGlidGlycGMgd2lsbCBjbG9zZSBhIGNvbm5lY3Rpb24g
-aWYgaXQgZmluZHMgdHdvIHJlcXVlc3RzIHRvIHJlYWQgYXQgdGhlIHNhbWUKdGltZS4KSSBk
-byBub3Qga25vdywgd2hldGhlciBzZXR0aW5nIE1BWFJFQyBjb3VsZCBjYXVzZSB0cm91Ymxl
-IGUuZy4gd2l0aCBiaWcgcmVwbGllcy4KIAoKU2lnbmVkLW9mZi1ieTogQm9kbyBTdHJvZXNz
-ZXIgPGJzdHJvZXNzZXJAdHMuZnVqaXRzdS5jb20+Ci0tLQoKLS0tIG5mcy11dGlscy0xLjMu
-MS9zdXBwb3J0L25mcy9zdmNfY3JlYXRlLmMJMjAxNC0xMC0wOSAxMjowOToxNS4wMDAwMDAw
-MDAgKzAyMDAKKysrIG5mcy11dGlscy0xLjMuMS9zdXBwb3J0L25mcy9zdmNfY3JlYXRlLmMJ
-MjAxNC0xMC0wOSAxMjoxMzozMi4wMDAwMDAwMDAgKzAyMDAKQEAgLTQ5LDYgKzQ5LDggQEAK
-IAogI2lmZGVmIEhBVkVfTElCVElSUEMKIAorI2luY2x1ZGUgPHJwYy9ycGNfY29tLmg+CisK
-ICNkZWZpbmUgU1ZDX0NSRUFURV9YUFJUX0NBQ0hFX1NJWkUJKDgpCiBzdGF0aWMgU1ZDWFBS
-VCAqc3ZjX2NyZWF0ZV94cHJ0X2NhY2hlW1NWQ19DUkVBVEVfWFBSVF9DQUNIRV9TSVpFXSA9
-IHsgTlVMTCwgfTsKIApAQCAtNDAxLDYgKzQwMyw3IEBACiAJY29uc3Qgc3RydWN0IHNpZ2Fj
-dGlvbiBjcmVhdGVfc2lnYWN0aW9uID0gewogCQkuc2FfaGFuZGxlcgk9IFNJR19JR04sCiAJ
-fTsKKwlpbnQgbWF4cmVjID0gUlBDX01BWERBVEFTSVpFOwogCXVuc2lnbmVkIGludCB2aXNp
-YmxlLCB1cCwgc2VydnBvcnQ7CiAJc3RydWN0IG5ldGNvbmZpZyAqbmNvbmY7CiAJdm9pZCAq
-aGFuZGxlcDsKQEAgLTQxMiw2ICs0MTUsMjAgQEAKIAkgKi8KIAkodm9pZClzaWdhY3Rpb24o
-U0lHUElQRSwgJmNyZWF0ZV9zaWdhY3Rpb24sIE5VTEwpOwogCisJLyoKKwkgKiBTZXR0aW5n
-IE1BWFJFQyBhbHNvIGVuYWJsZXMgbm9uLWJsb2NraW5nIG1vZGUgZm9yIHRjcCBjb25uZWN0
-aW9ucy4KKwkgKiBUaGlzIGF2b2lkcyBET1MgYXR0YWNrcyBieSBhIGNsaWVudCBzZW5kaW5n
-IG1hbnkgcmVxdWVzdHMgYnV0IG5ldmVyCisJICogcmVhZGluZyB0aGUgcmVwbHk6CisJICog
-LSBpZiBhIHNlY29uZCByZXF1ZXN0IGFscmVhZHkgaXMgcHJlc2VudCBmb3IgcmVhZGluZyBp
-biB0aGUgc29ja2V0LAorCSAqICAgYWZ0ZXIgdGhlIGZpcnN0IHJlcXVlc3QganVzdCB3YXMg
-cmVhZCwgbGlidGlycGMgd2lsbCBicmVhayB0aGUKKwkgKiAgIGNvbm5lY3Rpb24uIFRodXMg
-YW4gYXR0YWNrZXIgY2FuJ3Qgc2ltcGx5IHNlbmQgcmVxdWVzdHMgYXMgZmFzdCBhcworCSAq
-ICAgaGUgY2FuIHdpdGhvdXQgd2FpdGluZyBmb3IgdGhlIHJlc3BvbnNlLgorCSAqIC0gaWYg
-dGhlIHdyaXRlIGJ1ZmZlciBvZiB0aGUgc29ja2V0IGlzIGZ1bGwsIHRoZSBuZXh0IHdyaXRl
-KCkgd2lsbAorCSAqICAgZmFpbCB3aXRoIEVBR0FJTi4gbGlidGlycGMgd2lsbCByZXRyeSB0
-aGUgd3JpdGUgaW4gYSBsb29wIGZvciBtYXguCisJICogICAyIHNlY29uZHMuIElmIHdyaXRl
-IHN0aWxsIGZhaWxzLCB0aGUgY29ubmVjdGlvbiB3aWxsIGJlIGNsb3NlZC4KKwkgKi8gICAK
-KwlycGNfY29udHJvbChSUENfU1ZDX0NPTk5NQVhSRUNfU0VULCAmbWF4cmVjKTsKKwogCWhh
-bmRsZXAgPSBzZXRuZXRjb25maWcoKTsKIAlpZiAoaGFuZGxlcCA9PSBOVUxMKSB7CiAJCXhs
-b2coTF9FUlJPUiwgIkZhaWxlZCB0byBhY2Nlc3MgbG9jYWwgbmV0Y29uZmlnIGRhdGFiYXNl
-OiAlcyIsCg==
+NFSv4.0 does not have TEST_STATEID/FREE_STATEID functionality, so
+unlike NFSv4.1, the recovery procedure when stateids have expired
+requires us to just forget the delegation.
 
+http://lkml.kernel.org/r/CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 405bd95c1f58..d8f352d8c75f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2109,6 +2109,14 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
+ 	return ret;
+ }
+ 
++static int nfs40_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
++{
++	/* NFSv4.0 doesn't allow for delegation recovery on open expire */
++	if (test_bit(NFS_DELEGATED_STATE, &state->flags))
++		nfs_remove_bad_delegation(state->inode);
++	return nfs4_open_expired(sp, state);
++}
++
+ #if defined(CONFIG_NFS_V4_1)
+ static void nfs41_clear_delegation_stateid(struct nfs4_state *state)
+ {
+@@ -8341,7 +8349,7 @@ static const struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
+ static const struct nfs4_state_recovery_ops nfs40_nograce_recovery_ops = {
+ 	.owner_flag_bit = NFS_OWNER_RECLAIM_NOGRACE,
+ 	.state_flag_bit	= NFS_STATE_RECLAIM_NOGRACE,
+-	.recover_open	= nfs4_open_expired,
++	.recover_open	= nfs40_open_expired,
+ 	.recover_lock	= nfs4_lock_expired,
+ 	.establish_clid = nfs4_init_clientid,
+ };
+-- 
+1.9.3
 
