@@ -1,97 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35533 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:54009 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751317AbaKEVzn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2014 16:55:43 -0500
-Date: Wed, 5 Nov 2014 16:55:41 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
-Message-ID: <20141105215541.GJ6513@fieldses.org>
-References: <61eb00$5dituo@dgate20u.abg.fsc.net>
- <20141105210546.GH6513@fieldses.org>
- <8B06D1E6480A6747B23FEC34909D2B5EA81B95F24C@ABGEX70E.FSC.NET>
- <20141106084741.40980d12@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20141106084741.40980d12@notabene.brown>
+	id S932249AbaKERBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 12:01:14 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1D08004052
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:14 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1Dtp027850
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:13 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1CwE000902
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:12 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1C1r000901
+	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:12 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 01/15] mountstats: Fix up NFS event counters
+Date: Wed,  5 Nov 2014 12:00:58 -0500
+Message-Id: <1415206872-864-2-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 06, 2014 at 08:47:41AM +1100, NeilBrown wrote:
-> On Wed, 5 Nov 2014 22:25:26 +0100 "Strösser, Bodo"
-> <bodo.stroesser@ts.fujitsu.com> wrote:
-> 
-> > > -----Original Message-----
-> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
-> > > Sent: Wednesday, November 05, 2014 10:06 PM
-> > > To: Strösser, Bodo
-> > > Cc: neilb@suse.de; linux-nfs@vger.kernel.org
-> > > Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
-> > > 
-> > > On Wed, Nov 05, 2014 at 09:21:37PM +0100, bstroesser@ts.fujitsu.com wrote:
-> > > > Hello,
-> > > >
-> > > > I'm sending a small set of 3 patches for a problem, that I have
-> > > > reported a few weeks ago.
-> > > > rpc.mountd can be blocked by a bad client, that sends lots of
-> > > > RPC requests, but never reads the replies from the socket either
-> > > > intentionally or e.g. caused by a wrong configured MTU.
-> > > >
-> > > > While looking for a possible solution, I found another weakness
-> > > > in rpc.mountd if it is used "multithreaded" (-t nn).
-> > > >
-> > > > The first two patches fix that weakness in the case of !HAVE_LIBTIRPC
-> > > > and HAVE_LIBTIRPC.
-> > > 
-> > > They look fine to me.
-> > > 
-> > > > The third patch more a kind of suggestion how the main problem could
-> > > > be fixed.
-> > > 
-> > > Sounds reasonable to me.
-> > > 
-> > > > I don't know whether we can set MAXREC without causing
-> > > > new troubles. When this patch is used, a  further patch for libtirpc
-> > > > also should be used. You can find it here:
-> > > >     http://sourceforge.net/p/libtirpc/mailman/libtirpc-devel/?viewmonth=201409
-> > > 
-> > > So applying this last patch and then building against an unpatched
-> > > libtirpc would expose us to a serious bug?  Do we need to do something
-> > > to make that less likely to happen?
-> > 
-> > The bug in libtirpc is triggered, if the write() to the socket returns -EAGAIN
-> > but one of the many retries in the following 2 seconds succeeds. Then the
-> > normal reply is sent with a prefix of (maybe many) bytes from rpc.mountd's
-> > memory space before the reply buffer. That means, that some data from memory is
-> > sent (authentication data?) or rpc.mountd might get SIGSEGV, I don't know.
-> > 
-> > But I think it won't be easy to trigger this. rpcbind uses the nonblocking mode
-> > of libtirpc and no one complains about the bug in libtirpc.
-> > 
-> > Anyway, it of course would be better to use a fixed libtirpc, as I can't see a
-> > way to have a work around in rpc.mountd for the libtirpc bug.
-> > 
-> 
-> I agree that hitting the bug is fairly unlikely.  If there is something easy
-> we can do to help avoid it, it might be worth it.
-> 
-> Once the fix gets into a libtirpc release, we could put a hard dependency on
-> that release number in configure for nfs-utils.  Is that too harsh??
+The event counters in the mountstats program aren't in sync with the
+event counters in the kernel.  Removed syncinodes and added
+vfsupdatepage, vfssetattr, congestionwait, pnfsreads, and pnfswrites.
 
-Yeah, that's more what I was wondering about.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ tools/mountstats/mountstats.py | 33 ++++++++++++++++++---------------
+ 1 file changed, 18 insertions(+), 15 deletions(-)
+ mode change 100644 => 100755 tools/mountstats/mountstats.py
 
-If building new mountd against an old libtirpc meant suddenly mountd was
-crashing all the time then it'd seem worth something like that.
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+old mode 100644
+new mode 100755
+index 9a6ec43..5770f2a
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -73,25 +73,29 @@ class DeviceData:
+             self.__nfs_data['dentryrevalidates'] = int(words[2])
+             self.__nfs_data['datainvalidates'] = int(words[3])
+             self.__nfs_data['attrinvalidates'] = int(words[4])
+-            self.__nfs_data['syncinodes'] = int(words[5])
+-            self.__nfs_data['vfsopen'] = int(words[6])
+-            self.__nfs_data['vfslookup'] = int(words[7])
+-            self.__nfs_data['vfspermission'] = int(words[8])
++            self.__nfs_data['vfsopen'] = int(words[5])
++            self.__nfs_data['vfslookup'] = int(words[6])
++            self.__nfs_data['vfspermission'] = int(words[7])
++            self.__nfs_data['vfsupdatepage'] = int(words[8])
+             self.__nfs_data['vfsreadpage'] = int(words[9])
+             self.__nfs_data['vfsreadpages'] = int(words[10])
+             self.__nfs_data['vfswritepage'] = int(words[11])
+             self.__nfs_data['vfswritepages'] = int(words[12])
+             self.__nfs_data['vfsreaddir'] = int(words[13])
+-            self.__nfs_data['vfsflush'] = int(words[14])
+-            self.__nfs_data['vfsfsync'] = int(words[15])
+-            self.__nfs_data['vfslock'] = int(words[16])
+-            self.__nfs_data['vfsrelease'] = int(words[17])
+-            self.__nfs_data['setattrtrunc'] = int(words[18])
+-            self.__nfs_data['extendwrite'] = int(words[19])
+-            self.__nfs_data['sillyrenames'] = int(words[20])
+-            self.__nfs_data['shortreads'] = int(words[21])
+-            self.__nfs_data['shortwrites'] = int(words[22])
+-            self.__nfs_data['delay'] = int(words[23])
++            self.__nfs_data['vfssetattr'] = int(words[14])
++            self.__nfs_data['vfsflush'] = int(words[15])
++            self.__nfs_data['vfsfsync'] = int(words[16])
++            self.__nfs_data['vfslock'] = int(words[17])
++            self.__nfs_data['vfsrelease'] = int(words[18])
++            self.__nfs_data['congestionwait'] = int(words[19])
++            self.__nfs_data['setattrtrunc'] = int(words[20])
++            self.__nfs_data['extendwrite'] = int(words[21])
++            self.__nfs_data['sillyrenames'] = int(words[22])
++            self.__nfs_data['shortreads'] = int(words[23])
++            self.__nfs_data['shortwrites'] = int(words[24])
++            self.__nfs_data['delay'] = int(words[25])
++            self.__nfs_data['pnfsreads'] = int(words[26])
++            self.__nfs_data['pnfswrites'] = int(words[27])
+         elif words[0] == 'bytes:':
+             self.__nfs_data['normalreadbytes'] = int(words[1])
+             self.__nfs_data['normalwritebytes'] = int(words[2])
+@@ -201,7 +205,6 @@ class DeviceData:
+         print('Cache events:')
+         print('  data cache invalidated %d times' % self.__nfs_data['datainvalidates'])
+         print('  attribute cache invalidated %d times' % self.__nfs_data['attrinvalidates'])
+-        print('  inodes synced %d times' % self.__nfs_data['syncinodes'])
+         print()
+         print('VFS calls:')
+         print('  VFS requested %d inode revalidations' % self.__nfs_data['inoderevalidates'])
+-- 
+1.9.3
 
-If it's an unusual corner case that people have been exposed to in other
-ways for a while anyway, then maybe we just trust to distros to get
-their libtirpc's fixed and don't worry so much.
-
---b.
-> 
-> Steve: you are maintainer for both (?).  Would you be able to make a
-> libtirpc release soonish with the mentioned fix, then would you be happy for
-> future nfs-utils to require at least that version?
