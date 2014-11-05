@@ -1,149 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f172.google.com ([209.85.216.172]:54981 "EHLO
-	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751602AbaKEUGG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 15:06:06 -0500
-Received: by mail-qc0-f172.google.com with SMTP id i17so1202373qcy.31
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Nov 2014 12:06:04 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 5 Nov 2014 15:06:02 -0500
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Olga Kornievskaia <aglo@umich.edu>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Thomas Haynes <thomas.haynes@primarydata.com>
-Subject: Re: how to properly handle failures during delegation recall
- process
-Message-ID: <20141105150602.768595d1@tlielax.poochiereds.net>
-In-Reply-To: <20141105195420.GD6513@fieldses.org>
-References: <CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
-	<CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
-	<CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
-	<CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
-	<CAN-5tyGsopFNFjo=LBwYE9n6b7Emv73Rkw0H2wyq2vCjMUOftA@mail.gmail.com>
-	<CAHQdGtSQJLe60ja+-ChkHXOu8_UjmOpd4X7QHyhNOj1mPQGWPg@mail.gmail.com>
-	<20141105065719.23e912b1@tlielax.poochiereds.net>
-	<CAABAsM4YWr2fuQYXVa7jCDKexYPML8C1B6y13XVBKO-psXUmOA@mail.gmail.com>
-	<20141105183152.GB6513@fieldses.org>
-	<20141105144251.725816f6@tlielax.poochiereds.net>
-	<20141105195420.GD6513@fieldses.org>
+Received: from cantor2.suse.de ([195.135.220.15]:38157 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751329AbaKEFPP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 00:15:15 -0500
+Date: Wed, 5 Nov 2014 16:14:57 +1100
+From: NeilBrown <neilb@suse.de>
+To: "=?UTF-8?B?U3Ryw7Zzc2VyLA==?= Bodo" <bodo.stroesser@ts.fujitsu.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+Subject: Re: rpc.mountd can be blocked by a bad client
+Message-ID: <20141105161457.0d0cbba3@notabene.brown>
+In-Reply-To: <8B06D1E6480A6747B23FEC34909D2B5EA819D7E002@ABGEX70E.FSC.NET>
+References: <8B06D1E6480A6747B23FEC34909D2B5EA819D7DCA4@ABGEX70E.FSC.NET>
+	<20140925103210.5423676f@notabene.brown>
+	<8B06D1E6480A6747B23FEC34909D2B5EA819D7E002@ABGEX70E.FSC.NET>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/No21dHAyGi5YgotF.evFL3E"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 5 Nov 2014 14:54:20 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+--Sig_/No21dHAyGi5YgotF.evFL3E
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> On Wed, Nov 05, 2014 at 02:42:51PM -0500, Jeff Layton wrote:
-> > On Wed, 5 Nov 2014 13:31:52 -0500
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Wed, Nov 05, 2014 at 07:41:58AM -0500, Trond Myklebust wrote:
-> > > > On Wed, Nov 5, 2014 at 6:57 AM, Jeff Layton <jeff.layton@primarydata.com> wrote:
-> > > > > (cc'ing Tom here since we may want to consider providing guidance in
-> > > > >  the spec for this situation)
-> > > > >
-> > > > > Ok, I think both of you are right here :). Here's my interpretation:
-> > > > >
-> > > > > Olga is correct that the LOCK operation itself is safe since LOCK
-> > > > > doesn't actually modify the contents of the file. What it's not safe to
-> > > > > do is to trust that LOCK unless and until the DELEGRETURN is also
-> > > > > successful.
-> > > > >
-> > > > > First, let's clarify the potential race that Trond pointed out:
-> > > > >
-> > > > > Suppose we have a delegation and delegated locks. That delegation is
-> > > > > recalled and we do something like this:
-> > > > >
-> > > > > OPEN with DELEGATE_CUR: NFS4_OK
-> > > > > LOCK:                   NFS4_OK
-> > > > > LOCK:                   NFS4_OK
-> > > > > ...(maybe more successful locks here)...
-> > > > > DELEGRETURN:            NFS4ERR_ADMIN_REVOKED
-> > > > >
-> > > > > ...at that point, we're screwed.
-> > > > >
-> > > > > The delegation was obviously revoked after we did the OPEN but before
-> > > > > the DELEGRETURN. None of those LOCK requests can be trusted since
-> > > > > another client may have opened the file at any point in there, acquired
-> > > > > any one of those locks and then released it.
-> > > > >
-> > > > > For v4.1+ the client can do what Trond suggests. Check for
-> > > > > SEQ4_STATUS_RECALLABLE_STATE_REVOKED in each LOCK response. If it's set
-> > > > > then we can do the TEST_STATEID/FREE_STATEID dance. If the TEST_STATEID
-> > > > > fails, then we must consider the most recently acquired lock lost.
-> > > > > LOCKU it and give up trying to reclaim the rest of them.
-> > > > >
-> > > > > For v4.0, I'm not sure what the client can do other than wait until the
-> > > > > DELEGRETURN. If that fails with NFS4ERR_ADMIN_REVOKED, then we'll just
-> > > > > have to try to unwind the whole mess. Send LOCKUs for all of them and
-> > > > > consider them all to be lost.
-> > > > >
-> > > > > Actually, it may be reasonable to just do the same thing for v4.1. The
-> > > > > client tracks NFS_LOCK_LOST on a per-lockstateid basis, so once you have
-> > > > > any unreclaimable lock, any I/O done with that stateid is going to fail
-> > > > > anyway. You might as well just release any locks you do hold at that
-> > > > > point.
-> > > > >
-> > > > > The other question is whether the server ought to have any role to play
-> > > > > here. In principle it could track whether an open/lock stateid is
-> > > > > descended from a still outstanding delegation, and revoke those
-> > > > > stateids if the delegation is revoked. That would probably not be
-> > > > > trivial to do with the current Linux server implementation, however.
-> > > 
-> > > That sounds like a problem for whoever wants to implement support for
-> > > administrative revocation of state.  We don't really support it
-> > > currently.
-> > > 
-> > > Oops, right, except for the case where the delegation's revoked just
-> > > because the client ran out of time doing the recall.  In which case I
-> > > think the final error's going to be either EXPIRED (4.0) or
-> > > DELEG_REVOKED (4.1)?  (Except I think the Linux server's returning
-> > > BAD_STATEID in the 4.0 case, which looks wrong.)
-> > > 
-> > 
-> > I'm not sure that that's right... RFC3530 says:
-> > 
-> >    NFS4ERR_EXPIRED       A lease has expired that is being used in the
-> >                          current operation.
-> > 
-> > ...implicit in the scenario I layed out above is that the lease is
-> > being maintained. It's just that the client failed to return the
-> > delegation in time. So, BAD_STATEID may be correct, actually?
-> 
-> Yes, I misread that EXPIRED text.
-> 
-> That's a bit of a digression--in any case we agree that it's this late
-> DELEGRETURN case that's the only real bug right now?
-> 
 
-Yes I think so, given that we have no mechanism to administratively
-revoke delegations (other than the fault injection code, which I'll
-just ignore here ;).
+Hi Bodo,
 
-> On the client side I guess I can't think of anything better than your
-> suggestion of waiting for the error on DELEGRETURN as you describe.
-> 
+ I just discovered that you sent some patches to address this.
+I found them here:
+  http://www.spinics.net/lists/linux-nfs/msg47235.html
 
-...and given the comments above, we have to handle a BAD_STATEID error
-on a DELEGRETURN the same way we would an ADMIN_REVOKED error, I think.
+but I don't remember ever seeing them (probably my fault), and they are all
+in one big email message which doesn't immediately look like it contains
+patches.
 
-> And on the server side:
-> 
-> > > > What the server could (and probably should) do is revoke all
-> > > > open/lock/layout state for the clientid+file combination for which it
-> > > > is also revoking the delegation. That means that all applications that
-> > > > were using that file on that client would be screwed, but they
-> > > > probably will be anyway if the file gets corrupted due to non-atomic
-> > > > locking.
-> 
-> That sounds harsh at first, but I guess it makes sense.
-> 
+Could you please resend the patches to the list and separate emails.  That
+will make it a lot easier to review and discuss.
 
-Agreed. We could also consider expiring the client prematurely, but
-that's even more harsh.
+Thanks,
+NeilBrown
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+--Sig_/No21dHAyGi5YgotF.evFL3E
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIVAwUBVFmyUTnsnt1WYoG5AQKoAQ//f47Moom31/5fJIHu2+5J0eQbQBR+DXq8
+f4o4mAAlpNGFj05czjguZJEJ5v7xuTcDIs4GMeIgy3gGSEWSQk/OQjYdNm/eks8N
+ijr5CnUx5JZvDABAA0iP4dwQNOY6h3qQ0ToP4pVPMDNJmhHT1JKpCvl+4o81EXxc
+kHjNVEBNQ/9CwWsFEN+Me8zdvedLXdId6JDpvF8KcWFtgIDjUaiDyLdccWgWgMVt
+8hbR31Pf721yPUd50AlZ7Xfjhb9avhV1ky1l/6IcjRasg7J22eELlsAvHjrfJeNS
+tRoQLXoMgH1CagN5ZHj3JKtMQtbaZ6oBVWVFOUI/jKmJtMBN9v9bGlJ92nBze5wK
+9G3nS5e6Aa91PA4eJ6YUrxY/Y6O15gGsEdoBYXL8fX84mpqlBfFLCQwwxdyJRC+y
+tN9vTe1uCU9s4DIF+ntNIQCWeDDrDwXX2P0hRkjPWr2w4pTU8+JGhwGgBj2+Okuh
+fEnSBQm7x2SZeKyZSK27K+dg1DXNrqkkW0CklC6jgqfKCs9CjjvktOPGu0lHScbo
+dkT+HDTHQ80RmubXDMbvKCGvqxCzoNN1BipKVfh/cClwG1JEcP2GNK2pgUXH5ceD
+F3qZmyz48F83uPRW2Oyuf083m+xTUBv1f4YotSV4nNymu6Lj8i9G/vC+utd73P8o
+zGZyQWyIVuU=
+=y5bg
+-----END PGP SIGNATURE-----
+
+--Sig_/No21dHAyGi5YgotF.evFL3E--
