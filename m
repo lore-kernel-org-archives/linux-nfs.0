@@ -1,65 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38831 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751095AbaKIUuZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Nov 2014 15:50:25 -0500
-Date: Sun, 9 Nov 2014 15:50:06 -0500
-From: Simo Sorce <simo@redhat.com>
-To: Chris Siebenmann <cks@cs.toronto.edu>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Best approach for authenticating hosts for NFS (v3)?
-Message-ID: <20141109155006.5f00da7e@willson.usersys.redhat.com>
-In-Reply-To: <20141105164555.3958A400746@apps1.cs.toronto.edu>
-References: <545A510C.4000208@RedHat.com>
-	<20141105164555.3958A400746@apps1.cs.toronto.edu>
+Received: from dgate10.ts.fujitsu.com ([80.70.172.49]:50237 "EHLO
+	dgate10.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751133AbaKEVZe convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 16:25:34 -0500
+From: =?Windows-1252?Q?Str=F6sser=2C_Bodo?=
+	<bodo.stroesser@ts.fujitsu.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "neilb@suse.de" <neilb@suse.de>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Wed, 5 Nov 2014 22:25:26 +0100
+Subject: RE: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
+Message-ID: <8B06D1E6480A6747B23FEC34909D2B5EA81B95F24C@ABGEX70E.FSC.NET>
+References: <61eb00$5dituo@dgate20u.abg.fsc.net>
+ <20141105210546.GH6513@fieldses.org>
+In-Reply-To: <20141105210546.GH6513@fieldses.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 05 Nov 2014 11:45:55 -0500
-Chris Siebenmann <cks@cs.toronto.edu> wrote:
-
-> > On 11/04/2014 11:53 AM, Chris Siebenmann wrote:
-> > > PS: 'switch to NFS v4 to strongly authenticate user requests' is
-> > > not an option for us. We specifically value things that cannot be
-> > > done with true verification of user identification, like cron,
-> > > and we don't have and don't want to build the infrastructure that
-> > > would be required for strongly authenticated NFS v4.
-> > The exact same "strongly authenticate" that in v4 is available
-> > with v3. NFS secure mounts (-o krb5) are available 
-> > with all NFS protocol versions.
-> > 
-> > Tying NFS secure mounts with an FreeIPA environment should work
-> > out well..    
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Wednesday, November 05, 2014 10:06 PM
+> To: Strösser, Bodo
+> Cc: neilb@suse.de; linux-nfs@vger.kernel.org
+> Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
 > 
->  NFS v4 isn't the problem; strong authentication of user identities
-> (and Kerberos) is the problem. Our environment and our users rely on
-> the many forms that setuid takes[*] and as far as I know those are
-> impossible with strong identification (in any NFS or remote
-> filesystem protocol) because the point of strong authentication is
-> that the server no longer trusts clients when they say 'honest, I'm
-> working on behalf of uid <X>'.
-
-On a Linux server you can use gss-proxy and give it authority to
-impersonate any user through the s4u2proxy protocol.
-It will require a KDC that can manage s4u2proxy (AD or FreeIPA).
-
-> (Instead the client must prove it by presenting a secret only the user
-> is supposed to have access to, which the user must have somehow loaded
-> on the client.)
+> On Wed, Nov 05, 2014 at 09:21:37PM +0100, bstroesser@ts.fujitsu.com wrote:
+> > Hello,
+> >
+> > I'm sending a small set of 3 patches for a problem, that I have
+> > reported a few weeks ago.
+> > rpc.mountd can be blocked by a bad client, that sends lots of
+> > RPC requests, but never reads the replies from the socket either
+> > intentionally or e.g. caused by a wrong configured MTU.
+> >
+> > While looking for a possible solution, I found another weakness
+> > in rpc.mountd if it is used "multithreaded" (-t nn).
+> >
+> > The first two patches fix that weakness in the case of !HAVE_LIBTIRPC
+> > and HAVE_LIBTIRPC.
 > 
-> 	- cks
-> [*: including but not limited to crontabs, .forward files, user run
-> web apps and CGI-BINs, and detached processes left running for weeks.
-> ]
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> They look fine to me.
+> 
+> > The third patch more a kind of suggestion how the main problem could
+> > be fixed.
+> 
+> Sounds reasonable to me.
+> 
+> > I don't know whether we can set MAXREC without causing
+> > new troubles. When this patch is used, a  further patch for libtirpc
+> > also should be used. You can find it here:
+> >     http://sourceforge.net/p/libtirpc/mailman/libtirpc-devel/?viewmonth=201409
+> 
+> So applying this last patch and then building against an unpatched
+> libtirpc would expose us to a serious bug?  Do we need to do something
+> to make that less likely to happen?
 
+The bug in libtirpc is triggered, if the write() to the socket returns -EAGAIN
+but one of the many retries in the following 2 seconds succeeds. Then the
+normal reply is sent with a prefix of (maybe many) bytes from rpc.mountd's
+memory space before the reply buffer. That means, that some data from memory is
+sent (authentication data?) or rpc.mountd might get SIGSEGV, I don't know.
 
+But I think it won't be easy to trigger this. rpcbind uses the nonblocking mode
+of libtirpc and no one complains about the bug in libtirpc.
 
--- 
-Simo Sorce * Red Hat, Inc * New York
+Anyway, it of course would be better to use a fixed libtirpc, as I can't see a
+way to have a work around in rpc.mountd for the libtirpc bug.
+
+Bodo
+
+> 
+> --b.
+> 
+> >
+> > Best regards,
+> > Bodo
