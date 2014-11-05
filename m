@@ -1,44 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:58876 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751471AbaKKStc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Nov 2014 13:49:32 -0500
-Received: by mail-wi0-f178.google.com with SMTP id bs8so2553690wib.11
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Nov 2014 10:49:31 -0800 (PST)
-Message-ID: <54625A33.6000506@dev.mellanox.co.il>
-Date: Tue, 11 Nov 2014 20:49:23 +0200
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from mail-wi0-f170.google.com ([209.85.212.170]:51262 "EHLO
+	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751269AbaKESiP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 13:38:15 -0500
+Received: by mail-wi0-f170.google.com with SMTP id r20so868165wiv.5
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Nov 2014 10:38:13 -0800 (PST)
 MIME-Version: 1.0
-To: Chuck Lever <chucklever@gmail.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 07/10] xprtrdma: Display async errors
-References: <20141109010328.8806.5861.stgit@manet.1015granger.net> <20141109011501.8806.23478.stgit@manet.1015granger.net> <54621D8D.7050508@dev.mellanox.co.il> <1D304B95-D745-42B2-9324-143A5002FB35@gmail.com>
-In-Reply-To: <1D304B95-D745-42B2-9324-143A5002FB35@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+In-Reply-To: <CAN-5tyEOLnq_v_8X6zNXX4u2oOdJeJHpEmxsr_yOAfHFZxyhyA@mail.gmail.com>
+References: <1415025403-31914-1-git-send-email-kolga@netapp.com>
+	<CAN-5tyHVoJ60z7WBaCYvUN3GsCEGh9jGc0evRCuiVt2aA6zP0g@mail.gmail.com>
+	<CAHQdGtQWg+Fiyn7vH9pjU1GR-TKvMp+gcR7ssaA1zESQ8JdVsw@mail.gmail.com>
+	<CAN-5tyEOLnq_v_8X6zNXX4u2oOdJeJHpEmxsr_yOAfHFZxyhyA@mail.gmail.com>
+Date: Wed, 5 Nov 2014 13:38:13 -0500
+Message-ID: <CAHQdGtTMtWLoeAmhCZRC2gdh5h=vHuUAT_am5_0h5L7FNZdQiA@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Fixing infinite state recovery loop due to failed
+ delegation return
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/11/2014 6:52 PM, Chuck Lever wrote:
+On Wed, Nov 5, 2014 at 12:53 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> Thank you for looking into this!
 >
->> On Nov 11, 2014, at 8:30 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
->>
->>> On 11/9/2014 3:15 AM, Chuck Lever wrote:
->>> An async error upcall is a hard error, and should be reported in
->>> the system log.
+> On Tue, Nov 4, 2014 at 7:14 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> On Tue, Nov 4, 2014 at 6:22 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>> Trond, can you please respond to the patch?
+>>>
+>>> As per earlier conversation, in this solution, state recovery is
+>>> initiated which marks the locks lost.
+>>>
+>>> Please either accept this patch or let me know what needs to be fixed.
 >>>
 >>
->> Could be useful to others... Any chance you put this in ib_core for all
->> of us?
+>> Please see the 3 fixes I just sent out concerning delegation recovery
+>> w.r.t. NFSv4+NFSv4.1. In addition, we need to handle the case you
+>> patch attempts to address (however see the question I have below).
+>>
+>>> Thank you.
+>>>
+>>> On Mon, Nov 3, 2014 at 9:36 AM, Olga Kornievskaia <kolga@netapp.com> wrote:
+>>>> If we get a bad-stateid-type of error when we send OPEN with delegate_cur
+>>>> to return currently held delegation, we shouldn't be trying to reclaim locks
+>>>> associated with that delegation state_id because we don't have an
+>>>> open_stateid to be used for the LOCK operation. Thus, we should
+>>>> return an error from the nfs4_open_delegation_recall() in that case.
+>>>>
+>>>> Furthermore, if an error occurs the delegation code will call
+>>>> nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
+>>>> flags in the state and it leads the state manager to into an infinite loop
+>>>> for trying to reclaim the delegated state.
+>>>>
+>>>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>>>> ---
+>>>>  fs/nfs/delegation.c |    5 +++--
+>>>>  fs/nfs/nfs4proc.c   |    2 +-
+>>>>  2 files changed, 4 insertions(+), 3 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+>>>> index 5853f53..8016d89 100644
+>>>> --- a/fs/nfs/delegation.c
+>>>> +++ b/fs/nfs/delegation.c
+>>>> @@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
+>>>>                 err = nfs4_wait_clnt_recover(clp);
+>>>>         } while (err == 0);
+>>>>
+>>>> -       if (err) {
+>>>> +       if (err && err != -EIO) {
+>>>>                 nfs_abort_delegation_return(delegation, clp);
+>>
+>> This exception for EIO now has me worried. If we detach the
+>> delegation, then it looks to me as if we will never send a
+>> FREE_STATEID, as required for the case of NFSv4.1.
 >
-> Eventually. We certainly wouldn't want copies of this array of strings
-> to appear many times in the kernel. That would be a waste of space.
->
-> I have a similar patch that adds an array for CQ status codes, and
-> xprtrdma has a string array already for connection status. Are those
-> also interesting?
->
+> I'd need to brush up on the FREE_STATEID op to confidently answer
+> that. But can't this be taken care of in state_recovery when locks are
+> marked lost?
 
-Yep, also RDMA_CM events. Would certainly help people avoid source
-code navigation to understand what is going on...
+No, because in the case of EIO we now fall through to
+nfs_detach_delegation() and nfs_do_return_delegation(). What we really
+want to do is call TEST_STATEID + FREE_STATEID (see RFC5661 sections
+8.2.4, 8.5 and 18.38.3), which will now be done as part of state
+recovery.
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
