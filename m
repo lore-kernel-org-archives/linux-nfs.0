@@ -1,109 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f51.google.com ([209.85.192.51]:38371 "EHLO
-	mail-qg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753100AbaKLSge (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 13:36:34 -0500
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:39109 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754208AbaKEMtD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 07:49:03 -0500
+Received: by mail-ig0-f178.google.com with SMTP id a13so1255158igq.17
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Nov 2014 04:49:03 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <1414775040-4051-2-git-send-email-eguan@redhat.com>
-References: <1414775040-4051-1-git-send-email-eguan@redhat.com> <1414775040-4051-2-git-send-email-eguan@redhat.com>
-From: Steve French <smfrench@gmail.com>
-Date: Wed, 12 Nov 2014 12:36:13 -0600
-Message-ID: <CAH2r5muuJRcC4YgFkwUeUcCeEntgY+4POF8-bwmox64wXykuTw@mail.gmail.com>
-Subject: Re: [PATCH v2 1/5] common: re-enable tests that require scratch dev
- on NFS
-To: Eryu Guan <eguan@redhat.com>
-Cc: fstests@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        dros@primarydata.com
+In-Reply-To: <1415178014-17893-1-git-send-email-tao.peng@primarydata.com>
+References: <1415178014-17893-1-git-send-email-tao.peng@primarydata.com>
+Date: Wed, 5 Nov 2014 07:49:02 -0500
+Message-ID: <CAABAsM4UjXP9UP4JHbTcBfrYn3O8O+20rV5SELm8JmLZU3cWXw@mail.gmail.com>
+Subject: Re: [PATCH] nfs: fix pnfs direct write memory leak
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Peng Tao <tao.peng@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There should be a check to make sure SCRATCH_MNT exists before you
-wipe the whole disk ....
-
-+# remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
-+_scratch_cleanup_files()
-+{
-+       _scratch_mount
-+       rm -rf $SCRATCH_MNT/*
-+       _scratch_unmount
-+}
-+
-so if no SCRATCH_MNT then this does rm -rf/*
-right ... (and wipes out your whole system ...)
-
-On Fri, Oct 31, 2014 at 12:03 PM, Eryu Guan <eguan@redhat.com> wrote:
-> This commit disables tests requires scratch dev running on NFS
+On Wed, Nov 5, 2014 at 4:00 AM, Peng Tao <tao.peng@primarydata.com> wrote:
+> For pNFS direct writes, layout driver may dynamically allocate ds_cinfo.buckets.
+> So we need to take care to free them when freeing dreq.
 >
-> c041421 xfstests: stop special casing nfs and udf
+> Ideally this needs to be done inside layout driver where ds_cinfo.buckets
+> are allocated. But buckets are attached to dreq and reused across LD IO iterations.
+> So I feel it's OK to free them in the generic layer.
 >
-> Now re-enable them to get a larger test coverage on NFS.
->
-> Signed-off-by: Eryu Guan <eguan@redhat.com>
+> Cc: stable@vger.kernel.org [v3.4+]
+> Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 > ---
->  common/rc | 22 +++++++++++++++++++---
->  1 file changed, 19 insertions(+), 3 deletions(-)
+>  fs/nfs/direct.c | 2 ++
+>  1 file changed, 2 insertions(+)
 >
-> diff --git a/common/rc b/common/rc
-> index 747cf72..ae03712 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -551,6 +551,14 @@ _mkfs_dev()
->      rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
->  }
->
-> +# remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
-> +_scratch_cleanup_files()
-> +{
-> +       _scratch_mount
-> +       rm -rf $SCRATCH_MNT/*
-> +       _scratch_unmount
-> +}
-> +
->  _scratch_mkfs()
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 20cffc8..61f1904 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -266,6 +266,8 @@ static void nfs_direct_req_free(struct kref *kref)
 >  {
->      case $FSTYP in
-> @@ -558,7 +566,9 @@ _scratch_mkfs()
->          _scratch_mkfs_xfs $*
->         ;;
->      nfs*)
-> -       # do nothing for nfs
-> +       # unable to re-create NFS, just remove all files in $SCRATCH_MNT to
-> +       # avoid EEXIST caused by the leftover files created in previous runs
-> +        _scratch_cleanup_files
->         ;;
->      cifs)
->         # do nothing for cifs
-> @@ -1032,8 +1042,14 @@ _require_scratch_nocheck()
->  {
->      case "$FSTYP" in
->         nfs*)
-> -                 _notrun "requires a scratch device"
-> -                ;;
-> +               echo $SCRATCH_DEV | grep -q ":/" > /dev/null 2>&1
-> +               if [ -z "$SCRATCH_DEV" -o "$?" != "0" ]; then
-> +                       _notrun "this test requires a valid \$SCRATCH_DEV"
-> +               fi
-> +               if [ ! -d "$SCRATCH_MNT" ]; then
-> +                       _notrun "this test requires a valid \$SCRATCH_MNT"
-> +               fi
-> +               ;;
->         cifs)
->                 _notrun "requires a scratch device"
->                 ;;
-> --
-> 1.9.3
+>         struct nfs_direct_req *dreq = container_of(kref, struct nfs_direct_req, kref);
 >
+> +       if (dreq->ds_cinfo.nbuckets)
+> +               kfree(dreq->ds_cinfo.buckets);
+>         if (dreq->l_ctx != NULL)
+>                 nfs_put_lock_context(dreq->l_ctx);
+>         if (dreq->ctx != NULL)
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
+Well spotted!
+However doesn't the above need to be limited with an #ifdef
+CONFIG_NFS_V4_1? Perhaps you can add a helper in
+include/linux/nfs_xdr.h that takes a struct pnfs_ds_commit_info and
+then frees the nbuckets.
+Note also that kfree() is happy to take a NULL argument.
 
-
--- 
-Thanks,
-
-Steve
+Thanks!
+  Trond
