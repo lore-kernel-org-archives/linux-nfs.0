@@ -1,60 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58449 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751138AbaKJWVV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2014 17:21:21 -0500
-Date: Mon, 10 Nov 2014 17:21:10 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd: correctly define v4.2 support attributes
-Message-ID: <20141110222109.GL32702@fieldses.org>
-References: <1415448664-25815-1-git-send-email-hch@lst.de>
- <1415448664-25815-2-git-send-email-hch@lst.de>
+Received: from mail-wi0-f175.google.com ([209.85.212.175]:59296 "EHLO
+	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751052AbaKEAOP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2014 19:14:15 -0500
+Received: by mail-wi0-f175.google.com with SMTP id ex7so10981132wid.8
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Nov 2014 16:14:14 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1415448664-25815-2-git-send-email-hch@lst.de>
+In-Reply-To: <CAN-5tyHVoJ60z7WBaCYvUN3GsCEGh9jGc0evRCuiVt2aA6zP0g@mail.gmail.com>
+References: <1415025403-31914-1-git-send-email-kolga@netapp.com>
+	<CAN-5tyHVoJ60z7WBaCYvUN3GsCEGh9jGc0evRCuiVt2aA6zP0g@mail.gmail.com>
+Date: Tue, 4 Nov 2014 19:14:14 -0500
+Message-ID: <CAHQdGtQWg+Fiyn7vH9pjU1GR-TKvMp+gcR7ssaA1zESQ8JdVsw@mail.gmail.com>
+Subject: Re: [PATCH 1/1] Fixing infinite state recovery loop due to failed
+ delegation return
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 08, 2014 at 01:11:03PM +0100, Christoph Hellwig wrote:
-> Even when security labels are disabled we support at least the same
-> attributes as v4.1.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfsd/nfsd.h | 9 ++++++---
->  1 file changed, 6 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 747f3b95..43b6a36 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -335,12 +335,15 @@ void		nfsd_lockd_shutdown(void);
->  	(NFSD4_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SUPPATTR_EXCLCREAT)
->  
->  #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> -#define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
-> -	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | FATTR4_WORD2_SECURITY_LABEL)
-> +#define NFSD4_2_SECURITY_ATTRS		FATTR4_WORD2_SECURITY_LABEL
->  #else
-> -#define NFSD4_2_SUPPORTED_ATTRS_WORD2 0
-> +#define NFSD4_2_SECURITY_ATTRS		9
+On Tue, Nov 4, 2014 at 6:22 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> Trond, can you please respond to the patch?
+>
+> As per earlier conversation, in this solution, state recovery is
+> initiated which marks the locks lost.
+>
+> Please either accept this patch or let me know what needs to be fixed.
+>
 
-I'm assuming that 9 was meant to be a 0.
+Please see the 3 fixes I just sent out concerning delegation recovery
+w.r.t. NFSv4+NFSv4.1. In addition, we need to handle the case you
+patch attempts to address (however see the question I have below).
 
---b.
+> Thank you.
+>
+> On Mon, Nov 3, 2014 at 9:36 AM, Olga Kornievskaia <kolga@netapp.com> wrote:
+>> If we get a bad-stateid-type of error when we send OPEN with delegate_cur
+>> to return currently held delegation, we shouldn't be trying to reclaim locks
+>> associated with that delegation state_id because we don't have an
+>> open_stateid to be used for the LOCK operation. Thus, we should
+>> return an error from the nfs4_open_delegation_recall() in that case.
+>>
+>> Furthermore, if an error occurs the delegation code will call
+>> nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
+>> flags in the state and it leads the state manager to into an infinite loop
+>> for trying to reclaim the delegated state.
+>>
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+>>  fs/nfs/delegation.c |    5 +++--
+>>  fs/nfs/nfs4proc.c   |    2 +-
+>>  2 files changed, 4 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+>> index 5853f53..8016d89 100644
+>> --- a/fs/nfs/delegation.c
+>> +++ b/fs/nfs/delegation.c
+>> @@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
+>>                 err = nfs4_wait_clnt_recover(clp);
+>>         } while (err == 0);
+>>
+>> -       if (err) {
+>> +       if (err && err != -EIO) {
+>>                 nfs_abort_delegation_return(delegation, clp);
 
->  #endif
->  
-> +#define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
-> +	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
-> +	NFSD4_2_SECURITY_ATTRS)
-> +
->  static inline u32 nfsd_suppattrs0(u32 minorversion)
->  {
->  	return minorversion ? NFSD4_1_SUPPORTED_ATTRS_WORD0
-> -- 
-> 1.9.1
-> 
+This exception for EIO now has me worried. If we detach the
+delegation, then it looks to me as if we will never send a
+FREE_STATEID, as required for the case of NFSv4.1.
+
+>>                 goto out;
+>>         }
+>> @@ -458,7 +458,8 @@ restart:
+>>                         iput(inode);
+>>                         if (!err)
+>>                                 goto restart;
+>> -                       set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
+>> +                       if (err != -EIO)
+>> +                               set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
+
+Please explain why this is needed. If we've cleared the bad
+delegation, then why should we not attempt to return any others that
+may be pending?
+
+>>                         return err;
+>>                 }
+>>         }
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 5aa55c1..6871055 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -1655,7 +1655,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+>>                         nfs_inode_find_state_and_recover(state->inode,
+>>                                         stateid);
+>>                         nfs4_schedule_stateid_recovery(server, state);
+>> -                       return 0;
+>> +                       return -EIO;
+>>                 case -NFS4ERR_DELAY:
+>>                 case -NFS4ERR_GRACE:
+>>                         set_bit(NFS_DELEGATED_STATE, &state->flags);
+>> --
+>> 1.7.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
