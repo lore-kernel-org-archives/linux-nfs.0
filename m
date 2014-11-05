@@ -1,55 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43338 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751485AbaKEUVj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2014 15:21:39 -0500
-Message-ID: <545A86C1.4090809@RedHat.com>
-Date: Wed, 05 Nov 2014 15:21:21 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-qg0-f50.google.com ([209.85.192.50]:46527 "EHLO
+	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751249AbaKETnC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 14:43:02 -0500
+Received: by mail-qg0-f50.google.com with SMTP id a108so12626434qge.37
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Nov 2014 11:43:02 -0800 (PST)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 5 Nov 2014 14:42:51 -0500
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jeff Layton <jeff.layton@primarydata.com>,
+        Olga Kornievskaia <aglo@umich.edu>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Thomas Haynes <thomas.haynes@primarydata.com>
+Subject: Re: how to properly handle failures during delegation recall
+ process
+Message-ID: <20141105144251.725816f6@tlielax.poochiereds.net>
+In-Reply-To: <20141105183152.GB6513@fieldses.org>
+References: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
+	<CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
+	<CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
+	<CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
+	<CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
+	<CAN-5tyGsopFNFjo=LBwYE9n6b7Emv73Rkw0H2wyq2vCjMUOftA@mail.gmail.com>
+	<CAHQdGtSQJLe60ja+-ChkHXOu8_UjmOpd4X7QHyhNOj1mPQGWPg@mail.gmail.com>
+	<20141105065719.23e912b1@tlielax.poochiereds.net>
+	<CAABAsM4YWr2fuQYXVa7jCDKexYPML8C1B6y13XVBKO-psXUmOA@mail.gmail.com>
+	<20141105183152.GB6513@fieldses.org>
 MIME-Version: 1.0
-To: Chris Siebenmann <cks@cs.toronto.edu>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Best approach for authenticating hosts for NFS (v3)?
-References: <20141105164555.3958A400746@apps1.cs.toronto.edu>
-In-Reply-To: <20141105164555.3958A400746@apps1.cs.toronto.edu>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 5 Nov 2014 13:31:52 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Wed, Nov 05, 2014 at 07:41:58AM -0500, Trond Myklebust wrote:
+> > On Wed, Nov 5, 2014 at 6:57 AM, Jeff Layton <jeff.layton@primarydata.com> wrote:
+> > > (cc'ing Tom here since we may want to consider providing guidance in
+> > >  the spec for this situation)
+> > >
+> > > Ok, I think both of you are right here :). Here's my interpretation:
+> > >
+> > > Olga is correct that the LOCK operation itself is safe since LOCK
+> > > doesn't actually modify the contents of the file. What it's not safe to
+> > > do is to trust that LOCK unless and until the DELEGRETURN is also
+> > > successful.
+> > >
+> > > First, let's clarify the potential race that Trond pointed out:
+> > >
+> > > Suppose we have a delegation and delegated locks. That delegation is
+> > > recalled and we do something like this:
+> > >
+> > > OPEN with DELEGATE_CUR: NFS4_OK
+> > > LOCK:                   NFS4_OK
+> > > LOCK:                   NFS4_OK
+> > > ...(maybe more successful locks here)...
+> > > DELEGRETURN:            NFS4ERR_ADMIN_REVOKED
+> > >
+> > > ...at that point, we're screwed.
+> > >
+> > > The delegation was obviously revoked after we did the OPEN but before
+> > > the DELEGRETURN. None of those LOCK requests can be trusted since
+> > > another client may have opened the file at any point in there, acquired
+> > > any one of those locks and then released it.
+> > >
+> > > For v4.1+ the client can do what Trond suggests. Check for
+> > > SEQ4_STATUS_RECALLABLE_STATE_REVOKED in each LOCK response. If it's set
+> > > then we can do the TEST_STATEID/FREE_STATEID dance. If the TEST_STATEID
+> > > fails, then we must consider the most recently acquired lock lost.
+> > > LOCKU it and give up trying to reclaim the rest of them.
+> > >
+> > > For v4.0, I'm not sure what the client can do other than wait until the
+> > > DELEGRETURN. If that fails with NFS4ERR_ADMIN_REVOKED, then we'll just
+> > > have to try to unwind the whole mess. Send LOCKUs for all of them and
+> > > consider them all to be lost.
+> > >
+> > > Actually, it may be reasonable to just do the same thing for v4.1. The
+> > > client tracks NFS_LOCK_LOST on a per-lockstateid basis, so once you have
+> > > any unreclaimable lock, any I/O done with that stateid is going to fail
+> > > anyway. You might as well just release any locks you do hold at that
+> > > point.
+> > >
+> > > The other question is whether the server ought to have any role to play
+> > > here. In principle it could track whether an open/lock stateid is
+> > > descended from a still outstanding delegation, and revoke those
+> > > stateids if the delegation is revoked. That would probably not be
+> > > trivial to do with the current Linux server implementation, however.
+> 
+> That sounds like a problem for whoever wants to implement support for
+> administrative revocation of state.  We don't really support it
+> currently.
+> 
+> Oops, right, except for the case where the delegation's revoked just
+> because the client ran out of time doing the recall.  In which case I
+> think the final error's going to be either EXPIRED (4.0) or
+> DELEG_REVOKED (4.1)?  (Except I think the Linux server's returning
+> BAD_STATEID in the 4.0 case, which looks wrong.)
+> 
+
+I'm not sure that that's right... RFC3530 says:
+
+   NFS4ERR_EXPIRED       A lease has expired that is being used in the
+                         current operation.
+
+...implicit in the scenario I layed out above is that the lease is
+being maintained. It's just that the client failed to return the
+delegation in time. So, BAD_STATEID may be correct, actually?
+
+> 
+> > What the server could (and probably should) do is revoke all
+> > open/lock/layout state for the clientid+file combination for which it
+> > is also revoking the delegation. That means that all applications that
+> > were using that file on that client would be screwed, but they
+> > probably will be anyway if the file gets corrupted due to non-atomic
+> > locking.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
-On 11/05/2014 11:45 AM, Chris Siebenmann wrote:
->> On 11/04/2014 11:53 AM, Chris Siebenmann wrote:
->>> PS: 'switch to NFS v4 to strongly authenticate user requests' is not an
->>>     option for us. We specifically value things that cannot be done
->>>     with true verification of user identification, like cron, and we
->>>     don't have and don't want to build the infrastructure that would
->>>     be required for strongly authenticated NFS v4.
->> The exact same "strongly authenticate" that in v4 is available
->> with v3. NFS secure mounts (-o krb5) are available 
->> with all NFS protocol versions.
->>
->> Tying NFS secure mounts with an FreeIPA environment should work
->> out well..    
-> 
->  NFS v4 isn't the problem; strong authentication of user identities (and
-> Kerberos) is the problem. Our environment and our users rely on the many
-> forms that setuid takes[*] and as far as I know those are impossible with
-> strong identification (in any NFS or remote filesystem protocol) because
-> the point of strong authentication is that the server no longer trusts
-> clients when they say 'honest, I'm working on behalf of uid <X>'.
-Gotta... Interesting... I was just talking to a customer about 
-this very problem...  Not being able to tie multiple GSS contexts 
-to a single uid... 
-
-steved.
-> 
-> (Instead the client must prove it by presenting a secret only the user
-> is supposed to have access to, which the user must have somehow loaded
-> on the client.)
-> 
-> 	- cks
-> [*: including but not limited to crontabs, .forward files, user run web
->     apps and CGI-BINs, and detached processes left running for weeks.
-> ]
-> 
+-- 
+Jeff Layton <jlayton@primarydata.com>
