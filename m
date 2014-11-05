@@ -1,243 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f46.google.com ([209.85.216.46]:54775 "EHLO
-	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751936AbaKEVPN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 16:15:13 -0500
-Received: by mail-qa0-f46.google.com with SMTP id n8so1149740qaq.19
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Nov 2014 13:15:12 -0800 (PST)
-From: Milosz Tanski <milosz@adfin.com>
-To: linux-kernel@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>, Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
-        Mel Gorman <mgorman@suse.de>,
-        Volker Lendecke <Volker.Lendecke@sernet.de>, Tejun Heo <tj@kernel.org>,
-        Jeff Moyer <jmoyer@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-        Al Viro <viro@zeniv.linux.org.uk>, linux-api@vger.kernel.org,
-        Michael Kerrisk <mtk.manpages@gmail.com>, linux-arch@vger.kernel.org,
-        ceph-devel@vger.kernel.org, fuse-devel@lists.sourceforge.net,
-        linux-nfs@vger.kernel.org, ocfs2-devel@oss.oracle.com,
-        linux-mm@kvack.org
-Subject: [PATCH v5 7/7] fs: add a flag for per-operation O_DSYNC semantics
-Date: Wed,  5 Nov 2014 16:14:53 -0500
-Message-Id: <c188b04ede700ce5f986b19de12fa617d158540f.1415220890.git.milosz@adfin.com>
-In-Reply-To: <cover.1415220890.git.milosz@adfin.com>
-References: <cover.1415220890.git.milosz@adfin.com>
-In-Reply-To: <cover.1415220890.git.milosz@adfin.com>
-References: <cover.1415220890.git.milosz@adfin.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:54008 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932190AbaKERBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 12:01:14 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1DjQ004048
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:14 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1Co3027838
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:13 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1Cgl000898
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:12 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1CMv000897
+	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:12 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 00/15] A few enhancements to mountstats.py
+Date: Wed,  5 Nov 2014 12:00:57 -0500
+Message-Id: <1415206872-864-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Christoph Hellwig <hch@lst.de>
+The following patches add a couple of enhancements to mountstats.py.  I
+also fixed a few bugs I encountered along the way.  Highlights include:
 
-With the new read/write with flags syscalls we can support a flag
-to enable O_DSYNC semantics on a per-operation basis.  This іs
-useful to implement protocols like SMB, NFS or SCSI that have such
-per-operation flags.
+- added support for -f/--file to allow stats to be parsed from an
+  aritrary input file instead of /proc/self/mountstats
 
-Example program below:
+- added support for -S/--since to show just the changes that have
+  occurred between the current and a previous set of statisics (works
+  with and without the -f option)
 
-cat > pwritev2.c << EOF
+- added support for -R/--raw to generate 'raw' statistics (i.e. in the
+  same format as /proc/self/mountstats).  It's intended to be used with
+  the -f and -S options.
 
-        (off_t) val,                              \
-        (off_t) ((((uint64_t) (val)) >> (sizeof (long) * 4)) >> (sizeof (long) * 4))
+- implemented the ms-nfsstat command to generate client-side
+  nfsstat-like statisics (only works with a single mountpoint)
 
-static ssize_t
-pwritev2(int fd, const struct iovec *iov, int iovcnt, off_t offset, int flags)
-{
-        return syscall(__NR_pwritev2, fd, iov, iovcnt, LO_HI_LONG(offset),
-			 flags);
-}
+My motivation for these changes was so that I could take various copies
+of /proc/self/mountstats and massage them into data that I could feed
+into the 'report' option of Dros's nfsometer tool for scenarios where
+it's not feasible to run nfsometer itself (e.g. systems where we can't
+start with an 'idle' state (i.e. no NFS filesystems initially
+mounted), systems with multiple NFS filesystems mounted, and workloads
+that can't easily be boiled down into an nfsometer workload file or run
+via the custom workload environment variables).
 
-int main(int argc, char **argv)
-{
-	int fd = open(argv[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
-	char buf[1024];
-	struct iovec iov = { .iov_base = buf, .iov_len = 1024 };
-	int ret;
+Scott Mayhew (15):
+  mountstats: Fix up NFS event counters
+  mountstats: Add lists of various counters
+  mountstats: Refactor __parse_nfs_line and __parse_rpc_line
+  mountstats: Refactor compare_iostats
+  mountstats: Convert existing option parsing to use the getopt module
+  mountstats: Make ms-iostat output match that of nfs-iostat.py
+  mountstats: Make print_iostat_summary handle newly appearing mounts
+  mountstats: Add support for -f/--file to the mountstats and ms-iostat
+    commands
+  mountstats: Add support for -S/--since to the mountstats and ms-iostat
+    commands
+  mountstats: Fix IndexError in __parse_nfs_line
+  mountstats: Allow mountstats_command to take a variable number of
+    mountpoints
+  mountstats: Add support for -R/--raw to mountstats_command
+  mountstats: Implement nfsstat_command
+  mountstats: Remove the --start and --end options
+  mountstats: Update the help output
 
-        if (fd < 0) {
-                perror("open");
-                return 0;
-        }
+ tools/mountstats/mountstats.py | 730 ++++++++++++++++++++++++++++++-----------
+ 1 file changed, 544 insertions(+), 186 deletions(-)
+ mode change 100644 => 100755 tools/mountstats/mountstats.py
 
-	memset(buf, 0xfe, sizeof(buf));
-
-	ret = pwritev2(fd, &iov, 1, 0, RWF_DSYNC);
-	if (ret < 0)
-		perror("pwritev2");
-	else
-		printf("ret = %d\n", ret);
-
-	return 0;
-}
-EOF
-
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-[milosz@adfin.com: added flag check to compat_do_readv_writev()]
-Signed-off-by: Milosz Tanski <milosz@adfin.com>
----
- fs/ceph/file.c     |  4 +++-
- fs/fuse/file.c     |  2 ++
- fs/nfs/file.c      | 10 ++++++----
- fs/ocfs2/file.c    |  6 ++++--
- fs/read_write.c    | 20 +++++++++++++++-----
- include/linux/fs.h |  3 ++-
- mm/filemap.c       |  4 +++-
- 7 files changed, 35 insertions(+), 14 deletions(-)
-
-diff --git a/fs/ceph/file.c b/fs/ceph/file.c
-index b798b5c..2d4e15a 100644
---- a/fs/ceph/file.c
-+++ b/fs/ceph/file.c
-@@ -983,7 +983,9 @@ retry_snap:
- 	ceph_put_cap_refs(ci, got);
- 
- 	if (written >= 0 &&
--	    ((file->f_flags & O_SYNC) || IS_SYNC(file->f_mapping->host) ||
-+	    ((file->f_flags & O_SYNC) ||
-+	     IS_SYNC(file->f_mapping->host) ||
-+	     (iocb->ki_rwflags & RWF_DSYNC) ||
- 	     ceph_osdmap_flag(osdc->osdmap, CEPH_OSDMAP_NEARFULL))) {
- 		err = vfs_fsync_range(file, pos, pos + written - 1, 1);
- 		if (err < 0)
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index caa8d95..bb4fb23 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -1248,6 +1248,8 @@ static ssize_t fuse_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		written += written_buffered;
- 		iocb->ki_pos = pos + written_buffered;
- 	} else {
-+		if (iocb->ki_rwflags & RWF_DSYNC)
-+			return -EINVAL;
- 		written = fuse_perform_write(file, mapping, from, pos);
- 		if (written >= 0)
- 			iocb->ki_pos = pos + written;
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index aa9046f..c59b0b7 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -652,13 +652,15 @@ static const struct vm_operations_struct nfs_file_vm_ops = {
- 	.remap_pages = generic_file_remap_pages,
- };
- 
--static int nfs_need_sync_write(struct file *filp, struct inode *inode)
-+static int nfs_need_sync_write(struct kiocb *iocb, struct inode *inode)
- {
- 	struct nfs_open_context *ctx;
- 
--	if (IS_SYNC(inode) || (filp->f_flags & O_DSYNC))
-+	if (IS_SYNC(inode) ||
-+	    (iocb->ki_filp->f_flags & O_DSYNC) ||
-+	    (iocb->ki_rwflags & RWF_DSYNC))
- 		return 1;
--	ctx = nfs_file_open_context(filp);
-+	ctx = nfs_file_open_context(iocb->ki_filp);
- 	if (test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags) ||
- 	    nfs_ctx_key_to_expire(ctx))
- 		return 1;
-@@ -705,7 +707,7 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
- 		written = result;
- 
- 	/* Return error values for O_DSYNC and IS_SYNC() */
--	if (result >= 0 && nfs_need_sync_write(file, inode)) {
-+	if (result >= 0 && nfs_need_sync_write(iocb, inode)) {
- 		int err = vfs_fsync(file, 0);
- 		if (err < 0)
- 			result = err;
-diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-index bb66ca4..8f9a86b 100644
---- a/fs/ocfs2/file.c
-+++ b/fs/ocfs2/file.c
-@@ -2374,8 +2374,10 @@ out_dio:
- 	/* buffered aio wouldn't have proper lock coverage today */
- 	BUG_ON(ret == -EIOCBQUEUED && !(file->f_flags & O_DIRECT));
- 
--	if (((file->f_flags & O_DSYNC) && !direct_io) || IS_SYNC(inode) ||
--	    ((file->f_flags & O_DIRECT) && !direct_io)) {
-+	if (((file->f_flags & O_DSYNC) && !direct_io) ||
-+	    IS_SYNC(inode) ||
-+	    ((file->f_flags & O_DIRECT) && !direct_io) ||
-+	    (iocb->ki_rwflags & RWF_DSYNC)) {
- 		ret = filemap_fdatawrite_range(file->f_mapping, *ppos,
- 					       *ppos + count - 1);
- 		if (ret < 0)
-diff --git a/fs/read_write.c b/fs/read_write.c
-index cba7d4c..3443265 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -839,8 +839,13 @@ static ssize_t do_readv_writev(int type, struct file *file,
- 		ret = do_iter_readv_writev(file, type, iov, nr_segs, tot_len,
- 						pos, iter_fn, flags);
- 	} else {
--		if (type == READ && (flags & RWF_NONBLOCK))
--			return -EAGAIN;
-+		if (type == READ) {
-+			if (flags & RWF_NONBLOCK)
-+				return -EAGAIN;
-+		} else {
-+			if (flags & RWF_DSYNC)
-+				return -EINVAL;
-+		}
- 
- 		if (fnv)
- 			ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
-@@ -888,7 +893,7 @@ ssize_t vfs_writev(struct file *file, const struct iovec __user *vec,
- 		return -EBADF;
- 	if (!(file->f_mode & FMODE_CAN_WRITE))
- 		return -EINVAL;
--	if (flags & ~0)
-+	if (flags & ~RWF_DSYNC)
- 		return -EINVAL;
- 
- 	return do_readv_writev(WRITE, file, vec, vlen, pos, flags);
-@@ -1080,8 +1085,13 @@ static ssize_t compat_do_readv_writev(int type, struct file *file,
- 		ret = do_iter_readv_writev(file, type, iov, nr_segs, tot_len,
- 						pos, iter_fn, flags);
- 	} else {
--		if (type == READ && (flags & RWF_NONBLOCK))
--			return -EAGAIN;
-+		if (type == READ) {
-+			if (flags & RWF_NONBLOCK)
-+				return -EAGAIN;
-+		} else {
-+			if (flags & RWF_DSYNC)
-+				return -EINVAL;
-+		}
- 
- 		if (fnv)
- 			ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 7d0e116..7786b88 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1460,7 +1460,8 @@ struct block_device_operations;
- #define HAVE_UNLOCKED_IOCTL 1
- 
- /* These flags are used for the readv/writev syscalls with flags. */
--#define RWF_NONBLOCK 0x00000001
-+#define RWF_NONBLOCK	0x00000001
-+#define RWF_DSYNC	0x00000002
- 
- struct iov_iter;
- 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 6107058..4fbef99 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2669,7 +2669,9 @@ int generic_write_sync(struct kiocb *iocb, loff_t count)
- 	struct file *file = iocb->ki_filp;
- 
- 	if (count > 0 &&
--	    ((file->f_flags & O_DSYNC) || IS_SYNC(file->f_mapping->host))) {
-+	    ((file->f_flags & O_DSYNC) ||
-+	     (iocb->ki_rwflags & RWF_DSYNC) ||
-+	     IS_SYNC(file->f_mapping->host))) {
- 		bool fdatasync = !(file->f_flags & __O_SYNC);
- 		ssize_t ret = 0;
- 
 -- 
-1.9.1
+1.9.3
 
