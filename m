@@ -1,121 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:60724 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:35587 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751209AbaKETpZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2014 14:45:25 -0500
-Date: Thu, 6 Nov 2014 06:45:14 +1100
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] rpc.svcgssd: Add a configure switch to disable
- building the daemon
-Message-ID: <20141106064514.4b8fd215@notabene.brown>
-In-Reply-To: <545A4D8E.5010106@RedHat.com>
-References: <1411489301-28991-1-git-send-email-steved@redhat.com>
-	<1411489301-28991-2-git-send-email-steved@redhat.com>
-	<20141105135633.4ea63a2c@notabene.brown>
-	<545A4D8E.5010106@RedHat.com>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/j8xixvKKZ.F5RZJyCyjOb2W"; protocol="application/pgp-signature"
+	id S932267AbaKERBQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 12:01:16 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1F1e022479
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:16 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1EIg000693
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:15 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1EZR000923
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:14 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1EuJ000922
+	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:14 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 06/15] mountstats: Make ms-iostat output match that of nfs-iostat.py
+Date: Wed,  5 Nov 2014 12:01:03 -0500
+Message-Id: <1415206872-864-7-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/j8xixvKKZ.F5RZJyCyjOb2W
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Changes mostly lifted straight from nfs-iostat.py.
 
-On Wed, 05 Nov 2014 11:17:18 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ tools/mountstats/mountstats.py | 104 ++++++++++++++++++++++++-----------------
+ 1 file changed, 61 insertions(+), 43 deletions(-)
 
->=20
->=20
-> On 11/04/2014 09:56 PM, NeilBrown wrote:
-> > Hi Steve,
-> >  I just noticed that this causes an error when I try "./configure".
-> > It tries to run a program called "enable_svcgss" with args "=3D" and "y=
-es",
-> > but this fails....
-> >=20
-> > A simple fix would leave the code doing nothing if enable_gss =3D yes, =
-but
-> > enable_svcgss =3D no.  Is that what you want?
-> No...=20
->=20
-> >=20
-> > Should it be:
-> >=20
-> >         if test "$enable_gss" =3D yes -a "$enable_svcgss" =3D yes; then
-> >                 SVCGSSD=3Dsvcgssd
-> >> > +	else
-> >> > +		enable_svcgss=3D
-> >> > +		SVCGSSD=3D
-> >> > +	fi
-> > ??
-> >=20
-> > Would you like a patch, or will you just fix it up?
-> I got it... thanks!=20
->=20
-> commit e186d734cb3d7c53ef8038b2f62e5b1825d9fa26
-> Author: Steve Dickson <steved@redhat.com>
-> Date:   Wed Nov 5 11:12:03 2014 -0500
->=20
->     configure: Fixed logic around $enable_gss and $enable_svcgss
->    =20
->     Signed-off-by: Steve Dickson <steved@redhat.com>
->=20
-> diff --git a/configure.ac b/configure.ac
-> index 59fd14d..377ba2e 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -108,10 +108,8 @@ AC_ARG_ENABLE(svcgss,
->      [enable building svcgssd for rpcsec_gss server support @<:@default=
-=3Dyes@:>@])],
->         enable_svcgss=3D$enableval,
->         enable_svcgss=3Dyes)
-> -       if test "$enable_gss" =3D yes; then
-> -               if "enable_svcgss" =3D yes; then
-> -                       SVCGSSD=3Dsvcgssd
-> -               fi
-> +       if test "$enable_gss" =3D yes -a "enable_svcgss" =3D yes; then
-                                         $
-> +               SVCGSSD=3Dsvcgssd
->         else
->                 enable_svcgss=3D
->                 SVCGSSD=3D
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index 272a8f9..d08384e 100755
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -449,60 +449,78 @@ class DeviceData:
+             result.__nfs_data[key] -= old_stats.__nfs_data[key]
+         return result
+ 
++    def __print_rpc_op_stats(self, op, sample_time):
++        """Print generic stats for one RPC op
++        """
++        if op not in self.__rpc_data:
++            return
++
++        rpc_stats = self.__rpc_data[op]
++        ops = float(rpc_stats[0])
++        retrans = float(rpc_stats[1] - rpc_stats[0])
++        kilobytes = float(rpc_stats[3] + rpc_stats[4]) / 1024
++        rtt = float(rpc_stats[6])
++        exe = float(rpc_stats[7])
++
++        # prevent floating point exceptions
++        if ops != 0:
++            kb_per_op = kilobytes / ops
++            retrans_percent = (retrans * 100) / ops
++            rtt_per_op = rtt / ops
++            exe_per_op = exe / ops
++        else:
++            kb_per_op = 0.0
++            retrans_percent = 0.0
++            rtt_per_op = 0.0
++            exe_per_op = 0.0
++
++        op += ':'
++        print(format(op.lower(), '<16s'), end='')
++        print(format('ops/s', '>8s'), end='')
++        print(format('kB/s', '>16s'), end='')
++        print(format('kB/op', '>16s'), end='')
++        print(format('retrans', '>16s'), end='')
++        print(format('avg RTT (ms)', '>16s'), end='')
++        print(format('avg exe (ms)', '>16s'))
++
++        print(format((ops / sample_time), '>24.3f'), end='')
++        print(format((kilobytes / sample_time), '>16.3f'), end='')
++        print(format(kb_per_op, '>16.3f'), end='')
++        retransmits = '{0:>10.0f} ({1:>3.1f}%)'.format(retrans, retrans_percent).strip()
++        print(format(retransmits, '>16'), end='')
++        print(format(rtt_per_op, '>16.3f'), end='')
++        print(format(exe_per_op, '>16.3f'))
++
+     def display_iostats(self, sample_time):
+         """Display NFS and RPC stats in an iostat-like way
+         """
+         sends = float(self.__rpc_data['rpcsends'])
+         if sample_time == 0:
+             sample_time = float(self.__nfs_data['age'])
++        #  sample_time could still be zero if the export was just mounted.
++        #  Set it to 1 to avoid divide by zero errors in this case since we'll
++        #  likely still have relevant mount statistics to show.
++        #
++        if sample_time == 0:
++            sample_time = 1;
++        if sends != 0:
++            backlog = (float(self.__rpc_data['backlogutil']) / sends) / sample_time
++        else:
++            backlog = 0.0
+ 
+         print()
+         print('%s mounted on %s:' % \
+             (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
++        print()
+ 
+-        print('\top/s\trpc bklog')
+-        print('\t%.2f' % (sends / sample_time), end=' ')
+-        if sends != 0:
+-            print('\t%.2f' % \
+-                ((float(self.__rpc_data['backlogutil']) / sends) / sample_time))
+-        else:
+-            print('\t0.00')
+-
+-        # reads:  ops/s, kB/s, avg rtt, and avg exe
+-        # XXX: include avg xfer size and retransmits?
+-        read_rpc_stats = self.__rpc_data['READ']
+-        ops = float(read_rpc_stats[0])
+-        kilobytes = float(self.__nfs_data['serverreadbytes']) / 1024
+-        rtt = float(read_rpc_stats[6])
+-        exe = float(read_rpc_stats[7])
+-
+-        print('\treads:\tops/s\t\tkB/s\t\tavg RTT (ms)\tavg exe (ms)')
+-        print('\t\t%.2f' % (ops / sample_time), end=' ')
+-        print('\t\t%.2f' % (kilobytes / sample_time), end=' ')
+-        if ops != 0:
+-            print('\t\t%.2f' % (rtt / ops), end=' ')
+-            print('\t\t%.2f' % (exe / ops))
+-        else:
+-            print('\t\t0.00', end=' ')
+-            print('\t\t0.00')
+-
+-        # writes:  ops/s, kB/s, avg rtt, and avg exe
+-        # XXX: include avg xfer size and retransmits?
+-        write_rpc_stats = self.__rpc_data['WRITE']
+-        ops = float(write_rpc_stats[0])
+-        kilobytes = float(self.__nfs_data['serverwritebytes']) / 1024
+-        rtt = float(write_rpc_stats[6])
+-        exe = float(write_rpc_stats[7])
+-
+-        print('\twrites:\tops/s\t\tkB/s\t\tavg RTT (ms)\tavg exe (ms)')
+-        print('\t\t%.2f' % (ops / sample_time), end=' ')
+-        print('\t\t%.2f' % (kilobytes / sample_time), end=' ')
+-        if ops != 0:
+-            print('\t\t%.2f' % (rtt / ops), end=' ')
+-            print('\t\t%.2f' % (exe / ops))
+-        else:
+-            print('\t\t0.00', end=' ')
+-            print('\t\t0.00')
++        print(format('ops/s', '>16') + format('rpc bklog', '>16'))
++        print(format((sends / sample_time), '>16.3f'), end='')
++        print(format(backlog, '>16.3f'))
++        print()
++
++        self.__print_rpc_op_stats('READ', sample_time)
++        self.__print_rpc_op_stats('WRITE', sample_time)
++        sys.stdout.flush()
+ 
+ def parse_stats_file(filename):
+     """pop the contents of a mountstats file into a dictionary,
+-- 
+1.9.3
 
-Apart from the missing '$', looks good to me - thanks.
-
-NeilBrown
-
->=20
->=20
-> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
---Sig_/j8xixvKKZ.F5RZJyCyjOb2W
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIVAwUBVFp+Sjnsnt1WYoG5AQJFhhAAkvdWTwMY+FeEEvIWDWrxrPE+ImwhIuW8
-d0B42Re2d/hPJlYe5RUiZx2AizrxSwwOF526Ko5R3bzOZ7ASKLOfKhuM+smqZ3y6
-kiAd47SblqOwS7Bje2mRo3pRW6EDVMu+G9bgWagBF+k1dSK/Mpr5IQcrUDYCVbAg
-gVOja/pl3DM9HuWkxUOC6N3NQbZS3v/j4LrpspCteroHOMQxaE8x4Yj3A7CUAAwG
-ySHvXa1hKsJj+eieVNX9k0/DXcqBuI/GfJ8L7najxEn4s5KUIdpYtqtaJZJTZ9xR
-27v5fYDyQcqockIzm7KBKE4iFigk/C6qEqla9CQyhpP4kSDGep/JKHgvHad1C1MM
-ggIS7rJFG/nkVwKqLD4VMJH2JcNBlLtXEMCK7/xkC/irg8+rvvANiO1OXnZaBs0U
-c148irakWTEQg59cILk6W8M5n9GmgVeeCcOZGjkPm3fuEetmdKuLCx1NQVTf21Zh
-kbsyH6ys8GvPESWb5v5aiWebTz0C0jjXmFr1bxb2bfJ4XijFVEFJta1mL9yd9nKB
-r3rN49khdx3vwgfsHYcL+raxhdHuQougZQyj6gvXnh7PalYMkIj8h4C4I1K6bDK1
-o6TJ0bfNbhHtT33jN9sDhPvhUtNzawH2qyfSm/TYRa7NdgEK4/rnFNkG4FIj8KSp
-X6liTjZ8TyY=
-=6f7O
------END PGP SIGNATURE-----
-
---Sig_/j8xixvKKZ.F5RZJyCyjOb2W--
