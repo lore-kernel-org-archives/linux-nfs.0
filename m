@@ -1,71 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:44009 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751736AbaKKW1p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Nov 2014 17:27:45 -0500
-Date: Wed, 12 Nov 2014 09:27:10 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsd: implement chage_attr_type attribute
-Message-ID: <20141111222710.GY23575@dastard>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141111162849.GA12527@lst.de>
- <20141111162704.GA12103@lst.de>
+Received: from cliff.cs.toronto.edu ([128.100.3.120]:54101 "EHLO
+	cliff.cs.toronto.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751562AbaKEQp4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 11:45:56 -0500
+From: Chris Siebenmann <cks@cs.toronto.edu>
+To: Steve Dickson <SteveD@redhat.com>
+cc: Chris Siebenmann <cks@cs.toronto.edu>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Best approach for authenticating hosts for NFS (v3)?
+In-reply-to: Your message of Wed, 05 Nov 2014 11:32:12 -0500.
+             <545A510C.4000208@RedHat.com>
+Date: Wed, 05 Nov 2014 11:45:55 -0500
+Message-Id: <20141105164555.3958A400746@apps1.cs.toronto.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 11, 2014 at 05:27:04PM +0100, Christoph Hellwig wrote:
-> On Tue, Nov 11, 2014 at 07:36:48AM -0500, Trond Myklebust wrote:
-> > Just out of curiosity, though, why does XFS update i_version on every
-> > block allocation? For NFSv4 compatibility, it really should suffice
-> > for it to just do the update once in the above case. Did Lustre have
-> > more stringent requirements?
+> On 11/04/2014 11:53 AM, Chris Siebenmann wrote:
+> > PS: 'switch to NFS v4 to strongly authenticate user requests' is not an
+> >     option for us. We specifically value things that cannot be done
+> >     with true verification of user identification, like cron, and we
+> >     don't have and don't want to build the infrastructure that would
+> >     be required for strongly authenticated NFS v4.
+> The exact same "strongly authenticate" that in v4 is available
+> with v3. NFS secure mounts (-o krb5) are available 
+> with all NFS protocol versions.
 > 
-> It's literatlly updated everytime inode metadata changes.  Dave implemented
-> this, so I don't know the real rationale behind it.  I don't think anyone
-> sane cares about Lustre ever, certainly not for XFS.
+> Tying NFS secure mounts with an FreeIPA environment should work
+> out well..    
 
-/me goes for the thread to understand the context of the question
+ NFS v4 isn't the problem; strong authentication of user identities (and
+Kerberos) is the problem. Our environment and our users rely on the many
+forms that setuid takes[*] and as far as I know those are impossible with
+strong identification (in any NFS or remote filesystem protocol) because
+the point of strong authentication is that the server no longer trusts
+clients when they say 'honest, I'm working on behalf of uid <X>'.
 
-To clarify what Christoph wrote, XFS updates i_version is updated
-once per transaction that modifies the inode. So if a VFS level
-operation results in multiple transactions then each transaction
-will but the version.
+(Instead the client must prove it by presenting a secret only the user
+is supposed to have access to, which the user must have somehow loaded
+on the client.)
 
-It was implemented that way because nobody could tell me what the
-actual granularity requirement for change detection was.  Hence what
-I implemented was "be able to detect any persistent change that is
-made" to cover all bases.
-
-On Tue, Nov 11, 2014 at 05:28:49PM +0100, Christoph Hellwig wrote:
-> On Tue, Nov 11, 2014 at 05:27:04PM +0100, Christoph Hellwig wrote:
-> > On Tue, Nov 11, 2014 at 07:36:48AM -0500, Trond Myklebust wrote:
-> > > Just out of curiosity, though, why does XFS update i_version on every
-> > > block allocation? For NFSv4 compatibility, it really should suffice
-> > > for it to just do the update once in the above case. Did Lustre have
-> > > more stringent requirements?
-> > 
-> > It's literatlly updated everytime inode metadata changes.  Dave implemented
-> > this, so I don't know the real rationale behind it.  I don't think anyone
-> > sane cares about Lustre ever, certainly not for XFS.
-> 
-> Btw, I think we have an even more important issue with di_changecount:
-> as far as I tell we never initialize i_version to di_changecount when
-> reading the inode from disk, so inodes might move backwards in their
-> version.  I'll take care of this once we have settled the nfs semantics.
-
-Yup, that's an oversight. The problem of adding functionality that
-people want but aren't using and don't know exactly how they are
-going to use it is that there's nothing to test that it's really
-doing the right thing...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+	- cks
+[*: including but not limited to crontabs, .forward files, user run web
+    apps and CGI-BINs, and detached processes left running for weeks.
+]
