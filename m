@@ -1,63 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from imap.thunk.org ([74.207.234.97]:51252 "EHLO imap.thunk.org"
+Received: from mx1.redhat.com ([209.132.183.28]:35593 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750951AbaKYS7B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Nov 2014 13:59:01 -0500
-Date: Tue, 25 Nov 2014 13:58:06 -0500
-From: "Theodore Ts'o" <tytso@mit.edu>
-To: David Miller <davem@davemloft.net>
-Cc: paulmck@linux.vnet.ibm.com, rdunlap@infradead.org, pieter@boesman.nl,
-        josh@joshtriplett.org, alexander.h.duyck@intel.com,
-        viro@zeniv.linux.org.uk, ast@plumgrid.com, akpm@linux-foundation.org,
-        beber@meleeweb.net, catalina.mocanu@gmail.com, dborkman@redhat.com,
-        edumazet@google.com, ebiederm@xmission.com, fabf@skynet.be,
-        fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
-        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
-        bfields@fieldses.org, jlayton@poochiereds.net,
-        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
-        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
-        Paul.Durrant@citrix.com, pefoley2@pefoley.com, tgraf@suug.ch,
-        therbert@google.com, trond.myklebust@primarydata.com,
-        willemb@google.com, xiaoguangrong@linux.vnet.ibm.com,
-        zhenglong.cai@cs2c.com.cn
-Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
- splice family of syscalls (splice, vmsplice, tee and sendfile)
-Message-ID: <20141125185806.GA28116@thunk.org>
-References: <5474ABB6.3030400@infradead.org>
- <20141125.121305.2094097848188324942.davem@davemloft.net>
- <20141125181032.GJ5050@linux.vnet.ibm.com>
- <20141125.132445.152609149279137368.davem@davemloft.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141125.132445.152609149279137368.davem@davemloft.net>
+	id S932255AbaKERBR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 12:01:17 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1G4l022483
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:16 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1FKl000703
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:15 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1Fl7000931
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:15 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1Fb6000930
+	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:15 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 08/15] mountstats: Add support for -f/--file to the mountstats and ms-iostat commands
+Date: Wed,  5 Nov 2014 12:01:05 -0500
+Message-Id: <1415206872-864-9-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 25, 2014 at 01:24:45PM -0500, David Miller wrote:
-> 
-> And then if some fundamental part of userland (glibc, klibc, etc.) finds
-> a useful way to use splice for a fundamental operation, we're back to
-> square one.
+Add support for the -f/--file option to allow parsing of data from an
+arbitrary file instead of /proc/self/mountstats.
 
-I'll note that the applications for these super-tiny kernels are
-places where it's not likely they would be using glibc at all; think
-very tiny embedded systems.  The userspace tends to be highly
-restricted for the same space reasons why there is an effort to make
-the kernel as small as possible.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ tools/mountstats/mountstats.py | 35 ++++++++++++++++++++++++++++-------
+ 1 file changed, 28 insertions(+), 7 deletions(-)
 
-In these places, they are using Linux already, but they're using a 2.2
-or 2.4 kernel because 3.0 is just too damned big.  So the goal is to
-try to provide them an alternative which allows them to use a modern,
-but stripped down kernel.  If glibc or klibc isn't going to work
-without splice, then it's not going to work on a pre 2.6 kernel
-anyway, so things are no worse with these systems anyway.
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index 67bca51..23def92 100755
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -557,6 +557,7 @@ def print_mountstats_help(name):
+     print(' Display NFS client per-mount statistics.')
+     print()
+     print('  --version    display the version of this command')
++    print('  --file <file> read stats from \'file\' instead of /proc/self/mountstats')
+     print('  --nfs        display only the NFS statistics')
+     print('  --rpc        display only the RPC statistics')
+     print('  --start      sample and save statistics')
+@@ -567,17 +568,20 @@ def mountstats_command():
+     """Mountstats command
+     """
+     try:
+-        opts, args = getopt.getopt(sys.argv[1:], "ehnrsv", ["end", "help", "nfs", "rpc", "start", "version"])
++        opts, args = getopt.getopt(sys.argv[1:], "ef:hnrsv", ["end", "file=", "help", "nfs", "rpc", "start", "version"])
+     except getopt.GetoptError as err:
+         print_mountstats_help(prog)
+ 
+     mountpoints = []
+     nfs_only = False
+     rpc_only = False
++    infile = None
+ 
+     for o, a in opts:
+         if o in ("-e", "--end"):
+             raise Exception('Sampling is not yet implemented')
++        elif o in ("-f", "--file"):
++            infile = a
+         elif o in ("-h", "--help"):
+             print_mountstats_help(prog)
+             sys.exit(0)
+@@ -602,7 +606,9 @@ def mountstats_command():
+         print_mountstats_help(prog)
+         return
+ 
+-    mountstats = parse_stats_file('/proc/self/mountstats')
++    if not infile:
++        infile = '/proc/self/mountstats'
++    mountstats = parse_stats_file(infile)
+ 
+     for mp in mountpoints:
+         if mp not in mountstats:
+@@ -678,16 +684,20 @@ def iostat_command():
+     """iostat-like command for NFS mount points
+     """
+     try:
+-        opts, args = getopt.getopt(sys.argv[1:], "hv", ["help", "version"])
++        opts, args = getopt.getopt(sys.argv[1:], "f:hv", ["file=", "help", "version"])
+     except getopt.GetoptError as err:
+         print_iostat_help(prog)
+-    mountstats = parse_stats_file('/proc/self/mountstats')
+     devices = []
+     interval_seen = False
+     count_seen = False
++    infile_seen = False
++    infile = None
+ 
+     for o, a in opts:
+-        if o in ("-h", "--help"):
++        if o in ("-f", "--file"):
++            infile = a
++            infile_seen = True
++        elif o in ("-h", "--help"):
+             print_iostat_help(prog)
+             sys.exit(0)
+         elif o in ("-v", "--version"):
+@@ -695,6 +705,9 @@ def iostat_command():
+             sys.exit(0)
+         else:
+             assert False, "unhandled option"
++    if not infile:
++        infile = '/proc/self/mountstats'
++    mountstats = parse_stats_file(infile)
+ 
+     for arg in args:
+         if arg in mountstats:
+@@ -702,14 +715,22 @@ def iostat_command():
+         elif not interval_seen:
+             interval = int(arg)
+             if interval > 0:
+-                interval_seen = True
++                if infile_seen:
++                    print('interval may not be used with the -f option')
++                    return
++                else:
++                    interval_seen = True
+             else:
+                 print('Illegal <interval> value')
+                 return
+         elif not count_seen:
+             count = int(arg)
+             if count > 0:
+-                count_seen = True
++                if infile_seen:
++                    print('count may not be used with the -f option')
++                    return
++                else:
++                    count_seen = True
+             else:
+                 print('Illegal <count> value')
+                 return
+-- 
+1.9.3
 
-After all, if we can get these systems to using a 3.x kernel w/o
-splice, that's surely better than their using a 2.2 or 2.4 kernel w/o
-the splice system, isn't it?
-
-Cheers,
-
-					- Ted
