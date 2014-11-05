@@ -1,126 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38812 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44043 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753736AbaKJRhs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2014 12:37:48 -0500
-Message-ID: <5460F7DF.6090307@RedHat.com>
-Date: Mon, 10 Nov 2014 12:37:35 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1750796AbaKESbx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 13:31:53 -0500
+Date: Wed, 5 Nov 2014 13:31:52 -0500
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Olga Kornievskaia <aglo@umich.edu>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Thomas Haynes <thomas.haynes@primarydata.com>
+Subject: Re: how to properly handle failures during delegation recall process
+Message-ID: <20141105183152.GB6513@fieldses.org>
+References: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
+ <CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
+ <CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
+ <CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
+ <CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
+ <CAN-5tyGsopFNFjo=LBwYE9n6b7Emv73Rkw0H2wyq2vCjMUOftA@mail.gmail.com>
+ <CAHQdGtSQJLe60ja+-ChkHXOu8_UjmOpd4X7QHyhNOj1mPQGWPg@mail.gmail.com>
+ <20141105065719.23e912b1@tlielax.poochiereds.net>
+ <CAABAsM4YWr2fuQYXVa7jCDKexYPML8C1B6y13XVBKO-psXUmOA@mail.gmail.com>
 MIME-Version: 1.0
-To: Sami Wagiaalla <swagiaal@redhat.com>, libtirpc-devel@lists.sourceforge.net
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: Add '--with-nss-modules' configure option to specify
- nss modules.
-References: <545D34F6.8080703@redhat.com>
-In-Reply-To: <545D34F6.8080703@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAABAsM4YWr2fuQYXVa7jCDKexYPML8C1B6y13XVBKO-psXUmOA@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Nov 05, 2014 at 07:41:58AM -0500, Trond Myklebust wrote:
+> On Wed, Nov 5, 2014 at 6:57 AM, Jeff Layton <jeff.layton@primarydata.com> wrote:
+> > (cc'ing Tom here since we may want to consider providing guidance in
+> >  the spec for this situation)
+> >
+> > Ok, I think both of you are right here :). Here's my interpretation:
+> >
+> > Olga is correct that the LOCK operation itself is safe since LOCK
+> > doesn't actually modify the contents of the file. What it's not safe to
+> > do is to trust that LOCK unless and until the DELEGRETURN is also
+> > successful.
+> >
+> > First, let's clarify the potential race that Trond pointed out:
+> >
+> > Suppose we have a delegation and delegated locks. That delegation is
+> > recalled and we do something like this:
+> >
+> > OPEN with DELEGATE_CUR: NFS4_OK
+> > LOCK:                   NFS4_OK
+> > LOCK:                   NFS4_OK
+> > ...(maybe more successful locks here)...
+> > DELEGRETURN:            NFS4ERR_ADMIN_REVOKED
+> >
+> > ...at that point, we're screwed.
+> >
+> > The delegation was obviously revoked after we did the OPEN but before
+> > the DELEGRETURN. None of those LOCK requests can be trusted since
+> > another client may have opened the file at any point in there, acquired
+> > any one of those locks and then released it.
+> >
+> > For v4.1+ the client can do what Trond suggests. Check for
+> > SEQ4_STATUS_RECALLABLE_STATE_REVOKED in each LOCK response. If it's set
+> > then we can do the TEST_STATEID/FREE_STATEID dance. If the TEST_STATEID
+> > fails, then we must consider the most recently acquired lock lost.
+> > LOCKU it and give up trying to reclaim the rest of them.
+> >
+> > For v4.0, I'm not sure what the client can do other than wait until the
+> > DELEGRETURN. If that fails with NFS4ERR_ADMIN_REVOKED, then we'll just
+> > have to try to unwind the whole mess. Send LOCKUs for all of them and
+> > consider them all to be lost.
+> >
+> > Actually, it may be reasonable to just do the same thing for v4.1. The
+> > client tracks NFS_LOCK_LOST on a per-lockstateid basis, so once you have
+> > any unreclaimable lock, any I/O done with that stateid is going to fail
+> > anyway. You might as well just release any locks you do hold at that
+> > point.
+> >
+> > The other question is whether the server ought to have any role to play
+> > here. In principle it could track whether an open/lock stateid is
+> > descended from a still outstanding delegation, and revoke those
+> > stateids if the delegation is revoked. That would probably not be
+> > trivial to do with the current Linux server implementation, however.
 
+That sounds like a problem for whoever wants to implement support for
+administrative revocation of state.  We don't really support it
+currently.
 
-On 11/07/2014 04:09 PM, Sami Wagiaalla wrote:
-> From: Sami Wagiaalla <swagiaal@redhat.com>
-> 
-> I was having trouble setting up NFS on Atomic Host.  It turns out
-> there is an issue when rpcbind is trying to find the uid of the
-> rpc user.  OSTree based operating systems store user information
-> for system users such as the rpc user in /usr/lib/passwd and
-> leaves /etc/passwd for humans users.  This is enabled by the use
-> of the nss module nss-altfiles which allows one to specify
-> additional files to be added the the passwd database.  rpcbind
-> however overrides the rule added to /etc/nsswitch.conf and removes
-> "altfiles" from the list of modules by doing the following:
-> 
->     __nss_configure_lookup("passwd", "files");
-> 
-> This was added in commit 77f7556878d1fe03dc ("[...]use
-> __nss_configure_lookup() to restrict the [rpc user] lookup") to
-> remove "nis" form the list of modules and prevent rpcbind from
-> having a circular dependency on itself.  In an OSTree based
-> operating system however this prevents rpcbind from finding the rpc
-> user and the service cannot start.
-> 
-> This patch adds an option --with-nss-modules which allows one
-> to specify the nss modules which should be searched for user
-> information.  The default setting is "files" which preserves the
-> current behavior, but this enables one to add other modules to
-> the search path.
-> 
-> Signed-off-by: Sami Wagiaalla <swagiaal@redhat.com>
-Committed.... 
+Oops, right, except for the case where the delegation's revoked just
+because the client ran out of time doing the recall.  In which case I
+think the final error's going to be either EXPIRED (4.0) or
+DELEG_REVOKED (4.1)?  (Except I think the Linux server's returning
+BAD_STATEID in the 4.0 case, which looks wrong.)
 
-steved.
+--b.
 
-> ---
->  Makefile.am   |  1 +
->  configure.ac  |  7 +++++++
->  src/rpcbind.c | 10 ++++++++--
->  3 files changed, 16 insertions(+), 2 deletions(-)
-> 
-> diff --git a/Makefile.am b/Makefile.am
-> index d10c906..e0bc4b4 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -6,6 +6,7 @@ AM_CPPFLAGS = \
->  	-DINET6 \
->  	-DRPCBIND_STATEDIR="\"$(statedir)\"" \
->  	-DRPCBIND_USER="\"$(rpcuser)\"" \
-> +	-DNSS_MODULES="\"$(nss_modules)\"" \
->  	-D_GNU_SOURCE \
->  	$(TIRPC_CFLAGS)
->  
-> diff --git a/configure.ac b/configure.ac
-> index 39181f0..5a88cc7 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -27,6 +27,13 @@ AC_ARG_WITH([rpcuser],
->    ,, [with_rpcuser=root])
->  AC_SUBST([rpcuser], [$with_rpcuser])
->   
-> +AC_ARG_WITH([nss_modules],
-> +  AS_HELP_STRING([--with-nss-modules=NSS_MODULES]
-> +  , [Sets the nss module search list to the given space-delimited string.
-> +     For example --with-nss-modules="files altfiles" @<:@default=files@:>@])
-> +  ,, [with_nss_modules=files])
-> +AC_SUBST([nss_modules], [$with_nss_modules])
-> +
->  PKG_CHECK_MODULES([TIRPC], [libtirpc])
->  
->  AS_IF([test x$enable_libwrap = xyes], [
-> diff --git a/src/rpcbind.c b/src/rpcbind.c
-> index 924aca1..e3462e3 100644
-> --- a/src/rpcbind.c
-> +++ b/src/rpcbind.c
-> @@ -91,6 +91,12 @@ char *rpcbinduser = RPCBIND_USER;
->  char *rpcbinduser = NULL;
->  #endif
->  
-> +#ifdef NSS_MODULES
-> +char *nss_modules = NSS_MODULES;
-> +#else
-> +char *nss_modules = "files";
-> +#endif
-> +
->  /* who to suid to if -s is given */
->  #define RUN_AS  "daemon"
->  
-> @@ -165,7 +171,7 @@ main(int argc, char *argv[])
->  	 * Make sure we use the local service file 
->  	 * for service lookkups
->  	 */
-> -	__nss_configure_lookup("services", "files");
-> +	__nss_configure_lookup("services", nss_modules);
->  
->  	nc_handle = setnetconfig(); 	/* open netconfig file */
->  	if (nc_handle == NULL) {
-> @@ -231,7 +237,7 @@ main(int argc, char *argv[])
->  		 * Make sure we use the local password file
->  		 * for these lookups.
->  		 */
-> -		__nss_configure_lookup("passwd", "files");
-> +		__nss_configure_lookup("passwd", nss_modules);
->  
->  		if((p = getpwnam(id)) == NULL) {
->  			syslog(LOG_ERR, "cannot get uid of '%s': %m", id);
-> 
+> What the server could (and probably should) do is revoke all
+> open/lock/layout state for the clientid+file combination for which it
+> is also revoking the delegation. That means that all applications that
+> were using that file on that client would be screwed, but they
+> probably will be anyway if the file gets corrupted due to non-atomic
+> locking.
