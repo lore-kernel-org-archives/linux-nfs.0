@@ -1,156 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:37074 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:35892 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752042AbaKEC4m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Nov 2014 21:56:42 -0500
-Date: Wed, 5 Nov 2014 13:56:33 +1100
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] rpc.svcgssd: Add a configure switch to disable
- building the daemon
-Message-ID: <20141105135633.4ea63a2c@notabene.brown>
-In-Reply-To: <1411489301-28991-2-git-send-email-steved@redhat.com>
-References: <1411489301-28991-1-git-send-email-steved@redhat.com>
-	<1411489301-28991-2-git-send-email-steved@redhat.com>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/OJ4EoWRIywwVcFdcD7E21FX"; protocol="application/pgp-signature"
+	id S932255AbaKERBP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 12:01:15 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1EKF022048
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:15 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1E1h000688
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:14 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1ErI000918
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:14 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1EqU000917
+	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:14 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 05/15] mountstats: Convert existing option parsing to use the getopt module
+Date: Wed,  5 Nov 2014 12:01:02 -0500
+Message-Id: <1415206872-864-6-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/OJ4EoWRIywwVcFdcD7E21FX
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ tools/mountstats/mountstats.py | 62 +++++++++++++++++++++---------------------
+ 1 file changed, 31 insertions(+), 31 deletions(-)
 
-On Tue, 23 Sep 2014 12:21:40 -0400 Steve Dickson <steved@redhat.com> wrote:
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index 2fe1362..272a8f9 100755
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -24,6 +24,7 @@ MA 02110-1301 USA
+ """
+ 
+ import sys, os, time
++import getopt
+ 
+ Mountstats_version = '0.2'
+ 
+@@ -547,37 +548,33 @@ def print_mountstats_help(name):
+ def mountstats_command():
+     """Mountstats command
+     """
++    try:
++        opts, args = getopt.getopt(sys.argv[1:], "ehnrsv", ["end", "help", "nfs", "rpc", "start", "version"])
++    except getopt.GetoptError as err:
++        print_mountstats_help(prog)
++
+     mountpoints = []
+     nfs_only = False
+     rpc_only = False
+ 
+-    for arg in sys.argv:
+-        if arg in ['-h', '--help', 'help', 'usage']:
++    for o, a in opts:
++        if o in ("-e", "--end"):
++            raise Exception('Sampling is not yet implemented')
++        elif o in ("-h", "--help"):
+             print_mountstats_help(prog)
+-            return
+-
+-        if arg in ['-v', '--version', 'version']:
+-            print('%s version %s' % (sys.argv[0], Mountstats_version))
+             sys.exit(0)
+-
+-        if arg in ['-n', '--nfs']:
++        elif o in ("-n", "--nfs"):
+             nfs_only = True
+-            continue
+-
+-        if arg in ['-r', '--rpc']:
++        elif o in ("-r", "--rpc"):
+             rpc_only = True
+-            continue
+-
+-        if arg in ['-s', '--start']:
+-            raise Exception('Sampling is not yet implemented')
+-
+-        if arg in ['-e', '--end']:
++        elif o in ("-s", "--start"):
+             raise Exception('Sampling is not yet implemented')
+-
+-        if arg == sys.argv[0]:
+-            continue
+-
+-        mountpoints += [arg]
++        elif o in ("-v", "--version"):
++            print('%s version %s' % (sys.argv[0], Mountstats_version))
++            sys.exit(0)
++        else:
++            assert False, "unhandled option"
++    mountpoints += args
+ 
+     if mountpoints == []:
+         print_mountstats_help(prog)
+@@ -662,23 +659,26 @@ def print_iostat_summary(old, new, devices, time):
+ def iostat_command():
+     """iostat-like command for NFS mount points
+     """
++    try:
++        opts, args = getopt.getopt(sys.argv[1:], "hv", ["help", "version"])
++    except getopt.GetoptError as err:
++        print_iostat_help(prog)
+     mountstats = parse_stats_file('/proc/self/mountstats')
+     devices = []
+     interval_seen = False
+     count_seen = False
+ 
+-    for arg in sys.argv:
+-        if arg in ['-h', '--help', 'help', 'usage']:
++    for o, a in opts:
++        if o in ("-h", "--help"):
+             print_iostat_help(prog)
+-            return
+-
+-        if arg in ['-v', '--version', 'version']:
++            sys.exit(0)
++        elif o in ("-v", "--version"):
+             print('%s version %s' % (sys.argv[0], Mountstats_version))
+-            return
+-
+-        if arg == sys.argv[0]:
+-            continue
++            sys.exit(0)
++        else:
++            assert False, "unhandled option"
+ 
++    for arg in args:
+         if arg in mountstats:
+             devices += [arg]
+         elif not interval_seen:
+-- 
+1.9.3
 
-> Now that gssproxy is supported on modern kernels,
-> the svcgssd is no longer needed. This switch
-> disables the building of the daemon.
->=20
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  configure.ac           | 23 +++++++++++++++++++----
->  utils/gssd/Makefile.am | 11 +++++++++--
->  2 files changed, 28 insertions(+), 6 deletions(-)
->=20
-> diff --git a/configure.ac b/configure.ac
-> index bc48373..b63d821 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -90,21 +90,36 @@ AC_ARG_ENABLE(nfsv41,
-> =20
->  AC_ARG_ENABLE(gss,
->  	[AC_HELP_STRING([--enable-gss],
-> -                        [enable support for rpcsec_gss @<:@default=3Dyes=
-@:>@])],
-> +              [enable client support for rpcsec_gss @<:@default=3Dyes@:>=
-@])],
->  	enable_gss=3D$enableval,
->  	enable_gss=3Dyes)
->  	if test "$enable_gss" =3D yes; then
->  		GSSD=3Dgssd
-> -		SVCGSSD=3Dsvcgssd
->  	else
->  		enable_gss=3D
->  		GSSD=3D
-> -		SVCGSSD=3D
->  	fi
->  	AC_SUBST(GSSD)
-> -	AC_SUBST(SVCGSSD)
->  	AC_SUBST(enable_gss)
->  	AM_CONDITIONAL(CONFIG_GSS, [test "$enable_gss" =3D "yes"])
-> +
-> +AC_ARG_ENABLE(svcgss,
-> +	[AC_HELP_STRING([--enable-svcgss],
-> +    [dissable building svcgssd for rpcsec_gss server support @<:@default=
-=3Dyes@:>@])],
-> +	enable_svcgss=3D$enableval,
-> +	enable_svcgss=3Dyes)
-> +	if test "$enable_gss" =3D yes; then
-> +		if "enable_svcgss" =3D yes; then
-> +			SVCGSSD=3Dsvcgssd
-> +		fi
-
-Hi Steve,
- I just noticed that this causes an error when I try "./configure".
-It tries to run a program called "enable_svcgss" with args "=3D" and "yes",
-but this fails....
-
-A simple fix would leave the code doing nothing if enable_gss =3D yes, but
-enable_svcgss =3D no.  Is that what you want?
-
-Should it be:
-
-        if test "$enable_gss" =3D yes -a "$enable_svcgss" =3D yes; then
-                SVCGSSD=3Dsvcgssd
-> +	else
-> +		enable_svcgss=3D
-> +		SVCGSSD=3D
-> +	fi
-
-??
-
-Would you like a patch, or will you just fix it up?
-
-Thanks,
-NeilBrown
-
-
-> +	AC_SUBST(SVCGSSD)
-> +	AC_SUBST(enable_svcgss)
-> +	AM_CONDITIONAL(CONFIG_SVCGSS, [test "$enable_svcgss" =3D "yes"])
-> +
->  AC_ARG_ENABLE(kprefix,
->  	[AC_HELP_STRING([--enable-kprefix], [install progs as rpc.knfsd etc])],
->  	test "$enableval" =3D "yes" && kprefix=3Dk,
-> diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
-> index af59791..9835117 100644
-> --- a/utils/gssd/Makefile.am
-> +++ b/utils/gssd/Makefile.am
-> @@ -1,10 +1,17 @@
->  ## Process this file with automake to produce Makefile.in
-> =20
-> -man8_MANS	=3D gssd.man svcgssd.man
-> +man8_MANS	=3D gssd.man
-> +if CONFIG_SVCGSS
-> +man8_MANS	+=3D svcgssd.man
-> +endif
-> =20
->  RPCPREFIX	=3D rpc.
->  KPREFIX		=3D @kprefix@
-> -sbin_PREFIXED	=3D gssd svcgssd
-> +sbin_PREFIXED	=3D gssd
-> +if CONFIG_SVCGSS
-> +sbin_PREFIXED	+=3D svcgssd
-> +endif
-> +
->  sbin_PROGRAMS	=3D $(sbin_PREFIXED)
-> =20
->  EXTRA_DIST =3D \
-
-
---Sig_/OJ4EoWRIywwVcFdcD7E21FX
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIVAwUBVFmR4Tnsnt1WYoG5AQJdKhAAwrsrOJzEzTPjn21LqwtJEncuZmuc5wSu
-UtbnQOiC8/yOThUAChZGyuuoai5Sbka5MQsqa9ZKnVozYg1lnPdHp8oAG9wLXlEC
-pJNbZOKnMQQibBcy7dXZ7qyFFavs/I5kMWj8V0zyZRZ92K886NxNAFXlq9KXxEB7
-TGUKUtllAjZBF0/thx4zNCPYOxkl7goLqGY0xIfz+Kyaug9+AHxpteeREqHslLlW
-oa04qZOL7oMA/Ehzp/mhfgniB+NqSMKYo8vUbEkhe0IFY+Oog/w1ByYH5Bg3KrL9
-rLCpsacMxo75LL5/RtpCEGUtlONwZ6q0dOXSATjNjm0IOFQJLS3m87fVHgv0aqDQ
-8SNW4zHPotVvo71UJRNLIyz9XD6uUGKUBQvNTXTc1zFHf3NRW1S++llOcjEGY5HU
-a7Hr9PT2LxKvWyMHfumstcrz/gKWrrpqk5K9Gp0mxyWNt+TBdzjrGwzFjlq7qvf0
-k67b4ZY9AgILx3L2JzwN/2HeQQrzjSgF+UkVRGq/htLncMt+7miv35Irk6UeNKF4
-AsecXWF4SXYR9q9R7F9UUFb0iPUGSB9Qey/dmfkLwmQVdOEIzxyJhTFtHdvxfCpv
-mxFlIz88Ncpbm6Q8DB+AeWX0SiMdgHlN6qpe/rJJd+KIPkn/7oX6egMGSfuT6Qg8
-i4EbDhN7J1o=
-=ajoU
------END PGP SIGNATURE-----
-
---Sig_/OJ4EoWRIywwVcFdcD7E21FX--
