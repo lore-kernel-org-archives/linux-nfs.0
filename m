@@ -1,125 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f50.google.com ([209.85.192.50]:46527 "EHLO
-	mail-qg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751249AbaKETnC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 14:43:02 -0500
-Received: by mail-qg0-f50.google.com with SMTP id a108so12626434qge.37
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Nov 2014 11:43:02 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 5 Nov 2014 14:42:51 -0500
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Olga Kornievskaia <aglo@umich.edu>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Thomas Haynes <thomas.haynes@primarydata.com>
-Subject: Re: how to properly handle failures during delegation recall
- process
-Message-ID: <20141105144251.725816f6@tlielax.poochiereds.net>
-In-Reply-To: <20141105183152.GB6513@fieldses.org>
-References: <CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com>
-	<CAHQdGtRuWdHBPfBzCTmDwsYXtpqNSwpGUdtoUqs3jWAd2unxEQ@mail.gmail.com>
-	<CAN-5tyGUxgjpcb2=jnQQOD60ernNzf1YSnTG8B-NXUP5OidEFw@mail.gmail.com>
-	<CAHQdGtQ=RBoO1u_7501-G2rbDEGim5Hh2G6zuWyyLVVy8QAQWw@mail.gmail.com>
-	<CAHQdGtRo2uw5U1-w9O2U=4C8BwxCECAjjeC9SCdkyEP8FQ94Gw@mail.gmail.com>
-	<CAN-5tyGsopFNFjo=LBwYE9n6b7Emv73Rkw0H2wyq2vCjMUOftA@mail.gmail.com>
-	<CAHQdGtSQJLe60ja+-ChkHXOu8_UjmOpd4X7QHyhNOj1mPQGWPg@mail.gmail.com>
-	<20141105065719.23e912b1@tlielax.poochiereds.net>
-	<CAABAsM4YWr2fuQYXVa7jCDKexYPML8C1B6y13XVBKO-psXUmOA@mail.gmail.com>
-	<20141105183152.GB6513@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mx1.redhat.com ([209.132.183.28]:35906 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932271AbaKERBQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 12:01:16 -0500
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1GWl022058
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:16 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1Gjd030330
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:16 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1Ft2000939
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:15 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1FEe000938
+	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:15 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 10/15] mountstats: Fix IndexError in __parse_nfs_line
+Date: Wed,  5 Nov 2014 12:01:07 -0500
+Message-Id: <1415206872-864-11-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 5 Nov 2014 13:31:52 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+If __parse_nfs_line is is called on a line that has 'fstype nfsd', it'll
+raise an IndexError trying to parse a nonexistent statvers entry.
 
-> On Wed, Nov 05, 2014 at 07:41:58AM -0500, Trond Myklebust wrote:
-> > On Wed, Nov 5, 2014 at 6:57 AM, Jeff Layton <jeff.layton@primarydata.com> wrote:
-> > > (cc'ing Tom here since we may want to consider providing guidance in
-> > >  the spec for this situation)
-> > >
-> > > Ok, I think both of you are right here :). Here's my interpretation:
-> > >
-> > > Olga is correct that the LOCK operation itself is safe since LOCK
-> > > doesn't actually modify the contents of the file. What it's not safe to
-> > > do is to trust that LOCK unless and until the DELEGRETURN is also
-> > > successful.
-> > >
-> > > First, let's clarify the potential race that Trond pointed out:
-> > >
-> > > Suppose we have a delegation and delegated locks. That delegation is
-> > > recalled and we do something like this:
-> > >
-> > > OPEN with DELEGATE_CUR: NFS4_OK
-> > > LOCK:                   NFS4_OK
-> > > LOCK:                   NFS4_OK
-> > > ...(maybe more successful locks here)...
-> > > DELEGRETURN:            NFS4ERR_ADMIN_REVOKED
-> > >
-> > > ...at that point, we're screwed.
-> > >
-> > > The delegation was obviously revoked after we did the OPEN but before
-> > > the DELEGRETURN. None of those LOCK requests can be trusted since
-> > > another client may have opened the file at any point in there, acquired
-> > > any one of those locks and then released it.
-> > >
-> > > For v4.1+ the client can do what Trond suggests. Check for
-> > > SEQ4_STATUS_RECALLABLE_STATE_REVOKED in each LOCK response. If it's set
-> > > then we can do the TEST_STATEID/FREE_STATEID dance. If the TEST_STATEID
-> > > fails, then we must consider the most recently acquired lock lost.
-> > > LOCKU it and give up trying to reclaim the rest of them.
-> > >
-> > > For v4.0, I'm not sure what the client can do other than wait until the
-> > > DELEGRETURN. If that fails with NFS4ERR_ADMIN_REVOKED, then we'll just
-> > > have to try to unwind the whole mess. Send LOCKUs for all of them and
-> > > consider them all to be lost.
-> > >
-> > > Actually, it may be reasonable to just do the same thing for v4.1. The
-> > > client tracks NFS_LOCK_LOST on a per-lockstateid basis, so once you have
-> > > any unreclaimable lock, any I/O done with that stateid is going to fail
-> > > anyway. You might as well just release any locks you do hold at that
-> > > point.
-> > >
-> > > The other question is whether the server ought to have any role to play
-> > > here. In principle it could track whether an open/lock stateid is
-> > > descended from a still outstanding delegation, and revoke those
-> > > stateids if the delegation is revoked. That would probably not be
-> > > trivial to do with the current Linux server implementation, however.
-> 
-> That sounds like a problem for whoever wants to implement support for
-> administrative revocation of state.  We don't really support it
-> currently.
-> 
-> Oops, right, except for the case where the delegation's revoked just
-> because the client ran out of time doing the recall.  In which case I
-> think the final error's going to be either EXPIRED (4.0) or
-> DELEG_REVOKED (4.1)?  (Except I think the Linux server's returning
-> BAD_STATEID in the 4.0 case, which looks wrong.)
-> 
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ tools/mountstats/mountstats.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-I'm not sure that that's right... RFC3530 says:
-
-   NFS4ERR_EXPIRED       A lease has expired that is being used in the
-                         current operation.
-
-...implicit in the scenario I layed out above is that the lease is
-being maintained. It's just that the client failed to return the
-delegation in time. So, BAD_STATEID may be correct, actually?
-
-> 
-> > What the server could (and probably should) do is revoke all
-> > open/lock/layout state for the clientid+file combination for which it
-> > is also revoking the delegation. That means that all applications that
-> > were using that file on that client would be screwed, but they
-> > probably will be anyway if the file gets corrupted due to non-atomic
-> > locking.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index b3231b2..77975ad 100755
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -215,13 +215,13 @@ class DeviceData:
+             self.__nfs_data['export'] = words[1]
+             self.__nfs_data['mountpoint'] = words[4]
+             self.__nfs_data['fstype'] = words[7]
+-            if words[7].find('nfs') != -1:
++            if words[7].find('nfs') != -1 and words[7] != 'nfsd':
+                 self.__nfs_data['statvers'] = words[8]
+         elif 'nfs' in words or 'nfs4' in words:
+             self.__nfs_data['export'] = words[0]
+             self.__nfs_data['mountpoint'] = words[3]
+             self.__nfs_data['fstype'] = words[6]
+-            if words[6].find('nfs') != -1:
++            if words[6].find('nfs') != -1 and words[6] != 'nfsd':
+                 self.__nfs_data['statvers'] = words[7]
+         elif words[0] == 'age:':
+             self.__nfs_data['age'] = int(words[1])
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.9.3
+
