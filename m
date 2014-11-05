@@ -1,95 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from c.mx.filmlight.ltd.uk ([54.76.112.217]:49438 "EHLO
-	c.mx.filmlight.ltd.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751579AbaKGOaj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Nov 2014 09:30:39 -0500
-Subject: Re: [fuse-devel] [PATCH v5 7/7] add a flag for per-operation
-	O_DSYNC semantics
-From: Roger Willcocks <roger@filmlight.ltd.uk>
-To: Anton Altaparmakov <aia21@cam.ac.uk>
-Cc: Anand Avati <avati@gluster.org>, linux-arch@vger.kernel.org,
-        linux-aio@kvack.org, linux-nfs@vger.kernel.org,
-        Volker Lendecke <Volker.Lendecke@sernet.de>,
-        "Theodore Ts'o" <tytso@mit.edu>, Mel Gorman <mgorman@suse.de>,
-        "fuse-devel@lists.sourceforge.net" <fuse-devel@lists.sourceforge.net>,
-        linux-api@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Michael Kerrisk <mtk.manpages@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
-        Jeff Moyer <jmoyer@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Tejun Heo <tj@kernel.org>, linux-fsdevel@vger.kernel.org,
-        ceph-devel@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
-        ocfs2-devel@oss.oracle.com, Milosz Tanski <milosz@adfin.com>
-In-Reply-To: <B92AEADD-B22C-4A4A-B64D-96E8869D3282@cam.ac.uk>
-References: <cover.1415220890.git.milosz@adfin.com>
-	 <c188b04ede700ce5f986b19de12fa617d158540f.1415220890.git.milosz@adfin.com>
-	 <x49r3xf28qn.fsf@segfault.boston.devel.redhat.com>
-	 <BF30FAEC-D4D3-4079-9ECD-2743747279BD@cam.ac.uk>
-	 <CAFboF2y2skt=H4crv54shfnXOmz23W-shYWtHWekK8ZUDkfP=A@mail.gmail.com>
-	 <B92AEADD-B22C-4A4A-B64D-96E8869D3282@cam.ac.uk>
-Content-Type: text/plain
-Date: Fri, 07 Nov 2014 14:21:18 +0000
-Message-Id: <1415370078.11083.511.camel@montana.filmlight.ltd.uk>
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:55674 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750702AbaKEUel (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 15:34:41 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5KYeoK007151
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 15:34:41 -0500
+Message-ID: <545A89DF.3070702@RedHat.com>
+Date: Wed, 05 Nov 2014 15:34:39 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils RFC PATCH 00/15] A few enhancements to mountstats.py
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Fri, 2014-11-07 at 08:43 +0200, Anton Altaparmakov wrote:
-> Hi,
+
+On 11/05/2014 12:00 PM, Scott Mayhew wrote:
+> The following patches add a couple of enhancements to mountstats.py.  I
+> also fixed a few bugs I encountered along the way.  Highlights include:
 > 
-> > On 7 Nov 2014, at 07:52, Anand Avati <avati@gluster.org> wrote:
-> > On Thu, Nov 6, 2014 at 8:22 PM, Anton Altaparmakov <aia21@cam.ac.uk> wrote:
-> > > On 7 Nov 2014, at 01:46, Jeff Moyer <jmoyer@redhat.com> wrote:
-> > > Minor nit, but I'd rather read something that looks like this:
-> > >
-> > >       if (type == READ && (flags & RWF_NONBLOCK))
-> > >               return -EAGAIN;
-> > >       else if (type == WRITE && (flags & RWF_DSYNC))
-> > >               return -EINVAL;
-> > 
-> > But your version is less logically efficient for the case where "type == READ" is true and "flags & RWF_NONBLOCK" is false because your version then has to do the "if (type == WRITE" check before discovering it does not need to take that branch either, whilst the original version does not have to do such a test at all.
-> > 
-> > Seriously?
+> - added support for -f/--file to allow stats to be parsed from an
+>   aritrary input file instead of /proc/self/mountstats
 > 
-> Of course seriously.
+> - added support for -S/--since to show just the changes that have
+>   occurred between the current and a previous set of statisics (works
+>   with and without the -f option)
 > 
-> > Just focus on the code readability/maintainability which makes the code most easily understood/obvious to a new pair of eyes, and leave such micro-optimizations to the compiler..
+> - added support for -R/--raw to generate 'raw' statistics (i.e. in the
+>   same format as /proc/self/mountstats).  It's intended to be used with
+>   the -f and -S options.
+The mountstats(8) will need to be updated with these new flags... 
+You could probably just use the verbiage from the usage messages
+
+Ping me if want some help with the archaic nroff notation ;-)    
 > 
-> The original version is more readable (IMO) and this is not a micro-optimization.  It is people like you who are responsible for the fact that we need faster and faster computers to cope with the inefficient/poor code being written more and more...
+> - implemented the ms-nfsstat command to generate client-side
+>   nfsstat-like statisics (only works with a single mountpoint)
 > 
+> My motivation for these changes was so that I could take various copies
+> of /proc/self/mountstats and massage them into data that I could feed
+> into the 'report' option of Dros's nfsometer tool for scenarios where
+> it's not feasible to run nfsometer itself (e.g. systems where we can't
+> start with an 'idle' state (i.e. no NFS filesystems initially
+> mounted), systems with multiple NFS filesystems mounted, and workloads
+> that can't easily be boiled down into an nfsometer workload file or run
+> via the custom workload environment variables).
+Thanks for doing this!
 
-Your original version needs me to know that type can only be either READ
-or WRITE (and not, for instance, READONLY or READWRITE or some other
-random special case) and it rings alarm bells when I first see it. If
-you want to keep the micro optimization, you need an assertion to
-acknowledge the potential bug and a comment to make the code obvious:
-
- +            assert(type == READ || type == WRITE);
- +            if (type == READ) {
- +                    if (flags & RWF_NONBLOCK)
- +                            return -EAGAIN;
- +            } else { /* WRITE */
- +                    if (flags & RWF_DSYNC)
- +                            return -EINVAL;
- +            }
-
-but since what's really happening here is two separate and independent
-error checks, Jeff's version is still better, even if it does take an
-extra couple of nanoseconds.
-
-Actually I'd probably write:
-
-       if (type == READ && (flags & RWF_NONBLOCK))
-              return -EAGAIN;
-
-       if (type == WRITE && (flags & RWF_DSYNC))
-              return -EINVAL;
-
-(no 'else' since the code will never be reached if the first test is
-true).
-
-
--- 
-Roger Willcocks <roger@filmlight.ltd.uk>
-
+steved. 
+> 
+> Scott Mayhew (15):
+>   mountstats: Fix up NFS event counters
+>   mountstats: Add lists of various counters
+>   mountstats: Refactor __parse_nfs_line and __parse_rpc_line
+>   mountstats: Refactor compare_iostats
+>   mountstats: Convert existing option parsing to use the getopt module
+>   mountstats: Make ms-iostat output match that of nfs-iostat.py
+>   mountstats: Make print_iostat_summary handle newly appearing mounts
+>   mountstats: Add support for -f/--file to the mountstats and ms-iostat
+>     commands
+>   mountstats: Add support for -S/--since to the mountstats and ms-iostat
+>     commands
+>   mountstats: Fix IndexError in __parse_nfs_line
+>   mountstats: Allow mountstats_command to take a variable number of
+>     mountpoints
+>   mountstats: Add support for -R/--raw to mountstats_command
+>   mountstats: Implement nfsstat_command
+>   mountstats: Remove the --start and --end options
+>   mountstats: Update the help output
+> 
+>  tools/mountstats/mountstats.py | 730 ++++++++++++++++++++++++++++++-----------
+>  1 file changed, 544 insertions(+), 186 deletions(-)
+>  mode change 100644 => 100755 tools/mountstats/mountstats.py
+> 
