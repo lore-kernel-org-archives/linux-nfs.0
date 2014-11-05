@@ -1,29 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:50447 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751435AbaKKOan (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Nov 2014 09:30:43 -0500
-Received: by mail-wi0-f172.google.com with SMTP id bs8so1821934wib.5
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Nov 2014 06:30:42 -0800 (PST)
-Message-ID: <54621D8D.7050508@dev.mellanox.co.il>
-Date: Tue, 11 Nov 2014 16:30:37 +0200
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 07/10] xprtrdma: Display async errors
-References: <20141109010328.8806.5861.stgit@manet.1015granger.net> <20141109011501.8806.23478.stgit@manet.1015granger.net>
-In-Reply-To: <20141109011501.8806.23478.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:54012 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932250AbaKERBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 12:01:14 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1ERv004056
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:14 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1Dg9005527
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:14 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1DSn000910
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:13 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1DQq000909
+	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:13 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 03/15] mountstats: Refactor __parse_nfs_line and __parse_rpc_line
+Date: Wed,  5 Nov 2014 12:01:00 -0500
+Message-Id: <1415206872-864-4-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/9/2014 3:15 AM, Chuck Lever wrote:
-> An async error upcall is a hard error, and should be reported in
-> the system log.
->
+Iterate over the newly added counter lists instead of having a ton of
+assignment statements.
 
-Could be useful to others... Any chance you put this in ib_core for all
-of us?
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ tools/mountstats/mountstats.py | 92 +++++++++++-------------------------------
+ 1 file changed, 23 insertions(+), 69 deletions(-)
 
-Sagi.
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index 534196c..69c94d8 100755
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -237,40 +237,18 @@ class DeviceData:
+             if self.__nfs_data['flavor'] == 6:
+                 self.__nfs_data['pseudoflavor'] = int(keys[1].split('=')[1])
+         elif words[0] == 'events:':
+-            self.__nfs_data['inoderevalidates'] = int(words[1])
+-            self.__nfs_data['dentryrevalidates'] = int(words[2])
+-            self.__nfs_data['datainvalidates'] = int(words[3])
+-            self.__nfs_data['attrinvalidates'] = int(words[4])
+-            self.__nfs_data['vfsopen'] = int(words[5])
+-            self.__nfs_data['vfslookup'] = int(words[6])
+-            self.__nfs_data['vfspermission'] = int(words[7])
+-            self.__nfs_data['vfsupdatepage'] = int(words[8])
+-            self.__nfs_data['vfsreadpage'] = int(words[9])
+-            self.__nfs_data['vfsreadpages'] = int(words[10])
+-            self.__nfs_data['vfswritepage'] = int(words[11])
+-            self.__nfs_data['vfswritepages'] = int(words[12])
+-            self.__nfs_data['vfsreaddir'] = int(words[13])
+-            self.__nfs_data['vfssetattr'] = int(words[14])
+-            self.__nfs_data['vfsflush'] = int(words[15])
+-            self.__nfs_data['vfsfsync'] = int(words[16])
+-            self.__nfs_data['vfslock'] = int(words[17])
+-            self.__nfs_data['vfsrelease'] = int(words[18])
+-            self.__nfs_data['congestionwait'] = int(words[19])
+-            self.__nfs_data['setattrtrunc'] = int(words[20])
+-            self.__nfs_data['extendwrite'] = int(words[21])
+-            self.__nfs_data['sillyrenames'] = int(words[22])
+-            self.__nfs_data['shortreads'] = int(words[23])
+-            self.__nfs_data['shortwrites'] = int(words[24])
+-            self.__nfs_data['delay'] = int(words[25])
+-            self.__nfs_data['pnfsreads'] = int(words[26])
+-            self.__nfs_data['pnfswrites'] = int(words[27])
++            i = 1
++            for key in NfsEventCounters:
++                try:
++                    self.__nfs_data[key] = int(words[i])
++                except IndexError as err:
++                    self.__nfs_data[key] = 0
++                i += 1
+         elif words[0] == 'bytes:':
+-            self.__nfs_data['normalreadbytes'] = int(words[1])
+-            self.__nfs_data['normalwritebytes'] = int(words[2])
+-            self.__nfs_data['directreadbytes'] = int(words[3])
+-            self.__nfs_data['directwritebytes'] = int(words[4])
+-            self.__nfs_data['serverreadbytes'] = int(words[5])
+-            self.__nfs_data['serverwritebytes'] = int(words[6])
++            i = 1
++            for key in NfsByteCounters:
++                self.__nfs_data[key] = int(words[i])
++                i += 1
+ 
+     def __parse_rpc_line(self, words):
+         if words[0] == 'RPC':
+@@ -279,44 +257,20 @@ class DeviceData:
+         elif words[0] == 'xprt:':
+             self.__rpc_data['protocol'] = words[1]
+             if words[1] == 'udp':
+-                self.__rpc_data['port'] = int(words[2])
+-                self.__rpc_data['bind_count'] = int(words[3])
+-                self.__rpc_data['rpcsends'] = int(words[4])
+-                self.__rpc_data['rpcreceives'] = int(words[5])
+-                self.__rpc_data['badxids'] = int(words[6])
+-                self.__rpc_data['inflightsends'] = int(words[7])
+-                self.__rpc_data['backlogutil'] = int(words[8])
++                i = 2
++                for key in XprtUdpCounters:
++                    self.__rpc_data[key] = int(words[i])
++                    i += 1
+             elif words[1] == 'tcp':
+-                self.__rpc_data['port'] = words[2]
+-                self.__rpc_data['bind_count'] = int(words[3])
+-                self.__rpc_data['connect_count'] = int(words[4])
+-                self.__rpc_data['connect_time'] = int(words[5])
+-                self.__rpc_data['idle_time'] = int(words[6])
+-                self.__rpc_data['rpcsends'] = int(words[7])
+-                self.__rpc_data['rpcreceives'] = int(words[8])
+-                self.__rpc_data['badxids'] = int(words[9])
+-                self.__rpc_data['inflightsends'] = int(words[10])
+-                self.__rpc_data['backlogutil'] = int(words[11])
++                i = 2
++                for key in XprtTcpCounters:
++                    self.__rpc_data[key] = int(words[i])
++                    i += 1
+             elif words[1] == 'rdma':
+-                self.__rpc_data['port'] = words[2]
+-                self.__rpc_data['bind_count'] = int(words[3])
+-                self.__rpc_data['connect_count'] = int(words[4])
+-                self.__rpc_data['connect_time'] = int(words[5])
+-                self.__rpc_data['idle_time'] = int(words[6])
+-                self.__rpc_data['rpcsends'] = int(words[7])
+-                self.__rpc_data['rpcreceives'] = int(words[8])
+-                self.__rpc_data['badxids'] = int(words[9])
+-                self.__rpc_data['backlogutil'] = int(words[10])
+-                self.__rpc_data['read_chunks'] = int(words[11])
+-                self.__rpc_data['write_chunks'] = int(words[12])
+-                self.__rpc_data['reply_chunks'] = int(words[13])
+-                self.__rpc_data['total_rdma_req'] = int(words[14])
+-                self.__rpc_data['total_rdma_rep'] = int(words[15])
+-                self.__rpc_data['pullup'] = int(words[16])
+-                self.__rpc_data['fixup'] = int(words[17])
+-                self.__rpc_data['hardway'] = int(words[18])
+-                self.__rpc_data['failed_marshal'] = int(words[19])
+-                self.__rpc_data['bad_reply'] = int(words[20])
++                i = 2
++                for key in XprtRdmaCounters:
++                    self.__rpc_data[key] = int(words[i])
++                    i += 1
+         elif words[0] == 'per-op':
+             self.__rpc_data['per-op'] = words
+         else:
+-- 
+1.9.3
+
