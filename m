@@ -1,68 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:37055 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750962AbaKIBOj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Nov 2014 20:14:39 -0500
-Subject: [PATCH v2 04/10] xprtrdma: Refactor tasklet scheduling
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sat, 08 Nov 2014 20:14:37 -0500
-Message-ID: <20141109011437.8806.74314.stgit@manet.1015granger.net>
-In-Reply-To: <20141109010328.8806.5861.stgit@manet.1015granger.net>
-References: <20141109010328.8806.5861.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:35605 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932277AbaKERBS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 12:01:18 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1IOB022499
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:18 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1HRA000741
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:18 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1HgA000959
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:17 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1HaX000958
+	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:17 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils RFC PATCH 15/15] mountstats: Update the help output
+Date: Wed,  5 Nov 2014 12:01:12 -0500
+Message-Id: <1415206872-864-16-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Restore the separate function that schedules the reply handling
-tasklet. I need to call it from two different paths.
+Updated the help output for mounstats, ms-iostat, and ms-nfsstat to make
+them constistent.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |   17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
+ tools/mountstats/mountstats.py | 43 ++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 37 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 3c88276..478b2fd 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -107,6 +107,17 @@ rpcrdma_run_tasklet(unsigned long data)
- static DECLARE_TASKLET(rpcrdma_tasklet_g, rpcrdma_run_tasklet, 0UL);
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index f9f5eac..50dcc10 100755
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -627,11 +627,25 @@ def print_mountstats_help(name):
+     print()
+     print(' Display NFS client per-mount statistics.')
+     print()
+-    print('  --version    display the version of this command')
+-    print('  --file <file> read stats from \'file\' instead of /proc/self/mountstats')
+-    print('  --nfs        display only the NFS statistics')
+-    print('  --rpc        display only the RPC statistics')
+-    print('  --since <file> shows difference between current stats and those in \'file\'')
++    print('Options:')
++    print()
++    print('  -n, --nfs')
++    print('                Display only the NFS statistics')
++    print()
++    print('  -r, --rpc')
++    print('                Display only the RPC statistics')
++    print()
++    print('  -f <file>, --file <file>')
++    print('                Read stats from \'file\' instead of /proc/self/mountstats')
++    print()
++    print('  -S <file>, --since <file>')
++    print('                Shows difference between current stats and those in \'file\'')
++    print()
++    print('  -h, --help')
++    print('                Show the help message')
++    print()
++    print('  -v, --version')
++    print('                Display the version of this command')
+     print()
  
- static void
-+rpcrdma_schedule_tasklet(struct list_head *sched_list)
-+{
-+	unsigned long flags;
-+
-+	spin_lock_irqsave(&rpcrdma_tk_lock_g, flags);
-+	list_splice_tail(sched_list, &rpcrdma_tasklets_g);
-+	spin_unlock_irqrestore(&rpcrdma_tk_lock_g, flags);
-+	tasklet_schedule(&rpcrdma_tasklet_g);
-+}
-+
-+static void
- rpcrdma_qp_async_error_upcall(struct ib_event *event, void *context)
- {
- 	struct rpcrdma_ep *ep = context;
-@@ -244,7 +255,6 @@ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
- 	struct list_head sched_list;
- 	struct ib_wc *wcs;
- 	int budget, count, rc;
--	unsigned long flags;
+ def print_mountstats(stats, nfs_only, rpc_only, raw):
+@@ -748,7 +762,8 @@ def print_nfsstat_help(name):
+     print('                Shows difference between current stats and those in \'file\'')
+     print()
+     print('  -h, --help')
+-    print('                What you just did')
++    print('                Show the help message')
++    print()
  
- 	INIT_LIST_HEAD(&sched_list);
- 	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
-@@ -262,10 +272,7 @@ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
- 	rc = 0;
+ def nfsstat_command():
+     """nfsstat-like command for NFS mount points
+@@ -810,6 +825,22 @@ def print_iostat_help(name):
+     print(' mount points will be displayed.  Otherwise, all NFS mount points on the')
+     print(' client are listed.')
+     print()
++    print('Options:')
++    print()
++    print('  -f <file>, --file <file>')
++    print('                Read stats from \'file\' instead of /proc/self/mountstats.')
++    print('                This may not be combined with the <interval> and <count> parameters.')
++    print()
++    print('  -S <file>, --since <file>')
++    print('                Shows difference between current stats and those in \'file\'')
++    print('                This may not be combined with the <interval> and <count> parameters.')
++    print()
++    print('  -h, --help')
++    print('                Show the help message')
++    print()
++    print('  -v, --version')
++    print('                Display the version of this command')
++    print()
  
- out_schedule:
--	spin_lock_irqsave(&rpcrdma_tk_lock_g, flags);
--	list_splice_tail(&sched_list, &rpcrdma_tasklets_g);
--	spin_unlock_irqrestore(&rpcrdma_tk_lock_g, flags);
--	tasklet_schedule(&rpcrdma_tasklet_g);
-+	rpcrdma_schedule_tasklet(&sched_list);
- 	return rc;
- }
- 
+ def print_iostat_summary(old, new, devices, time):
+     for device in devices:
+-- 
+1.9.3
 
