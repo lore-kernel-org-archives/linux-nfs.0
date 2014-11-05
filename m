@@ -1,119 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:33512 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753167AbaKGTob (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Nov 2014 14:44:31 -0500
-From: <Anna.Schumaker@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 1/3] VFS: Rename do_fallocate() to vfs_fallocate()
-Date: Fri, 7 Nov 2014 14:44:25 -0500
-Message-ID: <1415389467-16547-2-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1415389467-16547-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1415389467-16547-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:47995 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751711AbaKEJAl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 04:00:41 -0500
+Received: by mail-pd0-f178.google.com with SMTP id fp1so379489pdb.9
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Nov 2014 01:00:41 -0800 (PST)
+From: Peng Tao <tao.peng@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Peng Tao <tao.peng@primarydata.com>
+Subject: [PATCH] nfs: fix pnfs direct write memory leak
+Date: Wed,  5 Nov 2014 17:00:11 +0800
+Message-Id: <1415178014-17893-1-git-send-email-tao.peng@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+For pNFS direct writes, layout driver may dynamically allocate ds_cinfo.buckets.
+So we need to take care to free them when freeing dreq.
 
-This function needs to be exported so it can be used by the NFSD module
-when responding to the new ALLOCATE and DEALLOCATE operations in NFS
-v4.2.  Christoph Hellwig suggested renaming the function to stay
-consistent with how other vfs functions are named.
+Ideally this needs to be done inside layout driver where ds_cinfo.buckets
+are allocated. But buckets are attached to dreq and reused across LD IO iterations.
+So I feel it's OK to free them in the generic layer.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: stable@vger.kernel.org [v3.4+]
+Signed-off-by: Peng Tao <tao.peng@primarydata.com>
 ---
- drivers/staging/android/ashmem.c | 2 +-
- fs/ioctl.c                       | 2 +-
- fs/open.c                        | 5 +++--
- include/linux/fs.h               | 2 +-
- mm/madvise.c                     | 2 +-
- 5 files changed, 7 insertions(+), 6 deletions(-)
+ fs/nfs/direct.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/drivers/staging/android/ashmem.c b/drivers/staging/android/ashmem.c
-index ad4f579..27eecfe 100644
---- a/drivers/staging/android/ashmem.c
-+++ b/drivers/staging/android/ashmem.c
-@@ -446,7 +446,7 @@ ashmem_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
- 		loff_t start = range->pgstart * PAGE_SIZE;
- 		loff_t end = (range->pgend + 1) * PAGE_SIZE;
- 
--		do_fallocate(range->asma->file,
-+		vfs_fallocate(range->asma->file,
- 				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
- 				start, end - start);
- 		range->purged = ASHMEM_WAS_PURGED;
-diff --git a/fs/ioctl.c b/fs/ioctl.c
-index 8ac3fad..0bd61421 100644
---- a/fs/ioctl.c
-+++ b/fs/ioctl.c
-@@ -443,7 +443,7 @@ int ioctl_preallocate(struct file *filp, void __user *argp)
- 		return -EINVAL;
- 	}
- 
--	return do_fallocate(filp, FALLOC_FL_KEEP_SIZE, sr.l_start, sr.l_len);
-+	return vfs_fallocate(filp, FALLOC_FL_KEEP_SIZE, sr.l_start, sr.l_len);
- }
- 
- static int file_ioctl(struct file *filp, unsigned int cmd,
-diff --git a/fs/open.c b/fs/open.c
-index de92c13..192c429 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -222,7 +222,7 @@ SYSCALL_DEFINE2(ftruncate64, unsigned int, fd, loff_t, length)
- #endif /* BITS_PER_LONG == 32 */
- 
- 
--int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
-+int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 20cffc8..61f1904 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -266,6 +266,8 @@ static void nfs_direct_req_free(struct kref *kref)
  {
- 	struct inode *inode = file_inode(file);
- 	long ret;
-@@ -298,6 +298,7 @@ int do_fallocate(struct file *file, int mode, loff_t offset, loff_t len)
- 	sb_end_write(inode->i_sb);
- 	return ret;
- }
-+EXPORT_SYMBOL_GPL(vfs_fallocate);
+ 	struct nfs_direct_req *dreq = container_of(kref, struct nfs_direct_req, kref);
  
- SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
- {
-@@ -305,7 +306,7 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
- 	int error = -EBADF;
- 
- 	if (f.file) {
--		error = do_fallocate(f.file, mode, offset, len);
-+		error = vfs_fallocate(f.file, mode, offset, len);
- 		fdput(f);
- 	}
- 	return error;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 9ab779e..4439c99 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2060,7 +2060,7 @@ struct filename {
- extern long vfs_truncate(struct path *, loff_t);
- extern int do_truncate(struct dentry *, loff_t start, unsigned int time_attrs,
- 		       struct file *filp);
--extern int do_fallocate(struct file *file, int mode, loff_t offset,
-+extern int vfs_fallocate(struct file *file, int mode, loff_t offset,
- 			loff_t len);
- extern long do_sys_open(int dfd, const char __user *filename, int flags,
- 			umode_t mode);
-diff --git a/mm/madvise.c b/mm/madvise.c
-index 0938b30..a271adc 100644
---- a/mm/madvise.c
-+++ b/mm/madvise.c
-@@ -326,7 +326,7 @@ static long madvise_remove(struct vm_area_struct *vma,
- 	 */
- 	get_file(f);
- 	up_read(&current->mm->mmap_sem);
--	error = do_fallocate(f,
-+	error = vfs_fallocate(f,
- 				FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
- 				offset, end - start);
- 	fput(f);
++	if (dreq->ds_cinfo.nbuckets)
++		kfree(dreq->ds_cinfo.buckets);
+ 	if (dreq->l_ctx != NULL)
+ 		nfs_put_lock_context(dreq->l_ctx);
+ 	if (dreq->ctx != NULL)
 -- 
-2.1.3
+1.9.1
 
