@@ -1,99 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44025 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:35533 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751118AbaKDUXr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Nov 2014 15:23:47 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA4KNlwt017436
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Nov 2014 15:23:47 -0500
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA4KNlG5000554
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Nov 2014 15:23:47 -0500
-Message-ID: <545935D2.7090805@RedHat.com>
-Date: Tue, 04 Nov 2014 15:23:46 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751317AbaKEVzn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 16:55:43 -0500
+Date: Wed, 5 Nov 2014 16:55:41 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
+Message-ID: <20141105215541.GJ6513@fieldses.org>
+References: <61eb00$5dituo@dgate20u.abg.fsc.net>
+ <20141105210546.GH6513@fieldses.org>
+ <8B06D1E6480A6747B23FEC34909D2B5EA81B95F24C@ABGEX70E.FSC.NET>
+ <20141106084741.40980d12@notabene.brown>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] build: Revert using a symbol version map
-References: <1415118304-5696-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1415118304-5696-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20141106084741.40980d12@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Nov 06, 2014 at 08:47:41AM +1100, NeilBrown wrote:
+> On Wed, 5 Nov 2014 22:25:26 +0100 "Strösser, Bodo"
+> <bodo.stroesser@ts.fujitsu.com> wrote:
+> 
+> > > -----Original Message-----
+> > > From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> > > Sent: Wednesday, November 05, 2014 10:06 PM
+> > > To: Strösser, Bodo
+> > > Cc: neilb@suse.de; linux-nfs@vger.kernel.org
+> > > Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
+> > > 
+> > > On Wed, Nov 05, 2014 at 09:21:37PM +0100, bstroesser@ts.fujitsu.com wrote:
+> > > > Hello,
+> > > >
+> > > > I'm sending a small set of 3 patches for a problem, that I have
+> > > > reported a few weeks ago.
+> > > > rpc.mountd can be blocked by a bad client, that sends lots of
+> > > > RPC requests, but never reads the replies from the socket either
+> > > > intentionally or e.g. caused by a wrong configured MTU.
+> > > >
+> > > > While looking for a possible solution, I found another weakness
+> > > > in rpc.mountd if it is used "multithreaded" (-t nn).
+> > > >
+> > > > The first two patches fix that weakness in the case of !HAVE_LIBTIRPC
+> > > > and HAVE_LIBTIRPC.
+> > > 
+> > > They look fine to me.
+> > > 
+> > > > The third patch more a kind of suggestion how the main problem could
+> > > > be fixed.
+> > > 
+> > > Sounds reasonable to me.
+> > > 
+> > > > I don't know whether we can set MAXREC without causing
+> > > > new troubles. When this patch is used, a  further patch for libtirpc
+> > > > also should be used. You can find it here:
+> > > >     http://sourceforge.net/p/libtirpc/mailman/libtirpc-devel/?viewmonth=201409
+> > > 
+> > > So applying this last patch and then building against an unpatched
+> > > libtirpc would expose us to a serious bug?  Do we need to do something
+> > > to make that less likely to happen?
+> > 
+> > The bug in libtirpc is triggered, if the write() to the socket returns -EAGAIN
+> > but one of the many retries in the following 2 seconds succeeds. Then the
+> > normal reply is sent with a prefix of (maybe many) bytes from rpc.mountd's
+> > memory space before the reply buffer. That means, that some data from memory is
+> > sent (authentication data?) or rpc.mountd might get SIGSEGV, I don't know.
+> > 
+> > But I think it won't be easy to trigger this. rpcbind uses the nonblocking mode
+> > of libtirpc and no one complains about the bug in libtirpc.
+> > 
+> > Anyway, it of course would be better to use a fixed libtirpc, as I can't see a
+> > way to have a work around in rpc.mountd for the libtirpc bug.
+> > 
+> 
+> I agree that hitting the bug is fairly unlikely.  If there is something easy
+> we can do to help avoid it, it might be worth it.
+> 
+> Once the fix gets into a libtirpc release, we could put a hard dependency on
+> that release number in configure for nfs-utils.  Is that too harsh??
 
+Yeah, that's more what I was wondering about.
 
-On 11/04/2014 11:25 AM, Steve Dickson wrote:
-> Commit 045d2e46 cause a number of systems to be
-> undefined during run time in rpc.idmapd.
-> 
-> Having this type of versioning is not necessary in
-> this type of a library so the patch was reverted.
-> 
-> Fixes https://bugzilla.redhat.com/show_bug.cgi?id=1159943
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed...
+If building new mountd against an old libtirpc meant suddenly mountd was
+crashing all the time then it'd seem worth something like that.
 
-steved.
+If it's an unusual corner case that people have been exposed to in other
+ways for a while anyway, then maybe we just trust to distros to get
+their libtirpc's fixed and don't worry so much.
 
-> ---
->  Makefile.am  |  3 +--
->  nfsidmap.map | 31 -------------------------------
->  2 files changed, 1 insertion(+), 33 deletions(-)
->  delete mode 100644 nfsidmap.map
+--b.
 > 
-> diff --git a/Makefile.am b/Makefile.am
-> index 69bbcbc..85f19c8 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -26,9 +26,8 @@ pkglib_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
->  #  		by this library.
->  
->  libnfsidmap_la_SOURCES = libnfsidmap.c cfg.c strlcpy.c cfg.h nfsidmap_internal.h queue.h
-> -libnfsidmap_la_LDFLAGS = -version-info 3:0:3 -Wl,--version-script=$(srcdir)/nfsidmap.map
-> +libnfsidmap_la_LDFLAGS = -version-info 3:0:3
->  libnfsidmap_la_LIBADD = -ldl
-> -libnfsidmap_la_DEPENDENCIES = nfsidmap.map
->  
->  nsswitch_la_SOURCES = nss.c
->  nsswitch_la_LDFLAGS = -module -avoid-version
-> diff --git a/nfsidmap.map b/nfsidmap.map
-> deleted file mode 100644
-> index 1e7cf7e..0000000
-> --- a/nfsidmap.map
-> +++ /dev/null
-> @@ -1,31 +0,0 @@
-> -V_0.26 {
-> -global:
-> -	nfs4_init_name_mapping;
-> -	nfs4_get_default_domain;
-> -	nfs4_uid_to_name;
-> -	nfs4_gid_to_name;
-> -	nfs4_uid_to_owner;
-> -	nfs4_gid_to_group_owner;
-> -	nfs4_name_to_uid;
-> -	nfs4_name_to_gid;
-> -	nfs4_owner_to_uid;
-> -	nfs4_owner_to_gid;
-> -	nfs4_group_owner_to_gid;
-> -	nfs4_gss_princ_to_ids;
-> -	nfs4_gss_princ_to_grouplist;
-> -	nfs4_gss_princ_to_ids_ex;
-> -	nfs4_gss_princ_to_grouplist_ex;
-> -	nfs4_set_debug;
-> -	idmap_verbosity;
-> -	idmap_log_func;
-> -	get_default_domain;
-> -	get_local_realms;
-> -local:
-> -	*;
-> -};
-> -/*
-> -V_0.27 {
-> -global:
-> -	...
-> -} V_0.26;
-> -*/
-> 
+> Steve: you are maintainer for both (?).  Would you be able to make a
+> libtirpc release soonish with the mentioned fix, then would you be happy for
+> future nfs-utils to require at least that version?
