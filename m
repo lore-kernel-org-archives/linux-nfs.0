@@ -1,53 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56545 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:48223 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752300AbaKCOyo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Nov 2014 09:54:44 -0500
-From: Benjamin Coddington <bcodding@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: chuck.lever@oracle.com
-Subject: [PATCH] nfsidmap: keyctl_invalidate kernel compatibility
-Date: Mon,  3 Nov 2014 09:54:41 -0500
-Message-Id: <643db7f6caed9ec25c0067aec85b97190bfbe174.1415026355.git.bcodding@redhat.com>
+	id S1751229AbaKEVFu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 16:05:50 -0500
+Date: Wed, 5 Nov 2014 16:05:46 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: bstroesser@ts.fujitsu.com
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
+Message-ID: <20141105210546.GH6513@fieldses.org>
+References: <61eb00$5dituo@dgate20u.abg.fsc.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <61eb00$5dituo@dgate20u.abg.fsc.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change the keyctl_invalidate call to use the syscall interface directly so
-that when building with libkeyutils missing keyctl_invalidate the build succeeds.
-Attempt to use _invalidate and fall back to _revoke if the current kernel is
-missing _invalidate.
+On Wed, Nov 05, 2014 at 09:21:37PM +0100, bstroesser@ts.fujitsu.com wrote:
+> Hello,
+> 
+> I'm sending a small set of 3 patches for a problem, that I have
+> reported a few weeks ago.
+> rpc.mountd can be blocked by a bad client, that sends lots of
+> RPC requests, but never reads the replies from the socket either
+> intentionally or e.g. caused by a wrong configured MTU.
+> 
+> While looking for a possible solution, I found another weakness
+> in rpc.mountd if it is used "multithreaded" (-t nn).
+> 
+> The first two patches fix that weakness in the case of !HAVE_LIBTIRPC
+> and HAVE_LIBTIRPC.
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- utils/nfsidmap/nfsidmap.c |   15 +++++++++++----
- 1 files changed, 11 insertions(+), 4 deletions(-)
+They look fine to me.
 
-diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-index e0d31e7..99ae07e 100644
---- a/utils/nfsidmap/nfsidmap.c
-+++ b/utils/nfsidmap/nfsidmap.c
-@@ -209,10 +209,17 @@ static int key_invalidate(char *keystr, int keymask)
- 		*(strchr(buf, ' ')) = '\0';
- 		sscanf(buf, "%x", &key);
- 
--		if (keyctl_invalidate(key) < 0) {
--			xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
--			fclose(fp);
--			return 1;
-+/* older libkeyutils compatibility */
-+#ifndef KEYCTL_INVALIDATE
-+#define KEYCTL_INVALIDATE 21      /* invalidate a key */
-+#endif
-+		if (keyctl(KEYCTL_INVALIDATE, key) < 0 && errno == EOPNOTSUPP) {
-+			/* older kernel compatibility attempt: */
-+			if (keyctl_revoke(key) < 0) {
-+				xlog_err("keyctl_invalidate(0x%x) failed: %m", key);
-+				fclose(fp);
-+				return 1;
-+			}
- 		}
- 
- 		keymask &= ~mask;
--- 
-1.7.1
+> The third patch more a kind of suggestion how the main problem could
+> be fixed.
 
+Sounds reasonable to me.
+
+> I don't know whether we can set MAXREC without causing
+> new troubles. When this patch is used, a  further patch for libtirpc
+> also should be used. You can find it here:
+>     http://sourceforge.net/p/libtirpc/mailman/libtirpc-devel/?viewmonth=201409
+
+So applying this last patch and then building against an unpatched
+libtirpc would expose us to a serious bug?  Do we need to do something
+to make that less likely to happen?
+
+--b.
+
+> 
+> Best regards,
+> Bodo
