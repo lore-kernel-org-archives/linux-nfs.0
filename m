@@ -1,149 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:50544 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750861AbaKFBwo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 20:52:44 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [nfs-utils RFC PATCH 05/15] mountstats: Convert existing option parsing to use the getopt module
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1415206872-864-6-git-send-email-smayhew@redhat.com>
-Date: Wed, 5 Nov 2014 20:52:39 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <721A2038-04AF-433C-A0AE-C677C7FF041F@oracle.com>
-References: <1415206872-864-1-git-send-email-smayhew@redhat.com> <1415206872-864-6-git-send-email-smayhew@redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:35742 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751858AbaKEV6B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Nov 2014 16:58:01 -0500
+Date: Thu, 6 Nov 2014 08:57:46 +1100
+From: NeilBrown <neilb@suse.de>
+To: bstroesser@ts.fujitsu.com
+Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: Re: [nfs-utils] [PATCH 2/3] rpc.mountd: set nonblocking mode with
+ libtirpc
+Message-ID: <20141106085746.78f9f395@notabene.brown>
+In-Reply-To: <61eb00$5diu13@dgate20u.abg.fsc.net>
+References: <61eb00$5diu13@dgate20u.abg.fsc.net>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+ boundary="Sig_/2l0SowT79YJZH_+Bk4uoXpd"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Sig_/2l0SowT79YJZH_+Bk4uoXpd
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-On Nov 5, 2014, at 12:01 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+On 05 Nov 2014 21:23:39 +0100 bstroesser@ts.fujitsu.com wrote:
 
-I’m not clear why you need to replace this code. But if
-you really do need to replace it, why not use the more
-Python-esque argparse module, which would replace both
-the option parsing and help text?
+> From: Bodo Stroesser <bstroesser@ts.fujitsu.com>
+> Date: Thu, 09 Oct 2014 13:07:33 +0200
+> Subject: [nfs-utils] [PATCH 2/3] rpc.mountd: set nonblocking mode with li=
+btirpc
+>=20
+> If mountd is built with libtirpc the tcp listeners and the sockets
+> waiting for UDP messages are not in non-blocking mode. Thus if running
+> with multiple threads (-t XX), all threads will wake up from select on
+> a connection request or a UDP message, but only one thread will succeed.
+> All others will wait on accept() or read() for the next event.
+>=20
+> Signed-off-by: Bodo Stroesser <bstroesser@ts.fujitsu.com>
 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Reviewed-by: NeilBrown <neilb@suse.de>
+
+The two changes provide identical functionality: one in
+   svc_create_nconf_rand_port
+the other in
+   svc_create_nconf_fixed_port
+
+We really do want non-blocking sockets here!
+
+Thanks,
+NeilBrown
+
 > ---
-> tools/mountstats/mountstats.py | 62 +++++++++++++++++++++---------------------
-> 1 file changed, 31 insertions(+), 31 deletions(-)
-> 
-> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-> index 2fe1362..272a8f9 100755
-> --- a/tools/mountstats/mountstats.py
-> +++ b/tools/mountstats/mountstats.py
-> @@ -24,6 +24,7 @@ MA 02110-1301 USA
-> """
-> 
-> import sys, os, time
-> +import getopt
-> 
-> Mountstats_version = '0.2'
-> 
-> @@ -547,37 +548,33 @@ def print_mountstats_help(name):
-> def mountstats_command():
->     """Mountstats command
->     """
-> +    try:
-> +        opts, args = getopt.getopt(sys.argv[1:], "ehnrsv", ["end", "help", "nfs", "rpc", "start", "version"])
-> +    except getopt.GetoptError as err:
-> +        print_mountstats_help(prog)
-> +
->     mountpoints = []
->     nfs_only = False
->     rpc_only = False
-> 
-> -    for arg in sys.argv:
-> -        if arg in ['-h', '--help', 'help', 'usage']:
-> +    for o, a in opts:
-> +        if o in ("-e", "--end"):
-> +            raise Exception('Sampling is not yet implemented')
-> +        elif o in ("-h", "--help"):
->             print_mountstats_help(prog)
-> -            return
-> -
-> -        if arg in ['-v', '--version', 'version']:
-> -            print('%s version %s' % (sys.argv[0], Mountstats_version))
->             sys.exit(0)
-> -
-> -        if arg in ['-n', '--nfs']:
-> +        elif o in ("-n", "--nfs"):
->             nfs_only = True
-> -            continue
-> -
-> -        if arg in ['-r', '--rpc']:
-> +        elif o in ("-r", "--rpc"):
->             rpc_only = True
-> -            continue
-> -
-> -        if arg in ['-s', '--start']:
-> -            raise Exception('Sampling is not yet implemented')
-> -
-> -        if arg in ['-e', '--end']:
-> +        elif o in ("-s", "--start"):
->             raise Exception('Sampling is not yet implemented')
-> -
-> -        if arg == sys.argv[0]:
-> -            continue
-> -
-> -        mountpoints += [arg]
-> +        elif o in ("-v", "--version"):
-> +            print('%s version %s' % (sys.argv[0], Mountstats_version))
-> +            sys.exit(0)
-> +        else:
-> +            assert False, "unhandled option"
-> +    mountpoints += args
-> 
->     if mountpoints == []:
->         print_mountstats_help(prog)
-> @@ -662,23 +659,26 @@ def print_iostat_summary(old, new, devices, time):
-> def iostat_command():
->     """iostat-like command for NFS mount points
->     """
-> +    try:
-> +        opts, args = getopt.getopt(sys.argv[1:], "hv", ["help", "version"])
-> +    except getopt.GetoptError as err:
-> +        print_iostat_help(prog)
->     mountstats = parse_stats_file('/proc/self/mountstats')
->     devices = []
->     interval_seen = False
->     count_seen = False
-> 
-> -    for arg in sys.argv:
-> -        if arg in ['-h', '--help', 'help', 'usage']:
-> +    for o, a in opts:
-> +        if o in ("-h", "--help"):
->             print_iostat_help(prog)
-> -            return
-> -
-> -        if arg in ['-v', '--version', 'version']:
-> +            sys.exit(0)
-> +        elif o in ("-v", "--version"):
->             print('%s version %s' % (sys.argv[0], Mountstats_version))
-> -            return
-> -
-> -        if arg == sys.argv[0]:
-> -            continue
-> +            sys.exit(0)
-> +        else:
-> +            assert False, "unhandled option"
-> 
-> +    for arg in args:
->         if arg in mountstats:
->             devices += [arg]
->         elif not interval_seen:
-> -- 
-> 1.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+>=20
+> --- nfs-utils-1.3.1/support/nfs/svc_create.c	2014-10-08 21:39:01.00000000=
+0 +0200
+> +++ nfs-utils-1.3.1/support/nfs/svc_create.c	2014-10-08 22:20:02.00000000=
+0 +0200
+> @@ -277,6 +277,12 @@
+>  			"(%s, %u, %s)", name, version, nconf->nc_netid);
+>  		return 0;
+>  	}
+> +	if (svcsock_nonblock(xprt->xp_fd) < 0) {
+> +		/* close() already done by svcsock_nonblock() */
+> +		xprt->xp_fd =3D RPC_ANYFD;
+> +		SVC_DESTROY(xprt);
+> +		return 0;
+> +	}
+> =20
+>  	if (!svc_reg(xprt, program, version, dispatch, nconf)) {
+>  		/* svc_reg(3) destroys @xprt in this case */
+> @@ -332,6 +338,7 @@
+>  		int fd;
+> =20
+>  		fd =3D svc_create_sock(ai->ai_addr, ai->ai_addrlen, nconf);
+> +		fd =3D svcsock_nonblock(fd);
+>  		if (fd =3D=3D -1)
+>  			goto out_free;
+> =20
 
 
+--Sig_/2l0SowT79YJZH_+Bk4uoXpd
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2
+
+iQIVAwUBVFqdWjnsnt1WYoG5AQIWPA/+N7UcXnFEslwpQPRZ4rjkAdcAwTGo7cCV
+0nsarJfyCqUVPYpuicdux/n+XoQbwjqXvmHM42Xu7HaxTVVhanqgMy/zZHlf1qEt
+rSsdrSltMSFbmU/8/t/FvWcl5Qj7xRaNmVM5r1xzQ6L8iMxgo5UZfDgGIT18h2Uz
+bptsVftRiMcY72DW0YCJEL54dqU9oC7+jiMAi+b5ln5iFPBFAWWnZDz+bOwYkcrt
+qai3O4EbaZs9SNJ/teTrQ8rYXkbAZtwqgkpf4cXpnaShEjdHHpHjq2P9dwbOydRZ
+dTHZGyrMDt43nzIutW4WYRjaxmnjSAerc2PEAvEh6+YbEnzDWMZbVMUzpdXHceWQ
+eq2lDrhmQ1Xn6pFhjL7yfUEr9Fx4nS7knOo9zDGvqcmsSqEhRSwUZ1xOQqeOoeyz
+xMFYYABCyQXE5NEUTh97+mVx09btI+L9yuUsMcl1gbIP+p2oGGAnN+t1VDS3OmHP
+SJb8H1GN0DqHpJ4izBW+1QULGhfDL0ZguFALD3o6ehYhKSLDolYEB8t2IrSwrye0
+K9qy4SyRLTVDm15imisz569KLS8d4RiP7gTIicFdJNagnVP0a7vw0p0MDYhiHgzk
+E7qIlXXnH5OA/Ta6a0WsU6VLZPKk1WBP5neWuhkBvcW1PUVp1suCX4fTQ2hwoAfZ
+tUMfKkHlRdQ=
+=ItmF
+-----END PGP SIGNATURE-----
+
+--Sig_/2l0SowT79YJZH_+Bk4uoXpd--
