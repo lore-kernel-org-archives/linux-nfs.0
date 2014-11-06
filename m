@@ -1,149 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f42.google.com ([209.85.213.42]:38894 "EHLO
-	mail-yh0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751352AbaKJXBg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2014 18:01:36 -0500
-Received: by mail-yh0-f42.google.com with SMTP id b6so5004573yha.29
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Nov 2014 15:01:35 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 10 Nov 2014 18:01:32 -0500
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: 3.18 lock warnings
-Message-ID: <20141110180132.1b670ca8@tlielax.poochiereds.net>
-In-Reply-To: <20141110215441.GI32702@fieldses.org>
-References: <20141110215441.GI32702@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:34802 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751020AbaKFUUK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Nov 2014 15:20:10 -0500
+Date: Thu, 6 Nov 2014 15:20:09 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/3] sunrpc: new tracepoints for call/reply tracking
+Message-ID: <20141106202009.GE22638@fieldses.org>
+References: <1414520654-1606-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1414520654-1606-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 10 Nov 2014 16:54:41 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Tue, Oct 28, 2014 at 02:24:11PM -0400, Jeff Layton wrote:
+> These patches add some tracepoints that I recently used when tracking
+> down the hang that Christoph reported recently. At this point, I still
+> haven't followed the trail to completion, but I think the problem is
+> not likely to be in the RPC code.
+> 
+> Please consider these for v3.19? Some of these are for client RPC and
+> some for server-side. I'll assume that Trond will merge these, but
+> review by others would be appreciated as well.
 
-> My test client is issuing intermittent warnings like the below.  Is this a
-> known issue?
-> 
-> I guess the problem is
-> net/sunrpc/auth_gss/auth_gss.c:gss_stringify_acceptor():
-> 
-> 	rcu_read_lock();
-> 	...
-> 	string = kmalloc(acceptor->len + 1, GFP_KERNEL);
-> 	...
-> 	rcu_read_unlock();
-> 
-> introduced by c5e6aecd034e "sunrpc: fix RCU handling of gc_ctx field".
-> 
-> --b.
-> 
-> Nov  7 21:21:40 f20-2 kernel: BUG: sleeping function called from invalid context at mm/slab.c:2846
-> Nov  7 21:21:40 f20-2 kernel: in_atomic(): 0, irqs_disabled(): 0, pid: 4539, name: mount.nfs
-> Nov  7 21:21:40 f20-2 kernel: 2 locks held by mount.nfs/4539:
-> Nov  7 21:21:40 f20-2 kernel: #0:  (nfs_clid_init_mutex){+.+.+.}, at: [<ffffffffa01c0a9a>] nfs4_discover_server_trunking+0x4a/0x2f0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: #1:  (rcu_read_lock){......}, at: [<ffffffffa00e3185>] gss_stringify_acceptor+0x5/0xb0 [auth_rpcgss]
-> Nov  7 21:21:40 f20-2 kernel: Preemption disabled at:[<ffffffff81a4f082>] printk+0x4d/0x4f
-> Nov  7 21:21:40 f20-2 kernel: 
-> Nov  7 21:21:40 f20-2 kernel: BUG: sleeping function called from invalid context at mm/slab.c:2846
-> Nov  7 21:21:40 f20-2 kernel: CPU: 3 PID: 4539 Comm: mount.nfs Not tainted 3.18.0-rc1-00013-g5b095e9 #3393
-> Nov  7 21:21:40 f20-2 kernel: Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> Nov  7 21:21:40 f20-2 kernel: in_atomic(): 0, irqs_disabled(): 0, pid: 4539, name: mount.nfs
-> Nov  7 21:21:40 f20-2 kernel: 2 locks held by mount.nfs/4539:
-> Nov  7 21:21:40 f20-2 kernel: #0:  (nfs_clid_init_mutex){+.+.+.}, at: [<ffffffffa01c0a9a>] nfs4_discover_server_trunking+0x4a/0x2f0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: #1:  (rcu_read_lock){......}, at: [<ffffffffa00e3185>] gss_stringify_acceptor+0x5/0xb0 [auth_rpcgss]
-> Nov  7 21:21:40 f20-2 kernel: Preemption disabled at:[<ffffffff81a4f082>] printk+0x4d/0x4f
-> Nov  7 21:21:40 f20-2 kernel: 
-> Nov  7 21:21:40 f20-2 kernel: CPU: 3 PID: 4539 Comm: mount.nfs Not tainted 3.18.0-rc1-00013-g5b095e9 #3393
-> Nov  7 21:21:40 f20-2 kernel: Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-> Nov  7 21:21:40 f20-2 kernel: ffff880021499390 ffff8800381476a8 ffffffff81a534cf 0000000000000001
-> Nov  7 21:21:40 f20-2 kernel: 0000000000000000 ffff8800381476c8 ffffffff81097854 00000000000000d0
-> Nov  7 21:21:40 f20-2 kernel: 0000000000000018 ffff880038147718 ffffffff8118e4f3 0000000020479f00
-> Nov  7 21:21:40 f20-2 kernel: Call Trace:
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81a534cf>] dump_stack+0x4f/0x7c
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81097854>] __might_sleep+0x114/0x180
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff8118e4f3>] __kmalloc+0x1a3/0x280
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa00e31d8>] gss_stringify_acceptor+0x58/0xb0 [auth_rpcgss]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa00e3185>] ? gss_stringify_acceptor+0x5/0xb0 [auth_rpcgss]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa006b438>] rpcauth_stringify_acceptor+0x18/0x30 [sunrpc]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01b0469>] nfs4_proc_setclientid+0x199/0x380 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01b04d0>] ? nfs4_proc_setclientid+0x200/0x380 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01bdf1a>] nfs40_discover_server_trunking+0xda/0x150 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01bde45>] ? nfs40_discover_server_trunking+0x5/0x150 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c0acf>] nfs4_discover_server_trunking+0x7f/0x2f0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c8e24>] nfs4_init_client+0x104/0x2f0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01539b4>] nfs_get_client+0x314/0x3f0 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa0153780>] ? nfs_get_client+0xe0/0x3f0 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c83aa>] nfs4_set_client+0x8a/0x110 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa0069708>] ? __rpc_init_priority_wait_queue+0xa8/0xf0 [sunrpc]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c9b2f>] nfs4_create_server+0x12f/0x390 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c1472>] nfs4_remote_mount+0x32/0x60 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81196489>] mount_fs+0x39/0x1b0
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81166145>] ? __alloc_percpu+0x15/0x20
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b276b>] vfs_kern_mount+0x6b/0x150
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c1396>] nfs_do_root_mount+0x86/0xc0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c1784>] nfs4_try_mount+0x44/0xc0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01549b7>] ? get_nfs_version+0x27/0x90 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa0161a2d>] nfs_fs_mount+0x47d/0xd60 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81a59c5e>] ? mutex_unlock+0xe/0x10
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01606a0>] ? nfs_remount+0x430/0x430 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01609c0>] ? nfs_clone_super+0x140/0x140 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81196489>] mount_fs+0x39/0x1b0
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81166145>] ? __alloc_percpu+0x15/0x20
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b276b>] vfs_kern_mount+0x6b/0x150
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b5830>] do_mount+0x210/0xbe0
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b54ca>] ? copy_mount_options+0x3a/0x160
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b651f>] SyS_mount+0x6f/0xb0
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81a5c852>] system_call_fastpath+0x12/0x17
-> Nov  7 21:21:40 f20-2 kernel: ffff880021499390 ffff8800381476a8 ffffffff81a534cf 0000000000000001
-> Nov  7 21:21:40 f20-2 kernel: 0000000000000000 ffff8800381476c8 ffffffff81097854 00000000000000d0
-> Nov  7 21:21:40 f20-2 kernel: 0000000000000018 ffff880038147718 ffffffff8118e4f3 0000000020479f00
-> Nov  7 21:21:40 f20-2 kernel: Call Trace:
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81a534cf>] dump_stack+0x4f/0x7c
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81097854>] __might_sleep+0x114/0x180
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff8118e4f3>] __kmalloc+0x1a3/0x280
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa00e31d8>] gss_stringify_acceptor+0x58/0xb0 [auth_rpcgss]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa00e3185>] ? gss_stringify_acceptor+0x5/0xb0 [auth_rpcgss]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa006b438>] rpcauth_stringify_acceptor+0x18/0x30 [sunrpc]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01b0469>] nfs4_proc_setclientid+0x199/0x380 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01b04d0>] ? nfs4_proc_setclientid+0x200/0x380 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01bdf1a>] nfs40_discover_server_trunking+0xda/0x150 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01bde45>] ? nfs40_discover_server_trunking+0x5/0x150 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c0acf>] nfs4_discover_server_trunking+0x7f/0x2f0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c8e24>] nfs4_init_client+0x104/0x2f0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01539b4>] nfs_get_client+0x314/0x3f0 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa0153780>] ? nfs_get_client+0xe0/0x3f0 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c83aa>] nfs4_set_client+0x8a/0x110 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa0069708>] ? __rpc_init_priority_wait_queue+0xa8/0xf0 [sunrpc]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c9b2f>] nfs4_create_server+0x12f/0x390 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c1472>] nfs4_remote_mount+0x32/0x60 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81196489>] mount_fs+0x39/0x1b0
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81166145>] ? __alloc_percpu+0x15/0x20
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b276b>] vfs_kern_mount+0x6b/0x150
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c1396>] nfs_do_root_mount+0x86/0xc0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01c1784>] nfs4_try_mount+0x44/0xc0 [nfsv4]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01549b7>] ? get_nfs_version+0x27/0x90 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa0161a2d>] nfs_fs_mount+0x47d/0xd60 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81a59c5e>] ? mutex_unlock+0xe/0x10
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01606a0>] ? nfs_remount+0x430/0x430 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffffa01609c0>] ? nfs_clone_super+0x140/0x140 [nfs]
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81196489>] mount_fs+0x39/0x1b0
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81166145>] ? __alloc_percpu+0x15/0x20
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b276b>] vfs_kern_mount+0x6b/0x150
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b5830>] do_mount+0x210/0xbe0
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b54ca>] ? copy_mount_options+0x3a/0x160
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff811b651f>] SyS_mount+0x6f/0xb0
-> Nov  7 21:21:40 f20-2 kernel: [<ffffffff81a5c852>] system_call_fastpath+0x12/0x17
-> Nov  7 21:21:42 f20-2 kernel: mount.nfs (4539) used greatest stack depth: 10344 bytes left
-> Nov  7 21:21:42 f20-2 kernel: mount.nfs (4539) used greatest stack depth: 10344 bytes left
-> Nov  7 21:21:42 f20-2 kernel: BUG: sleeping function called from invalid context at mm/slab.c:2846
-> Nov  7 21:21:42 f20-2 kernel: in_atomic(): 0, irqs_disabled(): 0, pid: 4596, name: 192.168.122.21-
-> Nov  7 21:21:42 f20-2 kernel: 1 lock held by 192.168.122.21-/4596:
-> Nov  7 21:21:42 f20-2 kernel: #0:  (rcu_read_lock){......}, at: [<ffffffffa00e3185>] gss_stringify_acceptor+0x5/0xb0 [auth_rpcgss]
-> Nov  7 21:21:42 f20-2 kernel: Preemption disabled at:[<ffffffff81a4f082>] printk+0x4d/0x4f
+Looks fine to me, thanks, I'll assume Trond's applying all three unless
+I hear otherwise.
 
-Doh! Yeah, clearly a bug -- can't sleep in a rcu critical section. I'll
-spin up a patch and send it out in a day or two. Sorry about that...
+(Separate issue: the server-side rpc dprintk's need review: they're much
+too frequent to be useful, I think.)
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+--b.
+
+> 
+> Jeff Layton (3):
+>   sunrpc: add some tracepoints in svc_rqst handling functions
+>   sunrpc: add new tracepoints in xprt handling code
+>   sunrpc: add tracepoints in xs_tcp_data_recv
+> 
+>  include/linux/sunrpc/xprtsock.h |  59 +++++++++++++++
+>  include/trace/events/sunrpc.h   | 160 ++++++++++++++++++++++++++++++++++++++++
+>  net/sunrpc/svc.c                |  21 +++---
+>  net/sunrpc/svc_xprt.c           |  31 +++++---
+>  net/sunrpc/xprt.c               |   9 ++-
+>  net/sunrpc/xprtsock.c           |  69 +++--------------
+>  6 files changed, 269 insertions(+), 80 deletions(-)
+> 
+> -- 
+> 1.9.3
+> 
