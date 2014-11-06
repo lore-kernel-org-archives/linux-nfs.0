@@ -1,74 +1,186 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:49183 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752814AbaKLWcO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 17:32:14 -0500
-Received: by mail-ig0-f178.google.com with SMTP id a13so3878525igq.5
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 14:32:13 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 1/5] NFSv4: Ensure that we remove NFSv4.0 delegations when state has expired
-Date: Wed, 12 Nov 2014 17:31:50 -0500
-Message-Id: <1415831514-47005-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1415831514-47005-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1415831514-47005-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:40291 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750975AbaKFPCr convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Nov 2014 10:02:47 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [nfs-utils RFC PATCH 05/15] mountstats: Convert existing option parsing to use the getopt module
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20141106144458.GK4532@tonberry.usersys.redhat.com>
+Date: Thu, 6 Nov 2014 10:02:39 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <226EF2BD-FA40-4C36-851E-A1B1D002F2D6@oracle.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com> <1415206872-864-6-git-send-email-smayhew@redhat.com> <721A2038-04AF-433C-A0AE-C677C7FF041F@oracle.com> <20141106144458.GK4532@tonberry.usersys.redhat.com>
+To: Scott Mayhew <smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv4.0 does not have TEST_STATEID/FREE_STATEID functionality, so
-unlike NFSv4.1, the recovery procedure when stateids have expired or
-have been revoked requires us to just forget the delegation.
 
-http://lkml.kernel.org/r/CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com
-Cc: stable@vger.kernel.org
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 24 +++++++++++++++++++++++-
- 1 file changed, 23 insertions(+), 1 deletion(-)
+On Nov 6, 2014, at 9:44 AM, Scott Mayhew <smayhew@redhat.com> wrote:
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index dca174ce8309..bdd880bddba4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2109,6 +2109,28 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
- 	return ret;
- }
- 
-+static void nfs_finish_clear_delegation_stateid(struct nfs4_state *state)
-+{
-+	nfs_remove_bad_delegation(state->inode);
-+	write_seqlock(&state->seqlock);
-+	nfs4_stateid_copy(&state->stateid, &state->open_stateid);
-+	write_sequnlock(&state->seqlock);
-+	clear_bit(NFS_DELEGATED_STATE, &state->flags);
-+}
-+
-+static void nfs40_clear_delegation_stateid(struct nfs4_state *state)
-+{
-+	if (rcu_access_pointer(NFS_I(state->inode)->delegation) != NULL)
-+		nfs_finish_clear_delegation_stateid(state);
-+}
-+
-+static int nfs40_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
-+{
-+	/* NFSv4.0 doesn't allow for delegation recovery on open expire */
-+	nfs40_clear_delegation_stateid(state);
-+	return nfs4_open_expired(sp, state);
-+}
-+
- #if defined(CONFIG_NFS_V4_1)
- static void nfs41_clear_delegation_stateid(struct nfs4_state *state)
- {
-@@ -8330,7 +8352,7 @@ static const struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
- static const struct nfs4_state_recovery_ops nfs40_nograce_recovery_ops = {
- 	.owner_flag_bit = NFS_OWNER_RECLAIM_NOGRACE,
- 	.state_flag_bit	= NFS_STATE_RECLAIM_NOGRACE,
--	.recover_open	= nfs4_open_expired,
-+	.recover_open	= nfs40_open_expired,
- 	.recover_lock	= nfs4_lock_expired,
- 	.establish_clid = nfs4_init_clientid,
- };
--- 
-1.9.3
+> On Wed, 05 Nov 2014, Chuck Lever wrote:
+> 
+>> 
+>> On Nov 5, 2014, at 12:01 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+>> 
+>> I?m not clear why you need to replace this code. But if
+>> you really do need to replace it, why not use the more
+>> Python-esque argparse module, which would replace both
+>> the option parsing and help text?
+> 
+> This started out as a hacked up version of the mountstats program that I
+> was really planning on sending anywhere, and originally I had only done
+> the nfsstat options using getopt.  When I redid the changes in git I
+> decided to convert the rest of them to use getopt as well.  I can change
+> it back to the original parsing or I can use argparse.  Let me know
+> which you prefer (I have no preference either way).
+
+I wrote mountstats almost 10 years ago, and Python has changed a lot
+since then. It makes sense to modernize this a bit. I think argparse:
+
++ is more idiomatic Python
+
++ allows you to fix up the help text and attach it directly to each option
+
++ maybe makes it easier to manage the coexistence of the different commands
+  in the same source code?
+
+Give it a try. Here’s some sample code:
+
+  http://git.linux-nfs.org/?p=cel/fedfs-utils.git;a=blob;f=src/domainroot/fedfs-domainroot.in;h=6db32eb0fdb47b90e25189929ec9588dbf342eda;hb=HEAD
+
+If it starts looking crazy, then stick with getopt.
+
+
+>> 
+>>> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+>>> ---
+>>> tools/mountstats/mountstats.py | 62 +++++++++++++++++++++---------------------
+>>> 1 file changed, 31 insertions(+), 31 deletions(-)
+>>> 
+>>> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+>>> index 2fe1362..272a8f9 100755
+>>> --- a/tools/mountstats/mountstats.py
+>>> +++ b/tools/mountstats/mountstats.py
+>>> @@ -24,6 +24,7 @@ MA 02110-1301 USA
+>>> """
+>>> 
+>>> import sys, os, time
+>>> +import getopt
+>>> 
+>>> Mountstats_version = '0.2'
+>>> 
+>>> @@ -547,37 +548,33 @@ def print_mountstats_help(name):
+>>> def mountstats_command():
+>>>    """Mountstats command
+>>>    """
+>>> +    try:
+>>> +        opts, args = getopt.getopt(sys.argv[1:], "ehnrsv", ["end", "help", "nfs", "rpc", "start", "version"])
+>>> +    except getopt.GetoptError as err:
+>>> +        print_mountstats_help(prog)
+>>> +
+>>>    mountpoints = []
+>>>    nfs_only = False
+>>>    rpc_only = False
+>>> 
+>>> -    for arg in sys.argv:
+>>> -        if arg in ['-h', '--help', 'help', 'usage']:
+>>> +    for o, a in opts:
+>>> +        if o in ("-e", "--end"):
+>>> +            raise Exception('Sampling is not yet implemented')
+>>> +        elif o in ("-h", "--help"):
+>>>            print_mountstats_help(prog)
+>>> -            return
+>>> -
+>>> -        if arg in ['-v', '--version', 'version']:
+>>> -            print('%s version %s' % (sys.argv[0], Mountstats_version))
+>>>            sys.exit(0)
+>>> -
+>>> -        if arg in ['-n', '--nfs']:
+>>> +        elif o in ("-n", "--nfs"):
+>>>            nfs_only = True
+>>> -            continue
+>>> -
+>>> -        if arg in ['-r', '--rpc']:
+>>> +        elif o in ("-r", "--rpc"):
+>>>            rpc_only = True
+>>> -            continue
+>>> -
+>>> -        if arg in ['-s', '--start']:
+>>> -            raise Exception('Sampling is not yet implemented')
+>>> -
+>>> -        if arg in ['-e', '--end']:
+>>> +        elif o in ("-s", "--start"):
+>>>            raise Exception('Sampling is not yet implemented')
+>>> -
+>>> -        if arg == sys.argv[0]:
+>>> -            continue
+>>> -
+>>> -        mountpoints += [arg]
+>>> +        elif o in ("-v", "--version"):
+>>> +            print('%s version %s' % (sys.argv[0], Mountstats_version))
+>>> +            sys.exit(0)
+>>> +        else:
+>>> +            assert False, "unhandled option"
+>>> +    mountpoints += args
+>>> 
+>>>    if mountpoints == []:
+>>>        print_mountstats_help(prog)
+>>> @@ -662,23 +659,26 @@ def print_iostat_summary(old, new, devices, time):
+>>> def iostat_command():
+>>>    """iostat-like command for NFS mount points
+>>>    """
+>>> +    try:
+>>> +        opts, args = getopt.getopt(sys.argv[1:], "hv", ["help", "version"])
+>>> +    except getopt.GetoptError as err:
+>>> +        print_iostat_help(prog)
+>>>    mountstats = parse_stats_file('/proc/self/mountstats')
+>>>    devices = []
+>>>    interval_seen = False
+>>>    count_seen = False
+>>> 
+>>> -    for arg in sys.argv:
+>>> -        if arg in ['-h', '--help', 'help', 'usage']:
+>>> +    for o, a in opts:
+>>> +        if o in ("-h", "--help"):
+>>>            print_iostat_help(prog)
+>>> -            return
+>>> -
+>>> -        if arg in ['-v', '--version', 'version']:
+>>> +            sys.exit(0)
+>>> +        elif o in ("-v", "--version"):
+>>>            print('%s version %s' % (sys.argv[0], Mountstats_version))
+>>> -            return
+>>> -
+>>> -        if arg == sys.argv[0]:
+>>> -            continue
+>>> +            sys.exit(0)
+>>> +        else:
+>>> +            assert False, "unhandled option"
+>>> 
+>>> +    for arg in args:
+>>>        if arg in mountstats:
+>>>            devices += [arg]
+>>>        elif not interval_seen:
+>>> -- 
+>>> 1.9.3
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
