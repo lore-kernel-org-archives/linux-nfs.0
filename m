@@ -1,150 +1,226 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f175.google.com ([209.85.160.175]:55243 "EHLO
-	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750920AbaKQRL7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2014 12:11:59 -0500
-Received: by mail-yk0-f175.google.com with SMTP id 200so4632840ykr.20
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Nov 2014 09:11:58 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 17 Nov 2014 12:11:56 -0500
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Benjamin Coddington <bcodding@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] nfsidmap: keyctl_invalidate kernel compatibility
-Message-ID: <20141117121156.7db89956@tlielax.poochiereds.net>
-In-Reply-To: <5CB17B23-69BB-4680-9EF6-E09F46D382DE@oracle.com>
-References: <eee96450255a3407517dd1ed4ce9991ba9f2dbd1.1415034378.git.bcodding@redhat.com>
-	<54592B0E.5050201@RedHat.com>
-	<46A4BDBA-C8B6-47CB-BA19-4D459944EA01@oracle.com>
-	<5CB17B23-69BB-4680-9EF6-E09F46D382DE@oracle.com>
+Received: from fieldses.org ([174.143.236.118]:57725 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750877AbaKFUIq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Nov 2014 15:08:46 -0500
+Date: Thu, 6 Nov 2014 15:08:43 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna.Schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 2/3] nfsd: Add ALLOCATE support
+Message-ID: <20141106200843.GC22638@fieldses.org>
+References: <1414788826-21474-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1414788826-21474-3-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1414788826-21474-3-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 17 Nov 2014 11:54:29 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+On Fri, Oct 31, 2014 at 04:53:45PM -0400, Anna.Schumaker@netapp.com wrote:
+> From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> 
+> The ALLOCATE operation is used to preallocate space in a file.  I can do
+> this by using vfs_fallocate() to do the actual preallocation.
+> 
+> ALLOCATE only returns a status indicator, so we don't need to write a
+> special encode() function.
+> 
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 36 ++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/nfs4xdr.c  | 19 ++++++++++++++++++-
+>  fs/nfsd/vfs.c      | 20 ++++++++++++++++++++
+>  fs/nfsd/vfs.h      |  2 ++
+>  fs/nfsd/xdr4.h     |  8 ++++++++
+>  5 files changed, 84 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index cdeb3cf..57bfcad 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1014,6 +1014,36 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  }
+>  
+>  static __be32
+> +nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> +		struct nfsd4_fallocate *fallocate, int flags)
+> +{
+> +	__be32 status = nfserr_notsupp;
+> +	struct file *file;
+> +
+> +	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
+> +					    &fallocate->falloc_stateid,
+> +					    WR_STATE, &file);
+> +	if (status != nfs_ok) {
+> +		dprintk("NFSD: nfsd4_fallocate: couldn't process stateid!\n");
+> +		return status;
+> +	}
+> +
+> +	status = nfsd4_vfs_fallocate(rqstp, &cstate->current_fh, file,
+> +				     fallocate->falloc_offset,
+> +				     fallocate->falloc_length,
+> +				     flags);
+> +	fput(file);
+> +	return status;
+> +}
+> +
+> +static __be32
+> +nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> +	       struct nfsd4_fallocate *fallocate)
+> +{
+> +	return nfsd4_fallocate(rqstp, cstate, fallocate, 0);
+> +}
+> +
+> +static __be32
+>  nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		struct nfsd4_seek *seek)
+>  {
+> @@ -1926,6 +1956,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>  	},
+>  
+>  	/* NFSv4.2 operations */
+> +	[OP_ALLOCATE] = {
+> +		.op_func = (nfsd4op_func)nfsd4_allocate,
+> +		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
+> +		.op_name = "OP_ALLOCATE",
+> +		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+> +	},
+>  	[OP_SEEK] = {
+>  		.op_func = (nfsd4op_func)nfsd4_seek,
+>  		.op_name = "OP_SEEK",
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index eeea7a9..a60cff8 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1514,6 +1514,23 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+>  }
+>  
+>  static __be32
+> +nfsd4_decode_fallocate(struct nfsd4_compoundargs *argp,
+> +		       struct nfsd4_fallocate *fallocate)
+> +{
+> +	DECODE_HEAD;
+> +
+> +	status = nfsd4_decode_stateid(argp, &fallocate->falloc_stateid);
+> +	if (status)
+> +		return status;
+> +
+> +	READ_BUF(16);
+> +	p = xdr_decode_hyper(p, &fallocate->falloc_offset);
+> +	xdr_decode_hyper(p, &fallocate->falloc_length);
+> +
+> +	DECODE_TAIL;
+> +}
+> +
+> +static __be32
+>  nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
+>  {
+>  	DECODE_HEAD;
+> @@ -1604,7 +1621,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+>  
+>  	/* new operations for NFSv4.2 */
+> -	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
+>  	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 989129e..9d29631 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -16,6 +16,7 @@
+>  #include <linux/fs.h>
+>  #include <linux/file.h>
+>  #include <linux/splice.h>
+> +#include <linux/falloc.h>
+>  #include <linux/fcntl.h>
+>  #include <linux/namei.h>
+>  #include <linux/delay.h>
+> @@ -533,6 +534,25 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
+>  }
+>  #endif
+>  
+> +__be32 nfsd4_vfs_fallocate(struct svc_rqst *rqstp, struct svc_fh *fhp,
+> +			   struct file *file, loff_t offset, loff_t len,
+> +			   int flags)
+> +{
+> +	__be32 err;
+> +	int error;
+> +
+> +	err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry, NFSD_MAY_WRITE);
+> +	if (err)
+> +		return err;
+> +
+> +	error = vfs_fallocate(file, flags, offset, len);
+> +	if (!error)
+> +		error = commit_metadata(fhp);
+> +
+> +	if (error == -ENODEV)
+> +		return nfserr_inval;
 
-> Hi Jeff-
-> 
-> On Nov 4, 2014, at 3:44 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> > On Nov 4, 2014, at 2:37 PM, Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >> On 11/03/2014 12:12 PM, Benjamin Coddington wrote:
-> >>> Change the keyctl_invalidate call to use the syscall interface directly so
-> >>> that when building with libkeyutils missing keyctl_invalidate the build succeeds.
-> >>> Attempt to use _invalidate and fall back to _revoke if the current kernel is
-> >>> missing _invalidate.
-> >>> 
-> >>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> >> Committed... 
-> >> 
-> >> This does get by the nfsidmap compile error when 
-> >> compiling on RHEL6, but not the ones in nfsdcltrack/sqlite.c
-> >> (http://ur1.ca/ioyfs)
-> >> 
-> >> Chuck, how are you getting around them?
-> > 
-> > Short answer: I’m not.
-> > 
-> > The nfsdcltrack build fails after nfsidmap is built. I just
-> > installed the nfsidmap binary for testing, and ignored the
-> > rest of upstream nfs-utils.
-> 
-> OK, here’s a detailed bug report.
-> 
-> I’m trying to build the current upstream nfs-utils on one
-> of my EL6-based systems (see previous items in this thread).
-> 
-> In my copy of /usr/include/sqlite3.h (EL6):
-> 
-> #define SQLITE_VERSION        "3.6.20"
-> #define SQLITE_VERSION_NUMBER 3006020
-> #define SQLITE_SOURCE_ID      "2009-11-04 13:30:02 eb7a544fe49d1626bacecfe53ddc03fe082e3243”
-> 
-> aclocal/libsqlite3.h has this check:
-> 
->  13   AC_CACHE_VAL([libsqlite3_cv_is_recent],
->  14    [
->  15     saved_LIBS="$LIBS"
->  16     LIBS=-lsqlite3
->  17     AC_TRY_RUN([
->  18         #include <stdio.h>
->  19         #include <sqlite3.h>
->  20         int main()
->  21         {
->  22                 int vers = sqlite3_libversion_number();
->  23 
->  24                 return vers != SQLITE_VERSION_NUMBER ||
->  25                         vers < 3003000;
->  26         }
->  27        ], [libsqlite3_cv_is_recent=yes], [libsqlite3_cv_is_recent=no],
->  28        [libsqlite3_cv_is_recent=unknown])
->  29     LIBS="$saved_LIBS"])
-> 
-> But the build fails during the link step:
-> 
-> libtool: link: gcc -Wall -Wextra -Wstrict-prototypes -pipe -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Wp,-D_FORTIFY_SOURCE=2 -Os -Wall -Wextra -pedantic -std=c99 -Wformat=2 -Wmissing-include-dirs -Wunused -Wconversion -Wlogical-op -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wmissing-noreturn -Wshadow -Wunreachable-code -Winline -Wdisabled-optimization -Wstrict-aliasing=2 -Wstrict-overflow=4 -Wstack-protector -fstrict-aliasing -fstrict-overflow -fexceptions -fstack-protector -fasynchronous-unwind-tables -fpie -pie -o nfsdcltrack nfsdcltrack.o sqlite.o  ../../support/nfs/libnfs.a -lsqlite3
-> sqlite.o: In function `sqlite_query_reclaiming':
-> sqlite.c:(.text+0x3b): undefined reference to `sqlite3_errstr'
-> sqlite.c:(.text+0x6e): undefined reference to `sqlite3_errstr'
-> sqlite.c:(.text+0x9a): undefined reference to `sqlite3_errstr'
-> sqlite.o: In function `sqlite_query_schema_version':
-> sqlite.c:(.text+0x12b): undefined reference to `sqlite3_errstr'
-> sqlite.c:(.text+0x15a): undefined reference to `sqlite3_errstr'
-> sqlite.o:sqlite.c:(.text+0x97a): more undefined references to `sqlite3_errstr' follow
-> sqlite.o: In function `sqlite_prepare_dbh':
-> sqlite.c:(.text+0xb95): undefined reference to `'
-> collect2: ld returned 1 exit status
-> make[2]: *** [nfsdcltrack] Error 1
-> 
-> The release of libsqlite3 on this system passes the
-> existing aclocal test in nfs-utils, but does not appear
-> to have either sqlite3_errstr() or sqlite3_close_v2().
-> 
-> Some sqlite3_errstr() callsites data back to 2012.
-> sqlite3_close_v2() was added by commit 3548dd1563d5 in
-> September 2014. The vintage of libsqlite3 here appears
-> to be 2009.
-> 
-> I do not need nfsdcltrack on this system, but am merely
-> noting that nfs-utils does not build on EL6 systems.
-> 
-> There seem to be some alternatives for addressing this,
-> but I need a little guidance on which is the appropriate
-> choice. Fixing the aclocal test is most obvious; then
-> change my configure options to add —disable-nfsdcltrack.
-> 
-> Thoughts?
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+If I'm reading the code right, this is the case where we try to
+fallocate on something other than a regular file?
 
-Ok, good catch...
+Actually the vfs code has a note syaing filesystems may allow fallocate
+on directories.  Do we?  There's nothing explicit in the spec that I can
+see but I don't think it'd make sense.
 
-Probably we just need to change the "vers < 3003000" check in
-libsqlite3.m4 to require a more recent version. Unfortunately, it's a
-little difficult to tell what version we should require.
+So how about replacing this by an explicit check for the type before the
+fallocate call?
 
-According to this page, sqlite3_close_v2 got added in 3.7.14 and
-sqlite3_errstr got added in 3.7.15. So I guess we should change that to
-read:
+(And also add a note to the spec requiring NFS4ERR_INVAL on anything not
+a regular file.)
 
-    vers < 3007015
+Otherwise these patches look fine.
 
-Can you test and see whether that helps? I don't have a RHEL6 box handy
-at the moment.
+--b.
 
-Alternately we could try to detect whether these functions are present
-using standard autoconf checks, but I'm not sure I care enough to go to
-that level of effort. ;)
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+> +	return nfserrno(error);
+> +}
+>  #endif /* defined(CONFIG_NFSD_V4) */
+>  
+>  #ifdef CONFIG_NFSD_V3
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index c2ff3f1..7ffdb14 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -54,6 +54,8 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
+>  #ifdef CONFIG_NFSD_V4
+>  __be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
+>  		    struct xdr_netobj *);
+> +__be32		nfsd4_vfs_fallocate(struct svc_rqst *, struct svc_fh *,
+> +				    struct file *, loff_t, loff_t, int);
+>  #endif /* CONFIG_NFSD_V4 */
+>  __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
+>  				char *name, int len, struct iattr *attrs,
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 5720e94..eeaa0d0 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -428,6 +428,13 @@ struct nfsd4_reclaim_complete {
+>  	u32 rca_one_fs;
+>  };
+>  
+> +struct nfsd4_fallocate {
+> +	/* request */
+> +	stateid_t	falloc_stateid;
+> +	loff_t		falloc_offset;
+> +	u64		falloc_length;
+> +};
+> +
+>  struct nfsd4_seek {
+>  	/* request */
+>  	stateid_t	seek_stateid;
+> @@ -486,6 +493,7 @@ struct nfsd4_op {
+>  		struct nfsd4_free_stateid	free_stateid;
+>  
+>  		/* NFSv4.2 */
+> +		struct nfsd4_fallocate		allocate;
+>  		struct nfsd4_seek		seek;
+>  	} u;
+>  	struct nfs4_replay *			replay;
+> -- 
+> 2.1.3
+> 
