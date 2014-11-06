@@ -1,57 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48438 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41598 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752516AbaKLOLj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Nov 2014 09:11:39 -0500
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sACEBdxX006791
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 09:11:39 -0500
-Received: from smallhat.boston.devel.redhat.com (vpn-49-107.rdu2.redhat.com [10.10.49.107])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sACEBcPq020593
-	for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 09:11:39 -0500
-Message-ID: <54636A9A.7080206@RedHat.com>
-Date: Wed, 12 Nov 2014 09:11:38 -0500
+	id S1750846AbaKFPA7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Nov 2014 10:00:59 -0500
+Message-ID: <545B8D1A.7060109@RedHat.com>
+Date: Thu, 06 Nov 2014 10:00:42 -0500
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS Town Hall  meeting: Tomorrow - Thur 11/13/14
-Content-Type: text/plain; charset=windows-1252
+To: NeilBrown <neilb@suse.de>,
+        =?UTF-8?B?IlxcU3Ryw7Zzc2VyLCBCb2RvXCIgXCJA?=
+	 =?UTF-8?B?cmVkaGF0LmNvbSI=?=
+	<"bodo.stroesser\"@ts.fujitsu.com"@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
+References: <61eb00$5dituo@dgate20u.abg.fsc.net>	<20141105210546.GH6513@fieldses.org>	<8B06D1E6480A6747B23FEC34909D2B5EA81B95F24C@ABGEX70E.FSC.NET> <20141106084741.40980d12@notabene.brown>
+In-Reply-To: <20141106084741.40980d12@notabene.brown>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On 11/05/2014 04:47 PM, NeilBrown wrote:
+> Steve: you are maintainer for both (?).  Would you be able to make a
+> libtirpc release soonish with the mentioned fix, then would you be happy for
+> future nfs-utils to require at least that version?
 
-Its been a while and there are a few things 
-we need to sort out...  
-
-So the Linux NFS town hall meeting is tomorrow
-   *Thur Nov 13 at 01:00 pm EST (10:00am PST)*
-
-The usual agenda will apply. The maintainers will give
-a quick status of what is happening in their worlds.
-
-Next we'll get updates from major contributors on what
-they have been doing and are planing on doing.
-  
-Finally, we'll open the floor to questions, comments, 
-concerns from the community.  
-
-Generally the meeting lasts between 30 to 45 mins, with 
-a very hard stop at 60mins. 
-
-Please feel to attend and participate!
-
-Time: 10:00 am PST (01:00 pm EST)
-
-The call in numbers are:
-
-U.S. and Canada: (800) 451-8679
-World wide toll free numbers
-   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
-
-Conference code: 564.272.1552
-
+Let me get the libtirpc fix in.. and then take a look at 
+adding something to the aclocal/libtirpc.m4 requiring 
+a particular version??
 
 steved.
-
+ 
