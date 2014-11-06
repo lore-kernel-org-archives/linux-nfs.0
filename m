@@ -1,73 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f181.google.com ([209.85.216.181]:63601 "EHLO
-	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751256AbaKFV6j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Nov 2014 16:58:39 -0500
-Received: by mail-qc0-f181.google.com with SMTP id w7so1573210qcr.26
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Nov 2014 13:58:38 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Thu, 6 Nov 2014 16:58:34 -0500
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] sunrpc: new tracepoints for call/reply tracking
-Message-ID: <20141106165834.27863d4c@tlielax.poochiereds.net>
-In-Reply-To: <20141106202009.GE22638@fieldses.org>
-References: <1414520654-1606-1-git-send-email-jlayton@primarydata.com>
-	<20141106202009.GE22638@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from aserp1040.oracle.com ([141.146.126.69]:37447 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750915AbaKFO7H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Nov 2014 09:59:07 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [nfs-utils RFC PATCH 11/15] mountstats: Allow mountstats_command to take a variable number of mountpoints
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20141106144622.GL4532@tonberry.usersys.redhat.com>
+Date: Thu, 6 Nov 2014 09:58:54 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <D27D701F-B544-4523-B186-8029F8398C6E@oracle.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com> <1415206872-864-12-git-send-email-smayhew@redhat.com> <52AAA463-33E9-4112-B000-51CDFD1A53F8@oracle.com> <20141106144622.GL4532@tonberry.usersys.redhat.com>
+To: Scott Mayhew <smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 6 Nov 2014 15:20:09 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Tue, Oct 28, 2014 at 02:24:11PM -0400, Jeff Layton wrote:
-> > These patches add some tracepoints that I recently used when tracking
-> > down the hang that Christoph reported recently. At this point, I still
-> > haven't followed the trail to completion, but I think the problem is
-> > not likely to be in the RPC code.
-> > 
-> > Please consider these for v3.19? Some of these are for client RPC and
-> > some for server-side. I'll assume that Trond will merge these, but
-> > review by others would be appreciated as well.
-> 
-> Looks fine to me, thanks, I'll assume Trond's applying all three unless
-> I hear otherwise.
-> 
-> (Separate issue: the server-side rpc dprintk's need review: they're much
-> too frequent to be useful, I think.)
-> 
+On Nov 6, 2014, at 9:46 AM, Scott Mayhew <smayhew@redhat.com> wrote:
 
-Thanks.
-
-Yeah. Probably best to just slowly phase those out in favor of
-tracepoints. Is there any way to do that that's less labor intensive?
-
-> --b.
+> On Wed, 05 Nov 2014, Chuck Lever wrote:
 > 
-> > 
-> > Jeff Layton (3):
-> >   sunrpc: add some tracepoints in svc_rqst handling functions
-> >   sunrpc: add new tracepoints in xprt handling code
-> >   sunrpc: add tracepoints in xs_tcp_data_recv
-> > 
-> >  include/linux/sunrpc/xprtsock.h |  59 +++++++++++++++
-> >  include/trace/events/sunrpc.h   | 160 ++++++++++++++++++++++++++++++++++++++++
-> >  net/sunrpc/svc.c                |  21 +++---
-> >  net/sunrpc/svc_xprt.c           |  31 +++++---
-> >  net/sunrpc/xprt.c               |   9 ++-
-> >  net/sunrpc/xprtsock.c           |  69 +++--------------
-> >  6 files changed, 269 insertions(+), 80 deletions(-)
-> > 
-> > -- 
-> > 1.9.3
-> > 
+>> 
+>> On Nov 5, 2014, at 12:01 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+>> 
+>>> Allow the mountstats command to take a variable number of mountpoints
+>>> (including none, in which case it will print stats for all NFS
+>>> mountpoints it finds).
+>> 
+>> Cool idea.
+> 
+> Thanks!  It looks like I need to add some sort of a header when only the
+> rpc stats are being printed though.
+
+You mean a header visually separating the group of stats for each
+mount point. Yeah, that would be helpful. (I typically have just one
+mount point under test on my system, so I didn’t notice this before).
+
+>> 
+>>> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+>>> ---
+>>> tools/mountstats/mountstats.py | 32 +++++++++++++++++++-------------
+>>> 1 file changed, 19 insertions(+), 13 deletions(-)
+>>> 
+>>> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+>>> index 77975ad..281f4be 100755
+>>> --- a/tools/mountstats/mountstats.py
+>>> +++ b/tools/mountstats/mountstats.py
+>>> @@ -616,10 +616,6 @@ def mountstats_command():
+>>>            assert False, "unhandled option"
+>>>    mountpoints += args
+>>> 
+>>> -    if mountpoints == []:
+>>> -        print_mountstats_help(prog)
+>>> -        return
+>>> -
+>>>    if rpc_only == True and nfs_only == True:
+>>>        print_mountstats_help(prog)
+>>>        return
+>>> @@ -628,21 +624,31 @@ def mountstats_command():
+>>>        infile = '/proc/self/mountstats'
+>>>    mountstats = parse_stats_file(infile)
+>>> 
+>>> +    # make certain devices contains only NFS mount points
+>>> +    if len(mountpoints) > 0:
+>>> +        check = []
+>>> +        for device in mountpoints:
+>>> +            stats = DeviceData()
+>>> +            stats.parse_stats(mountstats[device])
+>>> +            if stats.is_nfs_mountpoint():
+>>> +                check += [device]
+>>> +        mountpoints = check
+>>> +    else:
+>>> +        for device, descr in mountstats.items():
+>>> +            stats = DeviceData()
+>>> +            stats.parse_stats(descr)
+>>> +            if stats.is_nfs_mountpoint():
+>>> +                mountpoints += [device]
+>>> +    if len(mountpoints) == 0:
+>>> +        print('No NFS mount points were found')
+>>> +        return
+>>> +
+>>>    if since:
+>>>        old_mountstats = parse_stats_file(since)
+>>> 
+>>>    for mp in mountpoints:
+>>> -        if mp not in mountstats:
+>>> -            print('Statistics for mount point %s not found' % mp)
+>>> -            continue
+>>> -
+>>>        stats = DeviceData()
+>>>        stats.parse_stats(mountstats[mp])
+>>> -
+>>> -        if not stats.is_nfs_mountpoint():
+>>> -            print('Mount point %s exists but is not an NFS mount' % mp)
+>>> -            continue
+>>> -
+>>>        if not since:
+>>>            print_mountstats(stats, nfs_only, rpc_only)
+>>>        elif since and mp not in old_mountstats:
+>>> -- 
+>>> 1.9.3
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
--- 
-Jeff Layton <jlayton@primarydata.com>
+
+
