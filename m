@@ -1,66 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38157 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:44178 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751329AbaKEFPP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2014 00:15:15 -0500
-Date: Wed, 5 Nov 2014 16:14:57 +1100
-From: NeilBrown <neilb@suse.de>
-To: "=?UTF-8?B?U3Ryw7Zzc2VyLA==?= Bodo" <bodo.stroesser@ts.fujitsu.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Subject: Re: rpc.mountd can be blocked by a bad client
-Message-ID: <20141105161457.0d0cbba3@notabene.brown>
-In-Reply-To: <8B06D1E6480A6747B23FEC34909D2B5EA819D7E002@ABGEX70E.FSC.NET>
-References: <8B06D1E6480A6747B23FEC34909D2B5EA819D7DCA4@ABGEX70E.FSC.NET>
-	<20140925103210.5423676f@notabene.brown>
-	<8B06D1E6480A6747B23FEC34909D2B5EA819D7E002@ABGEX70E.FSC.NET>
+	id S1751156AbaKFTse (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Nov 2014 14:48:34 -0500
+Date: Thu, 6 Nov 2014 14:48:32 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: imc@cs.ox.ac.uk, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] lockd: ratelimit "lockd: cannot monitor" messages
+Message-ID: <20141106194832.GB22638@fieldses.org>
+References: <1414758509-30397-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/No21dHAyGi5YgotF.evFL3E"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1414758509-30397-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/No21dHAyGi5YgotF.evFL3E
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Fri, Oct 31, 2014 at 08:28:29AM -0400, Jeff Layton wrote:
+> When lockd can't talk to a remote statd, it'll spew a warning message
+> to the ring buffer. If the application is really hammering on locks
+> however, it's possible for that message to spam the logs. Ratelimit it
+> to minimize the potential for harm.
 
+Thanks, applying for 3.19.--b.
 
-Hi Bodo,
-
- I just discovered that you sent some patches to address this.
-I found them here:
-  http://www.spinics.net/lists/linux-nfs/msg47235.html
-
-but I don't remember ever seeing them (probably my fault), and they are all
-in one big email message which doesn't immediately look like it contains
-patches.
-
-Could you please resend the patches to the list and separate emails.  That
-will make it a lot easier to review and discuss.
-
-Thanks,
-NeilBrown
-
---Sig_/No21dHAyGi5YgotF.evFL3E
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
-
-iQIVAwUBVFmyUTnsnt1WYoG5AQKoAQ//f47Moom31/5fJIHu2+5J0eQbQBR+DXq8
-f4o4mAAlpNGFj05czjguZJEJ5v7xuTcDIs4GMeIgy3gGSEWSQk/OQjYdNm/eks8N
-ijr5CnUx5JZvDABAA0iP4dwQNOY6h3qQ0ToP4pVPMDNJmhHT1JKpCvl+4o81EXxc
-kHjNVEBNQ/9CwWsFEN+Me8zdvedLXdId6JDpvF8KcWFtgIDjUaiDyLdccWgWgMVt
-8hbR31Pf721yPUd50AlZ7Xfjhb9avhV1ky1l/6IcjRasg7J22eELlsAvHjrfJeNS
-tRoQLXoMgH1CagN5ZHj3JKtMQtbaZ6oBVWVFOUI/jKmJtMBN9v9bGlJ92nBze5wK
-9G3nS5e6Aa91PA4eJ6YUrxY/Y6O15gGsEdoBYXL8fX84mpqlBfFLCQwwxdyJRC+y
-tN9vTe1uCU9s4DIF+ntNIQCWeDDrDwXX2P0hRkjPWr2w4pTU8+JGhwGgBj2+Okuh
-fEnSBQm7x2SZeKyZSK27K+dg1DXNrqkkW0CklC6jgqfKCs9CjjvktOPGu0lHScbo
-dkT+HDTHQ80RmubXDMbvKCGvqxCzoNN1BipKVfh/cClwG1JEcP2GNK2pgUXH5ceD
-F3qZmyz48F83uPRW2Oyuf083m+xTUBv1f4YotSV4nNymu6Lj8i9G/vC+utd73P8o
-zGZyQWyIVuU=
-=y5bg
------END PGP SIGNATURE-----
-
---Sig_/No21dHAyGi5YgotF.evFL3E--
+> 
+> Reported-by: Ian Collier <imc@cs.ox.ac.uk>
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> ---
+>  fs/lockd/mon.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 9106f42c472c..1cc6ec51e6b1 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -214,7 +214,7 @@ int nsm_monitor(const struct nlm_host *host)
+>  	if (unlikely(res.status != 0))
+>  		status = -EIO;
+>  	if (unlikely(status < 0)) {
+> -		printk(KERN_NOTICE "lockd: cannot monitor %s\n", nsm->sm_name);
+> +		pr_notice_ratelimited("lockd: cannot monitor %s\n", nsm->sm_name);
+>  		return status;
+>  	}
+>  
+> -- 
+> 1.9.3
+> 
