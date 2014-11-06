@@ -1,54 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f45.google.com ([74.125.82.45]:44511 "EHLO
-	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751077AbaKYULf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 15:11:35 -0500
-Date: Tue, 25 Nov 2014 21:11:29 +0100
-From: Pieter Smith <pieter@boesman.nl>
-To: David Miller <davem@davemloft.net>
-Cc: josh@joshtriplett.org, rdunlap@infradead.org, alexander.h.duyck@intel.com,
-        viro@zeniv.linux.org.uk, ast@plumgrid.com, akpm@linux-foundation.org,
-        beber@meleeweb.net, catalina.mocanu@gmail.com, dborkman@redhat.com,
-        edumazet@google.com, ebiederm@xmission.com, fabf@skynet.be,
-        fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
-        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
-        bfields@fieldses.org, jlayton@poochiereds.net,
-        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
-        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
-        Paul.Durrant@citrix.com, paulmck@linux.vnet.ibm.com,
-        pefoley2@pefoley.com, tgraf@suug.ch, therbert@google.com,
-        trond.myklebust@primarydata.com, willemb@google.com,
-        xiaoguangrong@linux.vnet.ibm.com, zhenglong.cai@cs2c.com.cn
-Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
- splice family of syscalls (splice, vmsplice, tee and sendfile)
-Message-ID: <20141125201129.GA27167@smipidev>
-References: <5474ABB6.3030400@infradead.org>
- <20141125.121305.2094097848188324942.davem@davemloft.net>
- <20141125185310.GA24891@cloud>
- <20141125.140441.401150380839514113.davem@davemloft.net>
+Received: from mx1.redhat.com ([209.132.183.28]:34040 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750908AbaKFOpB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Nov 2014 09:45:01 -0500
+Date: Thu, 6 Nov 2014 09:44:58 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [nfs-utils RFC PATCH 05/15] mountstats: Convert existing option
+ parsing to use the getopt module
+Message-ID: <20141106144458.GK4532@tonberry.usersys.redhat.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+ <1415206872-864-6-git-send-email-smayhew@redhat.com>
+ <721A2038-04AF-433C-A0AE-C677C7FF041F@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141125.140441.401150380839514113.davem@davemloft.net>
+In-Reply-To: <721A2038-04AF-433C-A0AE-C677C7FF041F@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 25, 2014 at 02:04:41PM -0500, David Miller wrote:
-> From: josh@joshtriplett.org
-> Date: Tue, 25 Nov 2014 10:53:10 -0800
-> 
-> > It's not a "slippery slope"; it's been our standard practice for ages.
-> 
-> We've never put an entire class of generic system calls behind
-> a config option.
+On Wed, 05 Nov 2014, Chuck Lever wrote:
 
-I would have loved to make them optional individually, but they all are
-semantic variations of the same thing: Moving data between fd's without that
-data passing through userspace. It therefore isn't surprising that these
-syscalls share an underlying entanglement of code (which is where the bulk of
-the space saving is to be had).
+> 
+> On Nov 5, 2014, at 12:01 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+> 
+> I?m not clear why you need to replace this code. But if
+> you really do need to replace it, why not use the more
+> Python-esque argparse module, which would replace both
+> the option parsing and help text?
 
-What a tiny product developer should be asking himself, is: "Do I really need
-to efficiently move data between file descriptors?". If the answer no, he can
-disable CONFIG_SYSCALL_SPLICE to squeeze an extra 8KB out of his kernel.
+This started out as a hacked up version of the mountstats program that I
+was really planning on sending anywhere, and originally I had only done
+the nfsstat options using getopt.  When I redid the changes in git I
+decided to convert the rest of them to use getopt as well.  I can change
+it back to the original parsing or I can use argparse.  Let me know
+which you prefer (I have no preference either way).
+
+> 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > ---
+> > tools/mountstats/mountstats.py | 62 +++++++++++++++++++++---------------------
+> > 1 file changed, 31 insertions(+), 31 deletions(-)
+> > 
+> > diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+> > index 2fe1362..272a8f9 100755
+> > --- a/tools/mountstats/mountstats.py
+> > +++ b/tools/mountstats/mountstats.py
+> > @@ -24,6 +24,7 @@ MA 02110-1301 USA
+> > """
+> > 
+> > import sys, os, time
+> > +import getopt
+> > 
+> > Mountstats_version = '0.2'
+> > 
+> > @@ -547,37 +548,33 @@ def print_mountstats_help(name):
+> > def mountstats_command():
+> >     """Mountstats command
+> >     """
+> > +    try:
+> > +        opts, args = getopt.getopt(sys.argv[1:], "ehnrsv", ["end", "help", "nfs", "rpc", "start", "version"])
+> > +    except getopt.GetoptError as err:
+> > +        print_mountstats_help(prog)
+> > +
+> >     mountpoints = []
+> >     nfs_only = False
+> >     rpc_only = False
+> > 
+> > -    for arg in sys.argv:
+> > -        if arg in ['-h', '--help', 'help', 'usage']:
+> > +    for o, a in opts:
+> > +        if o in ("-e", "--end"):
+> > +            raise Exception('Sampling is not yet implemented')
+> > +        elif o in ("-h", "--help"):
+> >             print_mountstats_help(prog)
+> > -            return
+> > -
+> > -        if arg in ['-v', '--version', 'version']:
+> > -            print('%s version %s' % (sys.argv[0], Mountstats_version))
+> >             sys.exit(0)
+> > -
+> > -        if arg in ['-n', '--nfs']:
+> > +        elif o in ("-n", "--nfs"):
+> >             nfs_only = True
+> > -            continue
+> > -
+> > -        if arg in ['-r', '--rpc']:
+> > +        elif o in ("-r", "--rpc"):
+> >             rpc_only = True
+> > -            continue
+> > -
+> > -        if arg in ['-s', '--start']:
+> > -            raise Exception('Sampling is not yet implemented')
+> > -
+> > -        if arg in ['-e', '--end']:
+> > +        elif o in ("-s", "--start"):
+> >             raise Exception('Sampling is not yet implemented')
+> > -
+> > -        if arg == sys.argv[0]:
+> > -            continue
+> > -
+> > -        mountpoints += [arg]
+> > +        elif o in ("-v", "--version"):
+> > +            print('%s version %s' % (sys.argv[0], Mountstats_version))
+> > +            sys.exit(0)
+> > +        else:
+> > +            assert False, "unhandled option"
+> > +    mountpoints += args
+> > 
+> >     if mountpoints == []:
+> >         print_mountstats_help(prog)
+> > @@ -662,23 +659,26 @@ def print_iostat_summary(old, new, devices, time):
+> > def iostat_command():
+> >     """iostat-like command for NFS mount points
+> >     """
+> > +    try:
+> > +        opts, args = getopt.getopt(sys.argv[1:], "hv", ["help", "version"])
+> > +    except getopt.GetoptError as err:
+> > +        print_iostat_help(prog)
+> >     mountstats = parse_stats_file('/proc/self/mountstats')
+> >     devices = []
+> >     interval_seen = False
+> >     count_seen = False
+> > 
+> > -    for arg in sys.argv:
+> > -        if arg in ['-h', '--help', 'help', 'usage']:
+> > +    for o, a in opts:
+> > +        if o in ("-h", "--help"):
+> >             print_iostat_help(prog)
+> > -            return
+> > -
+> > -        if arg in ['-v', '--version', 'version']:
+> > +            sys.exit(0)
+> > +        elif o in ("-v", "--version"):
+> >             print('%s version %s' % (sys.argv[0], Mountstats_version))
+> > -            return
+> > -
+> > -        if arg == sys.argv[0]:
+> > -            continue
+> > +            sys.exit(0)
+> > +        else:
+> > +            assert False, "unhandled option"
+> > 
+> > +    for arg in args:
+> >         if arg in mountstats:
+> >             devices += [arg]
+> >         elif not interval_seen:
+> > -- 
+> > 1.9.3
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
