@@ -1,139 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f50.google.com ([209.85.216.50]:56235 "EHLO
-	mail-qa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932498AbaKMMay (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Nov 2014 07:30:54 -0500
-Received: by mail-qa0-f50.google.com with SMTP id w8so653093qac.23
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Nov 2014 04:30:53 -0800 (PST)
-From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH] sunrpc: fix sleeping under rcu_read_lock in gss_stringify_acceptor
-Date: Thu, 13 Nov 2014 07:30:46 -0500
-Message-Id: <1415881846-11873-1-git-send-email-jlayton@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:20552 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750877AbaKFCJ4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 21:09:56 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [nfs-utils RFC PATCH 11/15] mountstats: Allow mountstats_command to take a variable number of mountpoints
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1415206872-864-12-git-send-email-smayhew@redhat.com>
+Date: Wed, 5 Nov 2014 21:09:51 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <52AAA463-33E9-4112-B000-51CDFD1A53F8@oracle.com>
+References: <1415206872-864-1-git-send-email-smayhew@redhat.com> <1415206872-864-12-git-send-email-smayhew@redhat.com>
+To: Scott Mayhew <smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce reported that he was seeing the following BUG pop:
 
-    BUG: sleeping function called from invalid context at mm/slab.c:2846
-    in_atomic(): 0, irqs_disabled(): 0, pid: 4539, name: mount.nfs
-    2 locks held by mount.nfs/4539:
-    #0:  (nfs_clid_init_mutex){+.+.+.}, at: [<ffffffffa01c0a9a>] nfs4_discover_server_trunking+0x4a/0x2f0 [nfsv4]
-    #1:  (rcu_read_lock){......}, at: [<ffffffffa00e3185>] gss_stringify_acceptor+0x5/0xb0 [auth_rpcgss]
-    Preemption disabled at:[<ffffffff81a4f082>] printk+0x4d/0x4f
+On Nov 5, 2014, at 12:01 PM, Scott Mayhew <smayhew@redhat.com> wrote:
 
-    CPU: 3 PID: 4539 Comm: mount.nfs Not tainted 3.18.0-rc1-00013-g5b095e9 #3393
-    Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-    ffff880021499390 ffff8800381476a8 ffffffff81a534cf 0000000000000001
-    0000000000000000 ffff8800381476c8 ffffffff81097854 00000000000000d0
-    0000000000000018 ffff880038147718 ffffffff8118e4f3 0000000020479f00
-    Call Trace:
-    [<ffffffff81a534cf>] dump_stack+0x4f/0x7c
-    [<ffffffff81097854>] __might_sleep+0x114/0x180
-    [<ffffffff8118e4f3>] __kmalloc+0x1a3/0x280
-    [<ffffffffa00e31d8>] gss_stringify_acceptor+0x58/0xb0 [auth_rpcgss]
-    [<ffffffffa00e3185>] ? gss_stringify_acceptor+0x5/0xb0 [auth_rpcgss]
-    [<ffffffffa006b438>] rpcauth_stringify_acceptor+0x18/0x30 [sunrpc]
-    [<ffffffffa01b0469>] nfs4_proc_setclientid+0x199/0x380 [nfsv4]
-    [<ffffffffa01b04d0>] ? nfs4_proc_setclientid+0x200/0x380 [nfsv4]
-    [<ffffffffa01bdf1a>] nfs40_discover_server_trunking+0xda/0x150 [nfsv4]
-    [<ffffffffa01bde45>] ? nfs40_discover_server_trunking+0x5/0x150 [nfsv4]
-    [<ffffffffa01c0acf>] nfs4_discover_server_trunking+0x7f/0x2f0 [nfsv4]
-    [<ffffffffa01c8e24>] nfs4_init_client+0x104/0x2f0 [nfsv4]
-    [<ffffffffa01539b4>] nfs_get_client+0x314/0x3f0 [nfs]
-    [<ffffffffa0153780>] ? nfs_get_client+0xe0/0x3f0 [nfs]
-    [<ffffffffa01c83aa>] nfs4_set_client+0x8a/0x110 [nfsv4]
-    [<ffffffffa0069708>] ? __rpc_init_priority_wait_queue+0xa8/0xf0 [sunrpc]
-    [<ffffffffa01c9b2f>] nfs4_create_server+0x12f/0x390 [nfsv4]
-    [<ffffffffa01c1472>] nfs4_remote_mount+0x32/0x60 [nfsv4]
-    [<ffffffff81196489>] mount_fs+0x39/0x1b0
-    [<ffffffff81166145>] ? __alloc_percpu+0x15/0x20
-    [<ffffffff811b276b>] vfs_kern_mount+0x6b/0x150
-    [<ffffffffa01c1396>] nfs_do_root_mount+0x86/0xc0 [nfsv4]
-    [<ffffffffa01c1784>] nfs4_try_mount+0x44/0xc0 [nfsv4]
-    [<ffffffffa01549b7>] ? get_nfs_version+0x27/0x90 [nfs]
-    [<ffffffffa0161a2d>] nfs_fs_mount+0x47d/0xd60 [nfs]
-    [<ffffffff81a59c5e>] ? mutex_unlock+0xe/0x10
-    [<ffffffffa01606a0>] ? nfs_remount+0x430/0x430 [nfs]
-    [<ffffffffa01609c0>] ? nfs_clone_super+0x140/0x140 [nfs]
-    [<ffffffff81196489>] mount_fs+0x39/0x1b0
-    [<ffffffff81166145>] ? __alloc_percpu+0x15/0x20
-    [<ffffffff811b276b>] vfs_kern_mount+0x6b/0x150
-    [<ffffffff811b5830>] do_mount+0x210/0xbe0
-    [<ffffffff811b54ca>] ? copy_mount_options+0x3a/0x160
-    [<ffffffff811b651f>] SyS_mount+0x6f/0xb0
-    [<ffffffff81a5c852>] system_call_fastpath+0x12/0x17
+> Allow the mountstats command to take a variable number of mountpoints
+> (including none, in which case it will print stats for all NFS
+> mountpoints it finds).
 
-Sleeping under the rcu_read_lock is bad. This patch fixes it by dropping
-the rcu_read_lock before doing the allocation and then reacquiring it
-and redoing the dereference before doing the copy. If we find that the
-string has somehow grown in the meantime, we'll reallocate and try again.
+Cool idea.
 
-Cc: <stable@vger.kernel.org> # v3.17+
-Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- net/sunrpc/auth_gss/auth_gss.c | 35 ++++++++++++++++++++++++++++++-----
- 1 file changed, 30 insertions(+), 5 deletions(-)
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+> tools/mountstats/mountstats.py | 32 +++++++++++++++++++-------------
+> 1 file changed, 19 insertions(+), 13 deletions(-)
+> 
+> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+> index 77975ad..281f4be 100755
+> --- a/tools/mountstats/mountstats.py
+> +++ b/tools/mountstats/mountstats.py
+> @@ -616,10 +616,6 @@ def mountstats_command():
+>             assert False, "unhandled option"
+>     mountpoints += args
+> 
+> -    if mountpoints == []:
+> -        print_mountstats_help(prog)
+> -        return
+> -
+>     if rpc_only == True and nfs_only == True:
+>         print_mountstats_help(prog)
+>         return
+> @@ -628,21 +624,31 @@ def mountstats_command():
+>         infile = '/proc/self/mountstats'
+>     mountstats = parse_stats_file(infile)
+> 
+> +    # make certain devices contains only NFS mount points
+> +    if len(mountpoints) > 0:
+> +        check = []
+> +        for device in mountpoints:
+> +            stats = DeviceData()
+> +            stats.parse_stats(mountstats[device])
+> +            if stats.is_nfs_mountpoint():
+> +                check += [device]
+> +        mountpoints = check
+> +    else:
+> +        for device, descr in mountstats.items():
+> +            stats = DeviceData()
+> +            stats.parse_stats(descr)
+> +            if stats.is_nfs_mountpoint():
+> +                mountpoints += [device]
+> +    if len(mountpoints) == 0:
+> +        print('No NFS mount points were found')
+> +        return
+> +
+>     if since:
+>         old_mountstats = parse_stats_file(since)
+> 
+>     for mp in mountpoints:
+> -        if mp not in mountstats:
+> -            print('Statistics for mount point %s not found' % mp)
+> -            continue
+> -
+>         stats = DeviceData()
+>         stats.parse_stats(mountstats[mp])
+> -
+> -        if not stats.is_nfs_mountpoint():
+> -            print('Mount point %s exists but is not an NFS mount' % mp)
+> -            continue
+> -
+>         if not since:
+>             print_mountstats(stats, nfs_only, rpc_only)
+>         elif since and mp not in old_mountstats:
+> -- 
+> 1.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index afb292cd797d..53ed8d3f8897 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1353,6 +1353,7 @@ gss_stringify_acceptor(struct rpc_cred *cred)
- 	char *string = NULL;
- 	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
- 	struct gss_cl_ctx *ctx;
-+	unsigned int len;
- 	struct xdr_netobj *acceptor;
- 
- 	rcu_read_lock();
-@@ -1360,15 +1361,39 @@ gss_stringify_acceptor(struct rpc_cred *cred)
- 	if (!ctx)
- 		goto out;
- 
--	acceptor = &ctx->gc_acceptor;
-+	len = ctx->gc_acceptor.len;
-+	rcu_read_unlock();
- 
- 	/* no point if there's no string */
--	if (!acceptor->len)
--		goto out;
--
--	string = kmalloc(acceptor->len + 1, GFP_KERNEL);
-+	if (!len)
-+		return NULL;
-+realloc:
-+	string = kmalloc(len + 1, GFP_KERNEL);
- 	if (!string)
-+		return NULL;
-+
-+	rcu_read_lock();
-+	ctx = rcu_dereference(gss_cred->gc_ctx);
-+
-+	/* did the ctx disappear or was it replaced by one with no acceptor? */
-+	if (!ctx || !ctx->gc_acceptor.len) {
-+		kfree(string);
-+		string = NULL;
- 		goto out;
-+	}
-+
-+	acceptor = &ctx->gc_acceptor;
-+
-+	/*
-+	 * Did we find a new acceptor that's longer than the original? Allocate
-+	 * a longer buffer and try again.
-+	 */
-+	if (len < acceptor->len) {
-+		len = acceptor->len;
-+		rcu_read_unlock();
-+		kfree(string);
-+		goto realloc;
-+	}
- 
- 	memcpy(string, acceptor->data, acceptor->len);
- 	string[acceptor->len] = '\0';
--- 
-2.1.0
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
