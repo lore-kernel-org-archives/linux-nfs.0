@@ -1,94 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:50966 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:61939 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751564AbaKEWHw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2014 17:07:52 -0500
-Date: Wed, 5 Nov 2014 17:07:49 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs-utils RFC PATCH 00/15] A few enhancements to mountstats.py
-Message-ID: <20141105220749.GI4532@tonberry.usersys.redhat.com>
-References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
- <69F60F0B-331B-40F8-B740-12568C0132F4@oracle.com>
+	id S1753263AbaKGTod (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Nov 2014 14:44:33 -0500
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 3/3] nfsd: Add DEALLOCATE support
+Date: Fri, 7 Nov 2014 14:44:27 -0500
+Message-ID: <1415389467-16547-4-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1415389467-16547-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1415389467-16547-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <69F60F0B-331B-40F8-B740-12568C0132F4@oracle.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-On Wed, 05 Nov 2014, Chuck Lever wrote:
+DEALLOCATE only returns a status value, meaning we can use the noop()
+xdr encoder to reply to the client.
 
-> Hi Scott-
-> 
-> > On Nov 5, 2014, at 12:00 PM, Scott Mayhew <smayhew@redhat.com> wrote:
-> > 
-> > The following patches add a couple of enhancements to mountstats.py.  I
-> > also fixed a few bugs I encountered along the way.  Highlights include:
-> > 
-> > - added support for -f/--file to allow stats to be parsed from an
-> >  aritrary input file instead of /proc/self/mountstats
-> > 
-> > - added support for -S/--since to show just the changes that have
-> >  occurred between the current and a previous set of statisics (works
-> >  with and without the -f option)
-> > 
-> > - added support for -R/--raw to generate 'raw' statistics (i.e. in the
-> >  same format as /proc/self/mountstats).  It's intended to be used with
-> >  the -f and -S options.
-> > 
-> > - implemented the ms-nfsstat command to generate client-side
-> >  nfsstat-like statisics (only works with a single mountpoint)
-> > 
-> > My motivation for these changes was so that I could take various copies
-> > of /proc/self/mountstats and massage them into data that I could feed
-> > into the 'report' option of Dros's nfsometer tool for scenarios where
-> > it's not feasible to run nfsometer itself (e.g. systems where we can't
-> > start with an 'idle' state (i.e. no NFS filesystems initially
-> > mounted), systems with multiple NFS filesystems mounted, and workloads
-> > that can't easily be boiled down into an nfsometer workload file or run
-> > via the custom workload environment variables).
-> 
-> Do you have a git repo I can pull these from to try out?
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfsd/nfs4proc.c | 15 +++++++++++++++
+ fs/nfsd/nfs4xdr.c  |  2 +-
+ fs/nfsd/xdr4.h     |  1 +
+ 3 files changed, 17 insertions(+), 1 deletion(-)
 
-You can pull them from https://github.com/scottmayhew/nfs-utils.git
-commit ids f9c256040^..6a43a1599
-
--Scott
-
-> 
-> 
-> > Scott Mayhew (15):
-> >  mountstats: Fix up NFS event counters
-> >  mountstats: Add lists of various counters
-> >  mountstats: Refactor __parse_nfs_line and __parse_rpc_line
-> >  mountstats: Refactor compare_iostats
-> >  mountstats: Convert existing option parsing to use the getopt module
-> >  mountstats: Make ms-iostat output match that of nfs-iostat.py
-> >  mountstats: Make print_iostat_summary handle newly appearing mounts
-> >  mountstats: Add support for -f/--file to the mountstats and ms-iostat
-> >    commands
-> >  mountstats: Add support for -S/--since to the mountstats and ms-iostat
-> >    commands
-> >  mountstats: Fix IndexError in __parse_nfs_line
-> >  mountstats: Allow mountstats_command to take a variable number of
-> >    mountpoints
-> >  mountstats: Add support for -R/--raw to mountstats_command
-> >  mountstats: Implement nfsstat_command
-> >  mountstats: Remove the --start and --end options
-> >  mountstats: Update the help output
-> > 
-> > tools/mountstats/mountstats.py | 730 ++++++++++++++++++++++++++++++-----------
-> > 1 file changed, 544 insertions(+), 186 deletions(-)
-> > mode change 100644 => 100755 tools/mountstats/mountstats.py
-> > 
-> > -- 
-> > 1.9.3
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a261f18..74fb15e 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -33,6 +33,7 @@
+  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+  */
+ #include <linux/file.h>
++#include <linux/falloc.h>
+ #include <linux/slab.h>
+ 
+ #include "idmap.h"
+@@ -1044,6 +1045,14 @@ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ }
+ 
+ static __be32
++nfsd4_deallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		 struct nfsd4_fallocate *fallocate)
++{
++	return nfsd4_fallocate(rqstp, cstate, fallocate,
++			       FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE);
++}
++
++static __be32
+ nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		struct nfsd4_seek *seek)
+ {
+@@ -1965,6 +1974,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_name = "OP_ALLOCATE",
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+ 	},
++	[OP_DEALLOCATE] = {
++		.op_func = (nfsd4op_func)nfsd4_deallocate,
++		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
++		.op_name = "OP_DEALLOCATE",
++		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
++	},
+ 	[OP_SEEK] = {
+ 		.op_func = (nfsd4op_func)nfsd4_seek,
+ 		.op_name = "OP_SEEK",
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a60cff8..0622d4f 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1624,7 +1624,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
+ 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
+ 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index eeaa0d0..90a5925 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -494,6 +494,7 @@ struct nfsd4_op {
+ 
+ 		/* NFSv4.2 */
+ 		struct nfsd4_fallocate		allocate;
++		struct nfsd4_fallocate		deallocate;
+ 		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+-- 
+2.1.3
 
