@@ -1,112 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:57135 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751588AbaKFTQA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Nov 2014 14:16:00 -0500
-Received: by mail-wi0-f177.google.com with SMTP id ex7so2490457wid.10
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Nov 2014 11:15:58 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <CAN-5tyE3pH0Y-RRGEoufQ-YWBJ=CQ_fBa0UJN0EF=e+TiHEzVQ@mail.gmail.com>
-References: <1415025403-31914-1-git-send-email-kolga@netapp.com>
-	<CAN-5tyHVoJ60z7WBaCYvUN3GsCEGh9jGc0evRCuiVt2aA6zP0g@mail.gmail.com>
-	<CAHQdGtQWg+Fiyn7vH9pjU1GR-TKvMp+gcR7ssaA1zESQ8JdVsw@mail.gmail.com>
-	<CAN-5tyEOLnq_v_8X6zNXX4u2oOdJeJHpEmxsr_yOAfHFZxyhyA@mail.gmail.com>
-	<CAHQdGtTMtWLoeAmhCZRC2gdh5h=vHuUAT_am5_0h5L7FNZdQiA@mail.gmail.com>
-	<CAN-5tyE3pH0Y-RRGEoufQ-YWBJ=CQ_fBa0UJN0EF=e+TiHEzVQ@mail.gmail.com>
-Date: Thu, 6 Nov 2014 14:15:58 -0500
-Message-ID: <CAHQdGtQw_7tWuGEZOwdUWN6TEaTn85kkmAQb_nPF5QaTrk487w@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Fixing infinite state recovery loop due to failed
- delegation return
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from ppsw-50.csi.cam.ac.uk ([131.111.8.150]:33878 "EHLO
+	ppsw-50.csi.cam.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751348AbaKGEm1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Nov 2014 23:42:27 -0500
+Subject: Re: [PATCH v5 7/7] add a flag for per-operation O_DSYNC semantics
+Mime-Version: 1.0 (Mac OS X Mail 8.0 \(1990.1\))
+Content-Type: text/plain; charset=us-ascii
+From: Anton Altaparmakov <aia21@cam.ac.uk>
+In-Reply-To: <x49r3xf28qn.fsf@segfault.boston.devel.redhat.com>
+Date: Fri, 7 Nov 2014 06:22:48 +0200
+Cc: Milosz Tanski <milosz@adfin.com>, linux-kernel@vger.kernel.org,
+        Christoph Hellwig <hch@lst.de>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
+        Mel Gorman <mgorman@suse.de>,
+        Volker Lendecke <Volker.Lendecke@sernet.de>, Tejun Heo <tj@kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-api@vger.kernel.org, Michael Kerrisk <mtk.manpages@gmail.com>,
+        linux-arch@vger.kernel.org, ceph-devel@vger.kernel.org,
+        fuse-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org,
+        ocfs2-devel@oss.oracle.com, linux-mm@kvack.org
+Message-Id: <BF30FAEC-D4D3-4079-9ECD-2743747279BD@cam.ac.uk>
+References: <cover.1415220890.git.milosz@adfin.com> <cover.1415220890.git.milosz@adfin.com> <c188b04ede700ce5f986b19de12fa617d158540f.1415220890.git.milosz@adfin.com> <x49r3xf28qn.fsf@segfault.boston.devel.redhat.com>
+To: Jeff Moyer <jmoyer@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 6, 2014 at 1:54 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> On Wed, Nov 5, 2014 at 1:38 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> On Wed, Nov 5, 2014 at 12:53 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>> Thank you for looking into this!
->>>
->>> On Tue, Nov 4, 2014 at 7:14 PM, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>>> On Tue, Nov 4, 2014 at 6:22 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>> Trond, can you please respond to the patch?
->>>>>
->>>>> As per earlier conversation, in this solution, state recovery is
->>>>> initiated which marks the locks lost.
->>>>>
->>>>> Please either accept this patch or let me know what needs to be fixed.
->>>>>
->>>>
->>>> Please see the 3 fixes I just sent out concerning delegation recovery
->>>> w.r.t. NFSv4+NFSv4.1. In addition, we need to handle the case you
->>>> patch attempts to address (however see the question I have below).
->>>>
->>>>> Thank you.
->>>>>
->>>>> On Mon, Nov 3, 2014 at 9:36 AM, Olga Kornievskaia <kolga@netapp.com> wrote:
->>>>>> If we get a bad-stateid-type of error when we send OPEN with delegate_cur
->>>>>> to return currently held delegation, we shouldn't be trying to reclaim locks
->>>>>> associated with that delegation state_id because we don't have an
->>>>>> open_stateid to be used for the LOCK operation. Thus, we should
->>>>>> return an error from the nfs4_open_delegation_recall() in that case.
->>>>>>
->>>>>> Furthermore, if an error occurs the delegation code will call
->>>>>> nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
->>>>>> flags in the state and it leads the state manager to into an infinite loop
->>>>>> for trying to reclaim the delegated state.
->>>>>>
->>>>>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->>>>>> ---
->>>>>>  fs/nfs/delegation.c |    5 +++--
->>>>>>  fs/nfs/nfs4proc.c   |    2 +-
->>>>>>  2 files changed, 4 insertions(+), 3 deletions(-)
->>>>>>
->>>>>> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
->>>>>> index 5853f53..8016d89 100644
->>>>>> --- a/fs/nfs/delegation.c
->>>>>> +++ b/fs/nfs/delegation.c
->>>>>> @@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
->>>>>>                 err = nfs4_wait_clnt_recover(clp);
->>>>>>         } while (err == 0);
->>>>>>
->>>>>> -       if (err) {
->>>>>> +       if (err && err != -EIO) {
->>>>>>                 nfs_abort_delegation_return(delegation, clp);
->>>>
->>>> This exception for EIO now has me worried. If we detach the
->>>> delegation, then it looks to me as if we will never send a
->>>> FREE_STATEID, as required for the case of NFSv4.1.
->>>
->>> I'd need to brush up on the FREE_STATEID op to confidently answer
->>> that. But can't this be taken care of in state_recovery when locks are
->>> marked lost?
->>
->> No, because in the case of EIO we now fall through to
->> nfs_detach_delegation() and nfs_do_return_delegation(). What we really
->> want to do is call TEST_STATEID + FREE_STATEID (see RFC5661 sections
->> 8.2.4, 8.5 and 18.38.3), which will now be done as part of state
->> recovery.
->
-> I don't see it. :-/ Is it because there is a race between returning a
-> delegation and state recovery that was initiated? Because as far as I
-> can see, the stateid recovery initiated by the
-> handle_delegation_recall_error() will call nfs4_test_stateid() via
-> nfs41_open_expire().
->
+Hi Jeff,
 
-No. My point is that once we call nfs_detach_delegation(), then nobody
-will be able to find the delegation from either the struct nfs_inode
-or from the server->delegations list.
-IOW: the question is how would the state recovery thread find it in
-the first place?
+> On 7 Nov 2014, at 01:46, Jeff Moyer <jmoyer@redhat.com> wrote:
+> 
+> Milosz Tanski <milosz@adfin.com> writes:
+> 
+>> -		if (type == READ && (flags & RWF_NONBLOCK))
+>> -			return -EAGAIN;
+>> +		if (type == READ) {
+>> +			if (flags & RWF_NONBLOCK)
+>> +				return -EAGAIN;
+>> +		} else {
+>> +			if (flags & RWF_DSYNC)
+>> +				return -EINVAL;
+>> +		}
+> 
+> Minor nit, but I'd rather read something that looks like this:
+> 
+> 	if (type == READ && (flags & RWF_NONBLOCK))
+> 		return -EAGAIN;
+> 	else if (type == WRITE && (flags & RWF_DSYNC))
+> 		return -EINVAL;
+
+But your version is less logically efficient for the case where "type == READ" is true and "flags & RWF_NONBLOCK" is false because your version then has to do the "if (type == WRITE" check before discovering it does not need to take that branch either, whilst the original version does not have to do such a test at all.
+
+Best regards,
+
+	Anton
+
+> I won't lose sleep over it, though.
+> 
+> Reviewed-by: Jeff Moyer <jmoyer@redhat.com>
 
 -- 
-Trond Myklebust
+Anton Altaparmakov <aia21 at cam.ac.uk> (replace at with @)
+University of Cambridge Information Services, Roger Needham Building
+7 JJ Thomson Avenue, Cambridge, CB3 0RB, UK
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
