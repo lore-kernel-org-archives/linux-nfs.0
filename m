@@ -1,91 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:35439 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751502AbaKDXWS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2014 18:22:18 -0500
-Received: by mail-ig0-f171.google.com with SMTP id hl2so7626961igb.10
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Nov 2014 15:22:18 -0800 (PST)
+Received: from mx11.netapp.com ([216.240.18.76]:33512 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752975AbaKGToa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Nov 2014 14:44:30 -0500
+From: <Anna.Schumaker@netapp.com>
+To: <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v4 0/3] NFS: Add ALLOCATE and DEALLOCATE support
+Date: Fri, 7 Nov 2014 14:44:24 -0500
+Message-ID: <1415389467-16547-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <1415025403-31914-1-git-send-email-kolga@netapp.com>
-References: <1415025403-31914-1-git-send-email-kolga@netapp.com>
-Date: Tue, 4 Nov 2014 18:22:17 -0500
-Message-ID: <CAN-5tyHVoJ60z7WBaCYvUN3GsCEGh9jGc0evRCuiVt2aA6zP0g@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Fixing infinite state recovery loop due to failed
- delegation return
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond, can you please respond to the patch?
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-As per earlier conversation, in this solution, state recovery is
-initiated which marks the locks lost.
+These patches add client support for the ALLOCATE and DEALLOCATE operations
+part of NFS v4.2, which are triggered by a vfs_fallocate() call.
 
-Please either accept this patch or let me know what needs to be fixed.
+Changes in v4:
+- Check if we are modifying a regular file, and return nfserr_inval if not.
 
-Thank you.
+These patches and the corresponding server changes are available in the
+[fallocate] branch of
 
-On Mon, Nov 3, 2014 at 9:36 AM, Olga Kornievskaia <kolga@netapp.com> wrote:
-> If we get a bad-stateid-type of error when we send OPEN with delegate_cur
-> to return currently held delegation, we shouldn't be trying to reclaim locks
-> associated with that delegation state_id because we don't have an
-> open_stateid to be used for the LOCK operation. Thus, we should
-> return an error from the nfs4_open_delegation_recall() in that case.
->
-> Furthermore, if an error occurs the delegation code will call
-> nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
-> flags in the state and it leads the state manager to into an infinite loop
-> for trying to reclaim the delegated state.
->
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  fs/nfs/delegation.c |    5 +++--
->  fs/nfs/nfs4proc.c   |    2 +-
->  2 files changed, 4 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> index 5853f53..8016d89 100644
-> --- a/fs/nfs/delegation.c
-> +++ b/fs/nfs/delegation.c
-> @@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
->                 err = nfs4_wait_clnt_recover(clp);
->         } while (err == 0);
->
-> -       if (err) {
-> +       if (err && err != -EIO) {
->                 nfs_abort_delegation_return(delegation, clp);
->                 goto out;
->         }
-> @@ -458,7 +458,8 @@ restart:
->                         iput(inode);
->                         if (!err)
->                                 goto restart;
-> -                       set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
-> +                       if (err != -EIO)
-> +                               set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
->                         return err;
->                 }
->         }
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 5aa55c1..6871055 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1655,7 +1655,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
->                         nfs_inode_find_state_and_recover(state->inode,
->                                         stateid);
->                         nfs4_schedule_stateid_recovery(server, state);
-> -                       return 0;
-> +                       return -EIO;
->                 case -NFS4ERR_DELAY:
->                 case -NFS4ERR_GRACE:
->                         set_bit(NFS_DELEGATED_STATE, &state->flags);
-> --
-> 1.7.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	git://git.linux-nfs.org/projects/anna/linux-nfs.git
+
+Questions?  Comments?  Thougts?
+
+Anna
+
+
+Anna Schumaker (3):
+  VFS: Rename do_fallocate() to vfs_fallocate()
+  nfsd: Add ALLOCATE support
+  nfsd: Add DEALLOCATE support
+
+ drivers/staging/android/ashmem.c |  2 +-
+ fs/ioctl.c                       |  2 +-
+ fs/nfsd/nfs4proc.c               | 51 ++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c                | 21 +++++++++++++++--
+ fs/nfsd/vfs.c                    | 23 ++++++++++++++++++
+ fs/nfsd/vfs.h                    |  2 ++
+ fs/nfsd/xdr4.h                   |  9 +++++++
+ fs/open.c                        |  5 ++--
+ include/linux/fs.h               |  2 +-
+ mm/madvise.c                     |  2 +-
+ 10 files changed, 111 insertions(+), 8 deletions(-)
+
+-- 
+2.1.3
+
