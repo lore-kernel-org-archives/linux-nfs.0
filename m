@@ -1,56 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f175.google.com ([209.85.212.175]:62357 "EHLO
-	mail-wi0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751312AbaKIKNb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Nov 2014 05:13:31 -0500
-Received: by mail-wi0-f175.google.com with SMTP id ex7so8010172wid.14
-        for <linux-nfs@vger.kernel.org>; Sun, 09 Nov 2014 02:13:29 -0800 (PST)
-Message-ID: <545F3E46.9040703@dev.mellanox.co.il>
-Date: Sun, 09 Nov 2014 12:13:26 +0200
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+Received: from casper.infradead.org ([85.118.1.10]:43876 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753634AbaKHMLA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Nov 2014 07:11:00 -0500
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
         linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 02/10] xprtrdma: Cap req_cqinit
-References: <20141109010328.8806.5861.stgit@manet.1015granger.net> <20141109011420.8806.1849.stgit@manet.1015granger.net>
-In-Reply-To: <20141109011420.8806.1849.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Subject: [PATCH 2/2] nfsd: implement chage_attr_type attribute
+Date: Sat,  8 Nov 2014 13:11:04 +0100
+Message-Id: <1415448664-25815-3-git-send-email-hch@lst.de>
+In-Reply-To: <1415448664-25815-1-git-send-email-hch@lst.de>
+References: <1415448664-25815-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/9/2014 3:14 AM, Chuck Lever wrote:
-> Recent work made FRMR registration and invalidation completions
-> unsignaled. This greatly reduces the adapter interrupt rate.
->
-> Every so often, however, a posted send Work Request is allowed to
-> signal. Otherwise, the provider's Work Queue will wrap and the
-> workload will hang.
->
-> The number of Work Requests that are allowed to remain unsignaled is
-> determined by the value of req_cqinit. Currently, this is set to the
-> size of the send Work Queue divided by two, minus 1.
->
-> For FRMR, the send Work Queue is the maximum number of concurrent
-> RPCs (currently 32) times the maximum number of Work Requests an
-> RPC might use (currently 7, though some adapters may need more).
->
-> For mlx4, this is 224 entries. This leaves completion signaling
-> disabled for 111 send Work Requests.
->
-> Some providers hold back dispatching Work Requests until a CQE is
-> generated.  If completions are disabled, then no CQEs are generated
-> for quite some time, and that can stall the Work Queue.
->
-> I've seen this occur running xfstests generic/113 over NFSv4, where
-> eventually, posting a FAST_REG_MR Work Request fails with -ENOMEM
-> because the Work Queue has overflowed. The connection is dropped
-> and re-established.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfsd/nfs4xdr.c    | 16 ++++++++++++++++
+ fs/nfsd/nfsd.h       |  2 +-
+ include/linux/nfs4.h |  9 +++++++++
+ 3 files changed, 26 insertions(+), 1 deletion(-)
 
-Hey Chuck,
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index eeea7a9..3205b55 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1730,6 +1730,15 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode)
+ 	return p;
+ }
+ 
++static __be32 *encode_change_attr_type(__be32 *p, struct inode *inode)
++{
++	if (IS_I_VERSION(inode))
++		*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_VERSION_COUNTER);
++	else
++		*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_TIME_METADATA);
++	return p;
++}
++
+ static __be32 *encode_cinfo(__be32 *p, struct nfsd4_change_info *c)
+ {
+ 	*p++ = cpu_to_be32(c->atomic);
+@@ -2535,6 +2544,13 @@ out_acl:
+ 		*p++ = cpu_to_be32(NFSD_SUPPATTR_EXCLCREAT_WORD2);
+ 	}
+ 
++	if (bmval2 & FATTR4_WORD2_CHANGE_ATTR_TYPE) {
++		p = xdr_reserve_space(xdr, 4);
++		if (!p)
++			goto out_resource;
++		p = encode_change_attr_type(p, dentry->d_inode);
++	}
++
+ 	attrlen = htonl(xdr->buf->len - attrlen_offset - 4);
+ 	write_bytes_to_xdr_buf(xdr->buf, attrlen_offset, &attrlen, 4);
+ 	status = nfs_ok;
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 43b6a36..59a734f 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -342,7 +342,7 @@ void		nfsd_lockd_shutdown(void);
+ 
+ #define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
+ 	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
+-	NFSD4_2_SECURITY_ATTRS)
++	FATTR4_WORD2_CHANGE_ATTR_TYPE | NFSD4_2_SECURITY_ATTRS)
+ 
+ static inline u32 nfsd_suppattrs0(u32 minorversion)
+ {
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 356acc2..85ccd06 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -413,6 +413,7 @@ enum lock_type4 {
+ #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
+ #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
+ #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
++#define FATTR4_WORD2_CHANGE_ATTR_TYPE   (1UL << 15)
+ #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ 
+ /* MDS threshold bitmap bits */
+@@ -558,4 +559,12 @@ enum data_content4 {
+ 	NFS4_CONTENT_HOLE		= 1,
+ };
+ 
++enum change_attr_type4 {
++	NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR	= 0,
++	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER	= 1,
++	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER_NOPNFS = 2,
++	NFS4_CHANGE_TYPE_IS_TIME_METADATA	= 3,
++	NFS4_CHANGE_TYPE_IS_UNDEFINED		= 4
++};
++
+ #endif
+-- 
+1.9.1
 
-As you know, I've seen this issue too...
-Looking into this is definitely on my todo list.
-
-Does this happen if you run a simple dd (single request-response inflight)?
-
-Sagi.
