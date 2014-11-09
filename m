@@ -1,111 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58956 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750936AbaKFOqZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Nov 2014 09:46:25 -0500
-Date: Thu, 6 Nov 2014 09:46:22 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [nfs-utils RFC PATCH 11/15] mountstats: Allow mountstats_command
- to take a variable number of mountpoints
-Message-ID: <20141106144622.GL4532@tonberry.usersys.redhat.com>
-References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
- <1415206872-864-12-git-send-email-smayhew@redhat.com>
- <52AAA463-33E9-4112-B000-51CDFD1A53F8@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52AAA463-33E9-4112-B000-51CDFD1A53F8@oracle.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:43779 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751350AbaKIVnv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Nov 2014 16:43:51 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH v2 02/10] xprtrdma: Cap req_cqinit
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <545F3E46.9040703@dev.mellanox.co.il>
+Date: Sun, 9 Nov 2014 16:43:44 -0500
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <9C2B7BB4-B378-4225-BBD1-2B0F58D70342@oracle.com>
+References: <20141109010328.8806.5861.stgit@manet.1015granger.net> <20141109011420.8806.1849.stgit@manet.1015granger.net> <545F3E46.9040703@dev.mellanox.co.il>
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 05 Nov 2014, Chuck Lever wrote:
 
-> 
-> On Nov 5, 2014, at 12:01 PM, Scott Mayhew <smayhew@redhat.com> wrote:
-> 
-> > Allow the mountstats command to take a variable number of mountpoints
-> > (including none, in which case it will print stats for all NFS
-> > mountpoints it finds).
-> 
-> Cool idea.
+On Nov 9, 2014, at 5:13 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
 
-Thanks!  It looks like I need to add some sort of a header when only the
-rpc stats are being printed though.
+> On 11/9/2014 3:14 AM, Chuck Lever wrote:
+>> Recent work made FRMR registration and invalidation completions
+>> unsignaled. This greatly reduces the adapter interrupt rate.
+>> 
+>> Every so often, however, a posted send Work Request is allowed to
+>> signal. Otherwise, the provider's Work Queue will wrap and the
+>> workload will hang.
+>> 
+>> The number of Work Requests that are allowed to remain unsignaled is
+>> determined by the value of req_cqinit. Currently, this is set to the
+>> size of the send Work Queue divided by two, minus 1.
+>> 
+>> For FRMR, the send Work Queue is the maximum number of concurrent
+>> RPCs (currently 32) times the maximum number of Work Requests an
+>> RPC might use (currently 7, though some adapters may need more).
+>> 
+>> For mlx4, this is 224 entries. This leaves completion signaling
+>> disabled for 111 send Work Requests.
+>> 
+>> Some providers hold back dispatching Work Requests until a CQE is
+>> generated.  If completions are disabled, then no CQEs are generated
+>> for quite some time, and that can stall the Work Queue.
+>> 
+>> I've seen this occur running xfstests generic/113 over NFSv4, where
+>> eventually, posting a FAST_REG_MR Work Request fails with -ENOMEM
+>> because the Work Queue has overflowed. The connection is dropped
+>> and re-established.
+> 
+> Hey Chuck,
+> 
+> As you know, I've seen this issue too...
+> Looking into this is definitely on my todo list.
+> 
+> Does this happen if you run a simple dd (single request-response inflight)?
 
-> 
-> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > ---
-> > tools/mountstats/mountstats.py | 32 +++++++++++++++++++-------------
-> > 1 file changed, 19 insertions(+), 13 deletions(-)
-> > 
-> > diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-> > index 77975ad..281f4be 100755
-> > --- a/tools/mountstats/mountstats.py
-> > +++ b/tools/mountstats/mountstats.py
-> > @@ -616,10 +616,6 @@ def mountstats_command():
-> >             assert False, "unhandled option"
-> >     mountpoints += args
-> > 
-> > -    if mountpoints == []:
-> > -        print_mountstats_help(prog)
-> > -        return
-> > -
-> >     if rpc_only == True and nfs_only == True:
-> >         print_mountstats_help(prog)
-> >         return
-> > @@ -628,21 +624,31 @@ def mountstats_command():
-> >         infile = '/proc/self/mountstats'
-> >     mountstats = parse_stats_file(infile)
-> > 
-> > +    # make certain devices contains only NFS mount points
-> > +    if len(mountpoints) > 0:
-> > +        check = []
-> > +        for device in mountpoints:
-> > +            stats = DeviceData()
-> > +            stats.parse_stats(mountstats[device])
-> > +            if stats.is_nfs_mountpoint():
-> > +                check += [device]
-> > +        mountpoints = check
-> > +    else:
-> > +        for device, descr in mountstats.items():
-> > +            stats = DeviceData()
-> > +            stats.parse_stats(descr)
-> > +            if stats.is_nfs_mountpoint():
-> > +                mountpoints += [device]
-> > +    if len(mountpoints) == 0:
-> > +        print('No NFS mount points were found')
-> > +        return
-> > +
-> >     if since:
-> >         old_mountstats = parse_stats_file(since)
-> > 
-> >     for mp in mountpoints:
-> > -        if mp not in mountstats:
-> > -            print('Statistics for mount point %s not found' % mp)
-> > -            continue
-> > -
-> >         stats = DeviceData()
-> >         stats.parse_stats(mountstats[mp])
-> > -
-> > -        if not stats.is_nfs_mountpoint():
-> > -            print('Mount point %s exists but is not an NFS mount' % mp)
-> > -            continue
-> > -
-> >         if not since:
-> >             print_mountstats(stats, nfs_only, rpc_only)
-> >         elif since and mp not in old_mountstats:
-> > -- 
-> > 1.9.3
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+Hi Sagi-
+
+I typically run dbench, iozone, and xfstests when preparing patches for
+upstream. The generic/113 test I mention in the patch description is the
+only test where I saw this issue. I expect single-thread won’t drive
+enough Work Queue activity to push the provider into WQ overflow.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
