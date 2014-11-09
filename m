@@ -1,116 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f180.google.com ([209.85.212.180]:49809 "EHLO
-	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751745AbaKXXCR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 18:02:17 -0500
-From: Pieter Smith <pieter@boesman.nl>
-To: pieter@boesman.nl
-Cc: Josh Triplett <josh@joshtriplett.org>,
-        Alexander Duyck <alexander.h.duyck@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexei Starovoitov <ast@plumgrid.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Bertrand Jacquin <beber@meleeweb.net>,
-        Catalina Mocanu <catalina.mocanu@gmail.com>,
-        Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Fabian Frederick <fabf@skynet.be>,
-        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
-        Jan Beulich <JBeulich@suse.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-api@vger.kernel.org (open list:ABI/API),
-        linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org (open list),
-        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
-        "Luis R. Rodriguez" <mcgrof@suse.com>,
-        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
-        Oleg Nesterov <oleg@redhat.com>,
-        Paul Durrant <Paul.Durrant@citrix.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
-        Tom Herbert <therbert@google.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Willem de Bruijn <willemb@google.com>,
-        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
-        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
-Subject: [PATCH v4 2/7] fs: moved kernel_write to fs/read_write
-Date: Tue, 25 Nov 2014 00:01:01 +0100
-Message-Id: <1416870079-15254-3-git-send-email-pieter@boesman.nl>
-In-Reply-To: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
-References: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:38240 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751088AbaKIBOa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Nov 2014 20:14:30 -0500
+Subject: [PATCH v2 03/10] xprtrdma: unmap all FMRs during transport
+ disconnect
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Sat, 08 Nov 2014 20:14:29 -0500
+Message-ID: <20141109011429.8806.34346.stgit@manet.1015granger.net>
+In-Reply-To: <20141109010328.8806.5861.stgit@manet.1015granger.net>
+References: <20141109010328.8806.5861.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-kernel_write shares infrastructure with the read_write translation unit but not
-with the splice translation unit. Grouping kernel_write with the read_write
-translation unit is more logical. It also paves the way to compiling out the
-splice group of syscalls for embedded systems that do not need them.
+When using RPCRDMA_MTHCAFMR memory registration, after a few
+transport disconnect / reconnect cycles, ib_map_phys_fmr() starts to
+return EINVAL because the provider has exhausted its map pool.
 
-Signed-off-by: Pieter Smith <pieter@boesman.nl>
+Make sure that all FMRs are unmapped during transport disconnect,
+and that ->send_request remarshals them during an RPC retransmit.
+This resets the transport's MRs to ensure that none are leaked
+during a disconnect.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/read_write.c | 16 ++++++++++++++++
- fs/splice.c     | 16 ----------------
- 2 files changed, 16 insertions(+), 16 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |    2 +-
+ net/sunrpc/xprtrdma/verbs.c     |   42 ++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 42 insertions(+), 2 deletions(-)
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index d9451ba..f4c8d8b 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -1191,3 +1191,19 @@ COMPAT_SYSCALL_DEFINE5(pwritev, compat_ulong_t, fd,
- }
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 6a4615d..cfe9a81 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -599,7 +599,7 @@ xprt_rdma_send_request(struct rpc_task *task)
+ 
+ 	if (req->rl_niovs == 0)
+ 		rc = rpcrdma_marshal_req(rqst);
+-	else if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
++	else if (r_xprt->rx_ia.ri_memreg_strategy != RPCRDMA_ALLPHYSICAL)
+ 		rc = rpcrdma_marshal_chunks(rqst, 0);
+ 	if (rc < 0)
+ 		goto failed_marshal;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index af45cf3..3c88276 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -62,6 +62,7 @@
  #endif
  
-+ssize_t kernel_write(struct file *file, const char *buf, size_t count,
-+			    loff_t pos)
-+{
-+	mm_segment_t old_fs;
-+	ssize_t res;
-+
-+	old_fs = get_fs();
-+	set_fs(get_ds());
-+	/* The cast to a user pointer is valid due to the set_fs() */
-+	res = vfs_write(file, (__force const char __user *)buf, count, &pos);
-+	set_fs(old_fs);
-+
-+	return res;
-+}
-+EXPORT_SYMBOL(kernel_write);
-+
-diff --git a/fs/splice.c b/fs/splice.c
-index c1a2861..44b201b 100644
---- a/fs/splice.c
-+++ b/fs/splice.c
-@@ -583,22 +583,6 @@ static ssize_t kernel_readv(struct file *file, const struct iovec *vec,
- 	return res;
+ static void rpcrdma_reset_frmrs(struct rpcrdma_ia *);
++static void rpcrdma_reset_fmrs(struct rpcrdma_ia *);
+ 
+ /*
+  * internal functions
+@@ -868,8 +869,19 @@ retry:
+ 		rpcrdma_ep_disconnect(ep, ia);
+ 		rpcrdma_flush_cqs(ep);
+ 
+-		if (ia->ri_memreg_strategy == RPCRDMA_FRMR)
++		switch (ia->ri_memreg_strategy) {
++		case RPCRDMA_FRMR:
+ 			rpcrdma_reset_frmrs(ia);
++			break;
++		case RPCRDMA_MTHCAFMR:
++			rpcrdma_reset_fmrs(ia);
++			break;
++		case RPCRDMA_ALLPHYSICAL:
++			break;
++		default:
++			rc = -EIO;
++			goto out;
++		}
+ 
+ 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+ 		id = rpcrdma_create_id(xprt, ia,
+@@ -1289,6 +1301,34 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 	kfree(buf->rb_pool);
  }
  
--ssize_t kernel_write(struct file *file, const char *buf, size_t count,
--			    loff_t pos)
--{
--	mm_segment_t old_fs;
--	ssize_t res;
--
--	old_fs = get_fs();
--	set_fs(get_ds());
--	/* The cast to a user pointer is valid due to the set_fs() */
--	res = vfs_write(file, (__force const char __user *)buf, count, &pos);
--	set_fs(old_fs);
--
--	return res;
--}
--EXPORT_SYMBOL(kernel_write);
--
- ssize_t default_file_splice_read(struct file *in, loff_t *ppos,
- 				 struct pipe_inode_info *pipe, size_t len,
- 				 unsigned int flags)
--- 
-2.1.0
++/* After a disconnect, unmap all FMRs.
++ *
++ * This is invoked only in the transport connect worker in order
++ * to serialize with rpcrdma_register_fmr_external().
++ */
++static void
++rpcrdma_reset_fmrs(struct rpcrdma_ia *ia)
++{
++	struct rpcrdma_xprt *r_xprt =
++				container_of(ia, struct rpcrdma_xprt, rx_ia);
++	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
++	struct list_head *pos;
++	struct rpcrdma_mw *r;
++	LIST_HEAD(l);
++	int rc;
++
++	list_for_each(pos, &buf->rb_all) {
++		r = list_entry(pos, struct rpcrdma_mw, mw_all);
++
++		INIT_LIST_HEAD(&l);
++		list_add(&r->r.fmr->list, &l);
++		rc = ib_unmap_fmr(&l);
++		if (rc)
++			dprintk("RPC:       %s: ib_unmap_fmr failed %i\n",
++				__func__, rc);
++	}
++}
++
+ /* After a disconnect, a flushed FAST_REG_MR can leave an FRMR in
+  * an unusable state. Find FRMRs in this state and dereg / reg
+  * each.  FRMRs that are VALID and attached to an rpcrdma_req are
 
