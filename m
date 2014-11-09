@@ -1,53 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34323 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753277AbaKLQxe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Nov 2014 11:53:34 -0500
-Date: Wed, 12 Nov 2014 11:53:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, Trond Myklebust <trondmy@gmail.com>,
-        Anna Schumaker <schumakeranna@gmail.com>
-Subject: Re: BUG: [<ffffffffa01dac02>] nfsd4_proc_compound+0x432/0x6c0 [nfsd]
-Message-ID: <20141112165332.GC5510@fieldses.org>
-References: <20141112111955.7e2d3dd9@tlielax.poochiereds.net>
- <20141112162451.GB5510@fieldses.org>
- <20141112112821.22c15580@tlielax.poochiereds.net>
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:61050 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750962AbaKIBPD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Nov 2014 20:15:03 -0500
+Subject: [PATCH v2 07/10] xprtrdma: Display async errors
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Sat, 08 Nov 2014 20:15:01 -0500
+Message-ID: <20141109011501.8806.23478.stgit@manet.1015granger.net>
+In-Reply-To: <20141109010328.8806.5861.stgit@manet.1015granger.net>
+References: <20141109010328.8806.5861.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141112112821.22c15580@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 12, 2014 at 11:28:21AM -0500, Jeff Layton wrote:
-> On Wed, 12 Nov 2014 11:24:51 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> 
-> > On Wed, Nov 12, 2014 at 11:19:55AM -0500, Jeff Layton wrote:
-> > > Hi Bruce,
-> > > 
-> > > I've seen the following crash happen on a couple of different kernels
-> > > recently. This one is from an older kernel that I just happened to be
-> > > testing some other code on, but I've seen the same oops as well on
-> > > v3.17.2 kernel from the fedora repos:
-> > 
-> > Do you have 51904b08072a "nfsd4: fix crash on unknown operation number"
-> > ?
-> > 
-> > --b.
-> > 
-> 
-> Ahh no...neither one has that. I'll apply it to the test kernel I'm
-> using and see if it goes away. Thanks!
-> 
-> That said...wonder what the client would be sending that would cause
-> this to fire?
+An async error upcall is a hard error, and should be reported in
+the system log.
 
-There was a mis-merge, and CAP_SEEK is set in the wrong place in
-fs/nfs/nfs4proc.c.  If you grep for CAP_SEEK in that file you'll see the
-problem.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |   36 ++++++++++++++++++++++++++++++++----
+ 1 file changed, 32 insertions(+), 4 deletions(-)
 
-Trond, Anna, that still seems to be wrong upstream?  What happened to
-that fix?
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index e6ac964..5783c1a 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -106,6 +106,32 @@ rpcrdma_run_tasklet(unsigned long data)
+ 
+ static DECLARE_TASKLET(rpcrdma_tasklet_g, rpcrdma_run_tasklet, 0UL);
+ 
++static const char * const async_event[] = {
++	"CQ error",
++	"QP fatal error",
++	"QP request error",
++	"QP access error",
++	"communication established",
++	"send queue drained",
++	"path migration successful",
++	"path mig error",
++	"device fatal error",
++	"port active",
++	"port error",
++	"LID change",
++	"P_key change",
++	"SM change",
++	"SRQ error",
++	"SRQ limit reached",
++	"last WQE reached",
++	"client reregister",
++	"GID change",
++};
++
++#define ASYNC_MSG(status)					\
++	((status) < ARRAY_SIZE(async_event) ?			\
++		async_event[(status)] : "unknown async error")
++
+ static void
+ rpcrdma_schedule_tasklet(struct list_head *sched_list)
+ {
+@@ -122,8 +148,9 @@ rpcrdma_qp_async_error_upcall(struct ib_event *event, void *context)
+ {
+ 	struct rpcrdma_ep *ep = context;
+ 
+-	dprintk("RPC:       %s: QP error %X on device %s ep %p\n",
+-		__func__, event->event, event->device->name, context);
++	pr_err("RPC:       %s: %s on device %s ep %p\n",
++	       __func__, ASYNC_MSG(event->event),
++		event->device->name, context);
+ 	if (ep->rep_connected == 1) {
+ 		ep->rep_connected = -EIO;
+ 		ep->rep_func(ep);
+@@ -136,8 +163,9 @@ rpcrdma_cq_async_error_upcall(struct ib_event *event, void *context)
+ {
+ 	struct rpcrdma_ep *ep = context;
+ 
+-	dprintk("RPC:       %s: CQ error %X on device %s ep %p\n",
+-		__func__, event->event, event->device->name, context);
++	pr_err("RPC:       %s: %s on device %s ep %p\n",
++	       __func__, ASYNC_MSG(event->event),
++		event->device->name, context);
+ 	if (ep->rep_connected == 1) {
+ 		ep->rep_connected = -EIO;
+ 		ep->rep_func(ep);
 
---b.
