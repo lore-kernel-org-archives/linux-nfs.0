@@ -1,85 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:27144 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755321AbaKUPj0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2014 10:39:26 -0500
-Message-ID: <546F5C98.4030202@oracle.com>
-Date: Fri, 21 Nov 2014 09:39:04 -0600
-From: Dave Kleikamp <dave.kleikamp@oracle.com>
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:34409 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753180AbaKIBOH (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Nov 2014 20:14:07 -0500
+Subject: [PATCH v2 00/10] NFS/RDMA patches for 3.19
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Sat, 08 Nov 2014 20:14:03 -0500
+Message-ID: <20141109010328.8806.5861.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: Omar Sandoval <osandov@osandov.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
-        Josef Bacik <jbacik@fb.com>, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Mel Gorman <mgorman@suse.de>
-CC: Ming Lei <ming.lei@canonical.com>
-Subject: Re: [PATCH v2 1/5] direct-io: don't dirty ITER_BVEC pages on read
-References: <cover.1416563833.git.osandov@osandov.com> <d5e6bbb3e54f76bbc11ffd106bc98a2c531b67ad.1416563833.git.osandov@osandov.com>
-In-Reply-To: <d5e6bbb3e54f76bbc11ffd106bc98a2c531b67ad.1416563833.git.osandov@osandov.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/21/2014 04:08 AM, Omar Sandoval wrote:
-> Reads through the iov_iter infrastructure for kernel pages shouldn't be dirtied
-> by the direct I/O code.
-> 
-> This is based on Dave Kleikamp's and Ming Lei's previously posted patches.
+Hi-
 
-Acked-by: Dave Kleikamp <dave.kleikamp@oracle.com>
+This is a set of fixes and clean-ups for xprtrdma. Also available
+in the nfs-rdma-for-3.19 topic branch at
 
-> Cc: Ming Lei <ming.lei@canonical.com>
-> Signed-off-by: Omar Sandoval <osandov@osandov.com>
-> ---
->  fs/direct-io.c | 8 +++++---
->  1 file changed, 5 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/direct-io.c b/fs/direct-io.c
-> index e181b6b..e542ce4 100644
-> --- a/fs/direct-io.c
-> +++ b/fs/direct-io.c
-> @@ -120,6 +120,7 @@ struct dio {
->  	spinlock_t bio_lock;		/* protects BIO fields below */
->  	int page_errors;		/* errno from get_user_pages() */
->  	int is_async;			/* is IO async ? */
-> +	int should_dirty;		/* should we mark read pages dirty? */
->  	bool defer_completion;		/* defer AIO completion to workqueue? */
->  	int io_error;			/* IO error in completion path */
->  	unsigned long refcount;		/* direct_io_worker() and bios */
-> @@ -392,7 +393,7 @@ static inline void dio_bio_submit(struct dio *dio, struct dio_submit *sdio)
->  	dio->refcount++;
->  	spin_unlock_irqrestore(&dio->bio_lock, flags);
->  
-> -	if (dio->is_async && dio->rw == READ)
-> +	if (dio->is_async && dio->rw == READ && dio->should_dirty)
->  		bio_set_pages_dirty(bio);
->  
->  	if (sdio->submit_io)
-> @@ -463,13 +464,13 @@ static int dio_bio_complete(struct dio *dio, struct bio *bio)
->  	if (!uptodate)
->  		dio->io_error = -EIO;
->  
-> -	if (dio->is_async && dio->rw == READ) {
-> +	if (dio->is_async && dio->rw == READ && dio->should_dirty) {
->  		bio_check_pages_dirty(bio);	/* transfers ownership */
->  	} else {
->  		bio_for_each_segment_all(bvec, bio, i) {
->  			struct page *page = bvec->bv_page;
->  
-> -			if (dio->rw == READ && !PageCompound(page))
-> +			if (dio->rw == READ && !PageCompound(page) && dio->should_dirty)
->  				set_page_dirty_lock(page);
->  			page_cache_release(page);
->  		}
-> @@ -1177,6 +1178,7 @@ do_blockdev_direct_IO(int rw, struct kiocb *iocb, struct inode *inode,
->  
->  	dio->inode = inode;
->  	dio->rw = rw;
-> +	dio->should_dirty = !(iter->type & ITER_BVEC);
->  
->  	/*
->  	 * For AIO O_(D)SYNC writes we need to defer completions to a workqueue
-> 
+  git://linux-nfs.org/projects/cel/cel-2.6.git
+
+I've run cthon04, iozone, dbench, multi-process kernel build and
+xfstests with NFSv3 and NFSv4.0 against a Linux and a Solaris
+NFS server via RDMA, with all three memory registration modes.
+
+Changes since v1:
+
+- Merged up to v3.18-rc3
+- Dropped patches that enable NFSv4.1 support for now
+- CQ completion vector spinning dropped for now
+- Addressed Anna's review comments
+- Several bug fixes
+
+---
+
+Chuck Lever (10):
+      xprtrdma: Return an errno from rpcrdma_register_external()
+      xprtrdma: Cap req_cqinit
+      xprtrdma: unmap all FMRs during transport disconnect
+      xprtrdma: Refactor tasklet scheduling
+      xprtrdma: Re-write rpcrdma_flush_cqs()
+      xprtrdma: Enable pad optimization
+      xprtrdma: Display async errors
+      SUNRPC: serialize iostats updates
+      NFS: SETCLIENTID XDR buffer sizes are incorrect
+      NFS: Clean up nfs4_init_callback()
+
+
+ fs/nfs/nfs4client.c             |   31 +++++------
+ fs/nfs/nfs4xdr.c                |   10 ++-
+ include/linux/sunrpc/metrics.h  |    3 +
+ net/sunrpc/stats.c              |   21 +++++--
+ net/sunrpc/xprtrdma/transport.c |    4 +
+ net/sunrpc/xprtrdma/verbs.c     |  114 ++++++++++++++++++++++++++++++++++-----
+ net/sunrpc/xprtrdma/xprt_rdma.h |    6 ++
+ 7 files changed, 146 insertions(+), 43 deletions(-)
+
+--
+Chuck Lever
