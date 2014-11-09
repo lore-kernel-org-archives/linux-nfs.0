@@ -1,64 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:4743 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752324AbaKCTq4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Nov 2014 14:46:56 -0500
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <bfields@redhat.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] [nfs4-acl-tools] handle DENY ace for DELETE, WRITE_OWNER, and NAMED_ATTRS
-Date: Mon, 3 Nov 2014 14:46:51 -0500
-Message-ID: <1415044011-35671-1-git-send-email-kolga@netapp.com>
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:45317 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750962AbaKIBOr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Nov 2014 20:14:47 -0500
+Subject: [PATCH v2 05/10] xprtrdma: Re-write rpcrdma_flush_cqs()
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Sat, 08 Nov 2014 20:14:45 -0500
+Message-ID: <20141109011445.8806.70952.stgit@manet.1015granger.net>
+In-Reply-To: <20141109010328.8806.5861.stgit@manet.1015granger.net>
+References: <20141109010328.8806.5861.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't ignore setting or viewing DENY ace for DELETE, WRITE_OWNER, and
-NAMED_ATTRS.
+Currently rpcrdma_flush_cqs() attempts to avoid code duplication,
+and simply invokes rpcrdma_recvcq_upcall and rpcrdma_sendcq_upcall.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+1. rpcrdma_flush_cqs() can run concurrently with provider upcalls.
+   Both flush_cqs() and the upcalls were invoking ib_poll_cq() in
+   different threads using the same wc buffers (ep->rep_recv_wcs
+   and ep->rep_send_wcs), added by commit 1c00dd077654 ("xprtrmda:
+   Reduce calls to ib_poll_cq() in completion handlers").
+
+   During transport disconnect processing, this sometimes resulted
+   in the same reply getting added to the rpcrdma_tasklets_g list
+   more than once, which corrupted the list.
+
+2. The upcall functions drain only a limited number of CQEs,
+   thanks to the poll budget added by commit 8301a2c047cc
+   ("xprtrdma: Limit work done by completion handler").
+
+Fixes: a7bc211ac926 ("xprtrdma: On disconnect, don't ignore ... ")
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=276
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/libacl_nfs4.h     | 8 ++------
- libnfs4acl/nfs4_new_ace.c | 3 ---
- 2 files changed, 2 insertions(+), 9 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/include/libacl_nfs4.h b/include/libacl_nfs4.h
-index 2f7cc28..7b19c6f 100644
---- a/include/libacl_nfs4.h
-+++ b/include/libacl_nfs4.h
-@@ -95,15 +95,11 @@
- #define NFS4_INHERITANCE_FLAGS (NFS4_ACE_FILE_INHERIT_ACE \
- 		| NFS4_ACE_DIRECTORY_INHERIT_ACE | NFS4_ACE_INHERIT_ONLY_ACE)
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 478b2fd..e6ac964 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -317,8 +317,15 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+ static void
+ rpcrdma_flush_cqs(struct rpcrdma_ep *ep)
+ {
+-	rpcrdma_recvcq_upcall(ep->rep_attr.recv_cq, ep);
+-	rpcrdma_sendcq_upcall(ep->rep_attr.send_cq, ep);
++	struct ib_wc wc;
++	LIST_HEAD(sched_list);
++
++	while (ib_poll_cq(ep->rep_attr.recv_cq, 1, &wc) > 0)
++		rpcrdma_recvcq_process_wc(&wc, &sched_list);
++	if (!list_empty(&sched_list))
++		rpcrdma_schedule_tasklet(&sched_list);
++	while (ib_poll_cq(ep->rep_attr.send_cq, 1, &wc) > 0)
++		rpcrdma_sendcq_process_wc(&wc);
+ }
  
--#define NFS4_ACE_MASK_IGNORE (NFS4_ACE_DELETE | NFS4_ACE_WRITE_OWNER \
--		| NFS4_ACE_READ_NAMED_ATTRS | NFS4_ACE_WRITE_NAMED_ATTRS)
- /* XXX not sure about the following.  Note that e.g. DELETE_CHILD is wrong in
-  * general (should only be ignored on files). */
- #define MASK_EQUAL(mask1, mask2) \
--	(((mask1) & NFS4_ACE_MASK_ALL & ~NFS4_ACE_MASK_IGNORE & \
--	  					~NFS4_ACE_DELETE_CHILD) \
--	 == ((mask2) & NFS4_ACE_MASK_ALL & ~NFS4_ACE_MASK_IGNORE & \
--		 				~NFS4_ACE_DELETE_CHILD))
-+	(((mask1) & NFS4_ACE_MASK_ALL & ~NFS4_ACE_DELETE_CHILD) \
-+	 == ((mask2) & NFS4_ACE_MASK_ALL & ~NFS4_ACE_DELETE_CHILD))
- 
- /*
-  * NFS4_MAX_ACESIZE -- the number of bytes in the string representation we
-diff --git a/libnfs4acl/nfs4_new_ace.c b/libnfs4acl/nfs4_new_ace.c
-index a93f74a..0c875b1 100644
---- a/libnfs4acl/nfs4_new_ace.c
-+++ b/libnfs4acl/nfs4_new_ace.c
-@@ -51,9 +51,6 @@ struct nfs4_ace * nfs4_new_ace(int is_directory, u32 type, u32 flag, u32 access_
- 	ace->type = type;
- 	ace->flag = flag;
- 
--	if( type == NFS4_ACE_ACCESS_DENIED_ACE_TYPE )
--		access_mask = access_mask & ~(NFS4_ACE_MASK_IGNORE);
--
- 	/* Castrate delete_child if we aren't a directory */
- 	if (!is_directory)
- 		access_mask &= ~NFS4_ACE_DELETE_CHILD;
--- 
-1.9.3
+ #ifdef RPC_DEBUG
 
