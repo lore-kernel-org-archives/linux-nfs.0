@@ -1,90 +1,240 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from dgate20.ts.fujitsu.com ([80.70.172.51]:64200 "EHLO
-	dgate20.ts.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751565AbaKEUW6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 15:22:58 -0500
-Message-Id: <61eb00$5diu09@dgate20u.abg.fsc.net>
-Date: 05 Nov 2014 21:22:56 +0100
-From: bstroesser@ts.fujitsu.com
-To: neilb@suse.de, linux-nfs@vger.kernel.org
-Cc: bfields@fieldses.org, bstroesser@ts.fujitsu.com
-Subject: [nfs-utils] [PATCH 1/3] rpc.mountd: set nonblocking mode if no libtirpc
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-qc0-f174.google.com ([209.85.216.174]:50361 "EHLO
+	mail-qc0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753752AbaKJQkt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2014 11:40:49 -0500
+Received: by mail-qc0-f174.google.com with SMTP id r5so5937185qcx.5
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Nov 2014 08:40:48 -0800 (PST)
+From: Milosz Tanski <milosz@adfin.com>
+To: linux-kernel@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-aio@kvack.org,
+        Mel Gorman <mgorman@suse.de>,
+        Volker Lendecke <Volker.Lendecke@sernet.de>, Tejun Heo <tj@kernel.org>,
+        Jeff Moyer <jmoyer@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Al Viro <viro@zeniv.linux.org.uk>, linux-api@vger.kernel.org,
+        Michael Kerrisk <mtk.manpages@gmail.com>, linux-arch@vger.kernel.org,
+        ceph-devel@vger.kernel.org, fuse-devel@lists.sourceforge.net,
+        linux-nfs@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-mm@kvack.org
+Subject: [PATCH v6 7/7] fs: add a flag for per-operation O_DSYNC semantics
+Date: Mon, 10 Nov 2014 11:40:30 -0500
+Message-Id: <66d286ef31b6b21ce252ba2716c228639b484e53.1415636409.git.milosz@adfin.com>
+In-Reply-To: <cover.1415636409.git.milosz@adfin.com>
+References: <cover.1415636409.git.milosz@adfin.com>
+In-Reply-To: <cover.1415636409.git.milosz@adfin.com>
+References: <cover.1415636409.git.milosz@adfin.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RnJvbTogQm9kbyBTdHJvZXNzZXIgPGJzdHJvZXNzZXJAdHMuZnVqaXRzdS5jb20+CkRhdGU6
-IFRodSwgMDkgT2N0IDIwMTQgMTM6MDY6MTkgKzAyMDAKU3ViamVjdDogW25mcy11dGlsc10g
-W1BBVENIIDEvM10gcnBjLm1vdW50ZDogc2V0IG5vbmJsb2NraW5nIG1vZGUgaWYgbm8gbGli
-dGlycGMKCklmIG1vdW50ZCBpcyBidWlsdCB3aXRob3V0IGxpYnRpcnBjIGFuZCBpdCBpcyBz
-dGFydGVkIHVzaW5nICItcCBYWFgiIG9wdGlvbiwKdGhlIHRjcCBsaXN0ZW5lcnMgYW5kIHRo
-ZSBzb2NrZXRzIHdhaXRpbmcgZm9yIFVEUCBtZXNzYWdlcyBhcmUgbm90IGluCm5vbi1ibG9j
-a2luZyBtb2RlLiBUaHVzIGlmIHJ1bm5pbmcgd2l0aCBtdWx0aXBsZSB0aHJlYWRzICgtdCBY
-WCksCmFsbCB0aHJlYWRzIHdpbGwgd2FrZSB1cCBmcm9tIHNlbGVjdCBvbiBhIGNvbm5lY3Rp
-b24gcmVxdWVzdCBvciBhIFVEUCBtZXNzYWdlLApidXQgb25seSBvbmUgdGhyZWFkIHdpbGwg
-c3VjY2VlZC4gQWxsIG90aGVycyB3aWxsIHdhaXQgb24gYWNjZXB0KCkgb3IgcmVhZCgpCmZv
-ciB0aGUgbmV4dCBldmVudC4KClNpZ25lZC1vZmYtYnk6IEJvZG8gU3Ryb2Vzc2VyIDxic3Ry
-b2Vzc2VyQHRzLmZ1aml0c3UuY29tPgotLS0KCi0tLSBuZnMtdXRpbHMtMS4zLjEvc3VwcG9y
-dC9pbmNsdWRlL25mc2xpYi5oCTIwMTQtMTAtMDkgMTI6NTI6MzAuMDAwMDAwMDAwICswMjAw
-CisrKyBuZnMtdXRpbHMtMS4zLjEvc3VwcG9ydC9pbmNsdWRlL25mc2xpYi5oCTIwMTQtMTAt
-MDkgMTI6NTM6MzcuMDAwMDAwMDAwICswMjAwCkBAIC0xNzQsNiArMTc0LDcgQEAgdm9pZCBj
-bG9zZWFsbChpbnQgbWluKTsKIAogaW50CQkJc3ZjdGNwX3NvY2tldCAodV9sb25nIF9fbnVt
-YmVyLCBpbnQgX19yZXVzZSk7CiBpbnQJCQlzdmN1ZHBfc29ja2V0ICh1X2xvbmcgX19udW1i
-ZXIpOworaW50CQkJc3Zjc29ja19ub25ibG9jayAoaW50IF9fc29jayk7CiAKIC8qIE1pc2Mg
-c2hhcmVkIGNvZGUgcHJvdG90eXBlcyAqLwogc2l6ZV90ICBzdHJsY2F0KGNoYXIgKiwgY29u
-c3QgY2hhciAqLCBzaXplX3QpOwotLS0gbmZzLXV0aWxzLTEuMy4xL3N1cHBvcnQvbmZzL3N2
-Y19zb2NrZXQuYwkyMDE0LTEwLTA5IDEyOjU2OjE0LjAwMDAwMDAwMCArMDIwMAorKysgbmZz
-LXV0aWxzLTEuMy4xL3N1cHBvcnQvbmZzL3N2Y19zb2NrZXQuYwkyMDE0LTEwLTA5IDEzOjEw
-OjQ0LjAwMDAwMDAwMCArMDIwMApAQCAtNzYsNiArNzYsMzkgQEAgaW50IGdldHNlcnZwb3J0
-KHVfbG9uZyBudW1iZXIsIGNvbnN0IGNoYQogCXJldHVybiAwOwogfQogCitpbnQKK3N2Y3Nv
-Y2tfbm9uYmxvY2soaW50IHNvY2spCit7CisJaW50IGZsYWdzOworCisJaWYgKHNvY2sgPCAw
-KQorCQlyZXR1cm4gc29jazsKKworCS8qIFRoaXMgc29ja2V0IG1pZ2h0IGJlIHNoYXJlZCBh
-bW9uZyBtdWx0aXBsZSBwcm9jZXNzZXMKKwkgKiBpZiBtb3VudGQgaXMgcnVuIG11bHRpLXRo
-cmVhZGVkLiAgU28gaXQgaXMgc2FmZXN0IHRvCisJICogbWFrZSBpdCBub24tYmxvY2tpbmcs
-IGVsc2UgYWxsIHRocmVhZHMgbWlnaHQgd2FrZQorCSAqIG9uZSB3aWxsIGdldCB0aGUgZGF0
-YSwgYW5kIHRoZSBvdGhlcnMgd2lsbCBibG9jaworCSAqIGluZGVmaW5pdGVseS4KKwkgKiBJ
-biBhbGwgY2FzZXMsIHRyYW5zYWN0aW9uIG9uIHRoaXMgc29ja2V0IGFyZSBhdG9taWMKKwkg
-KiAoYWNjZXB0IGZvciBUQ1AsIHBhY2tldC1yZWFkIGFuZCBwYWNrZXQtd3JpdGUgZm9yIFVE
-UCkKKwkgKiBzbyBPX05PTkJMT0NLIHdpbGwgbm90IGNvbmZ1c2UgdW5wcmVwYXJlZCBjb2Rl
-IGNhdXNpbmcKKwkgKiBpdCB0byBjb3JydXB0IG1lc3NhZ2VzLgorCSAqIEl0IGdlbmVyYWxs
-eSBzYWZlc3QgdG8gaGF2ZSBPX05PTkJMT0NLIHdoZW4gZG9pbmcgYW4gYWNjZXB0CisJICog
-YXMgaWYgd2UgZ2V0IGEgUlNUIGFmdGVyIHRoZSBTWU4gYW5kIGJlZm9yZSBhY2NlcHQgcnVu
-cywKKwkgKiB3ZSBjYW4gYmxvY2sgZGVzcGl0ZSBiZWluZyB0b2xkIHRoZXJlIHdhcyBhbiBh
-Y2NlcHRhYmxlCisJICogY29ubmVjdGlvbi4KKwkgKi8KKwlpZiAoKGZsYWdzID0gZmNudGwo
-c29jaywgRl9HRVRGTCkpIDwgMCkKKwkJcGVycm9yKF8oInN2Y19zb2NrZXQ6IGNhbid0IGdl
-dCBzb2NrZXQgZmxhZ3MiKSk7CisJZWxzZSBpZiAoZmNudGwoc29jaywgRl9TRVRGTCwgZmxh
-Z3N8T19OT05CTE9DSykgPCAwKQorCQlwZXJyb3IoXygic3ZjX3NvY2tldDogY2FuJ3Qgc2V0
-IHNvY2tldCBmbGFncyIpKTsKKwllbHNlCisJCXJldHVybiBzb2NrOworCisJKHZvaWQpIF9f
-Y2xvc2Uoc29jayk7CisJcmV0dXJuIC0xOworfQorCiBzdGF0aWMgaW50CiBzdmNfc29ja2V0
-ICh1X2xvbmcgbnVtYmVyLCBpbnQgdHlwZSwgaW50IHByb3RvY29sLCBpbnQgcmV1c2UpCiB7
-CkBAIC0xMTMsMzggKzE0Niw3IEBAIHN2Y19zb2NrZXQgKHVfbG9uZyBudW1iZXIsIGludCB0
-eXBlLCBpbnQKICAgICAgIHNvY2sgPSAtMTsKICAgICB9CiAKLSAgaWYgKHNvY2sgPj0gMCkK
-LSAgICB7Ci0JICAgIC8qIFRoaXMgc29ja2V0IG1pZ2h0IGJlIHNoYXJlZCBhbW9uZyBtdWx0
-aXBsZSBwcm9jZXNzZXMKLQkgICAgICogaWYgbW91bnRkIGlzIHJ1biBtdWx0aS10aHJlYWRl
-ZC4gIFNvIGl0IGlzIHNhZmVzdCB0bwotCSAgICAgKiBtYWtlIGl0IG5vbi1ibG9ja2luZywg
-ZWxzZSBhbGwgdGhyZWFkcyBtaWdodCB3YWtlCi0JICAgICAqIG9uZSB3aWxsIGdldCB0aGUg
-ZGF0YSwgYW5kIHRoZSBvdGhlcnMgd2lsbCBibG9jawotCSAgICAgKiBpbmRlZmluaXRlbHku
-Ci0JICAgICAqIEluIGFsbCBjYXNlcywgdHJhbnNhY3Rpb24gb24gdGhpcyBzb2NrZXQgYXJl
-IGF0b21pYwotCSAgICAgKiAoYWNjZXB0IGZvciBUQ1AsIHBhY2tldC1yZWFkIGFuZCBwYWNr
-ZXQtd3JpdGUgZm9yIFVEUCkKLQkgICAgICogc28gT19OT05CTE9DSyB3aWxsIG5vdCBjb25m
-dXNlIHVucHJlcGFyZWQgY29kZSBjYXVzaW5nCi0JICAgICAqIGl0IHRvIGNvcnJ1cHQgbWVz
-c2FnZXMuCi0JICAgICAqIEl0IGdlbmVyYWxseSBzYWZlc3QgdG8gaGF2ZSBPX05PTkJMT0NL
-IHdoZW4gZG9pbmcgYW4gYWNjZXB0Ci0JICAgICAqIGFzIGlmIHdlIGdldCBhIFJTVCBhZnRl
-ciB0aGUgU1lOIGFuZCBiZWZvcmUgYWNjZXB0IHJ1bnMsCi0JICAgICAqIHdlIGNhbiBibG9j
-ayBkZXNwaXRlIGJlaW5nIHRvbGQgdGhlcmUgd2FzIGFuIGFjY2VwdGFibGUKLQkgICAgICog
-Y29ubmVjdGlvbi4KLQkgICAgICovCi0JaW50IGZsYWdzOwotCWlmICgoZmxhZ3MgPSBmY250
-bChzb2NrLCBGX0dFVEZMKSkgPCAwKQotCSAgewotCSAgICAgIHBlcnJvciAoXygic3ZjX3Nv
-Y2tldDogY2FuJ3QgZ2V0IHNvY2tldCBmbGFncyIpKTsKLQkgICAgICAodm9pZCkgX19jbG9z
-ZSAoc29jayk7Ci0JICAgICAgc29jayA9IC0xOwotCSAgfQotCWVsc2UgaWYgKGZjbnRsKHNv
-Y2ssIEZfU0VURkwsIGZsYWdzfE9fTk9OQkxPQ0spIDwgMCkKLQkgIHsKLQkgICAgICBwZXJy
-b3IgKF8oInN2Y19zb2NrZXQ6IGNhbid0IHNldCBzb2NrZXQgZmxhZ3MiKSk7Ci0JICAgICAg
-KHZvaWQpIF9fY2xvc2UgKHNvY2spOwotCSAgICAgIHNvY2sgPSAtMTsKLQkgIH0KLSAgICB9
-Ci0KLSAgcmV0dXJuIHNvY2s7CisgIHJldHVybiBzdmNzb2NrX25vbmJsb2NrKHNvY2spOwog
-fQogCiAvKgotLS0gbmZzLXV0aWxzLTEuMy4xL3N1cHBvcnQvbmZzL3JwY21pc2MuYwkyMDE0
-LTEwLTA4IDIxOjIyOjA0LjAwMDAwMDAwMCArMDIwMAorKysgbmZzLXV0aWxzLTEuMy4xL3N1
-cHBvcnQvbmZzL3JwY21pc2MuYwkyMDE0LTEwLTA4IDIxOjIyOjM2LjAwMDAwMDAwMCArMDIw
-MApAQCAtMTA0LDcgKzEwNCw3IEBAIG1ha2Vzb2NrKGludCBwb3J0LCBpbnQgcHJvdG8pCiAJ
-CXJldHVybiAtMTsKIAl9CiAKLQlyZXR1cm4gc29jazsKKwlyZXR1cm4gc3Zjc29ja19ub25i
-bG9jayhzb2NrKTsKIH0KIAogdm9pZAo=
+From: Christoph Hellwig <hch@lst.de>
 
+With the new read/write with flags syscalls we can support a flag
+to enable O_DSYNC semantics on a per-operation basis.  This іs
+useful to implement protocols like SMB, NFS or SCSI that have such
+per-operation flags.
+
+Example program below:
+
+cat > pwritev2.c << EOF
+
+        (off_t) val,                              \
+        (off_t) ((((uint64_t) (val)) >> (sizeof (long) * 4)) >> (sizeof (long) * 4))
+
+static ssize_t
+pwritev2(int fd, const struct iovec *iov, int iovcnt, off_t offset, int flags)
+{
+        return syscall(__NR_pwritev2, fd, iov, iovcnt, LO_HI_LONG(offset),
+			 flags);
+}
+
+int main(int argc, char **argv)
+{
+	int fd = open(argv[1], O_WRONLY|O_CREAT|O_TRUNC, 0666);
+	char buf[1024];
+	struct iovec iov = { .iov_base = buf, .iov_len = 1024 };
+	int ret;
+
+        if (fd < 0) {
+                perror("open");
+                return 0;
+        }
+
+	memset(buf, 0xfe, sizeof(buf));
+
+	ret = pwritev2(fd, &iov, 1, 0, RWF_DSYNC);
+	if (ret < 0)
+		perror("pwritev2");
+	else
+		printf("ret = %d\n", ret);
+
+	return 0;
+}
+EOF
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+[milosz@adfin.com: comapt syscall changes for RWF_ODSYNC]
+Signed-off-by: Milosz Tanski <milosz@adfin.com>
+Reviewed-by: Jeff Moyer <jmoyer@redhat.com>
+Acked-by: Sage Weil <sage@redhat.com>
+---
+ fs/ceph/file.c     |  4 +++-
+ fs/fuse/file.c     |  2 ++
+ fs/nfs/file.c      | 10 ++++++----
+ fs/ocfs2/file.c    |  6 ++++--
+ fs/read_write.c    |  8 ++++++--
+ include/linux/fs.h |  3 ++-
+ mm/filemap.c       |  4 +++-
+ 7 files changed, 26 insertions(+), 11 deletions(-)
+
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index b798b5c..2d4e15a 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -983,7 +983,9 @@ retry_snap:
+ 	ceph_put_cap_refs(ci, got);
+ 
+ 	if (written >= 0 &&
+-	    ((file->f_flags & O_SYNC) || IS_SYNC(file->f_mapping->host) ||
++	    ((file->f_flags & O_SYNC) ||
++	     IS_SYNC(file->f_mapping->host) ||
++	     (iocb->ki_rwflags & RWF_DSYNC) ||
+ 	     ceph_osdmap_flag(osdc->osdmap, CEPH_OSDMAP_NEARFULL))) {
+ 		err = vfs_fsync_range(file, pos, pos + written - 1, 1);
+ 		if (err < 0)
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index caa8d95..bb4fb23 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -1248,6 +1248,8 @@ static ssize_t fuse_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
+ 		written += written_buffered;
+ 		iocb->ki_pos = pos + written_buffered;
+ 	} else {
++		if (iocb->ki_rwflags & RWF_DSYNC)
++			return -EINVAL;
+ 		written = fuse_perform_write(file, mapping, from, pos);
+ 		if (written >= 0)
+ 			iocb->ki_pos = pos + written;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index aa9046f..c59b0b7 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -652,13 +652,15 @@ static const struct vm_operations_struct nfs_file_vm_ops = {
+ 	.remap_pages = generic_file_remap_pages,
+ };
+ 
+-static int nfs_need_sync_write(struct file *filp, struct inode *inode)
++static int nfs_need_sync_write(struct kiocb *iocb, struct inode *inode)
+ {
+ 	struct nfs_open_context *ctx;
+ 
+-	if (IS_SYNC(inode) || (filp->f_flags & O_DSYNC))
++	if (IS_SYNC(inode) ||
++	    (iocb->ki_filp->f_flags & O_DSYNC) ||
++	    (iocb->ki_rwflags & RWF_DSYNC))
+ 		return 1;
+-	ctx = nfs_file_open_context(filp);
++	ctx = nfs_file_open_context(iocb->ki_filp);
+ 	if (test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags) ||
+ 	    nfs_ctx_key_to_expire(ctx))
+ 		return 1;
+@@ -705,7 +707,7 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 		written = result;
+ 
+ 	/* Return error values for O_DSYNC and IS_SYNC() */
+-	if (result >= 0 && nfs_need_sync_write(file, inode)) {
++	if (result >= 0 && nfs_need_sync_write(iocb, inode)) {
+ 		int err = vfs_fsync(file, 0);
+ 		if (err < 0)
+ 			result = err;
+diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
+index bb66ca4..8f9a86b 100644
+--- a/fs/ocfs2/file.c
++++ b/fs/ocfs2/file.c
+@@ -2374,8 +2374,10 @@ out_dio:
+ 	/* buffered aio wouldn't have proper lock coverage today */
+ 	BUG_ON(ret == -EIOCBQUEUED && !(file->f_flags & O_DIRECT));
+ 
+-	if (((file->f_flags & O_DSYNC) && !direct_io) || IS_SYNC(inode) ||
+-	    ((file->f_flags & O_DIRECT) && !direct_io)) {
++	if (((file->f_flags & O_DSYNC) && !direct_io) ||
++	    IS_SYNC(inode) ||
++	    ((file->f_flags & O_DIRECT) && !direct_io) ||
++	    (iocb->ki_rwflags & RWF_DSYNC)) {
+ 		ret = filemap_fdatawrite_range(file->f_mapping, *ppos,
+ 					       *ppos + count - 1);
+ 		if (ret < 0)
+diff --git a/fs/read_write.c b/fs/read_write.c
+index adf85ab..c2e3c0a 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -841,6 +841,8 @@ static ssize_t do_readv_writev(int type, struct file *file,
+ 	} else {
+ 		if (type == READ && (flags & RWF_NONBLOCK))
+ 			return -EAGAIN;
++		if (type == WRITE && (flags & RWF_DSYNC))
++			return -EINVAL;
+ 
+ 		if (fnv)
+ 			ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
+@@ -888,7 +890,7 @@ ssize_t vfs_writev(struct file *file, const struct iovec __user *vec,
+ 		return -EBADF;
+ 	if (!(file->f_mode & FMODE_CAN_WRITE))
+ 		return -EINVAL;
+-	if (flags & ~0)
++	if (flags & ~RWF_DSYNC)
+ 		return -EINVAL;
+ 
+ 	return do_readv_writev(WRITE, file, vec, vlen, pos, flags);
+@@ -1082,6 +1084,8 @@ static ssize_t compat_do_readv_writev(int type, struct file *file,
+ 	} else {
+ 		if (type == READ && (flags & RWF_NONBLOCK))
+ 			return -EAGAIN;
++		if (type == WRITE && (flags & RWF_DSYNC))
++			return -EINVAL;
+ 
+ 		if (fnv)
+ 			ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
+@@ -1221,7 +1225,7 @@ static size_t compat_writev(struct file *file,
+ 	ret = -EINVAL;
+ 	if (!(file->f_mode & FMODE_CAN_WRITE))
+ 		goto out;
+-	if (flags & ~0)
++	if (flags & ~RWF_DSYNC)
+ 		goto out;
+ 
+ 	ret = compat_do_readv_writev(WRITE, file, vec, vlen, pos, flags);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 7d0e116..7786b88 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1460,7 +1460,8 @@ struct block_device_operations;
+ #define HAVE_UNLOCKED_IOCTL 1
+ 
+ /* These flags are used for the readv/writev syscalls with flags. */
+-#define RWF_NONBLOCK 0x00000001
++#define RWF_NONBLOCK	0x00000001
++#define RWF_DSYNC	0x00000002
+ 
+ struct iov_iter;
+ 
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 535967b..8c50d35 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2669,7 +2669,9 @@ int generic_write_sync(struct kiocb *iocb, loff_t count)
+ 	struct file *file = iocb->ki_filp;
+ 
+ 	if (count > 0 &&
+-	    ((file->f_flags & O_DSYNC) || IS_SYNC(file->f_mapping->host))) {
++	    ((file->f_flags & O_DSYNC) ||
++	     (iocb->ki_rwflags & RWF_DSYNC) ||
++	     IS_SYNC(file->f_mapping->host))) {
+ 		bool fdatasync = !(file->f_flags & __O_SYNC);
+ 		ssize_t ret;
+ 
+-- 
+1.9.1
 
