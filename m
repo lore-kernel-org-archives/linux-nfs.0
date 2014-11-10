@@ -1,57 +1,323 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:29192 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752510AbaKGVCQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Nov 2014 16:02:16 -0500
-Message-ID: <545D3356.2060900@Netapp.com>
-Date: Fri, 7 Nov 2014 16:02:14 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v4 2/3] nfsd: Add ALLOCATE support
-References: <1415389467-16547-1-git-send-email-Anna.Schumaker@Netapp.com> <1415389467-16547-3-git-send-email-Anna.Schumaker@Netapp.com> <20141107210115.GA5723@fieldses.org>
-In-Reply-To: <20141107210115.GA5723@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f51.google.com ([209.85.216.51]:48992 "EHLO
+	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753636AbaKJQkm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2014 11:40:42 -0500
+Received: by mail-qa0-f51.google.com with SMTP id f12so5618812qad.10
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Nov 2014 08:40:42 -0800 (PST)
+From: Milosz Tanski <milosz@adfin.com>
+To: linux-kernel@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-aio@kvack.org, Mel Gorman <mgorman@suse.de>,
+        Volker Lendecke <Volker.Lendecke@sernet.de>, Tejun Heo <tj@kernel.org>,
+        Jeff Moyer <jmoyer@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+        Al Viro <viro@zeniv.linux.org.uk>, linux-api@vger.kernel.org,
+        Michael Kerrisk <mtk.manpages@gmail.com>, linux-arch@vger.kernel.org,
+        ceph-devel@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+        linux-mm@kvack.org
+Subject: [PATCH v6 4/7] vfs: RWF_NONBLOCK flag for preadv2
+Date: Mon, 10 Nov 2014 11:40:27 -0500
+Message-Id: <8af2f3148b608b0832332250c51db549e5ad9040.1415636409.git.milosz@adfin.com>
+In-Reply-To: <cover.1415636409.git.milosz@adfin.com>
+References: <cover.1415636409.git.milosz@adfin.com>
+In-Reply-To: <cover.1415636409.git.milosz@adfin.com>
+References: <cover.1415636409.git.milosz@adfin.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/07/2014 04:01 PM, J. Bruce Fields wrote:
-> On Fri, Nov 07, 2014 at 02:44:26PM -0500, Anna.Schumaker@netapp.com wrote:
->> @@ -533,6 +534,28 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
->>  }
->>  #endif
->>  
->> +__be32 nfsd4_vfs_fallocate(struct svc_rqst *rqstp, struct svc_fh *fhp,
->> +			   struct file *file, loff_t offset, loff_t len,
->> +			   int flags)
->> +{
->> +	__be32 err;
->> +	int error;
->> +
->> +	if (!S_ISREG(file_inode(file)->i_mode))
->> +		return nfserr_inval;
->> +
->> +	err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry, NFSD_MAY_WRITE);
->> +	if (err)
->> +		return err;
->> +
->> +	error = vfs_fallocate(file, flags, offset, len);
->> +	if (!error)
->> +		error = commit_metadata(fhp);
->> +
->> +	if (error == -ENODEV)
->> +		return nfserr_inval;
-> 
-> 
-> I don't think we need this check any more.
-> 
-> I'll just remove it myself as I apply if there's no objection.
+generic_file_read_iter() supports a new flag RWF_NONBLOCK which says that we
+only want to read the data if it's already in the page cache.
 
-Right!  Thanks for the reminder, I have no objections if you remove it :)
+Additionally, there are a few filesystems that we have to specifically
+bail early if RWF_NONBLOCK because the op would block. Christoph Hellwig
+contributed this code.
 
-Anna
-> 
-> --b.
-> 
+Signed-off-by: Milosz Tanski <milosz@adfin.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jeff Moyer <jmoyer@redhat.com>
+Acked-by: Sage Weil <sage@redhat.com>
+---
+ fs/ceph/file.c     |  2 ++
+ fs/cifs/file.c     |  6 ++++++
+ fs/nfs/file.c      |  5 ++++-
+ fs/ocfs2/file.c    |  6 ++++++
+ fs/pipe.c          |  3 ++-
+ fs/read_write.c    | 44 ++++++++++++++++++++++++++++++--------------
+ fs/xfs/xfs_file.c  |  4 ++++
+ include/linux/fs.h |  3 +++
+ mm/filemap.c       | 18 ++++++++++++++++++
+ mm/shmem.c         |  4 ++++
+ 10 files changed, 79 insertions(+), 16 deletions(-)
+
+diff --git a/fs/ceph/file.c b/fs/ceph/file.c
+index d7e0da8..b798b5c 100644
+--- a/fs/ceph/file.c
++++ b/fs/ceph/file.c
+@@ -822,6 +822,8 @@ again:
+ 	if ((got & (CEPH_CAP_FILE_CACHE|CEPH_CAP_FILE_LAZYIO)) == 0 ||
+ 	    (iocb->ki_filp->f_flags & O_DIRECT) ||
+ 	    (fi->flags & CEPH_F_SYNC)) {
++		if (iocb->ki_rwflags & O_NONBLOCK)
++			return -EAGAIN;
+ 
+ 		dout("aio_sync_read %p %llx.%llx %llu~%u got cap refs on %s\n",
+ 		     inode, ceph_vinop(inode), iocb->ki_pos, (unsigned)len,
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 3e4d00a..c485afa 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -3005,6 +3005,9 @@ ssize_t cifs_user_readv(struct kiocb *iocb, struct iov_iter *to)
+ 	struct cifs_readdata *rdata, *tmp;
+ 	struct list_head rdata_list;
+ 
++	if (iocb->ki_rwflags & RWF_NONBLOCK)
++		return -EAGAIN;
++
+ 	len = iov_iter_count(to);
+ 	if (!len)
+ 		return 0;
+@@ -3123,6 +3126,9 @@ cifs_strict_readv(struct kiocb *iocb, struct iov_iter *to)
+ 	    ((cifs_sb->mnt_cifs_flags & CIFS_MOUNT_NOPOSIXBRL) == 0))
+ 		return generic_file_read_iter(iocb, to);
+ 
++	if (iocb->ki_rwflags & RWF_NONBLOCK)
++		return -EAGAIN;
++
+ 	/*
+ 	 * We need to hold the sem to be sure nobody modifies lock list
+ 	 * with a brlock that prevents reading.
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 2ab6f00..aa9046f 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -171,8 +171,11 @@ nfs_file_read(struct kiocb *iocb, struct iov_iter *to)
+ 	struct inode *inode = file_inode(iocb->ki_filp);
+ 	ssize_t result;
+ 
+-	if (iocb->ki_filp->f_flags & O_DIRECT)
++	if (iocb->ki_filp->f_flags & O_DIRECT) {
++		if (iocb->ki_rwflags & O_NONBLOCK)
++			return -EAGAIN;
+ 		return nfs_file_direct_read(iocb, to, iocb->ki_pos);
++	}
+ 
+ 	dprintk("NFS: read(%pD2, %zu@%lu)\n",
+ 		iocb->ki_filp,
+diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
+index 324dc93..bb66ca4 100644
+--- a/fs/ocfs2/file.c
++++ b/fs/ocfs2/file.c
+@@ -2472,6 +2472,12 @@ static ssize_t ocfs2_file_read_iter(struct kiocb *iocb,
+ 			filp->f_path.dentry->d_name.name,
+ 			to->nr_segs);	/* GRRRRR */
+ 
++	/*
++	 * No non-blocking reads for ocfs2 for now.  Might be doable with
++	 * non-blocking cluster lock helpers.
++	 */
++	if (iocb->ki_rwflags & RWF_NONBLOCK)
++		return -EAGAIN;
+ 
+ 	if (!inode) {
+ 		ret = -EINVAL;
+diff --git a/fs/pipe.c b/fs/pipe.c
+index 21981e5..212bf68 100644
+--- a/fs/pipe.c
++++ b/fs/pipe.c
+@@ -302,7 +302,8 @@ pipe_read(struct kiocb *iocb, struct iov_iter *to)
+ 			 */
+ 			if (ret)
+ 				break;
+-			if (filp->f_flags & O_NONBLOCK) {
++			if ((filp->f_flags & O_NONBLOCK) ||
++			    (iocb->ki_rwflags & RWF_NONBLOCK)) {
+ 				ret = -EAGAIN;
+ 				break;
+ 			}
+diff --git a/fs/read_write.c b/fs/read_write.c
+index b1b4bc8..adf85ab 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -835,14 +835,19 @@ static ssize_t do_readv_writev(int type, struct file *file,
+ 		file_start_write(file);
+ 	}
+ 
+-	if (iter_fn)
++	if (iter_fn) {
+ 		ret = do_iter_readv_writev(file, type, iov, nr_segs, tot_len,
+ 						pos, iter_fn, flags);
+-	else if (fnv)
+-		ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
+-						pos, fnv);
+-	else
+-		ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
++	} else {
++		if (type == READ && (flags & RWF_NONBLOCK))
++			return -EAGAIN;
++
++		if (fnv)
++			ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
++							pos, fnv);
++		else
++			ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
++	}
+ 
+ 	if (type != READ)
+ 		file_end_write(file);
+@@ -866,8 +871,10 @@ ssize_t vfs_readv(struct file *file, const struct iovec __user *vec,
+ 		return -EBADF;
+ 	if (!(file->f_mode & FMODE_CAN_READ))
+ 		return -EINVAL;
+-	if (flags & ~0)
++	if (flags & ~RWF_NONBLOCK)
+ 		return -EINVAL;
++	if ((file->f_flags & O_DIRECT) && (flags & RWF_NONBLOCK))
++		return -EAGAIN;
+ 
+ 	return do_readv_writev(READ, file, vec, vlen, pos, flags);
+ }
+@@ -1069,14 +1076,19 @@ static ssize_t compat_do_readv_writev(int type, struct file *file,
+ 		file_start_write(file);
+ 	}
+ 
+-	if (iter_fn)
++	if (iter_fn) {
+ 		ret = do_iter_readv_writev(file, type, iov, nr_segs, tot_len,
+ 						pos, iter_fn, flags);
+-	else if (fnv)
+-		ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
+-						pos, fnv);
+-	else
+-		ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
++	} else {
++		if (type == READ && (flags & RWF_NONBLOCK))
++			return -EAGAIN;
++
++		if (fnv)
++			ret = do_sync_readv_writev(file, iov, nr_segs, tot_len,
++							pos, fnv);
++		else
++			ret = do_loop_readv_writev(file, iov, nr_segs, pos, fn);
++	}
+ 
+ 	if (type != READ)
+ 		file_end_write(file);
+@@ -1105,7 +1117,11 @@ static size_t compat_readv(struct file *file,
+ 	ret = -EINVAL;
+ 	if (!(file->f_mode & FMODE_CAN_READ))
+ 		goto out;
+-	if (flags & ~0)
++	if (flags & ~RWF_NONBLOCK)
++		goto out;
++
++	ret = -EAGAIN;
++	if ((file->f_flags & O_DIRECT) && (flags & RWF_NONBLOCK))
+ 		goto out;
+ 
+ 	ret = compat_do_readv_writev(READ, file, vec, vlen, pos, flags);
+diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+index eb596b4..b1f6334 100644
+--- a/fs/xfs/xfs_file.c
++++ b/fs/xfs/xfs_file.c
+@@ -246,6 +246,10 @@ xfs_file_read_iter(
+ 
+ 	XFS_STATS_INC(xs_read_calls);
+ 
++	/* XXX: need a non-blocking iolock helper, shouldn't be too hard */
++	if (iocb->ki_rwflags & RWF_NONBLOCK)
++		return -EAGAIN;
++
+ 	if (unlikely(file->f_flags & O_DIRECT))
+ 		ioflags |= XFS_IO_ISDIRECT;
+ 	if (file->f_mode & FMODE_NOCMTIME)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9ed5711..eaebd99 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1459,6 +1459,9 @@ struct block_device_operations;
+ #define HAVE_COMPAT_IOCTL 1
+ #define HAVE_UNLOCKED_IOCTL 1
+ 
++/* These flags are used for the readv/writev syscalls with flags. */
++#define RWF_NONBLOCK 0x00000001
++
+ struct iov_iter;
+ 
+ struct file_operations {
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 530c263..09d3af3 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -1494,6 +1494,8 @@ static ssize_t do_generic_file_read(struct file *filp, loff_t *ppos,
+ find_page:
+ 		page = find_get_page(mapping, index);
+ 		if (!page) {
++			if (flags & RWF_NONBLOCK)
++				goto would_block;
+ 			page_cache_sync_readahead(mapping,
+ 					ra, filp,
+ 					index, last_index - index);
+@@ -1585,6 +1587,11 @@ page_ok:
+ 		continue;
+ 
+ page_not_up_to_date:
++		if (flags & RWF_NONBLOCK) {
++			page_cache_release(page);
++			goto would_block;
++		}
++
+ 		/* Get exclusive access to the page ... */
+ 		error = lock_page_killable(page);
+ 		if (unlikely(error))
+@@ -1604,6 +1611,12 @@ page_not_up_to_date_locked:
+ 			goto page_ok;
+ 		}
+ 
++		if (flags & RWF_NONBLOCK) {
++			unlock_page(page);
++			page_cache_release(page);
++			goto would_block;
++		}
++
+ readpage:
+ 		/*
+ 		 * A previous I/O error may have been due to temporary
+@@ -1674,6 +1687,8 @@ no_cached_page:
+ 		goto readpage;
+ 	}
+ 
++would_block:
++	error = -EAGAIN;
+ out:
+ 	ra->prev_pos = prev_index;
+ 	ra->prev_pos <<= PAGE_CACHE_SHIFT;
+@@ -1707,6 +1722,9 @@ generic_file_read_iter(struct kiocb *iocb, struct iov_iter *iter)
+ 		size_t count = iov_iter_count(iter);
+ 		loff_t size;
+ 
++		if (iocb->ki_rwflags & RWF_NONBLOCK)
++			return -EAGAIN;
++
+ 		if (!count)
+ 			goto out; /* skip atime */
+ 		size = i_size_read(inode);
+diff --git a/mm/shmem.c b/mm/shmem.c
+index cd6fc75..5c30f04 100644
+--- a/mm/shmem.c
++++ b/mm/shmem.c
+@@ -1531,6 +1531,10 @@ static ssize_t shmem_file_read_iter(struct kiocb *iocb, struct iov_iter *to)
+ 	ssize_t retval = 0;
+ 	loff_t *ppos = &iocb->ki_pos;
+ 
++	/* XXX: should be easily supportable */
++	if (iocb->ki_rwflags & RWF_NONBLOCK)
++		return -EAGAIN;
++
+ 	/*
+ 	 * Might this read be for a stacking filesystem?  Then when reading
+ 	 * holes of a sparse file, we actually need to allocate those pages,
+-- 
+1.9.1
 
