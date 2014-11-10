@@ -1,113 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:47201 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751044AbaKQFl5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2014 00:41:57 -0500
-Date: Mon, 17 Nov 2014 16:41:41 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Eryu Guan <eguan@redhat.com>
-Cc: Steve French <smfrench@gmail.com>, fstests@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        Weston Andros Adamson <dros@primarydata.com>
-Subject: Re: [PATCH v2 1/5] common: re-enable tests that require scratch dev
- on NFS
-Message-ID: <20141117054141.GK23575@dastard>
-References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
- <1414775040-4051-2-git-send-email-eguan@redhat.com>
- <CAH2r5muuJRcC4YgFkwUeUcCeEntgY+4POF8-bwmox64wXykuTw@mail.gmail.com>
- <20141113033317.GC28565@dastard>
- <CAH2r5msD-FDDvUL5Gt+7Fzt-tvduS93sxM-PG9dZjvk0ED53QA@mail.gmail.com>
- <20141115053533.GK2863@dhcp-13-216.nay.redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:38812 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753736AbaKJRhs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Nov 2014 12:37:48 -0500
+Message-ID: <5460F7DF.6090307@RedHat.com>
+Date: Mon, 10 Nov 2014 12:37:35 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141115053533.GK2863@dhcp-13-216.nay.redhat.com>
+To: Sami Wagiaalla <swagiaal@redhat.com>, libtirpc-devel@lists.sourceforge.net
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: Add '--with-nss-modules' configure option to specify
+ nss modules.
+References: <545D34F6.8080703@redhat.com>
+In-Reply-To: <545D34F6.8080703@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 15, 2014 at 01:35:33PM +0800, Eryu Guan wrote:
-> On Fri, Nov 14, 2014 at 11:02:50AM -0600, Steve French wrote:
-> > On Wed, Nov 12, 2014 at 9:33 PM, Dave Chinner <david@fromorbit.com> wrote:
-> > > On Wed, Nov 12, 2014 at 12:36:13PM -0600, Steve French wrote:
-> > >> On Fri, Oct 31, 2014 at 12:03 PM, Eryu Guan <eguan@redhat.com> wrote:
-> > >> > This commit disables tests requires scratch dev running on NFS
-> > >> >
-> > >> > c041421 xfstests: stop special casing nfs and udf
-> > >> >
-> > >> > Now re-enable them to get a larger test coverage on NFS.
-> > >> >
-> > >> > Signed-off-by: Eryu Guan <eguan@redhat.com>
-> > >> > ---
-> > >> >  common/rc | 22 +++++++++++++++++++---
-> > >> >  1 file changed, 19 insertions(+), 3 deletions(-)
-> > >> >
-> > >> > diff --git a/common/rc b/common/rc
-> > >> > index 747cf72..ae03712 100644
-> > >> > --- a/common/rc
-> > >> > +++ b/common/rc
-> > >> > @@ -551,6 +551,14 @@ _mkfs_dev()
-> > >> >      rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
-> > >> >  }
-> > >> >
-> > >> > +# remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
-> > >> > +_scratch_cleanup_files()
-> > >> > +{
-> > >> > +       _scratch_mount
-> > >> > +       rm -rf $SCRATCH_MNT/*
-> > >> > +       _scratch_unmount
-> > >> > +}
-> > >>
-> > >> There should be a check to make sure SCRATCH_MNT exists before you
-> > >> wipe the whole disk ....
-> > >>
-> > >> so if no SCRATCH_MNT then this does rm -rf/*
-> > >> right ... (and wipes out your whole system ...)
-> > >
-> > > You can't get to that function until after all the checks that
-> > > SCRATCH_MNT exists. i.e. this happens during _scratch_mkfs, and that
-> > > is only called in tests after all the startup checks validate
-> > > devices and mounts exist. i.e. see common/config::get_next_config()
-> > 
-> > Well, I reproduced it easily enough again today (after taking a
-> > snapshot of the VM)
-> > by simply running generic/120 against NFS with SCRATCH_MNT not
-> > specified in local.config
-> > Dros also ran into this problem.
+
+
+On 11/07/2014 04:09 PM, Sami Wagiaalla wrote:
+> From: Sami Wagiaalla <swagiaal@redhat.com>
 > 
-> You're right, I missed that _scratch_mkfs is also called by ./check,
-> and if there's no SCRATCH_MNT set in local.config, only SCRATCH_DEV is
-> set, _scratch_mkfs can be dangerous.
-
-As I asked earlier in this thread: why isn't get_next_config()
-catching this?
-
-> I propose this patch, which skips _scratch_cleanup_files if called by check
+> I was having trouble setting up NFS on Atomic Host.  It turns out
+> there is an issue when rpcbind is trying to find the uid of the
+> rpc user.  OSTree based operating systems store user information
+> for system users such as the rpc user in /usr/lib/passwd and
+> leaves /etc/passwd for humans users.  This is enabled by the use
+> of the nss module nss-altfiles which allows one to specify
+> additional files to be added the the passwd database.  rpcbind
+> however overrides the rule added to /etc/nsswitch.conf and removes
+> "altfiles" from the list of modules by doing the following:
 > 
-> [root@hp-dl388eg8-01 xfstests]# git diff
-> diff --git a/common/rc b/common/rc
-> index 435f74f..254fb66 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -554,6 +554,11 @@ _mkfs_dev()
->  # remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
->  _scratch_cleanup_files()
->  {
-> +       # do nothing if called by check, variables are not fully valided yet
-> +       # SCRATCH_MNT can be empty, which is dangerous
-> +       if [ "$iam" == "check" ]; then
-> +               return
-> +       fi
+>     __nss_configure_lookup("passwd", "files");
+> 
+> This was added in commit 77f7556878d1fe03dc ("[...]use
+> __nss_configure_lookup() to restrict the [rpc user] lookup") to
+> remove "nis" form the list of modules and prevent rpcbind from
+> having a circular dependency on itself.  In an OSTree based
+> operating system however this prevents rpcbind from finding the rpc
+> user and the service cannot start.
+> 
+> This patch adds an option --with-nss-modules which allows one
+> to specify the nss modules which should be searched for user
+> information.  The default setting is "files" which preserves the
+> current behavior, but this enables one to add other modules to
+> the search path.
+> 
+> Signed-off-by: Sami Wagiaalla <swagiaal@redhat.com>
+Committed.... 
 
-Again, this is the wrong place to try to fix this - we haven't fixed
-the landmine that has left us running with an invalid config. IOWs,
-by the time _scratch_mkfs is called from *anywhere* we should have
-fully validated the environment to be correct and valid. Parsing and
-validating the config we have loaded from the config file is the job
-of get_next_config(), yes?
+steved.
 
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+> ---
+>  Makefile.am   |  1 +
+>  configure.ac  |  7 +++++++
+>  src/rpcbind.c | 10 ++++++++--
+>  3 files changed, 16 insertions(+), 2 deletions(-)
+> 
+> diff --git a/Makefile.am b/Makefile.am
+> index d10c906..e0bc4b4 100644
+> --- a/Makefile.am
+> +++ b/Makefile.am
+> @@ -6,6 +6,7 @@ AM_CPPFLAGS = \
+>  	-DINET6 \
+>  	-DRPCBIND_STATEDIR="\"$(statedir)\"" \
+>  	-DRPCBIND_USER="\"$(rpcuser)\"" \
+> +	-DNSS_MODULES="\"$(nss_modules)\"" \
+>  	-D_GNU_SOURCE \
+>  	$(TIRPC_CFLAGS)
+>  
+> diff --git a/configure.ac b/configure.ac
+> index 39181f0..5a88cc7 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -27,6 +27,13 @@ AC_ARG_WITH([rpcuser],
+>    ,, [with_rpcuser=root])
+>  AC_SUBST([rpcuser], [$with_rpcuser])
+>   
+> +AC_ARG_WITH([nss_modules],
+> +  AS_HELP_STRING([--with-nss-modules=NSS_MODULES]
+> +  , [Sets the nss module search list to the given space-delimited string.
+> +     For example --with-nss-modules="files altfiles" @<:@default=files@:>@])
+> +  ,, [with_nss_modules=files])
+> +AC_SUBST([nss_modules], [$with_nss_modules])
+> +
+>  PKG_CHECK_MODULES([TIRPC], [libtirpc])
+>  
+>  AS_IF([test x$enable_libwrap = xyes], [
+> diff --git a/src/rpcbind.c b/src/rpcbind.c
+> index 924aca1..e3462e3 100644
+> --- a/src/rpcbind.c
+> +++ b/src/rpcbind.c
+> @@ -91,6 +91,12 @@ char *rpcbinduser = RPCBIND_USER;
+>  char *rpcbinduser = NULL;
+>  #endif
+>  
+> +#ifdef NSS_MODULES
+> +char *nss_modules = NSS_MODULES;
+> +#else
+> +char *nss_modules = "files";
+> +#endif
+> +
+>  /* who to suid to if -s is given */
+>  #define RUN_AS  "daemon"
+>  
+> @@ -165,7 +171,7 @@ main(int argc, char *argv[])
+>  	 * Make sure we use the local service file 
+>  	 * for service lookkups
+>  	 */
+> -	__nss_configure_lookup("services", "files");
+> +	__nss_configure_lookup("services", nss_modules);
+>  
+>  	nc_handle = setnetconfig(); 	/* open netconfig file */
+>  	if (nc_handle == NULL) {
+> @@ -231,7 +237,7 @@ main(int argc, char *argv[])
+>  		 * Make sure we use the local password file
+>  		 * for these lookups.
+>  		 */
+> -		__nss_configure_lookup("passwd", "files");
+> +		__nss_configure_lookup("passwd", nss_modules);
+>  
+>  		if((p = getpwnam(id)) == NULL) {
+>  			syslog(LOG_ERR, "cannot get uid of '%s': %m", id);
+> 
