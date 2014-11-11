@@ -1,38 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f178.google.com ([209.85.220.178]:43365 "EHLO
-	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750999AbaKKQws convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Nov 2014 11:52:48 -0500
-References: <20141109010328.8806.5861.stgit@manet.1015granger.net> <20141109011501.8806.23478.stgit@manet.1015granger.net> <54621D8D.7050508@dev.mellanox.co.il>
-Mime-Version: 1.0 (1.0)
-In-Reply-To: <54621D8D.7050508@dev.mellanox.co.il>
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <1D304B95-D745-42B2-9324-143A5002FB35@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Chuck Lever <chucklever@gmail.com>
-Subject: Re: [PATCH v2 07/10] xprtrdma: Display async errors
-Date: Tue, 11 Nov 2014 10:52:49 -0600
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from verein.lst.de ([213.95.11.211]:38218 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752986AbaKKK1h (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Nov 2014 05:27:37 -0500
+Date: Tue, 11 Nov 2014 11:27:35 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd: implement chage_attr_type attribute
+Message-ID: <20141111102735.GB17313@lst.de>
+References: <1415448664-25815-1-git-send-email-hch@lst.de> <1415448664-25815-3-git-send-email-hch@lst.de> <20141110175424.GC32702@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141110175424.GC32702@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Nov 11, 2014, at 8:30 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+On Mon, Nov 10, 2014 at 12:54:24PM -0500, J. Bruce Fields wrote:
+> Shouldn't that be NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR?
 > 
->> On 11/9/2014 3:15 AM, Chuck Lever wrote:
->> An async error upcall is a hard error, and should be reported in
->> the system log.
->> 
+> The draft says that e.g. "If the client sees
+> NFS4_CHANGE_TYPE_IS_VERSION_COUNTER, it has the ability to predict what
+> the resulting change attribute value should be after a COMPOUND
+> containing a SETATTR, WRITE, or CREATE."
 > 
-> Could be useful to others... Any chance you put this in ib_core for all
-> of us?
+> Admittedly, I'm not completely sure what that means.  (Is a SETATTR of
+> multiple attributes a single atomic change?  Can we predict the change
+> attribute on a newly created file, or only on the parent directory?)  I
+> also don't know where the filesystems do the i_version increment (can we
+> guarantee it happens once per nfs WRITE?).
 
-Eventually. We certainly wouldn't want copies of this array of strings
-to appear many times in the kernel. That would be a waste of space.
+Actually the server may increment it many times for a single WRITE,
+for XFS it is incremented for each dirty transaction, which could
+happen many times during a single write:
 
-I have a similar patch that adds an array for CQ status codes, and
-xprtrdma has a string array already for connection status. Are those
-also interesting?
+ (1) c/mtime update
+ (2) suid/sgid bit removal
+ (3) block allocation (could be multiple transactions)
+
+
+So I guess we really should move to NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR
+instead.
