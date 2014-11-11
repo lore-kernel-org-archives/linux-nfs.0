@@ -1,77 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f42.google.com ([74.125.82.42]:56527 "EHLO
-	mail-wg0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752126AbaKYHUr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 02:20:47 -0500
-From: Pieter Smith <pieter@boesman.nl>
-To: pieter@boesman.nl
-Cc: Josh Triplett <josh@joshtriplett.org>,
-        Alexander Duyck <alexander.h.duyck@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexei Starovoitov <ast@plumgrid.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Bertrand Jacquin <beber@meleeweb.net>,
-        Catalina Mocanu <catalina.mocanu@gmail.com>,
-        Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Fabian Frederick <fabf@skynet.be>,
-        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
-        Jan Beulich <JBeulich@suse.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-api@vger.kernel.org (open list:ABI/API),
-        linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org (open list),
-        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
-        "Luis R. Rodriguez" <mcgrof@suse.com>,
-        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
-        Oleg Nesterov <oleg@redhat.com>,
-        Paul Durrant <Paul.Durrant@citrix.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
-        Tom Herbert <therbert@google.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Willem de Bruijn <willemb@google.com>,
-        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
-        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
-Subject: [PATCH v5 6/7] fs/nfsd: support compiling out splice
-Date: Tue, 25 Nov 2014 08:19:41 +0100
-Message-Id: <1416899996-21315-7-git-send-email-pieter@boesman.nl>
-In-Reply-To: <1416899996-21315-1-git-send-email-pieter@boesman.nl>
-References: <1416899996-21315-1-git-send-email-pieter@boesman.nl>
+Received: from mx1.redhat.com ([209.132.183.28]:35373 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751307AbaKKSYn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Nov 2014 13:24:43 -0500
+Message-ID: <5462545F.4010706@RedHat.com>
+Date: Tue, 11 Nov 2014 13:24:31 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: bstroesser@ts.fujitsu.com, neilb@suse.de, linux-nfs@vger.kernel.org
+CC: bfields@fieldses.org
+Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
+References: <d6437a$6ag11f@dgate10u.abg.fsc.net>
+In-Reply-To: <d6437a$6ag11f@dgate10u.abg.fsc.net>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The goal of the larger patch set is to completely compile out fs/splice, and
-as a result, splice support for all file-systems. This patch ensures that
-fs/nfsd falls back to non-splice fs support when CONFIG_SYSCALL_SPLICE is
-undefined.
+Hello,
 
-Signed-off-by: Pieter Smith <pieter@boesman.nl>
----
- net/sunrpc/svc.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On 11/05/2014 03:21 PM, bstroesser@ts.fujitsu.com wrote:
+> Hello,
+> 
+> I'm sending a small set of 3 patches for a problem, that I have
+> reported a few weeks ago.
+> rpc.mountd can be blocked by a bad client, that sends lots of
+> RPC requests, but never reads the replies from the socket either
+> intentionally or e.g. caused by a wrong configured MTU.
+> 
+> While looking for a possible solution, I found another weakness
+> in rpc.mountd if it is used "multithreaded" (-t nn).
+> 
+> The first two patches fix that weakness in the case of !HAVE_LIBTIRPC
+> and HAVE_LIBTIRPC.
+> The third patch more a kind of suggestion how the main problem could
+> be fixed. I don't know whether we can set MAXREC without causing
+> new troubles. When this patch is used, a  further patch for libtirpc
+> also should be used. You can find it here:
+>     http://sourceforge.net/p/libtirpc/mailman/libtirpc-devel/?viewmonth=201409
 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index ca8a795..6cacc37 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1084,7 +1084,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 		goto err_short_len;
- 
- 	/* Will be turned off only in gss privacy case: */
--	rqstp->rq_splice_ok = true;
-+	rqstp->rq_splice_ok = IS_ENABLED(CONFIG_SPLICE_SYSCALL);
- 	/* Will be turned off only when NFSv4 Sessions are used */
- 	rqstp->rq_usedeferral = true;
- 	rqstp->rq_dropme = false;
--- 
-2.1.0
+Over the weekend I took a good hard look at these 3 patches and
+the one for libtirpc with the reproducer Bodo supplied me.
+(Bodo, thanks all the help getting things set up!).
 
+I agree with the libtirpc patch so its been committed,
+but other three made me nervous so I wanted to take a 
+good hard look at them. (Neil's question, "do we really
+what to make these non-block" haunted me ;-) ).
+
+It turns out, at least in my setup, these patches do not
+and can not stop the mountd DOS that Bodo's reproducer
+creates. 
+
+Here is why they do not work: 
+
+The fd that the write() is getting hung on, is not be created 
+by the 3 nfs_svc_create() calls in mountd:main(). Its
+being created by the accept() when the tcp connection
+is created (via SVC_RECV()), so making those fds coming 
+out of the nfs_svc_create() non-blocking does nothing. 
+
+Here is the hang can't be stop (for now):
+
+Here is the stack:
+Stack trace of thread 4150:
+#0  0x00000036816f0e90 write (libc.so.6)
+#1  0x00007fd53837da6d write_vc (libtirpc.so.1)
+#2  0x00007fd53838103f flush_out (libtirpc.so.1)
+#3  0x00007fd53837dd81 svc_vc_reply (libtirpc.so.1)
+#4  0x00007fd53837b096 svcerr_noprog (libtirpc.so.1)
+#5  0x00007fd53837b360 svc_getreq_common (libtirpc.so.1)
+#6  0x00000000004086d9 my_svc_getreqset (mountd)
+#7  0x0000000000403d80 main (mountd)
+#8  0x000000368161ffe0 __libc_start_main (libc.so.6)
+#9  0x00000000004040f5 _start (mountd)
+
+The fd that created by the SVC_RECV() is never 
+given back to the app (in case mountd) to make
+it non-blocking. Its used in the error path
+where it get hung up in the write(). The
+app has no control over that. 
+
+Now I definitely see a problem, but these
+patches (with the exception of the libtirpc
+patch) don't address the problem I am seeing.
+
+So unless I'm not seeing something, I'm not in
+favor of taking these 3 patches.
+
+thoughts?
+
+steved.
