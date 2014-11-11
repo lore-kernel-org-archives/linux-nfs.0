@@ -1,44 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:48908 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752772AbaKCUnR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Nov 2014 15:43:17 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH 0/2] nfsidmap not setting key timeouts
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <cover.1415036893.git.bcodding@redhat.com>
-Date: Mon, 3 Nov 2014 15:43:12 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <E12E1FC2-1497-4B2A-A171-D972885855E0@oracle.com>
-References: <cover.1415036893.git.bcodding@redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:33214 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752038AbaKKVmI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Nov 2014 16:42:08 -0500
+Date: Tue, 11 Nov 2014 16:42:06 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd: implement chage_attr_type attribute
+Message-ID: <20141111214205.GG20062@fieldses.org>
+References: <1415448664-25815-1-git-send-email-hch@lst.de>
+ <1415448664-25815-3-git-send-email-hch@lst.de>
+ <20141110175424.GC32702@fieldses.org>
+ <20141111102735.GB17313@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141111102735.GB17313@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 3, 2014, at 12:49 PM, Benjamin Coddington <bcodding@redhat.com> wrote:
-
-> These should fix up nfsidmap being unable to set key timeouts.
+On Tue, Nov 11, 2014 at 11:27:35AM +0100, Christoph Hellwig wrote:
+> On Mon, Nov 10, 2014 at 12:54:24PM -0500, J. Bruce Fields wrote:
+> > Shouldn't that be NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR?
+> > 
+> > The draft says that e.g. "If the client sees
+> > NFS4_CHANGE_TYPE_IS_VERSION_COUNTER, it has the ability to predict what
+> > the resulting change attribute value should be after a COMPOUND
+> > containing a SETATTR, WRITE, or CREATE."
+> > 
+> > Admittedly, I'm not completely sure what that means.  (Is a SETATTR of
+> > multiple attributes a single atomic change?  Can we predict the change
+> > attribute on a newly created file, or only on the parent directory?)  I
+> > also don't know where the filesystems do the i_version increment (can we
+> > guarantee it happens once per nfs WRITE?).
 > 
-> Benjamin Coddington (2):
->  nfsidmap: set the correct DEFAULT_KEYRING string
->  nfsidmap: Correct a failure to set key timeout values
+> Actually the server may increment it many times for a single WRITE,
+> for XFS it is incremented for each dirty transaction, which could
+> happen many times during a single write:
 > 
-> utils/nfsidmap/nfsidmap.c |    5 ++++-
-> 1 files changed, 4 insertions(+), 1 deletions(-)
+>  (1) c/mtime update
+>  (2) suid/sgid bit removal
+>  (3) block allocation (could be multiple transactions)
+> 
+> 
+> So I guess we really should move to NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR
+> instead.
 
-This fixed the timeout problem for me with a 3.18-rc3 kernel.
+I'm applying your patch for 3.19 with that one-line change.
 
-However, I still need to apply the “no state check” fix I posted
-last Thursday, or the keys simply expire after 10 minutes and the
-kernel never renews them.
-
-http://marc.info/?l=linux-nfs&m=141469121406791&w=2
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+--b.
