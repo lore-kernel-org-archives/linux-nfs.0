@@ -1,89 +1,57 @@
-Return-Path: Anna.Schumaker@netapp.com
-Message-ID: <54622ADF.4080807@Netapp.com>
-Date: Tue, 11 Nov 2014 10:27:27 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-wg0-f45.google.com ([74.125.82.45]:40180 "EHLO
+	mail-wg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751218AbaKKQ1M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Nov 2014 11:27:12 -0500
+Received: by mail-wg0-f45.google.com with SMTP id x12so11988799wgg.4
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Nov 2014 08:27:11 -0800 (PST)
+Message-ID: <546238D9.2030804@electrozaur.com>
+Date: Tue, 11 Nov 2014 18:27:05 +0200
+From: Boaz Harrosh <ooo@electrozaur.com>
 MIME-Version: 1.0
-To: Benjamin Coddington <bcodding@redhat.com>,
-        Trond Myklebust
-	<trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Benjamin Coddington <bcodding@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
 CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Subject: Re: mount default minor version behavior
-References: <alpine.LRH.2.11.1411110930190.20279@sh-el6.eng.rdu2.redhat.com> <CAHQdGtQSSeOWs9pzZoXzR_+2F69-EJQB5BOEkB7q9BVE-d=RFA@mail.gmail.com> <alpine.LRH.2.11.1411111017190.20279@sh-el6.eng.rdu2.redhat.com>
-In-Reply-To: <alpine.LRH.2.11.1411111017190.20279@sh-el6.eng.rdu2.redhat.com>
-Content-Type: text/plain; charset="utf-8"
+References: <alpine.LRH.2.11.1411110930190.20279@sh-el6.eng.rdu2.redhat.com> <CAHQdGtQSSeOWs9pzZoXzR_+2F69-EJQB5BOEkB7q9BVE-d=RFA@mail.gmail.com> <alpine.LRH.2.11.1411111017190.20279@sh-el6.eng.rdu2.redhat.com> <54622ADF.4080807@Netapp.com>
+In-Reply-To: <54622ADF.4080807@Netapp.com>
+Content-Type: text/plain; charset=utf-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ben,
+On 11/11/2014 05:27 PM, Anna Schumaker wrote:
 
-On 11/11/2014 10:20 AM, Benjamin Coddington wrote:
->
-> On Tue, 11 Nov 2014, Trond Myklebust wrote:
->
->> Hi Ben,
->>
->> On Tue, Nov 11, 2014 at 9:39 AM, Benjamin Coddington
->> <bcodding@redhat.com> wrote:
->>> I will update mount.nfs so the default version is 4.1.  I have two quick
->>> questions on desired behavior:
->>>
->>>  o  Should mounts that do not specify a minor version be upgraded to the
->>> default minor version?
->>>
->>> For example, should 'mount -overs=4' turn into 'mount -overs4.1', if the
->>> current default is 4.1?
->>>
->>>
->>>  o If 'yes' to the above, should mount auto-retry decrementing minor
->>> versions if EPROTONOSUPPORT?
->>>
->>> For example, 'mount -overs=4' with a default of 4.2 would attempt: 4.2,
->>> then 4.1, then 4.0.
->>>
->> One thing you should note when doing this: the current parser for
->> /etc/nfsmount.conf does not support minor versions. I think it needs
->> to, so that we can continue to use it to set defaults.
->>
->> ...and to answer your questions above, I think that we should be able
->> to specify a 'default nfsv4 minor version' in /etc/nfsmount.conf, and
->> then negotiate down from there.
->> IOW: extend the 'Defaultvers' and 'Nfsvers' options to support 4.0,
->> 4.1, 4.2,....
-> Ah, good idea to make it configurable.
->
->> The result should be that If I do 'mount -t nfs' with no '-overs'
->> option, then we start at 4.1 (if that is the default in
->> /etc/nfsmount.conf) and then try 4.0, 3, 2 in that order.
->> If I do 'mount -t nfs -overs=4', then again consult /etc/nfsmount.conf;
->> - if there is a default matching a v4 minor version, then start at
->> that and negotiate down (but stop at 4.0).
-> Yep, those closely match the current behavior and that's what my first
-> pass looks like.
->
->> - if there is no default in /etc/nfsmount.conf, then perhaps assume a
->> default of 0(????)
-> That's the question, and I think it will be a very common case.  Do we
-> want to have an idea of a "best" minor version, and use that if no minor
-> version is specified?
+> 
+> I don't think so. Right now users know that if they don't use a minor
+> version then they'll be getting a v4.0 mount. I think we should keep
+> this behavior so we don't accidentally break people's configuration.
+> 
 
-I don't think so.  Right now users know that if they don't use a minor version then they'll be getting a v4.0 mount.  I think we should keep this behavior so we don't accidentally break people's configuration.
+This would be inconsistent and there for unexpected.
 
-Anna
+What you suggest is:
+* if user specifies no version then start with 4.1, work down to supported version
+* if user specifies major=4 only try 4.0
+* if user specifies major.minor only try major.minor
 
->
-> Ben
->
->> Cheers
->>   Trond
->>
->>
->> --
->> Trond Myklebust
->>
->> Linux NFS client maintainer, PrimaryData
->>
->> trond.myklebust@primarydata.com
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I think a more expect behavior would be:
+* if user specifies no version then start with 4.1, work down to supported version
+* if user specifies major=4 start with 4.1 til 4.0
+* if user specifies major.minor only try major.minor
+
+The preferred (implicit) minor is 1 in all cases
+
+The question is did users of major=4 meant 4.0 and were lazy to type ".0"
+or did they mean "don't try 3 or 2"
+
+Current system compatibility is already changing by moving all
+case 1 above from 4.0 to 4.1 by the next yum update. I think it would
+be reasonable to also change case 2. And have a consistent semantics.
+
+> Anna
+> 
+
+Thanks
+Boaz
+
