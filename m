@@ -1,95 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay3-d.mail.gandi.net ([217.70.183.195]:47460 "EHLO
-	relay3-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751663AbaKYSxX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 13:53:23 -0500
-Date: Tue, 25 Nov 2014 10:53:10 -0800
-From: josh@joshtriplett.org
-To: David Miller <davem@davemloft.net>
-Cc: rdunlap@infradead.org, pieter@boesman.nl, alexander.h.duyck@intel.com,
-        viro@zeniv.linux.org.uk, ast@plumgrid.com, akpm@linux-foundation.org,
-        beber@meleeweb.net, catalina.mocanu@gmail.com, dborkman@redhat.com,
-        edumazet@google.com, ebiederm@xmission.com, fabf@skynet.be,
-        fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
-        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
-        bfields@fieldses.org, jlayton@poochiereds.net,
-        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
-        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
-        Paul.Durrant@citrix.com, paulmck@linux.vnet.ibm.com,
-        pefoley2@pefoley.com, tgraf@suug.ch, therbert@google.com,
-        trond.myklebust@primarydata.com, willemb@google.com,
-        xiaoguangrong@linux.vnet.ibm.com, zhenglong.cai@cs2c.com.cn
-Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
- splice family of syscalls (splice, vmsplice, tee and sendfile)
-Message-ID: <20141125185310.GA24891@cloud>
-References: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
- <5474ABB6.3030400@infradead.org>
- <20141125.121305.2094097848188324942.davem@davemloft.net>
+Received: from mail-ob0-f179.google.com ([209.85.214.179]:55323 "EHLO
+	mail-ob0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752315AbaKKUaJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Nov 2014 15:30:09 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141125.121305.2094097848188324942.davem@davemloft.net>
+In-Reply-To: <54625A33.6000506@dev.mellanox.co.il>
+References: <20141109010328.8806.5861.stgit@manet.1015granger.net>
+	<20141109011501.8806.23478.stgit@manet.1015granger.net>
+	<54621D8D.7050508@dev.mellanox.co.il>
+	<1D304B95-D745-42B2-9324-143A5002FB35@gmail.com>
+	<54625A33.6000506@dev.mellanox.co.il>
+Date: Tue, 11 Nov 2014 22:30:08 +0200
+Message-ID: <CAJ3xEMjE3AFEVAYwL-awgmFVACuDHmTPvh8qXeGXh+LkeCnxtg@mail.gmail.com>
+Subject: Re: [PATCH v2 07/10] xprtrdma: Display async errors
+From: Or Gerlitz <gerlitz.or@gmail.com>
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc: Chuck Lever <chucklever@gmail.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 25, 2014 at 12:13:05PM -0500, David Miller wrote:
-> From: Randy Dunlap <rdunlap@infradead.org>
-> Date: Tue, 25 Nov 2014 08:17:58 -0800
-> 
-> > Is the splice family of syscalls the only one that tiny has identified
-> > for optional building or can we expect similar treatment for other
-> > syscalls?
-> > 
-> > Why will many embedded systems not need these syscalls?  You know
-> > exactly what apps they run and you are positive that those apps do
-> > not use splice?
-> 
-> I think starting to compile out system calls is a very slippery
-> slope we should not begin the journey down.
-> 
-> This changes the forward facing interface to userspace.
+On Tue, Nov 11, 2014 at 8:49 PM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+> On 11/11/2014 6:52 PM, Chuck Lever wrote:
+>>
+>>
+>>> On Nov 11, 2014, at 8:30 AM, Sagi Grimberg <sagig@dev.mellanox.co.il>
+>>> wrote:
+>>>
+>>>> On 11/9/2014 3:15 AM, Chuck Lever wrote:
+>>>> An async error upcall is a hard error, and should be reported in
+>>>> the system log.
+>>>>
+>>>
+>>> Could be useful to others... Any chance you put this in ib_core for all
+>>> of us?
+>>
+>>
+>> Eventually. We certainly wouldn't want copies of this array of strings
+>> to appear many times in the kernel. That would be a waste of space.
+>>
+>> I have a similar patch that adds an array for CQ status codes, and
+>> xprtrdma has a string array already for connection status. Are those
+>> also interesting?
+>>
+>
+> Yep, also RDMA_CM events. Would certainly help people avoid source
+> code navigation to understand what is going on...
 
-It's not a "slippery slope"; it's been our standard practice for ages.
-We started down that road long, long ago, when we first introduced
-Kconfig and optional/modular features.  /dev/* are user-facing
-interfaces, yet you can compile them out or make them modular.  /sys/*
-and/proc/* are user-facing interfaces, yet you can compile part or all
-of them out.  Filesystem names passed to mount are user-facing
-interfaces, yet you can compile them out.  (Not just things like ext4;
-think FUSE or overlayfs, which some applications will build upon and
-require.)  Some prctls are optional, new syscalls like BPF or inotify or
-process_vm_{read,write}v are optional, hardware interfaces are optional,
-control groups are optional, containers and namespaces are optional,
-checkpoint/restart is optional, KVM is optional, kprobes are optional,
-kmsg is optional, /dev/port is optional, ACL support is optional, USB
-support (as used by libusb) is optional, sound interfaces are optional,
-GPU interfaces are optional, even futexes are optional.
-
-For every single one of those, userspace programs or libraries may
-depend on that functionality, and summarily exit if it doesn't exist,
-perhaps with a warning that you need to enable options in your kernel,
-or perhaps with a simple "Function not implemented" or "No such file or
-directory".
-
-Out of the entire list above and the many more where that came from,
-what makes syscalls unique?  What's wildly different between
-open("/dev/foo", ...) returning an error and sys_foo returning an error?
-What makes syscalls so special out of the entire list above?  We're not
-breaking the ability to run old userspace on a new kernel, which *must*
-be supported, and that includes not just syscalls but all user-facing
-interfaces; we don't break userspace.  But we've *never* guaranteed that
-you can run old userspace on a new *allnoconfig* kernel.
-
-All of these features will remain behind CONFIG_EXPERT, and all of them
-warn that you can only use them if your userspace can cope.
-
-I've actually been thinking of introducing a new CONFIG_ALL_SYSCALLS,
-under which all the "enable support for foo syscall" can live, rather
-than just piling all of them directly under CONFIG_EXPERT; that option
-would then repeat in very clear terms the warning that if you disable
-that option and then disable specific syscalls, you need to know exactly
-what your target userspace uses.  That would group together this whole
-family of options, and make it clearer what the implications are.
-
-- Josh Triplett
+Oh yes, Chuck, good if you can pick  this up, AFAIRemeber most of the
+strings are already in the RDS code (net/rds) - please re-factor them
+from there into some IB core helpers, thanks alot!!
