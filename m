@@ -1,146 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:51847 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:54007 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752449AbaKMAQJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Nov 2014 19:16:09 -0500
-Date: Thu, 13 Nov 2014 11:15:58 +1100
+	id S1752323AbaKKXAT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Nov 2014 18:00:19 -0500
+Date: Wed, 12 Nov 2014 10:00:11 +1100
 From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] KEYS: Ensure expired keys are renewed
-Message-ID: <20141113111558.7775022e@notabene.brown>
-In-Reply-To: <20141030174612.10093.61557.stgit@manet.1015granger.net>
-References: <20141030174612.10093.61557.stgit@manet.1015granger.net>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: bstroesser@ts.fujitsu.com, linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
+Message-ID: <20141112100011.74b6549f@notabene.brown>
+In-Reply-To: <5462545F.4010706@RedHat.com>
+References: <d6437a$6ag11f@dgate10u.abg.fsc.net>
+	<5462545F.4010706@RedHat.com>
 MIME-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_/XE8SZ3I5yEygiZlDceIOwNl"; protocol="application/pgp-signature"
+ boundary="Sig_/c3ehowliBZ2Uc59OwxDokwG"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/XE8SZ3I5yEygiZlDceIOwNl
+--Sig_/c3ehowliBZ2Uc59OwxDokwG
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, 30 Oct 2014 13:46:47 -0400 Chuck Lever <chuck.lever@oracle.com> wro=
-te:
+On Tue, 11 Nov 2014 13:24:31 -0500 Steve Dickson <SteveD@redhat.com> wrote:
 
-> After about 10 minutes, my NFSv4 functional tests fail because the
-> ownership of the test files goes to "-2". Looking at /proc/keys
-> shows that the id_resolv keys that map to my test user ID have
-> expired. The ownership problem persists until the expired keys are
-> purged from the keyring, and fresh keys are obtained.
+> Hello,
 >=20
-> I bisected the problem to 3.13 commit b2a4df200d57 ("KEYS: Expand
-> the capacity of a keyring"). This commit inadvertantly changes the
-> API contract of the internal function keyring_search_aux().
+> On 11/05/2014 03:21 PM, bstroesser@ts.fujitsu.com wrote:
+> > Hello,
+> >=20
+> > I'm sending a small set of 3 patches for a problem, that I have
+> > reported a few weeks ago.
+> > rpc.mountd can be blocked by a bad client, that sends lots of
+> > RPC requests, but never reads the replies from the socket either
+> > intentionally or e.g. caused by a wrong configured MTU.
+> >=20
+> > While looking for a possible solution, I found another weakness
+> > in rpc.mountd if it is used "multithreaded" (-t nn).
+> >=20
+> > The first two patches fix that weakness in the case of !HAVE_LIBTIRPC
+> > and HAVE_LIBTIRPC.
+> > The third patch more a kind of suggestion how the main problem could
+> > be fixed. I don't know whether we can set MAXREC without causing
+> > new troubles. When this patch is used, a  further patch for libtirpc
+> > also should be used. You can find it here:
+> >     http://sourceforge.net/p/libtirpc/mailman/libtirpc-devel/?viewmonth=
+=3D201409
 >=20
-> The root cause appears to be that b2a4df200d57 made "no state check"
-> the default behavior. "No state check" means the keyring search
-> iterator function skips checking the key's expiry timeout, and
-> returns expired keys.  request_key_and_link() depends on getting
-> an -EAGAIN result code to know when to perform an upcall to refresh
-> an expired key.
+> Over the weekend I took a good hard look at these 3 patches and
+> the one for libtirpc with the reproducer Bodo supplied me.
+> (Bodo, thanks all the help getting things set up!).
 >=20
-> Restore the previous default behavior of keyring_search_aux() and
-> the meaning of the KEYRING_SEARCH_{DO,NO}_STATE_CHECK flags.
+> I agree with the libtirpc patch so its been committed,
+> but other three made me nervous so I wanted to take a=20
+> good hard look at them. (Neil's question, "do we really
+> what to make these non-block" haunted me ;-) ).
 >=20
-> Fixes: b2a4df200d57 ("KEYS: Expand the capacity of a keyring")
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> Resend with correct linux-nfs address.
+> It turns out, at least in my setup, these patches do not
+> and can not stop the mountd DOS that Bodo's reproducer
+> creates.=20
 >=20
->  security/keys/keyring.c |   11 +++++++----
->  1 file changed, 7 insertions(+), 4 deletions(-)
+> Here is why they do not work:=20
 >=20
-> diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-> index 8314a7d..1294582 100644
-> --- a/security/keys/keyring.c
-> +++ b/security/keys/keyring.c
-> @@ -519,9 +519,14 @@ static int keyring_search_iterator(const void *objec=
-t, void *iterator_data)
->  	struct keyring_search_context *ctx =3D iterator_data;
->  	const struct key *key =3D keyring_ptr_to_key(object);
->  	unsigned long kflags =3D key->flags;
-> +	bool state_check_needed;
-> =20
->  	kenter("{%d}", key->serial);
-> =20
-> +	state_check_needed =3D !(ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK);
-> +	if (ctx->flags & KEYRING_SEARCH_DO_STATE_CHECK)
-> +		state_check_needed =3D true;
-> +
->  	/* ignore keys not of this type */
->  	if (key->type !=3D ctx->index_key.type) {
->  		kleave(" =3D 0 [!type]");
-> @@ -529,7 +534,7 @@ static int keyring_search_iterator(const void *object=
-, void *iterator_data)
->  	}
-> =20
->  	/* skip invalidated, revoked and expired keys */
-> -	if (ctx->flags & KEYRING_SEARCH_DO_STATE_CHECK) {
-> +	if (state_check_needed) {
->  		if (kflags & ((1 << KEY_FLAG_INVALIDATED) |
->  			      (1 << KEY_FLAG_REVOKED))) {
->  			ctx->result =3D ERR_PTR(-EKEYREVOKED);
-> @@ -559,7 +564,7 @@ static int keyring_search_iterator(const void *object=
-, void *iterator_data)
->  		goto skipped;
->  	}
-> =20
-> -	if (ctx->flags & KEYRING_SEARCH_DO_STATE_CHECK) {
-> +	if (state_check_needed) {
->  		/* we set a different error code if we pass a negative key */
->  		if (kflags & (1 << KEY_FLAG_NEGATIVE)) {
->  			smp_rmb();
-> @@ -642,8 +647,6 @@ static bool search_nested_keyrings(struct key *keyrin=
-g,
->  	}
-> =20
->  	ctx->skipped_ret =3D 0;
-> -	if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
-> -		ctx->flags &=3D ~KEYRING_SEARCH_DO_STATE_CHECK;
-> =20
->  	/* Start processing a new keyring */
->  descend_to_keyring:
->=20
+> The fd that the write() is getting hung on, is not be created=20
+> by the 3 nfs_svc_create() calls in mountd:main(). Its
+> being created by the accept() when the tcp connection
+> is created (via SVC_RECV()), so making those fds coming=20
+> out of the nfs_svc_create() non-blocking does nothing.=20
 
-Reviewed-by: NeilBrown <neilb@suse.de>
+Just to add to what Bodo replied:
 
-security/keys/internal.h says:
+SVC_RECV is a macro which calls .xp_recv, which in the TCP listen
+case is rendezvous_request.
 
-#define KEYRING_SEARCH_NO_STATE_CHECK   0x0001  /* Skip state checks */
-#define KEYRING_SEARCH_DO_STATE_CHECK   0x0002  /* Override NO_STATE_CHECK =
-*/
+rendezvous_request does the accept:
 
+        if ((sock =3D accept(xprt->xp_fd, (struct sockaddr *)(void *)&addr,
+            &len)) < 0) {
 
-Your match makes it obvious that DO overrides NO.  The current code
-doesn't get that right.
+and then
+        if (cd->maxrec !=3D 0) {
+                flags =3D fcntl(sock, F_GETFL, 0);
+                if (flags  =3D=3D -1)
+                        return (FALSE);
+                if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) =3D=3D -1)
+                        return (FALSE);
+ =20
+so if cd->maxrec is not zero, O_NONBLOCK get set.
 
-Is this on its way upstream yet (not in -next that I could see).
+It gets set through an SVC_CONTROL -> xp_control -> svc_vc_rendezvous_contr=
+ol
+
+call, which no-one ever makes, and it initialised to __svc_maxrec, which is
+set by the rpc_control() call that Bodo mentions.
+So providing rpc_control is called before the service is created, it should
+work fine.
+
+I wonder why it didn't work for you...
+
 
 Thanks,
 NeilBrown
 
---Sig_/XE8SZ3I5yEygiZlDceIOwNl
+
+
+>=20
+> Here is the hang can't be stop (for now):
+>=20
+> Here is the stack:
+> Stack trace of thread 4150:
+> #0  0x00000036816f0e90 write (libc.so.6)
+> #1  0x00007fd53837da6d write_vc (libtirpc.so.1)
+> #2  0x00007fd53838103f flush_out (libtirpc.so.1)
+> #3  0x00007fd53837dd81 svc_vc_reply (libtirpc.so.1)
+> #4  0x00007fd53837b096 svcerr_noprog (libtirpc.so.1)
+> #5  0x00007fd53837b360 svc_getreq_common (libtirpc.so.1)
+> #6  0x00000000004086d9 my_svc_getreqset (mountd)
+> #7  0x0000000000403d80 main (mountd)
+> #8  0x000000368161ffe0 __libc_start_main (libc.so.6)
+> #9  0x00000000004040f5 _start (mountd)
+>=20
+> The fd that created by the SVC_RECV() is never=20
+> given back to the app (in case mountd) to make
+> it non-blocking. Its used in the error path
+> where it get hung up in the write(). The
+> app has no control over that.=20
+>=20
+> Now I definitely see a problem, but these
+> patches (with the exception of the libtirpc
+> patch) don't address the problem I am seeing.
+>=20
+> So unless I'm not seeing something, I'm not in
+> favor of taking these 3 patches.
+>=20
+> thoughts?
+>=20
+> steved.
+
+
+--Sig_/c3ehowliBZ2Uc59OwxDokwG
 Content-Type: application/pgp-signature
 Content-Description: OpenPGP digital signature
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2
 
-iQIVAwUBVGP4Pjnsnt1WYoG5AQK2XA//SGALIO5jO3NYblT9GdnCb2GcGfQHcrdI
-HTwVEoewQTCKz84PjkO1Gwdk62Z2uBhzLkhL6yGDR3x2dHf/L4TeFY2CimZV/Sez
-9EyeiQONnQszNKOvBJfvQVPiCWq/o89/zXkwNNHSj5KJ6yYYpivsJ2nqLG41J2H7
-kQ9Pdm90LFQ4Ayi0W73shcCCYGdkrZjSCbmszcnRg0QDvstiQhMSTU6dD6JYem8/
-JrBBPFvSClnn7IP41soHquUnrnfABGfQe2sJ8KlEcZlWidNIWpi7CsljMDO9Egq1
-W1ZTQxsliUitj/2505Sin+DtTYiCpcfXD66w7KYYTMZ7l+B2N8eYRGvOvMAtkrpg
-ZTywhVDJRUkbh/GFbgu3YzyGf4lsdWXiXBj4GRVDwZjELZMh9zX6/5sMG8o9S0Dh
-EH8toxq05ulxEmmwXD3UkNaIQhjuXm4OiOjK36EX8+Jtw+e/sCE7wcpYQzoTVhbk
-vcbGDL8xmoPN7Deuhy85JANnLpfVv8LxR4zC4moyH/5os+ofYWNTi2SJ2PGqbjj2
-mRQYLpCMHWgHXPdvfNJnzOgEz/aQppGVzT0kKNLNOiCnIFnku4ZjDOKOqSYjHJmB
-/dcpZFeh34EF3OuKY0WMwtAFFiJecSv2C+rZxP+h1oV2YaI6fZhA8YgPusuHZmyF
-qER36WdaCm0=
-=lJIy
+iQIVAwUBVGKU+znsnt1WYoG5AQJQ4g//RaPlQaQvsq1MKEKOf6Zc5q4oplOn+b42
+tB7oHyWebpZcyzGD5Wm6hGVg0Rp551oxyzpQ7JDLnfUQXK9YwLjfrvBPx8ywwgY5
+RmZdfvLz6cfin5EuSD/5iCgOvOLQB8bV73HDLAiLEhYsjbb7pyVkUMe4OLYFZp2k
+gM1m17ru0fUjycF4YEkIY03Lp4FmbbDuSvzXeqHn6OYbpQtFW7guTuwhWXVhJWF/
+faaSWb7uoa3LL0SGvBpjIiVwnxjY774XDiSPi2qoS9VkOvZWT3kPFzQAEUEEXNSU
+cN/DlmoaVtBRRz+W3HraDHz0kcCLTp2X8DSifou960j+7Nq0D8SkhtvvAjAtR6UD
+cnYsnW7aQ3uZYqxGLa6sgBgr3x6ME29vyXbvu4cvE57yOa1plWU95Y2kgN3JfAc3
+1uM3XHzl8Rui+1mXU5qj6xWldKQL2mompt9VgKLdk2jazQAF8iwoKn/u8DP7ly/B
+bNcoyqLsMG4W0enIMHOzKQJPGtQYrR56JvsEr4bnWD8Ymi5wbm+b2NlZKtt5pi/z
+XFCeyyryqRBvrM4U/ndOSRqHmmhbqFs1dXSfIa4vp1idnwNA9cJe611mZSrT4Bw3
+O4wX+mukG0021HiYn+V5f5Dxg5/XCEpi3a5SKlnJFJI3pBC+whq0Xb4HgvBNbQOC
+f6MDFRcQgPo=
+=cFzp
 -----END PGP SIGNATURE-----
 
---Sig_/XE8SZ3I5yEygiZlDceIOwNl--
+--Sig_/c3ehowliBZ2Uc59OwxDokwG--
