@@ -1,77 +1,45 @@
-Return-Path: SteveD@redhat.com
-Message-ID: <54639871.3010903@RedHat.com>
-Date: Wed, 12 Nov 2014 12:27:13 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Benjamin Coddington <bcodding@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Return-Path: chuck.lever@oracle.com
+References: <alpine.LRH.2.11.1411110930190.20279@sh-el6.eng.rdu2.redhat.com>
+Mime-Version: 1.0 (1.0)
+In-Reply-To: <alpine.LRH.2.11.1411110930190.20279@sh-el6.eng.rdu2.redhat.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <3987E905-52A4-4F8E-AF97-FCAC0503260F@oracle.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chuck.lever@oracle.com>
 Subject: Re: mount default minor version behavior
-References: <alpine.LRH.2.11.1411110930190.20279@sh-el6.eng.rdu2.redhat.com>	<CAHQdGtQSSeOWs9pzZoXzR_+2F69-EJQB5BOEkB7q9BVE-d=RFA@mail.gmail.com>	<5462608B.1090607@RedHat.com>	<CAHQdGtQtQaGYsnaf+rVpNfkSRK97AEMU=2-Yx+GtwGXgNHcf1w@mail.gmail.com>	<54635BB5.1020702@RedHat.com>	<CAHQdGtSPLdUGNTcjC3-vaHEY7nE4tGq=f9eRNyBx57czJc_m4A@mail.gmail.com>	<5463787A.7080404@RedHat.com> <CAHQdGtSwgyrBzc9iOmPLCd+k3Y9c2QeAFJdks4OBrXZfpiatCA@mail.gmail.com>
-In-Reply-To: <CAHQdGtSwgyrBzc9iOmPLCd+k3Y9c2QeAFJdks4OBrXZfpiatCA@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+Date: Tue, 11 Nov 2014 10:38:01 -0600
+To: Benjamin Coddington <bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+> On Nov 11, 2014, at 8:39 AM, Benjamin Coddington <bcodding@redhat.com> wro=
+te:
+>=20
+> I will update mount.nfs so the default version is 4.1.
 
-On 11/12/2014 10:28 AM, Trond Myklebust wrote:
-> On Wed, Nov 12, 2014 at 10:10 AM, Steve Dickson <SteveD@redhat.com> wrote:
->>
->>
->> On 11/12/2014 09:31 AM, Trond Myklebust wrote:
->>>> My point is I don't think we need another variable, say
->>>>> DefaultMinVers, that defines the minor version of v4. I'm
->>>>> thinking that's its overkill and adds unnecessary complexity.
->>>>>
->>> I never said we do.
->> Ok... I misunderstood...
->>
->>>
->>> I think we're in agreement mostly; the only point where I see
->>> disagreement is when Defaultvers is unset.
->>> My position is that in that situation, we don't know what starting
->>> point to use for minor version negotiation, and so we should just
->>> default to minor version 0: if the sysadmin want a different default,
->>> then the answer is to set Defaultvers...
->> Gotta... and there is a disagreement... I saying we make the
->> default the highest supported minor version. With the
->> Linux client and server that's v4.2. So when no option is
->> given and Defaultvers is not set, try 4.2, then 4.1 and
->> then 4.0 and finally v3.
-> 
-> Only for Linux 3.11 and newer, and only if they enable CONFIG_NFS_V4_2
-> / CONFIG_NFSD_V4_SECURITY_LABEL.
-Being dynamic is never easy! ;-) 
+Hi Ben, can you explicitly test your change with NFSv4.0-only servers? Thank=
+s!
 
-The server has /proc/fs/nfsd/versions file that defines the
-supported versions. Maybe we can come up with something 
-on the client that would tell what protocols are supported...
+> I have two quick
+> questions on desired behavior:
+>=20
+> o  Should mounts that do not specify a minor version be upgraded to the de=
+fault minor version?
+>=20
+> For example, should 'mount -overs=3D4' turn into 'mount -overs4.1', if the=
 
-> 
-> Unless we want to have different defaults for older kernels, this sort
-> of implies that we're moving in the direction of coupling the
-> nfs-utils releases more tightly to the kernel version. I'm neutral to
-> that, but I do want to call it out.
-> 
->> But I do see your point of not having to recompile mount
->> when we want to change the default minor release so
->> how that default is set is the question... Maybe
->> an environment variable??
-> 
-> That's still something that requires a user or sysadmin action, and it
-> wouldn't really play well with autofs and its ilk. As Marie Antoinette
-> would say: "Let them edit /etc/nfsmount.conf"
-Clever.. :-) 
-
-> 
->> One down side of being the aggressive with minor version
->> negotiation is legacy servers (aka AIX). Today we
->> don't negotiate well with those types of servers...
->> Its not our fault, but is a problem...
-> 
-> Is this because they don't implement that part of RFC3530?
-The server returns the wrong type of error when a v4
-mount is done so the mount fails instead of rolling back
-to v3.
-
-steved.
+> current default is 4.1?
+>=20
+>=20
+> o If 'yes' to the above, should mount auto-retry decrementing minor
+> versions if EPROTONOSUPPORT?
+>=20
+> For example, 'mount -overs=3D4' with a default of 4.2 would attempt: 4.2,
+> then 4.1, then 4.0.
+>=20
+> Ben
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
