@@ -1,100 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54009 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932249AbaKERBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Nov 2014 12:01:14 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1D08004052
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:14 -0500
-Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA5H1Dtp027850
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:13 -0500
-Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sA5H1CwE000902
-	for <linux-nfs@vger.kernel.org>; Wed, 5 Nov 2014 12:01:12 -0500
-Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sA5H1C1r000901
-	for linux-nfs@vger.kernel.org; Wed, 5 Nov 2014 12:01:12 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils RFC PATCH 01/15] mountstats: Fix up NFS event counters
-Date: Wed,  5 Nov 2014 12:00:58 -0500
-Message-Id: <1415206872-864-2-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1415206872-864-1-git-send-email-smayhew@redhat.com>
-References: <1415206872-864-1-git-send-email-smayhew@redhat.com>
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:50993 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752195AbaKLXEM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 18:04:12 -0500
+Received: by mail-ig0-f170.google.com with SMTP id a13so162447igq.1
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 15:04:11 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Fix locking around callback channel reply receive
+Date: Wed, 12 Nov 2014 18:04:04 -0500
+Message-Id: <1415833444-48129-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The event counters in the mountstats program aren't in sync with the
-event counters in the kernel.  Removed syncinodes and added
-vfsupdatepage, vfssetattr, congestionwait, pnfsreads, and pnfswrites.
+Both xprt_lookup_rqst() and xprt_complete_rqst() require that you
+take the transport lock in order to avoid races with xprt_transmit().
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Bruce Fields <bfields@fieldses.org>
 ---
- tools/mountstats/mountstats.py | 33 ++++++++++++++++++---------------
- 1 file changed, 18 insertions(+), 15 deletions(-)
- mode change 100644 => 100755 tools/mountstats/mountstats.py
+ net/sunrpc/svcsock.c | 27 ++++++++++++++++-----------
+ 1 file changed, 16 insertions(+), 11 deletions(-)
 
-diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-old mode 100644
-new mode 100755
-index 9a6ec43..5770f2a
---- a/tools/mountstats/mountstats.py
-+++ b/tools/mountstats/mountstats.py
-@@ -73,25 +73,29 @@ class DeviceData:
-             self.__nfs_data['dentryrevalidates'] = int(words[2])
-             self.__nfs_data['datainvalidates'] = int(words[3])
-             self.__nfs_data['attrinvalidates'] = int(words[4])
--            self.__nfs_data['syncinodes'] = int(words[5])
--            self.__nfs_data['vfsopen'] = int(words[6])
--            self.__nfs_data['vfslookup'] = int(words[7])
--            self.__nfs_data['vfspermission'] = int(words[8])
-+            self.__nfs_data['vfsopen'] = int(words[5])
-+            self.__nfs_data['vfslookup'] = int(words[6])
-+            self.__nfs_data['vfspermission'] = int(words[7])
-+            self.__nfs_data['vfsupdatepage'] = int(words[8])
-             self.__nfs_data['vfsreadpage'] = int(words[9])
-             self.__nfs_data['vfsreadpages'] = int(words[10])
-             self.__nfs_data['vfswritepage'] = int(words[11])
-             self.__nfs_data['vfswritepages'] = int(words[12])
-             self.__nfs_data['vfsreaddir'] = int(words[13])
--            self.__nfs_data['vfsflush'] = int(words[14])
--            self.__nfs_data['vfsfsync'] = int(words[15])
--            self.__nfs_data['vfslock'] = int(words[16])
--            self.__nfs_data['vfsrelease'] = int(words[17])
--            self.__nfs_data['setattrtrunc'] = int(words[18])
--            self.__nfs_data['extendwrite'] = int(words[19])
--            self.__nfs_data['sillyrenames'] = int(words[20])
--            self.__nfs_data['shortreads'] = int(words[21])
--            self.__nfs_data['shortwrites'] = int(words[22])
--            self.__nfs_data['delay'] = int(words[23])
-+            self.__nfs_data['vfssetattr'] = int(words[14])
-+            self.__nfs_data['vfsflush'] = int(words[15])
-+            self.__nfs_data['vfsfsync'] = int(words[16])
-+            self.__nfs_data['vfslock'] = int(words[17])
-+            self.__nfs_data['vfsrelease'] = int(words[18])
-+            self.__nfs_data['congestionwait'] = int(words[19])
-+            self.__nfs_data['setattrtrunc'] = int(words[20])
-+            self.__nfs_data['extendwrite'] = int(words[21])
-+            self.__nfs_data['sillyrenames'] = int(words[22])
-+            self.__nfs_data['shortreads'] = int(words[23])
-+            self.__nfs_data['shortwrites'] = int(words[24])
-+            self.__nfs_data['delay'] = int(words[25])
-+            self.__nfs_data['pnfsreads'] = int(words[26])
-+            self.__nfs_data['pnfswrites'] = int(words[27])
-         elif words[0] == 'bytes:':
-             self.__nfs_data['normalreadbytes'] = int(words[1])
-             self.__nfs_data['normalwritebytes'] = int(words[2])
-@@ -201,7 +205,6 @@ class DeviceData:
-         print('Cache events:')
-         print('  data cache invalidated %d times' % self.__nfs_data['datainvalidates'])
-         print('  attribute cache invalidated %d times' % self.__nfs_data['attrinvalidates'])
--        print('  inodes synced %d times' % self.__nfs_data['syncinodes'])
-         print()
-         print('VFS calls:')
-         print('  VFS requested %d inode revalidations' % self.__nfs_data['inoderevalidates'])
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 3f959c681885..f9c052d508f0 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1019,17 +1019,12 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 	xid = *p++;
+ 	calldir = *p;
+ 
+-	if (bc_xprt)
+-		req = xprt_lookup_rqst(bc_xprt, xid);
+-
+-	if (!req) {
+-		printk(KERN_NOTICE
+-			"%s: Got unrecognized reply: "
+-			"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
+-			__func__, ntohl(calldir),
+-			bc_xprt, ntohl(xid));
++	if (!bc_xprt)
+ 		return -EAGAIN;
+-	}
++	spin_lock_bh(&bc_xprt->transport_lock);
++	req = xprt_lookup_rqst(bc_xprt, xid);
++	if (!req)
++		goto unlock_notfound;
+ 
+ 	memcpy(&req->rq_private_buf, &req->rq_rcv_buf, sizeof(struct xdr_buf));
+ 	/*
+@@ -1040,11 +1035,21 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
+ 	dst = &req->rq_private_buf.head[0];
+ 	src = &rqstp->rq_arg.head[0];
+ 	if (dst->iov_len < src->iov_len)
+-		return -EAGAIN; /* whatever; just giving up. */
++		goto unlock_eagain; /* whatever; just giving up. */
+ 	memcpy(dst->iov_base, src->iov_base, src->iov_len);
+ 	xprt_complete_rqst(req->rq_task, rqstp->rq_arg.len);
+ 	rqstp->rq_arg.len = 0;
++	spin_unlock_bh(&bc_xprt->transport_lock);
+ 	return 0;
++unlock_notfound:
++	printk(KERN_NOTICE
++		"%s: Got unrecognized reply: "
++		"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
++		__func__, ntohl(calldir),
++		bc_xprt, ntohl(xid));
++unlock_eagain:
++	spin_unlock_bh(&bc_xprt->transport_lock);
++	return -EAGAIN;
+ }
+ 
+ static int copy_pages_to_kvecs(struct kvec *vec, struct page **pages, int len)
 -- 
 1.9.3
 
