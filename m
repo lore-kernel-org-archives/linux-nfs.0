@@ -1,90 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41422 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48758 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751553AbaKDQZG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Nov 2014 11:25:06 -0500
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sA4GP6Gr019714
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Nov 2014 11:25:06 -0500
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sA4GP6VS030736
-	for <linux-nfs@vger.kernel.org>; Tue, 4 Nov 2014 11:25:06 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] build: Revert using a symbol version map
-Date: Tue,  4 Nov 2014 11:25:04 -0500
-Message-Id: <1415118304-5696-1-git-send-email-steved@redhat.com>
+	id S1752898AbaKLP6o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Nov 2014 10:58:44 -0500
+Message-ID: <546383AB.6080105@RedHat.com>
+Date: Wed, 12 Nov 2014 10:58:35 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: bstroesser@ts.fujitsu.com, linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: Re: [nfs-utils] [PATCH 0/3] rpc.mountd: fix some vulnerabilities
+References: <d6437a$6ag11f@dgate10u.abg.fsc.net>	<5462545F.4010706@RedHat.com> <20141112100011.74b6549f@notabene.brown>
+In-Reply-To: <20141112100011.74b6549f@notabene.brown>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 045d2e46 cause a number of systems to be
-undefined during run time in rpc.idmapd.
 
-Having this type of versioning is not necessary in
-this type of a library so the patch was reverted.
 
-Fixes https://bugzilla.redhat.com/show_bug.cgi?id=1159943
+On 11/11/2014 06:00 PM, NeilBrown wrote:
+>> Here is why they do not work: 
+>> > 
+>> > The fd that the write() is getting hung on, is not be created 
+>> > by the 3 nfs_svc_create() calls in mountd:main(). Its
+>> > being created by the accept() when the tcp connection
+>> > is created (via SVC_RECV()), so making those fds coming 
+>> > out of the nfs_svc_create() non-blocking does nothing. 
+> Just to add to what Bodo replied:
+> 
+> SVC_RECV is a macro which calls .xp_recv, which in the TCP listen
+> case is rendezvous_request.
+> 
+> rendezvous_request does the accept:
+> 
+>         if ((sock = accept(xprt->xp_fd, (struct sockaddr *)(void *)&addr,
+>             &len)) < 0) {
+> 
+> and then
+>         if (cd->maxrec != 0) {
+>                 flags = fcntl(sock, F_GETFL, 0);
+>                 if (flags  == -1)
+>                         return (FALSE);
+>                 if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1)
+>                         return (FALSE);
+>   
+> so if cd->maxrec is not zero, O_NONBLOCK get set.
+> 
+> It gets set through an SVC_CONTROL -> xp_control -> svc_vc_rendezvous_control
+> 
+> call, which no-one ever makes, and it initialised to __svc_maxrec, which is
+> set by the rpc_control() call that Bodo mentions.
+> So providing rpc_control is called before the service is created, it should
+> work fine.
+> 
+> I wonder why it didn't work for you...
+Because I didn't apply the 3rd patch because it was marked
+as experimental. I figured I would get the first two 
+patches working and deal with it later... 
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- Makefile.am  |  3 +--
- nfsidmap.map | 31 -------------------------------
- 2 files changed, 1 insertion(+), 33 deletions(-)
- delete mode 100644 nfsidmap.map
+Plus although I did look at this code, I didn't notice the 
+setting of the O_NONBLOCK on the fd from the accept.
+Thanks for pointing it out.... 
 
-diff --git a/Makefile.am b/Makefile.am
-index 69bbcbc..85f19c8 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -26,9 +26,8 @@ pkglib_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
- #  		by this library.
- 
- libnfsidmap_la_SOURCES = libnfsidmap.c cfg.c strlcpy.c cfg.h nfsidmap_internal.h queue.h
--libnfsidmap_la_LDFLAGS = -version-info 3:0:3 -Wl,--version-script=$(srcdir)/nfsidmap.map
-+libnfsidmap_la_LDFLAGS = -version-info 3:0:3
- libnfsidmap_la_LIBADD = -ldl
--libnfsidmap_la_DEPENDENCIES = nfsidmap.map
- 
- nsswitch_la_SOURCES = nss.c
- nsswitch_la_LDFLAGS = -module -avoid-version
-diff --git a/nfsidmap.map b/nfsidmap.map
-deleted file mode 100644
-index 1e7cf7e..0000000
---- a/nfsidmap.map
-+++ /dev/null
-@@ -1,31 +0,0 @@
--V_0.26 {
--global:
--	nfs4_init_name_mapping;
--	nfs4_get_default_domain;
--	nfs4_uid_to_name;
--	nfs4_gid_to_name;
--	nfs4_uid_to_owner;
--	nfs4_gid_to_group_owner;
--	nfs4_name_to_uid;
--	nfs4_name_to_gid;
--	nfs4_owner_to_uid;
--	nfs4_owner_to_gid;
--	nfs4_group_owner_to_gid;
--	nfs4_gss_princ_to_ids;
--	nfs4_gss_princ_to_grouplist;
--	nfs4_gss_princ_to_ids_ex;
--	nfs4_gss_princ_to_grouplist_ex;
--	nfs4_set_debug;
--	idmap_verbosity;
--	idmap_log_func;
--	get_default_domain;
--	get_local_realms;
--local:
--	*;
--};
--/*
--V_0.27 {
--global:
--	...
--} V_0.26;
--*/
--- 
-1.9.3
-
+steved.
