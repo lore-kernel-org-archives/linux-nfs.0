@@ -1,89 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f43.google.com ([209.85.216.43]:46294 "EHLO
-	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753809AbaKMCle (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 21:41:34 -0500
-Received: by mail-qa0-f43.google.com with SMTP id j7so9443578qaq.2
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 18:41:33 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 12 Nov 2014 21:41:28 -0500
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] SUNRPC: Fix locking around callback channel reply
- receive
-Message-ID: <20141112214128.4fc43a49@synchrony.poochiereds.net>
-In-Reply-To: <1415833444-48129-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1415833444-48129-1-git-send-email-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:37211 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752814AbaKLWcW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 17:32:22 -0500
+Received: by mail-ie0-f173.google.com with SMTP id tr6so14618493ieb.32
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 14:32:21 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 4/5] NFSv4: Ensure that we call FREE_STATEID when NFSv4.x stateids are revoked
+Date: Wed, 12 Nov 2014 17:31:53 -0500
+Message-Id: <1415831514-47005-5-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1415831514-47005-4-git-send-email-trond.myklebust@primarydata.com>
+References: <1415831514-47005-1-git-send-email-trond.myklebust@primarydata.com>
+ <1415831514-47005-2-git-send-email-trond.myklebust@primarydata.com>
+ <1415831514-47005-3-git-send-email-trond.myklebust@primarydata.com>
+ <1415831514-47005-4-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 12 Nov 2014 18:04:04 -0500
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+NFSv4.x (x>0) requires us to call TEST_STATEID+FREE_STATEID if a stateid is
+revoked. We will currently fail to do this if the stateid is a delegation.
 
-> Both xprt_lookup_rqst() and xprt_complete_rqst() require that you
-> take the transport lock in order to avoid races with xprt_transmit().
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Cc: Bruce Fields <bfields@fieldses.org>
-> ---
->  net/sunrpc/svcsock.c | 27 ++++++++++++++++-----------
->  1 file changed, 16 insertions(+), 11 deletions(-)
-> 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 3f959c681885..f9c052d508f0 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -1019,17 +1019,12 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
->  	xid = *p++;
->  	calldir = *p;
->  
-> -	if (bc_xprt)
-> -		req = xprt_lookup_rqst(bc_xprt, xid);
-> -
-> -	if (!req) {
-> -		printk(KERN_NOTICE
-> -			"%s: Got unrecognized reply: "
-> -			"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
-> -			__func__, ntohl(calldir),
-> -			bc_xprt, ntohl(xid));
-> +	if (!bc_xprt)
->  		return -EAGAIN;
-> -	}
-> +	spin_lock_bh(&bc_xprt->transport_lock);
-> +	req = xprt_lookup_rqst(bc_xprt, xid);
-> +	if (!req)
-> +		goto unlock_notfound;
->  
->  	memcpy(&req->rq_private_buf, &req->rq_rcv_buf, sizeof(struct xdr_buf));
->  	/*
-> @@ -1040,11 +1035,21 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
->  	dst = &req->rq_private_buf.head[0];
->  	src = &rqstp->rq_arg.head[0];
->  	if (dst->iov_len < src->iov_len)
-> -		return -EAGAIN; /* whatever; just giving up. */
-> +		goto unlock_eagain; /* whatever; just giving up. */
->  	memcpy(dst->iov_base, src->iov_base, src->iov_len);
->  	xprt_complete_rqst(req->rq_task, rqstp->rq_arg.len);
->  	rqstp->rq_arg.len = 0;
-> +	spin_unlock_bh(&bc_xprt->transport_lock);
->  	return 0;
-> +unlock_notfound:
-> +	printk(KERN_NOTICE
-> +		"%s: Got unrecognized reply: "
-> +		"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
-> +		__func__, ntohl(calldir),
-> +		bc_xprt, ntohl(xid));
-> +unlock_eagain:
-> +	spin_unlock_bh(&bc_xprt->transport_lock);
-> +	return -EAGAIN;
->  }
->  
->  static int copy_pages_to_kvecs(struct kvec *vec, struct page **pages, int len)
+http://lkml.kernel.org/r/CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/filelayout/filelayout.c | 3 ---
+ fs/nfs/nfs4proc.c              | 8 --------
+ 2 files changed, 11 deletions(-)
 
-Nice catch. It would also be good to pair this with a
-lockdep_assert_held() call in xprt_lookup_rqst, but that could be added
-in a separate patch.
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 46fab1cb455a..7afb52f6a25a 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -145,9 +145,6 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 	case -NFS4ERR_DELEG_REVOKED:
+ 	case -NFS4ERR_ADMIN_REVOKED:
+ 	case -NFS4ERR_BAD_STATEID:
+-		if (state == NULL)
+-			break;
+-		nfs_remove_bad_delegation(state->inode);
+ 	case -NFS4ERR_OPENMODE:
+ 		if (state == NULL)
+ 			break;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4b7166f4e1cf..69dc20a743f9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -370,11 +370,6 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
+ 		case -NFS4ERR_DELEG_REVOKED:
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_BAD_STATEID:
+-			if (inode != NULL && nfs4_have_delegation(inode, FMODE_READ)) {
+-				nfs_remove_bad_delegation(inode);
+-				exception->retry = 1;
+-				break;
+-			}
+ 			if (state == NULL)
+ 				break;
+ 			ret = nfs4_schedule_stateid_recovery(server, state);
+@@ -4844,9 +4839,6 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+ 		case -NFS4ERR_DELEG_REVOKED:
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_BAD_STATEID:
+-			if (state == NULL)
+-				break;
+-			nfs_remove_bad_delegation(state->inode);
+ 		case -NFS4ERR_OPENMODE:
+ 			if (state == NULL)
+ 				break;
+-- 
+1.9.3
 
-Reviewed-by: Jeff Layton <jlayton@primarydata.com>
