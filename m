@@ -1,120 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54973 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751804AbaKDSft (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Nov 2014 13:35:49 -0500
-Message-ID: <54591385.2080007@RedHat.com>
-Date: Tue, 04 Nov 2014 12:57:25 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Henrique Martins <linux@martins.cc>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: F20 nfs-utils exportfs patch
-References: <14393.1409936528@monster.martins.cc> <15531.1414780435@monster.martins.cc>
-In-Reply-To: <15531.1414780435@monster.martins.cc>
-Content-Type: text/plain; charset=utf-8
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:49183 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752814AbaKLWcO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 17:32:14 -0500
+Received: by mail-ig0-f178.google.com with SMTP id a13so3878525igq.5
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 14:32:13 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/5] NFSv4: Ensure that we remove NFSv4.0 delegations when state has expired
+Date: Wed, 12 Nov 2014 17:31:50 -0500
+Message-Id: <1415831514-47005-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1415831514-47005-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1415831514-47005-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Re-posting with the patch inlined with comments.
+NFSv4.0 does not have TEST_STATEID/FREE_STATEID functionality, so
+unlike NFSv4.1, the recovery procedure when stateids have expired or
+have been revoked requires us to just forget the delegation.
 
-On 10/31/2014 02:33 PM, Henrique Martins wrote:
-> 
-> Re-sending this patch, at Steve Dickson's request.
-Thanks... but... :-) 
+http://lkml.kernel.org/r/CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 24 +++++++++++++++++++++++-
+ 1 file changed, 23 insertions(+), 1 deletion(-)
 
-There is no Signed-off-by: line as described in
-  https://www.kernel.org/doc/Documentation/SubmittingPatches
-
-and there is no description section as the above document 
-describes 
-
-Also, please in-line the patch in the email instead 
-of attaching them... I just makes is easier to review.
- 
-> 
-> -- Henrique
-> 
-> --------------------------------------------------------------
-> 
-> Attaching path to exportfs that:
-> - in client.c/client_lookup:
->     changes the (x)log level for unresolvable entries in
->     /etc/exports from L_ERROR to L_WARNING,
-> - in hostname.c/host_addrinfo:
->     changes the (x)log level for unresolvable entries in
->     /etc/exports from D_GENERAL to D_PARSE,
-> - in export.c/export_read:
->     counts the number of exported volume entries and
->     generates a (x)log L_ERROR if no volumes are exported.
-> 
-> Built and tested on a Fedora 20 system.
-> 
-> --------------------------------------------------------------
-> 
---- nfs-utils-1.3.0/support/export/client.c.orig	2014-09-05 08:21:37.568364360 -0700
-+++ nfs-utils-1.3.0/support/export/client.c	2014-09-05 08:21:41.709451778 -0700
-@@ -277,7 +277,7 @@
- 	if (htype == MCL_FQDN && !canonical) {
- 		ai = host_addrinfo(hname);
- 		if (!ai) {
--			xlog(L_ERROR, "Failed to resolve %s", hname);
-+			xlog(L_WARNING, "Failed to resolve %s", hname);
- 			goto out;
- 		}
- 		hname = ai->ai_canonname;
---- nfs-utils-1.3.0/support/export/hostname.c.orig	2014-09-05 08:09:07.387551291 -0700
-+++ nfs-utils-1.3.0/support/export/hostname.c	2014-09-05 08:09:13.799573723 -0700
-@@ -175,11 +175,11 @@
- 	case 0:
- 		return ai;
- 	case EAI_SYSTEM:
--		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
-+		xlog(D_PARSE, "%s: failed to resolve %s: (%d) %m",
- 				__func__, hostname, errno);
- 		break;
- 	default:
--		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
-+		xlog(D_PARSE, "%s: failed to resolve %s: %s",
- 				__func__, hostname, gai_strerror(error));
- 		break;
- 	}
-Just curious as to why these changes... What does  D_PARSE do that
-D_GENERAL does not?
-
---- nfs-utils-1.3.0/support/export/export.c.orig	2014-03-25 08:12:07.000000000 -0700
-+++ nfs-utils-1.3.0/support/export/export.c	2014-09-05 09:23:37.424105125 -0700
-@@ -76,15 +76,22 @@
- 	struct exportent	*eep;
- 	nfs_export		*exp;
-
-+        int volumes = 0;
-+
- 	setexportent(fname, "r");
- 	while ((eep = getexportent(0,1)) != NULL) {
- 		exp = export_lookup(eep->e_hostname, eep->e_path, 0);
--		if (!exp)
--			export_create(eep, 0);
-+		if (!exp) {
-+			exp = export_create(eep, 0);
-+                        if (exp)
-+                        	volumes++;
-+                }
- 		else
- 			warn_duplicated_exports(exp, eep);
- 	}
- 	endexportent();
-+        if (volumes == 0)
-+        	xlog(L_ERROR, "no or all unresolvable export entries");
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index dca174ce8309..bdd880bddba4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2109,6 +2109,28 @@ static int nfs4_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *sta
+ 	return ret;
  }
+ 
++static void nfs_finish_clear_delegation_stateid(struct nfs4_state *state)
++{
++	nfs_remove_bad_delegation(state->inode);
++	write_seqlock(&state->seqlock);
++	nfs4_stateid_copy(&state->stateid, &state->open_stateid);
++	write_sequnlock(&state->seqlock);
++	clear_bit(NFS_DELEGATED_STATE, &state->flags);
++}
++
++static void nfs40_clear_delegation_stateid(struct nfs4_state *state)
++{
++	if (rcu_access_pointer(NFS_I(state->inode)->delegation) != NULL)
++		nfs_finish_clear_delegation_stateid(state);
++}
++
++static int nfs40_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *state)
++{
++	/* NFSv4.0 doesn't allow for delegation recovery on open expire */
++	nfs40_clear_delegation_stateid(state);
++	return nfs4_open_expired(sp, state);
++}
++
+ #if defined(CONFIG_NFS_V4_1)
+ static void nfs41_clear_delegation_stateid(struct nfs4_state *state)
+ {
+@@ -8330,7 +8352,7 @@ static const struct nfs4_state_recovery_ops nfs41_reboot_recovery_ops = {
+ static const struct nfs4_state_recovery_ops nfs40_nograce_recovery_ops = {
+ 	.owner_flag_bit = NFS_OWNER_RECLAIM_NOGRACE,
+ 	.state_flag_bit	= NFS_STATE_RECLAIM_NOGRACE,
+-	.recover_open	= nfs4_open_expired,
++	.recover_open	= nfs40_open_expired,
+ 	.recover_lock	= nfs4_lock_expired,
+ 	.establish_clid = nfs4_init_clientid,
+ };
+-- 
+1.9.3
 
- /**
-
-When testing the patch, I notice two "Failed to resolve" warning messages
-are logged for each export... Its not because of this patch but
-I wounder how that could be cleaned up a bit....
-
-So please re-post with in correct patch format and we will be good to go! 
-
-steved. 
-   
