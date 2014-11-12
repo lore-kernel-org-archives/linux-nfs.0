@@ -1,24 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33568 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750941AbaKJVmb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Nov 2014 16:42:31 -0500
-Date: Mon, 10 Nov 2014 16:42:27 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: nfsd: add support for the chage_attr_type attribute
-Message-ID: <20141110214227.GH32702@fieldses.org>
-References: <1415448664-25815-1-git-send-email-hch@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1415448664-25815-1-git-send-email-hch@lst.de>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:37920 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752814AbaKLWcL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 17:32:11 -0500
+Received: by mail-ie0-f172.google.com with SMTP id at20so14705233iec.3
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 14:32:10 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/5] Fix up delegation reclaim and recovery issues
+Date: Wed, 12 Nov 2014 17:31:49 -0500
+Message-Id: <1415831514-47005-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 08, 2014 at 01:11:02PM +0100, Christoph Hellwig wrote:
-> The first one is a bug fix that probably should go into 3.18-rc and -stable.
-> 
+The main change w.r.t. the first iteration of these patches is that
+we no longer trust the NFS_DELEGATED_STATE flag to tell us when we need
+to test and/or discard the delegation. Instead, we just assume that
+if we have a delegation then it is part of the recovery process.
 
-Agreed, thanks.--b.
+Trond Myklebust (5):
+  NFSv4: Ensure that we remove NFSv4.0 delegations when state has
+    expired
+  NFSv4.1: nfs41_clear_delegation_stateid shouldn't trust
+    NFS_DELEGATED_STATE
+  NFSv4: Fix races between nfs_remove_bad_delegation() and delegation
+    return
+  NFSv4: Ensure that we call FREE_STATEID when NFSv4.x stateids are
+    revoked
+  NFS: Don't try to reclaim delegation open state if recovery failed
+
+ fs/nfs/delegation.c            | 25 ++++++++++++--
+ fs/nfs/delegation.h            |  1 +
+ fs/nfs/filelayout/filelayout.c |  3 --
+ fs/nfs/nfs4proc.c              | 76 +++++++++++++++++++++++-------------------
+ 4 files changed, 65 insertions(+), 40 deletions(-)
+
+-- 
+1.9.3
+
