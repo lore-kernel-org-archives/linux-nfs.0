@@ -1,133 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:61873 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751337AbaKERxt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Nov 2014 12:53:49 -0500
-Received: by mail-ig0-f170.google.com with SMTP id h15so8742178igd.5
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Nov 2014 09:53:48 -0800 (PST)
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:41630 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753641AbaKMDdT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 22:33:19 -0500
+Date: Thu, 13 Nov 2014 14:33:17 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Steve French <smfrench@gmail.com>
+Cc: Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        dros@primarydata.com
+Subject: Re: [PATCH v2 1/5] common: re-enable tests that require scratch dev
+ on NFS
+Message-ID: <20141113033317.GC28565@dastard>
+References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
+ <1414775040-4051-2-git-send-email-eguan@redhat.com>
+ <CAH2r5muuJRcC4YgFkwUeUcCeEntgY+4POF8-bwmox64wXykuTw@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtQWg+Fiyn7vH9pjU1GR-TKvMp+gcR7ssaA1zESQ8JdVsw@mail.gmail.com>
-References: <1415025403-31914-1-git-send-email-kolga@netapp.com>
-	<CAN-5tyHVoJ60z7WBaCYvUN3GsCEGh9jGc0evRCuiVt2aA6zP0g@mail.gmail.com>
-	<CAHQdGtQWg+Fiyn7vH9pjU1GR-TKvMp+gcR7ssaA1zESQ8JdVsw@mail.gmail.com>
-Date: Wed, 5 Nov 2014 12:53:48 -0500
-Message-ID: <CAN-5tyEOLnq_v_8X6zNXX4u2oOdJeJHpEmxsr_yOAfHFZxyhyA@mail.gmail.com>
-Subject: Re: [PATCH 1/1] Fixing infinite state recovery loop due to failed
- delegation return
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAH2r5muuJRcC4YgFkwUeUcCeEntgY+4POF8-bwmox64wXykuTw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thank you for looking into this!
+On Wed, Nov 12, 2014 at 12:36:13PM -0600, Steve French wrote:
+> On Fri, Oct 31, 2014 at 12:03 PM, Eryu Guan <eguan@redhat.com> wrote:
+> > This commit disables tests requires scratch dev running on NFS
+> >
+> > c041421 xfstests: stop special casing nfs and udf
+> >
+> > Now re-enable them to get a larger test coverage on NFS.
+> >
+> > Signed-off-by: Eryu Guan <eguan@redhat.com>
+> > ---
+> >  common/rc | 22 +++++++++++++++++++---
+> >  1 file changed, 19 insertions(+), 3 deletions(-)
+> >
+> > diff --git a/common/rc b/common/rc
+> > index 747cf72..ae03712 100644
+> > --- a/common/rc
+> > +++ b/common/rc
+> > @@ -551,6 +551,14 @@ _mkfs_dev()
+> >      rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
+> >  }
+> >
+> > +# remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
+> > +_scratch_cleanup_files()
+> > +{
+> > +       _scratch_mount
+> > +       rm -rf $SCRATCH_MNT/*
+> > +       _scratch_unmount
+> > +}
+>
+> There should be a check to make sure SCRATCH_MNT exists before you
+> wipe the whole disk ....
+> 
+> so if no SCRATCH_MNT then this does rm -rf/*
+> right ... (and wipes out your whole system ...)
 
-On Tue, Nov 4, 2014 at 7:14 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Tue, Nov 4, 2014 at 6:22 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> Trond, can you please respond to the patch?
->>
->> As per earlier conversation, in this solution, state recovery is
->> initiated which marks the locks lost.
->>
->> Please either accept this patch or let me know what needs to be fixed.
->>
->
-> Please see the 3 fixes I just sent out concerning delegation recovery
-> w.r.t. NFSv4+NFSv4.1. In addition, we need to handle the case you
-> patch attempts to address (however see the question I have below).
->
->> Thank you.
->>
->> On Mon, Nov 3, 2014 at 9:36 AM, Olga Kornievskaia <kolga@netapp.com> wrote:
->>> If we get a bad-stateid-type of error when we send OPEN with delegate_cur
->>> to return currently held delegation, we shouldn't be trying to reclaim locks
->>> associated with that delegation state_id because we don't have an
->>> open_stateid to be used for the LOCK operation. Thus, we should
->>> return an error from the nfs4_open_delegation_recall() in that case.
->>>
->>> Furthermore, if an error occurs the delegation code will call
->>> nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
->>> flags in the state and it leads the state manager to into an infinite loop
->>> for trying to reclaim the delegated state.
->>>
->>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->>> ---
->>>  fs/nfs/delegation.c |    5 +++--
->>>  fs/nfs/nfs4proc.c   |    2 +-
->>>  2 files changed, 4 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
->>> index 5853f53..8016d89 100644
->>> --- a/fs/nfs/delegation.c
->>> +++ b/fs/nfs/delegation.c
->>> @@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
->>>                 err = nfs4_wait_clnt_recover(clp);
->>>         } while (err == 0);
->>>
->>> -       if (err) {
->>> +       if (err && err != -EIO) {
->>>                 nfs_abort_delegation_return(delegation, clp);
->
-> This exception for EIO now has me worried. If we detach the
-> delegation, then it looks to me as if we will never send a
-> FREE_STATEID, as required for the case of NFSv4.1.
+You can't get to that function until after all the checks that
+SCRATCH_MNT exists. i.e. this happens during _scratch_mkfs, and that
+is only called in tests after all the startup checks validate
+devices and mounts exist. i.e. see common/config::get_next_config()
 
-I'd need to brush up on the FREE_STATEID op to confidently answer
-that. But can't this be taken care of in state_recovery when locks are
-marked lost?
+Cheers,
 
->
->>>                 goto out;
->>>         }
->>> @@ -458,7 +458,8 @@ restart:
->>>                         iput(inode);
->>>                         if (!err)
->>>                                 goto restart;
->>> -                       set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
->>> +                       if (err != -EIO)
->>> +                               set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
->
-> Please explain why this is needed. If we've cleared the bad
-> delegation, then why should we not attempt to return any others that
-> may be pending?
-
-You are right, I think this is unnecessary because after we return the
-delegation the bit can be set again for any other leftover
-delegations. I have tested my patch without that chuck and it still
-fixes the issues.
-
->
->>>                         return err;
->>>                 }
->>>         }
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index 5aa55c1..6871055 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -1655,7 +1655,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
->>>                         nfs_inode_find_state_and_recover(state->inode,
->>>                                         stateid);
->>>                         nfs4_schedule_stateid_recovery(server, state);
->>> -                       return 0;
->>> +                       return -EIO;
->>>                 case -NFS4ERR_DELAY:
->>>                 case -NFS4ERR_GRACE:
->>>                         set_bit(NFS_DELEGATED_STATE, &state->flags);
->>> --
->>> 1.7.1
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
->
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
