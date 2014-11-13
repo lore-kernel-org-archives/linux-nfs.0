@@ -1,86 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:49868 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752014AbaKJOyg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Nov 2014 09:54:36 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v2 06/10] xprtrdma: Enable pad optimization
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5460CD53.1080301@Netapp.com>
-Date: Mon, 10 Nov 2014 08:54:27 -0600
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <89410A6C-693C-4FB2-A0AB-5698803F3AFC@oracle.com>
-References: <20141109010328.8806.5861.stgit@manet.1015granger.net> <20141109011453.8806.31817.stgit@manet.1015granger.net> <5460CD53.1080301@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:47467 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933579AbaKMRvX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Nov 2014 12:51:23 -0500
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sADHpM0D018148
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Nov 2014 12:51:23 -0500
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sADHpMdA023568
+	for <linux-nfs@vger.kernel.org>; Thu, 13 Nov 2014 12:51:22 -0500
+Message-ID: <5464EF99.1090107@RedHat.com>
+Date: Thu, 13 Nov 2014 12:51:21 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Linux NFS Town Hall  meeting: Tomorrow - Thur 11/13/14
+References: <54636A9A.7080206@RedHat.com>
+In-Reply-To: <54636A9A.7080206@RedHat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This will be started in 10mins... if interested... 
 
-On Nov 10, 2014, at 8:36 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
-
-> Hey Chuck,
+On 11/12/2014 09:11 AM, Steve Dickson wrote:
+> Hello,
+> 
+> Its been a while and there are a few things 
+> we need to sort out...  
+> 
+> So the Linux NFS town hall meeting is tomorrow
+>    *Thur Nov 13 at 01:00 pm EST (10:00am PST)*
+> 
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
+> 
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
+> 
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
+> 
+> Please feel to attend and participate!
+> 
+> Time: 10:00 am PST (01:00 pm EST)
+> 
+> The call in numbers are:
+> 
+> U.S. and Canada: (800) 451-8679
+> World wide toll free numbers
+>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+> 
+> Conference code: 564.272.1552
 > 
 > 
-> On 11/08/2014 08:14 PM, Chuck Lever wrote:
->> The Linux NFS/RDMA server used to reject NFSv3 WRITE requests when
->> pad optimization was enabled. That bug was fixed by commit
->> e560e3b510d2 ("svcrdma: Add zero padding if the client doesn't send
->> it").
-> 
-> Do we need to worry about backwards compatibility with servers that don't have this patch?
-
-My impression is that we have a window where the server is assumed not
-to work and thus is not enabled in distributions, and that therefore
-changes like this are allowed. I could be wrong. Bruce, any guidance
-on this?
-
-In any event, if things break, they break immediately, and the fix is
-simply to set this feature flag via /proc.
-
-
-
-
-> Anna
-> 
->> 
->> We can now enable pad optimization on the client, which helps
->> performance and is supported now by both Linux and Solaris servers.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> net/sunrpc/xprtrdma/transport.c |    2 +-
->> 1 file changed, 1 insertion(+), 1 deletion(-)
->> 
->> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
->> index cfe9a81..8ed2576 100644
->> --- a/net/sunrpc/xprtrdma/transport.c
->> +++ b/net/sunrpc/xprtrdma/transport.c
->> @@ -73,7 +73,7 @@ static unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
->> static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
->> static unsigned int xprt_rdma_inline_write_padding;
->> static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
->> -                int xprt_rdma_pad_optimize = 0;
->> +		int xprt_rdma_pad_optimize = 1;
->> 
->> #ifdef RPC_DEBUG
->> 
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> steved.
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> 
