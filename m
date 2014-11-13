@@ -1,91 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:57021 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1422639AbaKNXEk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Nov 2014 18:04:40 -0500
-Received: by mail-ie0-f175.google.com with SMTP id at20so3514817iec.20
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Nov 2014 15:04:39 -0800 (PST)
-Message-ID: <1416006273.12920.1.camel@leira.trondhjem.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes
+Received: from mail-wg0-f52.google.com ([74.125.82.52]:41091 "EHLO
+	mail-wg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932622AbaKMNCp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Nov 2014 08:02:45 -0500
+Received: by mail-wg0-f52.google.com with SMTP id b13so16674299wgh.25
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Nov 2014 05:02:44 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20141113002846.GC23575@dastard>
+References: <20141111162849.GA12527@lst.de>
+	<20141111162704.GA12103@lst.de>
+	<20141111222710.GY23575@dastard>
+	<20141112102440.GA31344@lst.de>
+	<CAHQdGtRi-20XRthpU7vrkAE+=3d9HG6g8i6REGYn+uo0xkbmRw@mail.gmail.com>
+	<20141113002846.GC23575@dastard>
+Date: Thu, 13 Nov 2014 08:02:43 -0500
+Message-ID: <CAHQdGtRvaOTT7375p0eDjPPm+uFc19AJkf-NWDAKq-=goqZSpA@mail.gmail.com>
+Subject: Re: [PATCH 2/2] nfsd: implement chage_attr_type attribute
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Date: Fri, 14 Nov 2014 18:04:33 -0500
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+To: Dave Chinner <david@fromorbit.com>
+Cc: Christoph Hellwig <hch@lst.de>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On Wed, Nov 12, 2014 at 7:28 PM, Dave Chinner <david@fromorbit.com> wrote:
+> On Wed, Nov 12, 2014 at 09:26:16AM -0500, Trond Myklebust wrote:
+>> On Wed, Nov 12, 2014 at 5:24 AM, Christoph Hellwig <hch@lst.de> wrote:
+>> > On Wed, Nov 12, 2014 at 09:27:10AM +1100, Dave Chinner wrote:
+>> >> To clarify what Christoph wrote, XFS updates i_version is updated
+>> >> once per transaction that modifies the inode. So if a VFS level
+>> >> operation results in multiple transactions then each transaction
+>> >> will but the version.
+>> >>
+>> >> It was implemented that way because nobody could tell me what the
+>> >> actual granularity requirement for change detection was.  Hence what
+>> >> I implemented was "be able to detect any persistent change that is
+>> >> made" to cover all bases.
+>> >
+>> > Honestly the XFS implementation seems most sensible, and easiest to
+>> > verify for me.  I don't really understand the rationale behind the
+>> > fairly convoluted NFS4_CHANGE_TYPE_IS_VERSION_COUNTER semantics, and
+>> > I doubt you could actually implemet them on any Unix-like semantics.
+>> >
+>> > Trond, given that the language in the standard is from you:
+>> >
+>> >  1) how do you expect to use NFS4_CHANGE_TYPE_IS_VERSION_COUNTER
+>> >     semantics in the client
+>>
+>> Basically, I'd like to use it the same way that AFS does. I want to be
+>> able to issue an RPC call which does the equivalent of a single system
+>> call (e.g. mkdir(), write(), link(), unlink(), etc) and be able to
+>> predict what the effect should be on the change attribute (1 increment
+>> on the parent directory for a successful mkdir(), 1 increment on the
+>> file for a successful write(), ...)
+>
+> That's not the way the change version counter is implemented in the
+> VFS or any filesystem. It's a low level change primitive, not
+> something that is only updated on a syscall granularity.
+>
+> I just can't see how a change counter at the syscall level can be
+> made to work reliably. NFS clients are now being told about server
+> block maps, so any extent map modification done by the underlying
+> filesystem needs to bump the change count so if the client is
+> caching the block map it can be invalidated. And with functionality
+> like delayed allocation modifications the client needs to know aout
+> can happen at any time and so change count modification can not be
+> limited only to syscall activity.
 
-The following changes since commit 0df1f2487d2f0d04703f142813d53615d62a1da4:
+I didn't say it needs to be implemented in the VFS. Just that it needs
+to be implemented in a way that makes sense if you are doing the
+equivalent of a system call. Delayed allocations are a filesystem
+implementation detail that do not change the application visible data
+or metadata contents of the file; there should be no reason to have
+them reflected in something like the change attribute.
 
-  Linux 3.18-rc3 (2014-11-02 15:01:51 -0800)
+As for pNFS blocks, I agree that the spec there is a little iffy, but
+the intention was, I believe, that the whole LAYOUTGET->LAYOUTCOMMIT
+should be considered to be a single filesystem transaction. However
+the iffiness there is the main reason why I made a distinction between
+pnfs vs. non-pnfs when describing the change attribute.
 
-are available in the git repository at:
+>> so that I can detect if someone
+>> else has been modifying the file/directory/symlink while I wasn't
+>> looking and hence know when I need to invalidate my cached
+>> metadata+data for that object.
+>
+> The only way to use the change count sanely from the client is as a
+> "check-and-execute" cookie on the server. If the change count sent
+> by the client is unchanged at the server then the server can execute
+> the operation. It can then return the new cookie to the client for
+> the next operation.  But we can't even do that sanely on Linux
+> because the check-and-execute operation needs to be atomic and hence
+> requires the filesystem to do it deep inside their transaction
+> subsystems once they've taken the locks it needs to ensure the
+> change count is stable.
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.18-3
+Applications are required to interact with the filesystem through a
+well-defined API. Application visible data and metadata changes can be
+(and are mostly) well defined w.r.t. that API. Where be the dragons?
 
-for you to fetch changes up to b3ecba096729f521312d1863ad22530695527aed:
+-- 
+Trond Myklebust
 
-  sunrpc: fix sleeping under rcu_read_lock in gss_stringify_acceptor (2014-11-13 13:15:49 -0500)
+Linux NFS client maintainer, PrimaryData
 
-----------------------------------------------------------------
-NFS client bugfixes for Linux 3.18
-
-Highlights include:
-
-- Stable patches to fix NFSv4.x delegation reclaim error paths
-- Fix a bug whereby we were advertising NFSv4.1 but using NFSv4.2 features
-- Fix a use-after-free problem with pNFS block layouts
-- Fix a memory leak in the pNFS files O_DIRECT code
-- Replace an intrusive and Oops-prone performance fix in the NFSv4 atomic
-  open code with a safer one-line version and revert the two original patches.
-
-----------------------------------------------------------------
-Anna Schumaker (1):
-      NFS: SEEK is an NFS v4.2 feature
-
-Christoph Hellwig (1):
-      pnfs/blocklayout: serialize GETDEVICEINFO calls
-
-Jan Kara (2):
-      nfs: Remove bogus assignment
-      nfs: Fix use of uninitialized variable in nfs_getattr()
-
-Jeff Layton (1):
-      sunrpc: fix sleeping under rcu_read_lock in gss_stringify_acceptor
-
-Peng Tao (1):
-      nfs: fix pnfs direct write memory leak
-
-Trond Myklebust (8):
-      NFSv4: Ensure nfs_atomic_open set the dentry verifier on ENOENT
-      Revert "NFS: remove BUG possibility in nfs4_open_and_get_state"
-      Revert "NFS: nfs4_do_open should add negative results to the dcache."
-      NFSv4: Ensure that we remove NFSv4.0 delegations when state has expired
-      NFSv4.1: nfs41_clear_delegation_stateid shouldn't trust NFS_DELEGATED_STATE
-      NFSv4: Fix races between nfs_remove_bad_delegation() and delegation return
-      NFSv4: Ensure that we call FREE_STATEID when NFSv4.x stateids are revoked
-      NFS: Don't try to reclaim delegation open state if recovery failed
-
-Weston Andros Adamson (1):
-      nfs: remove spurious WARN_ON_ONCE in write path
-
- fs/nfs/blocklayout/blocklayout.c |  2 +-
- fs/nfs/blocklayout/rpc_pipefs.c  | 14 +++---
- fs/nfs/delegation.c              | 25 ++++++++++-
- fs/nfs/delegation.h              |  1 +
- fs/nfs/dir.c                     |  1 +
- fs/nfs/direct.c                  |  1 +
- fs/nfs/filelayout/filelayout.c   |  3 --
- fs/nfs/inode.c                   |  2 +-
- fs/nfs/netns.h                   |  1 +
- fs/nfs/nfs4proc.c                | 95 +++++++++++++++++++---------------------
- fs/nfs/write.c                   |  2 -
- include/linux/nfs_xdr.h          | 11 +++++
- net/sunrpc/auth_gss/auth_gss.c   | 35 ++++++++++++---
- 13 files changed, 124 insertions(+), 69 deletions(-)
-
-
+trond.myklebust@primarydata.com
