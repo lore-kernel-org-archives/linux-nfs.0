@@ -1,112 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f44.google.com ([209.85.215.44]:56089 "EHLO
-	mail-la0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752759AbaKGT6r convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Nov 2014 14:58:47 -0500
-Received: by mail-la0-f44.google.com with SMTP id gf13so5093554lab.3
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Nov 2014 11:58:46 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <1415370078.11083.511.camel@montana.filmlight.ltd.uk>
-References: <cover.1415220890.git.milosz@adfin.com>
-	<c188b04ede700ce5f986b19de12fa617d158540f.1415220890.git.milosz@adfin.com>
-	<x49r3xf28qn.fsf@segfault.boston.devel.redhat.com>
-	<BF30FAEC-D4D3-4079-9ECD-2743747279BD@cam.ac.uk>
-	<CAFboF2y2skt=H4crv54shfnXOmz23W-shYWtHWekK8ZUDkfP=A@mail.gmail.com>
-	<B92AEADD-B22C-4A4A-B64D-96E8869D3282@cam.ac.uk>
-	<1415370078.11083.511.camel@montana.filmlight.ltd.uk>
-Date: Fri, 7 Nov 2014 14:58:45 -0500
-Message-ID: <CANP1eJGK1XQUPsJsN1xyTjPZysvM_JR5r6jkiwRSaBYKQjYJPw@mail.gmail.com>
-Subject: Re: [fuse-devel] [PATCH v5 7/7] add a flag for per-operation O_DSYNC semantics
-From: Milosz Tanski <milosz@adfin.com>
-To: Roger Willcocks <roger@filmlight.ltd.uk>
-Cc: Anton Altaparmakov <aia21@cam.ac.uk>, Anand Avati <avati@gluster.org>,
-        linux-arch@vger.kernel.org,
-        "linux-aio@kvack.org" <linux-aio@kvack.org>, linux-nfs@vger.kernel.org,
-        Volker Lendecke <Volker.Lendecke@sernet.de>,
-        "Theodore Ts'o" <tytso@mit.edu>, Mel Gorman <mgorman@suse.de>,
-        "fuse-devel@lists.sourceforge.net" <fuse-devel@lists.sourceforge.net>,
-        Linux API <linux-api@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Michael Kerrisk <mtk.manpages@gmail.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
-        Jeff Moyer <jmoyer@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        Tejun Heo <tj@kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        ceph-devel <ceph-devel@vger.kernel.org>,
-        Christoph Hellwig <hch@lst.de>, ocfs2-devel@oss.oracle.com
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-wi0-f177.google.com ([209.85.212.177]:43504 "EHLO
+	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964814AbaKMVaf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Nov 2014 16:30:35 -0500
+From: Pieter Smith <pieter@boesman.nl>
+To: pieter@boesman.nl
+Cc: Josh Triplett <josh@joshtriplett.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org (open list:NFS, SUNRPC, AND...),
+        linux-kernel@vger.kernel.org (open list)
+Subject: [PATCH 32/56] fs/nfs: support compiling out splice
+Date: Thu, 13 Nov 2014 22:23:09 +0100
+Message-Id: <1415913813-362-33-git-send-email-pieter@boesman.nl>
+In-Reply-To: <1415913813-362-1-git-send-email-pieter@boesman.nl>
+References: <pieter@boesman.nl>
+ <1415913813-362-1-git-send-email-pieter@boesman.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 7, 2014 at 9:21 AM, Roger Willcocks <roger@filmlight.ltd.uk> wrote:
->
-> On Fri, 2014-11-07 at 08:43 +0200, Anton Altaparmakov wrote:
->> Hi,
->>
->> > On 7 Nov 2014, at 07:52, Anand Avati <avati@gluster.org> wrote:
->> > On Thu, Nov 6, 2014 at 8:22 PM, Anton Altaparmakov <aia21@cam.ac.uk> wrote:
->> > > On 7 Nov 2014, at 01:46, Jeff Moyer <jmoyer@redhat.com> wrote:
->> > > Minor nit, but I'd rather read something that looks like this:
->> > >
->> > >       if (type == READ && (flags & RWF_NONBLOCK))
->> > >               return -EAGAIN;
->> > >       else if (type == WRITE && (flags & RWF_DSYNC))
->> > >               return -EINVAL;
->> >
->> > But your version is less logically efficient for the case where "type == READ" is true and "flags & RWF_NONBLOCK" is false because your version then has to do the "if (type == WRITE" check before discovering it does not need to take that branch either, whilst the original version does not have to do such a test at all.
->> >
->> > Seriously?
->>
->> Of course seriously.
->>
->> > Just focus on the code readability/maintainability which makes the code most easily understood/obvious to a new pair of eyes, and leave such micro-optimizations to the compiler..
->>
->> The original version is more readable (IMO) and this is not a micro-optimization.  It is people like you who are responsible for the fact that we need faster and faster computers to cope with the inefficient/poor code being written more and more...
->>
->
-> Your original version needs me to know that type can only be either READ
-> or WRITE (and not, for instance, READONLY or READWRITE or some other
-> random special case) and it rings alarm bells when I first see it. If
-> you want to keep the micro optimization, you need an assertion to
-> acknowledge the potential bug and a comment to make the code obvious:
->
->  +            assert(type == READ || type == WRITE);
->  +            if (type == READ) {
->  +                    if (flags & RWF_NONBLOCK)
->  +                            return -EAGAIN;
->  +            } else { /* WRITE */
->  +                    if (flags & RWF_DSYNC)
->  +                            return -EINVAL;
->  +            }
->
-> but since what's really happening here is two separate and independent
-> error checks, Jeff's version is still better, even if it does take an
-> extra couple of nanoseconds.
->
-> Actually I'd probably write:
->
->        if (type == READ && (flags & RWF_NONBLOCK))
->               return -EAGAIN;
->
->        if (type == WRITE && (flags & RWF_DSYNC))
->               return -EINVAL;
->
-> (no 'else' since the code will never be reached if the first test is
-> true).
->
->
-> --
-> Roger Willcocks <roger@filmlight.ltd.uk>
->
+Compile out splice support from nfs when the splice-family of syscalls is not
+supported by the system (i.e. CONFIG_SYSCALL_SPLICE is undefined).
 
-This is what I changed it to (and will be sending that out for the
-next version).
+Signed-off-by: Pieter Smith <pieter@boesman.nl>
+---
+ fs/nfs/file.c     | 6 ++++--
+ fs/nfs/nfs4file.c | 4 ++--
+ 2 files changed, 6 insertions(+), 4 deletions(-)
 
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 524dd80..b36b4fb 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -187,6 +187,7 @@ nfs_file_read(struct kiocb *iocb, struct iov_iter *to)
+ }
+ EXPORT_SYMBOL_GPL(nfs_file_read);
+ 
++#ifdef CONFIG_SYSCALL_SPLICE
+ ssize_t
+ nfs_file_splice_read(struct file *filp, loff_t *ppos,
+ 		     struct pipe_inode_info *pipe, size_t count,
+@@ -207,6 +208,7 @@ nfs_file_splice_read(struct file *filp, loff_t *ppos,
+ 	return res;
+ }
+ EXPORT_SYMBOL_GPL(nfs_file_splice_read);
++#endif /* #ifdef CONFIG_SYSCALL_SPLICE */
+ 
+ int
+ nfs_file_mmap(struct file * file, struct vm_area_struct * vma)
+@@ -915,8 +917,8 @@ const struct file_operations nfs_file_operations = {
+ 	.fsync		= nfs_file_fsync,
+ 	.lock		= nfs_lock,
+ 	.flock		= nfs_flock,
+-	.splice_read	= nfs_file_splice_read,
+-	.splice_write	= iter_file_splice_write,
++	SPLICE_READ_INIT(nfs_file_splice_read)
++	SPLICE_WRITE_INIT(iter_file_splice_write)
+ 	.check_flags	= nfs_check_flags,
+ 	.setlease	= nfs_setlease,
+ };
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index a816f06..81dd4c8 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -128,8 +128,8 @@ const struct file_operations nfs4_file_operations = {
+ 	.fsync		= nfs4_file_fsync,
+ 	.lock		= nfs_lock,
+ 	.flock		= nfs_flock,
+-	.splice_read	= nfs_file_splice_read,
+-	.splice_write	= iter_file_splice_write,
++	SPLICE_READ_INIT(nfs_file_splice_read)
++	SPLICE_WRITE_INIT(iter_file_splice_write)
+ 	.check_flags	= nfs_check_flags,
+ 	.setlease	= nfs_setlease,
+ };
 -- 
-Milosz Tanski
-CTO
-16 East 34th Street, 15th floor
-New York, NY 10016
+1.9.1
 
-p: 646-253-9055
-e: milosz@adfin.com
