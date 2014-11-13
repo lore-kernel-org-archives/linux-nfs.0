@@ -1,80 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay3-d.mail.gandi.net ([217.70.183.195]:49331 "EHLO
-	relay3-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750774AbaKYAwo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 19:52:44 -0500
-Date: Mon, 24 Nov 2014 16:52:21 -0800
-From: Josh Triplett <josh@joshtriplett.org>
-To: Pieter Smith <pieter@boesman.nl>
-Cc: Alexander Duyck <alexander.h.duyck@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexei Starovoitov <ast@plumgrid.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Bertrand Jacquin <beber@meleeweb.net>,
-        Catalina Mocanu <catalina.mocanu@gmail.com>,
-        Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Fabian Frederick <fabf@skynet.be>,
-        "open list:FUSE: FILESYSTEM..." <fuse-devel@lists.sourceforge.net>,
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
-        Jan Beulich <JBeulich@suse.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "open list:ABI/API" <linux-api@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        open list <linux-kernel@vger.kernel.org>,
-        "open list:KERNEL NFSD, SUNR..." <linux-nfs@vger.kernel.org>,
-        "Luis R. Rodriguez" <mcgrof@suse.com>,
-        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        "open list:NETWORKING [GENERAL]" <netdev@vger.kernel.org>,
-        Oleg Nesterov <oleg@redhat.com>,
-        Paul Durrant <Paul.Durrant@citrix.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
-        Tom Herbert <therbert@google.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Willem de Bruijn <willemb@google.com>,
-        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
-        =?utf-8?B?6JSh5q2j6b6Z?= <zhenglong.cai@cs2c.com.cn>
-Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
- splice family of syscalls (splice, vmsplice, tee and sendfile)
-Message-ID: <20141125005221.GB21653@thin>
-References: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
+Received: from aserp1040.oracle.com ([141.146.126.69]:44493 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933040AbaKMPJI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Nov 2014 10:09:08 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
+Subject: Re: [PATCH] KEYS: Ensure expired keys are renewed
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20141113111558.7775022e@notabene.brown>
+Date: Thu, 13 Nov 2014 09:09:02 -0600
+Cc: David Howells <dhowells@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <37307506-F6EC-4EF8-A8F4-50795D66AD83@oracle.com>
+References: <20141030174612.10093.61557.stgit@manet.1015granger.net> <20141113111558.7775022e@notabene.brown>
+To: Neil Brown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 25, 2014 at 12:00:59AM +0100, Pieter Smith wrote:
-> REPO: https://github.com/smipi1/linux-tinification.git
-> 
-> BRANCH: tiny/config-syscall-splice
-> 
-> BACKGROUND: This patch-set forms part of the Linux Kernel Tinification effort (
->   https://tiny.wiki.kernel.org/).
-> 
-> GOAL: Support compiling out the splice family of syscalls (splice, vmsplice,
->   tee and sendfile) along with all supporting infrastructure if not needed.
->   Many embedded systems will not need the splice-family syscalls. Omitting them
->   saves space.
-> 
-> HISTORY:
->   PATCH v4:
->     - Drops __splice_p()
->     - Let nfsd fall back to non-splice support when splice is compiled out
->     - Style fixes
-[...]
-> RESULTS: A tinyconfig bloat-o-meter score for the entire patch-set:
-> 
-> add/remove: 0/41 grow/shrink: 5/7 up/down: 23/-8422 (-8399)
 
-I replied to one patch with a minor nit in the commit message.  Other
-than that, I don't see any obvious issues with this.
+On Nov 12, 2014, at 6:15 PM, NeilBrown <neilb@suse.de> wrote:
 
-- Josh Triplett
+> On Thu, 30 Oct 2014 13:46:47 -0400 Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> After about 10 minutes, my NFSv4 functional tests fail because the
+>> ownership of the test files goes to "-2". Looking at /proc/keys
+>> shows that the id_resolv keys that map to my test user ID have
+>> expired. The ownership problem persists until the expired keys are
+>> purged from the keyring, and fresh keys are obtained.
+>> 
+>> I bisected the problem to 3.13 commit b2a4df200d57 ("KEYS: Expand
+>> the capacity of a keyring"). This commit inadvertantly changes the
+>> API contract of the internal function keyring_search_aux().
+>> 
+>> The root cause appears to be that b2a4df200d57 made "no state check"
+>> the default behavior. "No state check" means the keyring search
+>> iterator function skips checking the key's expiry timeout, and
+>> returns expired keys.  request_key_and_link() depends on getting
+>> an -EAGAIN result code to know when to perform an upcall to refresh
+>> an expired key.
+>> 
+>> Restore the previous default behavior of keyring_search_aux() and
+>> the meaning of the KEYRING_SEARCH_{DO,NO}_STATE_CHECK flags.
+>> 
+>> Fixes: b2a4df200d57 ("KEYS: Expand the capacity of a keyring")
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> Resend with correct linux-nfs address.
+>> 
+>> security/keys/keyring.c |   11 +++++++----
+>> 1 file changed, 7 insertions(+), 4 deletions(-)
+>> 
+>> diff --git a/security/keys/keyring.c b/security/keys/keyring.c
+>> index 8314a7d..1294582 100644
+>> --- a/security/keys/keyring.c
+>> +++ b/security/keys/keyring.c
+>> @@ -519,9 +519,14 @@ static int keyring_search_iterator(const void *object, void *iterator_data)
+>> 	struct keyring_search_context *ctx = iterator_data;
+>> 	const struct key *key = keyring_ptr_to_key(object);
+>> 	unsigned long kflags = key->flags;
+>> +	bool state_check_needed;
+>> 
+>> 	kenter("{%d}", key->serial);
+>> 
+>> +	state_check_needed = !(ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK);
+>> +	if (ctx->flags & KEYRING_SEARCH_DO_STATE_CHECK)
+>> +		state_check_needed = true;
+>> +
+>> 	/* ignore keys not of this type */
+>> 	if (key->type != ctx->index_key.type) {
+>> 		kleave(" = 0 [!type]");
+>> @@ -529,7 +534,7 @@ static int keyring_search_iterator(const void *object, void *iterator_data)
+>> 	}
+>> 
+>> 	/* skip invalidated, revoked and expired keys */
+>> -	if (ctx->flags & KEYRING_SEARCH_DO_STATE_CHECK) {
+>> +	if (state_check_needed) {
+>> 		if (kflags & ((1 << KEY_FLAG_INVALIDATED) |
+>> 			      (1 << KEY_FLAG_REVOKED))) {
+>> 			ctx->result = ERR_PTR(-EKEYREVOKED);
+>> @@ -559,7 +564,7 @@ static int keyring_search_iterator(const void *object, void *iterator_data)
+>> 		goto skipped;
+>> 	}
+>> 
+>> -	if (ctx->flags & KEYRING_SEARCH_DO_STATE_CHECK) {
+>> +	if (state_check_needed) {
+>> 		/* we set a different error code if we pass a negative key */
+>> 		if (kflags & (1 << KEY_FLAG_NEGATIVE)) {
+>> 			smp_rmb();
+>> @@ -642,8 +647,6 @@ static bool search_nested_keyrings(struct key *keyring,
+>> 	}
+>> 
+>> 	ctx->skipped_ret = 0;
+>> -	if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
+>> -		ctx->flags &= ~KEYRING_SEARCH_DO_STATE_CHECK;
+>> 
+>> 	/* Start processing a new keyring */
+>> descend_to_keyring:
+>> 
+> 
+> Reviewed-by: NeilBrown <neilb@suse.de>
+
+Thanks!
+
+> security/keys/internal.h says:
+> 
+> #define KEYRING_SEARCH_NO_STATE_CHECK   0x0001  /* Skip state checks */
+> #define KEYRING_SEARCH_DO_STATE_CHECK   0x0002  /* Override NO_STATE_CHECK */
+> 
+> 
+> Your match makes it obvious that DO overrides NO.  The current code
+> doesn't get that right.
+> 
+> Is this on its way upstream yet (not in -next that I could see).
+
+I’ve gotten no response on this patch. Maybe I sent it to the
+wrong mailing list?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
