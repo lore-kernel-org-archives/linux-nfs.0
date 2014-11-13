@@ -1,228 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:46433 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751149AbaKXVfT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 16:35:19 -0500
-Received: by mail-qa0-f48.google.com with SMTP id v10so7099651qac.35
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Nov 2014 13:35:18 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Mon, 24 Nov 2014 16:35:15 -0500
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] sunrpc: add debugfs file for displaying client rpc_task
- queue
-Message-ID: <20141124163515.61f8b3bf@tlielax.poochiereds.net>
-In-Reply-To: <CAHQdGtSnuekSRJQ0YeLKk9E_OrRGv7wszxrQTjT7OoMr_ZiQjw@mail.gmail.com>
-References: <1414520695-1701-1-git-send-email-jlayton@primarydata.com>
-	<20141028143047.5c1fca24@tlielax.poochiereds.net>
-	<CAHQdGtSnuekSRJQ0YeLKk9E_OrRGv7wszxrQTjT7OoMr_ZiQjw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:34626 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933204AbaKMNiS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Nov 2014 08:38:18 -0500
+Received: by mail-ie0-f178.google.com with SMTP id rp18so15894084iec.9
+        for <linux-nfs@vger.kernel.org>; Thu, 13 Nov 2014 05:38:17 -0800 (PST)
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.0 \(1990.1\))
+Subject: Re: [PATCH] NFS: fix subtle change in COMMIT behavior
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20141113110244.GA25709@lst.de>
+Date: Thu, 13 Nov 2014 08:38:15 -0500
+Cc: Peng Tao <bergwolf@primarydata.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <6E1CB959-CB60-4AE3-9392-65ABDF0DB2F0@primarydata.com>
+References: <1415812080-3033-1-git-send-email-dros@primarydata.com> <CAKVebiX=mRJ7Psc8+FigNLRgGB8vH84vcKdv173HvuT20+eh=w@mail.gmail.com> <20141113110244.GA25709@lst.de>
+To: Christoph Hellwig <hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 24 Nov 2014 14:20:25 -0500
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> On Tue, Oct 28, 2014 at 2:30 PM, Jeff Layton
-> <jeff.layton@primarydata.com> wrote:
-> > On Tue, 28 Oct 2014 14:24:55 -0400
-> > Jeff Layton <jlayton@primarydata.com> wrote:
-> >
-> >> It's possible to get a dump of the RPC task queue by writing a value to
-> >> /proc/sys/sunrpc/rpc_debug. If you write any value to that file, you get
-> >> a dump of the RPC client task list into the log buffer. This is a rather
-> >> inconvenient interface however, and makes it hard to get immediate info
-> >> about the task queue.
-> >>
-> >> Add a new file under debugfs that shows similar info. There are some
-> >> small differences -- we avoid printing raw kernel addresses in favor of
-> >> symbolic names and the XID is also displayed.
-> >>
-> >> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
-> >> ---
-> >>  include/linux/sunrpc/clnt.h  |   1 +
-> >>  include/linux/sunrpc/debug.h |  13 ++++
-> >>  net/sunrpc/Kconfig           |   1 +
-> >>  net/sunrpc/Makefile          |   1 +
-> >>  net/sunrpc/clnt.c            |   3 +-
-> >>  net/sunrpc/debugfs.c         | 153 +++++++++++++++++++++++++++++++++++++++++++
-> >>  net/sunrpc/sunrpc_syms.c     |   8 +++
-> >>  7 files changed, 179 insertions(+), 1 deletion(-)
-> >>  create mode 100644 net/sunrpc/debugfs.c
-> >>
-> >> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-> >> index 70736b98c721..265d40bd3109 100644
-> >> --- a/include/linux/sunrpc/clnt.h
-> >> +++ b/include/linux/sunrpc/clnt.h
-> >> @@ -176,5 +176,6 @@ size_t            rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
-> >>  const char   *rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
-> >>  int          rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
-> >>
-> >> +const char *rpc_proc_name(const struct rpc_task *task);
-> >>  #endif /* __KERNEL__ */
-> >>  #endif /* _LINUX_SUNRPC_CLNT_H */
-> >> diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-> >> index 9385bd74c860..7c1ef9530087 100644
-> >> --- a/include/linux/sunrpc/debug.h
-> >> +++ b/include/linux/sunrpc/debug.h
-> >> @@ -68,6 +68,19 @@ extern unsigned int                nlm_debug;
-> >>  #ifdef RPC_DEBUG
-> >>  void         rpc_register_sysctl(void);
-> >>  void         rpc_unregister_sysctl(void);
-> >> +int          sunrpc_debugfs_init(void);
-> >> +void         sunrpc_debugfs_exit(void);
-> >> +#else
-> >> +static inline int
-> >> +sunrpc_debugfs_init(void)
-> >> +{
-> >> +     return 0;
-> >> +}
-> >> +static inline void
-> >> +sunrpc_debugfs_exit(void)
-> >> +{
-> >> +     return;
-> >> +}
-> >>  #endif
-> >>
-> >>  #endif /* _LINUX_SUNRPC_DEBUG_H_ */
-> >> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-> >> index 0754d0f466d2..fb78117b896c 100644
-> >> --- a/net/sunrpc/Kconfig
-> >> +++ b/net/sunrpc/Kconfig
-> >> @@ -35,6 +35,7 @@ config RPCSEC_GSS_KRB5
-> >>  config SUNRPC_DEBUG
-> >>       bool "RPC: Enable dprintk debugging"
-> >>       depends on SUNRPC && SYSCTL
-> >> +     select DEBUG_FS
-> >>       help
-> >>         This option enables a sysctl-based debugging interface
-> >>         that is be used by the 'rpcdebug' utility to turn on or off
-> >> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
-> >> index e5a7a1cac8f3..15e6f6c23c5d 100644
-> >> --- a/net/sunrpc/Makefile
-> >> +++ b/net/sunrpc/Makefile
-> >> @@ -14,6 +14,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
-> >>           addr.o rpcb_clnt.o timer.o xdr.o \
-> >>           sunrpc_syms.o cache.o rpc_pipe.o \
-> >>           svc_xprt.o
-> >> +sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
-> >>  sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o bc_svc.o
-> >>  sunrpc-$(CONFIG_PROC_FS) += stats.o
-> >>  sunrpc-$(CONFIG_SYSCTL) += sysctl.o
-> >> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> >> index 9acd6ce88db7..5b2e2d3d37c1 100644
-> >> --- a/net/sunrpc/clnt.c
-> >> +++ b/net/sunrpc/clnt.c
-> >> @@ -1397,7 +1397,8 @@ rpc_restart_call(struct rpc_task *task)
-> >>  EXPORT_SYMBOL_GPL(rpc_restart_call);
-> >>
-> >>  #ifdef RPC_DEBUG
-> >> -static const char *rpc_proc_name(const struct rpc_task *task)
-> >> +const char
-> >> +*rpc_proc_name(const struct rpc_task *task)
-> >>  {
-> >>       const struct rpc_procinfo *proc = task->tk_msg.rpc_proc;
-> >>
-> >> diff --git a/net/sunrpc/debugfs.c b/net/sunrpc/debugfs.c
-> >> new file mode 100644
-> >> index 000000000000..48769338172e
-> >> --- /dev/null
-> >> +++ b/net/sunrpc/debugfs.c
-> >> @@ -0,0 +1,153 @@
-> >> +/**
-> >> + * debugfs interface for sunrpc
-> >> + *
-> >> + * (c) 2014 Jeff Layton <jlayton@primarydata.com>
-> >> + */
-> >> +
-> >> +#include <linux/debugfs.h>
-> >> +#include <linux/sunrpc/sched.h>
-> >> +#include <linux/sunrpc/clnt.h>
-> >> +#include "netns.h"
-> >> +
-> >> +static struct dentry *topdir;
-> >> +
-> >> +static int
-> >> +tasks_show(struct seq_file *f, void *v)
-> >> +{
-> >> +     u32 xid = 0;
-> >> +     struct rpc_task *task = v;
-> >> +     struct rpc_clnt *clnt = task->tk_client;
-> >> +     const char *rpc_waitq = "none";
-> >> +
-> >> +     if (RPC_IS_QUEUED(task))
-> >> +             rpc_waitq = rpc_qname(task->tk_waitqueue);
-> >> +
-> >> +     if (task->tk_rqstp)
-> >> +             xid = be32_to_cpu(task->tk_rqstp->rq_xid);
-> >> +
-> >> +     seq_printf(f, "%5u %04x %6d 0x%x 0x%x %8ld %ps %sv%u %s a:%ps q:%s\n",
-> >> +             task->tk_pid, task->tk_flags, task->tk_status,
-> >> +             clnt->cl_clid, xid, task->tk_timeout, task->tk_ops,
-> >> +             clnt->cl_program->name, clnt->cl_vers, rpc_proc_name(task),
-> >> +             task->tk_action, rpc_waitq);
-> >> +     return 0;
-> >> +}
-> >> +
-> >> +static void *
-> >> +tasks_start(struct seq_file *f, loff_t *ppos)
-> >> +     __acquires(&sn->rpc_client_lock)
-> >> +     __acquires(&clnt->cl_lock)
-> >> +{
-> >> +     loff_t *p = f->private, pos = *ppos;
-> >> +     struct rpc_clnt *clnt;
-> >> +     struct rpc_task *task;
-> >> +     struct sunrpc_net *sn = net_generic(current->nsproxy->net_ns,
-> >> +                                             sunrpc_net_id);
-> >> +
-> >> +     *p = pos + 1;
-> >> +     spin_lock(&sn->rpc_client_lock);
-> >> +     list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
-> >> +             spin_lock(&clnt->cl_lock);
-> >> +             list_for_each_entry(task, &clnt->cl_tasks, tk_task)
-> >> +                     if (pos-- == 0)
-> >> +                             return task;
-> >> +             spin_unlock(&clnt->cl_lock);
-> >> +     }
-> >> +     return NULL;
-> >> +}
+> On Nov 13, 2014, at 6:02 AM, Christoph Hellwig <hch@lst.de> wrote:
 > 
-> Instead of having a single pseudofile that iterates through all
-> rpc_clients and all rpc_tasks, should we perhaps have a hierarchy of
-> subdirectories?
-> I'm thinking we might want a directory per rpc_client, each containing
-> a pseudo-file that iterates through all rpc_tasks for that rpc_client
-> only. The reason for doing so would be so that we can add pseudofiles
-> to display more per-rpc_client debugging info, such as cl_nodename,
-> cl_program->name, cl_prog, cl_vers. Maybe also with a symlink to
-> another subdirectory that displays per-xprt debugging information?
+> On Thu, Nov 13, 2014 at 09:03:53AM +0800, Peng Tao wrote:
+>>> but should be contiguous (as enforced by nfs_flush_incompatible).
+>>> 
+>> The idea is to get an estimation on the length of layout that client
+>> wants to use. So even if a single byte is used by client, client would
+>> want to ask for a layout that covers the whole page.
 > 
-> i.e. a hierarchy of the form
+> That code is very non-obvious and could use a few more comments.
 > 
-> debugfs/
+> I think the NFS_I(inode)->npages should be replaced with
+> inode->i_mapping->nrpages which counts the number of page cache pages.
 
-I'd suggest that we have a top level "sunrpc/" directory here to keep
-things neat and tidy.
+That sounds reasonable. Can someone track this down? I don’t have a block
+server to test against…
 
->     rpc_clients/
->          1/
->             cl_tasks
->             cl_xprt->../../rpc_xprt/1
-> .....
->          2/
->             cl_tasks
->             cl_xprt->../../rpc_xprt/1
-> .....
->     rpc_xprt/
->          1/
->             servername
-> .....
-> 
+Thanks for the help Tao and Christoph!
 
-Hmm...that looks doable, but is a much larger piece of work than this
-patch. Let me see what I can come up with and I'll get back to you...
-
--- 
-Jeff Layton <jlayton@primarydata.com>
+-dros
