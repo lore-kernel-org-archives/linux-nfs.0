@@ -1,48 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:41735 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752862AbaKLWcY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 17:32:24 -0500
-Received: by mail-ig0-f177.google.com with SMTP id hl2so3882679igb.4
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 14:32:24 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/5] NFS: Don't try to reclaim delegation open state if recovery failed
-Date: Wed, 12 Nov 2014 17:31:54 -0500
-Message-Id: <1415831514-47005-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1415831514-47005-5-git-send-email-trond.myklebust@primarydata.com>
-References: <1415831514-47005-1-git-send-email-trond.myklebust@primarydata.com>
- <1415831514-47005-2-git-send-email-trond.myklebust@primarydata.com>
- <1415831514-47005-3-git-send-email-trond.myklebust@primarydata.com>
- <1415831514-47005-4-git-send-email-trond.myklebust@primarydata.com>
- <1415831514-47005-5-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f43.google.com ([209.85.216.43]:46294 "EHLO
+	mail-qa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753809AbaKMCle (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 21:41:34 -0500
+Received: by mail-qa0-f43.google.com with SMTP id j7so9443578qaq.2
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 18:41:33 -0800 (PST)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Wed, 12 Nov 2014 21:41:28 -0500
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Fix locking around callback channel reply
+ receive
+Message-ID: <20141112214128.4fc43a49@synchrony.poochiereds.net>
+In-Reply-To: <1415833444-48129-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1415833444-48129-1-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If state recovery failed, then we should not attempt to reclaim delegated
-state.
+On Wed, 12 Nov 2014 18:04:04 -0500
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-http://lkml.kernel.org/r/CAN-5tyHwG=Cn2Q9KsHWadewjpTTy_K26ee+UnSvHvG4192p-Xw@mail.gmail.com
-Cc: stable@vger.kernel.org
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/delegation.c | 2 ++
- 1 file changed, 2 insertions(+)
+> Both xprt_lookup_rqst() and xprt_complete_rqst() require that you
+> take the transport lock in order to avoid races with xprt_transmit().
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Cc: Bruce Fields <bfields@fieldses.org>
+> ---
+>  net/sunrpc/svcsock.c | 27 ++++++++++++++++-----------
+>  1 file changed, 16 insertions(+), 11 deletions(-)
+> 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 3f959c681885..f9c052d508f0 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -1019,17 +1019,12 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
+>  	xid = *p++;
+>  	calldir = *p;
+>  
+> -	if (bc_xprt)
+> -		req = xprt_lookup_rqst(bc_xprt, xid);
+> -
+> -	if (!req) {
+> -		printk(KERN_NOTICE
+> -			"%s: Got unrecognized reply: "
+> -			"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
+> -			__func__, ntohl(calldir),
+> -			bc_xprt, ntohl(xid));
+> +	if (!bc_xprt)
+>  		return -EAGAIN;
+> -	}
+> +	spin_lock_bh(&bc_xprt->transport_lock);
+> +	req = xprt_lookup_rqst(bc_xprt, xid);
+> +	if (!req)
+> +		goto unlock_notfound;
+>  
+>  	memcpy(&req->rq_private_buf, &req->rq_rcv_buf, sizeof(struct xdr_buf));
+>  	/*
+> @@ -1040,11 +1035,21 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
+>  	dst = &req->rq_private_buf.head[0];
+>  	src = &rqstp->rq_arg.head[0];
+>  	if (dst->iov_len < src->iov_len)
+> -		return -EAGAIN; /* whatever; just giving up. */
+> +		goto unlock_eagain; /* whatever; just giving up. */
+>  	memcpy(dst->iov_base, src->iov_base, src->iov_len);
+>  	xprt_complete_rqst(req->rq_task, rqstp->rq_arg.len);
+>  	rqstp->rq_arg.len = 0;
+> +	spin_unlock_bh(&bc_xprt->transport_lock);
+>  	return 0;
+> +unlock_notfound:
+> +	printk(KERN_NOTICE
+> +		"%s: Got unrecognized reply: "
+> +		"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
+> +		__func__, ntohl(calldir),
+> +		bc_xprt, ntohl(xid));
+> +unlock_eagain:
+> +	spin_unlock_bh(&bc_xprt->transport_lock);
+> +	return -EAGAIN;
+>  }
+>  
+>  static int copy_pages_to_kvecs(struct kvec *vec, struct page **pages, int len)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index e5f473d13e24..7f3f60641344 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -125,6 +125,8 @@ again:
- 			continue;
- 		if (!test_bit(NFS_DELEGATED_STATE, &state->flags))
- 			continue;
-+		if (!nfs4_valid_open_stateid(state))
-+			continue;
- 		if (!nfs4_stateid_match(&state->stateid, stateid))
- 			continue;
- 		get_nfs_open_context(ctx);
--- 
-1.9.3
+Nice catch. It would also be good to pair this with a
+lockdep_assert_held() call in xprt_lookup_rqst, but that could be added
+in a separate patch.
 
+Reviewed-by: Jeff Layton <jlayton@primarydata.com>
