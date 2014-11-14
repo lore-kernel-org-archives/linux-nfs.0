@@ -1,51 +1,49 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:21344 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934535AbaKNPGm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Nov 2014 10:06:42 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH] KEYS: Ensure expired keys are renewed
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <17508.1415967632@warthog.procyon.org.uk>
-Date: Fri, 14 Nov 2014 09:06:39 -0600
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <48198F2A-23E5-486A-9E75-7A1CF59627BC@oracle.com>
-References: <20141030174612.10093.61557.stgit@manet.1015granger.net> <17508.1415967632@warthog.procyon.org.uk>
-To: David Howells <dhowells@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: keyrings-bounces@linux-nfs.org
+From: David Howells <dhowells@redhat.com>
+To: chuck.lever@oracle.com
+Date: Fri, 14 Nov 2014 14:06:19 +0000
+Message-ID: <20141114140619.2927.86929.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20141030174612.10093.61557.stgit@manet.1015granger.net>
+References: <20141030174612.10093.61557.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org, keyrings@linux-nfs.org
+Subject: [Keyrings] [PATCH 1/3] KEYS: request_key_and_link() needs to
+ request state checks when searching
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/keyrings>
+List-Post: <mailto:keyrings@linux-nfs.org>
+List-Help: <mailto:keyrings-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: keyrings-bounces@linux-nfs.org
+Errors-To: keyrings-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+request_key_and_link() needs to request state checks be performed on the
+potentially extant keys when it requests a search of the process keyrings.
 
-On Nov 14, 2014, at 6:20 AM, David Howells <dhowells@redhat.com> wrote:
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> -	if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
->> -		ctx->flags &= ~KEYRING_SEARCH_DO_STATE_CHECK;
-> 
-> The problem is that this adversely affects keyring cycle checking and
-> possession checking.  Those absolutely must suppress the state check.
+ security/keys/request_key.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-Thanks for the review.
+diff --git a/security/keys/request_key.c b/security/keys/request_key.c
+index bb4337c7ae1b..0bb23f98e4ca 100644
+--- a/security/keys/request_key.c
++++ b/security/keys/request_key.c
+@@ -516,6 +516,7 @@ struct key *request_key_and_link(struct key_type *type,
+ 		.match_data.cmp		= key_default_cmp,
+ 		.match_data.raw_data	= description,
+ 		.match_data.lookup_type	= KEYRING_SEARCH_LOOKUP_DIRECT,
++		.flags			= KEYRING_SEARCH_DO_STATE_CHECK,
+ 	};
+ 	struct key *key;
+ 	key_ref_t key_ref;
 
-OK, I feared there could be side effects of restoring the original
-API contract, but hoped there would not be.
-
-It’s this code:
-
-      if (ctx->match_data.lookup_type == KEYRING_SEARCH_LOOKUP_ITERATE ||
-          keyring_compare_object(keyring, &ctx->index_key)) {
-               ctx->skipped_ret = 2;
-               ctx->flags |= KEYRING_SEARCH_DO_STATE_CHECK;
-
-that flips DO_STATE_CHECK back on in some cases, right?
-
-Any suggestions?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+_______________________________________________
+Keyrings mailing list
+Keyrings@linux-nfs.org
+To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings
