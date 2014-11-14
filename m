@@ -1,53 +1,34 @@
-Return-Path: keyrings-bounces@linux-nfs.org
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mx1.redhat.com ([209.132.183.28]:39596 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934535AbaKNOty (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Nov 2014 09:49:54 -0500
 From: David Howells <dhowells@redhat.com>
-To: chuck.lever@oracle.com
-Date: Fri, 14 Nov 2014 14:06:38 +0000
-Message-ID: <20141114140638.2927.61085.stgit@warthog.procyon.org.uk>
 In-Reply-To: <20141030174612.10093.61557.stgit@manet.1015granger.net>
 References: <20141030174612.10093.61557.stgit@manet.1015granger.net>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org, keyrings@linux-nfs.org
+Subject: Are both DO_STATE_CHECK and NO_STATE_CHECK required?
 MIME-Version: 1.0
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org, keyrings@linux-nfs.org
-Subject: [Keyrings] [PATCH 3/3] KEYS: KEYRING_SEARCH_NO_STATE_CHECK
- overrides KEYRING_SEARCH_DO_STATE_CHECK
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
-	<mailto:keyrings-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/keyrings>
-List-Post: <mailto:keyrings@linux-nfs.org>
-List-Help: <mailto:keyrings-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
-	<mailto:keyrings-request@linux-nfs.org?subject=subscribe>
 Content-Type: text/plain; charset="us-ascii"
-Sender: keyrings-bounces@linux-nfs.org
-Errors-To: keyrings-bounces@linux-nfs.org
+Date: Fri, 14 Nov 2014 14:49:46 +0000
+Message-ID: <10137.1415976586@warthog.procyon.org.uk>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-KEYRING_SEARCH_NO_STATE_CHECK overrides KEYRING_SEARCH_DO_STATE_CHECK because
-it's needed for special operations like keyring cycle detection and possession
-detection.  Fix the header comment to this effect.
+I'm wondering if I actually need KEYRING_SEARCH_DO_STATE_CHECK and
+KEYRING_SEARCH_NO_STATE_CHECK as separate flags rather than just states of the
+same flag.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+The most important distinction is in search_nested_keyrings() where I turn on
+DO_STATE_CHECK specifically for potential matches on the root keyring.
 
- security/keys/internal.h |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+However, NO_STATE_CHECK is only used for two special searches: possession
+determination and cycle detection.  Neither of these use
+keyring_search_iterator() as the iteration function, so neither actually takes
+any notice of DO_STATE_CHECK.
 
-diff --git a/security/keys/internal.h b/security/keys/internal.h
-index b8960c4959a5..9e77e33bf8bc 100644
---- a/security/keys/internal.h
-+++ b/security/keys/internal.h
-@@ -112,8 +112,8 @@ struct keyring_search_context {
- 	const struct cred	*cred;
- 	struct key_match_data	match_data;
- 	unsigned		flags;
--#define KEYRING_SEARCH_NO_STATE_CHECK	0x0001	/* Skip state checks */
--#define KEYRING_SEARCH_DO_STATE_CHECK	0x0002	/* Override NO_STATE_CHECK */
-+#define KEYRING_SEARCH_NO_STATE_CHECK	0x0001	/* Skip state checks (overrides DO_STATE_CHECK) */
-+#define KEYRING_SEARCH_DO_STATE_CHECK	0x0002	/* Request state checks */
- #define KEYRING_SEARCH_NO_UPDATE_TIME	0x0004	/* Don't update times */
- #define KEYRING_SEARCH_NO_CHECK_PERM	0x0008	/* Don't check permissions */
- #define KEYRING_SEARCH_DETECT_TOO_DEEP	0x0010	/* Give an error on excessive depth */
+Everything else currently uses - or should use - DO_STATE_CHECK, including
+key_get_instantiation_authkey().
 
-_______________________________________________
-Keyrings mailing list
-Keyrings@linux-nfs.org
-To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings
+David
