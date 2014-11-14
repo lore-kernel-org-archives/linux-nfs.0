@@ -1,82 +1,120 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40151 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754124AbaKRPpF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Nov 2014 10:45:05 -0500
-Date: Tue, 18 Nov 2014 10:45:03 -0500
-To: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [TROLL PATCH] namei: retry -EBUSY returns to workaround distributed
- fs race
-Message-ID: <20141118154503.GD7419@fieldses.org>
+Return-Path: keyrings-bounces@linux-nfs.org
+From: David Howells <dhowells@redhat.com>
+To: chuck.lever@oracle.com
+Date: Fri, 14 Nov 2014 15:39:23 +0000
+Message-ID: <20141114153923.21180.66516.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20141030174612.10093.61557.stgit@manet.1015granger.net>
+References: <20141030174612.10093.61557.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org, keyrings@linux-nfs.org
+Subject: [Keyrings] [PATCH] KEYS: Simplify KEYRING_SEARCH_{NO,
+	DO}_STATE_CHECK flags
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/keyrings>
+List-Post: <mailto:keyrings@linux-nfs.org>
+List-Help: <mailto:keyrings-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: keyrings-bounces@linux-nfs.org
+Errors-To: keyrings-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Simplify KEYRING_SEARCH_{NO,DO}_STATE_CHECK flags to be two variations of the
+same flag.  They are effectively mutually exclusive and one or the other
+should be provided, but not both.
 
-On a distributed filesystem it's possible for lookup to discover that
-the directory it has looked up is cached elsewhere in the heirarchy.
-Moving the dentry into place requires all the locks to do a
-cross-directory rename, but we're already holding a parent's i_mutex and
-it's too late to acquire those locks in the right order.
+Keyring cycle detection and key possession determination are the only things
+that set NO_STATE_CHECK, except that neither flag really does anything there
+because neither purpose makes use of the keyring_search_iterator() function,
+but rather provides their own.
 
-The solution in __d_unalias is to trylock() the required locks and
-return -EBUSY if we fail.  I can reproduce that case pretty reliably:
+For cycle detection we definitely want to check inside of expired keyrings,
+just so that we don't create a cycle we can't get rid of.  Revoked keyrings
+are cleared at revocation time and can't then be reused, so shouldn't be a
+problem either way.
 
-	ssh root@$client '
-		mount -olookupcache=pos '$server':'$export' /mnt/
-		mkdir /mnt/TO
-		mkdir /mnt/DIR
-		touch /mnt/DIR/test.txt
-		while true; do
-			strace -e open cat /mnt/DIR/test.txt 2>&1 | grep EBUSY
-		done
-	'
-	ssh root@$server '
-		while true; do
-			mv $export/DIR $export/TO/DIR
-			mv $export/TO/DIR $export/DIR
-		done
-	'
+For possession determination, we *might* want to validate each keyring before
+searching it: do you possess a key that's hidden behind an expired or just
+plain inaccessible keyring?  Currently, the answer is yes.  Note that you
+cannot, however, possess a key behind a revoked keyring because they are
+cleared on revocation.
 
-The following is a hack that's wrong for several reasons but that does
-eliminate the EBUSY's in practice, by returning up to the caller that
-took the i_mutex and having it drop the i_mutex and retry.
+keyring_search() sets DO_STATE_CHECK, which is correct.
 
-Even if we were actually going to do something like this, we'd probably
-also need to patch lookup_slow, kern_path_create, do_rmdir, do_unlinkat,
-renameat2, mountpoint_last, atomic_open, and all the callers of
-lookup_one_len that look like they might deal with a distributed
-filesystem--on a quick check that's probably another 8 callers in nfsd
-and exportfs.
+request_key_and_link() currently doesn't specify whether to check the key
+state or not - but it should set DO_STATE_CHECK.
 
-Is there any real fix, or do we just need to document that operations on
-a distributed filesystem can temporarily return -EBUSY?
+key_get_instantiation_authkey() also currently doesn't specify whether to
+check the key state or not - but it probably should also set DO_STATE_CHECK.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- fs/namei.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 43927d14db67..e9222dac8ee6 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -1466,10 +1466,13 @@ static int lookup_slow(struct nameidata *nd, struct path *path)
- 	parent = nd->path.dentry;
- 	BUG_ON(nd->inode != parent->d_inode);
+ security/keys/keyring.c          |    7 ++++---
+ security/keys/request_key.c      |    1 +
+ security/keys/request_key_auth.c |    1 +
+ 3 files changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/security/keys/keyring.c b/security/keys/keyring.c
+index 8177010174f7..238aa172f25b 100644
+--- a/security/keys/keyring.c
++++ b/security/keys/keyring.c
+@@ -628,6 +628,10 @@ static bool search_nested_keyrings(struct key *keyring,
+ 	       ctx->index_key.type->name,
+ 	       ctx->index_key.description);
  
-+retry:
- 	mutex_lock(&parent->d_inode->i_mutex);
- 	dentry = __lookup_hash(&nd->last, parent, nd->flags);
- 	mutex_unlock(&parent->d_inode->i_mutex);
--	if (IS_ERR(dentry))
-+	if (PTR_ERR(dentry) == -EBUSY)
-+		goto retry;
-+	else if (IS_ERR(dentry))
- 		return PTR_ERR(dentry);
- 	path->mnt = nd->path.mnt;
- 	path->dentry = dentry;
--- 
-1.9.3
++#define STATE_CHECKS (KEYRING_SEARCH_NO_STATE_CHECK | KEYRING_SEARCH_DO_STATE_CHECK)
++	BUG_ON((ctx->flags & STATE_CHECKS) == 0 ||
++	       (ctx->flags & STATE_CHECKS) == STATE_CHECKS);
++
+ 	if (ctx->index_key.description)
+ 		ctx->index_key.desc_len = strlen(ctx->index_key.description);
+ 
+@@ -637,7 +641,6 @@ static bool search_nested_keyrings(struct key *keyring,
+ 	if (ctx->match_data.lookup_type == KEYRING_SEARCH_LOOKUP_ITERATE ||
+ 	    keyring_compare_object(keyring, &ctx->index_key)) {
+ 		ctx->skipped_ret = 2;
+-		ctx->flags |= KEYRING_SEARCH_DO_STATE_CHECK;
+ 		switch (ctx->iterator(keyring_key_to_ptr(keyring), ctx)) {
+ 		case 1:
+ 			goto found;
+@@ -649,8 +652,6 @@ static bool search_nested_keyrings(struct key *keyring,
+ 	}
+ 
+ 	ctx->skipped_ret = 0;
+-	if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
+-		ctx->flags &= ~KEYRING_SEARCH_DO_STATE_CHECK;
+ 
+ 	/* Start processing a new keyring */
+ descend_to_keyring:
+diff --git a/security/keys/request_key.c b/security/keys/request_key.c
+index bb4337c7ae1b..0bb23f98e4ca 100644
+--- a/security/keys/request_key.c
++++ b/security/keys/request_key.c
+@@ -516,6 +516,7 @@ struct key *request_key_and_link(struct key_type *type,
+ 		.match_data.cmp		= key_default_cmp,
+ 		.match_data.raw_data	= description,
+ 		.match_data.lookup_type	= KEYRING_SEARCH_LOOKUP_DIRECT,
++		.flags			= KEYRING_SEARCH_DO_STATE_CHECK,
+ 	};
+ 	struct key *key;
+ 	key_ref_t key_ref;
+diff --git a/security/keys/request_key_auth.c b/security/keys/request_key_auth.c
+index 6639e2cb8853..5d672f7580dd 100644
+--- a/security/keys/request_key_auth.c
++++ b/security/keys/request_key_auth.c
+@@ -249,6 +249,7 @@ struct key *key_get_instantiation_authkey(key_serial_t target_id)
+ 		.match_data.cmp		= key_default_cmp,
+ 		.match_data.raw_data	= description,
+ 		.match_data.lookup_type	= KEYRING_SEARCH_LOOKUP_DIRECT,
++		.flags			= KEYRING_SEARCH_DO_STATE_CHECK,
+ 	};
+ 	struct key *authkey;
+ 	key_ref_t authkey_ref;
 
+_______________________________________________
+Keyrings mailing list
+Keyrings@linux-nfs.org
+To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings
