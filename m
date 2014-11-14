@@ -1,73 +1,98 @@
-Return-Path: keyrings-bounces@linux-nfs.org
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <8829.1416236894@warthog.procyon.org.uk>
-References: <8829.1416236894@warthog.procyon.org.uk>
-	<20141114153923.21180.66516.stgit@warthog.procyon.org.uk>
-	<20141030174612.10093.61557.stgit@manet.1015granger.net>
-To: chuck.lever@oracle.com, cth@carlh.net
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:53052 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933486AbaKNRDN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Nov 2014 12:03:13 -0500
 MIME-Version: 1.0
-Date: Tue, 18 Nov 2014 15:49:45 +0000
-Message-ID: <21959.1416325785@warthog.procyon.org.uk>
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org, keyrings@linux-nfs.org
-Subject: Re: [Keyrings] [PATCH] KEYS: Simplify KEYRING_SEARCH_{NO,
-	DO}_STATE_CHECK flags
-List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
-	<mailto:keyrings-request@linux-nfs.org?subject=unsubscribe>
-List-Archive: <http://linux-nfs.org/pipermail/keyrings>
-List-Post: <mailto:keyrings@linux-nfs.org>
-List-Help: <mailto:keyrings-request@linux-nfs.org?subject=help>
-List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
-	<mailto:keyrings-request@linux-nfs.org?subject=subscribe>
-Content-Type: text/plain; charset="us-ascii"
-Sender: keyrings-bounces@linux-nfs.org
-Errors-To: keyrings-bounces@linux-nfs.org
+In-Reply-To: <20141113033317.GC28565@dastard>
+References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
+ <1414775040-4051-2-git-send-email-eguan@redhat.com> <CAH2r5muuJRcC4YgFkwUeUcCeEntgY+4POF8-bwmox64wXykuTw@mail.gmail.com>
+ <20141113033317.GC28565@dastard>
+From: Steve French <smfrench@gmail.com>
+Date: Fri, 14 Nov 2014 11:02:50 -0600
+Message-ID: <CAH2r5msD-FDDvUL5Gt+7Fzt-tvduS93sxM-PG9dZjvk0ED53QA@mail.gmail.com>
+Subject: Re: [PATCH v2 1/5] common: re-enable tests that require scratch dev
+ on NFS
+To: Dave Chinner <david@fromorbit.com>
+Cc: Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
+        Weston Andros Adamson <dros@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-David Howells <dhowells@redhat.com> wrote:
+On Wed, Nov 12, 2014 at 9:33 PM, Dave Chinner <david@fromorbit.com> wrote:
+> On Wed, Nov 12, 2014 at 12:36:13PM -0600, Steve French wrote:
+>> On Fri, Oct 31, 2014 at 12:03 PM, Eryu Guan <eguan@redhat.com> wrote:
+>> > This commit disables tests requires scratch dev running on NFS
+>> >
+>> > c041421 xfstests: stop special casing nfs and udf
+>> >
+>> > Now re-enable them to get a larger test coverage on NFS.
+>> >
+>> > Signed-off-by: Eryu Guan <eguan@redhat.com>
+>> > ---
+>> >  common/rc | 22 +++++++++++++++++++---
+>> >  1 file changed, 19 insertions(+), 3 deletions(-)
+>> >
+>> > diff --git a/common/rc b/common/rc
+>> > index 747cf72..ae03712 100644
+>> > --- a/common/rc
+>> > +++ b/common/rc
+>> > @@ -551,6 +551,14 @@ _mkfs_dev()
+>> >      rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
+>> >  }
+>> >
+>> > +# remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
+>> > +_scratch_cleanup_files()
+>> > +{
+>> > +       _scratch_mount
+>> > +       rm -rf $SCRATCH_MNT/*
+>> > +       _scratch_unmount
+>> > +}
+>>
+>> There should be a check to make sure SCRATCH_MNT exists before you
+>> wipe the whole disk ....
+>>
+>> so if no SCRATCH_MNT then this does rm -rf/*
+>> right ... (and wipes out your whole system ...)
+>
+> You can't get to that function until after all the checks that
+> SCRATCH_MNT exists. i.e. this happens during _scratch_mkfs, and that
+> is only called in tests after all the startup checks validate
+> devices and mounts exist. i.e. see common/config::get_next_config()
 
-> I'm not sure this patch actually solves your problem.
-> 
-> > request_key_and_link() depends on getting an -EAGAIN result code to know
-> > when to perform an upcall to refresh an expired key.
-> 
-> request_key_and_link() should return EKEYEXPIRED if it meets an expired key
-> until that key gets gc'd.
-> 
-> What we lack is that bit to upcall to refresh the expired key.
-> /sbin/request-key can support it - the first column has 'create' for key
-> creation and can hold other values for updating a key and KEYCTL_UPDATE can be
-> allowed to unexpire a key.
-> 
-> Possibly I should be only returning EKEYEXPIRED if the key instantiation was
-> rejected so and simply invalidate the key if it's in-memory expiration
-> occurs.  Making this so will cause failures in the testsuite, but I think
-> that's okay.
-> 
-> Another option is to allow keys to be specifically marked at
-> immediate-gc-on-expire such that you never see them in the expired state
-> unless you're holding a ref on one inside the kernel.
+Well, I reproduced it easily enough again today (after taking a
+snapshot of the VM)
+by simply running generic/120 against NFS with SCRATCH_MNT not
+specified in local.config
+Dros also ran into this problem.
 
-Having thought about it some more, I think the thing to do is to have
-request_key() do as add_key() does and either replace or update a key that's
-locally expired.
+The patch below fixes it for me but it wasn't immediately obvious how to best
+return info to the user (ie print messages that make sense here -
+"echo" seems to be supressed
+in common/rc and notrun exits and logs it to a file but not to the
+screen in this case)
 
-A key that was rejected (negatively instantiated) with EKEYEXPIRED as the
-error to present should present that error instead with request_key() is
-invoked.
+sfrench@ubuntu:~/xfstests$ git diff -a
+diff --git a/common/rc b/common/rc
+index d5e3aff..866244b 100644
+--- a/common/rc
++++ b/common/rc
+@@ -555,6 +555,9 @@ _mkfs_dev()
+ _scratch_cleanup_files()
+ {
+        _scratch_mount
++       if ! [ "$SCRATCH_MNT" ]; then
++               _notrun "this test requires a \$SCRATCH_MNT to be specified"
++       fi
+        rm -rf $SCRATCH_MNT/*
+        _scratch_unmount
+ }
 
-Invalidated keys shouldn't be returned by the search algorithm.
 
-Revoked keys should probably fail with EKEYREVOKED.  Invalidation rather than
-revocation should be used to evict keys from memory.
+-- 
+Thanks,
 
-Keyctl functions that access an expired key for other purposes, such as to
-read the contents, should fail with EKEYEXPIRED still (apart from unlink and
-invalidate which should always succeed given appropriate permissions).
-
-I'm going to work on a patch on this basis.
-
-David
-_______________________________________________
-Keyrings mailing list
-Keyrings@linux-nfs.org
-To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings
+Steve
