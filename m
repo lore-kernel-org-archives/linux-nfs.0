@@ -1,113 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:5467 "EHLO
-	ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751108AbaKQFe1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2014 00:34:27 -0500
-Date: Mon, 17 Nov 2014 16:34:10 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: Steve French <smfrench@gmail.com>
-Cc: Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        Weston Andros Adamson <dros@primarydata.com>
-Subject: Re: [PATCH v2 1/5] common: re-enable tests that require scratch dev
- on NFS
-Message-ID: <20141117053410.GJ23575@dastard>
-References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
- <1414775040-4051-2-git-send-email-eguan@redhat.com>
- <CAH2r5muuJRcC4YgFkwUeUcCeEntgY+4POF8-bwmox64wXykuTw@mail.gmail.com>
- <20141113033317.GC28565@dastard>
- <CAH2r5msD-FDDvUL5Gt+7Fzt-tvduS93sxM-PG9dZjvk0ED53QA@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAH2r5msD-FDDvUL5Gt+7Fzt-tvduS93sxM-PG9dZjvk0ED53QA@mail.gmail.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:43004 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752959AbaKQV6M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2014 16:58:12 -0500
+Received: by mail-qc0-f175.google.com with SMTP id b13so18716203qcw.34
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Nov 2014 13:58:11 -0800 (PST)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] lockd/sunrpc: eliminate some pointless macro indirection
+Date: Mon, 17 Nov 2014 16:58:02 -0500
+Message-Id: <1416261485-24686-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 14, 2014 at 11:02:50AM -0600, Steve French wrote:
-> On Wed, Nov 12, 2014 at 9:33 PM, Dave Chinner <david@fromorbit.com> wrote:
-> > On Wed, Nov 12, 2014 at 12:36:13PM -0600, Steve French wrote:
-> >> On Fri, Oct 31, 2014 at 12:03 PM, Eryu Guan <eguan@redhat.com> wrote:
-> >> > This commit disables tests requires scratch dev running on NFS
-> >> >
-> >> > c041421 xfstests: stop special casing nfs and udf
-> >> >
-> >> > Now re-enable them to get a larger test coverage on NFS.
-> >> >
-> >> > Signed-off-by: Eryu Guan <eguan@redhat.com>
-> >> > ---
-> >> >  common/rc | 22 +++++++++++++++++++---
-> >> >  1 file changed, 19 insertions(+), 3 deletions(-)
-> >> >
-> >> > diff --git a/common/rc b/common/rc
-> >> > index 747cf72..ae03712 100644
-> >> > --- a/common/rc
-> >> > +++ b/common/rc
-> >> > @@ -551,6 +551,14 @@ _mkfs_dev()
-> >> >      rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
-> >> >  }
-> >> >
-> >> > +# remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
-> >> > +_scratch_cleanup_files()
-> >> > +{
-> >> > +       _scratch_mount
-> >> > +       rm -rf $SCRATCH_MNT/*
-> >> > +       _scratch_unmount
-> >> > +}
-> >>
-> >> There should be a check to make sure SCRATCH_MNT exists before you
-> >> wipe the whole disk ....
-> >>
-> >> so if no SCRATCH_MNT then this does rm -rf/*
-> >> right ... (and wipes out your whole system ...)
-> >
-> > You can't get to that function until after all the checks that
-> > SCRATCH_MNT exists. i.e. this happens during _scratch_mkfs, and that
-> > is only called in tests after all the startup checks validate
-> > devices and mounts exist. i.e. see common/config::get_next_config()
-> 
-> Well, I reproduced it easily enough again today (after taking a
-> snapshot of the VM)
-> by simply running generic/120 against NFS with SCRATCH_MNT not
-> specified in local.config
-> Dros also ran into this problem.
+We currently have a number of legacy macros in the sunrpc code, as well
+as a smaller number in lockd that are used to indicate whether debugging
+support is compiled in or not.
 
-tests/generic/120 does this:
+This hash always seemed like pointless indirection as those symbols
+always reflect the value of a CONFIG_* value. This patchset just removes
+those macros in favor of their CONFIG_* equivalents.
 
-....
-_require_scratch
-_scratch_mkfs ....
+Jeff Layton (3):
+  lockd: eliminate LOCKD_DEBUG
+  sunrpc: eliminate RPC_DEBUG
+  sunrpc: eliminate RPC_TRACEPOINTS
 
-So we call:
+ fs/lockd/svclock.c                      |  2 +-
+ include/linux/lockd/debug.h             |  6 +-----
+ include/linux/sunrpc/auth.h             |  2 +-
+ include/linux/sunrpc/debug.h            | 18 +++---------------
+ include/linux/sunrpc/sched.h            |  8 ++++----
+ include/uapi/linux/nfsd/debug.h         |  2 +-
+ net/sunrpc/auth.c                       |  4 ++--
+ net/sunrpc/auth_generic.c               |  2 +-
+ net/sunrpc/auth_gss/auth_gss.c          |  2 +-
+ net/sunrpc/auth_gss/gss_generic_token.c |  2 +-
+ net/sunrpc/auth_gss/gss_krb5_crypto.c   |  2 +-
+ net/sunrpc/auth_gss/gss_krb5_keys.c     |  2 +-
+ net/sunrpc/auth_gss/gss_krb5_mech.c     |  2 +-
+ net/sunrpc/auth_gss/gss_krb5_seal.c     |  2 +-
+ net/sunrpc/auth_gss/gss_krb5_seqnum.c   |  2 +-
+ net/sunrpc/auth_gss/gss_krb5_unseal.c   |  2 +-
+ net/sunrpc/auth_gss/gss_krb5_wrap.c     |  2 +-
+ net/sunrpc/auth_gss/gss_mech_switch.c   |  2 +-
+ net/sunrpc/auth_gss/gss_rpc_xdr.h       |  2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c       |  2 +-
+ net/sunrpc/auth_null.c                  |  4 ++--
+ net/sunrpc/auth_unix.c                  |  2 +-
+ net/sunrpc/backchannel_rqst.c           |  2 +-
+ net/sunrpc/clnt.c                       |  6 +++---
+ net/sunrpc/rpcb_clnt.c                  |  2 +-
+ net/sunrpc/sched.c                      |  4 ++--
+ net/sunrpc/sunrpc_syms.c                |  4 ++--
+ net/sunrpc/svc.c                        |  2 +-
+ net/sunrpc/sysctl.c                     |  2 +-
+ net/sunrpc/xprt.c                       |  2 +-
+ net/sunrpc/xprtrdma/rpc_rdma.c          |  4 ++--
+ net/sunrpc/xprtrdma/transport.c         |  8 ++++----
+ net/sunrpc/xprtrdma/verbs.c             |  8 ++++----
+ net/sunrpc/xprtsock.c                   |  8 ++++----
+ 34 files changed, 55 insertions(+), 71 deletions(-)
 
-_require_scratch
-  _require_scratch_nocheck
-
-	case "$FSTYP" in
-        nfs*)                                                                    
-                echo $SCRATCH_DEV | grep -q ":/" > /dev/null 2>&1                
-                if [ -z "$SCRATCH_DEV" -o "$?" != "0" ]; then                    
-                        _notrun "this test requires a valid \$SCRATCH_DEV"       
-                fi                                                               
-                if [ ! -d "$SCRATCH_MNT" ]; then                                 
-                        _notrun "this test requires a valid \$SCRATCH_MNT"       
-                fi                                                               
-
-If $SCRATCH_MNT is empty, then it should fail right there. An empty
-string gives:
-
-$ if [ ! -d "" ]; then
-> echo foo
-> fi
-foo
-$
-
-before it gets anywhere near _scratch_mkfs. So, why isn't
-generic/120 aborting during the _require_scratch check?
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+2.1.0
+
