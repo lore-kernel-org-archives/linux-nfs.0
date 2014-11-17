@@ -1,145 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55911 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751506AbaKQGGQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Nov 2014 01:06:16 -0500
-Date: Mon, 17 Nov 2014 14:06:03 +0800
-From: Eryu Guan <eguan@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Steve French <smfrench@gmail.com>, fstests@vger.kernel.org,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
-        Weston Andros Adamson <dros@primarydata.com>
-Subject: Re: [PATCH v2 1/5] common: re-enable tests that require scratch dev
- on NFS
-Message-ID: <20141117060603.GO2863@dhcp-13-216.nay.redhat.com>
-References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
- <1414775040-4051-2-git-send-email-eguan@redhat.com>
- <CAH2r5muuJRcC4YgFkwUeUcCeEntgY+4POF8-bwmox64wXykuTw@mail.gmail.com>
- <20141113033317.GC28565@dastard>
- <CAH2r5msD-FDDvUL5Gt+7Fzt-tvduS93sxM-PG9dZjvk0ED53QA@mail.gmail.com>
- <20141115053533.GK2863@dhcp-13-216.nay.redhat.com>
- <20141117054141.GK23575@dastard>
+Received: from mail-yk0-f175.google.com ([209.85.160.175]:55243 "EHLO
+	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750920AbaKQRL7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2014 12:11:59 -0500
+Received: by mail-yk0-f175.google.com with SMTP id 200so4632840ykr.20
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Nov 2014 09:11:58 -0800 (PST)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Mon, 17 Nov 2014 12:11:56 -0500
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        Benjamin Coddington <bcodding@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] nfsidmap: keyctl_invalidate kernel compatibility
+Message-ID: <20141117121156.7db89956@tlielax.poochiereds.net>
+In-Reply-To: <5CB17B23-69BB-4680-9EF6-E09F46D382DE@oracle.com>
+References: <eee96450255a3407517dd1ed4ce9991ba9f2dbd1.1415034378.git.bcodding@redhat.com>
+	<54592B0E.5050201@RedHat.com>
+	<46A4BDBA-C8B6-47CB-BA19-4D459944EA01@oracle.com>
+	<5CB17B23-69BB-4680-9EF6-E09F46D382DE@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141117054141.GK23575@dastard>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 17, 2014 at 04:41:41PM +1100, Dave Chinner wrote:
-> On Sat, Nov 15, 2014 at 01:35:33PM +0800, Eryu Guan wrote:
-> > On Fri, Nov 14, 2014 at 11:02:50AM -0600, Steve French wrote:
-> > > On Wed, Nov 12, 2014 at 9:33 PM, Dave Chinner <david@fromorbit.com> wrote:
-> > > > On Wed, Nov 12, 2014 at 12:36:13PM -0600, Steve French wrote:
-> > > >> On Fri, Oct 31, 2014 at 12:03 PM, Eryu Guan <eguan@redhat.com> wrote:
-> > > >> > This commit disables tests requires scratch dev running on NFS
-> > > >> >
-> > > >> > c041421 xfstests: stop special casing nfs and udf
-> > > >> >
-> > > >> > Now re-enable them to get a larger test coverage on NFS.
-> > > >> >
-> > > >> > Signed-off-by: Eryu Guan <eguan@redhat.com>
-> > > >> > ---
-> > > >> >  common/rc | 22 +++++++++++++++++++---
-> > > >> >  1 file changed, 19 insertions(+), 3 deletions(-)
-> > > >> >
-> > > >> > diff --git a/common/rc b/common/rc
-> > > >> > index 747cf72..ae03712 100644
-> > > >> > --- a/common/rc
-> > > >> > +++ b/common/rc
-> > > >> > @@ -551,6 +551,14 @@ _mkfs_dev()
-> > > >> >      rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
-> > > >> >  }
-> > > >> >
-> > > >> > +# remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
-> > > >> > +_scratch_cleanup_files()
-> > > >> > +{
-> > > >> > +       _scratch_mount
-> > > >> > +       rm -rf $SCRATCH_MNT/*
-> > > >> > +       _scratch_unmount
-> > > >> > +}
-> > > >>
-> > > >> There should be a check to make sure SCRATCH_MNT exists before you
-> > > >> wipe the whole disk ....
-> > > >>
-> > > >> so if no SCRATCH_MNT then this does rm -rf/*
-> > > >> right ... (and wipes out your whole system ...)
-> > > >
-> > > > You can't get to that function until after all the checks that
-> > > > SCRATCH_MNT exists. i.e. this happens during _scratch_mkfs, and that
-> > > > is only called in tests after all the startup checks validate
-> > > > devices and mounts exist. i.e. see common/config::get_next_config()
-> > > 
-> > > Well, I reproduced it easily enough again today (after taking a
-> > > snapshot of the VM)
-> > > by simply running generic/120 against NFS with SCRATCH_MNT not
-> > > specified in local.config
-> > > Dros also ran into this problem.
+On Mon, 17 Nov 2014 11:54:29 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
+
+> Hi Jeff-
+> 
+> On Nov 4, 2014, at 3:44 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> > On Nov 4, 2014, at 2:37 PM, Steve Dickson <SteveD@redhat.com> wrote:
 > > 
-> > You're right, I missed that _scratch_mkfs is also called by ./check,
-> > and if there's no SCRATCH_MNT set in local.config, only SCRATCH_DEV is
-> > set, _scratch_mkfs can be dangerous.
-> 
-> As I asked earlier in this thread: why isn't get_next_config()
-> catching this?
-
-I think I see the problem, this patch catches the empty SCRATCH_MNT
-and works for me:
-
-eguan@dhcp-13-216:~/workspace/src/xfstests$ git diff
-diff --git a/common/config b/common/config
-index 1cb08c0..409f1b8 100644
---- a/common/config
-+++ b/common/config
-@@ -464,7 +464,7 @@ get_next_config() {
-                exit 1
-        fi
- 
--       if [ ! -z "$SCRATCH_MNT" -a ! -d "$SCRATCH_MNT" ]; then
-+       if [ ! -z "$SCRATCH_MNT" -o ! -d "$SCRATCH_MNT" ]; then
-                echo "common/config: Error: \$SCRATCH_MNT ($SCRATCH_MNT) is not a directory"
-                exit 1
-        fi
-
-If it looks sane I will send out a patch.
-
-> 
-> > I propose this patch, which skips _scratch_cleanup_files if called by check
+> >> On 11/03/2014 12:12 PM, Benjamin Coddington wrote:
+> >>> Change the keyctl_invalidate call to use the syscall interface directly so
+> >>> that when building with libkeyutils missing keyctl_invalidate the build succeeds.
+> >>> Attempt to use _invalidate and fall back to _revoke if the current kernel is
+> >>> missing _invalidate.
+> >>> 
+> >>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> >> Committed... 
+> >> 
+> >> This does get by the nfsidmap compile error when 
+> >> compiling on RHEL6, but not the ones in nfsdcltrack/sqlite.c
+> >> (http://ur1.ca/ioyfs)
+> >> 
+> >> Chuck, how are you getting around them?
 > > 
-> > [root@hp-dl388eg8-01 xfstests]# git diff
-> > diff --git a/common/rc b/common/rc
-> > index 435f74f..254fb66 100644
-> > --- a/common/rc
-> > +++ b/common/rc
-> > @@ -554,6 +554,11 @@ _mkfs_dev()
-> >  # remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
-> >  _scratch_cleanup_files()
-> >  {
-> > +       # do nothing if called by check, variables are not fully valided yet
-> > +       # SCRATCH_MNT can be empty, which is dangerous
-> > +       if [ "$iam" == "check" ]; then
-> > +               return
-> > +       fi
+> > Short answer: I’m not.
+> > 
+> > The nfsdcltrack build fails after nfsidmap is built. I just
+> > installed the nfsidmap binary for testing, and ignored the
+> > rest of upstream nfs-utils.
 > 
-> Again, this is the wrong place to try to fix this - we haven't fixed
-> the landmine that has left us running with an invalid config. IOWs,
-> by the time _scratch_mkfs is called from *anywhere* we should have
-> fully validated the environment to be correct and valid. Parsing and
-> validating the config we have loaded from the config file is the job
-> of get_next_config(), yes?
-
-Yes, that makes more sense, thanks for the explanation!
-
-Thanks,
-Eryu
+> OK, here’s a detailed bug report.
 > 
-> Cheers,
+> I’m trying to build the current upstream nfs-utils on one
+> of my EL6-based systems (see previous items in this thread).
 > 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
+> In my copy of /usr/include/sqlite3.h (EL6):
+> 
+> #define SQLITE_VERSION        "3.6.20"
+> #define SQLITE_VERSION_NUMBER 3006020
+> #define SQLITE_SOURCE_ID      "2009-11-04 13:30:02 eb7a544fe49d1626bacecfe53ddc03fe082e3243”
+> 
+> aclocal/libsqlite3.h has this check:
+> 
+>  13   AC_CACHE_VAL([libsqlite3_cv_is_recent],
+>  14    [
+>  15     saved_LIBS="$LIBS"
+>  16     LIBS=-lsqlite3
+>  17     AC_TRY_RUN([
+>  18         #include <stdio.h>
+>  19         #include <sqlite3.h>
+>  20         int main()
+>  21         {
+>  22                 int vers = sqlite3_libversion_number();
+>  23 
+>  24                 return vers != SQLITE_VERSION_NUMBER ||
+>  25                         vers < 3003000;
+>  26         }
+>  27        ], [libsqlite3_cv_is_recent=yes], [libsqlite3_cv_is_recent=no],
+>  28        [libsqlite3_cv_is_recent=unknown])
+>  29     LIBS="$saved_LIBS"])
+> 
+> But the build fails during the link step:
+> 
+> libtool: link: gcc -Wall -Wextra -Wstrict-prototypes -pipe -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Wp,-D_FORTIFY_SOURCE=2 -Os -Wall -Wextra -pedantic -std=c99 -Wformat=2 -Wmissing-include-dirs -Wunused -Wconversion -Wlogical-op -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wmissing-noreturn -Wshadow -Wunreachable-code -Winline -Wdisabled-optimization -Wstrict-aliasing=2 -Wstrict-overflow=4 -Wstack-protector -fstrict-aliasing -fstrict-overflow -fexceptions -fstack-protector -fasynchronous-unwind-tables -fpie -pie -o nfsdcltrack nfsdcltrack.o sqlite.o  ../../support/nfs/libnfs.a -lsqlite3
+> sqlite.o: In function `sqlite_query_reclaiming':
+> sqlite.c:(.text+0x3b): undefined reference to `sqlite3_errstr'
+> sqlite.c:(.text+0x6e): undefined reference to `sqlite3_errstr'
+> sqlite.c:(.text+0x9a): undefined reference to `sqlite3_errstr'
+> sqlite.o: In function `sqlite_query_schema_version':
+> sqlite.c:(.text+0x12b): undefined reference to `sqlite3_errstr'
+> sqlite.c:(.text+0x15a): undefined reference to `sqlite3_errstr'
+> sqlite.o:sqlite.c:(.text+0x97a): more undefined references to `sqlite3_errstr' follow
+> sqlite.o: In function `sqlite_prepare_dbh':
+> sqlite.c:(.text+0xb95): undefined reference to `'
+> collect2: ld returned 1 exit status
+> make[2]: *** [nfsdcltrack] Error 1
+> 
+> The release of libsqlite3 on this system passes the
+> existing aclocal test in nfs-utils, but does not appear
+> to have either sqlite3_errstr() or sqlite3_close_v2().
+> 
+> Some sqlite3_errstr() callsites data back to 2012.
+> sqlite3_close_v2() was added by commit 3548dd1563d5 in
+> September 2014. The vintage of libsqlite3 here appears
+> to be 2009.
+> 
+> I do not need nfsdcltrack on this system, but am merely
+> noting that nfs-utils does not build on EL6 systems.
+> 
+> There seem to be some alternatives for addressing this,
+> but I need a little guidance on which is the appropriate
+> choice. Fixing the aclocal test is most obvious; then
+> change my configure options to add —disable-nfsdcltrack.
+> 
+> Thoughts?
+> 
 > --
-> To unsubscribe from this list: send the line "unsubscribe fstests" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+
+Ok, good catch...
+
+Probably we just need to change the "vers < 3003000" check in
+libsqlite3.m4 to require a more recent version. Unfortunately, it's a
+little difficult to tell what version we should require.
+
+According to this page, sqlite3_close_v2 got added in 3.7.14 and
+sqlite3_errstr got added in 3.7.15. So I guess we should change that to
+read:
+
+    vers < 3007015
+
+Can you test and see whether that helps? I don't have a RHEL6 box handy
+at the moment.
+
+Alternately we could try to detect whether these functions are present
+using standard autoconf checks, but I'm not sure I care enough to go to
+that level of effort. ;)
+
+-- 
+Jeff Layton <jlayton@primarydata.com>
