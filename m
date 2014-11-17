@@ -1,138 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53451 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750707AbaKOFfk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 15 Nov 2014 00:35:40 -0500
-Date: Sat, 15 Nov 2014 13:35:33 +0800
-From: Eryu Guan <eguan@redhat.com>
-To: Steve French <smfrench@gmail.com>
-Cc: Dave Chinner <david@fromorbit.com>, fstests@vger.kernel.org,
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:9564 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751521AbaKQUWN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2014 15:22:13 -0500
+Date: Tue, 18 Nov 2014 07:22:07 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Omer Zilberberg <omzg@plexistor.com>
+Cc: Eryu Guan <eguan@redhat.com>, Steve French <smfrench@gmail.com>,
+        fstests@vger.kernel.org,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "linux-cifs@vger.kernel.org" <linux-cifs@vger.kernel.org>,
         Weston Andros Adamson <dros@primarydata.com>
 Subject: Re: [PATCH v2 1/5] common: re-enable tests that require scratch dev
  on NFS
-Message-ID: <20141115053533.GK2863@dhcp-13-216.nay.redhat.com>
+Message-ID: <20141117202207.GN23575@dastard>
 References: <1414775040-4051-1-git-send-email-eguan@redhat.com>
  <1414775040-4051-2-git-send-email-eguan@redhat.com>
  <CAH2r5muuJRcC4YgFkwUeUcCeEntgY+4POF8-bwmox64wXykuTw@mail.gmail.com>
  <20141113033317.GC28565@dastard>
  <CAH2r5msD-FDDvUL5Gt+7Fzt-tvduS93sxM-PG9dZjvk0ED53QA@mail.gmail.com>
+ <20141115053533.GK2863@dhcp-13-216.nay.redhat.com>
+ <20141117054141.GK23575@dastard>
+ <20141117060603.GO2863@dhcp-13-216.nay.redhat.com>
+ <20141117065443.GL23575@dastard>
+ <546A0BFE.6080608@plexistor.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAH2r5msD-FDDvUL5Gt+7Fzt-tvduS93sxM-PG9dZjvk0ED53QA@mail.gmail.com>
+In-Reply-To: <546A0BFE.6080608@plexistor.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 14, 2014 at 11:02:50AM -0600, Steve French wrote:
-> On Wed, Nov 12, 2014 at 9:33 PM, Dave Chinner <david@fromorbit.com> wrote:
-> > On Wed, Nov 12, 2014 at 12:36:13PM -0600, Steve French wrote:
-> >> On Fri, Oct 31, 2014 at 12:03 PM, Eryu Guan <eguan@redhat.com> wrote:
-> >> > This commit disables tests requires scratch dev running on NFS
-> >> >
-> >> > c041421 xfstests: stop special casing nfs and udf
-> >> >
-> >> > Now re-enable them to get a larger test coverage on NFS.
-> >> >
-> >> > Signed-off-by: Eryu Guan <eguan@redhat.com>
-> >> > ---
-> >> >  common/rc | 22 +++++++++++++++++++---
-> >> >  1 file changed, 19 insertions(+), 3 deletions(-)
-> >> >
-> >> > diff --git a/common/rc b/common/rc
-> >> > index 747cf72..ae03712 100644
-> >> > --- a/common/rc
-> >> > +++ b/common/rc
-> >> > @@ -551,6 +551,14 @@ _mkfs_dev()
-> >> >      rm -f $tmp_dir.mkfserr $tmp_dir.mkfsstd
-> >> >  }
-> >> >
-> >> > +# remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
-> >> > +_scratch_cleanup_files()
-> >> > +{
-> >> > +       _scratch_mount
-> >> > +       rm -rf $SCRATCH_MNT/*
-> >> > +       _scratch_unmount
-> >> > +}
-> >>
-> >> There should be a check to make sure SCRATCH_MNT exists before you
-> >> wipe the whole disk ....
-> >>
-> >> so if no SCRATCH_MNT then this does rm -rf/*
-> >> right ... (and wipes out your whole system ...)
-> >
-> > You can't get to that function until after all the checks that
-> > SCRATCH_MNT exists. i.e. this happens during _scratch_mkfs, and that
-> > is only called in tests after all the startup checks validate
-> > devices and mounts exist. i.e. see common/config::get_next_config()
+On Mon, Nov 17, 2014 at 04:53:50PM +0200, Omer Zilberberg wrote:
+> > Another FYI: we can actually test any filesystem without a scratch
+> > device configured:
+> > 
+> > $ sudo TEST_DEV=/dev/vda TEST_DIR=/mnt/test ./check generic/120
+> > FSTYP         -- xfs (non-debug)
+> > PLATFORM      -- Linux/x86_64 test2 3.18.0-rc2-dgc+
+> > 
+> > generic/120 16s ... [not run] this test requires a valid $SCRATCH_DEV
+> > Not run: generic/120
+> > Passed all 0 tests
+> > $
 > 
-> Well, I reproduced it easily enough again today (after taking a
-> snapshot of the VM)
-> by simply running generic/120 against NFS with SCRATCH_MNT not
-> specified in local.config
-> Dros also ran into this problem.
-
-You're right, I missed that _scratch_mkfs is also called by ./check,
-and if there's no SCRATCH_MNT set in local.config, only SCRATCH_DEV is
-set, _scratch_mkfs can be dangerous.
-
-[root@hp-dl388eg8-01 xfstests]# ./check -nfs generic/001
-FSTYP         -- nfs
-PLATFORM      -- Linux/x86_64 hp-dl388eg8-01 3.18.0-rc4+
-MKFS_OPTIONS  -- -bsize=4096 localhost:/mnt/nfsscratch
-MOUNT_OPTIONS -- -o context=system_u:object_r:nfs_t:s0 localhost:/mnt/nfsscratch
-
-our local _scratch_mkfs routine ...
-mount: can't find localhost:/mnt/nfsscratch in /etc/fstab
-rm -rf /*
-umount: localhost:/mnt/nfsscratch: mountpoint not found
-check: failed to mkfs $SCRATCH_DEV using specified options
-Passed all 0 tests
-
-(I replaced the real "rm -rf ..." by "echo 'rm -rf ...' in above test)
-
+> Please note that since commit 83ef157d, that is no longer true, because _require_test calls _is_block_dev with empty parameter, which prints usage:
+> $ sudo TEST_DEV=/dev/sda TEST_DIR=/mnt/dev0  ./check generic/001
+> FSTYP         -- ext4
+> PLATFORM      -- Linux/x86_64 testvm 3.17.0
 > 
-> The patch below fixes it for me but it wasn't immediately obvious how to best
-> return info to the user (ie print messages that make sense here -
-> "echo" seems to be supressed
-> in common/rc and notrun exits and logs it to a file but not to the
-> screen in this case)
+> generic/001 7s ... - output mismatch (see /opt/xfstests/results//generic/001.out.bad)
+>     --- tests/generic/001.out   2014-09-10 11:04:44.249185592 +0300
+>     +++ /opt/xfstests/results//generic/001.out.bad      2014-11-17 15:14:12.380061760 +0200
+>     @@ -1,4 +1,5 @@
+>      QA output created by 001
+>     +Usage: _is_block_dev dev
+>      cleanup
+>      setup ....................................
+>      iter 1 chain ... check ....................................
+>     ...
+>     (Run 'diff -u tests/generic/001.out /opt/xfstests/results//generic/001.out.bad'  to see the entire diff)
+> Ran: generic/001
+> Failures: generic/001
+> Failed 1 of 1 tests
 > 
-> sfrench@ubuntu:~/xfstests$ git diff -a
+> Here's a patch to fix that:
+> ----
+> Subject: [PATCH] _required_test: removed unneeded test for scratch_dev
+> 
+> testing for scratch_dev in _required_test is unnecessary, since it is
+> not required for these tests. Furthermore, if a scratch_dev is not given,
+> all tests which are supposed to pass on test_dev fail, because
+> _is_block_dev is given an empty string as scratch_dev, and prints usage.
+
+I'm beginning to sound like a broken record. Why isn't this *invalid
+config check* being done in the config parsing rather than on every
+test that requires a scratch or test device?
+
+i.e. removing the check is not the correct fix - checking it during
+config parsing means none of these checks need to be done in
+_require_test, nor in _require_scratch_nocheck.
+
+i.e. in get_next_config() we already know the FSTYP, so we should
+be checking that:
+
+	a) TEST_DEV is valid for fstyp
+	b) SCRATCH_DEV (if configured) is valid for fstyp
+	c) TEST_DEV != SCRATCH_DEV if they both exist and fstyp
+	   indicates they should be block devices
+
+And then we can pretty much assume that they are valid everywhere
+else, and _require_scratch_nocheck() simply needs to check for a
+non-empty string...
+
+> Signed-off-by: Omer Zilberberg <omzg@plexistor.com>
+> ---
+>  common/rc | 6 +-----
+>  1 file changed, 1 insertion(+), 5 deletions(-)
+> 
 > diff --git a/common/rc b/common/rc
-> index d5e3aff..866244b 100644
+> index d5e3aff..b863808 100644
 > --- a/common/rc
 > +++ b/common/rc
-> @@ -555,6 +555,9 @@ _mkfs_dev()
->  _scratch_cleanup_files()
->  {
->         _scratch_mount
-> +       if ! [ "$SCRATCH_MNT" ]; then
-> +               _notrun "this test requires a \$SCRATCH_MNT to be specified"
-> +       fi
->         rm -rf $SCRATCH_MNT/*
->         _scratch_unmount
+> @@ -1104,7 +1104,7 @@ _require_scratch()
 >  }
+>  
+>  
+> -# this test needs a test partition - check we're ok & unmount it
+> +# this test needs a test partition - check we're ok & mount if necessary
+>  #
+>  _require_test()
+>  {
+> @@ -1138,10 +1138,6 @@ _require_test()
+>                  then
+>                      _notrun "this test requires a valid \$TEST_DEV"
+>                  fi
+> -                if [ "`_is_block_dev $SCRATCH_DEV`" = "`_is_block_dev $TEST_DEV`" ]
+> -                then
+> -                    _notrun "this test requires a valid \$TEST_DEV"
+> -                fi
+>                 if [ ! -d "$TEST_DIR" ]
+>                 then
+>                      _notrun "this test requires a valid \$TEST_DIR"
 
-I propose this patch, which skips _scratch_cleanup_files if called by check
+The patch is whitespace damaged. Please read:
 
-[root@hp-dl388eg8-01 xfstests]# git diff
-diff --git a/common/rc b/common/rc
-index 435f74f..254fb66 100644
---- a/common/rc
-+++ b/common/rc
-@@ -554,6 +554,11 @@ _mkfs_dev()
- # remove all files in $SCRATCH_MNT, useful when testing on NFS/CIFS
- _scratch_cleanup_files()
- {
-+       # do nothing if called by check, variables are not fully valided yet
-+       # SCRATCH_MNT can be empty, which is dangerous
-+       if [ "$iam" == "check" ]; then
-+               return
-+       fi
-        _scratch_mount
-        rm -rf $SCRATCH_MNT/*
-        _scratch_unmount
+https://www.kernel.org/doc/Documentation/email-clients.txt
 
-Thanks,
-Eryu
+and resend.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
