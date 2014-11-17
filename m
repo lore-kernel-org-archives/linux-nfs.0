@@ -1,15 +1,15 @@
 Return-Path: keyrings-bounces@linux-nfs.org
 From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20141114151818.20661.21735.stgit@warthog.procyon.org.uk>
-References: <20141114151818.20661.21735.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20141114153923.21180.66516.stgit@warthog.procyon.org.uk>
+References: <20141114153923.21180.66516.stgit@warthog.procyon.org.uk>
 	<20141030174612.10093.61557.stgit@manet.1015granger.net>
+To: chuck.lever@oracle.com
 MIME-Version: 1.0
-Date: Fri, 14 Nov 2014 15:19:13 +0000
-Message-ID: <20739.1415978353@warthog.procyon.org.uk>
-Cc: neilb@suse.de, linux-nfs@vger.kernel.org, chuck.lever@oracle.com,
-        keyrings@linux-nfs.org
-Subject: Re: [Keyrings] [PATCH] KEYS: search_nested_keyrings() should honour
-	NO_STATE_CHECK for the root
+Date: Mon, 17 Nov 2014 15:08:14 +0000
+Message-ID: <8829.1416236894@warthog.procyon.org.uk>
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org, keyrings@linux-nfs.org
+Subject: Re: [Keyrings] [PATCH] KEYS: Simplify KEYRING_SEARCH_{NO,
+	DO}_STATE_CHECK flags
 List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
 	<mailto:keyrings-request@linux-nfs.org?subject=unsubscribe>
 List-Archive: <http://linux-nfs.org/pipermail/keyrings>
@@ -22,18 +22,29 @@ Sender: keyrings-bounces@linux-nfs.org
 Errors-To: keyrings-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-David Howells <dhowells@redhat.com> wrote:
+I'm not sure this patch actually solves your problem.
 
-> search_nested_keyrings() should probably honour KEYRING_SEARCH_NO_STATE_CHECK
-> when checking the keyring at the root of its search by not setting
-> DO_STATE_CHECK if NO_STATE_CHECK is set.
-> 
-> For the moment, this doesn't really matter as NO_STATE_CHECK is only used for
-> cycle detection and possession determination, neither of which use
-> keyring_search_iterator() as the search iterator check function, so
-> DO_STATE_CHECK is actually ignored there.
+> request_key_and_link() depends on getting an -EAGAIN result code to know
+> when to perform an upcall to refresh an expired key.
 
-Ignore this - I forgot to update the description.
+request_key_and_link() should return EKEYEXPIRED if it meets an expired key
+until that key gets gc'd.
+
+What we lack is that bit to upcall to refresh the expired key.
+/sbin/request-key can support it - the first column has 'create' for key
+creation and can hold other values for updating a key and KEYCTL_UPDATE can be
+allowed to unexpire a key.
+
+Possibly I should be only returning EKEYEXPIRED if the key instantiation was
+rejected so and simply invalidate the key if it's in-memory expiration
+occurs.  Making this so will cause failures in the testsuite, but I think
+that's okay.
+
+Another option is to allow keys to be specifically marked at
+immediate-gc-on-expire such that you never see them in the expired state
+unless you're holding a ref on one inside the kernel.
+
+David
 _______________________________________________
 Keyrings mailing list
 Keyrings@linux-nfs.org
