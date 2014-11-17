@@ -1,45 +1,37 @@
-Return-Path: chuck.lever@oracle.com
-References: <alpine.LRH.2.11.1411110930190.20279@sh-el6.eng.rdu2.redhat.com>
-Mime-Version: 1.0 (1.0)
-In-Reply-To: <alpine.LRH.2.11.1411110930190.20279@sh-el6.eng.rdu2.redhat.com>
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <3987E905-52A4-4F8E-AF97-FCAC0503260F@oracle.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Chuck Lever <chuck.lever@oracle.com>
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from mx1.redhat.com ([209.132.183.28]:38124 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751620AbaKQTr6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Nov 2014 14:47:58 -0500
+Date: Mon, 17 Nov 2014 14:47:52 -0500 (EST)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: mount default minor version behavior
-Date: Tue, 11 Nov 2014 10:38:01 -0600
-To: Benjamin Coddington <bcodding@redhat.com>
+In-Reply-To: <3987E905-52A4-4F8E-AF97-FCAC0503260F@oracle.com>
+Message-ID: <alpine.LRH.2.11.1411171443500.21288@sh-el6.eng.rdu2.redhat.com>
+References: <alpine.LRH.2.11.1411110930190.20279@sh-el6.eng.rdu2.redhat.com> <3987E905-52A4-4F8E-AF97-FCAC0503260F@oracle.com>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Nov 11, 2014, at 8:39 AM, Benjamin Coddington <bcodding@redhat.com> wro=
-te:
->=20
-> I will update mount.nfs so the default version is 4.1.
+On Tue, 11 Nov 2014, Chuck Lever wrote:
 
-Hi Ben, can you explicitly test your change with NFSv4.0-only servers? Thank=
-s!
+>
+> > On Nov 11, 2014, at 8:39 AM, Benjamin Coddington <bcodding@redhat.com> wrote:
+> >
+> > I will update mount.nfs so the default version is 4.1.
+>
+> Hi Ben, can you explicitly test your change with NFSv4.0-only servers? Thanks!
 
-> I have two quick
-> questions on desired behavior:
->=20
-> o  Should mounts that do not specify a minor version be upgraded to the de=
-fault minor version?
->=20
-> For example, should 'mount -overs=3D4' turn into 'mount -overs4.1', if the=
+Hi Chuck,
 
-> current default is 4.1?
->=20
->=20
-> o If 'yes' to the above, should mount auto-retry decrementing minor
-> versions if EPROTONOSUPPORT?
->=20
-> For example, 'mount -overs=3D4' with a default of 4.2 would attempt: 4.2,
-> then 4.1, then 4.0.
->=20
-> Ben
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I've posted a first-pass:
+http://marc.info/?l=linux-nfs&m=141625339013956&w=2
+
+I've tested against rpc.nfsd with '-N 4.1', and fallback to v4.0 seems
+to work fine.
+
+Ben
