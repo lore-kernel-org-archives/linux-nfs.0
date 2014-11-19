@@ -1,95 +1,119 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:43378 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752980AbaKQV6T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Nov 2014 16:58:19 -0500
-Received: by mail-qc0-f176.google.com with SMTP id i17so2838073qcy.21
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Nov 2014 13:58:16 -0800 (PST)
-From: Jeff Layton <jlayton@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] sunrpc: eliminate RPC_TRACEPOINTS
-Date: Mon, 17 Nov 2014 16:58:05 -0500
-Message-Id: <1416261485-24686-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1416261485-24686-1-git-send-email-jlayton@primarydata.com>
-References: <1416261485-24686-1-git-send-email-jlayton@primarydata.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: keyrings-bounces@linux-nfs.org
+From: David Howells <dhowells@redhat.com>
+To: cth@carlh.net, chuck.lever@oracle.com
+Date: Wed, 19 Nov 2014 12:22:39 +0000
+Message-ID: <20141119122238.26494.23666.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org, keyrings@linux-nfs.org,
+        linux-kernel@vger.kernel.org
+Subject: [Keyrings] [PATCH 1/2] KEYS: Simplify KEYRING_SEARCH_{NO,
+	DO}_STATE_CHECK flags
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/keyrings>
+List-Post: <mailto:keyrings@linux-nfs.org>
+List-Help: <mailto:keyrings-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: keyrings-bounces@linux-nfs.org
+Errors-To: keyrings-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's always set to the same value as CONFIG_TRACEPOINTS, so we can just
-use that instead.
+Simplify KEYRING_SEARCH_{NO,DO}_STATE_CHECK flags to be two variations of the
+same flag.  They are effectively mutually exclusive and one or the other
+should be provided, but not both.
 
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Keyring cycle detection and key possession determination are the only things
+that set NO_STATE_CHECK, except that neither flag really does anything there
+because neither purpose makes use of the keyring_search_iterator() function,
+but rather provides their own.
+
+For cycle detection we definitely want to check inside of expired keyrings,
+just so that we don't create a cycle we can't get rid of.  Revoked keyrings
+are cleared at revocation time and can't then be reused, so shouldn't be a
+problem either way.
+
+For possession determination, we *might* want to validate each keyring before
+searching it: do you possess a key that's hidden behind an expired or just
+plain inaccessible keyring?  Currently, the answer is yes.  Note that you
+cannot, however, possess a key behind a revoked keyring because they are
+cleared on revocation.
+
+keyring_search() sets DO_STATE_CHECK, which is correct.
+
+request_key_and_link() currently doesn't specify whether to check the key
+state or not - but it should set DO_STATE_CHECK.
+
+key_get_instantiation_authkey() also currently doesn't specify whether to
+check the key state or not - but it probably should also set DO_STATE_CHECK.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- include/linux/sunrpc/debug.h | 9 ---------
- include/linux/sunrpc/sched.h | 6 +++---
- net/sunrpc/sched.c           | 2 +-
- 3 files changed, 4 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
-index b646b3e99666..680c8de0f2c0 100644
---- a/include/linux/sunrpc/debug.h
-+++ b/include/linux/sunrpc/debug.h
-@@ -10,15 +10,6 @@
- 
- #include <uapi/linux/sunrpc/debug.h>
- 
--
--/*
-- * Enable RPC debugging/profiling.
-- */
--#ifdef CONFIG_TRACEPOINTS
--#define RPC_TRACEPOINTS
--#endif
--/* #define  RPC_PROFILE */
--
- /*
-  * Debugging macros etc
-  */
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index fecdbf1b4797..5f1e6bd4c316 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -79,7 +79,7 @@ struct rpc_task {
- 	unsigned short		tk_flags;	/* misc flags */
- 	unsigned short		tk_timeouts;	/* maj timeouts */
- 
--#if IS_ENABLED(CONFIG_SUNRPC_DEBUG) || defined(RPC_TRACEPOINTS)
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG) || IS_ENABLED(CONFIG_TRACEPOINTS)
- 	unsigned short		tk_pid;		/* debugging aid */
- #endif
- 	unsigned char		tk_priority : 2,/* Task priority */
-@@ -187,7 +187,7 @@ struct rpc_wait_queue {
- 	unsigned char		nr;			/* # tasks remaining for cookie */
- 	unsigned short		qlen;			/* total # tasks waiting in queue */
- 	struct rpc_timer	timer_list;
--#if IS_ENABLED(CONFIG_SUNRPC_DEBUG) || defined(RPC_TRACEPOINTS)
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG) || IS_ENABLED(CONFIG_TRACEPOINTS)
- 	const char *		name;
- #endif
- };
-@@ -251,7 +251,7 @@ static inline int rpc_wait_for_completion_task(struct rpc_task *task)
- 	return __rpc_wait_for_completion_task(task, NULL);
- }
- 
--#if IS_ENABLED(CONFIG_SUNRPC_DEBUG) || defined (RPC_TRACEPOINTS)
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG) || IS_ENABLED(CONFIG_TRACEPOINTS)
- static inline const char * rpc_qname(const struct rpc_wait_queue *q)
- {
- 	return ((q && q->name) ? q->name : "unknown");
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 574b2977fc4b..d20f2329eea3 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -258,7 +258,7 @@ static int rpc_wait_bit_killable(struct wait_bit_key *key)
- 	return 0;
- }
- 
--#if IS_ENABLED(CONFIG_SUNRPC_DEBUG) || defined(RPC_TRACEPOINTS)
-+#if IS_ENABLED(CONFIG_SUNRPC_DEBUG) || IS_ENABLED(CONFIG_TRACEPOINTS)
- static void rpc_task_set_debuginfo(struct rpc_task *task)
- {
- 	static atomic_t rpc_pid;
--- 
-2.1.0
+ security/keys/keyring.c          |    7 ++++---
+ security/keys/request_key.c      |    1 +
+ security/keys/request_key_auth.c |    1 +
+ 3 files changed, 6 insertions(+), 3 deletions(-)
 
+diff --git a/security/keys/keyring.c b/security/keys/keyring.c
+index 8177010174f7..238aa172f25b 100644
+--- a/security/keys/keyring.c
++++ b/security/keys/keyring.c
+@@ -628,6 +628,10 @@ static bool search_nested_keyrings(struct key *keyring,
+ 	       ctx->index_key.type->name,
+ 	       ctx->index_key.description);
+ 
++#define STATE_CHECKS (KEYRING_SEARCH_NO_STATE_CHECK | KEYRING_SEARCH_DO_STATE_CHECK)
++	BUG_ON((ctx->flags & STATE_CHECKS) == 0 ||
++	       (ctx->flags & STATE_CHECKS) == STATE_CHECKS);
++
+ 	if (ctx->index_key.description)
+ 		ctx->index_key.desc_len = strlen(ctx->index_key.description);
+ 
+@@ -637,7 +641,6 @@ static bool search_nested_keyrings(struct key *keyring,
+ 	if (ctx->match_data.lookup_type == KEYRING_SEARCH_LOOKUP_ITERATE ||
+ 	    keyring_compare_object(keyring, &ctx->index_key)) {
+ 		ctx->skipped_ret = 2;
+-		ctx->flags |= KEYRING_SEARCH_DO_STATE_CHECK;
+ 		switch (ctx->iterator(keyring_key_to_ptr(keyring), ctx)) {
+ 		case 1:
+ 			goto found;
+@@ -649,8 +652,6 @@ static bool search_nested_keyrings(struct key *keyring,
+ 	}
+ 
+ 	ctx->skipped_ret = 0;
+-	if (ctx->flags & KEYRING_SEARCH_NO_STATE_CHECK)
+-		ctx->flags &= ~KEYRING_SEARCH_DO_STATE_CHECK;
+ 
+ 	/* Start processing a new keyring */
+ descend_to_keyring:
+diff --git a/security/keys/request_key.c b/security/keys/request_key.c
+index bb4337c7ae1b..0bb23f98e4ca 100644
+--- a/security/keys/request_key.c
++++ b/security/keys/request_key.c
+@@ -516,6 +516,7 @@ struct key *request_key_and_link(struct key_type *type,
+ 		.match_data.cmp		= key_default_cmp,
+ 		.match_data.raw_data	= description,
+ 		.match_data.lookup_type	= KEYRING_SEARCH_LOOKUP_DIRECT,
++		.flags			= KEYRING_SEARCH_DO_STATE_CHECK,
+ 	};
+ 	struct key *key;
+ 	key_ref_t key_ref;
+diff --git a/security/keys/request_key_auth.c b/security/keys/request_key_auth.c
+index 6639e2cb8853..5d672f7580dd 100644
+--- a/security/keys/request_key_auth.c
++++ b/security/keys/request_key_auth.c
+@@ -249,6 +249,7 @@ struct key *key_get_instantiation_authkey(key_serial_t target_id)
+ 		.match_data.cmp		= key_default_cmp,
+ 		.match_data.raw_data	= description,
+ 		.match_data.lookup_type	= KEYRING_SEARCH_LOOKUP_DIRECT,
++		.flags			= KEYRING_SEARCH_DO_STATE_CHECK,
+ 	};
+ 	struct key *authkey;
+ 	key_ref_t authkey_ref;
+
+_______________________________________________
+Keyrings mailing list
+Keyrings@linux-nfs.org
+To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings
