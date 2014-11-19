@@ -1,73 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:53690 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754955AbaKSMvm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Nov 2014 07:51:42 -0500
-Received: by mail-qg0-f49.google.com with SMTP id a108so319654qge.22
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2014 04:51:42 -0800 (PST)
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:44043 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754811AbaKSMvo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Nov 2014 07:51:44 -0500
+Received: by mail-qc0-f179.google.com with SMTP id c9so309139qcz.38
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2014 04:51:43 -0800 (PST)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 08/10] sunrpc: convert sp_task_pending flag to use atomic bitops
-Date: Wed, 19 Nov 2014 07:51:20 -0500
-Message-Id: <1416401482-2562-9-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH 09/10] sunrpc: have svc_wake_up only deal with pool 0
+Date: Wed, 19 Nov 2014 07:51:21 -0500
+Message-Id: <1416401482-2562-10-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>
 References: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In a later patch, we'll want to be able to handle this flag without
-holding the sp_lock. Change this field to an unsigned long flags
-field, and declare a new flag in it that can be managed with atomic
-bitops.
+The way that svc_wake_up works is a bit inefficient. It walks all of the
+available pools for a service and either wakes up a task in each one or
+sets the SP_TASK_PENDING flag in each one.
+
+When svc_wake_up is called, there is no need to wake up more than one
+thread to do this work. In practice, only lockd currently uses this
+function and it's single threaded anyway. Thus, this just boils down to
+doing a wake up of a thread in pool 0 or setting a single flag.
+
+Eliminate the for loop in this function and change it to just operate on
+pool 0. Also update the comments that sit above it and get rid of some
+code that has been commented out for years now.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- include/linux/sunrpc/svc.h | 4 +++-
- net/sunrpc/svc_xprt.c      | 7 +++----
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ net/sunrpc/svc_xprt.c | 37 ++++++++++++++++---------------------
+ 1 file changed, 16 insertions(+), 21 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 8054a30c8a95..5f0ab39bf7c3 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -50,7 +50,9 @@ struct svc_pool {
- 	unsigned int		sp_nrthreads;	/* # of threads in pool */
- 	struct list_head	sp_all_threads;	/* all server threads */
- 	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
--	int			sp_task_pending;/* has pending task */
-+#define	SP_TASK_PENDING		(0)		/* still work to do even if no
-+						 * xprt is queued. */
-+	unsigned long		sp_flags;
- } ____cacheline_aligned_in_smp;
- 
- /*
 diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 143c4c8ea2f1..37446046f4bf 100644
+index 37446046f4bf..b2676e597fc4 100644
 --- a/net/sunrpc/svc_xprt.c
 +++ b/net/sunrpc/svc_xprt.c
-@@ -509,7 +509,7 @@ void svc_wake_up(struct svc_serv *serv)
- 			 */
- 			wake_up_process(rqstp->rq_task);
- 		} else
--			pool->sp_task_pending = 1;
-+			set_bit(SP_TASK_PENDING, &pool->sp_flags);
- 		spin_unlock_bh(&pool->sp_lock);
- 	}
+@@ -484,34 +484,29 @@ static void svc_xprt_release(struct svc_rqst *rqstp)
  }
-@@ -644,10 +644,9 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
- 		 * long for cache updates.
- 		 */
- 		rqstp->rq_chandle.thread_wait = 1*HZ;
--		pool->sp_task_pending = 0;
-+		clear_bit(SP_TASK_PENDING, &pool->sp_flags);
- 	} else {
--		if (pool->sp_task_pending) {
--			pool->sp_task_pending = 0;
-+		if (test_and_clear_bit(SP_TASK_PENDING, &pool->sp_flags)) {
- 			xprt = ERR_PTR(-EAGAIN);
- 			goto out;
- 		}
+ 
+ /*
+- * External function to wake up a server waiting for data
+- * This really only makes sense for services like lockd
+- * which have exactly one thread anyway.
++ * Some svc_serv's will have occasional work to do, even when a xprt is not
++ * waiting to be serviced. This function is there to "kick" a task in one of
++ * those services so that it can wake up and do that work. Note that we only
++ * bother with pool 0 as we don't need to wake up more than one thread for
++ * this purpose.
+  */
+ void svc_wake_up(struct svc_serv *serv)
+ {
+ 	struct svc_rqst	*rqstp;
+-	unsigned int i;
+ 	struct svc_pool *pool;
+ 
+-	for (i = 0; i < serv->sv_nrpools; i++) {
+-		pool = &serv->sv_pools[i];
++	pool = &serv->sv_pools[0];
+ 
+-		spin_lock_bh(&pool->sp_lock);
+-		if (!list_empty(&pool->sp_threads)) {
+-			rqstp = list_entry(pool->sp_threads.next,
+-					   struct svc_rqst,
+-					   rq_list);
+-			dprintk("svc: daemon %p woken up.\n", rqstp);
+-			/*
+-			svc_thread_dequeue(pool, rqstp);
+-			rqstp->rq_xprt = NULL;
+-			 */
+-			wake_up_process(rqstp->rq_task);
+-		} else
+-			set_bit(SP_TASK_PENDING, &pool->sp_flags);
+-		spin_unlock_bh(&pool->sp_lock);
+-	}
++	spin_lock_bh(&pool->sp_lock);
++	if (!list_empty(&pool->sp_threads)) {
++		rqstp = list_entry(pool->sp_threads.next,
++				   struct svc_rqst,
++				   rq_list);
++		dprintk("svc: daemon %p woken up.\n", rqstp);
++		wake_up_process(rqstp->rq_task);
++	} else
++		set_bit(SP_TASK_PENDING, &pool->sp_flags);
++	spin_unlock_bh(&pool->sp_lock);
+ }
+ EXPORT_SYMBOL_GPL(svc_wake_up);
+ 
 -- 
 2.1.0
 
