@@ -1,93 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f179.google.com ([209.85.216.179]:44043 "EHLO
-	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754811AbaKSMvo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Nov 2014 07:51:44 -0500
-Received: by mail-qc0-f179.google.com with SMTP id c9so309139qcz.38
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2014 04:51:43 -0800 (PST)
+Received: from mail-qg0-f43.google.com ([209.85.192.43]:43264 "EHLO
+	mail-qg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754973AbaKSMvp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Nov 2014 07:51:45 -0500
+Received: by mail-qg0-f43.google.com with SMTP id q108so323314qgd.30
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2014 04:51:44 -0800 (PST)
 From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 09/10] sunrpc: have svc_wake_up only deal with pool 0
-Date: Wed, 19 Nov 2014 07:51:21 -0500
-Message-Id: <1416401482-2562-10-git-send-email-jlayton@primarydata.com>
+Subject: [PATCH 10/10] sunrpc: require svc_create callers to pass in meaningful shutdown routine
+Date: Wed, 19 Nov 2014 07:51:22 -0500
+Message-Id: <1416401482-2562-11-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>
 References: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The way that svc_wake_up works is a bit inefficient. It walks all of the
-available pools for a service and either wakes up a task in each one or
-sets the SP_TASK_PENDING flag in each one.
+Currently all svc_create callers pass in NULL for the shutdown parm,
+which then gets fixed up to be svc_rpcb_cleanup if the service uses
+rpcbind.
 
-When svc_wake_up is called, there is no need to wake up more than one
-thread to do this work. In practice, only lockd currently uses this
-function and it's single threaded anyway. Thus, this just boils down to
-doing a wake up of a thread in pool 0 or setting a single flag.
-
-Eliminate the for loop in this function and change it to just operate on
-pool 0. Also update the comments that sit above it and get rid of some
-code that has been commented out for years now.
+Simplify this by instead having the the only caller that requires it
+(lockd) pass in svc_rpcb_cleanup and get rid of the special casing.
 
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- net/sunrpc/svc_xprt.c | 37 ++++++++++++++++---------------------
- 1 file changed, 16 insertions(+), 21 deletions(-)
+ fs/lockd/svc.c   | 2 +-
+ net/sunrpc/svc.c | 3 ---
+ 2 files changed, 1 insertion(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 37446046f4bf..b2676e597fc4 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -484,34 +484,29 @@ static void svc_xprt_release(struct svc_rqst *rqstp)
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index d1bb7ecfd201..e94c887da2d7 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -350,7 +350,7 @@ static struct svc_serv *lockd_create_svc(void)
+ 		printk(KERN_WARNING
+ 			"lockd_up: no pid, %d users??\n", nlmsvc_users);
+ 
+-	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, NULL);
++	serv = svc_create(&nlmsvc_program, LOCKD_BUFSIZE, svc_rpcb_cleanup);
+ 	if (!serv) {
+ 		printk(KERN_WARNING "lockd_up: create service failed\n");
+ 		return ERR_PTR(-ENOMEM);
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 34019ee9eaa1..5d9a443d21f6 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -482,9 +482,6 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 		spin_lock_init(&pool->sp_lock);
+ 	}
+ 
+-	if (svc_uses_rpcbind(serv) && (!serv->sv_shutdown))
+-		serv->sv_shutdown = svc_rpcb_cleanup;
+-
+ 	return serv;
  }
- 
- /*
-- * External function to wake up a server waiting for data
-- * This really only makes sense for services like lockd
-- * which have exactly one thread anyway.
-+ * Some svc_serv's will have occasional work to do, even when a xprt is not
-+ * waiting to be serviced. This function is there to "kick" a task in one of
-+ * those services so that it can wake up and do that work. Note that we only
-+ * bother with pool 0 as we don't need to wake up more than one thread for
-+ * this purpose.
-  */
- void svc_wake_up(struct svc_serv *serv)
- {
- 	struct svc_rqst	*rqstp;
--	unsigned int i;
- 	struct svc_pool *pool;
- 
--	for (i = 0; i < serv->sv_nrpools; i++) {
--		pool = &serv->sv_pools[i];
-+	pool = &serv->sv_pools[0];
- 
--		spin_lock_bh(&pool->sp_lock);
--		if (!list_empty(&pool->sp_threads)) {
--			rqstp = list_entry(pool->sp_threads.next,
--					   struct svc_rqst,
--					   rq_list);
--			dprintk("svc: daemon %p woken up.\n", rqstp);
--			/*
--			svc_thread_dequeue(pool, rqstp);
--			rqstp->rq_xprt = NULL;
--			 */
--			wake_up_process(rqstp->rq_task);
--		} else
--			set_bit(SP_TASK_PENDING, &pool->sp_flags);
--		spin_unlock_bh(&pool->sp_lock);
--	}
-+	spin_lock_bh(&pool->sp_lock);
-+	if (!list_empty(&pool->sp_threads)) {
-+		rqstp = list_entry(pool->sp_threads.next,
-+				   struct svc_rqst,
-+				   rq_list);
-+		dprintk("svc: daemon %p woken up.\n", rqstp);
-+		wake_up_process(rqstp->rq_task);
-+	} else
-+		set_bit(SP_TASK_PENDING, &pool->sp_flags);
-+	spin_unlock_bh(&pool->sp_lock);
- }
- EXPORT_SYMBOL_GPL(svc_wake_up);
  
 -- 
 2.1.0
