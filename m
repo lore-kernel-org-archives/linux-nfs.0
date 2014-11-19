@@ -1,167 +1,128 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58528 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755368AbaKUROg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Nov 2014 12:14:36 -0500
-Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sALHEafi030431
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Fri, 21 Nov 2014 12:14:36 -0500
-From: Pavel Raiskup <praiskup@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: praiskup@redhat.com
-Subject: [PATCH] exportfs: warn when really nothing is exported
-Date: Fri, 21 Nov 2014 18:12:55 +0100
-Message-Id: <1416589975-11372-1-git-send-email-praiskup@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: keyrings-bounces@linux-nfs.org
+From: David Howells <dhowells@redhat.com>
+To: cth@carlh.net, chuck.lever@oracle.com
+Date: Wed, 19 Nov 2014 12:22:49 +0000
+Message-ID: <20141119122249.26494.25661.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20141119122238.26494.23666.stgit@warthog.procyon.org.uk>
+References: <20141119122238.26494.23666.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Cc: neilb@suse.de, linux-nfs@vger.kernel.org, keyrings@linux-nfs.org,
+        linux-kernel@vger.kernel.org
+Subject: [Keyrings] [PATCH 2/2] KEYS: request_key() should reget expired
+ keys rather than give EKEYEXPIRED
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/keyrings>
+List-Post: <mailto:keyrings@linux-nfs.org>
+List-Help: <mailto:keyrings-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: keyrings-bounces@linux-nfs.org
+Errors-To: keyrings-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Throw 'No file systems exported!' iff no volume is exported rather
-then if some exports file is empty.  Typically this can happen if
-the default /etc/exports file is empty and admin installed
-configuration into /etc/exports.d directory.
+Since the keyring facility can be viewed as a cache (at least in some
+applications), the local expiration time on the key should probably be viewed
+as a 'needs updating after this time' property rather than an absolute 'anyone
+now wanting to use this object is out of luck' property.
 
-This is follow-up for e725def62c73b4 commit.
+Since request_key() is the main interface for the usage of keys, this should
+update or replace an expired key rather than issuing EKEYEXPIRED if the local
+expiration has been reached (ie. it should refresh the cache).
 
-Signed-off-by: Pavel Raiskup <praiskup@redhat.com>
+For absolute conditions where refreshing the cache probably doesn't help, the
+key can be negatively instantiated using KEYCTL_REJECT_KEY with EKEYEXPIRED
+given as the error to issue.  This will still cause request_key() to return
+EKEYEXPIRED as that was explicitly set.
+
+In the future, if the key type has an update op available, we might want to
+upcall with the expired key and allow the upcall to update it.  We would pass
+a different operation name (the first column in /etc/request-key.conf) to the
+request-key program.
+
+request_key() returning EKEYEXPIRED is causing an NFS problem which Chuck
+Lever describes thusly:
+
+	After about 10 minutes, my NFSv4 functional tests fail because the
+	ownership of the test files goes to "-2". Looking at /proc/keys
+	shows that the id_resolv keys that map to my test user ID have
+	expired. The ownership problem persists until the expired keys are
+	purged from the keyring, and fresh keys are obtained.
+
+	I bisected the problem to 3.13 commit b2a4df200d57 ("KEYS: Expand
+	the capacity of a keyring"). This commit inadvertantly changes the
+	API contract of the internal function keyring_search_aux().
+
+	The root cause appears to be that b2a4df200d57 made "no state check"
+	the default behavior. "No state check" means the keyring search
+	iterator function skips checking the key's expiry timeout, and
+	returns expired keys.  request_key_and_link() depends on getting
+	an -EAGAIN result code to know when to perform an upcall to refresh
+	an expired key.
+
+This patch can be tested directly by:
+
+	keyctl request2 user debug:fred a @s
+	keyctl timeout %user:debug:fred 3
+	sleep 4
+	keyctl request2 user debug:fred a @s
+
+Without the patch, the last command gives error EKEYEXPIRED, but with the
+command it gives a new key.
+
+Reported-by: Carl Hetherington <cth@carlh.net>
+Reported-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- support/export/export.c    | 20 +++++++-------------
- support/include/exportfs.h |  2 +-
- utils/exportfs/exportfs.c  | 22 +++++++++++++---------
- 3 files changed, 21 insertions(+), 23 deletions(-)
 
-diff --git a/support/export/export.c b/support/export/export.c
-index 30a5b4a..e1bebce 100644
---- a/support/export/export.c
-+++ b/support/export/export.c
-@@ -69,36 +69,30 @@ static void warn_duplicated_exports(nfs_export *exp, struct exportent *eep)
-  * export_read - read entries from /etc/exports
-  * @fname: name of file to read from
-  *
-+ * Returns number of read entries.
-  */
--void
--export_read(char *fname, int verbose)
-+int
-+export_read(char *fname)
- {
- 	struct exportent	*eep;
- 	nfs_export		*exp;
+ security/keys/internal.h    |    1 +
+ security/keys/keyring.c     |    3 ++-
+ security/keys/request_key.c |    3 ++-
+ 3 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/security/keys/internal.h b/security/keys/internal.h
+index b8960c4959a5..200e37867336 100644
+--- a/security/keys/internal.h
++++ b/security/keys/internal.h
+@@ -117,6 +117,7 @@ struct keyring_search_context {
+ #define KEYRING_SEARCH_NO_UPDATE_TIME	0x0004	/* Don't update times */
+ #define KEYRING_SEARCH_NO_CHECK_PERM	0x0008	/* Don't check permissions */
+ #define KEYRING_SEARCH_DETECT_TOO_DEEP	0x0010	/* Give an error on excessive depth */
++#define KEYRING_SEARCH_SKIP_EXPIRED	0x0020	/* Ignore expired keys (intention to replace) */
  
- 	int volumes = 0;
--	int bad_entry = 0;
+ 	int (*iterator)(const void *object, void *iterator_data);
  
- 	setexportent(fname, "r");
- 	while ((eep = getexportent(0,1)) != NULL) {
- 		exp = export_lookup(eep->e_hostname, eep->e_path, 0);
- 		if (!exp) {
--			exp = export_create(eep, 0);
--			if (exp)
-+			if (export_create(eep, 0))
-+				/* possible complaints already logged */
- 				volumes++;
--			else 
--				bad_entry++;
- 		}
- 		else
- 			warn_duplicated_exports(exp, eep);
- 	}
- 	endexportent();
--	if (volumes == 0) {
--		if (bad_entry > 0)
--			xlog(L_ERROR, "No file systems exported!");
--		else if (verbose)
--			xlog(L_WARNING, "No file systems exported!");
--	}
-+
-+	return volumes;
- }
- 
- /**
-diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-index 3d89f12..3b92f04 100644
---- a/support/include/exportfs.h
-+++ b/support/include/exportfs.h
-@@ -133,7 +133,7 @@ struct addrinfo *		client_resolve(const struct sockaddr *sap);
- int 				client_member(const char *client,
- 						const char *name);
- 
--void				export_read(char *fname, int verbose);
-+int				export_read(char *fname);
- void				export_reset(nfs_export *);
- nfs_export *			export_lookup(char *hname, char *path, int caconical);
- nfs_export *			export_find(const struct addrinfo *ai,
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 92fb9eb..48eac00 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -47,7 +47,7 @@ static void	error(nfs_export *exp, int err);
- static void	usage(const char *progname, int n);
- static void	validate_export(nfs_export *exp);
- static int	matchhostname(const char *hostname1, const char *hostname2);
--static void	export_d_read(const char *dname, int verbose);
-+static int	export_d_read(const char *dname);
- static void grab_lockfile(void);
- static void release_lockfile(void);
- 
-@@ -182,8 +182,11 @@ main(int argc, char **argv)
- 	atexit(release_lockfile);
- 
- 	if (f_export && ! f_ignore) {
--		export_read(_PATH_EXPORTS, f_verbose);
--		export_d_read(_PATH_EXPORTS_D, f_verbose);
-+		if (! (export_read(_PATH_EXPORTS) +
-+		       export_d_read(_PATH_EXPORTS_D))) {
-+			if (f_verbose)
-+				xlog(L_WARNING, "No file systems exported!");
-+		}
- 	}
- 	if (f_export) {
- 		if (f_all)
-@@ -685,21 +688,22 @@ out:
- 
- /* Based on mnt_table_parse_dir() in
-    util-linux-ng/shlibs/mount/src/tab_parse.c */
--static void
--export_d_read(const char *dname, int verbose)
-+static int
-+export_d_read(const char *dname)
- {
- 	int n = 0, i;
- 	struct dirent **namelist = NULL;
-+	int volumes = 0;
- 
- 
- 	n = scandir(dname, &namelist, NULL, versionsort);
- 	if (n < 0) {
- 		if (errno == ENOENT)
- 			/* Silently return */
--			return;
-+			return volumes;
- 		xlog(L_NOTICE, "scandir %s: %s", dname, strerror(errno));
- 	} else if (n == 0)
--		return;
-+		return volumes;
- 
- 	for (i = 0; i < n; i++) {
- 		struct dirent *d = namelist[i];
-@@ -729,14 +733,14 @@ export_d_read(const char *dname, int verbose)
- 			continue;
+diff --git a/security/keys/keyring.c b/security/keys/keyring.c
+index 238aa172f25b..e72548b5897e 100644
+--- a/security/keys/keyring.c
++++ b/security/keys/keyring.c
+@@ -546,7 +546,8 @@ static int keyring_search_iterator(const void *object, void *iterator_data)
  		}
  
--		export_read(fname, verbose);
-+		volumes += export_read(fname);
- 	}
- 
- 	for (i = 0; i < n; i++)
- 		free(namelist[i]);
- 	free(namelist);
- 
--	return;
-+	return volumes;
- }
- 
- static char
--- 
-1.9.3
+ 		if (key->expiry && ctx->now.tv_sec >= key->expiry) {
+-			ctx->result = ERR_PTR(-EKEYEXPIRED);
++			if (!(ctx->flags & KEYRING_SEARCH_SKIP_EXPIRED))
++				ctx->result = ERR_PTR(-EKEYEXPIRED);
+ 			kleave(" = %d [expire]", ctx->skipped_ret);
+ 			goto skipped;
+ 		}
+diff --git a/security/keys/request_key.c b/security/keys/request_key.c
+index 0bb23f98e4ca..0c7aea4dea54 100644
+--- a/security/keys/request_key.c
++++ b/security/keys/request_key.c
+@@ -516,7 +516,8 @@ struct key *request_key_and_link(struct key_type *type,
+ 		.match_data.cmp		= key_default_cmp,
+ 		.match_data.raw_data	= description,
+ 		.match_data.lookup_type	= KEYRING_SEARCH_LOOKUP_DIRECT,
+-		.flags			= KEYRING_SEARCH_DO_STATE_CHECK,
++		.flags			= (KEYRING_SEARCH_DO_STATE_CHECK |
++					   KEYRING_SEARCH_SKIP_EXPIRED),
+ 	};
+ 	struct key *key;
+ 	key_ref_t key_ref;
 
+_______________________________________________
+Keyrings mailing list
+Keyrings@linux-nfs.org
+To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings
