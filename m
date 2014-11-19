@@ -1,15 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:54421 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53379 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754627AbaKSO5K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Nov 2014 09:57:10 -0500
-Date: Wed, 19 Nov 2014 09:57:09 -0500
+	id S1757045AbaKSVh7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Nov 2014 16:37:59 -0500
+Date: Wed, 19 Nov 2014 16:37:58 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Jeff Layton <jlayton@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
 Subject: Re: [PATCH 00/10] sunrpc: fixes and cleanups for svc creation and
  thread handling
-Message-ID: <20141119145709.GA10844@fieldses.org>
+Message-ID: <20141119213758.GE14207@fieldses.org>
 References: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -21,21 +21,21 @@ On Wed, Nov 19, 2014 at 07:51:12AM -0500, Jeff Layton wrote:
 > Patch #1 in this series is a bugfix, but probably isn't worth sending to
 > stable. The rest are just cleanups in preparation for some other patches
 > that I have queued up. Can you consider these for 3.19?
+
+Sure, I've read through them, they look fine.
+
+When I tried to apply them to my for-3.19 there were rejects due to
+tracing stuff in include/trace/events/sunrpc.h.  I haven't tried to
+investigate yet.
+
+--b.
+
 > 
 > The main one that I'm hoping to send soon for v3.19 is the one to help
 > reduce the pool->sp_lock contention on busy servers. I have some
 > preliminary numbers that look pretty good, but one of our QA folks is
 > working on getting some better ones from a more rigorous test. I'll
 > send those along in a few days once I have those numbers.
-
-Thanks, I'll take a look!  If not today then probably next week.
-
-With the holiday season approaching I have some time off and travel
-coming up.  I should still be mostly online, but anyone that notices me
-ignoring an urgent patch should definitely complain early and often.
-
---b.
-
 > 
 > Jeff Layton (10):
 >   sunrpc: release svc_pool_map reference when serv allocation fails
