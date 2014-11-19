@@ -1,113 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:42516 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754327AbaKRW5c (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Nov 2014 17:57:32 -0500
-Received: by mail-ig0-f181.google.com with SMTP id l13so8624837iga.8
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Nov 2014 14:57:31 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20141118201049.GH7419@fieldses.org>
-References: <1415833444-48129-1-git-send-email-trond.myklebust@primarydata.com>
-	<20141112214128.4fc43a49@synchrony.poochiereds.net>
-	<20141118201049.GH7419@fieldses.org>
-Date: Tue, 18 Nov 2014 14:57:31 -0800
-Message-ID: <CAHQdGtST86LL5Uk7vm4H_F+NJrOTi4R2JBSfaXWoXGNYA0WUKg@mail.gmail.com>
-Subject: Re: [PATCH] SUNRPC: Fix locking around callback channel reply receive
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:44120 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754658AbaKSRr5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Nov 2014 12:47:57 -0500
+Received: by mail-pd0-f170.google.com with SMTP id fp1so1289131pdb.29
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2014 09:47:57 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Bruce Fields <bfields@fieldses.org>
-Cc: Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: Fix slot wake up race in the nfsv4.1 callback code
+Date: Wed, 19 Nov 2014 12:47:50 -0500
+Message-Id: <1416419270-8964-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 18, 2014 at 12:10 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> On Wed, Nov 12, 2014 at 09:41:28PM -0500, Jeff Layton wrote:
->> On Wed, 12 Nov 2014 18:04:04 -0500
->> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>
->> > Both xprt_lookup_rqst() and xprt_complete_rqst() require that you
->> > take the transport lock in order to avoid races with xprt_transmit().
->
-> Thanks, looks right.
->
-> Have you seen this in practice?  (I'm just wondering whether it's worth
-> a stable cc:.)
+The currect code for nfsd41_cb_get_slot() and nfsd4_cb_done() has no
+locking in order to guarantee atomicity, and so allows for races of
+the form.
 
-We have a candidate Oops that shows corruption in that list in the
-backchannel path. I cannot guarantee that the patch is a full fix, but
-I believe that the race between transmit and receive is real.
+Task 1                                  Task 2
+======                                  ======
+if (test_and_set_bit(0) != 0) {
+                                        clear_bit(0)
+                                        rpc_wake_up_next(queue)
+        rpc_sleep_on(queue)
+        return false;
+}
 
-> --b.
->
->> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> > Cc: Bruce Fields <bfields@fieldses.org>
->> > ---
->> >  net/sunrpc/svcsock.c | 27 ++++++++++++++++-----------
->> >  1 file changed, 16 insertions(+), 11 deletions(-)
->> >
->> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->> > index 3f959c681885..f9c052d508f0 100644
->> > --- a/net/sunrpc/svcsock.c
->> > +++ b/net/sunrpc/svcsock.c
->> > @@ -1019,17 +1019,12 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
->> >     xid = *p++;
->> >     calldir = *p;
->> >
->> > -   if (bc_xprt)
->> > -           req = xprt_lookup_rqst(bc_xprt, xid);
->> > -
->> > -   if (!req) {
->> > -           printk(KERN_NOTICE
->> > -                   "%s: Got unrecognized reply: "
->> > -                   "calldir 0x%x xpt_bc_xprt %p xid %08x\n",
->> > -                   __func__, ntohl(calldir),
->> > -                   bc_xprt, ntohl(xid));
->> > +   if (!bc_xprt)
->> >             return -EAGAIN;
->> > -   }
->> > +   spin_lock_bh(&bc_xprt->transport_lock);
->> > +   req = xprt_lookup_rqst(bc_xprt, xid);
->> > +   if (!req)
->> > +           goto unlock_notfound;
->> >
->> >     memcpy(&req->rq_private_buf, &req->rq_rcv_buf, sizeof(struct xdr_buf));
->> >     /*
->> > @@ -1040,11 +1035,21 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
->> >     dst = &req->rq_private_buf.head[0];
->> >     src = &rqstp->rq_arg.head[0];
->> >     if (dst->iov_len < src->iov_len)
->> > -           return -EAGAIN; /* whatever; just giving up. */
->> > +           goto unlock_eagain; /* whatever; just giving up. */
->> >     memcpy(dst->iov_base, src->iov_base, src->iov_len);
->> >     xprt_complete_rqst(req->rq_task, rqstp->rq_arg.len);
->> >     rqstp->rq_arg.len = 0;
->> > +   spin_unlock_bh(&bc_xprt->transport_lock);
->> >     return 0;
->> > +unlock_notfound:
->> > +   printk(KERN_NOTICE
->> > +           "%s: Got unrecognized reply: "
->> > +           "calldir 0x%x xpt_bc_xprt %p xid %08x\n",
->> > +           __func__, ntohl(calldir),
->> > +           bc_xprt, ntohl(xid));
->> > +unlock_eagain:
->> > +   spin_unlock_bh(&bc_xprt->transport_lock);
->> > +   return -EAGAIN;
->> >  }
->> >
->> >  static int copy_pages_to_kvecs(struct kvec *vec, struct page **pages, int len)
->>
->> Nice catch. It would also be good to pair this with a
->> lockdep_assert_held() call in xprt_lookup_rqst, but that could be added
->> in a separate patch.
->>
->> Reviewed-by: Jeff Layton <jlayton@primarydata.com>
+This patch breaks the race condition by adding a retest of the bit
+after the call to rpc_sleep_on().
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: stable@vger.kernel.org
+---
+ fs/nfsd/nfs4callback.c | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index ed2b1151b171..7cbdf1b2e4ab 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -774,8 +774,12 @@ static bool nfsd41_cb_get_slot(struct nfs4_client *clp, struct rpc_task *task)
+ {
+ 	if (test_and_set_bit(0, &clp->cl_cb_slot_busy) != 0) {
+ 		rpc_sleep_on(&clp->cl_cb_waitq, task, NULL);
+-		dprintk("%s slot is busy\n", __func__);
+-		return false;
++		/* Race breaker */
++		if (test_and_set_bit(0, &clp->cl_cb_slot_busy) != 0) {
++			dprintk("%s slot is busy\n", __func__);
++			return false;
++		}
++		rpc_wake_up_queued_task(&clp->cl_cb_waitq, task);
+ 	}
+ 	return true;
+ }
 -- 
-Trond Myklebust
+1.9.3
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
