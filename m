@@ -1,56 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:56884 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755866AbaKTFsP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Nov 2014 00:48:15 -0500
-Date: Wed, 19 Nov 2014 21:48:13 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Benjamin Coddington <bcodding@redhat.com>,
-        Tom Haynes <thomas.haynes@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Client never uses DATA_SYNC
-Message-ID: <20141120054813.GA32361@infradead.org>
-References: <alpine.LRH.2.11.1411041036320.20279@sh-el6.eng.rdu2.redhat.com>
- <CAHQdGtSowoYZDUb6jBbj8Q0g6LeNVHmOCNBoZdDU8CgCZFpOXA@mail.gmail.com>
- <20141105085317.GA18658@infradead.org>
- <20141105144133.GA3139@fieldses.org>
- <20141106201341.GD22638@fieldses.org>
- <20141107072637.GA25215@infradead.org>
- <20141118170210.GG7419@fieldses.org>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:46935 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756899AbaKTU5V convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Nov 2014 15:57:21 -0500
+Received: by mail-ig0-f173.google.com with SMTP id r2so5506874igi.0
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Nov 2014 12:57:21 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141118170210.GG7419@fieldses.org>
+Date: Thu, 20 Nov 2014 15:57:20 -0500
+Message-ID: <CAN-5tyE60A+2h6My0Ebb=5j4DbVifDBuG6CjymCRsRefNTMd=w@mail.gmail.com>
+Subject: is receiving BAD_STATEID during IO on delegated stateid unrecoverable?
+From: Olga Kornievskaia <aglo@umich.edu>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 18, 2014 at 12:02:10PM -0500, J. Bruce Fields wrote:
-> On Thu, Nov 06, 2014 at 11:26:37PM -0800, Christoph Hellwig wrote:
-> > Note that for filesystems natively implementing the change attribute
-> > (btrfs, XFSv5 and ext4 with a mount option) there is no difference anyway,
-> 
-> Is there something special I have to do to get this on xfs?
+Hi folks,
 
-You need to create a version 5 filesystem.  For this your need fairly
-recent xfsprogs (e.g. RHEL7ish), and create the filesystem using
+As far as I can tell, receiving a BAD_STATEID on an IO operation on a
+delegated stateid when there was a local lock acquired for this IO is
+unrecoverable — leads to EIO. Codewise, stateid recovery sees that it
+has a local lock and marks it lost and retry of the IO operation
+returns the EIO.
 
-# mkfs.xf -m crc=1 /dev/device
+Is the reason for seizing the IO is that if the server for some reason
+revoked this stateid then there is no guarantee about the locks and
+thus doing any IO.
 
-You probably also want the untested patch below to proper initialize
-the version on inodes read from disk:
+This also applies to both 4.0 and 4.1 code as far as I can tell.
 
-diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index ec6dcdc..c1e2700 100644
---- a/fs/xfs/xfs_iops.c
-+++ b/fs/xfs/xfs_iops.c
-@@ -1277,6 +1277,9 @@ xfs_setup_inode(
- 	inode->i_ctime.tv_nsec	= ip->i_d.di_ctime.t_nsec;
- 	xfs_diflags_to_iflags(inode, ip);
- 
-+	if (xfs_sb_version_hascrc(&ip->i_mount->m_sb))
-+		 inode->i_version = ip->i_d.di_changecount;
-+
- 	ip->d_ops = ip->i_mount->m_nondir_inode_ops;
- 	lockdep_set_class(&ip->i_lock.mr_lock, &xfs_nondir_ilock_class);
- 	switch (inode->i_mode & S_IFMT) {
+Can somebody confirm or tell me if this is wrong?
+
+Thank you.
