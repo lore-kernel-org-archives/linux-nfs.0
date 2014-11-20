@@ -1,86 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f49.google.com ([209.85.216.49]:40246 "EHLO
-	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933448AbaKSWAA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Nov 2014 17:00:00 -0500
-Received: by mail-qa0-f49.google.com with SMTP id s7so1077748qap.22
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Nov 2014 13:59:59 -0800 (PST)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 19 Nov 2014 16:59:57 -0500
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
+Received: from mx12.netapp.com ([216.240.18.77]:63889 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751517AbaKTORr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Nov 2014 09:17:47 -0500
+Message-ID: <546DF808.1000905@Netapp.com>
+Date: Thu, 20 Nov 2014 09:17:44 -0500
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: Jeff Layton <jeff.layton@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 00/10] sunrpc: fixes and cleanups for svc creation and
  thread handling
-Message-ID: <20141119165957.04e6e9c2@tlielax.poochiereds.net>
-In-Reply-To: <20141119213758.GE14207@fieldses.org>
-References: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>
-	<20141119213758.GE14207@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+References: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>	<20141119213758.GE14207@fieldses.org> <20141119165957.04e6e9c2@tlielax.poochiereds.net>
+In-Reply-To: <20141119165957.04e6e9c2@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 19 Nov 2014 16:37:58 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+On 11/19/2014 04:59 PM, Jeff Layton wrote:
+> On Wed, 19 Nov 2014 16:37:58 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>
+>> On Wed, Nov 19, 2014 at 07:51:12AM -0500, Jeff Layton wrote:
+>>> Patch #1 in this series is a bugfix, but probably isn't worth sending to
+>>> stable. The rest are just cleanups in preparation for some other patches
+>>> that I have queued up. Can you consider these for 3.19?
+>> Sure, I've read through them, they look fine.
+>>
+>> When I tried to apply them to my for-3.19 there were rejects due to
+>> tracing stuff in include/trace/events/sunrpc.h.  I haven't tried to
+>> investigate yet.
+>>
+>> --b.
+>>
+> Ahh yeah. These are based on top of the tracepoint patches I sent to
+> Trond a couple of weeks ago. I think he's planning to merge those in
+> 3.19 too, but I don't think he's done that yet. Anna may have though...
 
-> On Wed, Nov 19, 2014 at 07:51:12AM -0500, Jeff Layton wrote:
-> > Patch #1 in this series is a bugfix, but probably isn't worth sending to
-> > stable. The rest are just cleanups in preparation for some other patches
-> > that I have queued up. Can you consider these for 3.19?
-> 
-> Sure, I've read through them, they look fine.
-> 
-> When I tried to apply them to my for-3.19 there were rejects due to
-> tracing stuff in include/trace/events/sunrpc.h.  I haven't tried to
-> investigate yet.
-> 
-> --b.
-> 
+I have them in a private tree on my laptop that I use for testing.  Want me to push them out somewhere?
 
-Ahh yeah. These are based on top of the tracepoint patches I sent to
-Trond a couple of weeks ago. I think he's planning to merge those in
-3.19 too, but I don't think he's done that yet. Anna may have though...
+Anna
 
-> > 
-> > The main one that I'm hoping to send soon for v3.19 is the one to help
-> > reduce the pool->sp_lock contention on busy servers. I have some
-> > preliminary numbers that look pretty good, but one of our QA folks is
-> > working on getting some better ones from a more rigorous test. I'll
-> > send those along in a few days once I have those numbers.
-> > 
-> > Jeff Layton (10):
-> >   sunrpc: release svc_pool_map reference when serv allocation fails
-> >   sunrpc: add a generic rq_flags field to svc_rqst and move rq_secure to
-> >     it
-> >   sunrpc: move rq_local field to rq_flags
-> >   sunrpc: move rq_usedeferral flag to rq_flags
-> >   sunrpc: move rq_dropme flag into rq_flags
-> >   sunrpc: move rq_splice_ok flag into rq_flags
-> >   sunrpc: move rq_cachetype field to better optimize space
-> >   sunrpc: convert sp_task_pending flag to use atomic bitops
-> >   sunrpc: have svc_wake_up only deal with pool 0
-> >   sunrpc: require svc_create callers to pass in meaningful shutdown
-> >     routine
-> > 
-> >  fs/lockd/svc.c                    |  2 +-
-> >  fs/nfsd/nfs4proc.c                |  6 ++---
-> >  fs/nfsd/nfs4xdr.c                 |  8 +++---
-> >  fs/nfsd/nfscache.c                |  4 +--
-> >  fs/nfsd/nfsfh.c                   |  2 +-
-> >  fs/nfsd/nfssvc.c                  |  2 +-
-> >  fs/nfsd/vfs.c                     |  6 ++---
-> >  include/linux/sunrpc/svc.h        | 22 +++++++++--------
-> >  include/trace/events/sunrpc.h     | 24 +++++++++++++-----
-> >  net/sunrpc/auth_gss/svcauth_gss.c |  2 +-
-> >  net/sunrpc/svc.c                  | 23 +++++++++---------
-> >  net/sunrpc/svc_xprt.c             | 51 ++++++++++++++++++---------------------
-> >  net/sunrpc/svcsock.c              |  5 +++-
-> >  13 files changed, 85 insertions(+), 72 deletions(-)
-> > 
-> > -- 
-> > 2.1.0
-> > 
+>
+>>> The main one that I'm hoping to send soon for v3.19 is the one to help
+>>> reduce the pool->sp_lock contention on busy servers. I have some
+>>> preliminary numbers that look pretty good, but one of our QA folks is
+>>> working on getting some better ones from a more rigorous test. I'll
+>>> send those along in a few days once I have those numbers.
+>>>
+>>> Jeff Layton (10):
+>>>   sunrpc: release svc_pool_map reference when serv allocation fails
+>>>   sunrpc: add a generic rq_flags field to svc_rqst and move rq_secure to
+>>>     it
+>>>   sunrpc: move rq_local field to rq_flags
+>>>   sunrpc: move rq_usedeferral flag to rq_flags
+>>>   sunrpc: move rq_dropme flag into rq_flags
+>>>   sunrpc: move rq_splice_ok flag into rq_flags
+>>>   sunrpc: move rq_cachetype field to better optimize space
+>>>   sunrpc: convert sp_task_pending flag to use atomic bitops
+>>>   sunrpc: have svc_wake_up only deal with pool 0
+>>>   sunrpc: require svc_create callers to pass in meaningful shutdown
+>>>     routine
+>>>
+>>>  fs/lockd/svc.c                    |  2 +-
+>>>  fs/nfsd/nfs4proc.c                |  6 ++---
+>>>  fs/nfsd/nfs4xdr.c                 |  8 +++---
+>>>  fs/nfsd/nfscache.c                |  4 +--
+>>>  fs/nfsd/nfsfh.c                   |  2 +-
+>>>  fs/nfsd/nfssvc.c                  |  2 +-
+>>>  fs/nfsd/vfs.c                     |  6 ++---
+>>>  include/linux/sunrpc/svc.h        | 22 +++++++++--------
+>>>  include/trace/events/sunrpc.h     | 24 +++++++++++++-----
+>>>  net/sunrpc/auth_gss/svcauth_gss.c |  2 +-
+>>>  net/sunrpc/svc.c                  | 23 +++++++++---------
+>>>  net/sunrpc/svc_xprt.c             | 51 ++++++++++++++++++---------------------
+>>>  net/sunrpc/svcsock.c              |  5 +++-
+>>>  13 files changed, 85 insertions(+), 72 deletions(-)
+>>>
+>>> -- 
+>>> 2.1.0
+>>>
+>
 
-
--- 
-Jeff Layton <jlayton@primarydata.com>
