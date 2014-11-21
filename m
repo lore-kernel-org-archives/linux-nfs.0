@@ -1,76 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:7787 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750729AbaK1Pum (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Nov 2014 10:50:42 -0500
-From: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-To: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>
-Cc: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Subject: [PATCH v1] sunrpc/cache: convert to use string_escape_str()
-Date: Fri, 28 Nov 2014 17:50:28 +0200
-Message-Id: <1417189828-25688-1-git-send-email-andriy.shevchenko@linux.intel.com>
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:61348 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750755AbaKUTTj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2014 14:19:39 -0500
+Received: by mail-qa0-f41.google.com with SMTP id f12so3956814qad.28
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Nov 2014 11:19:38 -0800 (PST)
+From: Jeff Layton <jlayton@primarydata.com>
+To: bfields@fieldses.org
+Cc: Chris Worley <chris.worley@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH 0/4] sunrpc: reduce pool->sp_lock contention when queueing a xprt for servicing
+Date: Fri, 21 Nov 2014 14:19:27 -0500
+Message-Id: <1416597571-4265-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is nice kernel helper to escape a given strings by provided rules. Let's
-use it instead of custom approach.
+Hi Bruce!
 
-Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
----
- net/sunrpc/cache.c | 27 ++++++---------------------
- 1 file changed, 6 insertions(+), 21 deletions(-)
+Here are the patches that I had mentioned earlier that reduce the
+contention for the pool->sp_lock when the server is heavily loaded.
 
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index 0663621..5cf60a4 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -20,6 +20,7 @@
- #include <linux/list.h>
- #include <linux/module.h>
- #include <linux/ctype.h>
-+#include <linux/string_helpers.h>
- #include <asm/uaccess.h>
- #include <linux/poll.h>
- #include <linux/seq_file.h>
-@@ -1067,32 +1068,16 @@ void qword_add(char **bpp, int *lp, char *str)
- {
- 	char *bp = *bpp;
- 	int len = *lp;
--	char c;
-+	int ret;
- 
- 	if (len < 0) return;
- 
--	while ((c=*str++) && len)
--		switch(c) {
--		case ' ':
--		case '\t':
--		case '\n':
--		case '\\':
--			if (len >= 4) {
--				*bp++ = '\\';
--				*bp++ = '0' + ((c & 0300)>>6);
--				*bp++ = '0' + ((c & 0070)>>3);
--				*bp++ = '0' + ((c & 0007)>>0);
--			}
--			len -= 4;
--			break;
--		default:
--			*bp++ = c;
--			len--;
--		}
--	if (c || len <1) len = -1;
-+	ret = string_escape_str(str, &bp, len, ESCAPE_OCTAL, "\\ \n\t");
-+	if (ret < 0 || ret == len)
-+		len = -1;
- 	else {
- 		*bp++ = ' ';
--		len--;
-+		len -= ret - 1;
- 	}
- 	*bpp = bp;
- 	*lp = len;
+The basic problem is that whenever a svc_xprt needs to be queued up for
+servicing, we have to take the pool->sp_lock to try and find an idle
+thread to service it.  On a busy server, that lock becomes highly
+contended and that limits the throughput.
+
+This patchset fixes this by changing how we search for an idle thread.
+First, we convert svc_rqst and the sp_all_threads list to be
+RCU-managed. Then we change the search for an idle thread to use the
+sp_all_threads list, which now can be done under the rcu_read_lock.
+When there is an available thread, queueing an xprt to it can now be
+done without any spinlocking.
+
+With this, we see a pretty substantial increase in performance on a
+larger-scale server that is heavily loaded. Chris has some preliminary
+numbers, but they need to be cleaned up a bit before we can present
+them. I'm hoping to have those by early next week.
+
+Jeff Layton (4):
+  sunrpc: add a rcu_head to svc_rqst and use kfree_rcu to free it
+  sunrpc: fix potential races in pool_stats collection
+  sunrpc: convert to lockless lookup of queued server threads
+  sunrpc: add some tracepoints around enqueue and dequeue of svc_xprt
+
+ include/linux/sunrpc/svc.h    |  12 +-
+ include/trace/events/sunrpc.h |  98 +++++++++++++++-
+ net/sunrpc/svc.c              |  17 +--
+ net/sunrpc/svc_xprt.c         | 252 ++++++++++++++++++++++++------------------
+ 4 files changed, 258 insertions(+), 121 deletions(-)
+
 -- 
-2.1.3
+2.1.0
 
