@@ -1,58 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f172.google.com ([209.85.213.172]:47605 "EHLO
-	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754716AbaKTVXH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Nov 2014 16:23:07 -0500
-Received: by mail-ig0-f172.google.com with SMTP id hl2so5499736igb.11
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Nov 2014 13:23:06 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:38400 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751516AbaKUVx3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2014 16:53:29 -0500
+From: David Howells <dhowells@redhat.com>
+To: jmorris@namei.org
+cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org, keyrings@linux-nfs.org,
+        linux-kernel@vger.kernel.org
+Subject: [GIT PULL] Keyrings (& NFS) fixes
 MIME-Version: 1.0
-In-Reply-To: <CAHQdGtSTc-34R_C0TwYmwk8KdQFadxQbhgmoTxzhWKhsYjiFww@mail.gmail.com>
-References: <CAN-5tyE60A+2h6My0Ebb=5j4DbVifDBuG6CjymCRsRefNTMd=w@mail.gmail.com>
-	<CAHQdGtSTc-34R_C0TwYmwk8KdQFadxQbhgmoTxzhWKhsYjiFww@mail.gmail.com>
-Date: Thu, 20 Nov 2014 16:23:06 -0500
-Message-ID: <CAN-5tyHk=EY4o1cer5u3iFizDn8ABzJwL+H86XVbSP5Ek2k69w@mail.gmail.com>
-Subject: Re: is receiving BAD_STATEID during IO on delegated stateid unrecoverable?
-From: Olga Kornievskaia <aglo@umich.edu>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="us-ascii"
+Date: Fri, 21 Nov 2014 21:53:20 +0000
+Message-ID: <4808.1416606800@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 20, 2014 at 4:14 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> On Thu, Nov 20, 2014 at 12:57 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> Hi folks,
->>
->> As far as I can tell, receiving a BAD_STATEID on an IO operation on a
->> delegated stateid when there was a local lock acquired for this IO is
->> unrecoverable — leads to EIO. Codewise, stateid recovery sees that it
->> has a local lock and marks it lost and retry of the IO operation
->> returns the EIO.
->>
->> Is the reason for seizing the IO is that if the server for some reason
->> revoked this stateid then there is no guarantee about the locks and
->> thus doing any IO.
->>
->> This also applies to both 4.0 and 4.1 code as far as I can tell.
->>
->> Can somebody confirm or tell me if this is wrong?
->>
->
-> Yes. If the server has lost the lock, then the application has lost
-> atomicity for the set of operations that were supposed to be protected
-> by that lock, and this is why we return the EIO. In older kernels we
-> did try to recover the lock, but that can lead to application-visible
-> corruption of data, and so we no longer do that unless you explicitly
-> set the nfs 'recover_lost_locks' module parameter - see
-> Documentation/kernel-parameters.txt.
->
+Hi James,
 
-Thank you for the confirmation Trond :)
+Can you pass these patches on to Linus please?
 
-> --
-> Trond Myklebust
->
-> Linux NFS client maintainer, PrimaryData
->
-> trond.myklebust@primarydata.com
+The first one fixes the handling of maximum buffer size for key descriptions,
+fixing the size at 4095 + NUL char rather than whatever PAGE_SIZE happens to
+be and permits you to read back the full description without it getting
+clipped because some extra information got prepended.
+
+The second and third fix a bug in NFS idmapper handling whereby a key
+representing a mapping between an id and a name expires and causing
+EKEYEXPIRED to be seen internally in NFS (which prevents the mapping from
+happening) rather than re-looking up the mapping.
+
+Thanks,
+David
+---
+The following changes since commit a6aacbde406eeb6f8fc218b2c6172825f5e73fcf:
+
+  Merge branch 'next' of git://git.kernel.org/pub/scm/linux/kernel/git/zohar/linux-integrity into next (2014-11-19 21:36:07 +1100)
+
+are available in the git repository at:
+
+
+  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/keys-fixes-20141121
+
+for you to fetch changes up to 15761d91a57e3ff8032e31c5d82bf7836f6a1b20:
+
+  KEYS: request_key() should reget expired keys rather than give EKEYEXPIRED (2014-11-20 13:38:17 +0000)
+
+----------------------------------------------------------------
+(from the branch description for keys-fixes local branch)
+
+Keyrings fixes
+Keyrings fixes
+
+----------------------------------------------------------------
+David Howells (3):
+      KEYS: Fix the size of the key description passed to/from userspace
+      KEYS: Simplify KEYRING_SEARCH_{NO,DO}_STATE_CHECK flags
+      KEYS: request_key() should reget expired keys rather than give EKEYEXPIRED
+
+ security/keys/internal.h         |  1 +
+ security/keys/keyctl.c           | 56 +++++++++++++++++++---------------------
+ security/keys/keyring.c          | 10 ++++---
+ security/keys/request_key.c      |  2 ++
+ security/keys/request_key_auth.c |  1 +
+ 5 files changed, 36 insertions(+), 34 deletions(-)
