@@ -1,23 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49438 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751436AbaKCRtg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Nov 2014 12:49:36 -0500
-From: Benjamin Coddington <bcodding@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: chuck.lever@oracle.com
-Subject: [PATCH 0/2] nfsidmap not setting key timeouts
-Date: Mon,  3 Nov 2014 12:49:31 -0500
-Message-Id: <cover.1415036893.git.bcodding@redhat.com>
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:39707 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758233AbaKUKJN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2014 05:09:13 -0500
+Received: by mail-pa0-f51.google.com with SMTP id ey11so4546502pad.24
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Nov 2014 02:09:12 -0800 (PST)
+From: Omar Sandoval <osandov@osandov.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
+        Josef Bacik <jbacik@fb.com>, linux-btrfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Mel Gorman <mgorman@suse.de>
+Cc: Omar Sandoval <osandov@osandov.com>
+Subject: [PATCH v2 5/5] btrfs: enable swap file support
+Date: Fri, 21 Nov 2014 02:08:31 -0800
+Message-Id: <afd3c1009172a4a1cfa10e73a64caf35c631a6d4.1416563833.git.osandov@osandov.com>
+In-Reply-To: <cover.1416563833.git.osandov@osandov.com>
+References: <cover.1416563833.git.osandov@osandov.com>
+In-Reply-To: <cover.1416563833.git.osandov@osandov.com>
+References: <cover.1416563833.git.osandov@osandov.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These should fix up nfsidmap being unable to set key timeouts.
+Implement the swap file a_ops on btrfs. Activation simply checks for a usable
+swap file: it must be fully allocated (no holes), support direct I/O (so no
+compressed or inline extents) and should be nocow (I'm not sure about that last
+one).
 
-Benjamin Coddington (2):
-  nfsidmap: set the correct DEFAULT_KEYRING string
-  nfsidmap: Correct a failure to set key timeout values
+Signed-off-by: Omar Sandoval <osandov@osandov.com>
+---
+ fs/btrfs/inode.c | 71 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 71 insertions(+)
 
- utils/nfsidmap/nfsidmap.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index d23362f..b8fd36b 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -9442,6 +9442,75 @@ out_inode:
+ 
+ }
+ 
++static int btrfs_swap_activate(struct swap_info_struct *sis, struct file *file,
++			       sector_t *span)
++{
++	struct inode *inode = file_inode(file);
++	struct btrfs_inode *ip = BTRFS_I(inode);
++	int ret = 0;
++	u64 isize = inode->i_size;
++	struct extent_state *cached_state = NULL;
++	struct extent_map *em;
++	u64 start, len;
++
++	if (ip->flags & BTRFS_INODE_COMPRESS) {
++		/* Can't do direct I/O on a compressed file. */
++		pr_err("BTRFS: swapfile is compressed");
++		return -EINVAL;
++	}
++	if (!(ip->flags & BTRFS_INODE_NODATACOW)) {
++		/* The swap file can't be copy-on-write. */
++		pr_err("BTRFS: swapfile is copy-on-write");
++		return -EINVAL;
++	}
++
++	lock_extent_bits(&ip->io_tree, 0, isize - 1, 0, &cached_state);
++
++	/*
++	 * All of the extents must be allocated and support direct I/O. Inline
++	 * extents and compressed extents fall back to buffered I/O, so those
++	 * are no good.
++	 */
++	start = 0;
++	while (start < isize) {
++		len = isize - start;
++		em = btrfs_get_extent(inode, NULL, 0, start, len, 0);
++		if (IS_ERR(em)) {
++			ret = PTR_ERR(em);
++			goto out;
++		}
++
++		if (test_bit(EXTENT_FLAG_VACANCY, &em->flags) ||
++		    em->block_start == EXTENT_MAP_HOLE) {
++			pr_err("BTRFS: swapfile has holes");
++			ret = -EINVAL;
++			goto out;
++		}
++		if (em->block_start == EXTENT_MAP_INLINE) {
++			pr_err("BTRFS: swapfile is inline");
++			ret = -EINVAL;
++			goto out;
++		}
++		if (test_bit(EXTENT_FLAG_COMPRESSED, &em->flags)) {
++			pr_err("BTRFS: swapfile is compresed");
++			ret = -EINVAL;
++			goto out;
++		}
++
++		start = extent_map_end(em);
++		free_extent_map(em);
++	}
++
++out:
++	unlock_extent_cached(&ip->io_tree, 0, isize - 1, &cached_state,
++			     GFP_NOFS);
++	return ret;
++}
++
++static void btrfs_swap_deactivate(struct file *file)
++{
++}
++
+ static const struct inode_operations btrfs_dir_inode_operations = {
+ 	.getattr	= btrfs_getattr,
+ 	.lookup		= btrfs_lookup,
+@@ -9519,6 +9588,8 @@ static const struct address_space_operations btrfs_aops = {
+ 	.releasepage	= btrfs_releasepage,
+ 	.set_page_dirty	= btrfs_set_page_dirty,
+ 	.error_remove_page = generic_error_remove_page,
++	.swap_activate	= btrfs_swap_activate,
++	.swap_deactivate = btrfs_swap_deactivate,
+ };
+ 
+ static const struct address_space_operations btrfs_symlink_aops = {
+-- 
+2.1.3
 
