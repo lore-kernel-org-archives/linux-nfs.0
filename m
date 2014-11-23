@@ -1,17 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f49.google.com ([74.125.82.49]:61102 "EHLO
-	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751778AbaKWRnq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Nov 2014 12:43:46 -0500
-Received: by mail-wg0-f49.google.com with SMTP id x12so10385836wgg.22
-        for <linux-nfs@vger.kernel.org>; Sun, 23 Nov 2014 09:43:45 -0800 (PST)
+Received: from mail-wi0-f177.google.com ([209.85.212.177]:47686 "EHLO
+	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751237AbaKWPJY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Nov 2014 10:09:24 -0500
+Received: by mail-wi0-f177.google.com with SMTP id l15so3484454wiw.4
+        for <linux-nfs@vger.kernel.org>; Sun, 23 Nov 2014 07:09:23 -0800 (PST)
 From: "Yann E. MORIN" <yann.morin.1998@free.fr>
-To: libtirpc-devel@lists.sourceforge.net
-Cc: linux-nfs@vger.kernel.org, "Yann E. MORIN" <yann.morin.1998@free.fr>,
+To: linux-nfs@vger.kernel.org
+Cc: "Yann E. MORIN" <yann.morin.1998@free.fr>,
         Steve Dickson <steved@redhat.com>
-Subject: [PATCH nfs-utils v2] configure: use pkg-config to find libtirpc
-Date: Sun, 23 Nov 2014 18:43:39 +0100
-Message-Id: <1416764619-6211-1-git-send-email-yann.morin.1998@free.fr>
+Subject: [PATCH nfs-utils] configure: use pkg-config to find libtirpc
+Date: Sun, 23 Nov 2014 16:09:17 +0100
+Message-Id: <1416755357-12228-1-git-send-email-yann.morin.1998@free.fr>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -38,19 +38,27 @@ Signed-off-by: "Yann E. MORIN" <yann.morin.1998@free.fr>
 Cc: Steve Dickson <steved@redhat.com>
 
 ---
-Changes v1 -> v2:
-  - posted to the appropriate locations  (thanks Steve)
-  - do not do the check if libtirpc is disabled from command line
-    with --disable-libtirpc
+Steve,
+
+This is related to the libtirpc patch I sent just mere hours ago.
+
+I was pretty amused to see, when looking who to send this patch to, that you
+were taking care of applying patches for both libtirpc and nfs-utils. :-)
+
+At least, now you've seen both patches, all should make sense! ;-)
+
+Regards,
+Yann E. MORIN.
+
 ---
- aclocal/libtirpc.m4 | 67 ++++++++++-------------------------------------------
- 1 file changed, 12 insertions(+), 55 deletions(-)
+ aclocal/libtirpc.m4 | 64 ++++++++---------------------------------------------
+ 1 file changed, 9 insertions(+), 55 deletions(-)
 
 diff --git a/aclocal/libtirpc.m4 b/aclocal/libtirpc.m4
-index b823364..ebc1bea 100644
+index b823364..dc74638 100644
 --- a/aclocal/libtirpc.m4
 +++ b/aclocal/libtirpc.m4
-@@ -2,61 +2,18 @@ dnl Checks for TI-RPC library and headers
+@@ -2,61 +2,15 @@ dnl Checks for TI-RPC library and headers
  dnl
  AC_DEFUN([AC_LIBTIRPC], [
  
@@ -109,16 +117,13 @@ index b823364..ebc1bea 100644
 -    LIBTIRPC=""
 -  fi
 -
-+  PKG_PROG_PKG_CONFIG([0.9.0])
-+  AS_IF(
-+    [test "$enable_tirpc" != "no"],
-+    [PKG_CHECK_MODULES([TIRPC], [libtirpc >= 0.2.4],
-+                      [LIBTIRPC="${TIRPC_LIBS}"
-+                       AM_CPPFLAGS="${AM_CPPFLAGS} ${TIRPC_CFLAGS}"
-+                       AC_DEFINE([HAVE_LIBTIRPC], [1],
-+                                 [Define to 1 if you have and wish to use libtirpc.])],
-+                      [AS_IF([test "$enable_tirpc" != "no"], [AC_MSG_ERROR([libtirpc not found.])],
-+                             [LIBTIRPC=""])])])
++  PKG_CHECK_MODULES([TIRPC], [libtirpc >= 0.2.4],
++                    [LIBTIRPC="${TIRPC_LIBS}"
++                     AM_CPPFLAGS="${AM_CPPFLAGS} ${TIRPC_CFLAGS}"
++                     AC_DEFINE([HAVE_LIBTIRPC], [1],
++                               [Define to 1 if you have and wish to use libtirpc.])],
++                    [AS_IF([test "$enable_tirpc" != "no"], [AC_MSG_ERROR([libtirpc not found.])],
++                           [LIBTIRPC=""])])
 +
 +  AC_SUBST([AM_CPPFLAGS])
    AC_SUBST(LIBTIRPC)
