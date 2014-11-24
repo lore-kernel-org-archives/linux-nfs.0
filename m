@@ -1,79 +1,218 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33281 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753204AbaKXRfK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Nov 2014 12:35:10 -0500
-Date: Mon, 24 Nov 2014 10:35:05 -0700
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Tuomas =?iso-8859-1?Q?R=E4s=E4nen?= <tuomasjjrasanen@opinsys.fi>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: BUG when umounting exported EXT4 fs
-Message-ID: <20141124173505.GC21584@pad.redhat.com>
-References: <1904910431.95230.1416815071750.JavaMail.zimbra@opinsys.fi>
- <1555471491.95357.1416817941257.JavaMail.zimbra@opinsys.fi>
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:56488 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751067AbaKXTU1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 14:20:27 -0500
+Received: by mail-wg0-f49.google.com with SMTP id x12so13148134wgg.36
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Nov 2014 11:20:26 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <1555471491.95357.1416817941257.JavaMail.zimbra@opinsys.fi>
+In-Reply-To: <20141028143047.5c1fca24@tlielax.poochiereds.net>
+References: <1414520695-1701-1-git-send-email-jlayton@primarydata.com>
+	<20141028143047.5c1fca24@tlielax.poochiereds.net>
+Date: Mon, 24 Nov 2014 14:20:25 -0500
+Message-ID: <CAHQdGtSnuekSRJQ0YeLKk9E_OrRGv7wszxrQTjT7OoMr_ZiQjw@mail.gmail.com>
+Subject: Re: [PATCH] sunrpc: add debugfs file for displaying client rpc_task queue
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 24, 2014 at 08:32:21AM +0000, Tuomas Räsänen wrote:
-> Hi
-> 
-> We have been experiencing quite regular umount failures on our NFS
-> servers which are exporting EXT4 /home via exportfs.
-> 
-> Servers are running kernels from mainline 3.10-series.
-> 
-> Both the reproduction steps and symptoms are almost indentical to what
-> was reported in https://lkml.org/lkml/2013/8/11/26 by Toralf Förster.
-> 
-> The steps to reproduce:
->   1. export EXT4 /home via exportfs
->   2. let clients work on /home
->   3. shutdown clients
->   4. service nfs-kernel-server stop
->   5. umount /home
-> 
-> Umount causes the following BUG trace:
-> 
-> [685206.207459] Call Trace:
-> [685206.208356]  [<ffffffff811a2482>] generic_shutdown_super+0x62/0xf0
-> [685206.209264]  [<ffffffff811a2540>] kill_block_super+0x30/0x80
-> [685206.210179]  [<ffffffff811a2dcd>] deactivate_locked_super+0x4d/0x80
-> [685206.211115]  [<ffffffff811a344e>] deactivate_super+0x4e/0x70
-> [685206.212039]  [<ffffffff811beed6>] mntput_no_expire+0x106/0x160
-> [685206.212964]  [<ffffffff811c07e9>] SyS_umount+0xa9/0xf0
-> [685206.213895]  [<ffffffff8170fc6f>] tracesys+0xe1/0xe6
-> [685206.214838] Code: 81 49 8b 57 78 48 81 c6 20 03 00 00 89 04 24 31 c0 e8 c5 3f 49 00 4d 8b 3f 4d 39 fe 75 c4 4c 39 b3 00 02 00 00 0f 84 97 fe ff ff <0f> 0b 66 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 
-> [685206.216885] RIP  [<ffffffff81259782>] ext4_put_super+0x342/0x350
-> [685206.217913]  RSP <ffff8807d3f7fe28>
-> 
-> The trace is preceded by dumped orphan list info.
-> 
-> The most annoying thing is that in practice, it happens when the server
-> is rebooted normally, causing the reboot to stall (services have alredy
-> been shutdown at this point so the remote connection is closed as well).
-> 
-> I tried the following patch (which landed on mainline in 3.11):
-> 
-> commit bf7bd3e98be5c74813bee6ad496139fb0a011b3b
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Thu Aug 15 16:55:26 2013 -0400
-> 
->     nfsd4: fix leak of inode reference on delegation failure
-> 
-> The patch didn't apply cleanly on top of 3.10.58 but I think I got the
-> few conflicts right and it seems to have fixed the issue.
-> 
-> Is there any particular reason why the patch has not been included in
-> 3.10 stable -series?
+On Tue, Oct 28, 2014 at 2:30 PM, Jeff Layton
+<jeff.layton@primarydata.com> wrote:
+> On Tue, 28 Oct 2014 14:24:55 -0400
+> Jeff Layton <jlayton@primarydata.com> wrote:
+>
+>> It's possible to get a dump of the RPC task queue by writing a value to
+>> /proc/sys/sunrpc/rpc_debug. If you write any value to that file, you get
+>> a dump of the RPC client task list into the log buffer. This is a rather
+>> inconvenient interface however, and makes it hard to get immediate info
+>> about the task queue.
+>>
+>> Add a new file under debugfs that shows similar info. There are some
+>> small differences -- we avoid printing raw kernel addresses in favor of
+>> symbolic names and the XID is also displayed.
+>>
+>> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+>> ---
+>>  include/linux/sunrpc/clnt.h  |   1 +
+>>  include/linux/sunrpc/debug.h |  13 ++++
+>>  net/sunrpc/Kconfig           |   1 +
+>>  net/sunrpc/Makefile          |   1 +
+>>  net/sunrpc/clnt.c            |   3 +-
+>>  net/sunrpc/debugfs.c         | 153 +++++++++++++++++++++++++++++++++++++++++++
+>>  net/sunrpc/sunrpc_syms.c     |   8 +++
+>>  7 files changed, 179 insertions(+), 1 deletion(-)
+>>  create mode 100644 net/sunrpc/debugfs.c
+>>
+>> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+>> index 70736b98c721..265d40bd3109 100644
+>> --- a/include/linux/sunrpc/clnt.h
+>> +++ b/include/linux/sunrpc/clnt.h
+>> @@ -176,5 +176,6 @@ size_t            rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+>>  const char   *rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+>>  int          rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
+>>
+>> +const char *rpc_proc_name(const struct rpc_task *task);
+>>  #endif /* __KERNEL__ */
+>>  #endif /* _LINUX_SUNRPC_CLNT_H */
+>> diff --git a/include/linux/sunrpc/debug.h b/include/linux/sunrpc/debug.h
+>> index 9385bd74c860..7c1ef9530087 100644
+>> --- a/include/linux/sunrpc/debug.h
+>> +++ b/include/linux/sunrpc/debug.h
+>> @@ -68,6 +68,19 @@ extern unsigned int                nlm_debug;
+>>  #ifdef RPC_DEBUG
+>>  void         rpc_register_sysctl(void);
+>>  void         rpc_unregister_sysctl(void);
+>> +int          sunrpc_debugfs_init(void);
+>> +void         sunrpc_debugfs_exit(void);
+>> +#else
+>> +static inline int
+>> +sunrpc_debugfs_init(void)
+>> +{
+>> +     return 0;
+>> +}
+>> +static inline void
+>> +sunrpc_debugfs_exit(void)
+>> +{
+>> +     return;
+>> +}
+>>  #endif
+>>
+>>  #endif /* _LINUX_SUNRPC_DEBUG_H_ */
+>> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+>> index 0754d0f466d2..fb78117b896c 100644
+>> --- a/net/sunrpc/Kconfig
+>> +++ b/net/sunrpc/Kconfig
+>> @@ -35,6 +35,7 @@ config RPCSEC_GSS_KRB5
+>>  config SUNRPC_DEBUG
+>>       bool "RPC: Enable dprintk debugging"
+>>       depends on SUNRPC && SYSCTL
+>> +     select DEBUG_FS
+>>       help
+>>         This option enables a sysctl-based debugging interface
+>>         that is be used by the 'rpcdebug' utility to turn on or off
+>> diff --git a/net/sunrpc/Makefile b/net/sunrpc/Makefile
+>> index e5a7a1cac8f3..15e6f6c23c5d 100644
+>> --- a/net/sunrpc/Makefile
+>> +++ b/net/sunrpc/Makefile
+>> @@ -14,6 +14,7 @@ sunrpc-y := clnt.o xprt.o socklib.o xprtsock.o sched.o \
+>>           addr.o rpcb_clnt.o timer.o xdr.o \
+>>           sunrpc_syms.o cache.o rpc_pipe.o \
+>>           svc_xprt.o
+>> +sunrpc-$(CONFIG_SUNRPC_DEBUG) += debugfs.o
+>>  sunrpc-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel_rqst.o bc_svc.o
+>>  sunrpc-$(CONFIG_PROC_FS) += stats.o
+>>  sunrpc-$(CONFIG_SYSCTL) += sysctl.o
+>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>> index 9acd6ce88db7..5b2e2d3d37c1 100644
+>> --- a/net/sunrpc/clnt.c
+>> +++ b/net/sunrpc/clnt.c
+>> @@ -1397,7 +1397,8 @@ rpc_restart_call(struct rpc_task *task)
+>>  EXPORT_SYMBOL_GPL(rpc_restart_call);
+>>
+>>  #ifdef RPC_DEBUG
+>> -static const char *rpc_proc_name(const struct rpc_task *task)
+>> +const char
+>> +*rpc_proc_name(const struct rpc_task *task)
+>>  {
+>>       const struct rpc_procinfo *proc = task->tk_msg.rpc_proc;
+>>
+>> diff --git a/net/sunrpc/debugfs.c b/net/sunrpc/debugfs.c
+>> new file mode 100644
+>> index 000000000000..48769338172e
+>> --- /dev/null
+>> +++ b/net/sunrpc/debugfs.c
+>> @@ -0,0 +1,153 @@
+>> +/**
+>> + * debugfs interface for sunrpc
+>> + *
+>> + * (c) 2014 Jeff Layton <jlayton@primarydata.com>
+>> + */
+>> +
+>> +#include <linux/debugfs.h>
+>> +#include <linux/sunrpc/sched.h>
+>> +#include <linux/sunrpc/clnt.h>
+>> +#include "netns.h"
+>> +
+>> +static struct dentry *topdir;
+>> +
+>> +static int
+>> +tasks_show(struct seq_file *f, void *v)
+>> +{
+>> +     u32 xid = 0;
+>> +     struct rpc_task *task = v;
+>> +     struct rpc_clnt *clnt = task->tk_client;
+>> +     const char *rpc_waitq = "none";
+>> +
+>> +     if (RPC_IS_QUEUED(task))
+>> +             rpc_waitq = rpc_qname(task->tk_waitqueue);
+>> +
+>> +     if (task->tk_rqstp)
+>> +             xid = be32_to_cpu(task->tk_rqstp->rq_xid);
+>> +
+>> +     seq_printf(f, "%5u %04x %6d 0x%x 0x%x %8ld %ps %sv%u %s a:%ps q:%s\n",
+>> +             task->tk_pid, task->tk_flags, task->tk_status,
+>> +             clnt->cl_clid, xid, task->tk_timeout, task->tk_ops,
+>> +             clnt->cl_program->name, clnt->cl_vers, rpc_proc_name(task),
+>> +             task->tk_action, rpc_waitq);
+>> +     return 0;
+>> +}
+>> +
+>> +static void *
+>> +tasks_start(struct seq_file *f, loff_t *ppos)
+>> +     __acquires(&sn->rpc_client_lock)
+>> +     __acquires(&clnt->cl_lock)
+>> +{
+>> +     loff_t *p = f->private, pos = *ppos;
+>> +     struct rpc_clnt *clnt;
+>> +     struct rpc_task *task;
+>> +     struct sunrpc_net *sn = net_generic(current->nsproxy->net_ns,
+>> +                                             sunrpc_net_id);
+>> +
+>> +     *p = pos + 1;
+>> +     spin_lock(&sn->rpc_client_lock);
+>> +     list_for_each_entry(clnt, &sn->all_clients, cl_clients) {
+>> +             spin_lock(&clnt->cl_lock);
+>> +             list_for_each_entry(task, &clnt->cl_tasks, tk_task)
+>> +                     if (pos-- == 0)
+>> +                             return task;
+>> +             spin_unlock(&clnt->cl_lock);
+>> +     }
+>> +     return NULL;
+>> +}
 
-Probably not.  Could you send your fixed-up version to
-stable@vger.kernel.org, with a cc: to me and to
-linux-nfs@vger.kernel.org?
+Instead of having a single pseudofile that iterates through all
+rpc_clients and all rpc_tasks, should we perhaps have a hierarchy of
+subdirectories?
+I'm thinking we might want a directory per rpc_client, each containing
+a pseudo-file that iterates through all rpc_tasks for that rpc_client
+only. The reason for doing so would be so that we can add pseudofiles
+to display more per-rpc_client debugging info, such as cl_nodename,
+cl_program->name, cl_prog, cl_vers. Maybe also with a symlink to
+another subdirectory that displays per-xprt debugging information?
 
-You could also add to the changelog a note about the conflicts you had
-to fix up, if that looks like it would e helpful.
+i.e. a hierarchy of the form
 
---b.
+debugfs/
+    rpc_clients/
+         1/
+            cl_tasks
+            cl_xprt->../../rpc_xprt/1
+.....
+         2/
+            cl_tasks
+            cl_xprt->../../rpc_xprt/1
+.....
+    rpc_xprt/
+         1/
+            servername
+.....
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
