@@ -1,76 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-am1on0055.outbound.protection.outlook.com ([157.56.112.55]:36608
-	"EHLO emea01-am1-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752152AbaKXL7X convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 06:59:23 -0500
-From: Yan Burman <yanb@mellanox.com>
-To: Shirley Ma <shirley.ma@oracle.com>, "Cheng, Wendy" <wendy.cheng@intel.com>,
-        Charles EDWARD Lever <chuck.lever@oracle.com>,
-        "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "Devesh.Sharma@emulex.com" <Devesh.Sharma@emulex.com>,
-        "dledford@redhat.com" <dledford@redhat.com>,
-        "dominique.martinet@cea.fr" <dominique.martinet@cea.fr>,
-        "jeffrey.c.becker@nasa.gov" <jeffrey.c.becker@nasa.gov>,
-        "rsdance@soft-forge.com" <rsdance@soft-forge.com>,
-        "skc@lanl.gov" <skc@lanl.gov>,
-        "sprabhu@redhat.com" <sprabhu@redhat.com>,
-        "SteveD@redhat.com" <SteveD@redhat.com>,
-        "swise@opengridcomputing.com" <swise@opengridcomputing.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: RE: NFSoRDMA developers bi-weekly meeting minutes (11/20)
-Date: Mon, 24 Nov 2014 11:43:15 +0000
-Message-ID: <fbe466929145478dade2c724f2134c40@DB4PR05MB461.eurprd05.prod.outlook.com>
-References: <546E31C0.1070400@oracle.com>
- <1382BBBCFA085249836C0E3E91900D8999CA064C@ORSMSX115.amr.corp.intel.com>
- <546E645F.4090301@oracle.com>
-In-Reply-To: <546E645F.4090301@oracle.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:36811 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751111AbaKXN5b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 08:57:31 -0500
+Received: by mail-wi0-f172.google.com with SMTP id n3so5727467wiv.11
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Nov 2014 05:57:30 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <20141124095833.GC2725@suse.de>
+References: <20141124095833.GC2725@suse.de>
+Date: Mon, 24 Nov 2014 08:57:30 -0500
+Message-ID: <CAHQdGtREnw1Rz1WJ9irNPntP2HnFecFfG24u8eyf2wfAy7Br+g@mail.gmail.com>
+Subject: Fwd: [Lsf-pc] LSF/MM 2015 Call For Proposals
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+---------- Forwarded message ----------
+From: Mel Gorman <mgorman@suse.de>
+Date: Mon, Nov 24, 2014 at 4:58 AM
+Subject: [Lsf-pc] LSF/MM 2015 Call For Proposals
+To: linux-ide@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+linux-mm@kvack.org, linux-scsi@vger.kernel.org
+Cc: lsf-pc@lists.linux-foundation.org, linux-kernel@vger.kernel.org
 
 
-> -----Original Message-----
-> From: Shirley Ma [mailto:shirley.ma@oracle.com]
-> Sent: Friday, November 21, 2014 00:00
-> To: Cheng, Wendy; Charles EDWARD Lever; Anna.Schumaker@netapp.com;
-> Devesh.Sharma@emulex.com; dledford@redhat.com;
-> dominique.martinet@cea.fr; jeffrey.c.becker@nasa.gov; rsdance@soft-
-> forge.com; skc@lanl.gov; sprabhu@redhat.com; SteveD@redhat.com;
-> swise@opengridcomputing.com; Yan Burman; linux-rdma; Linux NFS Mailing
-> List
-> Subject: Re: NFSoRDMA developers bi-weekly meeting minutes (11/20)
-> 
-> 
-> On 11/20/2014 12:15 PM, Cheng, Wendy wrote:
-> >> -----Original Message-----
-> >> From: Shirley Ma [mailto:shirley.ma@oracle.com]
-> >> Sent: Thursday, November 20, 2014 10:24 AM
-> >>
-> >> ....
-> >> iser 8K could reach 4.5GB/s in 56Gb/s link speed, 1.5 million IOPS.
-> >> 32K could reach 1.8 million IOPS
-> >>
-> >
-> > How did the ISER data get measured ? Was the measure done on ISER layer,
-> block layer, or filesystem layer ?
-> 
-> Here is the link on iser how to set up and measure performance:
-> http://community.mellanox.com/docs/DOC-1483
+The annual Linux Storage, Filesystem and Memory Management Summit for
+2015 will be held on March 9th and 10th before the Linux Foundation Vault
+conference at the Revere Hotel, Boston MA. For those that do not know,
+Vault is designed to be an event where open source storage and filesystem
+practitioners meet storage implementors and, as such, it would be of
+benefit for LSF/MM attendees to go to at least the first day of Vault.
 
-Actual numbers are (there seems to be some misunderstanding in the meeting minutes):
-For single LUN/session in iSER on ConnectX-3 FDR link with 8 core 2.6GHz Xeon are:
-8K block size reaches 2.5GB/s
-Somewhere between 16K and 32K block size iSER reaches 5.5GB/s which is almost line rate
-256K block size gives 5.7GB/s
+        http://events.linuxfoundation.org/events/linux-storage-filesystem-and-mm-summit
+        http://events.linuxfoundation.org/events/vault
 
-With 16 sessions, it is possible to reach 1.7M IOPS with 1K block size and about 600K IOPS with 8K block size.
+On behalf of the committee I am issuing a call for agenda proposals that
+are suitable for cross-track discussion as well as technical subjects for
+the breakout sessions.
 
-Note these numbers are for SCST iSER implementation and there are some more tunings and enhancements
-that can be applied to further improve performance.
+1) Proposals for agenda topics should be sent before January 16th, 2015 to:
 
-Another issue that came up is the benefit of RDMA vs send.
-In order to check that you can use ib_send_lat vs ib_write_lat and see the latencies of different block sizes.
+        lsf-pc@lists.linux-foundation.org
+
+and cc the Linux list or lists that are most interested in it:
+
+        ATA:  linux-ide@vger.kernel.org
+        FS:   linux-fsdevel@vger.kernel.org
+        MM:   linux-mm@kvack.org
+        SCSI: linux-scsi@vger.kernel.org
+
+If advance notice is required for visa applications then please send
+proposals before January 1st. The committee will complete the first round
+of selections near that date to accommodate applications.
+
+Please tag your proposal with [LSF/MM TOPIC] to make it easier to track.
+Agenda topics and attendees will be selected by the program committee,
+but the final agenda will be formed by consensus of the attendees on the day.
+
+We will try to cap attendance at around 25-30 per track to facilitate
+discussions although the final numbers will depend on the room sizes at
+the venue.
+
+2) Requests to attend the summit should be sent to:
+
+        lsf-pc@lists.linux-foundation.org
+
+Please summarise what expertise you will bring to the meeting, and what
+you would like to discuss. Please also tag your email with [LSF/MM ATTEND]
+so there is less chance of it getting lost.
+
+Presentations are allowed to guide discussion, but are strongly
+discouraged. There will be no recording or audio bridge. However, we expect
+that written minutes will be published as we did in previous years
+
+2014:
+        http://lwn.net/Articles/LSFMM2014/
+
+2013:
+        http://lwn.net/Articles/548089/
+
+2012:
+        http://lwn.net/Articles/490114/
+        http://lwn.net/Articles/490501/
+
+3) If you have feedback on last year's meeting that we can use to
+improve this year's, please also send that to:
+
+        lsf-pc@lists.linux-foundation.org
+
+4) We would like to remind those that are are also interested in presenting
+   at the Vault conference that the CFP deadline for Vault is December 1st.
+
+Thank you on behalf of the program committee:
+
+Storage:
+        James Bottomley
+        Martin Petersen
+        Christoph Hellwig
+
+Filesystem:
+        Jeff Layton
+        Ric Wheeler
+        Jan Kara
+        Trond Myklebust
+        Theodore Ts'o
+
+MM:
+        Rik van Riel
+        Michel Lespinasse
+        Sasha Levin
+
+--
+Mel Gorman
+SUSE Labs
+
+
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
