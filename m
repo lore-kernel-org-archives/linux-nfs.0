@@ -1,65 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ppsw-51.csi.cam.ac.uk ([131.111.8.151]:56719 "EHLO
-	ppsw-51.csi.cam.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751334AbaKGGne convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Nov 2014 01:43:34 -0500
-Subject: Re: [fuse-devel] [PATCH v5 7/7] add a flag for per-operation O_DSYNC semantics
-Mime-Version: 1.0 (Mac OS X Mail 8.0 \(1990.1\))
-Content-Type: text/plain; charset=us-ascii
-From: Anton Altaparmakov <aia21@cam.ac.uk>
-In-Reply-To: <CAFboF2y2skt=H4crv54shfnXOmz23W-shYWtHWekK8ZUDkfP=A@mail.gmail.com>
-Date: Fri, 7 Nov 2014 08:43:00 +0200
-Cc: Jeff Moyer <jmoyer@redhat.com>, linux-arch@vger.kernel.org,
-        linux-aio@kvack.org, linux-nfs@vger.kernel.org,
-        Volker Lendecke <Volker.Lendecke@sernet.de>,
-        "Theodore Ts'o" <tytso@mit.edu>, linux-mm@kvack.org,
-        "fuse-devel@lists.sourceforge.net" <fuse-devel@lists.sourceforge.net>,
-        linux-api@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, Tejun Heo <tj@kernel.org>,
-        Milosz Tanski <milosz@adfin.com>, linux-fsdevel@vger.kernel.org,
-        Michael Kerrisk <mtk.manpages@gmail.com>, ceph-devel@vger.kernel.org,
-        Christoph Hellwig <hch@lst.de>, ocfs2-devel@oss.oracle.com,
-        Mel Gorman <mgorman@suse.de>
-Message-Id: <B92AEADD-B22C-4A4A-B64D-96E8869D3282@cam.ac.uk>
-References: <cover.1415220890.git.milosz@adfin.com> <c188b04ede700ce5f986b19de12fa617d158540f.1415220890.git.milosz@adfin.com> <x49r3xf28qn.fsf@segfault.boston.devel.redhat.com> <BF30FAEC-D4D3-4079-9ECD-2743747279BD@cam.ac.uk> <CAFboF2y2skt=H4crv54shfnXOmz23W-shYWtHWekK8ZUDkfP=A@mail.gmail.com>
-To: Anand Avati <avati@gluster.org>
+Received: from mail-wg0-f51.google.com ([74.125.82.51]:35711 "EHLO
+	mail-wg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751799AbaKXXCe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 18:02:34 -0500
+From: Pieter Smith <pieter@boesman.nl>
+To: pieter@boesman.nl
+Cc: Josh Triplett <josh@joshtriplett.org>,
+        Alexander Duyck <alexander.h.duyck@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexei Starovoitov <ast@plumgrid.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Bertrand Jacquin <beber@meleeweb.net>,
+        Catalina Mocanu <catalina.mocanu@gmail.com>,
+        Daniel Borkmann <dborkman@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Fabian Frederick <fabf@skynet.be>,
+        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
+        Jan Beulich <JBeulich@suse.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-api@vger.kernel.org (open list:ABI/API),
+        linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org (open list),
+        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
+        "Luis R. Rodriguez" <mcgrof@suse.com>,
+        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
+        Oleg Nesterov <oleg@redhat.com>,
+        Paul Durrant <Paul.Durrant@citrix.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
+        Tom Herbert <therbert@google.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Willem de Bruijn <willemb@google.com>,
+        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
+        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
+Subject: [PATCH v4 4/7] fs/fuse: support compiling out splice
+Date: Tue, 25 Nov 2014 00:01:03 +0100
+Message-Id: <1416870079-15254-5-git-send-email-pieter@boesman.nl>
+In-Reply-To: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
+References: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+To implement splice support, fs/fuse makes use of nosteal_pipe_buf_ops. This
+struct is exported by fs/splice. The goal of the larger patch set is to
+completely compile out fs/splice, so uses of the exported struct need to be
+compiled out along with fs/splice.
 
-> On 7 Nov 2014, at 07:52, Anand Avati <avati@gluster.org> wrote:
-> On Thu, Nov 6, 2014 at 8:22 PM, Anton Altaparmakov <aia21@cam.ac.uk> wrote:
-> > On 7 Nov 2014, at 01:46, Jeff Moyer <jmoyer@redhat.com> wrote:
-> > Minor nit, but I'd rather read something that looks like this:
-> >
-> >       if (type == READ && (flags & RWF_NONBLOCK))
-> >               return -EAGAIN;
-> >       else if (type == WRITE && (flags & RWF_DSYNC))
-> >               return -EINVAL;
-> 
-> But your version is less logically efficient for the case where "type == READ" is true and "flags & RWF_NONBLOCK" is false because your version then has to do the "if (type == WRITE" check before discovering it does not need to take that branch either, whilst the original version does not have to do such a test at all.
-> 
-> Seriously?
+This patch therefore compiles out splice support in fs/fuse when
+CONFIG_SYSCALL_SPLICE is undefined.
 
-Of course seriously.
+Signed-off-by: Pieter Smith <pieter@boesman.nl>
+---
+ fs/fuse/dev.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-> Just focus on the code readability/maintainability which makes the code most easily understood/obvious to a new pair of eyes, and leave such micro-optimizations to the compiler..
-
-The original version is more readable (IMO) and this is not a micro-optimization.  It is people like you who are responsible for the fact that we need faster and faster computers to cope with the inefficient/poor code being written more and more...
-
-And I really wouldn't hedge my bets on gcc optimizing something like that.  The amount of crap assembly produced from gcc that I have seen over the years suggests that it is quite likely it will make a hash of it instead...
-
-Best regards,
-
-	Anton
-
-> Thanks
-
+diff --git a/fs/fuse/dev.c b/fs/fuse/dev.c
+index ca88731..e984302 100644
+--- a/fs/fuse/dev.c
++++ b/fs/fuse/dev.c
+@@ -1191,8 +1191,9 @@ __releases(fc->lock)
+  * request_end().  Otherwise add it to the processing list, and set
+  * the 'sent' flag.
+  */
+-static ssize_t fuse_dev_do_read(struct fuse_conn *fc, struct file *file,
+-				struct fuse_copy_state *cs, size_t nbytes)
++static ssize_t __maybe_unused
++fuse_dev_do_read(struct fuse_conn *fc, struct file *file,
++		 struct fuse_copy_state *cs, size_t nbytes)
+ {
+ 	int err;
+ 	struct fuse_req *req;
+@@ -1291,6 +1292,7 @@ static ssize_t fuse_dev_read(struct kiocb *iocb, const struct iovec *iov,
+ 	return fuse_dev_do_read(fc, file, &cs, iov_length(iov, nr_segs));
+ }
+ 
++#ifdef CONFIG_SYSCALL_SPLICE
+ static ssize_t fuse_dev_splice_read(struct file *in, loff_t *ppos,
+ 				    struct pipe_inode_info *pipe,
+ 				    size_t len, unsigned int flags)
+@@ -1368,6 +1370,9 @@ out:
+ 	kfree(bufs);
+ 	return ret;
+ }
++#else /* CONFIG_SYSCALL_SPLICE */
++#define fuse_dev_splice_read NULL
++#endif
+ 
+ static int fuse_notify_poll(struct fuse_conn *fc, unsigned int size,
+ 			    struct fuse_copy_state *cs)
 -- 
-Anton Altaparmakov <aia21 at cam.ac.uk> (replace at with @)
-University of Cambridge Information Services, Roger Needham Building
-7 JJ Thomson Avenue, Cambridge, CB3 0RB, UK
+2.1.0
 
