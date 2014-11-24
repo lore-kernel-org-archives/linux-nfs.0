@@ -1,147 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:38028 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750780AbaKYPLk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 10:11:40 -0500
-Received: by mail-wg0-f44.google.com with SMTP id b13so1131305wgh.17
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Nov 2014 07:11:39 -0800 (PST)
-Message-ID: <54749C28.8030909@gmail.com>
-Date: Tue, 25 Nov 2014 16:11:36 +0100
-From: poma <pomidorabelisima@gmail.com>
+Received: from mail-wi0-f171.google.com ([209.85.212.171]:35508 "EHLO
+	mail-wi0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750774AbaKXVpu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 16:45:50 -0500
+Received: by mail-wi0-f171.google.com with SMTP id bs8so7171236wib.10
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Nov 2014 13:45:49 -0800 (PST)
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Josh Boyer <jwboyer@fedoraproject.org>, Paul Bolle <pebolle@tiscali.nl>,
-        Ian Chapman <packages@amiga-hardware.com>,
-        "Justin M. Forbes" <jforbes@redhat.com>,
-        Community support for Fedora users
-	<users@lists.fedoraproject.org>,
-        Mailing-List fedora-kernel <kernel@lists.fedoraproject.org>,
-        Tom Tucker <tom@opengridcomputing.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFS over RMDA
-References: <5474567D.6070609@amiga-hardware.com> <547478A7.8050606@gmail.com> <1416921128.10073.53.camel@x220> <20141125132947.GA18909@hansolo.jdub.homelinux.org> <547491AD.5090909@gmail.com> <85F9A5AC-40DA-4D1E-B658-C2D57C71B58F@oracle.com>
-In-Reply-To: <85F9A5AC-40DA-4D1E-B658-C2D57C71B58F@oracle.com>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <1415389499-16721-2-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1415389499-16721-1-git-send-email-Anna.Schumaker@Netapp.com>
+	<1415389499-16721-2-git-send-email-Anna.Schumaker@Netapp.com>
+Date: Mon, 24 Nov 2014 16:45:49 -0500
+Message-ID: <CAHQdGtSfx7d+AyVSKw0wpQ2Tcj3RUARurtPKr5FO-3=q1Lvicw@mail.gmail.com>
+Subject: Re: [PATCH v4 1/2] nfs: Add ALLOCATE support
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 25.11.2014 16:03, Chuck Lever wrote:
-> 
-> On Nov 25, 2014, at 9:26 AM, poma <pomidorabelisima@gmail.com> wrote:
-> 
->> On 25.11.2014 14:29, Josh Boyer wrote:
->>> On Tue, Nov 25, 2014 at 02:12:08PM +0100, Paul Bolle wrote:
->>>> On Tue, 2014-11-25 at 13:40 +0100, poma wrote:
->>>>> On 25.11.2014 11:14, Ian Chapman wrote:
->>>>>> Hi,
->>>>>>
->>>>>> Is anyone successfully running NFS over RDMA on Fedora 20+?
->>>>>>
->>>>>> I've edited /etc/sysconfig/nfs and set the the following config paramter.
->>>>>>
->>>>>> RDMA_PORT=20049
->>>>>>
->>>>>> Upon restarting the nfs server I get the following:
->>>>>>
->>>>>> modprobe: FATAL: Module svcrdma not found
->>>>>> /usr/libexec/nfs-utils/scripts/nfs-server.postconfig: line 12: echo: 
->>>>>> write error: Protocol not supported
->>>>>>
->>>>>> So it looks like the kernel module svcrdma is missing and the last 
->>>>>> kernel to have it was 3.11.10-301.fc20. The postconfig script belongs to 
->>>>>> nfs-utils.
->>>>>>
->>>>>> Is svcrdma intentionally not built in the current kernels or has it been 
->>>>>> replaced by something else?
->>>>>>
->>>>>
->>>>> [snip unedited copy from someone's terminal]
->>>>
->>>> 0) In mainline kernel v3.15 the config option SUNRPC_XPRT_RDMA was split
->>>> in two options: SUNRPC_XPRT_RDMA_CLIENT and SUNRPC_XPRT_RDMA_SERVER. See
->>>> commit 2e8c12e1b765 ("xprtrdma: add separate Kconfig options for
->>>> NFSoRDMA client and server support").
->>>>
->>>> 1) Fedora 20 first shipped v3.15 in last July (kernel-3.15.3-200.fc20).
->>>> Looking at the git history of the Fedora kernel package I found commit
->>>> commit fd469c7db4e6 ("Linux v3.15.2"). It dropped
->>>> CONFIG_SUNRPC_XPRT_RDMA=m from the config files (as it was useless). It
->>>> set CONFIG_SUNRPC_XPRT_RDMA_CLIENT to 'm' but did not set
->>>> CONFIG_SUNRPC_XPRT_RDMA_SERVER. The commit offers no explanation of this
->>>> choice. Perhaps it was discusses somewhere else.
->>>>
->>>> 2) A similar commit for Rawhide was 700baa35a69e ("Linux
->>>> v3.14-12042-g69cd9eba3886"), but it doesn't comment on this choice
->>>> either.
->>>>
->>>> 3) Perhaps Justin or Josh, authors of those commits, might recall why
->>>> only CONFIG_SUNRPC_XPRT_RDMA_CLIENT was set.
->>>
->>> At the time, server support for NFSoRDMA wasn't in the greatest shape
->>> and we disabled it at the request of the NFS developers.
-> 
-> The NFS/RDMA server crashed often and there was no identified
-> upstream resource to help with it, so it was surgically
-> disabled rather than fixed.
-> 
->>> I believe this
->>> also matches what wound up in RHEL7.
-> 
->>> The NFS developers haven't asked us to turn it back on, so it has stayed
->>> off since.
->>>
->>> josh
->>>
->>
->> Chuck, what is the current recommendation for 'CONFIG_SUNRPC_XPRT_RDMA_SERVER’?
-> 
-> The server in 3.17 and later kernels no longer crashes
-> regularly.
-> 
-> As to whether you should re-enable it, here’s full
-> disclosure:
-> 
-> As I understand it the NFS/RDMA server-side transport
-> effort was defunded after a prototype was merged. It was
-> hoped that a production-quality implementation would be
-> funded but it never was.
-> 
-> The code as it stands needs some work, but is operational.
-> I use it for NFS/RDMA client work every day, so it is
-> getting some exercise.
-> 
-> Distributions can enable this if they have the resources
-> (ie, test and support engineers and RDMA adapters) to test
-> and support customer issues. I assume RH/Fedora do, as
-> they support client side NFS/RDMA already. But perhaps
-> consider it as “tech preview” for your enterprise
-> kernels.
-> 
-> Or they may choose to wait until upstream has changed the
-> default setting of CONFIG_SUNRPC_XPRT_RDMA_SERVER.
-> 
-> Note that community support for NFS/RDMA server-side is
-> still best-effort only. We don’t have any designated
-> specialists, just a few folks who need the server to work
-> for other reasons. We are actively looking for interested
-> parties.
-> 
-> Upstream bugs can be filed here:
-> 
->   https://bugzilla.linux-nfs.org
-> 
-> HTH
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+On Fri, Nov 7, 2014 at 2:44 PM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> This patch adds support for using the NFS v4.2 operation ALLOCATE to
+> preallocate data in a file.
+>
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> ---
+>  fs/nfs/inode.c            |  1 +
+>  fs/nfs/nfs42.h            |  1 +
+>  fs/nfs/nfs42proc.c        | 58 ++++++++++++++++++++++++++++++++++++
+>  fs/nfs/nfs42xdr.c         | 75 +++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfs/nfs4_fs.h          |  1 +
+>  fs/nfs/nfs4file.c         | 28 ++++++++++++++++++
+>  fs/nfs/nfs4proc.c         |  3 +-
+>  fs/nfs/nfs4xdr.c          |  1 +
+>  include/linux/nfs4.h      |  1 +
+>  include/linux/nfs_fs_sb.h |  1 +
+>  include/linux/nfs_xdr.h   | 14 +++++++++
+>  11 files changed, 183 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 00689a8..bfffc33 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -192,6 +192,7 @@ void nfs_zap_caches(struct inode *inode)
+>         nfs_zap_caches_locked(inode);
+>         spin_unlock(&inode->i_lock);
+>  }
+> +EXPORT_SYMBOL_GPL(nfs_zap_caches);
+>
+>  void nfs_zap_mapping(struct inode *inode, struct address_space *mapping)
+>  {
+> diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
+> index d10333a..42656a9 100644
+> --- a/fs/nfs/nfs42.h
+> +++ b/fs/nfs/nfs42.h
+> @@ -6,6 +6,7 @@
+>  #define __LINUX_FS_NFS_NFS4_2_H
+>
+>  /* nfs4.2proc.c */
+> +int nfs42_proc_allocate(struct file *, loff_t, loff_t);
+>  loff_t nfs42_proc_llseek(struct file *, loff_t, int);
+>
+>  /* nfs4.2xdr.h */
+> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> index 0886f1d..5da6e8e 100644
+> --- a/fs/nfs/nfs42proc.c
+> +++ b/fs/nfs/nfs42proc.c
+> @@ -32,6 +32,64 @@ static int nfs42_set_rw_stateid(nfs4_stateid *dst, struct file *file,
+>         return ret;
+>  }
+>
+> +int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
+> +                         loff_t offset, loff_t len)
+> +{
+> +       struct inode *inode = file_inode(filep);
+> +       struct nfs42_falloc_args args = {
+> +               .falloc_fh      = NFS_FH(inode),
+> +               .falloc_offset  = offset,
+> +               .falloc_length  = len,
+> +       };
+> +       struct nfs42_falloc_res res;
+> +       struct nfs_server *server = NFS_SERVER(inode);
+> +       int status;
+> +
+> +       msg->rpc_argp = &args;
+> +       msg->rpc_resp = &res;
+> +
+> +       status = nfs42_set_rw_stateid(&args.falloc_stateid, filep, FMODE_WRITE);
+> +       if (status)
+> +               return status;
+> +
+> +       return nfs4_call_sync(server->client, server, msg,
+> +                             &args.seq_args, &res.seq_res, 0);
+> +}
 
-Thanks man.
+/home/trondmy/devel/kernel/linux-nfs/fs/nfs/nfs42proc.c:35:5: warning:
+no previous prototype for â€˜_nfs42_proc_fallocateâ€™
+[-Wmissing-prototypes]
+ int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
+     ^
+/home/trondmy/devel/kernel/linux-nfs/fs/nfs/nfs42proc.c:59:5: warning:
+no previous prototype for â€˜nfs42_proc_fallocateâ€™
+[-Wmissing-prototypes]
+ int nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
+     ^
 
+-- 
+Trond Myklebust
 
-poma
+Linux NFS client maintainer, PrimaryData
 
-
+trond.myklebust@primarydata.com
