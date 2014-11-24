@@ -1,55 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:44117 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752018AbaKGTpC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Nov 2014 14:45:02 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 0/2] NFS: Add ALLOCATE and DEALLOCATE support
-Date: Fri, 7 Nov 2014 14:44:57 -0500
-Message-ID: <1415389499-16721-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-wg0-f43.google.com ([74.125.82.43]:42253 "EHLO
+	mail-wg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751874AbaKXXCi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 18:02:38 -0500
+From: Pieter Smith <pieter@boesman.nl>
+To: pieter@boesman.nl
+Cc: Josh Triplett <josh@joshtriplett.org>,
+        Alexander Duyck <alexander.h.duyck@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexei Starovoitov <ast@plumgrid.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Bertrand Jacquin <beber@meleeweb.net>,
+        Catalina Mocanu <catalina.mocanu@gmail.com>,
+        Daniel Borkmann <dborkman@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Fabian Frederick <fabf@skynet.be>,
+        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
+        Jan Beulich <JBeulich@suse.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-api@vger.kernel.org (open list:ABI/API),
+        linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org (open list),
+        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
+        "Luis R. Rodriguez" <mcgrof@suse.com>,
+        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
+        Oleg Nesterov <oleg@redhat.com>,
+        Paul Durrant <Paul.Durrant@citrix.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
+        Tom Herbert <therbert@google.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Willem de Bruijn <willemb@google.com>,
+        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
+        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
+Subject: [PATCH v4 5/7] fs/nfsd: support compiling out splice
+Date: Tue, 25 Nov 2014 00:01:04 +0100
+Message-Id: <1416870079-15254-6-git-send-email-pieter@boesman.nl>
+In-Reply-To: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
+References: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These patches add client support for the ALLOCATE and DEALLOCATE operations
-part of NFS v4.2, which are triggered by a vfs_fallocate() call.
+The goal of the larger patch set is to completely compile out fs/splice, and
+as a result, splice support for all file-systems. This patch ensures that
+fs/nfsd falls back to non-splice fs support when CONFIG_SYSCALL_SPLICE is
+undefined.
 
-Changes in v4:
-- Use a single struct fallocate so code can be shared between both operations.
-- Return -EOPNOTSUPP if we detect that the file is not a regular file.
-- Call nfs_zap_caches() to invalidate cached size information (fixes xfstests
-  generic/075, generic/091, generic/112, generic/127, generic/214, and
-  generic/263)
+Signed-off-by: Pieter Smith <pieter@boesman.nl>
+---
+ net/sunrpc/svc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-These patches and the corresponding server changes are available in the
-[fallocate] branch of
-
-	git://git.linux-nfs.org/projects/anna/linux-nfs.git
-
-Questions?  Comments?  Thougts?
-
-Anna
-
-
-Anna Schumaker (2):
-  nfs: Add ALLOCATE support
-  nfs: Add DEALLOCATE support
-
- fs/nfs/inode.c            |   1 +
- fs/nfs/nfs42.h            |   2 +
- fs/nfs/nfs42proc.c        |  75 +++++++++++++++++++++++++
- fs/nfs/nfs42xdr.c         | 139 ++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4_fs.h          |   1 +
- fs/nfs/nfs4file.c         |  31 +++++++++++
- fs/nfs/nfs4proc.c         |   4 +-
- fs/nfs/nfs4xdr.c          |   2 +
- include/linux/nfs4.h      |   2 +
- include/linux/nfs_fs_sb.h |   2 +
- include/linux/nfs_xdr.h   |  14 +++++
- 11 files changed, 272 insertions(+), 1 deletion(-)
-
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index ca8a795..6cacc37 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1084,7 +1084,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ 		goto err_short_len;
+ 
+ 	/* Will be turned off only in gss privacy case: */
+-	rqstp->rq_splice_ok = true;
++	rqstp->rq_splice_ok = IS_ENABLED(CONFIG_SPLICE_SYSCALL);
+ 	/* Will be turned off only when NFSv4 Sessions are used */
+ 	rqstp->rq_usedeferral = true;
+ 	rqstp->rq_dropme = false;
 -- 
-2.1.3
+2.1.0
 
