@@ -1,126 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:36811 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751111AbaKXN5b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 08:57:31 -0500
-Received: by mail-wi0-f172.google.com with SMTP id n3so5727467wiv.11
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Nov 2014 05:57:30 -0800 (PST)
+Received: from api.opinsys.fi ([217.112.254.4]:33226 "EHLO mail.opinsys.fi"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752685AbaKXIkG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 03:40:06 -0500
+Date: Mon, 24 Nov 2014 08:32:21 +0000 (UTC)
+From: Tuomas =?utf-8?B?UsOkc8OkbmVu?= <tuomasjjrasanen@opinsys.fi>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Message-ID: <1555471491.95357.1416817941257.JavaMail.zimbra@opinsys.fi>
+In-Reply-To: <1904910431.95230.1416815071750.JavaMail.zimbra@opinsys.fi>
+Subject: BUG when umounting exported EXT4 fs
 MIME-Version: 1.0
-In-Reply-To: <20141124095833.GC2725@suse.de>
-References: <20141124095833.GC2725@suse.de>
-Date: Mon, 24 Nov 2014 08:57:30 -0500
-Message-ID: <CAHQdGtREnw1Rz1WJ9irNPntP2HnFecFfG24u8eyf2wfAy7Br+g@mail.gmail.com>
-Subject: Fwd: [Lsf-pc] LSF/MM 2015 Call For Proposals
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
----------- Forwarded message ----------
-From: Mel Gorman <mgorman@suse.de>
-Date: Mon, Nov 24, 2014 at 4:58 AM
-Subject: [Lsf-pc] LSF/MM 2015 Call For Proposals
-To: linux-ide@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-linux-mm@kvack.org, linux-scsi@vger.kernel.org
-Cc: lsf-pc@lists.linux-foundation.org, linux-kernel@vger.kernel.org
+Hi
 
+We have been experiencing quite regular umount failures on our NFS
+servers which are exporting EXT4 /home via exportfs.
 
-The annual Linux Storage, Filesystem and Memory Management Summit for
-2015 will be held on March 9th and 10th before the Linux Foundation Vault
-conference at the Revere Hotel, Boston MA. For those that do not know,
-Vault is designed to be an event where open source storage and filesystem
-practitioners meet storage implementors and, as such, it would be of
-benefit for LSF/MM attendees to go to at least the first day of Vault.
+Servers are running kernels from mainline 3.10-series.
 
-        http://events.linuxfoundation.org/events/linux-storage-filesystem-and-mm-summit
-        http://events.linuxfoundation.org/events/vault
+Both the reproduction steps and symptoms are almost indentical to what
+was reported in https://lkml.org/lkml/2013/8/11/26 by Toralf Förster.
 
-On behalf of the committee I am issuing a call for agenda proposals that
-are suitable for cross-track discussion as well as technical subjects for
-the breakout sessions.
+The steps to reproduce:
+  1. export EXT4 /home via exportfs
+  2. let clients work on /home
+  3. shutdown clients
+  4. service nfs-kernel-server stop
+  5. umount /home
 
-1) Proposals for agenda topics should be sent before January 16th, 2015 to:
+Umount causes the following BUG trace:
 
-        lsf-pc@lists.linux-foundation.org
+[685206.207459] Call Trace:
+[685206.208356]  [<ffffffff811a2482>] generic_shutdown_super+0x62/0xf0
+[685206.209264]  [<ffffffff811a2540>] kill_block_super+0x30/0x80
+[685206.210179]  [<ffffffff811a2dcd>] deactivate_locked_super+0x4d/0x80
+[685206.211115]  [<ffffffff811a344e>] deactivate_super+0x4e/0x70
+[685206.212039]  [<ffffffff811beed6>] mntput_no_expire+0x106/0x160
+[685206.212964]  [<ffffffff811c07e9>] SyS_umount+0xa9/0xf0
+[685206.213895]  [<ffffffff8170fc6f>] tracesys+0xe1/0xe6
+[685206.214838] Code: 81 49 8b 57 78 48 81 c6 20 03 00 00 89 04 24 31 c0 e8 c5 3f 49 00 4d 8b 3f 4d 39 fe 75 c4 4c 39 b3 00 02 00 00 0f 84 97 fe ff ff <0f> 0b 66 66 66 2e 0f 1f 84 00 00 00 00 00 0f 1f 44 00 00 55 48 
+[685206.216885] RIP  [<ffffffff81259782>] ext4_put_super+0x342/0x350
+[685206.217913]  RSP <ffff8807d3f7fe28>
 
-and cc the Linux list or lists that are most interested in it:
+The trace is preceded by dumped orphan list info.
 
-        ATA:  linux-ide@vger.kernel.org
-        FS:   linux-fsdevel@vger.kernel.org
-        MM:   linux-mm@kvack.org
-        SCSI: linux-scsi@vger.kernel.org
+The most annoying thing is that in practice, it happens when the server
+is rebooted normally, causing the reboot to stall (services have alredy
+been shutdown at this point so the remote connection is closed as well).
 
-If advance notice is required for visa applications then please send
-proposals before January 1st. The committee will complete the first round
-of selections near that date to accommodate applications.
+I tried the following patch (which landed on mainline in 3.11):
 
-Please tag your proposal with [LSF/MM TOPIC] to make it easier to track.
-Agenda topics and attendees will be selected by the program committee,
-but the final agenda will be formed by consensus of the attendees on the day.
+commit bf7bd3e98be5c74813bee6ad496139fb0a011b3b
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Aug 15 16:55:26 2013 -0400
 
-We will try to cap attendance at around 25-30 per track to facilitate
-discussions although the final numbers will depend on the room sizes at
-the venue.
+    nfsd4: fix leak of inode reference on delegation failure
 
-2) Requests to attend the summit should be sent to:
+The patch didn't apply cleanly on top of 3.10.58 but I think I got the
+few conflicts right and it seems to have fixed the issue.
 
-        lsf-pc@lists.linux-foundation.org
-
-Please summarise what expertise you will bring to the meeting, and what
-you would like to discuss. Please also tag your email with [LSF/MM ATTEND]
-so there is less chance of it getting lost.
-
-Presentations are allowed to guide discussion, but are strongly
-discouraged. There will be no recording or audio bridge. However, we expect
-that written minutes will be published as we did in previous years
-
-2014:
-        http://lwn.net/Articles/LSFMM2014/
-
-2013:
-        http://lwn.net/Articles/548089/
-
-2012:
-        http://lwn.net/Articles/490114/
-        http://lwn.net/Articles/490501/
-
-3) If you have feedback on last year's meeting that we can use to
-improve this year's, please also send that to:
-
-        lsf-pc@lists.linux-foundation.org
-
-4) We would like to remind those that are are also interested in presenting
-   at the Vault conference that the CFP deadline for Vault is December 1st.
-
-Thank you on behalf of the program committee:
-
-Storage:
-        James Bottomley
-        Martin Petersen
-        Christoph Hellwig
-
-Filesystem:
-        Jeff Layton
-        Ric Wheeler
-        Jan Kara
-        Trond Myklebust
-        Theodore Ts'o
-
-MM:
-        Rik van Riel
-        Michel Lespinasse
-        Sasha Levin
-
---
-Mel Gorman
-SUSE Labs
-
-
+Is there any particular reason why the patch has not been included in
+3.10 stable -series?
 
 -- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Tuomas
