@@ -1,90 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:17196 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752624AbaKZQgJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Nov 2014 11:36:09 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [PATCH v2 00/10] NFS/RDMA patches for 3.19
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5475FEFD.8070302@Netapp.com>
-Date: Wed, 26 Nov 2014 11:36:05 -0500
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <442D7450-449E-4E98-89F6-C3567E599E7B@oracle.com>
-References: <20141109010328.8806.5861.stgit@manet.1015granger.net> <5475FEFD.8070302@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:40555 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751144AbaKYTBJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 14:01:09 -0500
+Received: by mail-qc0-f171.google.com with SMTP id r5so932527qcx.2
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Nov 2014 11:01:09 -0800 (PST)
+From: Jeff Layton <jlayton@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/4] sunrpc:  add debugfs file for displaying client rpc_task queue
+Date: Tue, 25 Nov 2014 14:00:56 -0500
+Message-Id: <1416942060-6724-1-git-send-email-jlayton@primarydata.com>
+In-Reply-To: <1414520695-1701-1-git-send-email-jlayton@primarydata.com>
+References: <1414520695-1701-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is a respin of this patch that I sent a few weeks ago:
 
-On Nov 26, 2014, at 11:25 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+    sunrpc: add debugfs file for displaying client rpc_task queue
 
-> Hi Chuck,
-> 
-> I've applied these to two different branches - one for the RDMA changes and another for the generic client side changes.  Both have been sent to Trond to be merged with 3.19.
+...to address Trond's concerns about how to lay out this directory.
 
-Thanks Anna!
+I've also included a respin of the patches to eliminate the unneeded
+#define redirection in the sunrpc debugging code. I had originally based
+those patches on top of the debugfs patch, so if we drop that patch
+there are merge conflicts with these.
 
-> 
-> Anna
-> 
-> On 11/08/2014 08:14 PM, Chuck Lever wrote:
->> Hi-
->> 
->> This is a set of fixes and clean-ups for xprtrdma. Also available
->> in the nfs-rdma-for-3.19 topic branch at
->> 
->>  git://linux-nfs.org/projects/cel/cel-2.6.git
->> 
->> I've run cthon04, iozone, dbench, multi-process kernel build and
->> xfstests with NFSv3 and NFSv4.0 against a Linux and a Solaris
->> NFS server via RDMA, with all three memory registration modes.
->> 
->> Changes since v1:
->> 
->> - Merged up to v3.18-rc3
->> - Dropped patches that enable NFSv4.1 support for now
->> - CQ completion vector spinning dropped for now
->> - Addressed Anna's review comments
->> - Several bug fixes
->> 
->> ---
->> 
->> Chuck Lever (10):
->>      xprtrdma: Return an errno from rpcrdma_register_external()
->>      xprtrdma: Cap req_cqinit
->>      xprtrdma: unmap all FMRs during transport disconnect
->>      xprtrdma: Refactor tasklet scheduling
->>      xprtrdma: Re-write rpcrdma_flush_cqs()
->>      xprtrdma: Enable pad optimization
->>      xprtrdma: Display async errors
->>      SUNRPC: serialize iostats updates
->>      NFS: SETCLIENTID XDR buffer sizes are incorrect
->>      NFS: Clean up nfs4_init_callback()
->> 
->> 
->> fs/nfs/nfs4client.c             |   31 +++++------
->> fs/nfs/nfs4xdr.c                |   10 ++-
->> include/linux/sunrpc/metrics.h  |    3 +
->> net/sunrpc/stats.c              |   21 +++++--
->> net/sunrpc/xprtrdma/transport.c |    4 +
->> net/sunrpc/xprtrdma/verbs.c     |  114 ++++++++++++++++++++++++++++++++++-----
->> net/sunrpc/xprtrdma/xprt_rdma.h |    6 ++
->> 7 files changed, 146 insertions(+), 43 deletions(-)
->> 
->> --
->> Chuck Lever
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> 
+In this set, I've reversed the order so if there are any more respins
+needed on the debugfs work, I shouldn't need to resend the whole set.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Jeff Layton (4):
+  lockd: eliminate LOCKD_DEBUG
+  sunrpc: eliminate RPC_DEBUG
+  sunrpc: eliminate RPC_TRACEPOINTS
+  sunrpc: add debugfs file for displaying client rpc_task queue
 
+ fs/lockd/svclock.c                      |   2 +-
+ include/linux/lockd/debug.h             |   6 +-
+ include/linux/sunrpc/auth.h             |   2 +-
+ include/linux/sunrpc/clnt.h             |   4 +
+ include/linux/sunrpc/debug.h            |  49 ++++++---
+ include/linux/sunrpc/sched.h            |   8 +-
+ include/uapi/linux/nfsd/debug.h         |   2 +-
+ net/sunrpc/Kconfig                      |   1 +
+ net/sunrpc/Makefile                     |   1 +
+ net/sunrpc/auth.c                       |   4 +-
+ net/sunrpc/auth_generic.c               |   2 +-
+ net/sunrpc/auth_gss/auth_gss.c          |   2 +-
+ net/sunrpc/auth_gss/gss_generic_token.c |   2 +-
+ net/sunrpc/auth_gss/gss_krb5_crypto.c   |   2 +-
+ net/sunrpc/auth_gss/gss_krb5_keys.c     |   2 +-
+ net/sunrpc/auth_gss/gss_krb5_mech.c     |   2 +-
+ net/sunrpc/auth_gss/gss_krb5_seal.c     |   2 +-
+ net/sunrpc/auth_gss/gss_krb5_seqnum.c   |   2 +-
+ net/sunrpc/auth_gss/gss_krb5_unseal.c   |   2 +-
+ net/sunrpc/auth_gss/gss_krb5_wrap.c     |   2 +-
+ net/sunrpc/auth_gss/gss_mech_switch.c   |   2 +-
+ net/sunrpc/auth_gss/gss_rpc_xdr.h       |   2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c       |   2 +-
+ net/sunrpc/auth_null.c                  |   4 +-
+ net/sunrpc/auth_unix.c                  |   2 +-
+ net/sunrpc/backchannel_rqst.c           |   2 +-
+ net/sunrpc/clnt.c                       |  15 ++-
+ net/sunrpc/debugfs.c                    | 173 ++++++++++++++++++++++++++++++++
+ net/sunrpc/rpcb_clnt.c                  |   2 +-
+ net/sunrpc/sched.c                      |   4 +-
+ net/sunrpc/sunrpc_syms.c                |  12 ++-
+ net/sunrpc/svc.c                        |   2 +-
+ net/sunrpc/sysctl.c                     |   2 +-
+ net/sunrpc/xprt.c                       |   2 +-
+ net/sunrpc/xprtrdma/rpc_rdma.c          |   4 +-
+ net/sunrpc/xprtrdma/transport.c         |   8 +-
+ net/sunrpc/xprtrdma/verbs.c             |   8 +-
+ net/sunrpc/xprtsock.c                   |   8 +-
+ 38 files changed, 281 insertions(+), 72 deletions(-)
+ create mode 100644 net/sunrpc/debugfs.c
 
+-- 
+2.1.0
 
