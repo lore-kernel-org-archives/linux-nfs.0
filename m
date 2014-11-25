@@ -1,52 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shards.monkeyblade.net ([149.20.54.216]:36522 "EHLO
-	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751301AbaKYSY4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 13:24:56 -0500
-Date: Tue, 25 Nov 2014 13:24:45 -0500 (EST)
-Message-Id: <20141125.132445.152609149279137368.davem@davemloft.net>
-To: paulmck@linux.vnet.ibm.com
-Cc: rdunlap@infradead.org, pieter@boesman.nl, josh@joshtriplett.org,
-        alexander.h.duyck@intel.com, viro@zeniv.linux.org.uk, ast@plumgrid.com,
-        akpm@linux-foundation.org, beber@meleeweb.net,
-        catalina.mocanu@gmail.com, dborkman@redhat.com, edumazet@google.com,
-        ebiederm@xmission.com, fabf@skynet.be,
-        fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
-        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
-        bfields@fieldses.org, jlayton@poochiereds.net,
-        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
-        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
-        Paul.Durrant@citrix.com, pefoley2@pefoley.com, tgraf@suug.ch,
-        therbert@google.com, trond.myklebust@primarydata.com,
-        willemb@google.com, xiaoguangrong@linux.vnet.ibm.com,
-        zhenglong.cai@cs2c.com.cn
-Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
- splice family of syscalls (splice, vmsplice, tee and sendfile)
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <20141125181032.GJ5050@linux.vnet.ibm.com>
-References: <5474ABB6.3030400@infradead.org>
-	<20141125.121305.2094097848188324942.davem@davemloft.net>
-	<20141125181032.GJ5050@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Received: from fw5a.wadns.net ([196.220.39.47]:11640 "EHLO fw5a.wadns.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750840AbaKYHJf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Nov 2014 02:09:35 -0500
+Message-ID: <547419D6.40905@swiftspirit.co.za>
+Date: Tue, 25 Nov 2014 07:55:34 +0200
+From: Brendan Hide <brendan@swiftspirit.co.za>
+MIME-Version: 1.0
+To: Omar Sandoval <osandov@osandov.com>
+CC: Filipe David Manana <fdmanana@gmail.com>, David Sterba <dsterba@suse.cz>,
+        linux-btrfs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
+        Josef Bacik <jbacik@fb.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Mel Gorman <mgorman@suse.de>
+Subject: Re: [PATCH v2 5/5] btrfs: enable swap file support
+References: <cover.1416563833.git.osandov@osandov.com> <afd3c1009172a4a1cfa10e73a64caf35c631a6d4.1416563833.git.osandov@osandov.com> <20141121180045.GF8568@twin.jikos.cz> <20141122200357.GA15189@mew> <20141124220302.GA5785@mew.dhcp4.washington.edu>
+In-Reply-To: <20141124220302.GA5785@mew.dhcp4.washington.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Date: Tue, 25 Nov 2014 10:10:32 -0800
+On 2014/11/25 00:03, Omar Sandoval wrote:
+> [snip]
+>
+> The snapshot issue is a little tricker to resolve. I see a few options:
+>
+> 1. Just do the COW and hope for the best
+> 2. As part of btrfs_swap_activate, COW any shared extents. If a snapshot
+> happens while a swap file is active, we'll fall back to 1.
+> 3. Clobber any swap file extents which are in a snapshot, i.e., always use the
+> existing extent.
+>
+> I'm partial to 3, as it's the simplest approach, and I don't think it makes
+> much sense for a swap file to be in a snapshot anyways. I'd appreciate any
+> comments that anyone might have.
+>
+Personally, 3 seems pragmatic - but not necessarily "correct". :-/
 
-> I certainly sympathize with this concern, given the importance of software
-> portability.  However, the tiny-hardware alternative appears ot some sort
-> of special-purpose embedded OS, which most definitely will suffer from
-> software compatibility issues.  I guess that the good news is that much
-> of the tiny hardware that used to be 8 or 16 bits is now 32 bits, which
-> means that it has at least some chance of running some form of Linux.  ;-)
+-- 
+__________
+Brendan Hide
+http://swiftspirit.co.za/
+http://www.webafrica.co.za/?AFF1E97
 
-And then if some fundamental part of userland (glibc, klibc, etc.) finds
-a useful way to use splice for a fundamental operation, we're back to
-square one.
-
-I simply do not agree with modifying the user facing interface, especially
-one with decades of precedence.
