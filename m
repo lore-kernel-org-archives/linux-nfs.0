@@ -1,95 +1,165 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:58971 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751368AbaKDWOi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Nov 2014 17:14:38 -0500
-Received: by mail-ig0-f176.google.com with SMTP id l13so8246673iga.15
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Nov 2014 14:14:37 -0800 (PST)
-Received: from manet.1015granger.net ([2604:8800:100:81fc:82ee:73ff:fe43:d64f])
-        by mx.google.com with ESMTPSA id c18sm728530ioe.22.2014.11.04.14.14.36
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Tue, 04 Nov 2014 14:14:37 -0800 (PST)
-Subject: [PATCH] mountstats: Sort RPC statistics by operation count
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Date: Tue, 04 Nov 2014 17:14:35 -0500
-Message-ID: <20141104221043.13019.51333.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:33612 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752050AbaKYHUd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 02:20:33 -0500
+From: Pieter Smith <pieter@boesman.nl>
+To: pieter@boesman.nl
+Cc: Josh Triplett <josh@joshtriplett.org>,
+        Alexander Duyck <alexander.h.duyck@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexei Starovoitov <ast@plumgrid.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Bertrand Jacquin <beber@meleeweb.net>,
+        Catalina Mocanu <catalina.mocanu@gmail.com>,
+        Daniel Borkmann <dborkman@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Fabian Frederick <fabf@skynet.be>,
+        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
+        Jan Beulich <JBeulich@suse.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-api@vger.kernel.org (open list:ABI/API),
+        linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org (open list),
+        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
+        "Luis R. Rodriguez" <mcgrof@suse.com>,
+        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
+        Oleg Nesterov <oleg@redhat.com>,
+        Paul Durrant <Paul.Durrant@citrix.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
+        Tom Herbert <therbert@google.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Willem de Bruijn <willemb@google.com>,
+        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
+        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
+Subject: [PATCH v5 3/7] fs/splice: support compiling out splice-family syscalls
+Date: Tue, 25 Nov 2014 08:19:38 +0100
+Message-Id: <1416899996-21315-4-git-send-email-pieter@boesman.nl>
+In-Reply-To: <1416899996-21315-1-git-send-email-pieter@boesman.nl>
+References: <1416899996-21315-1-git-send-email-pieter@boesman.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sort the RPC statistics in descending order by operation count, so
-that the most frequently executed operation appears at the top of
-the listing (a la `top`).
+Many embedded systems will not need the splice-family syscalls (splice,
+vmsplice, tee and sendfile). Omitting them saves space.  This adds a new EXPERT
+config option CONFIG_SYSCALL_SPLICE (default y) to support compiling them out.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The goal is to completely compile out fs/splice along with the syscalls. To
+achieve this, the remaining patch-set will deal with fs/splice exports. As far
+as possible, the impact on other device drivers will be minimized so as to
+reduce the overal maintenance burden of CONFIG_SYSCALL_SPLICE.
+
+The use of exported functions will be solved by transparently mocking them out
+with static inlines. Uses of the exported pipe_buf_operations struct however
+require direct modification in fs/fuse and net/core. The next two patches will
+deal with this.
+
+The last change required before fs/splice can be comipled out is making fs/nfsd
+aware of the lacking splice support in file-systems when CONFIG_SYSCALL_SPLICE
+is undefined.
+
+The bloat benefit of this patch given a tinyconfig is:
+
+add/remove: 0/16 grow/shrink: 2/5 up/down: 114/-3693 (-3579)
+function                                     old     new   delta
+splice_direct_to_actor                       348     416     +68
+splice_to_pipe                               371     417     +46
+splice_from_pipe_next                        107     106      -1
+fdput                                         11       -     -11
+signal_pending                                39      26     -13
+fdget                                         56      42     -14
+user_page_pipe_buf_ops                        20       -     -20
+user_page_pipe_buf_steal                      25       -     -25
+file_end_write                                58      29     -29
+file_start_write                              68      34     -34
+pipe_to_user                                  43       -     -43
+wakeup_pipe_readers                           54       -     -54
+do_splice_to                                  87       -     -87
+ipipe_prep.part                               92       -     -92
+opipe_prep.part                              119       -    -119
+sys_sendfile                                 122       -    -122
+sys_sendfile64                               126       -    -126
+sys_vmsplice                                 137       -    -137
+vmsplice_to_user                             205       -    -205
+sys_tee                                      491       -    -491
+do_sendfile                                  492       -    -492
+vmsplice_to_pipe                             558       -    -558
+sys_splice                                  1020       -   -1020
+
+Signed-off-by: Pieter Smith <pieter@boesman.nl>
 ---
-Hey folks-
+ fs/splice.c     |  2 ++
+ init/Kconfig    | 10 ++++++++++
+ kernel/sys_ni.c |  8 ++++++++
+ 3 files changed, 20 insertions(+)
 
-Any opinions about this? I considered adding a "--sort" command line
-option to enable sorting, but instead made it always-on.
-
-Could also use --sort to specify which individual statistic is used
-for sorting (op count, RTT, retransmit rate, and so forth).
-
-Try: watch -d "mountstats --rpc /mnt/your-mount-here"
-
- tools/mountstats/mountstats.py |   25 ++++++++++++++-----------
- 1 file changed, 14 insertions(+), 11 deletions(-)
-
-diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-index 9a6ec43..f75103c 100644
---- a/tools/mountstats/mountstats.py
-+++ b/tools/mountstats/mountstats.py
-@@ -24,6 +24,7 @@ MA 02110-1301 USA
- """
+diff --git a/fs/splice.c b/fs/splice.c
+index 44b201b..7c4c695 100644
+--- a/fs/splice.c
++++ b/fs/splice.c
+@@ -1316,6 +1316,7 @@ long do_splice_direct(struct file *in, loff_t *ppos, struct file *out,
+ 	return ret;
+ }
  
- import sys, os, time
-+from operator import itemgetter
++#ifdef CONFIG_SYSCALL_SPLICE
+ static int splice_pipe_to_pipe(struct pipe_inode_info *ipipe,
+ 			       struct pipe_inode_info *opipe,
+ 			       size_t len, unsigned int flags);
+@@ -2200,4 +2201,5 @@ COMPAT_SYSCALL_DEFINE4(sendfile64, int, out_fd, int, in_fd,
+ 	return do_sendfile(out_fd, in_fd, NULL, count, 0);
+ }
+ #endif
++#endif
  
- Mountstats_version = '0.2'
+diff --git a/init/Kconfig b/init/Kconfig
+index d811d5f..dec9819 100644
+--- a/init/Kconfig
++++ b/init/Kconfig
+@@ -1571,6 +1571,16 @@ config NTP
+ 	  system clock to an NTP server, you can disable this option to save
+ 	  space.
  
-@@ -262,27 +263,29 @@ class DeviceData:
-         """
-         sends = self.__rpc_data['rpcsends']
- 
--        # XXX: these should be sorted by 'count'
--        print()
-+        allstats = []
-         for op in self.__rpc_data['ops']:
--            stats = self.__rpc_data[op]
--            count = stats[0]
--            retrans = stats[1] - count
-+            allstats.append([op] + self.__rpc_data[op])
++config SYSCALL_SPLICE
++	bool "Enable splice/vmsplice/tee/sendfile syscalls" if EXPERT
++	default y
++	help
++	  This option enables the splice, vmsplice, tee and sendfile syscalls. These
++	  are used by applications to: move data between buffers and arbitrary file
++	  descriptors; "copy" data between buffers; or copy data from userspace into
++	  buffers. If building an embedded system where no applications use these
++	  syscalls, you can disable this option to save space.
 +
-+        print()
-+        for stats in sorted(allstats, key=itemgetter(1), reverse=True):
-+            count = stats[1]
-             if count != 0:
--                print('%s:' % op)
-+                print('%s:' % stats[0])
-                 print('\t%d ops (%d%%)' % \
-                     (count, ((count * 100) / sends)), end=' ')
-+                retrans = stats[2] - count
-                 if retrans != 0:
-                     print('\t%d retrans (%d%%)' % (retrans, ((retrans * 100) / count)), end=' ')
--                    print('\t%d major timeouts' % stats[2])
-+                    print('\t%d major timeouts' % stats[3])
-                 else:
-                     print('')
-                 print('\tavg bytes sent per op: %d\tavg bytes received per op: %d' % \
--                    (stats[3] / count, stats[4] / count))
--                print('\tbacklog wait: %f' % (float(stats[5]) / count), end=' ')
--                print('\tRTT: %f' % (float(stats[6]) / count), end=' ')
-+                    (stats[4] / count, stats[5] / count))
-+                print('\tbacklog wait: %f' % (float(stats[6]) / count), end=' ')
-+                print('\tRTT: %f' % (float(stats[7]) / count), end=' ')
-                 print('\ttotal execute time: %f (milliseconds)' % \
--                    (float(stats[7]) / count))
-+                    (float(stats[8]) / count))
+ config PCI_QUIRKS
+ 	default y
+ 	bool "Enable PCI quirk workarounds" if EXPERT
+diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
+index d2f5b00..25d5551 100644
+--- a/kernel/sys_ni.c
++++ b/kernel/sys_ni.c
+@@ -170,6 +170,14 @@ cond_syscall(sys_fstat);
+ cond_syscall(sys_stat);
+ cond_syscall(sys_uname);
+ cond_syscall(sys_olduname);
++cond_syscall(sys_vmsplice);
++cond_syscall(sys_splice);
++cond_syscall(sys_tee);
++cond_syscall(sys_sendfile);
++cond_syscall(sys_sendfile64);
++cond_syscall(compat_sys_vmsplice);
++cond_syscall(compat_sys_sendfile);
++cond_syscall(compat_sys_sendfile64);
  
-     def compare_iostats(self, old_stats):
-         """Return the difference between two sets of stats
+ /* arch-specific weak syscall entries */
+ cond_syscall(sys_pciconfig_read);
+-- 
+2.1.0
 
