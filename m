@@ -1,108 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f48.google.com ([209.85.220.48]:50678 "EHLO
-	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757720AbaKUKJL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2014 05:09:11 -0500
-Received: by mail-pa0-f48.google.com with SMTP id rd3so4569028pab.21
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Nov 2014 02:09:11 -0800 (PST)
-From: Omar Sandoval <osandov@osandov.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
-        Josef Bacik <jbacik@fb.com>, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Mel Gorman <mgorman@suse.de>
-Cc: Omar Sandoval <osandov@osandov.com>
-Subject: [PATCH v2 4/5] btrfs: don't allow -C or +c chattrs on a swap file
-Date: Fri, 21 Nov 2014 02:08:30 -0800
-Message-Id: <a422e8d7ce252474b998eeca3af5f1e2964c5c50.1416563833.git.osandov@osandov.com>
-In-Reply-To: <cover.1416563833.git.osandov@osandov.com>
-References: <cover.1416563833.git.osandov@osandov.com>
-In-Reply-To: <cover.1416563833.git.osandov@osandov.com>
-References: <cover.1416563833.git.osandov@osandov.com>
+Received: from shards.monkeyblade.net ([149.20.54.216]:37058 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750863AbaKYTEt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 14:04:49 -0500
+Date: Tue, 25 Nov 2014 14:04:41 -0500 (EST)
+Message-Id: <20141125.140441.401150380839514113.davem@davemloft.net>
+To: josh@joshtriplett.org
+Cc: rdunlap@infradead.org, pieter@boesman.nl, alexander.h.duyck@intel.com,
+        viro@zeniv.linux.org.uk, ast@plumgrid.com, akpm@linux-foundation.org,
+        beber@meleeweb.net, catalina.mocanu@gmail.com, dborkman@redhat.com,
+        edumazet@google.com, ebiederm@xmission.com, fabf@skynet.be,
+        fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
+        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
+        bfields@fieldses.org, jlayton@poochiereds.net,
+        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
+        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
+        Paul.Durrant@citrix.com, paulmck@linux.vnet.ibm.com,
+        pefoley2@pefoley.com, tgraf@suug.ch, therbert@google.com,
+        trond.myklebust@primarydata.com, willemb@google.com,
+        xiaoguangrong@linux.vnet.ibm.com, zhenglong.cai@cs2c.com.cn
+Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
+ splice family of syscalls (splice, vmsplice, tee and sendfile)
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <20141125185310.GA24891@cloud>
+References: <5474ABB6.3030400@infradead.org>
+	<20141125.121305.2094097848188324942.davem@davemloft.net>
+	<20141125185310.GA24891@cloud>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-swap_activate will check for a compressed or copy-on-write file; we shouldn't
-allow it to become either once it has already been activated.
+From: josh@joshtriplett.org
+Date: Tue, 25 Nov 2014 10:53:10 -0800
 
-Signed-off-by: Omar Sandoval <osandov@osandov.com>
----
- fs/btrfs/ioctl.c | 50 +++++++++++++++++++++++++++++++-------------------
- 1 file changed, 31 insertions(+), 19 deletions(-)
+> It's not a "slippery slope"; it's been our standard practice for ages.
 
-diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
-index 4399f0c..f022dce 100644
---- a/fs/btrfs/ioctl.c
-+++ b/fs/btrfs/ioctl.c
-@@ -293,14 +293,21 @@ static int btrfs_ioctl_setflags(struct file *file, void __user *arg)
- 		}
- 	} else {
- 		/*
--		 * Revert back under same assuptions as above
-+		 * swap_activate checks that we don't swapon a copy-on-write
-+		 * file, but we must also make sure that it doesn't become
-+		 * copy-on-write.
- 		 */
--		if (S_ISREG(mode)) {
--			if (inode->i_size == 0)
--				ip->flags &= ~(BTRFS_INODE_NODATACOW
--				             | BTRFS_INODE_NODATASUM);
--		} else {
--			ip->flags &= ~BTRFS_INODE_NODATACOW;
-+		if (!IS_SWAPFILE(inode)) {
-+			/*
-+			 * Revert back under same assumptions as above
-+			 */
-+			if (S_ISREG(mode)) {
-+				if (inode->i_size == 0)
-+					ip->flags &= ~(BTRFS_INODE_NODATACOW |
-+						       BTRFS_INODE_NODATASUM);
-+			} else {
-+				ip->flags &= ~BTRFS_INODE_NODATACOW;
-+			}
- 		}
- 	}
- 
-@@ -317,20 +324,25 @@ static int btrfs_ioctl_setflags(struct file *file, void __user *arg)
- 		if (ret && ret != -ENODATA)
- 			goto out_drop;
- 	} else if (flags & FS_COMPR_FL) {
--		const char *comp;
--
--		ip->flags |= BTRFS_INODE_COMPRESS;
--		ip->flags &= ~BTRFS_INODE_NOCOMPRESS;
-+		/*
-+		 * Like nodatacow, swap_activate checks that we don't swapon a
-+		 * compressed file, so we shouldn't let it become compressed.
-+		 */
-+		if (!IS_SWAPFILE(inode)) {
-+			const char *comp;
- 
--		if (root->fs_info->compress_type == BTRFS_COMPRESS_LZO)
--			comp = "lzo";
--		else
--			comp = "zlib";
--		ret = btrfs_set_prop(inode, "btrfs.compression",
--				     comp, strlen(comp), 0);
--		if (ret)
--			goto out_drop;
-+			ip->flags |= BTRFS_INODE_COMPRESS;
-+			ip->flags &= ~BTRFS_INODE_NOCOMPRESS;
- 
-+			if (root->fs_info->compress_type == BTRFS_COMPRESS_LZO)
-+				comp = "lzo";
-+			else
-+				comp = "zlib";
-+			ret = btrfs_set_prop(inode, "btrfs.compression",
-+					     comp, strlen(comp), 0);
-+			if (ret)
-+				goto out_drop;
-+		}
- 	} else {
- 		ret = btrfs_set_prop(inode, "btrfs.compression", NULL, 0, 0);
- 		if (ret && ret != -ENODATA)
--- 
-2.1.3
-
+We've never put an entire class of generic system calls behind
+a config option.
