@@ -1,69 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:35662 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751511AbaKVUEA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 22 Nov 2014 15:04:00 -0500
-Received: by mail-pd0-f182.google.com with SMTP id r10so7414543pdi.13
-        for <linux-nfs@vger.kernel.org>; Sat, 22 Nov 2014 12:04:00 -0800 (PST)
-Date: Sat, 22 Nov 2014 12:03:57 -0800
-From: Omar Sandoval <osandov@osandov.com>
-To: David Sterba <dsterba@suse.cz>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
-        Josef Bacik <jbacik@fb.com>, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+Received: from relay3-d.mail.gandi.net ([217.70.183.195]:49331 "EHLO
+	relay3-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750774AbaKYAwo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 19:52:44 -0500
+Date: Mon, 24 Nov 2014 16:52:21 -0800
+From: Josh Triplett <josh@joshtriplett.org>
+To: Pieter Smith <pieter@boesman.nl>
+Cc: Alexander Duyck <alexander.h.duyck@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexei Starovoitov <ast@plumgrid.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Bertrand Jacquin <beber@meleeweb.net>,
+        Catalina Mocanu <catalina.mocanu@gmail.com>,
+        Daniel Borkmann <dborkman@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Fabian Frederick <fabf@skynet.be>,
+        "open list:FUSE: FILESYSTEM..." <fuse-devel@lists.sourceforge.net>,
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
+        Jan Beulich <JBeulich@suse.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "open list:ABI/API" <linux-api@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org,
+        open list <linux-kernel@vger.kernel.org>,
+        "open list:KERNEL NFSD, SUNR..." <linux-nfs@vger.kernel.org>,
+        "Luis R. Rodriguez" <mcgrof@suse.com>,
+        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        "open list:NETWORKING [GENERAL]" <netdev@vger.kernel.org>,
+        Oleg Nesterov <oleg@redhat.com>,
+        Paul Durrant <Paul.Durrant@citrix.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
+        Tom Herbert <therbert@google.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Mel Gorman <mgorman@suse.de>
-Subject: Re: [PATCH v2 5/5] btrfs: enable swap file support
-Message-ID: <20141122200357.GA15189@mew>
-References: <cover.1416563833.git.osandov@osandov.com>
- <afd3c1009172a4a1cfa10e73a64caf35c631a6d4.1416563833.git.osandov@osandov.com>
- <20141121180045.GF8568@twin.jikos.cz>
+        Willem de Bruijn <willemb@google.com>,
+        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
+        =?utf-8?B?6JSh5q2j6b6Z?= <zhenglong.cai@cs2c.com.cn>
+Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
+ splice family of syscalls (splice, vmsplice, tee and sendfile)
+Message-ID: <20141125005221.GB21653@thin>
+References: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20141121180045.GF8568@twin.jikos.cz>
+In-Reply-To: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 21, 2014 at 07:00:45PM +0100, David Sterba wrote:
-> > +			pr_err("BTRFS: swapfile has holes");
-> > +			ret = -EINVAL;
-> > +			goto out;
-> > +		}
-> > +		if (em->block_start == EXTENT_MAP_INLINE) {
-> > +			pr_err("BTRFS: swapfile is inline");
+On Tue, Nov 25, 2014 at 12:00:59AM +0100, Pieter Smith wrote:
+> REPO: https://github.com/smipi1/linux-tinification.git
 > 
-> While the test is valid, this would mean that the file is smaller than
-> the inline limit, which is now one page. I think the generic swap code
-> would refuse such a small file anyway.
+> BRANCH: tiny/config-syscall-splice
 > 
-Sure. This test doesn't really cost us anything, so I think I'd feel a little
-better just leaving it in. I'll add a comment for the next close reader.
+> BACKGROUND: This patch-set forms part of the Linux Kernel Tinification effort (
+>   https://tiny.wiki.kernel.org/).
+> 
+> GOAL: Support compiling out the splice family of syscalls (splice, vmsplice,
+>   tee and sendfile) along with all supporting infrastructure if not needed.
+>   Many embedded systems will not need the splice-family syscalls. Omitting them
+>   saves space.
+> 
+> HISTORY:
+>   PATCH v4:
+>     - Drops __splice_p()
+>     - Let nfsd fall back to non-splice support when splice is compiled out
+>     - Style fixes
+[...]
+> RESULTS: A tinyconfig bloat-o-meter score for the entire patch-set:
+> 
+> add/remove: 0/41 grow/shrink: 5/7 up/down: 23/-8422 (-8399)
 
-Besides that and Filipe's response, I'll address everything you mentioned here
-and in your other email in the next version, thanks.
+I replied to one patch with a minor nit in the commit message.  Other
+than that, I don't see any obvious issues with this.
 
-> > +			ret = -EINVAL;
-> > +			goto out;
-> > +		}
-> > +		if (test_bit(EXTENT_FLAG_COMPRESSED, &em->flags)) {
-> > +			pr_err("BTRFS: swapfile is compresed");
-> > +			ret = -EINVAL;
-> > +			goto out;
-> > +		}
-> 
-> I think the preallocated extents should be refused as well. This means
-> the filesystem has enough space to hold the data but it would still have
-> to go through the allocation and could in turn stress the memory
-> management code that triggered the swapping activity in the first place.
-> 
-> Though it's probably still possible to reach such corner case even with
-> fully allocated nodatacow file, this should be reviewed anyway.
-> 
-I'll definitely take a closer look at this. In particular,
-btrfs_get_blocks_direct and btrfs_get_extent do allocations in some cases which
-I'll look into.
-
--- 
-Omar
+- Josh Triplett
