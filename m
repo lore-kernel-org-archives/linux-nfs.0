@@ -1,99 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:43876 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753634AbaKHMLA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Nov 2014 07:11:00 -0500
-From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] nfsd: implement chage_attr_type attribute
-Date: Sat,  8 Nov 2014 13:11:04 +0100
-Message-Id: <1415448664-25815-3-git-send-email-hch@lst.de>
-In-Reply-To: <1415448664-25815-1-git-send-email-hch@lst.de>
-References: <1415448664-25815-1-git-send-email-hch@lst.de>
+Received: from mail-wi0-f170.google.com ([209.85.212.170]:65120 "EHLO
+	mail-wi0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751136AbaKYHUl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 02:20:41 -0500
+From: Pieter Smith <pieter@boesman.nl>
+To: pieter@boesman.nl
+Cc: Josh Triplett <josh@joshtriplett.org>,
+        Alexander Duyck <alexander.h.duyck@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexei Starovoitov <ast@plumgrid.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Bertrand Jacquin <beber@meleeweb.net>,
+        Catalina Mocanu <catalina.mocanu@gmail.com>,
+        Daniel Borkmann <dborkman@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Fabian Frederick <fabf@skynet.be>,
+        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
+        Jan Beulich <JBeulich@suse.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-api@vger.kernel.org (open list:ABI/API),
+        linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org (open list),
+        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
+        "Luis R. Rodriguez" <mcgrof@suse.com>,
+        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
+        Oleg Nesterov <oleg@redhat.com>,
+        Paul Durrant <Paul.Durrant@citrix.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
+        Tom Herbert <therbert@google.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Willem de Bruijn <willemb@google.com>,
+        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
+        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
+Subject: [PATCH v5 5/7] net/core: support compiling out splice
+Date: Tue, 25 Nov 2014 08:19:40 +0100
+Message-Id: <1416899996-21315-6-git-send-email-pieter@boesman.nl>
+In-Reply-To: <1416899996-21315-1-git-send-email-pieter@boesman.nl>
+References: <1416899996-21315-1-git-send-email-pieter@boesman.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/nfs4xdr.c    | 16 ++++++++++++++++
- fs/nfsd/nfsd.h       |  2 +-
- include/linux/nfs4.h |  9 +++++++++
- 3 files changed, 26 insertions(+), 1 deletion(-)
+To implement splice support, net/core makes use of nosteal_pipe_buf_ops. This
+struct is exported by fs/splice. The goal of the larger patch set is to
+completely compile out fs/splice, so uses of the exported struct need to be
+compiled out along with fs/splice.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index eeea7a9..3205b55 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1730,6 +1730,15 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode)
- 	return p;
- }
- 
-+static __be32 *encode_change_attr_type(__be32 *p, struct inode *inode)
+This patch therefore compiles out splice support in net/core when
+CONFIG_SYSCALL_SPLICE is undefined. The compiled out function skb_splice_bits
+is transparently mocked out with a static inline. The greater patch set removes
+userspace splice support so it cannot be called anyway.
+
+Signed-off-by: Pieter Smith <pieter@boesman.nl>
+---
+ include/linux/skbuff.h | 10 ++++++++++
+ net/core/skbuff.c      | 11 +++++++----
+ 2 files changed, 17 insertions(+), 4 deletions(-)
+
+diff --git a/include/linux/skbuff.h b/include/linux/skbuff.h
+index a59d934..5cd636b 100644
+--- a/include/linux/skbuff.h
++++ b/include/linux/skbuff.h
+@@ -2640,9 +2640,19 @@ int skb_copy_bits(const struct sk_buff *skb, int offset, void *to, int len);
+ int skb_store_bits(struct sk_buff *skb, int offset, const void *from, int len);
+ __wsum skb_copy_and_csum_bits(const struct sk_buff *skb, int offset, u8 *to,
+ 			      int len, __wsum csum);
++#ifdef CONFIG_SYSCALL_SPLICE
+ int skb_splice_bits(struct sk_buff *skb, unsigned int offset,
+ 		    struct pipe_inode_info *pipe, unsigned int len,
+ 		    unsigned int flags);
++#else
++static inline int
++skb_splice_bits(struct sk_buff *skb, unsigned int offset,
++		struct pipe_inode_info *pipe, unsigned int len,
++		unsigned int flags)
 +{
-+	if (IS_I_VERSION(inode))
-+		*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_VERSION_COUNTER);
-+	else
-+		*p++ = cpu_to_be32(NFS4_CHANGE_TYPE_IS_TIME_METADATA);
-+	return p;
++	return -EPERM;
 +}
-+
- static __be32 *encode_cinfo(__be32 *p, struct nfsd4_change_info *c)
++#endif
+ void skb_copy_and_csum_dev(const struct sk_buff *skb, u8 *to);
+ unsigned int skb_zerocopy_headlen(const struct sk_buff *from);
+ int skb_zerocopy(struct sk_buff *to, struct sk_buff *from,
+diff --git a/net/core/skbuff.c b/net/core/skbuff.c
+index 61059a0..bb426d9 100644
+--- a/net/core/skbuff.c
++++ b/net/core/skbuff.c
+@@ -1678,7 +1678,8 @@ EXPORT_SYMBOL(skb_copy_bits);
+  * Callback from splice_to_pipe(), if we need to release some pages
+  * at the end of the spd in case we error'ed out in filling the pipe.
+  */
+-static void sock_spd_release(struct splice_pipe_desc *spd, unsigned int i)
++static void __maybe_unused sock_spd_release(struct splice_pipe_desc *spd,
++					    unsigned int i)
  {
- 	*p++ = cpu_to_be32(c->atomic);
-@@ -2535,6 +2544,13 @@ out_acl:
- 		*p++ = cpu_to_be32(NFSD_SUPPATTR_EXCLCREAT_WORD2);
- 	}
- 
-+	if (bmval2 & FATTR4_WORD2_CHANGE_ATTR_TYPE) {
-+		p = xdr_reserve_space(xdr, 4);
-+		if (!p)
-+			goto out_resource;
-+		p = encode_change_attr_type(p, dentry->d_inode);
-+	}
-+
- 	attrlen = htonl(xdr->buf->len - attrlen_offset - 4);
- 	write_bytes_to_xdr_buf(xdr->buf, attrlen_offset, &attrlen, 4);
- 	status = nfs_ok;
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 43b6a36..59a734f 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -342,7 +342,7 @@ void		nfsd_lockd_shutdown(void);
- 
- #define NFSD4_2_SUPPORTED_ATTRS_WORD2 \
- 	(NFSD4_1_SUPPORTED_ATTRS_WORD2 | \
--	NFSD4_2_SECURITY_ATTRS)
-+	FATTR4_WORD2_CHANGE_ATTR_TYPE | NFSD4_2_SECURITY_ATTRS)
- 
- static inline u32 nfsd_suppattrs0(u32 minorversion)
+ 	put_page(spd->pages[i]);
+ }
+@@ -1781,9 +1782,9 @@ static bool __splice_segment(struct page *page, unsigned int poff,
+  * Map linear and fragment data from the skb to spd. It reports true if the
+  * pipe is full or if we already spliced the requested length.
+  */
+-static bool __skb_splice_bits(struct sk_buff *skb, struct pipe_inode_info *pipe,
+-			      unsigned int *offset, unsigned int *len,
+-			      struct splice_pipe_desc *spd, struct sock *sk)
++static bool __maybe_unused __skb_splice_bits(struct sk_buff *skb, struct pipe_inode_info *pipe,
++					     unsigned int *offset, unsigned int *len,
++					     struct splice_pipe_desc *spd, struct sock *sk)
  {
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 356acc2..85ccd06 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -413,6 +413,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
-+#define FATTR4_WORD2_CHANGE_ATTR_TYPE   (1UL << 15)
- #define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
+ 	int seg;
  
- /* MDS threshold bitmap bits */
-@@ -558,4 +559,12 @@ enum data_content4 {
- 	NFS4_CONTENT_HOLE		= 1,
- };
+@@ -1821,6 +1822,7 @@ static bool __skb_splice_bits(struct sk_buff *skb, struct pipe_inode_info *pipe,
+  * the frag list, if such a thing exists. We'd probably need to recurse to
+  * handle that cleanly.
+  */
++#ifdef CONFIG_SYSCALL_SPLICE
+ int skb_splice_bits(struct sk_buff *skb, unsigned int offset,
+ 		    struct pipe_inode_info *pipe, unsigned int tlen,
+ 		    unsigned int flags)
+@@ -1876,6 +1878,7 @@ done:
  
-+enum change_attr_type4 {
-+	NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR	= 0,
-+	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER	= 1,
-+	NFS4_CHANGE_TYPE_IS_VERSION_COUNTER_NOPNFS = 2,
-+	NFS4_CHANGE_TYPE_IS_TIME_METADATA	= 3,
-+	NFS4_CHANGE_TYPE_IS_UNDEFINED		= 4
-+};
-+
- #endif
+ 	return ret;
+ }
++#endif /* CONFIG_SYSCALL_SPLICE */
+ 
+ /**
+  *	skb_store_bits - store bits from kernel buffer to skb
 -- 
-1.9.1
+2.1.0
 
