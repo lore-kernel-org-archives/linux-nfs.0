@@ -1,78 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:50993 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752195AbaKLXEM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Nov 2014 18:04:12 -0500
-Received: by mail-ig0-f170.google.com with SMTP id a13so162447igq.1
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Nov 2014 15:04:11 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix locking around callback channel reply receive
-Date: Wed, 12 Nov 2014 18:04:04 -0500
-Message-Id: <1415833444-48129-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from imap.thunk.org ([74.207.234.97]:51252 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750951AbaKYS7B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Nov 2014 13:59:01 -0500
+Date: Tue, 25 Nov 2014 13:58:06 -0500
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: David Miller <davem@davemloft.net>
+Cc: paulmck@linux.vnet.ibm.com, rdunlap@infradead.org, pieter@boesman.nl,
+        josh@joshtriplett.org, alexander.h.duyck@intel.com,
+        viro@zeniv.linux.org.uk, ast@plumgrid.com, akpm@linux-foundation.org,
+        beber@meleeweb.net, catalina.mocanu@gmail.com, dborkman@redhat.com,
+        edumazet@google.com, ebiederm@xmission.com, fabf@skynet.be,
+        fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
+        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
+        bfields@fieldses.org, jlayton@poochiereds.net,
+        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
+        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
+        Paul.Durrant@citrix.com, pefoley2@pefoley.com, tgraf@suug.ch,
+        therbert@google.com, trond.myklebust@primarydata.com,
+        willemb@google.com, xiaoguangrong@linux.vnet.ibm.com,
+        zhenglong.cai@cs2c.com.cn
+Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
+ splice family of syscalls (splice, vmsplice, tee and sendfile)
+Message-ID: <20141125185806.GA28116@thunk.org>
+References: <5474ABB6.3030400@infradead.org>
+ <20141125.121305.2094097848188324942.davem@davemloft.net>
+ <20141125181032.GJ5050@linux.vnet.ibm.com>
+ <20141125.132445.152609149279137368.davem@davemloft.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141125.132445.152609149279137368.davem@davemloft.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Both xprt_lookup_rqst() and xprt_complete_rqst() require that you
-take the transport lock in order to avoid races with xprt_transmit().
+On Tue, Nov 25, 2014 at 01:24:45PM -0500, David Miller wrote:
+> 
+> And then if some fundamental part of userland (glibc, klibc, etc.) finds
+> a useful way to use splice for a fundamental operation, we're back to
+> square one.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Bruce Fields <bfields@fieldses.org>
----
- net/sunrpc/svcsock.c | 27 ++++++++++++++++-----------
- 1 file changed, 16 insertions(+), 11 deletions(-)
+I'll note that the applications for these super-tiny kernels are
+places where it's not likely they would be using glibc at all; think
+very tiny embedded systems.  The userspace tends to be highly
+restricted for the same space reasons why there is an effort to make
+the kernel as small as possible.
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 3f959c681885..f9c052d508f0 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1019,17 +1019,12 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
- 	xid = *p++;
- 	calldir = *p;
- 
--	if (bc_xprt)
--		req = xprt_lookup_rqst(bc_xprt, xid);
--
--	if (!req) {
--		printk(KERN_NOTICE
--			"%s: Got unrecognized reply: "
--			"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
--			__func__, ntohl(calldir),
--			bc_xprt, ntohl(xid));
-+	if (!bc_xprt)
- 		return -EAGAIN;
--	}
-+	spin_lock_bh(&bc_xprt->transport_lock);
-+	req = xprt_lookup_rqst(bc_xprt, xid);
-+	if (!req)
-+		goto unlock_notfound;
- 
- 	memcpy(&req->rq_private_buf, &req->rq_rcv_buf, sizeof(struct xdr_buf));
- 	/*
-@@ -1040,11 +1035,21 @@ static int receive_cb_reply(struct svc_sock *svsk, struct svc_rqst *rqstp)
- 	dst = &req->rq_private_buf.head[0];
- 	src = &rqstp->rq_arg.head[0];
- 	if (dst->iov_len < src->iov_len)
--		return -EAGAIN; /* whatever; just giving up. */
-+		goto unlock_eagain; /* whatever; just giving up. */
- 	memcpy(dst->iov_base, src->iov_base, src->iov_len);
- 	xprt_complete_rqst(req->rq_task, rqstp->rq_arg.len);
- 	rqstp->rq_arg.len = 0;
-+	spin_unlock_bh(&bc_xprt->transport_lock);
- 	return 0;
-+unlock_notfound:
-+	printk(KERN_NOTICE
-+		"%s: Got unrecognized reply: "
-+		"calldir 0x%x xpt_bc_xprt %p xid %08x\n",
-+		__func__, ntohl(calldir),
-+		bc_xprt, ntohl(xid));
-+unlock_eagain:
-+	spin_unlock_bh(&bc_xprt->transport_lock);
-+	return -EAGAIN;
- }
- 
- static int copy_pages_to_kvecs(struct kvec *vec, struct page **pages, int len)
--- 
-1.9.3
+In these places, they are using Linux already, but they're using a 2.2
+or 2.4 kernel because 3.0 is just too damned big.  So the goal is to
+try to provide them an alternative which allows them to use a modern,
+but stripped down kernel.  If glibc or klibc isn't going to work
+without splice, then it's not going to work on a pre 2.6 kernel
+anyway, so things are no worse with these systems anyway.
 
+After all, if we can get these systems to using a 3.x kernel w/o
+splice, that's surely better than their using a 2.2 or 2.4 kernel w/o
+the splice system, isn't it?
+
+Cheers,
+
+					- Ted
