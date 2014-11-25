@@ -1,101 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f51.google.com ([74.125.82.51]:35711 "EHLO
-	mail-wg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751799AbaKXXCe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Nov 2014 18:02:34 -0500
-From: Pieter Smith <pieter@boesman.nl>
-To: pieter@boesman.nl
-Cc: Josh Triplett <josh@joshtriplett.org>,
-        Alexander Duyck <alexander.h.duyck@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexei Starovoitov <ast@plumgrid.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Bertrand Jacquin <beber@meleeweb.net>,
-        Catalina Mocanu <catalina.mocanu@gmail.com>,
-        Daniel Borkmann <dborkman@redhat.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>,
-        "Eric W. Biederman" <ebiederm@xmission.com>,
-        Fabian Frederick <fabf@skynet.be>,
-        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
-        Geert Uytterhoeven <geert@linux-m68k.org>,
-        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
-        Jan Beulich <JBeulich@suse.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-api@vger.kernel.org (open list:ABI/API),
-        linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org (open list),
-        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
-        "Luis R. Rodriguez" <mcgrof@suse.com>,
-        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
-        "Michael S. Tsirkin" <mst@redhat.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
-        Oleg Nesterov <oleg@redhat.com>,
-        Paul Durrant <Paul.Durrant@citrix.com>,
-        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
-        Tom Herbert <therbert@google.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Willem de Bruijn <willemb@google.com>,
-        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
-        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
-Subject: [PATCH v4 4/7] fs/fuse: support compiling out splice
-Date: Tue, 25 Nov 2014 00:01:03 +0100
-Message-Id: <1416870079-15254-5-git-send-email-pieter@boesman.nl>
-In-Reply-To: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
-References: <1416870079-15254-1-git-send-email-pieter@boesman.nl>
+Received: from out02.mta.xmission.com ([166.70.13.232]:48451 "EHLO
+	out02.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750816AbaKYTSL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 14:18:11 -0500
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: David Miller <davem@davemloft.net>
+Cc: josh@joshtriplett.org, rdunlap@infradead.org, pieter@boesman.nl,
+        alexander.h.duyck@intel.com, viro@zeniv.linux.org.uk, ast@plumgrid.com,
+        akpm@linux-foundation.org, beber@meleeweb.net,
+        catalina.mocanu@gmail.com, dborkman@redhat.com, edumazet@google.com,
+        fabf@skynet.be, fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
+        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
+        bfields@fieldses.org, jlayton@poochiereds.net,
+        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
+        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
+        Paul.Durrant@citrix.com, paulmck@linux.vnet.ibm.com,
+        pefoley2@pefoley.com, tgraf@suug.ch, therbert@google.com,
+        trond.myklebust@primarydata.com, willemb@google.com,
+        xiaoguangrong@linux.vnet.ibm.com, zhenglong.cai@cs2c.com.cn
+References: <5474ABB6.3030400@infradead.org>
+	<20141125.121305.2094097848188324942.davem@davemloft.net>
+	<20141125185310.GA24891@cloud>
+	<20141125.140441.401150380839514113.davem@davemloft.net>
+Date: Tue, 25 Nov 2014 13:16:44 -0600
+In-Reply-To: <20141125.140441.401150380839514113.davem@davemloft.net> (David
+	Miller's message of "Tue, 25 Nov 2014 14:04:41 -0500 (EST)")
+Message-ID: <87egsr9jkz.fsf@x220.int.ebiederm.org>
+MIME-Version: 1.0
+Content-Type: text/plain
+Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out splice family of syscalls (splice, vmsplice, tee and sendfile)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To implement splice support, fs/fuse makes use of nosteal_pipe_buf_ops. This
-struct is exported by fs/splice. The goal of the larger patch set is to
-completely compile out fs/splice, so uses of the exported struct need to be
-compiled out along with fs/splice.
+David Miller <davem@davemloft.net> writes:
 
-This patch therefore compiles out splice support in fs/fuse when
-CONFIG_SYSCALL_SPLICE is undefined.
+> From: josh@joshtriplett.org
+> Date: Tue, 25 Nov 2014 10:53:10 -0800
+>
+>> It's not a "slippery slope"; it's been our standard practice for ages.
+>
+> We've never put an entire class of generic system calls behind
+> a config option.
 
-Signed-off-by: Pieter Smith <pieter@boesman.nl>
----
- fs/fuse/dev.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+CONFIG_SYSVIPC has been in the kernel as long as I can remember.
 
-diff --git a/fs/fuse/dev.c b/fs/fuse/dev.c
-index ca88731..e984302 100644
---- a/fs/fuse/dev.c
-+++ b/fs/fuse/dev.c
-@@ -1191,8 +1191,9 @@ __releases(fc->lock)
-  * request_end().  Otherwise add it to the processing list, and set
-  * the 'sent' flag.
-  */
--static ssize_t fuse_dev_do_read(struct fuse_conn *fc, struct file *file,
--				struct fuse_copy_state *cs, size_t nbytes)
-+static ssize_t __maybe_unused
-+fuse_dev_do_read(struct fuse_conn *fc, struct file *file,
-+		 struct fuse_copy_state *cs, size_t nbytes)
- {
- 	int err;
- 	struct fuse_req *req;
-@@ -1291,6 +1292,7 @@ static ssize_t fuse_dev_read(struct kiocb *iocb, const struct iovec *iov,
- 	return fuse_dev_do_read(fc, file, &cs, iov_length(iov, nr_segs));
- }
- 
-+#ifdef CONFIG_SYSCALL_SPLICE
- static ssize_t fuse_dev_splice_read(struct file *in, loff_t *ppos,
- 				    struct pipe_inode_info *pipe,
- 				    size_t len, unsigned int flags)
-@@ -1368,6 +1370,9 @@ out:
- 	kfree(bufs);
- 	return ret;
- }
-+#else /* CONFIG_SYSCALL_SPLICE */
-+#define fuse_dev_splice_read NULL
-+#endif
- 
- static int fuse_notify_poll(struct fuse_conn *fc, unsigned int size,
- 			    struct fuse_copy_state *cs)
--- 
-2.1.0
+I seem to remember a plan to remove that code once userspace had
+finished migrating to more unixy interfaces to ipc.  But in 20 years
+that migration does does not seem to have finished, or even look
+like it ever will.
 
+But if we started a slippery slope it was long long ago.
+
+Eric
