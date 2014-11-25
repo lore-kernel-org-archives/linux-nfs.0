@@ -1,37 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55338 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:35704 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750869AbaKYXys (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 25 Nov 2014 18:54:48 -0500
-Date: Tue, 25 Nov 2014 18:54:47 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd bugfixes for 3.18
-Message-ID: <20141125235447.GE15033@fieldses.org>
+	id S1750893AbaKYRFj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Nov 2014 12:05:39 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: Systemd Mailing List <systemd-devel@lists.freedesktop.org>
+Subject: [PATCH] rpcbind: systemd socket activation (v2)
+Date: Tue, 25 Nov 2014 12:05:32 -0500
+Message-Id: <1416935133-7104-1-git-send-email-steved@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull the following nfsd bugfixes for 3.18:
+This is based on a patch originally posted by Lennart Poettering:
+<http://permalink.gmane.org/gmane.linux.nfs/33774>.
 
-  git://linux-nfs.org/~bfields/linux.git for-3.18
+That patch was not merged due to the lack of a shared library and
+as systemd was seen to be too Fedora specific.
 
-These fix one mishandling of the case when security labels are
-configured out, and two races in the 4.1 backchannel code.
+Systemd now provides a shared library, and it is (or very soon will
+be) the default init system on all the major Linux distributions.
 
---b.
+This version of the patch has three changes from the original:
 
-----------------------------------------------------------------
-Christoph Hellwig (1):
-      nfsd: correctly define v4.2 support attributes
+ * It uses the shared library.
+ * It comes with unit files.
+ * It is rebased on top of master.
 
-Trond Myklebust (2):
-      SUNRPC: Fix locking around callback channel reply receive
-      nfsd: Fix slot wake up race in the nfsv4.1 callback code
+Please review the patch with "git show -b" or otherwise ignoring the
+whitespace changes, or it will be extremely difficult to read.
 
- fs/nfsd/nfs4callback.c |  8 ++++++--
- fs/nfsd/nfsd.h         |  9 ++++++---
- net/sunrpc/svcsock.c   | 27 ++++++++++++++++-----------
- 3 files changed, 28 insertions(+), 16 deletions(-)
+v5: incorporated comments on the PKG_CHECK_MODULES macro.
+
+v4: reorganized the changes to make the diff easier to read
+	remove systemd scripts.
+
+v3: rebase
+	fix typos
+	listen on /run/rpcbind.sock, rather than /var/run/rpcbind.sock (the
+	latter is a symlink to the former, but this means the socket can be
+	created before /var is mounted)
+	NB: this version has been compile-tested only as I no longer use
+	rpcbind myself
+v2: correctly enable systemd code at compile time
+	handle the case where not all the required sockets were supplied
+	listen on udp/tcp port 111 in addition to /var/run/rpcbind.sock
+	do not daemonize
+
+Tom Gundersen (1):
+  rpcbind: add support for systemd socket activation
+
+ Makefile.am   |  6 +++++
+ configure.ac  | 12 +++++++++
+ src/rpcbind.c | 81 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 3 files changed, 93 insertions(+), 6 deletions(-)
+
+-- 
+1.9.3
+
