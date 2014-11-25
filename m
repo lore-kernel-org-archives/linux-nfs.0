@@ -1,72 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:50696 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751698AbaKCOgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Nov 2014 09:36:47 -0500
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] Fixing infinite state recovery loop due to failed delegation return
-Date: Mon, 3 Nov 2014 09:36:43 -0500
-Message-ID: <1415025403-31914-1-git-send-email-kolga@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-wg0-f46.google.com ([74.125.82.46]:53060 "EHLO
+	mail-wg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752126AbaKYHUh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 02:20:37 -0500
+From: Pieter Smith <pieter@boesman.nl>
+To: pieter@boesman.nl
+Cc: Josh Triplett <josh@joshtriplett.org>,
+        Alexander Duyck <alexander.h.duyck@intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexei Starovoitov <ast@plumgrid.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Bertrand Jacquin <beber@meleeweb.net>,
+        Catalina Mocanu <catalina.mocanu@gmail.com>,
+        Daniel Borkmann <dborkman@redhat.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Eric Dumazet <edumazet@google.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>,
+        Fabian Frederick <fabf@skynet.be>,
+        fuse-devel@lists.sourceforge.net (open list:FUSE: FILESYSTEM...),
+        Geert Uytterhoeven <geert@linux-m68k.org>,
+        Hugh Dickins <hughd@google.com>, Iulia Manda <iulia.manda21@gmail.com>,
+        Jan Beulich <JBeulich@suse.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-api@vger.kernel.org (open list:ABI/API),
+        linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org (open list),
+        linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...),
+        "Luis R. Rodriguez" <mcgrof@suse.com>,
+        Matt Turner <mattst88@gmail.com>, Mel Gorman <mgorman@suse.de>,
+        "Michael S. Tsirkin" <mst@redhat.com>,
+        Miklos Szeredi <miklos@szeredi.hu>,
+        netdev@vger.kernel.org (open list:NETWORKING [GENERAL]),
+        Oleg Nesterov <oleg@redhat.com>,
+        Paul Durrant <Paul.Durrant@citrix.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Peter Foley <pefoley2@pefoley.com>, Thomas Graf <tgraf@suug.ch>,
+        Tom Herbert <therbert@google.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Willem de Bruijn <willemb@google.com>,
+        Xiao Guangrong <xiaoguangrong@linux.vnet.ibm.com>,
+        =?UTF-8?q?=E8=94=A1=E6=AD=A3=E9=BE=99?= <zhenglong.cai@cs2c.com.cn>
+Subject: [PATCH v5 4/7] fs/fuse: support compiling out splice
+Date: Tue, 25 Nov 2014 08:19:39 +0100
+Message-Id: <1416899996-21315-5-git-send-email-pieter@boesman.nl>
+In-Reply-To: <1416899996-21315-1-git-send-email-pieter@boesman.nl>
+References: <1416899996-21315-1-git-send-email-pieter@boesman.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we get a bad-stateid-type of error when we send OPEN with delegate_cur
-to return currently held delegation, we shouldn't be trying to reclaim locks
-associated with that delegation state_id because we don't have an
-open_stateid to be used for the LOCK operation. Thus, we should
-return an error from the nfs4_open_delegation_recall() in that case.
+To implement splice support, fs/fuse makes use of nosteal_pipe_buf_ops. This
+struct is exported by fs/splice. The goal of the larger patch set is to
+completely compile out fs/splice, so uses of the exported struct need to be
+compiled out along with fs/splice.
 
-Furthermore, if an error occurs the delegation code will call
-nfs_abort_delegation_return() which sets again the NFS4CLNT_DELEGRETURN
-flags in the state and it leads the state manager to into an infinite loop
-for trying to reclaim the delegated state.
+This patch therefore compiles out splice support in fs/fuse when
+CONFIG_SYSCALL_SPLICE is undefined.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Pieter Smith <pieter@boesman.nl>
 ---
- fs/nfs/delegation.c |    5 +++--
- fs/nfs/nfs4proc.c   |    2 +-
- 2 files changed, 4 insertions(+), 3 deletions(-)
+ fs/fuse/dev.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 5853f53..8016d89 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -394,7 +394,7 @@ static int nfs_end_delegation_return(struct inode *inode, struct nfs_delegation
- 		err = nfs4_wait_clnt_recover(clp);
- 	} while (err == 0);
+diff --git a/fs/fuse/dev.c b/fs/fuse/dev.c
+index ca88731..e984302 100644
+--- a/fs/fuse/dev.c
++++ b/fs/fuse/dev.c
+@@ -1191,8 +1191,9 @@ __releases(fc->lock)
+  * request_end().  Otherwise add it to the processing list, and set
+  * the 'sent' flag.
+  */
+-static ssize_t fuse_dev_do_read(struct fuse_conn *fc, struct file *file,
+-				struct fuse_copy_state *cs, size_t nbytes)
++static ssize_t __maybe_unused
++fuse_dev_do_read(struct fuse_conn *fc, struct file *file,
++		 struct fuse_copy_state *cs, size_t nbytes)
+ {
+ 	int err;
+ 	struct fuse_req *req;
+@@ -1291,6 +1292,7 @@ static ssize_t fuse_dev_read(struct kiocb *iocb, const struct iovec *iov,
+ 	return fuse_dev_do_read(fc, file, &cs, iov_length(iov, nr_segs));
+ }
  
--	if (err) {
-+	if (err && err != -EIO) {
- 		nfs_abort_delegation_return(delegation, clp);
- 		goto out;
- 	}
-@@ -458,7 +458,8 @@ restart:
- 			iput(inode);
- 			if (!err)
- 				goto restart;
--			set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
-+			if (err != -EIO)
-+				set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
- 			return err;
- 		}
- 	}
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5aa55c1..6871055 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1655,7 +1655,7 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
- 			nfs_inode_find_state_and_recover(state->inode,
- 					stateid);
- 			nfs4_schedule_stateid_recovery(server, state);
--			return 0;
-+			return -EIO;
- 		case -NFS4ERR_DELAY:
- 		case -NFS4ERR_GRACE:
- 			set_bit(NFS_DELEGATED_STATE, &state->flags);
++#ifdef CONFIG_SYSCALL_SPLICE
+ static ssize_t fuse_dev_splice_read(struct file *in, loff_t *ppos,
+ 				    struct pipe_inode_info *pipe,
+ 				    size_t len, unsigned int flags)
+@@ -1368,6 +1370,9 @@ out:
+ 	kfree(bufs);
+ 	return ret;
+ }
++#else /* CONFIG_SYSCALL_SPLICE */
++#define fuse_dev_splice_read NULL
++#endif
+ 
+ static int fuse_notify_poll(struct fuse_conn *fc, unsigned int size,
+ 			    struct fuse_copy_state *cs)
 -- 
-1.7.1
+2.1.0
 
