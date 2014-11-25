@@ -1,209 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:33512 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752977AbaKGTod (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Nov 2014 14:44:33 -0500
-From: <Anna.Schumaker@netapp.com>
-To: <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 2/3] nfsd: Add ALLOCATE support
-Date: Fri, 7 Nov 2014 14:44:26 -0500
-Message-ID: <1415389467-16547-3-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1415389467-16547-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1415389467-16547-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from shards.monkeyblade.net ([149.20.54.216]:37394 "EHLO
+	shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750891AbaKYT1v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Nov 2014 14:27:51 -0500
+Date: Tue, 25 Nov 2014 14:27:41 -0500 (EST)
+Message-Id: <20141125.142741.1620673255148724338.davem@davemloft.net>
+To: ebiederm@xmission.com
+Cc: josh@joshtriplett.org, rdunlap@infradead.org, pieter@boesman.nl,
+        alexander.h.duyck@intel.com, viro@zeniv.linux.org.uk, ast@plumgrid.com,
+        akpm@linux-foundation.org, beber@meleeweb.net,
+        catalina.mocanu@gmail.com, dborkman@redhat.com, edumazet@google.com,
+        fabf@skynet.be, fuse-devel@lists.sourceforge.net, geert@linux-m68k.org,
+        hughd@google.com, iulia.manda21@gmail.com, JBeulich@suse.com,
+        bfields@fieldses.org, jlayton@poochiereds.net,
+        linux-api@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        mcgrof@suse.com, mattst88@gmail.com, mgorman@suse.de, mst@redhat.com,
+        miklos@szeredi.hu, netdev@vger.kernel.org, oleg@redhat.com,
+        Paul.Durrant@citrix.com, paulmck@linux.vnet.ibm.com,
+        pefoley2@pefoley.com, tgraf@suug.ch, therbert@google.com,
+        trond.myklebust@primarydata.com, willemb@google.com,
+        xiaoguangrong@linux.vnet.ibm.com, zhenglong.cai@cs2c.com.cn
+Subject: Re: [PATCH v4 0/7] kernel tinification: optionally compile out
+ splice family of syscalls (splice, vmsplice, tee and sendfile)
+From: David Miller <davem@davemloft.net>
+In-Reply-To: <87egsr9jkz.fsf@x220.int.ebiederm.org>
+References: <20141125185310.GA24891@cloud>
+	<20141125.140441.401150380839514113.davem@davemloft.net>
+	<87egsr9jkz.fsf@x220.int.ebiederm.org>
+Mime-Version: 1.0
+Content-Type: Text/Plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+From: ebiederm@xmission.com (Eric W. Biederman)
+Date: Tue, 25 Nov 2014 13:16:44 -0600
 
-The ALLOCATE operation is used to preallocate space in a file.  I can do
-this by using vfs_fallocate() to do the actual preallocation.
+> David Miller <davem@davemloft.net> writes:
+> 
+>> From: josh@joshtriplett.org
+>> Date: Tue, 25 Nov 2014 10:53:10 -0800
+>>
+>>> It's not a "slippery slope"; it's been our standard practice for ages.
+>>
+>> We've never put an entire class of generic system calls behind
+>> a config option.
+> 
+> CONFIG_SYSVIPC has been in the kernel as long as I can remember.
+> 
+> I seem to remember a plan to remove that code once userspace had
+> finished migrating to more unixy interfaces to ipc.  But in 20 years
+> that migration does does not seem to have finished, or even look
+> like it ever will.
+> 
+> But if we started a slippery slope it was long long ago.
 
-ALLOCATE only returns a status indicator, so we don't need to write a
-special encode() function.
+Fair enough.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfsd/nfs4proc.c | 36 ++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c  | 19 ++++++++++++++++++-
- fs/nfsd/vfs.c      | 23 +++++++++++++++++++++++
- fs/nfsd/vfs.h      |  2 ++
- fs/nfsd/xdr4.h     |  8 ++++++++
- 5 files changed, 87 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 0beb023..a261f18 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1014,6 +1014,36 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- }
- 
- static __be32
-+nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		struct nfsd4_fallocate *fallocate, int flags)
-+{
-+	__be32 status = nfserr_notsupp;
-+	struct file *file;
-+
-+	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
-+					    &fallocate->falloc_stateid,
-+					    WR_STATE, &file);
-+	if (status != nfs_ok) {
-+		dprintk("NFSD: nfsd4_fallocate: couldn't process stateid!\n");
-+		return status;
-+	}
-+
-+	status = nfsd4_vfs_fallocate(rqstp, &cstate->current_fh, file,
-+				     fallocate->falloc_offset,
-+				     fallocate->falloc_length,
-+				     flags);
-+	fput(file);
-+	return status;
-+}
-+
-+static __be32
-+nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+	       struct nfsd4_fallocate *fallocate)
-+{
-+	return nfsd4_fallocate(rqstp, cstate, fallocate, 0);
-+}
-+
-+static __be32
- nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_seek *seek)
- {
-@@ -1929,6 +1959,12 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 
- 	/* NFSv4.2 operations */
-+	[OP_ALLOCATE] = {
-+		.op_func = (nfsd4op_func)nfsd4_allocate,
-+		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-+		.op_name = "OP_ALLOCATE",
-+		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
-+	},
- 	[OP_SEEK] = {
- 		.op_func = (nfsd4op_func)nfsd4_seek,
- 		.op_name = "OP_SEEK",
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index eeea7a9..a60cff8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1514,6 +1514,23 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
- }
- 
- static __be32
-+nfsd4_decode_fallocate(struct nfsd4_compoundargs *argp,
-+		       struct nfsd4_fallocate *fallocate)
-+{
-+	DECODE_HEAD;
-+
-+	status = nfsd4_decode_stateid(argp, &fallocate->falloc_stateid);
-+	if (status)
-+		return status;
-+
-+	READ_BUF(16);
-+	p = xdr_decode_hyper(p, &fallocate->falloc_offset);
-+	xdr_decode_hyper(p, &fallocate->falloc_length);
-+
-+	DECODE_TAIL;
-+}
-+
-+static __be32
- nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
- {
- 	DECODE_HEAD;
-@@ -1604,7 +1621,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
- 
- 	/* new operations for NFSv4.2 */
--	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
- 	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_notsupp,
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 989129e..2157e79 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -16,6 +16,7 @@
- #include <linux/fs.h>
- #include <linux/file.h>
- #include <linux/splice.h>
-+#include <linux/falloc.h>
- #include <linux/fcntl.h>
- #include <linux/namei.h>
- #include <linux/delay.h>
-@@ -533,6 +534,28 @@ __be32 nfsd4_set_nfs4_label(struct svc_rqst *rqstp, struct svc_fh *fhp,
- }
- #endif
- 
-+__be32 nfsd4_vfs_fallocate(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+			   struct file *file, loff_t offset, loff_t len,
-+			   int flags)
-+{
-+	__be32 err;
-+	int error;
-+
-+	if (!S_ISREG(file_inode(file)->i_mode))
-+		return nfserr_inval;
-+
-+	err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry, NFSD_MAY_WRITE);
-+	if (err)
-+		return err;
-+
-+	error = vfs_fallocate(file, flags, offset, len);
-+	if (!error)
-+		error = commit_metadata(fhp);
-+
-+	if (error == -ENODEV)
-+		return nfserr_inval;
-+	return nfserrno(error);
-+}
- #endif /* defined(CONFIG_NFSD_V4) */
- 
- #ifdef CONFIG_NFSD_V3
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index c2ff3f1..7ffdb14 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -54,6 +54,8 @@ int nfsd_mountpoint(struct dentry *, struct svc_export *);
- #ifdef CONFIG_NFSD_V4
- __be32          nfsd4_set_nfs4_label(struct svc_rqst *, struct svc_fh *,
- 		    struct xdr_netobj *);
-+__be32		nfsd4_vfs_fallocate(struct svc_rqst *, struct svc_fh *,
-+				    struct file *, loff_t, loff_t, int);
- #endif /* CONFIG_NFSD_V4 */
- __be32		nfsd_create(struct svc_rqst *, struct svc_fh *,
- 				char *name, int len, struct iattr *attrs,
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 5720e94..eeaa0d0 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -428,6 +428,13 @@ struct nfsd4_reclaim_complete {
- 	u32 rca_one_fs;
- };
- 
-+struct nfsd4_fallocate {
-+	/* request */
-+	stateid_t	falloc_stateid;
-+	loff_t		falloc_offset;
-+	u64		falloc_length;
-+};
-+
- struct nfsd4_seek {
- 	/* request */
- 	stateid_t	seek_stateid;
-@@ -486,6 +493,7 @@ struct nfsd4_op {
- 		struct nfsd4_free_stateid	free_stateid;
- 
- 		/* NFSv4.2 */
-+		struct nfsd4_fallocate		allocate;
- 		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
--- 
-2.1.3
-
+Would be amusing if these tiny systems have it enabled.
