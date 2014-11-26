@@ -1,112 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44310 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56065 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751114AbaKZTN5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	id S1751156AbaKZTN5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
 	Wed, 26 Nov 2014 14:13:57 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDuFw004429
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDvEZ024968
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
 	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:57 -0500
 Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDuaL018423
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDuMj019773
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:56 -0500
+	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:57 -0500
 Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sAQJDuLI037712
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sAQJDuDN037717
 	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:56 -0500
 Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sAQJDtIB037710
-	for linux-nfs@vger.kernel.org; Wed, 26 Nov 2014 14:13:55 -0500
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sAQJDuTF037716
+	for linux-nfs@vger.kernel.org; Wed, 26 Nov 2014 14:13:56 -0500
 From: Scott Mayhew <smayhew@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v2 00/17] A few enhancements to mountstats.py
-Date: Wed, 26 Nov 2014 14:13:38 -0500
-Message-Id: <1417029235-37675-1-git-send-email-smayhew@redhat.com>
+Subject: [nfs-utils PATCH v2 01/17] mountstats: Fix up NFS event counters
+Date: Wed, 26 Nov 2014 14:13:39 -0500
+Message-Id: <1417029235-37675-2-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1417029235-37675-1-git-send-email-smayhew@redhat.com>
+References: <1417029235-37675-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Changes since v1:
+The event counters in the mountstats program aren't in sync with the
+event counters in the kernel.  Removed syncinodes and added
+vfsupdatepage, vfssetattr, congestionwait, pnfsreads, and pnfswrites.
 
-- Changed the parsing to use the argparse module instead of optparse
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ tools/mountstats/mountstats.py | 33 ++++++++++++++++++---------------
+ 1 file changed, 18 insertions(+), 15 deletions(-)
 
-- Added per-mountpoint headers to the output of 'mountstats --rpc'
-
-- Revamped the ms-nfsstat command to take a variable list of mountpoints
-  (so now mountstats, ms-iostat, and ms-nfsstat all behave in the same
-  manner).  Added -3 and -4 options which behave the same way they do in
-  nfsstat.c.  The output doesn't still doesn't match up 100% with that
-  of nfsstat.c though (I'm just taking the first 12 characters of the
-  operation name and converting them to lowercase to use as labels, while
-  nfsstat.c defines its own labels, but also it looks to me like nfsstat.c
-  is missing some operations altoegether).
-
-- Updated the man page for mountstats and added man pages for ms-iostat
-  and ms-nfsstat.
-
-These are also available in the 'mountstats-improvements-v2' branch at
-https://github.com/scottmayhew/nfs-utils.git
-
-Original cover letter:
-
--------------------8<------------------
-
-The following patches add a couple of enhancements to mountstats.py.  I
-also fixed a few bugs I encountered along the way.  Highlights include:
-
-- added support for -f/--file to allow stats to be parsed from an
-  aritrary input file instead of /proc/self/mountstats
-
-- added support for -S/--since to show just the changes that have
-  occurred between the current and a previous set of statisics (works
-  with and without the -f option)
-
-- added support for -R/--raw to generate 'raw' statistics (i.e. in the
-  same format as /proc/self/mountstats).  It's intended to be used with
-  the -f and -S options.
-
-- implemented the ms-nfsstat command to generate client-side
-  nfsstat-like statisics (only works with a single mountpoint)
-
-My motivation for these changes was so that I could take various copies
-of /proc/self/mountstats and massage them into data that I could feed
-into the 'report' option of Dros's nfsometer tool for scenarios where
-it's not feasible to run nfsometer itself (e.g. systems where we can't
-start with an 'idle' state (i.e. no NFS filesystems initially
-mounted), systems with multiple NFS filesystems mounted, and workloads
-that can't easily be boiled down into an nfsometer workload file or run
-via the custom workload environment variables).
-
-Scott Mayhew (17):
-  mountstats: Fix up NFS event counters
-  mountstats: Add lists of various counters
-  mountstats: Refactor __parse_nfs_line and __parse_rpc_line
-  mountstats: Refactor compare_iostats
-  mountstats: Convert existing option parsing to use the argparse module
-  mountstats: Make ms-iostat output match that of nfs-iostat.py
-  mountstats: Make print_iostat_summary handle newly appearing mounts
-  mountstats: Add support for -f/--file to the mountstats and ms-iostat
-    commands
-  mountstats: Add support for -S/--since to the mountstats and ms-iostat
-    commands
-  mountstats: Fix IndexError in __parse_nfs_line
-  mountstats: Allow mountstats_command to take a variable number of
-    mountpoints
-  mountstats: Add support for -R/--raw to mountstats_command
-  mountstats: Implement nfsstat_command
-  mountstats: Updated the mountstats(8) man page.
-  mountstats: Added man page for ms-iostat(8)
-  mountstats: Added man page for ms-nfsstat(8)
-  mountstats: add ms-iostat and ms-nfsstat to Makefile.am
-
- tools/mountstats/Makefile.am    |   4 +-
- tools/mountstats/mountstats.man |  45 +-
- tools/mountstats/mountstats.py  | 904 ++++++++++++++++++++++++++++------------
- tools/mountstats/ms-iostat.man  |  64 +++
- tools/mountstats/ms-nfsstat.man |  49 +++
- 5 files changed, 777 insertions(+), 289 deletions(-)
- create mode 100644 tools/mountstats/ms-iostat.man
- create mode 100644 tools/mountstats/ms-nfsstat.man
-
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index e6a456c..ab971a4 100644
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -73,25 +73,29 @@ class DeviceData:
+             self.__nfs_data['dentryrevalidates'] = int(words[2])
+             self.__nfs_data['datainvalidates'] = int(words[3])
+             self.__nfs_data['attrinvalidates'] = int(words[4])
+-            self.__nfs_data['syncinodes'] = int(words[5])
+-            self.__nfs_data['vfsopen'] = int(words[6])
+-            self.__nfs_data['vfslookup'] = int(words[7])
+-            self.__nfs_data['vfspermission'] = int(words[8])
++            self.__nfs_data['vfsopen'] = int(words[5])
++            self.__nfs_data['vfslookup'] = int(words[6])
++            self.__nfs_data['vfspermission'] = int(words[7])
++            self.__nfs_data['vfsupdatepage'] = int(words[8])
+             self.__nfs_data['vfsreadpage'] = int(words[9])
+             self.__nfs_data['vfsreadpages'] = int(words[10])
+             self.__nfs_data['vfswritepage'] = int(words[11])
+             self.__nfs_data['vfswritepages'] = int(words[12])
+             self.__nfs_data['vfsreaddir'] = int(words[13])
+-            self.__nfs_data['vfsflush'] = int(words[14])
+-            self.__nfs_data['vfsfsync'] = int(words[15])
+-            self.__nfs_data['vfslock'] = int(words[16])
+-            self.__nfs_data['vfsrelease'] = int(words[17])
+-            self.__nfs_data['setattrtrunc'] = int(words[18])
+-            self.__nfs_data['extendwrite'] = int(words[19])
+-            self.__nfs_data['sillyrenames'] = int(words[20])
+-            self.__nfs_data['shortreads'] = int(words[21])
+-            self.__nfs_data['shortwrites'] = int(words[22])
+-            self.__nfs_data['delay'] = int(words[23])
++            self.__nfs_data['vfssetattr'] = int(words[14])
++            self.__nfs_data['vfsflush'] = int(words[15])
++            self.__nfs_data['vfsfsync'] = int(words[16])
++            self.__nfs_data['vfslock'] = int(words[17])
++            self.__nfs_data['vfsrelease'] = int(words[18])
++            self.__nfs_data['congestionwait'] = int(words[19])
++            self.__nfs_data['setattrtrunc'] = int(words[20])
++            self.__nfs_data['extendwrite'] = int(words[21])
++            self.__nfs_data['sillyrenames'] = int(words[22])
++            self.__nfs_data['shortreads'] = int(words[23])
++            self.__nfs_data['shortwrites'] = int(words[24])
++            self.__nfs_data['delay'] = int(words[25])
++            self.__nfs_data['pnfsreads'] = int(words[26])
++            self.__nfs_data['pnfswrites'] = int(words[27])
+         elif words[0] == 'bytes:':
+             self.__nfs_data['normalreadbytes'] = int(words[1])
+             self.__nfs_data['normalwritebytes'] = int(words[2])
+@@ -201,7 +205,6 @@ class DeviceData:
+         print('Cache events:')
+         print('  data cache invalidated %d times' % self.__nfs_data['datainvalidates'])
+         print('  attribute cache invalidated %d times' % self.__nfs_data['attrinvalidates'])
+-        print('  inodes synced %d times' % self.__nfs_data['syncinodes'])
+         print()
+         print('VFS calls:')
+         print('  VFS requested %d inode revalidations' % self.__nfs_data['inoderevalidates'])
 -- 
 1.9.3
 
