@@ -1,153 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46465 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52499 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751156AbaKZTN6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Nov 2014 14:13:58 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDwWv027203
+	id S1751156AbaKZTN7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Nov 2014 14:13:59 -0500
+Received: from int-mx14.intmail.prod.int.phx2.redhat.com (int-mx14.intmail.prod.int.phx2.redhat.com [10.5.11.27])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDwCF018335
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:58 -0500
+	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:59 -0500
 Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDvDa010760
+	by int-mx14.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDvE0019790
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:57 -0500
+	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:58 -0500
 Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sAQJDvtB037725
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sAQJDvQv037729
 	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:57 -0500
 Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sAQJDvnX037724
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sAQJDvcf037728
 	for linux-nfs@vger.kernel.org; Wed, 26 Nov 2014 14:13:57 -0500
 From: Scott Mayhew <smayhew@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v2 03/17] mountstats: Refactor __parse_nfs_line and __parse_rpc_line
-Date: Wed, 26 Nov 2014 14:13:41 -0500
-Message-Id: <1417029235-37675-4-git-send-email-smayhew@redhat.com>
+Subject: [nfs-utils PATCH v2 04/17] mountstats: Refactor compare_iostats
+Date: Wed, 26 Nov 2014 14:13:42 -0500
+Message-Id: <1417029235-37675-5-git-send-email-smayhew@redhat.com>
 In-Reply-To: <1417029235-37675-1-git-send-email-smayhew@redhat.com>
 References: <1417029235-37675-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Iterate over the newly added counter lists instead of having a ton of
-assignment statements.
+Iterate over the newly added counters instead of using repeated
+assignment statements.  Also compute the difference of every counter
+where it makes sense -- this will allow support for -S/--since to be
+implemented in the future.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- tools/mountstats/mountstats.py | 92 +++++++++++-------------------------------
- 1 file changed, 23 insertions(+), 69 deletions(-)
+ tools/mountstats/mountstats.py | 25 +++++++++++++++++++------
+ 1 file changed, 19 insertions(+), 6 deletions(-)
 
 diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-index e36b9ef..5fe99b5 100644
+index 5fe99b5..f633bbc 100644
 --- a/tools/mountstats/mountstats.py
 +++ b/tools/mountstats/mountstats.py
-@@ -237,40 +237,18 @@ class DeviceData:
-             if self.__nfs_data['flavor'] == 6:
-                 self.__nfs_data['pseudoflavor'] = int(keys[1].split('=')[1])
-         elif words[0] == 'events:':
--            self.__nfs_data['inoderevalidates'] = int(words[1])
--            self.__nfs_data['dentryrevalidates'] = int(words[2])
--            self.__nfs_data['datainvalidates'] = int(words[3])
--            self.__nfs_data['attrinvalidates'] = int(words[4])
--            self.__nfs_data['vfsopen'] = int(words[5])
--            self.__nfs_data['vfslookup'] = int(words[6])
--            self.__nfs_data['vfspermission'] = int(words[7])
--            self.__nfs_data['vfsupdatepage'] = int(words[8])
--            self.__nfs_data['vfsreadpage'] = int(words[9])
--            self.__nfs_data['vfsreadpages'] = int(words[10])
--            self.__nfs_data['vfswritepage'] = int(words[11])
--            self.__nfs_data['vfswritepages'] = int(words[12])
--            self.__nfs_data['vfsreaddir'] = int(words[13])
--            self.__nfs_data['vfssetattr'] = int(words[14])
--            self.__nfs_data['vfsflush'] = int(words[15])
--            self.__nfs_data['vfsfsync'] = int(words[16])
--            self.__nfs_data['vfslock'] = int(words[17])
--            self.__nfs_data['vfsrelease'] = int(words[18])
--            self.__nfs_data['congestionwait'] = int(words[19])
--            self.__nfs_data['setattrtrunc'] = int(words[20])
--            self.__nfs_data['extendwrite'] = int(words[21])
--            self.__nfs_data['sillyrenames'] = int(words[22])
--            self.__nfs_data['shortreads'] = int(words[23])
--            self.__nfs_data['shortwrites'] = int(words[24])
--            self.__nfs_data['delay'] = int(words[25])
--            self.__nfs_data['pnfsreads'] = int(words[26])
--            self.__nfs_data['pnfswrites'] = int(words[27])
-+            i = 1
-+            for key in NfsEventCounters:
-+                try:
-+                    self.__nfs_data[key] = int(words[i])
-+                except IndexError as err:
-+                    self.__nfs_data[key] = 0
-+                i += 1
-         elif words[0] == 'bytes:':
--            self.__nfs_data['normalreadbytes'] = int(words[1])
--            self.__nfs_data['normalwritebytes'] = int(words[2])
--            self.__nfs_data['directreadbytes'] = int(words[3])
--            self.__nfs_data['directwritebytes'] = int(words[4])
--            self.__nfs_data['serverreadbytes'] = int(words[5])
--            self.__nfs_data['serverwritebytes'] = int(words[6])
-+            i = 1
-+            for key in NfsByteCounters:
-+                self.__nfs_data[key] = int(words[i])
-+                i += 1
+@@ -412,7 +412,11 @@ class DeviceData:
+     def compare_iostats(self, old_stats):
+         """Return the difference between two sets of stats
+         """
++        if old_stats.__nfs_data['age'] > self.__nfs_data['age']:
++            return self
++
+         result = DeviceData()
++        protocol = self.__rpc_data['protocol']
  
-     def __parse_rpc_line(self, words):
-         if words[0] == 'RPC':
-@@ -279,44 +257,20 @@ class DeviceData:
-         elif words[0] == 'xprt:':
-             self.__rpc_data['protocol'] = words[1]
-             if words[1] == 'udp':
--                self.__rpc_data['port'] = int(words[2])
--                self.__rpc_data['bind_count'] = int(words[3])
--                self.__rpc_data['rpcsends'] = int(words[4])
--                self.__rpc_data['rpcreceives'] = int(words[5])
--                self.__rpc_data['badxids'] = int(words[6])
--                self.__rpc_data['inflightsends'] = int(words[7])
--                self.__rpc_data['backlogutil'] = int(words[8])
-+                i = 2
-+                for key in XprtUdpCounters:
-+                    self.__rpc_data[key] = int(words[i])
-+                    i += 1
-             elif words[1] == 'tcp':
--                self.__rpc_data['port'] = words[2]
--                self.__rpc_data['bind_count'] = int(words[3])
--                self.__rpc_data['connect_count'] = int(words[4])
--                self.__rpc_data['connect_time'] = int(words[5])
--                self.__rpc_data['idle_time'] = int(words[6])
--                self.__rpc_data['rpcsends'] = int(words[7])
--                self.__rpc_data['rpcreceives'] = int(words[8])
--                self.__rpc_data['badxids'] = int(words[9])
--                self.__rpc_data['inflightsends'] = int(words[10])
--                self.__rpc_data['backlogutil'] = int(words[11])
-+                i = 2
-+                for key in XprtTcpCounters:
-+                    self.__rpc_data[key] = int(words[i])
-+                    i += 1
-             elif words[1] == 'rdma':
--                self.__rpc_data['port'] = words[2]
--                self.__rpc_data['bind_count'] = int(words[3])
--                self.__rpc_data['connect_count'] = int(words[4])
--                self.__rpc_data['connect_time'] = int(words[5])
--                self.__rpc_data['idle_time'] = int(words[6])
--                self.__rpc_data['rpcsends'] = int(words[7])
--                self.__rpc_data['rpcreceives'] = int(words[8])
--                self.__rpc_data['badxids'] = int(words[9])
--                self.__rpc_data['backlogutil'] = int(words[10])
--                self.__rpc_data['read_chunks'] = int(words[11])
--                self.__rpc_data['write_chunks'] = int(words[12])
--                self.__rpc_data['reply_chunks'] = int(words[13])
--                self.__rpc_data['total_rdma_req'] = int(words[14])
--                self.__rpc_data['total_rdma_rep'] = int(words[15])
--                self.__rpc_data['pullup'] = int(words[16])
--                self.__rpc_data['fixup'] = int(words[17])
--                self.__rpc_data['hardway'] = int(words[18])
--                self.__rpc_data['failed_marshal'] = int(words[19])
--                self.__rpc_data['bad_reply'] = int(words[20])
-+                i = 2
-+                for key in XprtRdmaCounters:
-+                    self.__rpc_data[key] = int(words[i])
-+                    i += 1
-         elif words[0] == 'per-op':
-             self.__rpc_data['per-op'] = words
-         else:
+         # copy self into result
+         for key, value in self.__nfs_data.items():
+@@ -427,12 +431,21 @@ class DeviceData:
+         for op in result.__rpc_data['ops']:
+             result.__rpc_data[op] = list(map(difference, self.__rpc_data[op], old_stats.__rpc_data[op]))
+ 
+-        # update the remaining keys we care about
+-        result.__rpc_data['rpcsends'] -= old_stats.__rpc_data['rpcsends']
+-        result.__rpc_data['backlogutil'] -= old_stats.__rpc_data['backlogutil']
+-        result.__nfs_data['serverreadbytes'] -= old_stats.__nfs_data['serverreadbytes']
+-        result.__nfs_data['serverwritebytes'] -= old_stats.__nfs_data['serverwritebytes']
+-
++        # update the remaining keys
++        if protocol == 'udp':
++            for key in XprtUdpCounters:
++                result.__rpc_data[key] -= old_stats.__rpc_data[key]
++        elif protocol == 'tcp':
++            for key in XprtTcpCounters:
++                result.__rpc_data[key] -= old_stats.__rpc_data[key]
++        elif protocol == 'rdma':
++            for key in XprtRdmaCounters:
++                result.__rpc_data[key] -= old_stats.__rpc_data[key]
++        result.__nfs_data['age'] -= old_stats.__nfs_data['age']
++        for key in NfsEventCounters:
++            result.__nfs_data[key] -= old_stats.__nfs_data[key]
++        for key in NfsByteCounters:
++            result.__nfs_data[key] -= old_stats.__nfs_data[key]
+         return result
+ 
+     def display_iostats(self, sample_time):
 -- 
 1.9.3
 
