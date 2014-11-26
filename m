@@ -1,85 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:63889 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44310 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751517AbaKTORr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Nov 2014 09:17:47 -0500
-Message-ID: <546DF808.1000905@Netapp.com>
-Date: Thu, 20 Nov 2014 09:17:44 -0500
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Jeff Layton <jeff.layton@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/10] sunrpc: fixes and cleanups for svc creation and
- thread handling
-References: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>	<20141119213758.GE14207@fieldses.org> <20141119165957.04e6e9c2@tlielax.poochiereds.net>
-In-Reply-To: <20141119165957.04e6e9c2@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="utf-8"
+	id S1751114AbaKZTN5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Nov 2014 14:13:57 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDuFw004429
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:57 -0500
+Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sAQJDuaL018423
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:56 -0500
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sAQJDuLI037712
+	for <linux-nfs@vger.kernel.org>; Wed, 26 Nov 2014 14:13:56 -0500
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sAQJDtIB037710
+	for linux-nfs@vger.kernel.org; Wed, 26 Nov 2014 14:13:55 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH v2 00/17] A few enhancements to mountstats.py
+Date: Wed, 26 Nov 2014 14:13:38 -0500
+Message-Id: <1417029235-37675-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/19/2014 04:59 PM, Jeff Layton wrote:
-> On Wed, 19 Nov 2014 16:37:58 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
->
->> On Wed, Nov 19, 2014 at 07:51:12AM -0500, Jeff Layton wrote:
->>> Patch #1 in this series is a bugfix, but probably isn't worth sending to
->>> stable. The rest are just cleanups in preparation for some other patches
->>> that I have queued up. Can you consider these for 3.19?
->> Sure, I've read through them, they look fine.
->>
->> When I tried to apply them to my for-3.19 there were rejects due to
->> tracing stuff in include/trace/events/sunrpc.h.  I haven't tried to
->> investigate yet.
->>
->> --b.
->>
-> Ahh yeah. These are based on top of the tracepoint patches I sent to
-> Trond a couple of weeks ago. I think he's planning to merge those in
-> 3.19 too, but I don't think he's done that yet. Anna may have though...
+Changes since v1:
 
-I have them in a private tree on my laptop that I use for testing.  Want me to push them out somewhere?
+- Changed the parsing to use the argparse module instead of optparse
 
-Anna
+- Added per-mountpoint headers to the output of 'mountstats --rpc'
 
->
->>> The main one that I'm hoping to send soon for v3.19 is the one to help
->>> reduce the pool->sp_lock contention on busy servers. I have some
->>> preliminary numbers that look pretty good, but one of our QA folks is
->>> working on getting some better ones from a more rigorous test. I'll
->>> send those along in a few days once I have those numbers.
->>>
->>> Jeff Layton (10):
->>>   sunrpc: release svc_pool_map reference when serv allocation fails
->>>   sunrpc: add a generic rq_flags field to svc_rqst and move rq_secure to
->>>     it
->>>   sunrpc: move rq_local field to rq_flags
->>>   sunrpc: move rq_usedeferral flag to rq_flags
->>>   sunrpc: move rq_dropme flag into rq_flags
->>>   sunrpc: move rq_splice_ok flag into rq_flags
->>>   sunrpc: move rq_cachetype field to better optimize space
->>>   sunrpc: convert sp_task_pending flag to use atomic bitops
->>>   sunrpc: have svc_wake_up only deal with pool 0
->>>   sunrpc: require svc_create callers to pass in meaningful shutdown
->>>     routine
->>>
->>>  fs/lockd/svc.c                    |  2 +-
->>>  fs/nfsd/nfs4proc.c                |  6 ++---
->>>  fs/nfsd/nfs4xdr.c                 |  8 +++---
->>>  fs/nfsd/nfscache.c                |  4 +--
->>>  fs/nfsd/nfsfh.c                   |  2 +-
->>>  fs/nfsd/nfssvc.c                  |  2 +-
->>>  fs/nfsd/vfs.c                     |  6 ++---
->>>  include/linux/sunrpc/svc.h        | 22 +++++++++--------
->>>  include/trace/events/sunrpc.h     | 24 +++++++++++++-----
->>>  net/sunrpc/auth_gss/svcauth_gss.c |  2 +-
->>>  net/sunrpc/svc.c                  | 23 +++++++++---------
->>>  net/sunrpc/svc_xprt.c             | 51 ++++++++++++++++++---------------------
->>>  net/sunrpc/svcsock.c              |  5 +++-
->>>  13 files changed, 85 insertions(+), 72 deletions(-)
->>>
->>> -- 
->>> 2.1.0
->>>
->
+- Revamped the ms-nfsstat command to take a variable list of mountpoints
+  (so now mountstats, ms-iostat, and ms-nfsstat all behave in the same
+  manner).  Added -3 and -4 options which behave the same way they do in
+  nfsstat.c.  The output doesn't still doesn't match up 100% with that
+  of nfsstat.c though (I'm just taking the first 12 characters of the
+  operation name and converting them to lowercase to use as labels, while
+  nfsstat.c defines its own labels, but also it looks to me like nfsstat.c
+  is missing some operations altoegether).
+
+- Updated the man page for mountstats and added man pages for ms-iostat
+  and ms-nfsstat.
+
+These are also available in the 'mountstats-improvements-v2' branch at
+https://github.com/scottmayhew/nfs-utils.git
+
+Original cover letter:
+
+-------------------8<------------------
+
+The following patches add a couple of enhancements to mountstats.py.  I
+also fixed a few bugs I encountered along the way.  Highlights include:
+
+- added support for -f/--file to allow stats to be parsed from an
+  aritrary input file instead of /proc/self/mountstats
+
+- added support for -S/--since to show just the changes that have
+  occurred between the current and a previous set of statisics (works
+  with and without the -f option)
+
+- added support for -R/--raw to generate 'raw' statistics (i.e. in the
+  same format as /proc/self/mountstats).  It's intended to be used with
+  the -f and -S options.
+
+- implemented the ms-nfsstat command to generate client-side
+  nfsstat-like statisics (only works with a single mountpoint)
+
+My motivation for these changes was so that I could take various copies
+of /proc/self/mountstats and massage them into data that I could feed
+into the 'report' option of Dros's nfsometer tool for scenarios where
+it's not feasible to run nfsometer itself (e.g. systems where we can't
+start with an 'idle' state (i.e. no NFS filesystems initially
+mounted), systems with multiple NFS filesystems mounted, and workloads
+that can't easily be boiled down into an nfsometer workload file or run
+via the custom workload environment variables).
+
+Scott Mayhew (17):
+  mountstats: Fix up NFS event counters
+  mountstats: Add lists of various counters
+  mountstats: Refactor __parse_nfs_line and __parse_rpc_line
+  mountstats: Refactor compare_iostats
+  mountstats: Convert existing option parsing to use the argparse module
+  mountstats: Make ms-iostat output match that of nfs-iostat.py
+  mountstats: Make print_iostat_summary handle newly appearing mounts
+  mountstats: Add support for -f/--file to the mountstats and ms-iostat
+    commands
+  mountstats: Add support for -S/--since to the mountstats and ms-iostat
+    commands
+  mountstats: Fix IndexError in __parse_nfs_line
+  mountstats: Allow mountstats_command to take a variable number of
+    mountpoints
+  mountstats: Add support for -R/--raw to mountstats_command
+  mountstats: Implement nfsstat_command
+  mountstats: Updated the mountstats(8) man page.
+  mountstats: Added man page for ms-iostat(8)
+  mountstats: Added man page for ms-nfsstat(8)
+  mountstats: add ms-iostat and ms-nfsstat to Makefile.am
+
+ tools/mountstats/Makefile.am    |   4 +-
+ tools/mountstats/mountstats.man |  45 +-
+ tools/mountstats/mountstats.py  | 904 ++++++++++++++++++++++++++++------------
+ tools/mountstats/ms-iostat.man  |  64 +++
+ tools/mountstats/ms-nfsstat.man |  49 +++
+ 5 files changed, 777 insertions(+), 289 deletions(-)
+ create mode 100644 tools/mountstats/ms-iostat.man
+ create mode 100644 tools/mountstats/ms-nfsstat.man
+
+-- 
+1.9.3
 
