@@ -1,67 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:64071 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758212AbaKUKJJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Nov 2014 05:09:09 -0500
-Received: by mail-pa0-f52.google.com with SMTP id eu11so4534917pac.25
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Nov 2014 02:09:08 -0800 (PST)
-From: Omar Sandoval <osandov@osandov.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
-        Josef Bacik <jbacik@fb.com>, linux-btrfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Mel Gorman <mgorman@suse.de>
-Cc: Omar Sandoval <osandov@osandov.com>
-Subject: [PATCH v2 2/5] nfs: don't dirty ITER_BVEC pages read through direct I/O
-Date: Fri, 21 Nov 2014 02:08:28 -0800
-Message-Id: <6f2a9d098e9b558cf551aa32f668d5eb95c96406.1416563833.git.osandov@osandov.com>
-In-Reply-To: <cover.1416563833.git.osandov@osandov.com>
-References: <cover.1416563833.git.osandov@osandov.com>
-In-Reply-To: <cover.1416563833.git.osandov@osandov.com>
-References: <cover.1416563833.git.osandov@osandov.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42822 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750812AbaK0ODA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Nov 2014 09:03:00 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sARE2xE4018400
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Nov 2014 09:02:59 -0500
+Received: from smallhat.boston.devel.redhat.com (vpn-50-108.rdu2.redhat.com [10.10.50.108])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sARE2xM6021315
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Nov 2014 09:02:59 -0500
+Message-ID: <54772F12.4030906@RedHat.com>
+Date: Thu, 27 Nov 2014 09:02:58 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Today's Linux NFS town hall  meeting 11/27/14 (Cancelled)
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As with the generic blockdev code, kernel pages shouldn't be dirtied by the
-direct I/O path.
 
-Signed-off-by: Omar Sandoval <osandov@osandov.com>
----
- fs/nfs/direct.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+Sorry for the late notice.... 
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 10bf072..a67fa2c 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -88,6 +88,7 @@ struct nfs_direct_req {
- 	struct pnfs_ds_commit_info ds_cinfo;	/* Storage for cinfo */
- 	struct work_struct	work;
- 	int			flags;
-+	int			should_dirty;	/* should we mark read pages dirty? */
- #define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
- #define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
- 	struct nfs_writeverf	verf;		/* unstable write verifier */
-@@ -370,7 +371,8 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
- 		struct page *page = req->wb_page;
- 
--		if (!PageCompound(page) && bytes < hdr->good_bytes)
-+		if (!PageCompound(page) && bytes < hdr->good_bytes &&
-+		    dreq->should_dirty)
- 			set_page_dirty(page);
- 		bytes += req->wb_bytes;
- 		nfs_list_remove_request(req);
-@@ -542,6 +544,7 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, struct iov_iter *iter,
- 	dreq->inode = inode;
- 	dreq->bytes_left = count;
- 	dreq->ctx = get_nfs_open_context(nfs_file_open_context(iocb->ki_filp));
-+	dreq->should_dirty = !(iter->type & ITER_BVEC);
- 	l_ctx = nfs_get_lock_context(dreq->ctx);
- 	if (IS_ERR(l_ctx)) {
- 		result = PTR_ERR(l_ctx);
--- 
-2.1.3
+steved.
 
