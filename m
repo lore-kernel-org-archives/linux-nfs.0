@@ -1,96 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-3.desy.de ([131.169.56.156]:35167 "EHLO smtp-o-3.desy.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751030AbaLHNpz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Dec 2014 08:45:55 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 6CCFC2808BE
-	for <linux-nfs@vger.kernel.org>; Mon,  8 Dec 2014 14:37:30 +0100 (CET)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 5FB3C13E81
-	for <linux-nfs@vger.kernel.org>; Mon,  8 Dec 2014 14:37:29 +0100 (MET)
-From: tigran.mkrtchyan@desy.de
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:43291 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753411AbaLASpb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2014 13:45:31 -0500
+Received: by mail-qg0-f47.google.com with SMTP id z60so8004235qgd.6
+        for <linux-nfs@vger.kernel.org>; Mon, 01 Dec 2014 10:45:30 -0800 (PST)
+From: Jeff Layton <jlayton@primarydata.com>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] nfs4lib: add test name as a compound tag
-Date: Mon,  8 Dec 2014 14:37:26 +0100
-Message-Id: <1418045846-2884-1-git-send-email-tigran.mkrtchyan@desy.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] sunrpc: only call test_bit once in svc_xprt_received
+Date: Mon,  1 Dec 2014 13:45:24 -0500
+Message-Id: <1417459524-9086-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+...move the WARN_ON_ONCE inside the following if block since they use
+the same condition.
 
-allowes to easy trace tests, e.q: [st_verify.py:_try_mand]
-
-a similar fix as 2b41c3e, but for 4.0. Introdces a bit
-of code duplication, but this is forced by test suite structure.
-
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- nfs4.0/nfs4lib.py    | 18 +++++++++++++++++-
- nfs4.1/nfs4client.py |  3 ++-
- 2 files changed, 19 insertions(+), 2 deletions(-)
+ net/sunrpc/svc_xprt.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
-index 0a20498..34a1d23 100644
---- a/nfs4.0/nfs4lib.py
-+++ b/nfs4.0/nfs4lib.py
-@@ -40,6 +40,8 @@ import struct
- import socket
- import sys
- import re
-+import inspect
-+from os.path import basename
- 
- class NFSException(rpc.RPCError):
-     pass
-@@ -320,8 +322,13 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
-         """Make COMPOUND procedure call"""
-         if type(argarray) is not list:
-             raise "Need list for argarray"
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 0ae1d78d934d..40ecda40c2ec 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -220,9 +220,11 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+  */
+ static void svc_xprt_received(struct svc_xprt *xprt)
+ {
+-	WARN_ON_ONCE(!test_bit(XPT_BUSY, &xprt->xpt_flags));
+-	if (!test_bit(XPT_BUSY, &xprt->xpt_flags))
++	if (!test_bit(XPT_BUSY, &xprt->xpt_flags)) {
++		WARN_ONCE(1, "xprt=0x%p already busy!", xprt);
+ 		return;
++	}
 +
-+        if len(tag) == 0:
-+            compound_tag = self.create_tag()
-+        else:
-+            compound_tag = tag
-         # Make the actual call
--        compoundargs = COMPOUND4args(argarray=argarray, tag=tag,
-+        compoundargs = COMPOUND4args(argarray=argarray, tag=compound_tag,
-                                      minorversion=minorversion)
-         if SHOW_TRAFFIC:
-             print
-@@ -374,6 +381,15 @@ class NFS4Client(rpc.RPCClient, nfs4_ops.NFS4Operations):
- 
-         return res
- 
-+    def create_tag(self):
-+        current_module = inspect.getmodule(inspect.currentframe().f_back)
-+        current_stack = inspect.stack()
-+        stackid = 0
-+        while current_module == inspect.getmodule(current_stack[stackid][0]):
-+              stackid = stackid + 1
-+        test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
-+        return test_name
-+
-     def init_connection(self, id=None, verifier=None, cb_ident=None):
-         """Do setclientid/setclientidconfirm combination"""
-         # SETCLIENTID
-diff --git a/nfs4.1/nfs4client.py b/nfs4.1/nfs4client.py
-index 9ffe310..fcf178c 100644
---- a/nfs4.1/nfs4client.py
-+++ b/nfs4.1/nfs4client.py
-@@ -298,9 +298,10 @@ class NFS4Client(rpc.Client, rpc.Server):
-         return s
- 
-     def create_tag(self):
-+        current_module = inspect.getmodule(inspect.currentframe().f_back)
-         current_stack = inspect.stack()
-         stackid = 0
--        while basename(current_stack[stackid][1]) == 'environment.py' or basename(current_stack[stackid][1]) == 'nfs4client.py':
-+        while current_module == inspect.getmodule(current_stack[stackid][0]):
-               stackid = stackid + 1
-         test_name = '%s:%s' % (basename(current_stack[stackid][1]), current_stack[stackid][3])
-         return test_name
+ 	/* As soon as we clear busy, the xprt could be closed and
+ 	 * 'put', so we need a reference to call svc_xprt_do_enqueue with:
+ 	 */
 -- 
-1.9.3
+2.1.0
 
