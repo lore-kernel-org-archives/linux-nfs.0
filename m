@@ -1,143 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:20308 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754325AbaLBRVE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 2 Dec 2014 12:21:04 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.6\))
-Subject: Re: [nfs-utils PATCH v2 00/17] A few enhancements to mountstats.py
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1417029235-37675-1-git-send-email-smayhew@redhat.com>
-Date: Tue, 2 Dec 2014 12:20:57 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <7AB38ECF-9B0B-4E0D-ADE9-A3DA4783C2CF@oracle.com>
-References: <1417029235-37675-1-git-send-email-smayhew@redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:55449 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932094AbaLATu0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Dec 2014 14:50:26 -0500
+Date: Mon, 1 Dec 2014 14:50:21 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd: implement chage_attr_type attribute
+Message-ID: <20141201195021.GB30001@fieldses.org>
+References: <1415448664-25815-1-git-send-email-hch@lst.de>
+ <1415448664-25815-3-git-send-email-hch@lst.de>
+ <20141110175424.GC32702@fieldses.org>
+ <20141111102735.GB17313@lst.de>
+ <20141111214205.GG20062@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141111214205.GG20062@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Scott-
+On Tue, Nov 11, 2014 at 04:42:06PM -0500, J. Bruce Fields wrote:
+> On Tue, Nov 11, 2014 at 11:27:35AM +0100, Christoph Hellwig wrote:
+> > On Mon, Nov 10, 2014 at 12:54:24PM -0500, J. Bruce Fields wrote:
+> > > Shouldn't that be NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR?
+> > > 
+> > > The draft says that e.g. "If the client sees
+> > > NFS4_CHANGE_TYPE_IS_VERSION_COUNTER, it has the ability to predict what
+> > > the resulting change attribute value should be after a COMPOUND
+> > > containing a SETATTR, WRITE, or CREATE."
+> > > 
+> > > Admittedly, I'm not completely sure what that means.  (Is a SETATTR of
+> > > multiple attributes a single atomic change?  Can we predict the change
+> > > attribute on a newly created file, or only on the parent directory?)  I
+> > > also don't know where the filesystems do the i_version increment (can we
+> > > guarantee it happens once per nfs WRITE?).
+> > 
+> > Actually the server may increment it many times for a single WRITE,
+> > for XFS it is incremented for each dirty transaction, which could
+> > happen many times during a single write:
+> > 
+> >  (1) c/mtime update
+> >  (2) suid/sgid bit removal
+> >  (3) block allocation (could be multiple transactions)
+> > 
+> > 
+> > So I guess we really should move to NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR
+> > instead.
+> 
+> I'm applying your patch for 3.19 with that one-line change.
 
-On Nov 26, 2014, at 2:13 PM, Scott Mayhew <smayhew@redhat.com> wrote:
+Actually, I'm having second thoughts given that there still seems to be
+some argument about whether the change_attr_type thing is completely
+right.  Maybe that only affects values other than
+CHANGE_TYPE_IS_MONOTIC_INCR, but is there any urgency if we don't have a
+client user for it yet?
 
-> Changes since v1:
-> 
-> - Changed the parsing to use the argparse module instead of optparse
-> 
-> - Added per-mountpoint headers to the output of 'mountstats --rpc'
-> 
-> - Revamped the ms-nfsstat command to take a variable list of mountpoints
->  (so now mountstats, ms-iostat, and ms-nfsstat all behave in the same
->  manner).  Added -3 and -4 options which behave the same way they do in
->  nfsstat.c.  The output doesn't still doesn't match up 100% with that
->  of nfsstat.c though (I'm just taking the first 12 characters of the
->  operation name and converting them to lowercase to use as labels, while
->  nfsstat.c defines its own labels, but also it looks to me like nfsstat.c
->  is missing some operations altoegether).
-> 
-> - Updated the man page for mountstats and added man pages for ms-iostat
->  and ms-nfsstat.
-> 
-> These are also available in the 'mountstats-improvements-v2' branch at
-> https://github.com/scottmayhew/nfs-utils.git
-
-Tried this out. The features I normally use seem to be
-working OK.
-
-It appears that python-argparse is not installed by
-default on some systems. That would have to be added
-as an RPM dependency. No big deal, but it might be
-nice to add exception processing in the scripts to deal
-with not finding it (print a polite error message
-instead of spewing a backtrace).
-
-A couple of nits with the man pages:
-
-Filenames (like /proc/self/mountstats) are typically
-italicized.
-
-In the synopses, the closing square brace is unmatched.
-Either use just an ellipsis, or add a matching opening
-brace. Have a look at how this is done in other man
-pages.
-
-At this point I wouldn’t call it a full “review” or
-“test” but I’ll keep playing with it. I don’t have any
-objection to merging these, and you could address my
-nit-picks with subsequent patches if you want.
-
-> Original cover letter:
-> 
-> -------------------8<------------------
-> 
-> The following patches add a couple of enhancements to mountstats.py.  I
-> also fixed a few bugs I encountered along the way.  Highlights include:
-> 
-> - added support for -f/--file to allow stats to be parsed from an
->  aritrary input file instead of /proc/self/mountstats
-> 
-> - added support for -S/--since to show just the changes that have
->  occurred between the current and a previous set of statisics (works
->  with and without the -f option)
-> 
-> - added support for -R/--raw to generate 'raw' statistics (i.e. in the
->  same format as /proc/self/mountstats).  It's intended to be used with
->  the -f and -S options.
-> 
-> - implemented the ms-nfsstat command to generate client-side
->  nfsstat-like statisics (only works with a single mountpoint)
-> 
-> My motivation for these changes was so that I could take various copies
-> of /proc/self/mountstats and massage them into data that I could feed
-> into the 'report' option of Dros's nfsometer tool for scenarios where
-> it's not feasible to run nfsometer itself (e.g. systems where we can't
-> start with an 'idle' state (i.e. no NFS filesystems initially
-> mounted), systems with multiple NFS filesystems mounted, and workloads
-> that can't easily be boiled down into an nfsometer workload file or run
-> via the custom workload environment variables).
-> 
-> Scott Mayhew (17):
->  mountstats: Fix up NFS event counters
->  mountstats: Add lists of various counters
->  mountstats: Refactor __parse_nfs_line and __parse_rpc_line
->  mountstats: Refactor compare_iostats
->  mountstats: Convert existing option parsing to use the argparse module
->  mountstats: Make ms-iostat output match that of nfs-iostat.py
->  mountstats: Make print_iostat_summary handle newly appearing mounts
->  mountstats: Add support for -f/--file to the mountstats and ms-iostat
->    commands
->  mountstats: Add support for -S/--since to the mountstats and ms-iostat
->    commands
->  mountstats: Fix IndexError in __parse_nfs_line
->  mountstats: Allow mountstats_command to take a variable number of
->    mountpoints
->  mountstats: Add support for -R/--raw to mountstats_command
->  mountstats: Implement nfsstat_command
->  mountstats: Updated the mountstats(8) man page.
->  mountstats: Added man page for ms-iostat(8)
->  mountstats: Added man page for ms-nfsstat(8)
->  mountstats: add ms-iostat and ms-nfsstat to Makefile.am
-> 
-> tools/mountstats/Makefile.am    |   4 +-
-> tools/mountstats/mountstats.man |  45 +-
-> tools/mountstats/mountstats.py  | 904 ++++++++++++++++++++++++++++------------
-> tools/mountstats/ms-iostat.man  |  64 +++
-> tools/mountstats/ms-nfsstat.man |  49 +++
-> 5 files changed, 777 insertions(+), 289 deletions(-)
-> create mode 100644 tools/mountstats/ms-iostat.man
-> create mode 100644 tools/mountstats/ms-nfsstat.man
-> 
-> -- 
-> 1.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+--b.
