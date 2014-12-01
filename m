@@ -1,103 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37590 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:48047 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751940AbaLIOmm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 9 Dec 2014 09:42:42 -0500
-Date: Tue, 9 Dec 2014 09:42:41 -0500
+	id S1754026AbaLAWoJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Dec 2014 17:44:09 -0500
+Date: Mon, 1 Dec 2014 17:44:07 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-Cc: linux-nfs@vger.kernel.org, "David S. Miller" <davem@davemloft.net>
-Subject: Re: [PATCH v1] sunrpc/cache: convert to use string_escape_str()
-Message-ID: <20141209144241.GB20526@fieldses.org>
-References: <1417189828-25688-1-git-send-email-andriy.shevchenko@linux.intel.com>
- <20141208223852.GA20526@fieldses.org>
- <1418117049.17201.51.camel@linux.intel.com>
+To: Jeff Layton <jlayton@primarydata.com>
+Cc: Chris Worley <chris.worley@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/4] sunrpc: add a rcu_head to svc_rqst and use kfree_rcu
+ to free it
+Message-ID: <20141201224407.GD30749@fieldses.org>
+References: <1416597571-4265-1-git-send-email-jlayton@primarydata.com>
+ <1416597571-4265-2-git-send-email-jlayton@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1418117049.17201.51.camel@linux.intel.com>
+In-Reply-To: <1416597571-4265-2-git-send-email-jlayton@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 09, 2014 at 11:24:09AM +0200, Andy Shevchenko wrote:
-> On Mon, 2014-12-08 at 17:38 -0500, J. Bruce Fields wrote:
-> > On Fri, Nov 28, 2014 at 05:50:28PM +0200, Andy Shevchenko wrote:
-> > > There is nice kernel helper to escape a given strings by provided rules. Let's
-> > > use it instead of custom approach.
-> > 
-> > Looks good, but it broke nfsd.
-> > 
-> > After staring at the patch for a while:
+On Fri, Nov 21, 2014 at 02:19:28PM -0500, Jeff Layton wrote:
+> ...also make the manipulation of sp_all_threads list use RCU-friendly
+> functions.
 > 
-> > > Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
-> > > ---
-> > >  net/sunrpc/cache.c | 27 ++++++---------------------
-> > >  1 file changed, 6 insertions(+), 21 deletions(-)
-> > > 
-> > > diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-> > > index 0663621..5cf60a4 100644
-> > > --- a/net/sunrpc/cache.c
-> > > +++ b/net/sunrpc/cache.c
-> > > @@ -20,6 +20,7 @@
-> > >  #include <linux/list.h>
-> > >  #include <linux/module.h>
-> > >  #include <linux/ctype.h>
-> > > +#include <linux/string_helpers.h>
-> > >  #include <asm/uaccess.h>
-> > >  #include <linux/poll.h>
-> > >  #include <linux/seq_file.h>
-> > > @@ -1067,32 +1068,16 @@ void qword_add(char **bpp, int *lp, char *str)
-> > >  {
-> > >  	char *bp = *bpp;
-> > >  	int len = *lp;
-> > > -	char c;
-> > > +	int ret;
-> > >  
-> > >  	if (len < 0) return;
-> > >  
-> > > -	while ((c=*str++) && len)
-> > > -		switch(c) {
-> > > -		case ' ':
-> > > -		case '\t':
-> > > -		case '\n':
-> > > -		case '\\':
-> > > -			if (len >= 4) {
-> > > -				*bp++ = '\\';
-> > > -				*bp++ = '0' + ((c & 0300)>>6);
-> > > -				*bp++ = '0' + ((c & 0070)>>3);
-> > > -				*bp++ = '0' + ((c & 0007)>>0);
-> > > -			}
-> > > -			len -= 4;
-> > > -			break;
-> > > -		default:
-> > > -			*bp++ = c;
-> > > -			len--;
-> > > -		}
-> > > -	if (c || len <1) len = -1;
-> > > +	ret = string_escape_str(str, &bp, len, ESCAPE_OCTAL, "\\ \n\t");
-> > > +	if (ret < 0 || ret == len)
-> > > +		len = -1;
-> > >  	else {
-> > >  		*bp++ = ' ';
-> > > -		len--;
-> > > +		len -= ret - 1;
-> > 
-> > Looks like that should be ret + 1, not ret - 1.  With that change,
-> > things work.
-> > 
-> > Inclined to actually commit that as:
-> > 
-> > 	len -= ret;
-> > 	*bp++ = ' ';
-> > 	len--;
-> > 
-> > just to make the arithmetic really obvious.
-> > 
-> > --b.
+> Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+> Tested-by: Chris Worley <chris.worley@primarydata.com>
+> ---
+>  include/linux/sunrpc/svc.h    |  2 ++
+>  include/trace/events/sunrpc.h |  3 ++-
+>  net/sunrpc/svc.c              | 10 ++++++----
+>  3 files changed, 10 insertions(+), 5 deletions(-)
 > 
-> Good catch, thanks! It should decrement length indeed. In the form of -=
-> it must be + 1. Shall I resubmit patch? If so, can I include your tag
-> (Tested-by I suppose) ?
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 5f0ab39bf7c3..7f80a99c59e4 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -223,6 +223,7 @@ static inline void svc_putu32(struct kvec *iov, __be32 val)
+>  struct svc_rqst {
+>  	struct list_head	rq_list;	/* idle list */
+>  	struct list_head	rq_all;		/* all threads list */
+> +	struct rcu_head		rq_rcu_head;	/* for RCU deferred kfree */
+>  	struct svc_xprt *	rq_xprt;	/* transport ptr */
+>  
+>  	struct sockaddr_storage	rq_addr;	/* peer address */
+> @@ -262,6 +263,7 @@ struct svc_rqst {
+>  #define	RQ_SPLICE_OK	(4)			/* turned off in gss privacy
+>  						 * to prevent encrypting page
+>  						 * cache pages */
+> +#define	RQ_VICTIM	(5)			/* about to be shut down */
+>  	unsigned long		rq_flags;	/* flags field */
+>  
+>  	void *			rq_argp;	/* decoded arguments */
+> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+> index 5848fc235869..08a5fed50f34 100644
+> --- a/include/trace/events/sunrpc.h
+> +++ b/include/trace/events/sunrpc.h
+> @@ -418,7 +418,8 @@ TRACE_EVENT(xs_tcp_data_recv,
+>  		{ (1UL << RQ_LOCAL),		"RQ_LOCAL"},		\
+>  		{ (1UL << RQ_USEDEFERRAL),	"RQ_USEDEFERRAL"},	\
+>  		{ (1UL << RQ_DROPME),		"RQ_DROPME"},		\
+> -		{ (1UL << RQ_SPLICE_OK),	"RQ_SPLICE_OK"})
+> +		{ (1UL << RQ_SPLICE_OK),	"RQ_SPLICE_OK"},	\
+> +		{ (1UL << RQ_VICTIM),		"RQ_VICTIM"})
+>  
+>  TRACE_EVENT(svc_recv,
+>  	TP_PROTO(struct svc_rqst *rqst, int status),
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 5d9a443d21f6..4edef32f3b9f 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -616,7 +616,7 @@ svc_prepare_thread(struct svc_serv *serv, struct svc_pool *pool, int node)
+>  	serv->sv_nrthreads++;
+>  	spin_lock_bh(&pool->sp_lock);
+>  	pool->sp_nrthreads++;
+> -	list_add(&rqstp->rq_all, &pool->sp_all_threads);
+> +	list_add_rcu(&rqstp->rq_all, &pool->sp_all_threads);
+>  	spin_unlock_bh(&pool->sp_lock);
+>  	rqstp->rq_server = serv;
+>  	rqstp->rq_pool = pool;
+> @@ -684,7 +684,8 @@ found_pool:
+>  		 * so we don't try to kill it again.
+>  		 */
+>  		rqstp = list_entry(pool->sp_all_threads.next, struct svc_rqst, rq_all);
+> -		list_del_init(&rqstp->rq_all);
+> +		set_bit(RQ_VICTIM, &rqstp->rq_flags);
+> +		list_del_rcu(&rqstp->rq_all);
+>  		task = rqstp->rq_task;
+>  	}
+>  	spin_unlock_bh(&pool->sp_lock);
+> @@ -782,10 +783,11 @@ svc_exit_thread(struct svc_rqst *rqstp)
+>  
+>  	spin_lock_bh(&pool->sp_lock);
+>  	pool->sp_nrthreads--;
+> -	list_del(&rqstp->rq_all);
+> +	if (!test_and_set_bit(RQ_VICTIM, &rqstp->rq_flags))
+> +		list_del_rcu(&rqstp->rq_all);
 
-I'll fix it up, thanks.
+Both users of RQ_VICTIM are under the sp_lock, so we don't really need
+an atomic test_and_set_bit, do we?
+
+But I guess svc_exit_thread probably still needs to check for the case
+where it's called on a thread that svc_set_num_threads has already
+chosen, and this works even if it's overkill.  OK, fine.
 
 --b.
+
+>  	spin_unlock_bh(&pool->sp_lock);
+>  
+> -	kfree(rqstp);
+> +	kfree_rcu(rqstp, rq_rcu_head);
+>  
+>  	/* Release the server */
+>  	if (serv)
+> -- 
+> 2.1.0
+> 
