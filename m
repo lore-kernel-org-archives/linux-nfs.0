@@ -1,67 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48824 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:52685 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752596AbaLAKRM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 1 Dec 2014 05:17:12 -0500
-From: David Howells <dhowells@redhat.com>
-To: jmorris@namei.org
-cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
-        linux-security-module@vger.kernel.org, keyrings@linux-nfs.org,
-        linux-kernel@vger.kernel.org
-Subject: [GIT PULL] Keyrings (& NFS) fixes
+	id S932150AbaLAT4k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Dec 2014 14:56:40 -0500
+Date: Mon, 1 Dec 2014 14:56:37 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Jeff Layton <jeff.layton@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/10] sunrpc: fixes and cleanups for svc creation and
+ thread handling
+Message-ID: <20141201195636.GC30001@fieldses.org>
+References: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>
+ <20141119213758.GE14207@fieldses.org>
+ <20141119165957.04e6e9c2@tlielax.poochiereds.net>
+ <546DF808.1000905@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Mon, 01 Dec 2014 10:17:01 +0000
-Message-ID: <12126.1417429021@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <546DF808.1000905@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi James,
+On Thu, Nov 20, 2014 at 09:17:44AM -0500, Anna Schumaker wrote:
+> On 11/19/2014 04:59 PM, Jeff Layton wrote:
+> > On Wed, 19 Nov 2014 16:37:58 -0500
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> >
+> >> On Wed, Nov 19, 2014 at 07:51:12AM -0500, Jeff Layton wrote:
+> >>> Patch #1 in this series is a bugfix, but probably isn't worth sending to
+> >>> stable. The rest are just cleanups in preparation for some other patches
+> >>> that I have queued up. Can you consider these for 3.19?
+> >> Sure, I've read through them, they look fine.
+> >>
+> >> When I tried to apply them to my for-3.19 there were rejects due to
+> >> tracing stuff in include/trace/events/sunrpc.h.  I haven't tried to
+> >> investigate yet.
+> >>
+> >> --b.
+> >>
+> > Ahh yeah. These are based on top of the tracepoint patches I sent to
+> > Trond a couple of weeks ago. I think he's planning to merge those in
+> > 3.19 too, but I don't think he's done that yet. Anna may have though...
+> 
+> I have them in a private tree on my laptop that I use for testing.  Want me to push them out somewhere?
 
-Can you pass these patches on to Linus please?
+That'd help me at least test, but we need something more than a
+temporary testing branch to get ready for the merge window.  Choices
+include:
 
-The first one fixes the handling of maximum buffer size for key descriptions,
-fixing the size at 4095 + NUL char rather than whatever PAGE_SIZE happens to
-be and permits you to read back the full description without it getting
-clipped because some extra information got prepended.
+	- Trond merges them all now, I pull that and apply these on top.
+	- I merge them instead, or we divide the patches between us
+	  somehow.  Worst case, it's probably even OK if there's a patch
+	  or two that we both apply.
 
-The second and third fix a bug in NFS idmapper handling whereby a key
-representing a mapping between an id and a name expires and causing
-EKEYEXPIRED to be seen internally in NFS (which prevents the mapping from
-happening) rather than re-looking up the mapping.
+In any case we need to get that sorted out now-ish as the merge window's
+probably starting next week.
 
-Thanks,
-David
----
-The following changes since commit a6aacbde406eeb6f8fc218b2c6172825f5e73fcf:
-
-  Merge branch 'next' of git://git.kernel.org/pub/scm/linux/kernel/git/zohar/linux-integrity into next (2014-11-19 21:36:07 +1100)
-
-are available in the git repository at:
-
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/keys-fixes-20141121
-
-for you to fetch changes up to 15761d91a57e3ff8032e31c5d82bf7836f6a1b20:
-
-  KEYS: request_key() should reget expired keys rather than give EKEYEXPIRED (2014-11-20 13:38:17 +0000)
-
-----------------------------------------------------------------
-(from the branch description for keys-fixes local branch)
-
-Keyrings fixes
-Keyrings fixes
-
-----------------------------------------------------------------
-David Howells (3):
-      KEYS: Fix the size of the key description passed to/from userspace
-      KEYS: Simplify KEYRING_SEARCH_{NO,DO}_STATE_CHECK flags
-      KEYS: request_key() should reget expired keys rather than give EKEYEXPIRED
-
- security/keys/internal.h         |  1 +
- security/keys/keyctl.c           | 56 +++++++++++++++++++---------------------
- security/keys/keyring.c          | 10 ++++---
- security/keys/request_key.c      |  2 ++
- security/keys/request_key_auth.c |  1 +
- 5 files changed, 36 insertions(+), 34 deletions(-)
-
+--b.
