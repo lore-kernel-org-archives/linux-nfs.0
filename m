@@ -1,76 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37386 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:47463 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752326AbaLCNzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 3 Dec 2014 08:55:24 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sB3DtNqk030072
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Wed, 3 Dec 2014 08:55:24 -0500
-Received: from smallhat.boston.devel.redhat.com (vpn-56-57.rdu2.redhat.com [10.10.56.57])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sB3DtM9a019298
-	for <linux-nfs@vger.kernel.org>; Wed, 3 Dec 2014 08:55:23 -0500
-Message-ID: <547F164A.5000503@RedHat.com>
-Date: Wed, 03 Dec 2014 08:55:22 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1753689AbaLASSa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 1 Dec 2014 13:18:30 -0500
+Date: Mon, 1 Dec 2014 19:18:28 +0100
+From: David Sterba <dsterba@suse.cz>
+To: Omar Sandoval <osandov@osandov.com>
+Cc: Filipe David Manana <fdmanana@gmail.com>, David Sterba <dsterba@suse.cz>,
+        linux-btrfs@vger.kernel.org, Alexander Viro <viro@zeniv.linux.org.uk>,
+        Andrew Morton <akpm@linux-foundation.org>, Chris Mason <clm@fb.com>,
+        Josef Bacik <jbacik@fb.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Mel Gorman <mgorman@suse.de>
+Subject: Re: [PATCH v2 5/5] btrfs: enable swap file support
+Message-ID: <20141201181828.GL12140@twin.jikos.cz>
+Reply-To: dsterba@suse.cz
+References: <cover.1416563833.git.osandov@osandov.com>
+ <afd3c1009172a4a1cfa10e73a64caf35c631a6d4.1416563833.git.osandov@osandov.com>
+ <20141121180045.GF8568@twin.jikos.cz>
+ <20141122200357.GA15189@mew>
+ <20141124220302.GA5785@mew.dhcp4.washington.edu>
 MIME-Version: 1.0
-To: "nfs >> Linux NFS Mailing list" <linux-nfs@vger.kernel.org>
-Subject: Fwd: [RHEL7.1 PATCH 0/5][BZ1166845] NFSv4.x: Delegation return causes
- infinite loop and hung
-References: <1417544515-7381-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1417544515-7381-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20141124220302.GA5785@mew.dhcp4.washington.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Mon, Nov 24, 2014 at 02:03:02PM -0800, Omar Sandoval wrote:
+> Alright, I took a look at this. My understanding is that a PREALLOC extent
+> represents a region on disk that has already been allocated but isn't in use
+> yet, but please correct me if I'm wrong. Judging by this comment in
+> btrfs_get_blocks_direct, we don't have to worry about PREALLOC extents in
+> general:
+> 
+> /*
+>  * We don't allocate a new extent in the following cases
+>  *
+>  * 1) The inode is marked as NODATACOW.  In this case we'll just use the
+>  * existing extent.
+>  * 2) The extent is marked as PREALLOC.  We're good to go here and can
+>  * just use the extent.
+>  *
+>  */
 
-Would it be possible to get these review and (hopefully) acked 
-relatively soon?  I'm trying to get them into the rhel7-fs 
-and they need to be acked up ;-) 
+Ok, thanks for checking.
 
-tia,
+> A couple of other considerations that cropped up:
+> 
+> - btrfs_get_extent does a bunch of extra work if the extent is not cached in
+>   the extent map tree that would be nice to avoid when swapping
+> - We might still have to do a COW if the swap file is in a snapshot
+> 
+> We can avoid the btrfs_get_extent by pinning the extents in memory one way or
+> another in btrfs_swap_activate.
 
-steved.
+That's preferrable, the overhead should be small.
 
+> The snapshot issue is a little tricker to resolve. I see a few options:
+> 
+> 1. Just do the COW and hope for the best
 
--------- Forwarded Message --------
-Subject: [RHEL7.1 PATCH 0/5][BZ1166845] NFSv4.x: Delegation return causes infinite loop and hung
-Date: Tue,  2 Dec 2014 13:21:50 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Red Hat Kernel List <rhkernel-list@redhat.com>
-CC: Red Hat NFS Team <nfs-team@redhat.com>
+Snapshotting of NODATACOW files work, the extents are COWed on the first
+write, the original owner sees no change.
 
-Here is a late breaking bug that was found by the Netapp QA people
+> 2. As part of btrfs_swap_activate, COW any shared extents. If a snapshot
+> happens while a swap file is active, we'll fall back to 1.
 
-Description of problem:
-  When an NFS client receives an error while trying to return a delegation, it 
-  leads to infinite state recovery (and hung machine).
+So we should make sure that any write to the swapfile will not lead to
+the first-COW, this would require to scan all the extents and see if
+we're the owner and COW eventually.
 
-As usual, as soon as this hits one of our kernel, they will
-be more than willing to help out with testing.
+Doing that automatically is IMO better from the user perspective,
+compared to an erroring out and requesting a manual "dd" over the file.
 
-bz: https://bugzilla.redhat.com/show_bug.cgi?id=1166845
+Possibly, the implied COW could create preallocated extents so we do not
+have to rewrite the data.
 
-Trond Myklebust (5):
-  NFSv4: Ensure that we remove NFSv4.0 delegations when state has
-    expired
-  NFSv4: Ensure that we call FREE_STATEID when NFSv4.x stateids are
-    revoked
-  NFS: Don't try to reclaim delegation open state if recovery failed
-  NFSv4: Fix races between nfs_remove_bad_delegation() and delegation
-    return
-  NFSv4.1: nfs41_clear_delegation_stateid shouldn't trust
-    NFS_DELEGATED_STATE
+> 3. Clobber any swap file extents which are in a snapshot, i.e., always use the
+> existing extent.
 
- fs/nfs/delegation.c            | 25 ++++++++++++--
- fs/nfs/delegation.h            |  1 +
- fs/nfs/filelayout/filelayout.c |  3 --
- fs/nfs/nfs4proc.c              | 76 +++++++++++++++++++++++-------------------
- 4 files changed, 65 insertions(+), 40 deletions(-)
+Easy to implement but could lead to bad suprises.
 
--- 
-1.8.3.1
+More thoughts:
 
-
-
+There are some guards in the generic code to prevent unwanted
+modifications to the swapfiles (eg. no truncate, no fallocate, no
+deletion). Further we should audit btrfs ioctls that may interfere with
+swap and forbid any action (notably the cloning and deduplication ones).
