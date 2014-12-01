@@ -1,73 +1,64 @@
-Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41540 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932112AbaLAUMg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 1 Dec 2014 15:12:36 -0500
-Date: Mon, 1 Dec 2014 15:12:33 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Jeff Layton <jeff.layton@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/10] sunrpc: fixes and cleanups for svc creation and
- thread handling
-Message-ID: <20141201201233.GD30001@fieldses.org>
-References: <1416401482-2562-1-git-send-email-jlayton@primarydata.com>
- <20141119213758.GE14207@fieldses.org>
- <20141119165957.04e6e9c2@tlielax.poochiereds.net>
- <546DF808.1000905@Netapp.com>
- <20141201195636.GC30001@fieldses.org>
- <CAHQdGtRaZ33kzweTMiSQhjAmUkQdHrq140obhrvmY2bZC=xcdg@mail.gmail.com>
+Return-Path: keyrings-bounces@linux-nfs.org
+Date: Tue, 2 Dec 2014 09:49:04 +1100 (AEDT)
+From: James Morris <jmorris@namei.org>
+To: David Howells <dhowells@redhat.com>
+In-Reply-To: <12126.1417429021@warthog.procyon.org.uk>
+Message-ID: <alpine.LRH.2.11.1412020947060.18348@namei.org>
+References: <12126.1417429021@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHQdGtRaZ33kzweTMiSQhjAmUkQdHrq140obhrvmY2bZC=xcdg@mail.gmail.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Cc: keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
+        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [Keyrings] [GIT PULL] Keyrings (& NFS) fixes
+List-Unsubscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=unsubscribe>
+List-Archive: <http://linux-nfs.org/pipermail/keyrings>
+List-Post: <mailto:keyrings@linux-nfs.org>
+List-Help: <mailto:keyrings-request@linux-nfs.org?subject=help>
+List-Subscribe: <http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings>,
+	<mailto:keyrings-request@linux-nfs.org?subject=subscribe>
+Content-Type: text/plain; charset="us-ascii"
+Sender: keyrings-bounces@linux-nfs.org
+Errors-To: keyrings-bounces@linux-nfs.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 01, 2014 at 03:08:57PM -0500, Trond Myklebust wrote:
-> On Mon, Dec 1, 2014 at 2:56 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Thu, Nov 20, 2014 at 09:17:44AM -0500, Anna Schumaker wrote:
-> >> On 11/19/2014 04:59 PM, Jeff Layton wrote:
-> >> > On Wed, 19 Nov 2014 16:37:58 -0500
-> >> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> >> >
-> >> >> On Wed, Nov 19, 2014 at 07:51:12AM -0500, Jeff Layton wrote:
-> >> >>> Patch #1 in this series is a bugfix, but probably isn't worth sending to
-> >> >>> stable. The rest are just cleanups in preparation for some other patches
-> >> >>> that I have queued up. Can you consider these for 3.19?
-> >> >> Sure, I've read through them, they look fine.
-> >> >>
-> >> >> When I tried to apply them to my for-3.19 there were rejects due to
-> >> >> tracing stuff in include/trace/events/sunrpc.h.  I haven't tried to
-> >> >> investigate yet.
-> >> >>
-> >> >> --b.
-> >> >>
-> >> > Ahh yeah. These are based on top of the tracepoint patches I sent to
-> >> > Trond a couple of weeks ago. I think he's planning to merge those in
-> >> > 3.19 too, but I don't think he's done that yet. Anna may have though...
-> >>
-> >> I have them in a private tree on my laptop that I use for testing.  Want me to push them out somewhere?
-> >
-> > That'd help me at least test, but we need something more than a
-> > temporary testing branch to get ready for the merge window.  Choices
-> > include:
-> >
-> >         - Trond merges them all now, I pull that and apply these on top.
-> >         - I merge them instead, or we divide the patches between us
-> >           somehow.  Worst case, it's probably even OK if there's a patch
-> >           or two that we both apply.
-> >
-> > In any case we need to get that sorted out now-ish as the merge window's
-> > probably starting next week.
-> >
+On Mon, 1 Dec 2014, David Howells wrote:
+
+> Hi James,
 > 
-> All patches that I plan on merging for the next window were pushed out
-> last Friday. Jeff's tracepoint and debugfs patchset should therefore
-> be present in my nfs-for-next and linux-next branches on
-> git.linux-nfs.org.
+> Can you pass these patches on to Linus please?
+> 
+> The first one fixes the handling of maximum buffer size for key descriptions,
+> fixing the size at 4095 + NUL char rather than whatever PAGE_SIZE happens to
+> be and permits you to read back the full description without it getting
+> clipped because some extra information got prepended.
+> 
+> The second and third fix a bug in NFS idmapper handling whereby a key
+> representing a mapping between an id and a name expires and causing
+> EKEYEXPIRED to be seen internally in NFS (which prevents the mapping from
+> happening) rather than re-looking up the mapping.
+> 
+> Thanks,
+> David
+> ---
+> The following changes since commit a6aacbde406eeb6f8fc218b2c6172825f5e73fcf:
+> 
+>   Merge branch 'next' of git://git.kernel.org/pub/scm/linux/kernel/git/zohar/linux-integrity into next (2014-11-19 21:36:07 +1100)
+> 
+> are available in the git repository at:
+> 
+> 
+>   git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/keys-fixes-20141121
+> 
 
-OK, great, I'll go take a look at that and figure out what's needed,
-thanks.
+Because these patches are going to current Linus, you need to apply these 
+patches to a tree based on his tree, and send a pull req to me for that.
 
---b.
+
+-- 
+James Morris
+<jmorris@namei.org>
+
+_______________________________________________
+Keyrings mailing list
+Keyrings@linux-nfs.org
+To change your subscription to this list, please see http://linux-nfs.org/cgi-bin/mailman/listinfo/keyrings
