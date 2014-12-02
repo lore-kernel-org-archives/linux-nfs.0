@@ -3,208 +3,170 @@ From: Jeff Layton <jlayton@primarydata.com>
 To: linux-nfs@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, Tejun Heo <tj@kernel.org>,
         Al Viro <viro@zeniv.linux.org.uk>
-Subject: [RFC PATCH 10/14] nfsd: keep a reference to the fs_struct in svc_rqst
-Date: Tue,  2 Dec 2014 13:24:19 -0500
-Message-Id: <1417544663-13299-11-git-send-email-jlayton@primarydata.com>
+Subject: [RFC PATCH 11/14] nfsd: add support for workqueue based service processing
+Date: Tue,  2 Dec 2014 13:24:20 -0500
+Message-Id: <1417544663-13299-12-git-send-email-jlayton@primarydata.com>
 In-Reply-To: <1417544663-13299-1-git-send-email-jlayton@primarydata.com>
 References: <1417544663-13299-1-git-send-email-jlayton@primarydata.com>
 Sender: linux-kernel-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we convert this code to use a workqueue, we won't want to allocate
-a new fs_struct to handle each RPC. Doing so might also be problematic
-since we'd be swapping out the ->fs value on a "public" workqueue
-kthread.
+Allow nfsd to create a workqueue based nfsd service if the sunrpc
+pool_mode is set to "workqueue".
 
-Change the code to allocate an fs struct when when allocating a svc_rqst
-and then switch to using that in the "nfsd" function.
-
-Cc: Al Viro <viro@zeniv.linux.org.uk>
 Signed-off-by: Jeff Layton <jlayton@primarydata.com>
 ---
- fs/fs_struct.c             | 59 +++++++++++++++++++++++++++++++++++++++-------
- fs/nfsd/nfssvc.c           | 17 ++++++-------
- include/linux/fs_struct.h  |  3 +++
- include/linux/sunrpc/svc.h |  1 +
- net/sunrpc/svc.c           |  8 +++++++
- 5 files changed, 69 insertions(+), 19 deletions(-)
+ fs/fs_struct.c            |  3 +-
+ fs/nfsd/nfssvc.c          | 77 +++++++++++++++++++++++++++++++++++++++++++++--
+ include/linux/fs_struct.h |  1 +
+ 3 files changed, 78 insertions(+), 3 deletions(-)
 
 diff --git a/fs/fs_struct.c b/fs/fs_struct.c
-index 7dca743b2ce1..9bc08ea2f433 100644
+index 9bc08ea2f433..68985c76cd75 100644
 --- a/fs/fs_struct.c
 +++ b/fs/fs_struct.c
-@@ -127,26 +127,67 @@ struct fs_struct *copy_fs_struct(struct fs_struct *old)
- 	}
- 	return fs;
- }
-+EXPORT_SYMBOL_GPL(copy_fs_struct);
+@@ -130,7 +130,7 @@ struct fs_struct *copy_fs_struct(struct fs_struct *old)
+ EXPORT_SYMBOL_GPL(copy_fs_struct);
  
--int unshare_fs_struct(void)
-+/* Replace current fs struct with one given. Return a pointer to old one. */
-+static struct fs_struct *
-+swap_fs_struct(struct fs_struct *new_fs)
- {
--	struct fs_struct *fs = current->fs;
--	struct fs_struct *new_fs = copy_fs_struct(fs);
--	int kill;
--
--	if (!new_fs)
--		return -ENOMEM;
-+	struct fs_struct *old_fs;
- 
- 	task_lock(current);
-+	old_fs = current->fs;
-+	current->fs = new_fs;
-+	task_unlock(current);
-+
-+	return old_fs;
-+}
-+
-+/* Put a reference to a fs_struct. */
-+void put_fs_struct(struct fs_struct *fs)
-+{
-+	bool kill;
-+
- 	spin_lock(&fs->lock);
- 	kill = !--fs->users;
--	current->fs = new_fs;
- 	spin_unlock(&fs->lock);
--	task_unlock(current);
- 
- 	if (kill)
- 		free_fs_struct(fs);
-+}
-+EXPORT_SYMBOL_GPL(put_fs_struct);
-+
-+/* Take an extra reference to a fs_struct. Caller must already hold one! */
+ /* Replace current fs struct with one given. Return a pointer to old one. */
+-static struct fs_struct *
 +struct fs_struct *
-+get_fs_struct(struct fs_struct *fs)
-+{
-+	spin_lock(&fs->lock);
-+	++fs->users;
-+	spin_unlock(&fs->lock);
-+	return fs;
-+}
-+EXPORT_SYMBOL_GPL(get_fs_struct);
-+
-+/*
-+ * Swap in a new fs_struct and drop the reference on the old one.
-+ * Caller must have already taken the reference to the new one.
-+ */
-+void replace_fs_struct(struct fs_struct *new_fs)
-+{
-+	struct fs_struct *old_fs = swap_fs_struct(new_fs);
-+
-+	put_fs_struct(old_fs);
-+}
-+EXPORT_SYMBOL_GPL(replace_fs_struct);
-+
-+int unshare_fs_struct(void)
-+{
-+	struct fs_struct *new_fs = copy_fs_struct(current->fs);
-+
-+	if (!new_fs)
-+		return -ENOMEM;
+ swap_fs_struct(struct fs_struct *new_fs)
+ {
+ 	struct fs_struct *old_fs;
+@@ -142,6 +142,7 @@ swap_fs_struct(struct fs_struct *new_fs)
  
-+	replace_fs_struct(new_fs);
- 	return 0;
+ 	return old_fs;
  }
- EXPORT_SYMBOL_GPL(unshare_fs_struct);
++EXPORT_SYMBOL_GPL(swap_fs_struct);
+ 
+ /* Put a reference to a fs_struct. */
+ void put_fs_struct(struct fs_struct *fs)
 diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 71e7b180c0d9..f37bd7db2176 100644
+index f37bd7db2176..2c7ebced0311 100644
 --- a/fs/nfsd/nfssvc.c
 +++ b/fs/nfsd/nfssvc.c
-@@ -582,15 +582,13 @@ nfsd(void *vrqstp)
- 	/* Lock module and set up kernel thread */
- 	mutex_lock(&nfsd_mutex);
+@@ -28,6 +28,10 @@
+ extern struct svc_program	nfsd_program;
+ static int			nfsd(void *vrqstp);
  
--	/* At this point, the thread shares current->fs
--	 * with the init process. We need to create files with a
--	 * umask of 0 instead of init's umask. */
--	if (unshare_fs_struct() < 0) {
--		printk("Unable to start nfsd thread: out of memory\n");
--		goto out;
--	}
--
--	current->fs->umask = 0;
-+	/*
-+	 * At this point, the thread shares current->fs with the init process.
-+	 * We need to create files with a umask of 0 instead of init's umask,
-+	 * so switch to the fs_struct associated with the rqstp.
-+	 */
-+	get_fs_struct(rqstp->rq_fs);
-+	replace_fs_struct(rqstp->rq_fs);
- 
- 	/*
- 	 * thread is spawned with all signals set to SIG_IGN, re-enable
-@@ -632,7 +630,6 @@ nfsd(void *vrqstp)
- 	mutex_lock(&nfsd_mutex);
- 	nfsdstats.th_cnt --;
- 
--out:
- 	rqstp->rq_server = NULL;
- 
- 	/* Release the thread */
-diff --git a/include/linux/fs_struct.h b/include/linux/fs_struct.h
-index 0efc3e62843a..d2b7a1942790 100644
---- a/include/linux/fs_struct.h
-+++ b/include/linux/fs_struct.h
-@@ -21,7 +21,10 @@ extern void set_fs_root(struct fs_struct *, const struct path *);
- extern void set_fs_pwd(struct fs_struct *, const struct path *);
- extern struct fs_struct *copy_fs_struct(struct fs_struct *);
- extern void free_fs_struct(struct fs_struct *);
-+extern void replace_fs_struct(struct fs_struct *);
- extern int unshare_fs_struct(void);
-+struct fs_struct *get_fs_struct(struct fs_struct *);
-+void put_fs_struct(struct fs_struct *);
- 
- static inline void get_fs_root(struct fs_struct *fs, struct path *root)
- {
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 81e723220346..f47de87660b4 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -295,6 +295,7 @@ struct svc_rqst {
- 	struct svc_cacherep *	rq_cacherep;	/* cache info */
- 	struct task_struct	*rq_task;	/* service thread */
- 	spinlock_t		rq_lock;	/* per-request lock */
-+	struct fs_struct 	*rq_fs;
++#if IS_ENABLED(CONFIG_SUNRPC_SVC_WORKQUEUE)
++static struct svc_serv_ops	nfsd_wq_sv_ops;
++#endif
++
+ /*
+  * nfsd_mutex protects nn->nfsd_serv -- both the pointer itself and the members
+  * of the svc_serv struct. In particular, ->sv_nrthreads but also to some
+@@ -398,10 +402,27 @@ static struct svc_serv_ops nfsd_thread_sv_ops = {
+ 	.svo_module		= THIS_MODULE,
  };
  
- #define SVC_NET(svc_rqst)	(svc_rqst->rq_xprt->xpt_net)
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 7c8e33923210..4300bc852f6e 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -20,6 +20,7 @@
- #include <linux/module.h>
- #include <linux/kthread.h>
- #include <linux/slab.h>
-+#include <linux/fs_struct.h>
- 
- #include <linux/sunrpc/types.h>
- #include <linux/sunrpc/xdr.h>
-@@ -622,6 +623,11 @@ svc_rqst_alloc(struct svc_serv *serv, struct svc_pool *pool, int node)
- 	if (!svc_init_buffer(rqstp, serv->sv_max_mesg, node))
- 		goto out_enomem;
- 
-+	rqstp->rq_fs = copy_fs_struct(current->fs);
-+	if (!rqstp->rq_fs)
-+		goto out_enomem;
++#if IS_ENABLED(CONFIG_SUNRPC_SVC_WORKQUEUE)
++static struct svc_serv_ops *
++select_svc_serv_ops(void)
++{
++	if (svc_pool_map.mode == SVC_POOL_WORKQUEUE)
++		return &nfsd_wq_sv_ops;
++	return &nfsd_thread_sv_ops;
++}
++#else
++static struct svc_serv_ops *
++select_svc_serv_ops(void)
++{
++	return &nfsd_thread_sv_ops;
++}
++#endif
 +
-+	rqstp->rq_fs->umask = 0;
- 	return rqstp;
- out_enomem:
- 	svc_rqst_free(rqstp);
-@@ -784,6 +790,8 @@ svc_rqst_free(struct svc_rqst *rqstp)
- 	kfree(rqstp->rq_resp);
- 	kfree(rqstp->rq_argp);
- 	kfree(rqstp->rq_auth_data);
-+	if (rqstp->rq_fs)
-+		put_fs_struct(rqstp->rq_fs);
- 	kfree_rcu(rqstp, rq_rcu_head);
+ int nfsd_create_serv(struct net *net)
+ {
+ 	int error;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct svc_serv_ops *ops;
+ 
+ 	WARN_ON(!mutex_is_locked(&nfsd_mutex));
+ 	if (nn->nfsd_serv) {
+@@ -411,8 +432,11 @@ int nfsd_create_serv(struct net *net)
+ 	if (nfsd_max_blksize == 0)
+ 		nfsd_max_blksize = nfsd_get_default_max_blksize();
+ 	nfsd_reset_versions();
+-	nn->nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize,
+-						&nfsd_thread_sv_ops);
++
++	svc_pool_map_get();
++	ops = select_svc_serv_ops();
++	nn->nfsd_serv = svc_create_pooled(&nfsd_program, nfsd_max_blksize, ops);
++	svc_pool_map_put();
+ 	if (nn->nfsd_serv == NULL)
+ 		return -ENOMEM;
+ 
+@@ -643,6 +667,55 @@ nfsd(void *vrqstp)
+ 	return 0;
  }
- EXPORT_SYMBOL_GPL(svc_rqst_free);
+ 
++#if IS_ENABLED(CONFIG_SUNRPC_SVC_WORKQUEUE)
++/* work function for workqueue-based nfsd */
++static void
++nfsd_work(struct work_struct *work)
++{
++	int node = numa_node_id();
++	struct svc_xprt *xprt = container_of(work, struct svc_xprt, xpt_work);
++	struct net *net = xprt->xpt_net;
++	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
++	struct svc_serv *serv = xprt->xpt_server;
++	struct svc_rqst *rqstp;
++	struct fs_struct *saved_fs;
++	int err;
++
++	rqstp = svc_rqst_alloc(serv, &serv->sv_pools[node], node);
++	if (!rqstp) {
++		/* Alloc failure. Give up for now, and requeue the work */
++		queue_work(serv->sv_wq, &xprt->xpt_work);
++		return;
++	}
++
++	rqstp->rq_xprt = xprt;
++
++	get_fs_struct(rqstp->rq_fs);
++	saved_fs = swap_fs_struct(rqstp->rq_fs);
++
++	rqstp->rq_server->sv_maxconn = nn->max_connections;
++	err = svc_wq_recv(rqstp);
++	if (err >= 0) {
++		validate_process_creds();
++		svc_process(rqstp);
++		validate_process_creds();
++	}
++
++	saved_fs = swap_fs_struct(saved_fs);
++	put_fs_struct(saved_fs);
++
++	svc_rqst_free(rqstp);
++}
++
++static struct svc_serv_ops nfsd_wq_sv_ops = {
++	.svo_shutdown		= nfsd_last_thread,
++	.svo_enqueue_xprt	= svc_wq_enqueue_xprt,
++	.svo_xprt_work		= nfsd_work,
++	.svo_setup		= svc_wq_setup,
++	.svo_module		= THIS_MODULE,
++};
++#endif
++
+ static __be32 map_new_errors(u32 vers, __be32 nfserr)
+ {
+ 	if (nfserr == nfserr_jukebox && vers == 2)
+diff --git a/include/linux/fs_struct.h b/include/linux/fs_struct.h
+index d2b7a1942790..671c49f13396 100644
+--- a/include/linux/fs_struct.h
++++ b/include/linux/fs_struct.h
+@@ -20,6 +20,7 @@ extern void exit_fs(struct task_struct *);
+ extern void set_fs_root(struct fs_struct *, const struct path *);
+ extern void set_fs_pwd(struct fs_struct *, const struct path *);
+ extern struct fs_struct *copy_fs_struct(struct fs_struct *);
++extern struct fs_struct *swap_fs_struct(struct fs_struct *);
+ extern void free_fs_struct(struct fs_struct *);
+ extern void replace_fs_struct(struct fs_struct *);
+ extern int unshare_fs_struct(void);
 -- 
 2.1.0
 
