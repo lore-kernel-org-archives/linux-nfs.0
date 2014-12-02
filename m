@@ -1,58 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33607 "EHLO mx1.redhat.com"
+Received: from vader.hardeman.nu ([95.142.160.32]:49102 "EHLO hardeman.nu"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753901AbaLHUw3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 8 Dec 2014 15:52:29 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id sB8KqLTp010165
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Mon, 8 Dec 2014 15:52:28 -0500
-Received: from tonberry.usersys.redhat.com (dhcp145-188.rdu.redhat.com [10.13.145.188])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id sB8KF9Ht018387
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Mon, 8 Dec 2014 15:16:05 -0500
-Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
-	by tonberry.usersys.redhat.com (8.14.8/8.14.5) with ESMTP id sB8JvWKr010239
-	for <linux-nfs@vger.kernel.org>; Mon, 8 Dec 2014 14:57:32 -0500
-Received: (from smayhew@localhost)
-	by tonberry.usersys.redhat.com (8.14.8/8.14.8/Submit) id sB8JvWvL010238
-	for linux-nfs@vger.kernel.org; Mon, 8 Dec 2014 14:57:32 -0500
-From: Scott Mayhew <smayhew@redhat.com>
+	id S1751211AbaLBMrh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 2 Dec 2014 07:47:37 -0500
+Subject: [PATCH 0/3] nfs-utils build fixes
+From: David =?utf-8?b?SMOkcmRlbWFu?= <david@hardeman.nu>
 To: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v3 17/17] mountstats: add ms-iostat and ms-nfsstat to Makefile.am
-Date: Mon,  8 Dec 2014 14:57:25 -0500
-Message-Id: <1418068645-10134-18-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1418068645-10134-1-git-send-email-smayhew@redhat.com>
-References: <1418068645-10134-1-git-send-email-smayhew@redhat.com>
+Date: Tue, 02 Dec 2014 13:39:49 +0100
+Message-ID: <20141202123805.13015.25151.stgit@zeus.muc.hardeman.nu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+The following series fixes some of the snafus I encountered when
+trying to build nfs-utils for OpenELEC (meaning: lots of static
+libraries, cross compile, separate source and build dirs).
+
+Only the first patch is a real patch, the other two are more
+a basis for discussion since I'm not sure about the best approach...
+
 ---
- tools/mountstats/Makefile.am | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/tools/mountstats/Makefile.am b/tools/mountstats/Makefile.am
-index c2e9f99..05cc4e5 100644
---- a/tools/mountstats/Makefile.am
-+++ b/tools/mountstats/Makefile.am
-@@ -1,7 +1,7 @@
- ## Process this file with automake to produce Makefile.in
- PYTHON_FILES =  mountstats.py
- 
--man8_MANS	= mountstats.man
-+man8_MANS	= mountstats.man ms-iostat.man ms-nfsstat.man
- 
- EXTRA_DIST	= $(man8_MANS) $(PYTHON_FILES)
- 
-@@ -9,5 +9,7 @@ all-local: $(PYTHON_FILES)
- 
- install-data-hook:
- 	$(INSTALL) -m 755 mountstats.py $(DESTDIR)$(sbindir)/mountstats
-+	ln -sf $(DESTDIR)$(sbindir)/mountstats $(DESTDIR)$(sbindir)/ms-iostat
-+	ln -sf $(DESTDIR)$(sbindir)/mountstats $(DESTDIR)$(sbindir)/ms-nfsstat
- 
- MAINTAINERCLEANFILES=Makefile.in
--- 
-1.9.3
+David Härdeman (3):
+      nfs-utils: fix gssd build flags
+      [RFC] nfs-utils: change internal rpcgen to support separate builddir
+      [RFC] nfs-utils: include headers from srcdir
 
+
+ configure.ac            |    3 +++
+ tools/rpcgen/rpc_main.c |    7 ++++---
+ utils/gssd/Makefile.am  |    4 ++--
+ 3 files changed, 9 insertions(+), 5 deletions(-)
+
+--
+David Härdeman
